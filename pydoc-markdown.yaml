@@ -16,6 +16,9 @@ renderer:
     - title: Home
       name: index
       source: README.md
+    - title: Example
+      name: example
+      source: docs/example.md
     - title: Licenses
       name: licenses
       source: docs/licenses.md

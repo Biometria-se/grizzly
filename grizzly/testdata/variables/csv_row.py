@@ -118,7 +118,7 @@ class AtomicCsvRow(AtomicVariable[Dict[str, Any]]):
                 if argument in arguments:
                     settings[argument] = caster(arguments[argument])
         else:
-            csv_file = safe_value
+            csv_file = safe_value.strip()
 
         super().__init__(variable, {})
 
@@ -133,7 +133,7 @@ class AtomicCsvRow(AtomicVariable[Dict[str, Any]]):
             return
 
         self.context_root = os.path.join(os.environ.get('LOCUST_CONTEXT_ROOT', ''), 'requests')
-        self._rows = {variable: self._create_row_queue(value)}
+        self._rows = {variable: self._create_row_queue(csv_file)}
         self._settings = {variable: settings}
         self.__initialized = True
 

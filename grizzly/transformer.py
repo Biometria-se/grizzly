@@ -144,10 +144,11 @@ class PlainTransformer(Transformer):
     def parser(cls, expression: str) -> Callable[[Any], List[str]]:
         try:
             strict_expression = expression
-            if not strict_expression[0] == '^':
-                strict_expression = f'^{strict_expression}'
-            if not strict_expression[-1] == '$':
-                strict_expression = f'{strict_expression}$'
+            if len(strict_expression) > 1:
+                if not strict_expression[0] == '^':
+                    strict_expression = f'^{strict_expression}'
+                if not strict_expression[-1] == '$':
+                    strict_expression = f'{strict_expression}$'
 
             pattern = re.compile(strict_expression)
 

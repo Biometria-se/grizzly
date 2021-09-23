@@ -68,6 +68,8 @@ def _parse_templates(requests: RequestSourceMapping) -> Dict[str, Set[str]]:
         if scenario not in variables:
             variables[scenario] = set()
 
+        has_processed_orphan_templates = False
+
         # can raise TemplateError which should be handled else where
         for (path, request) in scenario_requests:
             j2env = j2.Environment(
@@ -87,6 +89,10 @@ def _parse_templates(requests: RequestSourceMapping) -> Dict[str, Set[str]]:
 
             if template_source is not None:
                 sources.append(template_source)
+
+            if not has_processed_orphan_templates and isinstance(request, RequestContext):
+                sources += request.scenario.orphan_templates
+                has_processed_orphan_templates = True
 
             for source in sources:
                 parsed = j2env.parse(source)

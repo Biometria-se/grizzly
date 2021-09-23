@@ -1,0 +1,8 @@
+configuration:
+  facts:
+    dog:
+      host: https://dog-facts-api.herokuapp.com
+    cat:
+      host: https://catfact.ninja
+    book:
+      host: https://openlibrary.org
