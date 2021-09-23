@@ -96,6 +96,8 @@ git remote add -f origin https://github.com/Biometria-se/grizzly.git
 git sparse-checkout init
 git sparse-checkout set example/
 git pull origin main
+rm -rf .git/
+cd example/
 ```
 
 Create an python virtual environment and install dependencies:
@@ -115,8 +117,14 @@ If you do not already have an working "IBM MQ" client setup and run `grizzly-cli
 
 If `docker` and `docker-compose` is installed, `grizzly-cli` will by default start the load test in distributed mode (override with `--local`).
 
-To run the example:
+To run the example, in local mode:
 
 ```bash
-grizzly-cli --local -c environment/example.yaml features/example.feature
+grizzly-cli --local -c environments/example.yaml features/example.feature
+```
+
+And in distributed mode:
+
+```bash
+grizzly-cli -c environments/example.yaml features/example.feature
 ```
