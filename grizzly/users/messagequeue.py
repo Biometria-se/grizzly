@@ -62,7 +62,7 @@ Default SSL chiper is `ECDHE_RSA_AES_256_GCM_SHA384`, change it by setting `auth
 Default certificate label is set to `auth.username`, change it by setting `auth.cert_label` context variable.
 '''
 from typing import Dict, Any, Generator, Tuple, Optional, cast
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, unquote
 from contextlib import contextmanager
 from time import monotonic as time
 
@@ -133,8 +133,8 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
         if 'Channel' not in params:
             raise ValueError(f'{self.__class__.__name__} needs Channel in the query string')
 
-        self.queue_manager = params['QueueManager'][0]
-        self.channel = params['Channel'][0]
+        self.queue_manager = unquote(params['QueueManager'][0])
+        self.channel = unquote(params['Channel'][0])
 
         # Get configuration values from context
         self._context = merge_dicts(super().context(), self.__class__._context)
