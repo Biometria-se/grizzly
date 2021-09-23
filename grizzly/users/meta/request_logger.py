@@ -156,6 +156,9 @@ class RequestLogger(ResponseEvent, ContextVariables):
         exception: Optional[Exception] = None,
         **kwargs: Dict[str, Any],
     ) -> None:
+        if getattr(request, 'response', None) is None:
+            return
+
         successful_request = context.status_code in request.response.status_codes if isinstance(context, ResponseContextManager) else exception is None
 
         if successful_request and not self._context['log_all_requests']:
