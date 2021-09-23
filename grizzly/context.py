@@ -125,6 +125,7 @@ class LocustContextScenario:
     tasks: List[Union['RequestContext', float]] = field(init=False, repr=False, hash=False, compare=False, default_factory=list)
     validation: LocustContextScenarioValidation = field(init=False, hash=False, compare=False, default_factory=LocustContextScenarioValidation)
     stop_on_failure: bool = field(init=False, default=False)
+    orphan_templates: List[str] = field(init=False, repr=False, hash=False, compare=False, default_factory=list)
 
     @property
     def identifier(self) -> str:

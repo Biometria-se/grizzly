@@ -150,7 +150,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 | [typepy](https://github.com/thombashi/typepy)                                                                                | 1.3.0     | MIT License                                                      |
 | [tzlocal](https://github.com/regebro/tzlocal)                                                                                | 3.0       | MIT License                                                      |
 | [uamqp](https://github.com/Azure/azure-uamqp-python)                                                                         | 1.4.2     | MIT License                                                      |
-| [urllib3](https://urllib3.readthedocs.io/)                                                                                   | 1.26.6    | MIT License                                                      |
+| [urllib3](https://urllib3.readthedocs.io/)                                                                                   | 1.26.7    | MIT License                                                      |
 | [zipp](https://github.com/jaraco/zipp)                                                                                       | 3.5.0     | MIT License                                                      |
 | [certifi](https://certifiio.readthedocs.io/en/latest/)                                                                       | 2021.5.30 | Mozilla Public License 2.0 (MPL 2.0)                             |
 | [pymqi](https://dsuch.github.io/pymqi/)                                                                                      | 1.11.0    | Python Software Foundation License                               |

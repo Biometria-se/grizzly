@@ -403,6 +403,12 @@ def _add_response_handler(
     if not isinstance(request, RequestContext):
         raise ValueError('latest task was not a request')
 
+    if '{{' in match_with and '}}' in match_with:
+        context.scenario.orphan_templates.append(match_with)
+
+    if '{{' in expression and '}}' in match_with:
+        context.scenario.orphan_templates.append(expression)
+
     if action == ResponseAction.SAVE:
         if variable is None:
             raise ValueError('variable is not set')
@@ -435,7 +441,11 @@ def normalize_step_name(step_name: str) -> str:
 
 
 def in_correct_section(func: FunctionType, expected: List[str]) -> bool:
-    actual = '.'.join(func.__module__.rsplit('.', 1)[:-1])
+    try:
+        actual = '.'.join(func.__module__.rsplit('.', 1)[:-1])
+    except AttributeError:  # function does not belong to a module
+        actual = 'custom'
+
     return (
         actual.startswith('grizzly.') and actual in expected
     ) or not actual.startswith('grizzly.')
