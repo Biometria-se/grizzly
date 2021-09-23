@@ -7,7 +7,7 @@ from types import TracebackType
 from typing import Any, Dict, List, Optional, Type, cast
 from typing_extensions import Literal
 from datetime import datetime, timezone, timedelta
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, unquote
 
 import gevent
 
@@ -128,9 +128,9 @@ class InfluxDbListener:
         params = parse_qs(parsed.query)
 
         assert 'Testplan' in params, f'Testplan not found in {parsed.query}'
-        self._testplan = params['Testplan'][0]
+        self._testplan = unquote(params['Testplan'][0])
         # self._env = env.parsed_options.target_env
-        self._target_environment = params['TargetEnvironment'][0] if 'TargetEnvironment' in params else None
+        self._target_environment = unquote(params['TargetEnvironment'][0]) if 'TargetEnvironment' in params else None
         self.environment = environment
         self._hostname = socket.gethostname()
         self._username = os.getenv('USER', 'unknown')

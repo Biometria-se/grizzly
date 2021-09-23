@@ -1,10 +1,10 @@
 '''
-Helt skamlöst lånad från:
+Borrowed from:
 https://github.com/SvenskaSpel/locust-plugins/blob/master/locust_plugins/appinsights_listener.py
 
-Med mindre ändringar relaterad till typer och hur InstrumentationKey etc. hanteras.
+Minor changes, mainly related to adding typing, and also how InstrumentationKey is handled.
 
-Exempel fråga för att grafa ut svarstider:
+Example kusko question to get response time:
 ```kusko
 traces
 | extend response_time = todouble(customDimensions["response_time"]),
