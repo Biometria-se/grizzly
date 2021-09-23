@@ -1,0 +1,99 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the README at:
+// https://github.com/microsoft/vscode-dev-containers/tree/v0.154.2/containers/python-3
+{
+	"name": "Python 3",
+	"build": {
+		"dockerfile": "Dockerfile",
+		"context": "..",
+		"args": {
+			// Update 'VARIANT' to pick a Python version: 3, 3.6, 3.7, 3.8, 3.9
+			"VARIANT": "3.8",
+		}
+	},
+
+	// Set *default* container specific settings.json values on container create.
+	"settings": {
+		//"terminal.integrated.shell.linux": "/bin/bash",
+		"python.pythonPath": "/usr/local/bin/python",
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+		"python.linting.enabled": true,
+        "python.linting.pylintEnabled": true,
+        "python.linting.flake8Enabled": false,
+        "python.linting.mypyEnabled": true,
+        "python.linting.pycodestyleEnabled": false,
+        "python.formatting.provider": "black",
+		"python.formatting.autopep8Path": "/usr/local/py-utils/bin/autopep8",
+		"python.formatting.blackPath": "/usr/local/py-utils/bin/black",
+		"python.formatting.yapfPath": "/usr/local/py-utils/bin/yapf",
+		"python.linting.banditPath": "/usr/local/py-utils/bin/bandit",
+		"python.linting.flake8Path": "/usr/local/py-utils/bin/flake8",
+		"python.linting.mypyPath": "/usr/local/py-utils/bin/mypy",
+		"python.linting.pycodestylePath": "/usr/local/py-utils/bin/pycodestyle",
+		"python.linting.pydocstylePath": "/usr/local/py-utils/bin/pydocstyle",
+        "python.linting.pylintPath": "/usr/local/py-utils/bin/pylint",
+        "python.languageServer": "Pylance",
+        "files.associations": {
+            "*.j2.json": "jinja-json"
+        },
+        "python.linting.mypyArgs": [
+            "--ignore-missing-imports",
+            "--follow-imports=silent",
+            "--show-column-numbers",
+            "--disallow-untyped-defs",
+            "--disallow-incomplete-defs",
+            "--no-implicit-optional",
+            "--warn-redundant-casts",
+            "--warn-unused-ignores",
+            "--warn-return-any",
+            "--warn-unreachable",
+            "--strict-equality"
+        ],
+        "python.testing.pytestEnabled": true,
+        "python.testing.pytestArgs": [
+            "-o testpaths=tests",
+            "--cov=grizzly/",
+            "--cov-report=xml:coverage.xml",
+            "tests/"
+        ],
+        "coverage-gutters.xmlname": "coverage.xml",
+        "coverage-gutters.ignoredPathGlobs": "**/{node_modules,venv,.venv,vendor,tests}/**"
+	},
+
+	// Add the IDs of extensions you want installed when the container is created.
+	"extensions": [
+		"ms-python.python",
+		"ms-python.vscode-pylance",
+        "littlefoxteam.vscode-python-test-adapter",
+        "editorconfig.editorconfig",
+        "eamodio.gitlens",
+		"samuelcolvin.jinjahtml",
+        "mikestead.dotenv",
+        "ryanluker.vscode-coverage-gutters",
+        "stevejpurves.cucumber",
+        "silverbulleters.gherkin-autocomplete"
+	],
+    "mounts": [
+        "source=/etc/timezone,target=/etc/timezone,type=bind,consistency=cached",
+        "source=/etc/localtime,target=/etc/localtime,type=bind,consistency=cached",
+        "source=/mnt/onedrive-ifk,target=/mnt/onedrive-ifk,type=bind,consistency=cached",
+        "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
+    ],
+    "runArgs": ["--init"],
+    "overrideCommand": false,
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	// "forwardPorts": [],
+
+    "containerEnv": {
+        "PYTHONPATH": "${containerWorkspaceFolder}"
+    },
+
+    "remoteEnv": {
+        "GRIZZLY_MOUNT_CONTEXT": "${localWorkspaceFolder}"
+    },
+
+	// Use 'postCreateCommand' to run commands after the container is created.
+	"postCreateCommand": "ssh-add -l && pip3 --disable-pip-version-check --no-cache-dir install --upgrade --no-warn-script-location -r requirements.txt && pip3 --disable-pip-version-check --no-cache-dir install --upgrade --no-warn-script-location -r requirements-dev.txt",
+
+	// Comment out connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
+    "remoteUser": "vscode",
+}

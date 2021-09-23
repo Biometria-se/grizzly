@@ -1,0 +1,115 @@
+hooks:
+  pre-render:
+    - python3 script/generate-licenses-doc.py
+loaders:
+  - type: python
+    search_path: [.]
+processors:
+  - type: filter
+    expression: not name.startswith('_') and not name.startswith('parse_') and not name.startswith('grizzly.users.meta') and default()
+    documented_only: true
+  - type: smart
+  - type: crossref
+renderer:
+  type: mkdocs
+  pages:
+    - title: Home
+      name: index
+      source: README.md
+    - title: Licenses
+      name: licenses
+      source: docs/licenses.md
+    - title: Command Line Interface
+      name: cli
+      source: docs/cli.md
+    - title: Usage
+      children:
+      - title: Variables
+        children:
+        - title: Environment configuration
+          name: environment-configuration
+          source: docs/usage/variables/environment-configuration.md
+        - title: Testdata
+          children:
+          - title: CSV Row
+            contents:
+            - grizzly.testdata.variables.csv_row
+          - title: Date
+            contents:
+            - grizzly.testdata.variables.date
+          - title: Directory Contents
+            contents:
+            - grizzly.testdata.variables.directory_contents
+          - title: Integer incrementer
+            contents:
+            - grizzly.testdata.variables.integer_incrementer
+          - title: Random Integer
+            contents:
+            - grizzly.testdata.variables.random_integer
+          - title: Random String
+            contents:
+            - grizzly.testdata.variables.random_string
+        - title: Templating
+          name: templating
+          source: docs/usage/variables/templating.md
+      - title: Steps
+        children:
+          - title: Background
+            children:
+            - title: Setup
+              contents:
+              - grizzly.steps.background.setup.*
+            - title: Shapes
+              contents:
+              - grizzly.steps.background.shapes.*
+          - title: Scenario
+            children:
+            - title: User
+              contents:
+              - grizzly.steps.scenario.user.*
+            - title: Setup
+              contents:
+              - grizzly.steps.scenario.setup.*
+            - title: Tasks
+              contents:
+              - grizzly.steps.scenario.tasks.*
+            - title: Response
+              contents:
+              - grizzly.steps.scenario.response.*
+            - title: Results
+              contents:
+              - grizzly.steps.scenario.results.*
+          - title: Anywhere
+            contents:
+            - grizzly.steps.*
+      - title: Load Users
+        children:
+        - title: Rest API
+          contents:
+          - grizzly.users.restapi
+        - title: Message Queue
+          contents:
+          - grizzly.users.messagequeue
+        - title: Service Bus
+          contents:
+          - grizzly.users.servicebus
+        - title: Blob Storage
+          contents:
+          - grizzly.users.blobstorage
+        - title: Secure File Transfer Protocol
+          contents:
+          - grizzly.users.sftp
+  mkdocs_config:
+    site_name: Grizzly
+    theme:
+      name: material
+      palette:
+        scheme: slate
+        primary: brown
+        accent: deep orange
+      features:
+      - navigation.sections
+    repo_url: https://github.com/biometria-se/grizzly
+    markdown_extensions:
+      - pymdownx.superfences
+      - pymdownx.highlight

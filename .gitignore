@@ -1,0 +1,14 @@
+**/__pycache__
+**/.mypy_cache
+**/.pytest_cache
+*.egg-info/
+build/
+dist/
+logs/*
+coverage.xml
+.coverage
+*.sh
+*.kdb
+*.rdb
+*.sth
+
