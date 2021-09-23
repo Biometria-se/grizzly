@@ -5,7 +5,6 @@ Feature: grizzly example
 
   Scenario: dog facts api
     Given a user of type "RestApi" load testing "$conf::facts.dog.host"
-    And stop on first failure
     And repeat for "1" iteration
     And value for variable "AtomicRandomInteger.dog_facts_count" is "1..5"
     # custom step
@@ -14,14 +13,12 @@ Feature: grizzly example
 
   Scenario: cat facts api
     Given a user of type "RestApi" load testing "$conf::facts.cat.host"
-    And stop on first failure
     And repeat for "1" iteration
     And value for variable "AtomicRandomInteger.cat_facts_count" is "1..5"
     Then get request with name "get-dog-facts" from endpoint "/facts?limit={{ AtomicRandomInteger.cat_facts_count }}"
 
   Scenario: book api
     Given a user of type "RestApi" load testing "$conf::facts.book.host"
-    And stop on first failure
     And repeat for "1" iteration
     And value for variable "AtomicCsvRow.books" is "books/books.csv | random=True"
     And value for variable "author_endpoint" is "none"

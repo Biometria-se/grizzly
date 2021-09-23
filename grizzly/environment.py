@@ -87,10 +87,16 @@ def after_scenario(context: Context, *_args: Tuple[Any, ...], **_kwargs: Dict[st
         context_locust.state.background_section_done = True
 
 
-def before_step(context: Context, step: Step) -> None:
+def before_step(context: Context, step: Step, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
     # fail step if it's a @backgroundsection decorated step implementation, see before_scenario hook
     with fail_direct(context):
         assert not getattr(step, 'location_status', '') == 'incorrect', 'Step is in the incorrect section'
 
     # add current step to context, used else where
     context.step = step
+
+
+def after_step(context: Context, step: Step, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+    # grizzly does not have any functionality that should run after every step, but added for
+    # clarity of what can be overloaded
+    return

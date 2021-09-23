@@ -2,13 +2,12 @@ import gevent.monkey
 
 gevent.monkey.patch_all()
 
-from typing import Callable, Dict, Tuple, Type, Any, Optional, cast
+from typing import Callable, Dict, Tuple, Type, Any, cast
 from json import loads as jsonloads
 
 import pymqi
 import pytest
 
-from _pytest.tmpdir import TempdirFactory
 from pytest_mock import mocker
 from pytest_mock.plugin import MockerFixture
 from locust.env import Environment
@@ -70,8 +69,8 @@ class TestMessageQueueUser:
         'channel': '',
     }
 
-    @pytest.mark.usefixtures('locust_environment', 'tmpdir_factory')
-    def test_create(self, locust_environment: Environment, tmpdir_factory: TempdirFactory) -> None:
+    @pytest.mark.usefixtures('locust_environment')
+    def test_create(self, locust_environment: Environment) -> None:
         try:
             MessageQueueUser.host = 'http://mq.example.com:1337'
             with pytest.raises(ValueError) as e:

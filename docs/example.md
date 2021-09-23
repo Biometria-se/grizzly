@@ -31,7 +31,7 @@ from grizzly.environment import *
 This file can contain overloading of `behave` hooks to trigger events that should happen during different stages of running a feature file.
 
 ```python
-from grizzly.environment import after_feature as grizzly_after_feature, before_feature as grizzly_before_feature, *
+from grizzly.environment import before_feature as grizzly_before_feature, after_feature as grizzly_after_feature, before_scenario, after_scenario, before_step
 
 def before_feature(context: Context, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
     # custom code that should run before feature file is started, e.g. notify something that a test
@@ -84,7 +84,19 @@ Then `features/requests/payload.j2.json` needs to exist.
 
 ## Get
 
-First do a sparse checkout of the `example/` directory in the repository:
+First do a sparse checkout of the `example/` directory in the repository.
+
+If you have `git` older than `2.25.0`, follow these [instructions on stackoverflow.com](https://stackoverflow.com/a/13738951/3378455).
+
+```bash
+mkdir grizzly-example
+cd grizzly-example
+git init
+git remote add -f origin https://github.com/Biometria-se/grizzly.git
+git sparse-checkout init
+git sparse-checkout set example/
+git pull origin main
+```
 
 Create an python virtual environment and install dependencies:
 
@@ -94,6 +106,8 @@ python3 -m venv .env
 pip3 install -r requirements.txt
 pip3 install -r requirements-run.txt
 ```
+
+If you do not already have an working "IBM MQ" client setup and run `grizzly-cli` in local mode you will not be able to use `MessageQueueUser`. See [`grizzly-cli/static/Containerfile`](https://github.com/Biometria-se/grizzly-cli/blob/main/grizzly_cli/static/Containerfile#L5-L23) on how to get these.
 
 ## Run
 
