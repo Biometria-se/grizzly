@@ -3,6 +3,7 @@ import json
 import shutil
 
 from typing import Any, Callable, Optional, Type, List, cast
+from types import FunctionType
 
 from gevent.monkey import patch_all
 patch_all()
@@ -736,6 +737,14 @@ def test_in_correct_section() -> None:
     from grizzly.steps import step_setup_iterations
     assert in_correct_section(step_setup_iterations, ['grizzly.steps.scenario'])
     assert not in_correct_section(step_setup_iterations, ['grizzly.steps.background'])
+
+    def step_custom(context: Context) -> None:
+        pass
+
+    # force AttributeError, for when a step function isn't part of a module
+    setattr(step_custom, '__module__', None)
+
+    assert in_correct_section(cast(FunctionType, step_custom), ['grizzly.steps.scenario'])
 
 
 @pytest.mark.usefixtures('behave_context')

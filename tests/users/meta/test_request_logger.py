@@ -65,7 +65,11 @@ class TestJsonBytesEncoder:
             'value': 'something',
             'test': False,
             'int': 1,
-        }, cls=JsonBytesEncoder) == '{"hello": "world", "invalid": "\\u00e9 char", "value": "something", "test": false, "int": 1}'
+            'empty': None,
+        }, cls=JsonBytesEncoder) == '{"hello": "world", "invalid": "\\u00e9 char", "value": "something", "test": false, "int": 1, "empty": null}'
+
+        with pytest.raises(TypeError):
+            encoder.default(None)
 
 class TestRequestLogger:
     @pytest.mark.usefixtures('locust_environment')
@@ -130,6 +134,12 @@ class TestRequestLogger:
         response.status_code = 401
         request.response.add_status_code(401)
         response_context_manager = ResponseContextManager(response, None, None)
+
+        response_context = request.response
+        setattr(request, 'response', None)
+        request_logger.request_logger('test-request', response_context_manager, request, request_logger)
+
+        setattr(request, 'response', response_context)
 
         request_logger.request_logger('test-request', response_context_manager, request, request_logger)
 

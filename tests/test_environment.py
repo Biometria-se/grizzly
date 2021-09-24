@@ -11,7 +11,7 @@ from behave.runner import Context, Runner
 from behave.configuration import Configuration
 from behave.model import Feature, Step
 
-from grizzly.environment import before_feature, after_feature, before_scenario, after_scenario, before_step
+from grizzly.environment import before_feature, after_feature, before_scenario, after_scenario, before_step, after_step
 from grizzly.context import LocustContext
 from grizzly.steps.setup import step_setup_variable_value_ask as step_both
 from grizzly.steps.background.setup import step_setup_save_statistics as step_background
@@ -215,3 +215,8 @@ def test_before_step(behave_context: Context) -> None:
     with pytest.raises(AssertionError):
         before_step(behave_context, step)
 
+
+@pytest.mark.usefixtures('behave_context')
+def test_after_step(behave_context: Context) -> None:
+    step = Step(filename=None, line=None, keyword='', step_type='step', name='')
+    after_step(behave_context, step)

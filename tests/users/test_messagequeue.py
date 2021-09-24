@@ -2,8 +2,11 @@ import gevent.monkey
 
 gevent.monkey.patch_all()
 
+import subprocess
+
 from typing import Callable, Dict, Tuple, Type, Any, cast
 from json import loads as jsonloads
+from os import environ
 
 import pymqi
 import pytest
@@ -68,6 +71,30 @@ class TestMessageQueueUser:
         'queue_manager': '',
         'channel': '',
     }
+
+    def test_no_pymqi_dependencies(self) -> None:
+        env = environ.copy()
+        del env['LD_LIBRARY_PATH']
+        env['PYTHONPATH'] = '.'
+
+        process = subprocess.Popen(
+            [
+                '/usr/bin/env',
+                'python3',
+                '-c',
+                'from gevent.monkey import patch_all; patch_all(); import grizzly.users.messagequeue as mq; print(f"{mq.has_dependency=}"); mq.MessageQueueUser()'
+            ],
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+        )
+
+        out, _ = process.communicate()
+        output = out.decode('utf-8')
+        print(output)
+        assert process.returncode == 1
+        assert 'mq.has_dependency=False' in output
+        assert 'could not import pymqi, have you installed IBM MQ dependencies?' in output
 
     @pytest.mark.usefixtures('locust_environment')
     def test_create(self, locust_environment: Environment) -> None:
