@@ -8,7 +8,7 @@ from json import loads as jsonloads
 import pymqi
 import pytest
 
-from pytest_mock import mocker
+from pytest_mock import mocker  # pylint: disable=unused-import
 from pytest_mock.plugin import MockerFixture
 from locust.env import Environment
 from locust.exception import StopUser
@@ -23,7 +23,7 @@ from grizzly.testdata.models import TemplateData
 from grizzly.exceptions import ResponseHandlerError
 from grizzly.utils import add_save_handler
 
-from ..fixtures import locust_context, request_context, locust_environment
+from ..fixtures import locust_context, request_context, locust_environment  # pylint: disable=unused-import
 from ..helpers import clone_request
 
 import logging

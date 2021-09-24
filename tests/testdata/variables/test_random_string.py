@@ -7,7 +7,7 @@ from gevent.greenlet import Greenlet
 
 from grizzly.testdata.variables import AtomicRandomString
 
-from ..fixtures import cleanup
+from ..fixtures import cleanup  # pylint: disable=unused-import
 
 
 class TestAtomicRandomString:

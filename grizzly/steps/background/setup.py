@@ -19,7 +19,8 @@ def step_setup_save_statistics(context: Context, url: str) -> None:
     For InfluxDB the following format **must** be used:
 
     ```plain
-    influxdb://[<username>:<password>@]<hostname>[:<port>]/<database>?TargetEnviroment=<target environment>[&Testplan=<test plan>][&TargetEnvironment=<target environment>][&ProfileName=<profile name>][&Description=<description>]
+    influxdb://[<username>:<password>@]<hostname>[:<port>]/<database>?TargetEnviroment=<target environment>[&Testplan=<test plan>]
+    [&TargetEnvironment=<target environment>][&ProfileName=<profile name>][&Description=<description>]
     ```
 
     For Azure Application Insights the following format **must** be used:

@@ -4,7 +4,7 @@ for attributes and their value in.
 import re
 
 from abc import ABCMeta
-from typing import Tuple, Any, Dict, Type, List, Callable, cast
+from typing import Tuple, Any, Dict, Type, List, Callable
 from functools import wraps
 from json import loads as jsonloads
 

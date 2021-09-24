@@ -1,6 +1,5 @@
 import os
 import json
-import logging
 import unicodedata
 import re
 import traceback

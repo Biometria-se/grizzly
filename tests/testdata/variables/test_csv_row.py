@@ -9,7 +9,7 @@ from _pytest.tmpdir import TempdirFactory
 
 from grizzly.testdata.variables import AtomicCsvRow, atomiccsvrow__base_type__
 
-from ..fixtures import cleanup
+from ..fixtures import cleanup  # pylint: disable=unused-import
 
 
 def test_atomiccsvrow__base_type__(tmpdir_factory: TempdirFactory) -> None:

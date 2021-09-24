@@ -8,7 +8,7 @@ from behave.model import Scenario
 import pytest
 
 from _pytest.logging import LogCaptureFixture
-from pytest_mock import mocker
+from pytest_mock import mocker  # pylint: disable=unused-import
 from pytest_mock.plugin import MockerFixture
 from locust.env import Environment
 from locust.runners import LocalRunner, MasterRunner, WorkerRunner
@@ -16,7 +16,7 @@ from locust.runners import LocalRunner, MasterRunner, WorkerRunner
 from grizzly.listeners import _init_testdata_producer, init, init_statistics_listener, locust_test_start, locust_test_stop, quitting, spawning_complete, validate_result
 from grizzly.context import LocustContext, LocustContextScenarioResponseTimePercentile
 
-from ..fixtures import locust_environment
+from ..fixtures import locust_environment  # pylint: disable=unused-import
 
 
 class Running(Exception):

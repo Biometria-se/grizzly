@@ -22,7 +22,15 @@ from behave.model import Scenario
 from behave.model_core import Status
 
 from .helpers import TestUser
-from .fixtures import locust_context, locust_environment, request_context, behave_context, behave_runner, behave_scenario
+# pylint: disable=unused-import
+from .fixtures import (
+    locust_context,
+    locust_environment,
+    request_context,
+    behave_context,
+    behave_runner,
+    behave_scenario,
+)
 
 from grizzly.users.meta.response_handler import ResponseHandlerError
 from grizzly.utils import ModuleLoader, in_correct_section

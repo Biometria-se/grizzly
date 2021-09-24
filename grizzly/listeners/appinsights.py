@@ -77,7 +77,9 @@ class ApplicationInsightsListener:
 
         self.logger.info(message_to_log, extra={'custom_dimensions': custom_dimensions})
 
-    def _create_custom_dimensions_dict(self, method: str, result: str, response_time: float, response_length: int, endpoint: str, exception: Optional[Any] = None) -> Dict[str, Any]:
+    def _create_custom_dimensions_dict(
+        self, method: str, result: str, response_time: float, response_length: int, endpoint: str, exception: Optional[Any] = None
+    ) -> Dict[str, Any]:
         custom_dimensions = self._safe_return_runner_values()
 
         custom_dimensions['method'] = str(method)

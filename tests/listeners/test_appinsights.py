@@ -11,10 +11,10 @@ from opencensus.ext.azure.log_exporter import AzureLogHandler
 from locust.env import Environment
 from locust.runners import Runner
 from locust.exception import CatchResponseError
-from pytest_mock import mocker
+from pytest_mock import mocker  # pylint: disable=unused-import
 from pytest_mock.plugin import MockerFixture
 
-from ..fixtures import locust_environment
+from ..fixtures import locust_environment  # pylint: disable=unused-import
 
 from grizzly.listeners.appinsights import ApplicationInsightsListener
 
@@ -80,7 +80,9 @@ class TestAppInsightsListener:
     def test_request(self, locust_environment: Environment, patch_azureloghandler: Callable[[], None], mocker: MockerFixture) -> None:
         patch_azureloghandler()
 
-        def generate_logger_info(request_type: str, name: str, response_time: float, response_length: int, exception: Optional[Any] = None) -> Callable[[logging.Handler, str, Dict[str, Any]], None]:
+        def generate_logger_info(
+            request_type: str, name: str, response_time: float, response_length: int, exception: Optional[Any] = None
+        ) -> Callable[[logging.Handler, str, Dict[str, Any]], None]:
             result = 'Success' if exception is None else 'Failure'
             expected_message = f'{result}: {request_type} {name} Response time: {response_time} Number of Threads: {""}'
 

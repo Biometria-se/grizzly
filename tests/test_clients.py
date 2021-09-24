@@ -7,7 +7,7 @@ from json import dumps as jsondumps
 
 import pytest
 
-from pytest_mock import mocker
+from pytest_mock import mocker  # pylint: disable=unused-import
 from pytest_mock.plugin import MockerFixture
 from requests.models import Response
 from locust.clients import ResponseContextManager
@@ -21,7 +21,7 @@ from grizzly.clients import ResponseEventSession, SftpClientSession
 from grizzly.types import RequestMethod
 from grizzly.context import LocustContextScenario, RequestContext
 
-from .fixtures import locust_environment, paramiko_mocker
+from .fixtures import locust_environment, paramiko_mocker  # pylint: disable=unused-import
 from .helpers import RequestEvent
 
 

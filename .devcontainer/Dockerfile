@@ -35,19 +35,10 @@ ENV LD_LIBRARY_PATH="/opt/mqm/lib64:${LD_LIBRARY_PATH}"
 # End Copy/setup IBM MQ stuff
 
 
-# [Optional] If your pip requirements rarely change, uncomment this section to add them to the image.
-#COPY requirements*.txt /tmp/pip-tmp/
-#RUN pip3 --disable-pip-version-check --no-cache-dir install -r /tmp/pip-tmp/requirements.txt && \
-#    pip3 --disable-pip-version-check --no-cache-dir install -r /tmp/pip-tmp/requirements-dev.txt && \
-#    rm -rf /tmp/pip-tmp
-RUN pip3 --disable-pip-version-check --no-cache-dir install --no-warn-script-location \
-    pytest \
-    pytest-cov \
-    pytest-timeout \
-    pytest-mock \
-    pip-licenses
-
 ENV DEBIAN_FRONTEND="noninteractive"
+
+# run github workflows locally
+RUN curl https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash
 
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
      && apt-get -y install --no-install-recommends vim

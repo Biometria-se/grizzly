@@ -13,7 +13,7 @@ from grizzly.types import RequestMethod
 from grizzly.context import RequestContext
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import
 
-from ...fixtures import behave_context
+from ...fixtures import behave_context  # pylint: disable=unused-import
 
 @pytest.fixture
 def request_context(behave_context: Context) -> Generator[Context, None, None]:

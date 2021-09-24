@@ -10,7 +10,7 @@ import gevent
 
 from jinja2 import Template
 from behave.runner import Context
-from pytest_mock import mocker
+from pytest_mock import mocker  # pylint: disable=unused-import
 from pytest_mock.plugin import MockerFixture
 from zmq.sugar.context import Context
 from zmq.sugar.socket import Socket
@@ -22,7 +22,7 @@ from grizzly.testdata.utils import initialize_testdata, transform
 from grizzly.context import LocustContext, RequestContext
 
 from ..fixtures import locust_context, locust_environment, request_context, behave_context  # pylint: disable=unused-import
-from .fixtures import cleanup
+from .fixtures import cleanup  # pylint: disable=unused-import
 
 
 class TestTestdataProducer:

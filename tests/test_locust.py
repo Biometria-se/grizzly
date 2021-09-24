@@ -9,7 +9,7 @@ import gevent
 
 from _pytest.logging import LogCaptureFixture
 from _pytest.capture import CaptureFixture
-from pytest_mock import mocker
+from pytest_mock import mocker  # pylint: disable=unused-import
 from pytest_mock.plugin import MockerFixture
 from behave.runner import Context
 from locust.env import Environment
@@ -23,7 +23,7 @@ from grizzly.users import RestApiUser
 from grizzly.tasks import TrafficIteratorTasks
 from grizzly.testdata.variables import AtomicInteger
 
-from .fixtures import behave_context
+from .fixtures import behave_context  # pylint: disable=unused-import
 
 
 def test_greenlet_exception_logger(caplog: LogCaptureFixture) -> None:

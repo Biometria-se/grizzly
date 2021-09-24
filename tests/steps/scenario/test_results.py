@@ -4,7 +4,7 @@ from behave.runner import Context
 
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import
 
-from ...fixtures import behave_context
+from ...fixtures import behave_context  # pylint: disable=unused-import
 
 
 @pytest.mark.usefixtures('behave_context')
@@ -42,7 +42,8 @@ def test_step_results_response_time_percentile(behave_context: Context) -> None:
 
     step_results_response_time_percentile(behave_context, 95, 800)
 
-    assert context_locust.scenario.validation is not None
-    assert context_locust.scenario.validation.response_time_percentile.percentile == 0.95
-    assert context_locust.scenario.validation.response_time_percentile.response_time == 800
+    response_time_percentile = context_locust.scenario.validation.response_time_percentile
+    assert response_time_percentile != None
+    assert getattr(response_time_percentile, 'percentile', None) == 0.95
+    assert getattr(response_time_percentile, 'response_time', None) == 800
     assert context_locust.scenario.should_validate()

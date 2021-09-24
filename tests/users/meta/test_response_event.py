@@ -13,7 +13,7 @@ from grizzly.users.meta import ResponseEvent, HttpRequests
 from grizzly.types import RequestMethod
 from grizzly.context import RequestContext
 
-from ...fixtures import locust_environment
+from ...fixtures import locust_environment  # pylint: disable=unused-import
 from ...helpers import TestUser
 
 

@@ -149,7 +149,9 @@ def locust_context(request_context: Tuple[str, str, RequestContext]) -> Generato
 def paramiko_mocker(mocker: MockerFixture) -> Generator[Callable, None, None]:
     def patch() -> None:
         # unable to import socket.AddressFamily and socket.SocketKind ?!
-        def _socket_getaddrinfo(hostname: Union[bytearray, bytes, str, None], port: Union[str, int, None], addrfamily: int, kind: int) -> List[Tuple[int, int, Optional[int], Optional[str], Optional[Tuple[str, int]]]]:
+        def _socket_getaddrinfo(
+            hostname: Union[bytearray, bytes, str, None], port: Union[str, int, None], addrfamily: int, kind: int
+        ) -> List[Tuple[int, int, Optional[int], Optional[str], Optional[Tuple[str, int]]]]:
             return [(socket.AF_INET, socket.SOCK_STREAM, None, None, None, )]
 
         def _socket_connect(self: socket.socket, address: Any) -> None:

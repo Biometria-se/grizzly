@@ -7,7 +7,7 @@ gevent.monkey.patch_all()
 
 from lxml import etree as XML
 from requests.models import Response
-from pytest_mock import mocker
+from pytest_mock import mocker  # pylint: disable=unused-import
 from pytest_mock.plugin import MockerFixture
 
 from locust.env import Environment
@@ -21,7 +21,7 @@ from grizzly.exceptions import ResponseHandlerError
 from grizzly.types import RequestMethod, ResponseContentType
 from grizzly.context import RequestContext
 
-from ...fixtures import locust_environment
+from ...fixtures import locust_environment  # pylint: disable=unused-import
 from ...helpers import RequestEvent, TestUser
 
 
@@ -68,7 +68,7 @@ class TestResponseHandler:
 
         # edge scenario -- from RestApiUser and *_token calls, they don't have a RequestContext
         original_response = request.response
-        request.response = None
+        setattr(request, 'response', None)
 
         user.response_handler('test', response_context_manager, request, test_user)
 

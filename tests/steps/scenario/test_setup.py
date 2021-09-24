@@ -4,13 +4,13 @@ import pytest
 
 from parse import compile
 from behave.runner import Context
-from pytest_mock import mocker
+from pytest_mock import mocker  # pylint: disable=unused-import
 from pytest_mock.plugin import MockerFixture
 
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import
 from grizzly.testdata.models import TemplateDataType, TemplateData
 
-from ...fixtures import behave_context
+from ...fixtures import behave_context  # pylint: disable=unused-import
 
 
 def test_parse_iteration_gramatical_number() -> None:

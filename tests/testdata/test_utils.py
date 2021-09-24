@@ -21,8 +21,8 @@ from grizzly.testdata.utils import (
 )
 from grizzly.testdata.variables import AtomicCsvRow, AtomicInteger, AtomicIntegerIncrementer
 
-from ..fixtures import locust_context, request_context, behave_context
-from .fixtures import cleanup
+from ..fixtures import locust_context, request_context, behave_context  # pylint: disable=unused-import
+from .fixtures import cleanup  # pylint: disable=unused-import
 
 # pylint: disable=redefined-outer-name
 

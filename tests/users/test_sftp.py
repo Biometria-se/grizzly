@@ -9,14 +9,13 @@ import pytest
 from _pytest.tmpdir import TempdirFactory
 from locust.env import Environment
 from locust.exception import StopUser
-from requests.models import Request
 
 from grizzly.users.sftp import SftpUser
 from grizzly.clients import SftpClientSession
 from grizzly.types import RequestMethod
 from grizzly.context import LocustContextScenario, RequestContext
 
-from ..fixtures import locust_environment, paramiko_mocker
+from ..fixtures import locust_environment, paramiko_mocker  # pylint: disable=unused-import
 from ..helpers import ResultFailure, ResultSuccess, RequestEvent, RequestSilentFailureEvent
 
 

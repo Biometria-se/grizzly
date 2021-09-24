@@ -10,7 +10,7 @@ import pytest
 from gevent.monkey import patch_all
 patch_all()
 
-from pytest_mock import mocker
+from pytest_mock import mocker  # pylint: disable=unused-import
 from pytest_mock.plugin import MockerFixture
 from locust.runners import Runner
 from locust.exception import CatchResponseError
@@ -20,7 +20,7 @@ from influxdb.exceptions import InfluxDBClientError
 
 from grizzly.listeners.influxdb import InfluxDbError, InfluxDbListener, InfluxDb
 
-from ..fixtures import locust_environment
+from ..fixtures import locust_environment  # pylint: disable=unused-import
 
 
 @pytest.fixture
@@ -334,7 +334,11 @@ class TestInfluxDbListener:
                 (RuntimeError('request failed'), repr(RuntimeError('request failed'))),
                 (
                     ClassWithNoRepr(),
-                    f"<class '{self.__class__.__module__}.{self.__class__.__name__}.{inspect.stack()[0][3]}.<locals>.{ClassWithNoRepr.__name__}'> (and it has no string representation)",
+                    (
+                        f"<class '{self.__class__.__module__}.{self.__class__.__name__}."
+                        f"{inspect.stack()[0][3]}.<locals>.{ClassWithNoRepr.__name__}'>"
+                        " (and it has no string representation)"
+                    ),
                 ),
             ]
 
@@ -363,7 +367,9 @@ class TestInfluxDbListener:
     def test_request(self, locust_environment: Environment, patch_influxdblistener: Callable[[], None], mocker: MockerFixture) -> None:
         patch_influxdblistener()
 
-        def generate_logger_call(request_type: str, name: str, response_time: float, response_length: int, exception: Optional[Any] = None) -> Callable[[logging.Handler, str], None]:
+        def generate_logger_call(
+            request_type: str, name: str, response_time: float, response_length: int, exception: Optional[Any] = None
+        ) -> Callable[[logging.Handler, str], None]:
             result = 'Success' if exception is None else 'Failure'
             expected_message = f'{result}: {request_type} {name} Response time: {response_time} Number of Threads: -1'
 

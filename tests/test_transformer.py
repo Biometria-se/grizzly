@@ -4,7 +4,7 @@ from json.decoder import JSONDecodeError
 import pytest
 
 from lxml import etree as XML
-from pytest_mock import mocker
+from pytest_mock import mocker  # pylint: disable=unused-import
 from pytest_mock.plugin import MockerFixture
 
 from grizzly.transformer import JsonTransformer, Transformer, XmlTransformer, PlainTransformer, transformer

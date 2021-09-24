@@ -8,7 +8,7 @@ from behave.runner import Context
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import
 from grizzly.context import LocustContext
 
-from ...fixtures import behave_context
+from ...fixtures import behave_context  # pylint: disable=unused-import
 
 
 @pytest.mark.usefixtures('behave_context')
@@ -57,7 +57,10 @@ def test_step_setup_save_statistics(behave_context: Context) -> None:
     with pytest.raises(AssertionError):
         step_impl(
             behave_context,
-            'insights://$conf::statistics.username:$conf::statistics.password@?IngestionEndpoint=$conf::statistics.url&Testplan=$conf::statistics.testplan&InstrumentationKey=$conf::statistics.instrumentationkey',
+            (
+                'insights://$conf::statistics.username:$conf::statistics.password@?IngestionEndpoint=$conf::statistics.url&'
+                'Testplan=$conf::statistics.testplan&InstrumentationKey=$conf::statistics.instrumentationkey'
+            )
         )
 
     context_locust.state.configuration['statistics.url'] = 'insights.example.com'
@@ -68,7 +71,11 @@ def test_step_setup_save_statistics(behave_context: Context) -> None:
 
     step_impl(
         behave_context,
-        'insights://$conf::statistics.username:$conf::statistics.password@?IngestionEndpoint=$conf::statistics.url&Testplan=$conf::statistics.testplan&InstrumentationKey=$conf::statistics.instrumentationkey',
+        (
+            'insights://$conf::statistics.username:$conf::statistics.password@?'
+            'IngestionEndpoint=$conf::statistics.url&Testplan=$conf::statistics.testplan&'
+            'InstrumentationKey=$conf::statistics.instrumentationkey'
+        ),
     )
     context_locust.setup.statistics_url == 'insights://username:password@?IngestionEndpoint=insights.example.com&Testplan=test&InstrumentationKey=aaaabbbb='
 

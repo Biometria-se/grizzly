@@ -4,7 +4,7 @@ import pytest
 
 from grizzly.testdata.variables import AtomicInteger
 
-from ..fixtures import cleanup
+from ..fixtures import cleanup  # pylint: disable=unused-import
 
 
 class TestAtomicInteger:

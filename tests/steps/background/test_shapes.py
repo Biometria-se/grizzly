@@ -5,7 +5,7 @@ from behave.runner import Context
 
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import
 
-from ...fixtures import behave_context
+from ...fixtures import behave_context  # pylint: disable=unused-import
 
 
 def test_parse_user_gramatical_number() -> None:

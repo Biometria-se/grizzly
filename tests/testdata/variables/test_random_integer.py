@@ -5,7 +5,7 @@ import pytest
 from grizzly.testdata.variables import atomicrandominteger__base_type__, AtomicRandomInteger
 
 
-from ..fixtures import cleanup
+from ..fixtures import cleanup  # pylint: disable=unused-import
 
 def test_atomicrandominteger__base_type__() -> None:
     with pytest.raises(ValueError):

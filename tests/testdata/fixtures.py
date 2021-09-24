@@ -4,7 +4,7 @@ from typing import Generator, Callable
 import pytest
 
 from grizzly.testdata.variables import AtomicCsvRow, AtomicDirectoryContents, AtomicIntegerIncrementer, AtomicInteger, AtomicDate, AtomicRandomInteger, AtomicCsvRow
-from grizzly.context import LocustContextSetup, LocustContext
+from grizzly.context import LocustContext
 
 
 @pytest.fixture

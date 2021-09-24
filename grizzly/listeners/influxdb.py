@@ -12,8 +12,6 @@ from urllib.parse import urlparse, parse_qs, unquote
 import gevent
 
 from locust.env import Environment
-
-from dateutil import parser
 from influxdb import InfluxDBClient
 from influxdb.exceptions import InfluxDBClientError
 from locust.exception import CatchResponseError

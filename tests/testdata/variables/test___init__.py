@@ -4,7 +4,7 @@ import pytest
 
 from grizzly.testdata.variables import AtomicVariable, AtomicInteger, AtomicIntegerIncrementer, load_variable, destroy_variables, parse_arguments
 
-from ..fixtures import cleanup
+from ..fixtures import cleanup  # pylint: disable=unused-import
 
 
 def test_load_variable_non_existent() -> None:

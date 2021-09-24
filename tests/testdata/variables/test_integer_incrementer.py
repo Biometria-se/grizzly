@@ -10,7 +10,7 @@ from gevent.greenlet import Greenlet
 
 from grizzly.testdata.variables import atomicintegerincrementer__base_type__, AtomicIntegerIncrementer, AtomicInteger
 
-from ..fixtures import cleanup
+from ..fixtures import cleanup  # pylint: disable=unused-import
 
 
 def test_atomicintegerincrementer__base_type__() -> None:

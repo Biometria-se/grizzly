@@ -5,11 +5,11 @@ import pytest
 import gevent
 
 from pytest_mock import MockerFixture
-from pytest_mock.plugin import mocker
+from pytest_mock.plugin import mocker  # pylint: disable=unused-import
 
 from grizzly.testdata.variables import AtomicDate, atomicdate__base_type__
 
-from ..fixtures import cleanup
+from ..fixtures import cleanup  # pylint: disable=unused-import
 
 
 def test_atomicdate__base_type__() -> None:

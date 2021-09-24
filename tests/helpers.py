@@ -1,6 +1,6 @@
 import inspect
 
-from typing import Any, Dict, Optional, Tuple, List, Set, Type
+from typing import Any, Dict, Optional, Tuple, List, Set
 from types import MethodType
 
 from locust import task

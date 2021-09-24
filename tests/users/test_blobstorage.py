@@ -13,7 +13,7 @@ from azure.servicebus import ServiceBusMessage
 from locust.env import Environment
 from locust.exception import StopUser
 
-from pytest_mock import mocker
+from pytest_mock import mocker  # pylint: disable=unused-import
 from pytest_mock.plugin import MockerFixture
 
 from grizzly.users.blobstorage import BlobStorageUser
@@ -22,7 +22,7 @@ from grizzly.types import RequestMethod
 from grizzly.context import LocustContextScenario, RequestContext
 from grizzly.testdata.utils import transform
 
-from ..fixtures import locust_context, request_context
+from ..fixtures import locust_context, request_context  # pylint: disable=unused-import
 from ..helpers import ResultFailure, RequestEvent, RequestSilentFailureEvent, clone_request
 
 import logging

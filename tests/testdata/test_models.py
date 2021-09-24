@@ -13,8 +13,8 @@ from grizzly.testdata.models import TemplateData
 from grizzly.types import RequestMethod, ResponseContentType
 from grizzly.context import RequestContext
 
-from ..fixtures import request_context
-from .fixtures import cleanup
+from ..fixtures import request_context  # pylint: disable=unused-import
+from .fixtures import cleanup  # pylint: disable=unused-import
 
 
 class TestTemplateData:

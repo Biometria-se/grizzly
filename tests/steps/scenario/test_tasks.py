@@ -6,10 +6,8 @@ from parse import compile
 from grizzly.types import RequestMethod
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import
 
-from ...fixtures import behave_context
+from ...fixtures import behave_context  # pylint: disable=unused-import
 
-# implementation of these are covered by tests/behave/test_utils:test_add_context_source
-# only test that they are importable here
 
 def test_parse_method() -> None:
     p = compile(

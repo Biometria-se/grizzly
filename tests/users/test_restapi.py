@@ -9,7 +9,7 @@ import pytest
 import requests
 
 
-from pytest_mock import mocker
+from pytest_mock import mocker  # pylint: disable=unused-import
 from pytest_mock.plugin import MockerFixture
 from requests.models import Response
 from json import dumps as jsondumps
@@ -25,7 +25,7 @@ from grizzly.types import RequestMethod
 from grizzly.context import LocustContextScenario, RequestContext
 from grizzly.testdata.utils import transform
 
-from ..fixtures import locust_context, request_context
+from ..fixtures import locust_context, request_context  # pylint: disable=unused-import
 from ..helpers import RequestSilentFailureEvent, RequestEvent, ResultSuccess
 
 import logging
@@ -290,7 +290,7 @@ class TestRestApiUser:
         [user, _] = restapi_user
 
         def mock_client_post(payload: Dict[str, Any], status_code: int = 200) -> None:
-            def client_post(self: 'ResponseEventSession', method: str, url: str, name: Optional[str] = None, **kwargs: Dict[str, Any]) -> ResponseContextManager:
+            def client_post(self: ResponseEventSession, method: str, url: str, name: Optional[str] = None, **kwargs: Dict[str, Any]) -> ResponseContextManager:
                 response = Response()
                 response._content = jsondumps(payload).encode('utf-8')
                 response.status_code = status_code
@@ -613,7 +613,7 @@ class TestRestApiUser:
         [user, scenario] = restapi_user
 
         def mock_client_post(status_code: int) -> None:
-            def client_post(self: 'ResponseEventSession', method: str, url: str, name: str, catch_response: bool, **kwargs: Dict[str, Any]) -> ResponseContextManager:
+            def client_post(self: ResponseEventSession, method: str, url: str, name: str, catch_response: bool, **kwargs: Dict[str, Any]) -> ResponseContextManager:
                 response = Response()
                 response._content = jsondumps({}).encode('utf-8')
                 response.status_code = status_code

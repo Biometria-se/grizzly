@@ -18,7 +18,7 @@ from grizzly.users.meta import ContextVariables, FileRequests
 from grizzly.types import RequestMethod
 from grizzly.context import LocustContextScenario, RequestContext
 
-from ...fixtures import locust_environment
+from ...fixtures import locust_environment  # pylint: disable=unused-import
 
 
 logging.getLogger().setLevel(logging.CRITICAL)

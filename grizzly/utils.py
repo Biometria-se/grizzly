@@ -4,7 +4,7 @@ import re
 import json
 
 
-from typing import Callable, Generic, TypeVar, Type, List, Any, Dict, Tuple, Set, Optional, cast, Generator
+from typing import Callable, Generic, TypeVar, Type, List, Any, Dict, Tuple, Optional, cast, Generator
 from types import FunctionType
 from importlib import import_module
 from functools import wraps
@@ -13,7 +13,6 @@ from contextlib import contextmanager
 
 import jinja2 as j2
 
-from jsonpath_ng.ext import parse as jsonpath_parse
 from behave.runner import Context
 from behave.model import Scenario, Row
 from behave.model_core import Status

@@ -19,7 +19,7 @@ from grizzly.users.meta.request_logger import JsonBytesEncoder
 from grizzly.types import RequestMethod
 from grizzly.context import RequestContext
 
-from ...fixtures import locust_environment
+from ...fixtures import locust_environment  # pylint: disable=unused-import
 
 @pytest.fixture
 def request_logger(locust_environment: Environment, tmpdir_factory: TempdirFactory) -> Generator[RequestLogger, None, None]:

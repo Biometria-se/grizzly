@@ -29,7 +29,7 @@ from grizzly.context import (
 
 
 from .helpers import get_property_decorated_attributes
-from .fixtures import request_context, locust_context, behave_locust_context
+from .fixtures import request_context, locust_context, behave_locust_context  # pylint: disable=unused-import
 
 
 def test_load_configuration_file(tmpdir_factory: TempdirFactory) -> None:

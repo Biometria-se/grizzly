@@ -1,6 +1,7 @@
 '''This package contains all default step implementations needed to write a feature file that describes a `locust` load test scenario for `grizzly`.
 
-A feature is described by using [Gherkin](https://cucumber.io/docs/gherkin/reference/). These expressions is then used by `grizzly` to configure and start `locust`, which takes care of generating the load.
+A feature is described by using [Gherkin](https://cucumber.io/docs/gherkin/reference/). These expressions is then used by `grizzly` to configure and
+start `locust`, which takes care of generating the load.
 
 ```gherkin
 Feature: description of the test

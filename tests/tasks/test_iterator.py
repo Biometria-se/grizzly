@@ -3,7 +3,7 @@ from typing import Callable, Dict, Any, Optional
 
 import pytest
 
-from pytest_mock import mocker
+from pytest_mock import mocker  # pylint: disable=unused-import
 from pytest_mock.plugin import MockerFixture
 
 from locust.user.task import TaskSet
@@ -14,7 +14,7 @@ from grizzly.testdata.models import TemplateData
 from grizzly.testdata.communication import TestdataConsumer
 from grizzly.testdata.utils import transform
 
-from ..fixtures import locust_context, request_context
+from ..fixtures import locust_context, request_context  # pylint: disable=unused-import
 from ..helpers import RequestCalled
 
 

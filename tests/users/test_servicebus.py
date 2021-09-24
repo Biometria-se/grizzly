@@ -9,7 +9,7 @@ import gevent.monkey
 gevent.monkey.patch_all()
 
 from azure.servicebus import ServiceBusMessage
-from pytest_mock import mocker
+from pytest_mock import mocker  # pylint: disable=unused-import
 from pytest_mock.plugin import MockerFixture
 from locust.env import Environment
 from locust.exception import StopUser
@@ -20,7 +20,7 @@ from grizzly.types import RequestMethod
 from grizzly.context import RequestContext
 from grizzly.testdata.utils import transform
 
-from ..fixtures import locust_context, request_context
+from ..fixtures import locust_context, request_context  # pylint: disable=unused-import
 from ..helpers import ResultFailure, RequestEvent, RequestSilentFailureEvent, clone_request
 
 import logging
