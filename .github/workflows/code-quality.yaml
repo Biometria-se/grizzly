@@ -24,11 +24,11 @@ jobs:
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
-        apt-get update
-        apt-get install -y jq tzdata
-        ln -fs /usr/share/zoneinfo/Europe/Stockholm /etc/localtime
-        ln -fs /usr/share/zoneinfo/Europe/Stockholm /etc/timezone
-        echo /root/.local/bin >> $GITHUB_PATH
+        sudo apt-get update
+        sudo apt-get install -y jq tzdata
+        sudo ln -fs /usr/share/zoneinfo/Europe/Stockholm /etc/localtime
+        sudo ln -fs /usr/share/zoneinfo/Europe/Stockholm /etc/timezone
+        echo $HOME/.local/bin >> $GITHUB_PATH
 
     - name: cache python environment
       uses: actions/cache@v2
