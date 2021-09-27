@@ -20,7 +20,7 @@ def install_requires() -> List[str]:
 
 setup(
     name='grizzly',
-    version='4.0.0',
+    version='4.0.1',
     description='Traffic generator based on locust and behave',
     long_description=long_description(),
     long_description_content_type='text/markdown',
