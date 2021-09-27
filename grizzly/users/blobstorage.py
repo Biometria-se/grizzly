@@ -28,7 +28,6 @@ from urllib.parse import urlparse, parse_qs
 from time import monotonic as time
 
 from azure.storage.blob import BlobServiceClient
-
 from locust.exception import StopUser
 
 from .meta import ContextVariables

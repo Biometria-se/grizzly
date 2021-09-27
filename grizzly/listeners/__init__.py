@@ -100,7 +100,6 @@ def locust_test_start(context: LocustContext) -> Callable[[Arg(Environment, 'env
 
 
 def locust_test_stop(**_kwargs: Dict[str, Any]) -> None:
-    global producer
     if producer is not None:
         producer.reset()
 

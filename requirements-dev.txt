@@ -1,8 +1,10 @@
 astunparse==1.6.3
 mkdocs==1.2.2
 mkdocs-material==7.2.6
+mypy==0.910
 pip-licenses==3.5.2
 pydoc-markdown==4.3.2
+pylint==2.11.1
 pytablewriter==0.63.0
 pytest==6.2.5
 pytest-cov==2.12.1

@@ -1,0 +1,65 @@
+name: code quality
+
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+  code-quality:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: true
+      matrix:
+        python-version: [3.8]
+
+    steps:
+    - name: setup python ${{ matrix.python-version }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: checkout
+      uses: actions/checkout@v2
+
+    - name: install ubuntu dependencies
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        apt-get update
+        apt-get install -y jq tzdata
+        ln -fs /usr/share/zoneinfo/Europe/Stockholm /etc/localtime
+        ln -fs /usr/share/zoneinfo/Europe/Stockholm /etc/timezone
+        echo /root/.local/bin >> $GITHUB_PATH
+
+    - name: cache python environment
+      uses: actions/cache@v2
+      with:
+        path: ${{ env.pythonLocation }}
+        key: ${{ env.pythonLocation }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements-dev.txt')}}
+
+    - name: install python dependencies
+      run: |
+        python -m pip install --user --upgrade pip wheel
+        pip install --user --upgrade --upgrade-strategy eager -r <(cat requirements.txt requirements-dev.txt)
+
+    - name: run pytest
+      run: |
+        # test_messagequeue requires grizzly[mq] -> requirements-extras.txt and external libraries
+        pytest --ignore-glob=*test_messagequeue*
+
+    - name: run coverage
+      run: |
+        coverage report --omit=grizzly/users/messagequeue.py --fail-under=95
+
+    - name: run pylint
+      run: |
+        pylint --fail-under=10 --ignore=messagequeue.py,test_messagequeue.py grizzly/ tests/ example/
+
+    - name: contruct mypy arguments
+      id: mypy-arguments
+      run: |
+        echo "::set-output name=mypyArgs::$(sed '/^[ \t]*\/\/.*/d;/^$/d' .devcontainer/devcontainer.json | jq '.settings["python.linting.mypyArgs"] | join(" ")' | awk -F\" '{print $2}')"
+    - name: run mypy
+      run: |
+        mypy ${{ steps.mypy-arguments.outputs.mypyArgs }} grizzly/ tests/ example/
+
+
