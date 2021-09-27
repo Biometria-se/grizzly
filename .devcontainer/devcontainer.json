@@ -92,7 +92,7 @@
     },
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand": "ssh-add -l && pip3 --disable-pip-version-check --no-cache-dir install --upgrade --no-warn-script-location -r requirements.txt && pip3 --disable-pip-version-check --no-cache-dir install --upgrade --no-warn-script-location -r requirements-dev.txt",
+	"postCreateCommand": "ssh-add -l && for file in requirements*.txt; do pip3 --disable-pip-version-check --no-cache-dir install --upgrade --no-warn-script-location -r $file; done",
 
 	// Comment out connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
     "remoteUser": "vscode"

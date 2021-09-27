@@ -24,11 +24,14 @@ setup(
     description='Traffic generator based on locust and behave',
     long_description=long_description(),
     long_description_content_type='text/markdown',
-    url='https://sdctfs.visualstudio.com/DefaultCollection/Test%20VIOL3/_git/grizzly',
+    url='https://github.com/Biometria-se/grizzly',
     author='Mikael Göransson',
-    author_email='mikael.goransson@biometria.se',
+    author_email='github@mgor.se',
     license='MIT',
     packages=find_packages(exclude=['*tests', '*tests.*']),
     python_requires='>=3.8',
     install_requires=install_requires(),
+    extras_require={
+        'mq': ['pymqi==1.11.0']
+    }
 )
