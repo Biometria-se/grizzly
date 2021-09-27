@@ -20,12 +20,8 @@ jobs:
     - name: checkout
       uses: actions/checkout@v2
 
-    - name: install ubuntu dependencies
-      env:
-        DEBIAN_FRONTEND: noninteractive
+    - name: setup environment
       run: |
-        sudo apt-get update
-        sudo apt-get install -y jq tzdata
         sudo ln -fs /usr/share/zoneinfo/Europe/Stockholm /etc/localtime
         sudo ln -fs /usr/share/zoneinfo/Europe/Stockholm /etc/timezone
         echo $HOME/.local/bin >> $GITHUB_PATH
@@ -38,8 +34,8 @@ jobs:
 
     - name: install python dependencies
       run: |
-        python -m pip install --user --upgrade pip wheel
-        pip install --user --upgrade --upgrade-strategy eager -r <(cat requirements.txt requirements-dev.txt)
+        pip install --upgrade wheel
+        pip install --upgrade --upgrade-strategy eager -r <(cat requirements.txt requirements-dev.txt)
 
     - name: run pytest
       run: |
