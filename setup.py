@@ -2,6 +2,7 @@ import codecs
 
 from typing import List
 from setuptools import setup, find_packages
+from grizzly import __version__
 
 
 def long_description() -> str:
@@ -19,8 +20,8 @@ def install_requires() -> List[str]:
 
 
 setup(
-    name='grizzly',
-    version='4.0.1',
+    name='grizzly-loadtester',
+    version=__version__,
     description='Traffic generator based on locust and behave',
     long_description=long_description(),
     long_description_content_type='text/markdown',
