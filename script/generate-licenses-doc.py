@@ -13,6 +13,7 @@ from pytablewriter import MarkdownTableWriter
 
 URL_MAP = {
     'tzlocal': 'https://github.com/regebro/tzlocal',
+    'pylint': 'https://www.pylint.org/',
 }
 
 REPO_ROOT = path.realpath(path.join(path.dirname(__file__), '..'))
@@ -132,7 +133,7 @@ def main() -> int:
     license_table = generate_license_table()
     native_dependencies = generate_native_dependencies_section()
     contents[0] = f'#{contents[0]}'
-    license_contents = ['# License\n', '\n'] + contents + ['\n', '## Third party licenses\n', '\n'] + license_table + ['\n'] + native_dependencies
+    license_contents = ['# Licenses\n', '\n'] + contents + ['\n', '## Third party licenses\n', '\n'] + license_table + ['\n'] + native_dependencies
 
     with open(path.join(REPO_ROOT, 'docs', 'licenses.md'), 'w') as fd:
         fd.writelines(license_contents)
