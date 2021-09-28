@@ -8,11 +8,11 @@ on:
         required: true
         default: '0.0.0'
       level:
-        description: 'Version level increment'
+        description: 'Version level increment [major, minor, patch]'
         required: true
         default: 'patch'
       dry-run:
-        description: 'Test release workflow'
+        description: 'Dry-run [true, false]'
         required: true
         default: 'true'
 
