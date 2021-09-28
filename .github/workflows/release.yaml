@@ -17,7 +17,8 @@ on:
         default: 'true'
 
 defaults:
-  shell: bash
+  run:
+    shell: bash
 
 jobs:
   release:
