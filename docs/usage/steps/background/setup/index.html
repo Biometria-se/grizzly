@@ -1,0 +1,1012 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+      <link rel="icon" href="../../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.2.2, mkdocs-material-7.2.6">
+    
+    
+      
+        <title>Setup - Grizzly</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../../assets/stylesheets/main.802231af.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../../assets/stylesheets/palette.3f5d1f46.min.css">
+        
+          
+          
+          <meta name="theme-color" content="#795649">
+        
+      
+    
+    
+    
+      
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,400i,700%7CRoboto+Mono&display=fallback">
+        <style>:root{--md-text-font-family:"Roboto";--md-code-font-family:"Roboto Mono"}</style>
+      
+    
+    
+    
+    
+      
+
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="brown" data-md-color-accent="deep-orange">
+  
+    
+    <script>function __prefix(e){return new URL("../../../..",location).pathname+"."+e}function __get(e,t=localStorage){return JSON.parse(t.getItem(__prefix(e)))}</script>
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#grizzlystepsbackgroundsetup" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../../.." title="Grizzly" class="md-header__button md-logo" aria-label="Grizzly" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Grizzly
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Setup
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5z"/></svg>
+      </label>
+      
+<div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" aria-label="Clear" tabindex="-1">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        
+<a href="https://github.com/biometria-se/grizzly/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../../.." title="Grizzly" class="md-nav__button md-logo" aria-label="Grizzly" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
+
+    </a>
+    Grizzly
+  </label>
+  
+    <div class="md-nav__source">
+      
+<a href="https://github.com/biometria-se/grizzly/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../.." class="md-nav__link">
+        Home
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../example/" class="md-nav__link">
+        Example
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../licenses/" class="md-nav__link">
+        Licenses
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../cli/" class="md-nav__link">
+        Command Line Interface
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+    
+  
+  
+    
+      
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_5" type="checkbox" id="__nav_5" checked>
+      
+      <label class="md-nav__link" for="__nav_5">
+        Usage
+        <span class="md-nav__icon md-icon"></span>
+      </label>
+      <nav class="md-nav" aria-label="Usage" data-md-level="1">
+        <label class="md-nav__title" for="__nav_5">
+          <span class="md-nav__icon md-icon"></span>
+          Usage
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_5_1" type="checkbox" id="__nav_5_1" >
+      
+      <label class="md-nav__link" for="__nav_5_1">
+        Variables
+        <span class="md-nav__icon md-icon"></span>
+      </label>
+      <nav class="md-nav" aria-label="Variables" data-md-level="2">
+        <label class="md-nav__title" for="__nav_5_1">
+          <span class="md-nav__icon md-icon"></span>
+          Variables
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../variables/environment-configuration/" class="md-nav__link">
+        Environment configuration
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_5_1_2" type="checkbox" id="__nav_5_1_2" >
+      
+      <label class="md-nav__link" for="__nav_5_1_2">
+        Testdata
+        <span class="md-nav__icon md-icon"></span>
+      </label>
+      <nav class="md-nav" aria-label="Testdata" data-md-level="3">
+        <label class="md-nav__title" for="__nav_5_1_2">
+          <span class="md-nav__icon md-icon"></span>
+          Testdata
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../variables/testdata/csv-row/" class="md-nav__link">
+        CSV Row
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../variables/testdata/date/" class="md-nav__link">
+        Date
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../variables/testdata/directory-contents/" class="md-nav__link">
+        Directory Contents
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../variables/testdata/integer-incrementer/" class="md-nav__link">
+        Integer incrementer
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../variables/testdata/random-integer/" class="md-nav__link">
+        Random Integer
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../variables/testdata/random-string/" class="md-nav__link">
+        Random String
+      </a>
+    </li>
+  
+
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../variables/templating/" class="md-nav__link">
+        Templating
+      </a>
+    </li>
+  
+
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+          
+            
+  
+  
+    
+  
+  
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_5_2" type="checkbox" id="__nav_5_2" checked>
+      
+      <label class="md-nav__link" for="__nav_5_2">
+        Steps
+        <span class="md-nav__icon md-icon"></span>
+      </label>
+      <nav class="md-nav" aria-label="Steps" data-md-level="2">
+        <label class="md-nav__title" for="__nav_5_2">
+          <span class="md-nav__icon md-icon"></span>
+          Steps
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+  
+  
+    
+  
+  
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_5_2_1" type="checkbox" id="__nav_5_2_1" checked>
+      
+      <label class="md-nav__link" for="__nav_5_2_1">
+        Background
+        <span class="md-nav__icon md-icon"></span>
+      </label>
+      <nav class="md-nav" aria-label="Background" data-md-level="3">
+        <label class="md-nav__title" for="__nav_5_2_1">
+          <span class="md-nav__icon md-icon"></span>
+          Background
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          Setup
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        Setup
+      </a>
+      
+        
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#step_setup_save_statistics" class="md-nav__link">
+    step_setup_save_statistics
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step_setup_log_level" class="md-nav__link">
+    step_setup_log_level
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step_setup_run_time" class="md-nav__link">
+    step_setup_run_time
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step_setup_set_global_context_variable" class="md-nav__link">
+    step_setup_set_global_context_variable
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../shapes/" class="md-nav__link">
+        Shapes
+      </a>
+    </li>
+  
+
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_5_2_2" type="checkbox" id="__nav_5_2_2" >
+      
+      <label class="md-nav__link" for="__nav_5_2_2">
+        Scenario
+        <span class="md-nav__icon md-icon"></span>
+      </label>
+      <nav class="md-nav" aria-label="Scenario" data-md-level="3">
+        <label class="md-nav__title" for="__nav_5_2_2">
+          <span class="md-nav__icon md-icon"></span>
+          Scenario
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../scenario/user/" class="md-nav__link">
+        User
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../scenario/setup/" class="md-nav__link">
+        Setup
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../scenario/tasks/" class="md-nav__link">
+        Tasks
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../scenario/response/" class="md-nav__link">
+        Response
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../scenario/results/" class="md-nav__link">
+        Results
+      </a>
+    </li>
+  
+
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../anywhere/" class="md-nav__link">
+        Anywhere
+      </a>
+    </li>
+  
+
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_5_3" type="checkbox" id="__nav_5_3" >
+      
+      <label class="md-nav__link" for="__nav_5_3">
+        Load Users
+        <span class="md-nav__icon md-icon"></span>
+      </label>
+      <nav class="md-nav" aria-label="Load Users" data-md-level="2">
+        <label class="md-nav__title" for="__nav_5_3">
+          <span class="md-nav__icon md-icon"></span>
+          Load Users
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../load-users/rest-api/" class="md-nav__link">
+        Rest API
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../load-users/message-queue/" class="md-nav__link">
+        Message Queue
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../load-users/service-bus/" class="md-nav__link">
+        Service Bus
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../load-users/blob-storage/" class="md-nav__link">
+        Blob Storage
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../load-users/secure-file-transfer-protocol/" class="md-nav__link">
+        Secure File Transfer Protocol
+      </a>
+    </li>
+  
+
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#step_setup_save_statistics" class="md-nav__link">
+    step_setup_save_statistics
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step_setup_log_level" class="md-nav__link">
+    step_setup_log_level
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step_setup_run_time" class="md-nav__link">
+    step_setup_run_time
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step_setup_set_global_context_variable" class="md-nav__link">
+    step_setup_set_global_context_variable
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          <div class="md-content" data-md-component="content">
+            <article class="md-content__inner md-typeset">
+              
+                
+                  <a href="https://github.com/biometria-se/grizzly/edit/master/docs/usage/steps/background/setup.md" title="Edit this page" class="md-content__button md-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20.71 7.04c.39-.39.39-1.04 0-1.41l-2.34-2.34c-.37-.39-1.02-.39-1.41 0l-1.84 1.83 3.75 3.75M3 17.25V21h3.75L17.81 9.93l-3.75-3.75L3 17.25z"/></svg>
+                  </a>
+                
+                
+                <p><a id="grizzly.steps.background.setup"></a></p>
+<h1 id="grizzlystepsbackgroundsetup">grizzly.steps.background.setup</h1>
+<p>This module constains step implementations that configures the load test scenario with parameters applicable for all scenarios.</p>
+<p><a id="grizzly.steps.background.setup.step_setup_save_statistics"></a></p>
+<h4 id="step_setup_save_statistics">step_setup_save_statistics</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@given</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;save statistics to &quot;</span><span class="si">{url}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">step_setup_save_statistics</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">url</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Sets an URL where locust statistics should be sent.</p>
+<p>It has support for InfluxDB and Azure Application Insights endpoints.</p>
+<p>For InfluxDB the following format <strong>must</strong> be used:</p>
+<p>For Azure Application Insights the following format <strong>must</strong> be used:</p>
+<p><div class="highlight"><pre><span></span><code>influxdb://[&lt;username&gt;:&lt;password&gt;@]&lt;hostname&gt;[:&lt;port&gt;]/&lt;database&gt;?TargetEnviroment=&lt;target environment&gt;[&amp;Testplan=&lt;test plan&gt;]
+[&amp;TargetEnvironment=&lt;target environment&gt;][&amp;ProfileName=&lt;profile name&gt;][&amp;Description=&lt;description&gt;]
+</code></pre></div>
+<div class="highlight"><pre><span></span><code>insights://?InstrumentationKey=&lt;instrumentation key&gt;&amp;IngestionEndpoint=&lt;ingestion endpoint&gt;[&amp;Testplan=&lt;test plan&gt;]
+insights://&lt;ingestion endpoint&gt;/?InstrumentationKey=&lt;instrumentation key&gt;[&amp;Testplan=&lt;test plan&gt;]
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">save statistics to &quot;</span><span class="s">influxdb://grizzly:secret-password@influx.example.com/grizzly-statistics</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">save statistics to &quot;</span><span class="s">insights://?IngestionEndpoint=https://insights.example.com&amp;Testplan=grizzly-statistics&amp;InstrumentationKey=asdfasdfasdf=</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">save statistics to &quot;</span><span class="s">insights://insights.example.com/?Testplan=grizzly-statistics&amp;InstrumentationKey=asdfasdfasdf=</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">save statistics to &quot;</span><span class="s">influxdb://$conf::statistics.username:$conf::statistics.password@influx.example.com/$conf::statistics.database</span><span class="nf">&quot;</span>
+</code></pre></div></p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>url</code> <em>str</em> - URL for statistics endpoint</li>
+</ul>
+<p><a id="grizzly.steps.background.setup.step_setup_log_level"></a></p>
+<h4 id="step_setup_log_level">step_setup_log_level</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@given</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;log level is &quot;</span><span class="si">{log_level}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">step_setup_log_level</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">log_level</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Configure log level for <code>grizzly</code>.</p>
+<p>Default value is <code>INFO</code>, by changing to <code>DEBUG</code> there is more information what <code>grizzly</code> is doing behind the curtains.</p>
+<div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">log level is &quot;</span><span class="s">DEBUG</span><span class="nf">&quot;</span>
+</code></pre></div>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>log_level</code> <em>str</em> - allowed values <code>INFO</code>, <code>DEBUG</code>, <code>WARNING</code> och <code>ERROR</code></li>
+</ul>
+<p><a id="grizzly.steps.background.setup.step_setup_run_time"></a></p>
+<h4 id="step_setup_run_time">step_setup_run_time</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@given</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;run for maximum &quot;</span><span class="si">{timespan}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">step_setup_run_time</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">timespan</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Configures the time period a headless test should run for.
+If available test data is infinite, the test will run forever if this step is not used.</p>
+<div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">run for maximum &quot;</span><span class="s">1h</span><span class="nf">&quot;</span>
+</code></pre></div>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>timespan</code> <em>str</em> - description of how long the test should run for, e.g. 10s, 1h, 40m etc.</li>
+</ul>
+<p><a id="grizzly.steps.background.setup.step_setup_set_global_context_variable"></a></p>
+<h4 id="step_setup_set_global_context_variable">step_setup_set_global_context_variable</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@given</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;set global context variable &quot;</span><span class="si">{variable}</span><span class="s1">&quot; to &quot;</span><span class="si">{value}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">step_setup_set_global_context_variable</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Create a global variable in the context. Depending on which type of user a scenario is configured for, different variables
+are available. Check <code>grizzly.users</code> documentation for which context variables are available for each user.</p>
+<p>This step can be used if the feature file has multiple scenarios and all of them has the same context variables.</p>
+<p>Variable names can contain dots (<code>.</code>) or slash (<code>/</code>) to indicate that the variable is in a structure. All names will also be
+converted to lower case.</p>
+<p>E.g. <code>token.url</code> and <code>token/URL</code> results in:</p>
+<p>Space in variable names is also allowed and will then be translated to an underscore (<code>_</code>)</p>
+<p>E.g. <code>Client ID</code> results in <code>client_id</code>.</p>
+<p>Data type of values will be guessed, if not explicitly specified by the type of variable used (<code>Atomic*</code>). E.g. the last two
+examples above will result in:</p>
+<p><div class="highlight"><pre><span></span><code><span class="p">{</span>
+    <span class="err">&#39;</span><span class="kc">t</span><span class="err">oke</span><span class="kc">n</span><span class="err">&#39;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="err">&#39;url&#39;</span><span class="p">:</span> <span class="err">&#39;&lt;value&gt;&#39;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">set global context variable &quot;</span><span class="s">token.url</span><span class="nf">&quot; to &quot;</span><span class="s">http://test.nu/api/auth</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">set global context variable &quot;</span><span class="s">token/client_id</span><span class="nf">&quot; to &quot;</span><span class="s">aaaa-bbbb-cccc-dddd</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">set global context variable &quot;</span><span class="s">token/client secret</span><span class="nf">&quot; to &quot;</span><span class="s">aasdfasdfasdf==</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">set global context variable &quot;</span><span class="s">token.resource</span><span class="nf">&quot; to &quot;</span><span class="s">0000-aaaaaaa-1111-1111-1111</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">set global context variable &quot;</span><span class="s">log_all_requests</span><span class="nf">&quot; to &quot;</span><span class="s">True</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">set global context variable &quot;</span><span class="s">validate_certificates</span><span class="nf">&quot; to &quot;</span><span class="s">False</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">set global context variable &quot;</span><span class="s">run_id</span><span class="nf">&quot; to &quot;</span><span class="s">13</span><span class="nf">&quot;</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+    <span class="err">&#39;valida</span><span class="kc">te</span><span class="err">_cer</span><span class="kc">t</span><span class="err">i</span><span class="kc">f</span><span class="err">ica</span><span class="kc">tes</span><span class="err">&#39;</span><span class="p">:</span> <span class="err">False</span><span class="p">,</span>
+    <span class="err">&#39;ru</span><span class="kc">n</span><span class="err">_id&#39;</span><span class="p">:</span> <span class="mi">13</span>
+<span class="p">}</span>
+</code></pre></div></p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>variable</code> <em>str</em> - variable name, as used in templates</li>
+<li><code>value</code> <em>str</em> - variable value</li>
+</ul>
+                
+              
+              
+                
+
+
+              
+            </article>
+          </div>
+        </div>
+        
+      </main>
+      
+        
+<footer class="md-footer">
+  
+    <nav class="md-footer__inner md-grid" aria-label="Footer">
+      
+        
+        <a href="../../../variables/templating/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Templating" rel="prev">
+          <div class="md-footer__button md-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
+          </div>
+          <div class="md-footer__title">
+            <div class="md-ellipsis">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              Templating
+            </div>
+          </div>
+        </a>
+      
+      
+        
+        <a href="../shapes/" class="md-footer__link md-footer__link--next" aria-label="Next: Shapes" rel="next">
+          <div class="md-footer__title">
+            <div class="md-ellipsis">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              Shapes
+            </div>
+          </div>
+          <div class="md-footer__button md-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4z"/></svg>
+          </div>
+        </a>
+      
+    </nav>
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-footer-copyright">
+        
+        Made with
+        <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+          Material for MkDocs
+        </a>
+        
+      </div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    <script id="__config" type="application/json">{"base": "../../../..", "features": ["navigation.sections"], "translations": {"clipboard.copy": "Copy to clipboard", "clipboard.copied": "Copied to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.placeholder": "Type to start searching", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.term.missing": "Missing", "select.version.title": "Select version"}, "search": "../../../../assets/javascripts/workers/search.409db549.min.js", "version": null}</script>
+    
+    
+      <script src="../../../../assets/javascripts/bundle.756773cc.min.js"></script>
+      
+    
+  </body>
+</html>

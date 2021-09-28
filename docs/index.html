@@ -1,0 +1,1014 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+      <link rel="icon" href="assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.2.2, mkdocs-material-7.2.6">
+    
+    
+      
+        <title>Grizzly</title>
+      
+    
+    
+      <link rel="stylesheet" href="assets/stylesheets/main.802231af.min.css">
+      
+        
+        <link rel="stylesheet" href="assets/stylesheets/palette.3f5d1f46.min.css">
+        
+          
+          
+          <meta name="theme-color" content="#795649">
+        
+      
+    
+    
+    
+      
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,400i,700%7CRoboto+Mono&display=fallback">
+        <style>:root{--md-text-font-family:"Roboto";--md-code-font-family:"Roboto Mono"}</style>
+      
+    
+    
+    
+    
+      
+
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="brown" data-md-color-accent="deep-orange">
+  
+    
+    <script>function __prefix(e){return new URL(".",location).pathname+"."+e}function __get(e,t=localStorage){return JSON.parse(t.getItem(__prefix(e)))}</script>
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#grizzly-zli" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="." title="Grizzly" class="md-header__button md-logo" aria-label="Grizzly" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Grizzly
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Home
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5z"/></svg>
+      </label>
+      
+<div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" aria-label="Clear" tabindex="-1">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        
+<a href="https://github.com/biometria-se/grizzly/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="." title="Grizzly" class="md-nav__button md-logo" aria-label="Grizzly" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
+
+    </a>
+    Grizzly
+  </label>
+  
+    <div class="md-nav__source">
+      
+<a href="https://github.com/biometria-se/grizzly/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          Home
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="." class="md-nav__link md-nav__link--active">
+        Home
+      </a>
+      
+        
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#description" class="md-nav__link">
+    Description
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#features" class="md-nav__link">
+    Features
+  </a>
+  
+    <nav class="md-nav" aria-label="Features">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#test-data" class="md-nav__link">
+    Test data
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#statistics" class="md-nav__link">
+    Statistics
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#load-test-users" class="md-nav__link">
+    Load test users
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#request-log" class="md-nav__link">
+    Request log
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#development" class="md-nav__link">
+    Development
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="example/" class="md-nav__link">
+        Example
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="licenses/" class="md-nav__link">
+        Licenses
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="cli/" class="md-nav__link">
+        Command Line Interface
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+      
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_5" type="checkbox" id="__nav_5" >
+      
+      <label class="md-nav__link" for="__nav_5">
+        Usage
+        <span class="md-nav__icon md-icon"></span>
+      </label>
+      <nav class="md-nav" aria-label="Usage" data-md-level="1">
+        <label class="md-nav__title" for="__nav_5">
+          <span class="md-nav__icon md-icon"></span>
+          Usage
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_5_1" type="checkbox" id="__nav_5_1" >
+      
+      <label class="md-nav__link" for="__nav_5_1">
+        Variables
+        <span class="md-nav__icon md-icon"></span>
+      </label>
+      <nav class="md-nav" aria-label="Variables" data-md-level="2">
+        <label class="md-nav__title" for="__nav_5_1">
+          <span class="md-nav__icon md-icon"></span>
+          Variables
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="usage/variables/environment-configuration/" class="md-nav__link">
+        Environment configuration
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_5_1_2" type="checkbox" id="__nav_5_1_2" >
+      
+      <label class="md-nav__link" for="__nav_5_1_2">
+        Testdata
+        <span class="md-nav__icon md-icon"></span>
+      </label>
+      <nav class="md-nav" aria-label="Testdata" data-md-level="3">
+        <label class="md-nav__title" for="__nav_5_1_2">
+          <span class="md-nav__icon md-icon"></span>
+          Testdata
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="usage/variables/testdata/csv-row/" class="md-nav__link">
+        CSV Row
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="usage/variables/testdata/date/" class="md-nav__link">
+        Date
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="usage/variables/testdata/directory-contents/" class="md-nav__link">
+        Directory Contents
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="usage/variables/testdata/integer-incrementer/" class="md-nav__link">
+        Integer incrementer
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="usage/variables/testdata/random-integer/" class="md-nav__link">
+        Random Integer
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="usage/variables/testdata/random-string/" class="md-nav__link">
+        Random String
+      </a>
+    </li>
+  
+
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="usage/variables/templating/" class="md-nav__link">
+        Templating
+      </a>
+    </li>
+  
+
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_5_2" type="checkbox" id="__nav_5_2" >
+      
+      <label class="md-nav__link" for="__nav_5_2">
+        Steps
+        <span class="md-nav__icon md-icon"></span>
+      </label>
+      <nav class="md-nav" aria-label="Steps" data-md-level="2">
+        <label class="md-nav__title" for="__nav_5_2">
+          <span class="md-nav__icon md-icon"></span>
+          Steps
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_5_2_1" type="checkbox" id="__nav_5_2_1" >
+      
+      <label class="md-nav__link" for="__nav_5_2_1">
+        Background
+        <span class="md-nav__icon md-icon"></span>
+      </label>
+      <nav class="md-nav" aria-label="Background" data-md-level="3">
+        <label class="md-nav__title" for="__nav_5_2_1">
+          <span class="md-nav__icon md-icon"></span>
+          Background
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="usage/steps/background/setup/" class="md-nav__link">
+        Setup
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="usage/steps/background/shapes/" class="md-nav__link">
+        Shapes
+      </a>
+    </li>
+  
+
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_5_2_2" type="checkbox" id="__nav_5_2_2" >
+      
+      <label class="md-nav__link" for="__nav_5_2_2">
+        Scenario
+        <span class="md-nav__icon md-icon"></span>
+      </label>
+      <nav class="md-nav" aria-label="Scenario" data-md-level="3">
+        <label class="md-nav__title" for="__nav_5_2_2">
+          <span class="md-nav__icon md-icon"></span>
+          Scenario
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="usage/steps/scenario/user/" class="md-nav__link">
+        User
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="usage/steps/scenario/setup/" class="md-nav__link">
+        Setup
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="usage/steps/scenario/tasks/" class="md-nav__link">
+        Tasks
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="usage/steps/scenario/response/" class="md-nav__link">
+        Response
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="usage/steps/scenario/results/" class="md-nav__link">
+        Results
+      </a>
+    </li>
+  
+
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="usage/steps/anywhere/" class="md-nav__link">
+        Anywhere
+      </a>
+    </li>
+  
+
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_5_3" type="checkbox" id="__nav_5_3" >
+      
+      <label class="md-nav__link" for="__nav_5_3">
+        Load Users
+        <span class="md-nav__icon md-icon"></span>
+      </label>
+      <nav class="md-nav" aria-label="Load Users" data-md-level="2">
+        <label class="md-nav__title" for="__nav_5_3">
+          <span class="md-nav__icon md-icon"></span>
+          Load Users
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="usage/load-users/rest-api/" class="md-nav__link">
+        Rest API
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="usage/load-users/message-queue/" class="md-nav__link">
+        Message Queue
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="usage/load-users/service-bus/" class="md-nav__link">
+        Service Bus
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="usage/load-users/blob-storage/" class="md-nav__link">
+        Blob Storage
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="usage/load-users/secure-file-transfer-protocol/" class="md-nav__link">
+        Secure File Transfer Protocol
+      </a>
+    </li>
+  
+
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#description" class="md-nav__link">
+    Description
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#features" class="md-nav__link">
+    Features
+  </a>
+  
+    <nav class="md-nav" aria-label="Features">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#test-data" class="md-nav__link">
+    Test data
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#statistics" class="md-nav__link">
+    Statistics
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#load-test-users" class="md-nav__link">
+    Load test users
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#request-log" class="md-nav__link">
+    Request log
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#development" class="md-nav__link">
+    Development
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          <div class="md-content" data-md-component="content">
+            <article class="md-content__inner md-typeset">
+              
+                
+                  <a href="https://github.com/biometria-se/grizzly/edit/master/docs/index.md" title="Edit this page" class="md-content__button md-icon">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20.71 7.04c.39-.39.39-1.04 0-1.41l-2.34-2.34c-.37-.39-1.02-.39-1.41 0l-1.84 1.83 3.75 3.75M3 17.25V21h3.75L17.81 9.93l-3.75-3.75L3 17.25z"/></svg>
+                  </a>
+                
+                
+                <h1 id="grizzly-zli">Grizzly - <code>/ˈɡɹɪzli/</code></h1>
+<p><img src="https://avatars.githubusercontent.com/u/2641063" height="100" width="100" /> <font size="30">+</font> <img src="https://behave.readthedocs.io/en/stable/_images/behave_logo1.png" height="100" width="100" /> <font size="30">=</font> <img src="https://upload.wikimedia.org/wikipedia/commons/7/71/Melanoplus_punctulatus_P1010365a.jpg" height="100" width="100" /></p>
+<p>Grizzly is a framework to be able to easily define load scenarios, and is mainly built on-top of two other frameworks:</p>
+<blockquote>
+<p><a href="https://locust.io">Locust</a>: Define user behaviour with Python code, and swarm your system with millions of simultaneous users.</p>
+<p><a href="https://behave.readthedocs.io/">Behave</a>: Uses tests written in a natural language style, backed up by Python code.</p>
+</blockquote>
+<p><a href="https://en.wikipedia.org/wiki/Locust">Locust</a> are a group of certain species of short-horned grasshoppers in the family Arcididae that have a swarming phase.</p>
+<p>The name grizzly was chosen based on the grasshopper <a href="https://en.wikipedia.org/wiki/Melanoplus_punctulatus">Melanoplus punctulatus</a>, also known as <strong>grizzly</strong> spur-throat grasshopper. This species <a href="https://www.sciencedaily.com/releases/2005/07/050718234418.htm">prefers living in trees</a> over grass, which is a hint to <a href="https://www.biometria.se/">Biometria</a><sup>1</sup>, where <code>grizzly</code> originally was created.</p>
+<p><sup>1</sup> <em>Biometria is a member owned and central actor within the swedish forestry that performs unbiased measurement of lumber flowing between forest and industry so that all of Swedens forest owners can feel confident selling their lumber.</em></p>
+<h2 id="description">Description</h2>
+<p><code>behave</code> is <del>abused</del> used for being able to define <code>locust</code> load test scenarios using <a href="https://cucumber.io/docs/gherkin">gherkin</a>. A feature can contain more than one scenario and all scenarios will run in parallell.</p>
+<div class="highlight"><pre><span></span><code><span class="k">Feature:</span><span class="nf"> Rest API endpoint testing</span>
+<span class="nf">  </span><span class="k">Background:</span><span class="nf"> Common properties for all scenarios</span>
+<span class="k">    Given </span><span class="nf">&quot;</span><span class="s">2</span><span class="nf">&quot; users</span>
+<span class="nf">    </span><span class="k">And </span><span class="nf">spawn rate is &quot;</span><span class="s">2</span><span class="nf">&quot; user per second</span>
+<span class="nf">    </span><span class="k">And </span><span class="nf">stop on first failure</span>
+
+<span class="nf">  </span><span class="k">Scenario:</span><span class="nf"> Authorize</span>
+<span class="k">    Given </span><span class="nf">a user of type &quot;</span><span class="s">RestApi</span><span class="nf">&quot; sending requests to &quot;</span><span class="s">https://api.example.com</span><span class="nf">&quot;</span>
+<span class="nf">    </span><span class="k">And </span><span class="nf">repeat for &quot;</span><span class="s">2</span><span class="nf">&quot; iterations</span>
+<span class="nf">    </span><span class="k">And </span><span class="nf">wait time inbetween requests is random between &quot;</span><span class="s">0.1</span><span class="nf">&quot; and &quot;</span><span class="s">0.3</span><span class="nf">&quot; seconds</span>
+<span class="nf">    </span><span class="k">And </span><span class="nf">value for variable &quot;</span><span class="s">AtomicDate.called</span><span class="nf">&quot; is &quot;</span><span class="s">now | format=&#39;%Y-%m-%dT%H:%M:%S.00Z&#39; timezone=UTC</span><span class="nf">&quot;</span>
+<span class="nf">    </span><span class="k">And </span><span class="nf">value for variable &quot;</span><span class="s">callback_endpoint</span><span class="nf">&quot; is &quot;</span><span class="s">none</span><span class="nf">&quot;</span>
+<span class="nf">    </span><span class="k">Then </span><span class="nf">post request with name &quot;</span><span class="s">authorize</span><span class="nf">&quot; from endpoint &quot;</span><span class="s">/api/v1/authorize?called={{ AtomicDate.called }}</span><span class="nf">&quot;</span>
+<span class="nf">        </span><span class="k">&quot;&quot;&quot;</span><span class="s"></span>
+<span class="s">        {</span>
+<span class="s">            &quot;username&quot;: &quot;test&quot;,</span>
+<span class="s">            &quot;password&quot;: &quot;password123&quot;,</span>
+<span class="s">            &quot;callback&quot;: &quot;/api/v1/user/test&quot;</span>
+<span class="s">        }</span>
+<span class="s">        </span><span class="k">&quot;&quot;&quot;</span><span class="nf"></span>
+<span class="nf">    </span><span class="k">Then </span><span class="nf">save response payload &quot;</span><span class="s">$.callback</span><span class="nf">&quot; in variable &quot;</span><span class="s">callback_endpoint</span><span class="nf">&quot;</span>
+
+<span class="nf">    </span><span class="k">Then </span><span class="nf">get request with name &quot;</span><span class="s">user info</span><span class="nf">&quot; from endpoint &quot;</span><span class="s">{{ callback_endpoint }}</span><span class="nf">&quot;</span>
+<span class="nf">    </span><span class="k">When </span><span class="nf">response payload &quot;</span><span class="s">$.user.name</span><span class="nf">&quot; is not &quot;</span><span class="s">Test User</span><span class="nf">&quot; stop user</span>
+</code></pre></div>
+<p>This makes it possible to implement load test scenarios without knowing python or how to use <code>locust</code>.</p>
+<h2 id="features">Features</h2>
+<p>A number of features that we thought <code>locust</code> was missing out-of-the-box has been implemented in <code>grizzly</code>.</p>
+<h3 id="test-data">Test data</h3>
+<p>Support for synchronous handling of test data (variables). This is extra important when running <code>locust</code> distributed and there is a need for each worker and user to have unique test data, that cannot be re-used.</p>
+<p>The solution is heavily inspired by <a href="https://medium.com/locust-io-experiments/locust-experiments-feeding-the-locusts-cf09e0f65897">Karol Brejnas locust experiments - feeding the locust</a>. A producer is running on the master (or local) node and keeps track of what has been sent to the consumer running on a worker (or local) node. The two communicates over a seperate <a href="https://zeromq.org">ZeroMQ</a> session.</p>
+<p>When the consumer wants new test data, it sends a message to the server that it is available and for which scenario it is going to run. The producer then responds with unique test data that can be used.</p>
+<h3 id="statistics">Statistics</h3>
+<p>Listeners for both InfluxDB and Azure Application Insights is included. The later is more or less <a href="https://github.com/SvenskaSpel/locust-plugins/blob/master/locust_plugins/appinsights_listener.py"><code>appinsights_listener.py</code></a>, from the good guys at <a href="https://github.com/SvenskaSpel">Svenska Spel</a>, but with typing.</p>
+<p>They are useful when history of test runs is needed, or when wanting to correlate load tests with other events in the targeted environment.</p>
+<h3 id="load-test-users">Load test users</h3>
+<p><code>locust</code> comes with a simple user for loading an HTTP(S) endpoint and due to the nature of how the integration between <code>behave</code> and <code>locust</code> works, it is not possible to use <code>locust</code> provided users, even for HTTP(S) targets.</p>
+<ul>
+<li><code>RestApiUser</code>: send requests to REST API endpoinds, supports authentication with username+password or client secret</li>
+<li><code>ServiceBusUser</code>: send and receive from Azure Service Bus queues and topics</li>
+<li><code>MessageQueueUser</code>: send and receive from IBM MQ queues</li>
+<li><code>SftpUser</code>: send and receive files from an SFTP-server</li>
+<li><code>BlobStorageUser</code>: upload and download files from Azure Blob Storage</li>
+</ul>
+<h3 id="request-log">Request log</h3>
+<p>All failed requests is logged to a file which includes both header and body, both for request and response.</p>
+<h2 id="development">Development</h2>
+<p>The easiest way to start contributing to this project is to have <a href="https://code.visualstudio.com/">Visual Studio Code</a> (with "Remote - Containers" extension) and <a href="https://www.docker.com/">docker</a> installed. The project comes with a <code>devcontainer</code>, which encapsulates everything needed for a development environment.</p>
+<p>It is also possible to use a python virtual environment where both <code>requirements.txt</code> and <code>requirements-dev.txt</code> is installed.</p>
+                
+              
+              
+                
+
+
+              
+            </article>
+          </div>
+        </div>
+        
+      </main>
+      
+        
+<footer class="md-footer">
+  
+    <nav class="md-footer__inner md-grid" aria-label="Footer">
+      
+      
+        
+        <a href="example/" class="md-footer__link md-footer__link--next" aria-label="Next: Example" rel="next">
+          <div class="md-footer__title">
+            <div class="md-ellipsis">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              Example
+            </div>
+          </div>
+          <div class="md-footer__button md-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4z"/></svg>
+          </div>
+        </a>
+      
+    </nav>
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-footer-copyright">
+        
+        Made with
+        <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+          Material for MkDocs
+        </a>
+        
+      </div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    <script id="__config" type="application/json">{"base": ".", "features": ["navigation.sections"], "translations": {"clipboard.copy": "Copy to clipboard", "clipboard.copied": "Copied to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.placeholder": "Type to start searching", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.term.missing": "Missing", "select.version.title": "Select version"}, "search": "assets/javascripts/workers/search.409db549.min.js", "version": null}</script>
+    
+    
+      <script src="assets/javascripts/bundle.756773cc.min.js"></script>
+      
+    
+  </body>
+</html>
