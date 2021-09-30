@@ -1,4 +1,4 @@
-'''This module constains step implementations that configures the load test scenario with parameters applicable for all scenarios.'''
+'''This module contains step implementations that configures the load test scenario with parameters applicable for all scenarios.'''
 
 from urllib.parse import urlparse, parse_qs, urlunparse
 from typing import cast, List
@@ -128,9 +128,9 @@ def step_setup_set_global_context_variable(context: Context, variable: str, valu
     '''Create a global variable in the context. Depending on which type of user a scenario is configured for, different variables
     are available. Check `grizzly.users` documentation for which context variables are available for each user.
 
-    This step can be used if the feature file has multiple scenarios and all of them has the same context variables.
+    This step can be used if the feature file has multiple scenarios and all of them have the same context variables.
 
-    Variable names can contain dots (`.`) or slash (`/`) to indicate that the variable is in a structure. All names will also be
+    Variable names can contain (one ore more) dot (`.`) or slash (`/`) to indicate that the variable is in a structure. All names will also be
     converted to lower case.
 
     E.g. `token.url` and `token/URL` results in:

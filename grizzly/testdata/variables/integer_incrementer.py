@@ -1,4 +1,4 @@
-'''This variables provides an unique integer each time it is accessed.
+'''This variable provides an unique integer each time it is accessed.
 
 Useful to generate unique ID for each request.
 
@@ -16,7 +16,7 @@ The first value of an integer that is going to be used.
 And value of variable "AtomicIntegerIncrementer.unique_id" is "100 | step=10"
 ```
 
-This can then be used in an template:
+This can then be used in a template:
 
 ```json
 {

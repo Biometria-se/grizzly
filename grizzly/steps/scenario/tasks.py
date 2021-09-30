@@ -1,4 +1,4 @@
-'''This module contain step implementations that describes requests sent by `user_class_name` targeting `host`.'''
+'''This module contains step implementations that describes requests sent by `user_class_name` targeting `host`.'''
 from typing import cast
 
 from behave.runner import Context
@@ -27,7 +27,7 @@ register_type(
 def step_task_request_text_with_name_to_endpoint(context: Context, method: RequestMethod, name: str, direction: RequestDirection, endpoint: str) -> None:
     '''Creates a named request to an endpoint on `host`, where optional payload is defined directly in the feature file.
 
-    If `method` in the expression is `get` or `receive`; the `direction` **must** be `from`. \
+    If `method` in the expression is `get` or `receive`; the `direction` **must** be `from`.
     If `method` in the expression is `post`, `pust`, or `send`; the `direction` **must** be `to`, and payload defined in the feature file.
 
     ```gherkin
@@ -56,7 +56,7 @@ def step_task_request_text_with_name_to_endpoint(context: Context, method: Reque
 
     Args:
         method (RequestMethod): type of request
-        name (str): name of the requests in logs, can contains variables
+        name (str): name of the requests in logs, can contain variables
         direction (RequestDirection): one of `to` or `from` depending on the value of `method`
         endpoint (str): URI relative to `host` in the scenario, can contain variables and in certain cases `user_class_name` specific parameters
     '''
@@ -85,8 +85,8 @@ def step_task_request_file_with_name_endpoint(context: Context, method: RequestM
 
     Args:
         method (RequestMethod): type of request
-        source (str): path to a template file relative to the directory `requests/`, which **must** exists in the directory the feature file is located
-        name (str): name of the requests in logs, can contains variables
+        source (str): path to a template file relative to the directory `requests/`, which **must** exist in the directory the feature file is located
+        name (str): name of the requests in logs, can contain variables
         endpoint (str): URI relative to `host` in the scenario, can contain variables and in certain cases `user_class_name` specific parameters
     '''
     assert method.direction == RequestDirection.TO, f'{method.name} not allowed'
@@ -109,8 +109,8 @@ def step_task_request_file_with_name(context: Context, method: RequestMethod, so
 
     Args:
         method (RequestMethod): type of request
-        source (str): path to a template file relative to the directory `requests/`, which **must** exists in the directory the feature file is located
-        name (str): name of the requests in logs, can contains variables
+        source (str): path to a template file relative to the directory `requests/`, which **must** exist in the directory the feature file is located
+        name (str): name of the requests in logs, can contain variables
     '''
     assert method.direction == RequestDirection.TO, f'{method.name} not allowed'
     assert context.text is None, f'Step text is not allowed for {method.name}'
@@ -121,8 +121,8 @@ def step_task_request_file_with_name(context: Context, method: RequestMethod, so
 def step_task_request_text_with_name(context: Context, method: RequestMethod, name: str) -> None:
     '''Creates a named request to the same endpoint as previous request, where optional payload is defined directly in the feature file.
 
-    If `method` in the expression is `post`, `put` or `send` the payload in the request be defined directly in the feature file after the step.
-    This step is useful if `method` and `endpoint` is the same as previous request, but the payload should be different.
+    If `method` in the expression is `post`, `put` or `send` the payload in the request **must** be defined directly in the feature file after the step.
+    This step is useful if `method` and `endpoint` are the same as previous request, but the payload should be different.
 
     ```gherkin
     Then post request with name "test-post-1" to endpoint "/api/test"
@@ -162,7 +162,7 @@ def step_task_request_text_with_name(context: Context, method: RequestMethod, na
 
     Args:
         method (RequestMethod): type of request
-        name (str): name of the requests in logs, can contains variables
+        name (str): name of the requests in logs, can contain variables
     '''
 
     if method.direction == RequestDirection.FROM:
@@ -184,7 +184,7 @@ def step_task_wait_seconds(context: Context, wait_time: float) -> None:
     And wait for "1.5" seconds
     ```
 
-    Above combinations of steps will results in a wait time between 3 and 4 seconds for the first requests that is defined after the
+    Above combinations of steps will result in a wait time between 3 and 4 seconds for the first request that is defined after the
     `And wait for...`-step.
 
     Args:

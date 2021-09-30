@@ -1,4 +1,4 @@
-'''This module contains step implementations that setups the load test scenario with parameters that is going to be used in the scenario they are defined in.'''
+'''This module contains step implementations that setup the load test scenario with parameters that is going to be used in the scenario they are defined in.'''
 from typing import cast
 
 import parse
@@ -25,7 +25,7 @@ register_type(
 def step_setup_set_context_variable(context: Context, variable: str, value: str) -> None:
     '''Set a variable in the scenario context.
 
-    Variable name can contain dots (`.`) or slash (`/`) to indicate that the variable has a nested structure. E.g. `token.url`
+    Variable name can contain (one or more) dot (`.`) or slash (`/`) to indicate that the variable has a nested structure. E.g. `token.url`
     and `token/url` results in:
 
     ```json
@@ -36,7 +36,7 @@ def step_setup_set_context_variable(context: Context, variable: str, value: str)
     }
     ```
 
-    It is also possible to have space in a variable name, they will then be replaced with underscore (`_`), and name will be
+    It is also possible to have spaces in a variable name, they will then be replaced with underscore (`_`), and name will be
     converted to lowercase.
 
     E.g. `Client ID` results in `client_id`
@@ -126,10 +126,10 @@ def step_setup_variable_value(context: Context, name: str, value: str) -> None:
     Data type for the value of the variable is based on the type of variable. If the variable is an "`Atomic*`"-variable
     then the value needs to match the format and type that the variable has implemented. If it is a non "`Atomic*`"-variable
     `grizzly` will try to guess the data type. E.g.:
-    * `"10"` -> `int`
-    * `"1.0"` -> `float`
-    * `"True"` -> `bool`
-    * default -> `str`
+    * `"10"` becomes `int`
+    * `"1.0"` becomes `float`
+    * `"True"` becomes `bool`
+    * everything else becomes `str`
 
     ```gherkin
     And value for variable "HelloWorld" is "default"
@@ -164,7 +164,7 @@ def step_setup_variable_value(context: Context, name: str, value: str) -> None:
 
 @given(u'set alias "{alias}" for variable "{variable}"')
 def step_setup_set_variable_alias(context: Context, alias: str, variable: str) -> None:
-    '''Create an alias for an variable that points to another structure in the context.
+    '''Create an alias for a variable that points to another structure in the context.
 
     This is useful if you have test data that somehow should change the behavior for a
     user, e.g. username and password.
@@ -204,7 +204,7 @@ def step_setup_set_variable_alias(context: Context, alias: str, variable: str) -
     }
     ```
 
-    Variables in payload templates is not allowed to have an alias.
+    Variables in payload templates are not allowed to have an alias.
 
     Args:
         alias (str): which node in the context that should get the value of `variable`

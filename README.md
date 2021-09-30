@@ -61,7 +61,7 @@ When the consumer wants new test data, it sends a message to the server that it 
 
 ### Statistics
 
-Listeners for both InfluxDB and Azure Application Insights is included. The later is more or less [`appinsights_listener.py`](https://github.com/SvenskaSpel/locust-plugins/blob/master/locust_plugins/appinsights_listener.py), from the good guys at [Svenska Spel](https://github.com/SvenskaSpel), but with typing.
+Listeners for both InfluxDB and Azure Application Insights are included. The later is more or less [`appinsights_listener.py`](https://github.com/SvenskaSpel/locust-plugins/blob/master/locust_plugins/appinsights_listener.py), from the good guys at [Svenska Spel](https://github.com/SvenskaSpel), but with typing.
 
 They are useful when history of test runs is needed, or when wanting to correlate load tests with other events in the targeted environment.
 
@@ -70,14 +70,15 @@ They are useful when history of test runs is needed, or when wanting to correlat
 `locust` comes with a simple user for loading an HTTP(S) endpoint and due to the nature of how the integration between `behave` and `locust` works, it is not possible to use `locust` provided users, even for HTTP(S) targets.
 
 * `RestApiUser`: send requests to REST API endpoinds, supports authentication with username+password or client secret
-* `ServiceBusUser`: send and receive from Azure Service Bus queues and topics
+* `ServiceBusUser`: send to Azure Service Bus queues and topics
 * `MessageQueueUser`: send and receive from IBM MQ queues
 * `SftpUser`: send and receive files from an SFTP-server
-* `BlobStorageUser`: upload and download files from Azure Blob Storage
+* `BlobStorageUser`: send files to Azure Blob Storage
 
 ### Request log
 
-All failed requests is logged to a file which includes both header and body, both for request and response.
+All failed requests are logged to a file which includes both header and body, both for request and response.
+
 ## Development
 
 The easiest way to start contributing to this project is to have [Visual Studio Code](https://code.visualstudio.com/) (with "Remote - Containers" extension) and [docker](https://www.docker.com/) installed. The project comes with a `devcontainer`, which encapsulates everything needed for a development environment.

@@ -1,6 +1,6 @@
 # Example
 
-The directory `example/` is an working project that sends request to public REST API endpoints, **please do not abuse these**.
+The directory `example/` is an working project that sends requests to public REST API endpoints, **please do not abuse these**.
 
 ## Structure
 
@@ -115,7 +115,7 @@ If you do not already have an working "IBM MQ" client setup and run `grizzly-cli
 
 `grizzly` has some runtime features which is easiliest handled by using the `grizzly-cli`. It provides a simple command line interface wrapping the `behave` command, for providing initial variable values, configuration etc.
 
-If `docker` and `docker-compose` is installed, `grizzly-cli` will by default start the load test in distributed mode (override with `--local`).
+If `docker` and `docker-compose` are installed, `grizzly-cli` will by default start the load test in distributed mode (override with `--local`).
 
 To run the example, in local mode:
 

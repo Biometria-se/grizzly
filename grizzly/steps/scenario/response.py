@@ -47,7 +47,7 @@ register_type(
 
 @then(u'save response {target:ResponseTarget} "{expression}" that matches "{match_with}" in variable "{variable}"')
 def step_response_save_matches(context: Context, target: ResponseTarget, expression: str, match_with: str, variable: str) -> None:
-    '''Save specified parts of a response, either from meta data (header) or payload (body), in an variable.
+    '''Save specified parts of a response, either from meta data (header) or payload (body), in a variable.
 
     With this step it is possible to change variable values and as such use values from a response later on in the load test.
 
@@ -142,7 +142,7 @@ def step_response_allow_status_codes(context: Context, status_list: str) -> None
     ```
 
     Args:
-        status_list (str): comma seperated list of integers
+        status_list (str): comma separated list of integers
     '''
     context_locust = cast(LocustContext, context.locust)
     assert len(context_locust.scenario.tasks) > 0, 'There are no requests in the scenario'
@@ -157,7 +157,8 @@ def step_response_allow_status_codes(context: Context, status_list: str) -> None
 @then(u'allow response status codes')
 def step_response_allow_status_codes_table(context: Context) -> None:
     '''Set allowed response status codes for the latest defined requests based on a data table.
-    Anger en komma separerad lista med tillåtna returkoder för dom senaste anropen med en data tabell.
+
+    Specifies a comma separeated list of allowed return codes for the latest requests in a data table.
 
     By default `200` is the only allowed respoonse status code. By prefixing a code with minus (`-`),
     it will be removed from the list of allowed response status codes.

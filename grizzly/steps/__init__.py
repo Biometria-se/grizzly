@@ -15,7 +15,7 @@ Feature: description of the test
         When ...
 ```
 
-In this package there is modules with step implementations that can be used in both `Background` and `Scenario` sections in a feature file.
+In this package there are modules with step implementations that can be used in both `Background` and `Scenario` sections in a feature file.
 '''
 
 from .utils import *

@@ -1,6 +1,6 @@
 # Environment configuration
 
-It is possible to make feature file environment agnostic by providing a `yaml` file containing a dictionary with a root node named `configuration`.
+It is possible to make the feature file environment agnostic by providing a `yaml` file containing a dictionary with a root node named `configuration`.
 The environment configuration file can also be used to store credentials and other sensitive information that should not be under version control.
 
 Internally `grizzly` will check if the environment variable `GRIZZLY_CONFIGURATION_FILE` is set and contains a valid environment configuration file. When using `grizzly-cli` you specify the file with `-c/--configuration` which then will be set as a value for `GRIZZLY_CONFIGURATION_FILE`.
@@ -21,7 +21,7 @@ configuration:
                 password: Who-the-f-is-alice
 ```
 
-The only rule for any nodes under `configuration` is that it **must** be an dictionary, since the path to a value will be flattened.
+The only rule for any nodes under `configuration` is that it **must** be a dictionary, since the path to a value will be flattened.
 
 ## Usage
 

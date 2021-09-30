@@ -1,6 +1,6 @@
 # Command Line Interface
 
-`grizzly` has a command line interface that is installed seperatly. The command line interface is called with `grizzly-cli`, and makes it easier to start a test with all features of grizzly wrapped up nicely.
+`grizzly` has a command line interface that is installed separately. The command line interface is called with `grizzly-cli`, and makes it easier to start a test with all features of grizzly wrapped up nicely.
 
 ## Installation
 
@@ -13,13 +13,13 @@ pip install grizzly-cli
 ```plain
 grizzly-cli [-h] [--local | --workers WORKERS]
                    [--force-build | --build] [--verbose]
-                   [-T TESTDATA_VARIABLE] [-c CONFIG_FILE]
+                   [-T TESTDATA_VARIABLE=VALUE, [-T TESTDATA_VARIABLE=VALUE, [...]]] [-c CONFIG_FILE]
                    [file]
 ```
 
 ### `--local`
 
-If `docker` and `docker-compose` is in `$PATH`, but locust should not run in distributed mode.
+If `docker` and `docker-compose` are in `$PATH`, but locust should not run in distributed mode.
 
 This parameter can not be used in combination with `--workers`, `--force-build` or `--build`.
 
@@ -45,7 +45,7 @@ This parameter can not be used in combination with `--local` or `--force-build`.
 
 Changes the log level to `DEBUG`, regardless of what it says in the feature file. Gives more verbose logging that can be useful when troubleshooting a problem with a load test scenario.
 
-### `-T TESTDATA_VARIABLE`
+### `-T TESTDATA_VARIABLE=VALUE`
 
 If the feature file contains the step:
 ```gherkin

@@ -1,4 +1,4 @@
-'''Denna modul innehåller steg-implementationer som validerar resultatet av svarstider för ett scenario.'''
+'''This module contains step implementations that validates the response results for all requests in a scenario.'''
 from typing import cast
 
 from behave.runner import Context
@@ -47,7 +47,7 @@ def step_results_avg_response_time(context: Context, avg_response_time: int) -> 
 
 @when(u'response time percentile "{percentile:d}"% is greater than "{response_time:d}" milliseconds fail scenario')
 def step_results_response_time_percentile(context: Context, percentile: float, response_time: int) -> None:
-    '''Set the response time for a percentile of the requests needs be below for it to pass.
+    '''Set the response time that a specified percentile of the requests needs to be below for the scenario to pass.
 
     Default behavior is not to validate the result for a scenario based on percetile response times.
 

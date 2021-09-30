@@ -4,7 +4,7 @@
 
 ## Request payload
 
-Request payload is treated as complete Jinja2 templates and has full support for any Jinja2 features. Request payload files **must** be stored in `./features/requests` and is referenced in a feature file as a relative path to that directory.
+Request payload is treated as complete Jinja2 templates and has full support for any Jinja2 features. Request payload files **must** be stored in `./features/requests` and are referenced in a feature file as a relative path to that directory.
 
 ```plain
 .
@@ -120,7 +120,7 @@ The third post request:
 
 ## Step expression
 
-Most step expressions also supports templating for their variables, for example:
+Most step expressions also support templating for their variables, for example:
 
 ```gherkin
 And set context variable "auth.user.username" to "$conf::backend.auth.user.username"

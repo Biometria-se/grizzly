@@ -33,7 +33,7 @@ And set context variable "message.wait" to "5"
 Then get request with name "get-queue-message" from endpoint "INCOMING.MESSAGES"
 ```
 
-In this example, the request will not fail if there is a message on queue with in 5 seconds.
+In this example, the request will not fail if there is a message on queue within 5 seconds.
 
 ## Authentication
 
@@ -45,19 +45,19 @@ And set context variable "auth.username" to "<username>"
 And set context variable "auth.password" to "<password>"
 ```
 
-#### With TLS
+### With TLS
 
 A [key repository](https://www.ibm.com/docs/en/ibm-mq/7.5?topic=wstulws-setting-up-key-repository-unix-linux-windows-systems)
-(3 files; `.kdb`, `.rdb` and `sth`) for the user is needed, and is specified with `auth.key_file` exckluding the file extension.
+(3 files; `.kdb`, `.rdb` and `.sth`) for the user is needed, and is specified with `auth.key_file` excluding the file extension.
 
 ```gherkin
 Given a user of type "MessageQueue" load testing "mq://mqm:admin@mq.example.com/?QueueManager=QM01&Channel=SRVCONN01"
 And set context variable "auth.username" to "<username>"
 And set context variable "auth.password" to "<password>"
-And set context variable "auth.key_file" to "<path to key file, exkl. file extension>"
+And set context variable "auth.key_file" to "<path to key file, excl. file extension>"
 ```
 
-Default SSL chiper is `ECDHE_RSA_AES_256_GCM_SHA384`, change it by setting `auth.ssl_chiper` context variable.
+Default SSL cipher is `ECDHE_RSA_AES_256_GCM_SHA384`, change it by setting `auth.ssl_cipher` context variable.
 
 Default certificate label is set to `auth.username`, change it by setting `auth.cert_label` context variable.
 '''

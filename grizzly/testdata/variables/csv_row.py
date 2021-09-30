@@ -1,14 +1,14 @@
-'''This variable reads an CSV file and provides a new row from the CSV file each time it is accessed.
+'''This variable reads a CSV file and provides a new row from the CSV file each time it is accessed.
 
 The CSV files **must** have headers for each column, since these are used to reference the value.
 
 ## Format
 
-Value is the path, relative to `requests/` of an file ending with `.csv`.
+Value is the path, relative to `requests/`, of an file ending with `.csv`.
 
 ## Arguments
 
-* `repeat` _bool_ (optional) - wether values should be reused, e.g. when reaching the end it should start from the beginning again (default: `False`)
+* `repeat` _bool_ (optional) - whether values should be reused, e.g. when reaching the end it should start from the beginning again (default: `False`)
 * `random` _bool_ (optional) - if rows should be selected by random, instead of sequential from first to last (default: `False`)
 
 ## Example
@@ -33,7 +33,7 @@ Then post request with name "authenticate" to endpoint "/api/v1/authenticate"
   """
 ```
 
-First request will the payload will be:
+First request the payload will be:
 
 ```json
 {
