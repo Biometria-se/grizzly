@@ -45,6 +45,9 @@ def generate_license_table() -> List[str]:
 
     for license in licenses:
         name = license['Name']
+        if name.startswith('grizzly-'):
+            continue
+
         if license['URL'] == 'UNKNOWN':
             if name in URL_MAP:
                 license['URL'] = URL_MAP[name]

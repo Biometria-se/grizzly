@@ -110,6 +110,8 @@ renderer:
         scheme: slate
         primary: brown
         accent: deep orange
+      logo: assets/logo/grizzly_logo_128.png
+      favicon: assets/logo/grizzly_logo_16.png
       features:
       - navigation.sections
     repo_url: https://github.com/biometria-se/grizzly

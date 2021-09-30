@@ -155,6 +155,9 @@ jobs:
       run: |
         pydoc-markdown --build --site-dir "$PWD/build/html"
 
+        # this is needed since pydoc-markdown does not include them
+        cp -r docs/assets $PWD/build/html
+
     - name: deploy documentation
       uses: peaceiris/actions-gh-pages@v3
       with:

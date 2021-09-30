@@ -1,6 +1,6 @@
 # Grizzly - `/ˈɡɹɪzli/`
 
-<img src="https://avatars.githubusercontent.com/u/2641063" height="100" width="100" /> <font size="30">+</font> <img src="https://behave.readthedocs.io/en/stable/_images/behave_logo1.png" height="100" width="100" /> <font size="30">=</font> <img src="https://upload.wikimedia.org/wikipedia/commons/7/71/Melanoplus_punctulatus_P1010365a.jpg" height="100" width="100" />
+![grizzly logo](https://raw.githubusercontent.com/Biometria-se/grizzly/main/docs/assets/logo/grizzly_logo_256.png)
 
 Grizzly is a framework to be able to easily define load scenarios, and is mainly built on-top of two other frameworks:
 

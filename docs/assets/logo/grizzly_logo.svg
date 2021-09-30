@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg viewBox="112.693 139.353 135.293 134.063" xmlns="http://www.w3.org/2000/svg" xmlns:bx="https://boxy-svg.com">
+  <defs>
+    <filter id="outline-filter-0" x="-500%" y="-500%" width="1000%" height="1000%" bx:preset="outline 1 4 rgba(0,0,0,1)">
+      <feMorphology in="SourceAlpha" result="dilated" operator="dilate" radius="4"/>
+      <feFlood flood-color="rgba(0,0,0,1)" result="flood"/>
+      <feComposite in="flood" in2="dilated" operator="in" result="outline"/>
+      <feMerge>
+        <feMergeNode in="outline"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <path style="stroke-width: 6.04043px; filter: url(#outline-filter-0); fill: rgb(255, 112, 67); stroke: rgb(239, 96, 51);" transform="matrix(0.364005, 0.364005, -0.368225, 0.368225, 138.392349, 52.496948)" d="M 261.813 37.769 L 276.187 37.769 L 296.331 72.174 A 84.375 84.375 0 0 1 306.12 76.229 L 344.691 66.145 L 354.855 76.309 L 344.771 114.88 A 84.375 84.375 0 0 1 348.826 124.669 L 383.231 144.813 L 383.231 159.187 L 348.826 179.331 A 84.375 84.375 0 0 1 344.771 189.12 L 354.855 227.691 L 344.691 237.855 L 306.12 227.771 A 84.375 84.375 0 0 1 296.331 231.826 L 276.187 266.231 L 261.813 266.231 L 241.669 231.826 A 84.375 84.375 0 0 1 231.88 227.771 L 193.309 237.855 L 183.145 227.691 L 193.229 189.12 A 84.375 84.375 0 0 1 189.174 179.331 L 154.769 159.187 L 154.769 144.813 L 189.174 124.669 A 84.375 84.375 0 0 1 193.229 114.88 L 183.145 76.309 L 193.309 66.145 L 231.88 76.229 A 84.375 84.375 0 0 1 241.669 72.174 Z M 269 152 A 0 0 0 0 0 269 152 A 0 0 0 0 0 269 152" bx:shape="cog 269 152 0 84.375 114.231 0.68 8 1@b3fc3625">
+    <title>Cog ram</title>
+  </path>
+  <circle style="stroke: rgb(0, 0, 0); fill: rgb(255, 255, 255); stroke-width: 2px;" cx="165.258" cy="179.319" r="10.163">
+    <title>Vänster ögonglob</title>
+  </circle>
+  <circle style="stroke: rgb(0, 0, 0); fill: rgb(255, 255, 255); stroke-width: 2px;" cx="195.164" cy="179.319" r="10.163">
+    <title>Höger ögonglob</title>
+  </circle>
+  <circle style="" cx="162.779" cy="176.84" r="3.317" bx:origin="-24.036931 -26.187519">
+    <title>Vänster pupill</title>
+  </circle>
+  <circle style="" cx="197.501" cy="176.795" r="3.317">
+    <title>Höger pupill</title>
+  </circle>
+  <rect x="159.084" y="169.108" width="42.926" height="78.821" rx="30" ry="30" style="stroke-width: 2px; filter: none; fill: rgb(121, 86, 73); stroke: rgb(105, 70, 57);" bx:origin="-3.705982 -2.14807">
+    <title>Ansiktsskuggaa</title>
+  </rect>
+  <rect x="157.448" y="167.455" width="45.957" height="82.128" rx="30" ry="30" style="stroke: rgb(0, 0, 0); stroke-width: 2px; fill: none;">
+    <title>Ansikte</title>
+  </rect>
+  <path style="stroke: rgb(0, 0, 0); fill: none; stroke-width: 2px; stroke-linecap: round;" d="M 148.893 151.906 C 148.893 151.906 146.414 180.83 175.614 180.279" transform="matrix(-1, 0, 0, -1, 324.454773, 332.19278)"/>
+  <path style="stroke: rgb(0, 0, 0); fill: none; stroke-width: 2px; stroke-linecap: round;" d="M 185.092 180.145 C 185.092 180.145 182.613 151.221 211.813 151.772"/>
+  <path style="stroke: rgb(0, 0, 0); stroke-width: 2px; filter: none; fill: rgb(121, 86, 73);" d="M 164.432 219.735 C 164.432 219.735 162.339 234.851 171.318 227.724 C 180.297 220.597 179.103 220.286 185.69 227.108 C 187.908 229.406 197.265 235.823 194.821 220.585">
+    <title>Mun</title>
+  </path>
+</svg>
