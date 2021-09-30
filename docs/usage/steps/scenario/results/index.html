@@ -9,7 +9,7 @@
       
       
       
-      <link rel="icon" href="../../../../assets/images/favicon.png">
+      <link rel="icon" href="../../../../assets/logo/grizzly_logo_16.png">
       <meta name="generator" content="mkdocs-1.2.2, mkdocs-material-7.2.6">
     
     
@@ -78,8 +78,7 @@
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href="../../../.." title="Grizzly" class="md-header__button md-logo" aria-label="Grizzly" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
+  <img src="../../../../assets/logo/grizzly_logo_128.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -175,8 +174,7 @@
   <label class="md-nav__title" for="__drawer">
     <a href="../../../.." title="Grizzly" class="md-nav__button md-logo" aria-label="Grizzly" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
+  <img src="../../../../assets/logo/grizzly_logo_128.png" alt="logo">
 
     </a>
     Grizzly
@@ -828,7 +826,7 @@
                 
                 <p><a id="grizzly.steps.scenario.results"></a></p>
 <h1 id="grizzlystepsscenarioresults">grizzly.steps.scenario.results</h1>
-<p>Denna modul innehåller steg-implementationer som validerar resultatet av svarstider för ett scenario.</p>
+<p>This module contains step implementations that validates the response results for all requests in a scenario.</p>
 <p><a id="grizzly.steps.scenario.results.step_results_fail_ratio"></a></p>
 <h4 id="step_results_fail_ratio">step_results_fail_ratio</h4>
 <div class="highlight"><pre><span></span><code><span class="nd">@when</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;fail ratio is greater than &quot;</span><span class="si">{fail_ratio:d}</span><span class="s1">&quot;</span><span class="si">% f</span><span class="s1">ail scenario&#39;</span><span class="p">)</span>
@@ -862,7 +860,7 @@ for it to pass.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@when</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;response time percentile &quot;</span><span class="si">{percentile:d}</span><span class="s1">&quot;</span><span class="si">% i</span><span class="s1">s greater than &quot;</span><span class="si">{response_time:d}</span><span class="s1">&quot; milliseconds fail scenario&#39;</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">step_results_response_time_percentile</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">percentile</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">response_time</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
-<p>Set the response time for a percentile of the requests needs be below for it to pass.</p>
+<p>Set the response time that a specified percentile of the requests needs to be below for the scenario to pass.</p>
 <p>Default behavior is not to validate the result for a scenario based on percetile response times.</p>
 <div class="highlight"><pre><span></span><code><span class="k">When </span><span class="nf">response time percentile &quot;</span><span class="s">95</span><span class="nf">&quot;% is greater than &quot;</span><span class="s">200</span><span class="nf">&quot; milliseconds fail scenario</span>
 </code></pre></div>

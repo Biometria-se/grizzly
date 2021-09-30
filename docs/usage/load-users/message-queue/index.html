@@ -9,7 +9,7 @@
       
       
       
-      <link rel="icon" href="../../../assets/images/favicon.png">
+      <link rel="icon" href="../../../assets/logo/grizzly_logo_16.png">
       <meta name="generator" content="mkdocs-1.2.2, mkdocs-material-7.2.6">
     
     
@@ -78,8 +78,7 @@
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href="../../.." title="Grizzly" class="md-header__button md-logo" aria-label="Grizzly" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
+  <img src="../../../assets/logo/grizzly_logo_128.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -175,8 +174,7 @@
   <label class="md-nav__title" for="__drawer">
     <a href="../../.." title="Grizzly" class="md-nav__button md-logo" aria-label="Grizzly" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
+  <img src="../../../assets/logo/grizzly_logo_128.png" alt="logo">
 
     </a>
     Grizzly
@@ -704,18 +702,12 @@
     Username and password
   </a>
   
-    <nav class="md-nav" aria-label="Username and password">
-      <ul class="md-nav__list">
+</li>
         
           <li class="md-nav__item">
   <a href="#with-tls" class="md-nav__link">
     With TLS
   </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
         
@@ -825,18 +817,12 @@
     Username and password
   </a>
   
-    <nav class="md-nav" aria-label="Username and password">
-      <ul class="md-nav__list">
+</li>
         
           <li class="md-nav__item">
   <a href="#with-tls" class="md-nav__link">
     With TLS
   </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
         
@@ -887,22 +873,22 @@ set the time it should wait with <code>message.wait</code> (seconds) context var
 <span class="k">And </span><span class="nf">set context variable &quot;</span><span class="s">message.wait</span><span class="nf">&quot; to &quot;</span><span class="s">5</span><span class="nf">&quot;</span>
 <span class="k">Then </span><span class="nf">get request with name &quot;</span><span class="s">get-queue-message</span><span class="nf">&quot; from endpoint &quot;</span><span class="s">INCOMING.MESSAGES</span><span class="nf">&quot;</span>
 </code></pre></div>
-<p>In this example, the request will not fail if there is a message on queue with in 5 seconds.</p>
+<p>In this example, the request will not fail if there is a message on queue within 5 seconds.</p>
 <h2 id="authentication">Authentication</h2>
 <h3 id="username-and-password">Username and password</h3>
 <div class="highlight"><pre><span></span><code><span class="k">Given </span><span class="nf">a user of type &quot;</span><span class="s">MessageQueue</span><span class="nf">&quot; load testing &quot;</span><span class="s">mq://mqm:admin@mq.example.com/?QueueManager=QM01&amp;Channel=SRVCONN01</span><span class="nf">&quot;</span>
 <span class="k">And </span><span class="nf">set context variable &quot;</span><span class="s">auth.username</span><span class="nf">&quot; to &quot;</span><span class="nv">&lt;username&gt;</span><span class="nf">&quot;</span>
 <span class="k">And </span><span class="nf">set context variable &quot;</span><span class="s">auth.password</span><span class="nf">&quot; to &quot;</span><span class="nv">&lt;password&gt;</span><span class="nf">&quot;</span>
 </code></pre></div>
-<h4 id="with-tls">With TLS</h4>
+<h3 id="with-tls">With TLS</h3>
 <p>A <a href="https://www.ibm.com/docs/en/ibm-mq/7.5?topic=wstulws-setting-up-key-repository-unix-linux-windows-systems">key repository</a>
-(3 files; <code>.kdb</code>, <code>.rdb</code> and <code>sth</code>) for the user is needed, and is specified with <code>auth.key_file</code> exckluding the file extension.</p>
+(3 files; <code>.kdb</code>, <code>.rdb</code> and <code>.sth</code>) for the user is needed, and is specified with <code>auth.key_file</code> excluding the file extension.</p>
 <div class="highlight"><pre><span></span><code><span class="k">Given </span><span class="nf">a user of type &quot;</span><span class="s">MessageQueue</span><span class="nf">&quot; load testing &quot;</span><span class="s">mq://mqm:admin@mq.example.com/?QueueManager=QM01&amp;Channel=SRVCONN01</span><span class="nf">&quot;</span>
 <span class="k">And </span><span class="nf">set context variable &quot;</span><span class="s">auth.username</span><span class="nf">&quot; to &quot;</span><span class="nv">&lt;username&gt;</span><span class="nf">&quot;</span>
 <span class="k">And </span><span class="nf">set context variable &quot;</span><span class="s">auth.password</span><span class="nf">&quot; to &quot;</span><span class="nv">&lt;password&gt;</span><span class="nf">&quot;</span>
-<span class="k">And </span><span class="nf">set context variable &quot;</span><span class="s">auth.key_file</span><span class="nf">&quot; to &quot;</span><span class="nv">&lt;path to key file, exkl. file extension&gt;</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">set context variable &quot;</span><span class="s">auth.key_file</span><span class="nf">&quot; to &quot;</span><span class="nv">&lt;path to key file, excl. file extension&gt;</span><span class="nf">&quot;</span>
 </code></pre></div>
-<p>Default SSL chiper is <code>ECDHE_RSA_AES_256_GCM_SHA384</code>, change it by setting <code>auth.ssl_chiper</code> context variable.</p>
+<p>Default SSL cipher is <code>ECDHE_RSA_AES_256_GCM_SHA384</code>, change it by setting <code>auth.ssl_cipher</code> context variable.</p>
 <p>Default certificate label is set to <code>auth.username</code>, change it by setting <code>auth.cert_label</code> context variable.</p>
                 
               

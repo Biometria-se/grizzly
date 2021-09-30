@@ -9,7 +9,7 @@
       
       
       
-      <link rel="icon" href="../../../assets/images/favicon.png">
+      <link rel="icon" href="../../../assets/logo/grizzly_logo_16.png">
       <meta name="generator" content="mkdocs-1.2.2, mkdocs-material-7.2.6">
     
     
@@ -78,8 +78,7 @@
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href="../../.." title="Grizzly" class="md-header__button md-logo" aria-label="Grizzly" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
+  <img src="../../../assets/logo/grizzly_logo_128.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -175,8 +174,7 @@
   <label class="md-nav__title" for="__drawer">
     <a href="../../.." title="Grizzly" class="md-nav__button md-logo" aria-label="Grizzly" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
+  <img src="../../../assets/logo/grizzly_logo_128.png" alt="logo">
 
     </a>
     Grizzly
@@ -857,7 +855,7 @@ into the locust context which grizzly will use to setup locust.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@then</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;save response {target:ResponseTarget} &quot;</span><span class="si">{expression}</span><span class="s1">&quot; that matches &quot;</span><span class="si">{match_with}</span><span class="s1">&quot; in variable &quot;</span><span class="si">{variable}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">step_response_save_matches</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="n">ResponseTarget</span><span class="p">,</span> <span class="n">expression</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">match_with</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
-<p>Save specified parts of a response, either from meta data (header) or payload (body), in an variable.</p>
+<p>Save specified parts of a response, either from meta data (header) or payload (body), in a variable.</p>
 <p>With this step it is possible to change variable values and as such use values from a response later on in the load test.</p>
 <p>This step will fail if the specified <code>expression</code> has no match or more than one match.</p>
 <div class="highlight"><pre><span></span><code><span class="c"># only token is matched and saved in TOKEN, by using regexp match groups</span><span class="nf"></span>
@@ -938,15 +936,15 @@ it will be removed from the list of allowed response status codes.</p>
 </code></pre></div>
 <p><strong>Arguments</strong>:</p>
 <ul>
-<li><code>status_list</code> <em>str</em> - comma seperated list of integers</li>
+<li><code>status_list</code> <em>str</em> - comma separated list of integers</li>
 </ul>
 <p><a id="grizzly.steps.scenario.response.step_response_allow_status_codes_table"></a></p>
 <h4 id="step_response_allow_status_codes_table">step_response_allow_status_codes_table</h4>
 <div class="highlight"><pre><span></span><code><span class="nd">@then</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;allow response status codes&#39;</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">step_response_allow_status_codes_table</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
-<p>Set allowed response status codes for the latest defined requests based on a data table.
-Anger en komma separerad lista med tillåtna returkoder för dom senaste anropen med en data tabell.</p>
+<p>Set allowed response status codes for the latest defined requests based on a data table.</p>
+<p>Specifies a comma separeated list of allowed return codes for the latest requests in a data table.</p>
 <p>By default <code>200</code> is the only allowed respoonse status code. By prefixing a code with minus (<code>-</code>),
 it will be removed from the list of allowed response status codes.</p>
 <p>Number of rows in the table specifies which of the latest defined requests the allowed response
@@ -982,16 +980,16 @@ the scenario, and is valid only for the latest defined request.</p>
 </ul>
 <p><a id="grizzly.steps.scenario.setup"></a></p>
 <h1 id="grizzlystepsscenariosetup">grizzly.steps.scenario.setup</h1>
-<p>This module contains step implementations that setups the load test scenario with parameters that is going to be used in the scenario they are defined in.</p>
+<p>This module contains step implementations that setup the load test scenario with parameters that is going to be used in the scenario they are defined in.</p>
 <p><a id="grizzly.steps.scenario.setup.step_setup_set_context_variable"></a></p>
 <h4 id="step_setup_set_context_variable">step_setup_set_context_variable</h4>
 <div class="highlight"><pre><span></span><code><span class="nd">@given</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;set context variable &quot;</span><span class="si">{variable}</span><span class="s1">&quot; to &quot;</span><span class="si">{value}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">step_setup_set_context_variable</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
 <p>Set a variable in the scenario context.</p>
-<p>Variable name can contain dots (<code>.</code>) or slash (<code>/</code>) to indicate that the variable has a nested structure. E.g. <code>token.url</code>
+<p>Variable name can contain (one or more) dot (<code>.</code>) or slash (<code>/</code>) to indicate that the variable has a nested structure. E.g. <code>token.url</code>
 and <code>token/url</code> results in:</p>
-<p>It is also possible to have space in a variable name, they will then be replaced with underscore (<code>_</code>), and name will be
+<p>It is also possible to have spaces in a variable name, they will then be replaced with underscore (<code>_</code>), and name will be
 converted to lowercase.</p>
 <p>E.g. <code>Client ID</code> results in <code>client_id</code></p>
 <p><div class="highlight"><pre><span></span><code><span class="p">{</span>
@@ -1055,10 +1053,10 @@ the scenario.</p>
 <p>Data type for the value of the variable is based on the type of variable. If the variable is an "<code>Atomic*</code>"-variable
 then the value needs to match the format and type that the variable has implemented. If it is a non "<code>Atomic*</code>"-variable
 <code>grizzly</code> will try to guess the data type. E.g.:
-* <code>"10"</code> -&gt; <code>int</code>
-* <code>"1.0"</code> -&gt; <code>float</code>
-* <code>"True"</code> -&gt; <code>bool</code>
-* default -&gt; <code>str</code></p>
+* <code>"10"</code> becomes <code>int</code>
+* <code>"1.0"</code> becomes <code>float</code>
+* <code>"True"</code> becomes <code>bool</code>
+* everything else becomes <code>str</code></p>
 <p>It is possible to set the value of a variable based on another variable, which can be usable if you have a variable in
 multiple scenarios which all should have the same initial value.</p>
 <p><div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">value for variable &quot;</span><span class="s">HelloWorld</span><span class="nf">&quot; is &quot;</span><span class="s">default</span><span class="nf">&quot;</span>
@@ -1079,13 +1077,13 @@ multiple scenarios which all should have the same initial value.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@given</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;set alias &quot;</span><span class="si">{alias}</span><span class="s1">&quot; for variable &quot;</span><span class="si">{variable}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">step_setup_set_variable_alias</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">alias</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
-<p>Create an alias for an variable that points to another structure in the context.</p>
+<p>Create an alias for a variable that points to another structure in the context.</p>
 <p>This is useful if you have test data that somehow should change the behavior for a
 user, e.g. username and password.</p>
 <p>Assumed that the file <code>users.csv</code> contains the columns <code>username</code> and <code>password</code>; without
 the alias step it would look like the following structure in the context:</p>
 <p>With the alias step it will be transformed to this:</p>
-<p>Variables in payload templates is not allowed to have an alias.</p>
+<p>Variables in payload templates are not allowed to have an alias.</p>
 <p><div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">set variable &quot;</span><span class="s">AtomicCsvRow.users</span><span class="nf">&quot; to &quot;</span><span class="s">users.csv | repeat=True</span><span class="nf">&quot;</span>
 <span class="k">And </span><span class="nf">set alias &quot;</span><span class="s">auth.user.username</span><span class="nf">&quot; for variable &quot;</span><span class="s">AtomicCsvRow.users.username</span><span class="nf">&quot;</span>
 <span class="k">And </span><span class="nf">set alias &quot;</span><span class="s">auth.user.password</span><span class="nf">&quot; for variable &quot;</span><span class="s">AtomicCsvRow.users.password</span><span class="nf">&quot;</span>
@@ -1135,7 +1133,7 @@ the alias step it would look like the following structure in the context:</p>
 </code></pre></div>
 <p><a id="grizzly.steps.scenario.results"></a></p>
 <h1 id="grizzlystepsscenarioresults">grizzly.steps.scenario.results</h1>
-<p>Denna modul innehåller steg-implementationer som validerar resultatet av svarstider för ett scenario.</p>
+<p>This module contains step implementations that validates the response results for all requests in a scenario.</p>
 <p><a id="grizzly.steps.scenario.results.step_results_fail_ratio"></a></p>
 <h4 id="step_results_fail_ratio">step_results_fail_ratio</h4>
 <div class="highlight"><pre><span></span><code><span class="nd">@when</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;fail ratio is greater than &quot;</span><span class="si">{fail_ratio:d}</span><span class="s1">&quot;</span><span class="si">% f</span><span class="s1">ail scenario&#39;</span><span class="p">)</span>
@@ -1169,7 +1167,7 @@ for it to pass.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@when</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;response time percentile &quot;</span><span class="si">{percentile:d}</span><span class="s1">&quot;</span><span class="si">% i</span><span class="s1">s greater than &quot;</span><span class="si">{response_time:d}</span><span class="s1">&quot; milliseconds fail scenario&#39;</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">step_results_response_time_percentile</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">percentile</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">response_time</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
-<p>Set the response time for a percentile of the requests needs be below for it to pass.</p>
+<p>Set the response time that a specified percentile of the requests needs to be below for the scenario to pass.</p>
 <p>Default behavior is not to validate the result for a scenario based on percetile response times.</p>
 <div class="highlight"><pre><span></span><code><span class="k">When </span><span class="nf">response time percentile &quot;</span><span class="s">95</span><span class="nf">&quot;% is greater than &quot;</span><span class="s">200</span><span class="nf">&quot; milliseconds fail scenario</span>
 </code></pre></div>
@@ -1180,14 +1178,14 @@ for it to pass.</p>
 </ul>
 <p><a id="grizzly.steps.scenario.tasks"></a></p>
 <h1 id="grizzlystepsscenariotasks">grizzly.steps.scenario.tasks</h1>
-<p>This module contain step implementations that describes requests sent by <code>user_class_name</code> targeting <code>host</code>.</p>
+<p>This module contains step implementations that describes requests sent by <code>user_class_name</code> targeting <code>host</code>.</p>
 <p><a id="grizzly.steps.scenario.tasks.step_task_request_text_with_name_to_endpoint"></a></p>
 <h4 id="step_task_request_text_with_name_to_endpoint">step_task_request_text_with_name_to_endpoint</h4>
 <div class="highlight"><pre><span></span><code><span class="nd">@then</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;{method:Method} request with name &quot;</span><span class="si">{name}</span><span class="s1">&quot; {direction:Direction} endpoint &quot;</span><span class="si">{endpoint}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">step_task_request_text_with_name_to_endpoint</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">method</span><span class="p">:</span> <span class="n">RequestMethod</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">direction</span><span class="p">:</span> <span class="n">RequestDirection</span><span class="p">,</span> <span class="n">endpoint</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
 <p>Creates a named request to an endpoint on <code>host</code>, where optional payload is defined directly in the feature file.</p>
-<p>If <code>method</code> in the expression is <code>get</code> or <code>receive</code>; the <code>direction</code> <strong>must</strong> be <code>from</code>. \
+<p>If <code>method</code> in the expression is <code>get</code> or <code>receive</code>; the <code>direction</code> <strong>must</strong> be <code>from</code>.
 If <code>method</code> in the expression is <code>post</code>, <code>pust</code>, or <code>send</code>; the <code>direction</code> <strong>must</strong> be <code>to</code>, and payload defined in the feature file.</p>
 <div class="highlight"><pre><span></span><code><span class="k">Then </span><span class="nf">post request with name &quot;</span><span class="s">test-post</span><span class="nf">&quot; to endpoint &quot;</span><span class="s">/api/test</span><span class="nf">&quot;</span>
 <span class="nf">    </span><span class="k">&quot;&quot;&quot;</span><span class="s"></span>
@@ -1214,7 +1212,7 @@ If <code>method</code> in the expression is <code>post</code>, <code>pust</code>
 <p><strong>Arguments</strong>:</p>
 <ul>
 <li><code>method</code> <em>RequestMethod</em> - type of request</li>
-<li><code>name</code> <em>str</em> - name of the requests in logs, can contains variables</li>
+<li><code>name</code> <em>str</em> - name of the requests in logs, can contain variables</li>
 <li><code>direction</code> <em>RequestDirection</em> - one of <code>to</code> or <code>from</code> depending on the value of <code>method</code></li>
 <li><code>endpoint</code> <em>str</em> - URI relative to <code>host</code> in the scenario, can contain variables and in certain cases <code>user_class_name</code> specific parameters</li>
 </ul>
@@ -1231,8 +1229,8 @@ If <code>method</code> in the expression is <code>post</code>, <code>pust</code>
 <p><strong>Arguments</strong>:</p>
 <ul>
 <li><code>method</code> <em>RequestMethod</em> - type of request</li>
-<li><code>source</code> <em>str</em> - path to a template file relative to the directory <code>requests/</code>, which <strong>must</strong> exists in the directory the feature file is located</li>
-<li><code>name</code> <em>str</em> - name of the requests in logs, can contains variables</li>
+<li><code>source</code> <em>str</em> - path to a template file relative to the directory <code>requests/</code>, which <strong>must</strong> exist in the directory the feature file is located</li>
+<li><code>name</code> <em>str</em> - name of the requests in logs, can contain variables</li>
 <li><code>endpoint</code> <em>str</em> - URI relative to <code>host</code> in the scenario, can contain variables and in certain cases <code>user_class_name</code> specific parameters</li>
 </ul>
 <p><a id="grizzly.steps.scenario.tasks.step_task_request_file_with_name"></a></p>
@@ -1251,8 +1249,8 @@ If <code>method</code> in the expression is <code>post</code>, <code>pust</code>
 <p><strong>Arguments</strong>:</p>
 <ul>
 <li><code>method</code> <em>RequestMethod</em> - type of request</li>
-<li><code>source</code> <em>str</em> - path to a template file relative to the directory <code>requests/</code>, which <strong>must</strong> exists in the directory the feature file is located</li>
-<li><code>name</code> <em>str</em> - name of the requests in logs, can contains variables</li>
+<li><code>source</code> <em>str</em> - path to a template file relative to the directory <code>requests/</code>, which <strong>must</strong> exist in the directory the feature file is located</li>
+<li><code>name</code> <em>str</em> - name of the requests in logs, can contain variables</li>
 </ul>
 <p><a id="grizzly.steps.scenario.tasks.step_task_request_text_with_name"></a></p>
 <h4 id="step_task_request_text_with_name">step_task_request_text_with_name</h4>
@@ -1260,8 +1258,8 @@ If <code>method</code> in the expression is <code>post</code>, <code>pust</code>
 <span class="k">def</span> <span class="nf">step_task_request_text_with_name</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">method</span><span class="p">:</span> <span class="n">RequestMethod</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
 <p>Creates a named request to the same endpoint as previous request, where optional payload is defined directly in the feature file.</p>
-<p>If <code>method</code> in the expression is <code>post</code>, <code>put</code> or <code>send</code> the payload in the request be defined directly in the feature file after the step.
-This step is useful if <code>method</code> and <code>endpoint</code> is the same as previous request, but the payload should be different.</p>
+<p>If <code>method</code> in the expression is <code>post</code>, <code>put</code> or <code>send</code> the payload in the request <strong>must</strong> be defined directly in the feature file after the step.
+This step is useful if <code>method</code> and <code>endpoint</code> are the same as previous request, but the payload should be different.</p>
 <div class="highlight"><pre><span></span><code><span class="k">Then </span><span class="nf">post request with name &quot;</span><span class="s">test-post-1</span><span class="nf">&quot; to endpoint &quot;</span><span class="s">/api/test</span><span class="nf">&quot;</span>
 <span class="nf">    </span><span class="k">&quot;&quot;&quot;</span><span class="s"></span>
 <span class="s">    {</span>
@@ -1299,7 +1297,7 @@ This step is useful if <code>method</code> and <code>endpoint</code> is the same
 <p><strong>Arguments</strong>:</p>
 <ul>
 <li><code>method</code> <em>RequestMethod</em> - type of request</li>
-<li><code>name</code> <em>str</em> - name of the requests in logs, can contains variables</li>
+<li><code>name</code> <em>str</em> - name of the requests in logs, can contain variables</li>
 </ul>
 <p><a id="grizzly.steps.scenario.tasks.step_task_wait_seconds"></a></p>
 <h4 id="step_task_wait_seconds">step_task_wait_seconds</h4>
@@ -1308,7 +1306,7 @@ This step is useful if <code>method</code> and <code>endpoint</code> is the same
 </code></pre></div>
 <p>Create an explicit wait (task) in the scenario. The scenario will wait the time specified (seconds) on top
 of what has been defined in <code>step_setup_wait_time</code>.</p>
-<p>Above combinations of steps will results in a wait time between 3 and 4 seconds for the first requests that is defined after the
+<p>Above combinations of steps will result in a wait time between 3 and 4 seconds for the first request that is defined after the
 <code>And wait for...</code>-step.</p>
 <div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">wait time inbetween requests is random between &quot;</span><span class="s">1.5</span><span class="nf">&quot; and &quot;</span><span class="s">2.5</span><span class="nf">&quot; seconds</span>
 <span class="nf">...</span>
@@ -1324,7 +1322,7 @@ of what has been defined in <code>step_setup_wait_time</code>.</p>
 The feature will fail if they are added into any other section.</p>
 <p><a id="grizzly.steps.background.setup"></a></p>
 <h1 id="grizzlystepsbackgroundsetup">grizzly.steps.background.setup</h1>
-<p>This module constains step implementations that configures the load test scenario with parameters applicable for all scenarios.</p>
+<p>This module contains step implementations that configures the load test scenario with parameters applicable for all scenarios.</p>
 <p><a id="grizzly.steps.background.setup.step_setup_save_statistics"></a></p>
 <h4 id="step_setup_save_statistics">step_setup_save_statistics</h4>
 <div class="highlight"><pre><span></span><code><span class="nd">@given</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;save statistics to &quot;</span><span class="si">{url}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
@@ -1382,8 +1380,8 @@ If available test data is infinite, the test will run forever if this step is no
 </code></pre></div>
 <p>Create a global variable in the context. Depending on which type of user a scenario is configured for, different variables
 are available. Check <code>grizzly.users</code> documentation for which context variables are available for each user.</p>
-<p>This step can be used if the feature file has multiple scenarios and all of them has the same context variables.</p>
-<p>Variable names can contain dots (<code>.</code>) or slash (<code>/</code>) to indicate that the variable is in a structure. All names will also be
+<p>This step can be used if the feature file has multiple scenarios and all of them have the same context variables.</p>
+<p>Variable names can contain (one ore more) dot (<code>.</code>) or slash (<code>/</code>) to indicate that the variable is in a structure. All names will also be
 converted to lower case.</p>
 <p>E.g. <code>token.url</code> and <code>token/URL</code> results in:</p>
 <p>Space in variable names is also allowed and will then be translated to an underscore (<code>_</code>)</p>

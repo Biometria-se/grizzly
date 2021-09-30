@@ -9,7 +9,7 @@
       
       
       
-      <link rel="icon" href="../../../../assets/images/favicon.png">
+      <link rel="icon" href="../../../../assets/logo/grizzly_logo_16.png">
       <meta name="generator" content="mkdocs-1.2.2, mkdocs-material-7.2.6">
     
     
@@ -78,8 +78,7 @@
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href="../../../.." title="Grizzly" class="md-header__button md-logo" aria-label="Grizzly" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
+  <img src="../../../../assets/logo/grizzly_logo_128.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -175,8 +174,7 @@
   <label class="md-nav__title" for="__drawer">
     <a href="../../../.." title="Grizzly" class="md-nav__button md-logo" aria-label="Grizzly" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
+  <img src="../../../../assets/logo/grizzly_logo_128.png" alt="logo">
 
     </a>
     Grizzly
@@ -884,16 +882,16 @@
                 
                 <p><a id="grizzly.steps.scenario.setup"></a></p>
 <h1 id="grizzlystepsscenariosetup">grizzly.steps.scenario.setup</h1>
-<p>This module contains step implementations that setups the load test scenario with parameters that is going to be used in the scenario they are defined in.</p>
+<p>This module contains step implementations that setup the load test scenario with parameters that is going to be used in the scenario they are defined in.</p>
 <p><a id="grizzly.steps.scenario.setup.step_setup_set_context_variable"></a></p>
 <h4 id="step_setup_set_context_variable">step_setup_set_context_variable</h4>
 <div class="highlight"><pre><span></span><code><span class="nd">@given</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;set context variable &quot;</span><span class="si">{variable}</span><span class="s1">&quot; to &quot;</span><span class="si">{value}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">step_setup_set_context_variable</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
 <p>Set a variable in the scenario context.</p>
-<p>Variable name can contain dots (<code>.</code>) or slash (<code>/</code>) to indicate that the variable has a nested structure. E.g. <code>token.url</code>
+<p>Variable name can contain (one or more) dot (<code>.</code>) or slash (<code>/</code>) to indicate that the variable has a nested structure. E.g. <code>token.url</code>
 and <code>token/url</code> results in:</p>
-<p>It is also possible to have space in a variable name, they will then be replaced with underscore (<code>_</code>), and name will be
+<p>It is also possible to have spaces in a variable name, they will then be replaced with underscore (<code>_</code>), and name will be
 converted to lowercase.</p>
 <p>E.g. <code>Client ID</code> results in <code>client_id</code></p>
 <p><div class="highlight"><pre><span></span><code><span class="p">{</span>
@@ -957,10 +955,10 @@ the scenario.</p>
 <p>Data type for the value of the variable is based on the type of variable. If the variable is an "<code>Atomic*</code>"-variable
 then the value needs to match the format and type that the variable has implemented. If it is a non "<code>Atomic*</code>"-variable
 <code>grizzly</code> will try to guess the data type. E.g.:
-* <code>"10"</code> -&gt; <code>int</code>
-* <code>"1.0"</code> -&gt; <code>float</code>
-* <code>"True"</code> -&gt; <code>bool</code>
-* default -&gt; <code>str</code></p>
+* <code>"10"</code> becomes <code>int</code>
+* <code>"1.0"</code> becomes <code>float</code>
+* <code>"True"</code> becomes <code>bool</code>
+* everything else becomes <code>str</code></p>
 <p>It is possible to set the value of a variable based on another variable, which can be usable if you have a variable in
 multiple scenarios which all should have the same initial value.</p>
 <p><div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">value for variable &quot;</span><span class="s">HelloWorld</span><span class="nf">&quot; is &quot;</span><span class="s">default</span><span class="nf">&quot;</span>
@@ -981,13 +979,13 @@ multiple scenarios which all should have the same initial value.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@given</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;set alias &quot;</span><span class="si">{alias}</span><span class="s1">&quot; for variable &quot;</span><span class="si">{variable}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">step_setup_set_variable_alias</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">alias</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
-<p>Create an alias for an variable that points to another structure in the context.</p>
+<p>Create an alias for a variable that points to another structure in the context.</p>
 <p>This is useful if you have test data that somehow should change the behavior for a
 user, e.g. username and password.</p>
 <p>Assumed that the file <code>users.csv</code> contains the columns <code>username</code> and <code>password</code>; without
 the alias step it would look like the following structure in the context:</p>
 <p>With the alias step it will be transformed to this:</p>
-<p>Variables in payload templates is not allowed to have an alias.</p>
+<p>Variables in payload templates are not allowed to have an alias.</p>
 <p><div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">set variable &quot;</span><span class="s">AtomicCsvRow.users</span><span class="nf">&quot; to &quot;</span><span class="s">users.csv | repeat=True</span><span class="nf">&quot;</span>
 <span class="k">And </span><span class="nf">set alias &quot;</span><span class="s">auth.user.username</span><span class="nf">&quot; for variable &quot;</span><span class="s">AtomicCsvRow.users.username</span><span class="nf">&quot;</span>
 <span class="k">And </span><span class="nf">set alias &quot;</span><span class="s">auth.user.password</span><span class="nf">&quot; for variable &quot;</span><span class="s">AtomicCsvRow.users.password</span><span class="nf">&quot;</span>

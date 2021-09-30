@@ -9,7 +9,7 @@
       
       
       
-      <link rel="icon" href="assets/images/favicon.png">
+      <link rel="icon" href="assets/logo/grizzly_logo_16.png">
       <meta name="generator" content="mkdocs-1.2.2, mkdocs-material-7.2.6">
     
     
@@ -78,8 +78,7 @@
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href="." title="Grizzly" class="md-header__button md-logo" aria-label="Grizzly" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
+  <img src="assets/logo/grizzly_logo_128.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -175,8 +174,7 @@
   <label class="md-nav__title" for="__drawer">
     <a href="." title="Grizzly" class="md-nav__button md-logo" aria-label="Grizzly" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
+  <img src="assets/logo/grizzly_logo_128.png" alt="logo">
 
     </a>
     Grizzly
@@ -889,7 +887,7 @@
                 
                 
                 <h1 id="grizzly-zli">Grizzly - <code>/ˈɡɹɪzli/</code></h1>
-<p><img src="https://avatars.githubusercontent.com/u/2641063" height="100" width="100" /> <font size="30">+</font> <img src="https://behave.readthedocs.io/en/stable/_images/behave_logo1.png" height="100" width="100" /> <font size="30">=</font> <img src="https://upload.wikimedia.org/wikipedia/commons/7/71/Melanoplus_punctulatus_P1010365a.jpg" height="100" width="100" /></p>
+<p><img alt="grizzly logo" src="https://raw.githubusercontent.com/Biometria-se/grizzly/main/docs/assets/logo/grizzly_logo_256.png" /></p>
 <p>Grizzly is a framework to be able to easily define load scenarios, and is mainly built on-top of two other frameworks:</p>
 <blockquote>
 <p><a href="https://locust.io">Locust</a>: Define user behaviour with Python code, and swarm your system with millions of simultaneous users.</p>
@@ -933,19 +931,19 @@
 <p>The solution is heavily inspired by <a href="https://medium.com/locust-io-experiments/locust-experiments-feeding-the-locusts-cf09e0f65897">Karol Brejnas locust experiments - feeding the locust</a>. A producer is running on the master (or local) node and keeps track of what has been sent to the consumer running on a worker (or local) node. The two communicates over a seperate <a href="https://zeromq.org">ZeroMQ</a> session.</p>
 <p>When the consumer wants new test data, it sends a message to the server that it is available and for which scenario it is going to run. The producer then responds with unique test data that can be used.</p>
 <h3 id="statistics">Statistics</h3>
-<p>Listeners for both InfluxDB and Azure Application Insights is included. The later is more or less <a href="https://github.com/SvenskaSpel/locust-plugins/blob/master/locust_plugins/appinsights_listener.py"><code>appinsights_listener.py</code></a>, from the good guys at <a href="https://github.com/SvenskaSpel">Svenska Spel</a>, but with typing.</p>
+<p>Listeners for both InfluxDB and Azure Application Insights are included. The later is more or less <a href="https://github.com/SvenskaSpel/locust-plugins/blob/master/locust_plugins/appinsights_listener.py"><code>appinsights_listener.py</code></a>, from the good guys at <a href="https://github.com/SvenskaSpel">Svenska Spel</a>, but with typing.</p>
 <p>They are useful when history of test runs is needed, or when wanting to correlate load tests with other events in the targeted environment.</p>
 <h3 id="load-test-users">Load test users</h3>
 <p><code>locust</code> comes with a simple user for loading an HTTP(S) endpoint and due to the nature of how the integration between <code>behave</code> and <code>locust</code> works, it is not possible to use <code>locust</code> provided users, even for HTTP(S) targets.</p>
 <ul>
 <li><code>RestApiUser</code>: send requests to REST API endpoinds, supports authentication with username+password or client secret</li>
-<li><code>ServiceBusUser</code>: send and receive from Azure Service Bus queues and topics</li>
+<li><code>ServiceBusUser</code>: send to Azure Service Bus queues and topics</li>
 <li><code>MessageQueueUser</code>: send and receive from IBM MQ queues</li>
 <li><code>SftpUser</code>: send and receive files from an SFTP-server</li>
-<li><code>BlobStorageUser</code>: upload and download files from Azure Blob Storage</li>
+<li><code>BlobStorageUser</code>: send files to Azure Blob Storage</li>
 </ul>
 <h3 id="request-log">Request log</h3>
-<p>All failed requests is logged to a file which includes both header and body, both for request and response.</p>
+<p>All failed requests are logged to a file which includes both header and body, both for request and response.</p>
 <h2 id="development">Development</h2>
 <p>The easiest way to start contributing to this project is to have <a href="https://code.visualstudio.com/">Visual Studio Code</a> (with "Remote - Containers" extension) and <a href="https://www.docker.com/">docker</a> installed. The project comes with a <code>devcontainer</code>, which encapsulates everything needed for a development environment.</p>
 <p>It is also possible to use a python virtual environment where both <code>requirements.txt</code> and <code>requirements-dev.txt</code> is installed.</p>

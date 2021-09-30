@@ -9,7 +9,7 @@
       
       
       
-      <link rel="icon" href="../assets/images/favicon.png">
+      <link rel="icon" href="../assets/logo/grizzly_logo_16.png">
       <meta name="generator" content="mkdocs-1.2.2, mkdocs-material-7.2.6">
     
     
@@ -78,8 +78,7 @@
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href=".." title="Grizzly" class="md-header__button md-logo" aria-label="Grizzly" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
+  <img src="../assets/logo/grizzly_logo_128.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -175,8 +174,7 @@
   <label class="md-nav__title" for="__drawer">
     <a href=".." title="Grizzly" class="md-nav__button md-logo" aria-label="Grizzly" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
+  <img src="../assets/logo/grizzly_logo_128.png" alt="logo">
 
     </a>
     Grizzly
@@ -875,7 +873,7 @@
                 
                 
                 <h1 id="example">Example</h1>
-<p>The directory <code>example/</code> is an working project that sends request to public REST API endpoints, <strong>please do not abuse these</strong>.</p>
+<p>The directory <code>example/</code> is an working project that sends requests to public REST API endpoints, <strong>please do not abuse these</strong>.</p>
 <h2 id="structure">Structure</h2>
 <p>The project <em>must</em> have the follwoing structure:</p>
 <div class="highlight"><pre><span></span><code>.
@@ -954,7 +952,7 @@ pip3 install -r requirements-run.txt
 <p>If you do not already have an working "IBM MQ" client setup and run <code>grizzly-cli</code> in local mode you will not be able to use <code>MessageQueueUser</code>. See <a href="https://github.com/Biometria-se/grizzly-cli/blob/main/grizzly_cli/static/Containerfile#L5-L23"><code>grizzly-cli/static/Containerfile</code></a> on how to get these.</p>
 <h2 id="run">Run</h2>
 <p><code>grizzly</code> has some runtime features which is easiliest handled by using the <code>grizzly-cli</code>. It provides a simple command line interface wrapping the <code>behave</code> command, for providing initial variable values, configuration etc.</p>
-<p>If <code>docker</code> and <code>docker-compose</code> is installed, <code>grizzly-cli</code> will by default start the load test in distributed mode (override with <code>--local</code>).</p>
+<p>If <code>docker</code> and <code>docker-compose</code> are installed, <code>grizzly-cli</code> will by default start the load test in distributed mode (override with <code>--local</code>).</p>
 <p>To run the example, in local mode:</p>
 <div class="highlight"><pre><span></span><code>grizzly-cli --local -c environments/example.yaml features/example.feature
 </code></pre></div>

@@ -9,7 +9,7 @@
       
       
       
-      <link rel="icon" href="../../../../assets/images/favicon.png">
+      <link rel="icon" href="../../../../assets/logo/grizzly_logo_16.png">
       <meta name="generator" content="mkdocs-1.2.2, mkdocs-material-7.2.6">
     
     
@@ -78,8 +78,7 @@
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href="../../../.." title="Grizzly" class="md-header__button md-logo" aria-label="Grizzly" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
+  <img src="../../../../assets/logo/grizzly_logo_128.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -175,8 +174,7 @@
   <label class="md-nav__title" for="__drawer">
     <a href="../../../.." title="Grizzly" class="md-nav__button md-logo" aria-label="Grizzly" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
+  <img src="../../../../assets/logo/grizzly_logo_128.png" alt="logo">
 
     </a>
     Grizzly
@@ -876,7 +874,7 @@
 <div class="highlight"><pre><span></span><code><span class="nd">@then</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;save response {target:ResponseTarget} &quot;</span><span class="si">{expression}</span><span class="s1">&quot; that matches &quot;</span><span class="si">{match_with}</span><span class="s1">&quot; in variable &quot;</span><span class="si">{variable}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">step_response_save_matches</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="n">ResponseTarget</span><span class="p">,</span> <span class="n">expression</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">match_with</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
-<p>Save specified parts of a response, either from meta data (header) or payload (body), in an variable.</p>
+<p>Save specified parts of a response, either from meta data (header) or payload (body), in a variable.</p>
 <p>With this step it is possible to change variable values and as such use values from a response later on in the load test.</p>
 <p>This step will fail if the specified <code>expression</code> has no match or more than one match.</p>
 <div class="highlight"><pre><span></span><code><span class="c"># only token is matched and saved in TOKEN, by using regexp match groups</span><span class="nf"></span>
@@ -957,15 +955,15 @@ it will be removed from the list of allowed response status codes.</p>
 </code></pre></div>
 <p><strong>Arguments</strong>:</p>
 <ul>
-<li><code>status_list</code> <em>str</em> - comma seperated list of integers</li>
+<li><code>status_list</code> <em>str</em> - comma separated list of integers</li>
 </ul>
 <p><a id="grizzly.steps.scenario.response.step_response_allow_status_codes_table"></a></p>
 <h4 id="step_response_allow_status_codes_table">step_response_allow_status_codes_table</h4>
 <div class="highlight"><pre><span></span><code><span class="nd">@then</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;allow response status codes&#39;</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">step_response_allow_status_codes_table</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
-<p>Set allowed response status codes for the latest defined requests based on a data table.
-Anger en komma separerad lista med tillåtna returkoder för dom senaste anropen med en data tabell.</p>
+<p>Set allowed response status codes for the latest defined requests based on a data table.</p>
+<p>Specifies a comma separeated list of allowed return codes for the latest requests in a data table.</p>
 <p>By default <code>200</code> is the only allowed respoonse status code. By prefixing a code with minus (<code>-</code>),
 it will be removed from the list of allowed response status codes.</p>
 <p>Number of rows in the table specifies which of the latest defined requests the allowed response

@@ -9,7 +9,7 @@
       
       
       
-      <link rel="icon" href="../../../../assets/images/favicon.png">
+      <link rel="icon" href="../../../../assets/logo/grizzly_logo_16.png">
       <meta name="generator" content="mkdocs-1.2.2, mkdocs-material-7.2.6">
     
     
@@ -78,8 +78,7 @@
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href="../../../.." title="Grizzly" class="md-header__button md-logo" aria-label="Grizzly" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
+  <img src="../../../../assets/logo/grizzly_logo_128.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -175,8 +174,7 @@
   <label class="md-nav__title" for="__drawer">
     <a href="../../../.." title="Grizzly" class="md-nav__button md-logo" aria-label="Grizzly" data-md-component="logo">
       
-  
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54z"/></svg>
+  <img src="../../../../assets/logo/grizzly_logo_128.png" alt="logo">
 
     </a>
     Grizzly
@@ -842,7 +840,7 @@
                 
                 <p><a id="grizzly.steps.background.setup"></a></p>
 <h1 id="grizzlystepsbackgroundsetup">grizzly.steps.background.setup</h1>
-<p>This module constains step implementations that configures the load test scenario with parameters applicable for all scenarios.</p>
+<p>This module contains step implementations that configures the load test scenario with parameters applicable for all scenarios.</p>
 <p><a id="grizzly.steps.background.setup.step_setup_save_statistics"></a></p>
 <h4 id="step_setup_save_statistics">step_setup_save_statistics</h4>
 <div class="highlight"><pre><span></span><code><span class="nd">@given</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;save statistics to &quot;</span><span class="si">{url}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
@@ -900,8 +898,8 @@ If available test data is infinite, the test will run forever if this step is no
 </code></pre></div>
 <p>Create a global variable in the context. Depending on which type of user a scenario is configured for, different variables
 are available. Check <code>grizzly.users</code> documentation for which context variables are available for each user.</p>
-<p>This step can be used if the feature file has multiple scenarios and all of them has the same context variables.</p>
-<p>Variable names can contain dots (<code>.</code>) or slash (<code>/</code>) to indicate that the variable is in a structure. All names will also be
+<p>This step can be used if the feature file has multiple scenarios and all of them have the same context variables.</p>
+<p>Variable names can contain (one ore more) dot (<code>.</code>) or slash (<code>/</code>) to indicate that the variable is in a structure. All names will also be
 converted to lower case.</p>
 <p>E.g. <code>token.url</code> and <code>token/URL</code> results in:</p>
 <p>Space in variable names is also allowed and will then be translated to an underscore (<code>_</code>)</p>
