@@ -106,10 +106,14 @@ Create an python virtual environment and install dependencies:
 python3 -m venv .env
 . .env/bin/activate
 pip3 install -r requirements.txt
-pip3 install -r requirements-run.txt
+pip3 install grizzly-loadtester-cli
 ```
 
-If you do not already have an working "IBM MQ" client setup and run `grizzly-cli` in local mode you will not be able to use `MessageQueueUser`. See [`grizzly-cli/static/Containerfile`](https://github.com/Biometria-se/grizzly-cli/blob/main/grizzly_cli/static/Containerfile#L5-L23) on how to get these.
+If you do not already have an working "IBM MQ" client setup and run `grizzly-cli` in local mode you will not be able to use `MessageQueueUser`. See [`grizzly-cli/static/Containerfile`](https://github.com/Biometria-se/grizzly-cli/blob/main/grizzly_cli/static/Containerfile#L5-L23) on how to get these. When that is done you need to install the extra dependencies:
+
+```bash
+pip3 install grizzly-loadtester-cli[mq]
+```
 
 ## Run
 
