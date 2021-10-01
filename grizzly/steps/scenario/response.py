@@ -55,25 +55,30 @@ def step_response_save_matches(context: Context, target: ResponseTarget, express
 
     ```gherkin
     # only token is matched and saved in TOKEN, by using regexp match groups
-    And set variable "TOKEN" to "none"
+    And value of variable "TOKEN" is "none"
     And save response metadata "$.Authentication" that matches "Bearer (.*)$" in variabel "TOKEN"
 
     # the whole value is saved, as long as Authentication starts with "Bearer"
-    And set variable "HEADER_AUTHENTICATION" to "none"
+    And value of variable "HEADER_AUTHENTICATION" is "none"
     And save response metadata "$.Authentication" that matches "^Bearer .*$" in variable "HEADER_AUTHENTICATION"
 
     # only the numerical suffix is saved in the variable
-    And set variable "AtomicInteger.measurermentId" to "0"
+    And value of variable "AtomicInteger.measurermentId" is "0"
     And save response payload "$.measurement.id" that matches "^cpu([\\d]+)$" in "AtomicInteger.measurementId"
 
     # the whole value is saved, as long as the value starts with "cpu"
-    And set variable "measurementId" to "0"
+    And value of variable "measurementId" is "0"
     And save response payload "$.measurement.id" that matches "^cpu[\\d]+$" in "measurementId"
+
+    # xpath example
+    And set response content type to "application/xml"
+    And value of variable "xmlMeasurementId" is "none"
+    And save response payload "//measurement[0]/id/text()" that matches "^cpu[\\d]+$" in "xmlMeasurementId"
     ```
 
     Args:
         target (enum): "metadata" or "payload", depending on which part of the response should be used
-        expression (str): JSON path expression for finding the property
+        expression (str): JSON path or XPath expression for finding the property
         match_with (str): static value or a regular expression
         variable (str): name of the already initialized variable to save the value in
     '''
@@ -93,12 +98,14 @@ def step_response_save(context: Context, target: ResponseTarget, expression: str
     ```gherkin
     And save response metadata "$.Authentication" in variable "HEADER_AUTHENTICATION"
 
-    And save response payload "$.MeasureResult.ShipmentId" in variable "ShipmentId"
+    And save response payload "$.Result.ShipmentId" in variable "ShipmentId"
+
+    And save response payload "//measurement[0]/id/text()" in "xmlMeasurementId"
     ```
 
     Args:
         target (enum): "metadata" or "payload", depending on which part of the response should be used
-        expression (str): JSON path expression for finding the property
+        expression (str): JSON path or XPath expression for finding the property
         variable (str): name of the already initialized variable to save the value in
     '''
     add_save_handler(cast(LocustContext, context.locust), target, expression, '.*', variable)
@@ -115,11 +122,12 @@ def step_response_validate(context: Context, target: ResponseTarget, expression:
 
     When response payload "$.measurement.id" is not "cpu[0-9]+" stop user
     When response payload "$.success" is "false" stop user
+    When response payload "/root/measurement[@id="cpu"]/success/text()" is "'false'" stop user
     ```
 
     Args:
         target (enum): "metadata" or "payload", depending on which part of the response should be used
-        expression (str): JSON path expression for finding the property
+        expression (str): JSON path or XPath expression for finding the property
         condition (enum): "is" or "is not" depending on negative or postive matching
         match_with (str): static value or a regular expression
     '''

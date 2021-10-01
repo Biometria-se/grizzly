@@ -94,4 +94,4 @@ Easiest way to get started is to check out the [example](/example/)!
 
 The easiest way to start contributing to this project is to have [Visual Studio Code](https://code.visualstudio.com/) (with "Remote - Containers" extension) and [docker](https://www.docker.com/) installed. The project comes with a `devcontainer`, which encapsulates everything needed for a development environment.
 
-It is also possible to use a python virtual environment where both `requirements.txt` and `requirements-dev.txt` is installed.
+It is also possible to use a python virtual environment where `requirements.txt` and `requirements-dev.txt` is installed, and also preferbly the IBM MQ client dependencies and `requirements-extras.txt`.
