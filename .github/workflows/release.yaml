@@ -137,9 +137,7 @@ jobs:
         python setup.py sdist bdist_wheel
         ls -l dist/grizzly?loadtester-${{ steps.version.outputs.version }}*
         if [[ "${{ github.event.inputs.dry-run }}" != "true" ]]; then
-          ls -l dist/grizzly?loadtester-${{ steps.version.outputs.version }}*
-          # @TODO: still testing...
-          # twine upload dist/grizzly?loadtester-${{ steps.version.outputs.version }}*
+          twine upload dist/grizzly?loadtester-${{ steps.version.outputs.version }}*
         else
           echo "!! dry-run, does not upload package to pypi"
         fi
