@@ -2,7 +2,6 @@ import logging
 
 from typing import Optional, Dict, Any, Tuple, List, Union
 from os import environ, path
-#from functools import wraps, lru_cache
 from hashlib import sha1 as sha1_hash
 from enum import Enum
 from dataclasses import dataclass, field
@@ -20,23 +19,6 @@ logger = logging.getLogger(__name__)
 
 def generate_identifier(name: str) -> str:
     return sha1_hash(name.encode('utf-8')).hexdigest()[:8]
-
-
-'''
-def secret(func: WrappedFunc) -> WrappedFunc:
-    @wraps(func)
-    def wrapper(self: 'LocustContextSetup', *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Any:
-        return func(self, *args, **kwargs)
-
-    return cast(WrappedFunc, wrapper)
-
-
-def cache(maxsize: Optional[int] = 1) -> WrappedFunc:
-    def wrapper(func: WrappedFunc) -> Any:
-        return lru_cache(maxsize=maxsize)(func)
-
-    return cast(WrappedFunc, wrapper)
-'''
 
 
 class ResponseTarget(Enum):

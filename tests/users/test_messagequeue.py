@@ -91,10 +91,9 @@ class TestMessageQueueUser:
 
         out, _ = process.communicate()
         output = out.decode('utf-8')
-        print(output)
         assert process.returncode == 1
         assert 'mq.has_dependency=False' in output
-        assert 'could not import pymqi, have you installed IBM MQ dependencies?' in output
+        assert 'MessageQueueUser could not import pymqi, have you installed IBM MQ dependencies?' in output
 
     @pytest.mark.usefixtures('locust_environment')
     def test_create(self, locust_environment: Environment) -> None:

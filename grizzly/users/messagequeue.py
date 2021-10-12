@@ -99,7 +99,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
 
     if not has_dependency:
         def __init__(self, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
-            raise NotImplementedError('could not import pymqi, have you installed IBM MQ dependencies?')
+            raise NotImplementedError('MessageQueueUser could not import pymqi, have you installed IBM MQ dependencies?')
     else:
         qmgr: Optional[pymqi.QueueManager]
         md: pymqi.MD

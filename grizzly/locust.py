@@ -86,6 +86,12 @@ def setup_locust_scenarios(context: LocustContext) -> Tuple[List[User], List[Req
         user_class_type = create_user_class_type(scenario, context.setup.global_context)
         user_class_type.host = scenario.context['host']
 
+        # fail early if there is a problem with creating an instance of the user class
+        try:
+            user_class_type()
+        except TypeError:  # missing required environment argument, is OK
+            pass
+
         scenario_type = create_task_class_type('TrafficIteratorTasks', scenario)
         scenario.name = scenario_type.__name__
         for task in scenario.tasks:
