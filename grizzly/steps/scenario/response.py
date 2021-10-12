@@ -56,24 +56,24 @@ def step_response_save_matches(context: Context, target: ResponseTarget, express
     ```gherkin
     # only token is matched and saved in TOKEN, by using regexp match groups
     And value of variable "TOKEN" is "none"
-    And save response metadata "$.Authentication" that matches "Bearer (.*)$" in variabel "TOKEN"
+    Then save response metadata "$.Authentication" that matches "Bearer (.*)$" in variabel "TOKEN"
 
     # the whole value is saved, as long as Authentication starts with "Bearer"
     And value of variable "HEADER_AUTHENTICATION" is "none"
-    And save response metadata "$.Authentication" that matches "^Bearer .*$" in variable "HEADER_AUTHENTICATION"
+    Then save response metadata "$.Authentication" that matches "^Bearer .*$" in variable "HEADER_AUTHENTICATION"
 
     # only the numerical suffix is saved in the variable
     And value of variable "AtomicInteger.measurermentId" is "0"
-    And save response payload "$.measurement.id" that matches "^cpu([\\d]+)$" in "AtomicInteger.measurementId"
+    Then save response payload "$.measurement.id" that matches "^cpu([\\d]+)$" in "AtomicInteger.measurementId"
 
     # the whole value is saved, as long as the value starts with "cpu"
     And value of variable "measurementId" is "0"
-    And save response payload "$.measurement.id" that matches "^cpu[\\d]+$" in "measurementId"
+    Then save response payload "$.measurement.id" that matches "^cpu[\\d]+$" in "measurementId"
 
     # xpath example
     And set response content type to "application/xml"
     And value of variable "xmlMeasurementId" is "none"
-    And save response payload "//measurement[0]/id/text()" that matches "^cpu[\\d]+$" in "xmlMeasurementId"
+    Then save response payload "//measurement[0]/id/text()" that matches "^cpu[\\d]+$" in "xmlMeasurementId"
     ```
 
     Args:
@@ -96,11 +96,11 @@ def step_response_save(context: Context, target: ResponseTarget, expression: str
     This step will fail if the specified `expression` has no match or more than one match.
 
     ```gherkin
-    And save response metadata "$.Authentication" in variable "HEADER_AUTHENTICATION"
+    Then save response metadata "$.Authentication" in variable "HEADER_AUTHENTICATION"
 
-    And save response payload "$.Result.ShipmentId" in variable "ShipmentId"
+    Then save response payload "$.Result.ShipmentId" in variable "ShipmentId"
 
-    And save response payload "//measurement[0]/id/text()" in "xmlMeasurementId"
+    Then save response payload "//measurement[0]/id/text()" in "xmlMeasurementId"
     ```
 
     Args:
