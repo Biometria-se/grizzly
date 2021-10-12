@@ -97,9 +97,18 @@ class JsonTransformer(Transformer):
 class XmlTransformer(Transformer):
     @classmethod
     def transform(cls, content_type: ResponseContentType, raw: str) -> Tuple[ResponseContentType, Any]:
+        document = XML.XML(raw.encode('utf-8'))
+
+        # remove namespaces, which makes it easier to use XPath...
+        for element in document.getiterator():
+            if isinstance(element.tag, str):
+                element.tag = XML.QName(element).localname
+
+        XML.cleanup_namespaces(document)
+
         return (
             content_type,
-            XML.XML(raw.encode('utf-8')),
+            document,
         )
 
     @classmethod
