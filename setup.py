@@ -2,6 +2,7 @@ import codecs
 
 from typing import List
 from setuptools import setup, find_packages
+
 from grizzly import __version__
 
 
@@ -26,13 +27,37 @@ setup(
     long_description=long_description(),
     long_description_content_type='text/markdown',
     url='https://github.com/Biometria-se/grizzly',
-    author='Mikael Göransson',
-    author_email='github@mgor.se',
+    author='Biometria',
+    author_email='opensource@biometria.se',
     license='MIT',
     packages=find_packages(exclude=['*tests', '*tests.*']),
     python_requires='>=3.8',
     install_requires=install_requires(),
+    keywords=[
+        'locust',
+        'behave',
+        'load',
+        'loadtest',
+        'performance',
+        'traffic generator',
+    ],
+    classifiers=[
+        'Development Status :: 4 - Beta',
+        'License :: OSI Approved :: MIT License',
+        'Natural Language :: English',
+        'Programming Language :: Python',
+        'Programming Language :: Python :: 3 :: Only',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: Implementation :: CPython',
+        'Operating System :: POSIX :: Linux',
+    ],
     extras_require={
         'mq': ['pymqi==1.11.0']
-    }
+    },
+    entry_points={
+        'console_scripts': [
+            'messagequeue-daemon=extras.messagequeue.daemon:main',
+            'messagequeue-client=extras.messagequeue.client:main',
+        ]
+    },
 )
