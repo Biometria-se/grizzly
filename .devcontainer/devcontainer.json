@@ -75,7 +75,6 @@
     "mounts": [
         "source=/etc/timezone,target=/etc/timezone,type=bind,consistency=cached",
         "source=/etc/localtime,target=/etc/localtime,type=bind,consistency=cached",
-        "source=/mnt/onedrive-ifk,target=/mnt/onedrive-ifk,type=bind,consistency=cached",
         "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
     ],
     "runArgs": ["--init"],
