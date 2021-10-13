@@ -57,7 +57,6 @@ setup(
     entry_points={
         'console_scripts': [
             'messagequeue-daemon=extras.messagequeue.daemon:main',
-            'messagequeue-client=extras.messagequeue.client:main',
         ]
     },
 )

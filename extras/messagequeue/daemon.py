@@ -1,11 +1,12 @@
+from contextlib import contextmanager
 import logging
-import signal
 
-from typing import Dict, Optional, Any, List
-from types import FrameType
+from typing import Dict, Optional, Any, List, Generator, Tuple
 from uuid import uuid4
-from json import loads as jsonloads, dumps as jsondumps
+from json import loads as jsonloads, dumps as jsondumps, JSONEncoder
 from threading import Thread
+
+import setproctitle as proc
 
 import zmq
 
@@ -23,8 +24,20 @@ SPLITTER_FRAME = ''.encode()
 
 logger = logging.getLogger(__name__)
 
+class JsonBytesEncoder(JSONEncoder):
+    def default(self, o: Any) -> Any:
+        if isinstance(o, bytes):
+            try:
+                return o.decode('utf-8')
+            except:
+                return o.decode('latin-1')
+
+        return JSONEncoder.default(self, o)
+
 
 def router() -> None:
+    proc.setproctitle('grizzly')
+
     context = zmq.Context(1)
     frontend = context.socket(zmq.ROUTER)
     backend = context.socket(zmq.ROUTER)
@@ -86,6 +99,15 @@ def router() -> None:
 
 
 def worker(context: zmq.Context, identity: str) -> None:
+    @contextmanager
+    def queue(_qmgr: pymqi.QueueManager, endpoint: str) -> Generator[pymqi.Queue, None, None]:
+        logger.debug(f'{identity}: trying queue {endpoint}')
+        queue = pymqi.Queue(_qmgr, endpoint)
+        try:
+            yield queue
+        finally:
+            queue.close()
+
     worker = context.socket(zmq.REQ)
 
     worker.setsockopt_string(zmq.IDENTITY, identity)
@@ -95,6 +117,7 @@ def worker(context: zmq.Context, identity: str) -> None:
     qmgr: Optional[pymqi.QueueManager] = None
     gmo: Optional[pymqi.GMO] = None
     md = pymqi.MD()
+    get_arguments: Tuple[Any, ...]
 
     while True:
         msg = worker.recv_multipart()
@@ -130,7 +153,7 @@ def worker(context: zmq.Context, identity: str) -> None:
                         ConnectionName=mq_context['connection'].encode(),
                         ChannelType=pymqi.CMQC.MQCHT_CLNTCONN,
                         TransportType=pymqi.CMQC.MQXPT_TCP,
-                        SSLCipherSpec=mq_context['ssl_chiper'].encode(),
+                        SSLCipherSpec=mq_context['ssl_cipher'].encode(),
                     )
 
                     sco = pymqi.SCO(
@@ -155,20 +178,59 @@ def worker(context: zmq.Context, identity: str) -> None:
                         mq_context['password'],
                     )
 
+                get_arguments = (None, md)
+                message_wait = mq_context.get('message_wait', None)
+                if message_wait is not None and message_wait > 0:
+                    gmo = pymqi.GMO(
+                        Options=pymqi.CMQC.MQGMO_WAIT | pymqi.CMQC.MQGMO_FAIL_IF_QUIESCING,
+                        WaitInterval=message_wait*1000,
+                    )
+                    get_arguments += (gmo, )
+
             logger.debug(f'{identity}: got CONN request')
             reply.update({
                 'message': 'connected',
             })
         elif message['action'] == 'PUT':
             logger.debug(f'{identity}: got PUT request')
-            reply.update({
-                'message': 'put message',
-            })
+            if qmgr is None:
+                reply.update({
+                    'success': False,
+                    'error': 'not connected',
+                })
+            else:
+                with queue(qmgr, message['context']['queue']) as q:
+                    payload = message.get('payload', None)
+                    response_length = len(payload) if payload is not None else 0
+                    q.put(payload, md)
+                    reply.update({
+                        'message': 'put message',
+                        'response_length': response_length,
+                        'metadata': md.get(),
+                    })
         elif message['action'] == 'GET':
             logger.debug(f'{identity}: got GET request')
-            reply.update({
-                'message': 'get message',
-            })
+            if qmgr is None:
+                reply.update({
+                    'success': False,
+                    'error': 'not connected',
+                })
+            else:
+                with queue(qmgr, message['context']['queue']) as q:
+                    try:
+                        payload = q.get(*get_arguments).decode()
+                        response_length = len(payload) if payload is not None else 0
+                        reply.update({
+                            'message': 'get message',
+                            'response_length': response_length,
+                            'metadata': md.get(),
+                            'payload': payload,
+                        })
+                    except pymqi.MQMIError as e:
+                        reply.update({
+                            'success': False,
+                            'error': str(e),
+                        })
         else:
             reply.update({
                 'success': False,
@@ -179,7 +241,7 @@ def worker(context: zmq.Context, identity: str) -> None:
             'action': request['action'],
         })
 
-        response = [msg[0], SPLITTER_FRAME, jsondumps(reply).encode()]
+        response = [msg[0], SPLITTER_FRAME, jsondumps(reply, cls=JsonBytesEncoder).encode()]
         worker.send_multipart(response)
 
 
