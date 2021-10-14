@@ -5,10 +5,13 @@ from time import monotonic as time
 from contextlib import contextmanager
 from json import JSONEncoder
 
-import pymqi
+try:
+    import pymqi
+except:
+    from grizzly_extras import dummy_pymqi as pymqi
 
-MessageQueueIntegrationMetadata = Optional[Dict[str, Any]]
-MessageQueueIntegrationPayload = Optional[Any]
+MessageQueueMetadata = Optional[Dict[str, Any]]
+MessageQueuePayload = Optional[Any]
 
 
 class JsonBytesEncoder(JSONEncoder):
@@ -22,7 +25,7 @@ class JsonBytesEncoder(JSONEncoder):
         return JSONEncoder.default(self, o)
 
 
-class Context(TypedDict, total=False):
+class MessageQueueContext(TypedDict, total=False):
     queue_manager: str
     connection: str
     channel: str
@@ -35,24 +38,24 @@ class Context(TypedDict, total=False):
     queue: str
 
 
-class Request(TypedDict, total=False):
+class MessageQueueRequest(TypedDict, total=False):
     action: str
     worker: Optional[str]
-    context: Context
-    payload: MessageQueueIntegrationPayload
+    context: MessageQueueContext
+    payload: MessageQueuePayload
 
 
-class Response(TypedDict, total=False):
+class MessageQueueResponse(TypedDict, total=False):
     success: bool
     worker: str
     message: Optional[str]
-    payload: MessageQueueIntegrationPayload
-    metadata: MessageQueueIntegrationMetadata
+    payload: MessageQueuePayload
+    metadata: MessageQueueMetadata
     response_length: int
     response_time: int
 
 
-class MessageQueueIntegrationError(Exception):
+class MessageQueueError(Exception):
     pass
 
 
@@ -62,15 +65,15 @@ SPLITTER_FRAME = ''.encode()
 logger = logging.getLogger(__name__)
 logging.basicConfig(format="[%(levelname)-5s] %(name)s: %(message)s", level=logging.DEBUG)
 
-MessageQueueIntegrationRequestHandler = Callable[['MessageQueueIntegration', Request], Response]
+MessageQueueRequestHandler = Callable[['MessageQueue', MessageQueueRequest], MessageQueueResponse]
 
-handlers: Dict[str, MessageQueueIntegrationRequestHandler] = {}
+handlers: Dict[str, MessageQueueRequestHandler] = {}
 
 MessageQueueGetArguments = Union[Tuple[Literal[None], pymqi.MD], Tuple[Literal[None], pymqi.MD, pymqi.GMO]]
 
 
-def register(action: str, *actions: str) -> Callable[[MessageQueueIntegrationRequestHandler], None]:
-    def decorator(func: MessageQueueIntegrationRequestHandler) -> None:
+def register(action: str, *actions: str) -> Callable[[MessageQueueRequestHandler], None]:
+    def decorator(func: MessageQueueRequestHandler) -> None:
         for a in (action, *actions):
             if a in handlers:
                 continue
@@ -80,7 +83,7 @@ def register(action: str, *actions: str) -> Callable[[MessageQueueIntegrationReq
     return decorator
 
 
-class MessageQueueIntegration:
+class MessageQueue:
     qmgr: Optional[pymqi.QueueManager] = None
     md: pymqi.MD
     gmo: Optional[pymqi.GMO]
@@ -89,6 +92,9 @@ class MessageQueueIntegration:
     _arguments: MessageQueueGetArguments
 
     def __init__(self, worker: str) -> None:
+        if pymqi.__name__ == 'grizzly_extras.dummy_pymqi':
+            raise NotImplementedError('MessageQueue could not import pymqi, have you installed IBM MQ dependencies?')
+
         self.md = pymqi.MD()
         self._arguments = (None, self.md, )
         self.worker = worker
@@ -104,13 +110,13 @@ class MessageQueueIntegration:
             queue.close()
 
     @register('CONN')
-    def connect(self, request: Request) -> Response:
+    def connect(self, request: MessageQueueRequest) -> MessageQueueResponse:
         if self.qmgr is not None:
-            raise MessageQueueIntegrationError('already connected')
+            raise MessageQueueError('already connected')
 
         context = request.get('context', None)
         if context is None:
-            raise MessageQueueIntegrationError('no context')
+            raise MessageQueueError('no context')
 
         connection = context['connection']
         queue_manager = context['queue_manager']
@@ -168,13 +174,13 @@ class MessageQueueIntegration:
             WaitInterval=message_wait*1000,
         )
 
-    def _request(self, request: Request, arguments: Optional[Tuple[Any, ...]] = None) -> Response:
+    def _request(self, request: MessageQueueRequest, arguments: Optional[Tuple[Any, ...]] = None) -> MessageQueueResponse:
         if self.qmgr is None:
-            raise MessageQueueIntegrationError('not connected')
+            raise MessageQueueError('not connected')
 
         queue_name = request.get('context', {}).get('queue', None)
         if queue_name is None:
-            raise MessageQueueIntegrationError('no queue specified')
+            raise MessageQueueError('no queue specified')
 
         if arguments is None:
             arguments = self._arguments
@@ -198,20 +204,20 @@ class MessageQueueIntegration:
             }
 
     @register('PUT', 'SEND')
-    def put(self, request: Request) -> Response:
+    def put(self, request: MessageQueueRequest) -> MessageQueueResponse:
         request['action'] = 'PUT'
 
         if request.get('payload', None) is None:
-            raise MessageQueueIntegrationError('no payload')
+            raise MessageQueueError('no payload')
 
         return self._request(request)
 
     @register('GET', 'RECEIVE')
-    def get(self, request: Request) -> Response:
+    def get(self, request: MessageQueueRequest) -> MessageQueueResponse:
         request['action'] = 'GET'
 
         if request.get('payload', None) is not None:
-            raise MessageQueueIntegrationError('payload not allowed')
+            raise MessageQueueError('payload not allowed')
 
         arguments: Optional[MessageQueueGetArguments] = None
         message_wait: int = request.get('context', {}).get('message_wait', None) or 0
@@ -220,17 +226,17 @@ class MessageQueueIntegration:
 
         return self._request(request, arguments)
 
-    def handler(self, request: Request) -> Response:
+    def handler(self, request: MessageQueueRequest) -> MessageQueueResponse:
         action = request['action']
         action_handler = handlers.get(action, None)
 
-        response: Response
+        response: MessageQueueResponse
 
         start_time = time()
 
         try:
             if action_handler is None:
-                raise MessageQueueIntegrationError(f'no implementation')
+                raise MessageQueueError(f'no implementation for {action}')
 
             response = action_handler(self, request)
             response['success'] = True

@@ -8,8 +8,8 @@ import setproctitle as proc
 import zmq
 
 from . import (
-    MessageQueueIntegration,
-    Request,
+    MessageQueue,
+    MessageQueueRequest,
     JsonBytesEncoder,
     LRU_READY,
     SPLITTER_FRAME,
@@ -67,7 +67,6 @@ def router() -> None:
         if socks.get(frontend) == zmq.POLLIN:
             msg = frontend.recv_multipart()
 
-
             request_id = msg[0]
             payload = jsonloads(msg[-1].decode())
 
@@ -95,7 +94,7 @@ def worker(context: zmq.Context, identity: str) -> None:
     worker.connect('inproc://workers')
     worker.send_string(LRU_READY)
 
-    integration = MessageQueueIntegration(identity)
+    integration = MessageQueue(identity)
 
     while True:
         request_proto = worker.recv_multipart()
@@ -104,7 +103,7 @@ def worker(context: zmq.Context, identity: str) -> None:
             continue
 
         request = cast(
-            Request,
+            MessageQueueRequest,
             jsonloads(request_proto[-1].decode()),
         )
 

@@ -130,7 +130,7 @@ def test_before_scenario(behave_context: Context, mocker: MockerFixture) -> None
         return MatchedStep(step.name)
 
     mocker.patch(
-        'tests.fixtures.step_registry.find_match',
+        'tests.test_grizzly.fixtures.step_registry.find_match',
         find_match,
     )
 
