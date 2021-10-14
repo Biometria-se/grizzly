@@ -6,7 +6,7 @@ import re
 from abc import ABCMeta
 from typing import Tuple, Any, Dict, Type, List, Callable
 from functools import wraps
-from json import loads as jsonloads
+from json import loads as jsonloads, JSONEncoder
 
 from jsonpath_ng.ext import parse as jsonpath_parse
 from lxml import etree as XML
@@ -177,3 +177,14 @@ class PlainTransformer(Transformer):
                 return matches
 
             return get_values
+
+
+class JsonBytesEncoder(JSONEncoder):
+    def default(self, o: Any) -> Any:
+        if isinstance(o, bytes):
+            try:
+                return o.decode('utf-8')
+            except:
+                return o.decode('latin-1')
+
+        return JSONEncoder.default(self, o)
