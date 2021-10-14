@@ -1,4 +1,5 @@
 from typing import List, Tuple, Any
+from json import dumps as jsondumps
 from json.decoder import JSONDecodeError
 
 import pytest
@@ -7,7 +8,7 @@ from lxml import etree as XML
 from pytest_mock import mocker  # pylint: disable=unused-import
 from pytest_mock.plugin import MockerFixture
 
-from grizzly.transformer import JsonTransformer, Transformer, XmlTransformer, PlainTransformer, transformer
+from grizzly.transformer import JsonTransformer, Transformer, XmlTransformer, PlainTransformer, transformer, JsonBytesEncoder
 from grizzly.types import ResponseContentType
 from grizzly.exceptions import TransformerError
 
@@ -437,3 +438,22 @@ class TestPlainTransformer:
         assert '[)hello' == actual[0]
         assert match_value('hello') == []
 
+
+class TestJsonBytesEncoder:
+    def test_default(self) -> None:
+        encoder = JsonBytesEncoder()
+
+        assert encoder.default(b'hello') == 'hello'
+        assert encoder.default(b'invalid \xe9 char') == 'invalid \xe9 char'
+
+        assert jsondumps({
+            'hello': b'world',
+            'invalid': b'\xe9 char',
+            'value': 'something',
+            'test': False,
+            'int': 1,
+            'empty': None,
+        }, cls=JsonBytesEncoder) == '{"hello": "world", "invalid": "\\u00e9 char", "value": "something", "test": false, "int": 1, "empty": null}'
+
+        with pytest.raises(TypeError):
+            encoder.default(None)

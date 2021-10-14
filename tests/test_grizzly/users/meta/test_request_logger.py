@@ -5,7 +5,6 @@ import shutil
 
 from os import environ, path, listdir, remove
 from typing import Generator, List, Callable
-from json import dumps as jsondumps
 
 import pytest
 
@@ -15,7 +14,6 @@ from locust.clients import ResponseContextManager
 from requests.models import CaseInsensitiveDict, Response, PreparedRequest
 
 from grizzly.users.meta import RequestLogger, HttpRequests
-from grizzly.users.meta.request_logger import JsonBytesEncoder
 from grizzly.types import RequestMethod
 from grizzly.context import RequestContext
 
@@ -51,25 +49,6 @@ def get_log_files() -> Callable[[], List[str]]:
 
     return wrapped
 
-
-class TestJsonBytesEncoder:
-    def test_default(self) -> None:
-        encoder = JsonBytesEncoder()
-
-        assert encoder.default(b'hello') == 'hello'
-        assert encoder.default(b'invalid \xe9 char') == 'invalid \xe9 char'
-
-        assert jsondumps({
-            'hello': b'world',
-            'invalid': b'\xe9 char',
-            'value': 'something',
-            'test': False,
-            'int': 1,
-            'empty': None,
-        }, cls=JsonBytesEncoder) == '{"hello": "world", "invalid": "\\u00e9 char", "value": "something", "test": false, "int": 1, "empty": null}'
-
-        with pytest.raises(TypeError):
-            encoder.default(None)
 
 class TestRequestLogger:
     @pytest.mark.usefixtures('locust_environment')
