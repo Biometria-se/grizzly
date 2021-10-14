@@ -38,9 +38,10 @@ jobs:
         pip install --upgrade --upgrade-strategy eager -r <(cat requirements.txt requirements-dev.txt)
 
     - name: run pytest
+      env:
+        PYTHONPATH: .
       run: |
         # test_messagequeue requires grizzly[mq] -> requirements-extras.txt and external libraries
-        export PYTHONPATH="."
         pytest --ignore-glob=*test_messagequeue*
 
     - name: run coverage
