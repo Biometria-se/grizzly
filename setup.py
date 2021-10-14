@@ -56,7 +56,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'messagequeue-daemon=extras.messagequeue.daemon:main',
+            'messagequeue-daemon=grizzly_extras.messagequeue.daemon:main',
         ]
     },
 )
