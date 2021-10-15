@@ -1,6 +1,3 @@
-from gevent.monkey import patch_all
-patch_all()
-
 from typing import Generator, cast
 
 import pytest

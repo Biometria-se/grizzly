@@ -5,9 +5,6 @@ from typing import Any, Callable, Generator, Tuple, Optional, cast
 from contextlib import contextmanager
 
 import pytest
-import gevent.monkey
-
-gevent.monkey.patch_all()
 
 from azure.servicebus import ServiceBusMessage
 from locust.env import Environment

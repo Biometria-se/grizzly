@@ -2,9 +2,6 @@ import logging
 
 from typing import Callable, Dict, Any, Optional
 
-from gevent.monkey import patch_all
-patch_all()
-
 import pytest
 
 from opencensus.ext.azure.log_exporter import AzureLogHandler

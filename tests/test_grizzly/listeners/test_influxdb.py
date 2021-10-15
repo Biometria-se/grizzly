@@ -7,9 +7,6 @@ from json import dumps as jsondumps
 
 import pytest
 
-from gevent.monkey import patch_all
-patch_all()
-
 from pytest_mock import mocker  # pylint: disable=unused-import
 from pytest_mock.plugin import MockerFixture
 from locust.runners import Runner

@@ -1,6 +1,3 @@
-from gevent.monkey import patch_all
-patch_all()
-
 import shutil
 
 from os import environ, path, listdir, remove

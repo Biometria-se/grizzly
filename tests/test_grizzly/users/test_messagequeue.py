@@ -1,7 +1,3 @@
-import gevent.monkey
-
-gevent.monkey.patch_all()
-
 import subprocess
 
 from typing import Callable, Dict, Tuple, Any, cast, Optional
@@ -75,7 +71,7 @@ class TestMessageQueueUser:
                 '/usr/bin/env',
                 'python3',
                 '-c',
-                'from gevent.monkey import patch_all; patch_all(); import grizzly.users.messagequeue as mq; print(f"{mq.pymqi.__name__=}"); mq.MessageQueueUser()'
+                'import grizzly.users.messagequeue as mq; print(f"{mq.pymqi.__name__=}"); mq.MessageQueueUser()'
             ],
             env=env,
             stdout=subprocess.PIPE,
@@ -83,7 +79,7 @@ class TestMessageQueueUser:
         )
 
         out, _ = process.communicate()
-        output = out.decode('utf-8')
+        output = out.decode()
         print(output)
         assert process.returncode == 1
         assert "mq.pymqi.__name__='grizzly_extras.dummy_pymqi'" in output
