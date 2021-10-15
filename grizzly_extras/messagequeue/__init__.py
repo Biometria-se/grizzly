@@ -63,7 +63,7 @@ LRU_READY = '\x01'
 SPLITTER_FRAME = ''.encode()
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(format="[%(levelname)-5s] %(name)s: %(message)s", level=logging.DEBUG)
+logging.basicConfig(format="[%(levelname)-5s] %(name)s: %(message)s", level=logging.INFO)
 
 MessageQueueRequestHandler = Callable[['MessageQueue', MessageQueueRequest], MessageQueueResponse]
 

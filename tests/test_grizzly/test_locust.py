@@ -158,8 +158,9 @@ def test_setup_locust_scenarios(behave_context: Context) -> None:
         setup_locust_scenarios(context_locust)
 
     context_locust.scenario.user_class_name = 'RestApiUser'
-    user_classes, request_tasks = setup_locust_scenarios(context_locust)
+    user_classes, request_tasks, start_messagequeue_daemon = setup_locust_scenarios(context_locust)
 
+    assert not start_messagequeue_daemon
     assert len(user_classes) == 1
     assert len(request_tasks) == 1
 
@@ -172,6 +173,25 @@ def test_setup_locust_scenarios(behave_context: Context) -> None:
     user_tasks = user_class.tasks[-1]
     assert issubclass(user_tasks, (TrafficIteratorTasks, ))
     assert len(user_tasks.tasks) == 2 + 1  # TrafficIteratorTasks has an internal task other than what we've added
+
+    import grizzly.users.messagequeue as mq
+    if mq.pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
+        context_locust.scenario.user_class_name = 'MessageQueueUser'
+        user_classes, request_tasks, start_messagequeue_daemon = setup_locust_scenarios(context_locust)
+
+        assert start_messagequeue_daemon
+        assert len(user_classes) == 1
+        assert len(request_tasks) == 1
+
+        user_class = user_classes[-1]
+        assert issubclass(user_class, (mq.MessageQueueUser, ))
+        assert len(user_class.tasks) == 1
+        assert user_class.host == 'https://test.example.org'
+        assert context_locust.scenario.name.startswith('TrafficIteratorTasks')
+
+        user_tasks = user_class.tasks[-1]
+        assert issubclass(user_tasks, (TrafficIteratorTasks, ))
+        assert len(user_tasks.tasks) == 2 + 1  # TrafficIteratorTasks has an internal task other than what we've added
 
 
 @pytest.mark.usefixtures('behave_context')
@@ -359,7 +379,113 @@ def test_setup_environment_listeners(behave_context: Context, mocker: MockerFixt
 
 
 @pytest.mark.usefixtures('behave_context')
+def test_run_worker(behave_context: Context, capsys: CaptureFixture, mocker: MockerFixture) -> None:
+    def mock_on_node(master: bool, worker: bool) -> None:
+        def mocked_on_worker(context: Context) -> bool:
+            return worker
+
+        mocker.patch(
+            'grizzly.locust.on_worker',
+            mocked_on_worker,
+        )
+
+        def mocked_on_master(context: Context) -> bool:
+            return master
+
+        mocker.patch(
+            'grizzly.locust.on_master',
+            mocked_on_master,
+        )
+
+    def noop(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Any:
+        pass
+
+    def mocked_create_worker_runner(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Any:
+        from socket import error
+        raise error()
+
+    mocker.patch(
+        'grizzly.locust.Environment.create_worker_runner',
+        mocked_create_worker_runner,
+    )
+
+    for method in [
+        'locust.runners.WorkerRunner.start_worker',
+        'gevent.sleep',
+        'grizzly.listeners._init_testdata_producer',
+    ]:
+        mocker.patch(
+            method,
+            noop,
+        )
+
+    def mocked_popen___init__(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+        setattr(args[0], 'returncode', -15)
+
+    mocker.patch(
+        'grizzly.locust.gevent.subprocess.Popen.__init__',
+        mocked_popen___init__,
+    )
+
+    from grizzly.locust import subprocess as subprocess_spy
+
+    messagequeue_process_spy = mocker.spy(subprocess_spy.Popen, '__init__')
+
+    mock_on_node(master=False, worker=True)
+    context_locust = cast(LocustContext, behave_context.locust)
+
+    context_locust.setup.user_count = 1
+    context_locust.setup.spawn_rate = 1
+    context_locust.add_scenario('test-non-mq')
+    context_locust.scenario.user_class_name = 'RestApiUser'
+    context_locust.scenario.context['host'] = 'https://test.example.org'
+    context_locust.scenario.add_task(1.5)
+    task = RequestContext(RequestMethod.GET, 'test-1', '/api/v1/test/1')
+    context_locust.scenario.add_task(task)
+
+    assert run(behave_context) == 1
+    assert 'failed to connect to the locust master' in capsys.readouterr().err
+
+    assert messagequeue_process_spy.call_count == 0
+
+    import grizzly.users.messagequeue as mq
+    if mq.pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
+        context_locust.add_scenario('test-mq')
+        context_locust.scenario.user_class_name = 'MessageQueueUser'
+        context_locust.scenario.context['host'] = 'mq://mq.example.org?QueueManager=QM01&Channel=TEST.CONN'
+        context_locust.scenario.add_task(RequestContext(RequestMethod.PUT, 'test-2', 'TEST.QUEUE'))
+
+        with pytest.raises(AssertionError) as ae:
+            run(behave_context)
+        assert 'increase the number in step' in str(ae)
+
+        context_locust.setup.user_count = 2
+
+        assert run(behave_context) == 1
+        assert 'failed to connect to the locust master' in capsys.readouterr().err
+
+        assert messagequeue_process_spy.call_count == 1
+        assert messagequeue_process_spy.call_args_list[0][0][1][0] == 'messagequeue-daemon'
+
+
+@pytest.mark.usefixtures('behave_context')
 def test_run_master(behave_context: Context, capsys: CaptureFixture, mocker: MockerFixture) -> None:
+    def mock_on_node(master: bool, worker: bool) -> None:
+        def mocked_on_worker(context: Context) -> bool:
+            return worker
+
+        mocker.patch(
+            'grizzly.locust.on_worker',
+            mocked_on_worker,
+        )
+
+        def mocked_on_master(context: Context) -> bool:
+            return master
+
+        mocker.patch(
+            'grizzly.locust.on_master',
+            mocked_on_master,
+        )
     def noop(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Any:
         pass
 
@@ -381,22 +507,14 @@ def test_run_master(behave_context: Context, capsys: CaptureFixture, mocker: Moc
             noop,
         )
 
-    def mock_on_node(master: bool, worker: bool) -> None:
-        def mocked_on_worker(context: Context) -> bool:
-            return worker
+    mocker.patch(
+        'grizzly.locust.subprocess.Popen.__init__',
+        noop,
+    )
 
-        mocker.patch(
-            'grizzly.locust.on_worker',
-            mocked_on_worker,
-        )
+    from grizzly.locust import subprocess as subprocess_spy
 
-        def mocked_on_master(context: Context) -> bool:
-            return master
-
-        mocker.patch(
-            'grizzly.locust.on_master',
-            mocked_on_master,
-        )
+    messagequeue_process_spy = mocker.spy(subprocess_spy.Popen, '__init__')
 
     behave_context.config.userdata = {
         'master': 'true',
@@ -410,6 +528,10 @@ def test_run_master(behave_context: Context, capsys: CaptureFixture, mocker: Moc
 
     context_locust = cast(LocustContext, behave_context.locust)
 
+    context_locust.setup.spawn_rate = None
+    assert run(behave_context) == 254
+    assert 'spawn rate is not set' in capsys.readouterr().err
+
     context_locust.setup.spawn_rate = 1
 
     assert run(behave_context) == 254
@@ -422,6 +544,13 @@ def test_run_master(behave_context: Context, capsys: CaptureFixture, mocker: Moc
     context_locust.scenario.add_task(1.5)
     task = RequestContext(RequestMethod.GET, 'test-1', '/api/v1/test/1')
     context_locust.scenario.add_task(task)
+    context_locust.setup.spawn_rate = 1
+
+    context_locust.setup.timespan = 'adsf'
+    assert run(behave_context) == 1
+    assert 'invalid timespan' in capsys.readouterr().err
+
+    context_locust.setup.timespan = None
 
     behave_context.config.userdata = {
         'expected-workers': 3,
@@ -434,6 +563,8 @@ def test_run_master(behave_context: Context, capsys: CaptureFixture, mocker: Moc
     assert 'there are more workers (3) than users (2), which is not supported' in str(ae)
 
     del behave_context.config.userdata['expected-workers']
+
+    assert messagequeue_process_spy.call_count == 0
 
     # @TODO: this is where it gets hard(er)...
 
