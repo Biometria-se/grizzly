@@ -77,8 +77,9 @@ def router() -> None:
                 payload['worker'] = worker_id.decode()
                 logger.info(f'router: assigning worker {payload["worker"]}')
                 request = jsondumps(payload).encode()
-                logger.debug(f'router: spawning an additional worker, for next client')
-                spawn_worker()
+                if len(workers_available) == 0:
+                    logger.debug(f'router: spawning an additional worker, for next client')
+                    spawn_worker()
             else:
                 worker_id = worker_id.encode()
                 request = msg[-1]
@@ -111,7 +112,9 @@ def worker(context: zmq.Context, identity: str) -> None:
             logger.error(f'got {request["worker"]}, expected {identity}')
             continue
 
+        logger.debug(f'{identity}: send request to handler')
         response = integration.handler(request)
+        logger.debug(f'{identity}: got response from handler')
 
         response_proto = [
             request_proto[0],

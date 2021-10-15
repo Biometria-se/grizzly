@@ -1,4 +1,5 @@
 import logging
+import json
 
 from typing import Optional, Dict, Any, TypedDict, Tuple, Callable, Generator, Literal, Union, cast
 from time import monotonic as time
@@ -85,18 +86,13 @@ def register(action: str, *actions: str) -> Callable[[MessageQueueRequestHandler
 
 class MessageQueue:
     qmgr: Optional[pymqi.QueueManager] = None
-    md: pymqi.MD
-    gmo: Optional[pymqi.GMO]
     worker: str
-
-    _arguments: MessageQueueGetArguments
+    message_wait_global: int = 0
 
     def __init__(self, worker: str) -> None:
         if pymqi.__name__ == 'grizzly_extras.dummy_pymqi':
             raise NotImplementedError('MessageQueue could not import pymqi, have you installed IBM MQ dependencies?')
 
-        self.md = pymqi.MD()
-        self._arguments = (None, self.md, )
         self.worker = worker
 
 
@@ -158,11 +154,7 @@ class MessageQueue:
                 password,
             )
 
-        message_wait: int = context.get('message_wait', None) or 0
-
-        if message_wait > 0:
-            self.gmo = self._create_gmo(message_wait)
-            self._arguments = cast(MessageQueueGetArguments, (*self._arguments, self.gmo, ))
+        self.message_wait_global = context.get('message_wait', None) or 0
 
         return {
             'message': 'connected',
@@ -174,7 +166,7 @@ class MessageQueue:
             WaitInterval=message_wait*1000,
         )
 
-    def _request(self, request: MessageQueueRequest, arguments: Optional[Tuple[Any, ...]] = None) -> MessageQueueResponse:
+    def _request(self, request: MessageQueueRequest) -> MessageQueueResponse:
         if self.qmgr is None:
             raise MessageQueueError('not connected')
 
@@ -182,24 +174,32 @@ class MessageQueue:
         if queue_name is None:
             raise MessageQueueError('no queue specified')
 
-        if arguments is None:
-            arguments = self._arguments
-
         action = request['action']
+
+        md = pymqi.MD()
 
         with self.queue_context(queue_name) as queue:
             if action == 'PUT':
                 payload = request.get('payload', None)
                 response_length = len(payload) if payload is not None else 0
-                queue.put(payload, self.md)
+                queue.put(payload, md)
                 payload = None
             elif action == 'GET':
-                payload = queue.get(*arguments).decode()
+                message_wait: int = request.get('context', {}).get('message_wait', None) or 0
+
+                gmo: Optional[pymqi.GMO] = None
+
+                if message_wait > 0:
+                    gmo = self._create_gmo(message_wait)
+                elif self.message_wait_global > 0:
+                    gmo = self._create_gmo(self.message_wait_global)
+
+                payload = queue.get(None, md, gmo).decode()
                 response_length = len(payload) if payload is not None else 0
 
             return {
                 'payload': payload,
-                'metadata': self.md.get(),
+                'metadata': md.get(),
                 'response_length': response_length,
             }
 
@@ -219,16 +219,14 @@ class MessageQueue:
         if request.get('payload', None) is not None:
             raise MessageQueueError('payload not allowed')
 
-        arguments: Optional[MessageQueueGetArguments] = None
-        message_wait: int = request.get('context', {}).get('message_wait', None) or 0
-        if message_wait > 0:
-            arguments = (*self._arguments[:2], self._create_gmo(message_wait),)
-
-        return self._request(request, arguments)
+        return self._request(request)
 
     def handler(self, request: MessageQueueRequest) -> MessageQueueResponse:
         action = request['action']
         action_handler = handlers.get(action, None)
+
+        logger.debug(f'handling {action}')
+        logger.debug(json.dumps(request, indent=2, cls=JsonBytesEncoder))
 
         response: MessageQueueResponse
 
@@ -251,5 +249,8 @@ class MessageQueue:
                 'worker': self.worker,
                 'response_time': total_time,
             })
+
+            logger.debug(f'handled {action}')
+            logger.debug(json.dumps(response, indent=2, cls=JsonBytesEncoder))
 
             return response

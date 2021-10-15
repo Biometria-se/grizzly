@@ -77,6 +77,7 @@ from grizzly_extras.messagequeue import MessageQueueContext, MessageQueueRequest
 import zmq
 
 
+from gevent import sleep as gsleep
 from locust.exception import StopUser, CatchResponseError
 
 from .meta import ContextVariables, ResponseHandler, RequestLogger
@@ -185,7 +186,14 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
 
                 self.zmq_client.send_json(mq_request)
 
-                response = self.zmq_client.recv_json()
+                # do not block all other "threads", just it self
+                while True:
+                    try:
+                        response = self.zmq_client.recv_json(flags=zmq.NOBLOCK)
+                        break
+                    except zmq.Again:
+                        gsleep(0.1)
+
             except Exception as e:
                 exception = e
             finally:
