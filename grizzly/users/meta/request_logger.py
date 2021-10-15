@@ -150,7 +150,7 @@ class RequestLogger(ResponseEvent, ContextVariables):
 
         successful_request = context.status_code in request.response.status_codes if isinstance(context, ResponseContextManager) else exception is None
 
-        if successful_request and not self._context['log_all_requests']:
+        if successful_request and not self._context.get('log_all_requests', False):
             return
 
         log_date = datetime.now()

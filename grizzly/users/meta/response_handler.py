@@ -47,7 +47,7 @@ class ResponseHandler(ResponseEvent):
             response_metadata, response_payload = context
             response_context = None
 
-        if len(handlers.payload) > 0 and len(response_payload) > 0:
+        if len(handlers.payload) > 0 and response_payload is not None and len(response_payload) > 0:
             try:
                 # do not guess which transformer to use
                 impl = transformer.available.get(request.response.content_type, None)
