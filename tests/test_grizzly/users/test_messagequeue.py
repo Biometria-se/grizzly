@@ -4,7 +4,7 @@ gevent.monkey.patch_all()
 
 import subprocess
 
-from typing import Callable, Dict, Tuple, Any, cast
+from typing import Callable, Dict, Tuple, Any, cast, Optional
 from os import environ
 
 import pymqi
@@ -36,15 +36,7 @@ import logging
 logging.getLogger().setLevel(logging.CRITICAL)
 
 @pytest.fixture
-def mq_user(locust_context: Callable, mocker: MockerFixture) -> Tuple[MessageQueueUser, LocustContextScenario, Environment]:
-    def mq_connect(queue_manager: str, channel: str, conn_info: str, username: str, password: str) -> Dict[str, str]:
-        return {'queue_manager': queue_manager, 'channel': channel, 'conn_info': conn_info, 'username': username, 'password': password}
-
-    mocker.patch(
-        'pymqi.connect',
-        mq_connect,
-    )
-
+def mq_user(locust_context: Callable) -> Tuple[MessageQueueUser, LocustContextScenario, Environment]:
     environment, user, task, [_, _, request] = locust_context(
         'mq://mq.example.com:1337/?QueueManager=QMGR01&Channel=Kanal1', MessageQueueUser)
 
@@ -229,7 +221,18 @@ class TestMessageQueueUser:
     @pytest.mark.skip(reason='needs real credentials and host etc.')
     @pytest.mark.usefixtures('locust_environment')
     def test_get_tls_real(self, locust_environment: Environment) -> None:
+        process: Optional[subprocess.Popen] = None
         try:
+            process = subprocess.Popen(
+                ['messagequeue-daemon'],
+                env=environ.copy(),
+                shell=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+            )
+            from gevent import sleep as gsleep
+            gsleep(2)
+
             MessageQueueUser._context = {
                 'auth': {
                     'username': self.real_stuff['username'],
@@ -255,6 +258,13 @@ class TestMessageQueueUser:
             user.request(request)
             assert 0
         finally:
+            if process is not None:
+                try:
+                    process.terminate()
+                    out, _ = process.communicate()
+                    print(out)
+                except Exception as e:
+                    print(e)
             MessageQueueUser._context = {
                 'auth': {
                     'username': None,
@@ -268,7 +278,17 @@ class TestMessageQueueUser:
     @pytest.mark.skip(reason='needs real credentials and host etc.')
     @pytest.mark.usefixtures('locust_environment')
     def test_put_tls_real(self, locust_environment: Environment) -> None:
+        process: Optional[subprocess.Popen] = None
         try:
+            process = subprocess.Popen(
+                ['messagequeue-daemon'],
+                env=environ.copy(),
+                shell=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+            )
+            from gevent import sleep as gsleep
+            gsleep(2)
 
             MessageQueueUser._context = {
                 'auth': {
@@ -293,6 +313,13 @@ class TestMessageQueueUser:
 
             user.request(request)
         finally:
+            if process is not None:
+                try:
+                    process.terminate()
+                    out, _ = process.communicate()
+                    print(out)
+                except Exception as e:
+                    print(e)
             MessageQueueUser._context = {
                 'auth': {
                     'username': None,
@@ -310,17 +337,27 @@ class TestMessageQueueUser:
             pass
 
         mocker.patch(
-            'zmq.sugar.socket.Socket.bind',
+            'grizzly.users.messagequeue.zmq.sugar.context.Context.term',
             mocked_noop,
         )
 
         mocker.patch(
-            'zmq.sugar.socket.Socket.connect',
+            'grizzly.users.messagequeue.zmq.sugar.context.Context.__del__',
             mocked_noop,
         )
 
         mocker.patch(
-            'zmq.sugar.socket.Socket.send_json',
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.bind',
+            mocked_noop,
+        )
+
+        mocker.patch(
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.connect',
+            mocked_noop,
+        )
+
+        mocker.patch(
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.send_json',
             mocked_noop,
         )
 
@@ -333,7 +370,7 @@ class TestMessageQueueUser:
         payload = '<?xml encoding="utf-8"?>'
 
         mocker.patch(
-            'zmq.sugar.socket.Socket.recv_json',
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
             side_effect=[
                 response_connected,
                 {
@@ -410,7 +447,7 @@ class TestMessageQueueUser:
         response_event_spy.reset_mock()
 
         mocker.patch(
-            'zmq.sugar.socket.Socket.recv_json',
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
             side_effect=[
                 {
                     'success': True,
@@ -447,7 +484,7 @@ class TestMessageQueueUser:
         }'''
 
         mocker.patch(
-            'zmq.sugar.socket.Socket.recv_json',
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
             side_effect=[
                 {
                     'success': True,
@@ -482,7 +519,7 @@ class TestMessageQueueUser:
         request_error = clone_request('POST', request)
 
         mocker.patch(
-            'zmq.sugar.socket.Socket.recv_json',
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
             side_effect=[
                 {
                     'success': False,
@@ -505,7 +542,7 @@ class TestMessageQueueUser:
         request_event_spy.reset_mock()
 
         mocker.patch(
-            'zmq.sugar.socket.Socket.recv_json',
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
             side_effect=[
                 {
                     'success': False,
@@ -543,17 +580,27 @@ class TestMessageQueueUser:
             pass
 
         mocker.patch(
-            'zmq.sugar.socket.Socket.bind',
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.bind',
             mocked_noop,
         )
 
         mocker.patch(
-            'zmq.sugar.socket.Socket.connect',
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.connect',
             mocked_noop,
         )
 
         mocker.patch(
-            'zmq.sugar.socket.Socket.send_json',
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.send_json',
+            mocked_noop,
+        )
+
+        mocker.patch(
+            'grizzly.users.messagequeue.zmq.sugar.context.Context.term',
+            mocked_noop,
+        )
+
+        mocker.patch(
+            'grizzly.users.messagequeue.zmq.sugar.context.Context.__del__',
             mocked_noop,
         )
 
@@ -592,7 +639,7 @@ class TestMessageQueueUser:
         assert payload is not None
 
         mocker.patch(
-            'zmq.sugar.socket.Socket.recv_json',
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
             side_effect=[
                 response_connected,
                 {
@@ -631,7 +678,7 @@ class TestMessageQueueUser:
         request_error = clone_request('POST', request)
 
         mocker.patch(
-            'zmq.sugar.socket.Socket.recv_json',
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
             side_effect=[
                 {
                     'success': False,
