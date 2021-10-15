@@ -1,4 +1,7 @@
 __version__ = 'develop'
 
-from gevent.monkey import patch_all
-patch_all()
+try:
+    from gevent.monkey import patch_all
+    patch_all()
+except:
+    pass  # setup.py that is importing __version__
