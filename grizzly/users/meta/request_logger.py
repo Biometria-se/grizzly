@@ -12,6 +12,7 @@ from locust.clients import ResponseContextManager
 from jinja2 import Template
 
 from ...context import RequestContext
+from ...transformer import JsonBytesEncoder
 from ...types import HandlerContextType, RequestDirection
 from ...testdata.utils import merge_dicts
 from .response_event import ResponseEvent
@@ -37,17 +38,6 @@ payload:
 {{ stacktrace }}
 {%- endif %}
 '''.strip()
-
-
-class JsonBytesEncoder(json.JSONEncoder):
-    def default(self, o: Any) -> Any:
-        if isinstance(o, bytes):
-            try:
-                return o.decode('utf-8')
-            except:
-                return o.decode('latin-1')
-
-        return json.JSONEncoder.default(self, o)
 
 
 class RequestLogger(ResponseEvent, ContextVariables):
@@ -160,7 +150,7 @@ class RequestLogger(ResponseEvent, ContextVariables):
 
         successful_request = context.status_code in request.response.status_codes if isinstance(context, ResponseContextManager) else exception is None
 
-        if successful_request and not self._context['log_all_requests']:
+        if successful_request and not self._context.get('log_all_requests', False):
             return
 
         log_date = datetime.now()

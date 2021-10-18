@@ -5,9 +5,6 @@ import shutil
 from typing import Any, Callable, Optional, Type, List, cast
 from types import FunctionType
 
-from gevent.monkey import patch_all
-patch_all()
-
 import pytest
 
 from behave.model import Table, Row

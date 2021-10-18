@@ -1,6 +1,3 @@
-from gevent.monkey import patch_all
-patch_all()
-
 import logging
 
 from typing import Optional, Union, Dict, Any, Tuple, Optional, Generator

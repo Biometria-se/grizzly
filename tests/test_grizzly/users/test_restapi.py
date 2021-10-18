@@ -3,11 +3,8 @@ from time import time
 from enum import Enum
 from urllib.parse import urlparse
 
-import gevent.monkey
-gevent.monkey.patch_all()
 import pytest
 import requests
-
 
 from pytest_mock import mocker  # pylint: disable=unused-import
 from pytest_mock.plugin import MockerFixture

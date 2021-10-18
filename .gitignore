@@ -12,3 +12,5 @@ coverage.xml
 *.rdb
 *.sth
 event.json
+.env/
+.venv/

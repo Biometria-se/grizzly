@@ -1,9 +1,6 @@
 from json import dumps as jsondumps
 
 import pytest
-import gevent.monkey
-
-gevent.monkey.patch_all()
 
 from lxml import etree as XML
 from requests.models import Response

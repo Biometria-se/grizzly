@@ -1,5 +1,11 @@
 '''Communicates with IBM MQ.
 
+User is based on `pymqi` for communicating with IBM MQ. However `pymqi` uses native libraries which `gevent` (used by `locust`) cannot patch,
+which causes any calls in `pymqi` to block the rest of `locust`. To get around this, the user implementation communicates with a stand-alone
+process via zmq, which then in turn communicates with IBM MQ.
+
+The message queue daemon process is started automagically when a scenario contains the `MessageQueueUser` and `pymqi` dependencies are installed.
+
 Format of `host` is the following:
 
 ```plain
@@ -65,23 +71,28 @@ from typing import Dict, Any, Generator, Tuple, Optional
 from urllib.parse import urlparse, parse_qs, unquote
 from contextlib import contextmanager
 from time import monotonic as time
+from grizzly_extras.messagequeue import MessageQueueContext, MessageQueueRequest, MessageQueueResponse
 
 
-from locust.exception import StopUser
+import zmq
+
+
+from gevent import sleep as gsleep
+from locust.exception import StopUser, CatchResponseError
 
 from .meta import ContextVariables, ResponseHandler, RequestLogger
-from ..types import RequestMethod
 from ..context import RequestContext
 from ..testdata.utils import merge_dicts
+from . import logger
 
 
+# no used here, but needed for sanity check
 try:
     # do not fail grizzly if ibm mq dependencies are missing, some might
     # not be interested in MessageQueueUser.
-    import pymqi
-    has_dependency = True
+    import pymqi  # pylint: disable=unused-import
 except:
-    has_dependency = False
+    from grizzly_extras import dummy_pymqi as pymqi
 
 class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
     _context: Dict[str, Any] = {
@@ -97,175 +108,168 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
         }
     }
 
-    if not has_dependency:
-        def __init__(self, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+    mq_context: MessageQueueContext
+    worker_id: Optional[str]
+    zmq_client: zmq.Socket
+    zmq_url = 'tcp://127.0.0.1:5554'
+
+    def __init__(self, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+        if pymqi.__name__ == 'grizzly_extras.dummy_pymqi':
             raise NotImplementedError('MessageQueueUser could not import pymqi, have you installed IBM MQ dependencies?')
-    else:
-        qmgr: Optional[pymqi.QueueManager]
-        md: pymqi.MD
-        gmo: Optional[pymqi.GMO]
-        host: str
-        port: int
-        queue_manager: str
-        channel: str
-        username: str
-        password: str
-        key_file: Optional[str]
-        cert_label: str
 
-        _get_arguments: Tuple[Any, ...]
+        super().__init__(*args, **kwargs)
 
-        def __init__(self, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
-            super().__init__(*args, **kwargs)
+        # Get configuration values from host string
+        parsed = urlparse(self.host)
 
-            # Get configuration values from host string
-            parsed = urlparse(self.host)
+        if parsed.scheme != 'mq':
+            raise ValueError(f'"{parsed.scheme}" is not a supported scheme for {self.__class__.__name__}')
 
-            if parsed.scheme != 'mq':
-                raise ValueError(f'"{parsed.scheme}" is not a supported scheme for {self.__class__.__name__}')
+        if parsed.hostname is None or len(parsed.hostname) < 1:
+            raise ValueError(f'{self.__class__.__name__}: hostname is not specified in {self.host}')
 
-            if parsed.hostname is None or len(parsed.hostname) < 1:
-                raise ValueError(f'{self.__class__.__name__}: hostname is not specified in {self.host}')
+        if parsed.username is not None or parsed.password is not None:
+            raise ValueError(f'{self.__class__.__name__}: username and password should be set via context variables "auth.username" and "auth.password"')
 
-            if parsed.username is not None or parsed.password is not None:
-                raise ValueError(f'{self.__class__.__name__}: username and password should be set via context variables "auth.username" and "auth.password"')
+        if parsed.query == '':
+            raise ValueError(f'{self.__class__.__name__} needs QueueManager and Channel in the query string')
 
-            if parsed.query == '':
-                raise ValueError(f'{self.__class__.__name__} needs QueueManager and Channel in the query string')
+        port = parsed.port or 1414
 
-            self.hostname = parsed.hostname
-            self.port = parsed.port or 1414
+        self.mq_context = {
+            'connection': f'{parsed.hostname}({port})',
+        }
 
-            params = parse_qs(parsed.query)
+        params = parse_qs(parsed.query)
 
-            if 'QueueManager' not in params:
-                raise ValueError(f'{self.__class__.__name__} needs QueueManager in the query string')
+        if 'QueueManager' not in params:
+            raise ValueError(f'{self.__class__.__name__} needs QueueManager in the query string')
 
-            if 'Channel' not in params:
-                raise ValueError(f'{self.__class__.__name__} needs Channel in the query string')
+        if 'Channel' not in params:
+            raise ValueError(f'{self.__class__.__name__} needs Channel in the query string')
 
-            self.queue_manager = unquote(params['QueueManager'][0])
-            self.channel = unquote(params['Channel'][0])
+        self.mq_context.update({
+            'queue_manager': unquote(params['QueueManager'][0]),
+            'channel': unquote(params['Channel'][0]),
+        })
 
-            # Get configuration values from context
-            self._context = merge_dicts(super().context(), self.__class__._context)
+        # Get configuration values from context
+        self._context = merge_dicts(super().context(), self.__class__._context)
 
-            auth_context = self._context.get('auth', {})
-            self.username = auth_context.get('username', None)
-            self.password = auth_context.get('password', None)
+        auth_context = self._context.get('auth', {})
+        username = auth_context.get('username', None)
+        self.mq_context.update({
+            'username': username,
+            'password': auth_context.get('password', None),
+            'key_file': auth_context.get('key_file', None),
+            'cert_label': auth_context.get('cert_label', None) or username,
+            'ssl_cipher': auth_context.get('ssl_cipher', None) or 'ECDHE_RSA_AES_256_GCM_SHA384',
+            'message_wait': self._context.get('message', {}).get('wait', None),
+        })
 
-            self.key_file = auth_context.get('key_file', None)
-            self.cert_label = auth_context.get('cert_label', None) or self.username
-            self.ssl_cipher = auth_context.get('ssl_cipher', None) or 'ECDHE_RSA_AES_256_GCM_SHA384'
+        self.worker_id = None
 
-            message_wait = self._context.get('message', {}).get('wait', None)
 
-            self.md = pymqi.MD()
-            self._get_arguments = (None, self.md)
-
-            if message_wait is not None and message_wait > 0:
-                self.gmo = pymqi.GMO(
-                    Options=pymqi.CMQC.MQGMO_WAIT | pymqi.CMQC.MQGMO_FAIL_IF_QUIESCING,
-                    WaitInterval=message_wait*1000,
-                )
-                self._get_arguments += (self.gmo, )
-
-            self.qmgr = None
+    def request(self, request: RequestContext) -> None:
+        request_name, endpoint, payload = self.render(request)
 
         @contextmanager
-        def _queue(self, endpoint: str) -> Generator[pymqi.Queue, None, None]:
-            queue = pymqi.Queue(self.qmgr, endpoint)
+        def action(mq_request: MessageQueueRequest, name: str, abort: bool, meta: bool = False) -> Generator[None, None, None]:
+            exception: Optional[Exception] = None
+
+            response: Optional[MessageQueueResponse] = None
 
             try:
-                yield queue
+                start_time = time()
+
+                yield
+
+                self.zmq_client.send_json(mq_request)
+
+                # do not block all other "threads", just it self
+                while True:
+                    try:
+                        response = self.zmq_client.recv_json(flags=zmq.NOBLOCK)
+                        break
+                    except zmq.Again:
+                        gsleep(0.1)
+
+            except Exception as e:
+                exception = e
             finally:
-                queue.close()
+                total_time = int((time() - start_time) * 1000)  # do not include event handling in request time
 
-        def request(self, request: RequestContext) -> None:
-            response_length = 0
-            request_name, endpoint, payload = self.render(request)
+                if response is not None:
+                    if self.worker_id is None:
+                        self.worker_id = response['worker']
+                    else:
+                        assert self.worker_id == response['worker'], f'worker changed from {self.worker_id} to {response["worker"]}'
 
-            @contextmanager
-            def action(request_type: str, name: str, abort: bool, meta: bool = False) -> Generator[None, None, None]:
-                exception: Optional[Exception] = None
+                    mq_response_time = response.get('response_time', 0)
+
+                    delta = total_time - mq_response_time
+                    if delta > 100:  # @TODO: what is a suitable value?
+                        logger.warning(f'{self.__class__.__name__}: comunicating with messagequeue-daemon took {delta} ms')
+
+                    if not response['success'] and exception is None:
+                        exception = CatchResponseError(response['message'])
+                else:
+                    response = {}
 
                 try:
-                    start_time = time()
-                    yield
-                except Exception as e:
-                    exception = e
-                finally:
-                    total_time = int((time() - start_time) * 1000)  # do not include event handling in request time
 
-                    try:
-                        if not meta:
-                            self.response_event.fire(
-                                name=name,
-                                request=request,
-                                context=(self.md.get(), payload),
-                                user=self,
-                                exception=exception,
-                            )
-                    except Exception as e:
-                        if exception is None:
-                            exception = e
-                    finally:
-                        self.environment.events.request.fire(
-                            request_type=f'mq:{request_type}',
+                    if not meta:
+                        self.response_event.fire(
                             name=name,
-                            response_time=total_time,
-                            response_length=response_length,
-                            context=self._context,
+                            request=request,
+                            context=(
+                                response.get('metadata', None),
+                                response.get('payload', None),
+                            ),
+                            user=self,
                             exception=exception,
                         )
+                except Exception as e:
+                    if exception is None:
+                        exception = e
+                finally:
+                    self.environment.events.request.fire(
+                        request_type=f'mq:{mq_request["action"]}',
+                        name=name,
+                        response_time=total_time,
+                        response_length=response.get('response_length', None) or 0,
+                        context=self._context,
+                        exception=exception,
+                    )
 
-                    if exception is not None and abort:
-                        raise StopUser()
+                if exception is not None and abort:
+                    try:
+                        self.zmq_client.disconnect(self.zmq_url)
+                    except:
+                        pass
 
-            name = f'{request.scenario.identifier} {request_name}'
+                    raise StopUser()
 
-            # connect to queue manager at first request
-            if self.qmgr is None:
-                conn_info = f'{self.hostname}({self.port})'
-                with action('CONN', conn_info, abort=True, meta=True):
-                    if self.key_file is not None:
-                        cd = pymqi.CD(
-                            ChannelName=self.channel.encode('utf-8'),
-                            ConnectionName=conn_info.encode('utf-8'),
-                            ChannelType=pymqi.CMQC.MQCHT_CLNTCONN,
-                            TransportType=pymqi.CMQC.MQXPT_TCP,
-                            SSLCipherSpec=self.ssl_cipher.encode('utf-8'),
-                        )
+        name = f'{request.scenario.identifier} {request_name}'
 
-                        sco = pymqi.SCO(
-                            KeyRepository=self.key_file.encode('utf-8'),
-                            CertificateLabel=self.cert_label.encode('utf-8'),
-                        )
+        # connect to queue manager at first request
+        if self.worker_id is None:
+            with action({
+                'action': 'CONN',
+                'context': self.mq_context
+            }, self.mq_context['connection'], abort=True, meta=True):
+                zmq_context = zmq.Context()
+                self.zmq_client = zmq_context.socket(zmq.REQ)
+                self.zmq_client.connect(self.zmq_url)
 
-                        self.qmgr = pymqi.QueueManager(None)
-                        self.qmgr.connect_with_options(
-                            self.queue_manager,
-                            user=self.username.encode('utf-8'),
-                            password=self.password.encode('utf-8'),
-                            cd=cd,
-                            sco=sco,
-                        )
-                    else:
-                        self.qmgr = pymqi.connect(
-                            self.queue_manager,
-                            self.channel,
-                            conn_info,
-                            self.username,
-                            self.password,
-                        )
+        message_queue_request: MessageQueueRequest = {
+            'action': request.method.name,
+            'worker': self.worker_id,
+            'context': {
+                'queue': endpoint,
+            },
+            'payload': payload,
+        }
 
-            with action(request.method.name, name, abort=request.scenario.stop_on_failure):
-                with self._queue(endpoint) as queue:
-                    if request.method in [RequestMethod.SEND, RequestMethod.PUT]:
-                        response_length = len(payload) if payload is not None else 0
-                        queue.put(payload, self.md)
-                    elif request.method in [RequestMethod.RECEIVE, RequestMethod.GET]:
-                        payload = queue.get(*self._get_arguments).decode('utf-8')
-                        response_length = len(payload) if payload is not None else 0
-                    else:
-                        raise NotImplementedError(f'{self.__class__.__name__} has not implemented {request.method.name}')
+        with action(message_queue_request, name, abort=request.scenario.stop_on_failure):
+            pass

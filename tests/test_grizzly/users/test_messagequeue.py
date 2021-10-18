@@ -1,14 +1,10 @@
-import gevent.monkey
-
-gevent.monkey.patch_all()
-
 import subprocess
 
-from typing import Callable, Dict, Tuple, Type, Any, cast
-from json import loads as jsonloads
+from typing import Callable, Dict, Tuple, Any, cast, Optional
 from os import environ
 
 import pymqi
+import zmq
 import pytest
 
 from pytest_mock import mocker  # pylint: disable=unused-import
@@ -25,6 +21,7 @@ from grizzly.testdata.utils import transform
 from grizzly.testdata.models import TemplateData
 from grizzly.exceptions import ResponseHandlerError
 from grizzly.utils import add_save_handler
+from grizzly_extras.messagequeue import MessageQueueResponse
 
 from ..fixtures import locust_context, request_context, locust_environment  # pylint: disable=unused-import
 from ..helpers import clone_request
@@ -35,15 +32,7 @@ import logging
 logging.getLogger().setLevel(logging.CRITICAL)
 
 @pytest.fixture
-def mq_user(locust_context: Callable, mocker: MockerFixture) -> Tuple[MessageQueueUser, LocustContextScenario, Environment]:
-    def mq_connect(queue_manager: str, channel: str, conn_info: str, username: str, password: str) -> Dict[str, str]:
-        return {'queue_manager': queue_manager, 'channel': channel, 'conn_info': conn_info, 'username': username, 'password': password}
-
-    mocker.patch(
-        'pymqi.connect',
-        mq_connect,
-    )
-
+def mq_user(locust_context: Callable) -> Tuple[MessageQueueUser, LocustContextScenario, Environment]:
     environment, user, task, [_, _, request] = locust_context(
         'mq://mq.example.com:1337/?QueueManager=QMGR01&Channel=Kanal1', MessageQueueUser)
 
@@ -82,7 +71,7 @@ class TestMessageQueueUser:
                 '/usr/bin/env',
                 'python3',
                 '-c',
-                'from gevent.monkey import patch_all; patch_all(); import grizzly.users.messagequeue as mq; print(f"{mq.has_dependency=}"); mq.MessageQueueUser()'
+                'import grizzly.users.messagequeue as mq; print(f"{mq.pymqi.__name__=}"); mq.MessageQueueUser()'
             ],
             env=env,
             stdout=subprocess.PIPE,
@@ -90,10 +79,11 @@ class TestMessageQueueUser:
         )
 
         out, _ = process.communicate()
-        output = out.decode('utf-8')
+        output = out.decode()
+        print(output)
         assert process.returncode == 1
-        assert 'mq.has_dependency=False' in output
-        assert 'MessageQueueUser could not import pymqi, have you installed IBM MQ dependencies?' in output
+        assert "mq.pymqi.__name__='grizzly_extras.dummy_pymqi'" in output
+        assert 'NotImplementedError: MessageQueueUser could not import pymqi, have you installed IBM MQ dependencies?' in output
 
     @pytest.mark.usefixtures('locust_environment')
     def test_create(self, locust_environment: Environment) -> None:
@@ -131,8 +121,8 @@ class TestMessageQueueUser:
             # Test default port and ssl_cipher
             MessageQueueUser.host = 'mq://mq.example.com?Channel=Kanal1&QueueManager=QMGR01'
             user = MessageQueueUser(environment=locust_environment)
-            assert user.port == 1414
-            assert user.ssl_cipher == 'ECDHE_RSA_AES_256_GCM_SHA384'
+            assert user.mq_context.get('connection', None) == f'mq.example.com(1414)'
+            assert user.mq_context.get('ssl_cipher', None) == 'ECDHE_RSA_AES_256_GCM_SHA384'
 
             MessageQueueUser._context['auth'] = {
                 'username': 'syrsa',
@@ -145,33 +135,24 @@ class TestMessageQueueUser:
             MessageQueueUser.host = 'mq://mq.example.com:1415?Channel=Kanal1&QueueManager=QMGR01'
             user = MessageQueueUser(environment=locust_environment)
 
-            assert user.hostname == 'mq.example.com'
-            assert user.port == 1415
-            assert user.queue_manager == 'QMGR01'
-            assert user.channel == 'Kanal1'
-            assert user.key_file == '/my/key'
-            assert user.ssl_cipher == 'rot13'
-            assert user.cert_label == 'some_label'
+            assert user.mq_context.get('connection', None) == 'mq.example.com(1415)'
+            assert user.mq_context.get('queue_manager', None) == 'QMGR01'
+            assert user.mq_context.get('channel', None) == 'Kanal1'
+            assert user.mq_context.get('key_file', None) == '/my/key'
+            assert user.mq_context.get('ssl_cipher', None) == 'rot13'
+            assert user.mq_context.get('cert_label', None) == 'some_label'
 
             MessageQueueUser._context['auth']['cert_label'] = None
 
             user = MessageQueueUser(environment=locust_environment)
 
-            assert user.cert_label == 'syrsa'
-            assert hasattr(user, 'md')
-            assert not hasattr(user, 'gmo')
-            assert user._get_arguments == (None, user.md)
+            assert user.mq_context.get('cert_label', None) == 'syrsa'
 
             MessageQueueUser._context['message']['wait'] = 5
 
             user = MessageQueueUser(environment=locust_environment)
-            assert getattr(user, 'md', None) is not None
-            assert getattr(user, 'gmo', None) is not None
-            # shut up pylint!
-            assert cast(Any, user.gmo).WaitInterval == 5000  # pylint: disable=no-member
-            assert cast(Any, user.gmo).Options == pymqi.CMQC.MQGMO_WAIT | pymqi.CMQC.MQGMO_FAIL_IF_QUIESCING
+            assert user.mq_context.get('message_wait', None) == 5
             assert issubclass(user.__class__, (RequestLogger, ResponseHandler,))
-
         finally:
             MessageQueueUser._context = {
                 'auth': {
@@ -185,12 +166,20 @@ class TestMessageQueueUser:
 
     @pytest.mark.usefixtures('locust_environment')
     def test_request__action_conn_error(self, locust_environment: Environment, mocker: MockerFixture) -> None:
-        def mocked_pymqi_connect(queue_manager: str, channel: str, conn_info: str, username: str, password: str) -> Any:
-            raise pymqi.MQMIError(comp=2, reason=2538)
+        def mocked_zmq_connect(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Any:
+            raise zmq.error.ZMQError(msg='error connecting')
+
+        def mocked_noop(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+            pass
 
         mocker.patch(
-            'pymqi.connect',
-            mocked_pymqi_connect,
+            'zmq.sugar.socket.Socket.bind',
+            mocked_noop,
+        )
+
+        mocker.patch(
+            'zmq.sugar.socket.Socket.connect',
+            mocked_zmq_connect,
         )
 
         def mocked_request_fire(*args: Tuple[Any, ...], **_kwargs: Dict[str, Any]) -> None:
@@ -200,10 +189,10 @@ class TestMessageQueueUser:
             # self.environment.events.request.fire
             if properties == ['request_type', 'name', 'response_time', 'response_length', 'context', 'exception']:
                 assert kwargs['request_type'] == 'mq:CONN'
-                assert kwargs['name'] == f'{user.hostname}({user.port})'
+                assert kwargs['name'] == user.mq_context.get('connection', None)
                 assert kwargs['response_time'] >= 0
                 assert kwargs['response_length'] == 0
-                assert isinstance(kwargs['exception'], pymqi.MQMIError)
+                assert isinstance(kwargs['exception'], zmq.error.ZMQError)
             elif properties == ['name', 'request', 'context', 'user', 'exception']:  # self.response_event.fire
                 pytest.fail(f'what should we do with {kwargs=}')
             else:
@@ -225,61 +214,21 @@ class TestMessageQueueUser:
         with pytest.raises(StopUser):
             user.request(request)
 
-    @pytest.mark.usefixtures('locust_environment')
-    def test_request_tls(self, locust_environment: Environment, mocker: MockerFixture) -> None:
-        def mocked_connect_with_options(i: pymqi.QueueManager, user: bytes, password: bytes, cd: pymqi.CD, sco: pymqi.SCO) -> None:
-            assert user == 'test_username'.encode('utf-8')
-            assert password == 'test_password'.encode('utf-8')
-
-            assert cd.ChannelName == 'Kanal1'.encode('utf-8')
-            assert cd.ConnectionName == 'mq.example.com(1337)'.encode('utf-8')
-            assert cd.ChannelType == pymqi.CMQC.MQCHT_CLNTCONN
-            assert cd.TransportType == pymqi.CMQC.MQXPT_TCP
-            assert cd.SSLCipherSpec == 'ECDHE_RSA_AES_256_GCM_SHA384'
-
-            assert sco.KeyRepository == '/home/test/key_file'.encode('utf-8')
-            assert sco.CertificateLabel == 'test_cert_label'.encode('utf-8')
-
-            raise RuntimeError('skip rest of the method')
-
-        mocker.patch(
-            'pymqi.QueueManager.connect_with_options',
-            mocked_connect_with_options,
-        )
-
-        request = RequestContext(RequestMethod.PUT, name='test-put', endpoint='EXAMPLE.QUEUE')
-        scenario = LocustContextScenario()
-        scenario.name = 'test'
-        scenario.stop_on_failure = True
-        scenario.add_task(request)
-
-        try:
-            MessageQueueUser.host = 'mq://mq.example.com:1337/?QueueManager=QMGR01&Channel=Kanal1'
-            MessageQueueUser._context['auth'] = {
-                'username': 'test_username',
-                'password': 'test_password',
-                'key_file': '/home/test/key_file',
-                'cert_label': 'test_cert_label',
-            }
-            user = MessageQueueUser(locust_environment)
-
-            with pytest.raises(StopUser):
-                user.request(request)
-        finally:
-            MessageQueueUser._context = {
-                'auth': {
-                    'username': None,
-                    'password': None,
-                    'key_file': None,
-                    'cert_label': None,
-                    'ssl_cipher': None
-                }
-            }
-
     @pytest.mark.skip(reason='needs real credentials and host etc.')
     @pytest.mark.usefixtures('locust_environment')
     def test_get_tls_real(self, locust_environment: Environment) -> None:
+        process: Optional[subprocess.Popen] = None
         try:
+            process = subprocess.Popen(
+                ['messagequeue-daemon'],
+                env=environ.copy(),
+                shell=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+            )
+            from gevent import sleep as gsleep
+            gsleep(2)
+
             MessageQueueUser._context = {
                 'auth': {
                     'username': self.real_stuff['username'],
@@ -293,7 +242,6 @@ class TestMessageQueueUser:
                 }
             }
 
-
             request = RequestContext(RequestMethod.GET, name='test-get', endpoint=self.real_stuff['endpoint'])
             scenario = LocustContextScenario()
             scenario.name = 'test'
@@ -306,6 +254,13 @@ class TestMessageQueueUser:
             user.request(request)
             assert 0
         finally:
+            if process is not None:
+                try:
+                    process.terminate()
+                    out, _ = process.communicate()
+                    print(out)
+                except Exception as e:
+                    print(e)
             MessageQueueUser._context = {
                 'auth': {
                     'username': None,
@@ -319,7 +274,17 @@ class TestMessageQueueUser:
     @pytest.mark.skip(reason='needs real credentials and host etc.')
     @pytest.mark.usefixtures('locust_environment')
     def test_put_tls_real(self, locust_environment: Environment) -> None:
+        process: Optional[subprocess.Popen] = None
         try:
+            process = subprocess.Popen(
+                ['messagequeue-daemon'],
+                env=environ.copy(),
+                shell=False,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+            )
+            from gevent import sleep as gsleep
+            gsleep(2)
 
             MessageQueueUser._context = {
                 'auth': {
@@ -344,6 +309,13 @@ class TestMessageQueueUser:
 
             user.request(request)
         finally:
+            if process is not None:
+                try:
+                    process.terminate()
+                    out, _ = process.communicate()
+                    print(out)
+                except Exception as e:
+                    print(e)
             MessageQueueUser._context = {
                 'auth': {
                     'username': None,
@@ -356,6 +328,57 @@ class TestMessageQueueUser:
 
     def test_get(self, mq_user: Tuple[MessageQueueUser, LocustContextScenario, Environment], mocker: MockerFixture) -> None:
         [user, scenario, _] = mq_user
+
+        def mocked_noop(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+            pass
+
+        mocker.patch(
+            'grizzly.users.messagequeue.zmq.sugar.context.Context.term',
+            mocked_noop,
+        )
+
+        mocker.patch(
+            'grizzly.users.messagequeue.zmq.sugar.context.Context.__del__',
+            mocked_noop,
+        )
+
+        mocker.patch(
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.bind',
+            mocked_noop,
+        )
+
+        mocker.patch(
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.connect',
+            mocked_noop,
+        )
+
+        mocker.patch(
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.send_json',
+            mocked_noop,
+        )
+
+        response_connected: MessageQueueResponse = {
+            'worker': '0000-1337',
+            'success': True,
+            'message': 'connected',
+        }
+
+        payload = '<?xml encoding="utf-8"?>'
+
+        mocker.patch(
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
+            side_effect=[
+                response_connected,
+                {
+                    'success': True,
+                    'worker': '0000-1337',
+                    'response_length': 24,
+                    'response_time': -1337,  # fake so message queue daemon response time is a huge chunk
+                    'metadata': pymqi.MD().get(),
+                    'payload': payload,
+                }
+            ],
+        )
 
         context_locust = LocustContext()
         context_locust._scenarios = [scenario]
@@ -370,43 +393,6 @@ class TestMessageQueueUser:
             }
         }
 
-        payload = '<?xml encoding="utf-8"?>'
-
-        class DummyQueue:
-            name: str
-            closed: bool
-
-            def __init__(self) -> None:
-                self.closed = False
-
-            def get(self, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> bytes:
-                return payload.encode('utf-8')
-
-            def close(self) -> None:
-                self.closed = True
-
-        class DummyErrorQueue(DummyQueue):
-            def get(self, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Any:
-                raise Exception('get failed')
-
-
-        def mock_queue(queue_class: Type[DummyQueue]) -> DummyQueue:
-            queue = queue_class()
-
-            def mq_queue(qmgr: pymqi.QueueManager, qname: str) -> DummyQueue:
-                queue.name = qname
-                return queue
-
-            mocker.patch(
-                'pymqi.Queue',
-                mq_queue,
-            )
-
-            return queue
-
-        queue = mock_queue(DummyQueue)
-
-        assert queue.closed == False
 
         remote_variables = {
             'variables': transform({
@@ -456,6 +442,20 @@ class TestMessageQueueUser:
         request_event_spy.reset_mock()
         response_event_spy.reset_mock()
 
+        mocker.patch(
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
+            side_effect=[
+                {
+                    'success': True,
+                    'worker': '0000-1337',
+                    'response_length': 24,
+                    'response_time': 1337,
+                    'metadata': pymqi.MD().get(),
+                    'payload': payload,
+                }
+            ],
+        )
+
         add_save_handler(context_locust, ResponseTarget.PAYLOAD, '$.test', '.*', 'payload_variable')
 
         user.request(request)
@@ -479,6 +479,20 @@ class TestMessageQueueUser:
             "test": "payload_variable value"
         }'''
 
+        mocker.patch(
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
+            side_effect=[
+                {
+                    'success': True,
+                    'worker': '0000-1337',
+                    'response_length': 24,
+                    'response_time': 1337,
+                    'metadata': pymqi.MD().get(),
+                    'payload': payload,
+                }
+            ],
+        )
+
         user.request(request)
 
         assert user.context_variables['payload_variable'] == 'payload_variable value'
@@ -491,33 +505,52 @@ class TestMessageQueueUser:
         request_event_spy.reset_mock()
         response_event_spy.reset_mock()
 
-        queue = mock_queue(DummyErrorQueue)
-
-        assert queue.closed == False
-
         user.request(request)
 
         assert request_event_spy.call_count == 1
         _, kwargs = request_event_spy.call_args_list[0]
         assert kwargs['exception'] is not None
-        assert queue.closed == True
         request_event_spy.reset_mock()
 
         request_error = clone_request('POST', request)
-        queue = mock_queue(DummyErrorQueue)
 
-        assert queue.closed == False
+        mocker.patch(
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
+            side_effect=[
+                {
+                    'success': False,
+                    'worker': '0000-1337',
+                    'response_length': 0,
+                    'response_time': 1337,
+                    'metadata': pymqi.MD().get(),
+                    'payload': payload,
+                    'message': 'no implementation for POST'
+                }
+            ],
+        )
 
         user.request(request_error)
 
         assert request_event_spy.call_count == 1
         _, kwargs = request_event_spy.call_args_list[0]
         assert kwargs['exception'] is not None
-        assert 'has not implemented POST' in str(kwargs['exception'])
-        assert queue.closed == True
+        assert 'no implementation for POST' in str(kwargs['exception'])
         request_event_spy.reset_mock()
 
-        queue = mock_queue(DummyErrorQueue)
+        mocker.patch(
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
+            side_effect=[
+                {
+                    'success': False,
+                    'worker': '0000-1337',
+                    'response_length': 0,
+                    'response_time': 1337,
+                    'metadata': pymqi.MD().get(),
+                    'payload': payload,
+                    'message': 'no implementation for POST'
+                } for _ in range(3)
+            ],
+        )
 
         scenario.stop_on_failure = False
         user.request(request_error)
@@ -536,9 +569,42 @@ class TestMessageQueueUser:
         assert kwargs['exception'] is not None
         request_event_spy.reset_mock()
 
-
     def test_send(self, mq_user: Tuple[MessageQueueUser, LocustContextScenario, Environment], mocker: MockerFixture) -> None:
         [user, scenario, _] = mq_user
+
+        def mocked_noop(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+            pass
+
+        mocker.patch(
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.bind',
+            mocked_noop,
+        )
+
+        mocker.patch(
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.connect',
+            mocked_noop,
+        )
+
+        mocker.patch(
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.send_json',
+            mocked_noop,
+        )
+
+        mocker.patch(
+            'grizzly.users.messagequeue.zmq.sugar.context.Context.term',
+            mocked_noop,
+        )
+
+        mocker.patch(
+            'grizzly.users.messagequeue.zmq.sugar.context.Context.__del__',
+            mocked_noop,
+        )
+
+        response_connected: MessageQueueResponse = {
+            'worker': '0000-1337',
+            'success': True,
+            'message': 'connected',
+        }
 
         user._context = {
             'auth': {
@@ -549,45 +615,6 @@ class TestMessageQueueUser:
                 'ssl_cipher': None,
             }
         }
-
-        class DummyQueue:
-            name: str
-            payload: str
-            closed: bool
-            md: pymqi.MD
-
-            def __init__(self) -> None:
-                self.closed = False
-
-            def put(self, payload: str, *opts: Tuple[Any, ...]) -> None:
-                self.payload = payload
-                self.md = opts[0]
-
-            def close(self) -> None:
-                self.closed = True
-
-        class DummyErrorQueue(DummyQueue):
-            def put(self, payload: str, *opts: Tuple[Any, ...]) -> None:
-                raise Exception('put failed')
-
-
-        def mock_queue(queue_class: Type[DummyQueue]) -> DummyQueue:
-            queue = queue_class()
-
-            def mq_queue(qmgr: pymqi.QueueManager, qname: str) -> DummyQueue:
-                queue.name = qname
-                return queue
-
-            mocker.patch(
-                'pymqi.Queue',
-                mq_queue,
-            )
-
-            return queue
-
-        queue = mock_queue(DummyQueue)
-
-        assert queue.closed == False
 
         remote_variables = {
             'variables': transform({
@@ -607,6 +634,21 @@ class TestMessageQueueUser:
 
         assert payload is not None
 
+        mocker.patch(
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
+            side_effect=[
+                response_connected,
+                {
+                    'success': True,
+                    'worker': '0000-1337',
+                    'response_length': 182,
+                    'response_time': 1337,
+                    'metadata': pymqi.MD().get(),
+                    'payload': payload,
+                }
+            ],
+        )
+
         user.request(request)
 
         assert request_event_spy.call_count == 2
@@ -622,40 +664,37 @@ class TestMessageQueueUser:
 
         request_event_spy.reset_mock()
 
-        data = jsonloads(queue.payload)
-
-        assert '31337' in queue.payload
-        assert data['result']['id'] == 'ID-31337'
-        assert queue.closed == True
-        assert queue.name == request.endpoint
-
-        queue = mock_queue(DummyErrorQueue)
-
-        assert queue.closed == False
-
         user.request(request)
 
         assert request_event_spy.call_count == 1
         _, kwargs = request_event_spy.call_args_list[0]
         assert kwargs['exception'] is not None
-        assert queue.closed == True
         request_event_spy.reset_mock()
 
         request_error = clone_request('POST', request)
-        queue = mock_queue(DummyErrorQueue)
 
-        assert queue.closed == False
+        mocker.patch(
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
+            side_effect=[
+                {
+                    'success': False,
+                    'worker': '0000-1337',
+                    'response_length': 0,
+                    'response_time': 1337,
+                    'metadata': pymqi.MD().get(),
+                    'payload': payload,
+                    'message': 'no implementation for POST'
+                } for _ in range(3)
+            ],
+        )
 
         user.request(request_error)
 
         assert request_event_spy.call_count == 1
         _, kwargs = request_event_spy.call_args_list[0]
         assert kwargs['exception'] is not None
-        assert 'has not implemented POST' in str(kwargs['exception'])
-        assert queue.closed == True
+        assert 'no implementation for POST' in str(kwargs['exception'])
         request_event_spy.reset_mock()
-
-        queue = mock_queue(DummyErrorQueue)
 
         scenario.stop_on_failure = False
         user.request(request_error)
