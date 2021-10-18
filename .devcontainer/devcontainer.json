@@ -32,6 +32,7 @@
 		"python.linting.pydocstylePath": "/usr/local/py-utils/bin/pydocstyle",
         "python.linting.pylintPath": "pylint",
         "python.languageServer": "Pylance",
+        "pythonTestExplorer.testFramework": "pytest",
         "files.associations": {
             "*.j2.json": "jinja-json"
         },
@@ -51,7 +52,7 @@
         "python.testing.pytestEnabled": true,
         "python.testing.pytestArgs": [
             "-o testpaths=tests",
-            "--cov=grizzly/",
+            "--cov=.",
             "--cov-report=xml:coverage.xml",
             "tests/"
         ],
