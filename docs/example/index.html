@@ -9,7 +9,7 @@
       
       
       
-      <link rel="icon" href="../assets/logo/grizzly_logo_16.png">
+      <link rel="icon" href="../assets/favicon.ico">
       <meta name="generator" content="mkdocs-1.2.2, mkdocs-material-7.2.6">
     
     
@@ -78,7 +78,7 @@
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href=".." title="Grizzly" class="md-header__button md-logo" aria-label="Grizzly" data-md-component="logo">
       
-  <img src="../assets/logo/grizzly_logo_128.png" alt="logo">
+  <img src="../assets/logo/grizzly_grasshopper_orange_64px.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -174,7 +174,7 @@
   <label class="md-nav__title" for="__drawer">
     <a href=".." title="Grizzly" class="md-nav__button md-logo" aria-label="Grizzly" data-md-component="logo">
       
-  <img src="../assets/logo/grizzly_logo_128.png" alt="logo">
+  <img src="../assets/logo/grizzly_grasshopper_orange_64px.png" alt="logo">
 
     </a>
     Grizzly
@@ -947,9 +947,11 @@ rm -rf .git/
 <div class="highlight"><pre><span></span><code>python3 -m venv .env
 . .env/bin/activate
 pip3 install -r requirements.txt
-pip3 install -r requirements-run.txt
+pip3 install grizzly-loadtester-cli
 </code></pre></div>
-<p>If you do not already have an working "IBM MQ" client setup and run <code>grizzly-cli</code> in local mode you will not be able to use <code>MessageQueueUser</code>. See <a href="https://github.com/Biometria-se/grizzly-cli/blob/main/grizzly_cli/static/Containerfile#L5-L23"><code>grizzly-cli/static/Containerfile</code></a> on how to get these.</p>
+<p>If you do not already have an working "IBM MQ" client setup and run <code>grizzly-cli</code> in local mode you will not be able to use <code>MessageQueueUser</code>. See <a href="https://github.com/Biometria-se/grizzly-cli/blob/main/grizzly_cli/static/Containerfile#L5-L23"><code>grizzly-cli/static/Containerfile</code></a> on how to get these. When that is done you need to install the extra dependencies:</p>
+<div class="highlight"><pre><span></span><code>pip3 install grizzly-loadtester-cli<span class="o">[</span>mq<span class="o">]</span>
+</code></pre></div>
 <h2 id="run">Run</h2>
 <p><code>grizzly</code> has some runtime features which is easiliest handled by using the <code>grizzly-cli</code>. It provides a simple command line interface wrapping the <code>behave</code> command, for providing initial variable values, configuration etc.</p>
 <p>If <code>docker</code> and <code>docker-compose</code> are installed, <code>grizzly-cli</code> will by default start the load test in distributed mode (override with <code>--local</code>).</p>

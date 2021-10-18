@@ -9,7 +9,7 @@
       
       
       
-      <link rel="icon" href="../../../assets/logo/grizzly_logo_16.png">
+      <link rel="icon" href="../../../assets/favicon.ico">
       <meta name="generator" content="mkdocs-1.2.2, mkdocs-material-7.2.6">
     
     
@@ -78,7 +78,7 @@
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href="../../.." title="Grizzly" class="md-header__button md-logo" aria-label="Grizzly" data-md-component="logo">
       
-  <img src="../../../assets/logo/grizzly_logo_128.png" alt="logo">
+  <img src="../../../assets/logo/grizzly_grasshopper_orange_64px.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -174,7 +174,7 @@
   <label class="md-nav__title" for="__drawer">
     <a href="../../.." title="Grizzly" class="md-nav__button md-logo" aria-label="Grizzly" data-md-component="logo">
       
-  <img src="../../../assets/logo/grizzly_logo_128.png" alt="logo">
+  <img src="../../../assets/logo/grizzly_grasshopper_orange_64px.png" alt="logo">
 
     </a>
     Grizzly
@@ -851,6 +851,10 @@
                 <p><a id="grizzly.users.messagequeue"></a></p>
 <h1 id="grizzlyusersmessagequeue">grizzly.users.messagequeue</h1>
 <p>Communicates with IBM MQ.</p>
+<p>User is based on <code>pymqi</code> for communicating with IBM MQ. However <code>pymqi</code> uses native libraries which <code>gevent</code> (used by <code>locust</code>) cannot patch,
+which causes any calls in <code>pymqi</code> to block the rest of <code>locust</code>. To get around this, the user implementation communicates with a stand-alone
+process via zmq, which then in turn communicates with IBM MQ.</p>
+<p>The message queue daemon process is started automagically when a scenario contains the <code>MessageQueueUser</code> and <code>pymqi</code> dependencies are installed.</p>
 <p>Format of <code>host</code> is the following:</p>
 <div class="highlight"><pre><span></span><code>mq://&lt;hostname&gt;:&lt;port&gt;/?QueueManager=&lt;queue manager name&gt;&amp;Channel=&lt;channel name&gt;
 </code></pre></div>

@@ -9,7 +9,7 @@
       
       
       
-      <link rel="icon" href="../../../../assets/logo/grizzly_logo_16.png">
+      <link rel="icon" href="../../../../assets/favicon.ico">
       <meta name="generator" content="mkdocs-1.2.2, mkdocs-material-7.2.6">
     
     
@@ -78,7 +78,7 @@
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href="../../../.." title="Grizzly" class="md-header__button md-logo" aria-label="Grizzly" data-md-component="logo">
       
-  <img src="../../../../assets/logo/grizzly_logo_128.png" alt="logo">
+  <img src="../../../../assets/logo/grizzly_grasshopper_orange_64px.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -174,7 +174,7 @@
   <label class="md-nav__title" for="__drawer">
     <a href="../../../.." title="Grizzly" class="md-nav__button md-logo" aria-label="Grizzly" data-md-component="logo">
       
-  <img src="../../../../assets/logo/grizzly_logo_128.png" alt="logo">
+  <img src="../../../../assets/logo/grizzly_grasshopper_orange_64px.png" alt="logo">
 
     </a>
     Grizzly
@@ -878,25 +878,30 @@
 <p>With this step it is possible to change variable values and as such use values from a response later on in the load test.</p>
 <p>This step will fail if the specified <code>expression</code> has no match or more than one match.</p>
 <div class="highlight"><pre><span></span><code><span class="c"># only token is matched and saved in TOKEN, by using regexp match groups</span><span class="nf"></span>
-<span class="k">And </span><span class="nf">set variable &quot;</span><span class="s">TOKEN</span><span class="nf">&quot; to &quot;</span><span class="s">none</span><span class="nf">&quot;</span>
-<span class="k">And </span><span class="nf">save response metadata &quot;</span><span class="s">$.Authentication</span><span class="nf">&quot; that matches &quot;</span><span class="s">Bearer (.*)$</span><span class="nf">&quot; in variabel &quot;</span><span class="s">TOKEN</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">value of variable &quot;</span><span class="s">TOKEN</span><span class="nf">&quot; is &quot;</span><span class="s">none</span><span class="nf">&quot;</span>
+<span class="k">Then </span><span class="nf">save response metadata &quot;</span><span class="s">$.Authentication</span><span class="nf">&quot; that matches &quot;</span><span class="s">Bearer (.*)$</span><span class="nf">&quot; in variabel &quot;</span><span class="s">TOKEN</span><span class="nf">&quot;</span>
 
 <span class="c"># the whole value is saved, as long as Authentication starts with &quot;Bearer&quot;</span><span class="nf"></span>
-<span class="k">And </span><span class="nf">set variable &quot;</span><span class="s">HEADER_AUTHENTICATION</span><span class="nf">&quot; to &quot;</span><span class="s">none</span><span class="nf">&quot;</span>
-<span class="k">And </span><span class="nf">save response metadata &quot;</span><span class="s">$.Authentication</span><span class="nf">&quot; that matches &quot;</span><span class="s">^Bearer .*$</span><span class="nf">&quot; in variable &quot;</span><span class="s">HEADER_AUTHENTICATION</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">value of variable &quot;</span><span class="s">HEADER_AUTHENTICATION</span><span class="nf">&quot; is &quot;</span><span class="s">none</span><span class="nf">&quot;</span>
+<span class="k">Then </span><span class="nf">save response metadata &quot;</span><span class="s">$.Authentication</span><span class="nf">&quot; that matches &quot;</span><span class="s">^Bearer .*$</span><span class="nf">&quot; in variable &quot;</span><span class="s">HEADER_AUTHENTICATION</span><span class="nf">&quot;</span>
 
 <span class="c"># only the numerical suffix is saved in the variable</span><span class="nf"></span>
-<span class="k">And </span><span class="nf">set variable &quot;</span><span class="s">AtomicInteger.measurermentId</span><span class="nf">&quot; to &quot;</span><span class="s">0</span><span class="nf">&quot;</span>
-<span class="k">And </span><span class="nf">save response payload &quot;</span><span class="s">$.measurement.id</span><span class="nf">&quot; that matches &quot;</span><span class="s">^cpu([\\d]+)$</span><span class="nf">&quot; in &quot;</span><span class="s">AtomicInteger.measurementId</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">value of variable &quot;</span><span class="s">AtomicInteger.measurermentId</span><span class="nf">&quot; is &quot;</span><span class="s">0</span><span class="nf">&quot;</span>
+<span class="k">Then </span><span class="nf">save response payload &quot;</span><span class="s">$.measurement.id</span><span class="nf">&quot; that matches &quot;</span><span class="s">^cpu([\\d]+)$</span><span class="nf">&quot; in &quot;</span><span class="s">AtomicInteger.measurementId</span><span class="nf">&quot;</span>
 
 <span class="c"># the whole value is saved, as long as the value starts with &quot;cpu&quot;</span><span class="nf"></span>
-<span class="k">And </span><span class="nf">set variable &quot;</span><span class="s">measurementId</span><span class="nf">&quot; to &quot;</span><span class="s">0</span><span class="nf">&quot;</span>
-<span class="k">And </span><span class="nf">save response payload &quot;</span><span class="s">$.measurement.id</span><span class="nf">&quot; that matches &quot;</span><span class="s">^cpu[\\d]+$</span><span class="nf">&quot; in &quot;</span><span class="s">measurementId</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">value of variable &quot;</span><span class="s">measurementId</span><span class="nf">&quot; is &quot;</span><span class="s">0</span><span class="nf">&quot;</span>
+<span class="k">Then </span><span class="nf">save response payload &quot;</span><span class="s">$.measurement.id</span><span class="nf">&quot; that matches &quot;</span><span class="s">^cpu[\\d]+$</span><span class="nf">&quot; in &quot;</span><span class="s">measurementId</span><span class="nf">&quot;</span>
+
+<span class="c"># xpath example</span><span class="nf"></span>
+<span class="k">And </span><span class="nf">set response content type to &quot;</span><span class="s">application/xml</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">value of variable &quot;</span><span class="s">xmlMeasurementId</span><span class="nf">&quot; is &quot;</span><span class="s">none</span><span class="nf">&quot;</span>
+<span class="k">Then </span><span class="nf">save response payload &quot;</span><span class="s">//measurement[0]/id/text()</span><span class="nf">&quot; that matches &quot;</span><span class="s">^cpu[\\d]+$</span><span class="nf">&quot; in &quot;</span><span class="s">xmlMeasurementId</span><span class="nf">&quot;</span>
 </code></pre></div>
 <p><strong>Arguments</strong>:</p>
 <ul>
 <li><code>target</code> <em>enum</em> - "metadata" or "payload", depending on which part of the response should be used</li>
-<li><code>expression</code> <em>str</em> - JSON path expression for finding the property</li>
+<li><code>expression</code> <em>str</em> - JSON path or XPath expression for finding the property</li>
 <li><code>match_with</code> <em>str</em> - static value or a regular expression</li>
 <li><code>variable</code> <em>str</em> - name of the already initialized variable to save the value in</li>
 </ul>
@@ -909,14 +914,16 @@
 <p>This step is the same as <code>step_response_save_matches</code> if <code>match_with</code> is set to <code>.*</code>.</p>
 <p>With this step it is possible to change variable values and as such use values from a response later on in the load test.</p>
 <p>This step will fail if the specified <code>expression</code> has no match or more than one match.</p>
-<div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">save response metadata &quot;</span><span class="s">$.Authentication</span><span class="nf">&quot; in variable &quot;</span><span class="s">HEADER_AUTHENTICATION</span><span class="nf">&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="k">Then </span><span class="nf">save response metadata &quot;</span><span class="s">$.Authentication</span><span class="nf">&quot; in variable &quot;</span><span class="s">HEADER_AUTHENTICATION</span><span class="nf">&quot;</span>
 
-<span class="k">And </span><span class="nf">save response payload &quot;</span><span class="s">$.MeasureResult.ShipmentId</span><span class="nf">&quot; in variable &quot;</span><span class="s">ShipmentId</span><span class="nf">&quot;</span>
+<span class="k">Then </span><span class="nf">save response payload &quot;</span><span class="s">$.Result.ShipmentId</span><span class="nf">&quot; in variable &quot;</span><span class="s">ShipmentId</span><span class="nf">&quot;</span>
+
+<span class="k">Then </span><span class="nf">save response payload &quot;</span><span class="s">//measurement[0]/id/text()</span><span class="nf">&quot; in &quot;</span><span class="s">xmlMeasurementId</span><span class="nf">&quot;</span>
 </code></pre></div>
 <p><strong>Arguments</strong>:</p>
 <ul>
 <li><code>target</code> <em>enum</em> - "metadata" or "payload", depending on which part of the response should be used</li>
-<li><code>expression</code> <em>str</em> - JSON path expression for finding the property</li>
+<li><code>expression</code> <em>str</em> - JSON path or XPath expression for finding the property</li>
 <li><code>variable</code> <em>str</em> - name of the already initialized variable to save the value in</li>
 </ul>
 <p><a id="grizzly.steps.scenario.response.step_response_validate"></a></p>
@@ -931,11 +938,12 @@
 
 <span class="k">When </span><span class="nf">response payload &quot;</span><span class="s">$.measurement.id</span><span class="nf">&quot; is not &quot;</span><span class="s">cpu[0-9]+</span><span class="nf">&quot; stop user</span>
 <span class="k">When </span><span class="nf">response payload &quot;</span><span class="s">$.success</span><span class="nf">&quot; is &quot;</span><span class="s">false</span><span class="nf">&quot; stop user</span>
+<span class="k">When </span><span class="nf">response payload &quot;</span><span class="s">/root/measurement[@id=</span><span class="nf">&quot;cpu&quot;</span><span class="s">]/success/text()</span><span class="nf">&quot; is &quot;</span><span class="s">&#39;false&#39;</span><span class="nf">&quot; stop user</span>
 </code></pre></div>
 <p><strong>Arguments</strong>:</p>
 <ul>
 <li><code>target</code> <em>enum</em> - "metadata" or "payload", depending on which part of the response should be used</li>
-<li><code>expression</code> <em>str</em> - JSON path expression for finding the property</li>
+<li><code>expression</code> <em>str</em> - JSON path or XPath expression for finding the property</li>
 <li><code>condition</code> <em>enum</em> - "is" or "is not" depending on negative or postive matching</li>
 <li><code>match_with</code> <em>str</em> - static value or a regular expression</li>
 </ul>

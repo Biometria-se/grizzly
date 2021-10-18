@@ -9,7 +9,7 @@
       
       
       
-      <link rel="icon" href="assets/logo/grizzly_logo_16.png">
+      <link rel="icon" href="assets/favicon.ico">
       <meta name="generator" content="mkdocs-1.2.2, mkdocs-material-7.2.6">
     
     
@@ -78,7 +78,7 @@
   <nav class="md-header__inner md-grid" aria-label="Header">
     <a href="." title="Grizzly" class="md-header__button md-logo" aria-label="Grizzly" data-md-component="logo">
       
-  <img src="assets/logo/grizzly_logo_128.png" alt="logo">
+  <img src="assets/logo/grizzly_grasshopper_orange_64px.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -174,7 +174,7 @@
   <label class="md-nav__title" for="__drawer">
     <a href="." title="Grizzly" class="md-nav__button md-logo" aria-label="Grizzly" data-md-component="logo">
       
-  <img src="assets/logo/grizzly_logo_128.png" alt="logo">
+  <img src="assets/logo/grizzly_grasshopper_orange_64px.png" alt="logo">
 
     </a>
     Grizzly
@@ -280,6 +280,13 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    Installation
+  </a>
   
 </li>
       
@@ -863,6 +870,13 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    Installation
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#development" class="md-nav__link">
     Development
   </a>
@@ -887,7 +901,7 @@
                 
                 
                 <h1 id="grizzly-zli">Grizzly - <code>/ˈɡɹɪzli/</code></h1>
-<p><img alt="grizzly logo" src="https://raw.githubusercontent.com/Biometria-se/grizzly/main/docs/assets/logo/grizzly_logo_256.png" /></p>
+<p><img alt="grizzly logo" src="https://raw.githubusercontent.com/Biometria-se/grizzly/main/docs/assets/logo/grizzly_grasshopper_brown_256px.png" /></p>
 <p>Grizzly is a framework to be able to easily define load scenarios, and is mainly built on-top of two other frameworks:</p>
 <blockquote>
 <p><a href="https://locust.io">Locust</a>: Define user behaviour with Python code, and swarm your system with millions of simultaneous users.</p>
@@ -937,16 +951,22 @@
 <p><code>locust</code> comes with a simple user for loading an HTTP(S) endpoint and due to the nature of how the integration between <code>behave</code> and <code>locust</code> works, it is not possible to use <code>locust</code> provided users, even for HTTP(S) targets.</p>
 <ul>
 <li><code>RestApiUser</code>: send requests to REST API endpoinds, supports authentication with username+password or client secret</li>
-<li><code>ServiceBusUser</code>: send to Azure Service Bus queues and topics</li>
+<li><code>ServiceBusUser</code>: send to Azure Service Bus queues and topics<sup>2</sup></li>
 <li><code>MessageQueueUser</code>: send and receive from IBM MQ queues</li>
 <li><code>SftpUser</code>: send and receive files from an SFTP-server</li>
-<li><code>BlobStorageUser</code>: send files to Azure Blob Storage</li>
+<li><code>BlobStorageUser</code>: send files to Azure Blob Storage<sup>2</sup></li>
 </ul>
+<p><sup>2</sup> A pull request for functionality in the other direction is appreciated!</p>
 <h3 id="request-log">Request log</h3>
 <p>All failed requests are logged to a file which includes both header and body, both for request and response.</p>
+<h2 id="installation">Installation</h2>
+<div class="highlight"><pre><span></span><code>pip3 install grizzly-loadtester
+pip3 install grizzly-loadtester-cli
+</code></pre></div>
+<p>Easiest way to get started is to check out the <a href="/example/">example</a>!</p>
 <h2 id="development">Development</h2>
 <p>The easiest way to start contributing to this project is to have <a href="https://code.visualstudio.com/">Visual Studio Code</a> (with "Remote - Containers" extension) and <a href="https://www.docker.com/">docker</a> installed. The project comes with a <code>devcontainer</code>, which encapsulates everything needed for a development environment.</p>
-<p>It is also possible to use a python virtual environment where both <code>requirements.txt</code> and <code>requirements-dev.txt</code> is installed.</p>
+<p>It is also possible to use a python virtual environment where <code>requirements.txt</code> and <code>requirements-dev.txt</code> is installed, and also preferbly the IBM MQ client dependencies and <code>requirements-extras.txt</code>.</p>
                 
               
               
