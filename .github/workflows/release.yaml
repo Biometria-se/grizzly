@@ -123,7 +123,7 @@ jobs:
         TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
         TWINE_NON_INTERACTIVE: true
       run: |
-        PLACEHOLDER="__version__ = 'develop'"
+        PLACEHOLDER="__version__ = '0.0.0'"
         VERSION_FILE='grizzly/__init__.py'
         VERSION_INFORMATION="__version__ = '${{ steps.version.outputs.version }}'"
 
