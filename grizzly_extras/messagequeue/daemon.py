@@ -17,10 +17,10 @@ from . import (
 )
 
 try:
+    # not used here, but we should fail early if it's not installed
     import pymqi  # pylint: disable=unused-import
-    has_dependency = True
 except ImportError:
-    has_dependency = False
+    from .. import dummy_pymqi as pymqi
 
 
 def router() -> None:
@@ -126,7 +126,7 @@ def worker(context: zmq.Context, identity: str) -> None:
 
 
 def main() -> int:
-    if not has_dependency:
+    if pymqi.__name__ == 'grizzly_extras.dummy_pymqi':
         raise NotImplementedError('pymqi not installed')
     try:
         router()

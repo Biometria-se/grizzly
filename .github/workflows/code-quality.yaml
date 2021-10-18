@@ -11,6 +11,9 @@ jobs:
       matrix:
         python-version: [3.8]
 
+    env:
+      PYTHONPATH: .
+
     steps:
     - name: setup python
       uses: actions/setup-python@v2
@@ -38,26 +41,19 @@ jobs:
         pip install --upgrade --upgrade-strategy eager -r <(cat requirements.txt requirements-dev.txt)
 
     - name: run pytest
-      env:
-        PYTHONPATH: .
       run: |
-        # test_messagequeue requires grizzly[mq] -> requirements-extras.txt and external libraries
-        pytest --ignore-glob=*test_messagequeue*,*messagequeue/test___init__*
+        # *messagequeue* requires grizzly[mq] -> requirements-extras.txt and external libraries
+        pytest --ignore-glob=*test_messagequeue* --ignore-glob=*messagequeue/test_*
 
     - name: run coverage
       run: |
-        coverage report --omit=grizzly/users/messagequeue.py --omit=grizzly_extras/messagequeue/test___init__.py --fail-under=95
+        coverage report --omit=grizzly/users/messagequeue.py,grizzly_extras/messagequeue/*,tests/*,setup.py --fail-under=95
 
     - name: run pylint
       run: |
         pylint --fail-under=10 --ignore=messagequeue.py,test_messagequeue.py,grizzly_extras/messagequeue/__init__.py,tests/test_grizzly_extras/messagequeue/test__init__.py grizzly/ grizzly_extras/ tests/ example/
 
-    - name: contruct mypy arguments
-      id: mypy-arguments
-      run: |
-        echo "::set-output name=mypyArgs::$(sed '/^[ \t]*\/\/.*/d;/^$/d' .devcontainer/devcontainer.json | jq '.settings["python.linting.mypyArgs"] | join(" ")' | awk -F\" '{print $2}')"
     - name: run mypy
       run: |
-        mypy ${{ steps.mypy-arguments.outputs.mypyArgs }} grizzly/ grizzly_extras/ tests/ example/
-
-
+        arguments="$(sed '/^[ \t]*\/\/.*/d;/^$/d' .devcontainer/devcontainer.json | jq '.settings["python.linting.mypyArgs"] | join(" ")' | awk -F\" '{print $2}')"
+        mypy ${arguments} grizzly/ grizzly_extras/ tests/ example/
