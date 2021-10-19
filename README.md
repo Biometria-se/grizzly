@@ -14,6 +14,10 @@ The name grizzly was chosen based on the grasshopper [Melanoplus punctulatus](ht
 
 <sup>1</sup> _Biometria is a member owned and central actor within the swedish forestry that performs unbiased measurement of lumber flowing between forest and industry so that all of Swedens forest owners can feel confident selling their lumber._
 
+## Documentation
+
+More detailed documentation can be found [here](https://biometria-se.github.io/grizzly) and the easiest way to get started is to check out the [example](https://biometria-se.github.io/grizzly/example/).
+
 ## Description
 
 `behave` is <del>abused</del> used for being able to define `locust` load test scenarios using [gherkin](https://cucumber.io/docs/gherkin). A feature can contain more than one scenario and all scenarios will run in parallell.
@@ -88,7 +92,7 @@ pip3 install grizzly-loadtester
 pip3 install grizzly-loadtester-cli
 ```
 
-Easiest way to get started is to check out the [example](/example/)!
+Do not forget to try the [example](https://biometria-se.github.io/grizzly/example/) which also serves as a boilerplate scenario project.
 
 ## Development
 
