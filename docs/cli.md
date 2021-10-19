@@ -5,7 +5,7 @@
 ## Installation
 
 ```plain
-pip install grizzly-cli
+pip install grizzly-loadtester-cli
 ```
 
 ## Usage
@@ -56,4 +56,4 @@ And ask for value of ...
 
 ### `-c CONFIG_FILE, --config-file CONFIG_FILE`
 
-A path to an [environment configuration file](/usage/variables/environment-configuration/).
+A path to an [environment configuration file](https://biometria-se.github.io/grizzly/usage/variables/environment-configuration/).
