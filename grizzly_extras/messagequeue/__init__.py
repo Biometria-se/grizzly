@@ -184,7 +184,6 @@ class MessageQueue:
                 payload = request.get('payload', None)
                 response_length = len(payload) if payload is not None else 0
                 queue.put(payload, md)
-                payload = None
             elif action == 'GET':
                 message_wait: int = request.get('context', {}).get('message_wait', None) or 0
 
