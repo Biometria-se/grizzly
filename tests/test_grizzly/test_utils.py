@@ -324,6 +324,99 @@ def test_generate_save_handler(locust_environment: Environment) -> None:
     with pytest.raises(ResponseHandlerError):
         handler((ResponseContentType.JSON, {'test': [{'value': 'test'}, {'value': 'test'}]}), user, None)
 
+    # save object dict
+    handler = generate_save_handler(
+        '$.test.prop2',
+        '.*',
+        'test_object',
+    )
+
+    handler(
+        (
+            ResponseContentType.JSON,
+            {
+                'test': {
+                    'prop1': 'value1',
+                    'prop2': {
+                        'prop21': False,
+                        'prop22': 100,
+                        'prop23': {
+                            'prop231': True,
+                            'prop232': 'hello',
+                            'prop233': 'world!',
+                            'prop234': 200,
+                        },
+                    },
+                    'prop3': 'value3',
+                    'prop4': [
+                        'prop41',
+                        True,
+                        'prop42',
+                        300,
+                    ],
+                }
+            }
+        ),
+        user,
+        response_context_manager,
+    )
+
+    test_object = user.context_variables.get('test_object', None)
+    assert json.loads(test_object) == {
+        'prop21': False,
+        'prop22': 100,
+        'prop23': {
+            'prop231': True,
+            'prop232': 'hello',
+            'prop233': 'world!',
+            'prop234': 200,
+        },
+    }
+
+    # save object list
+    handler = generate_save_handler(
+        '$.test.prop4',
+        '.*',
+        'test_list',
+    )
+
+    handler(
+        (
+            ResponseContentType.JSON,
+            {
+                'test': {
+                    'prop1': 'value1',
+                    'prop2': {
+                        'prop21': False,
+                        'prop22': 100,
+                        'prop23': {
+                            'prop231': True,
+                            'prop232': 'hello',
+                            'prop233': 'world!',
+                            'prop234': 200,
+                        },
+                    },
+                    'prop3': 'value3',
+                    'prop4': [
+                        'prop41',
+                        True,
+                        'prop42',
+                        300,
+                    ],
+                }
+            }
+        ),
+        user,
+        response_context_manager,
+    )
+
+    test_list = user.context_variables.get('test_list', None)
+    assert json.loads(test_list) == [
+        'prop41',
+        True,
+        'prop42',
+        300,
+    ]
 
 
 @pytest.mark.usefixtures('locust_environment')

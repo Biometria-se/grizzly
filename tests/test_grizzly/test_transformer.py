@@ -1,5 +1,5 @@
 from typing import List, Tuple, Any
-from json import dumps as jsondumps
+from json import dumps as jsondumps, loads as jsonloads
 from json.decoder import JSONDecodeError
 
 import pytest
@@ -184,12 +184,13 @@ class TestJsonTransformer:
         get_values = JsonTransformer.parser('$.*..title')
         actual = get_values(example)
         assert len(actual) == 2
-        assert ['example glossary', 'S']
+        assert ['example glossary', 'S'] == actual
 
         get_values = JsonTransformer.parser('$.*..GlossSeeAlso')
         actual = get_values(example)
         assert len(actual) == 1
-        assert ["['GML', 'XML']"] == actual
+        assert ['["GML", "XML"]'] == actual
+        assert jsonloads(actual[0]) == ['GML', 'XML']
 
         get_values = JsonTransformer.parser('$.*..GlossSeeAlso[*]')
         actual = get_values(example)
