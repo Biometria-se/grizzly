@@ -326,7 +326,7 @@ class TestMessageQueue:
         })
 
         response = client._request(request)
-        assert response.get('payload', None) is None
+        assert response.get('payload', None) == 'test payload'
         assert response.get('metadata', None) == pymqi.MD().get()
         assert response.get('response_length', 0) == len('test payload')
 
