@@ -6,7 +6,7 @@ import re
 from abc import ABCMeta
 from typing import Tuple, Any, Dict, Type, List, Callable
 from functools import wraps
-from json import loads as jsonloads, JSONEncoder
+from json import loads as jsonloads, dumps as jsondumps, JSONEncoder
 
 from jsonpath_ng.ext import parse as jsonpath_parse
 from lxml import etree as XML
@@ -86,7 +86,19 @@ class JsonTransformer(Transformer):
             jsonpath = jsonpath_parse(expression)
 
             def get_values(input_payload: Any) -> List[str]:
-                return [str(m.value) for m in jsonpath.find(input_payload) if m.value is not None]
+                values: List[str] = []
+                for m in jsonpath.find(input_payload):
+                    if m.value is None:
+                        continue
+
+                    if isinstance(m.value, (dict, list, )):
+                        value = jsondumps(m.value)
+                    else:
+                        value = str(m.value)
+
+                    values.append(value)
+
+                return values
 
             return get_values
         except Exception as e:
