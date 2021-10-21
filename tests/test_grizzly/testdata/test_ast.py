@@ -26,6 +26,8 @@ def test__parse_template(request_context: Tuple[str, str, RequestContext]) -> No
     source['result']['CsvRowValue1'] = '{{ AtomicCsvRow.test.header1 }}'
     source['result']['CsvRowValue2'] = '{{ AtomicCsvRow.test.header2 }}'
     source['result']['File'] = '{{ AtomicDirectoryContents.test }}'
+    source['result']['TestSubString'] = '{{ a_sub_string[:3] }}'
+    source['result']['TestString'] = '{{ a_string }}'
 
     request.source = jsondumps(source)
     request.template = Template(request.source)
@@ -37,13 +39,15 @@ def test__parse_template(request_context: Tuple[str, str, RequestContext]) -> No
     variables = _parse_templates(templates)
 
     assert 'TestScenario' in variables
-    assert len(variables['TestScenario']) == 6
+    assert len(variables['TestScenario']) == 8
     assert 'messageID' in variables['TestScenario']
     assert 'AtomicIntegerIncrementer.messageID' in variables['TestScenario']
     assert 'AtomicDate.now' in variables['TestScenario']
     assert 'AtomicCsvRow.test.header1' in variables['TestScenario']
     assert 'AtomicCsvRow.test.header2' in variables['TestScenario']
     assert 'AtomicDirectoryContents.test' in variables['TestScenario']
+    assert 'a_sub_string' in variables['TestScenario']
+    assert 'a_string' in variables['TestScenario']
 
 
 @pytest.mark.usefixtures('request_context_syntax_error')
