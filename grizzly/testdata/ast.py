@@ -103,7 +103,9 @@ def _parse_templates(requests: RequestSourceMapping) -> Dict[str, Set[str]]:
                             attributes = walk_attr(node)
                         elif isinstance(node, Getitem):
                             child_node = getattr(node, 'node')
-                            attributes = [getattr(child_node, 'name')]
+                            child_node_name = getattr(child_node, 'name', None)
+                            if child_node_name is not None:
+                                attributes = [child_node_name]
                         elif isinstance(node, Name):
                             attributes = [getattr(node, 'name')]
 
