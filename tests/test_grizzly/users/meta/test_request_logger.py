@@ -92,6 +92,8 @@ class TestRequestLogger:
 
         assert request_logger._remove_secrets_attribute({'contents': 'test value'}) == {'contents': 'test value'}
         assert request_logger._remove_secrets_attribute(None) == None
+        assert request_logger._remove_secrets_attribute(True) == True
+        assert request_logger._remove_secrets_attribute('hello world') == 'hello world'
 
     @pytest.mark.usefixtures('request_logger', 'get_log_files')
     def test_request_logger_http(self, request_logger: RequestLogger, get_log_files: Callable[[], List[str]]) -> None:

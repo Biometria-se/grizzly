@@ -66,15 +66,18 @@ class RequestLogger(ResponseEvent, ContextVariables):
 
         return re.sub(r'[-\s]+', '-', value).strip('-_')
 
-    def _remove_secrets_attribute(self, contents: Optional[Dict[Any, Any]]) -> Optional[Dict[Any, Any]]:
-        if contents is None:
+    def _remove_secrets_attribute(self, contents: Optional[Any]) -> Optional[Any]:
+        if not isinstance(contents, dict):
             return contents
 
-        for attribute in ['access_token', 'Authorization', 'authorization']:
-            if attribute in contents:
-                contents[attribute] = '*** REMOVED ***'
-
-        return contents
+        try:
+            for attribute in ['access_token', 'Authorization', 'authorization']:
+                if attribute in contents:
+                    contents[attribute] = '*** REMOVED ***'
+        except:
+            pass
+        finally:
+            return contents
 
     def _get_http_user_data(self, response: ResponseContextManager) -> Dict[str, Dict[str, Any]]:
         request_body: Optional[str]
