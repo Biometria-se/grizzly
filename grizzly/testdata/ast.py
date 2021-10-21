@@ -4,7 +4,7 @@ from typing import Set, Optional, List, Dict, Tuple, Union, cast
 
 import jinja2 as j2
 
-from jinja2.nodes import Getattr, Name
+from jinja2.nodes import Getattr, Getitem, Name
 
 from ..context import RequestContext
 
@@ -101,6 +101,9 @@ def _parse_templates(requests: RequestSourceMapping) -> Dict[str, Set[str]]:
 
                         if isinstance(node, Getattr):
                             attributes = walk_attr(node)
+                        elif isinstance(node, Getitem):
+                            child_node = getattr(node, 'node')
+                            attributes = [getattr(child_node, 'name')]
                         elif isinstance(node, Name):
                             attributes = [getattr(node, 'name')]
 
