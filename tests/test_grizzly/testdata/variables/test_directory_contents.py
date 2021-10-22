@@ -17,7 +17,7 @@ def test_atomicdirectorycontents__base_type__(tmpdir_factory: TempdirFactory) ->
     test_context_root = os.path.dirname(str(test_context))
 
     try:
-        os.environ['LOCUST_CONTEXT_ROOT'] = test_context_root
+        os.environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
 
         test_file = test_context.join('test.txt')
         test_file.write('\n')
@@ -43,7 +43,7 @@ def test_atomicdirectorycontents__base_type__(tmpdir_factory: TempdirFactory) ->
         shutil.rmtree(test_context_root)
 
         try:
-            del os.environ['LOCUST_CONTEXT_ROOT']
+            del os.environ['GRIZZLY_CONTEXT_ROOT']
         except KeyError:
             pass
 
@@ -53,8 +53,8 @@ class TestAtomicDirectoryContents:
         test_context = str(tmpdir_factory.mktemp('test_context').mkdir('requests'))
         test_context_root = os.path.dirname(test_context)
 
-        old_locust_context_root = os.environ.get('LOCUST_CONTEXT_ROOT', None)
-        os.environ['LOCUST_CONTEXT_ROOT'] = test_context_root
+        old_grizzly_context_root = os.environ.get('GRIZZLY_CONTEXT_ROOT', None)
+        os.environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
 
         for directory in ['1-test', '2-test', '3-test']:
             os.mkdir(os.path.join(test_context, directory))
@@ -191,10 +191,10 @@ class TestAtomicDirectoryContents:
             ]
         finally:
             shutil.rmtree(test_context_root)
-            if old_locust_context_root is not None:
-                os.environ['LOCUST_CONTEXT_ROOT'] = old_locust_context_root
+            if old_grizzly_context_root is not None:
+                os.environ['GRIZZLY_CONTEXT_ROOT'] = old_grizzly_context_root
             else:
-                del os.environ['LOCUST_CONTEXT_ROOT']
+                del os.environ['GRIZZLY_CONTEXT_ROOT']
             cleanup()
 
     @pytest.mark.usefixtures('cleanup')
@@ -202,8 +202,8 @@ class TestAtomicDirectoryContents:
         test_context = str(tmpdir_factory.mktemp('test_context').mkdir('requests'))
         test_context_root = os.path.dirname(test_context)
 
-        old_locust_context_root = os.environ.get('LOCUST_CONTEXT_ROOT', None)
-        os.environ['LOCUST_CONTEXT_ROOT'] = test_context_root
+        old_grizzly_context_root = os.environ.get('GRIZZLY_CONTEXT_ROOT', None)
+        os.environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
         try:
             try:
                 AtomicDirectoryContents.destroy()
@@ -231,8 +231,8 @@ class TestAtomicDirectoryContents:
             AtomicDirectoryContents.destroy()
         finally:
             shutil.rmtree(test_context_root)
-            if old_locust_context_root is not None:
-                os.environ['LOCUST_CONTEXT_ROOT'] = old_locust_context_root
+            if old_grizzly_context_root is not None:
+                os.environ['GRIZZLY_CONTEXT_ROOT'] = old_grizzly_context_root
             else:
-                del os.environ['LOCUST_CONTEXT_ROOT']
+                del os.environ['GRIZZLY_CONTEXT_ROOT']
             cleanup()

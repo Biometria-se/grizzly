@@ -11,7 +11,7 @@ from urllib.parse import urlparse, urlunparse
 from locust.clients import ResponseContextManager
 from jinja2 import Template
 
-from ...context import RequestContext
+from ...task import RequestTask
 from ...transformer import JsonBytesEncoder
 from ...types import HandlerContextType, RequestDirection
 from ...testdata.utils import merge_dicts
@@ -54,7 +54,7 @@ class RequestLogger(ResponseEvent, ContextVariables):
 
         self.response_event.add_listener(self.request_logger)
 
-        self.log_dir = os.path.join(os.environ.get('LOCUST_CONTEXT_ROOT', '.'), 'logs')
+        self.log_dir = os.path.join(os.environ.get('GRIZZLY_CONTEXT_ROOT', '.'), 'logs')
         if not os.path.exists(self.log_dir):
             os.mkdir(self.log_dir)
 
@@ -143,7 +143,7 @@ class RequestLogger(ResponseEvent, ContextVariables):
         self,
         name: str,
         context: HandlerContextType,
-        request: RequestContext,
+        request: RequestTask,
         user: ContextVariables,
         exception: Optional[Exception] = None,
         **kwargs: Dict[str, Any],

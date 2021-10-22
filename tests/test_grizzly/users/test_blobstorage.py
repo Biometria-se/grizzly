@@ -16,10 +16,11 @@ from pytest_mock.plugin import MockerFixture
 from grizzly.users.blobstorage import BlobStorageUser
 from grizzly.users.meta.context_variables import ContextVariables
 from grizzly.types import RequestMethod
-from grizzly.context import LocustContextScenario, RequestContext
+from grizzly.context import GrizzlyContextScenario
+from grizzly.task import RequestTask
 from grizzly.testdata.utils import transform
 
-from ..fixtures import locust_context, request_context  # pylint: disable=unused-import
+from ..fixtures import grizzly_context, request_task  # pylint: disable=unused-import
 from ..helpers import ResultFailure, RequestEvent, RequestSilentFailureEvent, clone_request
 
 import logging
@@ -66,7 +67,7 @@ CONNECTION_STRING = 'DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.
 
 
 @pytest.fixture
-def bs_user(locust_context: Callable, mocker: MockerFixture) -> Tuple[BlobStorageUser, LocustContextScenario, Environment]:
+def bs_user(grizzly_context: Callable, mocker: MockerFixture) -> Tuple[BlobStorageUser, GrizzlyContextScenario, Environment]:
     def bs_connect(conn_str: str, **kwargs: Any) -> DummyBlobServiceClient:
         return DummyBlobServiceClient(conn_str)
 
@@ -75,14 +76,14 @@ def bs_user(locust_context: Callable, mocker: MockerFixture) -> Tuple[BlobStorag
         bs_connect,
     )
 
-    environment, user, task, [_, _, request] = locust_context(
+    environment, user, task, [_, _, request] = grizzly_context(
         CONNECTION_STRING,
         BlobStorageUser,
     )
 
-    request = cast(RequestContext, request)
+    request = cast(RequestTask, request)
 
-    scenario = LocustContextScenario()
+    scenario = GrizzlyContextScenario()
     scenario.name = task.__class__.__name__
     scenario.user_class_name = 'BlobStorageUser'
     scenario.context['host'] = 'test'
@@ -95,7 +96,7 @@ def bs_user(locust_context: Callable, mocker: MockerFixture) -> Tuple[BlobStorag
 
 
 class TestBlobStorageUser:
-    def test_create(self, bs_user: Tuple[BlobStorageUser, LocustContextScenario, Environment]) -> None:
+    def test_create(self, bs_user: Tuple[BlobStorageUser, GrizzlyContextScenario, Environment]) -> None:
         [user, _, environment] = bs_user
         assert CONNECTION_STRING == user.client.conn_str
         assert issubclass(user.__class__, ContextVariables)
@@ -121,7 +122,7 @@ class TestBlobStorageUser:
         assert 'needs AccountKey in the query string' in str(e)
 
 
-    def test_send(self, bs_user: Tuple[BlobStorageUser, LocustContextScenario, Environment]) -> None:
+    def test_send(self, bs_user: Tuple[BlobStorageUser, GrizzlyContextScenario, Environment]) -> None:
         [user, scenario, environment] = bs_user
 
         remote_variables = {
@@ -132,7 +133,7 @@ class TestBlobStorageUser:
             }),
         }
         user.add_context(remote_variables)
-        request = cast(RequestContext, scenario.tasks[-1])
+        request = cast(RequestTask, scenario.tasks[-1])
         request.endpoint = 'some_container_name'
 
         dummy_client = user.client
@@ -149,7 +150,7 @@ class TestBlobStorageUser:
 
         json_msg = json.loads(msg)
         assert json_msg['result']['id'] == 'ID-31337'
-        assert dummy_blobclient.container == cast(RequestContext, scenario.tasks[-1]).endpoint
+        assert dummy_blobclient.container == cast(RequestTask, scenario.tasks[-1]).endpoint
         assert dummy_blobclient.blob == os.path.basename(scenario.name)
 
         dummy_blobclient = DummyBlobErrorClient()
@@ -157,9 +158,9 @@ class TestBlobStorageUser:
         environment.events.request = RequestEvent()
 
         with pytest.raises(ResultFailure):
-            user.request(cast(RequestContext, scenario.tasks[-1]))
+            user.request(cast(RequestTask, scenario.tasks[-1]))
 
-        request_error = clone_request('RECEIVE', cast(RequestContext, scenario.tasks[-1]))
+        request_error = clone_request('RECEIVE', cast(RequestTask, scenario.tasks[-1]))
         with pytest.raises(ResultFailure) as e:
             user.request(request_error)
         assert 'has not implemented RECEIVE' in str(e)

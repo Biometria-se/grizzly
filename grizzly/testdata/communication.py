@@ -9,7 +9,7 @@ from gevent.lock import Semaphore
 from locust.exception import StopUser
 from locust.env import Environment
 
-from ..context import LocustContext
+from ..context import GrizzlyContext
 from ..types import TestdataType
 from .utils import transform
 
@@ -80,7 +80,7 @@ class TestdataProducer:
     __test__: bool = False
 
     semaphore = Semaphore()
-    locust_context: LocustContext
+    grizzly: GrizzlyContext
     scenarios_iteration: Dict[str, int]
     testdata: TestdataType
     environment: Environment
@@ -99,7 +99,7 @@ class TestdataProducer:
         self.context = zmq.Context()
         self.socket = self.context.socket(zmq.REP)
         self.socket.bind(address)
-        self.locust_context = LocustContext()
+        self.grizzly = GrizzlyContext()
         self.scenarios_iteration = {}
 
         logger.debug(self.testdata)
@@ -134,7 +134,7 @@ class TestdataProducer:
                         try:
                             with self.semaphore:
                                 scenario_name = recv['scenario']
-                                scenario = self.locust_context.get_scenario(scenario_name)
+                                scenario = self.grizzly.get_scenario(scenario_name)
 
                                 if scenario is not None:
                                     if scenario_name not in self.scenarios_iteration and scenario.iterations > 0:
@@ -171,8 +171,8 @@ class TestdataProducer:
                                                 data = {}
                                                 break
                                             else:
-                                                if key in self.locust_context.state.alias:
-                                                    key = self.locust_context.state.alias[key]
+                                                if key in self.grizzly.state.alias:
+                                                    key = self.grizzly.state.alias[key]
                                                     data[key] = value
                                                 else:
                                                     data['variables'][key] = value

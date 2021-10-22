@@ -3,13 +3,14 @@ from collections import namedtuple
 from collections.abc import Mapping
 from copy import deepcopy
 
-from ..context import LocustContext, RequestContext
+from ..context import GrizzlyContext
+from ..task import RequestTask
 from ..types import TestdataType
 from .variables import load_variable
 from .ast import get_template_variables
 
 
-def initialize_testdata(sources: Optional[List[RequestContext]]) -> TestdataType:
+def initialize_testdata(sources: Optional[List[RequestTask]]) -> TestdataType:
     testdata: TestdataType = {}
     template_variables = get_template_variables(sources)
 
@@ -85,8 +86,8 @@ def _objectify(testdata: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def _get_variable_value(name: str) -> Any:
-    locust_context = LocustContext()
-    default_value = locust_context.state.variables.get(name, None)
+    grizzly = GrizzlyContext()
+    default_value = grizzly.state.variables.get(name, None)
 
     if '.' in name:
         [variable_type, variable_name] = name.split('.', 1)

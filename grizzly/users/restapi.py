@@ -68,7 +68,7 @@ from locust.exception import CatchResponseError, StopUser
 from ..types import WrappedFunc
 from ..testdata.utils import merge_dicts
 from ..types import RequestMethod
-from ..context import RequestContext
+from ..task import RequestTask
 from .meta import RequestLogger, ResponseHandler, ContextVariables, HttpRequests
 from . import logger
 
@@ -532,7 +532,7 @@ class RestApiUser(ResponseHandler, RequestLogger, ContextVariables, HttpRequests
         return message
 
     @refresh_token()
-    def request(self, request: RequestContext) -> None:
+    def request(self, request: RequestTask) -> None:
         if request.method not in [RequestMethod.GET, RequestMethod.PUT, RequestMethod.POST]:
             raise NotImplementedError(f'{request.method.name} is not implemented for {self.__class__.__name__}')
 

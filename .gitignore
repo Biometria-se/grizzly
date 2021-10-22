@@ -6,7 +6,7 @@ build/
 dist/
 logs/*
 coverage.xml
-.coverage
+.coverage*
 *.sh
 *.kdb
 *.rdb

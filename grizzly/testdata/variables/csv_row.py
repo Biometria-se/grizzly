@@ -64,7 +64,7 @@ from . import AtomicVariable, parse_arguments
 
 
 def atomiccsvrow__base_type__(value: str) -> str:
-    locust_context_requests = os.path.join(os.environ.get('LOCUST_CONTEXT_ROOT', ''), 'requests')
+    grizzly_context_requests = os.path.join(os.environ.get('GRIZZLY_CONTEXT_ROOT', ''), 'requests')
 
     if '|' in value:
         [csv_file, csv_arguments] = [v.strip() for v in value.split('|', 1)]
@@ -81,13 +81,13 @@ def atomiccsvrow__base_type__(value: str) -> str:
     else:
         csv_file = value
 
-    path = os.path.join(locust_context_requests, csv_file)
+    path = os.path.join(grizzly_context_requests, csv_file)
 
     if not path.endswith('.csv'):
         raise ValueError(f'AtomicCsvRow: {csv_file} must be a CSV file with file extension .csv')
 
     if not os.path.isfile(path):
-        raise ValueError(f'AtomicCsvRow: {csv_file} is not a file in {locust_context_requests}')
+        raise ValueError(f'AtomicCsvRow: {csv_file} is not a file in {grizzly_context_requests}')
 
     return value
 
@@ -132,7 +132,7 @@ class AtomicCsvRow(AtomicVariable[Dict[str, Any]]):
 
             return
 
-        self.context_root = os.path.join(os.environ.get('LOCUST_CONTEXT_ROOT', ''), 'requests')
+        self.context_root = os.path.join(os.environ.get('GRIZZLY_CONTEXT_ROOT', ''), 'requests')
         self._rows = {variable: self._create_row_queue(csv_file)}
         self._settings = {variable: settings}
         self.__initialized = True

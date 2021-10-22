@@ -19,10 +19,11 @@ from grizzly.users.restapi import AuthMethod, RestApiUser, refresh_token
 from grizzly.users.meta import RequestLogger, ResponseHandler, ContextVariables
 from grizzly.clients import ResponseEventSession
 from grizzly.types import RequestMethod
-from grizzly.context import LocustContextScenario, RequestContext
+from grizzly.context import GrizzlyContextScenario
+from grizzly.task import RequestTask
 from grizzly.testdata.utils import transform
 
-from ..fixtures import locust_context, request_context  # pylint: disable=unused-import
+from ..fixtures import grizzly_context, request_task  # pylint: disable=unused-import
 from ..helpers import RequestSilentFailureEvent, RequestEvent, ResultSuccess
 
 import logging
@@ -31,20 +32,20 @@ import logging
 logging.getLogger().setLevel(logging.CRITICAL)
 
 @pytest.fixture
-def restapi_user(locust_context: Callable) -> Tuple[RestApiUser, LocustContextScenario]:
-    scenario = LocustContextScenario()
+def restapi_user(grizzly_context: Callable) -> Tuple[RestApiUser, GrizzlyContextScenario]:
+    scenario = GrizzlyContextScenario()
     scenario.name = 'TestScenario'
     scenario.context['host'] = 'test'
     scenario.user_class_name = 'RestApiUser'
 
-    _, user, _, [_, _, request] = locust_context('http://test.ie', RestApiUser)
+    _, user, _, [_, _, request] = grizzly_context('http://test.ie', RestApiUser)
 
-    scenario.add_task(cast(RequestContext, request))
+    scenario.add_task(request)
 
     return cast(RestApiUser, user), scenario
 
 
-def test_refresh_token_client(restapi_user: Tuple[RestApiUser, LocustContextScenario], mocker: MockerFixture) -> None:
+def test_refresh_token_client(restapi_user: Tuple[RestApiUser, GrizzlyContextScenario], mocker: MockerFixture) -> None:
     [user, scenario] = restapi_user
     decorator = refresh_token()
 
@@ -77,9 +78,9 @@ def test_refresh_token_client(restapi_user: Tuple[RestApiUser, LocustContextScen
 
     try:
         auth_client_context = auth_context['client']
-        request_context = RequestContext(RequestMethod.POST, name='test-request', endpoint='/api/test')
+        request_task = RequestTask(RequestMethod.POST, name='test-request', endpoint='/api/test')
         scenario.tasks.clear()
-        scenario.add_task(request_context)
+        scenario.add_task(request_task)
 
         # no authentication for api, request will be called which raises NotRefreshed
         assert user._context['auth']['url'] is None
@@ -89,7 +90,7 @@ def test_refresh_token_client(restapi_user: Tuple[RestApiUser, LocustContextScen
         assert auth_client_context['resource'] is None
 
         with pytest.raises(NotRefreshed):
-            user.request(request_context)
+            user.request(request_task)
 
         auth_client_context['id'] = 'asdf'
         auth_client_context['secret'] = 'asdf'
@@ -98,32 +99,32 @@ def test_refresh_token_client(restapi_user: Tuple[RestApiUser, LocustContextScen
 
         # session has not started
         with pytest.raises(NotRefreshed):
-            user.request(request_context)
+            user.request(request_task)
 
         user.session_started = time()
         user.headers['Authorization'] = None
 
         # session is fresh, but no token set (first call)
         with pytest.raises(Refreshed):
-            user.request(request_context)
+            user.request(request_task)
 
         # token is fresh and set, no refresh
         user.session_stated = time()
         user.headers['Authorization'] = f'Bearer asdf'
 
         with pytest.raises(NotRefreshed):
-            user.request(request_context)
+            user.request(request_task)
 
         # authorization is set, but it is time to refresh token
         user.session_started = time() - (cast(int, auth_context['refresh_time']) + 1)
 
         with pytest.raises(Refreshed):
-            user.request(request_context)
+            user.request(request_task)
     finally:
         pass
 
 
-def test_refresh_token_user(restapi_user: Tuple[RestApiUser, LocustContextScenario], mocker: MockerFixture) -> None:
+def test_refresh_token_user(restapi_user: Tuple[RestApiUser, GrizzlyContextScenario], mocker: MockerFixture) -> None:
     [user, scenario] = restapi_user
     decorator = refresh_token()
 
@@ -156,9 +157,9 @@ def test_refresh_token_user(restapi_user: Tuple[RestApiUser, LocustContextScenar
 
     try:
         auth_user_context = auth_context['user']
-        request_context = RequestContext(RequestMethod.POST, name='test-request', endpoint='/api/test')
+        request_task = RequestTask(RequestMethod.POST, name='test-request', endpoint='/api/test')
         scenario.tasks.clear()
-        scenario.add_task(request_context)
+        scenario.add_task(request_task)
 
         # no authentication for api, request will be called which raises NotRefreshed
         assert auth_user_context['username'] is None
@@ -167,7 +168,7 @@ def test_refresh_token_user(restapi_user: Tuple[RestApiUser, LocustContextScenar
         assert auth_context['url'] is None
 
         with pytest.raises(NotRefreshed):
-            user.request(request_context)
+            user.request(request_task)
 
         auth_context['client']['id'] = 'asdf'
         auth_user_context['username'] = 'bob@example.com'
@@ -177,27 +178,27 @@ def test_refresh_token_user(restapi_user: Tuple[RestApiUser, LocustContextScenar
 
         # session has not started
         with pytest.raises(NotRefreshed):
-            user.request(request_context)
+            user.request(request_task)
 
         user.session_started = time()
         user.headers['Authorization'] = None
 
         # session is fresh, but no token set (first call)
         with pytest.raises(Refreshed):
-            user.request(request_context)
+            user.request(request_task)
 
         # token is fresh and set, no refresh
         user.session_stated = time()
         user.headers['Authorization'] = f'Bearer asdf'
 
         with pytest.raises(NotRefreshed):
-            user.request(request_context)
+            user.request(request_task)
 
         # authorization is set, but it is time to refresh token
         user.session_started = time() - (cast(int, auth_context['refresh_time']) + 1)
 
         with pytest.raises(Refreshed):
-            user.request(request_context)
+            user.request(request_task)
 
         user.add_context({'auth': {'user': {'username': 'alice@example.com'}}})
         assert user.headers['Authorization'] == None
@@ -209,13 +210,13 @@ def test_refresh_token_user(restapi_user: Tuple[RestApiUser, LocustContextScenar
 
         # new user in context, needs to get a new token
         with pytest.raises(Refreshed):
-            user.request(request_context)
+            user.request(request_task)
     finally:
         pass
 
 
 class TestRestApiUser:
-    def test_create(self, restapi_user: Tuple[RestApiUser, LocustContextScenario]) -> None:
+    def test_create(self, restapi_user: Tuple[RestApiUser, GrizzlyContextScenario]) -> None:
         [user, _] = restapi_user
         assert user is not None
         assert isinstance(user, RestApiUser)
@@ -244,7 +245,7 @@ class TestRestApiUser:
             }
         }
 
-    def test_on_start(self, restapi_user: Tuple[RestApiUser, LocustContextScenario]) -> None:
+    def test_on_start(self, restapi_user: Tuple[RestApiUser, GrizzlyContextScenario]) -> None:
         [user, _] = restapi_user
         assert user.session_started is None
 
@@ -252,7 +253,7 @@ class TestRestApiUser:
 
         assert user.session_started is not None
 
-    def test_get_token(self, restapi_user: Tuple[RestApiUser, LocustContextScenario], mocker: MockerFixture) -> None:
+    def test_get_token(self, restapi_user: Tuple[RestApiUser, GrizzlyContextScenario], mocker: MockerFixture) -> None:
         [user, _] = restapi_user
         class Called(Exception):
             pass
@@ -283,7 +284,7 @@ class TestRestApiUser:
 
         user.get_token(AuthMethod.NONE)
 
-    def test_get_client_token(self, restapi_user: Tuple[RestApiUser, LocustContextScenario], mocker: MockerFixture) -> None:
+    def test_get_client_token(self, restapi_user: Tuple[RestApiUser, GrizzlyContextScenario], mocker: MockerFixture) -> None:
         [user, _] = restapi_user
 
         def mock_client_post(payload: Dict[str, Any], status_code: int = 200) -> None:
@@ -357,7 +358,7 @@ class TestRestApiUser:
 
 
     @pytest.mark.skip(reason='needs credentials, should run explicitly manually')
-    def test_get_user_token_real(self, restapi_user: Tuple[RestApiUser, LocustContextScenario], mocker: MockerFixture) -> None:
+    def test_get_user_token_real(self, restapi_user: Tuple[RestApiUser, GrizzlyContextScenario], mocker: MockerFixture) -> None:
         [user, _] = restapi_user
 
         user._context = {
@@ -377,7 +378,7 @@ class TestRestApiUser:
 
         user.get_user_token()
 
-    def test_get_user_token(self, restapi_user: Tuple[RestApiUser, LocustContextScenario], mocker: MockerFixture) -> None:
+    def test_get_user_token(self, restapi_user: Tuple[RestApiUser, GrizzlyContextScenario], mocker: MockerFixture) -> None:
         [user, _] = restapi_user
 
         def fire(self: EventHook, *, reverse: bool = False, **kwargs: Dict[str, Any]) -> None:
@@ -575,7 +576,7 @@ class TestRestApiUser:
         user.get_user_token()
 
 
-    def test_get_error_message(self, restapi_user: Tuple[RestApiUser, LocustContextScenario]) -> None:
+    def test_get_error_message(self, restapi_user: Tuple[RestApiUser, GrizzlyContextScenario]) -> None:
         user, _ = restapi_user
 
         response = Response()
@@ -606,7 +607,7 @@ class TestRestApiUser:
         response._content = '{"success": false}'.encode('utf-8')
         assert user.get_error_message(response_context_manager) == '{"success": false}'
 
-    def test_request(self, restapi_user: Tuple[RestApiUser, LocustContextScenario], mocker: MockerFixture) -> None:
+    def test_request(self, restapi_user: Tuple[RestApiUser, GrizzlyContextScenario], mocker: MockerFixture) -> None:
         [user, scenario] = restapi_user
 
         def mock_client_post(status_code: int) -> None:
@@ -630,7 +631,7 @@ class TestRestApiUser:
                 client_post,
             )
 
-        request = cast(RequestContext, scenario.tasks[-1])
+        request = cast(RequestTask, scenario.tasks[-1])
 
         # missing template variables
         with pytest.raises(StopUser):
@@ -689,7 +690,7 @@ class TestRestApiUser:
         with pytest.raises(NotImplementedError):
             user.request(request)
 
-    def test_add_context(self, restapi_user: Tuple[RestApiUser, LocustContextScenario]) -> None:
+    def test_add_context(self, restapi_user: Tuple[RestApiUser, GrizzlyContextScenario]) -> None:
         user, _ = restapi_user
 
         assert 'test_context_variable' not in user._context

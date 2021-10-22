@@ -7,7 +7,7 @@ from locust.exception import StopUser
 from locust.user.users import User
 from locust.env import Environment
 
-from ...context import RequestContext
+from ...task import RequestTask
 from ...testdata.utils import merge_dicts
 from . import logger, FileRequests
 
@@ -20,14 +20,14 @@ class ContextVariables(User):
     def __init__(self, environment: Environment, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
         super().__init__(environment, *args, **kwargs)
 
-        self._context_root = environ.get('LOCUST_CONTEXT_ROOT', '.')
+        self._context_root = environ.get('GRIZZLY_CONTEXT_ROOT', '.')
         self._context = merge_dicts({}, ContextVariables._context)
 
     @abstractmethod
-    def request(self, request: RequestContext) -> None:
-        raise NotImplementedError(f'{self.__class__.__name__} has not implemented request(RequestContext)')
+    def request(self, request: RequestTask) -> None:
+        raise NotImplementedError(f'{self.__class__.__name__} has not implemented request(RequestTask)')
 
-    def render(self, request: RequestContext) -> Tuple[str, str, Optional[str]]:
+    def render(self, request: RequestTask) -> Tuple[str, str, Optional[str]]:
         scenario_name = f'{request.scenario.identifier} {request.name}'
 
         try:

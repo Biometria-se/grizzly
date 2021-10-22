@@ -4,7 +4,7 @@ from typing import Generator, Callable
 import pytest
 
 from grizzly.testdata.variables import AtomicCsvRow, AtomicDirectoryContents, AtomicIntegerIncrementer, AtomicInteger, AtomicDate, AtomicRandomInteger, AtomicCsvRow
-from grizzly.context import LocustContext
+from grizzly.context import GrizzlyContext
 
 
 @pytest.fixture
@@ -15,7 +15,7 @@ def cleanup() -> Generator[Callable, None, None]:
     yield noop
 
     try:
-        LocustContext.destroy()
+        GrizzlyContext.destroy()
     except ValueError:
         pass
 
@@ -50,6 +50,6 @@ def cleanup() -> Generator[Callable, None, None]:
         pass
 
     try:
-        del environ['LOCUST_CONTEXT_ROOT']
+        del environ['GRIZZLY_CONTEXT_ROOT']
     except KeyError:
         pass

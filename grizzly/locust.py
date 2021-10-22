@@ -27,7 +27,8 @@ from jinja2.exceptions import TemplateError
 from .listeners import init, init_statistics_listener, quitting, validate_result, spawning_complete, locust_test_start, locust_test_stop
 from .testdata.utils import initialize_testdata
 from .types import TestdataType
-from .context import LocustContext, RequestContext
+from .context import GrizzlyContext
+from .task import RequestTask
 
 from .utils import create_task_class_type, create_user_class_type
 
@@ -35,7 +36,7 @@ from .utils import create_task_class_type, create_user_class_type
 unhandled_greenlet_exception = False
 
 
-logger = logging.getLogger('behave.locust')
+logger = logging.getLogger('grizzly.locust')
 
 
 def greenlet_exception_logger(logger: logging.Logger, level: int=logging.CRITICAL) -> Callable[[gevent.Greenlet], None]:
@@ -71,9 +72,9 @@ def on_local(context: Context) -> bool:
     return value
 
 
-def setup_locust_scenarios(context: LocustContext) -> Tuple[List[User], List[RequestContext], bool]:
+def setup_locust_scenarios(context: GrizzlyContext) -> Tuple[List[User], List[RequestTask], bool]:
     user_classes: List[User] = []
-    request_tasks: List[RequestContext] = []
+    request_tasks: List[RequestTask] = []
 
     scenarios = context.scenarios()
 
@@ -98,11 +99,11 @@ def setup_locust_scenarios(context: LocustContext) -> Tuple[List[User], List[Req
         if user_class_type.__name__.startswith('MessageQueueUser_') and not start_messagequeue_daemon:
             start_messagequeue_daemon = True
 
-        scenario_type = create_task_class_type('TrafficIteratorTasks', scenario)
+        scenario_type = create_task_class_type('IteratorTasks', scenario)
         scenario.name = scenario_type.__name__
         for task in scenario.tasks:
             scenario_type.add_scenario_task(task)
-            if isinstance(task, RequestContext):
+            if isinstance(task, RequestTask):
                 request_tasks.append(task)
 
         setattr(user_class_type, 'tasks', [scenario_type])
@@ -131,7 +132,7 @@ def setup_resource_limits(context: Context) -> None:
             )
 
 
-def setup_environment_listeners(context: Context, environment: Environment, request_tasks: List[RequestContext]) -> None:
+def setup_environment_listeners(context: Context, environment: Environment, request_tasks: List[RequestTask]) -> None:
     # make sure we don't have any listeners
     environment.events.init._handlers = []
     environment.events.test_start._handlers = []
@@ -139,7 +140,7 @@ def setup_environment_listeners(context: Context, environment: Environment, requ
     environment.events.spawning_complete._handlers = []
     environment.events.quitting._handlers = []
 
-    context_locust = cast(LocustContext, context.locust)
+    grizzly = cast(GrizzlyContext, context.grizzly)
 
     # add standard listeners
     testdata: Optional[TestdataType] = None
@@ -158,7 +159,7 @@ def setup_environment_listeners(context: Context, environment: Environment, requ
         validate_results = False
 
         # only add the listener if there are any rules for validating results
-        for scenario in context_locust.scenarios():
+        for scenario in grizzly.scenarios():
             validate_results = scenario.should_validate()
             if validate_results:
                 break
@@ -166,24 +167,24 @@ def setup_environment_listeners(context: Context, environment: Environment, requ
         logger.debug(f'{validate_results=}')
 
         if validate_results:
-            environment.events.quitting.add_listener(validate_result(context_locust))
+            environment.events.quitting.add_listener(validate_result(grizzly))
 
         environment.events.quitting.add_listener(quitting)
 
     environment.events.init.add_listener(init(testdata))
-    environment.events.test_start.add_listener(locust_test_start(context_locust))
+    environment.events.test_start.add_listener(locust_test_start(grizzly))
     environment.events.test_stop.add_listener(locust_test_stop)
-    environment.events.spawning_complete.add_listener(spawning_complete(context_locust))
+    environment.events.spawning_complete.add_listener(spawning_complete(grizzly))
 
     # And save statistics to "..."
-    if context_locust.setup.statistics_url is not None:
-        environment.events.init.add_listener(init_statistics_listener(context_locust.setup.statistics_url))
+    if grizzly.setup.statistics_url is not None:
+        environment.events.init.add_listener(init_statistics_listener(grizzly.setup.statistics_url))
 
 
 def run(context: Context) -> int:
-    context_locust = cast(LocustContext, context.locust)
+    grizzly = cast(GrizzlyContext, context.grizzly)
 
-    log_level = 'DEBUG' if context.config.verbose else context_locust.setup.log_level
+    log_level = 'DEBUG' if context.config.verbose else grizzly.setup.log_level
 
     # And locust log level is
     setup_logging(log_level, None)
@@ -193,25 +194,25 @@ def run(context: Context) -> int:
         logger.error(f'seems to be a problem with "behave" arguments, cannot be both master and worker')
         return 254
 
-    if context_locust.setup.spawn_rate is None:
+    if grizzly.setup.spawn_rate is None:
         logger.error(f'spawn rate is not set')
         return 254
 
-    if context_locust.setup.user_count < 1:
+    if grizzly.setup.user_count < 1:
         logger.error(f"step 'Given \"user_count\" users' is not in the feature file")
         return 254
 
     greenlet_exception_handler = greenlet_exception_logger(logger)
 
     user_classes: List[User] = []
-    request_tasks: List[RequestContext] = []
+    request_tasks: List[RequestTask] = []
     messagequeue_daemon_process: Optional[subprocess.Popen] = None
 
-    user_classes, request_tasks, start_messagequeue_daemon = setup_locust_scenarios(context_locust)
+    user_classes, request_tasks, start_messagequeue_daemon = setup_locust_scenarios(grizzly)
 
     assert len(user_classes) > 0, 'no users specified in feature'
     assert len(request_tasks) > 0, 'no requests specified for users'
-    assert len(user_classes) <= context_locust.setup.user_count, f"increase the number in step 'Given \"{context_locust.setup.user_count}\" users' to at least {len(user_classes)}"
+    assert len(user_classes) <= grizzly.setup.user_count, f"increase the number in step 'Given \"{grizzly.setup.user_count}\" users' to at least {len(user_classes)}"
 
     try:
         if not on_master(context) and start_messagequeue_daemon:
@@ -263,11 +264,11 @@ def run(context: Context) -> int:
 
         # And run for maximum
         run_time: Optional[int] = None
-        if context_locust.setup.timespan is not None and not on_worker(context):
+        if grizzly.setup.timespan is not None and not on_worker(context):
             try:
-                run_time = parse_timespan(context_locust.setup.timespan)
+                run_time = parse_timespan(grizzly.setup.timespan)
             except ValueError:
-                logger.error(f'invalid timespan "{context_locust.setup.timespan}" expected: 20, 20s, 3m, 2h, 1h20m, 3h30m10s, etc.')
+                logger.error(f'invalid timespan "{grizzly.setup.timespan}" expected: 20, 20s, 3m, 2h, 1h20m, 3h30m10s, etc.')
                 return 1
 
         stats_printer_greenlet: Optional[gevent.Greenlet] = None
@@ -281,14 +282,14 @@ def run(context: Context) -> int:
 
         setattr(environment, 'parsed_options', LocustOption())
         setattr(environment.parsed_options, 'headless', True)
-        setattr(environment.parsed_options, 'num_users', context_locust.setup.user_count)
-        setattr(environment.parsed_options, 'spawn_rate', context_locust.setup.spawn_rate)
+        setattr(environment.parsed_options, 'num_users', grizzly.setup.user_count)
+        setattr(environment.parsed_options, 'spawn_rate', grizzly.setup.spawn_rate)
 
         if on_master(context):
             expected_workers = int(context.config.userdata.get('expected-workers', 1))
-            if context_locust.setup.user_count is not None:
-                assert expected_workers <= context_locust.setup.user_count, (
-                    f'there are more workers ({expected_workers}) than users ({context_locust.setup.user_count}), which is not supported'
+            if grizzly.setup.user_count is not None:
+                assert expected_workers <= grizzly.setup.user_count, (
+                    f'there are more workers ({expected_workers}) than users ({grizzly.setup.user_count}), which is not supported'
                 )
 
             while len(environment.runner.clients.ready) < expected_workers:
@@ -302,7 +303,7 @@ def run(context: Context) -> int:
             )
 
         if not on_worker(context):
-            environment.runner.start(context_locust.setup.user_count, context_locust.setup.spawn_rate)
+            environment.runner.start(grizzly.setup.user_count, grizzly.setup.spawn_rate)
 
             stats_printer_greenlet = gevent.spawn(stats_printer(environment.stats))
             stats_printer_greenlet.link_exception(greenlet_exception_handler)
@@ -331,7 +332,7 @@ def run(context: Context) -> int:
             gevent.sleep(3.0)
 
         # start watching for user_count after 5 second
-        while not context_locust.state.spawning_complete:
+        while not grizzly.state.spawning_complete:
             gevent.sleep(1.0)
 
         logger.info('all users spawn, start watching user count')

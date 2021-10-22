@@ -6,8 +6,10 @@ from typing import cast
 from behave.runner import Context
 from behave import register_type, when, then  # pylint: disable=no-name-in-module
 
-from ...context import LocustContext, RequestContext, ResponseContentType, ResponseTarget
-from ...utils import add_save_handler, add_validation_handler, add_request_context_response_status_codes
+from ...context import GrizzlyContext
+from ...task import RequestTask
+from ...types import ResponseContentType, ResponseTarget
+from ...utils import add_save_handler, add_validation_handler, add_request_task_response_status_codes
 
 
 @parse.with_pattern(r'is( not)?', regex_group_count=1)
@@ -82,7 +84,7 @@ def step_response_save_matches(context: Context, target: ResponseTarget, express
         match_with (str): static value or a regular expression
         variable (str): name of the already initialized variable to save the value in
     '''
-    add_save_handler(cast(LocustContext, context.locust), target, expression, match_with, variable)
+    add_save_handler(cast(GrizzlyContext, context.grizzly), target, expression, match_with, variable)
 
 
 @then(u'save response {target:ResponseTarget} "{expression}" in variable "{variable}"')
@@ -108,7 +110,7 @@ def step_response_save(context: Context, target: ResponseTarget, expression: str
         expression (str): JSON path or XPath expression for finding the property
         variable (str): name of the already initialized variable to save the value in
     '''
-    add_save_handler(cast(LocustContext, context.locust), target, expression, '.*', variable)
+    add_save_handler(cast(GrizzlyContext, context.grizzly), target, expression, '.*', variable)
 
 
 @when(u'response {target:ResponseTarget} "{expression}" {condition:Condition} "{match_with}" stop user')
@@ -131,7 +133,7 @@ def step_response_validate(context: Context, target: ResponseTarget, expression:
         condition (enum): "is" or "is not" depending on negative or postive matching
         match_with (str): static value or a regular expression
     '''
-    add_validation_handler(cast(LocustContext, context.locust), target, expression, match_with, condition)
+    add_validation_handler(cast(GrizzlyContext, context.grizzly), target, expression, match_with, condition)
 
 
 @then(u'allow response status codes "{status_list}"')
@@ -152,14 +154,14 @@ def step_response_allow_status_codes(context: Context, status_list: str) -> None
     Args:
         status_list (str): comma separated list of integers
     '''
-    context_locust = cast(LocustContext, context.locust)
-    assert len(context_locust.scenario.tasks) > 0, 'There are no requests in the scenario'
+    grizzly = cast(GrizzlyContext, context.grizzly)
+    assert len(grizzly.scenario.tasks) > 0, 'There are no requests in the scenario'
 
-    request = context_locust.scenario.tasks[-1]
+    request = grizzly.scenario.tasks[-1]
 
-    assert isinstance(request, RequestContext), f'Previous task is not a request'
+    assert isinstance(request, RequestTask), f'Previous task is not a request'
 
-    add_request_context_response_status_codes(request, status_list)
+    add_request_task_response_status_codes(request, status_list)
 
 
 @then(u'allow response status codes')
@@ -190,12 +192,12 @@ def step_response_allow_status_codes_table(context: Context) -> None:
     '''
     assert context.table is not None, f'Step data table is mandatory'
 
-    context_locust = cast(LocustContext, context.locust)
+    grizzly = cast(GrizzlyContext, context.grizzly)
 
-    number_of_requests = len(context_locust.scenario.tasks)
+    number_of_requests = len(grizzly.scenario.tasks)
 
     assert number_of_requests > 0, 'There are no requests in the scenario'
-    assert len(list(context.table)) <= len(context_locust.scenario.tasks), 'Data table has more rows than there are requests'
+    assert len(list(context.table)) <= len(grizzly.scenario.tasks), 'Data table has more rows than there are requests'
 
     # last row = latest added request
     index = -1
@@ -205,10 +207,10 @@ def step_response_allow_status_codes_table(context: Context) -> None:
 
     for row in rows:
         try:
-            request = context_locust.scenario.tasks[index]
-            assert isinstance(request, RequestContext), f'Task at index {index} is not a request'
+            request = grizzly.scenario.tasks[index]
+            assert isinstance(request, RequestTask), f'Task at index {index} is not a request'
             index -= 1
-            add_request_context_response_status_codes(request, row['status'])
+            add_request_task_response_status_codes(request, row['status'])
         except KeyError:
             raise AssertionError('data table does not have column "status"')
 
@@ -235,10 +237,10 @@ def step_response_content_type(context: Context, content_type: ResponseContentTy
 
     assert content_type != ResponseContentType.GUESS, f'It is now allowed to set GUESS with this step'
 
-    context_locust = cast(LocustContext, context.locust)
-    assert len(context_locust.scenario.tasks) > 0, f'There are no requests in the scenario'
+    grizzly = cast(GrizzlyContext, context.grizzly)
+    assert len(grizzly.scenario.tasks) > 0, f'There are no requests in the scenario'
 
-    request = context_locust.scenario.tasks[-1]
+    request = grizzly.scenario.tasks[-1]
 
-    assert isinstance(request, RequestContext), f'Latest task in scenario is not a request'
+    assert isinstance(request, RequestTask), f'Latest task in scenario is not a request'
     request.response.content_type = content_type

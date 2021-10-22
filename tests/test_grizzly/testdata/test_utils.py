@@ -12,7 +12,8 @@ from _pytest.tmpdir import TempdirFactory
 from jinja2 import Template
 from behave.runner import Context
 
-from grizzly.context import LocustContext, RequestContext
+from grizzly.context import GrizzlyContext
+from grizzly.task import RequestTask
 from grizzly.testdata.utils import (
     _get_variable_value,
     _objectify,
@@ -21,7 +22,7 @@ from grizzly.testdata.utils import (
 )
 from grizzly.testdata.variables import AtomicCsvRow, AtomicInteger, AtomicIntegerIncrementer
 
-from ..fixtures import locust_context, request_context, behave_context  # pylint: disable=unused-import
+from ..fixtures import grizzly_context, request_task, behave_context  # pylint: disable=unused-import
 from .fixtures import cleanup  # pylint: disable=unused-import
 
 # pylint: disable=redefined-outer-name
@@ -30,18 +31,18 @@ from .fixtures import cleanup  # pylint: disable=unused-import
 @pytest.mark.usefixtures('cleanup')
 def test__get_variable_value_static(cleanup: Callable) -> None:
     try:
-        context_locust = LocustContext()
+        grizzly = GrizzlyContext()
         variable_name = 'test'
 
-        context_locust.state.variables[variable_name] = 1337
+        grizzly.state.variables[variable_name] = 1337
         value = _get_variable_value(variable_name)
         assert value == 1337
 
-        context_locust.state.variables[variable_name] = '1337'
+        grizzly.state.variables[variable_name] = '1337'
         value = _get_variable_value(variable_name)
         assert value == 1337
 
-        context_locust.state.variables[variable_name] = "'1337'"
+        grizzly.state.variables[variable_name] = "'1337'"
         value = _get_variable_value(variable_name)
         assert value == '1337'
     finally:
@@ -51,15 +52,15 @@ def test__get_variable_value_static(cleanup: Callable) -> None:
 @pytest.mark.usefixtures('cleanup')
 def test__get_variable_value_AtomicInteger(cleanup: Callable) -> None:
     try:
-        context_locust = LocustContext()
+        grizzly = GrizzlyContext()
         variable_name = 'AtomicInteger.test'
 
-        context_locust.state.variables[variable_name] = 1337
+        grizzly.state.variables[variable_name] = 1337
         value = _get_variable_value(variable_name)
         assert value['test'] == 1337
         AtomicInteger.destroy()
 
-        context_locust.state.variables[variable_name] = '1337'
+        grizzly.state.variables[variable_name] = '1337'
         value = _get_variable_value(variable_name)
         assert value['test'] == 1337
         AtomicInteger.destroy()
@@ -69,16 +70,16 @@ def test__get_variable_value_AtomicInteger(cleanup: Callable) -> None:
 @pytest.mark.usefixtures('cleanup')
 def test__get_variable_value_AtomicIntegerIncrementer(cleanup: Callable) -> None:
     try:
-        context_locust = LocustContext()
+        grizzly = GrizzlyContext()
 
         variable_name = 'AtomicIntegerIncrementer.test'
-        context_locust.state.variables[variable_name] = 1337
+        grizzly.state.variables[variable_name] = 1337
         value = _get_variable_value(variable_name)
         assert value['test'] == 1337
         assert value['test'] == 1338
         AtomicIntegerIncrementer.destroy()
 
-        context_locust.state.variables[variable_name] = '1337'
+        grizzly.state.variables[variable_name] = '1337'
         value = _get_variable_value(variable_name)
         assert value['test'] == 1337
         assert value['test'] == 1338
@@ -91,7 +92,7 @@ def test__get_variable_value_AtomicIntegerIncrementer(cleanup: Callable) -> None
 def test__get_variable_value_AtomicCsvRow(cleanup: Callable, tmpdir_factory: TempdirFactory) -> None:
     test_context = str(tmpdir_factory.mktemp('test_context').mkdir('requests'))
     test_context_root = path.dirname(test_context)
-    environ['LOCUST_CONTEXT_ROOT'] = test_context_root
+    environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
 
     with open(path.join(test_context, 'test.csv'), 'w') as fd:
         fd.write('header1,header2\n')
@@ -99,9 +100,9 @@ def test__get_variable_value_AtomicCsvRow(cleanup: Callable, tmpdir_factory: Tem
         fd.write('value3,value4\n')
         fd.flush()
     try:
-        context_locust = LocustContext()
+        grizzly = GrizzlyContext()
         variable_name = 'AtomicCsvRow.test'
-        context_locust.state.variables['AtomicCsvRow.test'] = 'test.csv'
+        grizzly.state.variables['AtomicCsvRow.test'] = 'test.csv'
         value = _get_variable_value(variable_name)
 
         assert isinstance(value, AtomicCsvRow)
@@ -270,19 +271,19 @@ def test_initialize_testdata_no_tasks() -> None:
     assert testdata == {}
 
 
-@pytest.mark.usefixtures('locust_context', 'cleanup')
+@pytest.mark.usefixtures('request_task', 'cleanup')
 def test_initialize_testdata_with_tasks(
-    request_context: Tuple[str, str, RequestContext],
+    request_task: Tuple[str, str, RequestTask],
     cleanup: Callable,
 ) -> None:
     try:
-        context_locust = LocustContext()
-        context_locust.state.variables['AtomicIntegerIncrementer.messageID'] = 1337
-        context_locust.state.variables['AtomicDate.now'] = 'now'
-        _, _, request = request_context
+        grizzly = GrizzlyContext()
+        grizzly.state.variables['AtomicIntegerIncrementer.messageID'] = 1337
+        grizzly.state.variables['AtomicDate.now'] = 'now'
+        _, _, request = request_task
         scenario = request.scenario
         scenario.add_task(request)
-        testdata = initialize_testdata(cast(List[RequestContext], scenario.tasks))
+        testdata = initialize_testdata(cast(List[RequestTask], scenario.tasks))
 
         scenario_name = scenario.get_name()
 
@@ -295,10 +296,10 @@ def test_initialize_testdata_with_tasks(
         cleanup()
 
 
-@pytest.mark.usefixtures('behave_context', 'locust_context', 'cleanup')
-def test_initialize_testdata_with_payload_context(behave_context: Context, locust_context: Callable, cleanup: Callable) -> None:
+@pytest.mark.usefixtures('behave_context', 'grizzly_context', 'cleanup')
+def test_initialize_testdata_with_payload_context(behave_context: Context, grizzly_context: Callable, cleanup: Callable) -> None:
     try:
-        _, _, task, [context_root, _, request] = locust_context()
+        _, _, task, [context_root, _, request] = grizzly_context()
         mkdir(path.join(context_root, 'adirectory'))
         for index in range(1, 3):
             with open(path.join(context_root, 'adirectory', f'file{index}.txt'), 'w') as fd:
@@ -319,21 +320,21 @@ def test_initialize_testdata_with_payload_context(behave_context: Context, locus
         request.source = jsondumps(source)
         request.template = Template(request.source)
 
-        context_locust = cast(LocustContext, behave_context.locust)
-        context_locust.add_scenario(task.__class__.__name__)
-        context_locust.state.variables['messageID'] = 123
-        context_locust.state.variables['AtomicIntegerIncrementer.messageID'] = 456
-        context_locust.state.variables['AtomicCsvRow.test'] = 'test.csv'
-        context_locust.state.variables['AtomicDirectoryContents.test'] = 'adirectory'
-        context_locust.state.variables['AtomicDate.now'] = 'now'
-        context_locust.scenario.user_class_name = 'TestUser'
-        context_locust.scenario.context['host'] = 'http://test.nu'
-        context_locust.scenario.iterations = 2
-        context_locust.scenario.add_task(request)
+        grizzly = cast(GrizzlyContext, behave_context.grizzly)
+        grizzly.add_scenario(task.__class__.__name__)
+        grizzly.state.variables['messageID'] = 123
+        grizzly.state.variables['AtomicIntegerIncrementer.messageID'] = 456
+        grizzly.state.variables['AtomicCsvRow.test'] = 'test.csv'
+        grizzly.state.variables['AtomicDirectoryContents.test'] = 'adirectory'
+        grizzly.state.variables['AtomicDate.now'] = 'now'
+        grizzly.scenario.user_class_name = 'TestUser'
+        grizzly.scenario.context['host'] = 'http://test.nu'
+        grizzly.scenario.iterations = 2
+        grizzly.scenario.add_task(request)
 
-        testdata = initialize_testdata(cast(List[RequestContext], context_locust.scenario.tasks))
+        testdata = initialize_testdata(cast(List[RequestTask], grizzly.scenario.tasks))
 
-        scenario_name = context_locust.scenario.get_name()
+        scenario_name = grizzly.scenario.get_name()
 
         assert scenario_name in testdata
 

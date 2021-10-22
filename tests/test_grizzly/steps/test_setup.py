@@ -4,7 +4,7 @@ import pytest
 
 from behave.runner import Context
 
-from grizzly.context import LocustContext
+from grizzly.context import GrizzlyContext
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import
 
 from ..fixtures import behave_context  # pylint: disable=unused-import
@@ -13,22 +13,22 @@ from ..fixtures import behave_context  # pylint: disable=unused-import
 @pytest.mark.usefixtures('behave_context')
 def test_step_setup_variable_value_ask(behave_context: Context) -> None:
     try:
-        context_locust = cast(LocustContext, behave_context.locust)
+        grizzly = cast(GrizzlyContext, behave_context.grizzly)
 
         name = 'AtomicIntegerIncrementer.messageID'
         assert f'TESTDATA_VARIABLE_{name}' not in environ
-        assert name not in context_locust.state.variables
+        assert name not in grizzly.state.variables
 
         with pytest.raises(AssertionError):
             step_setup_variable_value_ask(behave_context, name)
 
-        assert name not in context_locust.state.variables
+        assert name not in grizzly.state.variables
 
         environ[f'TESTDATA_VARIABLE_{name}'] = '1337'
 
         step_setup_variable_value_ask(behave_context, name)
 
-        assert int(context_locust.state.variables.get(name, None)) == 1337
+        assert int(grizzly.state.variables.get(name, None)) == 1337
 
         with pytest.raises(AssertionError):
             step_setup_variable_value_ask(behave_context, name)

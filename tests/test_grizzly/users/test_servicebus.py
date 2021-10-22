@@ -14,10 +14,10 @@ from locust.exception import StopUser
 from grizzly.users.meta.context_variables import ContextVariables
 from grizzly.users.servicebus import ServiceBusUser
 from grizzly.types import RequestMethod
-from grizzly.context import RequestContext
+from grizzly.task import RequestTask
 from grizzly.testdata.utils import transform
 
-from ..fixtures import locust_context, request_context  # pylint: disable=unused-import
+from ..fixtures import grizzly_context, request_task  # pylint: disable=unused-import
 from ..helpers import ResultFailure, RequestEvent, RequestSilentFailureEvent, clone_request
 
 import logging
@@ -71,7 +71,7 @@ CONNECTION_STRING = 'Endpoint=sb://sb.ifktest.ru/;SharedAccessKeyName=RootManage
 
 
 @pytest.fixture
-def sb_user(locust_context: Callable, mocker: MockerFixture) -> Tuple[ServiceBusUser, RequestContext, Environment]:
+def sb_user(grizzly_context: Callable, mocker: MockerFixture) -> Tuple[ServiceBusUser, RequestTask, Environment]:
     def sb_connect(conn_str: str, **kwargs: Any) -> DummyServiceBusClient:
         return DummyServiceBusClient(conn_str)
 
@@ -80,7 +80,7 @@ def sb_user(locust_context: Callable, mocker: MockerFixture) -> Tuple[ServiceBus
         sb_connect,
     )
 
-    environment, user, _, [_, _, request] = locust_context(
+    environment, user, _, [_, _, request] = grizzly_context(
         CONNECTION_STRING, ServiceBusUser)
 
     request.method = RequestMethod.SEND
@@ -88,7 +88,7 @@ def sb_user(locust_context: Callable, mocker: MockerFixture) -> Tuple[ServiceBus
     return user, request, environment
 
 class TestServiceBusUser:
-    def test_create(self, sb_user: Tuple[ServiceBusUser, RequestContext, Environment]) -> None:
+    def test_create(self, sb_user: Tuple[ServiceBusUser, RequestTask, Environment]) -> None:
         [user, _, environment] = sb_user
         assert CONNECTION_STRING == cast(DummyServiceBusClient, user.client).conn_str
         assert issubclass(user.__class__, ContextVariables)
@@ -113,7 +113,7 @@ class TestServiceBusUser:
             user = ServiceBusUser(environment=environment)
         assert 'needs SharedAccessKey in the query string' in str(e)
 
-    def test_send_queue(self, sb_user: Tuple[ServiceBusUser, RequestContext, Environment], mocker: MockerFixture) -> None:
+    def test_send_queue(self, sb_user: Tuple[ServiceBusUser, RequestTask, Environment], mocker: MockerFixture) -> None:
         [user, request, environment] = sb_user
 
         remote_variables = {
@@ -180,7 +180,7 @@ class TestServiceBusUser:
         with pytest.raises(StopUser):
             user.request(request_error)
 
-    def test_send_topic(self, sb_user: Tuple[ServiceBusUser, RequestContext, Environment], mocker: MockerFixture) -> None:
+    def test_send_topic(self, sb_user: Tuple[ServiceBusUser, RequestTask, Environment], mocker: MockerFixture) -> None:
         [user, request, environment] = sb_user
 
         remote_variables = {

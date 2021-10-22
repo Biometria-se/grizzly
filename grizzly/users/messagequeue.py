@@ -81,7 +81,7 @@ from gevent import sleep as gsleep
 from locust.exception import StopUser, CatchResponseError
 
 from .meta import ContextVariables, ResponseHandler, RequestLogger
-from ..context import RequestContext
+from ..task import RequestTask
 from ..testdata.utils import merge_dicts
 from . import logger
 
@@ -170,7 +170,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
         self.worker_id = None
 
 
-    def request(self, request: RequestContext) -> None:
+    def request(self, request: RequestTask) -> None:
         request_name, endpoint, payload = self.render(request)
 
         @contextmanager

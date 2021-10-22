@@ -34,7 +34,7 @@ from .meta import ContextVariables, FileRequests
 from ..testdata.utils import merge_dicts
 from ..clients import SftpClientSession
 from ..types import RequestMethod
-from ..context import RequestContext
+from ..task import RequestTask
 
 
 class SftpUser(ContextVariables, FileRequests):
@@ -58,7 +58,7 @@ class SftpUser(ContextVariables, FileRequests):
 
         self._context = merge_dicts(super().context(), self.__class__._context)
 
-        self._payload_root = path.join(environ.get('LOCUST_CONTEXT_ROOT', '.'), 'requests')
+        self._payload_root = path.join(environ.get('GRIZZLY_CONTEXT_ROOT', '.'), 'requests')
         self._download_root = path.join(self._payload_root, 'download')
 
         if not path.exists(self._download_root):
@@ -96,7 +96,7 @@ class SftpUser(ContextVariables, FileRequests):
 
         self.client = SftpClientSession(host, port)
 
-    def request(self, request: RequestContext) -> None:
+    def request(self, request: RequestTask) -> None:
         request_name, endpoint, payload = self.render(request)
 
         name = f'{request.scenario.identifier} {request_name}'

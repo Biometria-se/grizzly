@@ -6,7 +6,7 @@ from typing import cast, List
 from behave import given  # pylint: disable=no-name-in-module
 from behave.runner import Context
 
-from ...context import LocustContext
+from ...context import GrizzlyContext
 from ...utils import create_context_variable, merge_dicts, resolve_variable
 
 
@@ -44,12 +44,12 @@ def step_setup_save_statistics(context: Context, url: str) -> None:
 
     assert parsed.scheme in ['influxdb', 'insights'], f'"{parsed.scheme}" is not a supported scheme'
 
-    context_locust = cast(LocustContext, context.locust)
+    grizzly = cast(GrizzlyContext, context.grizzly)
 
     paths: List[str] = []
 
     for path in parsed.path.split('/'):
-        resolved = cast(str, resolve_variable(context_locust, path))
+        resolved = cast(str, resolve_variable(grizzly, path))
         paths.append(resolved)
 
     parsed = parsed._replace(path='/'.join(paths))
@@ -59,7 +59,7 @@ def step_setup_save_statistics(context: Context, url: str) -> None:
     parameters: List[str] = []
 
     for variable in variables:
-        resolved = cast(str, resolve_variable(context_locust, variables[variable][0]))
+        resolved = cast(str, resolve_variable(grizzly, variables[variable][0]))
         parameters.append(f'{variable}={resolved}')
 
     parsed = parsed._replace(query='&'.join(parameters))
@@ -69,14 +69,14 @@ def step_setup_save_statistics(context: Context, url: str) -> None:
         host = ' '
     elif '@' in parsed.netloc:
         credentials, host = parsed.netloc.split('@')
-        host = cast(str, resolve_variable(context_locust, host))
+        host = cast(str, resolve_variable(grizzly, host))
         credentials = credentials.replace('::', '%%')
         username, password = credentials.split(':', 1)
-        username = cast(str, resolve_variable(context_locust, username.replace('%%', '::')))
-        password = cast(str, resolve_variable(context_locust, password.replace('%%', '::')))
+        username = cast(str, resolve_variable(grizzly, username.replace('%%', '::')))
+        password = cast(str, resolve_variable(grizzly, password.replace('%%', '::')))
         host = f'{username}:{password}@{host}'
     else:
-        host = cast(str, resolve_variable(context_locust, parsed.netloc))
+        host = cast(str, resolve_variable(grizzly, parsed.netloc))
 
     parsed = parsed._replace(netloc=host)
 
@@ -86,7 +86,7 @@ def step_setup_save_statistics(context: Context, url: str) -> None:
     if ':// ' in url:
         url = url.replace(':// ', '://')
 
-    context_locust.setup.statistics_url = url
+    grizzly.setup.statistics_url = url
 
 
 @given(u'log level is "{log_level}"')
@@ -103,8 +103,8 @@ def step_setup_log_level(context: Context, log_level: str) -> None:
         log_level (str): allowed values `INFO`, `DEBUG`, `WARNING` och `ERROR`
     '''
     assert log_level in ['INFO', 'DEBUG', 'WARNING', 'ERROR'], f'log level {log_level} is not supported'
-    context_locust = cast(LocustContext, context.locust)
-    context_locust.setup.log_level = log_level
+    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly.setup.log_level = log_level
 
 
 @given(u'run for maximum "{timespan}"')
@@ -119,8 +119,8 @@ def step_setup_run_time(context: Context, timespan: str) -> None:
     Args:
         timespan (str): description of how long the test should run for, e.g. 10s, 1h, 40m etc.
     '''
-    context_locust = cast(LocustContext, context.locust)
-    context_locust.setup.timespan = timespan
+    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly.setup.timespan = timespan
 
 
 @given(u'set global context variable "{variable}" to "{value}"')
@@ -171,7 +171,7 @@ def step_setup_set_global_context_variable(context: Context, variable: str, valu
         variable (str): variable name, as used in templates
         value (str): variable value
     '''
-    context_locust = cast(LocustContext, context.locust)
-    context_variable = create_context_variable(context_locust, variable, value)
+    grizzly = cast(GrizzlyContext, context.grizzly)
+    context_variable = create_context_variable(grizzly, variable, value)
 
-    context_locust.setup.global_context = merge_dicts(context_locust.setup.global_context, context_variable)
+    grizzly.setup.global_context = merge_dicts(grizzly.setup.global_context, context_variable)

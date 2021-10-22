@@ -13,7 +13,8 @@ from locust.exception import StopUser
 from grizzly.users.sftp import SftpUser
 from grizzly.clients import SftpClientSession
 from grizzly.types import RequestMethod
-from grizzly.context import LocustContextScenario, RequestContext
+from grizzly.context import GrizzlyContextScenario
+from grizzly.task import RequestTask
 
 from ..fixtures import locust_environment, paramiko_mocker  # pylint: disable=unused-import
 from ..helpers import ResultFailure, ResultSuccess, RequestEvent, RequestSilentFailureEvent
@@ -24,7 +25,7 @@ class TestSftpUser:
     def test_create(self, locust_environment: Environment, tmpdir_factory: TempdirFactory) -> None:
         test_context = tmpdir_factory.mktemp('test_context').mkdir('requests')
         test_context_root = path.dirname(str(test_context))
-        environ['LOCUST_CONTEXT_ROOT'] = test_context_root
+        environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
 
         try:
             SftpUser.host = 'http://test.nu'
@@ -73,7 +74,7 @@ class TestSftpUser:
                 SftpUser(locust_environment)
         finally:
             shutil.rmtree(test_context_root)
-            del environ['LOCUST_CONTEXT_ROOT']
+            del environ['GRIZZLY_CONTEXT_ROOT']
 
     @pytest.mark.usefixtures('locust_environment', 'paramiko_mocker', 'tmpdir_factory')
     def test_request(self, locust_environment: Environment, paramiko_mocker: Callable, tmpdir_factory: TempdirFactory) -> None:
@@ -81,7 +82,7 @@ class TestSftpUser:
 
         test_context = tmpdir_factory.mktemp('test_context').mkdir('requests')
         test_context_root = path.dirname(str(test_context))
-        environ['LOCUST_CONTEXT_ROOT'] = test_context_root
+        environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
 
         try:
             SftpUser.host = 'sftp://example.org'
@@ -92,11 +93,11 @@ class TestSftpUser:
             }
             user = SftpUser(locust_environment)
 
-            request = RequestContext(RequestMethod.SEND, name='test', endpoint='/tmp')
+            request = RequestTask(RequestMethod.SEND, name='test', endpoint='/tmp')
             request.source = 'test/file.txt'
             request.template = Template(request.source)
 
-            scenario = LocustContextScenario()
+            scenario = GrizzlyContextScenario()
             scenario.name = 'test'
 
             request.scenario = scenario
@@ -131,7 +132,7 @@ class TestSftpUser:
 
         finally:
             shutil.rmtree(test_context_root)
-            del environ['LOCUST_CONTEXT_ROOT']
+            del environ['GRIZZLY_CONTEXT_ROOT']
 
     @pytest.mark.skip(reason='needs preconditions outside of pytest, has to be executed explicitly manually')
     @pytest.mark.usefixtures('locust_environment', 'tmpdir_factory')
@@ -143,7 +144,7 @@ class TestSftpUser:
 
         test_context = tmpdir_factory.mktemp('test_context').mkdir('requests')
         test_context_root = path.dirname(str(test_context))
-        environ['LOCUST_CONTEXT_ROOT'] = test_context_root
+        environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
 
         try:
             with open(path.join(test_context, 'test.txt'), 'w') as fd:
@@ -158,11 +159,11 @@ class TestSftpUser:
             }
             user = SftpUser(locust_environment)
 
-            request = RequestContext(RequestMethod.PUT, name='test', endpoint='/upload')
+            request = RequestTask(RequestMethod.PUT, name='test', endpoint='/upload')
             request.source = 'test.txt'
             request.template = Template(request.source)
 
-            scenario = LocustContextScenario()
+            scenario = GrizzlyContextScenario()
             scenario.name = 'test'
             scenario.user_class_name = 'SftpUser'
             scenario.stop_on_failure = True
@@ -171,7 +172,7 @@ class TestSftpUser:
 
             user.request(request)
 
-            request = RequestContext(RequestMethod.GET, name='test', endpoint='/upload/test.txt')
+            request = RequestTask(RequestMethod.GET, name='test', endpoint='/upload/test.txt')
             request.scenario = scenario
 
             user.request(request)
@@ -183,4 +184,4 @@ class TestSftpUser:
             with open(localpath, 'r') as fd:
                 assert fd.read().strip() == 'this is a file that is going to be put on the actual sftp server'
         finally:
-            del environ['LOCUST_CONTEXT_ROOT']
+            del environ['GRIZZLY_CONTEXT_ROOT']

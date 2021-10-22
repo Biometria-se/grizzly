@@ -16,7 +16,7 @@ from grizzly.clients import ResponseEventSession
 from grizzly.users.meta import HttpRequests, ResponseEvent, ResponseHandler
 from grizzly.exceptions import ResponseHandlerError
 from grizzly.types import RequestMethod, ResponseContentType
-from grizzly.context import RequestContext
+from grizzly.task import RequestTask
 
 from ...fixtures import locust_environment  # pylint: disable=unused-import
 from ...helpers import RequestEvent, TestUser
@@ -61,9 +61,9 @@ class TestResponseHandler:
         response.status_code = 200
         response_context_manager = ResponseContextManager(response, RequestEvent(), {})
 
-        request = RequestContext(RequestMethod.POST, name='test-request', endpoint='/api/v2/test')
+        request = RequestTask(RequestMethod.POST, name='test-request', endpoint='/api/v2/test')
 
-        # edge scenario -- from RestApiUser and *_token calls, they don't have a RequestContext
+        # edge scenario -- from RestApiUser and *_token calls, they don't have a RequestTask
         original_response = request.response
         setattr(request, 'response', None)
 
@@ -145,7 +145,7 @@ class TestResponseHandler:
         user = ResponseHandler(locust_environment)
         test_user = TestUser(locust_environment)
 
-        request = RequestContext(RequestMethod.POST, name='test-request', endpoint='/api/v2/test')
+        request = RequestTask(RequestMethod.POST, name='test-request', endpoint='/api/v2/test')
 
         payload_handler = mocker.MagicMock()
         metadata_handler = mocker.MagicMock()

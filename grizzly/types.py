@@ -6,6 +6,16 @@ from locust.clients import ResponseContextManager
 from locust.user.users import User
 
 
+class ResponseTarget(Enum):
+    METADATA = 0
+    PAYLOAD = 1
+
+
+class ResponseAction(Enum):
+    VALIDATE = 0
+    SAVE = 1
+
+
 class ResponseContentType(Enum):
     GUESS = 0
     JSON = auto()

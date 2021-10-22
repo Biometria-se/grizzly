@@ -8,7 +8,7 @@ from behave.runner import Context
 from behave.model import Feature, Step, Scenario
 from behave.model_core import Status
 
-from .context import LocustContext
+from .context import GrizzlyContext
 from .testdata.variables import destroy_variables
 from .locust import run as locustrun
 from .utils import catch, fail_direct, in_correct_section
@@ -21,13 +21,13 @@ def before_feature(context: Context, *_args: Tuple[Any, ...], **kwargs: Dict[str
     destroy_variables()
 
     try:
-        LocustContext.destroy()
+        GrizzlyContext.destroy()
     except ValueError:
         pass
 
-    context.locust = LocustContext()
+    context.grizzly = GrizzlyContext()
     context.started = time_monotonic()
-    environ['LOCUST_CONTEXT_ROOT'] = context.config.base_dir
+    environ['GRIZZLY_CONTEXT_ROOT'] = context.config.base_dir
 
 
 @catch(KeyboardInterrupt)
@@ -49,9 +49,9 @@ def after_feature(context: Context, feature: Feature, *_args: Tuple[Any, ...], *
 
 
 def before_scenario(context: Context, scenario: Scenario, *_args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
-    context_locust = cast(LocustContext, context.locust)
+    grizzly = cast(GrizzlyContext, context.grizzly)
 
-    if context_locust.state.background_section_done:
+    if grizzly.state.background_section_done:
         scenario.background = None
     else:
         for step in scenario.background.steps:
@@ -76,15 +76,15 @@ def before_scenario(context: Context, scenario: Scenario, *_args: Tuple[Any, ...
             # to get a nicer error message, the step should fail before it's executed, see before_step hook
             setattr(step, 'location_status', 'incorrect')
 
-    context_locust.add_scenario(scenario)
+    grizzly.add_scenario(scenario)
 
 
 def after_scenario(context: Context, *_args: Tuple[Any, ...], **_kwargs: Dict[str, Any]) -> None:
-    context_locust = cast(LocustContext, context.locust)
+    grizzly = cast(GrizzlyContext, context.grizzly)
 
     # first scenario is done, do not process background for any (possible) other scenarios
-    if not context_locust.state.background_section_done:
-        context_locust.state.background_section_done = True
+    if not grizzly.state.background_section_done:
+        grizzly.state.background_section_done = True
 
 
 def before_step(context: Context, step: Step, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:

@@ -19,7 +19,8 @@ from paramiko.sftp_client import SFTPClient
 
 from grizzly.clients import ResponseEventSession, SftpClientSession
 from grizzly.types import RequestMethod
-from grizzly.context import LocustContextScenario, RequestContext
+from grizzly.context import GrizzlyContextScenario
+from grizzly.task import RequestTask
 
 from .fixtures import locust_environment, paramiko_mocker  # pylint: disable=unused-import
 from .helpers import RequestEvent
@@ -52,14 +53,14 @@ class TestResponseEventSession:
         mock_request({}, 200)
 
         session = ResponseEventSession(base_url='', request_event=RequestEvent())
-        request = RequestContext(RequestMethod.POST, name='test-request', endpoint='/api/test')
-        scenario = LocustContextScenario()
+        request = RequestTask(RequestMethod.POST, name='test-request', endpoint='/api/test')
+        scenario = GrizzlyContextScenario()
         scenario.name = 'TestScenario'
         scenario.context['host'] = 'test'
         request.scenario = scenario
 
-        def handler(expected_request: Optional[RequestContext] = None) -> Callable[[str, Optional[RequestContext], User, Optional[ResponseContextManager]], None]:
-            def wrapped(name: str, context: Union[ResponseContextManager, Tuple[Dict[str, Any], str]], request: Optional[RequestContext], user: User) -> None:
+        def handler(expected_request: Optional[RequestTask] = None) -> Callable[[str, Optional[RequestTask], User, Optional[ResponseContextManager]], None]:
+            def wrapped(name: str, context: Union[ResponseContextManager, Tuple[Dict[str, Any], str]], request: Optional[RequestTask], user: User) -> None:
                 if expected_request is request:
                     raise HandlerCalled()  # one of few exceptions which event handler lets through
 
@@ -80,7 +81,7 @@ class TestResponseEventSession:
         with pytest.raises(HandlerCalled):
             session.request('GET', 'http://example.org', 'test-name', catch_response=False, request=request)
 
-        second_request = RequestContext(RequestMethod.GET, name='test-request', endpoint='/api/test')
+        second_request = RequestTask(RequestMethod.GET, name='test-request', endpoint='/api/test')
         second_request.scenario = scenario
 
         # handler is called, but request is not the same

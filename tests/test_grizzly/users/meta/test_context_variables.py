@@ -13,7 +13,8 @@ from locust.exception import StopUser
 
 from grizzly.users.meta import ContextVariables, FileRequests
 from grizzly.types import RequestMethod
-from grizzly.context import LocustContextScenario, RequestContext
+from grizzly.context import GrizzlyContextScenario
+from grizzly.task import RequestTask
 
 from ...fixtures import locust_environment  # pylint: disable=unused-import
 
@@ -26,14 +27,14 @@ class TestContextVariable:
     def test_render(self, locust_environment: Environment, tmpdir_factory: TempdirFactory) -> None:
         test_file = tmpdir_factory.mktemp('renderer_test').mkdir('requests').join('blobfile.txt')
         test_file_context = path.dirname(path.dirname(str(test_file)))
-        environ['LOCUST_CONTEXT_ROOT'] = test_file_context
+        environ['GRIZZLY_CONTEXT_ROOT'] = test_file_context
 
         try:
             user = ContextVariables(locust_environment)
-            request = RequestContext(RequestMethod.POST, name='test', endpoint='/api/test')
+            request = RequestTask(RequestMethod.POST, name='test', endpoint='/api/test')
 
             request.template = Template('hello {{ name }}')
-            scenario = LocustContextScenario()
+            scenario = GrizzlyContextScenario()
             scenario.name = 'test'
             request.scenario = scenario
 
@@ -81,7 +82,7 @@ class TestContextVariable:
             assert endpoint == '/tmp/blobfile.txt'
         finally:
             shutil.rmtree(test_file_context)
-            del environ['LOCUST_CONTEXT_ROOT']
+            del environ['GRIZZLY_CONTEXT_ROOT']
 
     @pytest.mark.usefixtures('locust_environment')
     def test_render_nested(self, locust_environment: Environment, tmpdir_factory: TempdirFactory) -> None:
@@ -103,14 +104,14 @@ class TestContextVariable:
                 )
             )
         )
-        environ['LOCUST_CONTEXT_ROOT'] = test_file_context
+        environ['GRIZZLY_CONTEXT_ROOT'] = test_file_context
 
         try:
             user = ContextVariables(locust_environment)
-            request = RequestContext(RequestMethod.POST, name='{{ name }}', endpoint='/api/test/{{ value }}')
+            request = RequestTask(RequestMethod.POST, name='{{ name }}', endpoint='/api/test/{{ value }}')
 
             request.template = Template('{{ file_path }}')
-            scenario = LocustContextScenario()
+            scenario = GrizzlyContextScenario()
             scenario.name = 'test'
             request.scenario = scenario
 
@@ -135,12 +136,12 @@ class TestContextVariable:
             assert data['MeasureResult']['value'] == user.context_variables['value']
         finally:
             shutil.rmtree(test_file_context)
-            del environ['LOCUST_CONTEXT_ROOT']
+            del environ['GRIZZLY_CONTEXT_ROOT']
 
     @pytest.mark.usefixtures('locust_environment')
     def test_request(self, locust_environment: Environment) -> None:
         user = ContextVariables(locust_environment)
-        payload = RequestContext(RequestMethod.GET, name='test', endpoint='/api/test')
+        payload = RequestTask(RequestMethod.GET, name='test', endpoint='/api/test')
 
         with pytest.raises(NotImplementedError):
             user.request(payload)

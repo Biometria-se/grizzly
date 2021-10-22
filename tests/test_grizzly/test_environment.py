@@ -12,7 +12,7 @@ from behave.configuration import Configuration
 from behave.model import Feature, Step
 
 from grizzly.environment import before_feature, after_feature, before_scenario, after_scenario, before_step, after_step
-from grizzly.context import LocustContext
+from grizzly.context import GrizzlyContext
 from grizzly.steps.setup import step_setup_variable_value_ask as step_both
 from grizzly.steps.background.setup import step_setup_save_statistics as step_background
 from grizzly.steps.scenario.setup import step_setup_iterations as step_scenario
@@ -22,7 +22,7 @@ from .fixtures import behave_context  # pylint: disable=unused-import
 
 def test_before_feature() -> None:
     try:
-        del environ['LOCUST_CONTEXT_ROOT']
+        del environ['GRIZZLY_CONTEXT_ROOT']
     except:
         pass
 
@@ -37,21 +37,21 @@ def test_before_feature() -> None:
         )
     )
 
-    assert not hasattr(context ,'locust')
-    assert environ.get('LOCUST_CONTEXT_ROOT', None) is None
+    assert not hasattr(context ,'grizzly')
+    assert environ.get('GRIZZLY_CONTEXT_ROOT', None) is None
 
     before_feature(context)
 
-    assert hasattr(context, 'locust')
-    assert context.locust.__class__.__name__ == 'LocustContext'
-    assert environ.get('LOCUST_CONTEXT_ROOT', None) == base_dir
+    assert hasattr(context, 'grizzly')
+    assert context.grizzly.__class__.__name__ == 'GrizzlyContext'
+    assert environ.get('GRIZZLY_CONTEXT_ROOT', None) == base_dir
 
-    context.locust = object()
+    context.grizzly = object()
 
     before_feature(context)
 
-    assert hasattr(context, 'locust')
-    assert context.locust.__class__.__name__ == 'LocustContext'
+    assert hasattr(context, 'grizzly')
+    assert context.grizzly.__class__.__name__ == 'GrizzlyContext'
 
     assert hasattr(context, 'started')
 
@@ -155,15 +155,15 @@ def test_before_scenario(behave_context: Context, mocker: MockerFixture) -> None
     assert len(behave_context.scenario.steps) == 5
     assert len(behave_context.scenario.background.steps) == 5
 
-    context_locust = cast(LocustContext, behave_context.locust)
+    grizzly = cast(GrizzlyContext, behave_context.grizzly)
 
-    assert len(context_locust.scenarios()) == 0
+    assert len(grizzly.scenarios()) == 0
 
     before_scenario(behave_context, behave_context.scenario)
 
-    assert len(context_locust.scenarios()) == 1
-    assert context_locust.scenarios()[0] is context_locust.scenario
-    assert context_locust.scenario.name == 'Test Scenario'
+    assert len(grizzly.scenarios()) == 1
+    assert grizzly.scenarios()[0] is grizzly.scenario
+    assert grizzly.scenario.name == 'Test Scenario'
     assert getattr(behave_context.scenario.background.steps[0], 'location_status', None) == 'incorrect'
     assert getattr(behave_context.scenario.background.steps[1], 'location_status', None) is None
     assert getattr(behave_context.scenario.background.steps[2], 'location_status', None) is None
@@ -173,8 +173,8 @@ def test_before_scenario(behave_context: Context, mocker: MockerFixture) -> None
     assert getattr(behave_context.scenario.steps[2], 'location_status', None) is None
     assert getattr(behave_context.scenario.steps[3], 'location_status', None) is None
 
-    context_locust.state.background_section_done = True
-    context_locust._scenarios = []
+    grizzly.state.background_section_done = True
+    grizzly._scenarios = []
 
     before_scenario(behave_context, behave_context.scenario)
 
@@ -183,17 +183,17 @@ def test_before_scenario(behave_context: Context, mocker: MockerFixture) -> None
 
 @pytest.mark.usefixtures('behave_context')
 def test_after_scenario(behave_context: Context) -> None:
-    context_locust = cast(LocustContext, behave_context.locust)
+    grizzly = cast(GrizzlyContext, behave_context.grizzly)
 
-    assert not context_locust.state.background_section_done
-
-    after_scenario(behave_context)
-
-    assert context_locust.state.background_section_done
+    assert not grizzly.state.background_section_done
 
     after_scenario(behave_context)
 
-    assert context_locust.state.background_section_done
+    assert grizzly.state.background_section_done
+
+    after_scenario(behave_context)
+
+    assert grizzly.state.background_section_done
 
 
 @pytest.mark.usefixtures('behave_context')

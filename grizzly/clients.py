@@ -10,7 +10,7 @@ from locust.event import EventHook
 from paramiko import SFTPClient, Transport
 from paramiko.pkey import PKey
 
-from .context import RequestContext
+from .task import RequestTask
 
 
 logger = logging.getLogger(__name__)
@@ -28,7 +28,7 @@ class ResponseEventSession(HttpSession):
         method: str,
         url: str,
         name: str,
-        request: Optional[RequestContext] = None,
+        request: Optional[RequestTask] = None,
         catch_response: bool = False,
         **kwargs: Dict[str, Any],
     ) -> Union[ResponseContextManager, Response]:

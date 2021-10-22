@@ -11,9 +11,9 @@ from locust.user.users import User
 
 from grizzly.testdata.models import TemplateData
 from grizzly.types import RequestMethod, ResponseContentType
-from grizzly.context import RequestContext
+from grizzly.task import RequestTask
 
-from ..fixtures import request_context  # pylint: disable=unused-import
+from ..fixtures import request_task  # pylint: disable=unused-import
 from .fixtures import cleanup  # pylint: disable=unused-import
 
 
@@ -172,7 +172,7 @@ class TestTemplateData:
     def test_AtomicDirectoryContents(self, cleanup: Callable, tmpdir_factory: TempdirFactory) -> None:
         test_context = str(tmpdir_factory.mktemp('test_context').mkdir('requests'))
         test_context_root = path.dirname(test_context)
-        environ['LOCUST_CONTEXT_ROOT'] = test_context_root
+        environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
 
         try:
             t = TemplateData()
@@ -215,7 +215,7 @@ class TestTemplateData:
     def test_AtomicCsvRow(self, cleanup: Callable, tmpdir_factory: TempdirFactory) -> None:
         test_context = str(tmpdir_factory.mktemp('test_context').mkdir('requests'))
         test_context_root = path.dirname(test_context)
-        environ['LOCUST_CONTEXT_ROOT'] = test_context_root
+        environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
 
         with open(path.join(test_context, 'test.csv'), 'w') as fd:
             fd.write('header1,header2\n')
@@ -300,7 +300,7 @@ class TestTemplateData:
 
 class TestTemplate:
     def test_add_listeners(self) -> None:
-        request = RequestContext(RequestMethod.POST, name='example-request', endpoint='/api/test')
+        request = RequestTask(RequestMethod.POST, name='example-request', endpoint='/api/test')
         assert len(request.response.handlers.metadata) == 0
         assert len(request.response.handlers.payload) == 0
 

@@ -116,12 +116,22 @@ def test_step_task_request_text_with_name(behave_context: Context) -> None:
 
 @pytest.mark.usefixtures('behave_context')
 def test_step_task_wait_seconds(behave_context: Context) -> None:
-    context_locust = cast(LocustContext, behave_context.locust)
+    grizzly = cast(GrizzlyContext, behave_context.grizzly)
 
     with pytest.raises(AssertionError):
         step_task_wait_seconds(behave_context, -1.0)
 
     step_task_wait_seconds(behave_context, 1.337)
 
-    assert isinstance(context_locust.scenario.tasks[-1], float)
-    assert context_locust.scenario.tasks[-1] == 1.337
+    assert isinstance(grizzly.scenario.tasks[-1], SleepTask)
+    assert grizzly.scenario.tasks[-1].sleep == 1.337
+
+
+@pytest.mark.usefixtures('behave_context')
+def test_step_print_message(behave_context: Context) -> None:
+    grizzly = cast(GrizzlyContext, behave_context.grizzly)
+
+    step_task_print_message(behave_context, 'hello {{ world }}')
+
+    assert isinstance(grizzly.scenario.tasks[-1], PrintTask)
+    assert grizzly.scenario.tasks[-1].message == 'hello {{ world }}'

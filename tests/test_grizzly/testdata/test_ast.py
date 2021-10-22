@@ -10,15 +10,16 @@ from jinja2.exceptions import TemplateError
 
 from grizzly.testdata.ast import RequestSourceMapping, _parse_templates, get_template_variables
 from grizzly.types import RequestMethod
-from grizzly.context import LocustContextScenario, RequestContext
-from ..fixtures import request_context, request_context_syntax_error  # pylint: disable=unused-import
+from grizzly.context import GrizzlyContextScenario
+from grizzly.task import RequestTask
+from ..fixtures import request_task, request_task_syntax_error  # pylint: disable=unused-import
 
 # pylint: disable=redefined-outer-name,global-statement
 
 
-@pytest.mark.usefixtures('request_context')
-def test__parse_template(request_context: Tuple[str, str, RequestContext]) -> None:
-    request = request_context[-1]
+@pytest.mark.usefixtures('request_task')
+def test__parse_template(request_task: Tuple[str, str, RequestTask]) -> None:
+    request = request_task[-1]
 
     assert request.source is not None
 
@@ -50,10 +51,10 @@ def test__parse_template(request_context: Tuple[str, str, RequestContext]) -> No
     assert 'a_string' in variables['TestScenario']
 
 
-@pytest.mark.usefixtures('request_context_syntax_error')
-def test__parse_template_syntax_error(request_context_syntax_error: Tuple[str, str]) -> None:
+@pytest.mark.usefixtures('request_task_syntax_error')
+def test__parse_template_syntax_error(request_task_syntax_error: Tuple[str, str]) -> None:
     templates: RequestSourceMapping = {
-        'TestScenario': set([request_context_syntax_error])
+        'TestScenario': set([request_task_syntax_error])
     }
 
     with pytest.raises(TemplateError):
@@ -76,23 +77,23 @@ def test_get_template_variables_none() -> None:
 
 
 def test_get_template_variables() -> None:
-    tasks: List[RequestContext] = []
+    tasks: List[RequestTask] = []
 
-    scenario = LocustContextScenario()
+    scenario = GrizzlyContextScenario()
     scenario.name = 'TestScenario'
     scenario.context['host'] = 'http://test.nu'
     scenario.user_class_name = 'TestUser'
     scenario.add_task(
-        RequestContext(RequestMethod.POST, name='Test POST request', endpoint='/api/test/post')
+        RequestTask(RequestMethod.POST, name='Test POST request', endpoint='/api/test/post')
     )
-    tasks.append(cast(RequestContext, scenario.tasks[-1]))
+    tasks.append(cast(RequestTask, scenario.tasks[-1]))
     tasks[-1].source = '{{ AtomicInteger.test }}'
     tasks[-1].template = Template(tasks[-1].source)
 
     scenario.add_task(
-        RequestContext(RequestMethod.GET, name='Test GET request', endpoint='/api/test/get')
+        RequestTask(RequestMethod.GET, name='Test GET request', endpoint='/api/test/get')
     )
-    tasks.append(cast(RequestContext, scenario.tasks[-1]))
+    tasks.append(cast(RequestTask, scenario.tasks[-1]))
     tasks[-1].source = '{{ AtomicIntegerIncrementer.test }}'
     tasks[-1].template = Template(tasks[-1].source)
 

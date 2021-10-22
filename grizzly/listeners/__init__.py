@@ -18,7 +18,7 @@ from locust.stats import (
     print_stats,
 )
 
-from ..context import LocustContext
+from ..context import GrizzlyContext
 from ..types import TestdataType
 from ..testdata.communication import TestdataProducer
 
@@ -81,7 +81,7 @@ def init_statistics_listener(url: str) -> Callable[[Arg(Environment, 'environmen
     return wrapper
 
 
-def locust_test_start(context: LocustContext) -> Callable[[Arg(Environment, 'environment'), KwArg(Dict[str, Any])], None]:
+def locust_test_start(context: GrizzlyContext) -> Callable[[Arg(Environment, 'environment'), KwArg(Dict[str, Any])], None]:
     def wrapper(environment: Environment, **_kwargs: Dict[str, Any]) -> None:
         if isinstance(environment.runner, MasterRunner):
             workers = (
@@ -104,9 +104,9 @@ def locust_test_stop(**_kwargs: Dict[str, Any]) -> None:
         producer.reset()
 
 
-def spawning_complete(locust_context: LocustContext) -> Callable[[KwArg(Dict[str, Any])], None]:
+def spawning_complete(grizzly: GrizzlyContext) -> Callable[[KwArg(Dict[str, Any])], None]:
     def wrapper(**_kwargs: Dict[str, Any]) -> None:
-        locust_context.state.spawning_complete = True
+        grizzly.state.spawning_complete = True
 
     return wrapper
 
@@ -123,12 +123,12 @@ def quitting(**_kwargs: Dict[str, Any]) -> None:
         producer_greenlet = None
 
 
-def validate_result(locust_context: LocustContext) -> Callable[[Arg(Environment, 'environment'), KwArg(Dict[str, Any])], None]:
+def validate_result(grizzly: GrizzlyContext) -> Callable[[Arg(Environment, 'environment'), KwArg(Dict[str, Any])], None]:
     def wrapper(environment: Environment, **_kwargs: Dict[str, Any]) -> None:
         # first, aggregate statistics per scenario
         scenario_stats: Dict[str, StatsEntry] = {}
 
-        for scenario in locust_context.scenarios():
+        for scenario in grizzly.scenarios():
             request_stats = RequestStats()
             request_stats.total = StatsEntry(environment.stats, scenario.identifier, None, use_response_times_cache=False)
             scenario_stats[scenario.identifier] = request_stats
@@ -143,7 +143,7 @@ def validate_result(locust_context: LocustContext) -> Callable[[Arg(Environment,
                 logger.error(f'"{prefix}" does not match any scenario')
 
         # then validate against scenario rules
-        for scenario in locust_context.scenarios():
+        for scenario in grizzly.scenarios():
             stats = scenario_stats[scenario.identifier]
             print_stats(stats, current=False)
             print_percentile_stats(stats)

@@ -41,7 +41,7 @@ from ...types import bool_typed
 from . import AtomicVariable, parse_arguments
 
 def atomicdirectorycontents__base_type__(value: str) -> str:
-    locust_context_requests = os.path.join(os.environ.get('LOCUST_CONTEXT_ROOT', ''), 'requests')
+    grizzly_context_requests = os.path.join(os.environ.get('GRIZZLY_CONTEXT_ROOT', ''), 'requests')
     if '|' in value:
         [directory_value, directory_arguments] = [v.strip() for v in value.split('|', 1)]
 
@@ -57,10 +57,10 @@ def atomicdirectorycontents__base_type__(value: str) -> str:
     else:
         directory_value = value
 
-    path = os.path.join(locust_context_requests, directory_value)
+    path = os.path.join(grizzly_context_requests, directory_value)
 
     if not os.path.isdir(path):
-        raise ValueError(f'AtomicDirectoryContents: {directory_value} is not a directory in {locust_context_requests}')
+        raise ValueError(f'AtomicDirectoryContents: {directory_value} is not a directory in {grizzly_context_requests}')
 
     return value
 
@@ -105,7 +105,7 @@ class AtomicDirectoryContents(AtomicVariable[str]):
 
             return
 
-        self._requests_context_root = os.path.join(os.environ.get('LOCUST_CONTEXT_ROOT', '.'), 'requests')
+        self._requests_context_root = os.path.join(os.environ.get('GRIZZLY_CONTEXT_ROOT', '.'), 'requests')
         self._files = {variable: self._create_file_queue(directory)}
         self._settings = {variable: settings}
         self.__initialized = True

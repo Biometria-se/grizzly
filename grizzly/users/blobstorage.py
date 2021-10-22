@@ -32,7 +32,7 @@ from locust.exception import StopUser
 
 from .meta import ContextVariables
 from ..types import RequestMethod
-from ..context import RequestContext
+from ..task import RequestTask
 from ..testdata.utils import merge_dicts
 
 class BlobStorageUser(ContextVariables):
@@ -69,7 +69,7 @@ class BlobStorageUser(ContextVariables):
         self.client = BlobServiceClient.from_connection_string(conn_str=self.host)
         self._context = merge_dicts(super().context(), self.__class__._context)
 
-    def request(self, request: RequestContext) -> None:
+    def request(self, request: RequestTask) -> None:
         request_name, endpoint, payload = self.render(request)
 
         name = f'{request.scenario.identifier} {request_name}'

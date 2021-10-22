@@ -2,7 +2,7 @@ from typing import Any, Dict, Tuple, Optional
 
 from locust.clients import ResponseContextManager
 
-from ...context import RequestContext
+from ...task import RequestTask
 from ...types import HandlerContextType, ResponseContentType
 from ...transformer import transformer
 from ...exceptions import TransformerError, ResponseHandlerError
@@ -22,7 +22,7 @@ class ResponseHandler(ResponseEvent):
         self,
         name: str,
         context: HandlerContextType,
-        request: RequestContext,
+        request: RequestTask,
         user: ContextVariables,
         **_kwargs: Dict[str, Any],
     ) -> None:
