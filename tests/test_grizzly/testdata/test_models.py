@@ -172,7 +172,7 @@ class TestTemplateData:
     def test_AtomicDirectoryContents(self, cleanup: Callable, tmpdir_factory: TempdirFactory) -> None:
         test_context = str(tmpdir_factory.mktemp('test_context').mkdir('requests'))
         test_context_root = path.dirname(test_context)
-        environ['LOCUST_CONTEXT_ROOT'] = test_context_root
+        environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
 
         try:
             t = TemplateData()
@@ -215,7 +215,7 @@ class TestTemplateData:
     def test_AtomicCsvRow(self, cleanup: Callable, tmpdir_factory: TempdirFactory) -> None:
         test_context = str(tmpdir_factory.mktemp('test_context').mkdir('requests'))
         test_context_root = path.dirname(test_context)
-        environ['LOCUST_CONTEXT_ROOT'] = test_context_root
+        environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
 
         with open(path.join(test_context, 'test.csv'), 'w') as fd:
             fd.write('header1,header2\n')

@@ -16,11 +16,11 @@ from pytest_mock.plugin import MockerFixture
 from grizzly.users.blobstorage import BlobStorageUser
 from grizzly.users.meta.context_variables import ContextVariables
 from grizzly.types import RequestMethod
-from grizzly.context import LocustContextScenario
+from grizzly.context import GrizzlyContextScenario
 from grizzly.task import RequestTask
 from grizzly.testdata.utils import transform
 
-from ..fixtures import locust_context, request_task  # pylint: disable=unused-import
+from ..fixtures import grizzly_context, request_task  # pylint: disable=unused-import
 from ..helpers import ResultFailure, RequestEvent, RequestSilentFailureEvent, clone_request
 
 import logging
@@ -67,7 +67,7 @@ CONNECTION_STRING = 'DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.
 
 
 @pytest.fixture
-def bs_user(locust_context: Callable, mocker: MockerFixture) -> Tuple[BlobStorageUser, LocustContextScenario, Environment]:
+def bs_user(grizzly_context: Callable, mocker: MockerFixture) -> Tuple[BlobStorageUser, GrizzlyContextScenario, Environment]:
     def bs_connect(conn_str: str, **kwargs: Any) -> DummyBlobServiceClient:
         return DummyBlobServiceClient(conn_str)
 
@@ -76,14 +76,14 @@ def bs_user(locust_context: Callable, mocker: MockerFixture) -> Tuple[BlobStorag
         bs_connect,
     )
 
-    environment, user, task, [_, _, request] = locust_context(
+    environment, user, task, [_, _, request] = grizzly_context(
         CONNECTION_STRING,
         BlobStorageUser,
     )
 
     request = cast(RequestTask, request)
 
-    scenario = LocustContextScenario()
+    scenario = GrizzlyContextScenario()
     scenario.name = task.__class__.__name__
     scenario.user_class_name = 'BlobStorageUser'
     scenario.context['host'] = 'test'
@@ -96,7 +96,7 @@ def bs_user(locust_context: Callable, mocker: MockerFixture) -> Tuple[BlobStorag
 
 
 class TestBlobStorageUser:
-    def test_create(self, bs_user: Tuple[BlobStorageUser, LocustContextScenario, Environment]) -> None:
+    def test_create(self, bs_user: Tuple[BlobStorageUser, GrizzlyContextScenario, Environment]) -> None:
         [user, _, environment] = bs_user
         assert CONNECTION_STRING == user.client.conn_str
         assert issubclass(user.__class__, ContextVariables)
@@ -122,7 +122,7 @@ class TestBlobStorageUser:
         assert 'needs AccountKey in the query string' in str(e)
 
 
-    def test_send(self, bs_user: Tuple[BlobStorageUser, LocustContextScenario, Environment]) -> None:
+    def test_send(self, bs_user: Tuple[BlobStorageUser, GrizzlyContextScenario, Environment]) -> None:
         [user, scenario, environment] = bs_user
 
         remote_variables = {

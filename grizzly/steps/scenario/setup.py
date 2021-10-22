@@ -6,7 +6,7 @@ import parse
 from behave.runner import Context
 from behave import register_type, given  # pylint: disable=no-name-in-module
 
-from ...context import LocustContext
+from ...context import GrizzlyContext
 from ...testdata.utils import merge_dicts
 from ...utils import create_context_variable, resolve_variable
 
@@ -54,10 +54,10 @@ def step_setup_set_context_variable(context: Context, variable: str, value: str)
         variable (str): name, can contain `.` and `/`
         value (str): value, data type will be guessed and casted
     '''
-    context_locust = cast(LocustContext, context.locust)
-    context_variable = create_context_variable(context_locust, variable, value)
+    grizzly = cast(GrizzlyContext, context.grizzly)
+    context_variable = create_context_variable(grizzly, variable, value)
 
-    context_locust.scenario.context = merge_dicts(context_locust.scenario.context, context_variable)
+    grizzly.scenario.context = merge_dicts(grizzly.scenario.context, context_variable)
 
 
 @given(u'repeat for "{value}" {iteration_number:IterationGramaticalNumber}')
@@ -77,9 +77,9 @@ def step_setup_iterations(context: Context, value: str, iteration_number: str) -
     Args:
         iterations (int): number of iterations of the scenario
     '''
-    context_locust = cast(LocustContext, context.locust)
+    grizzly = cast(GrizzlyContext, context.grizzly)
     should_resolve = '{{' in value and '}}' in value or value[0] == '$'
-    iterations = int(round(float(resolve_variable(context_locust, value)), 0))
+    iterations = int(round(float(resolve_variable(grizzly, value)), 0))
 
     if should_resolve and iterations < 1:
         iterations = 1
@@ -93,7 +93,7 @@ def step_setup_iterations(context: Context, value: str, iteration_number: str) -
         else:
             assert iteration_number == 'iteration', 'when iterations is 1, use "iteration"'
 
-    context_locust.scenario.iterations = iterations
+    grizzly.scenario.iterations = iterations
 
 
 @given(u'wait time inbetween requests is random between "{minimum:f}" and "{maximum:f}" seconds')
@@ -111,9 +111,9 @@ def step_setup_wait_time(context: Context, minimum: float, maximum: float) -> No
         wait_min (float): minimum wait time
         wait_max (float): maximum wait time
     '''
-    context_locust = cast(LocustContext, context.locust)
-    context_locust.scenario.wait.minimum = minimum
-    context_locust.scenario.wait.maximum = maximum
+    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly.scenario.wait.minimum = minimum
+    grizzly.scenario.wait.maximum = maximum
 
 
 @given(u'value for variable "{name}" is "{value}"')
@@ -150,14 +150,14 @@ def step_setup_variable_value(context: Context, name: str, value: str) -> None:
         name (str): variable name
         value (Any): initial value
     '''
-    context_locust = cast(LocustContext, context.locust)
+    grizzly = cast(GrizzlyContext, context.grizzly)
 
-    assert name not in context_locust.state.variables, f'variable "{name}" has already been set'
+    assert name not in grizzly.state.variables, f'variable "{name}" has already been set'
 
     try:
         # data type will be guessed when setting the variable
-        resolved_value = resolve_variable(context_locust, value, guess_datatype=False)
-        context_locust.state.variables[name] = resolved_value
+        resolved_value = resolve_variable(grizzly, value, guess_datatype=False)
+        grizzly.state.variables[name] = resolved_value
     except ValueError as e:
         assert 0, str(e)
 
@@ -211,17 +211,17 @@ def step_setup_set_variable_alias(context: Context, alias: str, variable: str) -
         variable (str): an already initialized variable that should be renamed
     '''
 
-    context_locust = cast(LocustContext, context.locust)
+    grizzly = cast(GrizzlyContext, context.grizzly)
 
     if variable.count('.') > 1:
         base_variable = '.'.join(variable.split('.')[:2])
     else:
         base_variable = variable
 
-    assert base_variable in context_locust.state.variables, f'variable {base_variable} has not been declared'
-    assert variable not in context_locust.state.alias, f'alias for variable {variable} already exists: {context_locust.state.alias[variable]}'
+    assert base_variable in grizzly.state.variables, f'variable {base_variable} has not been declared'
+    assert variable not in grizzly.state.alias, f'alias for variable {variable} already exists: {grizzly.state.alias[variable]}'
 
-    context_locust.state.alias[variable] = alias
+    grizzly.state.alias[variable] = alias
 
 @given(u'log all requests')
 def step_setup_log_all_requests(context: Context) -> None:
@@ -233,8 +233,8 @@ def step_setup_log_all_requests(context: Context) -> None:
     And log all requests
     ```
     '''
-    context_locust = cast(LocustContext, context.locust)
-    context_locust.scenario.context['log_all_requests'] = True
+    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly.scenario.context['log_all_requests'] = True
 
 
 @given(u'stop on first failure')
@@ -247,6 +247,6 @@ def step_setup_enable_stop_on_failure(context: Context) -> None:
     And stop on first failure
     ```
     '''
-    context_locust = cast(LocustContext, context.locust)
-    context_locust.scenario.stop_on_failure = True
+    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly.scenario.stop_on_failure = True
     context.config.stop = True

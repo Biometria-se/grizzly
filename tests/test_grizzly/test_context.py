@@ -8,14 +8,15 @@ import pytest
 from _pytest.tmpdir import TempdirFactory
 from jinja2.environment import Template
 from behave.model import Scenario
+from behave.runner import Context
 
 from grizzly.context import (
-    LocustContext,
-    LocustContextSetup,
-    LocustContextScenario,
-    LocustContextScenarioValidation,
-    LocustContextScenarioWait,
-    LocustContextState,
+    GrizzlyContext,
+    GrizzlyContextSetup,
+    GrizzlyContextScenario,
+    GrizzlyContextScenarioValidation,
+    GrizzlyContextScenarioWait,
+    GrizzlyContextState,
     generate_identifier,
     load_configuration_file,
 )
@@ -25,7 +26,7 @@ from grizzly.task import RequestTask
 
 
 from .helpers import get_property_decorated_attributes
-from .fixtures import request_task, locust_context, behave_locust_context  # pylint: disable=unused-import
+from .fixtures import request_task, grizzly_context, behave_context  # pylint: disable=unused-import
 
 
 def test_load_configuration_file(tmpdir_factory: TempdirFactory) -> None:
@@ -89,10 +90,11 @@ def test_generate_identifier() -> None:
     assert actual == expected
 
 
-class TestLocustContextSetup:
-    @pytest.mark.usefixtures('behave_locust_context')
-    def test(self, behave_locust_context: LocustContext) -> None:
-        locust_context_setup = behave_locust_context.setup
+class TestGrizzlyContextSetup:
+    @pytest.mark.usefixtures('behave_context')
+    def test(self, behave_context: Context) -> None:
+        grizzly = getattr(behave_context, 'grizzly')
+        grizzly_setup = grizzly.setup
 
         expected_properties: Dict[str, Tuple[Any, Any]] = {
             'log_level': ('INFO', 'DEBUG'),
@@ -106,65 +108,66 @@ class TestLocustContextSetup:
         expected_attributes = list(expected_properties.keys())
         expected_attributes.sort()
 
-        assert locust_context_setup is not None and isinstance(locust_context_setup, LocustContextSetup)
+        assert grizzly_setup is not None and isinstance(grizzly_setup, GrizzlyContextSetup)
 
         for test_attribute_name, test_attribute_values in expected_properties.items():
-            assert hasattr(locust_context_setup, test_attribute_name), f'attribute {test_attribute_name} does not exist in LocustContextSetup'
+            assert hasattr(grizzly_setup, test_attribute_name), f'attribute {test_attribute_name} does not exist in GrizzlyContextSetup'
 
             [default_value, test_value] = test_attribute_values
 
-            assert getattr(locust_context_setup, test_attribute_name) == default_value
-            setattr(locust_context_setup, test_attribute_name, test_value)
-            assert getattr(locust_context_setup, test_attribute_name) == test_value
+            assert getattr(grizzly_setup, test_attribute_name) == default_value
+            setattr(grizzly_setup, test_attribute_name, test_value)
+            assert getattr(grizzly_setup, test_attribute_name) == test_value
 
-        actual_attributes = list(locust_context_setup.__dict__.keys())
+        actual_attributes = list(grizzly_setup.__dict__.keys())
         actual_attributes.sort()
 
         assert expected_attributes == actual_attributes
 
-    @pytest.mark.usefixtures('behave_locust_context')
-    def test_scenarios(self, behave_locust_context: LocustContext) -> None:
-        assert len(behave_locust_context.scenarios()) == 0
-        assert behave_locust_context.state.variables == {}
+    @pytest.mark.usefixtures('behave_context')
+    def test_scenarios(self, behave_context: Context) -> None:
+        grizzly = getattr(behave_context, 'grizzly')
+        assert len(grizzly.scenarios()) == 0
+        assert grizzly.state.variables == {}
 
-        behave_locust_context.add_scenario('test1')
-        behave_locust_context.scenario.user_class_name = 'TestUser'
-        first_scenario = behave_locust_context.scenario
-        assert len(behave_locust_context.scenarios()) == 1
-        assert behave_locust_context.state.variables == {}
-        assert behave_locust_context.scenario.name == 'test1'
+        grizzly.add_scenario('test1')
+        grizzly.scenario.user_class_name = 'TestUser'
+        first_scenario = grizzly.scenario
+        assert len(grizzly.scenarios()) == 1
+        assert grizzly.state.variables == {}
+        assert grizzly.scenario.name == 'test1'
 
-        behave_locust_context.scenario.context['host'] = 'http://test:8000'
-        assert behave_locust_context.scenario.context['host'] == 'http://test:8000'
+        grizzly.scenario.context['host'] = 'http://test:8000'
+        assert grizzly.scenario.context['host'] == 'http://test:8000'
 
 
-        behave_locust_context.add_scenario('test2')
-        behave_locust_context.scenario.user_class_name = 'TestUser'
-        behave_locust_context.scenario.context['host'] = 'http://test:8001'
-        assert len(behave_locust_context.scenarios()) == 2
-        assert behave_locust_context.scenario.name == 'test2'
-        assert behave_locust_context.scenario.context['host'] != 'http://test:8000'
+        grizzly.add_scenario('test2')
+        grizzly.scenario.user_class_name = 'TestUser'
+        grizzly.scenario.context['host'] = 'http://test:8001'
+        assert len(grizzly.scenarios()) == 2
+        assert grizzly.scenario.name == 'test2'
+        assert grizzly.scenario.context['host'] != 'http://test:8000'
 
         behave_scenario = Scenario(filename=None, line=None, keyword='', name='test3')
-        behave_locust_context.add_scenario(behave_scenario)
-        behave_locust_context.scenario.user_class_name = 'TestUser'
-        third_scenario = behave_locust_context.scenario
-        assert behave_locust_context.scenario.name == 'test3'
-        assert behave_locust_context.scenario.behave is behave_scenario
+        grizzly.add_scenario(behave_scenario)
+        grizzly.scenario.user_class_name = 'TestUser'
+        third_scenario = grizzly.scenario
+        assert grizzly.scenario.name == 'test3'
+        assert grizzly.scenario.behave is behave_scenario
 
-        for index, scenario in enumerate(behave_locust_context.scenarios(), start=1):
+        for index, scenario in enumerate(grizzly.scenarios(), start=1):
             assert scenario.name == f'test{index}'
 
-        assert behave_locust_context.get_scenario('test4') is None
-        assert behave_locust_context.get_scenario('test1') is None
-        assert behave_locust_context.get_scenario('test3') is None
-        assert behave_locust_context.get_scenario(first_scenario.get_name()) is first_scenario
-        assert behave_locust_context.get_scenario(third_scenario.get_name()) is third_scenario
+        assert grizzly.get_scenario('test4') is None
+        assert grizzly.get_scenario('test1') is None
+        assert grizzly.get_scenario('test3') is None
+        assert grizzly.get_scenario(first_scenario.get_name()) is first_scenario
+        assert grizzly.get_scenario(third_scenario.get_name()) is third_scenario
 
 
-class TestLocustContextState:
+class TestGrizzlyContextState:
     def test(self) -> None:
-        state = LocustContextState()
+        state = GrizzlyContextState()
 
         expected_properties = {
             'spawning_complete': (False, True),
@@ -205,7 +208,7 @@ class TestLocustContextState:
                                 redirect_uri: "https://www.example.com/authenticated"
             ''')
 
-            state = LocustContextState()
+            state = GrizzlyContextState()
 
             assert state.configuration == {}
 
@@ -213,7 +216,7 @@ class TestLocustContextState:
 
             environ['GRIZZLY_CONFIGURATION_FILE'] = str(configuration_file)
 
-            state = LocustContextState()
+            state = GrizzlyContextState()
 
             assert state.configuration == {
                 'sut.host': 'https://backend.example.com',
@@ -232,15 +235,16 @@ class TestLocustContextState:
                 pass
 
 
-class TestLocustContext:
-    @pytest.mark.usefixtures('behave_locust_context')
-    def test(self, behave_locust_context: LocustContext) -> None:
-        assert behave_locust_context is not None
-        assert isinstance(behave_locust_context, LocustContext)
+class TestGrizzlyContext:
+    @pytest.mark.usefixtures('behave_context')
+    def test(self, behave_context: Context) -> None:
+        grizzly = getattr(behave_context, 'grizzly')
+        assert grizzly is not None
+        assert isinstance(grizzly, GrizzlyContext)
 
-        second_locust_context = LocustContext()
+        second_grizzly = GrizzlyContext()
 
-        assert behave_locust_context is second_locust_context
+        assert grizzly is second_grizzly
 
         expected_attributes = [
             'setup',
@@ -249,53 +253,43 @@ class TestLocustContext:
         ]
         expected_attributes.sort()
 
-        actual_attributes = list(get_property_decorated_attributes(behave_locust_context.__class__))
+        actual_attributes = list(get_property_decorated_attributes(grizzly.__class__))
         actual_attributes.sort()
 
         for test_attribute in expected_attributes:
-            assert hasattr(behave_locust_context, test_attribute)
+            assert hasattr(grizzly, test_attribute)
 
-        assert isinstance(behave_locust_context.setup, LocustContextSetup)
-        assert callable(getattr(behave_locust_context, 'scenarios', None))
+        assert isinstance(grizzly.setup, GrizzlyContextSetup)
+        assert callable(getattr(grizzly, 'scenarios', None))
         assert expected_attributes == actual_attributes
 
-    @pytest.mark.usefixtures('behave_locust_context')
-    def test_destroy(self, behave_locust_context: LocustContext) -> None:
-        assert behave_locust_context == LocustContext()
+    @pytest.mark.usefixtures('behave_context')
+    def test_destroy(self, behave_context: Context) -> None:
+        grizzly = getattr(behave_context, 'grizzly')
+        assert grizzly is GrizzlyContext()
 
-        LocustContext.destroy()
+        GrizzlyContext.destroy()
 
         with pytest.raises(ValueError):
-            LocustContext.destroy()
+            GrizzlyContext.destroy()
 
-        behave_locust_context = LocustContext()
+        grizzly = GrizzlyContext()
 
-        assert behave_locust_context == LocustContext()
+        assert grizzly is GrizzlyContext()
 
 
-class TestRequestMethod:
+class TestGrizzlyContextScenario:
     def test(self) -> None:
-        with pytest.raises(ValueError):
-            RequestMethod.from_string('ASDF')
-
-        assert RequestMethod.from_string('get') == RequestMethod.GET
-        assert RequestMethod.from_string('post') == RequestMethod.POST
-        assert RequestMethod.from_string('receive') == RequestMethod.RECEIVE
-        assert RequestMethod.from_string('SeNd') == RequestMethod.SEND
-
-
-class TestLocustContextScenario:
-    def test(self) -> None:
-        scenario = LocustContextScenario()
+        scenario = GrizzlyContextScenario()
 
         assert scenario._identifier is None
         assert not hasattr(scenario, 'name')
         assert not hasattr(scenario, 'user_class_name')
         assert scenario.iterations == 1
         assert scenario.context == {}
-        assert isinstance(scenario.wait, LocustContextScenarioWait)
+        assert isinstance(scenario.wait, GrizzlyContextScenarioWait)
         assert scenario.tasks == []
-        assert isinstance(scenario.validation, LocustContextScenarioValidation)
+        assert isinstance(scenario.validation, GrizzlyContextScenarioValidation)
         assert not scenario.stop_on_failure
 
         with pytest.raises(ValueError):
@@ -315,7 +309,7 @@ class TestLocustContextScenario:
 
     @pytest.mark.usefixtures('request_task')
     def test_tasks(self, request_task: Tuple[str, str, RequestTask]) -> None:
-        scenario = LocustContextScenario()
+        scenario = GrizzlyContextScenario()
         scenario.name = 'TestScenario'
         scenario.context['host'] = 'test'
         scenario.user_class_name = 'TestUser'

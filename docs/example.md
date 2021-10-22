@@ -62,12 +62,12 @@ from behave.runner import Context
 from behave import then  # pylint: disable=no-name-in-module
 
 from grizzly.steps import *
-from grizzly.context import LocustContext
+from grizzly.context import GrizzlyContext
 
 
 @then(u'this custom step should be executed')
 def step_custom_the_custom_step(context: Context) -> None:
-    context_locust = cast(LocustContext, context.locust)
+    grizzly = cast(GrizzlyContext, context.grizzly)
 
     # custom step implementation
 ```

@@ -17,7 +17,7 @@ from grizzly.types import RequestMethod
 from grizzly.task import RequestTask
 from grizzly.testdata.utils import transform
 
-from ..fixtures import locust_context, request_task  # pylint: disable=unused-import
+from ..fixtures import grizzly_context, request_task  # pylint: disable=unused-import
 from ..helpers import ResultFailure, RequestEvent, RequestSilentFailureEvent, clone_request
 
 import logging
@@ -71,7 +71,7 @@ CONNECTION_STRING = 'Endpoint=sb://sb.ifktest.ru/;SharedAccessKeyName=RootManage
 
 
 @pytest.fixture
-def sb_user(locust_context: Callable, mocker: MockerFixture) -> Tuple[ServiceBusUser, RequestTask, Environment]:
+def sb_user(grizzly_context: Callable, mocker: MockerFixture) -> Tuple[ServiceBusUser, RequestTask, Environment]:
     def sb_connect(conn_str: str, **kwargs: Any) -> DummyServiceBusClient:
         return DummyServiceBusClient(conn_str)
 
@@ -80,7 +80,7 @@ def sb_user(locust_context: Callable, mocker: MockerFixture) -> Tuple[ServiceBus
         sb_connect,
     )
 
-    environment, user, _, [_, _, request] = locust_context(
+    environment, user, _, [_, _, request] = grizzly_context(
         CONNECTION_STRING, ServiceBusUser)
 
     request.method = RequestMethod.SEND

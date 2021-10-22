@@ -8,7 +8,7 @@ from locust.user.users import User
 from locust.exception import StopUser
 from gevent import sleep as gsleep
 
-from ..context import LocustContext
+from ..context import GrizzlyContext
 from ..task import RequestTask
 from ..testdata.communication import TestdataConsumer
 
@@ -17,7 +17,7 @@ class GrizzlyTasks(SequentialTaskSet):
     consumer: TestdataConsumer
     tasks: List[Callable] = []
     logger: logging.Logger = logging.getLogger(__name__)
-    locust_context: LocustContext
+    grizzly: GrizzlyContext
     wait_time: Callable
 
     def __init__(self, parent: Type[User]) -> None:

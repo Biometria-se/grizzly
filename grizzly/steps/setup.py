@@ -4,7 +4,7 @@ from os import environ
 from behave import given  # pylint: disable=no-name-in-module
 from behave.runner import Context
 
-from ..context import LocustContext
+from ..context import GrizzlyContext
 
 
 @given(u'ask for value of variable "{name}"')
@@ -25,14 +25,14 @@ def step_setup_variable_value_ask(context: Context, name: str) -> None:
     Args:
         name (str): variable name used in templates
     '''
-    context_locust = cast(LocustContext, context.locust)
+    grizzly = cast(GrizzlyContext, context.grizzly)
 
     value = environ.get(f'TESTDATA_VARIABLE_{name}', None)
     assert value is not None, f'variable "{name}" does not have a value'
-    assert name not in context_locust.state.variables, f'variable "{name}" has already been set'
+    assert name not in grizzly.state.variables, f'variable "{name}" has already been set'
 
     try:
-        context_locust.state.variables[name] = value
+        grizzly.state.variables[name] = value
     except ValueError as e:
         assert 0, str(e)
 

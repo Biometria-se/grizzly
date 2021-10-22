@@ -14,19 +14,19 @@ from grizzly.testdata.models import TemplateData
 from grizzly.testdata.communication import TestdataConsumer
 from grizzly.testdata.utils import transform
 
-from ..fixtures import locust_context, request_task  # pylint: disable=unused-import
+from ..fixtures import grizzly_context, request_task  # pylint: disable=unused-import
 from ..helpers import RequestCalled
 
 
 class TestIterationTasks:
-    @pytest.mark.usefixtures('locust_context')
-    def test_initialize(self, locust_context: Callable) -> None:
-        _, _, task, _ = locust_context()
+    @pytest.mark.usefixtures('grizzly_context')
+    def test_initialize(self, grizzly_context: Callable) -> None:
+        _, _, task, _ = grizzly_context()
         assert issubclass(task.__class__, TaskSet)
 
-    @pytest.mark.usefixtures('locust_context')
-    def test_add_scenario_task(self, locust_context: Callable, mocker: MockerFixture) -> None:
-        _, _, task, [_, _, request] = locust_context(task_type=IteratorTasks)
+    @pytest.mark.usefixtures('grizzly_context')
+    def test_add_scenario_task(self, grizzly_context: Callable, mocker: MockerFixture) -> None:
+        _, _, task, [_, _, request] = grizzly_context(task_type=IteratorTasks)
         request.endpoint = '/api/v1/test'
         IteratorTasks.add_scenario_task(request)
         assert isinstance(task, IteratorTasks)
@@ -57,10 +57,10 @@ class TestIterationTasks:
         assert callable(task_method)
         task_method(task)
 
-    @pytest.mark.usefixtures('locust_context')
-    def test_on_event_handlers(self, locust_context: Callable, mocker: MockerFixture) -> None:
+    @pytest.mark.usefixtures('grizzly_context')
+    def test_on_event_handlers(self, grizzly_context: Callable, mocker: MockerFixture) -> None:
         try:
-            _, _, task, _ = locust_context(task_type=IteratorTasks)
+            _, _, task, _ = grizzly_context(task_type=IteratorTasks)
 
             def TestdataConsumer__init__(self: 'TestdataConsumer', address: str) -> None:
                 pass
@@ -95,9 +95,9 @@ class TestIterationTasks:
             except KeyError:
                 pass
 
-    @pytest.mark.usefixtures('locust_context')
-    def test_iterator(self, locust_context: Callable, mocker: MockerFixture) -> None:
-        _, user, task, _ = locust_context(task_type=IteratorTasks)
+    @pytest.mark.usefixtures('grizzly_context')
+    def test_iterator(self, grizzly_context: Callable, mocker: MockerFixture) -> None:
+        _, user, task, _ = grizzly_context(task_type=IteratorTasks)
 
         assert task is not None
 

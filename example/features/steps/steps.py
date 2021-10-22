@@ -2,7 +2,7 @@ from behave.runner import Context
 from behave import given  # pylint: disable=no-name-in-module
 
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import
-from grizzly.context import LocustContext
+from grizzly.context import GrizzlyContext
 from grizzly.utils import merge_dicts
 
 
@@ -20,6 +20,6 @@ def step_log_all_requests(context: Context) -> None:
     And log all requests
     ```
     '''
-    context_locust = cast(LocustContext, context.locust)
-    context_variable = create_context_variable(context_locust, 'log_all_requests', 'True')
-    context_locust.scenario.context = merge_dicts(context_locust.scenario.context, context_variable)
+    grizzly = cast(GrizzlyContext, context.grizzly)
+    context_variable = create_context_variable(grizzly, 'log_all_requests', 'True')
+    grizzly.scenario.context = merge_dicts(grizzly.scenario.context, context_variable)

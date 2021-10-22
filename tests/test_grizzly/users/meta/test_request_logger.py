@@ -20,7 +20,7 @@ from ...fixtures import locust_environment  # pylint: disable=unused-import
 def request_logger(locust_environment: Environment, tmpdir_factory: TempdirFactory) -> Generator[RequestLogger, None, None]:
         test_context = tmpdir_factory.mktemp('test_context').mkdir('requests')
         test_context_root = path.dirname(str(test_context))
-        environ['LOCUST_CONTEXT_ROOT'] = test_context_root
+        environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
 
         try:
             RequestLogger.host = 'https://example.org'
@@ -29,14 +29,14 @@ def request_logger(locust_environment: Environment, tmpdir_factory: TempdirFacto
             shutil.rmtree(test_context_root)
 
             try:
-                del environ['LOCUST_CONTEXT_ROOT']
+                del environ['GRIZZLY_CONTEXT_ROOT']
             except KeyError:
                 pass
 
 @pytest.fixture
 def get_log_files() -> Callable[[], List[str]]:
     def wrapped() -> List[str]:
-        logs_root = path.join(environ['LOCUST_CONTEXT_ROOT'], 'logs')
+        logs_root = path.join(environ['GRIZZLY_CONTEXT_ROOT'], 'logs')
         log_files = [
             path.join(logs_root, f) for f in listdir(logs_root)
                 if path.isfile(path.join(logs_root, f)) and f.endswith('.log')
@@ -50,7 +50,7 @@ def get_log_files() -> Callable[[], List[str]]:
 class TestRequestLogger:
     @pytest.mark.usefixtures('locust_environment')
     def test___init__(self, locust_environment: Environment) -> None:
-        assert not path.isdir(path.join(environ['LOCUST_CONTEXT_ROOT'], 'logs'))
+        assert not path.isdir(path.join(environ['GRIZZLY_CONTEXT_ROOT'], 'logs'))
 
         fake_user_type = type('FakeRequestLogger', (RequestLogger, HttpRequests,), {
             'host': 'https://test.example.org',
@@ -58,7 +58,7 @@ class TestRequestLogger:
 
         user = fake_user_type(locust_environment)
 
-        assert path.isdir(path.join(environ['LOCUST_CONTEXT_ROOT'], 'logs'))
+        assert path.isdir(path.join(environ['GRIZZLY_CONTEXT_ROOT'], 'logs'))
         assert not user._context.get('log_all_requests', None)
         assert len(user.response_event._handlers) == 1
 

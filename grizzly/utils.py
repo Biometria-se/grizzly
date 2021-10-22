@@ -28,7 +28,7 @@ from .users.meta import ContextVariables
 from .exceptions import ResponseHandlerError
 from .types import HandlerType, ResponseContentType, RequestMethod, ResponseTarget, ResponseAction
 from .transformer import PlainTransformer, transformer
-from .context import LocustContext, LocustContextScenario
+from .context import GrizzlyContext, GrizzlyContextScenario
 from .task import RequestTask
 
 
@@ -84,9 +84,9 @@ class catch:
 
 
 def create_request_task(context: Context, method: RequestMethod, source: str, endpoint: str, name: Optional[str] = None) -> RequestTask:
-    locust_context = cast(LocustContext, context.locust)
+    grizzly = cast(GrizzlyContext, context.grizzly)
     request = _create_request_task(context.config.base_dir, method, source, endpoint, name)
-    request.scenario = locust_context.scenario
+    request.scenario = grizzly.scenario
 
     return request
 
@@ -139,8 +139,8 @@ def add_request_task_response_status_codes(request: RequestTask, status_list: st
 
 
 def add_request_task(context: Context, method: RequestMethod, source: str, name: Optional[str] = None, endpoint: Optional[str] = None) -> None:
-    context_locust = cast(LocustContext, context.locust)
-    scenario_tasks_count = len(context_locust.scenario.tasks)
+    grizzly = cast(GrizzlyContext, context.grizzly)
+    scenario_tasks_count = len(grizzly.scenario.tasks)
 
     table: List[Optional[Row]]
 
@@ -154,7 +154,7 @@ def add_request_task(context: Context, method: RequestMethod, source: str, name:
             if scenario_tasks_count == 0:
                 raise ValueError(f'no endpoint specified')
 
-            last_request = context_locust.scenario.tasks[-1]
+            last_request = grizzly.scenario.tasks[-1]
 
             if not isinstance(last_request, RequestTask):
                 raise ValueError('previous task was not a request')
@@ -166,7 +166,7 @@ def add_request_task(context: Context, method: RequestMethod, source: str, name:
         else:
             parsed = urlparse(endpoint)
             if len(parsed.netloc) > 0:
-                raise ValueError(f'endpoints should only contain path relative to {context_locust.scenario.context["host"]}')
+                raise ValueError(f'endpoints should only contain path relative to {grizzly.scenario.context["host"]}')
 
         orig_endpoint = endpoint
         orig_name = name
@@ -186,7 +186,7 @@ def add_request_task(context: Context, method: RequestMethod, source: str, name:
         name = orig_name
         source = orig_source
 
-        context_locust.scenario.tasks.append(request_task)
+        grizzly.scenario.tasks.append(request_task)
 
 
 def get_matches(
@@ -372,7 +372,7 @@ def generate_save_handler(expression: str, match_with: str, variable: str) -> Ha
 
 
 def _add_response_handler(
-    context: LocustContext,
+    context: GrizzlyContext,
     target: ResponseTarget,
     action: ResponseAction,
     expression: str,
@@ -422,11 +422,11 @@ def _add_response_handler(
     add_listener(handler)
 
 
-def add_save_handler(context: LocustContext, target: ResponseTarget, expression: str, match_with: str, variable: str) -> None:
+def add_save_handler(context: GrizzlyContext, target: ResponseTarget, expression: str, match_with: str, variable: str) -> None:
     _add_response_handler(context, target, ResponseAction.SAVE, expression=expression, match_with=match_with, variable=variable)
 
 
-def add_validation_handler(context: LocustContext, target: ResponseTarget, expression: str, match_with: str, condition: bool) -> None:
+def add_validation_handler(context: GrizzlyContext, target: ResponseTarget, expression: str, match_with: str, condition: bool) -> None:
     _add_response_handler(context, target, ResponseAction.VALIDATE, expression=expression, match_with=match_with, condition=condition)
 
 
@@ -466,7 +466,7 @@ def fail_direct(context: Context) -> Generator[None, None, None]:
     context.config.verbose = orig_verbose_value
 
 
-def create_user_class_type(scenario: LocustContextScenario, global_context: Optional[Dict[str, Any]] = None) -> Type[User]:
+def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Optional[Dict[str, Any]] = None) -> Type[User]:
     if global_context is None:
         global_context = {}
 
@@ -493,7 +493,7 @@ def create_user_class_type(scenario: LocustContextScenario, global_context: Opti
     })
 
 
-def create_task_class_type(base_type: str, scenario: LocustContextScenario) -> Type[TaskSet]:
+def create_task_class_type(base_type: str, scenario: GrizzlyContextScenario) -> Type[TaskSet]:
     # @TODO: allow scenario implementation outside of grizzly?
     base_task_class_type = cast(Type[TaskSet], ModuleLoader[TaskSet].load('grizzly.tasks', base_type))
     task_class_name = f'{base_type}_{scenario.identifier}'
@@ -504,15 +504,15 @@ def create_task_class_type(base_type: str, scenario: LocustContextScenario) -> T
     })
 
 
-def create_context_variable(context_locust: LocustContext, variable: str, value: str) -> Dict[str, Any]:
-    casted_value = resolve_variable(context_locust, value)
+def create_context_variable(grizzly: GrizzlyContext, variable: str, value: str) -> Dict[str, Any]:
+    casted_value = resolve_variable(grizzly, value)
 
     variable = variable.lower().replace(' ', '_').replace('/', '.')
 
     return transform({variable: casted_value}, True)
 
 
-def resolve_variable(context_locust: LocustContext, value: str, guess_datatype: Optional[bool] = True) -> TemplateDataType:
+def resolve_variable(grizzly: GrizzlyContext, value: str, guess_datatype: Optional[bool] = True) -> TemplateDataType:
     if len(value) < 1:
         return value
 
@@ -524,14 +524,14 @@ def resolve_variable(context_locust: LocustContext, value: str, guess_datatype: 
         template_variables = find_undeclared_variables(template_parsed)
 
         for template_variable in template_variables:
-            assert template_variable in context_locust.state.variables, f'value contained variable "{template_variable}" which has not been set'
+            assert template_variable in grizzly.state.variables, f'value contained variable "{template_variable}" which has not been set'
 
-        resolved_variable = template.render(**context_locust.state.variables)
+        resolved_variable = template.render(**grizzly.state.variables)
     elif len(value) > 4 and value[0] == '$':
         if value[0:5] == '$conf':
             variable = value[7:]
-            assert variable in context_locust.state.configuration, f'configuration variable "{variable}" is not set'
-            resolved_variable = context_locust.state.configuration[variable]
+            assert variable in grizzly.state.configuration, f'configuration variable "{variable}" is not set'
+            resolved_variable = grizzly.state.configuration[variable]
         elif value[0:4] == '$env':
             variable = value[6:]
             env_value = os.environ.get(variable, None)

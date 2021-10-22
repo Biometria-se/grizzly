@@ -4,7 +4,7 @@ from typing import cast
 from behave.runner import Context
 from behave import given  # pylint: disable=no-name-in-module
 
-from ...context import LocustContext
+from ...context import GrizzlyContext
 from ...utils import resolve_variable
 
 
@@ -26,6 +26,6 @@ def step_user_type(context: Context, user_class_name: str, host: str) -> None:
     if not user_class_name.endswith('User'):
         user_class_name = f'{user_class_name}User'
 
-    context_locust = cast(LocustContext, context.locust)
-    context_locust.scenario.user_class_name = user_class_name
-    context_locust.scenario.context['host'] = resolve_variable(context_locust, host)
+    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly.scenario.user_class_name = user_class_name
+    grizzly.scenario.context['host'] = resolve_variable(grizzly, host)

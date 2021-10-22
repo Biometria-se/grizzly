@@ -17,7 +17,7 @@ def test_atomiccsvrow__base_type__(tmpdir_factory: TempdirFactory) -> None:
     test_context_root = os.path.dirname(str(test_context))
 
     try:
-        os.environ['LOCUST_CONTEXT_ROOT'] = test_context_root
+        os.environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
         with pytest.raises(ValueError) as ve:
             atomiccsvrow__base_type__('file1.txt')
         assert 'must be a CSV file with file extension .csv' in str(ve)
@@ -46,7 +46,7 @@ def test_atomiccsvrow__base_type__(tmpdir_factory: TempdirFactory) -> None:
         shutil.rmtree(test_context_root)
 
         try:
-            del os.environ['LOCUST_CONTEXT_ROOT']
+            del os.environ['GRIZZLY_CONTEXT_ROOT']
         except KeyError:
             pass
 
@@ -57,8 +57,8 @@ class TestAtomicCsvRow:
         test_context = str(tmpdir_factory.mktemp('test_context').mkdir('requests'))
         test_context_root = os.path.dirname(test_context)
 
-        old_locust_context_root = os.environ.get('LOCUST_CONTEXT_ROOT', None)
-        os.environ['LOCUST_CONTEXT_ROOT'] = test_context_root
+        old_grizzly_context_root = os.environ.get('GRIZZLY_CONTEXT_ROOT', None)
+        os.environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
 
         for count in range(1, 4):
             file = f'{count}.csv'
@@ -211,10 +211,10 @@ class TestAtomicCsvRow:
             ]
         finally:
             shutil.rmtree(test_context_root)
-            if old_locust_context_root is not None:
-                os.environ['LOCUST_CONTEXT_ROOT'] = old_locust_context_root
+            if old_grizzly_context_root is not None:
+                os.environ['GRIZZLY_CONTEXT_ROOT'] = old_grizzly_context_root
             else:
-                del os.environ['LOCUST_CONTEXT_ROOT']
+                del os.environ['GRIZZLY_CONTEXT_ROOT']
 
             cleanup()
 
@@ -223,8 +223,8 @@ class TestAtomicCsvRow:
         test_context = str(tmpdir_factory.mktemp('test_context').mkdir('requests'))
         test_context_root = os.path.dirname(test_context)
 
-        old_locust_context_root = os.environ.get('LOCUST_CONTEXT_ROOT', None)
-        os.environ['LOCUST_CONTEXT_ROOT'] = test_context_root
+        old_grizzly_context_root = os.environ.get('GRIZZLY_CONTEXT_ROOT', None)
+        os.environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
 
         with open(os.path.join(test_context, 'test.csv'), 'w') as fd:
             fd.write('header1\n')
@@ -258,10 +258,10 @@ class TestAtomicCsvRow:
             AtomicCsvRow.destroy()
         finally:
             shutil.rmtree(test_context_root)
-            if old_locust_context_root is not None:
-                os.environ['LOCUST_CONTEXT_ROOT'] = old_locust_context_root
+            if old_grizzly_context_root is not None:
+                os.environ['GRIZZLY_CONTEXT_ROOT'] = old_grizzly_context_root
             else:
-                del os.environ['LOCUST_CONTEXT_ROOT']
+                del os.environ['GRIZZLY_CONTEXT_ROOT']
 
             cleanup()
 

@@ -10,7 +10,7 @@ from jinja2.exceptions import TemplateError
 
 from grizzly.testdata.ast import RequestSourceMapping, _parse_templates, get_template_variables
 from grizzly.types import RequestMethod
-from grizzly.context import LocustContextScenario
+from grizzly.context import GrizzlyContextScenario
 from grizzly.task import RequestTask
 from ..fixtures import request_task, request_task_syntax_error  # pylint: disable=unused-import
 
@@ -79,7 +79,7 @@ def test_get_template_variables_none() -> None:
 def test_get_template_variables() -> None:
     tasks: List[RequestTask] = []
 
-    scenario = LocustContextScenario()
+    scenario = GrizzlyContextScenario()
     scenario.name = 'TestScenario'
     scenario.context['host'] = 'http://test.nu'
     scenario.user_class_name = 'TestUser'

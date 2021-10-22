@@ -19,7 +19,7 @@ from paramiko.sftp_client import SFTPClient
 
 from grizzly.clients import ResponseEventSession, SftpClientSession
 from grizzly.types import RequestMethod
-from grizzly.context import LocustContextScenario
+from grizzly.context import GrizzlyContextScenario
 from grizzly.task import RequestTask
 
 from .fixtures import locust_environment, paramiko_mocker  # pylint: disable=unused-import
@@ -54,7 +54,7 @@ class TestResponseEventSession:
 
         session = ResponseEventSession(base_url='', request_event=RequestEvent())
         request = RequestTask(RequestMethod.POST, name='test-request', endpoint='/api/test')
-        scenario = LocustContextScenario()
+        scenario = GrizzlyContextScenario()
         scenario.name = 'TestScenario'
         scenario.context['host'] = 'test'
         request.scenario = scenario

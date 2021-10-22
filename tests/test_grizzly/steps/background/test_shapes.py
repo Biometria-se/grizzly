@@ -23,24 +23,24 @@ def test_parse_user_gramatical_number() -> None:
 def test_step_shapes_user_count(behave_context: Context) -> None:
     step_impl = step_shapes_user_count
 
-    context_locust = cast(LocustContext, behave_context.locust)
-    assert context_locust.setup.user_count == 0
+    grizzly = cast(GrizzlyContext, behave_context.grizzly)
+    assert grizzly.setup.user_count == 0
 
     with pytest.raises(AssertionError):
         step_impl(behave_context, 10, 'user')
 
     step_impl(behave_context, 10, 'users')
 
-    assert context_locust.setup.user_count == 10
+    assert grizzly.setup.user_count == 10
 
     step_impl(behave_context, 1, 'user')
 
-    assert context_locust.setup.user_count == 1
+    assert grizzly.setup.user_count == 1
 
     with pytest.raises(AssertionError):
         step_impl(behave_context, 1, 'users')
 
-    context_locust.setup.spawn_rate = 10
+    grizzly.setup.spawn_rate = 10
 
     with pytest.raises(AssertionError):
         step_impl(behave_context, 1, 'user')
@@ -50,26 +50,26 @@ def test_step_shapes_user_count(behave_context: Context) -> None:
 def test_step_shapes_spawn_rate(behave_context: Context) -> None:
     step_impl = step_shapes_spawn_rate
 
-    context_locust = cast(LocustContext, behave_context.locust)
-    assert context_locust.setup.spawn_rate is None
+    grizzly = cast(GrizzlyContext, behave_context.grizzly)
+    assert grizzly.setup.spawn_rate is None
 
     # spawn_rate must be <= user_count
     with pytest.raises(AssertionError):
         step_impl(behave_context, 1, 'user')
 
-    context_locust.setup.user_count = 10
+    grizzly.setup.user_count = 10
     step_impl(behave_context, 1, 'user')
 
-    assert context_locust.setup.spawn_rate == 1
+    assert grizzly.setup.spawn_rate == 1
 
     with pytest.raises(AssertionError):
         step_impl(behave_context, 10, 'user')
 
     step_impl(behave_context, 10, 'users')
 
-    assert context_locust.setup.spawn_rate == 10
+    assert grizzly.setup.spawn_rate == 10
 
-    context_locust.setup.user_count = 1
+    grizzly.setup.user_count = 1
 
     with pytest.raises(AssertionError):
         step_impl(behave_context, 10, 'users')

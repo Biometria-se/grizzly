@@ -14,7 +14,7 @@ from locust.env import Environment
 from locust.runners import LocalRunner, MasterRunner, WorkerRunner
 
 from grizzly.listeners import _init_testdata_producer, init, init_statistics_listener, locust_test_start, locust_test_stop, quitting, spawning_complete, validate_result
-from grizzly.context import LocustContext, LocustContextScenarioResponseTimePercentile
+from grizzly.context import GrizzlyContext, GrizzlyContextScenarioResponseTimePercentile
 
 from ..fixtures import locust_environment  # pylint: disable=unused-import
 
@@ -178,7 +178,7 @@ def test_init_statistics_listener(mocker: MockerFixture, locust_environment: Env
     )
 
     try:
-        context_locust = LocustContext()
+        grizzly = GrizzlyContext()
 
         locust_environment.events.request_success._handlers = []
         locust_environment.events.request_failure._handlers = []
@@ -186,48 +186,48 @@ def test_init_statistics_listener(mocker: MockerFixture, locust_environment: Env
         locust_environment.events.spawning_complete._handlers = []
 
         # not a valid scheme
-        context_locust.setup.statistics_url = 'http://localhost'
-        init_statistics_listener(context_locust.setup.statistics_url)(locust_environment)
+        grizzly.setup.statistics_url = 'http://localhost'
+        init_statistics_listener(grizzly.setup.statistics_url)(locust_environment)
         assert len(locust_environment.events.request_success._handlers) == 0
         assert len(locust_environment.events.request_failure._handlers) == 0
         assert len(locust_environment.events.request._handlers) == 1
         assert len(locust_environment.events.quitting._handlers) == 0
         assert len(locust_environment.events.spawning_complete._handlers) == 0
 
-        context_locust.setup.statistics_url = 'influxdb://test/database?Testplan=test'
-        init_statistics_listener(context_locust.setup.statistics_url)(locust_environment)
+        grizzly.setup.statistics_url = 'influxdb://test/database?Testplan=test'
+        init_statistics_listener(grizzly.setup.statistics_url)(locust_environment)
         assert len(locust_environment.events.request_success._handlers) == 0
         assert len(locust_environment.events.request_failure._handlers) == 0
         assert len(locust_environment.events.request._handlers) == 2
         assert len(locust_environment.events.quitting._handlers) == 0
         assert len(locust_environment.events.spawning_complete._handlers) == 0
 
-        context_locust.setup.statistics_url = 'insights://?InstrumentationKey=b9601868-cbf8-43ea-afaf-0a2b820ae1c5'
+        grizzly.setup.statistics_url = 'insights://?InstrumentationKey=b9601868-cbf8-43ea-afaf-0a2b820ae1c5'
         with pytest.raises(AssertionError):
-            init_statistics_listener(context_locust.setup.statistics_url)(locust_environment)
+            init_statistics_listener(grizzly.setup.statistics_url)(locust_environment)
 
-        context_locust.setup.statistics_url = 'insights://insights.example.se/?InstrumentationKey=b9601868-cbf8-43ea-afaf-0a2b820ae1c5'
-        init_statistics_listener(context_locust.setup.statistics_url)(locust_environment)
+        grizzly.setup.statistics_url = 'insights://insights.example.se/?InstrumentationKey=b9601868-cbf8-43ea-afaf-0a2b820ae1c5'
+        init_statistics_listener(grizzly.setup.statistics_url)(locust_environment)
         assert len(locust_environment.events.request_success._handlers) == 0
         assert len(locust_environment.events.request_failure._handlers) == 0
         assert len(locust_environment.events.request._handlers) == 3
         assert len(locust_environment.events.quitting._handlers) == 0
         assert len(locust_environment.events.spawning_complete._handlers) == 0
     finally:
-        LocustContext.destroy()
+        GrizzlyContext.destroy()
 
 
 def test_locust_test_start(listener_test: Environment) -> None:
     try:
-        context_locust = LocustContext()
-        context_locust.add_scenario('Test Scenario')
-        context_locust.scenario.iterations = -1
+        grizzly = GrizzlyContext()
+        grizzly.add_scenario('Test Scenario')
+        grizzly.scenario.iterations = -1
         runner = MasterRunner(listener_test, '0.0.0.0', 5555)
         listener_test.runner = runner
 
-        locust_test_start(context_locust)(listener_test)
+        locust_test_start(grizzly)(listener_test)
     finally:
-        LocustContext.destroy()
+        GrizzlyContext.destroy()
 
 
 def test_locust_test_stop(mocker: MockerFixture, listener_test: Environment) -> None:
@@ -250,17 +250,17 @@ def test_locust_test_stop(mocker: MockerFixture, listener_test: Environment) -> 
 
 
 def test_spawning_complete() -> None:
-    locust_context = LocustContext()
+    grizzly = GrizzlyContext()
 
     try:
-        assert not locust_context.state.spawning_complete
-        func = spawning_complete(locust_context)
+        assert not grizzly.state.spawning_complete
+        func = spawning_complete(grizzly)
 
         func()
 
-        assert locust_context.state.spawning_complete
+        assert grizzly.state.spawning_complete
     finally:
-        LocustContext.destroy()
+        GrizzlyContext.destroy()
 
 
 def test_quitting(mocker: MockerFixture, listener_test: Environment) -> None:
@@ -320,7 +320,7 @@ def test_validate_result(mocker: MockerFixture, listener_test: Environment, capl
         print_stats,
     )
 
-    locust_context = LocustContext()
+    grizzly = GrizzlyContext()
 
     static_dir = path.realpath(path.join(path.dirname(__file__), '..', '_static'))
 
@@ -330,7 +330,7 @@ def test_validate_result(mocker: MockerFixture, listener_test: Environment, capl
         stats_entry.num_failures = stats_entry.num_requests
     listener_test.stats.total.total_response_time = 2000
 
-    validate_result_wrapper = validate_result(locust_context)
+    validate_result_wrapper = validate_result(grizzly)
     assert callable(validate_result_wrapper)
 
     # environment has statistics, but can't find a matching scenario
@@ -341,57 +341,57 @@ def test_validate_result(mocker: MockerFixture, listener_test: Environment, capl
 
     # scenario name must match with the name that the pickled stats object was dumped from
     scenario = Scenario(None, None, '', 'do some posts')
-    locust_context.add_scenario(scenario)
+    grizzly.add_scenario(scenario)
 
     # fail ratio
     listener_test.process_exit_code = 0
-    locust_context.scenario.validation.fail_ratio = 0.1
+    grizzly.scenario.validation.fail_ratio = 0.1
 
     assert listener_test.process_exit_code == 0
-    assert locust_context.scenario.behave.status == 'passed'
+    assert grizzly.scenario.behave.status == 'passed'
 
     with caplog.at_level(logging.ERROR):
         validate_result_wrapper(listener_test)
 
     assert 'failed due to' in caplog.text
     assert listener_test.process_exit_code == 1
-    assert locust_context.scenario.behave.status == 'failed'
+    assert grizzly.scenario.behave.status == 'failed'
 
-    locust_context.scenario.validation.fail_ratio = None
-    locust_context.scenario.behave.set_status('passed')
+    grizzly.scenario.validation.fail_ratio = None
+    grizzly.scenario.behave.set_status('passed')
     caplog.clear()
 
     # avg response time
     listener_test.process_exit_code = 0
-    locust_context.scenario.validation.avg_response_time = 2
+    grizzly.scenario.validation.avg_response_time = 2
 
     assert listener_test.process_exit_code == 0
-    assert locust_context.scenario.behave.status == 'passed'
+    assert grizzly.scenario.behave.status == 'passed'
 
     with caplog.at_level(logging.ERROR):
         validate_result_wrapper(listener_test)
 
     assert 'failed due to' in caplog.text
     assert listener_test.process_exit_code == 1
-    assert locust_context.scenario.behave.status == 'failed'
+    assert grizzly.scenario.behave.status == 'failed'
 
-    locust_context.scenario.validation.avg_response_time = None
-    locust_context.scenario.behave.set_status('passed')
+    grizzly.scenario.validation.avg_response_time = None
+    grizzly.scenario.behave.set_status('passed')
     caplog.clear()
 
     # response time percentile
     listener_test.process_exit_code = 0
-    locust_context.scenario.validation.response_time_percentile = LocustContextScenarioResponseTimePercentile(2, 0.99)
+    grizzly.scenario.validation.response_time_percentile = GrizzlyContextScenarioResponseTimePercentile(2, 0.99)
 
     assert listener_test.process_exit_code == 0
-    assert locust_context.scenario.behave.status == 'passed'
+    assert grizzly.scenario.behave.status == 'passed'
 
     with caplog.at_level(logging.ERROR):
         validate_result_wrapper(listener_test)
 
     assert 'failed due to' in caplog.text
     assert listener_test.process_exit_code == 1
-    assert locust_context.scenario.behave.status == 'failed'
+    assert grizzly.scenario.behave.status == 'failed'
 
-    locust_context.scenario.validation.response_time_percentile = None
-    locust_context.scenario.behave.set_status('passed')
+    grizzly.scenario.validation.response_time_percentile = None
+    grizzly.scenario.behave.set_status('passed')

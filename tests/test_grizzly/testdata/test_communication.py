@@ -19,24 +19,24 @@ from locust.env import Environment
 
 from grizzly.testdata.communication import TestdataConsumer, TestdataProducer
 from grizzly.testdata.utils import initialize_testdata, transform
-from grizzly.context import LocustContext
+from grizzly.context import GrizzlyContext
 from grizzly.task import RequestTask
 
-from ..fixtures import locust_context, locust_environment, request_task, behave_context  # pylint: disable=unused-import
+from ..fixtures import grizzly_context, locust_environment, request_task, behave_context  # pylint: disable=unused-import
 from .fixtures import cleanup  # pylint: disable=unused-import
 
 
 class TestTestdataProducer:
-    @pytest.mark.usefixtures('locust_context', 'behave_context', 'cleanup')
+    @pytest.mark.usefixtures('grizzly_context', 'behave_context', 'cleanup')
     def test_run_with_behave(
         self,
         behave_context: Context,
-        locust_context: Callable,
+        grizzly_context: Callable,
         cleanup: Callable,
     ) -> None:
         producer: Optional[TestdataProducer] = None
         try:
-            environment, _, task, [context_root, _, request] = locust_context()
+            environment, _, task, [context_root, _, request] = grizzly_context()
             request = cast(RequestTask, request)
             address = 'tcp://127.0.0.1:5555'
 
@@ -63,23 +63,23 @@ class TestTestdataProducer:
             request.source = json.dumps(source)
             request.template = Template(request.source)
 
-            context_locust = cast(LocustContext, behave_context.locust)
-            context_locust.add_scenario(task.__class__.__name__)
-            context_locust.state.variables['messageID'] = 123
-            context_locust.state.variables['AtomicIntegerIncrementer.messageID'] = 456
-            context_locust.state.variables['AtomicDirectoryContents.test'] = 'adirectory'
-            context_locust.state.variables['AtomicCsvRow.test'] = 'test.csv'
-            context_locust.state.alias['AtomicCsvRow.test.header1'] = 'auth.user.username'
-            context_locust.state.alias['AtomicCsvRow.test.header2'] = 'auth.user.password'
-            context_locust.state.variables['AtomicIntegerIncrementer.value'] = '1 | step=5'
-            context_locust.state.variables['AtomicDate.utc'] = "now | format='%Y-%m-%dT%H:%M:%S.000Z', timezone=UTC"
-            context_locust.state.variables['AtomicDate.now'] = 'now'
-            context_locust.scenario.iterations = 2
-            context_locust.scenario.user_class_name = 'TestUser'
-            context_locust.scenario.context['host'] = 'http://test.nu'
-            context_locust.scenario.add_task(request)
+            grizzly = cast(GrizzlyContext, behave_context.grizzly)
+            grizzly.add_scenario(task.__class__.__name__)
+            grizzly.state.variables['messageID'] = 123
+            grizzly.state.variables['AtomicIntegerIncrementer.messageID'] = 456
+            grizzly.state.variables['AtomicDirectoryContents.test'] = 'adirectory'
+            grizzly.state.variables['AtomicCsvRow.test'] = 'test.csv'
+            grizzly.state.alias['AtomicCsvRow.test.header1'] = 'auth.user.username'
+            grizzly.state.alias['AtomicCsvRow.test.header2'] = 'auth.user.password'
+            grizzly.state.variables['AtomicIntegerIncrementer.value'] = '1 | step=5'
+            grizzly.state.variables['AtomicDate.utc'] = "now | format='%Y-%m-%dT%H:%M:%S.000Z', timezone=UTC"
+            grizzly.state.variables['AtomicDate.now'] = 'now'
+            grizzly.scenario.iterations = 2
+            grizzly.scenario.user_class_name = 'TestUser'
+            grizzly.scenario.context['host'] = 'http://test.nu'
+            grizzly.scenario.add_task(request)
 
-            testdata = initialize_testdata(cast(List[RequestTask], context_locust.scenario.tasks))
+            testdata = initialize_testdata(cast(List[RequestTask], grizzly.scenario.tasks))
 
             producer = TestdataProducer(address=address, testdata=testdata, environment=environment)
             producer_thread = gevent.spawn(producer.run)
@@ -93,7 +93,7 @@ class TestTestdataProducer:
                     message: Dict[str, Any] = {}
                     socket.send_json({
                         'message': 'available',
-                        'scenario': context_locust.scenario.get_name(),
+                        'scenario': grizzly.scenario.get_name(),
                     })
 
                     gevent.sleep(0.1)
@@ -150,17 +150,17 @@ class TestTestdataProducer:
 
             cleanup()
 
-    @pytest.mark.usefixtures('locust_context', 'behave_context', 'cleanup')
+    @pytest.mark.usefixtures('grizzly_context', 'behave_context', 'cleanup')
     def test_run_variable_none(
         self,
         behave_context: Context,
-        locust_context: Callable,
+        grizzly_context: Callable,
         cleanup: Callable,
     ) -> None:
         producer: Optional[TestdataProducer] = None
 
         try:
-            environment, _, task, [context_root, _, request] = locust_context()
+            environment, _, task, [context_root, _, request] = grizzly_context()
             request = cast(RequestTask, request)
             address = 'tcp://127.0.0.1:5555'
 
@@ -172,18 +172,18 @@ class TestTestdataProducer:
             request.source = json.dumps(source)
             request.template = Template(request.source)
 
-            context_locust = cast(LocustContext, behave_context.locust)
-            context_locust.add_scenario(task.__class__.__name__)
-            context_locust.state.variables['messageID'] = 123
-            context_locust.state.variables['AtomicIntegerIncrementer.messageID'] = 456
-            context_locust.state.variables['AtomicDirectoryContents.file'] = 'adirectory'
-            context_locust.state.variables['AtomicDate.now'] = 'now'
-            context_locust.scenario.iterations = 0
-            context_locust.scenario.user_class_name = 'TestUser'
-            context_locust.scenario.context['host'] = 'http://test.nu'
-            context_locust.scenario.add_task(request)
+            grizzly = cast(GrizzlyContext, behave_context.grizzly)
+            grizzly.add_scenario(task.__class__.__name__)
+            grizzly.state.variables['messageID'] = 123
+            grizzly.state.variables['AtomicIntegerIncrementer.messageID'] = 456
+            grizzly.state.variables['AtomicDirectoryContents.file'] = 'adirectory'
+            grizzly.state.variables['AtomicDate.now'] = 'now'
+            grizzly.scenario.iterations = 0
+            grizzly.scenario.user_class_name = 'TestUser'
+            grizzly.scenario.context['host'] = 'http://test.nu'
+            grizzly.scenario.add_task(request)
 
-            testdata = initialize_testdata(cast(List[RequestTask], context_locust.scenario.tasks))
+            testdata = initialize_testdata(cast(List[RequestTask], grizzly.scenario.tasks))
 
             producer = TestdataProducer(address=address, testdata=testdata, environment=environment)
             producer_thread = gevent.spawn(producer.run)
@@ -197,7 +197,7 @@ class TestTestdataProducer:
                     message: Dict[str, Any] = {}
                     socket.send_json({
                         'message': 'available',
-                        'scenario': context_locust.scenario.get_name(),
+                        'scenario': grizzly.scenario.get_name(),
                     })
 
                     gevent.sleep(0.1)
@@ -320,11 +320,11 @@ class TestTestdataProducer:
             logger_error,
         )
 
-        def mocked_get_scenario(c: LocustContext, name: str) -> Any:
+        def mocked_get_scenario(c: GrizzlyContext, name: str) -> Any:
             raise TypeError('TypeError raised')
 
         mocker.patch(
-            'grizzly.context.LocustContext.get_scenario',
+            'grizzly.context.GrizzlyContext.get_scenario',
             mocked_get_scenario,
         )
 

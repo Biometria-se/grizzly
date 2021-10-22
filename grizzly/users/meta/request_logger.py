@@ -54,7 +54,7 @@ class RequestLogger(ResponseEvent, ContextVariables):
 
         self.response_event.add_listener(self.request_logger)
 
-        self.log_dir = os.path.join(os.environ.get('LOCUST_CONTEXT_ROOT', '.'), 'logs')
+        self.log_dir = os.path.join(os.environ.get('GRIZZLY_CONTEXT_ROOT', '.'), 'logs')
         if not os.path.exists(self.log_dir):
             os.mkdir(self.log_dir)
 

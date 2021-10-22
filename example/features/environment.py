@@ -11,7 +11,7 @@ from grizzly.environment import (
     after_scenario,
     before_step,
 )
-from grizzly.context import LocustContext
+from grizzly.context import GrizzlyContext
 
 def before_scenario(
     context: Context, scenario: Scenario, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]
@@ -26,5 +26,5 @@ def before_scenario(
     '''
     grizzly_before_scenario(context, scenario, *args, **kwargs)
 
-    context_locust = cast(LocustContext, context.locust)
-    context_locust.scenario.stop_on_failure = True
+    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly.scenario.stop_on_failure = True

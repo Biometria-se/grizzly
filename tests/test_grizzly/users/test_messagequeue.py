@@ -16,7 +16,7 @@ from jinja2 import Template
 from grizzly.users.messagequeue import MessageQueueUser
 from grizzly.users.meta import RequestLogger, ResponseHandler
 from grizzly.types import RequestMethod
-from grizzly.context import LocustContext, LocustContextScenario
+from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 from grizzly.task import RequestTask
 from grizzly.types import ResponseTarget
 from grizzly.testdata.utils import transform
@@ -25,7 +25,7 @@ from grizzly.exceptions import ResponseHandlerError
 from grizzly.utils import add_save_handler
 from grizzly_extras.messagequeue import MessageQueueResponse
 
-from ..fixtures import locust_context, request_task, locust_environment  # pylint: disable=unused-import
+from ..fixtures import grizzly_context, request_task, locust_environment  # pylint: disable=unused-import
 from ..helpers import clone_request
 
 import logging
@@ -34,13 +34,13 @@ import logging
 logging.getLogger().setLevel(logging.CRITICAL)
 
 @pytest.fixture
-def mq_user(locust_context: Callable) -> Tuple[MessageQueueUser, LocustContextScenario, Environment]:
-    environment, user, task, [_, _, request] = locust_context(
+def mq_user(grizzly_context: Callable) -> Tuple[MessageQueueUser, GrizzlyContextScenario, Environment]:
+    environment, user, task, [_, _, request] = grizzly_context(
         'mq://mq.example.com:1337/?QueueManager=QMGR01&Channel=Kanal1', MessageQueueUser)
 
     request = cast(RequestTask, request)
 
-    scenario = LocustContextScenario()
+    scenario = GrizzlyContextScenario()
     scenario.name = task.__class__.__name__
     scenario.user_class_name = 'MessageQueueUser'
     scenario.context['host'] = 'test'
@@ -209,7 +209,7 @@ class TestMessageQueueUser:
         user = MessageQueueUser(locust_environment)
 
         request = RequestTask(RequestMethod.PUT, name='test-put', endpoint='EXAMPLE.QUEUE')
-        scenario = LocustContextScenario()
+        scenario = GrizzlyContextScenario()
         scenario.name = 'test'
         scenario.add_task(request)
 
@@ -245,7 +245,7 @@ class TestMessageQueueUser:
             }
 
             request = RequestTask(RequestMethod.GET, name='test-get', endpoint=self.real_stuff['endpoint'])
-            scenario = LocustContextScenario()
+            scenario = GrizzlyContextScenario()
             scenario.name = 'test'
             scenario.stop_on_failure = True
             scenario.add_task(request)
@@ -301,7 +301,7 @@ class TestMessageQueueUser:
             request = RequestTask(RequestMethod.PUT, name='test-put', endpoint=self.real_stuff['endpoint'])
             request.source = 'we <3 IBM MQ'
             request.template = Template(request.source)
-            scenario = LocustContextScenario()
+            scenario = GrizzlyContextScenario()
             scenario.name = 'test'
             scenario.stop_on_failure = True
             scenario.add_task(request)
@@ -328,7 +328,7 @@ class TestMessageQueueUser:
                 }
             }
 
-    def test_get(self, mq_user: Tuple[MessageQueueUser, LocustContextScenario, Environment], mocker: MockerFixture) -> None:
+    def test_get(self, mq_user: Tuple[MessageQueueUser, GrizzlyContextScenario, Environment], mocker: MockerFixture) -> None:
         [user, scenario, _] = mq_user
 
         def mocked_noop(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
@@ -382,8 +382,8 @@ class TestMessageQueueUser:
             ],
         )
 
-        context_locust = LocustContext()
-        context_locust._scenarios = [scenario]
+        grizzly = GrizzlyContext()
+        grizzly._scenarios = [scenario]
 
         user._context = {
             'auth': {
@@ -406,7 +406,7 @@ class TestMessageQueueUser:
             }),
         }
 
-        context_locust.state.variables = cast(TemplateData, {
+        grizzly.state.variables = cast(TemplateData, {
             'payload_variable': '',
             'metadata_variable': '',
         })
@@ -458,7 +458,7 @@ class TestMessageQueueUser:
             ],
         )
 
-        add_save_handler(context_locust, ResponseTarget.PAYLOAD, '$.test', '.*', 'payload_variable')
+        add_save_handler(grizzly, ResponseTarget.PAYLOAD, '$.test', '.*', 'payload_variable')
 
         user.request(request)
 
@@ -571,7 +571,7 @@ class TestMessageQueueUser:
         assert kwargs['exception'] is not None
         request_event_spy.reset_mock()
 
-    def test_send(self, mq_user: Tuple[MessageQueueUser, LocustContextScenario, Environment], mocker: MockerFixture) -> None:
+    def test_send(self, mq_user: Tuple[MessageQueueUser, GrizzlyContextScenario, Environment], mocker: MockerFixture) -> None:
         [user, scenario, _] = mq_user
 
         def mocked_noop(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:

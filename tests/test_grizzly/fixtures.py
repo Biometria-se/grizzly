@@ -23,7 +23,7 @@ from paramiko.sftp import BaseSFTP
 from paramiko.sftp_client import SFTPClient
 
 from grizzly.types import RequestMethod
-from grizzly.context import LocustContext, LocustContextScenario
+from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 from grizzly.task import RequestTask
 
 from .helpers import TestUser, TestTaskSet
@@ -51,7 +51,7 @@ def request_task(tmpdir_factory: TempdirFactory) -> Generator[Tuple[str, str, Re
     request = RequestTask(RequestMethod.POST, endpoint='/api/test', name='request_task')
     request.template = Template(REQUEST_TASK_TEMPLATE_CONTENTS)
     request.source = REQUEST_TASK_TEMPLATE_CONTENTS
-    request.scenario = LocustContextScenario()
+    request.scenario = GrizzlyContextScenario()
     request.scenario.name = 'test-scenario'
     request.scenario.user_class_name = 'TestUser'
     request.scenario.context['host'] = 'http://example.com'
@@ -88,11 +88,11 @@ def locust_environment(tmpdir_factory: TempdirFactory) -> Generator[Environment,
     test_context_root = os.path.dirname(str(test_context))
 
     try:
-        os.environ['LOCUST_CONTEXT_ROOT'] = test_context_root
+        os.environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
         yield Environment()
     except:
         try:
-            del os.environ['LOCUST_CONTEXT_ROOT']
+            del os.environ['GRIZZLY_CONTEXT_ROOT']
         except KeyError:
             pass
 
@@ -105,7 +105,7 @@ def locust_user(locust_environment: Environment) -> User:
 
 
 @pytest.fixture(scope='function')
-def locust_context(request_task: Tuple[str, str, RequestTask]) -> Generator[Callable, None, None]:
+def grizzly_context(request_task: Tuple[str, str, RequestTask]) -> Generator[Callable, None, None]:
     def wrapper(
         host: Optional[str] = '',
         user_type: Optional[Type[User]] = None,
@@ -123,7 +123,7 @@ def locust_context(request_task: Tuple[str, str, RequestTask]) -> Generator[Call
             user_classes=[user_type],
         )
 
-        os.environ['LOCUST_CONTEXT_ROOT'] = os.path.abspath(os.path.join(request_task[0], '..'))
+        os.environ['GRIZZLY_CONTEXT_ROOT'] = os.path.abspath(os.path.join(request_task[0], '..'))
         request_task[-1].name = task_type.__name__
 
         user_type.host = host
@@ -141,7 +141,7 @@ def locust_context(request_task: Tuple[str, str, RequestTask]) -> Generator[Call
     yield wrapper
 
     try:
-        del os.environ['LOCUST_CONTEXT_ROOT']
+        del os.environ['GRIZZLY_CONTEXT_ROOT']
     except KeyError:
         pass
 
@@ -250,13 +250,6 @@ def paramiko_mocker(mocker: MockerFixture) -> Generator[Callable, None, None]:
     yield patch
 
 
-@pytest.fixture
-def behave_locust_context() -> Generator[LocustContext, None, None]:
-    yield LocustContext()
-
-    LocustContext.destroy()
-
-
 @pytest.fixture(scope='module')
 def behave_runner() -> Runner:
     return Runner(config=None)
@@ -278,12 +271,12 @@ def behave_context() -> Generator[Context, None, None]:
     context.scenario.steps = [context.step]
     context.scenario.background = Background(filename=None, line=None, keyword='', steps=[context.step], name='')
     context._runner.step_registry = step_registry
-    setattr(context, 'locust', LocustContext())
+    setattr(context, 'grizzly', GrizzlyContext())
 
     yield context
 
     try:
-        LocustContext.destroy()
+        GrizzlyContext.destroy()
     except ValueError:
         pass
 

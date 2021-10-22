@@ -58,7 +58,7 @@ class SftpUser(ContextVariables, FileRequests):
 
         self._context = merge_dicts(super().context(), self.__class__._context)
 
-        self._payload_root = path.join(environ.get('LOCUST_CONTEXT_ROOT', '.'), 'requests')
+        self._payload_root = path.join(environ.get('GRIZZLY_CONTEXT_ROOT', '.'), 'requests')
         self._download_root = path.join(self._payload_root, 'download')
 
         if not path.exists(self._download_root):

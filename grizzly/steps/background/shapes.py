@@ -6,7 +6,7 @@ import parse
 from behave.runner import Context
 from behave import register_type, given  # pylint: disable=no-name-in-module
 
-from ...context import LocustContext
+from ...context import GrizzlyContext
 
 
 @parse.with_pattern(r'(user[s]?)')
@@ -37,12 +37,12 @@ def step_shapes_user_count(context: Context, user_count: int, user_number: str) 
     else:
         assert user_number == 'user', 'when user_count is 1, use "user"'
 
-    context_locust = cast(LocustContext, context.locust)
+    grizzly = cast(GrizzlyContext, context.grizzly)
 
-    if context_locust.setup.spawn_rate is not None:
-        assert user_count > context_locust.setup.spawn_rate, f'spawn rate can not be greater than user count'
+    if grizzly.setup.spawn_rate is not None:
+        assert user_count > grizzly.setup.spawn_rate, f'spawn rate can not be greater than user count'
 
-    context_locust.setup.user_count = user_count
+    grizzly.setup.user_count = user_count
 
 
 @given(u'spawn rate is "{spawn_rate:d}" {user_number:UserGramaticalNumber} per second')
@@ -57,13 +57,13 @@ def step_shapes_spawn_rate(context: Context, spawn_rate: int, user_number: str) 
     Args:
         spawn_rate (int): number of users per second
     '''
-    context_locust = cast(LocustContext, context.locust)
+    grizzly = cast(GrizzlyContext, context.grizzly)
     if spawn_rate > 1:
         assert user_number == 'users', f'when user_count is greater than 1, use "users"'
     else:
         assert user_number == 'user', f'when user_count is 1, use "user"'
 
-    if context_locust.setup.user_count is not None:
-        assert spawn_rate <= context_locust.setup.user_count, f'spawn rate can not be greater than user count'
+    if grizzly.setup.user_count is not None:
+        assert spawn_rate <= grizzly.setup.user_count, f'spawn rate can not be greater than user count'
 
-    context_locust.setup.spawn_rate = spawn_rate
+    grizzly.setup.spawn_rate = spawn_rate

@@ -6,7 +6,7 @@ from behave import register_type, then  # pylint: disable=no-name-in-module
 
 from ...utils import add_request_task
 from ...types import RequestDirection, RequestMethod
-from ...context import LocustContext
+from ...context import GrizzlyContext
 
 
 def parse_method(text: str) -> RequestMethod:
@@ -190,8 +190,8 @@ def step_task_wait_seconds(context: Context, wait_time: float) -> None:
     Args:
         wait_time (float): wait time in seconds
     '''
-    context_locust = cast(LocustContext, context.locust)
+    grizzly = cast(GrizzlyContext, context.grizzly)
 
     assert wait_time > 0.0, f'wait time cannot be less than 0.0 seconds'
 
-    context_locust.scenario.add_task(wait_time)
+    grizzly.scenario.add_task(wait_time)

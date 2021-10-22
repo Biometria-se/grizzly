@@ -20,7 +20,7 @@ class ContextVariables(User):
     def __init__(self, environment: Environment, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
         super().__init__(environment, *args, **kwargs)
 
-        self._context_root = environ.get('LOCUST_CONTEXT_ROOT', '.')
+        self._context_root = environ.get('GRIZZLY_CONTEXT_ROOT', '.')
         self._context = merge_dicts({}, ContextVariables._context)
 
     @abstractmethod

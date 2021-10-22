@@ -18,7 +18,7 @@ from jinja2 import Template, TemplateError
 
 from grizzly.locust import greenlet_exception_logger, on_master, on_worker, on_local, run, setup_environment_listeners, setup_locust_scenarios, setup_resource_limits
 from grizzly.types import RequestMethod
-from grizzly.context import LocustContext, LocustContextScenario
+from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 from grizzly.task import RequestTask
 from grizzly.users import RestApiUser
 from grizzly.tasks import IteratorTasks
@@ -129,37 +129,37 @@ def test_on_local(behave_context: Context) -> None:
 
 @pytest.mark.usefixtures('behave_context')
 def test_setup_locust_scenarios(behave_context: Context) -> None:
-    context_locust = cast(LocustContext, behave_context.locust)
+    grizzly = cast(GrizzlyContext, behave_context.grizzly)
 
     with pytest.raises(AssertionError) as ae:
-        setup_locust_scenarios(context_locust)
+        setup_locust_scenarios(grizzly)
     assert 'no scenarios in feature' in str(ae)
 
     # scenario is missing host
-    context_locust.add_scenario('test')
+    grizzly.add_scenario('test')
 
     with pytest.raises(AssertionError) as ae:
-        setup_locust_scenarios(context_locust)
+        setup_locust_scenarios(grizzly)
     assert 'variable "host" is not found in the context for' in str(ae)
 
-    context_locust.scenario.context['host'] = 'https://test.example.org'
+    grizzly.scenario.context['host'] = 'https://test.example.org'
 
     # no tasks in scenario
     with pytest.raises(AssertionError) as ae:
-        setup_locust_scenarios(context_locust)
+        setup_locust_scenarios(grizzly)
     assert 'no tasks has been added to' in str(ae)
 
     task = RequestTask(RequestMethod.GET, 'test-1', '/api/v1/test/1')
-    context_locust.scenario.add_task(task)
-    context_locust.scenario.add_task(1.5)
+    grizzly.scenario.add_task(task)
+    grizzly.scenario.add_task(1.5)
 
     # incorrect user type
-    context_locust.scenario.user_class_name = 'NonExistingUser'
+    grizzly.scenario.user_class_name = 'NonExistingUser'
     with pytest.raises(AttributeError):
-        setup_locust_scenarios(context_locust)
+        setup_locust_scenarios(grizzly)
 
-    context_locust.scenario.user_class_name = 'RestApiUser'
-    user_classes, request_tasks, start_messagequeue_daemon = setup_locust_scenarios(context_locust)
+    grizzly.scenario.user_class_name = 'RestApiUser'
+    user_classes, request_tasks, start_messagequeue_daemon = setup_locust_scenarios(grizzly)
 
     assert not start_messagequeue_daemon
     assert len(user_classes) == 1
@@ -169,7 +169,7 @@ def test_setup_locust_scenarios(behave_context: Context) -> None:
     assert issubclass(user_class, (RestApiUser, ))
     assert len(user_class.tasks) == 1
     assert user_class.host == 'https://test.example.org'
-    assert context_locust.scenario.name.startswith('IteratorTasks')
+    assert grizzly.scenario.name.startswith('IteratorTasks')
 
     user_tasks = user_class.tasks[-1]
     assert issubclass(user_tasks, (IteratorTasks, ))
@@ -177,8 +177,8 @@ def test_setup_locust_scenarios(behave_context: Context) -> None:
 
     import grizzly.users.messagequeue as mq
     if mq.pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
-        context_locust.scenario.user_class_name = 'MessageQueueUser'
-        user_classes, request_tasks, start_messagequeue_daemon = setup_locust_scenarios(context_locust)
+        grizzly.scenario.user_class_name = 'MessageQueueUser'
+        user_classes, request_tasks, start_messagequeue_daemon = setup_locust_scenarios(grizzly)
 
         assert start_messagequeue_daemon
         assert len(user_classes) == 1
@@ -188,7 +188,7 @@ def test_setup_locust_scenarios(behave_context: Context) -> None:
         assert issubclass(user_class, (mq.MessageQueueUser, ))
         assert len(user_class.tasks) == 1
         assert user_class.host == 'https://test.example.org'
-        assert context_locust.scenario.name.startswith('IteratorTasks')
+        assert grizzly.scenario.name.startswith('IteratorTasks')
 
         user_tasks = user_class.tasks[-1]
         assert issubclass(user_tasks, (IteratorTasks, ))
@@ -280,7 +280,7 @@ def test_setup_environment_listeners(behave_context: Context, mocker: MockerFixt
             mocked_on_worker,
         )
 
-    context_locust = cast(LocustContext, behave_context.locust)
+    grizzly = cast(GrizzlyContext, behave_context.grizzly)
     user_classes: List[User] = []
     environment = Environment(
         user_classes=user_classes,
@@ -299,7 +299,7 @@ def test_setup_environment_listeners(behave_context: Context, mocker: MockerFixt
         assert len(environment.events.spawning_complete._handlers) == 1
         assert len(environment.events.quitting._handlers) == 0
 
-        context_locust.setup.statistics_url = 'influxdb://influx.example.com/testdb'
+        grizzly.setup.statistics_url = 'influxdb://influx.example.com/testdb'
 
         setup_environment_listeners(behave_context, environment, [])
         assert len(environment.events.init._handlers) == 2
@@ -308,7 +308,7 @@ def test_setup_environment_listeners(behave_context: Context, mocker: MockerFixt
         assert len(environment.events.spawning_complete._handlers) == 1
         assert len(environment.events.quitting._handlers) == 0
 
-        context_locust.setup.statistics_url = None
+        grizzly.setup.statistics_url = None
 
         # event listeteners for master node, not validating results
         mock_on_worker(False)
@@ -316,7 +316,7 @@ def test_setup_environment_listeners(behave_context: Context, mocker: MockerFixt
         task = RequestTask(RequestMethod.POST, 'test-post-1', '/api/v3/test/post/1')
         task.source = '{{ AtomicInteger.value }}, {{ test_id }}'
         task.template = Template(task.source)
-        task.scenario = LocustContextScenario()
+        task.scenario = GrizzlyContextScenario()
         task.scenario.name = 'test-scenario-1'
         task.scenario.user_class_name = 'RestApiUser'
         request_tasks = [task]
@@ -326,7 +326,7 @@ def test_setup_environment_listeners(behave_context: Context, mocker: MockerFixt
         assert 'variable test_id has not been initialized' in str(ae)
 
         AtomicInteger.destroy()
-        context_locust.state.variables['test_id'] = 'test-1'
+        grizzly.state.variables['test_id'] = 'test-1'
 
         setup_environment_listeners(behave_context, environment, request_tasks)
         assert len(environment.events.init._handlers) == 1
@@ -336,7 +336,7 @@ def test_setup_environment_listeners(behave_context: Context, mocker: MockerFixt
         assert len(environment.events.quitting._handlers) == 1
 
         AtomicInteger.destroy()
-        context_locust.setup.statistics_url = 'influxdb://influx.example.com/testdb'
+        grizzly.setup.statistics_url = 'influxdb://influx.example.com/testdb'
 
         setup_environment_listeners(behave_context, environment, request_tasks)
         assert len(environment.events.init._handlers) == 2
@@ -347,7 +347,7 @@ def test_setup_environment_listeners(behave_context: Context, mocker: MockerFixt
 
         AtomicInteger.destroy()
 
-        context_locust.scenario.validation.fail_ratio = 0.1
+        grizzly.scenario.validation.fail_ratio = 0.1
 
         setup_environment_listeners(behave_context, environment, request_tasks)
         assert len(environment.events.init._handlers) == 2
@@ -358,7 +358,7 @@ def test_setup_environment_listeners(behave_context: Context, mocker: MockerFixt
 
         AtomicInteger.destroy()
 
-        context_locust.setup.statistics_url = None
+        grizzly.setup.statistics_url = None
 
         # problems initializing testdata
         def mocked_initialize_testdata(request_tasks: List[RequestTask]) -> Any:
@@ -433,16 +433,16 @@ def test_run_worker(behave_context: Context, capsys: CaptureFixture, mocker: Moc
     messagequeue_process_spy = mocker.spy(subprocess_spy.Popen, '__init__')
 
     mock_on_node(master=False, worker=True)
-    context_locust = cast(LocustContext, behave_context.locust)
+    grizzly = cast(GrizzlyContext, behave_context.grizzly)
 
-    context_locust.setup.user_count = 1
-    context_locust.setup.spawn_rate = 1
-    context_locust.add_scenario('test-non-mq')
-    context_locust.scenario.user_class_name = 'RestApiUser'
-    context_locust.scenario.context['host'] = 'https://test.example.org'
-    context_locust.scenario.add_task(1.5)
+    grizzly.setup.user_count = 1
+    grizzly.setup.spawn_rate = 1
+    grizzly.add_scenario('test-non-mq')
+    grizzly.scenario.user_class_name = 'RestApiUser'
+    grizzly.scenario.context['host'] = 'https://test.example.org'
+    grizzly.scenario.add_task(1.5)
     task = RequestTask(RequestMethod.GET, 'test-1', '/api/v1/test/1')
-    context_locust.scenario.add_task(task)
+    grizzly.scenario.add_task(task)
 
     assert run(behave_context) == 1
     assert 'failed to connect to the locust master' in capsys.readouterr().err
@@ -451,16 +451,16 @@ def test_run_worker(behave_context: Context, capsys: CaptureFixture, mocker: Moc
 
     import grizzly.users.messagequeue as mq
     if mq.pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
-        context_locust.add_scenario('test-mq')
-        context_locust.scenario.user_class_name = 'MessageQueueUser'
-        context_locust.scenario.context['host'] = 'mq://mq.example.org?QueueManager=QM01&Channel=TEST.CONN'
-        context_locust.scenario.add_task(RequestTask(RequestMethod.PUT, 'test-2', 'TEST.QUEUE'))
+        grizzly.add_scenario('test-mq')
+        grizzly.scenario.user_class_name = 'MessageQueueUser'
+        grizzly.scenario.context['host'] = 'mq://mq.example.org?QueueManager=QM01&Channel=TEST.CONN'
+        grizzly.scenario.add_task(RequestTask(RequestMethod.PUT, 'test-2', 'TEST.QUEUE'))
 
         with pytest.raises(AssertionError) as ae:
             run(behave_context)
         assert 'increase the number in step' in str(ae)
 
-        context_locust.setup.user_count = 2
+        grizzly.setup.user_count = 2
 
         assert run(behave_context) == 1
         assert 'failed to connect to the locust master' in capsys.readouterr().err
@@ -527,31 +527,31 @@ def test_run_master(behave_context: Context, capsys: CaptureFixture, mocker: Moc
 
     behave_context.config.userdata = {}
 
-    context_locust = cast(LocustContext, behave_context.locust)
+    grizzly = cast(GrizzlyContext, behave_context.grizzly)
 
-    context_locust.setup.spawn_rate = None
+    grizzly.setup.spawn_rate = None
     assert run(behave_context) == 254
     assert 'spawn rate is not set' in capsys.readouterr().err
 
-    context_locust.setup.spawn_rate = 1
+    grizzly.setup.spawn_rate = 1
 
     assert run(behave_context) == 254
     assert 'step \'Given "user_count" users\' is not in the feature file' in capsys.readouterr().err
 
-    context_locust.setup.user_count = 2
-    context_locust.add_scenario('test')
-    context_locust.scenario.user_class_name = 'RestApiUser'
-    context_locust.scenario.context['host'] = 'https://test.example.org'
-    context_locust.scenario.add_task(1.5)
+    grizzly.setup.user_count = 2
+    grizzly.add_scenario('test')
+    grizzly.scenario.user_class_name = 'RestApiUser'
+    grizzly.scenario.context['host'] = 'https://test.example.org'
+    grizzly.scenario.add_task(1.5)
     task = RequestTask(RequestMethod.GET, 'test-1', '/api/v1/test/1')
-    context_locust.scenario.add_task(task)
-    context_locust.setup.spawn_rate = 1
+    grizzly.scenario.add_task(task)
+    grizzly.setup.spawn_rate = 1
 
-    context_locust.setup.timespan = 'adsf'
+    grizzly.setup.timespan = 'adsf'
     assert run(behave_context) == 1
     assert 'invalid timespan' in capsys.readouterr().err
 
-    context_locust.setup.timespan = None
+    grizzly.setup.timespan = None
 
     behave_context.config.userdata = {
         'expected-workers': 3,
@@ -579,7 +579,7 @@ def test_run_master(behave_context: Context, capsys: CaptureFixture, mocker: Moc
             mocked_get_by_state,
         )
 
-    context_locust.state.spawning_complete = True  # fake that all worker nodes has fired spawning complete
+    grizzly.state.spawning_complete = True  # fake that all worker nodes has fired spawning complete
 
     mocked_user_count = mocker.patch(
         'locust.runners.MasterRunner.user_count',
@@ -587,7 +587,7 @@ def test_run_master(behave_context: Context, capsys: CaptureFixture, mocker: Moc
     )
     mocked_user_count.return_value = 0
 
-    mock_clients_ready(2)  # same as context_locust.setup.user_count
+    mock_clients_ready(2)  # same as grizzly.setup.user_count
 
     run(behave_context)
     '''
