@@ -12,7 +12,7 @@ from requests.models import CaseInsensitiveDict, Response, PreparedRequest
 
 from grizzly.users.meta import RequestLogger, HttpRequests
 from grizzly.types import RequestMethod
-from grizzly.context import RequestContext
+from grizzly.task import RequestTask
 
 from ...fixtures import locust_environment  # pylint: disable=unused-import
 
@@ -100,7 +100,7 @@ class TestRequestLogger:
         response = Response()
         response.status_code = 200
         response_context_manager = ResponseContextManager(response, None, None)
-        request = RequestContext(RequestMethod.POST, name='test-request', endpoint='/api/test')
+        request = RequestTask(RequestMethod.POST, name='test-request', endpoint='/api/test')
 
         assert get_log_files() == []
 
@@ -243,7 +243,7 @@ test body str''' in log_file_contents
     @pytest.mark.usefixtures('request_logger', 'get_log_files')
     def test_handler_custom(self, request_logger: RequestLogger, get_log_files: Callable[[], List[str]]) -> None:
         request_logger.host = 'mq://mq.example.org?QueueManager=QMGR01&Channel=SYS.CONN'
-        request = RequestContext(RequestMethod.POST, name='test-request', endpoint='MSG.INCOMING')
+        request = RequestTask(RequestMethod.POST, name='test-request', endpoint='MSG.INCOMING')
 
         # pre sanity check
         assert get_log_files() == []

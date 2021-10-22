@@ -4,7 +4,7 @@ from typing import cast
 from behave.runner import Context
 from behave import register_type, then  # pylint: disable=no-name-in-module
 
-from ...utils import add_request_context
+from ...utils import add_request_task
 from ...types import RequestDirection, RequestMethod
 from ...context import LocustContext
 
@@ -70,7 +70,7 @@ def step_task_request_text_with_name_to_endpoint(context: Context, method: Reque
         assert context.text is not None, f'Step text is mandatory for {method.name}'
         assert direction == RequestDirection.TO, f'"from endpoint" is not allowed for {method.name}, use "to endpoint"'
 
-    add_request_context(context, method=method, source=context.text, name=name, endpoint=endpoint)
+    add_request_task(context, method=method, source=context.text, name=name, endpoint=endpoint)
 
 
 @then(u'{method:Method} request "{source}" with name "{name}" to endpoint "{endpoint}"')
@@ -91,7 +91,7 @@ def step_task_request_file_with_name_endpoint(context: Context, method: RequestM
     '''
     assert method.direction == RequestDirection.TO, f'{method.name} not allowed'
     assert context.text is None, f'Step text is not allowed for {method.name}'
-    add_request_context(context, method=method, source=source, name=name, endpoint=endpoint)
+    add_request_task(context, method=method, source=source, name=name, endpoint=endpoint)
 
 
 @then(u'{method:Method} request "{source}" with name "{name}"')
@@ -114,7 +114,7 @@ def step_task_request_file_with_name(context: Context, method: RequestMethod, so
     '''
     assert method.direction == RequestDirection.TO, f'{method.name} not allowed'
     assert context.text is None, f'Step text is not allowed for {method.name}'
-    add_request_context(context, method=method, source=source, name=name)
+    add_request_task(context, method=method, source=source, name=name)
 
 
 @then(u'{method:Method} request with name "{name}"')
@@ -170,7 +170,7 @@ def step_task_request_text_with_name(context: Context, method: RequestMethod, na
     elif method.direction == RequestDirection.TO:
         assert context.text is not None, f'Step text is mandatory for {method.name}'
 
-    add_request_context(context, method=method, source=context.text, name=name)
+    add_request_task(context, method=method, source=context.text, name=name)
 
 
 @then(u'wait for "{wait_time:f}" seconds')

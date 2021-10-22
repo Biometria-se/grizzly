@@ -11,9 +11,9 @@ from locust.user.users import User
 
 from grizzly.testdata.models import TemplateData
 from grizzly.types import RequestMethod, ResponseContentType
-from grizzly.context import RequestContext
+from grizzly.task import RequestTask
 
-from ..fixtures import request_context  # pylint: disable=unused-import
+from ..fixtures import request_task  # pylint: disable=unused-import
 from .fixtures import cleanup  # pylint: disable=unused-import
 
 
@@ -300,7 +300,7 @@ class TestTemplateData:
 
 class TestTemplate:
     def test_add_listeners(self) -> None:
-        request = RequestContext(RequestMethod.POST, name='example-request', endpoint='/api/test')
+        request = RequestTask(RequestMethod.POST, name='example-request', endpoint='/api/test')
         assert len(request.response.handlers.metadata) == 0
         assert len(request.response.handlers.payload) == 0
 

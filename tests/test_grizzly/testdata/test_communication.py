@@ -19,9 +19,10 @@ from locust.env import Environment
 
 from grizzly.testdata.communication import TestdataConsumer, TestdataProducer
 from grizzly.testdata.utils import initialize_testdata, transform
-from grizzly.context import LocustContext, RequestContext
+from grizzly.context import LocustContext
+from grizzly.task import RequestTask
 
-from ..fixtures import locust_context, locust_environment, request_context, behave_context  # pylint: disable=unused-import
+from ..fixtures import locust_context, locust_environment, request_task, behave_context  # pylint: disable=unused-import
 from .fixtures import cleanup  # pylint: disable=unused-import
 
 
@@ -36,7 +37,7 @@ class TestTestdataProducer:
         producer: Optional[TestdataProducer] = None
         try:
             environment, _, task, [context_root, _, request] = locust_context()
-            request = cast(RequestContext, request)
+            request = cast(RequestTask, request)
             address = 'tcp://127.0.0.1:5555'
 
             mkdir(path.join(context_root, 'adirectory'))
@@ -78,7 +79,7 @@ class TestTestdataProducer:
             context_locust.scenario.context['host'] = 'http://test.nu'
             context_locust.scenario.add_task(request)
 
-            testdata = initialize_testdata(cast(List[RequestContext], context_locust.scenario.tasks))
+            testdata = initialize_testdata(cast(List[RequestTask], context_locust.scenario.tasks))
 
             producer = TestdataProducer(address=address, testdata=testdata, environment=environment)
             producer_thread = gevent.spawn(producer.run)
@@ -160,7 +161,7 @@ class TestTestdataProducer:
 
         try:
             environment, _, task, [context_root, _, request] = locust_context()
-            request = cast(RequestContext, request)
+            request = cast(RequestTask, request)
             address = 'tcp://127.0.0.1:5555'
 
             mkdir(path.join(context_root, 'adirectory'))
@@ -182,7 +183,7 @@ class TestTestdataProducer:
             context_locust.scenario.context['host'] = 'http://test.nu'
             context_locust.scenario.add_task(request)
 
-            testdata = initialize_testdata(cast(List[RequestContext], context_locust.scenario.tasks))
+            testdata = initialize_testdata(cast(List[RequestTask], context_locust.scenario.tasks))
 
             producer = TestdataProducer(address=address, testdata=testdata, environment=environment)
             producer_thread = gevent.spawn(producer.run)

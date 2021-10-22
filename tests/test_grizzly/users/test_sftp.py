@@ -13,7 +13,8 @@ from locust.exception import StopUser
 from grizzly.users.sftp import SftpUser
 from grizzly.clients import SftpClientSession
 from grizzly.types import RequestMethod
-from grizzly.context import LocustContextScenario, RequestContext
+from grizzly.context import LocustContextScenario
+from grizzly.task import RequestTask
 
 from ..fixtures import locust_environment, paramiko_mocker  # pylint: disable=unused-import
 from ..helpers import ResultFailure, ResultSuccess, RequestEvent, RequestSilentFailureEvent
@@ -92,7 +93,7 @@ class TestSftpUser:
             }
             user = SftpUser(locust_environment)
 
-            request = RequestContext(RequestMethod.SEND, name='test', endpoint='/tmp')
+            request = RequestTask(RequestMethod.SEND, name='test', endpoint='/tmp')
             request.source = 'test/file.txt'
             request.template = Template(request.source)
 
@@ -158,7 +159,7 @@ class TestSftpUser:
             }
             user = SftpUser(locust_environment)
 
-            request = RequestContext(RequestMethod.PUT, name='test', endpoint='/upload')
+            request = RequestTask(RequestMethod.PUT, name='test', endpoint='/upload')
             request.source = 'test.txt'
             request.template = Template(request.source)
 
@@ -171,7 +172,7 @@ class TestSftpUser:
 
             user.request(request)
 
-            request = RequestContext(RequestMethod.GET, name='test', endpoint='/upload/test.txt')
+            request = RequestTask(RequestMethod.GET, name='test', endpoint='/upload/test.txt')
             request.scenario = scenario
 
             user.request(request)

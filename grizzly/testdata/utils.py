@@ -3,13 +3,14 @@ from collections import namedtuple
 from collections.abc import Mapping
 from copy import deepcopy
 
-from ..context import LocustContext, RequestContext
+from ..context import LocustContext
+from ..task import RequestTask
 from ..types import TestdataType
 from .variables import load_variable
 from .ast import get_template_variables
 
 
-def initialize_testdata(sources: Optional[List[RequestContext]]) -> TestdataType:
+def initialize_testdata(sources: Optional[List[RequestTask]]) -> TestdataType:
     testdata: TestdataType = {}
     template_variables = get_template_variables(sources)
 

@@ -3,32 +3,28 @@ import logging
 from typing import Optional, Dict, Any, Tuple, List, Union
 from os import environ, path
 from hashlib import sha1 as sha1_hash
-from enum import Enum
 from dataclasses import dataclass, field
+from abc import ABCMeta
 
 import yaml
 
 from behave.model import Scenario
-from jinja2.environment import Template
 
 from .testdata.models import TemplateData
-from .types import ResponseContentType, HandlerType, RequestMethod
 
 logger = logging.getLogger(__name__)
 
 
+@dataclass(unsafe_hash=True)
+class GrizzlyTask(metaclass=ABCMeta):
+    scenario: 'LocustContextScenario' = field(init=False, repr=False)
+
+
+from .task import RequestTask
+
+
 def generate_identifier(name: str) -> str:
     return sha1_hash(name.encode('utf-8')).hexdigest()[:8]
-
-
-class ResponseTarget(Enum):
-    METADATA = 0
-    PAYLOAD = 1
-
-
-class ResponseAction(Enum):
-    VALIDATE = 0
-    SAVE = 1
 
 
 def load_configuration_file() -> Dict[str, Any]:
@@ -104,7 +100,7 @@ class LocustContextScenario:
     behave: Scenario = field(init=False, repr=False, hash=False, compare=False)
     context: Dict[str, Any] = field(init=False, repr=False, hash=False, compare=False, default_factory=dict)
     wait: LocustContextScenarioWait = field(init=False, repr=False, hash=False, compare=False, default_factory=LocustContextScenarioWait)
-    tasks: List[Union['RequestContext', float]] = field(init=False, repr=False, hash=False, compare=False, default_factory=list)
+    tasks: List[Union[RequestTask, float]] = field(init=False, repr=False, hash=False, compare=False, default_factory=list)
     validation: LocustContextScenarioValidation = field(init=False, hash=False, compare=False, default_factory=LocustContextScenarioValidation)
     stop_on_failure: bool = field(init=False, default=False)
     orphan_templates: List[str] = field(init=False, repr=False, hash=False, compare=False, default_factory=list)
@@ -135,15 +131,15 @@ class LocustContextScenario:
             self.validation.response_time_percentile is not None
         )
 
-    def add_task(self, request_context: Union['RequestContext', float]) -> None:
-        if isinstance(request_context, RequestContext) and (
-            not hasattr(request_context, 'scenario') or
-            request_context.scenario is None or
-            request_context.scenario is not self
+    def add_task(self, task: Union[RequestTask, float]) -> None:
+        if isinstance(task, GrizzlyTask) and (
+            not hasattr(task, 'scenario') or
+            task.scenario is None or
+            task.scenario is not self
         ):
-            request_context.scenario = self
+            task.scenario = self
 
-        self.tasks.append(request_context)
+        self.tasks.append(task)
 
 
 @dataclass
@@ -224,47 +220,3 @@ class LocustContext:
                 return scenario
 
         return None
-
-@dataclass(unsafe_hash=True)
-class RequestContextHandlers:
-    metadata: List[HandlerType] = field(init=False, hash=False, default_factory=list)
-    payload: List[HandlerType] = field(init=False, hash=False, default_factory=list)
-
-    def add_metadata(self, handler: HandlerType) -> None:
-        self.metadata.append(handler)
-
-    def add_payload(self, handler: HandlerType) -> None:
-        self.payload.append(handler)
-
-
-@dataclass(unsafe_hash=True)
-class RequestContextResponse:
-    status_codes: List[int] = field(init=False, repr=False, hash=False, default_factory=list)
-    content_type: ResponseContentType = field(init=False, repr=False, default=ResponseContentType.GUESS)
-    handlers: RequestContextHandlers = field(init=False, repr=False, default_factory=RequestContextHandlers)
-
-    def __post_init__(self) -> None:
-        if 200 not in self.status_codes:
-            self.status_codes.append(200)
-
-    def add_status_code(self, status: int) -> None:
-        absolute_status = abs(status)
-        if absolute_status not in self.status_codes or status not in self.status_codes:
-            if absolute_status == status:
-                self.status_codes.append(status)
-            else:
-                index = self.status_codes.index(absolute_status)
-                self.status_codes.pop(index)
-
-
-@dataclass(unsafe_hash=True)
-class RequestContext:
-    method: RequestMethod
-    name: str
-    endpoint: str
-    scenario: LocustContextScenario = field(init=False, repr=False)
-    template: Optional[Template] = field(init=False, repr=False, default=None)
-    source: Optional[str] = field(init=False, repr=False, default=None)
-
-    response: RequestContextResponse = field(init=False, repr=False, default_factory=RequestContextResponse)
-

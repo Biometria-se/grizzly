@@ -19,10 +19,11 @@ from grizzly.users.restapi import AuthMethod, RestApiUser, refresh_token
 from grizzly.users.meta import RequestLogger, ResponseHandler, ContextVariables
 from grizzly.clients import ResponseEventSession
 from grizzly.types import RequestMethod
-from grizzly.context import LocustContextScenario, RequestContext
+from grizzly.context import LocustContextScenario
+from grizzly.task import RequestTask
 from grizzly.testdata.utils import transform
 
-from ..fixtures import locust_context, request_context  # pylint: disable=unused-import
+from ..fixtures import locust_context, request_task  # pylint: disable=unused-import
 from ..helpers import RequestSilentFailureEvent, RequestEvent, ResultSuccess
 
 import logging
@@ -39,7 +40,7 @@ def restapi_user(locust_context: Callable) -> Tuple[RestApiUser, LocustContextSc
 
     _, user, _, [_, _, request] = locust_context('http://test.ie', RestApiUser)
 
-    scenario.add_task(cast(RequestContext, request))
+    scenario.add_task(cast(RequestTask, request))
 
     return cast(RestApiUser, user), scenario
 
@@ -77,9 +78,9 @@ def test_refresh_token_client(restapi_user: Tuple[RestApiUser, LocustContextScen
 
     try:
         auth_client_context = auth_context['client']
-        request_context = RequestContext(RequestMethod.POST, name='test-request', endpoint='/api/test')
+        request_task = RequestTask(RequestMethod.POST, name='test-request', endpoint='/api/test')
         scenario.tasks.clear()
-        scenario.add_task(request_context)
+        scenario.add_task(request_task)
 
         # no authentication for api, request will be called which raises NotRefreshed
         assert user._context['auth']['url'] is None
@@ -89,7 +90,7 @@ def test_refresh_token_client(restapi_user: Tuple[RestApiUser, LocustContextScen
         assert auth_client_context['resource'] is None
 
         with pytest.raises(NotRefreshed):
-            user.request(request_context)
+            user.request(request_task)
 
         auth_client_context['id'] = 'asdf'
         auth_client_context['secret'] = 'asdf'
@@ -98,27 +99,27 @@ def test_refresh_token_client(restapi_user: Tuple[RestApiUser, LocustContextScen
 
         # session has not started
         with pytest.raises(NotRefreshed):
-            user.request(request_context)
+            user.request(request_task)
 
         user.session_started = time()
         user.headers['Authorization'] = None
 
         # session is fresh, but no token set (first call)
         with pytest.raises(Refreshed):
-            user.request(request_context)
+            user.request(request_task)
 
         # token is fresh and set, no refresh
         user.session_stated = time()
         user.headers['Authorization'] = f'Bearer asdf'
 
         with pytest.raises(NotRefreshed):
-            user.request(request_context)
+            user.request(request_task)
 
         # authorization is set, but it is time to refresh token
         user.session_started = time() - (cast(int, auth_context['refresh_time']) + 1)
 
         with pytest.raises(Refreshed):
-            user.request(request_context)
+            user.request(request_task)
     finally:
         pass
 
@@ -156,9 +157,9 @@ def test_refresh_token_user(restapi_user: Tuple[RestApiUser, LocustContextScenar
 
     try:
         auth_user_context = auth_context['user']
-        request_context = RequestContext(RequestMethod.POST, name='test-request', endpoint='/api/test')
+        request_task = RequestTask(RequestMethod.POST, name='test-request', endpoint='/api/test')
         scenario.tasks.clear()
-        scenario.add_task(request_context)
+        scenario.add_task(request_task)
 
         # no authentication for api, request will be called which raises NotRefreshed
         assert auth_user_context['username'] is None
@@ -167,7 +168,7 @@ def test_refresh_token_user(restapi_user: Tuple[RestApiUser, LocustContextScenar
         assert auth_context['url'] is None
 
         with pytest.raises(NotRefreshed):
-            user.request(request_context)
+            user.request(request_task)
 
         auth_context['client']['id'] = 'asdf'
         auth_user_context['username'] = 'bob@example.com'
@@ -177,27 +178,27 @@ def test_refresh_token_user(restapi_user: Tuple[RestApiUser, LocustContextScenar
 
         # session has not started
         with pytest.raises(NotRefreshed):
-            user.request(request_context)
+            user.request(request_task)
 
         user.session_started = time()
         user.headers['Authorization'] = None
 
         # session is fresh, but no token set (first call)
         with pytest.raises(Refreshed):
-            user.request(request_context)
+            user.request(request_task)
 
         # token is fresh and set, no refresh
         user.session_stated = time()
         user.headers['Authorization'] = f'Bearer asdf'
 
         with pytest.raises(NotRefreshed):
-            user.request(request_context)
+            user.request(request_task)
 
         # authorization is set, but it is time to refresh token
         user.session_started = time() - (cast(int, auth_context['refresh_time']) + 1)
 
         with pytest.raises(Refreshed):
-            user.request(request_context)
+            user.request(request_task)
 
         user.add_context({'auth': {'user': {'username': 'alice@example.com'}}})
         assert user.headers['Authorization'] == None
@@ -209,7 +210,7 @@ def test_refresh_token_user(restapi_user: Tuple[RestApiUser, LocustContextScenar
 
         # new user in context, needs to get a new token
         with pytest.raises(Refreshed):
-            user.request(request_context)
+            user.request(request_task)
     finally:
         pass
 
@@ -630,7 +631,7 @@ class TestRestApiUser:
                 client_post,
             )
 
-        request = cast(RequestContext, scenario.tasks[-1])
+        request = cast(RequestTask, scenario.tasks[-1])
 
         # missing template variables
         with pytest.raises(StopUser):

@@ -8,11 +8,11 @@ from locust.user.task import TaskSet
 
 from grizzly.users.meta import ContextVariables
 from grizzly.types import RequestMethod
-from grizzly.context import RequestContext
+from grizzly.task import RequestTask
 
 
-def clone_request(method: str, this: RequestContext) -> RequestContext:
-    that = RequestContext(RequestMethod.from_string(method), name=this.name, endpoint=this.endpoint)
+def clone_request(method: str, this: RequestTask) -> RequestTask:
+    that = RequestTask(RequestMethod.from_string(method), name=this.name, endpoint=this.endpoint)
     that.source = this.source
     that.scenario = this.scenario
     that.template = this.template
@@ -30,9 +30,9 @@ class WaitCalled(Exception):
 
 class RequestCalled(Exception):
     endpoint: str
-    request: RequestContext
+    request: RequestTask
 
-    def __init__(self, request: RequestContext) -> None:
+    def __init__(self, request: RequestTask) -> None:
         super().__init__()
 
         self.endpoint = request.endpoint
@@ -52,7 +52,7 @@ class TestUser(ContextVariables):
     def config_property(self, value: Optional[str]) -> None:
         self._config_property = value
 
-    def request(self, request: RequestContext) -> None:
+    def request(self, request: RequestTask) -> None:
         raise RequestCalled(request)
 
 

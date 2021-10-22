@@ -6,16 +6,16 @@ import jinja2 as j2
 
 from jinja2.nodes import Getattr, Getitem, Name
 
-from ..context import RequestContext
+from ..context import RequestTask
 
 
-RequestSourceMapping = Dict[str, Set[Tuple[str, Union[str, RequestContext]]]]
+RequestSourceMapping = Dict[str, Set[Tuple[str, Union[str, RequestTask]]]]
 
 logger = logging.getLogger(__name__)
 
 
-def _get_template_variables_from_request_context(requests: List[RequestContext]) -> Dict[str, Set[Tuple[str, RequestContext]]]:
-    templates: Dict[str, Set[Tuple[str, RequestContext]]] = {}
+def _get_template_variables_from_request_task(requests: List[RequestTask]) -> Dict[str, Set[Tuple[str, RequestTask]]]:
+    templates: Dict[str, Set[Tuple[str, RequestTask]]] = {}
 
     for request in requests:
         scenario = request.scenario.get_name()
@@ -28,7 +28,7 @@ def _get_template_variables_from_request_context(requests: List[RequestContext])
     return templates
 
 
-def get_template_variables(sources: Optional[List[RequestContext]]) -> Dict[str, Set[str]]:
+def get_template_variables(sources: Optional[List[RequestTask]]) -> Dict[str, Set[str]]:
     templates: RequestSourceMapping
 
     if sources is None or len(sources) == 0:
@@ -36,7 +36,7 @@ def get_template_variables(sources: Optional[List[RequestContext]]) -> Dict[str,
     else:
         templates = cast(
             RequestSourceMapping,
-            _get_template_variables_from_request_context(sources),
+            _get_template_variables_from_request_task(sources),
         )
 
     return _parse_templates(templates)
@@ -78,7 +78,7 @@ def _parse_templates(requests: RequestSourceMapping) -> Dict[str, Set[str]]:
             sources: List[str] = []
             template_source: Optional[str] = None
             # get template source
-            if isinstance(request, RequestContext):
+            if isinstance(request, RequestTask):
                 if request.source is not None:
                     template_source = request.source
                 sources += [request.name, request.endpoint]
@@ -88,7 +88,7 @@ def _parse_templates(requests: RequestSourceMapping) -> Dict[str, Set[str]]:
             if template_source is not None:
                 sources.append(template_source)
 
-            if not has_processed_orphan_templates and isinstance(request, RequestContext):
+            if not has_processed_orphan_templates and isinstance(request, RequestTask):
                 sources += request.scenario.orphan_templates
                 has_processed_orphan_templates = True
 

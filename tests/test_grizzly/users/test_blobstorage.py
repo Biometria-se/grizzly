@@ -16,10 +16,11 @@ from pytest_mock.plugin import MockerFixture
 from grizzly.users.blobstorage import BlobStorageUser
 from grizzly.users.meta.context_variables import ContextVariables
 from grizzly.types import RequestMethod
-from grizzly.context import LocustContextScenario, RequestContext
+from grizzly.context import LocustContextScenario
+from grizzly.task import RequestTask
 from grizzly.testdata.utils import transform
 
-from ..fixtures import locust_context, request_context  # pylint: disable=unused-import
+from ..fixtures import locust_context, request_task  # pylint: disable=unused-import
 from ..helpers import ResultFailure, RequestEvent, RequestSilentFailureEvent, clone_request
 
 import logging
@@ -80,7 +81,7 @@ def bs_user(locust_context: Callable, mocker: MockerFixture) -> Tuple[BlobStorag
         BlobStorageUser,
     )
 
-    request = cast(RequestContext, request)
+    request = cast(RequestTask, request)
 
     scenario = LocustContextScenario()
     scenario.name = task.__class__.__name__
@@ -132,7 +133,7 @@ class TestBlobStorageUser:
             }),
         }
         user.add_context(remote_variables)
-        request = cast(RequestContext, scenario.tasks[-1])
+        request = cast(RequestTask, scenario.tasks[-1])
         request.endpoint = 'some_container_name'
 
         dummy_client = user.client
@@ -149,7 +150,7 @@ class TestBlobStorageUser:
 
         json_msg = json.loads(msg)
         assert json_msg['result']['id'] == 'ID-31337'
-        assert dummy_blobclient.container == cast(RequestContext, scenario.tasks[-1]).endpoint
+        assert dummy_blobclient.container == cast(RequestTask, scenario.tasks[-1]).endpoint
         assert dummy_blobclient.blob == os.path.basename(scenario.name)
 
         dummy_blobclient = DummyBlobErrorClient()
@@ -157,9 +158,9 @@ class TestBlobStorageUser:
         environment.events.request = RequestEvent()
 
         with pytest.raises(ResultFailure):
-            user.request(cast(RequestContext, scenario.tasks[-1]))
+            user.request(cast(RequestTask, scenario.tasks[-1]))
 
-        request_error = clone_request('RECEIVE', cast(RequestContext, scenario.tasks[-1]))
+        request_error = clone_request('RECEIVE', cast(RequestTask, scenario.tasks[-1]))
         with pytest.raises(ResultFailure) as e:
             user.request(request_error)
         assert 'has not implemented RECEIVE' in str(e)

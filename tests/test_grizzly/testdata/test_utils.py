@@ -12,7 +12,8 @@ from _pytest.tmpdir import TempdirFactory
 from jinja2 import Template
 from behave.runner import Context
 
-from grizzly.context import LocustContext, RequestContext
+from grizzly.context import LocustContext
+from grizzly.task import RequestTask
 from grizzly.testdata.utils import (
     _get_variable_value,
     _objectify,
@@ -21,7 +22,7 @@ from grizzly.testdata.utils import (
 )
 from grizzly.testdata.variables import AtomicCsvRow, AtomicInteger, AtomicIntegerIncrementer
 
-from ..fixtures import locust_context, request_context, behave_context  # pylint: disable=unused-import
+from ..fixtures import locust_context, request_task, behave_context  # pylint: disable=unused-import
 from .fixtures import cleanup  # pylint: disable=unused-import
 
 # pylint: disable=redefined-outer-name
@@ -270,19 +271,19 @@ def test_initialize_testdata_no_tasks() -> None:
     assert testdata == {}
 
 
-@pytest.mark.usefixtures('locust_context', 'cleanup')
+@pytest.mark.usefixtures('request_task', 'cleanup')
 def test_initialize_testdata_with_tasks(
-    request_context: Tuple[str, str, RequestContext],
+    request_task: Tuple[str, str, RequestTask],
     cleanup: Callable,
 ) -> None:
     try:
         context_locust = LocustContext()
         context_locust.state.variables['AtomicIntegerIncrementer.messageID'] = 1337
         context_locust.state.variables['AtomicDate.now'] = 'now'
-        _, _, request = request_context
+        _, _, request = request_task
         scenario = request.scenario
         scenario.add_task(request)
-        testdata = initialize_testdata(cast(List[RequestContext], scenario.tasks))
+        testdata = initialize_testdata(cast(List[RequestTask], scenario.tasks))
 
         scenario_name = scenario.get_name()
 
@@ -331,7 +332,7 @@ def test_initialize_testdata_with_payload_context(behave_context: Context, locus
         context_locust.scenario.iterations = 2
         context_locust.scenario.add_task(request)
 
-        testdata = initialize_testdata(cast(List[RequestContext], context_locust.scenario.tasks))
+        testdata = initialize_testdata(cast(List[RequestTask], context_locust.scenario.tasks))
 
         scenario_name = context_locust.scenario.get_name()
 

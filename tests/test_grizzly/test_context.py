@@ -1,6 +1,6 @@
 import shutil
 
-from typing import Tuple, Dict, Any, Optional
+from typing import Tuple, Dict, Any
 from os import path, environ
 
 import pytest
@@ -8,8 +8,6 @@ import pytest
 from _pytest.tmpdir import TempdirFactory
 from jinja2.environment import Template
 from behave.model import Scenario
-from locust.clients import ResponseContextManager
-from locust.user.users import User
 
 from grizzly.context import (
     LocustContext,
@@ -18,18 +16,16 @@ from grizzly.context import (
     LocustContextScenarioValidation,
     LocustContextScenarioWait,
     LocustContextState,
-    RequestContext,
-    RequestContextHandlers,
-    RequestContextResponse,
-    RequestMethod,
     generate_identifier,
     load_configuration_file,
-    ResponseContentType,
 )
+
+from grizzly.types import RequestMethod
+from grizzly.task import RequestTask
 
 
 from .helpers import get_property_decorated_attributes
-from .fixtures import request_context, locust_context, behave_locust_context  # pylint: disable=unused-import
+from .fixtures import request_task, locust_context, behave_locust_context  # pylint: disable=unused-import
 
 
 def test_load_configuration_file(tmpdir_factory: TempdirFactory) -> None:
@@ -288,64 +284,6 @@ class TestRequestMethod:
         assert RequestMethod.from_string('SeNd') == RequestMethod.SEND
 
 
-class TestRequestContextHandlers:
-    def tests(self) -> None:
-        handlers = RequestContextHandlers()
-
-        assert hasattr(handlers, 'metadata')
-        assert hasattr(handlers, 'payload')
-
-        assert len(handlers.metadata) == 0
-        assert len(handlers.payload) == 0
-
-        def handler(input: Tuple[ResponseContentType, Any], user: User, manager: Optional[ResponseContextManager]) -> None:
-            pass
-
-        handlers.add_metadata(handler)
-        handlers.add_payload(handler)
-
-        assert len(handlers.metadata) == 1
-        assert len(handlers.payload) == 1
-
-
-class TestRequestContextResponse:
-    def test(self) -> None:
-        response_context = RequestContextResponse()
-        assert response_context.content_type == ResponseContentType.GUESS
-
-        assert isinstance(response_context.handlers, RequestContextHandlers)
-
-        assert 200 in response_context.status_codes
-
-        response_context.add_status_code(-200)
-        assert 200 not in response_context.status_codes
-
-        response_context.add_status_code(200)
-        response_context.add_status_code(302)
-        assert [200, 302] == response_context.status_codes
-
-        response_context.add_status_code(200)
-        assert [200, 302] == response_context.status_codes
-
-        response_context.add_status_code(-302)
-        response_context.add_status_code(400)
-        assert [200, 400] == response_context.status_codes
-
-
-class TestRequestContext:
-    def test(self) -> None:
-        request_context = RequestContext(RequestMethod.from_string('POST'), 'test-name', '/api/test')
-
-        assert request_context.method == RequestMethod.POST
-        assert request_context.name == 'test-name'
-        assert request_context.endpoint == '/api/test'
-
-        assert not hasattr(request_context, 'scenario')
-
-        assert request_context.template is None
-        assert request_context.source is None
-
-
 class TestLocustContextScenario:
     def test(self) -> None:
         scenario = LocustContextScenario()
@@ -375,20 +313,20 @@ class TestLocustContextScenario:
 
         assert not scenario.should_validate()
 
-    @pytest.mark.usefixtures('request_context')
-    def test_tasks(self, request_context: Tuple[str, str, RequestContext]) -> None:
+    @pytest.mark.usefixtures('request_task')
+    def test_tasks(self, request_task: Tuple[str, str, RequestTask]) -> None:
         scenario = LocustContextScenario()
         scenario.name = 'TestScenario'
         scenario.context['host'] = 'test'
         scenario.user_class_name = 'TestUser'
-        [_, _, request] = request_context
+        [_, _, request] = request_task
 
         scenario.add_task(request)
 
         assert scenario.tasks == [request]
-        assert isinstance(scenario.tasks[-1], RequestContext) and scenario.tasks[-1].scenario is scenario
+        assert isinstance(scenario.tasks[-1], RequestTask) and scenario.tasks[-1].scenario is scenario
 
-        second_request = RequestContext(RequestMethod.POST, name='Second Request', endpoint='/api/test/2')
+        second_request = RequestTask(RequestMethod.POST, name='Second Request', endpoint='/api/test/2')
         second_request.source = '{"hello": "world!"}'
         second_template = Template(second_request.source)
         second_request.template = second_template
@@ -396,7 +334,7 @@ class TestLocustContextScenario:
 
         scenario.add_task(second_request)
         assert scenario.tasks == [request, second_request]
-        assert isinstance(scenario.tasks[-1], RequestContext) and scenario.tasks[-1].scenario is scenario
+        assert isinstance(scenario.tasks[-1], RequestTask) and scenario.tasks[-1].scenario is scenario
 
         scenario.add_task(1.337)
         assert scenario.tasks == [request, second_request, 1.337]

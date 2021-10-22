@@ -6,8 +6,10 @@ from typing import cast
 from behave.runner import Context
 from behave import register_type, when, then  # pylint: disable=no-name-in-module
 
-from ...context import LocustContext, RequestContext, ResponseContentType, ResponseTarget
-from ...utils import add_save_handler, add_validation_handler, add_request_context_response_status_codes
+from ...context import LocustContext
+from ...task import RequestTask
+from ...types import ResponseContentType, ResponseTarget
+from ...utils import add_save_handler, add_validation_handler, add_request_task_response_status_codes
 
 
 @parse.with_pattern(r'is( not)?', regex_group_count=1)
@@ -157,9 +159,9 @@ def step_response_allow_status_codes(context: Context, status_list: str) -> None
 
     request = context_locust.scenario.tasks[-1]
 
-    assert isinstance(request, RequestContext), f'Previous task is not a request'
+    assert isinstance(request, RequestTask), f'Previous task is not a request'
 
-    add_request_context_response_status_codes(request, status_list)
+    add_request_task_response_status_codes(request, status_list)
 
 
 @then(u'allow response status codes')
@@ -206,9 +208,9 @@ def step_response_allow_status_codes_table(context: Context) -> None:
     for row in rows:
         try:
             request = context_locust.scenario.tasks[index]
-            assert isinstance(request, RequestContext), f'Task at index {index} is not a request'
+            assert isinstance(request, RequestTask), f'Task at index {index} is not a request'
             index -= 1
-            add_request_context_response_status_codes(request, row['status'])
+            add_request_task_response_status_codes(request, row['status'])
         except KeyError:
             raise AssertionError('data table does not have column "status"')
 
@@ -240,5 +242,5 @@ def step_response_content_type(context: Context, content_type: ResponseContentTy
 
     request = context_locust.scenario.tasks[-1]
 
-    assert isinstance(request, RequestContext), f'Latest task in scenario is not a request'
+    assert isinstance(request, RequestTask), f'Latest task in scenario is not a request'
     request.response.content_type = content_type

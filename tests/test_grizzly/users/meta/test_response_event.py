@@ -11,7 +11,7 @@ from requests.models import Response
 from grizzly.clients import ResponseEventSession
 from grizzly.users.meta import ResponseEvent, HttpRequests
 from grizzly.types import RequestMethod
-from grizzly.context import RequestContext
+from grizzly.task import RequestTask
 
 from ...fixtures import locust_environment  # pylint: disable=unused-import
 from ...helpers import TestUser
@@ -47,7 +47,7 @@ class TestResponseEvent:
         ResponseEvent.host = 'http://example.com'
         user = ResponseEvent(locust_environment)
 
-        def handler(name: str, request: Optional[RequestContext], context: Union[ResponseContextManager, Tuple[Dict[str, Any], str]], user: User) -> None:
+        def handler(name: str, request: Optional[RequestTask], context: Union[ResponseContextManager, Tuple[Dict[str, Any], str]], user: User) -> None:
             raise Called()
 
         assert len(user.response_event._handlers) == 0
@@ -59,7 +59,7 @@ class TestResponseEvent:
         with pytest.raises(Called):
             user.response_event._handlers[0](
                 '',
-                RequestContext(RequestMethod.POST, name='test-request', endpoint='/api/test'),
+                RequestTask(RequestMethod.POST, name='test-request', endpoint='/api/test'),
                 ResponseContextManager(Response(), None, None),
                 TestUser(environment=locust_environment),
             )

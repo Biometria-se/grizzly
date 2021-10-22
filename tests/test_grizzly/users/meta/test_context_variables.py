@@ -13,7 +13,8 @@ from locust.exception import StopUser
 
 from grizzly.users.meta import ContextVariables, FileRequests
 from grizzly.types import RequestMethod
-from grizzly.context import LocustContextScenario, RequestContext
+from grizzly.context import LocustContextScenario
+from grizzly.task import RequestTask
 
 from ...fixtures import locust_environment  # pylint: disable=unused-import
 
@@ -30,7 +31,7 @@ class TestContextVariable:
 
         try:
             user = ContextVariables(locust_environment)
-            request = RequestContext(RequestMethod.POST, name='test', endpoint='/api/test')
+            request = RequestTask(RequestMethod.POST, name='test', endpoint='/api/test')
 
             request.template = Template('hello {{ name }}')
             scenario = LocustContextScenario()
@@ -107,7 +108,7 @@ class TestContextVariable:
 
         try:
             user = ContextVariables(locust_environment)
-            request = RequestContext(RequestMethod.POST, name='{{ name }}', endpoint='/api/test/{{ value }}')
+            request = RequestTask(RequestMethod.POST, name='{{ name }}', endpoint='/api/test/{{ value }}')
 
             request.template = Template('{{ file_path }}')
             scenario = LocustContextScenario()
@@ -140,7 +141,7 @@ class TestContextVariable:
     @pytest.mark.usefixtures('locust_environment')
     def test_request(self, locust_environment: Environment) -> None:
         user = ContextVariables(locust_environment)
-        payload = RequestContext(RequestMethod.GET, name='test', endpoint='/api/test')
+        payload = RequestTask(RequestMethod.GET, name='test', endpoint='/api/test')
 
         with pytest.raises(NotImplementedError):
             user.request(payload)

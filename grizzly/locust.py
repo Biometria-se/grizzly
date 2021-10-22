@@ -27,7 +27,8 @@ from jinja2.exceptions import TemplateError
 from .listeners import init, init_statistics_listener, quitting, validate_result, spawning_complete, locust_test_start, locust_test_stop
 from .testdata.utils import initialize_testdata
 from .types import TestdataType
-from .context import LocustContext, RequestContext
+from .context import LocustContext
+from .task import RequestTask
 
 from .utils import create_task_class_type, create_user_class_type
 
@@ -71,9 +72,9 @@ def on_local(context: Context) -> bool:
     return value
 
 
-def setup_locust_scenarios(context: LocustContext) -> Tuple[List[User], List[RequestContext], bool]:
+def setup_locust_scenarios(context: LocustContext) -> Tuple[List[User], List[RequestTask], bool]:
     user_classes: List[User] = []
-    request_tasks: List[RequestContext] = []
+    request_tasks: List[RequestTask] = []
 
     scenarios = context.scenarios()
 
@@ -102,7 +103,7 @@ def setup_locust_scenarios(context: LocustContext) -> Tuple[List[User], List[Req
         scenario.name = scenario_type.__name__
         for task in scenario.tasks:
             scenario_type.add_scenario_task(task)
-            if isinstance(task, RequestContext):
+            if isinstance(task, RequestTask):
                 request_tasks.append(task)
 
         setattr(user_class_type, 'tasks', [scenario_type])
@@ -131,7 +132,7 @@ def setup_resource_limits(context: Context) -> None:
             )
 
 
-def setup_environment_listeners(context: Context, environment: Environment, request_tasks: List[RequestContext]) -> None:
+def setup_environment_listeners(context: Context, environment: Environment, request_tasks: List[RequestTask]) -> None:
     # make sure we don't have any listeners
     environment.events.init._handlers = []
     environment.events.test_start._handlers = []
@@ -204,7 +205,7 @@ def run(context: Context) -> int:
     greenlet_exception_handler = greenlet_exception_logger(logger)
 
     user_classes: List[User] = []
-    request_tasks: List[RequestContext] = []
+    request_tasks: List[RequestTask] = []
     messagequeue_daemon_process: Optional[subprocess.Popen] = None
 
     user_classes, request_tasks, start_messagequeue_daemon = setup_locust_scenarios(context_locust)

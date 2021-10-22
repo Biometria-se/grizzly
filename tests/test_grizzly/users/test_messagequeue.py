@@ -16,14 +16,16 @@ from jinja2 import Template
 from grizzly.users.messagequeue import MessageQueueUser
 from grizzly.users.meta import RequestLogger, ResponseHandler
 from grizzly.types import RequestMethod
-from grizzly.context import LocustContext, LocustContextScenario, RequestContext, ResponseTarget
+from grizzly.context import LocustContext, LocustContextScenario
+from grizzly.task import RequestTask
+from grizzly.types import ResponseTarget
 from grizzly.testdata.utils import transform
 from grizzly.testdata.models import TemplateData
 from grizzly.exceptions import ResponseHandlerError
 from grizzly.utils import add_save_handler
 from grizzly_extras.messagequeue import MessageQueueResponse
 
-from ..fixtures import locust_context, request_context, locust_environment  # pylint: disable=unused-import
+from ..fixtures import locust_context, request_task, locust_environment  # pylint: disable=unused-import
 from ..helpers import clone_request
 
 import logging
@@ -36,7 +38,7 @@ def mq_user(locust_context: Callable) -> Tuple[MessageQueueUser, LocustContextSc
     environment, user, task, [_, _, request] = locust_context(
         'mq://mq.example.com:1337/?QueueManager=QMGR01&Channel=Kanal1', MessageQueueUser)
 
-    request = cast(RequestContext, request)
+    request = cast(RequestTask, request)
 
     scenario = LocustContextScenario()
     scenario.name = task.__class__.__name__
@@ -206,7 +208,7 @@ class TestMessageQueueUser:
         MessageQueueUser.host = 'mq://mq.example.com:1337/?QueueManager=QMGR01&Channel=Kanal1'
         user = MessageQueueUser(locust_environment)
 
-        request = RequestContext(RequestMethod.PUT, name='test-put', endpoint='EXAMPLE.QUEUE')
+        request = RequestTask(RequestMethod.PUT, name='test-put', endpoint='EXAMPLE.QUEUE')
         scenario = LocustContextScenario()
         scenario.name = 'test'
         scenario.add_task(request)
@@ -242,7 +244,7 @@ class TestMessageQueueUser:
                 }
             }
 
-            request = RequestContext(RequestMethod.GET, name='test-get', endpoint=self.real_stuff['endpoint'])
+            request = RequestTask(RequestMethod.GET, name='test-get', endpoint=self.real_stuff['endpoint'])
             scenario = LocustContextScenario()
             scenario.name = 'test'
             scenario.stop_on_failure = True
@@ -296,7 +298,7 @@ class TestMessageQueueUser:
                 }
             }
 
-            request = RequestContext(RequestMethod.PUT, name='test-put', endpoint=self.real_stuff['endpoint'])
+            request = RequestTask(RequestMethod.PUT, name='test-put', endpoint=self.real_stuff['endpoint'])
             request.source = 'we <3 IBM MQ'
             request.template = Template(request.source)
             scenario = LocustContextScenario()
@@ -412,7 +414,7 @@ class TestMessageQueueUser:
         request_event_spy = mocker.spy(user.environment.events.request, 'fire')
         response_event_spy = mocker.spy(user.response_event, 'fire')
 
-        request = cast(RequestContext, scenario.tasks[-1])
+        request = cast(RequestTask, scenario.tasks[-1])
         request.method = RequestMethod.GET
         request.source = None
         request.template = None
@@ -626,7 +628,7 @@ class TestMessageQueueUser:
 
         request_event_spy = mocker.spy(user.environment.events.request, 'fire')
 
-        request = cast(RequestContext, scenario.tasks[-1])
+        request = cast(RequestTask, scenario.tasks[-1])
 
         user.add_context(remote_variables)
 

@@ -18,7 +18,8 @@ from jinja2 import Template, TemplateError
 
 from grizzly.locust import greenlet_exception_logger, on_master, on_worker, on_local, run, setup_environment_listeners, setup_locust_scenarios, setup_resource_limits
 from grizzly.types import RequestMethod
-from grizzly.context import LocustContext, LocustContextScenario, RequestContext
+from grizzly.context import LocustContext, LocustContextScenario
+from grizzly.task import RequestTask
 from grizzly.users import RestApiUser
 from grizzly.tasks import TrafficIteratorTasks
 from grizzly.testdata.variables import AtomicInteger
@@ -148,7 +149,7 @@ def test_setup_locust_scenarios(behave_context: Context) -> None:
         setup_locust_scenarios(context_locust)
     assert 'no tasks has been added to' in str(ae)
 
-    task = RequestContext(RequestMethod.GET, 'test-1', '/api/v1/test/1')
+    task = RequestTask(RequestMethod.GET, 'test-1', '/api/v1/test/1')
     context_locust.scenario.add_task(task)
     context_locust.scenario.add_task(1.5)
 
@@ -312,7 +313,7 @@ def test_setup_environment_listeners(behave_context: Context, mocker: MockerFixt
         # event listeteners for master node, not validating results
         mock_on_worker(False)
 
-        task = RequestContext(RequestMethod.POST, 'test-post-1', '/api/v3/test/post/1')
+        task = RequestTask(RequestMethod.POST, 'test-post-1', '/api/v3/test/post/1')
         task.source = '{{ AtomicInteger.value }}, {{ test_id }}'
         task.template = Template(task.source)
         task.scenario = LocustContextScenario()
@@ -360,7 +361,7 @@ def test_setup_environment_listeners(behave_context: Context, mocker: MockerFixt
         context_locust.setup.statistics_url = None
 
         # problems initializing testdata
-        def mocked_initialize_testdata(request_tasks: List[RequestContext]) -> Any:
+        def mocked_initialize_testdata(request_tasks: List[RequestTask]) -> Any:
             raise TemplateError('failed to initialize testdata')
 
         mocker.patch(
@@ -440,7 +441,7 @@ def test_run_worker(behave_context: Context, capsys: CaptureFixture, mocker: Moc
     context_locust.scenario.user_class_name = 'RestApiUser'
     context_locust.scenario.context['host'] = 'https://test.example.org'
     context_locust.scenario.add_task(1.5)
-    task = RequestContext(RequestMethod.GET, 'test-1', '/api/v1/test/1')
+    task = RequestTask(RequestMethod.GET, 'test-1', '/api/v1/test/1')
     context_locust.scenario.add_task(task)
 
     assert run(behave_context) == 1
@@ -453,7 +454,7 @@ def test_run_worker(behave_context: Context, capsys: CaptureFixture, mocker: Moc
         context_locust.add_scenario('test-mq')
         context_locust.scenario.user_class_name = 'MessageQueueUser'
         context_locust.scenario.context['host'] = 'mq://mq.example.org?QueueManager=QM01&Channel=TEST.CONN'
-        context_locust.scenario.add_task(RequestContext(RequestMethod.PUT, 'test-2', 'TEST.QUEUE'))
+        context_locust.scenario.add_task(RequestTask(RequestMethod.PUT, 'test-2', 'TEST.QUEUE'))
 
         with pytest.raises(AssertionError) as ae:
             run(behave_context)
@@ -542,7 +543,7 @@ def test_run_master(behave_context: Context, capsys: CaptureFixture, mocker: Moc
     context_locust.scenario.user_class_name = 'RestApiUser'
     context_locust.scenario.context['host'] = 'https://test.example.org'
     context_locust.scenario.add_task(1.5)
-    task = RequestContext(RequestMethod.GET, 'test-1', '/api/v1/test/1')
+    task = RequestTask(RequestMethod.GET, 'test-1', '/api/v1/test/1')
     context_locust.scenario.add_task(task)
     context_locust.setup.spawn_rate = 1
 

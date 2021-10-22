@@ -14,7 +14,7 @@ from grizzly.testdata.models import TemplateData
 from grizzly.testdata.communication import TestdataConsumer
 from grizzly.testdata.utils import transform
 
-from ..fixtures import locust_context, request_context  # pylint: disable=unused-import
+from ..fixtures import locust_context, request_task  # pylint: disable=unused-import
 from ..helpers import RequestCalled
 
 

@@ -11,7 +11,7 @@ from urllib.parse import urlparse, urlunparse
 from locust.clients import ResponseContextManager
 from jinja2 import Template
 
-from ...context import RequestContext
+from ...task import RequestTask
 from ...transformer import JsonBytesEncoder
 from ...types import HandlerContextType, RequestDirection
 from ...testdata.utils import merge_dicts
@@ -143,7 +143,7 @@ class RequestLogger(ResponseEvent, ContextVariables):
         self,
         name: str,
         context: HandlerContextType,
-        request: RequestContext,
+        request: RequestTask,
         user: ContextVariables,
         exception: Optional[Exception] = None,
         **kwargs: Dict[str, Any],

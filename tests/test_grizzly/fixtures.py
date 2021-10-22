@@ -23,13 +23,14 @@ from paramiko.sftp import BaseSFTP
 from paramiko.sftp_client import SFTPClient
 
 from grizzly.types import RequestMethod
-from grizzly.context import LocustContext, LocustContextScenario, RequestContext
+from grizzly.context import LocustContext, LocustContextScenario
+from grizzly.task import RequestTask
 
 from .helpers import TestUser, TestTaskSet
 # pylint: disable=redefined-outer-name
 
 
-REQUEST_CONTEXT_TEMPLATE_CONTENTS = """{
+REQUEST_TASK_TEMPLATE_CONTENTS = """{
     "result": {
         "id": "ID-{{ AtomicIntegerIncrementer.messageID }}",
         "date": "{{ AtomicDate.now }}",
@@ -42,14 +43,14 @@ REQUEST_CONTEXT_TEMPLATE_CONTENTS = """{
 
 
 @pytest.fixture
-def request_context(tmpdir_factory: TempdirFactory) -> Generator[Tuple[str, str, RequestContext], None, None]:
+def request_task(tmpdir_factory: TempdirFactory) -> Generator[Tuple[str, str, RequestTask], None, None]:
     request_file = tmpdir_factory.mktemp('example_payload').mkdir('requests').join('payload.j2.json')
-    request_file.write(REQUEST_CONTEXT_TEMPLATE_CONTENTS)
+    request_file.write(REQUEST_TASK_TEMPLATE_CONTENTS)
     request_path = os.path.dirname(str(request_file))
 
-    request = RequestContext(RequestMethod.POST, endpoint='/api/test', name='request_context')
-    request.template = Template(REQUEST_CONTEXT_TEMPLATE_CONTENTS)
-    request.source = REQUEST_CONTEXT_TEMPLATE_CONTENTS
+    request = RequestTask(RequestMethod.POST, endpoint='/api/test', name='request_task')
+    request.template = Template(REQUEST_TASK_TEMPLATE_CONTENTS)
+    request.source = REQUEST_TASK_TEMPLATE_CONTENTS
     request.scenario = LocustContextScenario()
     request.scenario.name = 'test-scenario'
     request.scenario.user_class_name = 'TestUser'
@@ -62,7 +63,7 @@ def request_context(tmpdir_factory: TempdirFactory) -> Generator[Tuple[str, str,
 
 
 @pytest.fixture
-def request_context_syntax_error(tmpdir_factory: TempdirFactory) -> Generator[Tuple[str, str], None, None]:
+def request_task_syntax_error(tmpdir_factory: TempdirFactory) -> Generator[Tuple[str, str], None, None]:
     payload_file = tmpdir_factory.mktemp(
         'example_payload'
     ).mkdir(
@@ -72,7 +73,7 @@ def request_context_syntax_error(tmpdir_factory: TempdirFactory) -> Generator[Tu
     )
 
     # remove all j2 end tags, to create syntax error
-    contents = REQUEST_CONTEXT_TEMPLATE_CONTENTS.replace('}}', '')
+    contents = REQUEST_TASK_TEMPLATE_CONTENTS.replace('}}', '')
     payload_file.write(contents)
     path = os.path.dirname(str(payload_file))
 
@@ -104,13 +105,13 @@ def locust_user(locust_environment: Environment) -> User:
 
 
 @pytest.fixture(scope='function')
-def locust_context(request_context: Tuple[str, str, RequestContext]) -> Generator[Callable, None, None]:
+def locust_context(request_task: Tuple[str, str, RequestTask]) -> Generator[Callable, None, None]:
     def wrapper(
         host: Optional[str] = '',
         user_type: Optional[Type[User]] = None,
         task_type: Optional[Type[TaskSet]] = None,
         no_tasks: Optional[bool] = False,
-    ) -> Tuple[Environment, User, TaskSet, Tuple[str, str, RequestContext]]:
+    ) -> Tuple[Environment, User, TaskSet, Tuple[str, str, RequestTask]]:
         if user_type is None:
             user_type = TestUser
 
@@ -122,8 +123,8 @@ def locust_context(request_context: Tuple[str, str, RequestContext]) -> Generato
             user_classes=[user_type],
         )
 
-        os.environ['LOCUST_CONTEXT_ROOT'] = os.path.abspath(os.path.join(request_context[0], '..'))
-        request_context[-1].name = task_type.__name__
+        os.environ['LOCUST_CONTEXT_ROOT'] = os.path.abspath(os.path.join(request_task[0], '..'))
+        request_task[-1].name = task_type.__name__
 
         user_type.host = host
         user = user_type(environment)
@@ -135,7 +136,7 @@ def locust_context(request_context: Tuple[str, str, RequestContext]) -> Generato
             user_type.tasks = []
             task = None
 
-        return environment, user, task, request_context
+        return environment, user, task, request_task
 
     yield wrapper
 

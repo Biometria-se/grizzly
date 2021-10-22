@@ -32,7 +32,7 @@ from locust.exception import StopUser
 
 from .meta import ContextVariables
 from ..types import RequestMethod
-from ..context import RequestContext
+from ..task import RequestTask
 from ..testdata.utils import merge_dicts
 
 
@@ -75,7 +75,7 @@ class ServiceBusUser(ContextVariables):
 
         self._context = merge_dicts(super().context(), self.__class__._context)
 
-    def request(self, request: RequestContext) -> None:
+    def request(self, request: RequestTask) -> None:
         request_name, endpoint, payload = self.render(request)
 
         if ':' not in endpoint:

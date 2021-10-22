@@ -26,15 +26,10 @@ from .testdata.utils import transform, merge_dicts
 from .testdata.models import TemplateData, TemplateDataType
 from .users.meta import ContextVariables
 from .exceptions import ResponseHandlerError
-from .types import HandlerType, ResponseContentType, RequestMethod
+from .types import HandlerType, ResponseContentType, RequestMethod, ResponseTarget, ResponseAction
 from .transformer import PlainTransformer, transformer
-from .context import (
-    LocustContext,
-    LocustContextScenario,
-    RequestContext,
-    ResponseTarget,
-    ResponseAction,
-)
+from .context import LocustContext, LocustContextScenario
+from .task import RequestTask
 
 
 logger = logging.getLogger(__name__)
@@ -88,15 +83,15 @@ class catch:
         return cast(WrappedFunc, wrapper)
 
 
-def create_request_context(context: Context, method: RequestMethod, source: str, endpoint: str, name: Optional[str] = None) -> RequestContext:
+def create_request_task(context: Context, method: RequestMethod, source: str, endpoint: str, name: Optional[str] = None) -> RequestTask:
     locust_context = cast(LocustContext, context.locust)
-    request = _create_request_context(context.config.base_dir, method, source, endpoint, name)
+    request = _create_request_task(context.config.base_dir, method, source, endpoint, name)
     request.scenario = locust_context.scenario
 
     return request
 
 
-def _create_request_context(base_dir: str, method: RequestMethod, source: str, endpoint: str, name: Optional[str] = None) -> RequestContext:
+def _create_request_task(base_dir: str, method: RequestMethod, source: str, endpoint: str, name: Optional[str] = None) -> RequestTask:
     path = os.path.join(base_dir, 'requests')
     j2env = j2.Environment(
         autoescape=False,
@@ -131,19 +126,19 @@ def _create_request_context(base_dir: str, method: RequestMethod, source: str, e
         if name is None:
             name = '<unknown>'
 
-    request = RequestContext(method, name=name, endpoint=endpoint)
+    request = RequestTask(method, name=name, endpoint=endpoint)
     request.template = template
     request.source = source
 
     return request
 
 
-def add_request_context_response_status_codes(request: RequestContext, status_list: str) -> None:
+def add_request_task_response_status_codes(request: RequestTask, status_list: str) -> None:
     for status in status_list.split(','):
         request.response.add_status_code(int(status.strip()))
 
 
-def add_request_context(context: Context, method: RequestMethod, source: str, name: Optional[str] = None, endpoint: Optional[str] = None) -> None:
+def add_request_task(context: Context, method: RequestMethod, source: str, name: Optional[str] = None, endpoint: Optional[str] = None) -> None:
     context_locust = cast(LocustContext, context.locust)
     scenario_tasks_count = len(context_locust.scenario.tasks)
 
@@ -161,7 +156,7 @@ def add_request_context(context: Context, method: RequestMethod, source: str, na
 
             last_request = context_locust.scenario.tasks[-1]
 
-            if not isinstance(last_request, RequestContext):
+            if not isinstance(last_request, RequestTask):
                 raise ValueError('previous task was not a request')
 
             if last_request.method != method:
@@ -185,13 +180,13 @@ def add_request_context(context: Context, method: RequestMethod, source: str, na
                 if source is not None:
                     source = source.replace(f'{{{{ {key} }}}}', value)
 
-        request_context = create_request_context(context, method, source, endpoint, name)
+        request_task = create_request_task(context, method, source, endpoint, name)
 
         endpoint = orig_endpoint
         name = orig_name
         source = orig_source
 
-        context_locust.scenario.tasks.append(request_context)
+        context_locust.scenario.tasks.append(request_task)
 
 
 def get_matches(
@@ -399,7 +394,7 @@ def _add_response_handler(
     # latest request
     request = context.scenario.tasks[-1]
 
-    if not isinstance(request, RequestContext):
+    if not isinstance(request, RequestTask):
         raise ValueError('latest task was not a request')
 
     if '{{' in match_with and '}}' in match_with:

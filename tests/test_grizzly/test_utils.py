@@ -24,7 +24,7 @@ from .helpers import TestUser
 from .fixtures import (
     locust_context,
     locust_environment,
-    request_context,
+    request_task,
     behave_context,
     behave_runner,
     behave_scenario,
@@ -35,8 +35,8 @@ from grizzly.utils import ModuleLoader, in_correct_section
 from grizzly.utils import (
     add_validation_handler,
     add_save_handler,
-    add_request_context,
-    add_request_context_response_status_codes,
+    add_request_task,
+    add_request_task_response_status_codes,
     catch,
     create_task_class_type,
     create_user_class_type,
@@ -50,7 +50,9 @@ from grizzly.utils import (
     get_matches,
 )
 from grizzly.types import RequestMethod, ResponseContentType
-from grizzly.context import LocustContext, LocustContextScenario, RequestContext, ResponseTarget, ResponseAction
+from grizzly.context import LocustContext, LocustContextScenario
+from grizzly.task import RequestTask
+from grizzly.types import ResponseTarget, ResponseAction
 from grizzly.users import RestApiUser
 from grizzly.tasks import TrafficIteratorTasks
 
@@ -155,82 +157,82 @@ def test_catch(behave_context: Context, behave_scenario: Scenario) -> None:
         pytest.fail(f'function raised ValueError, when it should not have')
 
 
-def test_add_request_context_response_status_codes() -> None:
-    request = RequestContext(RequestMethod.SEND, name='test', endpoint='/api/test')
+def test_add_request_task_response_status_codes() -> None:
+    request = RequestTask(RequestMethod.SEND, name='test', endpoint='/api/test')
 
     assert request.response.status_codes == [200]
 
-    add_request_context_response_status_codes(request, '-200')
+    add_request_task_response_status_codes(request, '-200')
     assert request.response.status_codes == []
 
-    add_request_context_response_status_codes(request, '200,302, 400')
+    add_request_task_response_status_codes(request, '200,302, 400')
     assert request.response.status_codes == [200, 302, 400]
 
 
 @pytest.mark.usefixtures('behave_context', 'locust_context')
-def test_add_request_context(behave_context: Context, locust_context: Callable, tmpdir_factory: TempdirFactory) -> None:
+def test_add_request_task(behave_context: Context, locust_context: Callable, tmpdir_factory: TempdirFactory) -> None:
     context_locust = cast(LocustContext, behave_context.locust)
     context_locust.scenario.context['host'] = 'http://test'
 
     assert len(context_locust.scenario.tasks) == 0
 
     with pytest.raises(ValueError):
-        add_request_context(behave_context, method=RequestMethod.POST, source='{}')
+        add_request_task(behave_context, method=RequestMethod.POST, source='{}')
 
     assert len(context_locust.scenario.tasks) == 0
 
     with pytest.raises(ValueError):
-        add_request_context(behave_context, method=RequestMethod.POST, source='{}', endpoint='http://test/api/v1/test')
+        add_request_task(behave_context, method=RequestMethod.POST, source='{}', endpoint='http://test/api/v1/test')
 
     with pytest.raises(ValueError):
-        add_request_context(behave_context, method=RequestMethod.from_string('TEST'), source='{}', endpoint='/api/v1/test')
+        add_request_task(behave_context, method=RequestMethod.from_string('TEST'), source='{}', endpoint='/api/v1/test')
 
-    add_request_context(behave_context, method=RequestMethod.POST, source='{}', endpoint='/api/v1/test')
+    add_request_task(behave_context, method=RequestMethod.POST, source='{}', endpoint='/api/v1/test')
 
     assert len(context_locust.scenario.tasks) == 1
-    assert isinstance(context_locust.scenario.tasks[0], RequestContext)
+    assert isinstance(context_locust.scenario.tasks[0], RequestTask)
     assert context_locust.scenario.tasks[0].name == '<unknown>'
 
     with pytest.raises(ValueError):
-        add_request_context(behave_context, method=RequestMethod.from_string('TEST'), source='{}', name='test')
+        add_request_task(behave_context, method=RequestMethod.from_string('TEST'), source='{}', name='test')
 
-    add_request_context(behave_context, method=RequestMethod.from_string('POST'), source='{}', name='test')
+    add_request_task(behave_context, method=RequestMethod.from_string('POST'), source='{}', name='test')
 
     assert len(context_locust.scenario.tasks) == 2
-    assert isinstance(context_locust.scenario.tasks[1], RequestContext)
+    assert isinstance(context_locust.scenario.tasks[1], RequestTask)
     assert context_locust.scenario.tasks[0].endpoint == context_locust.scenario.tasks[1].endpoint
     assert context_locust.scenario.tasks[1].name == 'test'
 
     with pytest.raises(ValueError):
-        add_request_context(behave_context, method=RequestMethod.from_string('TEST'), source='{}', name='test', endpoint='/api/v2/test')
+        add_request_task(behave_context, method=RequestMethod.from_string('TEST'), source='{}', name='test', endpoint='/api/v2/test')
 
-    add_request_context(behave_context, method=RequestMethod.POST, source='{}', name='test', endpoint='/api/v2/test')
+    add_request_task(behave_context, method=RequestMethod.POST, source='{}', name='test', endpoint='/api/v2/test')
 
     assert len(context_locust.scenario.tasks) == 3
-    assert isinstance(context_locust.scenario.tasks[2], RequestContext)
+    assert isinstance(context_locust.scenario.tasks[2], RequestTask)
     assert context_locust.scenario.tasks[1].endpoint != context_locust.scenario.tasks[2].endpoint
     assert context_locust.scenario.tasks[2].name == 'test'
 
     _, _, _, (template_path, template_name, _) = locust_context()
     template_full_path = os.path.join(template_path, template_name)
-    add_request_context(behave_context, method=RequestMethod.SEND, source=template_full_path, name='my_blob', endpoint='my_container')
+    add_request_task(behave_context, method=RequestMethod.SEND, source=template_full_path, name='my_blob', endpoint='my_container')
 
     with open(template_full_path, 'r') as fd:
         template_source = json.dumps(json.load(fd))
 
     assert len(context_locust.scenario.tasks) == 4
-    assert isinstance(context_locust.scenario.tasks[-1], RequestContext)
+    assert isinstance(context_locust.scenario.tasks[-1], RequestTask)
     assert context_locust.scenario.tasks[-1].source == template_source
     assert context_locust.scenario.tasks[-1].endpoint == 'my_container'
     assert context_locust.scenario.tasks[-1].name == 'my_blob'
 
     with pytest.raises(ValueError):
-        add_request_context(behave_context, method=RequestMethod.POST, source='{}', name='test')
+        add_request_task(behave_context, method=RequestMethod.POST, source='{}', name='test')
 
-    add_request_context(behave_context, method=RequestMethod.SEND, source=template_full_path, name='my_blob2')
+    add_request_task(behave_context, method=RequestMethod.SEND, source=template_full_path, name='my_blob2')
     assert len(context_locust.scenario.tasks) == 5
-    assert isinstance(context_locust.scenario.tasks[-1], RequestContext)
-    assert isinstance(context_locust.scenario.tasks[-2], RequestContext)
+    assert isinstance(context_locust.scenario.tasks[-1], RequestTask)
+    assert isinstance(context_locust.scenario.tasks[-2], RequestTask)
     assert context_locust.scenario.tasks[-1].source == template_source
     assert context_locust.scenario.tasks[-1].endpoint == context_locust.scenario.tasks[-2].endpoint
     assert context_locust.scenario.tasks[-1].name == 'my_blob2'
@@ -251,13 +253,13 @@ def test_add_request_context(behave_context: Context, locust_context: Callable, 
         context_locust.scenario.tasks = [1.0]
 
         with pytest.raises(ValueError) as e:
-            add_request_context(behave_context, method=RequestMethod.PUT, source='template.j2.json')
+            add_request_task(behave_context, method=RequestMethod.PUT, source='template.j2.json')
         assert 'previous task was not a request' in str(e)
 
-        add_request_context(behave_context, method=RequestMethod.PUT, source='template.j2.json', name='test', endpoint='/api/test')
+        add_request_task(behave_context, method=RequestMethod.PUT, source='template.j2.json', name='test', endpoint='/api/test')
 
-        add_request_context(behave_context, method=RequestMethod.PUT, source='template.j2.json', endpoint='/api/test')
-        assert cast(RequestContext, context_locust.scenario.tasks[-1]).name == 'template'
+        add_request_task(behave_context, method=RequestMethod.PUT, source='template.j2.json', endpoint='/api/test')
+        assert cast(RequestTask, context_locust.scenario.tasks[-1]).name == 'template'
     finally:
         del os.environ['LOCUST_CONTEXT_ROOT']
         shutil.rmtree(test_context_root)
@@ -676,11 +678,11 @@ def test_add_save_handler(behave_context: Context, locust_environment: Environme
     assert len(user.context_variables) == 0
 
     # add request source
-    add_request_context(behave_context, method=RequestMethod.GET, source='{}', name='test', endpoint='/api/v2/test')
+    add_request_task(behave_context, method=RequestMethod.GET, source='{}', name='test', endpoint='/api/v2/test')
 
     assert len(tasks) == 1
 
-    task = cast(RequestContext, tasks[0])
+    task = cast(RequestTask, tasks[0])
 
     with pytest.raises(ValueError):
         add_save_handler(context_locust, ResponseTarget.METADATA, '', 'test', 'test-variable')
@@ -730,14 +732,14 @@ def test_add_save_handler(behave_context: Context, locust_environment: Environme
     response_context_manager._manual_result = None
     assert user.context_variables.get('test-variable-payload', 'payload') is None
 
-    # previous non RequestContext task
+    # previous non RequestTask task
     context_locust.scenario.tasks.append(1.0)
 
     context_locust.state.variables['test'] = 'none'
     with pytest.raises(ValueError):
         add_save_handler(context_locust, ResponseTarget.PAYLOAD, '$.test.value', '.*', 'test')
 
-    # remove non RequestContext task
+    # remove non RequestTask task
     context_locust.scenario.tasks.pop()
 
     # add_save_handler calling _add_response_handler incorrectly
@@ -763,7 +765,7 @@ def test_add_validation_handler(behave_context: Context, locust_environment: Env
         add_validation_handler(context_locust, ResponseTarget.METADATA, '$.test.value', 'test', False)
 
     # add request source
-    add_request_context(behave_context, method=RequestMethod.GET, source='{}', name='test', endpoint='/api/v2/test')
+    add_request_task(behave_context, method=RequestMethod.GET, source='{}', name='test', endpoint='/api/v2/test')
 
     assert len(tasks) == 1
 
@@ -773,7 +775,7 @@ def test_add_validation_handler(behave_context: Context, locust_environment: Env
 
     # add metadata response handler
     add_validation_handler(context_locust, ResponseTarget.METADATA, '$.test.value', 'test', False)
-    task = cast(RequestContext, tasks[0])
+    task = cast(RequestTask, tasks[0])
     assert len(task.response.handlers.metadata) == 1
     assert len(task.response.handlers.payload) == 0
 
@@ -1032,7 +1034,7 @@ def test_create_task_class_type() -> None:
     assert issubclass(task_class_type_1, (TrafficIteratorTasks, TaskSet))
     assert task_class_type_1.__name__ == 'TrafficIteratorTasks_25867809'
     assert task_class_type_1.__module__ == 'locust.user.sequential_taskset'
-    task_class_type_1.add_scenario_task(RequestContext(RequestMethod.POST, name='test-request', endpoint='/api/test'))
+    task_class_type_1.add_scenario_task(RequestTask(RequestMethod.POST, name='test-request', endpoint='/api/test'))
 
     scenario = LocustContextScenario()
     scenario.name = 'TestTestTest'

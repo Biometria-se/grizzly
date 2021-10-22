@@ -8,7 +8,7 @@ from locust.user.sequential_taskset import SequentialTaskSet
 from locust.exception import StopUser
 from gevent import sleep as gsleep
 
-from ..context import LocustContext, RequestContext
+from ..context import LocustContext, RequestTask
 from ..testdata.communication import TestdataConsumer
 
 from . import logger
@@ -25,8 +25,8 @@ class TrafficIteratorTasks(SequentialTaskSet):
         self.logger = logger
 
     @classmethod
-    def add_scenario_task(cls, task: Union[RequestContext, float]) -> None:
-        def request_task(request: RequestContext) -> Callable[[TrafficIteratorTasks], Any]:
+    def add_scenario_task(cls, task: Union[RequestTask, float]) -> None:
+        def request_task(request: RequestTask) -> Callable[[TrafficIteratorTasks], Any]:
             def _request_task(self: 'TrafficIteratorTasks') -> Any:
                 return self.user.request(request)
 
@@ -40,7 +40,7 @@ class TrafficIteratorTasks(SequentialTaskSet):
 
             return _wait_task
 
-        if isinstance(task, RequestContext):
+        if isinstance(task, RequestTask):
             cls.tasks.append(request_task(task))
         elif isinstance(task, float):
             cls.tasks.append(wait_task(task))
