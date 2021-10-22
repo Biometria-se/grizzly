@@ -99,7 +99,7 @@ def setup_locust_scenarios(context: LocustContext) -> Tuple[List[User], List[Req
         if user_class_type.__name__.startswith('MessageQueueUser_') and not start_messagequeue_daemon:
             start_messagequeue_daemon = True
 
-        scenario_type = create_task_class_type('TrafficIteratorTasks', scenario)
+        scenario_type = create_task_class_type('IteratorTasks', scenario)
         scenario.name = scenario_type.__name__
         for task in scenario.tasks:
             scenario_type.add_scenario_task(task)

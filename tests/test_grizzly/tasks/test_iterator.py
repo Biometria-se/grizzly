@@ -9,7 +9,7 @@ from pytest_mock.plugin import MockerFixture
 from locust.user.task import TaskSet
 from locust.exception import StopUser
 
-from grizzly.tasks.iterator import TrafficIteratorTasks
+from grizzly.tasks.iterator import IteratorTasks
 from grizzly.testdata.models import TemplateData
 from grizzly.testdata.communication import TestdataConsumer
 from grizzly.testdata.utils import transform
@@ -18,7 +18,7 @@ from ..fixtures import locust_context, request_task  # pylint: disable=unused-im
 from ..helpers import RequestCalled
 
 
-class TestTrafficIterationModel:
+class TestIterationTasks:
     @pytest.mark.usefixtures('locust_context')
     def test_initialize(self, locust_context: Callable) -> None:
         _, _, task, _ = locust_context()
@@ -26,10 +26,10 @@ class TestTrafficIterationModel:
 
     @pytest.mark.usefixtures('locust_context')
     def test_add_scenario_task(self, locust_context: Callable, mocker: MockerFixture) -> None:
-        _, _, task, [_, _, request] = locust_context(task_type=TrafficIteratorTasks)
+        _, _, task, [_, _, request] = locust_context(task_type=IteratorTasks)
         request.endpoint = '/api/v1/test'
-        TrafficIteratorTasks.add_scenario_task(request)
-        assert isinstance(task, TrafficIteratorTasks)
+        IteratorTasks.add_scenario_task(request)
+        assert isinstance(task, IteratorTasks)
         assert len(task.tasks) == 2
 
         task.iteration_data = TemplateData()
@@ -45,12 +45,12 @@ class TestTrafficIterationModel:
                 assert sleep_time == time
 
             mocker.patch(
-                'grizzly.tasks.iterator.gsleep',
+                'grizzly.tasks.gsleep',
                 mocked_wait,
             )
 
         generate_mocked_wait(1.5)
-        TrafficIteratorTasks.add_scenario_task(1.5)
+        IteratorTasks.add_scenario_task(1.5)
         assert len(task.tasks) == 3
 
         task_method = task.tasks[-1]
@@ -60,7 +60,7 @@ class TestTrafficIterationModel:
     @pytest.mark.usefixtures('locust_context')
     def test_on_event_handlers(self, locust_context: Callable, mocker: MockerFixture) -> None:
         try:
-            _, _, task, _ = locust_context(task_type=TrafficIteratorTasks)
+            _, _, task, _ = locust_context(task_type=IteratorTasks)
 
             def TestdataConsumer__init__(self: 'TestdataConsumer', address: str) -> None:
                 pass
@@ -97,7 +97,7 @@ class TestTrafficIterationModel:
 
     @pytest.mark.usefixtures('locust_context')
     def test_iterator(self, locust_context: Callable, mocker: MockerFixture) -> None:
-        _, user, task, _ = locust_context(task_type=TrafficIteratorTasks)
+        _, user, task, _ = locust_context(task_type=IteratorTasks)
 
         assert task is not None
 

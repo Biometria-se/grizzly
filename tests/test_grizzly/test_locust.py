@@ -21,7 +21,7 @@ from grizzly.types import RequestMethod
 from grizzly.context import LocustContext, LocustContextScenario
 from grizzly.task import RequestTask
 from grizzly.users import RestApiUser
-from grizzly.tasks import TrafficIteratorTasks
+from grizzly.tasks import IteratorTasks
 from grizzly.testdata.variables import AtomicInteger
 
 from .fixtures import behave_context  # pylint: disable=unused-import
@@ -169,11 +169,11 @@ def test_setup_locust_scenarios(behave_context: Context) -> None:
     assert issubclass(user_class, (RestApiUser, ))
     assert len(user_class.tasks) == 1
     assert user_class.host == 'https://test.example.org'
-    assert context_locust.scenario.name.startswith('TrafficIteratorTasks')
+    assert context_locust.scenario.name.startswith('IteratorTasks')
 
     user_tasks = user_class.tasks[-1]
-    assert issubclass(user_tasks, (TrafficIteratorTasks, ))
-    assert len(user_tasks.tasks) == 2 + 1  # TrafficIteratorTasks has an internal task other than what we've added
+    assert issubclass(user_tasks, (IteratorTasks, ))
+    assert len(user_tasks.tasks) == 2 + 1  # IteratorTasks has an internal task other than what we've added
 
     import grizzly.users.messagequeue as mq
     if mq.pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
@@ -188,11 +188,11 @@ def test_setup_locust_scenarios(behave_context: Context) -> None:
         assert issubclass(user_class, (mq.MessageQueueUser, ))
         assert len(user_class.tasks) == 1
         assert user_class.host == 'https://test.example.org'
-        assert context_locust.scenario.name.startswith('TrafficIteratorTasks')
+        assert context_locust.scenario.name.startswith('IteratorTasks')
 
         user_tasks = user_class.tasks[-1]
-        assert issubclass(user_tasks, (TrafficIteratorTasks, ))
-        assert len(user_tasks.tasks) == 2 + 1  # TrafficIteratorTasks has an internal task other than what we've added
+        assert issubclass(user_tasks, (IteratorTasks, ))
+        assert len(user_tasks.tasks) == 2 + 1  # IteratorTasks has an internal task other than what we've added
 
 
 @pytest.mark.usefixtures('behave_context')

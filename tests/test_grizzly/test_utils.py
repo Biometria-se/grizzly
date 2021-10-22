@@ -54,7 +54,7 @@ from grizzly.context import LocustContext, LocustContextScenario
 from grizzly.task import RequestTask
 from grizzly.types import ResponseTarget, ResponseAction
 from grizzly.users import RestApiUser
-from grizzly.tasks import TrafficIteratorTasks
+from grizzly.tasks import IteratorTasks
 
 
 class TestModuleLoader:
@@ -1029,18 +1029,18 @@ def test_create_user_class_type(locust_environment: Environment) -> None:
 def test_create_task_class_type() -> None:
     scenario = LocustContextScenario()
     scenario.name = 'A scenario description'
-    task_class_type_1 = create_task_class_type('TrafficIteratorTasks', scenario)
+    task_class_type_1 = create_task_class_type('IteratorTasks', scenario)
 
-    assert issubclass(task_class_type_1, (TrafficIteratorTasks, TaskSet))
-    assert task_class_type_1.__name__ == 'TrafficIteratorTasks_25867809'
+    assert issubclass(task_class_type_1, (IteratorTasks, TaskSet))
+    assert task_class_type_1.__name__ == 'IteratorTasks_25867809'
     assert task_class_type_1.__module__ == 'locust.user.sequential_taskset'
     task_class_type_1.add_scenario_task(RequestTask(RequestMethod.POST, name='test-request', endpoint='/api/test'))
 
     scenario = LocustContextScenario()
     scenario.name = 'TestTestTest'
-    task_class_type_2 = create_task_class_type('TrafficIteratorTasks', scenario)
-    assert issubclass(task_class_type_2, (TrafficIteratorTasks, TaskSet))
-    assert task_class_type_2.__name__ == 'TrafficIteratorTasks_cf4fa8aa'
+    task_class_type_2 = create_task_class_type('IteratorTasks', scenario)
+    assert issubclass(task_class_type_2, (IteratorTasks, TaskSet))
+    assert task_class_type_2.__name__ == 'IteratorTasks_cf4fa8aa'
     assert task_class_type_2.__module__ == 'locust.user.sequential_taskset'
 
     assert task_class_type_1.tasks != task_class_type_2.tasks
