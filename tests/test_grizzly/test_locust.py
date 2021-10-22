@@ -19,7 +19,7 @@ from jinja2 import Template, TemplateError
 from grizzly.locust import greenlet_exception_logger, on_master, on_worker, on_local, run, setup_environment_listeners, setup_locust_scenarios, setup_resource_limits
 from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
-from grizzly.task import RequestTask
+from grizzly.task import PrintTask, RequestTask, SleepTask
 from grizzly.users import RestApiUser
 from grizzly.tasks import IteratorTasks
 from grizzly.testdata.variables import AtomicInteger
@@ -151,7 +151,8 @@ def test_setup_locust_scenarios(behave_context: Context) -> None:
 
     task = RequestTask(RequestMethod.GET, 'test-1', '/api/v1/test/1')
     grizzly.scenario.add_task(task)
-    grizzly.scenario.add_task(1.5)
+    grizzly.scenario.add_task(SleepTask(sleep=1.5))
+    grizzly.scenario.add_task(PrintTask(message='test message'))
 
     # incorrect user type
     grizzly.scenario.user_class_name = 'NonExistingUser'
@@ -173,7 +174,7 @@ def test_setup_locust_scenarios(behave_context: Context) -> None:
 
     user_tasks = user_class.tasks[-1]
     assert issubclass(user_tasks, (IteratorTasks, ))
-    assert len(user_tasks.tasks) == 2 + 1  # IteratorTasks has an internal task other than what we've added
+    assert len(user_tasks.tasks) == 3 + 1  # IteratorTasks has an internal task other than what we've added
 
     import grizzly.users.messagequeue as mq
     if mq.pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
@@ -192,7 +193,7 @@ def test_setup_locust_scenarios(behave_context: Context) -> None:
 
         user_tasks = user_class.tasks[-1]
         assert issubclass(user_tasks, (IteratorTasks, ))
-        assert len(user_tasks.tasks) == 2 + 1  # IteratorTasks has an internal task other than what we've added
+        assert len(user_tasks.tasks) == 3 + 1  # IteratorTasks has an internal task other than what we've added
 
 
 @pytest.mark.usefixtures('behave_context')
@@ -440,7 +441,7 @@ def test_run_worker(behave_context: Context, capsys: CaptureFixture, mocker: Moc
     grizzly.add_scenario('test-non-mq')
     grizzly.scenario.user_class_name = 'RestApiUser'
     grizzly.scenario.context['host'] = 'https://test.example.org'
-    grizzly.scenario.add_task(1.5)
+    grizzly.scenario.add_task(SleepTask(sleep=1.5))
     task = RequestTask(RequestMethod.GET, 'test-1', '/api/v1/test/1')
     grizzly.scenario.add_task(task)
 
@@ -542,7 +543,7 @@ def test_run_master(behave_context: Context, capsys: CaptureFixture, mocker: Moc
     grizzly.add_scenario('test')
     grizzly.scenario.user_class_name = 'RestApiUser'
     grizzly.scenario.context['host'] = 'https://test.example.org'
-    grizzly.scenario.add_task(1.5)
+    grizzly.scenario.add_task(SleepTask(sleep=1.5))
     task = RequestTask(RequestMethod.GET, 'test-1', '/api/v1/test/1')
     grizzly.scenario.add_task(task)
     grizzly.setup.spawn_rate = 1

@@ -22,7 +22,7 @@ from grizzly.context import (
 )
 
 from grizzly.types import RequestMethod
-from grizzly.task import RequestTask
+from grizzly.task import PrintTask, RequestTask, SleepTask
 
 
 from .helpers import get_property_decorated_attributes
@@ -330,5 +330,10 @@ class TestGrizzlyContextScenario:
         assert scenario.tasks == [request, second_request]
         assert isinstance(scenario.tasks[-1], RequestTask) and scenario.tasks[-1].scenario is scenario
 
-        scenario.add_task(1.337)
-        assert scenario.tasks == [request, second_request, 1.337]
+        sleep_task = SleepTask(sleep=1.337)
+        scenario.add_task(sleep_task)
+        assert scenario.tasks == [request, second_request, sleep_task]
+
+        print_task = PrintTask(message='hello general')
+        scenario.add_task(print_task)
+        assert scenario.tasks == [request, second_request, sleep_task, print_task]

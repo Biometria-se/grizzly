@@ -40,7 +40,7 @@ def restapi_user(grizzly_context: Callable) -> Tuple[RestApiUser, GrizzlyContext
 
     _, user, _, [_, _, request] = grizzly_context('http://test.ie', RestApiUser)
 
-    scenario.add_task(cast(RequestTask, request))
+    scenario.add_task(request)
 
     return cast(RestApiUser, user), scenario
 

@@ -7,7 +7,7 @@ from behave.runner import Context
 from behave.model import Table, Row
 
 from grizzly.types import RequestMethod
-from grizzly.task import RequestTask
+from grizzly.task import RequestTask, SleepTask
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import
 
 from ...fixtures import behave_context  # pylint: disable=unused-import
@@ -273,7 +273,7 @@ def test_step_response_content_type(behave_context: Context) -> None:
         step_response_content_type(behave_context, ResponseContentType.JSON)
     assert 'There are no requests in the scenario' in str(ae)
 
-    grizzly.scenario.add_task(1.0)
+    grizzly.scenario.add_task(SleepTask(sleep=1.0))
 
     with pytest.raises(AssertionError) as ae:
         step_response_content_type(behave_context, ResponseContentType.JSON)

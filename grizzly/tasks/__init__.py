@@ -1,19 +1,16 @@
 import logging
 
-from typing import Union, Callable, Any, Type, List
+from typing import Callable, Type, List
 from os import environ
 
-from locust.user.sequential_taskset import SequentialTaskSet
 from locust.user.users import User
 from locust.exception import StopUser
-from gevent import sleep as gsleep
 
-from ..context import GrizzlyContext
-from ..task import RequestTask
+from ..context import GrizzlyContext, GrizzlyTasksBase, GrizzlyTask
 from ..testdata.communication import TestdataConsumer
 
 
-class GrizzlyTasks(SequentialTaskSet):
+class GrizzlyTasks(GrizzlyTasksBase):
     consumer: TestdataConsumer
     tasks: List[Callable] = []
     logger: logging.Logger = logging.getLogger(__name__)
@@ -24,25 +21,8 @@ class GrizzlyTasks(SequentialTaskSet):
         super().__init__(parent=parent)
 
     @classmethod
-    def add_scenario_task(cls, task: Union[RequestTask, float]) -> None:
-        def request_task(request: RequestTask) -> Callable[[GrizzlyTasks], Any]:
-            def _request_task(self: 'IteratorTasks') -> Any:
-                return self.user.request(request)
-
-            return _request_task
-
-        def wait_task(wait_time: float) -> Callable[[GrizzlyTasks], Any]:
-            def _wait_task(self: 'IteratorTasks') -> Any:
-                self.logger.debug(f'waiting for {wait_time} seconds')
-                gsleep(wait_time)
-                self.logger.debug(f'done waiting for {wait_time} seconds')
-
-            return _wait_task
-
-        if isinstance(task, RequestTask):
-            cls.tasks.append(request_task(task))
-        elif isinstance(task, float):
-            cls.tasks.append(wait_task(task))
+    def add_scenario_task(cls, task: GrizzlyTask) -> None:
+        cls.tasks.append(task.implementation())
 
     def on_start(self) -> None:
         producer_address = environ.get('TESTDATA_PRODUCER_ADDRESS', None)

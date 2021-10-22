@@ -1,10 +1,11 @@
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List, Optional, Callable, Any
 
 from jinja2.environment import Template
+from gevent import sleep as gsleep
 
 from .types import ResponseContentType, HandlerType, RequestMethod
-from .context import GrizzlyTask
+from .context import GrizzlyTask, GrizzlyTasksBase
 
 
 @dataclass(unsafe_hash=True)
@@ -49,12 +50,33 @@ class RequestTask(GrizzlyTask):
 
     response: RequestTaskResponse = field(init=False, repr=False, default_factory=RequestTaskResponse)
 
+    def implementation(self) -> Callable[[GrizzlyTasksBase], Any]:
+        def _implementation(parent: GrizzlyTasksBase) -> Any:
+            return parent.user.request(self)
+
+        return _implementation
+
 
 @dataclass
 class SleepTask(GrizzlyTask):
     sleep: float
 
+    def implementation(self) -> Callable[[GrizzlyTasksBase], Any]:
+        def _implementation(parent: GrizzlyTasksBase) -> Any:
+            parent.logger.debug(f'waiting for {self.sleep} seconds')
+            gsleep(self.sleep)
+            parent.logger.debug(f'done waiting for {self.sleep} seconds')
+
+        return _implementation
+
 
 @dataclass
 class PrintTask(GrizzlyTask):
     message: str
+
+    def implementation(self) -> Callable[[GrizzlyTasksBase], Any]:
+        def _implementation(parent: GrizzlyTasksBase) -> Any:
+            message = Template(self.message).render(**parent.user._context['variables'])
+            parent.logger.info(message)
+
+        return _implementation

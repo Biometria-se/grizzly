@@ -6,7 +6,7 @@ import jinja2 as j2
 
 from jinja2.nodes import Getattr, Getitem, Name
 
-from ..context import RequestTask
+from ..task import RequestTask
 
 
 RequestSourceMapping = Dict[str, Set[Tuple[str, Union[str, RequestTask]]]]

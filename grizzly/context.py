@@ -1,6 +1,6 @@
 import logging
 
-from typing import Optional, Dict, Any, Tuple, List, Union
+from typing import Optional, Dict, Any, Tuple, List, Union, Callable
 from os import environ, path
 from hashlib import sha1 as sha1_hash
 from dataclasses import dataclass, field
@@ -9,18 +9,24 @@ from abc import ABCMeta
 import yaml
 
 from behave.model import Scenario
+from locust.user.sequential_taskset import SequentialTaskSet
 
 from .testdata.models import TemplateData
 
 logger = logging.getLogger(__name__)
 
 
+# @TODO: these two classes is needed here to avoid circular imports
+class GrizzlyTasksBase(SequentialTaskSet):
+    pass
+
+
 @dataclass(unsafe_hash=True)
 class GrizzlyTask(metaclass=ABCMeta):
     scenario: 'GrizzlyContextScenario' = field(init=False, repr=False)
 
-
-from .task import RequestTask
+    def implementation(self) -> Callable[[GrizzlyTasksBase], Any]:
+        raise NotImplementedError(f'{self.__class__.__name__} has not implemented "implementation"')
 
 
 def generate_identifier(name: str) -> str:
@@ -100,7 +106,7 @@ class GrizzlyContextScenario:
     behave: Scenario = field(init=False, repr=False, hash=False, compare=False)
     context: Dict[str, Any] = field(init=False, repr=False, hash=False, compare=False, default_factory=dict)
     wait: GrizzlyContextScenarioWait = field(init=False, repr=False, hash=False, compare=False, default_factory=GrizzlyContextScenarioWait)
-    tasks: List[Union[RequestTask, float]] = field(init=False, repr=False, hash=False, compare=False, default_factory=list)
+    tasks: List[GrizzlyTask] = field(init=False, repr=False, hash=False, compare=False, default_factory=list)
     validation: GrizzlyContextScenarioValidation = field(init=False, hash=False, compare=False, default_factory=GrizzlyContextScenarioValidation)
     stop_on_failure: bool = field(init=False, default=False)
     orphan_templates: List[str] = field(init=False, repr=False, hash=False, compare=False, default_factory=list)
@@ -131,7 +137,7 @@ class GrizzlyContextScenario:
             self.validation.response_time_percentile is not None
         )
 
-    def add_task(self, task: Union[RequestTask, float]) -> None:
+    def add_task(self, task: GrizzlyTask) -> None:
         if isinstance(task, GrizzlyTask) and (
             not hasattr(task, 'scenario') or
             task.scenario is None or

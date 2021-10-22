@@ -10,7 +10,7 @@ from locust.event import EventHook
 from paramiko import SFTPClient, Transport
 from paramiko.pkey import PKey
 
-from .context import RequestTask
+from .task import RequestTask
 
 
 logger = logging.getLogger(__name__)

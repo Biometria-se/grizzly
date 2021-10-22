@@ -7,6 +7,7 @@ from behave import register_type, then  # pylint: disable=no-name-in-module
 from ...utils import add_request_task
 from ...types import RequestDirection, RequestMethod
 from ...context import GrizzlyContext
+from ...task import PrintTask, SleepTask
 
 
 def parse_method(text: str) -> RequestMethod:
@@ -194,4 +195,21 @@ def step_task_wait_seconds(context: Context, wait_time: float) -> None:
 
     assert wait_time > 0.0, f'wait time cannot be less than 0.0 seconds'
 
-    grizzly.scenario.add_task(wait_time)
+    grizzly.scenario.add_task(SleepTask(sleep=wait_time))
+
+
+@then(u'print message "{message}"')
+def step_task_print_message(context: Context, message: str) -> None:
+    '''Print a message in the scenario. Useful for visualizing values of variables.
+    The message can be a jinja template, and any variables will be rendered at the time the task executes.
+
+    ```gherkin
+    And print message "context_variable='{{ context_variable }}'
+    ```
+
+    Args:
+        message (str): message to print
+    '''
+
+    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly.scenario.add_task(PrintTask(message=message))

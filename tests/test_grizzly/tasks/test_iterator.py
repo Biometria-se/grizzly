@@ -10,9 +10,9 @@ from locust.user.task import TaskSet
 from locust.exception import StopUser
 
 from grizzly.tasks.iterator import IteratorTasks
-from grizzly.testdata.models import TemplateData
 from grizzly.testdata.communication import TestdataConsumer
 from grizzly.testdata.utils import transform
+from grizzly.task import SleepTask, PrintTask
 
 from ..fixtures import grizzly_context, request_task  # pylint: disable=unused-import
 from ..helpers import RequestCalled
@@ -26,13 +26,12 @@ class TestIterationTasks:
 
     @pytest.mark.usefixtures('grizzly_context')
     def test_add_scenario_task(self, grizzly_context: Callable, mocker: MockerFixture) -> None:
-        _, _, task, [_, _, request] = grizzly_context(task_type=IteratorTasks)
+        _, user, task, [_, _, request] = grizzly_context(task_type=IteratorTasks)
         request.endpoint = '/api/v1/test'
         IteratorTasks.add_scenario_task(request)
         assert isinstance(task, IteratorTasks)
         assert len(task.tasks) == 2
 
-        task.iteration_data = TemplateData()
         task_method = task.tasks[-1]
 
         assert callable(task_method)
@@ -45,17 +44,38 @@ class TestIterationTasks:
                 assert sleep_time == time
 
             mocker.patch(
-                'grizzly.tasks.gsleep',
+                'grizzly.task.gsleep',
                 mocked_wait,
             )
 
         generate_mocked_wait(1.5)
-        IteratorTasks.add_scenario_task(1.5)
+        IteratorTasks.add_scenario_task(SleepTask(sleep=1.5))
         assert len(task.tasks) == 3
 
         task_method = task.tasks[-1]
         assert callable(task_method)
         task_method(task)
+
+        IteratorTasks.add_scenario_task(PrintTask(message='hello {{ world }}'))
+        assert len(task.tasks) == 4
+
+        logger_spy = mocker.spy(task.logger, 'info')
+
+        task_method = task.tasks[-1]
+        assert callable(task_method)
+        task_method(task)
+
+        assert logger_spy.call_count == 1
+        args, _ = logger_spy.call_args_list[0]
+        assert args[0] == 'hello '
+
+        user.set_context_variable('world', 'world!')
+
+        task_method(task)
+
+        assert logger_spy.call_count == 2
+        args, _ = logger_spy.call_args_list[1]
+        assert args[0] == 'hello world!'
 
     @pytest.mark.usefixtures('grizzly_context')
     def test_on_event_handlers(self, grizzly_context: Callable, mocker: MockerFixture) -> None:
