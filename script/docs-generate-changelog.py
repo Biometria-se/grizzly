@@ -11,11 +11,15 @@ def main() -> int:
     tags = output.split('\n')
     tags.sort(reverse=True)
 
+    print(f'{tags=}')
+
     with open(path.join(base_directory, 'changelog.md'), 'w') as fd:
         fd.write('# Changelog\n\n')
 
         for index, previous_tag in enumerate(tags[1:], start=1):
             current_tag = tags[index-1]
+            print(f'generating changelog for {current_tag} <- {previous_tag}')
+
             output = subprocess.check_output([
                 'git',
                 'log',

@@ -2,7 +2,7 @@ astunparse==1.6.3
 mkdocs==1.2.3
 mkdocs-material==7.3.4
 mypy==0.910
-pip-licenses==3.5.2
+pip-licenses==3.5.3
 pydoc-markdown==4.3.2
 pylint==2.11.1
 pytablewriter==0.63.0
