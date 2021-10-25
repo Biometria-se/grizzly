@@ -14,3 +14,7 @@ coverage.xml
 event.json
 .env/
 .venv/
+
+# automagically generated
+docs/licenses.md
+docs/changelog.md
