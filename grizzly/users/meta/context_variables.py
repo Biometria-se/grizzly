@@ -8,7 +8,7 @@ from locust.user.users import User
 from locust.env import Environment
 
 from ...task import RequestTask
-from ...testdata.utils import merge_dicts
+from ...utils import merge_dicts
 from . import logger, FileRequests
 
 class ContextVariables(User):

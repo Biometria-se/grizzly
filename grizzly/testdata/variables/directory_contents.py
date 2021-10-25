@@ -47,11 +47,11 @@ def atomicdirectorycontents__base_type__(value: str) -> str:
 
         arguments = parse_arguments(AtomicDirectoryContents, directory_arguments)
 
-        for argument, value in arguments.items():
-            if argument not in AtomicDirectoryContents.arguments:
-                raise ValueError(f'AtomicDirectoryContents: argument {argument} is not allowed')
+        for argument_name, argument_value in arguments.items():
+            if argument_name not in AtomicDirectoryContents.arguments:
+                raise ValueError(f'AtomicDirectoryContents: argument {argument_name} is not allowed')
             else:
-                AtomicDirectoryContents.arguments[argument](value)
+                AtomicDirectoryContents.arguments[argument_name](argument_value)
 
         value = f'{directory_value} | {directory_arguments}'
     else:

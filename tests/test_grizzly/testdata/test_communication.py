@@ -18,7 +18,8 @@ from locust.exception import StopUser
 from locust.env import Environment
 
 from grizzly.testdata.communication import TestdataConsumer, TestdataProducer
-from grizzly.testdata.utils import initialize_testdata, transform
+from grizzly.testdata.utils import initialize_testdata
+from grizzly.utils import transform
 from grizzly.context import GrizzlyContext
 from grizzly.task import RequestTask
 

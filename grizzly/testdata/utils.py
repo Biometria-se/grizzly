@@ -1,7 +1,4 @@
 from typing import Optional, List, Dict, Any
-from collections import namedtuple
-from collections.abc import Mapping
-from copy import deepcopy
 
 from ..context import GrizzlyContext
 from ..task import RequestTask
@@ -29,58 +26,6 @@ def initialize_testdata(sources: Optional[List[RequestTask]]) -> TestdataType:
                 initialized_datatypes[variable_datatype] = _get_variable_value(variable_datatype)
 
             testdata[scenario][variable] = initialized_datatypes[variable_datatype]
-
-    return testdata
-
-
-def merge_dicts(merged: Dict[str, Any], source: Dict[str, Any]) -> Dict[str, Any]:
-    merged = deepcopy(merged)
-    source = deepcopy(source)
-
-    for k in source.keys():
-        if (k in merged and isinstance(merged[k], dict)
-                and isinstance(source[k], Mapping)):
-            merged[k] = merge_dicts(merged[k], source[k])
-        else:
-            merged[k] = source[k]
-
-    return merged
-
-
-def transform(data: Dict[str, Any], raw: Optional[bool] = False) -> Dict[str, Any]:
-    testdata: Dict[str, Any] = {}
-
-    for key, value in data.items():
-        if '.' in key:
-            paths: List[str] = key.split('.')
-            variable = paths.pop(0)
-            path = paths.pop()
-            struct = {path: value}
-            paths.reverse()
-
-            for path in paths:
-                struct = {path: {**struct}}
-
-            if variable in testdata:
-                testdata[variable] = merge_dicts(testdata[variable], struct)
-            else:
-                testdata[variable] = {**struct}
-        else:
-            testdata[key] = value
-
-    if not raw:
-        return _objectify(testdata)
-    else:
-        return testdata
-
-
-def _objectify(testdata: Dict[str, Any]) -> Dict[str, Any]:
-    for variable, attributes in testdata.items():
-        if not isinstance(attributes, dict):
-            continue
-
-        attributes = _objectify(attributes)
-        testdata[variable] = namedtuple('Testdata', attributes.keys())(**attributes)
 
     return testdata
 

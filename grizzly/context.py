@@ -11,7 +11,7 @@ import yaml
 from behave.model import Scenario
 from locust.user.sequential_taskset import SequentialTaskSet
 
-from .testdata.models import TemplateData
+from .types import TemplateData
 
 logger = logging.getLogger(__name__)
 

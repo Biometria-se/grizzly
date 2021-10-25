@@ -1,7 +1,7 @@
 import shutil
 
 from os import path, environ
-from typing import Dict, Any, Callable, List, Tuple, cast
+from typing import Callable, List, Tuple, cast
 from json import dumps as jsondumps, loads as jsonloads
 from os import mkdir, path
 
@@ -16,9 +16,7 @@ from grizzly.context import GrizzlyContext
 from grizzly.task import RequestTask
 from grizzly.testdata.utils import (
     _get_variable_value,
-    _objectify,
     initialize_testdata,
-    transform,
 )
 from grizzly.testdata.variables import AtomicCsvRow, AtomicInteger, AtomicIntegerIncrementer
 
@@ -113,153 +111,6 @@ def test__get_variable_value_AtomicCsvRow(cleanup: Callable, tmpdir_factory: Tem
         assert value['test'] is None
     finally:
         shutil.rmtree(test_context_root)
-        cleanup()
-
-
-def test__objectify() -> None:
-    testdata: Dict[str, Any] = {
-        'AtomicInteger': {
-            'test': 1337,
-        },
-        'test': 1338,
-        'AtomicCsvRow': {
-            'input': {
-                'test1': 'hello',
-                'test2': 'world!',
-            }
-        },
-        'Test': {
-            'test1': {
-                'test2': {
-                    'test3': 'value',
-                }
-            }
-        }
-    }
-
-    obj = _objectify(testdata)
-
-    assert (
-        obj['AtomicInteger'].__module__ == 'grizzly.testdata.utils' and
-        obj['AtomicInteger'].__class__.__name__ == 'Testdata'
-    )
-    assert getattr(obj['AtomicInteger'], 'test') == 1337
-    assert isinstance(obj['test'], int)
-    assert obj['test'] == 1338
-    assert (
-        obj['AtomicCsvRow'].__module__ == 'grizzly.testdata.utils' and
-        obj['AtomicCsvRow'].__class__.__name__ == 'Testdata'
-    )
-    atomiccsvrow_input = getattr(obj['AtomicCsvRow'], 'input', None)
-    assert atomiccsvrow_input is not None
-    assert (
-        atomiccsvrow_input.__module__ == 'grizzly.testdata.utils' and
-        atomiccsvrow_input.__class__.__name__ == 'Testdata'
-    )
-    assert getattr(atomiccsvrow_input, 'test1', None) == 'hello'
-    assert getattr(atomiccsvrow_input, 'test2', None) == 'world!'
-
-    assert (
-        obj['Test'].__module__ == 'grizzly.testdata.utils' and
-        obj['Test'].__class__.__name__ == 'Testdata'
-    )
-    test = getattr(obj['Test'], 'test1', None)
-    assert test is not None
-    assert (
-        test.__module__ == 'grizzly.testdata.utils' and
-        test.__class__.__name__ == 'Testdata'
-    )
-    test = getattr(test, 'test2', None)
-    assert test is not None
-    assert (
-        test.__module__ == 'grizzly.testdata.utils' and
-        test.__class__.__name__ == 'Testdata'
-    )
-    test = getattr(test, 'test3', None)
-    assert test is not None
-    assert isinstance(test, str)
-    assert test == 'value'
-
-
-def test_transform_raw() -> None:
-    data = {
-        'test.number.value': 1337,
-        'test.number.description': 'simple description',
-        'test.string.value': 'hello world!',
-        'test.bool.value': True,
-    }
-
-    actual = transform(data, True)
-
-    assert actual == {
-        'test': {
-            'number': {
-                'value': 1337,
-                'description': 'simple description',
-            },
-            'string': {
-                'value': 'hello world!',
-            },
-            'bool': {
-                'value': True,
-            }
-        }
-    }
-
-
-@pytest.mark.usefixtures('cleanup')
-def test_transform(cleanup: Callable) -> None:
-    try:
-        data: Dict[str, Any] = {
-            'AtomicInteger.test': 1337,
-            'test': 1338,
-            'AtomicCsvRow.input.test1': 'hello',
-            'AtomicCsvRow.input.test2': 'world!',
-            'Test.test1.test2.test3': 'value',
-            'Test.test1.test2.test4': 'value',
-            'Test.test2.test3': 'value',
-        }
-
-        obj = transform(data)
-
-        assert (
-            obj['AtomicInteger'].__module__ == 'grizzly.testdata.utils' and
-            obj['AtomicInteger'].__class__.__name__ == 'Testdata'
-        )
-        assert getattr(obj['AtomicInteger'], 'test', None) == 1337
-        assert isinstance(obj['test'], int)
-        assert obj['test'] == 1338
-        assert (
-            obj['AtomicCsvRow'].__module__ == 'grizzly.testdata.utils' and
-            obj['AtomicCsvRow'].__class__.__name__ == 'Testdata'
-        )
-        assert (
-            obj['AtomicCsvRow'].input.__module__ == 'grizzly.testdata.utils' and
-            obj['AtomicCsvRow'].input.__class__.__name__ == 'Testdata'
-        )
-        assert getattr(obj['AtomicCsvRow'].input, 'test1', None) == 'hello'
-        assert getattr(obj['AtomicCsvRow'].input, 'test2', None) == 'world!'
-        assert (
-            obj['Test'].__module__ == 'grizzly.testdata.utils' and
-            obj['Test'].__class__.__name__ == 'Testdata'
-        )
-        test = getattr(obj['Test'], 'test1', None)
-        assert test is not None
-        assert (
-            test.__module__ == 'grizzly.testdata.utils' and
-            test.__class__.__name__ == 'Testdata'
-        )
-        test = getattr(test, 'test2', None)
-        assert test is not None
-        assert (
-            test.__module__ == 'grizzly.testdata.utils' and
-            test.__class__.__name__ == 'Testdata'
-        )
-        test = getattr(test, 'test3', None)
-        assert test is not None
-        assert isinstance(test, str)
-        assert test == 'value'
-    finally:
         cleanup()
 
 

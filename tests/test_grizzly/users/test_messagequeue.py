@@ -18,11 +18,10 @@ from grizzly.users.meta import RequestLogger, ResponseHandler
 from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 from grizzly.task import RequestTask
-from grizzly.types import ResponseTarget
-from grizzly.testdata.utils import transform
-from grizzly.testdata.models import TemplateData
+from grizzly.types import ResponseTarget, TemplateData
+from grizzly.utils import transform
 from grizzly.exceptions import ResponseHandlerError
-from grizzly.utils import add_save_handler
+from grizzly.steps.helpers import add_save_handler
 from grizzly_extras.messagequeue import MessageQueueResponse
 
 from ..fixtures import grizzly_context, request_task, locust_environment  # pylint: disable=unused-import
@@ -82,7 +81,7 @@ class TestMessageQueueUser:
 
         out, _ = process.communicate()
         output = out.decode()
-        print(output)
+
         assert process.returncode == 1
         assert "mq.pymqi.__name__='grizzly_extras.dummy_pymqi'" in output
         assert 'NotImplementedError: MessageQueueUser could not import pymqi, have you installed IBM MQ dependencies?' in output
@@ -175,13 +174,28 @@ class TestMessageQueueUser:
             pass
 
         mocker.patch(
-            'zmq.sugar.socket.Socket.bind',
+            'grizzly.users.messagequeue.zmq.sugar.context.Context.term',
             mocked_noop,
         )
 
         mocker.patch(
-            'zmq.sugar.socket.Socket.connect',
+            'grizzly.users.messagequeue.zmq.sugar.context.Context.__del__',
+            mocked_noop,
+        )
+
+        mocker.patch(
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.bind',
+            mocked_noop,
+        )
+
+        mocker.patch(
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.connect',
             mocked_zmq_connect,
+        )
+
+        mocker.patch(
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.send_json',
+            mocked_noop,
         )
 
         def mocked_request_fire(*args: Tuple[Any, ...], **_kwargs: Dict[str, Any]) -> None:

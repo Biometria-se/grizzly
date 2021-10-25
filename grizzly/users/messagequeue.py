@@ -67,7 +67,7 @@ Default SSL cipher is `ECDHE_RSA_AES_256_GCM_SHA384`, change it by setting `auth
 
 Default certificate label is set to `auth.username`, change it by setting `auth.cert_label` context variable.
 '''
-from typing import Dict, Any, Generator, Tuple, Optional
+from typing import Dict, Any, Generator, Tuple, Optional, cast
 from urllib.parse import urlparse, parse_qs, unquote
 from contextlib import contextmanager
 from time import monotonic as time
@@ -82,7 +82,7 @@ from locust.exception import StopUser, CatchResponseError
 
 from .meta import ContextVariables, ResponseHandler, RequestLogger
 from ..task import RequestTask
-from ..testdata.utils import merge_dicts
+from ..utils import merge_dicts
 from . import logger
 
 
@@ -110,6 +110,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
 
     mq_context: MessageQueueContext
     worker_id: Optional[str]
+    zmq_context = zmq.Context()
     zmq_client: zmq.Socket
     zmq_url = 'tcp://127.0.0.1:5554'
 
@@ -189,7 +190,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
                 # do not block all other "threads", just it self
                 while True:
                     try:
-                        response = self.zmq_client.recv_json(flags=zmq.NOBLOCK)
+                        response = cast(MessageQueueResponse, self.zmq_client.recv_json(flags=zmq.NOBLOCK))
                         break
                     except zmq.Again:
                         gsleep(0.1)
@@ -258,8 +259,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
                 'action': 'CONN',
                 'context': self.mq_context
             }, self.mq_context['connection'], abort=True, meta=True):
-                zmq_context = zmq.Context()
-                self.zmq_client = zmq_context.socket(zmq.REQ)
+                self.zmq_client = self.zmq_context.socket(zmq.REQ)
                 self.zmq_client.connect(self.zmq_url)
 
         message_queue_request: MessageQueueRequest = {

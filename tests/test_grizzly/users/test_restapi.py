@@ -21,7 +21,7 @@ from grizzly.clients import ResponseEventSession
 from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContextScenario
 from grizzly.task import RequestTask
-from grizzly.testdata.utils import transform
+from grizzly.utils import transform
 
 from ..fixtures import grizzly_context, request_task  # pylint: disable=unused-import
 from ..helpers import RequestSilentFailureEvent, RequestEvent, ResultSuccess

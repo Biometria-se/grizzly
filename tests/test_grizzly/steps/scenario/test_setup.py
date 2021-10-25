@@ -8,7 +8,7 @@ from pytest_mock import mocker  # pylint: disable=unused-import
 from pytest_mock.plugin import MockerFixture
 
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import
-from grizzly.testdata.models import TemplateDataType, TemplateData
+from grizzly.types import TemplateDataType, TemplateData
 
 from ...fixtures import behave_context  # pylint: disable=unused-import
 
@@ -301,7 +301,7 @@ def test_step_setup_set_variable_alias(behave_context: Context, mocker: MockerFi
         super(TemplateData, self).__setitem__(key, value)
 
     mocker.patch(
-        'grizzly.testdata.models.TemplateData.__setitem__',
+        'grizzly.types.TemplateData.__setitem__',
         setitem,
     )
 

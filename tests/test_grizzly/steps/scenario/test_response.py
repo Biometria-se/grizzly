@@ -6,7 +6,7 @@ from parse import compile
 from behave.runner import Context
 from behave.model import Table, Row
 
-from grizzly.types import RequestMethod
+from grizzly.types import RequestMethod, str_response_content_type
 from grizzly.task import RequestTask, SleepTask
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import
 
@@ -55,7 +55,7 @@ def test_parse_response_content_type() -> None:
     p = compile(
         'content type is "{content_type:ResponseContentType}"',
         extra_types=dict(
-            ResponseContentType=parse_response_content_type,
+            ResponseContentType=str_response_content_type,
         ),
     )
 

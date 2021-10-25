@@ -11,7 +11,7 @@ from locust.env import Environment
 
 from ..context import GrizzlyContext
 from ..types import TestdataType
-from .utils import transform
+from ..utils import transform
 
 
 logger = logging.getLogger(__name__)

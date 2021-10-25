@@ -11,7 +11,7 @@ from locust.exception import StopUser
 
 from grizzly.tasks.iterator import IteratorTasks
 from grizzly.testdata.communication import TestdataConsumer
-from grizzly.testdata.utils import transform
+from grizzly.utils import transform
 from grizzly.task import SleepTask, PrintTask
 
 from ..fixtures import grizzly_context, request_task  # pylint: disable=unused-import

@@ -14,7 +14,7 @@ from jinja2 import Template
 from ...task import RequestTask
 from ...transformer import JsonBytesEncoder
 from ...types import HandlerContextType, RequestDirection
-from ...testdata.utils import merge_dicts
+from ...utils import merge_dicts
 from .response_event import ResponseEvent
 from .context_variables import ContextVariables
 
