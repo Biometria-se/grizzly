@@ -11,7 +11,7 @@ coverage.xml
 *.kdb
 *.rdb
 *.sth
-event.json
+*.event
 .env/
 .venv/
 
