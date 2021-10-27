@@ -60,6 +60,9 @@ renderer:
           - title: Random String
             contents:
             - grizzly.testdata.variables.random_string
+          - title: Message Queue
+            contents:
+            - grizzly.testdata.variables.messagequeue
         - title: Templating
           name: templating
           source: docs/usage/variables/templating.md

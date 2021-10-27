@@ -9,7 +9,7 @@ from _pytest.tmpdir import TempdirFactory
 
 from grizzly.types import RequestDirection, RequestMethod, TemplateData, bool_typed, int_rounded_float_typed
 
-from .testdata.fixtures import cleanup
+from .testdata.fixtures import cleanup  # pylint: disable=unused-import
 
 
 class TestRequestDirection:

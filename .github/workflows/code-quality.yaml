@@ -51,11 +51,11 @@ jobs:
 
     - name: run coverage
       run: |
-        coverage report --omit=grizzly/users/messagequeue.py,grizzly_extras/messagequeue/*,tests/*,setup.py --fail-under=95
+        coverage report --omit=grizzly/**/messagequeue.py,grizzly_extras/messagequeue/*,tests/*,setup.py --fail-under=95
 
     - name: run pylint
       run: |
-        pylint --fail-under=10 --ignore=messagequeue.py,test_messagequeue.py,grizzly_extras/messagequeue/__init__.py,tests/test_grizzly_extras/messagequeue/test__init__.py grizzly/ grizzly_extras/ tests/ example/
+        pylint --jobs=0 --fail-under=10 --ignore=messagequeue.py,test_messagequeue.py,grizzly_extras/messagequeue/__init__.py,tests/test_grizzly_extras/messagequeue/test__init__.py grizzly/ grizzly_extras/ tests/ example/
 
     - name: run mypy
       run: |

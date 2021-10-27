@@ -102,7 +102,7 @@ class AtomicVariable(Generic[T], AbstractAtomicClass):
 
 
 def parse_arguments(variable_type: Type[AtomicVariable], arguments: str) -> Dict[str, Any]:
-    if '=' not in arguments or (arguments.count('=') > 1 and ', ' not in arguments):
+    if '=' not in arguments or (arguments.count('=') > 1 and (arguments.count('"') < 2 and arguments.count("'") < 2) and ', ' not in arguments):
         raise ValueError(f'{variable_type.__name__}: incorrect format in arguments: "{arguments}"')
 
     parsed: Dict[str, Any] = {}
@@ -116,7 +116,7 @@ def parse_arguments(variable_type: Type[AtomicVariable], arguments: str) -> Dict
         if '=' not in argument:
             raise ValueError(f'{variable_type.__name__}: incorrect format for argument: "{argument}"')
 
-        [key, value] = argument.split('=')
+        [key, value] = argument.split('=', 1)
 
         key = key.strip()
         if '"' in key or "'" in key or ' ' in key:
@@ -180,3 +180,4 @@ from .date import AtomicDate, atomicdate__base_type__
 from .directory_contents import AtomicDirectoryContents, atomicdirectorycontents__base_type__
 from .csv_row import AtomicCsvRow, atomiccsvrow__base_type__
 from .random_string import AtomicRandomString, atomicrandomstring__base_type__
+from .messagequeue import AtomicMessageQueue, atomicmessagequeue__base_type__

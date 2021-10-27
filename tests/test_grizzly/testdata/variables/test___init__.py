@@ -135,6 +135,24 @@ def test_parse_arguments(cleanup: Callable) -> None:
             'arg1': 'testvalue1',
             'arg2': 'test value 2',
         }
+
+        with pytest.raises(ValueError) as ve:
+            parse_arguments(AtomicVariable, 'url=http://www.example.com?query_string=value')
+        assert 'incorrect format in arguments: ' in str(ve)
+
+        with pytest.raises(ValueError) as ve:
+            parse_arguments(AtomicVariable, 'url="http://www.example.com?query_string=value')
+        assert 'incorrect format in arguments: ' in str(ve)
+
+        with pytest.raises(ValueError) as ve:
+            parse_arguments(AtomicVariable, "url='http://www.example.com?query_string=value")
+        assert 'incorrect format in arguments: ' in str(ve)
+
+        arguments = parse_arguments(AtomicVariable, "url='http://www.example.com?query_string=value', argument=False")
+        assert arguments == {
+            'url': 'http://www.example.com?query_string=value',
+            'argument': 'False',
+        }
     finally:
         cleanup()
 
