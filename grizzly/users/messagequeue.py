@@ -108,6 +108,8 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
         }
     }
 
+    __dependencies__ = set(['messagequeue-daemon'])
+
     mq_context: MessageQueueContext
     worker_id: Optional[str]
     zmq_context = zmq.Context()

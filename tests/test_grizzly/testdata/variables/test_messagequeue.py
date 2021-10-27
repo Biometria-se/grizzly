@@ -18,6 +18,11 @@ from grizzly.testdata.variables import atomicmessagequeue__base_type__
 from grizzly.types import ResponseContentType
 from grizzly_extras.messagequeue import MessageQueueResponse
 
+try:
+    import pymqi
+except:
+    from grizzly_extras import dummy_pymqi as pymqi
+
 from ...fixtures import behave_context  # pylint: disable=unused-import
 
 @pytest.fixture
@@ -116,7 +121,7 @@ def test_atomicmessagequeue__base_type__() -> None:
     )
     assert safe_value == 'TEST.QUEUE | url="mq://mq.example.com/?QueueManager=QM1&Channel=SRV.CONN", expression="$.test.result", content_type="application/json"'
 
-class TestAtomicMessageQueue:
+class TestAtomicMessageQueueNoPymqi:
     def test_no_pymqi_dependencies(self) -> None:
         env = environ.copy()
         del env['LD_LIBRARY_PATH']
@@ -140,6 +145,9 @@ class TestAtomicMessageQueue:
         assert process.returncode == 1
         assert "mq.pymqi.__name__='grizzly_extras.dummy_pymqi'" in output
         assert 'NotImplementedError: AtomicMessageQueue could not import pymqi, have you installed IBM MQ dependencies?' in output
+
+@pytest.mark.skipif(pymqi.__name__ == 'grizzly_extras.dummy_pymqi', reason='needs native IBM MQ libraries')
+class TestAtomicMessageQueue:
 
     def test___init__(self, mocker: MockerFixture) -> None:
         def mocked_create_client(i: AtomicMessageQueue, variable: str, settings: Dict[str, Any]) -> Any:
@@ -322,61 +330,19 @@ class TestAtomicMessageQueue:
     def test_create_client(self, mocker: MockerFixture, noop_zmq: Callable[[], None]) -> None:
         noop_zmq()
 
-        from grizzly.testdata.variables import messagequeue as mq
-        gsleep_spy = mocker.spy(mq, 'gsleep')
-
-        def mock_response(response: Optional[MessageQueueResponse]) -> None:
-            mocker.patch(
-                'grizzly.testdata.variables.messagequeue.zmq.sugar.socket.Socket.recv_json',
-                side_effect=[zmq.Again(), response]
-            )
-
         try:
-            mock_response(None)
-
-            with pytest.raises(RuntimeError) as re:
-                AtomicMessageQueue(
-                    'test',
-                    'TEST.QUEUE | repeat=True, url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN", expression="$.test.result", content_type=json',
-                )
-            assert 'AtomicMessageQueue.test: no response when trying to connect' in str(re)
-            assert gsleep_spy.call_count == 1
-
-            AtomicMessageQueue.destroy()
-
-            mock_response({
-                'success': False,
-                'message': 'testing testing'
-            })
-
-            with pytest.raises(RuntimeError) as re:
-                AtomicMessageQueue(
-                    'test',
-                    'TEST.QUEUE | repeat=True, url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN", expression="$.test.result", content_type=json',
-                )
-            assert 'testing testing' in str(re)
-            assert gsleep_spy.call_count == 2
-
-            AtomicMessageQueue.destroy()
-
-            mock_response({
-                'success': True,
-                'worker': '1337-aaaabbbb-beef',
-            })
-
             v = AtomicMessageQueue(
                 'test',
                 'TEST.QUEUE | repeat=True, url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN", expression="$.test.result", content_type=json',
             )
-            assert gsleep_spy.call_count == 3
-
+            assert isinstance(v._queue_clients.get('test', None), zmq.Socket)
             assert v._settings.get('test', None) == {
                 'repeat': True,
                 'wait': None,
                 'url': 'mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN',
                 'expression': '$.test.result',
                 'content_type': ResponseContentType.JSON,
-                'worker': '1337-aaaabbbb-beef',
+                'worker': None,
                 'context': {
                     'connection': 'mq.example.com(1414)',
                     'queue_manager': 'QM1',
@@ -389,7 +355,7 @@ class TestAtomicMessageQueue:
                     'message_wait': None,
                 }
             }
-            assert isinstance(v._queue_clients.get('test', None), zmq.Socket)
+
         finally:
             try:
                 AtomicMessageQueue.destroy()
@@ -436,17 +402,67 @@ class TestAtomicMessageQueue:
                 side_effect=[zmq.Again(), response] * repeat
             )
 
+        from grizzly.testdata.variables import messagequeue as mq
+        gsleep_spy = mocker.spy(mq, 'gsleep')
+
         try:
+            mock_response(None)
+
             v = AtomicMessageQueue(
                 'test',
                 'TEST.QUEUE | repeat=True, url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN", expression="$.test.result", content_type=json',
             )
+
+            with pytest.raises(RuntimeError) as re:
+                v['test']
+            assert 'AtomicMessageQueue.test: no response when trying to connect' in str(re)
+            assert gsleep_spy.call_count == 1
+
+            AtomicMessageQueue.destroy()
+
+            mock_response({
+                'success': False,
+                'message': 'testing testing',
+            })
+
+            v = AtomicMessageQueue(
+                'test',
+                'TEST.QUEUE | repeat=True, url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN", expression="$.test.result", content_type=json',
+            )
+            with pytest.raises(RuntimeError) as re:
+                v['test']
+            assert 'testing testing' in str(re)
+            assert gsleep_spy.call_count == 2
+            assert v._settings['test'].get('worker', None) is None
+
+            # simulate that we have connected
+            v._settings['test']['worker'] = '1337-aaaabbbb-beef'
 
             mock_response(None)
 
             with pytest.raises(RuntimeError) as re:
                 v['test']
             assert 'AtomicMessageQueue.test: unknown error, no response' in str(re)
+            assert gsleep_spy.call_count == 3
+            assert v._settings.get('test', None) == {
+                'repeat': True,
+                'wait': None,
+                'url': 'mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN',
+                'expression': '$.test.result',
+                'content_type': ResponseContentType.JSON,
+                'worker': '1337-aaaabbbb-beef',
+                'context': {
+                    'connection': 'mq.example.com(1414)',
+                    'queue_manager': 'QM1',
+                    'channel': 'SRV.CONN',
+                    'username': None,
+                    'password': None,
+                    'key_file': None,
+                    'cert_label': None,
+                    'ssl_cipher': None,
+                    'message_wait': None,
+                }
+            }
 
             mock_response({
                 'success': False,

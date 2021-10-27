@@ -1,7 +1,7 @@
 import logging
 import subprocess
 
-from typing import Optional, Callable, List, Tuple, cast
+from typing import Optional, Callable, List, Tuple, Set, Dict, cast
 from os import environ, name as osname
 from signal import SIGTERM
 from socket import error as SocketError
@@ -72,7 +72,7 @@ def on_local(context: Context) -> bool:
     return value
 
 
-def setup_locust_scenarios(context: GrizzlyContext) -> Tuple[List[User], List[RequestTask], bool]:
+def setup_locust_scenarios(context: GrizzlyContext) -> Tuple[List[User], List[RequestTask], Set[str]]:
     user_classes: List[User] = []
     request_tasks: List[RequestTask] = []
 
@@ -80,7 +80,7 @@ def setup_locust_scenarios(context: GrizzlyContext) -> Tuple[List[User], List[Re
 
     assert len(scenarios) > 0, f'no scenarios in feature'
 
-    start_messagequeue_daemon = False
+    external_dependencies: Set[str] = set()
 
     for scenario in scenarios:
         # Given a user of type "" load testing ""
@@ -96,8 +96,7 @@ def setup_locust_scenarios(context: GrizzlyContext) -> Tuple[List[User], List[Re
         except TypeError:  # missing required environment argument, is OK
             pass
 
-        if user_class_type.__name__.startswith('MessageQueueUser_') and not start_messagequeue_daemon:
-            start_messagequeue_daemon = True
+        external_dependencies.update(user_class_type.__dependencies__)
 
         scenario_type = create_task_class_type('IteratorTasks', scenario)
         scenario.name = scenario_type.__name__
@@ -110,7 +109,7 @@ def setup_locust_scenarios(context: GrizzlyContext) -> Tuple[List[User], List[Re
 
         user_classes.append(user_class_type)
 
-    return user_classes, request_tasks, start_messagequeue_daemon
+    return user_classes, request_tasks, external_dependencies
 
 
 def setup_resource_limits(context: Context) -> None:
@@ -132,7 +131,7 @@ def setup_resource_limits(context: Context) -> None:
             )
 
 
-def setup_environment_listeners(context: Context, environment: Environment, request_tasks: List[RequestTask]) -> None:
+def setup_environment_listeners(context: Context, environment: Environment, request_tasks: List[RequestTask]) -> Set[str]:
     # make sure we don't have any listeners
     environment.events.init._handlers = []
     environment.events.test_start._handlers = []
@@ -144,18 +143,20 @@ def setup_environment_listeners(context: Context, environment: Environment, requ
 
     # add standard listeners
     testdata: Optional[TestdataType] = None
-    if not on_worker(context):
-        # initialize testdata
-        try:
-            testdata = initialize_testdata(request_tasks)
-            logger.debug(f'{testdata=}')
-            for scenario_testdata in testdata.values():
-                for variable, value in scenario_testdata.items():
-                    assert value is not None, f'variable {variable} has not been initialized'
-        except TemplateError as e:
-            logger.error(e, exc_info=True)
-            assert False, f'error parsing request payload: {e}'
+    external_dependencies: Set[str] = set()
 
+    # initialize testdata
+    try:
+        testdata, external_dependencies = initialize_testdata(request_tasks)
+        logger.debug(f'{testdata=}')
+        for scenario_testdata in testdata.values():
+            for variable, value in scenario_testdata.items():
+                assert value is not None, f'variable {variable} has not been initialized'
+    except TemplateError as e:
+        logger.error(e, exc_info=True)
+        assert False, f'error parsing request payload: {e}'
+
+    if not on_worker(context):
         validate_results = False
 
         # only add the listener if there are any rules for validating results
@@ -179,6 +180,8 @@ def setup_environment_listeners(context: Context, environment: Environment, requ
     # And save statistics to "..."
     if grizzly.setup.statistics_url is not None:
         environment.events.init.add_listener(init_statistics_listener(grizzly.setup.statistics_url))
+
+    return external_dependencies
 
 
 def run(context: Context) -> int:
@@ -206,26 +209,15 @@ def run(context: Context) -> int:
 
     user_classes: List[User] = []
     request_tasks: List[RequestTask] = []
-    messagequeue_daemon_process: Optional[subprocess.Popen] = None
+    external_processes: Dict[str, subprocess.Popen] = {}
 
-    user_classes, request_tasks, start_messagequeue_daemon = setup_locust_scenarios(grizzly)
+    user_classes, request_tasks, external_dependencies = setup_locust_scenarios(grizzly)
 
     assert len(user_classes) > 0, 'no users specified in feature'
     assert len(request_tasks) > 0, 'no requests specified for users'
     assert len(user_classes) <= grizzly.setup.user_count, f"increase the number in step 'Given \"{grizzly.setup.user_count}\" users' to at least {len(user_classes)}"
 
     try:
-        if not on_master(context) and start_messagequeue_daemon:
-            logger.info('starting messagequeue-daemon for MessageQueueUser')
-            messagequeue_daemon_process = subprocess.Popen(
-                ['messagequeue-daemon'],
-                env=environ.copy(),
-                shell=False,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-            )
-            gevent.sleep(2)
-
         setup_resource_limits(context)
 
         environment = Environment(
@@ -234,7 +226,20 @@ def run(context: Context) -> int:
             events=events,
         )
 
-        setup_environment_listeners(context, environment, request_tasks)
+        variable_dependencies = setup_environment_listeners(context, environment, request_tasks)
+        external_dependencies.update(variable_dependencies)
+
+        if not on_master(context) and len(external_dependencies) > 0:
+            for external_dependency in external_dependencies:
+                logger.info(f'starting {external_dependency}')
+                external_processes.update({external_dependency: subprocess.Popen(
+                    [external_dependency],
+                    env=environ.copy(),
+                    shell=False,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                )})
+                gevent.sleep(2)
 
         if on_master(context):
             host = '0.0.0.0'
@@ -389,10 +394,13 @@ def run(context: Context) -> int:
         finally:
             return shutdown()
     finally:
-        if messagequeue_daemon_process is not None:
-            logger.info('stopping messagequeue-daemon')
-            messagequeue_daemon_process.terminate()
-            if context.config.verbose:
-                stdout, _ = messagequeue_daemon_process.communicate()
-                logger.debug(stdout.decode())
-            logger.debug(f'{messagequeue_daemon_process.returncode=}')
+        if len(external_processes) > 0:
+            for external_dependency, external_process in external_processes.items():
+                logger.info(f'stopping {external_dependency}')
+                external_process.terminate()
+                if context.config.verbose:
+                    stdout, _ = external_process.communicate()
+                    logger.debug(stdout.decode())
+                    logger.debug(f'{external_process.returncode=}')
+
+            external_processes.clear()

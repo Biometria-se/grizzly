@@ -1,5 +1,5 @@
 '''This package contains special variables that can be used in a feature file and is synchronized between locust workers.'''
-from typing import Any, Dict, Optional, TypeVar, Generic, Tuple, Callable, Type, cast
+from typing import Any, Dict, Optional, TypeVar, Generic, Tuple, Callable, Type, Set, cast
 from importlib import import_module
 
 from gevent.lock import Semaphore
@@ -15,6 +15,8 @@ class AbstractAtomicClass:
 
 class AtomicVariable(Generic[T], AbstractAtomicClass):
     __base_type__: Optional[Callable] = None
+    __dependencies__: Set[str] = set()
+
     __instance: Optional['AtomicVariable'] = None
 
     _initialized: bool

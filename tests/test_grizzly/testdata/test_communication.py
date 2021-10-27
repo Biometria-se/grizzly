@@ -80,7 +80,9 @@ class TestTestdataProducer:
             grizzly.scenario.context['host'] = 'http://test.nu'
             grizzly.scenario.add_task(request)
 
-            testdata = initialize_testdata(cast(List[RequestTask], grizzly.scenario.tasks))
+            testdata, external_dependencies = initialize_testdata(cast(List[RequestTask], grizzly.scenario.tasks))
+
+            assert external_dependencies == set()
 
             producer = TestdataProducer(address=address, testdata=testdata, environment=environment)
             producer_thread = gevent.spawn(producer.run)
@@ -184,7 +186,9 @@ class TestTestdataProducer:
             grizzly.scenario.context['host'] = 'http://test.nu'
             grizzly.scenario.add_task(request)
 
-            testdata = initialize_testdata(cast(List[RequestTask], grizzly.scenario.tasks))
+            testdata, external_dependencies = initialize_testdata(cast(List[RequestTask], grizzly.scenario.tasks))
+
+            assert external_dependencies == set()
 
             producer = TestdataProducer(address=address, testdata=testdata, environment=environment)
             producer_thread = gevent.spawn(producer.run)

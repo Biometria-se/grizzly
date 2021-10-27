@@ -119,6 +119,7 @@ def atomicmessagequeue__base_type__(value: str) -> str:
 
 class AtomicMessageQueue(AtomicVariable[str]):
     __base_type__ = atomicmessagequeue__base_type__
+    __dependencies__ = set(['messagequeue-daemon'])
     __initialized: bool = False
 
     _settings: Dict[str, Dict[str, Any]]
@@ -196,12 +197,7 @@ class AtomicMessageQueue(AtomicVariable[str]):
         parameters: List[str] = []
 
         for querystring in querystrings:
-            try:
-                resolved = cast(str, resolve_variable(grizzly, querystrings[querystring][0]))
-            except:
-                import json
-                print(json.dumps(grizzly.state.configuration, indent=2))
-                raise
+            resolved = cast(str, resolve_variable(grizzly, querystrings[querystring][0]))
             parameters.append(f'{querystring}={resolved}')
 
         parsed = parsed._replace(query='&'.join(parameters))
@@ -257,32 +253,8 @@ class AtomicMessageQueue(AtomicVariable[str]):
     def create_client(self, variable: str, settings: Dict[str, Any]) -> zmq.Socket:
         self._settings[variable].update({'context': self.create_context(settings)})
 
-        request: MessageQueueRequest = {
-            'action': 'CONN',
-            'context': self._settings[variable]['context'],
-        }
-
         zmq_client = cast(zmq.Socket, self._zmq_context.socket(zmq.REQ))
         zmq_client.connect(self._zmq_url)
-        zmq_client.send_json(request)
-
-        response: Optional[MessageQueueResponse] = None
-
-        while True:
-            try:
-                response = zmq_client.recv_json(flags=zmq.NOBLOCK)
-                break
-            except zmq.Again:
-                gsleep(0.1)
-
-        if response is None:
-            raise RuntimeError(f'{self.__class__.__name__}.{variable}: no response when trying to connect')
-
-        message = response.get('message', None)
-        if not response['success']:
-            raise RuntimeError(message)
-
-        self._settings[variable]['worker'] = response['worker']
 
         return zmq_client
 
@@ -321,7 +293,37 @@ class AtomicMessageQueue(AtomicVariable[str]):
         with self._semaphore:
             queue_name = cast(str, self._get_value(variable))
 
-            request: MessageQueueRequest = {
+            request: MessageQueueRequest
+            response: Optional[MessageQueueResponse]
+
+            # first request, connect to messagequeue-daemon
+            if self._settings[variable].get('worker', None) is None:
+                request = {
+                    'action': 'CONN',
+                    'context': self._settings[variable]['context'],
+                }
+
+                self._queue_clients[variable].send_json(request)
+
+                response = None
+
+                while True:
+                    try:
+                        response = self._queue_clients[variable].recv_json(flags=zmq.NOBLOCK)
+                        break
+                    except zmq.Again:
+                        gsleep(0.1)
+
+                if response is None:
+                    raise RuntimeError(f'{self.__class__.__name__}.{variable}: no response when trying to connect')
+
+                message = response.get('message', None)
+                if not response['success']:
+                    raise RuntimeError(message)
+
+                self._settings[variable]['worker'] = response['worker']
+
+            request = {
                 'action': 'GET',
                 'worker': self._settings[variable]['worker'],
                 'context': {
@@ -332,7 +334,7 @@ class AtomicMessageQueue(AtomicVariable[str]):
 
             self._queue_clients[variable].send_json(request)
 
-            response: Optional[MessageQueueResponse] = None
+            response = None
 
             while True:
                 try:

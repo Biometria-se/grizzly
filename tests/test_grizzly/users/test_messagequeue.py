@@ -3,7 +3,11 @@ import subprocess
 from typing import Callable, Dict, Tuple, Any, cast, Optional
 from os import environ
 
-import pymqi
+try:
+    import pymqi
+except:
+    from grizzly_extras import dummy_pymqi as pymqi
+
 import zmq
 import pytest
 
@@ -51,17 +55,7 @@ def mq_user(grizzly_context: Callable) -> Tuple[MessageQueueUser, GrizzlyContext
 
     return user, scenario, environment
 
-class TestMessageQueueUser:
-    real_stuff = {
-        'username': '',
-        'password': '',
-        'key_file': '',
-        'endpoint': '',
-        'host': '',
-        'queue_manager': '',
-        'channel': '',
-    }
-
+class TestMessageQueueUserNoPymqi:
     def test_no_pymqi_dependencies(self) -> None:
         env = environ.copy()
         del env['LD_LIBRARY_PATH']
@@ -85,6 +79,19 @@ class TestMessageQueueUser:
         assert process.returncode == 1
         assert "mq.pymqi.__name__='grizzly_extras.dummy_pymqi'" in output
         assert 'NotImplementedError: MessageQueueUser could not import pymqi, have you installed IBM MQ dependencies?' in output
+
+
+@pytest.mark.skipif(pymqi.__name__ == 'grizzly_extras.dummy_pymqi', reason='needs native IBM MQ libraries')
+class TestMessageQueueUser:
+    real_stuff = {
+        'username': '',
+        'password': '',
+        'key_file': '',
+        'endpoint': '',
+        'host': '',
+        'queue_manager': '',
+        'channel': '',
+    }
 
     @pytest.mark.usefixtures('locust_environment')
     def test_create(self, locust_environment: Environment) -> None:

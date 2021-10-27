@@ -18,10 +18,16 @@ from grizzly.testdata.utils import (
     _get_variable_value,
     initialize_testdata,
 )
-from grizzly.testdata.variables import AtomicCsvRow, AtomicInteger, AtomicIntegerIncrementer
+from grizzly.testdata.variables import AtomicCsvRow, AtomicInteger, AtomicIntegerIncrementer, AtomicMessageQueue
 
 from ..fixtures import grizzly_context, request_task, behave_context  # pylint: disable=unused-import
 from .fixtures import cleanup  # pylint: disable=unused-import
+from .variables.test_messagequeue import noop_zmq # pylint: disable=unused-import
+
+try:
+    import pymqi
+except:
+    from grizzly_extras import dummy_pymqi as pymqi
 
 # pylint: disable=redefined-outer-name
 
@@ -33,15 +39,15 @@ def test__get_variable_value_static(cleanup: Callable) -> None:
         variable_name = 'test'
 
         grizzly.state.variables[variable_name] = 1337
-        value = _get_variable_value(variable_name)
+        value, _ = _get_variable_value(variable_name)
         assert value == 1337
 
         grizzly.state.variables[variable_name] = '1337'
-        value = _get_variable_value(variable_name)
+        value, _ = _get_variable_value(variable_name)
         assert value == 1337
 
         grizzly.state.variables[variable_name] = "'1337'"
-        value = _get_variable_value(variable_name)
+        value, _ = _get_variable_value(variable_name)
         assert value == '1337'
     finally:
         cleanup()
@@ -54,13 +60,15 @@ def test__get_variable_value_AtomicInteger(cleanup: Callable) -> None:
         variable_name = 'AtomicInteger.test'
 
         grizzly.state.variables[variable_name] = 1337
-        value = _get_variable_value(variable_name)
+        value, external_dependencies = _get_variable_value(variable_name)
         assert value['test'] == 1337
+        assert external_dependencies == set()
         AtomicInteger.destroy()
 
         grizzly.state.variables[variable_name] = '1337'
-        value = _get_variable_value(variable_name)
+        value, external_dependencies = _get_variable_value(variable_name)
         assert value['test'] == 1337
+        assert external_dependencies == set()
         AtomicInteger.destroy()
     finally:
         cleanup()
@@ -72,17 +80,35 @@ def test__get_variable_value_AtomicIntegerIncrementer(cleanup: Callable) -> None
 
         variable_name = 'AtomicIntegerIncrementer.test'
         grizzly.state.variables[variable_name] = 1337
-        value = _get_variable_value(variable_name)
+        value, external_dependencies = _get_variable_value(variable_name)
+        assert external_dependencies == set()
         assert value['test'] == 1337
         assert value['test'] == 1338
         AtomicIntegerIncrementer.destroy()
 
         grizzly.state.variables[variable_name] = '1337'
-        value = _get_variable_value(variable_name)
+        value, external_dependencies = _get_variable_value(variable_name)
+        assert external_dependencies == set()
         assert value['test'] == 1337
         assert value['test'] == 1338
         AtomicIntegerIncrementer.destroy()
     finally:
+        cleanup()
+
+@pytest.mark.skipif(pymqi.__name__ == 'grizzly_extras.dummy_pymqi', reason='requires native grizzly-loadtester[mq]')
+@pytest.mark.usefixtures('cleanup')
+def test__get_variable_value_AtomicMessageQueue(noop_zmq: Callable[[], None], cleanup: Callable) -> None:
+    noop_zmq()
+
+    try:
+        grizzly = GrizzlyContext()
+        variable_name = 'AtomicMessageQueue.test'
+        grizzly.state.variables[variable_name] = 'TEST.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN", expression="$.test.result", content_type=json'
+        value, external_dependencies = _get_variable_value(variable_name)
+        assert external_dependencies == set(['messagequeue-daemon'])
+        assert isinstance(value, AtomicMessageQueue)
+    finally:
+        AtomicMessageQueue.destroy()
         cleanup()
 
 
@@ -101,9 +127,10 @@ def test__get_variable_value_AtomicCsvRow(cleanup: Callable, tmpdir_factory: Tem
         grizzly = GrizzlyContext()
         variable_name = 'AtomicCsvRow.test'
         grizzly.state.variables['AtomicCsvRow.test'] = 'test.csv'
-        value = _get_variable_value(variable_name)
+        value, external_dependencies = _get_variable_value(variable_name)
 
         assert isinstance(value, AtomicCsvRow)
+        assert external_dependencies == set()
         assert 'test' in value._values
         assert 'test' in value._rows
         assert value['test'] == {'header1': 'value1', 'header2': 'value2'}
@@ -115,11 +142,13 @@ def test__get_variable_value_AtomicCsvRow(cleanup: Callable, tmpdir_factory: Tem
 
 
 def test_initialize_testdata_no_tasks() -> None:
-    testdata = initialize_testdata(None)
+    testdata, external_dependencies = initialize_testdata(None)
     assert testdata == {}
+    assert external_dependencies == set()
 
-    testdata = initialize_testdata([])
+    testdata, external_dependencies = initialize_testdata([])
     assert testdata == {}
+    assert external_dependencies == set()
 
 
 @pytest.mark.usefixtures('request_task', 'cleanup')
@@ -134,10 +163,11 @@ def test_initialize_testdata_with_tasks(
         _, _, request = request_task
         scenario = request.scenario
         scenario.add_task(request)
-        testdata = initialize_testdata(cast(List[RequestTask], scenario.tasks))
+        testdata, external_dependencies = initialize_testdata(cast(List[RequestTask], scenario.tasks))
 
         scenario_name = scenario.get_name()
 
+        assert external_dependencies == set()
         assert scenario_name in testdata
         assert len(testdata[scenario_name]) == 3
         assert 'messageID' in testdata[scenario_name]
@@ -148,7 +178,8 @@ def test_initialize_testdata_with_tasks(
 
 
 @pytest.mark.usefixtures('behave_context', 'grizzly_context', 'cleanup')
-def test_initialize_testdata_with_payload_context(behave_context: Context, grizzly_context: Callable, cleanup: Callable) -> None:
+def test_initialize_testdata_with_payload_context(behave_context: Context, grizzly_context: Callable, cleanup: Callable, noop_zmq: Callable[[], None]) -> None:
+    noop_zmq()
     try:
         _, _, task, [context_root, _, request] = grizzly_context()
         mkdir(path.join(context_root, 'adirectory'))
@@ -168,9 +199,6 @@ def test_initialize_testdata_with_payload_context(behave_context: Context, grizz
         source['result']['CsvRowValue2'] = '{{ AtomicCsvRow.test.header2 }}'
         source['result']['File'] = '{{ AtomicDirectoryContents.test }}'
 
-        request.source = jsondumps(source)
-        request.template = Template(request.source)
-
         grizzly = cast(GrizzlyContext, behave_context.grizzly)
         grizzly.add_scenario(task.__class__.__name__)
         grizzly.state.variables['messageID'] = 123
@@ -178,16 +206,29 @@ def test_initialize_testdata_with_payload_context(behave_context: Context, grizz
         grizzly.state.variables['AtomicCsvRow.test'] = 'test.csv'
         grizzly.state.variables['AtomicDirectoryContents.test'] = 'adirectory'
         grizzly.state.variables['AtomicDate.now'] = 'now'
+        if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
+            grizzly.state.variables['AtomicMessageQueue.document_id'] = (
+                'TEST.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN", expression="$.test.result", content_type=json'
+            )
+            source['result']['DocumentID'] = '{{ AtomicMessageQueue.document_id }}'
         grizzly.scenario.user_class_name = 'TestUser'
         grizzly.scenario.context['host'] = 'http://test.nu'
         grizzly.scenario.iterations = 2
+
+        request.source = jsondumps(source)
+        request.template = Template(request.source)
+
         grizzly.scenario.add_task(request)
 
-        testdata = initialize_testdata(cast(List[RequestTask], grizzly.scenario.tasks))
+        testdata, external_dependencies = initialize_testdata(cast(List[RequestTask], grizzly.scenario.tasks))
 
         scenario_name = grizzly.scenario.get_name()
 
         assert scenario_name in testdata
+        if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
+            assert external_dependencies == set(['messagequeue-daemon'])
+        else:
+            assert external_dependencies == set()
 
         data = testdata[scenario_name]
 

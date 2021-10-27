@@ -120,6 +120,7 @@ def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Opt
         context = merge_dicts(context, merge_context)
 
     return type(user_class_name, (base_user_class_type, ), {
+        '__dependencies__': base_user_class_type.__dependencies__,
         '_context': context,
     })
 
