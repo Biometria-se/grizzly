@@ -22,7 +22,7 @@ from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 from grizzly.task import PrintTask, RequestTask, SleepTask
 from grizzly.users import RestApiUser, MessageQueueUser
 from grizzly.tasks import IteratorTasks
-from grizzly.testdata.variables import AtomicInteger, AtomicMessageQueue
+from grizzly.testdata.variables import AtomicMessageQueue, AtomicIntegerIncrementer
 from grizzly_extras.messagequeue import MessageQueueResponse
 
 try:
@@ -355,12 +355,13 @@ def test_setup_environment_listeners(behave_context: Context, mocker: MockerFixt
 
 
         grizzly.setup.statistics_url = None
+        grizzly.state.variables['AtomicIntegerIncrementer.value'] = '1 | step=10'
 
         # event listeteners for master node, not validating results
         mock_on_worker(False)
 
         task = RequestTask(RequestMethod.POST, 'test-post-1', '/api/v3/test/post/1')
-        task.source = '{{ AtomicInteger.value }}, {{ test_id }}'
+        task.source = '{{ AtomicIntegerIncrementer.value }}, {{ test_id }}'
         task.template = Template(task.source)
         task.scenario = GrizzlyContextScenario()
         task.scenario.name = 'test-scenario-1'
@@ -371,7 +372,7 @@ def test_setup_environment_listeners(behave_context: Context, mocker: MockerFixt
             setup_environment_listeners(behave_context, environment, request_tasks)
         assert 'variable test_id has not been initialized' in str(ae)
 
-        AtomicInteger.destroy()
+        AtomicIntegerIncrementer.destroy()
         grizzly.state.variables['test_id'] = 'test-1'
 
         external_dependencies = setup_environment_listeners(behave_context, environment, request_tasks)
@@ -382,7 +383,7 @@ def test_setup_environment_listeners(behave_context: Context, mocker: MockerFixt
         assert len(environment.events.quitting._handlers) == 1
         assert external_dependencies == set()
 
-        AtomicInteger.destroy()
+        AtomicIntegerIncrementer.destroy()
         grizzly.setup.statistics_url = 'influxdb://influx.example.com/testdb'
 
         external_dependencies = setup_environment_listeners(behave_context, environment, request_tasks)
@@ -393,7 +394,7 @@ def test_setup_environment_listeners(behave_context: Context, mocker: MockerFixt
         assert len(environment.events.quitting._handlers) == 1
         assert external_dependencies == set()
 
-        AtomicInteger.destroy()
+        AtomicIntegerIncrementer.destroy()
 
         mock_response({
             'success': True,
@@ -421,7 +422,7 @@ def test_setup_environment_listeners(behave_context: Context, mocker: MockerFixt
         else:
             assert external_dependencies == set()
 
-        AtomicInteger.destroy()
+        AtomicIntegerIncrementer.destroy()
         try:
             AtomicMessageQueue.destroy()
         except:
@@ -443,7 +444,7 @@ def test_setup_environment_listeners(behave_context: Context, mocker: MockerFixt
         assert 'error parsing request payload: ' in str(ae)
     finally:
         try:
-            AtomicInteger.destroy()
+            AtomicIntegerIncrementer.destroy()
             AtomicMessageQueue.destroy()
         except:
             pass

@@ -28,7 +28,7 @@ First request `AtomicIntegerIncrementer.unique_id` will be `100`, second `110`, 
 '''
 from typing import Union, Dict, Any, Type, Optional, cast
 
-from . import parse_arguments, AtomicVariable
+from ...types import AtomicVariable
 
 
 def atomicintegerincrementer__base_type__(value: Union[str, int]) -> str:
@@ -42,10 +42,10 @@ def atomicintegerincrementer__base_type__(value: Union[str, int]) -> str:
         except ValueError as e:
             raise ValueError(f'AtomicIntegerIncrementer: "{value}" is not a valid initial value') from e
 
-        arguments = parse_arguments(AtomicIntegerIncrementer, incrementer_arguments)
+        arguments = AtomicIntegerIncrementer.parse_arguments(incrementer_arguments)
 
         if 'step' not in arguments:
-            raise ValueError(f'AtomicIntegerInrementer: step is not specified: "{value}"')
+            raise ValueError(f'AtomicIntegerIncrementer: step is not specified: "{value}"')
 
         for argument in arguments:
             if argument not in AtomicIntegerIncrementer.arguments:
@@ -79,7 +79,7 @@ class AtomicIntegerIncrementer(AtomicVariable[int]):
         if '|' in safe_value:
             [incrementer_value, incrementer_arguments] = [v.strip() for v in safe_value.split('|', 1)]
             initial_value = incrementer_value
-            arguments = parse_arguments(self.__class__, incrementer_arguments)
+            arguments = self.parse_arguments(incrementer_arguments)
             step = int(arguments['step'])
         else:
             initial_value = safe_value

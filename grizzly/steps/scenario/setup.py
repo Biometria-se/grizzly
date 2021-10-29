@@ -7,7 +7,8 @@ from behave.runner import Context
 from behave import register_type, given  # pylint: disable=no-name-in-module
 
 from ...context import GrizzlyContext
-from ...utils import create_context_variable, resolve_variable, merge_dicts
+from ...testdata.utils import create_context_variable, resolve_variable
+from ...utils import merge_dicts
 
 
 @parse.with_pattern(r'(iteration[s]?)')

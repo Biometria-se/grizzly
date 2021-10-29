@@ -1,13 +1,12 @@
-import shutil
-
 from typing import Callable
 from os import path, environ, mkdir
+from shutil import rmtree
 
 import pytest
 
 from _pytest.tmpdir import TempdirFactory
 
-from grizzly.types import RequestDirection, RequestMethod, TemplateData, bool_typed, int_rounded_float_typed
+from grizzly.types import RequestDirection, RequestMethod, bool_typed, int_rounded_float_typed, AtomicVariable, GrizzlyDict
 
 from .testdata.fixtures import cleanup  # pylint: disable=unused-import
 
@@ -44,9 +43,34 @@ class TestRequestMethod:
             assert method in method.direction.methods
 
 
-class TestTemplateData:
+
+
+def test_bool_typed() -> None:
+    assert bool_typed('True')
+    assert not bool_typed('False')
+
+    with pytest.raises(ValueError):
+        bool_typed('asdf')
+
+
+def test_int_rounded_float_typed() -> None:
+    assert int_rounded_float_typed('1') == 1
+    assert int_rounded_float_typed('1.337') == 1
+    assert int_rounded_float_typed('1.51') == 2
+
+    with pytest.raises(ValueError):
+        int_rounded_float_typed('asdf')
+
+    with pytest.raises(ValueError):
+        int_rounded_float_typed('0xbeef')
+
+    with pytest.raises(ValueError):
+        int_rounded_float_typed('1,5')
+
+
+class TestGrizzlyDict:
     def test_static_str(self) -> None:
-        t = TemplateData()
+        t = GrizzlyDict()
 
         t['test1'] = 'hallo'
         assert isinstance(t['test1'], str)
@@ -74,7 +98,7 @@ class TestTemplateData:
         assert t['test8'] == '02002-00000'
 
     def test_static_float(self) -> None:
-        t = TemplateData()
+        t = GrizzlyDict()
 
         t['test2'] = 1.337
         assert isinstance(t['test2'], float)
@@ -95,7 +119,7 @@ class TestTemplateData:
         assert t['test2.4'] == 0.01
 
     def test_static_int(self) -> None:
-        t = TemplateData()
+        t = GrizzlyDict()
         t['test3'] = 1337
         assert isinstance(t['test3'], int)
 
@@ -111,7 +135,7 @@ class TestTemplateData:
         assert t['test3.3'] == -1337
 
     def test_static_bool(self) -> None:
-        t: TemplateData = TemplateData()
+        t: GrizzlyDict = GrizzlyDict()
 
         t['test6'] = True
         assert isinstance(t['test6'], bool)
@@ -130,36 +154,11 @@ class TestTemplateData:
         assert isinstance(t['test11'], bool)
         assert t['test11'] == False
 
-    @pytest.mark.usefixtures('cleanup')
-    def test_AtomicInteger(self, cleanup: Callable) -> None:
-        try:
-            t = TemplateData()
-            t['AtomicInteger.test1'] = 1337
-            assert isinstance(t['AtomicInteger.test1'], int)
-
-            t['AtomicInteger.test2'] = -1337
-            assert isinstance(t['AtomicInteger.test2'], int)
-
-            t['AtomicInteger.test3'] = '1337'
-            assert isinstance(t['AtomicInteger.test3'], int)
-            assert t['AtomicInteger.test3'] == 1337
-
-            t['AtomicInteger.test4'] = '-1337'
-            assert isinstance(t['AtomicInteger.test4'], int)
-            assert t['AtomicInteger.test4'] == -1337
-
-            t['AtomicInteger.test5'] = 1.337
-            assert t['AtomicInteger.test5'] == 1
-
-            with pytest.raises(ValueError):
-                t['AtomicInteger.test6'] = 'hello'
-        finally:
-            cleanup()
 
     @pytest.mark.usefixtures('cleanup')
     def test_AtomicIntegerIncrementer(self, cleanup: Callable) -> None:
         try:
-            t = TemplateData()
+            t = GrizzlyDict()
             t['AtomicIntegerIncrementer.test1'] = 1337
             assert isinstance(t['AtomicIntegerIncrementer.test1'], str)
 
@@ -178,7 +177,7 @@ class TestTemplateData:
             assert t['AtomicIntegerIncrementer.test5'] == '1'
 
             with pytest.raises(ValueError):
-                t['AtomicInteger.test6'] = 'hello'
+                t['AtomicIntegerIncrementer.test6'] = 'hello'
 
             t['AtomicIntegerIncrementer.test7'] = '1337 | step=10'
             assert t['AtomicIntegerIncrementer.test7'] == '1337 | step=10'
@@ -202,7 +201,7 @@ class TestTemplateData:
         environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
 
         try:
-            t = TemplateData()
+            t = GrizzlyDict()
 
             with pytest.raises(ValueError):
                 t['AtomicDirectoryContents.test1'] = 'doesnotexist/'
@@ -235,7 +234,7 @@ class TestTemplateData:
             t['AtomicDirectoryContents.test7'] = 'adirectory|repeat=True, random=True'
             assert t['AtomicDirectoryContents.test7'] == 'adirectory | repeat=True, random=True'
         finally:
-            shutil.rmtree(test_context_root)
+            rmtree(test_context_root)
             cleanup()
 
     @pytest.mark.usefixtures('cleanup')
@@ -250,7 +249,7 @@ class TestTemplateData:
             fd.flush()
 
         try:
-            t = TemplateData()
+            t = GrizzlyDict()
 
             with pytest.raises(ValueError):
                 t['AtomicCsvRow.test'] = 'doesnotexist.csv'
@@ -266,13 +265,13 @@ class TestTemplateData:
             t['AtomicCsvRow.test2'] = 'test.csv|repeat=True'
             assert t['AtomicCsvRow.test2'] == 'test.csv | repeat=True'
         finally:
-            shutil.rmtree(test_context_root)
+            rmtree(test_context_root)
             cleanup()
 
     @pytest.mark.usefixtures('cleanup')
     def test_AtomicDate(self, cleanup: Callable) -> None:
         try:
-            t = TemplateData()
+            t = GrizzlyDict()
             with pytest.raises(ValueError):
                 t['AtomicDate.test1'] = 1337
 
@@ -304,7 +303,7 @@ class TestTemplateData:
     @pytest.mark.usefixtures('cleanup')
     def test_AtomicRandomInteger(self, cleanup: Callable) -> None:
         try:
-            t = TemplateData()
+            t = GrizzlyDict()
 
             with pytest.raises(ValueError):
                 t['AtomicRandomInteger.test1'] = '10'
@@ -325,24 +324,107 @@ class TestTemplateData:
             cleanup()
 
 
-def test_bool_typed() -> None:
-    assert bool_typed('True')
-    assert not bool_typed('False')
+class TestAtomicVariable:
+    @pytest.mark.usefixtures('cleanup')
+    def test_dont_instantiate(self, cleanup: Callable) -> None:
+        try:
+            with pytest.raises(TypeError):
+                AtomicVariable('dummy')
 
-    with pytest.raises(ValueError):
-        bool_typed('asdf')
+            with pytest.raises(TypeError):
+                AtomicVariable[int]('dummy')
+        finally:
+            cleanup()
 
+    def test_get(self) -> None:
+        with pytest.raises(ValueError) as ve:
+            AtomicVariable.get()
+        assert 'is not instantiated' in str(ve)
 
-def test_int_rounded_float_typed() -> None:
-    assert int_rounded_float_typed('1') == 1
-    assert int_rounded_float_typed('1.337') == 1
-    assert int_rounded_float_typed('1.51') == 2
+    def test_destroy(self) -> None:
+        with pytest.raises(ValueError) as ve:
+            AtomicVariable.destroy()
+        assert 'is not instantiated' in str(ve)
 
-    with pytest.raises(ValueError):
-        int_rounded_float_typed('asdf')
+    def test_clear(self) -> None:
+        with pytest.raises(ValueError) as ve:
+            AtomicVariable.clear()
+        assert 'is not instantiated' in str(ve)
 
-    with pytest.raises(ValueError):
-        int_rounded_float_typed('0xbeef')
+    @pytest.mark.usefixtures('cleanup')
+    def test_parse_arguments(self, cleanup: Callable) -> None:
+        try:
+            with pytest.raises(ValueError) as ve:
+                AtomicVariable.parse_arguments('argument')
+            assert 'incorrect format in arguments:' in str(ve)
 
-    with pytest.raises(ValueError):
-        int_rounded_float_typed('1,5')
+            with pytest.raises(ValueError) as ve:
+                AtomicVariable.parse_arguments('arg1=test arg2=value')
+            assert 'incorrect format in arguments:' in str(ve)
+
+            with pytest.raises(ValueError) as ve:
+                AtomicVariable.parse_arguments('args1=test,')
+            assert 'incorrect format for arguments:' in str(ve)
+
+            with pytest.raises(ValueError) as ve:
+                AtomicVariable.parse_arguments('args1=test,arg2')
+            assert 'incorrect format for argument:' in str(ve)
+
+            with pytest.raises(ValueError) as ve:
+                AtomicVariable.parse_arguments('"test"=value')
+            assert 'no quotes or spaces allowed in argument names' in str(ve)
+
+            with pytest.raises(ValueError) as ve:
+                AtomicVariable.parse_arguments("'test'=value")
+            assert 'no quotes or spaces allowed in argument names' in str(ve)
+
+            with pytest.raises(ValueError) as ve:
+                AtomicVariable.parse_arguments('test variable=value')
+            assert 'no quotes or spaces allowed in argument names' in str(ve)
+
+            with pytest.raises(ValueError) as ve:
+                AtomicVariable.parse_arguments('arg="value\'')
+            assert 'value is incorrectly quoted' in str(ve)
+
+            with pytest.raises(ValueError) as ve:
+                AtomicVariable.parse_arguments("arg='value\"")
+            assert 'value is incorrectly quoted' in str(ve)
+
+            with pytest.raises(ValueError) as ve:
+                AtomicVariable.parse_arguments('arg=value"')
+            assert 'value is incorrectly quoted' in str(ve)
+
+            with pytest.raises(ValueError) as ve:
+                AtomicVariable.parse_arguments("arg=value'")
+            assert 'value is incorrectly quoted' in str(ve)
+
+            with pytest.raises(ValueError) as ve:
+                AtomicVariable.parse_arguments('arg=test value')
+            assert 'value needs to be quoted' in str(ve)
+
+            arguments = AtomicVariable.parse_arguments('arg1=testvalue1, arg2="test value 2"')
+
+            assert arguments == {
+                'arg1': 'testvalue1',
+                'arg2': 'test value 2',
+            }
+
+            with pytest.raises(ValueError) as ve:
+                AtomicVariable.parse_arguments('url=http://www.example.com?query_string=value')
+            assert 'incorrect format in arguments: ' in str(ve)
+
+            with pytest.raises(ValueError) as ve:
+                AtomicVariable.parse_arguments('url="http://www.example.com?query_string=value')
+            assert 'incorrect format in arguments: ' in str(ve)
+
+            with pytest.raises(ValueError) as ve:
+                AtomicVariable.parse_arguments("url='http://www.example.com?query_string=value")
+            assert 'incorrect format in arguments: ' in str(ve)
+
+            arguments = AtomicVariable.parse_arguments("url='http://www.example.com?query_string=value', argument=False")
+            assert arguments == {
+                'url': 'http://www.example.com?query_string=value',
+                'argument': 'False',
+            }
+        finally:
+            cleanup()

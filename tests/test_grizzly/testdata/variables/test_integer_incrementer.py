@@ -8,7 +8,8 @@ import gevent
 
 from gevent.greenlet import Greenlet
 
-from grizzly.testdata.variables import atomicintegerincrementer__base_type__, AtomicIntegerIncrementer, AtomicInteger
+from grizzly.testdata.variables.integer_incrementer import atomicintegerincrementer__base_type__
+from grizzly.testdata.variables import AtomicIntegerIncrementer
 
 from ..fixtures import cleanup  # pylint: disable=unused-import
 
@@ -145,7 +146,7 @@ class TestAtomicIntegerIncrementer:
     @pytest.mark.usefixtures('cleanup')
     def test_json_serializable(self, cleanup: Callable) -> None:
         try:
-            t = AtomicInteger('message_id', 1)
+            t = AtomicIntegerIncrementer('message_id', 1)
             jsondumps(t['message_id'])
         finally:
             cleanup()

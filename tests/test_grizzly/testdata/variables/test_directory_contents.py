@@ -7,7 +7,8 @@ import pytest
 
 from _pytest.tmpdir import TempdirFactory
 
-from grizzly.testdata.variables import AtomicDirectoryContents, atomicdirectorycontents__base_type__
+from grizzly.testdata.variables import AtomicDirectoryContents
+from grizzly.testdata.variables.directory_contents import atomicdirectorycontents__base_type__
 
 from ..fixtures import cleanup  # pylint: disable=unused-import
 

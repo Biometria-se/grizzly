@@ -1,5 +1,4 @@
 import logging
-import os
 
 
 from typing import Callable, Generic, TypeVar, Type, List, Any, Dict, Tuple, Optional, cast, Generator
@@ -7,7 +6,6 @@ from types import FunctionType
 from importlib import import_module
 from functools import wraps
 from contextlib import contextmanager
-from collections import namedtuple
 from collections.abc import Mapping
 from copy import deepcopy
 
@@ -16,11 +14,8 @@ from behave.model import Scenario
 from behave.model_core import Status
 from locust.user.users import User
 from locust import TaskSet, between
-from jinja2 import Template, Environment
-from jinja2.meta import find_undeclared_variables
 
-from .types import TemplateData, TemplateDataType
-from .context import GrizzlyContext, GrizzlyContextScenario
+from .context import GrizzlyContextScenario
 
 
 logger = logging.getLogger(__name__)
@@ -136,50 +131,6 @@ def create_task_class_type(base_type: str, scenario: GrizzlyContextScenario) -> 
     })
 
 
-def create_context_variable(grizzly: GrizzlyContext, variable: str, value: str) -> Dict[str, Any]:
-    casted_value = resolve_variable(grizzly, value)
-
-    variable = variable.lower().replace(' ', '_').replace('/', '.')
-
-    return transform({variable: casted_value}, True)
-
-
-def resolve_variable(grizzly: GrizzlyContext, value: str, guess_datatype: Optional[bool] = True) -> TemplateDataType:
-    if len(value) < 1:
-        return value
-
-    resolved_variable: TemplateDataType
-    if '{{' in value and '}}' in value:
-        template = Template(value)
-        j2env = Environment(autoescape=False)
-        template_parsed = j2env.parse(value)
-        template_variables = find_undeclared_variables(template_parsed)
-
-        for template_variable in template_variables:
-            assert template_variable in grizzly.state.variables, f'value contained variable "{template_variable}" which has not been set'
-
-        resolved_variable = template.render(**grizzly.state.variables)
-    elif len(value) > 4 and value[0] == '$':
-        if value[0:5] == '$conf':
-            variable = value[7:]
-            assert variable in grizzly.state.configuration, f'configuration variable "{variable}" is not set'
-            resolved_variable = grizzly.state.configuration[variable]
-        elif value[0:4] == '$env':
-            variable = value[6:]
-            env_value = os.environ.get(variable, None)
-            assert env_value is not None, f'environment variable "{variable}" is not set'
-            resolved_variable = env_value
-        else:
-            raise ValueError(f'{value.split("::", 1)[0]} is not implemented')
-    else:
-        resolved_variable = value
-
-    if guess_datatype:
-        resolved_variable = TemplateData.guess_datatype(resolved_variable)
-
-    return resolved_variable
-
-
 def merge_dicts(merged: Dict[str, Any], source: Dict[str, Any]) -> Dict[str, Any]:
     merged = deepcopy(merged)
     source = deepcopy(source)
@@ -192,44 +143,6 @@ def merge_dicts(merged: Dict[str, Any], source: Dict[str, Any]) -> Dict[str, Any
             merged[k] = source[k]
 
     return merged
-
-
-def transform(data: Dict[str, Any], raw: Optional[bool] = False) -> Dict[str, Any]:
-    testdata: Dict[str, Any] = {}
-
-    for key, value in data.items():
-        if '.' in key:
-            paths: List[str] = key.split('.')
-            variable = paths.pop(0)
-            path = paths.pop()
-            struct = {path: value}
-            paths.reverse()
-
-            for path in paths:
-                struct = {path: {**struct}}
-
-            if variable in testdata:
-                testdata[variable] = merge_dicts(testdata[variable], struct)
-            else:
-                testdata[variable] = {**struct}
-        else:
-            testdata[key] = value
-
-    if not raw:
-        return _objectify(testdata)
-    else:
-        return testdata
-
-
-def _objectify(testdata: Dict[str, Any]) -> Dict[str, Any]:
-    for variable, attributes in testdata.items():
-        if not isinstance(attributes, dict):
-            continue
-
-        attributes = _objectify(attributes)
-        testdata[variable] = namedtuple('Testdata', attributes.keys())(**attributes)
-
-    return testdata
 
 
 def in_correct_section(func: FunctionType, expected: List[str]) -> bool:

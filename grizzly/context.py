@@ -11,7 +11,8 @@ import yaml
 from behave.model import Scenario
 from locust.user.sequential_taskset import SequentialTaskSet
 
-from .types import TemplateData
+from .types import GrizzlyDict
+
 
 logger = logging.getLogger(__name__)
 
@@ -72,9 +73,10 @@ def load_configuration_file() -> Dict[str, Any]:
 class GrizzlyContextState:
     spawning_complete: bool = field(default=False)
     background_section_done: bool = field(default=False)
-    variables: TemplateData = field(init=False, default_factory=TemplateData)
+    variables: GrizzlyDict = field(init=False, default_factory=GrizzlyDict)
     configuration: Dict[str, Any] = field(init=False, default_factory=load_configuration_file)
     alias: Dict[str, str] = field(init=False, default_factory=dict)
+    verbose: bool = field(default=False)
 
 
 @dataclass

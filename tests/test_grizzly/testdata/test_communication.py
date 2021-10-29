@@ -18,13 +18,17 @@ from locust.exception import StopUser
 from locust.env import Environment
 
 from grizzly.testdata.communication import TestdataConsumer, TestdataProducer
-from grizzly.testdata.utils import initialize_testdata
-from grizzly.utils import transform
+from grizzly.testdata.utils import initialize_testdata, transform
 from grizzly.context import GrizzlyContext
 from grizzly.task import RequestTask
 
 from ..fixtures import grizzly_context, locust_environment, request_task, behave_context  # pylint: disable=unused-import
 from .fixtures import cleanup  # pylint: disable=unused-import
+
+try:
+    import pymqi
+except:
+    from grizzly_extras import dummy_pymqi as pymqi
 
 
 class TestTestdataProducer:
@@ -34,7 +38,15 @@ class TestTestdataProducer:
         behave_context: Context,
         grizzly_context: Callable,
         cleanup: Callable,
+        mocker: MockerFixture,
     ) -> None:
+        def noop(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Any:
+            pass
+
+        mocker.patch(
+            'grizzly.testdata.variables.messagequeue.AtomicMessageQueue.create_client',
+            noop,
+        )
         producer: Optional[TestdataProducer] = None
         try:
             environment, _, task, [context_root, _, request] = grizzly_context()
@@ -61,9 +73,6 @@ class TestTestdataProducer:
             source['result']['IntWithStep'] = '{{ AtomicIntegerIncrementer.value }}'
             source['result']['UtcDate'] = '{{ AtomicDate.utc }}'
 
-            request.source = json.dumps(source)
-            request.template = Template(request.source)
-
             grizzly = cast(GrizzlyContext, behave_context.grizzly)
             grizzly.add_scenario(task.__class__.__name__)
             grizzly.state.variables['messageID'] = 123
@@ -78,11 +87,24 @@ class TestTestdataProducer:
             grizzly.scenario.iterations = 2
             grizzly.scenario.user_class_name = 'TestUser'
             grizzly.scenario.context['host'] = 'http://test.nu'
+
+            if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
+                source['result']['DocumentID'] = '{{ AtomicMessageQueue.document_id }}'
+                grizzly.state.variables['AtomicMessageQueue.document_id'] =(
+                    'TEST.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN", expression="$.test.result", content_type=json'
+                )
+
+            request.source = json.dumps(source)
+            request.template = Template(request.source)
+
             grizzly.scenario.add_task(request)
 
             testdata, external_dependencies = initialize_testdata(cast(List[RequestTask], grizzly.scenario.tasks))
 
-            assert external_dependencies == set()
+            if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
+                assert external_dependencies == set(['messagequeue-daemon'])
+            else:
+                assert external_dependencies == set()
 
             producer = TestdataProducer(address=address, testdata=testdata, environment=environment)
             producer_thread = gevent.spawn(producer.run)
@@ -129,6 +151,8 @@ class TestTestdataProducer:
                 data = message['data']
                 assert 'variables' in data
                 variables = data['variables']
+                if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
+                    assert variables['AtomicMessageQueue.document_id'] == '__on_consumer__'
                 assert 'AtomicIntegerIncrementer.messageID' in variables
                 assert 'AtomicDate.now' in variables
                 assert 'messageID' in variables
@@ -140,6 +164,8 @@ class TestTestdataProducer:
                 assert variables['AtomicIntegerIncrementer.value'] == 6
                 assert data['auth.user.username'] == 'value3'
                 assert data['auth.user.password'] == 'value4'
+                if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
+                    assert variables['AtomicMessageQueue.document_id'] == '__on_consumer__'
 
                 message = get_message_from_producer()
                 assert message['action'] == 'stop'
@@ -227,7 +253,7 @@ class TestTestdataProducer:
             pass
 
         mocker.patch(
-            'zmq.sugar.socket.Socket.bind',
+            'grizzly.testdata.communication.zmq.sugar.socket.Socket.bind',
             socket_bind,
         )
 
@@ -251,7 +277,7 @@ class TestTestdataProducer:
             raise RuntimeError('zmq.Context.destroy failed')
 
         mocker.patch(
-            'zmq.Context.destroy',
+            'grizzly.testdata.communication.zmq.Context.destroy',
             mocked_destroy,
         )
 
@@ -276,7 +302,7 @@ class TestTestdataProducer:
             pass
 
         mocker.patch(
-            'zmq.sugar.socket.Socket.bind',
+            'grizzly.testdata.communication.zmq.sugar.socket.Socket.bind',
             socket_bind,
         )
 
@@ -291,7 +317,7 @@ class TestTestdataProducer:
             pass
 
         mocker.patch(
-            'zmq.sugar.socket.Socket.bind',
+            'grizzly.testdata.communication.zmq.sugar.socket.Socket.bind',
             socket_bind,
         )
 
@@ -303,7 +329,7 @@ class TestTestdataProducer:
 
 
         mocker.patch(
-            'zmq.sugar.socket.Socket.recv_json',
+            'grizzly.testdata.communication.zmq.sugar.socket.Socket.recv_json',
             socket_recv_json,
         )
 
@@ -312,7 +338,7 @@ class TestTestdataProducer:
             raise RuntimeError()
 
         mocker.patch(
-            'zmq.sugar.socket.Socket.send_json',
+            'grizzly.testdata.communication.zmq.sugar.socket.Socket.send_json',
             socket_send_json,
         )
 
@@ -345,7 +371,7 @@ class TestTestdataProducer:
             pass
 
         mocker.patch(
-            'zmq.sugar.socket.Socket.bind',
+            'grizzly.testdata.communication.zmq.sugar.socket.Socket.bind',
             socket_bind,
         )
 
@@ -353,7 +379,7 @@ class TestTestdataProducer:
             raise zmq.error.ZMQError()
 
         mocker.patch(
-            'zmq.sugar.socket.Socket.recv_json',
+            'grizzly.testdata.communication.zmq.sugar.socket.Socket.recv_json',
             socket_recv_json,
         )
 
@@ -374,33 +400,52 @@ class TestTestdataProducer:
 
 
 class TestTestdataConsumer:
-    def test(self, mocker: MockerFixture) -> None:
-        def socket_connect(self: 'Socket', addr: str) -> None:
+    def test_request(self, mocker: MockerFixture, behave_context: Context) -> None:
+        def noop(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Any:
             pass
 
         mocker.patch(
-            'zmq.sugar.socket.Socket.connect',
-            socket_connect,
+            'grizzly.testdata.variables.messagequeue.zmq.sugar.socket.Socket.connect',
+            noop,
         )
 
-        def socket_send_json(self: 'Socket', obj: Any, flags: Optional[int] = 0, **_kwargs: Dict[str, Any]) -> None:
-            pass
+        mocker.patch(
+            'grizzly.testdata.variables.messagequeue.zmq.sugar.socket.Socket.bind',
+            noop,
+        )
 
         mocker.patch(
-            'zmq.sugar.socket.Socket.send_json',
-            socket_send_json,
+            'grizzly.testdata.communication.zmq.sugar.socket.Socket.connect',
+            noop,
+        )
+
+        mocker.patch(
+            'grizzly.testdata.communication.zmq.sugar.socket.Socket.send_json',
+            noop,
         )
 
         def mock_recv_json(data: Dict[str, Any], action: Optional[str] = 'consume') -> None:
-            def socket_recv_json(self: 'Socket', flags: int, **_kwargs: Dict[str, Any]) -> Any:
-                return {
-                    'action': action,
-                    'data': data,
-                }
-
             mocker.patch(
-                'zmq.sugar.socket.Socket.recv_json',
-                socket_recv_json,
+                'grizzly.testdata.communication.zmq.sugar.socket.Socket.recv_json',
+                side_effect=[
+                    {
+                        'action': action,
+                        'data': data,
+                    },
+                    {
+                        'success': True,
+                        'worker': 'asdf-asdf-asdf',
+                    },
+                    {
+                        'success': True,
+                        'payload': json.dumps({
+                            'document': {
+                                'id': 'DOCUMENT_1337-2',
+                                'name': 'Very important memo about the TPM report',
+                            },
+                        }),
+                    },
+                ]
             )
 
         consumer = TestdataConsumer()
@@ -465,16 +510,45 @@ class TestTestdataConsumer:
                     'test': None,
                 }
             }, 'consume')
+
+            assert consumer.request('test') == {
+                'variables': transform({
+                    'AtomicIntegerIncrementer.messageID': 100,
+                    'test': None,
+                })
+            }
+
+            if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
+                mock_recv_json({
+                    'variables': {
+                        'AtomicMessageQueue.document_id': '__on_consumer__',
+                        'AtomicIntegerIncrementer.messageID': 100,
+                        'test': None,
+                    }
+                })
+
+                grizzly = cast(GrizzlyContext, behave_context.grizzly)
+                grizzly.state.variables['AtomicMessageQueue.document_id'] = (
+                    'TEST.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN", expression="$.document.id", content_type=json'
+                )
+
+                assert consumer.request('test') == {
+                    'variables': transform({
+                        'AtomicMessageQueue.document_id': 'DOCUMENT_1337-2',
+                        'AtomicIntegerIncrementer.messageID': 100,
+                        'test': None,
+                    })
+                }
         finally:
             consumer.stop()
             assert consumer.context._instance is None
 
-    def test_stop_exception(self, mocker: MockerFixture) -> None:
+    def test_request_stop_exception(self, mocker: MockerFixture) -> None:
         def mocked_destroy(instance: zmq.Context, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
             raise RuntimeError('zmq.Context.destroy failed')
 
         mocker.patch(
-            'zmq.Context.destroy',
+            'grizzly.testdata.communication.zmq.Context.destroy',
             mocked_destroy,
         )
 
@@ -499,7 +573,7 @@ class TestTestdataConsumer:
             pass
 
         mocker.patch(
-            'zmq.sugar.socket.Socket.connect',
+            'grizzly.testdata.communication.zmq.sugar.socket.Socket.connect',
             socket_connect,
         )
 
@@ -510,7 +584,7 @@ class TestTestdataConsumer:
             pass
 
         mocker.patch(
-            'zmq.sugar.socket.Socket.connect',
+            'grizzly.testdata.communication.zmq.sugar.socket.Socket.connect',
             socket_connect,
         )
 
@@ -518,7 +592,7 @@ class TestTestdataConsumer:
             pass
 
         mocker.patch(
-            'zmq.sugar.socket.Socket.send_json',
+            'grizzly.testdata.communication.zmq.sugar.socket.Socket.send_json',
             socket_send_json,
         )
 
@@ -526,7 +600,7 @@ class TestTestdataConsumer:
             raise zmq.error.Again()
 
         mocker.patch(
-            'zmq.sugar.socket.Socket.recv_json',
+            'grizzly.testdata.communication.zmq.sugar.socket.Socket.recv_json',
             socket_recv_json,
         )
 

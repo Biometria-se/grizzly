@@ -2,7 +2,8 @@ from typing import Callable
 
 import pytest
 
-from grizzly.testdata.variables import atomicrandominteger__base_type__, AtomicRandomInteger
+from grizzly.testdata.variables.random_integer import atomicrandominteger__base_type__
+from grizzly.testdata.variables import AtomicRandomInteger
 
 
 from ..fixtures import cleanup  # pylint: disable=unused-import

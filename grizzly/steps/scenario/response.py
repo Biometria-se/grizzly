@@ -54,8 +54,8 @@ def step_response_save_matches(context: Context, target: ResponseTarget, express
     Then save response metadata "$.Authentication" that matches "^Bearer .*$" in variable "HEADER_AUTHENTICATION"
 
     # only the numerical suffix is saved in the variable
-    And value of variable "AtomicInteger.measurermentId" is "0"
-    Then save response payload "$.measurement.id" that matches "^cpu([\\d]+)$" in "AtomicInteger.measurementId"
+    And value of variable "AtomicIntegerIncrementer.measurermentId" is "1"
+    Then save response payload "$.measurement.id" that matches "^cpu([\\d]+)$" in "measurementId"
 
     # the whole value is saved, as long as the value starts with "cpu"
     And value of variable "measurementId" is "0"

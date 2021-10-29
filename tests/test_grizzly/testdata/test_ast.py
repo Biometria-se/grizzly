@@ -87,7 +87,7 @@ def test_get_template_variables() -> None:
         RequestTask(RequestMethod.POST, name='Test POST request', endpoint='/api/test/post')
     )
     tasks.append(cast(RequestTask, scenario.tasks[-1]))
-    tasks[-1].source = '{{ AtomicInteger.test }}'
+    tasks[-1].source = '{{ AtomicRandomString.test }}'
     tasks[-1].template = Template(tasks[-1].source)
 
     scenario.add_task(
@@ -103,5 +103,5 @@ def test_get_template_variables() -> None:
 
     assert scenario.get_name() == expected_scenario_name
     assert expected_scenario_name in variables
-    assert 'AtomicInteger.test' in variables[expected_scenario_name]
+    assert 'AtomicRandomString.test' in variables[expected_scenario_name]
     assert 'AtomicIntegerIncrementer.test' in variables[expected_scenario_name]

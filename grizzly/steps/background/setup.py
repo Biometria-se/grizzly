@@ -7,7 +7,8 @@ from behave import given  # pylint: disable=no-name-in-module
 from behave.runner import Context
 
 from ...context import GrizzlyContext
-from ...utils import create_context_variable, merge_dicts, resolve_variable
+from ...utils import merge_dicts
+from ...testdata.utils import create_context_variable, resolve_variable
 
 
 @given(u'save statistics to "{url}"')

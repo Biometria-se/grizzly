@@ -7,7 +7,8 @@ import gevent
 from pytest_mock import MockerFixture
 from pytest_mock.plugin import mocker  # pylint: disable=unused-import
 
-from grizzly.testdata.variables import AtomicDate, atomicdate__base_type__
+from grizzly.testdata.variables import AtomicDate
+from grizzly.testdata.variables.date import atomicdate__base_type__
 
 from ..fixtures import cleanup  # pylint: disable=unused-import
 

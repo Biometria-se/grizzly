@@ -25,7 +25,10 @@ def before_feature(context: Context, *_args: Tuple[Any, ...], **kwargs: Dict[str
     except ValueError:
         pass
 
-    context.grizzly = GrizzlyContext()
+    grizzly = GrizzlyContext()
+    grizzly.state.verbose = context.config.verbose
+
+    context.grizzly = grizzly
     context.started = time_monotonic()
     environ['GRIZZLY_CONTEXT_ROOT'] = context.config.base_dir
 

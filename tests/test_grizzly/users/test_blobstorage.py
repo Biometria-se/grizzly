@@ -18,7 +18,7 @@ from grizzly.users.meta.context_variables import ContextVariables
 from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContextScenario
 from grizzly.task import RequestTask
-from grizzly.utils import transform
+from grizzly.testdata.utils import transform
 
 from ..fixtures import grizzly_context, request_task  # pylint: disable=unused-import
 from ..helpers import ResultFailure, RequestEvent, RequestSilentFailureEvent, clone_request

@@ -1,24 +1,35 @@
+import logging
 import shutil
 
 from os import path, environ
-from typing import Callable, List, Tuple, cast
+from typing import Callable, List, Tuple, Dict, Any, Optional, cast
 from json import dumps as jsondumps, loads as jsonloads
 from os import mkdir, path
 
 import pytest
+import zmq
 
 from _pytest.tmpdir import TempdirFactory
 
 from jinja2 import Template
 from behave.runner import Context
+from pytest_mock import mocker  # pylint: disable=unused-import
+from pytest_mock.plugin import MockerFixture
+from _pytest.logging import LogCaptureFixture
+from locust.exception import StopUser
 
 from grizzly.context import GrizzlyContext
 from grizzly.task import RequestTask
 from grizzly.testdata.utils import (
     _get_variable_value,
     initialize_testdata,
+    create_context_variable,
+    resolve_variable,
+    _objectify,
+    transform,
 )
-from grizzly.testdata.variables import AtomicCsvRow, AtomicInteger, AtomicIntegerIncrementer, AtomicMessageQueue
+from grizzly.testdata.variables import AtomicCsvRow, AtomicIntegerIncrementer, AtomicMessageQueue
+from grizzly_extras.messagequeue import MessageQueueResponse
 
 from ..fixtures import grizzly_context, request_task, behave_context  # pylint: disable=unused-import
 from .fixtures import cleanup  # pylint: disable=unused-import
@@ -54,26 +65,6 @@ def test__get_variable_value_static(cleanup: Callable) -> None:
 
 
 @pytest.mark.usefixtures('cleanup')
-def test__get_variable_value_AtomicInteger(cleanup: Callable) -> None:
-    try:
-        grizzly = GrizzlyContext()
-        variable_name = 'AtomicInteger.test'
-
-        grizzly.state.variables[variable_name] = 1337
-        value, external_dependencies = _get_variable_value(variable_name)
-        assert value['test'] == 1337
-        assert external_dependencies == set()
-        AtomicInteger.destroy()
-
-        grizzly.state.variables[variable_name] = '1337'
-        value, external_dependencies = _get_variable_value(variable_name)
-        assert value['test'] == 1337
-        assert external_dependencies == set()
-        AtomicInteger.destroy()
-    finally:
-        cleanup()
-
-@pytest.mark.usefixtures('cleanup')
 def test__get_variable_value_AtomicIntegerIncrementer(cleanup: Callable) -> None:
     try:
         grizzly = GrizzlyContext()
@@ -103,12 +94,19 @@ def test__get_variable_value_AtomicMessageQueue(noop_zmq: Callable[[], None], cl
     try:
         grizzly = GrizzlyContext()
         variable_name = 'AtomicMessageQueue.test'
-        grizzly.state.variables[variable_name] = 'TEST.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN", expression="$.test.result", content_type=json'
+        grizzly.state.variables[variable_name] = (
+            'TEST.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN", expression="$.test.result", content_type=json'
+        )
         value, external_dependencies = _get_variable_value(variable_name)
         assert external_dependencies == set(['messagequeue-daemon'])
-        assert isinstance(value, AtomicMessageQueue)
+        assert not isinstance(value, AtomicMessageQueue)
+        assert value == '__on_consumer__'
+
+        # this fails because it shouldn't have been initiated here
+        with pytest.raises(ValueError) as ve:
+            AtomicMessageQueue.destroy()
+        assert "'AtomicMessageQueue' is not instantiated" in str(ve)
     finally:
-        AtomicMessageQueue.destroy()
         cleanup()
 
 
@@ -249,5 +247,377 @@ def test_initialize_testdata_with_payload_context(behave_context: Context, grizz
         assert data['AtomicDirectoryContents.test']['test'] == f'adirectory/file1.txt'
         assert data['AtomicDirectoryContents.test']['test'] == f'adirectory/file2.txt'
         assert data['AtomicDirectoryContents.test']['test'] is None
+        if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
+            assert data['AtomicMessageQueue.document_id'] == '__on_consumer__'
+    finally:
+        cleanup()
+
+
+def test_create_context_variable() -> None:
+    grizzly = GrizzlyContext()
+
+    try:
+        assert create_context_variable(grizzly, 'test.value', '1') == {
+            'test': {
+                'value': 1,
+            }
+        }
+
+        assert create_context_variable(grizzly, 'test.value', 'trUe') == {
+            'test': {
+                'value': True,
+            }
+        }
+
+        assert create_context_variable(grizzly, 'test.value', 'AZURE') == {
+            'test': {
+                'value': 'AZURE',
+            }
+        }
+
+        assert create_context_variable(grizzly, 'test.value', 'HOST') == {
+            'test': {
+                'value': 'HOST'
+            }
+        }
+
+        with pytest.raises(AssertionError):
+            create_context_variable(grizzly, 'test.value', '$env::HELLO_WORLD')
+
+        environ['HELLO_WORLD'] = 'environment variable value'
+        assert create_context_variable(grizzly, 'test.value', '$env::HELLO_WORLD') == {
+            'test': {
+                'value': 'environment variable value',
+            }
+        }
+
+        environ['HELLO_WORLD'] = 'true'
+        assert create_context_variable(grizzly, 'test.value', '$env::HELLO_WORLD') == {
+            'test': {
+                'value': True,
+            }
+        }
+
+        environ['HELLO_WORLD'] = '1337'
+        assert create_context_variable(grizzly, 'test.value', '$env::HELLO_WORLD') == {
+            'test': {
+                'value': 1337,
+            }
+        }
+
+        with pytest.raises(AssertionError):
+            create_context_variable(grizzly, 'test.value', '$conf::test.auth.user.username')
+
+        grizzly.state.configuration['test.auth.user.username'] = 'username'
+        assert create_context_variable(grizzly, 'test.value', '$conf::test.auth.user.username') == {
+            'test': {
+                'value': 'username',
+            }
+        }
+
+        grizzly.state.configuration['test.auth.refresh_time'] = 3000
+        assert create_context_variable(grizzly, 'test.value', '$conf::test.auth.refresh_time') == {
+            'test': {
+                'value': 3000,
+            }
+        }
+    finally:
+        GrizzlyContext.destroy()
+        del environ['HELLO_WORLD']
+
+
+def test_resolve_variable() -> None:
+    grizzly = GrizzlyContext()
+
+    try:
+        assert 'test' not in grizzly.state.variables
+        with pytest.raises(AssertionError):
+            resolve_variable(grizzly, '{{ test }}')
+
+        grizzly.state.variables['test'] = 'some value'
+        assert resolve_variable(grizzly, '{{ test }}') == 'some value'
+
+        assert resolve_variable(grizzly, "now | format='%Y-%m-%d %H'") == "now | format='%Y-%m-%d %H'"
+
+        assert resolve_variable(grizzly, "{{ test }} | format='%Y-%m-%d %H'") == "some value | format='%Y-%m-%d %H'"
+
+        assert resolve_variable(grizzly, 'static value') == 'static value'
+        assert resolve_variable(grizzly, '"static value"') == 'static value'
+        assert resolve_variable(grizzly, "'static value'") == 'static value'
+        assert resolve_variable(grizzly, "'static' value") == "'static' value"
+        assert resolve_variable(grizzly, "static 'value'") == "static 'value'"
+
+        with pytest.raises(ValueError):
+            resolve_variable(grizzly, "'static value\"")
+
+        with pytest.raises(ValueError):
+            resolve_variable(grizzly, "static 'value\"")
+
+        with pytest.raises(ValueError):
+            resolve_variable(grizzly, "'static\" value")
+
+        grizzly.state.variables['number'] = 100
+        assert resolve_variable(grizzly, '{{ (number * 0.25) | int }}') == 25
+
+        assert resolve_variable(grizzly, '{{ (number * 0.25 * 0.2) | int }}') == 5
+
+        try:
+            with pytest.raises(AssertionError):
+                resolve_variable(grizzly, '$env::HELLO_WORLD')
+
+            environ['HELLO_WORLD'] = 'first environment variable!'
+
+            assert resolve_variable(grizzly, '$env::HELLO_WORLD') == 'first environment variable!'
+
+            environ['HELLO_WORLD'] = 'first "environment" variable!'
+            assert resolve_variable(grizzly, '$env::HELLO_WORLD') == 'first "environment" variable!'
+        finally:
+            del environ['HELLO_WORLD']
+
+        with pytest.raises(AssertionError):
+            resolve_variable(grizzly, '$conf::sut.host')
+
+        grizzly.state.configuration['sut.host'] = 'http://host.docker.internal:8003'
+
+        assert resolve_variable(grizzly, '$conf::sut.host')
+
+        grizzly.state.configuration['sut.greeting'] = 'hello "{{ test }}"!'
+        assert resolve_variable(grizzly, '$conf::sut.greeting') == 'hello "{{ test }}"!'
+
+        with pytest.raises(ValueError):
+            resolve_variable(grizzly, '$test::hello')
+
+        assert resolve_variable(grizzly, '') == ''
+    finally:
+        GrizzlyContext.destroy()
+
+
+def test__objectify() -> None:
+    testdata: Dict[str, Any] = {
+        'AtomicIntegerIncrementer': {
+            'test': 1337,
+        },
+        'test': 1338,
+        'AtomicCsvRow': {
+            'input': {
+                'test1': 'hello',
+                'test2': 'world!',
+            }
+        },
+        'Test': {
+            'test1': {
+                'test2': {
+                    'test3': 'value',
+                }
+            }
+        }
+    }
+
+    obj = _objectify(testdata)
+
+    assert (
+        obj['AtomicIntegerIncrementer'].__module__ == 'grizzly.testdata.utils' and
+        obj['AtomicIntegerIncrementer'].__class__.__name__ == 'Testdata'
+    )
+    assert getattr(obj['AtomicIntegerIncrementer'], 'test') == 1337
+    assert isinstance(obj['test'], int)
+    assert obj['test'] == 1338
+    assert (
+        obj['AtomicCsvRow'].__module__ == 'grizzly.testdata.utils' and
+        obj['AtomicCsvRow'].__class__.__name__ == 'Testdata'
+    )
+    atomiccsvrow_input = getattr(obj['AtomicCsvRow'], 'input', None)
+    assert atomiccsvrow_input is not None
+    assert (
+        atomiccsvrow_input.__module__ == 'grizzly.testdata.utils' and
+        atomiccsvrow_input.__class__.__name__ == 'Testdata'
+    )
+    assert getattr(atomiccsvrow_input, 'test1', None) == 'hello'
+    assert getattr(atomiccsvrow_input, 'test2', None) == 'world!'
+
+    assert (
+        obj['Test'].__module__ == 'grizzly.testdata.utils' and
+        obj['Test'].__class__.__name__ == 'Testdata'
+    )
+    test = getattr(obj['Test'], 'test1', None)
+    assert test is not None
+    assert (
+        test.__module__ == 'grizzly.testdata.utils' and
+        test.__class__.__name__ == 'Testdata'
+    )
+    test = getattr(test, 'test2', None)
+    assert test is not None
+    assert (
+        test.__module__ == 'grizzly.testdata.utils' and
+        test.__class__.__name__ == 'Testdata'
+    )
+    test = getattr(test, 'test3', None)
+    assert test is not None
+    assert isinstance(test, str)
+    assert test == 'value'
+
+
+def test_transform_no_objectify() -> None:
+    data = {
+        'test.number.value': 1337,
+        'test.number.description': 'simple description',
+        'test.string.value': 'hello world!',
+        'test.bool.value': True,
+    }
+
+    actual = transform(data, objectify=False)
+
+    assert actual == {
+        'test': {
+            'number': {
+                'value': 1337,
+                'description': 'simple description',
+            },
+            'string': {
+                'value': 'hello world!',
+            },
+            'bool': {
+                'value': True,
+            }
+        }
+    }
+
+
+@pytest.mark.usefixtures('behave_context', 'noop_zmq', 'cleanup', 'mocker')
+def test_transform(behave_context: Context, noop_zmq: Callable[[], None], cleanup: Callable, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
+    noop_zmq()
+
+    def mock_response(response: Optional[MessageQueueResponse], repeat: int = 1) -> None:
+        mocker.patch(
+            'grizzly.testdata.variables.messagequeue.zmq.sugar.socket.Socket.recv_json',
+            side_effect=[zmq.Again(), response] * repeat
+        )
+    try:
+        grizzly = cast(GrizzlyContext, behave_context.grizzly)
+        data: Dict[str, Any] = {
+            'AtomicIntegerIncrementer.test': 1337,
+            'test': 1338,
+            'AtomicCsvRow.input.test1': 'hello',
+            'AtomicCsvRow.input.test2': 'world!',
+            'Test.test1.test2.test3': 'value',
+            'Test.test1.test2.test4': 'value',
+            'Test.test2.test3': 'value',
+        }
+
+        if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
+            grizzly.state.variables['AtomicMessageQueue.document_id'] = (
+                'TEST.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN", expression="$.document.id", content_type=json, repeat=True'
+            )
+            data['AtomicMessageQueue.document_id'] = '__on_consumer__'
+
+            with caplog.at_level(logging.ERROR):
+                with pytest.raises(StopUser):
+                    transform(data)
+            assert 'AtomicMessageQueue.document_id: payload in response was None' in caplog.text
+            caplog.clear()
+
+            mock_response({
+                'success': True,
+                'worker': '1337-aaaabbbb-beef',
+                'payload': jsondumps({
+                    'document': {
+                        'id': 'DOCUMENT_1337-1',
+                        'name': 'Boring presentation',
+                        'author': 'Drew Ackerman',
+                    }
+                })
+            })
+
+            obj = transform(data)
+        else:
+            obj = transform(data)
+
+        assert (
+            obj['AtomicIntegerIncrementer'].__module__ == 'grizzly.testdata.utils' and
+            obj['AtomicIntegerIncrementer'].__class__.__name__ == 'Testdata'
+        )
+        assert getattr(obj['AtomicIntegerIncrementer'], 'test', None) == 1337
+        assert isinstance(obj['test'], int)
+        assert obj['test'] == 1338
+        assert (
+            obj['AtomicCsvRow'].__module__ == 'grizzly.testdata.utils' and
+            obj['AtomicCsvRow'].__class__.__name__ == 'Testdata'
+        )
+        assert (
+            obj['AtomicCsvRow'].input.__module__ == 'grizzly.testdata.utils' and
+            obj['AtomicCsvRow'].input.__class__.__name__ == 'Testdata'
+        )
+        assert getattr(obj['AtomicCsvRow'].input, 'test1', None) == 'hello'
+        assert getattr(obj['AtomicCsvRow'].input, 'test2', None) == 'world!'
+        assert (
+            obj['Test'].__module__ == 'grizzly.testdata.utils' and
+            obj['Test'].__class__.__name__ == 'Testdata'
+        )
+        test = getattr(obj['Test'], 'test1', None)
+        assert test is not None
+        assert (
+            test.__module__ == 'grizzly.testdata.utils' and
+            test.__class__.__name__ == 'Testdata'
+        )
+        test = getattr(test, 'test2', None)
+        assert test is not None
+        assert (
+            test.__module__ == 'grizzly.testdata.utils' and
+            test.__class__.__name__ == 'Testdata'
+        )
+        test = getattr(test, 'test3', None)
+        assert test is not None
+        assert isinstance(test, str)
+        assert test == 'value'
+
+        if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
+            assert getattr(obj['AtomicMessageQueue'], 'document_id', None) == 'DOCUMENT_1337-1'
+
+            # AtomicMessageQueue.document_id should repeat old values when there is no
+            # new message on queue since repeat=True
+            mock_response({
+                'success': False,
+                'worker': '1337-aaaabbbb-beef',
+                'message': 'MQRC_NO_MSG_AVAILABLE',
+            })
+
+            obj = transform({
+                'AtomicMessageQueue.document_id': '__on_consumer__',
+            })
+
+            assert getattr(obj['AtomicMessageQueue'], 'document_id', None) == 'DOCUMENT_1337-1'
+
+            caplog.clear()
+
+            grizzly.state.variables['AtomicMessageQueue.wrong_content_type'] = (
+                'TEST.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN", expression="$.document.id", content_type=json, repeat=True'
+            )
+
+            data = {
+                'AtomicMessageQueue.wrong_content_type': '__on_consumer__',
+            }
+
+            noop_zmq()
+
+            with caplog.at_level(logging.ERROR):
+                with pytest.raises(StopUser):
+                    transform(data)
+            assert 'AtomicMessageQueue.wrong_content_type: payload in response was None' in caplog.text
+            caplog.clear()
+
+            mock_response({
+                'success': True,
+                'worker': '1337-aaaabbbb-beef',
+                'payload': '<?xml encoding="utf-8" version="1.0"?><documents><document id="DOCUMENT_1337-1"></document></documents>',
+            })
+
+            with caplog.at_level(logging.ERROR):
+                with pytest.raises(StopUser):
+                    transform({
+                        'AtomicMessageQueue.wrong_content_type': '__on_consumer__',
+                    })
+
+            assert 'AtomicMessageQueue.wrong_content_type: failed to transform input as JSON' in caplog.text
+            caplog.clear()
     finally:
         cleanup()

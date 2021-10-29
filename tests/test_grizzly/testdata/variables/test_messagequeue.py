@@ -11,10 +11,10 @@ from pytest_mock import mocker  # pylint: disable=unused-import
 from pytest_mock.plugin import MockerFixture
 from behave.runner import Context
 
-from grizzly.testdata.variables.messagequeue import AtomicMessageQueue
+from grizzly.testdata.variables import AtomicMessageQueue
+from grizzly.testdata.variables.messagequeue import atomicmessagequeue__base_type__
 from grizzly.context import GrizzlyContext
 from grizzly.transformer import transformer
-from grizzly.testdata.variables import atomicmessagequeue__base_type__
 from grizzly.types import ResponseContentType
 from grizzly_extras.messagequeue import MessageQueueResponse
 

@@ -22,8 +22,8 @@ from grizzly.users.meta import RequestLogger, ResponseHandler
 from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 from grizzly.task import RequestTask
-from grizzly.types import ResponseTarget, TemplateData
-from grizzly.utils import transform
+from grizzly.types import ResponseTarget, GrizzlyDict
+from grizzly.testdata.utils import transform
 from grizzly.exceptions import ResponseHandlerError
 from grizzly.steps.helpers import add_save_handler
 from grizzly_extras.messagequeue import MessageQueueResponse
@@ -427,7 +427,7 @@ class TestMessageQueueUser:
             }),
         }
 
-        grizzly.state.variables = cast(TemplateData, {
+        grizzly.state.variables = cast(GrizzlyDict, {
             'payload_variable': '',
             'metadata_variable': '',
         })

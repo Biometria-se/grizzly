@@ -61,11 +61,11 @@ import zmq
 from gevent import sleep as gsleep
 from grizzly_extras.messagequeue import MessageQueueContext, MessageQueueRequest, MessageQueueResponse
 
-from ...types import bool_typed, str_response_content_type
-from ...utils import resolve_variable
+from ...types import bool_typed, str_response_content_type, AtomicVariable
 from ...context import GrizzlyContext
 from ...transformer import transformer
-from . import AtomicVariable, parse_arguments
+from ...exceptions import TransformerError
+from ..utils import resolve_variable
 
 try:
     import pymqi
@@ -79,7 +79,7 @@ def atomicmessagequeue__base_type__(value: str) -> str:
 
     queue_name, queue_arguments = [v.strip() for v in value.split('|', 1)]
 
-    arguments = parse_arguments(AtomicMessageQueue, queue_arguments)
+    arguments = AtomicMessageQueue.parse_arguments(queue_arguments)
 
     if queue_name is None or len(queue_name) < 1:
         raise ValueError(f'AtomicMessageQueue: queue name is not valid: {queue_name}')
@@ -120,6 +120,9 @@ def atomicmessagequeue__base_type__(value: str) -> str:
 class AtomicMessageQueue(AtomicVariable[str]):
     __base_type__ = atomicmessagequeue__base_type__
     __dependencies__ = set(['messagequeue-daemon'])
+    __on_consumer__ = True
+
+
     __initialized: bool = False
 
     _settings: Dict[str, Dict[str, Any]]
@@ -141,7 +144,7 @@ class AtomicMessageQueue(AtomicVariable[str]):
 
         queue_name, queue_arguments = [v.strip() for v in safe_value.split('|', 1)]
 
-        arguments = parse_arguments(self.__class__, queue_arguments)
+        arguments = self.parse_arguments(queue_arguments)
 
         for argument, caster in self.__class__.arguments.items():
             if argument in arguments:
@@ -319,7 +322,7 @@ class AtomicMessageQueue(AtomicVariable[str]):
 
                 message = response.get('message', None)
                 if not response['success']:
-                    raise RuntimeError(message)
+                    raise RuntimeError(f'{self.__class__.__name__}.{variable}: {message}')
 
                 self._settings[variable]['worker'] = response['worker']
 
@@ -367,8 +370,12 @@ class AtomicMessageQueue(AtomicVariable[str]):
             if transform is None:
                 raise TypeError(f'{self.__class__.__name__}.{variable}: could not find a transformer for {content_type.name}')
 
-            get_values = transform.parser(expression)
-            _, payload = transform.transform(content_type, raw)
+            try:
+                get_values = transform.parser(expression)
+                _, payload = transform.transform(content_type, raw)
+            except TransformerError as e:
+                raise RuntimeError(f'{self.__class__.__name__}.{variable}: {str(e.message)}')
+
             values = get_values(payload)
 
             number_of_values = len(values)
