@@ -19,43 +19,52 @@ jobs:
 
     steps:
     - name: setup python
+      id: setup
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
 
     - name: checkout
+      id: checkout
       uses: actions/checkout@v2
 
     - name: setup environment
+      id: env
       run: |
         sudo ln -fs /usr/share/zoneinfo/Europe/Stockholm /etc/localtime
         sudo ln -fs /usr/share/zoneinfo/Europe/Stockholm /etc/timezone
         echo $HOME/.local/bin >> $GITHUB_PATH
 
     - name: cache python environment
+      id: cache
       uses: actions/cache@v2
       with:
         path: ${{ env.pythonLocation }}
         key: ${{ env.pythonLocation }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements-dev.txt')}}
 
     - name: install python dependencies
+      id: pip
       run: |
         pip install --upgrade wheel
         pip install --upgrade --upgrade-strategy eager -r <(cat requirements.txt requirements-dev.txt)
 
     - name: run pytest
+      id: pytest
       run: |
         pytest
 
     - name: run coverage
+      id: coverage
       run: |
         coverage report --omit=**/*messagequeue* --fail-under=95
 
     - name: run pylint
+      id: pylint
       run: |
         pylint --jobs=0 --fail-under=10 grizzly/ grizzly_extras/ tests/ example/
 
     - name: run mypy
+      id: mypy
       run: |
         arguments="$(sed '/^[ \t]*\/\/.*/d;/^$/d' .devcontainer/devcontainer.json | jq '.settings["python.linting.mypyArgs"] | join(" ")' | awk -F\" '{print $2}')"
         mypy ${arguments} grizzly/ grizzly_extras/ tests/ example/

@@ -10,7 +10,7 @@ from pytest_mock.plugin import MockerFixture
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import
 from grizzly.types import GrizzlyDictValueType, GrizzlyDict
 
-from ...fixtures import behave_context  # pylint: disable=unused-import
+from ...fixtures import behave_context, locust_environment  # pylint: disable=unused-import
 
 
 def test_parse_iteration_gramatical_number() -> None:

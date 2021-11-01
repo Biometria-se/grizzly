@@ -2,11 +2,12 @@ import pytest
 
 from behave.runner import Context
 from parse import compile
+from json import dumps as jsondumps
 
 from grizzly.types import RequestMethod
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import
 
-from ...fixtures import behave_context  # pylint: disable=unused-import
+from ...fixtures import behave_context, locust_environment  # pylint: disable=unused-import
 
 
 def test_parse_method() -> None:
@@ -135,3 +136,43 @@ def test_step_print_message(behave_context: Context) -> None:
 
     assert isinstance(grizzly.scenario.tasks[-1], PrintTask)
     assert grizzly.scenario.tasks[-1].message == 'hello {{ world }}'
+
+
+@pytest.mark.usefixtures('behave_context')
+def test_step_transform(behave_context: Context) -> None:
+    grizzly = cast(GrizzlyContext, behave_context.grizzly)
+
+    with pytest.raises(ValueError) as ve:
+        step_task_transform(
+            behave_context,
+            jsondumps({
+                'document': {
+                    'id': 'DOCUMENT_8483-1',
+                    'title': 'TPM Report 2020',
+                },
+            }),
+            ResponseContentType.JSON,
+            '$.document.id',
+            'document_id',
+        )
+    assert 'TransformerTask: document_id has not been initialized' in str(ve)
+
+    grizzly.state.variables['document_id'] = 'None'
+    step_task_transform(
+        behave_context,
+        jsondumps({
+            'document': {
+                'id': 'DOCUMENT_8483-1',
+                'title': 'TPM Report 2020',
+            },
+        }),
+        ResponseContentType.JSON,
+        '$.document.id',
+        'document_id',
+    )
+
+    task = grizzly.scenario.tasks[-1]
+    assert isinstance(task, TransformerTask)
+    assert task.content_type == ResponseContentType.JSON
+    assert task.expression == '$.document.id'
+    assert task.variable == 'document_id'

@@ -1,11 +1,13 @@
 from dataclasses import dataclass, field
-from typing import List, Optional, Callable, Any
+from typing import List, Optional, Callable, Any, Type
 
 from jinja2.environment import Template
 from gevent import sleep as gsleep
 
 from .types import ResponseContentType, HandlerType, RequestMethod
-from .context import GrizzlyTask, GrizzlyTasksBase
+from .context import GrizzlyContext, GrizzlyTask, GrizzlyTasksBase
+from .transformer import Transformer, transformer
+from .exceptions import TransformerError
 
 
 @dataclass(unsafe_hash=True)
@@ -78,5 +80,54 @@ class PrintTask(GrizzlyTask):
         def _implementation(parent: GrizzlyTasksBase) -> Any:
             message = Template(self.message).render(**parent.user._context['variables'])
             parent.logger.info(message)
+
+        return _implementation
+
+@dataclass
+class TransformerTask(GrizzlyTask):
+    expression: str
+    variable: str
+    content: str
+    content_type: ResponseContentType
+
+    _transformer: Type[Transformer] = field(init=False, repr=False)
+    _get_values: Callable[[Any], List[str]] = field(init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        grizzly = GrizzlyContext()
+        if self.variable not in grizzly.state.variables:
+            raise ValueError(f'{self.__class__.__name__}: {self.variable} has not been initialized')
+
+        _transformer = transformer.available.get(self.content_type, None)
+
+        if _transformer is None:
+            raise ValueError(f'{self.__class__.__name__}: could not find a transformer for {self.content_type.name}')
+
+        self._transformer = _transformer
+
+        if not self._transformer.validate(self.expression):
+            raise ValueError(f'{self.__class__.__name__}: {self.expression} is not a valid expression for {self.content_type.name}')
+
+        self._get_values = self._transformer.parser(self.expression)
+
+    def implementation(self) -> Callable[[GrizzlyTasksBase], Any]:
+        def _implementation(parent: GrizzlyTasksBase) -> Any:
+            content_raw = Template(self.content).render(**parent.user._context['variables'])
+
+            try:
+                _, content = self._transformer.transform(self.content_type, content_raw)
+            except TransformerError as e:
+                raise RuntimeError(f'{self.__class__.__name__}: failed to transform {self.content_type.name}') from e
+
+            values = self._get_values(content)
+
+            number_of_values = len(values)
+
+            if number_of_values != 1:
+                raise RuntimeError(f'{self.__class__.__name__}: "{self.expression}" returned {number_of_values} matches')
+
+            value = values[0]
+
+            parent.user._context['variables'][self.variable] = value
 
         return _implementation

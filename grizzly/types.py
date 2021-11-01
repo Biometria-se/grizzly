@@ -77,6 +77,10 @@ GrizzlyDictValueType = Union[str, float, int, bool]
 
 WrappedFunc = TypeVar('WrappedFunc', bound=Callable[..., Any])
 
+T = TypeVar('T')
+
+U = TypeVar('U')
+
 
 def bool_typed(value: str) -> bool:
     if value in ['True', 'False']:
@@ -98,10 +102,6 @@ def str_response_content_type(value: str) -> ResponseContentType:
         return ResponseContentType.PLAIN
     else:
         raise ValueError(f'"{value}" is an unknown response content type')
-
-
-T = TypeVar('T')
-U = TypeVar('U')
 
 
 class AbstractAtomicClass:

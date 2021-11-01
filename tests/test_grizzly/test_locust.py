@@ -30,7 +30,7 @@ try:
 except:
     from grizzly_extras import dummy_pymqi as pymqi
 
-from .fixtures import behave_context  # pylint: disable=unused-import
+from .fixtures import behave_context, locust_environment  # pylint: disable=unused-import
 
 
 def test_greenlet_exception_logger(caplog: LogCaptureFixture) -> None:
@@ -352,6 +352,7 @@ def test_setup_environment_listeners(behave_context: Context, mocker: MockerFixt
         assert len(environment.events.spawning_complete._handlers) == 1
         assert len(environment.events.quitting._handlers) == 0
         assert external_dependencies == set()
+        assert grizzly.state.environment is environment
 
 
         grizzly.setup.statistics_url = None
