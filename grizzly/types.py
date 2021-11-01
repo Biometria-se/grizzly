@@ -283,7 +283,7 @@ class GrizzlyDict(dict):
                 if casted_value[0] == casted_value[-1]:
                     casted_value = casted_value[1:-1]
             elif casted_value[-1] in ['"', "'"] and casted_value[-1] != casted_value[0] and casted_value.count(casted_value[-1]) % 2 != 0:
-                    raise ValueError(f'{value} is incorrectly quoted')
+                raise ValueError(f'{value} is incorrectly quoted')
 
         return casted_value
 

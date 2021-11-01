@@ -392,6 +392,26 @@ class TestXmlTransformer:
         get_values = XmlTransformer.parser('//row/level_1_1[. > 500]/text()')
         actual = get_values(input_payload)
         assert actual == ['521', '671', '2550']
+
+        example = '''<?xml version="1.0" encoding="UTF-8"?>
+        <documents>
+            <document>
+                <header>
+                    <id>DOCUMENT_1337-3</id>
+                    <type>application/docx</type>
+                    <author>Douglas Adams</author>
+                    <published>2021-11-01</published>
+                    <pages>241</pages>
+                </header>
+            </document>
+        </documents>'''
+
+        _, input_payload = XmlTransformer.transform(ResponseContentType.XML, example)
+
+        get_values = XmlTransformer.parser('/documents/document/header')
+        actual = get_values(input_payload)
+        assert actual == ['<header><id>DOCUMENT_1337-3</id><type>application/docx</type><author>Douglas Adams</author><published>2021-11-01</published><pages>241</pages></header>']
+
 class TestPlainTransformer:
     def test_transform(self) -> None:
         unwrapped = PlainTransformer.__wrapped_transform__  # type: ignore
