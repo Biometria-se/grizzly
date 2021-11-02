@@ -11,6 +11,11 @@ from pytest_mock.plugin import MockerFixture
 
 from grizzly_extras.messagequeue import JsonBytesEncoder, MessageQueueRequest, MessageQueueResponse, MessageQueue, MessageQueueError, register
 
+try:
+    import pymqi
+except:
+    from grizzly_extras import dummy_pymqi as pymqi
+
 
 def test_no_pymqi_dependencies() -> None:
     env = environ.copy()
@@ -88,14 +93,13 @@ class TestJsonBytesEncoder:
             encoder.default(None)
 
 
+@pytest.mark.skipif(pymqi.__name__ == 'grizzly_extras.dummy_pymqi', reason='needs native IBM MQ libraries')
 class TestMessageQueue:
     def test___init__(self) -> None:
         client = MessageQueue(worker='asdf-asdf-asdf')
         assert client.worker == 'asdf-asdf-asdf'
 
     def test_queue_context(self, mocker: MockerFixture) -> None:
-        from grizzly_extras.messagequeue import pymqi
-
         client = MessageQueue(worker='asdf-asdf-asdf')
         client.qmgr = pymqi.QueueManager(None)
 

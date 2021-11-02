@@ -174,7 +174,8 @@ class TestGrizzlyContextState:
             'background_section_done': (False, True),
             'variables': ({}, {'test': 'hello'}),
             'configuration': ({}, {'sut.host': 'http://example.com'}),
-            'alias': ({}, {'AtomicIntegerIncrementer.test', 'redovisning.iterations'})
+            'alias': ({}, {'AtomicIntegerIncrementer.test', 'redovisning.iterations'}),
+            'verbose': (False, True),
         }
         actual_attributes = list(state.__dict__.keys())
         actual_attributes.sort()

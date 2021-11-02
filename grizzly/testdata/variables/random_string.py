@@ -35,8 +35,7 @@ from typing import Dict, List, Any, Callable, Optional, Set, Type, cast
 from random import randint, choice
 from string import ascii_letters
 
-from ...types import bool_typed, int_rounded_float_typed
-from . import AtomicVariable, parse_arguments
+from ...types import bool_typed, int_rounded_float_typed, AtomicVariable
 
 
 def atomicrandomstring__base_type__(value: str) -> str:
@@ -46,7 +45,7 @@ def atomicrandomstring__base_type__(value: str) -> str:
     if '|' in value:
         [string_pattern, string_arguments] = [v.strip() for v in value.split('|', 1)]
 
-        arguments = parse_arguments(AtomicRandomString, string_arguments)
+        arguments = AtomicRandomString.parse_arguments(string_arguments)
 
         for argument, v in arguments.items():
             if argument not in AtomicRandomString.arguments:
@@ -94,7 +93,7 @@ class AtomicRandomString(AtomicVariable[str]):
         if '|' in safe_value:
             [string_pattern, string_arguments] = [v.strip() for v in safe_value.split('|', 1)]
 
-            arguments = parse_arguments(self.__class__, string_arguments)
+            arguments = self.parse_arguments(string_arguments)
 
             for argument, caster in self.__class__.arguments.items():
                 if argument in arguments:

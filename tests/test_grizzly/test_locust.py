@@ -20,9 +20,15 @@ from grizzly.locust import greenlet_exception_logger, on_master, on_worker, on_l
 from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 from grizzly.task import PrintTask, RequestTask, SleepTask
-from grizzly.users import RestApiUser
+from grizzly.users import RestApiUser, MessageQueueUser
 from grizzly.tasks import IteratorTasks
-from grizzly.testdata.variables import AtomicInteger
+from grizzly.testdata.variables import AtomicMessageQueue, AtomicIntegerIncrementer
+from grizzly_extras.messagequeue import MessageQueueResponse
+
+try:
+    import pymqi
+except:
+    from grizzly_extras import dummy_pymqi as pymqi
 
 from .fixtures import behave_context  # pylint: disable=unused-import
 
@@ -176,8 +182,7 @@ def test_setup_locust_scenarios(behave_context: Context) -> None:
     assert issubclass(user_tasks, (IteratorTasks, ))
     assert len(user_tasks.tasks) == 3 + 1  # IteratorTasks has an internal task other than what we've added
 
-    import grizzly.users.messagequeue as mq
-    if mq.pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
+    if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
         grizzly.scenario.user_class_name = 'MessageQueueUser'
         user_classes, request_tasks, start_messagequeue_daemon = setup_locust_scenarios(grizzly)
 
@@ -186,7 +191,7 @@ def test_setup_locust_scenarios(behave_context: Context) -> None:
         assert len(request_tasks) == 1
 
         user_class = user_classes[-1]
-        assert issubclass(user_class, (mq.MessageQueueUser, ))
+        assert issubclass(user_class, (MessageQueueUser, ))
         assert len(user_class.tasks) == 1
         assert user_class.host == 'https://test.example.org'
         assert grizzly.scenario.name.startswith('IteratorTasks')
@@ -289,33 +294,74 @@ def test_setup_environment_listeners(behave_context: Context, mocker: MockerFixt
         events=events,
     )
 
+    def mocked_noop(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+        pass
+
+    mocker.patch(
+        'grizzly.testdata.variables.messagequeue.zmq.sugar.context.Context.term',
+        mocked_noop,
+    )
+
+    mocker.patch(
+        'grizzly.testdata.variables.messagequeue.zmq.sugar.context.Context.__del__',
+        mocked_noop,
+    )
+
+    mocker.patch(
+        'grizzly.testdata.variables.messagequeue.zmq.sugar.socket.Socket.bind',
+        mocked_noop,
+    )
+
+    mocker.patch(
+        'grizzly.testdata.variables.messagequeue.zmq.sugar.socket.Socket.connect',
+        mocked_noop,
+    )
+
+    mocker.patch(
+        'grizzly.testdata.variables.messagequeue.zmq.sugar.socket.Socket.send_json',
+        mocked_noop,
+    )
+
+    def mock_response(response: MessageQueueResponse) -> None:
+        def mocked_response(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> MessageQueueResponse:
+            return response
+
+        mocker.patch(
+            'grizzly.testdata.variables.messagequeue.zmq.sugar.socket.Socket.recv_json',
+            mocked_response,
+        )
+
     try:
         # event listeners for worker node
         mock_on_worker(True)
-        setup_environment_listeners(behave_context, environment, [])
+        external_dependencies = setup_environment_listeners(behave_context, environment, [])
 
         assert len(environment.events.init._handlers) == 1
         assert len(environment.events.test_start._handlers) == 1
         assert len(environment.events.test_stop._handlers) == 1
         assert len(environment.events.spawning_complete._handlers) == 1
         assert len(environment.events.quitting._handlers) == 0
+        assert external_dependencies == set()
 
         grizzly.setup.statistics_url = 'influxdb://influx.example.com/testdb'
 
-        setup_environment_listeners(behave_context, environment, [])
+        external_dependencies = setup_environment_listeners(behave_context, environment, [])
         assert len(environment.events.init._handlers) == 2
         assert len(environment.events.test_start._handlers) == 1
         assert len(environment.events.test_stop._handlers) == 1
         assert len(environment.events.spawning_complete._handlers) == 1
         assert len(environment.events.quitting._handlers) == 0
+        assert external_dependencies == set()
+
 
         grizzly.setup.statistics_url = None
+        grizzly.state.variables['AtomicIntegerIncrementer.value'] = '1 | step=10'
 
         # event listeteners for master node, not validating results
         mock_on_worker(False)
 
         task = RequestTask(RequestMethod.POST, 'test-post-1', '/api/v3/test/post/1')
-        task.source = '{{ AtomicInteger.value }}, {{ test_id }}'
+        task.source = '{{ AtomicIntegerIncrementer.value }}, {{ test_id }}'
         task.template = Template(task.source)
         task.scenario = GrizzlyContextScenario()
         task.scenario.name = 'test-scenario-1'
@@ -326,38 +372,61 @@ def test_setup_environment_listeners(behave_context: Context, mocker: MockerFixt
             setup_environment_listeners(behave_context, environment, request_tasks)
         assert 'variable test_id has not been initialized' in str(ae)
 
-        AtomicInteger.destroy()
+        AtomicIntegerIncrementer.destroy()
         grizzly.state.variables['test_id'] = 'test-1'
 
-        setup_environment_listeners(behave_context, environment, request_tasks)
+        external_dependencies = setup_environment_listeners(behave_context, environment, request_tasks)
         assert len(environment.events.init._handlers) == 1
         assert len(environment.events.test_start._handlers) == 1
         assert len(environment.events.test_stop._handlers) == 1
         assert len(environment.events.spawning_complete._handlers) == 1
         assert len(environment.events.quitting._handlers) == 1
+        assert external_dependencies == set()
 
-        AtomicInteger.destroy()
+        AtomicIntegerIncrementer.destroy()
         grizzly.setup.statistics_url = 'influxdb://influx.example.com/testdb'
 
-        setup_environment_listeners(behave_context, environment, request_tasks)
+        external_dependencies = setup_environment_listeners(behave_context, environment, request_tasks)
         assert len(environment.events.init._handlers) == 2
         assert len(environment.events.test_start._handlers) == 1
         assert len(environment.events.test_stop._handlers) == 1
         assert len(environment.events.spawning_complete._handlers) == 1
         assert len(environment.events.quitting._handlers) == 1
+        assert external_dependencies == set()
 
-        AtomicInteger.destroy()
+        AtomicIntegerIncrementer.destroy()
+
+        mock_response({
+            'success': True,
+            'worker': 'aaaa-bbbb-cccc',
+        })
+
+        if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
+            grizzly.state.variables.update({
+                'AtomicMessageQueue.test': (
+                    'TEST.QUEUE | url="mq://mq.example.com/?QueueManager=QM1&Channel=SRV.CONN", expression="$.result.value", content_type="application/json"'
+                ),
+            })
+            request_tasks[0].endpoint = '/api/v1/{{ AtomicMessageQueue.test }}'
 
         grizzly.scenario.validation.fail_ratio = 0.1
 
-        setup_environment_listeners(behave_context, environment, request_tasks)
+        external_dependencies = setup_environment_listeners(behave_context, environment, request_tasks)
         assert len(environment.events.init._handlers) == 2
         assert len(environment.events.test_start._handlers) == 1
         assert len(environment.events.test_stop._handlers) == 1
         assert len(environment.events.spawning_complete._handlers) == 1
         assert len(environment.events.quitting._handlers) == 2
+        if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
+            assert external_dependencies == set(['messagequeue-daemon'])
+        else:
+            assert external_dependencies == set()
 
-        AtomicInteger.destroy()
+        AtomicIntegerIncrementer.destroy()
+        try:
+            AtomicMessageQueue.destroy()
+        except:
+            pass
 
         grizzly.setup.statistics_url = None
 
@@ -375,7 +444,8 @@ def test_setup_environment_listeners(behave_context: Context, mocker: MockerFixt
         assert 'error parsing request payload: ' in str(ae)
     finally:
         try:
-            AtomicInteger.destroy()
+            AtomicIntegerIncrementer.destroy()
+            AtomicMessageQueue.destroy()
         except:
             pass
 
@@ -415,11 +485,27 @@ def test_run_worker(behave_context: Context, capsys: CaptureFixture, mocker: Moc
         'locust.runners.WorkerRunner.start_worker',
         'gevent.sleep',
         'grizzly.listeners._init_testdata_producer',
+        'grizzly.testdata.variables.messagequeue.zmq.sugar.context.Context.term',
+        'grizzly.testdata.variables.messagequeue.zmq.sugar.context.Context.__del__',
+        'grizzly.testdata.variables.messagequeue.zmq.sugar.socket.Socket.bind',
+        'grizzly.testdata.variables.messagequeue.zmq.sugar.socket.Socket.connect',
+        'grizzly.testdata.variables.messagequeue.zmq.sugar.socket.Socket.send_json',
     ]:
         mocker.patch(
             method,
             noop,
         )
+
+    def mocked_response(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> MessageQueueResponse:
+        return {
+            'success': True,
+            'worker': 'aaaa-bbbb-ccc',
+        }
+
+    mocker.patch(
+        'grizzly.testdata.variables.messagequeue.zmq.sugar.socket.Socket.recv_json',
+        mocked_response,
+    )
 
     def mocked_popen___init__(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
         setattr(args[0], 'returncode', -15)
@@ -450,8 +536,7 @@ def test_run_worker(behave_context: Context, capsys: CaptureFixture, mocker: Moc
 
     assert messagequeue_process_spy.call_count == 0
 
-    import grizzly.users.messagequeue as mq
-    if mq.pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
+    if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
         grizzly.add_scenario('test-mq')
         grizzly.scenario.user_class_name = 'MessageQueueUser'
         grizzly.scenario.context['host'] = 'mq://mq.example.org?QueueManager=QM01&Channel=TEST.CONN'
@@ -468,6 +553,30 @@ def test_run_worker(behave_context: Context, capsys: CaptureFixture, mocker: Moc
 
         assert messagequeue_process_spy.call_count == 1
         assert messagequeue_process_spy.call_args_list[0][0][1][0] == 'messagequeue-daemon'
+        messagequeue_process_spy.reset_mock()
+
+        # messagequeue-daemon should start on worker if a scenario has AtomicMessageQueue variable
+        grizzly._scenarios.pop()  # remove test-mq scenario
+
+        grizzly.state.variables.update({
+            'AtomicMessageQueue.test': 'TEST.QUEUE | url="mq://mq.example.com/?QueueManager=QM1&Channel=SRV.CONN", expression="$.result.value", content_type="application/json"',
+        })
+
+        task = cast(RequestTask, grizzly.scenario.tasks.pop())
+
+        task.endpoint = '/api/v1/{{ AtomicMessageQueue.test }}'
+
+        grizzly.scenario.add_task(task)
+
+        assert run(behave_context) == 1
+        assert 'failed to connect to the locust master' in capsys.readouterr().err
+        assert messagequeue_process_spy.call_count == 1
+        assert messagequeue_process_spy.call_args_list[0][0][1][0] == 'messagequeue-daemon'
+
+        try:
+            AtomicMessageQueue.destroy()
+        except:
+            pass
 
 
 @pytest.mark.usefixtures('behave_context')
@@ -497,11 +606,29 @@ def test_run_master(behave_context: Context, capsys: CaptureFixture, mocker: Moc
         'gevent.sleep',
         'locust.rpc.zmqrpc.Server.__init__',
         'grizzly.listeners._init_testdata_producer',
+        'grizzly.testdata.variables.messagequeue.zmq.sugar.context.Context.term',
+        'grizzly.testdata.variables.messagequeue.zmq.sugar.context.Context.__del__',
+        'grizzly.testdata.variables.messagequeue.zmq.sugar.socket.Socket.bind',
+        'grizzly.testdata.variables.messagequeue.zmq.sugar.socket.Socket.connect',
+        'grizzly.testdata.variables.messagequeue.zmq.sugar.socket.Socket.send_json',
     ]:
         mocker.patch(
             method,
             noop,
         )
+
+
+    def mocked_response(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> MessageQueueResponse:
+        return {
+            'success': True,
+            'worker': 'aaaa-bbbb-ccc',
+        }
+
+    mocker.patch(
+        'grizzly.testdata.variables.messagequeue.zmq.sugar.socket.Socket.recv_json',
+        mocked_response,
+    )
+
 
     for printer in ['print_error_report', 'print_percentile_stats', 'print_stats', 'stats_printer', 'stats_history']:
         mocker.patch(
@@ -509,9 +636,12 @@ def test_run_master(behave_context: Context, capsys: CaptureFixture, mocker: Moc
             noop,
         )
 
+    def mocked_popen___init__(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+        setattr(args[0], 'returncode', -15)
+
     mocker.patch(
-        'grizzly.locust.subprocess.Popen.__init__',
-        noop,
+        'grizzly.locust.gevent.subprocess.Popen.__init__',
+        mocked_popen___init__,
     )
 
     from grizzly.locust import subprocess as subprocess_spy
@@ -564,9 +694,32 @@ def test_run_master(behave_context: Context, capsys: CaptureFixture, mocker: Moc
         run(behave_context)
     assert 'there are more workers (3) than users (2), which is not supported' in str(ae)
 
-    del behave_context.config.userdata['expected-workers']
-
     assert messagequeue_process_spy.call_count == 0
+
+    # make sure messagequeue-daemon is started on master if variable AtomicMessageQueue is used
+    if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
+        task = cast(RequestTask, grizzly.scenario.tasks.pop())
+
+        grizzly.state.variables.update({
+            'AtomicMessageQueue.test': 'TEST.QUEUE | url="mq://mq.example.com/?QueueManager=QM1&Channel=SRV.CONN", expression="$.result.value", content_type="application/json"',
+        })
+
+        task.endpoint = '/api/v1/{{ AtomicMessageQueue.test }}'
+
+        grizzly.scenario.add_task(task)
+
+        with pytest.raises(AssertionError) as ae:
+            run(behave_context)
+        assert 'there are more workers (3) than users (2), which is not supported' in str(ae)
+
+        try:
+            AtomicMessageQueue.destroy()
+        except:
+            pass
+
+        assert messagequeue_process_spy.call_count == 0
+
+    del behave_context.config.userdata['expected-workers']
 
     # @TODO: this is where it gets hard(er)...
 

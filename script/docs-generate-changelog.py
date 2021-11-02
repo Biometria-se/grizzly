@@ -11,8 +11,6 @@ def main() -> int:
     tags = output.split('\n')
     tags.sort(reverse=True)
 
-    print(f'{tags=}')
-
     with open(path.join(base_directory, 'changelog.md'), 'w') as fd:
         fd.write('# Changelog\n\n')
 

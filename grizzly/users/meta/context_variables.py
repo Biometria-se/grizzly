@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from os import environ, path
-from typing import Any, Dict, Tuple, Optional, cast
+from typing import Any, Dict, Tuple, Optional, Set, cast
 
 from jinja2 import Template
 from locust.exception import StopUser
@@ -8,7 +8,7 @@ from locust.user.users import User
 from locust.env import Environment
 
 from ...task import RequestTask
-from ...testdata.utils import merge_dicts
+from ...utils import merge_dicts
 from . import logger, FileRequests
 
 class ContextVariables(User):
@@ -16,6 +16,8 @@ class ContextVariables(User):
     _context: Dict[str, Any] = {
         'variables': {},
     }
+
+    __dependencies__: Set[str] = set()
 
     def __init__(self, environment: Environment, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
         super().__init__(environment, *args, **kwargs)

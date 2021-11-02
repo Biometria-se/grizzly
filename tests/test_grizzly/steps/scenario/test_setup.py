@@ -8,7 +8,7 @@ from pytest_mock import mocker  # pylint: disable=unused-import
 from pytest_mock.plugin import MockerFixture
 
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import
-from grizzly.testdata.models import TemplateDataType, TemplateData
+from grizzly.types import GrizzlyDictValueType, GrizzlyDict
 
 from ...fixtures import behave_context  # pylint: disable=unused-import
 
@@ -259,14 +259,14 @@ def test_step_setup_variable_value(behave_context: Context) -> None:
     step_setup_variable_value(behave_context, 'test_int', '1')
     assert grizzly.state.variables['test_int'] == 1
 
-    step_setup_variable_value(behave_context, 'AtomicInteger.test', '1')
-    assert grizzly.state.variables['AtomicInteger.test'] == 1
+    step_setup_variable_value(behave_context, 'AtomicIntegerIncrementer.test', '1 | step=10')
+    assert grizzly.state.variables['AtomicIntegerIncrementer.test'] == '1 | step=10'
 
     step_setup_variable_value(behave_context, 'AtomicDate.test', '2021-04-13')
     assert grizzly.state.variables['AtomicDate.test'] == '2021-04-13'
 
     with pytest.raises(AssertionError):
-        step_setup_variable_value(behave_context, 'AtomicInteger.test', '1')
+        step_setup_variable_value(behave_context, 'AtomicIntegerIncrementer.test', '1 | step=10')
 
     with pytest.raises(AssertionError):
         step_setup_variable_value(behave_context, 'dynamic_variable_value', '{{ value }}')
@@ -287,21 +287,21 @@ def test_step_setup_set_variable_alias(behave_context: Context, mocker: MockerFi
     assert grizzly.state.alias == {}
 
     with pytest.raises(AssertionError):
-        step_setup_set_variable_alias(behave_context, 'auth.refresh_time', 'AtomicInteger.test')
+        step_setup_set_variable_alias(behave_context, 'auth.refresh_time', 'AtomicIntegerIncrementer.test')
 
-    step_setup_variable_value(behave_context, 'AtomicInteger.test', '1337')
-    step_setup_set_variable_alias(behave_context, 'auth.refresh_time', 'AtomicInteger.test')
+    step_setup_variable_value(behave_context, 'AtomicIntegerIncrementer.test', '1337')
+    step_setup_set_variable_alias(behave_context, 'auth.refresh_time', 'AtomicIntegerIncrementer.test')
 
-    assert grizzly.state.alias.get('AtomicInteger.test', None) == 'auth.refresh_time'
+    assert grizzly.state.alias.get('AtomicIntegerIncrementer.test', None) == 'auth.refresh_time'
 
     with pytest.raises(AssertionError):
-        step_setup_set_variable_alias(behave_context, 'auth.refresh_time', 'AtomicInteger.test')
+        step_setup_set_variable_alias(behave_context, 'auth.refresh_time', 'AtomicIntegerIncrementer.test')
 
-    def setitem(self: TemplateData, key: str, value: TemplateDataType) -> None:
-        super(TemplateData, self).__setitem__(key, value)
+    def setitem(self: GrizzlyDict, key: str, value: GrizzlyDictValueType) -> None:
+        super(GrizzlyDict, self).__setitem__(key, value)
 
     mocker.patch(
-        'grizzly.testdata.models.TemplateData.__setitem__',
+        'grizzly.types.GrizzlyDict.__setitem__',
         setitem,
     )
 

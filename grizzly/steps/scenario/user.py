@@ -5,7 +5,7 @@ from behave.runner import Context
 from behave import given  # pylint: disable=no-name-in-module
 
 from ...context import GrizzlyContext
-from ...utils import resolve_variable
+from ...testdata.utils import resolve_variable
 
 
 @given(u'a user of type "{user_class_name}" load testing "{host}"')

@@ -3,7 +3,11 @@ import subprocess
 from typing import Callable, Dict, Tuple, Any, cast, Optional
 from os import environ
 
-import pymqi
+try:
+    import pymqi
+except:
+    from grizzly_extras import dummy_pymqi as pymqi
+
 import zmq
 import pytest
 
@@ -18,11 +22,10 @@ from grizzly.users.meta import RequestLogger, ResponseHandler
 from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 from grizzly.task import RequestTask
-from grizzly.types import ResponseTarget
+from grizzly.types import ResponseTarget, GrizzlyDict
 from grizzly.testdata.utils import transform
-from grizzly.testdata.models import TemplateData
 from grizzly.exceptions import ResponseHandlerError
-from grizzly.utils import add_save_handler
+from grizzly.steps.helpers import add_save_handler
 from grizzly_extras.messagequeue import MessageQueueResponse
 
 from ..fixtures import grizzly_context, request_task, locust_environment  # pylint: disable=unused-import
@@ -52,17 +55,7 @@ def mq_user(grizzly_context: Callable) -> Tuple[MessageQueueUser, GrizzlyContext
 
     return user, scenario, environment
 
-class TestMessageQueueUser:
-    real_stuff = {
-        'username': '',
-        'password': '',
-        'key_file': '',
-        'endpoint': '',
-        'host': '',
-        'queue_manager': '',
-        'channel': '',
-    }
-
+class TestMessageQueueUserNoPymqi:
     def test_no_pymqi_dependencies(self) -> None:
         env = environ.copy()
         del env['LD_LIBRARY_PATH']
@@ -82,10 +75,23 @@ class TestMessageQueueUser:
 
         out, _ = process.communicate()
         output = out.decode()
-        print(output)
+
         assert process.returncode == 1
         assert "mq.pymqi.__name__='grizzly_extras.dummy_pymqi'" in output
         assert 'NotImplementedError: MessageQueueUser could not import pymqi, have you installed IBM MQ dependencies?' in output
+
+
+@pytest.mark.skipif(pymqi.__name__ == 'grizzly_extras.dummy_pymqi', reason='needs native IBM MQ libraries')
+class TestMessageQueueUser:
+    real_stuff = {
+        'username': '',
+        'password': '',
+        'key_file': '',
+        'endpoint': '',
+        'host': '',
+        'queue_manager': '',
+        'channel': '',
+    }
 
     @pytest.mark.usefixtures('locust_environment')
     def test_create(self, locust_environment: Environment) -> None:
@@ -175,13 +181,28 @@ class TestMessageQueueUser:
             pass
 
         mocker.patch(
-            'zmq.sugar.socket.Socket.bind',
+            'grizzly.users.messagequeue.zmq.sugar.context.Context.term',
             mocked_noop,
         )
 
         mocker.patch(
-            'zmq.sugar.socket.Socket.connect',
+            'grizzly.users.messagequeue.zmq.sugar.context.Context.__del__',
+            mocked_noop,
+        )
+
+        mocker.patch(
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.bind',
+            mocked_noop,
+        )
+
+        mocker.patch(
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.connect',
             mocked_zmq_connect,
+        )
+
+        mocker.patch(
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.send_json',
+            mocked_noop,
         )
 
         def mocked_request_fire(*args: Tuple[Any, ...], **_kwargs: Dict[str, Any]) -> None:
@@ -406,7 +427,7 @@ class TestMessageQueueUser:
             }),
         }
 
-        grizzly.state.variables = cast(TemplateData, {
+        grizzly.state.variables = cast(GrizzlyDict, {
             'payload_variable': '',
             'metadata_variable': '',
         })

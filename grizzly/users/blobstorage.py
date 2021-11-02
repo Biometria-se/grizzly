@@ -33,7 +33,7 @@ from locust.exception import StopUser
 from .meta import ContextVariables
 from ..types import RequestMethod
 from ..task import RequestTask
-from ..testdata.utils import merge_dicts
+from ..utils import merge_dicts
 
 class BlobStorageUser(ContextVariables):
     client: BlobServiceClient

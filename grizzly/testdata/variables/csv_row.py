@@ -59,8 +59,7 @@ from typing import Dict, List, Any, Type, Optional, cast
 from csv import DictReader
 from random import randint
 
-from ...types import bool_typed
-from . import AtomicVariable, parse_arguments
+from ...types import bool_typed, AtomicVariable
 
 
 def atomiccsvrow__base_type__(value: str) -> str:
@@ -69,7 +68,7 @@ def atomiccsvrow__base_type__(value: str) -> str:
     if '|' in value:
         [csv_file, csv_arguments] = [v.strip() for v in value.split('|', 1)]
 
-        arguments = parse_arguments(AtomicCsvRow, csv_arguments)
+        arguments = AtomicCsvRow.parse_arguments(csv_arguments)
 
         for argument, value in arguments.items():
             if argument not in AtomicCsvRow.arguments:
@@ -112,7 +111,7 @@ class AtomicCsvRow(AtomicVariable[Dict[str, Any]]):
         if '|' in safe_value:
             [csv_file, csv_arguments] = [v.strip() for v in safe_value.split('|', 1)]
 
-            arguments = parse_arguments(self.__class__, csv_arguments)
+            arguments = self.parse_arguments(csv_arguments)
 
             for argument, caster in self.__class__.arguments.items():
                 if argument in arguments:

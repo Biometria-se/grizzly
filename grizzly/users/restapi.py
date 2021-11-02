@@ -66,7 +66,7 @@ from locust.clients import ResponseContextManager
 from locust.exception import CatchResponseError, StopUser
 
 from ..types import WrappedFunc
-from ..testdata.utils import merge_dicts
+from ..utils import merge_dicts
 from ..types import RequestMethod
 from ..task import RequestTask
 from .meta import RequestLogger, ResponseHandler, ContextVariables, HttpRequests

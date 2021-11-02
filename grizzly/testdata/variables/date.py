@@ -33,7 +33,7 @@ import pytz
 from dateutil.parser import ParserError, parse as dateparse
 from tzlocal import get_localzone as get_local_timezone
 
-from . import parse_arguments, AtomicVariable
+from ...types import AtomicVariable
 
 
 def atomicdate__base_type__(value: str) -> str:
@@ -43,7 +43,7 @@ def atomicdate__base_type__(value: str) -> str:
     if '|' in value:
         [date_value, date_arguments] = [v.strip() for v in value.split('|', 1)]
 
-        arguments = parse_arguments(AtomicDate, date_arguments)
+        arguments = AtomicDate.parse_arguments(date_arguments)
 
         for argument in arguments.keys():
             if argument not in AtomicDate.arguments:
@@ -72,6 +72,7 @@ def atomicdate__base_type__(value: str) -> str:
     except (TypeError, ParserError) as e:
         raise ValueError(f'AtomicDate: {str(e)}') from e
 
+
 class AtomicDate(AtomicVariable[Union[str, datetime]]):
     __base_type__ = atomicdate__base_type__
     __initialized: bool = False
@@ -93,7 +94,7 @@ class AtomicDate(AtomicVariable[Union[str, datetime]]):
 
         if safe_value is not None and '|' in safe_value:
             [initial_value, date_arguments] = [v.strip() for v in safe_value.split('|', 1)]
-            arguments = parse_arguments(self.__class__, date_arguments)
+            arguments = self.parse_arguments(date_arguments)
 
             if 'format' in arguments:
                 date_format = arguments['format']

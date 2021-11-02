@@ -1,9 +1,12 @@
-from os import environ
+import pkgutil
+import inspect
+
+from os import environ, path
 from typing import Generator, Callable
 
 import pytest
 
-from grizzly.testdata.variables import AtomicCsvRow, AtomicDirectoryContents, AtomicIntegerIncrementer, AtomicInteger, AtomicDate, AtomicRandomInteger, AtomicCsvRow
+import grizzly.testdata.variables as variables
 from grizzly.context import GrizzlyContext
 
 
@@ -16,38 +19,22 @@ def cleanup() -> Generator[Callable, None, None]:
 
     try:
         GrizzlyContext.destroy()
-    except ValueError:
+    except:
         pass
 
-    try:
-        AtomicInteger.destroy()
-    except Exception:
-        pass
+    # automagically find all Atomic variables and try to destroy them, instead of explicitlly define them one by one
+    for _, package_name, _ in pkgutil.iter_modules([path.dirname(variables.__file__)]):
+        module = getattr(variables, package_name)
+        for member_name, member in inspect.getmembers(module):
+            if inspect.isclass(member) and member_name.startswith('Atomic') and member_name != 'AtomicVariable':
+                destroy = getattr(member, 'destroy', None)
+                if destroy is None:
+                    continue
 
-    try:
-        AtomicIntegerIncrementer.destroy()
-    except Exception:
-        pass
-
-    try:
-        AtomicDate.destroy()
-    except Exception:
-        pass
-
-    try:
-        AtomicDirectoryContents.destroy()
-    except Exception:
-        pass
-
-    try:
-        AtomicRandomInteger.destroy()
-    except Exception:
-        pass
-
-    try:
-        AtomicCsvRow.destroy()
-    except Exception:
-        pass
+                try:
+                    destroy()
+                except:
+                    pass
 
     try:
         del environ['GRIZZLY_CONTEXT_ROOT']

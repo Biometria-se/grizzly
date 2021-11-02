@@ -64,10 +64,10 @@ class TestdataConsumer:
 
         variables: Optional[Dict[str, Any]] = None
         if 'variables' in data:
-            variables = transform(data['variables'], raw=False)
+            variables = transform(data['variables'], objectify=True)
             del data['variables']
 
-        data = transform(data, raw=True)
+        data = transform(data, objectify=False)
 
         if variables is not None:
             data['variables'] = variables
@@ -150,7 +150,7 @@ class TestdataProducer:
                                         loaded_variable_datatypes: Dict[str, Any] = {}
 
                                         for key, variable in testdata.items():
-                                            if '.' in key:
+                                            if '.' in key and not variable == '__on_consumer__':
                                                 [data_type, testdata_value] = key.split('.', 1)
                                                 if '.' in testdata_value:
                                                     # @TODO: what if name contains deeper levels (.)?
@@ -179,9 +179,9 @@ class TestdataProducer:
 
                                         message['data'] = data
 
-                                        if scenario_name in self.scenarios_iteration:
-                                            self.scenarios_iteration[scenario_name] += 1
-                                            logger.debug(f'{scenario_name}: iterations={self.scenarios_iteration[scenario_name]}')
+                                    if scenario_name in self.scenarios_iteration:
+                                        self.scenarios_iteration[scenario_name] += 1
+                                        logger.debug(f'{scenario_name}: iterations={self.scenarios_iteration[scenario_name]}')
                         except TypeError:
                             logger.error('test data error, stop consumer', exc_info=True)
 
