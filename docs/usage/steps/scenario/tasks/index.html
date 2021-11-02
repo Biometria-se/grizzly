@@ -456,6 +456,20 @@
 
             
           
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../variables/testdata/message-queue/" class="md-nav__link">
+        Message Queue
+      </a>
+    </li>
+  
+
+            
+          
         </ul>
       </nav>
     </li>
@@ -709,6 +723,13 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#step_task_transform" class="md-nav__link">
+    step_task_transform
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -950,6 +971,13 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#step_task_transform" class="md-nav__link">
+    step_task_transform
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1119,6 +1147,27 @@ The message can be a jinja template, and any variables will be rendered at the t
 <p><strong>Arguments</strong>:</p>
 <ul>
 <li><code>message</code> <em>str</em> - message to print</li>
+</ul>
+<p><a id="grizzly.steps.scenario.tasks.step_task_transform"></a></p>
+<h4 id="step_task_transform">step_task_transform</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@then</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;parse &quot;</span><span class="si">{content}</span><span class="s1">&quot; as &quot;{content_type:ContentType}&quot; and save value of &quot;</span><span class="si">{expression}</span><span class="s1">&quot; in variable &quot;</span><span class="si">{variable}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">step_task_transform</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">content</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">content_type</span><span class="p">:</span> <span class="n">ResponseContentType</span><span class="p">,</span> <span class="n">expression</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Parse (part of) a JSON object or a XML document and extract a specific value from that and save into a variable.</p>
+<p>This can be especially useful in combination with <a href="/grizzly/usage/variables/testdata/messagequeue/"><code>AtomicMessageQueue</code></a> variable.</p>
+<div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">value for variable &quot;</span><span class="s">document_id</span><span class="nf">&quot; is &quot;</span><span class="s">None</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">value for variable &quot;</span><span class="s">document_title</span><span class="nf">&quot; is &quot;</span><span class="s">None</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">value for variable &quot;</span><span class="s">document</span><span class="nf">&quot; is &quot;</span><span class="s">{\</span><span class="nf">&quot;document\&quot;</span><span class="s">: {\</span><span class="nf">&quot;id\&quot;</span><span class="s">: \</span><span class="nf">&quot;DOCUMENT_</span><span class="s">8843</span><span class="nf">-</span><span class="s">1</span><span class="nf">\&quot;</span><span class="s">, \</span><span class="nf">&quot;title\&quot;</span><span class="s">: \</span><span class="nf">&quot;TPM Report </span><span class="s">2021</span><span class="nf">\&quot;</span><span class="s">}}</span><span class="nf">&quot;</span>
+<span class="nf">...</span>
+<span class="k">Then </span><span class="nf">parse &quot;</span><span class="s">{{ document }}</span><span class="nf">&quot; as &quot;</span><span class="s">json</span><span class="nf">&quot; and save value of &quot;</span><span class="s">$.document.id</span><span class="nf">&quot; in variable &quot;</span><span class="s">document_id</span><span class="nf">&quot;</span>
+<span class="k">Then </span><span class="nf">parse &quot;</span><span class="s">{{ document }}</span><span class="nf">&quot; as &quot;</span><span class="s">json</span><span class="nf">&quot; and save value of &quot;</span><span class="s">$.document.title</span><span class="nf">&quot; in variable &quot;</span><span class="s">document_title</span><span class="nf">&quot;</span>
+</code></pre></div>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>contents</code> <em>str</em> - contents to parse, supports templating or a static string</li>
+<li><code>content_type</code> <em>ResponseContentType</em> - MIME type of <code>contents</code></li>
+<li><code>expression</code> <em>str</em> - JSON or XPath expression for specific value in <code>contents</code></li>
+<li><code>variable</code> <em>str</em> - name of variable to save value to, must have been initialized</li>
 </ul>
                 
               

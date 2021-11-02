@@ -456,6 +456,20 @@
 
             
           
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../variables/testdata/message-queue/" class="md-nav__link">
+        Message Queue
+      </a>
+    </li>
+  
+
+            
+          
         </ul>
       </nav>
     </li>
@@ -1090,8 +1104,8 @@ the alias step it would look like the following structure in the context:</p>
 <span class="k">Then </span><span class="nf">save response metadata &quot;</span><span class="s">$.Authentication</span><span class="nf">&quot; that matches &quot;</span><span class="s">^Bearer .*$</span><span class="nf">&quot; in variable &quot;</span><span class="s">HEADER_AUTHENTICATION</span><span class="nf">&quot;</span>
 
 <span class="c"># only the numerical suffix is saved in the variable</span><span class="nf"></span>
-<span class="k">And </span><span class="nf">value of variable &quot;</span><span class="s">AtomicInteger.measurermentId</span><span class="nf">&quot; is &quot;</span><span class="s">0</span><span class="nf">&quot;</span>
-<span class="k">Then </span><span class="nf">save response payload &quot;</span><span class="s">$.measurement.id</span><span class="nf">&quot; that matches &quot;</span><span class="s">^cpu([\\d]+)$</span><span class="nf">&quot; in &quot;</span><span class="s">AtomicInteger.measurementId</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">value of variable &quot;</span><span class="s">AtomicIntegerIncrementer.measurermentId</span><span class="nf">&quot; is &quot;</span><span class="s">1</span><span class="nf">&quot;</span>
+<span class="k">Then </span><span class="nf">save response payload &quot;</span><span class="s">$.measurement.id</span><span class="nf">&quot; that matches &quot;</span><span class="s">^cpu([\\d]+)$</span><span class="nf">&quot; in &quot;</span><span class="s">measurementId</span><span class="nf">&quot;</span>
 
 <span class="c"># the whole value is saved, as long as the value starts with &quot;cpu&quot;</span><span class="nf"></span>
 <span class="k">And </span><span class="nf">value of variable &quot;</span><span class="s">measurementId</span><span class="nf">&quot; is &quot;</span><span class="s">0</span><span class="nf">&quot;</span>
@@ -1426,6 +1440,27 @@ The message can be a jinja template, and any variables will be rendered at the t
 <ul>
 <li><code>message</code> <em>str</em> - message to print</li>
 </ul>
+<p><a id="grizzly.steps.scenario.tasks.step_task_transform"></a></p>
+<h4 id="step_task_transform">step_task_transform</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@then</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;parse &quot;</span><span class="si">{content}</span><span class="s1">&quot; as &quot;{content_type:ContentType}&quot; and save value of &quot;</span><span class="si">{expression}</span><span class="s1">&quot; in variable &quot;</span><span class="si">{variable}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">step_task_transform</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">content</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">content_type</span><span class="p">:</span> <span class="n">ResponseContentType</span><span class="p">,</span> <span class="n">expression</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Parse (part of) a JSON object or a XML document and extract a specific value from that and save into a variable.</p>
+<p>This can be especially useful in combination with <a href="/grizzly/usage/variables/testdata/messagequeue/"><code>AtomicMessageQueue</code></a> variable.</p>
+<div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">value for variable &quot;</span><span class="s">document_id</span><span class="nf">&quot; is &quot;</span><span class="s">None</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">value for variable &quot;</span><span class="s">document_title</span><span class="nf">&quot; is &quot;</span><span class="s">None</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">value for variable &quot;</span><span class="s">document</span><span class="nf">&quot; is &quot;</span><span class="s">{\</span><span class="nf">&quot;document\&quot;</span><span class="s">: {\</span><span class="nf">&quot;id\&quot;</span><span class="s">: \</span><span class="nf">&quot;DOCUMENT_</span><span class="s">8843</span><span class="nf">-</span><span class="s">1</span><span class="nf">\&quot;</span><span class="s">, \</span><span class="nf">&quot;title\&quot;</span><span class="s">: \</span><span class="nf">&quot;TPM Report </span><span class="s">2021</span><span class="nf">\&quot;</span><span class="s">}}</span><span class="nf">&quot;</span>
+<span class="nf">...</span>
+<span class="k">Then </span><span class="nf">parse &quot;</span><span class="s">{{ document }}</span><span class="nf">&quot; as &quot;</span><span class="s">json</span><span class="nf">&quot; and save value of &quot;</span><span class="s">$.document.id</span><span class="nf">&quot; in variable &quot;</span><span class="s">document_id</span><span class="nf">&quot;</span>
+<span class="k">Then </span><span class="nf">parse &quot;</span><span class="s">{{ document }}</span><span class="nf">&quot; as &quot;</span><span class="s">json</span><span class="nf">&quot; and save value of &quot;</span><span class="s">$.document.title</span><span class="nf">&quot; in variable &quot;</span><span class="s">document_title</span><span class="nf">&quot;</span>
+</code></pre></div>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>contents</code> <em>str</em> - contents to parse, supports templating or a static string</li>
+<li><code>content_type</code> <em>ResponseContentType</em> - MIME type of <code>contents</code></li>
+<li><code>expression</code> <em>str</em> - JSON or XPath expression for specific value in <code>contents</code></li>
+<li><code>variable</code> <em>str</em> - name of variable to save value to, must have been initialized</li>
+</ul>
 <p><a id="grizzly.steps.background"></a></p>
 <h1 id="grizzlystepsbackground">grizzly.steps.background</h1>
 <p>This package contains step implementations that only is allowed in the <code>Background</code> section in a <code>Feature</code>.
@@ -1551,6 +1586,65 @@ examples above will result in:</p>
 <ul>
 <li><code>variable</code> <em>str</em> - variable name, as used in templates</li>
 <li><code>value</code> <em>str</em> - variable value</li>
+</ul>
+<p><a id="grizzly.steps.helpers"></a></p>
+<h1 id="grizzlystepshelpers">grizzly.steps.helpers</h1>
+<p><a id="grizzly.steps.helpers.get_matches"></a></p>
+<h4 id="get_matches">get_matches</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">get_matches</span><span class="p">(</span><span class="n">input_get_values</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">],</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]],</span> <span class="n">match_get_values</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">Any</span><span class="p">],</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]],</span> <span class="n">input_payload</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">],</span> <span class="n">List</span><span class="p">[</span><span class="n">Any</span><span class="p">]]</span>
+</code></pre></div>
+<p>Find all values in <code>input_context</code>.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>input_get_values</code> <em>Callable[[Any], List[str]]</em> - function that returns all values matching <code>expression</code></li>
+<li><code>input_match_values</code> <em>Callable[[Any], List[str]]</em> - function that checks that a value has correct value</li>
+<li><code>input_context</code> <em>Tuple[ResponseContentType, Any]</em> - content type and transformed payload</li>
+</ul>
+<p><strong>Returns</strong>:</p>
+<p>Tuple[List[Any], List[Any]]: list of all values and list of all matched values of those</p>
+<p><a id="grizzly.steps.helpers.handler_logic"></a></p>
+<h4 id="handler_logic">handler_logic</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">handler_logic</span><span class="p">(</span><span class="n">input_context</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">ResponseContentType</span><span class="p">,</span> <span class="n">Any</span><span class="p">],</span> <span class="n">expression</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">match_with</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">user</span><span class="p">:</span> <span class="n">ContextVariables</span><span class="p">,</span> <span class="n">callback</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Any</span><span class="p">]],</span> <span class="kc">None</span><span class="p">],</span> <span class="n">condition</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Contains common logic for both save and validation handlers.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>input_context</code> <em>Tuple[ResponseContentType, Any]</em> - content type and transformed payload</li>
+<li><code>expression</code> <em>str</em> - expression to extract value from <code>input_context</code></li>
+<li><code>match_with</code> <em>str</em> - regular expression that the extracted value must match</li>
+<li><code>user</code> <em>ContextVariablesUser</em> - user that executed task (request)</li>
+<li><code>callback</code> <em>Callable[[str, Optional[Any]], None]</em> - specific logic for either save or validation handler</li>
+<li><code>condition</code> <em>bool</em> - used by validation handler for negative matching</li>
+</ul>
+<p><a id="grizzly.steps.helpers.generate_validation_handler"></a></p>
+<h4 id="generate_validation_handler">generate_validation_handler</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">generate_validation_handler</span><span class="p">(</span><span class="n">expression</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">match_with</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">condition</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">HandlerType</span>
+</code></pre></div>
+<p>Generates a handler that will validate a value from an input.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>expression</code> <em>str</em> - how to find the specified value, can contain templating variables</li>
+<li><code>match_with</code> <em>str</em> - regular expression that any result from <code>expression</code> must match</li>
+<li><code>condition</code> <em>bool</em> - if the match should or should not match</li>
+</ul>
+<p><strong>Returns</strong>:</p>
+<ul>
+<li><code>HandlerType</code> - function that will validate values in a response during runtime</li>
+</ul>
+<p><a id="grizzly.steps.helpers.generate_save_handler"></a></p>
+<h4 id="generate_save_handler">generate_save_handler</h4>
+<div class="highlight"><pre><span></span><code><span class="k">def</span> <span class="nf">generate_save_handler</span><span class="p">(</span><span class="n">expression</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">match_with</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">HandlerType</span>
+</code></pre></div>
+<p>Generates a handler that will extract a value from the response and save it in a templating variable.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>expression</code> <em>str</em> - how to find the specified value, can contain templating variables</li>
+<li><code>match_with</code> <em>str</em> - regular expression that any result from <code>expression</code> must match</li>
+<li><code>variable</code> <em>str</em> - name of templating variable in the user context</li>
+</ul>
+<p><strong>Returns</strong>:</p>
+<ul>
+<li><code>HandlerType</code> - function that will save values from responses during run time</li>
 </ul>
 <p><a id="grizzly.steps.utils"></a></p>
 <h1 id="grizzlystepsutils">grizzly.steps.utils</h1>

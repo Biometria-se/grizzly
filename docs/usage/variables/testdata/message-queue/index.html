@@ -14,7 +14,7 @@
     
     
       
-        <title>Random Integer - Grizzly</title>
+        <title>Message Queue - Grizzly</title>
       
     
     
@@ -65,7 +65,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#grizzlytestdatavariablesrandom_integer" class="md-skip">
+        <a href="#grizzlytestdatavariablesmessagequeue" class="md-skip">
           Skip to content
         </a>
       
@@ -96,7 +96,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Random Integer
+              Message Queue
             
           </span>
         </div>
@@ -436,6 +436,34 @@
               
   
   
+  
+    <li class="md-nav__item">
+      <a href="../random-integer/" class="md-nav__link">
+        Random Integer
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../random-string/" class="md-nav__link">
+        Random String
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
     
   
   
@@ -448,12 +476,12 @@
       
       
         <label class="md-nav__link md-nav__link--active" for="__toc">
-          Random Integer
+          Message Queue
           <span class="md-nav__icon md-icon"></span>
         </label>
       
       <a href="./" class="md-nav__link md-nav__link--active">
-        Random Integer
+        Message Queue
       </a>
       
         
@@ -482,6 +510,19 @@
     Arguments
   </a>
   
+    <nav class="md-nav" aria-label="Arguments">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#url-format" class="md-nav__link">
+    URL format
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -495,34 +536,6 @@
   
 </nav>
       
-    </li>
-  
-
-            
-          
-            
-              
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../random-string/" class="md-nav__link">
-        Random String
-      </a>
-    </li>
-  
-
-            
-          
-            
-              
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../message-queue/" class="md-nav__link">
-        Message Queue
-      </a>
     </li>
   
 
@@ -913,6 +926,19 @@
     Arguments
   </a>
   
+    <nav class="md-nav" aria-label="Arguments">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#url-format" class="md-nav__link">
+    URL format
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -934,27 +960,53 @@
             <article class="md-content__inner md-typeset">
               
                 
-                  <a href="https://github.com/biometria-se/grizzly/edit/master/docs/usage/variables/testdata/random-integer.md" title="Edit this page" class="md-content__button md-icon">
+                  <a href="https://github.com/biometria-se/grizzly/edit/master/docs/usage/variables/testdata/message-queue.md" title="Edit this page" class="md-content__button md-icon">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20.71 7.04c.39-.39.39-1.04 0-1.41l-2.34-2.34c-.37-.39-1.02-.39-1.41 0l-1.84 1.83 3.75 3.75M3 17.25V21h3.75L17.81 9.93l-3.75-3.75L3 17.25z"/></svg>
                   </a>
                 
                 
-                <p><a id="grizzly.testdata.variables.random_integer"></a></p>
-<h1 id="grizzlytestdatavariablesrandom_integer">grizzly.testdata.variables.random_integer</h1>
-<p>This variable provides an random integer between specified interval.</p>
-<h2 id="format">Format</h2>
-<p>Interval from which the integer should be generated from, in the format <code>&lt;min&gt;..&lt;max&gt;</code>.</p>
-<h2 id="arguments">Arguments</h2>
-<p>This variable does not have any arguments.</p>
-<h2 id="example">Example</h2>
-<div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">value of variable &quot;</span><span class="s">AtomicRandomInteger.weight</span><span class="nf">&quot; is &quot;</span><span class="s">10..30</span><span class="nf">&quot;</span>
+                <p><a id="grizzly.testdata.variables.messagequeue"></a></p>
+<h1 id="grizzlytestdatavariablesmessagequeue">grizzly.testdata.variables.messagequeue</h1>
+<p>This variable listens for messages on message queue and extracts a value based on a json/x-path expression.</p>
+<p>Grizzly <em>must</em> have been installed with the extra <code>mq</code> package and native IBM MQ libraries must be installed for being able to use this variable:</p>
+<div class="highlight"><pre><span></span><code>pip3 install grizzly-loadtester[mq]
 </code></pre></div>
-<p>This can then be used in a template:
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-    <span class="nt">&quot;weight_tons&quot;</span><span class="p">:</span> <span class="p">{{</span> <span class="err">A</span><span class="kc">t</span><span class="err">omicRa</span><span class="kc">n</span><span class="err">domI</span><span class="kc">nte</span><span class="err">ger.weigh</span><span class="kc">t</span> <span class="p">}}</span>
-<span class="p">}</span>
-</code></pre></div></p>
-<p><code>AtomicRandomInteger.weight</code> will then be anything between, and including, <code>10</code> and <code>30</code>.</p>
+<h2 id="format">Format</h2>
+<p>Initial value is the name of the queue on the MQ server specified in argument <code>url</code>.</p>
+<h2 id="arguments">Arguments</h2>
+<ul>
+<li><code>repeat</code> <em>bool</em> (optional) - if <code>True</code>, values read for the queue will be saved in a list and re-used if there are no new messages available</li>
+<li><code>url</code> <em>str</em> - see format of url below.</li>
+<li><code>expression</code> <em>str</em> - JSON path or XPath expression for finding <em>one</em> specific value or object in the payload</li>
+<li><code>content_type</code> <em>str</em> - see <a href="/grizzly/usage/steps/scenario/response/step_response_content_type"><code>step_response_content_type</code></a></li>
+<li><code>wait</code> <em>int</em> - number of seconds to wait for a message on the queue</li>
+</ul>
+<h3 id="url-format">URL format</h3>
+<div class="highlight"><pre><span></span><code>mq[s]://[&lt;username&gt;:&lt;password&gt;@]&lt;hostname&gt;[:&lt;port&gt;]/?QueueManager=&lt;queue manager&gt;&amp;Channel=&lt;channel&gt;[&amp;KeyFile=&lt;key repository path&gt;[&amp;SslCipher=&lt;ssl cipher&gt;][&amp;CertLabel=&lt;certificate label&gt;]]
+</code></pre></div>
+<p>All variables in the URL have support for <a href="/grizzly/usage/variables/templating/">templating</a>.</p>
+<ul>
+<li><code>mq[s]</code> <em>str</em> - must be specified, <code>mqs</code> implies connecting with TLS, if <code>KeyFile</code> is not set in querystring, it will look for a key repository in <code>./&lt;username&gt;</code></li>
+<li><code>username</code> <em>str</em> (optional) - username to authenticate with, default <code>None</code></li>
+<li><code>password</code> <em>str</em> (optional) - password to authenticate with, default <code>None</code></li>
+<li><code>hostname</code> <em>str</em> - hostname of MQ server</li>
+<li><code>port</code> <em>int</em> (optional) - port on MQ server, default <code>1414</code></li>
+<li><code>QueueManager</code> <em>str</em> - name of queue manager</li>
+<li><code>Channel</code> <em>str</em> - name of channel to connect to</li>
+<li><code>KeyFile</code> <em>str</em> (optional) - path to key repository for certificates needed to connect over TLS</li>
+<li><code>SslCipher</code> <em>str</em> (optional) - SSL cipher to use for connection, default <code>ECDHE_RSA_AES_256_GCM_SHA384</code></li>
+<li><code>CertLabel</code> <em>str</em> (optional) - label of certificate in key repository, default <code>username</code></li>
+</ul>
+<h2 id="example">Example</h2>
+<div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">value of variable &quot;</span><span class="s">AtomicMessageQueue.document_id</span><span class="nf">&quot; is &quot;</span><span class="s">IN.DOCUMENTS | wait=120, url=&#39;mqs://mq_subscription:$conf::mq.password@mq.example.com/?QueueManager=QM1&amp;Channel=SRV.CONN&#39;, repeat=True, expression=&#39;$.document.id&#39;, content_type=json</span><span class="nf">&quot;</span>
+<span class="nf">...</span>
+<span class="k">Given </span><span class="nf">a user of type &quot;</span><span class="s">RestApi</span><span class="nf">&quot; load testing &quot;</span><span class="s">http://example.com</span><span class="nf">&quot;</span>
+<span class="nf">...</span>
+<span class="k">Then </span><span class="nf">get request &quot;</span><span class="s">fetch-document</span><span class="nf">&quot; from &quot;</span><span class="s">/api/v1/document/{{ AtomicMessageQueue.document_id }}</span><span class="nf">&quot;</span>
+</code></pre></div>
+<p>When the scenario starts <code>grizzly</code> will wait up to 120 seconds until <code>AtomicMessageQueue.document_id</code> has been populated from a message on the queue <code>IN.DOCUMENTS</code>.</p>
+<p>If there are no messages within 120 seconds, and it is the first iteration of the scenario, it will fail. If there has been at least one message on the queue since the scenario started, it will use
+the oldest of those values, and then add it back in the end of the list again.</p>
                 
               
               
@@ -974,7 +1026,7 @@
     <nav class="md-footer__inner md-grid" aria-label="Footer">
       
         
-        <a href="../integer-incrementer/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Integer incrementer" rel="prev">
+        <a href="../random-string/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Random String" rel="prev">
           <div class="md-footer__button md-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
           </div>
@@ -983,20 +1035,20 @@
               <span class="md-footer__direction">
                 Previous
               </span>
-              Integer incrementer
+              Random String
             </div>
           </div>
         </a>
       
       
         
-        <a href="../random-string/" class="md-footer__link md-footer__link--next" aria-label="Next: Random String" rel="next">
+        <a href="../../templating/" class="md-footer__link md-footer__link--next" aria-label="Next: Templating" rel="next">
           <div class="md-footer__title">
             <div class="md-ellipsis">
               <span class="md-footer__direction">
                 Next
               </span>
-              Random String
+              Templating
             </div>
           </div>
           <div class="md-footer__button md-icon">

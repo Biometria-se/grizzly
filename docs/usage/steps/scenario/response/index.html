@@ -456,6 +456,20 @@
 
             
           
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../variables/testdata/message-queue/" class="md-nav__link">
+        Message Queue
+      </a>
+    </li>
+  
+
+            
+          
         </ul>
       </nav>
     </li>
@@ -987,8 +1001,8 @@
 <span class="k">Then </span><span class="nf">save response metadata &quot;</span><span class="s">$.Authentication</span><span class="nf">&quot; that matches &quot;</span><span class="s">^Bearer .*$</span><span class="nf">&quot; in variable &quot;</span><span class="s">HEADER_AUTHENTICATION</span><span class="nf">&quot;</span>
 
 <span class="c"># only the numerical suffix is saved in the variable</span><span class="nf"></span>
-<span class="k">And </span><span class="nf">value of variable &quot;</span><span class="s">AtomicInteger.measurermentId</span><span class="nf">&quot; is &quot;</span><span class="s">0</span><span class="nf">&quot;</span>
-<span class="k">Then </span><span class="nf">save response payload &quot;</span><span class="s">$.measurement.id</span><span class="nf">&quot; that matches &quot;</span><span class="s">^cpu([\\d]+)$</span><span class="nf">&quot; in &quot;</span><span class="s">AtomicInteger.measurementId</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">value of variable &quot;</span><span class="s">AtomicIntegerIncrementer.measurermentId</span><span class="nf">&quot; is &quot;</span><span class="s">1</span><span class="nf">&quot;</span>
+<span class="k">Then </span><span class="nf">save response payload &quot;</span><span class="s">$.measurement.id</span><span class="nf">&quot; that matches &quot;</span><span class="s">^cpu([\\d]+)$</span><span class="nf">&quot; in &quot;</span><span class="s">measurementId</span><span class="nf">&quot;</span>
 
 <span class="c"># the whole value is saved, as long as the value starts with &quot;cpu&quot;</span><span class="nf"></span>
 <span class="k">And </span><span class="nf">value of variable &quot;</span><span class="s">measurementId</span><span class="nf">&quot; is &quot;</span><span class="s">0</span><span class="nf">&quot;</span>
