@@ -23,7 +23,7 @@ try:
 except:
     from grizzly_extras import dummy_pymqi as pymqi
 
-from ...fixtures import behave_context  # pylint: disable=unused-import
+from ...fixtures import behave_context, locust_environment  # pylint: disable=unused-import
 
 @pytest.fixture
 def noop_zmq(mocker: MockerFixture) -> Callable[[], None]:

@@ -1,7 +1,7 @@
 import logging
 
 
-from typing import Callable, Generic, TypeVar, Type, List, Any, Dict, Tuple, Optional, cast, Generator
+from typing import Generic, Type, List, Any, Dict, Tuple, Optional, cast, Generator
 from types import FunctionType
 from importlib import import_module
 from functools import wraps
@@ -16,13 +16,10 @@ from locust.user.users import User
 from locust import TaskSet, between
 
 from .context import GrizzlyContextScenario
+from .types import WrappedFunc, T
 
 
 logger = logging.getLogger(__name__)
-
-T = TypeVar('T')
-
-WrappedFunc = TypeVar('WrappedFunc', bound=Callable[..., Any])
 
 
 class ModuleLoader(Generic[T]):
@@ -94,11 +91,16 @@ def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Opt
     if global_context is None:
         global_context = {}
 
-    # @TODO: allow user implementations outside of grizzly?
     if not hasattr(scenario, 'user_class_name') or scenario.user_class_name is None:
         raise ValueError(f'{scenario.identifier} does not have user_class_name set')
 
-    base_user_class_type = cast(Type[User], ModuleLoader[User].load('grizzly.users', scenario.user_class_name))
+    if scenario.user_class_name.count('.') > 0:
+        module, user_class_name = scenario.user_class_name.rsplit('.', 1)
+    else:
+        module = 'grizzly.users'
+        user_class_name = scenario.user_class_name
+
+    base_user_class_type = cast(Type[User], ModuleLoader[User].load(module, user_class_name))
     user_class_name = f'{scenario.user_class_name}_{scenario.identifier}'
 
     context: Dict[str, Any] = {}
@@ -121,8 +123,12 @@ def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Opt
 
 
 def create_task_class_type(base_type: str, scenario: GrizzlyContextScenario) -> Type[TaskSet]:
-    # @TODO: allow scenario implementation outside of grizzly?
-    base_task_class_type = cast(Type[TaskSet], ModuleLoader[TaskSet].load('grizzly.tasks', base_type))
+    if base_type.count('.') > 0:
+        module, base_type = base_type.rsplit('.', 1)
+    else:
+        module = 'grizzly.tasks'
+
+    base_task_class_type = cast(Type[TaskSet], ModuleLoader[TaskSet].load(module, base_type))
     task_class_name = f'{base_type}_{scenario.identifier}'
 
     return type(task_class_name, (base_task_class_type, ), {

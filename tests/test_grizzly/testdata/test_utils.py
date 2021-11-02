@@ -31,7 +31,7 @@ from grizzly.testdata.utils import (
 from grizzly.testdata.variables import AtomicCsvRow, AtomicIntegerIncrementer, AtomicMessageQueue
 from grizzly_extras.messagequeue import MessageQueueResponse
 
-from ..fixtures import grizzly_context, request_task, behave_context  # pylint: disable=unused-import
+from ..fixtures import grizzly_context, request_task, behave_context, locust_environment  # pylint: disable=unused-import
 from .fixtures import cleanup  # pylint: disable=unused-import
 from .variables.test_messagequeue import noop_zmq # pylint: disable=unused-import
 

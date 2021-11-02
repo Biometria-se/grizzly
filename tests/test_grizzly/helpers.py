@@ -4,11 +4,11 @@ from typing import Any, Dict, Optional, Tuple, List, Set
 from types import MethodType
 
 from locust import task
-from locust.user.task import TaskSet
 
 from grizzly.users.meta import ContextVariables
 from grizzly.types import RequestMethod
 from grizzly.task import RequestTask
+from grizzly.tasks import GrizzlyTasks
 
 
 def clone_request(method: str, this: RequestTask) -> RequestTask:
@@ -56,7 +56,7 @@ class TestUser(ContextVariables):
         raise RequestCalled(request)
 
 
-class TestTaskSet(TaskSet):
+class TestTaskSet(GrizzlyTasks):
     __test__ = False
 
     @task

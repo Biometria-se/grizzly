@@ -256,7 +256,7 @@ def behave_runner() -> Runner:
 
 
 @pytest.fixture
-def behave_context() -> Generator[Context, None, None]:
+def behave_context(locust_environment: Environment) -> Generator[Context, None, None]:
     runner = Runner(
         config=Configuration(
             command_args=[],
@@ -271,7 +271,9 @@ def behave_context() -> Generator[Context, None, None]:
     context.scenario.steps = [context.step]
     context.scenario.background = Background(filename=None, line=None, keyword='', steps=[context.step], name='')
     context._runner.step_registry = step_registry
-    setattr(context, 'grizzly', GrizzlyContext())
+    grizzly = GrizzlyContext()
+    grizzly.state.environment = locust_environment
+    setattr(context, 'grizzly', grizzly)
 
     yield context
 

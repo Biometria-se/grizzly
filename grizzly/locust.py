@@ -181,6 +181,8 @@ def setup_environment_listeners(context: Context, environment: Environment, requ
     if grizzly.setup.statistics_url is not None:
         environment.events.init.add_listener(init_statistics_listener(grizzly.setup.statistics_url))
 
+    grizzly.state.environment = environment
+
     return external_dependencies
 
 

@@ -4,7 +4,7 @@ from behave.runner import Context
 
 from grizzly.steps.utils import step_utils_fail
 
-from ..fixtures import behave_context  # pylint: disable=unused-import
+from ..fixtures import behave_context, locust_environment  # pylint: disable=unused-import
 
 
 @pytest.mark.usefixtures('behave_context')

@@ -3,6 +3,7 @@ import logging
 from typing import Optional, List, Dict, Any, Tuple, Set, cast
 from collections import namedtuple
 from os import environ
+from time import monotonic as time
 
 from jinja2 import Template, Environment
 from jinja2.meta import find_undeclared_variables
@@ -80,10 +81,25 @@ def transform(data: Dict[str, Any], objectify: Optional[bool] = True) -> Dict[st
                     else:
                         raise e
 
+                start_time = time()
+                exception: Optional[Exception] = None
                 try:
                     value = variable_instance[variable_name]
                 except Exception as e:
-                    logger.error(f'{key}: {str(e)}', exc_info=grizzly.state.verbose)
+                    exception = e
+                    logger.error(str(e), exc_info=grizzly.state.verbose)
+                finally:
+                    total_time = int((time() - start_time) * 1000)
+                    grizzly.state.environment.events.request.fire(
+                        request_type='VAR ',
+                        name=key,
+                        response_time=total_time,
+                        response_length=0,
+                        context=None,
+                        exception=exception,
+                    )
+
+                if exception is not None:
                     raise StopUser()
 
             paths: List[str] = key.split('.')

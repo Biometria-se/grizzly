@@ -17,7 +17,7 @@ from grizzly.steps.setup import step_setup_variable_value_ask as step_both
 from grizzly.steps.background.setup import step_setup_save_statistics as step_background
 from grizzly.steps.scenario.setup import step_setup_iterations as step_scenario
 
-from .fixtures import behave_context  # pylint: disable=unused-import
+from .fixtures import behave_context, locust_environment  # pylint: disable=unused-import
 
 
 def test_before_feature() -> None:

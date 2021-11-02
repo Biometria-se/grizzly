@@ -5,9 +5,9 @@ from behave.runner import Context
 from behave import register_type, then  # pylint: disable=no-name-in-module
 
 from ..helpers import add_request_task
-from ...types import RequestDirection, RequestMethod
+from ...types import RequestDirection, RequestMethod, ResponseContentType, str_response_content_type
 from ...context import GrizzlyContext
-from ...task import PrintTask, SleepTask
+from ...task import PrintTask, SleepTask, TransformerTask
 
 
 def parse_method(text: str) -> RequestMethod:
@@ -21,6 +21,7 @@ def parse_direction(text: str) -> RequestDirection:
 register_type(
     Direction=parse_direction,
     Method=parse_method,
+    ContentType=str_response_content_type,
 )
 
 
@@ -213,3 +214,37 @@ def step_task_print_message(context: Context, message: str) -> None:
 
     grizzly = cast(GrizzlyContext, context.grizzly)
     grizzly.scenario.add_task(PrintTask(message=message))
+
+
+@then(u'parse "{content}" as "{content_type:ContentType}" and save value of "{expression}" in variable "{variable}"')
+def step_task_transform(context: Context, content: str, content_type: ResponseContentType, expression: str, variable: str) -> None:
+    '''Parse (part of) a JSON object or a XML document and extract a specific value from that and save into a variable.
+
+    This can be especially useful in combination with [`AtomicMessageQueue`](/grizzly/usage/variables/testdata/messagequeue/) variable.
+
+    ```gherkin
+    And value for variable "document_id" is "None"
+    And value for variable "document_title" is "None"
+    And value for variable "document" is "{\"document\": {\"id\": \"DOCUMENT_8843-1\", \"title\": \"TPM Report 2021\"}}"
+    ...
+    Then parse "{{ document }}" as "json" and save value of "$.document.id" in variable "document_id"
+    Then parse "{{ document }}" as "json" and save value of "$.document.title" in variable "document_title"
+    ```
+
+    Args:
+        contents (str): contents to parse, supports templating or a static string
+        content_type (ResponseContentType): MIME type of `contents`
+        expression (str): JSON or XPath expression for specific value in `contents`
+        variable (str): name of variable to save value to, must have been initialized
+    '''
+
+    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly.scenario.add_task(TransformerTask(
+        content=content,
+        content_type=content_type,
+        expression=expression,
+        variable=variable,
+    ))
+
+    if '{{' in content and '}}' in content:
+        grizzly.scenario.orphan_templates.append(content)

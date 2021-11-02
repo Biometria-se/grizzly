@@ -10,7 +10,7 @@ from grizzly.types import RequestMethod, str_response_content_type
 from grizzly.task import RequestTask, SleepTask
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import
 
-from ...fixtures import behave_context  # pylint: disable=unused-import
+from ...fixtures import behave_context, locust_environment  # pylint: disable=unused-import
 
 @pytest.fixture
 def request_task_context(behave_context: Context) -> Generator[Context, None, None]:

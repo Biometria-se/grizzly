@@ -107,9 +107,11 @@ class JsonTransformer(Transformer):
 
 @transformer(ResponseContentType.XML)
 class XmlTransformer(Transformer):
+    _parser = XML.XMLParser(remove_blank_text=True)
+
     @classmethod
     def transform(cls, content_type: ResponseContentType, raw: str) -> Tuple[ResponseContentType, Any]:
-        document = XML.XML(raw.encode('utf-8'))
+        document = XML.XML(raw.encode('utf-8'), parser=cls._parser)
 
         # remove namespaces, which makes it easier to use XPath...
         for element in document.getiterator():
@@ -141,7 +143,17 @@ class XmlTransformer(Transformer):
                 xmlpath = XML.XPath(expression, smart_strings=False)
 
                 def get_values(input_payload: Any) -> List[str]:
-                    return [str(value).strip() for value in xmlpath(input_payload) if value is not None and len(value) > 1]
+                    values: List[str] = []
+                    for match in xmlpath(input_payload):
+                        if match is not None and len(match) > 0:
+                            if isinstance(match, XML._Element):
+                                value = XML.tostring(match, with_tail=False).decode('utf-8')
+                            else:
+                                value = str(match).strip()
+
+                            values.append(value)
+
+                    return values
 
                 return get_values
             except XML.XPathSyntaxError as e:
