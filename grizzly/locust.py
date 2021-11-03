@@ -232,11 +232,15 @@ def run(context: Context) -> int:
         external_dependencies.update(variable_dependencies)
 
         if not on_master(context) and len(external_dependencies) > 0:
+            env = environ.copy()
+            if grizzly.state.verbose:
+                env['GRIZZLY_EXTRAS_LOGLEVEL'] = 'DEBUG'
+
             for external_dependency in external_dependencies:
                 logger.info(f'starting {external_dependency}')
                 external_processes.update({external_dependency: subprocess.Popen(
                     [external_dependency],
-                    env=environ.copy(),
+                    env=env,
                     shell=False,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,

@@ -1,10 +1,11 @@
 import logging
-import json
 
 from typing import Optional, Dict, Any, TypedDict, Tuple, Callable, Generator, Literal, Union, cast
 from time import monotonic as time
 from contextlib import contextmanager
-from json import JSONEncoder
+from json import JSONEncoder, dumps as jsondumps
+from os import environ, path
+from platform import node as hostname
 
 try:
     import pymqi
@@ -64,8 +65,20 @@ class MessageQueueError(Exception):
 LRU_READY = '\x01'
 SPLITTER_FRAME = ''.encode()
 
+log_format = '[%(asctime)s] %(levelname)-5s: %(name)s: %(message)s'
+
 logger = logging.getLogger(__name__)
-logging.basicConfig(format="[%(levelname)-5s] %(name)s: %(message)s", level=logging.INFO)
+level = logging.getLevelName(environ.get('GRIZZLY_EXTRAS_LOGLEVEL', 'INFO'))
+logging.basicConfig(format=log_format, level=level)
+
+logger.info(f'level: {logging.getLevelName(level)}')
+
+if level < logging.INFO:
+    formatter = logging.Formatter(log_format)
+    file_name = f'messagequeue-daemon.{hostname()}.log'
+    file_handler = logging.FileHandler(path.join(environ.get('GRIZZLY_CONTEXT_ROOT', '.'), 'logs', file_name))
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
 
 MessageQueueRequestHandler = Callable[['MessageQueue', MessageQueueRequest], MessageQueueResponse]
 
@@ -226,7 +239,7 @@ class MessageQueue:
         action_handler = handlers.get(action, None)
 
         logger.debug(f'handling {action}')
-        logger.debug(json.dumps(request, indent=2, cls=JsonBytesEncoder))
+        logger.debug(jsondumps(request, indent=2, cls=JsonBytesEncoder))
 
         response: MessageQueueResponse
 
@@ -251,6 +264,6 @@ class MessageQueue:
             })
 
             logger.debug(f'handled {action}')
-            logger.debug(json.dumps(response, indent=2, cls=JsonBytesEncoder))
+            logger.debug(jsondumps(response, indent=2, cls=JsonBytesEncoder))
 
             return response
