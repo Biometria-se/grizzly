@@ -99,11 +99,15 @@ class GrizzlyContextScenarioValidation:
     avg_response_time: Optional[int] = field(init=False, default=None)
     response_time_percentile: Optional[GrizzlyContextScenarioResponseTimePercentile] = field(init=False, default=None)
 
+@dataclass(unsafe_hash=True)
+class GrizzlyContextScenarioUser:
+    class_name: str = field(init=False, hash=True)
+    weight: int = field(init=False, hash=True, default=1)
 
 @dataclass(unsafe_hash=True)
 class GrizzlyContextScenario:
     name: str = field(init=False, hash=True)
-    user_class_name: str = field(init=False, hash=True)
+    user: GrizzlyContextScenarioUser = field(init=False, hash=False, compare=False, default_factory=GrizzlyContextScenarioUser)
     _identifier: Optional[str] = field(init=False, hash=True, default=None)
     iterations: int = field(init=False, repr=False, hash=False, compare=False, default=1)
 
