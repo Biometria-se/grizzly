@@ -84,14 +84,9 @@ def atomicmessagequeue__base_type__(value: str) -> str:
     if queue_name is None or len(queue_name) < 1:
         raise ValueError(f'AtomicMessageQueue: queue name is not valid: {queue_name}')
 
-    if 'url' not in arguments:
-        raise ValueError('AtomicMessageQueue: url parameter must be specified')
-
-    if 'expression' not in arguments:
-        raise ValueError('AtomicMessageQueue: expression parameter must be specified')
-
-    if 'content_type' not in arguments:
-        raise ValueError('AtomicMessageQueue: content_type parameter must be specified')
+    for argument in ['url', 'expression', 'content_type']:
+        if argument not in arguments:
+            raise ValueError(f'AtomicMessageQueue: {argument} parameter must be specified')
 
     for argument_name, argument_value in arguments.items():
         if argument_name not in AtomicMessageQueue.arguments:

@@ -1,4 +1,13 @@
-'''Communicates with Azure Blob Storage.
+'''Put files to Azure Blob Storage.
+
+## Request methods
+
+Supports the following request methods:
+
+* send
+* put
+
+## Format
 
 Format of `host` is the following:
 
@@ -9,17 +18,14 @@ Format of `host` is the following:
 `endpoint` in the request is the name of the blob storage container. Name of the targeted file in the container
 is either `name` or based on the file name of `source`.
 
+## Examples
+
 Example of how to use it in a scenario:
 
 ```gherkin
 Given a user of type "BlobStorage" load testing "DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=examplestorage;AccountKey=xxxyyyyzzz=="
 Then send request "test/blob.file" to endpoint "azure-blobstorage-container-name"
 ```
-
-Supports the following request methods:
-
-* send
-* put
 '''
 import os
 
@@ -88,7 +94,7 @@ class BlobStorageUser(ContextVariables):
         finally:
             total_time = int((time() - start_time) * 1000)
             self.environment.events.request.fire(
-                request_type=f'bs:{request.method.name}',
+                request_type=f'bs:{request.method.name[:4]}',
                 name=name,
                 response_time=total_time,
                 response_length=0,

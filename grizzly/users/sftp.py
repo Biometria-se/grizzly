@@ -1,10 +1,23 @@
 '''Communicates with Secure File Transport Protocol.
 
+> **Warning**: Both local and remote files will be overwritten if they already exists. Downloaded files will be stored in `requests/download`.
+
+## Request methods
+
+Supports the following request methods:
+
+* put
+* get
+
+## Format
+
 Format of `host` is the following:
 
 ```plain
 sftp://<host>[:<port>]
 ```
+
+## Examples
 
 Example of how to use it in a scenario:
 
@@ -15,13 +28,6 @@ And set context variable "auth.password" to "great-scott-42-file-bar"
 Then put request "test/blob.file" to endpoint "/pub/blobs"
 Then get request from endpoint "/pub/blobs/blob.file"
 ```
-
-Supports the following request methods:
-
-* put
-* get
-
-Both local and remote files will be overwritten if they already exists. Downloaded files will be stored in `requests/download`.
 '''
 from typing import Any, Dict, Tuple, Optional
 from urllib.parse import urlparse
@@ -128,7 +134,7 @@ class SftpUser(ContextVariables, FileRequests):
         finally:
             total_time = int((time() - start_time) * 1000)
             self.environment.events.request.fire(
-                request_type=f'sftp:{request.method.name}',
+                request_type=f'sftp:{request.method.name[:4]}',
                 name=name,
                 response_time=total_time,
                 response_length=response_length,

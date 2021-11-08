@@ -314,6 +314,7 @@ def run(context: Context) -> int:
             )
 
         if not on_worker(context):
+            logger.info('starting locust via grizzly')
             environment.runner.start(grizzly.setup.user_count, grizzly.setup.spawn_rate)
 
             stats_printer_greenlet = gevent.spawn(stats_printer(environment.stats))
@@ -392,7 +393,6 @@ def run(context: Context) -> int:
 
         gevent.signal_handler(SIGTERM, sig_term_handler)
 
-        logger.info('starting locust via behave')
         try:
             main_greenlet.join()
         except KeyboardInterrupt as e:

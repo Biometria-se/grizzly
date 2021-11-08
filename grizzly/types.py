@@ -134,8 +134,8 @@ class AtomicVariable(Generic[T], AbstractAtomicClass):
         return cls.__instance
 
     @classmethod
-    def split_value(cls, value: str) -> Tuple[str, str]:
-        return cast(Tuple[str, str], tuple([v.strip() for v in value.split('|', 1)]))
+    def split_value(cls, value: str, separator: str = '|') -> Tuple[str, str]:
+        return cast(Tuple[str, str], tuple([v.strip() for v in value.split(separator, 1)]))
 
     @classmethod
     def parse_arguments(cls, arguments: str) -> Dict[str, Any]:
