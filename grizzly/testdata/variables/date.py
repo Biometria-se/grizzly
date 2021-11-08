@@ -41,7 +41,7 @@ def atomicdate__base_type__(value: str) -> str:
         raise ValueError(f'AtomicDate: {value} ({type(value)}) is not a string')
 
     if '|' in value:
-        [date_value, date_arguments] = [v.strip() for v in value.split('|', 1)]
+        date_value, date_arguments = AtomicDate.split_value(value)
 
         arguments = AtomicDate.parse_arguments(date_arguments)
 
@@ -93,7 +93,7 @@ class AtomicDate(AtomicVariable[Union[str, datetime]]):
         safe_value = self.__class__.__base_type__(value)
 
         if safe_value is not None and '|' in safe_value:
-            [initial_value, date_arguments] = [v.strip() for v in safe_value.split('|', 1)]
+            initial_value, date_arguments = self.split_value(safe_value)
             arguments = self.parse_arguments(date_arguments)
 
             if 'format' in arguments:

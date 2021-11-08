@@ -37,7 +37,7 @@ def atomicintegerincrementer__base_type__(value: Union[str, int]) -> str:
 
     if '|' in value:
         try:
-            [initial_value, incrementer_arguments] = [v.strip() for v in value.split('|', 1)]
+            initial_value, incrementer_arguments = AtomicIntegerIncrementer.split_value(value)
             initial_value = str(int(float(initial_value)))
         except ValueError as e:
             raise ValueError(f'AtomicIntegerIncrementer: "{value}" is not a valid initial value') from e
@@ -77,7 +77,7 @@ class AtomicIntegerIncrementer(AtomicVariable[int]):
         safe_value = self.__class__.__base_type__(value)
 
         if '|' in safe_value:
-            [incrementer_value, incrementer_arguments] = [v.strip() for v in safe_value.split('|', 1)]
+            incrementer_value, incrementer_arguments = self.split_value(safe_value)
             initial_value = incrementer_value
             arguments = self.parse_arguments(incrementer_arguments)
             step = int(arguments['step'])

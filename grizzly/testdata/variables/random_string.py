@@ -43,7 +43,7 @@ def atomicrandomstring__base_type__(value: str) -> str:
         raise ValueError(f'AtomicRandomString: no string pattern specified')
 
     if '|' in value:
-        [string_pattern, string_arguments] = [v.strip() for v in value.split('|', 1)]
+        string_pattern, string_arguments = AtomicRandomString.split_value(value)
 
         arguments = AtomicRandomString.parse_arguments(string_arguments)
 
@@ -91,7 +91,7 @@ class AtomicRandomString(AtomicVariable[str]):
         settings = {'upper': False, 'count': 1}
 
         if '|' in safe_value:
-            [string_pattern, string_arguments] = [v.strip() for v in safe_value.split('|', 1)]
+            string_pattern, string_arguments = self.split_value(safe_value)
 
             arguments = self.parse_arguments(string_arguments)
 
