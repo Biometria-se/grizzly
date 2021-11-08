@@ -91,17 +91,20 @@ def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Opt
     if global_context is None:
         global_context = {}
 
-    if not hasattr(scenario, 'user_class_name') or scenario.user_class_name is None:
-        raise ValueError(f'{scenario.identifier} does not have user_class_name set')
+    if not hasattr(scenario, 'user') or scenario.user is None:
+        raise ValueError(f'{scenario.identifier} does not have user set')
 
-    if scenario.user_class_name.count('.') > 0:
-        module, user_class_name = scenario.user_class_name.rsplit('.', 1)
+    if not hasattr(scenario.user, 'class_name') or scenario.user.class_name is None:
+        raise ValueError(f'{scenario.identifier} user does not have class_name set')
+
+    if scenario.user.class_name.count('.') > 0:
+        module, user_class_name = scenario.user.class_name.rsplit('.', 1)
     else:
         module = 'grizzly.users'
-        user_class_name = scenario.user_class_name
+        user_class_name = scenario.user.class_name
 
     base_user_class_type = cast(Type[User], ModuleLoader[User].load(module, user_class_name))
-    user_class_name = f'{scenario.user_class_name}_{scenario.identifier}'
+    user_class_name = f'{scenario.user.class_name}_{scenario.identifier}'
 
     context: Dict[str, Any] = {}
     contexts: List[Dict[str, Any]] = []
@@ -119,6 +122,7 @@ def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Opt
     return type(user_class_name, (base_user_class_type, ), {
         '__dependencies__': base_user_class_type.__dependencies__,
         '_context': context,
+        'weight': scenario.user.weight,
     })
 
 

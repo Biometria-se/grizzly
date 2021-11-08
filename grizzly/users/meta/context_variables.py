@@ -19,6 +19,8 @@ class ContextVariables(User):
 
     __dependencies__: Set[str] = set()
 
+    weight: int = 1
+
     def __init__(self, environment: Environment, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
         super().__init__(environment, *args, **kwargs)
 

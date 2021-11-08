@@ -53,7 +53,7 @@ def request_task(tmpdir_factory: TempdirFactory) -> Generator[Tuple[str, str, Re
     request.source = REQUEST_TASK_TEMPLATE_CONTENTS
     request.scenario = GrizzlyContextScenario()
     request.scenario.name = 'test-scenario'
-    request.scenario.user_class_name = 'TestUser'
+    request.scenario.user.class_name = 'TestUser'
     request.scenario.context['host'] = 'http://example.com'
     request.scenario.behave = None
 
