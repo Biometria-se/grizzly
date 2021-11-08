@@ -42,7 +42,7 @@ from ...types import bool_typed, AtomicVariable
 def atomicdirectorycontents__base_type__(value: str) -> str:
     grizzly_context_requests = os.path.join(os.environ.get('GRIZZLY_CONTEXT_ROOT', ''), 'requests')
     if '|' in value:
-        [directory_value, directory_arguments] = [v.strip() for v in value.split('|', 1)]
+        [directory_value, directory_arguments] = AtomicDirectoryContents.split_value(value)
 
         arguments = AtomicDirectoryContents.parse_arguments(directory_arguments)
 
@@ -82,7 +82,7 @@ class AtomicDirectoryContents(AtomicVariable[str]):
         settings = {'repeat': False, 'random': False}
 
         if '|' in safe_value:
-            [directory, directory_arguments] = [v.strip() for v in safe_value.split('|', 1)]
+            directory, directory_arguments = self.split_value(safe_value)
 
             arguments = self.parse_arguments(directory_arguments)
 
