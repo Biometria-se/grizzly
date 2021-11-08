@@ -1,10 +1,21 @@
-'''Communicates with IBM MQ.
+'''Get and put messages on with IBM MQ queues.
 
 User is based on `pymqi` for communicating with IBM MQ. However `pymqi` uses native libraries which `gevent` (used by `locust`) cannot patch,
 which causes any calls in `pymqi` to block the rest of `locust`. To get around this, the user implementation communicates with a stand-alone
 process via zmq, which then in turn communicates with IBM MQ.
 
 The message queue daemon process is started automagically when a scenario contains the `MessageQueueUser` and `pymqi` dependencies are installed.
+
+## Request methods
+
+Supports the following request methods:
+
+* send
+* put
+* get
+* receive
+
+## Format
 
 Format of `host` is the following:
 
@@ -14,21 +25,15 @@ mq://<hostname>:<port>/?QueueManager=<queue manager name>&Channel=<channel name>
 
 `endpoint` in the request is the name of an MQ queue.
 
+## Examples
+
 Example of how to use it in a scenario:
 
 ```gherkin
 Given a user of type "MessageQueue" load testing "mq://mq.example.com/?QueueManager=QM01&Channel=SRVCONN01"
 Then put request "test/queue-message.j2.json" with name "queue-message" to endpoint "INCOMING.MESSAGES"
 ```
-
-Supports the following request methods:
-
-* send
-* put
-* get
-* receive
-
-## GET / RECEIVE
+### Get message
 
 Default behavior is to fail directly if there is no message on the queue. If the request should wait until a message is available,
 set the time it should wait with `message.wait` (seconds) context variable.
@@ -41,9 +46,9 @@ Then get request with name "get-queue-message" from endpoint "INCOMING.MESSAGES"
 
 In this example, the request will not fail if there is a message on queue within 5 seconds.
 
-## Authentication
+### Authentication
 
-### Username and password
+#### Username and password
 
 ```gherkin
 Given a user of type "MessageQueue" load testing "mq://mqm:admin@mq.example.com/?QueueManager=QM01&Channel=SRVCONN01"
@@ -51,7 +56,7 @@ And set context variable "auth.username" to "<username>"
 And set context variable "auth.password" to "<password>"
 ```
 
-### With TLS
+#### With TLS
 
 A [key repository](https://www.ibm.com/docs/en/ibm-mq/7.5?topic=wstulws-setting-up-key-repository-unix-linux-windows-systems)
 (3 files; `.kdb`, `.rdb` and `.sth`) for the user is needed, and is specified with `auth.key_file` excluding the file extension.
@@ -220,7 +225,6 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
                     response = {}
 
                 try:
-
                     if not meta:
                         self.response_event.fire(
                             name=name,
@@ -237,7 +241,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
                         exception = e
                 finally:
                     self.environment.events.request.fire(
-                        request_type=f'mq:{mq_request["action"]}',
+                        request_type=f'mq:{mq_request["action"][:4]}',
                         name=name,
                         response_time=total_time,
                         response_length=response.get('response_length', None) or 0,

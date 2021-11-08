@@ -73,27 +73,27 @@ def noop_zmq(mocker: MockerFixture) -> Callable[[], None]:
 def test_atomicmessagequeue__base_type__() -> None:
     with pytest.raises(ValueError) as ve:
         atomicmessagequeue__base_type__('TEST.QUEUE')
-    assert 'initial value must contain arguments' in str(ve)
+    assert 'AtomicMessageQueue: initial value must contain arguments' in str(ve)
 
     with pytest.raises(ValueError) as ve:
         atomicmessagequeue__base_type__('|')
-    assert 'incorrect format in arguments: ""' in str(ve)
+    assert 'AtomicMessageQueue: incorrect format in arguments: ""' in str(ve)
 
     with pytest.raises(ValueError) as ve:
         atomicmessagequeue__base_type__('| url=""')
-    assert 'queue name is not valid: ' in str(ve)
+    assert 'AtomicMessageQueue: queue name is not valid: ' in str(ve)
 
     with pytest.raises(ValueError) as ve:
         atomicmessagequeue__base_type__('TEST.QUEUE | argument=False')
-    assert 'url parameter must be specified' in str(ve)
+    assert 'AtomicMessageQueue: url parameter must be specified' in str(ve)
 
     with pytest.raises(ValueError) as ve:
         atomicmessagequeue__base_type__('TEST.QUEUE | url="mq://mq.example.com/?QueueManager=QM1&Channel=SRV.CONN"')
-    assert 'expression parameter must be specified' in str(ve)
+    assert 'AtomicMessageQueue: expression parameter must be specified' in str(ve)
 
     with pytest.raises(ValueError) as ve:
         atomicmessagequeue__base_type__('TEST.QUEUE | url="mq://mq.example.com/?QueueManager=QM1&Channel=SRV.CONN", expression="$."')
-    assert 'content_type parameter must be specified' in str(ve)
+    assert 'AtomicMessageQueue: content_type parameter must be specified' in str(ve)
 
     json_transformer = transformer.available[ResponseContentType.JSON]
     del transformer.available[ResponseContentType.JSON]
@@ -102,19 +102,19 @@ def test_atomicmessagequeue__base_type__() -> None:
         atomicmessagequeue__base_type__(
             'TEST.QUEUE | url="mq://mq.example.com/?QueueManager=QM1&Channel=SRV.CONN", expression="$.", content_type="application/json"',
         )
-    assert 'could not find a transformer for JSON' in str(ve)
+    assert 'AtomicMessageQueue: could not find a transformer for JSON' in str(ve)
 
     with pytest.raises(ValueError) as ve:
         atomicmessagequeue__base_type__(
             'TEST.QUEUE | url="mq://mq.example.com/?QueueManager=QM1&Channel=SRV.CONN", expression="$.", content_type="application/json", argument=False',
         )
-    assert 'argument argument is not allowed' in str(ve)
+    assert 'AtomicMessageQueue: argument argument is not allowed' in str(ve)
 
     transformer.available[ResponseContentType.JSON] = json_transformer
 
     with pytest.raises(ValueError) as ve:
         atomicmessagequeue__base_type__('TEST.QUEUE | url="mq://mq.example.com/?QueueManager=QM1&Channel=SRV.CONN", expression="$.", content_type="application/json"')
-    assert 'expression "$." is not a valid expression for JSON' in str(ve)
+    assert 'AtomicMessageQueue: expression "$." is not a valid expression for JSON' in str(ve)
 
     safe_value = atomicmessagequeue__base_type__(
         'TEST.QUEUE|url="mq://mq.example.com/?QueueManager=QM1&Channel=SRV.CONN", expression="$.test.result", content_type="application/json"',

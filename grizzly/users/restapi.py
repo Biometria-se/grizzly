@@ -1,10 +1,22 @@
 '''Communicates with HTTP and HTTPS, with built-in support for Azure authenticated endpoints.
 
+## Request methods
+
+Supports the following request methods:
+
+* get
+* put
+* post
+
+## Format
+
 Format of `host` is the following:
 
 ```plain
 http[s]://<hostname>
 ```
+
+## Examples
 
 Example on how to use it in a scenario:
 
@@ -18,12 +30,6 @@ To change how often the token should be refreshed, default is 3000 seconds:
 ```gherkin
 And set context variable "auth.refresh_time" to "3500"
 ```
-
-Supports the following request methods:
-
-* get
-* put
-* post
 
 ### Authentication
 
