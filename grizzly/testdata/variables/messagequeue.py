@@ -1,5 +1,5 @@
 # pylint: disable=line-too-long
-'''This variable listens for messages on message queue and extracts a value based on a json/x-path expression.
+'''Listens for messages on IBM MQ and extracts values from messages based on JSON path or XPath expressions.
 
 Grizzly *must* have been installed with the extra `mq` package and native IBM MQ libraries must be installed for being able to use this variable:
 
@@ -75,9 +75,9 @@ except:
 
 def atomicmessagequeue__base_type__(value: str) -> str:
     if '|' not in value:
-        raise ValueError(f'AtomicMessageQueue: initial value must contain arguments')
+        raise ValueError('AtomicMessageQueue: initial value must contain arguments')
 
-    queue_name, queue_arguments = [v.strip() for v in value.split('|', 1)]
+    queue_name, queue_arguments = AtomicMessageQueue.split_value(value)
 
     arguments = AtomicMessageQueue.parse_arguments(queue_arguments)
 
@@ -142,7 +142,7 @@ class AtomicMessageQueue(AtomicVariable[str]):
 
         settings = {'repeat': False, 'wait': None, 'expression': None, 'url': None, 'worker': None, 'context': None}
 
-        queue_name, queue_arguments = [v.strip() for v in safe_value.split('|', 1)]
+        queue_name, queue_arguments = self.split_value(safe_value)
 
         arguments = self.parse_arguments(queue_arguments)
 

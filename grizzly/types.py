@@ -119,6 +119,8 @@ class AtomicVariable(Generic[T], AbstractAtomicClass):
     _values: Dict[str, Optional[T]]
     _semaphore: Semaphore
 
+    arguments: Dict[str, Any]
+
     @classmethod
     def __new__(cls, *_args: Tuple[Any, ...], **_kwargs: Dict[str, Any]) -> 'AtomicVariable':
         if AbstractAtomicClass in cls.__bases__:
@@ -130,6 +132,10 @@ class AtomicVariable(Generic[T], AbstractAtomicClass):
             cls.__instance._initialized = False
 
         return cls.__instance
+
+    @classmethod
+    def split_value(cls, value: str) -> Tuple[str, str]:
+        return cast(Tuple[str, str], tuple([v.strip() for v in value.split('|', 1)]))
 
     @classmethod
     def parse_arguments(cls, arguments: str) -> Dict[str, Any]:

@@ -66,7 +66,7 @@ def atomiccsvrow__base_type__(value: str) -> str:
     grizzly_context_requests = os.path.join(os.environ.get('GRIZZLY_CONTEXT_ROOT', ''), 'requests')
 
     if '|' in value:
-        [csv_file, csv_arguments] = [v.strip() for v in value.split('|', 1)]
+        csv_file, csv_arguments = AtomicCsvRow.split_value(value)
 
         arguments = AtomicCsvRow.parse_arguments(csv_arguments)
 
@@ -109,7 +109,7 @@ class AtomicCsvRow(AtomicVariable[Dict[str, Any]]):
         settings = {'repeat': False, 'random': False}
 
         if '|' in safe_value:
-            [csv_file, csv_arguments] = [v.strip() for v in safe_value.split('|', 1)]
+            csv_file, csv_arguments = self.split_value(safe_value)
 
             arguments = self.parse_arguments(csv_arguments)
 
