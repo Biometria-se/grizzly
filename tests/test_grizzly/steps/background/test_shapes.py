@@ -58,15 +58,10 @@ def test_step_shapes_spawn_rate(behave_context: Context) -> None:
         step_impl(behave_context, 1, 'user')
 
     grizzly.setup.user_count = 10
-    step_impl(behave_context, 1, 'user')
-
-    assert grizzly.setup.spawn_rate == 1
-
-    with pytest.raises(AssertionError):
-        step_impl(behave_context, 10, 'user')
+    step_impl(behave_context, 0.1, 'users')
+    assert grizzly.setup.spawn_rate == 0.1
 
     step_impl(behave_context, 10, 'users')
-
     assert grizzly.setup.spawn_rate == 10
 
     grizzly.setup.user_count = 1

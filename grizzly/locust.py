@@ -289,7 +289,7 @@ def run(context: Context) -> int:
         class LocustOption:
             headless: bool
             num_users: int
-            spawn_rate: int
+            spawn_rate: float
 
         setattr(environment, 'parsed_options', LocustOption())
         setattr(environment.parsed_options, 'headless', True)
