@@ -85,7 +85,7 @@ class TestTestdataProducer:
             grizzly.state.variables['AtomicDate.utc'] = "now | format='%Y-%m-%dT%H:%M:%S.000Z', timezone=UTC"
             grizzly.state.variables['AtomicDate.now'] = 'now'
             grizzly.scenario.iterations = 2
-            grizzly.scenario.user_class_name = 'TestUser'
+            grizzly.scenario.user.class_name = 'TestUser'
             grizzly.scenario.context['host'] = 'http://test.nu'
 
             if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
@@ -208,7 +208,7 @@ class TestTestdataProducer:
             grizzly.state.variables['AtomicDirectoryContents.file'] = 'adirectory'
             grizzly.state.variables['AtomicDate.now'] = 'now'
             grizzly.scenario.iterations = 0
-            grizzly.scenario.user_class_name = 'TestUser'
+            grizzly.scenario.user.class_name = 'TestUser'
             grizzly.scenario.context['host'] = 'http://test.nu'
             grizzly.scenario.add_task(request)
 

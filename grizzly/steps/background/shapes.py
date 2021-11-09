@@ -45,7 +45,7 @@ def step_shapes_user_count(context: Context, user_count: int, user_number: str) 
     grizzly.setup.user_count = user_count
 
 
-@given(u'spawn rate is "{spawn_rate:f}" {user_number:UserGramaticalNumber} per second')
+@given(u'spawn rate is "{spawn_rate:g}" {user_number:UserGramaticalNumber} per second')
 def step_shapes_spawn_rate(context: Context, spawn_rate: float, user_number: str) -> None:
     '''Set rate in which locust shall swarm new user instances.
 
@@ -60,8 +60,6 @@ def step_shapes_spawn_rate(context: Context, spawn_rate: float, user_number: str
     '''
     grizzly = cast(GrizzlyContext, context.grizzly)
 
-    print(f"STEFAN {grizzly.setup.user_count=}")
-    print(f"STEFAN {int(spawn_rate)=}")
     if grizzly.setup.user_count is not None:
         assert int(spawn_rate) <= grizzly.setup.user_count, f'spawn rate can not be greater than user count'
 

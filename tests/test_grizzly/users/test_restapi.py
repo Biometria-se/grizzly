@@ -36,7 +36,7 @@ def restapi_user(grizzly_context: Callable) -> Tuple[RestApiUser, GrizzlyContext
     scenario = GrizzlyContextScenario()
     scenario.name = 'TestScenario'
     scenario.context['host'] = 'test'
-    scenario.user_class_name = 'RestApiUser'
+    scenario.user.class_name = 'RestApiUser'
 
     _, user, _, [_, _, request] = grizzly_context('http://test.ie', RestApiUser)
 

@@ -45,7 +45,7 @@ def mq_user(grizzly_context: Callable) -> Tuple[MessageQueueUser, GrizzlyContext
 
     scenario = GrizzlyContextScenario()
     scenario.name = task.__class__.__name__
-    scenario.user_class_name = 'MessageQueueUser'
+    scenario.user.class_name = 'MessageQueueUser'
     scenario.context['host'] = 'test'
 
     request.method = RequestMethod.SEND
