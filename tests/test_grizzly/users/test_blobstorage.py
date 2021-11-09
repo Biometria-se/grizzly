@@ -85,7 +85,7 @@ def bs_user(grizzly_context: Callable, mocker: MockerFixture) -> Tuple[BlobStora
 
     scenario = GrizzlyContextScenario()
     scenario.name = task.__class__.__name__
-    scenario.user_class_name = 'BlobStorageUser'
+    scenario.user.class_name = 'BlobStorageUser'
     scenario.context['host'] = 'test'
 
     request.method = RequestMethod.SEND

@@ -165,7 +165,7 @@ class TestSftpUser:
 
             scenario = GrizzlyContextScenario()
             scenario.name = 'test'
-            scenario.user_class_name = 'SftpUser'
+            scenario.user.class_name = 'SftpUser'
             scenario.stop_on_failure = True
 
             request.scenario = scenario

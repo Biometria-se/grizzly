@@ -82,7 +82,7 @@ def test_get_template_variables() -> None:
     scenario = GrizzlyContextScenario()
     scenario.name = 'TestScenario'
     scenario.context['host'] = 'http://test.nu'
-    scenario.user_class_name = 'TestUser'
+    scenario.user.class_name = 'TestUser'
     scenario.add_task(
         RequestTask(RequestMethod.POST, name='Test POST request', endpoint='/api/test/post')
     )

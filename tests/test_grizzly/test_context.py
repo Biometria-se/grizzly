@@ -313,7 +313,7 @@ class TestGrizzlyContextScenario:
         scenario = GrizzlyContextScenario()
         scenario.name = 'TestScenario'
         scenario.context['host'] = 'test'
-        scenario.user_class_name = 'TestUser'
+        scenario.user.class_name = 'TestUser'
         [_, _, request] = request_task
 
         scenario.add_task(request)

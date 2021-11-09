@@ -209,7 +209,7 @@ def test_initialize_testdata_with_payload_context(behave_context: Context, grizz
                 'TEST.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN", expression="$.test.result", content_type=json'
             )
             source['result']['DocumentID'] = '{{ AtomicMessageQueue.document_id }}'
-        grizzly.scenario.user_class_name = 'TestUser'
+        grizzly.scenario.user.class_name = 'TestUser'
         grizzly.scenario.context['host'] = 'http://test.nu'
         grizzly.scenario.iterations = 2
 
