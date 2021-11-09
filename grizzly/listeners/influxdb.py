@@ -244,7 +244,7 @@ class InfluxDbListener:
         return metrics
 
     def _safe_return_runner_values(self) -> Dict[str, Any]:
-        runner_values = {}
+        runner_values: Dict[str, Any] = {}
 
         try:
             thread_count = int(self.environment.runner.user_count)
@@ -261,9 +261,9 @@ class InfluxDbListener:
             runner_values['target_user_count'] = target_user_count
 
         try:
-            spawn_rate = int(self.environment.runner.spawn_rate)
+            spawn_rate = float(self.environment.runner.spawn_rate)
         except Exception:
-            spawn_rate = -1
+            spawn_rate = float(-1)
         finally:
             runner_values['spawn_rate'] = spawn_rate
 

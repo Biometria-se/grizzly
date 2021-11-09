@@ -9,7 +9,7 @@ Example kusko question to get response time:
 traces
 | extend response_time = todouble(customDimensions["response_time"]),
 response_length = toint(customDimensions["response_length"]),
-spawn_rate = toint(customDimensions["spawn_rate"]),
+spawn_rate = tofloat(customDimensions["spawn_rate"]),
 thread_count = toint(customDimensions["thread_count"]),
 target_user_count = toint(customDimensions["target_user_count"]),
 endpoint = tostring(customDimensions["endpoint"])
