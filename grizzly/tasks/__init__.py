@@ -12,10 +12,10 @@ from ..testdata.communication import TestdataConsumer
 
 class GrizzlyTasks(GrizzlyTasksBase):
     consumer: TestdataConsumer
-    tasks: List[Callable] = []
+    tasks: List[Callable[[GrizzlyTasksBase], None]] = []
     logger: logging.Logger = logging.getLogger(__name__)
     grizzly: GrizzlyContext
-    wait_time: Callable
+    wait_time: Callable[[float, float], float]
 
     def __init__(self, parent: Type[User]) -> None:
         super().__init__(parent=parent)
@@ -37,4 +37,9 @@ class GrizzlyTasks(GrizzlyTasksBase):
         self.consumer.stop()
 
 from .iterator import IteratorTasks
+
+__all__ = [
+    'GrizzlyTasks',
+    'IteratorTasks',
+]
 

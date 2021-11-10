@@ -1,3 +1,5 @@
+from typing import cast
+
 from os import environ
 
 import pytest
@@ -7,6 +9,7 @@ from behave.runner import Context
 from pytest_mock import mocker  # pylint: disable=unused-import
 from pytest_mock.plugin import MockerFixture
 
+from grizzly.context import GrizzlyContext
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import
 from grizzly.types import GrizzlyDictValueType, GrizzlyDict
 

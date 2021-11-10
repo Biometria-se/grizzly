@@ -12,6 +12,10 @@ try:
 except:
     from grizzly_extras import dummy_pymqi as pymqi
 
+#__all__ = [
+#    'pymqi',
+#]
+
 
 MessageQueueMetadata = Optional[Dict[str, Any]]
 MessageQueuePayload = Optional[Any]

@@ -1,4 +1,4 @@
-from typing import Generator, cast
+from typing import Generator, List, cast
 
 import pytest
 
@@ -6,7 +6,8 @@ from parse import compile
 from behave.runner import Context
 from behave.model import Table, Row
 
-from grizzly.types import RequestMethod, str_response_content_type
+from grizzly.context import GrizzlyContext
+from grizzly.types import RequestMethod, ResponseContentType, ResponseTarget, str_response_content_type
 from grizzly.task import RequestTask, SleepTask
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import
 

@@ -70,7 +70,7 @@ class ResultSuccess(Exception):
 class ResultFailure(Exception):
     pass
 
-def check_arguments(kwargs: Dict[str, Any]) -> Tuple[bool, List]:
+def check_arguments(kwargs: Dict[str, Any]) -> Tuple[bool, List[str]]:
     expected = ['request_type', 'name', 'response_time', 'response_length', 'context', 'exception']
     actual = list(kwargs.keys())
     expected.sort()

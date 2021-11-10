@@ -1,9 +1,12 @@
+from typing import cast
+
 from behave.runner import Context
 from behave import given  # pylint: disable=no-name-in-module
 
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import
 from grizzly.context import GrizzlyContext
 from grizzly.utils import merge_dicts
+from grizzly.testdata.utils import create_context_variable
 
 
 @given(u'also log successful requests')

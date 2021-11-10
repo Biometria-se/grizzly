@@ -4,6 +4,7 @@ from os import environ
 from typing import cast
 
 from behave.runner import Context
+from urllib.parse import urlparse
 
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import
 from grizzly.context import GrizzlyContext

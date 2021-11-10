@@ -3,6 +3,7 @@ import shutil
 import socket
 
 from typing import Generator, Tuple, Callable, Type, Optional, Any, Literal, List, Union
+from mypy_extensions import VarArg, KwArg
 
 import pytest
 
@@ -103,9 +104,23 @@ def locust_environment(tmpdir_factory: TempdirFactory) -> Generator[Environment,
 def locust_user(locust_environment: Environment) -> User:
     return TestUser(locust_environment)
 
+GrizzlyContextFixture = Callable[
+    [
+        Optional[str],
+        Optional[Type[User]],
+        Optional[Type[TaskSet]],
+        Optional[bool]
+    ],
+    Tuple[
+        Environment,
+        User,
+        Optional[TaskSet],
+        Tuple[str, str, RequestTask]
+    ]
+]
 
 @pytest.fixture(scope='function')
-def grizzly_context(request_task: Tuple[str, str, RequestTask]) -> Generator[Callable, None, None]:
+def grizzly_context(request_task: Tuple[str, str, RequestTask]) -> Generator[GrizzlyContextFixture, None, None]:
     def wrapper(
         host: Optional[str] = '',
         user_type: Optional[Type[User]] = None,
@@ -147,7 +162,7 @@ def grizzly_context(request_task: Tuple[str, str, RequestTask]) -> Generator[Cal
 
 
 @pytest.fixture
-def paramiko_mocker(mocker: MockerFixture) -> Generator[Callable, None, None]:
+def paramiko_mocker(mocker: MockerFixture) -> Generator[Callable[[], None], None, None]:
     def patch() -> None:
         # unable to import socket.AddressFamily and socket.SocketKind ?!
         def _socket_getaddrinfo(
@@ -185,11 +200,11 @@ def paramiko_mocker(mocker: MockerFixture) -> Generator[Callable, None, None]:
         def _transport_close(self: Transport) -> None:
             pass
 
-        def _get(self: SFTPClient, remotepath: str, localpath: str, callback: Optional[Callable] = None) -> None:
+        def _get(self: SFTPClient, remotepath: str, localpath: str, callback: Optional[Callable[[VarArg(Any), KwArg(Any)], None]] = None) -> None:
             if callback is not None:
                 callback(100, 1000)
 
-        def _put(self: SFTPClient, localpath: str, remotepath: str, callback: Optional[Callable] = None, confirm: Optional[bool] = True) -> None:
+        def _put(self: SFTPClient, localpath: str, remotepath: str, callback: Optional[Callable[[VarArg(Any), KwArg(Any)], None]] = None, confirm: Optional[bool] = True) -> None:
             if callback is not None:
                 callback(100, 1000)
 
