@@ -102,7 +102,7 @@ class TestTestdataProducer:
             testdata, external_dependencies = initialize_testdata(cast(List[RequestTask], grizzly.scenario.tasks))
 
             if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
-                assert external_dependencies == set(['messagequeue-daemon'])
+                assert external_dependencies == set(['async-messaged'])
             else:
                 assert external_dependencies == set()
 

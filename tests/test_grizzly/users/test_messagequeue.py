@@ -26,7 +26,7 @@ from grizzly.types import ResponseTarget, GrizzlyDict
 from grizzly.testdata.utils import transform
 from grizzly.exceptions import ResponseHandlerError
 from grizzly.steps.helpers import add_save_handler
-from grizzly_extras.messagequeue import MessageQueueResponse
+from grizzly_extras.async_message import AsyncMessageResponse
 
 from ..fixtures import grizzly_context, request_task, locust_environment  # pylint: disable=unused-import
 from ..helpers import clone_request
@@ -129,8 +129,8 @@ class TestMessageQueueUser:
             # Test default port and ssl_cipher
             MessageQueueUser.host = 'mq://mq.example.com?Channel=Kanal1&QueueManager=QMGR01'
             user = MessageQueueUser(environment=locust_environment)
-            assert user.mq_context.get('connection', None) == f'mq.example.com(1414)'
-            assert user.mq_context.get('ssl_cipher', None) == 'ECDHE_RSA_AES_256_GCM_SHA384'
+            assert user.am_context.get('connection', None) == f'mq.example.com(1414)'
+            assert user.am_context.get('ssl_cipher', None) == 'ECDHE_RSA_AES_256_GCM_SHA384'
 
             MessageQueueUser._context['auth'] = {
                 'username': 'syrsa',
@@ -143,23 +143,23 @@ class TestMessageQueueUser:
             MessageQueueUser.host = 'mq://mq.example.com:1415?Channel=Kanal1&QueueManager=QMGR01'
             user = MessageQueueUser(environment=locust_environment)
 
-            assert user.mq_context.get('connection', None) == 'mq.example.com(1415)'
-            assert user.mq_context.get('queue_manager', None) == 'QMGR01'
-            assert user.mq_context.get('channel', None) == 'Kanal1'
-            assert user.mq_context.get('key_file', None) == '/my/key'
-            assert user.mq_context.get('ssl_cipher', None) == 'rot13'
-            assert user.mq_context.get('cert_label', None) == 'some_label'
+            assert user.am_context.get('connection', None) == 'mq.example.com(1415)'
+            assert user.am_context.get('queue_manager', None) == 'QMGR01'
+            assert user.am_context.get('channel', None) == 'Kanal1'
+            assert user.am_context.get('key_file', None) == '/my/key'
+            assert user.am_context.get('ssl_cipher', None) == 'rot13'
+            assert user.am_context.get('cert_label', None) == 'some_label'
 
             MessageQueueUser._context['auth']['cert_label'] = None
 
             user = MessageQueueUser(environment=locust_environment)
 
-            assert user.mq_context.get('cert_label', None) == 'syrsa'
+            assert user.am_context.get('cert_label', None) == 'syrsa'
 
             MessageQueueUser._context['message']['wait'] = 5
 
             user = MessageQueueUser(environment=locust_environment)
-            assert user.mq_context.get('message_wait', None) == 5
+            assert user.am_context.get('message_wait', None) == 5
             assert issubclass(user.__class__, (RequestLogger, ResponseHandler,))
         finally:
             MessageQueueUser._context = {
@@ -212,7 +212,7 @@ class TestMessageQueueUser:
             # self.environment.events.request.fire
             if properties == ['request_type', 'name', 'response_time', 'response_length', 'context', 'exception']:
                 assert kwargs['request_type'] == 'mq:CONN'
-                assert kwargs['name'] == user.mq_context.get('connection', None)
+                assert kwargs['name'] == user.am_context.get('connection', None)
                 assert kwargs['response_time'] >= 0
                 assert kwargs['response_length'] == 0
                 assert isinstance(kwargs['exception'], zmq.error.ZMQError)
@@ -380,7 +380,7 @@ class TestMessageQueueUser:
             mocked_noop,
         )
 
-        response_connected: MessageQueueResponse = {
+        response_connected: AsyncMessageResponse = {
             'worker': '0000-1337',
             'success': True,
             'message': 'connected',
@@ -623,7 +623,7 @@ class TestMessageQueueUser:
             mocked_noop,
         )
 
-        response_connected: MessageQueueResponse = {
+        response_connected: AsyncMessageResponse = {
             'worker': '0000-1337',
             'success': True,
             'message': 'connected',

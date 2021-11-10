@@ -76,7 +76,7 @@ from typing import Dict, Any, Generator, Tuple, Optional, cast
 from urllib.parse import urlparse, parse_qs, unquote
 from contextlib import contextmanager
 from time import monotonic as time
-from grizzly_extras.messagequeue import MessageQueueContext, MessageQueueRequest, MessageQueueResponse
+from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
 
 
 import zmq
@@ -113,9 +113,9 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
         }
     }
 
-    __dependencies__ = set(['messagequeue-daemon'])
+    __dependencies__ = set(['async-messaged'])
 
-    mq_context: MessageQueueContext
+    am_context: AsyncMessageContext
     worker_id: Optional[str]
     zmq_context = zmq.Context()
     zmq_client: zmq.Socket
@@ -144,7 +144,8 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
 
         port = parsed.port or 1414
 
-        self.mq_context = {
+        self.am_context = {
+            'url': self.host,
             'connection': f'{parsed.hostname}({port})',
         }
 
@@ -156,7 +157,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
         if 'Channel' not in params:
             raise ValueError(f'{self.__class__.__name__} needs Channel in the query string')
 
-        self.mq_context.update({
+        self.am_context.update({
             'queue_manager': unquote(params['QueueManager'][0]),
             'channel': unquote(params['Channel'][0]),
         })
@@ -166,7 +167,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
 
         auth_context = self._context.get('auth', {})
         username = auth_context.get('username', None)
-        self.mq_context.update({
+        self.am_context.update({
             'username': username,
             'password': auth_context.get('password', None),
             'key_file': auth_context.get('key_file', None),
@@ -182,22 +183,22 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
         request_name, endpoint, payload = self.render(request)
 
         @contextmanager
-        def action(mq_request: MessageQueueRequest, name: str, abort: bool, meta: bool = False) -> Generator[None, None, None]:
+        def action(am_request: AsyncMessageRequest, name: str, abort: bool, meta: bool = False) -> Generator[None, None, None]:
             exception: Optional[Exception] = None
 
-            response: Optional[MessageQueueResponse] = None
+            response: Optional[AsyncMessageResponse] = None
 
             try:
                 start_time = time()
 
                 yield
 
-                self.zmq_client.send_json(mq_request)
+                self.zmq_client.send_json(am_request)
 
                 # do not block all other "threads", just it self
                 while True:
                     try:
-                        response = cast(MessageQueueResponse, self.zmq_client.recv_json(flags=zmq.NOBLOCK))
+                        response = cast(AsyncMessageResponse, self.zmq_client.recv_json(flags=zmq.NOBLOCK))
                         break
                     except zmq.Again:
                         gsleep(0.1)
@@ -217,7 +218,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
 
                     delta = total_time - mq_response_time
                     if delta > 100:  # @TODO: what is a suitable value?
-                        logger.warning(f'{self.__class__.__name__}: comunicating with messagequeue-daemon took {delta} ms')
+                        logger.warning(f'{self.__class__.__name__}: comunicating with async-messaged took {delta} ms')
 
                     if not response['success'] and exception is None:
                         exception = CatchResponseError(response['message'])
@@ -241,7 +242,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
                         exception = e
                 finally:
                     self.environment.events.request.fire(
-                        request_type=f'mq:{mq_request["action"][:4]}',
+                        request_type=f'mq:{am_request["action"][:4]}',
                         name=name,
                         response_time=total_time,
                         response_length=response.get('response_length', None) or 0,
@@ -263,12 +264,12 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
         if self.worker_id is None:
             with action({
                 'action': 'CONN',
-                'context': self.mq_context
-            }, self.mq_context['connection'], abort=True, meta=True):
+                'context': self.am_context
+            }, self.am_context['connection'], abort=True, meta=True):
                 self.zmq_client = self.zmq_context.socket(zmq.REQ)
                 self.zmq_client.connect(self.zmq_url)
 
-        message_queue_request: MessageQueueRequest = {
+        am_request: AsyncMessageRequest = {
             'action': request.method.name,
             'worker': self.worker_id,
             'context': {
@@ -277,5 +278,5 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
             'payload': payload,
         }
 
-        with action(message_queue_request, name, abort=request.scenario.stop_on_failure):
+        with action(am_request, name, abort=request.scenario.stop_on_failure):
             pass

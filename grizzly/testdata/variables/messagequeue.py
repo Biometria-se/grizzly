@@ -59,7 +59,7 @@ from urllib.parse import urlparse, parse_qs, unquote
 import zmq
 
 from gevent import sleep as gsleep
-from grizzly_extras.messagequeue import MessageQueueContext, MessageQueueRequest, MessageQueueResponse
+from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
 
 from ...types import bool_typed, str_response_content_type, AtomicVariable
 from ...context import GrizzlyContext
@@ -114,7 +114,7 @@ def atomicmessagequeue__base_type__(value: str) -> str:
 
 class AtomicMessageQueue(AtomicVariable[str]):
     __base_type__ = atomicmessagequeue__base_type__
-    __dependencies__ = set(['messagequeue-daemon'])
+    __dependencies__ = set(['async-messaged'])
     __on_consumer__ = True
 
 
@@ -167,7 +167,7 @@ class AtomicMessageQueue(AtomicVariable[str]):
         self.__initialized = True
 
     @classmethod
-    def create_context(cls, settings: Dict[str, Any]) -> MessageQueueContext:
+    def create_context(cls, settings: Dict[str, Any]) -> AsyncMessageContext:
         url = settings.get('url', None)
         parsed = urlparse(url)
 
@@ -237,6 +237,7 @@ class AtomicMessageQueue(AtomicVariable[str]):
             ssl_cipher = params.get('SslCipher', ['ECDHE_RSA_AES_256_GCM_SHA384'])[0]
 
         return {
+            'url': url,
             'connection': f'{parsed.hostname}({port})',
             'queue_manager': unquote(params['QueueManager'][0]),
             'channel': unquote(params['Channel'][0]),
@@ -291,10 +292,10 @@ class AtomicMessageQueue(AtomicVariable[str]):
         with self._semaphore:
             queue_name = cast(str, self._get_value(variable))
 
-            request: MessageQueueRequest
-            response: Optional[MessageQueueResponse]
+            request: AsyncMessageRequest
+            response: Optional[AsyncMessageResponse]
 
-            # first request, connect to messagequeue-daemon
+            # first request, connect to async-messaged
             if self._settings[variable].get('worker', None) is None:
                 request = {
                     'action': 'CONN',
@@ -336,7 +337,7 @@ class AtomicMessageQueue(AtomicVariable[str]):
 
             while True:
                 try:
-                    response = cast(MessageQueueResponse, self._queue_clients[variable].recv_json(flags=zmq.NOBLOCK))
+                    response = cast(AsyncMessageResponse, self._queue_clients[variable].recv_json(flags=zmq.NOBLOCK))
                     break
                 except zmq.Again:
                     gsleep(0.1)
