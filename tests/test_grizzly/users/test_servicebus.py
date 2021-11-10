@@ -6,7 +6,7 @@ from pytest_mock import mocker  # pylint: disable=unused-import
 from pytest_mock.plugin import MockerFixture
 from locust.env import Environment
 from locust.exception import StopUser
-from azure.servicebus import ServiceBusMessage, TransportType, ServiceBusSender
+from azure.servicebus import ServiceBusMessage, TransportType, ServiceBusSender, ServiceBusClient
 from jinja2 import Template
 
 from grizzly.users.meta import ContextVariables, RequestLogger, ResponseHandler
@@ -23,7 +23,6 @@ class TestServiceBusUser:
     @pytest.mark.usefixtures('locust_environment')
     def test_create(self, locust_environment: Environment, mocker: MockerFixture) -> None:
         try:
-            from grizzly.users.servicebus import ServiceBusClient
             servicebusclient_spy = mocker.spy(ServiceBusClient, 'from_connection_string')
 
             ServiceBusUser.host = 'Endpoint=mq://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=secret='

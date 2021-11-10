@@ -19,7 +19,7 @@
 		"python.linting.enabled": true,
         "python.linting.pylintEnabled": true,
         "python.linting.flake8Enabled": false,
-        "python.linting.mypyEnabled": true,
+        "python.linting.mypyEnabled": false,
         "python.linting.pycodestyleEnabled": false,
         "python.formatting.provider": "black",
 		"python.formatting.autopep8Path": "/usr/local/py-utils/bin/autopep8",
@@ -31,6 +31,9 @@
 		"python.linting.pycodestylePath": "/usr/local/py-utils/bin/pycodestyle",
 		"python.linting.pydocstylePath": "/usr/local/py-utils/bin/pydocstyle",
         "python.linting.pylintPath": "pylint",
+        "python.linting.pylintArgs": [
+            "--fail-under=10"
+        ],
         "python.languageServer": "Pylance",
         "pythonTestExplorer.testFramework": "pytest",
         "files.associations": {
@@ -48,6 +51,12 @@
             "--warn-return-any",
             "--warn-unreachable",
             "--strict-equality"
+        ],
+        "mypy.targets": [
+            "grizzly/",
+            "grizzly_extras/",
+            "example/",
+            "tests/"
         ],
         "python.testing.pytestEnabled": true,
         "python.testing.pytestArgs": [
@@ -71,7 +80,8 @@
         "mikestead.dotenv",
         "ryanluker.vscode-coverage-gutters",
         "stevejpurves.cucumber",
-        "silverbulleters.gherkin-autocomplete"
+        "silverbulleters.gherkin-autocomplete",
+        "matangover.mypy"
 	],
     "mounts": [
         "source=/etc/timezone,target=/etc/timezone,type=bind,consistency=cached",

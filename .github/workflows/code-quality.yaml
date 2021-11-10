@@ -66,5 +66,4 @@ jobs:
     - name: run mypy
       id: mypy
       run: |
-        arguments="$(sed '/^[ \t]*\/\/.*/d;/^$/d' .devcontainer/devcontainer.json | jq '.settings["python.linting.mypyArgs"] | join(" ")' | awk -F\" '{print $2}')"
-        mypy ${arguments} grizzly/ grizzly_extras/ tests/ example/
+        mypy grizzly/ grizzly_extras/ tests/ example/

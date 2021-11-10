@@ -138,7 +138,7 @@ class TestMessageQueue:
 
 
     def test_connect(self, mocker: MockerFixture) -> None:
-        from grizzly_extras.messagequeue import pymqi, handlers
+        from grizzly_extras.messagequeue import handlers
 
         client = MessageQueue(worker='asdf-asdf-asdf')
         client.qmgr = pymqi.QueueManager(None)
@@ -264,7 +264,6 @@ class TestMessageQueue:
         assert kwargs.get('password', b'').decode().strip() == 'secret'
 
     def test__create_gmo(self, mocker: MockerFixture) -> None:
-        from grizzly_extras.messagequeue import pymqi
         client = MessageQueue(worker='asdf-asdf-asdf')
 
         pymqi_gmo_spy = mocker.spy(pymqi.GMO, '__init__')
@@ -278,8 +277,6 @@ class TestMessageQueue:
         assert isinstance(gmo, pymqi.GMO)
 
     def test__request(self, mocker: MockerFixture) -> None:
-        from grizzly_extras.messagequeue import pymqi
-
         def mocked_pymqi_close(p: pymqi.Queue, options: Optional[Any] = None) -> None:
             pass
 
@@ -425,8 +422,6 @@ class TestMessageQueue:
         assert response['action'] == 'GET'
 
     def test_handler(self, mocker: MockerFixture) -> None:
-        from grizzly_extras.messagequeue import pymqi
-
         client = MessageQueue(worker='asdf-asdf-asdf')
 
         request: MessageQueueRequest = {

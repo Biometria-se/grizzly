@@ -132,7 +132,7 @@ class InfluxDbListener:
         self.environment = environment
         self._hostname = socket.gethostname()
         self._username = os.getenv('USER', 'unknown')
-        self._events: List[dict] = []
+        self._events: List[Dict[str, Any]] = []
         self._finished = False
         self._profile_name = params['ProfileName'][0] if 'ProfileName' in params else ''
         self._description = params['Description'][0] if 'Description' in params else ''

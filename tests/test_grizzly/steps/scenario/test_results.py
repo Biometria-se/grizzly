@@ -1,7 +1,10 @@
+from typing import cast
+
 import pytest
 
 from behave.runner import Context
 
+from grizzly.context import GrizzlyContext
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import
 
 from ...fixtures import behave_context, locust_environment  # pylint: disable=unused-import

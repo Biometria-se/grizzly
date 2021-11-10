@@ -1,10 +1,14 @@
+from typing import cast
+
 import pytest
 
 from behave.runner import Context
 from parse import compile
 from json import dumps as jsondumps
 
-from grizzly.types import RequestMethod
+from grizzly.context import GrizzlyContext
+from grizzly.types import RequestMethod, ResponseContentType, RequestDirection
+from grizzly.task import TransformerTask, PrintTask, SleepTask
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import
 
 from ...fixtures import behave_context, locust_environment  # pylint: disable=unused-import

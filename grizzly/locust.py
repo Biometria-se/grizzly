@@ -32,6 +32,10 @@ from .task import RequestTask
 
 from .utils import create_task_class_type, create_user_class_type
 
+__all__ = [
+    'subprocess',
+]
+
 
 unhandled_greenlet_exception = False
 
