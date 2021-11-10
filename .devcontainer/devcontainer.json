@@ -31,27 +31,11 @@
 		"python.linting.pycodestylePath": "/usr/local/py-utils/bin/pycodestyle",
 		"python.linting.pydocstylePath": "/usr/local/py-utils/bin/pydocstyle",
         "python.linting.pylintPath": "pylint",
-        "python.linting.pylintArgs": [
-            "--fail-under=10"
-        ],
         "python.languageServer": "Pylance",
         "pythonTestExplorer.testFramework": "pytest",
         "files.associations": {
             "*.j2.json": "jinja-json"
         },
-        "python.linting.mypyArgs": [
-            "--ignore-missing-imports",
-            "--follow-imports=silent",
-            "--show-column-numbers",
-            "--disallow-untyped-defs",
-            "--disallow-incomplete-defs",
-            "--no-implicit-optional",
-            "--warn-redundant-casts",
-            "--warn-unused-ignores",
-            "--warn-return-any",
-            "--warn-unreachable",
-            "--strict-equality"
-        ],
         "mypy.targets": [
             "grizzly/",
             "grizzly_extras/",

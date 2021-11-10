@@ -1,98 +1,25 @@
-import logging
-
-from typing import Optional, Dict, Any, TypedDict, Tuple, Callable, Generator, Literal, Union, cast
+from typing import Optional, Union, Tuple, Literal, Generator, Callable, Dict
 from time import monotonic as time
 from contextlib import contextmanager
-from json import JSONEncoder, dumps as jsondumps
-from os import environ, path
-from platform import node as hostname
+from json import dumps as jsondumps
+
+from . import AsyncMessageRequest, AsyncMessageResponse, AsyncMessageError, AsyncMessageHandler, JsonBytesEncoder, logger
 
 try:
     import pymqi
 except:
     from grizzly_extras import dummy_pymqi as pymqi
 
-#__all__ = [
-#    'pymqi',
-#]
+
+AsyncMessageQueueGetArguments = Union[Tuple[Literal[None], pymqi.MD], Tuple[Literal[None], pymqi.MD, pymqi.GMO]]
+
+AsyncMessageRequestHandler = Callable[['AsyncMessageQueue', AsyncMessageRequest], AsyncMessageResponse]
+
+handlers: Dict[str, AsyncMessageRequestHandler] = {}
 
 
-MessageQueueMetadata = Optional[Dict[str, Any]]
-MessageQueuePayload = Optional[Any]
-
-
-class JsonBytesEncoder(JSONEncoder):
-    def default(self, o: Any) -> Any:
-        if isinstance(o, bytes):
-            try:
-                return o.decode('utf-8')
-            except:
-                return o.decode('latin-1')
-
-        return JSONEncoder.default(self, o)
-
-
-class MessageQueueContext(TypedDict, total=False):
-    queue_manager: str
-    connection: str
-    channel: str
-    username: Optional[str]
-    password: Optional[str]
-    key_file: Optional[str]
-    cert_label: Optional[str]
-    ssl_cipher: Optional[str]
-    message_wait: Optional[int]
-    queue: str
-
-
-class MessageQueueRequest(TypedDict, total=False):
-    action: str
-    worker: Optional[str]
-    context: MessageQueueContext
-    payload: MessageQueuePayload
-
-
-class MessageQueueResponse(TypedDict, total=False):
-    success: bool
-    worker: str
-    message: Optional[str]
-    payload: MessageQueuePayload
-    metadata: MessageQueueMetadata
-    response_length: int
-    response_time: int
-
-
-class MessageQueueError(Exception):
-    pass
-
-
-LRU_READY = '\x01'
-SPLITTER_FRAME = ''.encode()
-
-log_format = '[%(asctime)s] %(levelname)-5s: %(name)s: %(message)s'
-
-logger = logging.getLogger(__name__)
-level = logging.getLevelName(environ.get('GRIZZLY_EXTRAS_LOGLEVEL', 'INFO'))
-logging.basicConfig(format=log_format, level=level)
-
-logger.info(f'level: {logging.getLevelName(level)}')
-
-if level < logging.INFO:
-    formatter = logging.Formatter(log_format)
-    file_name = f'messagequeue-daemon.{hostname()}.log'
-    file_handler = logging.FileHandler(path.join(environ.get('GRIZZLY_CONTEXT_ROOT', '.'), 'logs', file_name))
-    file_handler.setFormatter(formatter)
-    logger.addHandler(file_handler)
-
-MessageQueueRequestHandler = Callable[['MessageQueue', MessageQueueRequest], MessageQueueResponse]
-
-handlers: Dict[str, MessageQueueRequestHandler] = {}
-
-MessageQueueGetArguments = Union[Tuple[Literal[None], pymqi.MD], Tuple[Literal[None], pymqi.MD, pymqi.GMO]]
-
-
-def register(action: str, *actions: str) -> Callable[[MessageQueueRequestHandler], None]:
-    def decorator(func: MessageQueueRequestHandler) -> None:
+def register(action: str, *actions: str) -> Callable[[AsyncMessageRequestHandler], None]:
+    def decorator(func: AsyncMessageRequestHandler) -> None:
         for a in (action, *actions):
             if a in handlers:
                 continue
@@ -102,17 +29,15 @@ def register(action: str, *actions: str) -> Callable[[MessageQueueRequestHandler
     return decorator
 
 
-class MessageQueue:
+class AsyncMessageQueue(AsyncMessageHandler):
     qmgr: Optional[pymqi.QueueManager] = None
-    worker: str
     message_wait_global: int = 0
 
     def __init__(self, worker: str) -> None:
         if pymqi.__name__ == 'grizzly_extras.dummy_pymqi':
-            raise NotImplementedError('MessageQueue could not import pymqi, have you installed IBM MQ dependencies?')
+            raise NotImplementedError(f'{self.__class__.__name__} could not import pymqi, have you installed IBM MQ dependencies?')
 
-        self.worker = worker
-
+        super().__init__(worker)
 
     @contextmanager
     def queue_context(self, endpoint: str) -> Generator[pymqi.Queue, None, None]:
@@ -124,13 +49,13 @@ class MessageQueue:
             queue.close()
 
     @register('CONN')
-    def connect(self, request: MessageQueueRequest) -> MessageQueueResponse:
+    def connect(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
         if self.qmgr is not None:
-            raise MessageQueueError('already connected')
+            raise AsyncMessageError('already connected')
 
         context = request.get('context', None)
         if context is None:
-            raise MessageQueueError('no context')
+            raise AsyncMessageError('no context')
 
         connection = context['connection']
         queue_manager = context['queue_manager']
@@ -184,19 +109,19 @@ class MessageQueue:
             WaitInterval=message_wait*1000,
         )
 
-    def _request(self, request: MessageQueueRequest) -> MessageQueueResponse:
+    def _request(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
         if self.qmgr is None:
-            raise MessageQueueError('not connected')
+            raise AsyncMessageError('not connected')
 
         queue_name = request.get('context', {}).get('queue', None)
         if queue_name is None:
-            raise MessageQueueError('no queue specified')
+            raise AsyncMessageError('no queue specified')
 
         action = request['action']
 
         md = pymqi.MD()
 
-        with self.queue_context(queue_name) as queue:
+        with self.queue_context(endpoint=queue_name) as queue:
             if action == 'PUT':
                 payload = request.get('payload', None)
                 response_length = len(payload) if payload is not None else 0
@@ -221,37 +146,37 @@ class MessageQueue:
             }
 
     @register('PUT', 'SEND')
-    def put(self, request: MessageQueueRequest) -> MessageQueueResponse:
+    def put(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
         request['action'] = 'PUT'
 
         if request.get('payload', None) is None:
-            raise MessageQueueError('no payload')
+            raise AsyncMessageError('no payload')
 
         return self._request(request)
 
     @register('GET', 'RECEIVE')
-    def get(self, request: MessageQueueRequest) -> MessageQueueResponse:
+    def get(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
         request['action'] = 'GET'
 
         if request.get('payload', None) is not None:
-            raise MessageQueueError('payload not allowed')
+            raise AsyncMessageError('payload not allowed')
 
         return self._request(request)
 
-    def handler(self, request: MessageQueueRequest) -> MessageQueueResponse:
+    def handler(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
         action = request['action']
         action_handler = handlers.get(action, None)
 
         logger.debug(f'handling {action}')
         logger.debug(jsondumps(request, indent=2, cls=JsonBytesEncoder))
 
-        response: MessageQueueResponse
+        response: AsyncMessageResponse
 
         start_time = time()
 
         try:
             if action_handler is None:
-                raise MessageQueueError(f'no implementation for {action}')
+                raise AsyncMessageError(f'no implementation for {action}')
 
             response = action_handler(self, request)
             response['success'] = True

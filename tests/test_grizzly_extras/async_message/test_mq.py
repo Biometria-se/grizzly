@@ -1,15 +1,16 @@
 import subprocess
 
-from typing import cast, Dict, Tuple, Any, Optional
+from typing import Any, Optional, Tuple, Dict, cast
 from os import environ
-from json import dumps as jsondumps
 
 import pytest
 
 from pytest_mock import mocker  # pylint: disable=unused-import
 from pytest_mock.plugin import MockerFixture
 
-from grizzly_extras.messagequeue import JsonBytesEncoder, MessageQueueRequest, MessageQueueResponse, MessageQueue, MessageQueueError, register
+from grizzly_extras.async_message import AsyncMessageRequest, AsyncMessageResponse, AsyncMessageError
+from grizzly_extras.async_message.mq import AsyncMessageQueue, register
+
 
 try:
     import pymqi
@@ -27,7 +28,7 @@ def test_no_pymqi_dependencies() -> None:
             '/usr/bin/env',
             'python3',
             '-c',
-            'import grizzly_extras.messagequeue as mq; print(f"{mq.pymqi.__name__=}"); mq.MessageQueue(worker="asdf-asdf-asdf")'
+            'import grizzly_extras.async_message.mq as mq; print(f"{mq.pymqi.__name__=}"); mq.AsyncMessageQueue(worker="asdf-asdf-asdf")'
         ],
         env=env,
         stdout=subprocess.PIPE,
@@ -38,18 +39,18 @@ def test_no_pymqi_dependencies() -> None:
     output = out.decode()
     assert process.returncode == 1
     assert "mq.pymqi.__name__='grizzly_extras.dummy_pymqi'" in output
-    assert 'NotImplementedError: MessageQueue could not import pymqi, have you installed IBM MQ dependencies?' in output
+    assert 'NotImplementedError: AsyncMessageQueue could not import pymqi, have you installed IBM MQ dependencies?' in output
 
 
 def test_register() -> None:
-    def handler_a(i: MessageQueue, request: MessageQueueRequest) -> MessageQueueResponse:
+    def handler_a(i: AsyncMessageQueue, request: AsyncMessageRequest) -> AsyncMessageResponse:
         pass
 
-    def handler_b(i: MessageQueue, request: MessageQueueRequest) -> MessageQueueResponse:
+    def handler_b(i: AsyncMessageQueue, request: AsyncMessageRequest) -> AsyncMessageResponse:
         pass
 
     try:
-        from grizzly_extras.messagequeue import handlers
+        from grizzly_extras.async_message.mq import handlers
 
         actual = list(handlers.keys())
         actual.sort()
@@ -62,7 +63,7 @@ def test_register() -> None:
         register('TEST')(handler_a)
         register('TEST')(handler_b)
 
-        from grizzly_extras.messagequeue import handlers
+        from grizzly_extras.async_message.mq import handlers
 
         assert handlers['TEST'] is not handler_b
         assert handlers['TEST'] is handler_a
@@ -73,34 +74,14 @@ def test_register() -> None:
             pass
 
 
-class TestJsonBytesEncoder:
-    def test_default(self) -> None:
-        encoder = JsonBytesEncoder()
-
-        assert encoder.default(b'hello') == 'hello'
-        assert encoder.default(b'invalid \xe9 char') == 'invalid \xe9 char'
-
-        assert jsondumps({
-            'hello': b'world',
-            'invalid': b'\xe9 char',
-            'value': 'something',
-            'test': False,
-            'int': 1,
-            'empty': None,
-        }, cls=JsonBytesEncoder) == '{"hello": "world", "invalid": "\\u00e9 char", "value": "something", "test": false, "int": 1, "empty": null}'
-
-        with pytest.raises(TypeError):
-            encoder.default(None)
-
-
 @pytest.mark.skipif(pymqi.__name__ == 'grizzly_extras.dummy_pymqi', reason='needs native IBM MQ libraries')
-class TestMessageQueue:
+class TestAsyncMessageQueue:
     def test___init__(self) -> None:
-        client = MessageQueue(worker='asdf-asdf-asdf')
+        client = AsyncMessageQueue(worker='asdf-asdf-asdf')
         assert client.worker == 'asdf-asdf-asdf'
 
     def test_queue_context(self, mocker: MockerFixture) -> None:
-        client = MessageQueue(worker='asdf-asdf-asdf')
+        client = AsyncMessageQueue(worker='asdf-asdf-asdf')
         client.qmgr = pymqi.QueueManager(None)
 
         def mocked_pymqi_close(p: pymqi.Queue, options: Optional[Any] = None) -> None:
@@ -138,22 +119,22 @@ class TestMessageQueue:
 
 
     def test_connect(self, mocker: MockerFixture) -> None:
-        from grizzly_extras.messagequeue import handlers
+        from grizzly_extras.async_message.mq import handlers
 
-        client = MessageQueue(worker='asdf-asdf-asdf')
+        client = AsyncMessageQueue(worker='asdf-asdf-asdf')
         client.qmgr = pymqi.QueueManager(None)
 
-        request: MessageQueueRequest = {
+        request: AsyncMessageRequest = {
             'action': 'CONN',
         }
 
-        with pytest.raises(MessageQueueError) as mqe:
+        with pytest.raises(AsyncMessageError) as mqe:
             handlers[request['action']](client, request)
         assert 'already connected' in str(mqe)
 
         client.qmgr = None
 
-        with pytest.raises(MessageQueueError) as mqe:
+        with pytest.raises(AsyncMessageError) as mqe:
             handlers[request['action']](client, request)
         assert 'no context' in str(mqe)
 
@@ -170,6 +151,7 @@ class TestMessageQueue:
 
         request.update({
             'context': {
+                'url': 'mq://mq.example.com?QueueManager=QM1&Channel=SYS.CONN',
                 'username': 'bob',
                 'password': 'secret',
                 'channel': 'SYS.CONN',
@@ -264,7 +246,7 @@ class TestMessageQueue:
         assert kwargs.get('password', b'').decode().strip() == 'secret'
 
     def test__create_gmo(self, mocker: MockerFixture) -> None:
-        client = MessageQueue(worker='asdf-asdf-asdf')
+        client = AsyncMessageQueue(worker='asdf-asdf-asdf')
 
         pymqi_gmo_spy = mocker.spy(pymqi.GMO, '__init__')
 
@@ -304,17 +286,17 @@ class TestMessageQueue:
             mocked_pymqi_close,
         )
 
-        client = MessageQueue(worker='asdf-asdf-asdf')
+        client = AsyncMessageQueue(worker='asdf-asdf-asdf')
 
-        request: MessageQueueRequest = {}
+        request: AsyncMessageRequest = {}
 
-        with pytest.raises(MessageQueueError) as mqe:
+        with pytest.raises(AsyncMessageError) as mqe:
             client._request(request)
         assert 'not connected' in str(mqe)
 
         client.qmgr = pymqi.QueueManager(None)
 
-        with pytest.raises(MessageQueueError) as mqe:
+        with pytest.raises(AsyncMessageError) as mqe:
             client._request(request)
         assert 'no queue specified' in str(mqe)
 
@@ -364,67 +346,67 @@ class TestMessageQueue:
 
 
     def test_put(self, mocker: MockerFixture) -> None:
-        def mocked_request(i: MessageQueue, request: MessageQueueRequest) -> MessageQueueRequest:
+        def mocked_request(i: AsyncMessageQueue, request: AsyncMessageRequest) -> AsyncMessageRequest:
             return request
 
         mocker.patch(
-            'grizzly_extras.messagequeue.MessageQueue._request',
+            'grizzly_extras.async_message.mq.AsyncMessageQueue._request',
             mocked_request,
         )
 
-        client = MessageQueue(worker='asdf-asdf-asdf')
+        client = AsyncMessageQueue(worker='asdf-asdf-asdf')
 
-        request: MessageQueueRequest = {
+        request: AsyncMessageRequest = {
             'action': 'SEND',
             'payload': None,
         }
 
-        from grizzly_extras.messagequeue import handlers
+        from grizzly_extras.async_message.mq import handlers
 
-        with pytest.raises(MessageQueueError) as mqe:
+        with pytest.raises(AsyncMessageError) as mqe:
             handlers[request['action']](client, request)
         assert 'no payload' in str(mqe)
 
         request['payload'] = 'test'
 
-        response = cast(MessageQueueRequest, handlers[request['action']](client, request))
+        response = cast(AsyncMessageRequest, handlers[request['action']](client, request))
 
         assert response['action'] != 'SEND'
         assert response['action'] == 'PUT'
 
     def test_get(self, mocker: MockerFixture) -> None:
-        def mocked_request(i: MessageQueue, request: MessageQueueRequest) -> MessageQueueRequest:
+        def mocked_request(i: AsyncMessageQueue, request: AsyncMessageRequest) -> AsyncMessageRequest:
             return request
 
         mocker.patch(
-            'grizzly_extras.messagequeue.MessageQueue._request',
+            'grizzly_extras.async_message.mq.AsyncMessageQueue._request',
             mocked_request,
         )
 
-        client = MessageQueue(worker='asdf-asdf-asdf')
+        client = AsyncMessageQueue(worker='asdf-asdf-asdf')
 
-        request: MessageQueueRequest = {
+        request: AsyncMessageRequest = {
             'action': 'RECEIVE',
             'payload': 'test',
         }
 
-        from grizzly_extras.messagequeue import handlers
+        from grizzly_extras.async_message.mq import handlers
 
-        with pytest.raises(MessageQueueError) as mqe:
+        with pytest.raises(AsyncMessageError) as mqe:
             handlers[request['action']](client, request)
         assert 'payload not allowed' in str(mqe)
 
         request['payload'] = None
 
-        response = cast(MessageQueueRequest, handlers[request['action']](client, request))
+        response = cast(AsyncMessageRequest, handlers[request['action']](client, request))
 
         assert response['action'] != 'RECEIVE'
         assert response['action'] == 'GET'
 
     def test_handler(self, mocker: MockerFixture) -> None:
-        client = MessageQueue(worker='asdf-asdf-asdf')
+        client = AsyncMessageQueue(worker='asdf-asdf-asdf')
 
-        request: MessageQueueRequest = {
+        request: AsyncMessageRequest = {
             'action': 'NONE',
         }
 
@@ -432,10 +414,10 @@ class TestMessageQueue:
 
         assert response.get('success', True) == False
         assert response.get('worker', None) == 'asdf-asdf-asdf'
-        assert response.get('message', None) == 'NONE: MessageQueueError="no implementation for NONE"'
+        assert response.get('message', None) == 'NONE: AsyncMessageError="no implementation for NONE"'
         assert response.get('response_time', None) is not None
 
-        def mocked_request(i: MessageQueue, request: MessageQueueRequest) -> MessageQueueResponse:
+        def mocked_request(i: AsyncMessageQueue, request: AsyncMessageRequest) -> AsyncMessageResponse:
             return {
                 'payload': 'test payload',
                 'metadata': pymqi.MD().get(),
@@ -443,7 +425,7 @@ class TestMessageQueue:
             }
 
         mocker.patch(
-            'grizzly_extras.messagequeue.MessageQueue._request',
+            'grizzly_extras.async_message.mq.AsyncMessageQueue._request',
             mocked_request,
         )
 

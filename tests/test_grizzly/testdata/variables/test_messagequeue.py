@@ -16,7 +16,7 @@ from grizzly.testdata.variables.messagequeue import atomicmessagequeue__base_typ
 from grizzly.context import GrizzlyContext
 from grizzly.transformer import transformer
 from grizzly.types import ResponseContentType
-from grizzly_extras.messagequeue import MessageQueueResponse
+from grizzly_extras.async_message import AsyncMessageResponse
 
 try:
     import pymqi
@@ -30,7 +30,7 @@ def noop_zmq(mocker: MockerFixture) -> Callable[[], None]:
     def mocked_noop(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
         pass
 
-    def mocked_recv_json(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> MessageQueueResponse:
+    def mocked_recv_json(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> AsyncMessageResponse:
         return {
             'success': True,
             'worker': '1337-aaaabbbb-beef',
@@ -231,6 +231,7 @@ class TestAtomicMessageQueue:
             context = AtomicMessageQueue.create_context(settings)
 
             assert context == {
+                'url': settings['url'],
                 'connection': 'mq.example.com(1414)',
                 'queue_manager': 'QM1',
                 'channel': 'SRV.CONN',
@@ -289,6 +290,7 @@ class TestAtomicMessageQueue:
             context = AtomicMessageQueue.create_context(settings)
 
             assert context == {
+                'url': settings['url'],
                 'connection': 'mq.example.com(1415)',
                 'queue_manager': 'QM1',
                 'channel': 'SRV.CONN',
@@ -308,6 +310,7 @@ class TestAtomicMessageQueue:
             context = AtomicMessageQueue.create_context(settings)
 
             assert context == {
+                'url': settings['url'],
                 'connection': 'mq.example.com(1415)',
                 'queue_manager': 'QM1',
                 'channel': 'SRV.CONN',
@@ -344,6 +347,7 @@ class TestAtomicMessageQueue:
                 'content_type': ResponseContentType.JSON,
                 'worker': None,
                 'context': {
+                    'url': 'mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN',
                     'connection': 'mq.example.com(1414)',
                     'queue_manager': 'QM1',
                     'channel': 'SRV.CONN',
@@ -396,7 +400,7 @@ class TestAtomicMessageQueue:
     def test___getitem__(self, mocker: MockerFixture, noop_zmq: Callable[[], None]) -> None:
         noop_zmq()
 
-        def mock_response(response: Optional[MessageQueueResponse], repeat: int = 1) -> None:
+        def mock_response(response: Optional[AsyncMessageResponse], repeat: int = 1) -> None:
             mocker.patch(
                 'grizzly.testdata.variables.messagequeue.zmq.sugar.socket.Socket.recv_json',
                 side_effect=[zmq.Again(), response] * repeat
@@ -452,6 +456,7 @@ class TestAtomicMessageQueue:
                 'content_type': ResponseContentType.JSON,
                 'worker': '1337-aaaabbbb-beef',
                 'context': {
+                    'url': 'mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN',
                     'connection': 'mq.example.com(1414)',
                     'queue_manager': 'QM1',
                     'channel': 'SRV.CONN',

@@ -1,27 +1,22 @@
-from typing import List, cast
+from typing import List, Optional, cast
 from uuid import uuid4
 from json import loads as jsonloads, dumps as jsondumps
 from threading import Thread
+from urllib.parse import urlparse
 
 import setproctitle as proc
 
 import zmq
 
 from . import (
-    MessageQueue,
-    MessageQueueRequest,
+    AsyncMessageRequest,
+    AsyncMessageResponse,
     JsonBytesEncoder,
     LRU_READY,
     SPLITTER_FRAME,
     logger,
 )
-
-try:
-    # not used here, but we should fail early if it's not installed
-    import pymqi  # pylint: disable=unused-import
-except ImportError:
-    from .. import dummy_pymqi as pymqi
-
+from .mq import AsyncMessageQueue
 
 def router() -> None:
     proc.setproctitle('grizzly')
@@ -95,7 +90,7 @@ def worker(context: zmq.Context, identity: str) -> None:
     worker.connect('inproc://workers')
     worker.send_string(LRU_READY)
 
-    integration = MessageQueue(identity)
+    integration: Optional[AsyncMessageQueue] = None
 
     while True:
         request_proto = worker.recv_multipart()
@@ -104,7 +99,7 @@ def worker(context: zmq.Context, identity: str) -> None:
             continue
 
         request = cast(
-            MessageQueueRequest,
+            AsyncMessageRequest,
             jsonloads(request_proto[-1].decode()),
         )
 
@@ -112,9 +107,31 @@ def worker(context: zmq.Context, identity: str) -> None:
             logger.error(f'got {request["worker"]}, expected {identity}')
             continue
 
-        logger.debug(f'{identity}: send request to handler')
-        response = integration.handler(request)
-        logger.debug(f'{identity}: got response from handler')
+        response: Optional[AsyncMessageResponse] = None
+        if integration is None:
+            try:
+                integration_url = request.get('context', {}).get('url', None)
+                if integration_url is None:
+                    raise RuntimeError('no url found in request context')
+
+                parsed = urlparse(integration_url)
+
+                if parsed.scheme in ['mq', 'mqs']:
+                    integration = AsyncMessageQueue(identity)
+                else:
+                    raise RuntimeError(f'integration for {str(parsed.scheme)}:// is not implemented')
+            except Exception as e:
+                response = {
+                    'worker': identity,
+                    'response_time': 0,
+                    'success': False,
+                    'message': str(e),
+                }
+
+        if response is None and integration is not None:
+            logger.debug(f'{identity}: send request to handler')
+            response = integration.handler(request)
+            logger.debug(f'{identity}: got response from handler')
 
         response_proto = [
             request_proto[0],
@@ -126,8 +143,6 @@ def worker(context: zmq.Context, identity: str) -> None:
 
 
 def main() -> int:
-    if pymqi.__name__ == 'grizzly_extras.dummy_pymqi':
-        raise NotImplementedError('pymqi not installed')
     try:
         router()
         return 0

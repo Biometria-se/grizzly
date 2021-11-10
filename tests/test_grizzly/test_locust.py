@@ -23,7 +23,7 @@ from grizzly.task import PrintTask, RequestTask, SleepTask
 from grizzly.users import RestApiUser, MessageQueueUser
 from grizzly.tasks import IteratorTasks
 from grizzly.testdata.variables import AtomicMessageQueue, AtomicIntegerIncrementer
-from grizzly_extras.messagequeue import MessageQueueResponse
+from grizzly_extras.async_message import AsyncMessageResponse
 
 try:
     import pymqi
@@ -322,8 +322,8 @@ def test_setup_environment_listeners(behave_context: Context, mocker: MockerFixt
         mocked_noop,
     )
 
-    def mock_response(response: MessageQueueResponse) -> None:
-        def mocked_response(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> MessageQueueResponse:
+    def mock_response(response: AsyncMessageResponse) -> None:
+        def mocked_response(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> AsyncMessageResponse:
             return response
 
         mocker.patch(
@@ -419,7 +419,7 @@ def test_setup_environment_listeners(behave_context: Context, mocker: MockerFixt
         assert len(environment.events.spawning_complete._handlers) == 1
         assert len(environment.events.quitting._handlers) == 2
         if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
-            assert external_dependencies == set(['messagequeue-daemon'])
+            assert external_dependencies == set(['async-messaged'])
         else:
             assert external_dependencies == set()
 
@@ -497,7 +497,7 @@ def test_run_worker(behave_context: Context, capsys: CaptureFixture, mocker: Moc
             noop,
         )
 
-    def mocked_response(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> MessageQueueResponse:
+    def mocked_response(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> AsyncMessageResponse:
         return {
             'success': True,
             'worker': 'aaaa-bbbb-ccc',
@@ -553,7 +553,7 @@ def test_run_worker(behave_context: Context, capsys: CaptureFixture, mocker: Moc
         assert 'failed to connect to the locust master' in capsys.readouterr().err
 
         assert messagequeue_process_spy.call_count == 1
-        assert messagequeue_process_spy.call_args_list[0][0][1][0] == 'messagequeue-daemon'
+        assert messagequeue_process_spy.call_args_list[0][0][1][0] == 'async-messaged'
         messagequeue_process_spy.reset_mock()
 
         # messagequeue-daemon should start on worker if a scenario has AtomicMessageQueue variable
@@ -572,7 +572,7 @@ def test_run_worker(behave_context: Context, capsys: CaptureFixture, mocker: Moc
         assert run(behave_context) == 1
         assert 'failed to connect to the locust master' in capsys.readouterr().err
         assert messagequeue_process_spy.call_count == 1
-        assert messagequeue_process_spy.call_args_list[0][0][1][0] == 'messagequeue-daemon'
+        assert messagequeue_process_spy.call_args_list[0][0][1][0] == 'async-messaged'
 
         try:
             AtomicMessageQueue.destroy()
@@ -619,7 +619,7 @@ def test_run_master(behave_context: Context, capsys: CaptureFixture, mocker: Moc
         )
 
 
-    def mocked_response(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> MessageQueueResponse:
+    def mocked_response(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> AsyncMessageResponse:
         return {
             'success': True,
             'worker': 'aaaa-bbbb-ccc',

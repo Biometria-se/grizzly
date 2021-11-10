@@ -29,7 +29,7 @@ from grizzly.testdata.utils import (
     transform,
 )
 from grizzly.testdata.variables import AtomicCsvRow, AtomicIntegerIncrementer, AtomicMessageQueue
-from grizzly_extras.messagequeue import MessageQueueResponse
+from grizzly_extras.async_message import AsyncMessageResponse
 
 from ..fixtures import grizzly_context, request_task, behave_context, locust_environment  # pylint: disable=unused-import
 from .fixtures import cleanup  # pylint: disable=unused-import
@@ -98,7 +98,7 @@ def test__get_variable_value_AtomicMessageQueue(noop_zmq: Callable[[], None], cl
             'TEST.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN", expression="$.test.result", content_type=json'
         )
         value, external_dependencies = _get_variable_value(variable_name)
-        assert external_dependencies == set(['messagequeue-daemon'])
+        assert external_dependencies == set(['async-messaged'])
         assert not isinstance(value, AtomicMessageQueue)
         assert value == '__on_consumer__'
 
@@ -224,7 +224,7 @@ def test_initialize_testdata_with_payload_context(behave_context: Context, grizz
 
         assert scenario_name in testdata
         if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
-            assert external_dependencies == set(['messagequeue-daemon'])
+            assert external_dependencies == set(['async-messaged'])
         else:
             assert external_dependencies == set()
 
@@ -487,7 +487,7 @@ def test_transform_no_objectify() -> None:
 def test_transform(behave_context: Context, noop_zmq: Callable[[], None], cleanup: Callable, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
     noop_zmq()
 
-    def mock_response(response: Optional[MessageQueueResponse], repeat: int = 1) -> None:
+    def mock_response(response: Optional[AsyncMessageResponse], repeat: int = 1) -> None:
         mocker.patch(
             'grizzly.testdata.variables.messagequeue.zmq.sugar.socket.Socket.recv_json',
             side_effect=[zmq.Again(), response] * repeat
