@@ -179,7 +179,9 @@ def setup_environment_listeners(context: Context, environment: Environment, requ
     environment.events.init.add_listener(init(testdata))
     environment.events.test_start.add_listener(locust_test_start(grizzly))
     environment.events.test_stop.add_listener(locust_test_stop)
-    environment.events.spawning_complete.add_listener(spawning_complete(grizzly))
+
+    if not on_master(context):
+        environment.events.spawning_complete.add_listener(spawning_complete(grizzly))
 
     # And save statistics to "..."
     if grizzly.setup.statistics_url is not None:
@@ -347,17 +349,18 @@ def run(context: Context) -> int:
             logger.info(f'{runner.user_count=}, stopping runner')
             gevent.sleep(3.0)
 
-        # start watching for user_count after 5 second
-        while not grizzly.state.spawning_complete:
-            gevent.sleep(1.0)
+        if not on_master(context):
+            while not grizzly.state.spawning_complete:
+                logger.debug('spawning not complete...')
+                gevent.sleep(1.0)
 
-        logger.info('all users spawn, start watching user count')
+            logger.info('all users spawn, start watching user count')
 
-        watch_active_users_greenlet = gevent.spawn(watch_active_users)
-        watch_active_users_greenlet.link_exception(greenlet_exception_handler)
+            watch_active_users_greenlet = gevent.spawn(watch_active_users)
+            watch_active_users_greenlet.link_exception(greenlet_exception_handler)
 
-        # shutdown when user_count reaches 0
-        main_greenlet = watch_active_users_greenlet
+            # shutdown when user_count reaches 0
+            main_greenlet = watch_active_users_greenlet
 
         def shutdown() -> int:
             logger.info('running teardowns...')

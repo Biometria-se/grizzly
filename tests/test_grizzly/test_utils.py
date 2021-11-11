@@ -165,6 +165,7 @@ def test_create_user_class_type(locust_environment: Environment) -> None:
     assert issubclass(user_class_type_1, (RestApiUser, User))
     assert user_class_type_1.__name__ == f'RestApiUser_{scenario.identifier}'
     assert user_class_type_1.weight == 1
+    assert user_class_type_1._scenario is scenario
     assert user_class_type_1.host == 'http://localhost:8000'
     assert user_class_type_1.__module__ == 'locust.user.users'
     assert user_class_type_1._context == {
@@ -207,6 +208,7 @@ def test_create_user_class_type(locust_environment: Environment) -> None:
             }
         }
     }
+    assert user_type_1._scenario is scenario
 
     scenario = GrizzlyContextScenario()
     scenario.name = 'TestTestTest'
@@ -232,6 +234,7 @@ def test_create_user_class_type(locust_environment: Environment) -> None:
     assert issubclass(user_class_type_2, (RestApiUser, User))
     assert user_class_type_2.__name__ == f'RestApiUser_{scenario.identifier}'
     assert user_class_type_2.weight == 1
+    assert user_class_type_2._scenario is scenario
     assert user_class_type_2.host == 'http://localhost:8001'
     assert user_class_type_2.__module__ == 'locust.user.users'
     assert user_class_type_2._context == {
@@ -281,6 +284,7 @@ def test_create_user_class_type(locust_environment: Environment) -> None:
             }
         }
     }
+    assert user_type_2._scenario is scenario
 
     scenario = GrizzlyContextScenario()
     scenario.name = 'TestTestTest2'
@@ -292,6 +296,7 @@ def test_create_user_class_type(locust_environment: Environment) -> None:
     assert issubclass(user_class_type_3, (RestApiUser, User))
     assert user_class_type_3.__name__ == f'RestApiUser_{scenario.identifier}'
     assert user_class_type_3.weight == 1
+    assert user_class_type_3._scenario is scenario
     assert user_class_type_3.host == 'http://localhost:8002'
     assert user_class_type_3.__module__ == 'locust.user.users'
     assert user_class_type_3._context == {

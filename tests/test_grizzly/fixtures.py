@@ -2,7 +2,7 @@ import os
 import shutil
 import socket
 
-from typing import Generator, Tuple, Callable, Type, Optional, Any, Literal, List, Union
+from typing import Generator, Tuple, Callable, Type, Optional, Any, Literal, List, Union, Dict
 from mypy_extensions import VarArg, KwArg
 
 import pytest
@@ -41,6 +41,32 @@ REQUEST_TASK_TEMPLATE_CONTENTS = """{
         }
     }
 }"""
+
+
+@pytest.fixture
+def noop_zmq(mocker: MockerFixture) -> Callable[[str], None]:
+    def mocked_noop(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+        pass
+
+    def patch(prefix: str) -> None:
+        targets = [
+            'zmq.sugar.context.Context.term',
+            'zmq.sugar.context.Context.__del__',
+            'zmq.sugar.socket.Socket.bind',
+            'zmq.sugar.socket.Socket.connect',
+            'zmq.sugar.socket.Socket.send_json',
+            'zmq.sugar.socket.Socket.recv_json',
+            'zmq.sugar.socket.Socket.disconnect',
+            'gsleep',
+        ]
+
+        for target in targets:
+            mocker.patch(
+                f'{prefix}.{target}',
+                mocked_noop,
+            )
+
+    return patch
 
 
 @pytest.fixture

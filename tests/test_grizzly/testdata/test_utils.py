@@ -31,9 +31,8 @@ from grizzly.testdata.utils import (
 from grizzly.testdata.variables import AtomicCsvRow, AtomicIntegerIncrementer, AtomicMessageQueue
 from grizzly_extras.async_message import AsyncMessageResponse
 
-from ..fixtures import grizzly_context, request_task, behave_context, locust_environment  # pylint: disable=unused-import
+from ..fixtures import grizzly_context, request_task, behave_context, locust_environment, noop_zmq  # pylint: disable=unused-import
 from .fixtures import cleanup  # pylint: disable=unused-import
-from .variables.test_messagequeue import noop_zmq # pylint: disable=unused-import
 
 try:
     import pymqi
@@ -88,8 +87,8 @@ def test__get_variable_value_AtomicIntegerIncrementer(cleanup: Callable) -> None
 
 @pytest.mark.skipif(pymqi.__name__ == 'grizzly_extras.dummy_pymqi', reason='requires native grizzly-loadtester[mq]')
 @pytest.mark.usefixtures('cleanup')
-def test__get_variable_value_AtomicMessageQueue(noop_zmq: Callable[[], None], cleanup: Callable) -> None:
-    noop_zmq()
+def test__get_variable_value_AtomicMessageQueue(noop_zmq: Callable[[str], None], cleanup: Callable) -> None:
+    noop_zmq('grizzly.testdata.variables.messagequeue')
 
     try:
         grizzly = GrizzlyContext()
@@ -175,9 +174,9 @@ def test_initialize_testdata_with_tasks(
         cleanup()
 
 
-@pytest.mark.usefixtures('behave_context', 'grizzly_context', 'cleanup')
-def test_initialize_testdata_with_payload_context(behave_context: Context, grizzly_context: Callable, cleanup: Callable, noop_zmq: Callable[[], None]) -> None:
-    noop_zmq()
+@pytest.mark.usefixtures('behave_context', 'grizzly_context', 'cleanup', 'noop_zmq')
+def test_initialize_testdata_with_payload_context(behave_context: Context, grizzly_context: Callable, cleanup: Callable, noop_zmq: Callable[[str], None]) -> None:
+    noop_zmq('grizzly.testdata.variables.messagequeue')
     try:
         _, _, task, [context_root, _, request] = grizzly_context()
         mkdir(path.join(context_root, 'adirectory'))
@@ -483,9 +482,9 @@ def test_transform_no_objectify() -> None:
     }
 
 
-@pytest.mark.usefixtures('behave_context', 'noop_zmq', 'cleanup', 'mocker')
-def test_transform(behave_context: Context, noop_zmq: Callable[[], None], cleanup: Callable, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
-    noop_zmq()
+@pytest.mark.usefixtures('behave_context', 'noop_zmq', 'cleanup', 'mocker', 'noop_zmq')
+def test_transform(behave_context: Context, noop_zmq: Callable[[str], None], cleanup: Callable, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
+    noop_zmq('grizzly.testdata.variables.messagequeue')
 
     def mock_response(response: Optional[AsyncMessageResponse], repeat: int = 1) -> None:
         mocker.patch(
@@ -509,6 +508,11 @@ def test_transform(behave_context: Context, noop_zmq: Callable[[], None], cleanu
                 'TEST.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN", expression="$.document.id", content_type=json, repeat=True'
             )
             data['AtomicMessageQueue.document_id'] = '__on_consumer__'
+
+            mock_response({
+                'success': True,
+                'worker': '1337-aaaabbbb-beef',
+            }, 2)
 
             with caplog.at_level(logging.ERROR):
                 with pytest.raises(StopUser):
@@ -597,7 +601,12 @@ def test_transform(behave_context: Context, noop_zmq: Callable[[], None], cleanu
                 'AtomicMessageQueue.wrong_content_type': '__on_consumer__',
             }
 
-            noop_zmq()
+            noop_zmq('grizzly.testdata.variables.messagequeue')
+
+            mock_response({
+                'success': True,
+                'worker': '1337-aaaabbbb-beef',
+            }, 2)
 
             with caplog.at_level(logging.ERROR):
                 with pytest.raises(StopUser):

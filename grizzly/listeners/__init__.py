@@ -106,6 +106,7 @@ def locust_test_stop(**_kwargs: Dict[str, Any]) -> None:
 
 def spawning_complete(grizzly: GrizzlyContext) -> Callable[[KwArg(Dict[str, Any])], None]:
     def wrapper(**_kwargs: Dict[str, Any]) -> None:
+        logger.debug('spawning complete!')
         grizzly.state.spawning_complete = True
 
     return wrapper
