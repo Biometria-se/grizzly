@@ -1,7 +1,7 @@
 import subprocess
 
 from os import environ
-from typing import Dict, Any, Tuple, Optional, Callable, cast
+from typing import Dict, Any, Optional, Callable, cast
 from json import dumps as jsondumps
 
 import pytest
@@ -23,51 +23,7 @@ try:
 except:
     from grizzly_extras import dummy_pymqi as pymqi
 
-from ...fixtures import behave_context, locust_environment  # pylint: disable=unused-import
-
-@pytest.fixture
-def noop_zmq(mocker: MockerFixture) -> Callable[[], None]:
-    def mocked_noop(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
-        pass
-
-    def mocked_recv_json(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> AsyncMessageResponse:
-        return {
-            'success': True,
-            'worker': '1337-aaaabbbb-beef',
-        }
-
-    def patch() -> None:
-        mocker.patch(
-            'grizzly.testdata.variables.messagequeue.zmq.sugar.context.Context.term',
-            mocked_noop,
-        )
-
-        mocker.patch(
-            'grizzly.testdata.variables.messagequeue.zmq.sugar.context.Context.__del__',
-            mocked_noop,
-        )
-
-        mocker.patch(
-            'grizzly.testdata.variables.messagequeue.zmq.sugar.socket.Socket.bind',
-            mocked_noop,
-        )
-
-        mocker.patch(
-            'grizzly.testdata.variables.messagequeue.zmq.sugar.socket.Socket.connect',
-            mocked_noop,
-        )
-
-        mocker.patch(
-            'grizzly.testdata.variables.messagequeue.zmq.sugar.socket.Socket.send_json',
-            mocked_noop,
-        )
-
-        mocker.patch(
-            'grizzly.testdata.variables.messagequeue.zmq.sugar.socket.Socket.recv_json',
-            mocked_recv_json,
-        )
-
-    return patch
+from ...fixtures import behave_context, locust_environment, noop_zmq  # pylint: disable=unused-import
 
 
 def test_atomicmessagequeue__base_type__() -> None:
@@ -210,8 +166,8 @@ class TestAtomicMessageQueue:
                 pass
 
     @pytest.mark.usefixtures('behave_context', 'noop_zmq')
-    def test_create_context(self, behave_context: Context, noop_zmq: Callable[[], None] ) -> None:
-        noop_zmq()
+    def test_create_context(self, behave_context: Context, noop_zmq: Callable[[str], None] ) -> None:
+        noop_zmq('grizzly.testdata.variables.messagequeue')
 
         grizzly = cast(GrizzlyContext, behave_context.grizzly)
         grizzly.state.configuration.update({
@@ -330,8 +286,8 @@ class TestAtomicMessageQueue:
 
 
     @pytest.mark.usefixtures('noop_zmq')
-    def test_create_client(self, mocker: MockerFixture, noop_zmq: Callable[[], None]) -> None:
-        noop_zmq()
+    def test_create_client(self, mocker: MockerFixture, noop_zmq: Callable[[str], None]) -> None:
+        noop_zmq('grizzly.testdata.variables.messagequeue')
 
         try:
             v = AtomicMessageQueue(
@@ -367,8 +323,8 @@ class TestAtomicMessageQueue:
                 pass
 
     @pytest.mark.usefixtures('noop_zmq')
-    def test_clear(self, noop_zmq: Callable[[], None]) -> None:
-        noop_zmq()
+    def test_clear(self, noop_zmq: Callable[[str], None]) -> None:
+        noop_zmq('grizzly.testdata.variables.messagequeue')
 
         try:
             v = AtomicMessageQueue(
@@ -397,8 +353,8 @@ class TestAtomicMessageQueue:
             except:
                 pass
 
-    def test___getitem__(self, mocker: MockerFixture, noop_zmq: Callable[[], None]) -> None:
-        noop_zmq()
+    def test___getitem__(self, mocker: MockerFixture, noop_zmq: Callable[[str], None]) -> None:
+        noop_zmq('grizzly.testdata.variables.messagequeue')
 
         def mock_response(response: Optional[AsyncMessageResponse], repeat: int = 1) -> None:
             mocker.patch(
@@ -561,8 +517,8 @@ class TestAtomicMessageQueue:
                 pass
 
     @pytest.mark.usefixtures('noop_zmq')
-    def test___setitem__(self, mocker: MockerFixture, noop_zmq: Callable[[], None]) -> None:
-        noop_zmq()
+    def test___setitem__(self, mocker: MockerFixture, noop_zmq: Callable[[str], None]) -> None:
+        noop_zmq('grizzly.testdata.variables.messagequeue')
 
         def mocked___getitem__(i: AtomicMessageQueue, variable: str) -> Optional[str]:
             return i._get_value(variable)
@@ -588,8 +544,8 @@ class TestAtomicMessageQueue:
                 pass
 
     @pytest.mark.usefixtures('noop_zmq')
-    def test___delitem__(self, mocker: MockerFixture, noop_zmq: Callable[[], None]) -> None:
-        noop_zmq()
+    def test___delitem__(self, mocker: MockerFixture, noop_zmq: Callable[[str], None]) -> None:
+        noop_zmq('grizzly.testdata.variables.messagequeue')
 
         def mocked___getitem__(i: AtomicMessageQueue, variable: str) -> Optional[str]:
             return i._get_value(variable)

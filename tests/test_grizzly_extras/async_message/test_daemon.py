@@ -57,9 +57,9 @@ def test_worker(mocker: MockerFixture) -> None:
             ],
         )
 
-    def mock_handler_response(response: AsyncMessageResponse) -> None:
+    def mock_handle_response(response: AsyncMessageResponse) -> None:
         mocker.patch(
-            'grizzly_extras.async_message.mq.AsyncMessageQueue.handler',
+            'grizzly_extras.async_message.AsyncMessageHandler.handle',
             side_effect=[response],
         )
 
@@ -82,7 +82,7 @@ def test_worker(mocker: MockerFixture) -> None:
         'message': 'no url found in request context',
     }).encode()
 
-    mock_recv_multipart({'worker': 'ID-12345', 'context': {'url': 'sb://sb.example.com'}})
+    mock_recv_multipart({'worker': 'ID-12345', 'context': {'url': 'http://www.example.com'}})
 
     with pytest.raises(BreakLoop):
         worker(zmq_context, 'ID-12345')
@@ -95,16 +95,16 @@ def test_worker(mocker: MockerFixture) -> None:
         'worker': 'ID-12345',
         'response_time': 0,
         'success': False,
-        'message': 'integration for sb:// is not implemented',
+        'message': 'integration for http:// is not implemented',
     }).encode()
 
     integration_spy = mocker.patch(
-        'grizzly_extras.async_message.mq.AsyncMessageQueue.__init__',
+        'grizzly_extras.async_message.mq.AsyncMessageQueueHandler.__init__',
         side_effect=[None],
     )
 
     mock_recv_multipart({'worker': 'ID-12345', 'context': {'url': 'mq://mq.example.com'}})
-    mock_handler_response({
+    mock_handle_response({
         'worker': 'ID-12345',
         'success': True,
         'payload': 'hello world',

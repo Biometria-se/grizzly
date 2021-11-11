@@ -1,9 +1,14 @@
-from typing import Optional, Union, Tuple, Literal, Generator, Callable, Dict
-from time import monotonic as time
+from typing import Optional, Generator, Dict
 from contextlib import contextmanager
-from json import dumps as jsondumps
 
-from . import AsyncMessageRequest, AsyncMessageResponse, AsyncMessageError, AsyncMessageHandler, JsonBytesEncoder, logger
+from . import (
+    AsyncMessageRequest,
+    AsyncMessageResponse,
+    AsyncMessageError,
+    AsyncMessageRequestHandler,
+    AsyncMessageHandler,
+    register,
+)
 
 try:
     import pymqi
@@ -11,27 +16,16 @@ except:
     from grizzly_extras import dummy_pymqi as pymqi
 
 
-AsyncMessageQueueGetArguments = Union[Tuple[Literal[None], pymqi.MD], Tuple[Literal[None], pymqi.MD, pymqi.GMO]]
+__all__ = [
+    'AsyncMessageQueueHandler',
+]
 
-AsyncMessageRequestHandler = Callable[['AsyncMessageQueue', AsyncMessageRequest], AsyncMessageResponse]
 
 handlers: Dict[str, AsyncMessageRequestHandler] = {}
 
 
-def register(action: str, *actions: str) -> Callable[[AsyncMessageRequestHandler], None]:
-    def decorator(func: AsyncMessageRequestHandler) -> None:
-        for a in (action, *actions):
-            if a in handlers:
-                continue
-
-            handlers.update({a: func})
-
-    return decorator
-
-
-class AsyncMessageQueue(AsyncMessageHandler):
+class AsyncMessageQueueHandler(AsyncMessageHandler):
     qmgr: Optional[pymqi.QueueManager] = None
-    message_wait_global: int = 0
 
     def __init__(self, worker: str) -> None:
         if pymqi.__name__ == 'grizzly_extras.dummy_pymqi':
@@ -48,14 +42,14 @@ class AsyncMessageQueue(AsyncMessageHandler):
         finally:
             queue.close()
 
-    @register('CONN')
+    @register(handlers, 'CONN')
     def connect(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
         if self.qmgr is not None:
             raise AsyncMessageError('already connected')
 
         context = request.get('context', None)
         if context is None:
-            raise AsyncMessageError('no context')
+            raise AsyncMessageError('no context in request')
 
         connection = context['connection']
         queue_manager = context['queue_manager']
@@ -97,7 +91,7 @@ class AsyncMessageQueue(AsyncMessageHandler):
                 password,
             )
 
-        self.message_wait_global = context.get('message_wait', None) or 0
+        self.message_wait = context.get('message_wait', None) or 0
 
         return {
             'message': 'connected',
@@ -113,7 +107,7 @@ class AsyncMessageQueue(AsyncMessageHandler):
         if self.qmgr is None:
             raise AsyncMessageError('not connected')
 
-        queue_name = request.get('context', {}).get('queue', None)
+        queue_name = request.get('context', {}).get('endpoint', None)
         if queue_name is None:
             raise AsyncMessageError('no queue specified')
 
@@ -133,8 +127,8 @@ class AsyncMessageQueue(AsyncMessageHandler):
 
                 if message_wait > 0:
                     gmo = self._create_gmo(message_wait)
-                elif self.message_wait_global > 0:
-                    gmo = self._create_gmo(self.message_wait_global)
+                elif self.message_wait is not None and self.message_wait > 0:
+                    gmo = self._create_gmo(self.message_wait)
 
                 payload = queue.get(None, md, gmo).decode()
                 response_length = len(payload) if payload is not None else 0
@@ -145,7 +139,7 @@ class AsyncMessageQueue(AsyncMessageHandler):
                 'response_length': response_length,
             }
 
-    @register('PUT', 'SEND')
+    @register(handlers, 'PUT', 'SEND')
     def put(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
         request['action'] = 'PUT'
 
@@ -154,7 +148,7 @@ class AsyncMessageQueue(AsyncMessageHandler):
 
         return self._request(request)
 
-    @register('GET', 'RECEIVE')
+    @register(handlers, 'GET', 'RECEIVE')
     def get(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
         request['action'] = 'GET'
 
@@ -163,36 +157,5 @@ class AsyncMessageQueue(AsyncMessageHandler):
 
         return self._request(request)
 
-    def handler(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
-        action = request['action']
-        action_handler = handlers.get(action, None)
-
-        logger.debug(f'handling {action}')
-        logger.debug(jsondumps(request, indent=2, cls=JsonBytesEncoder))
-
-        response: AsyncMessageResponse
-
-        start_time = time()
-
-        try:
-            if action_handler is None:
-                raise AsyncMessageError(f'no implementation for {action}')
-
-            response = action_handler(self, request)
-            response['success'] = True
-        except Exception as e:
-            response = {
-                'success': False,
-                'message': f'{action}: {e.__class__.__name__}="{str(e)}"',
-            }
-        finally:
-            total_time = int((time() - start_time) * 1000)
-            response.update({
-                'worker': self.worker,
-                'response_time': total_time,
-            })
-
-            logger.debug(f'handled {action}')
-            logger.debug(jsondumps(response, indent=2, cls=JsonBytesEncoder))
-
-            return response
+    def get_handler(self, action: str) -> Optional[AsyncMessageRequestHandler]:
+        return handlers.get(action, None)

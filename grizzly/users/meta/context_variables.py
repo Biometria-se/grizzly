@@ -7,6 +7,8 @@ from locust.exception import StopUser
 from locust.user.users import User
 from locust.env import Environment
 
+from grizzly.context import GrizzlyContextScenario
+
 from ...task import RequestTask
 from ...utils import merge_dicts
 from . import logger, FileRequests
@@ -16,6 +18,7 @@ class ContextVariables(User):
     _context: Dict[str, Any] = {
         'variables': {},
     }
+    _scenario: Optional[GrizzlyContextScenario] = None
 
     __dependencies__: Set[str] = set()
 

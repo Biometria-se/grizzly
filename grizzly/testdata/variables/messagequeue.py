@@ -326,7 +326,7 @@ class AtomicMessageQueue(AtomicVariable[str]):
                 'action': 'GET',
                 'worker': self._settings[variable]['worker'],
                 'context': {
-                    'queue': queue_name,
+                    'endpoint': queue_name,
                 },
                 'payload': None
             }
