@@ -26,7 +26,7 @@ from grizzly.types import ResponseTarget, GrizzlyDict
 from grizzly.testdata.utils import transform
 from grizzly.exceptions import ResponseHandlerError
 from grizzly.steps.helpers import add_save_handler
-from grizzly_extras.async_message import AsyncMessageResponse
+from grizzly_extras.async_message import AsyncMessageRequest, AsyncMessageResponse
 
 from ..fixtures import grizzly_context, request_task, locust_environment  # pylint: disable=unused-import
 from ..helpers import clone_request
@@ -591,6 +591,102 @@ class TestMessageQueueUser:
         _, kwargs = request_event_spy.call_args_list[0]
         assert kwargs['exception'] is not None
         request_event_spy.reset_mock()
+
+        # Test queue / predicate START
+        response_event_spy.reset_mock()
+
+        the_side_effect = [
+            {
+                'success': True,
+                'worker': '0000-1337',
+                'response_length': 24,
+                'response_time': 1337,
+                'metadata': pymqi.MD().get(),
+                'payload': '',
+            }
+        ]
+
+        # Setup mock to capture json sent to async_messaged
+        class JsonMocker(object):
+            sent_request : Dict[str, Any] = {}
+
+        def mocked_send_json(foo: Any, am_request: Dict[str, Any]) -> None:
+            JsonMocker.sent_request = am_request
+
+        mocker.patch(
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.send_json',
+            mocked_send_json,
+        )
+
+        # Test with only queue name as endpoint
+        mocker.patch(
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
+            side_effect=the_side_effect,
+        )
+        request.endpoint = 'IFKTEST'
+        user.request(request)
+        ctx : Dict[str, str] = JsonMocker.sent_request['context']
+        assert ctx['queue'] == 'IFKTEST'
+        assert ctx['predicate'] == None
+
+        # Test with specifying queue: prefix as endpoint
+        mocker.patch(
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
+            side_effect=the_side_effect,
+        )
+        request.endpoint = 'queue:IFKTEST'
+        user.request(request)
+        ctx = JsonMocker.sent_request['context']
+        assert ctx['queue'] == 'IFKTEST'
+        assert ctx['predicate'] == None
+
+        # Test specifying queue: prefix with predicate
+        mocker.patch(
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
+            side_effect=the_side_effect,
+        )
+        request.endpoint = 'queue:IFKTEST2, predicate:/class/student[marks>85]'
+        user.request(request)
+        ctx = JsonMocker.sent_request['context']
+        assert ctx['queue'] == 'IFKTEST2'
+        assert ctx['predicate'] == '/class/student[marks>85]'
+
+        # Test specifying queue: prefix with predicate, and spacing
+        mocker.patch(
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
+            side_effect=the_side_effect,
+        )
+        request.endpoint = 'queue: IFKTEST2  , predicate: /class/student[marks>85]'
+        user.request(request)
+        ctx = JsonMocker.sent_request['context']
+        assert ctx['queue'] == 'IFKTEST2'
+        assert ctx['predicate'] == '/class/student[marks>85]'
+
+        # Test specifying queue without prefix, with predicate
+        mocker.patch(
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
+            side_effect=the_side_effect,
+        )
+        request.endpoint = 'IFKTEST3, predicate:/class/student[marks<55]'
+        user.request(request)
+        ctx = JsonMocker.sent_request['context']
+        assert ctx['queue'] == 'IFKTEST3'
+        assert ctx['predicate'] == '/class/student[marks<55]'
+
+        # Test error when missing predicate: prefix
+        mocker.patch(
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
+            side_effect=the_side_effect,
+        )
+        request.endpoint = 'IFKTEST3, /class/student[marks<55]'
+        with pytest.raises(StopUser):
+            user.request(request)
+
+        request_event_spy.reset_mock()
+        response_event_spy.reset_mock()
+
+        # Test queue / predicate END
+
 
     def test_send(self, mq_user: Tuple[MessageQueueUser, GrizzlyContextScenario, Environment], mocker: MockerFixture) -> None:
         [user, scenario, _] = mq_user

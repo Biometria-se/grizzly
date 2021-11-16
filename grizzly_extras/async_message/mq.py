@@ -1,15 +1,19 @@
-from typing import Optional, Union, Tuple, Literal, Generator, Callable, Dict
-from time import monotonic as time
+from typing import Optional, Union, Tuple, Literal, Generator, Callable, Dict, cast
+from time import monotonic as time, sleep
 from contextlib import contextmanager
 from json import dumps as jsondumps
 
+from grizzly.exceptions import TransformerError
+from grizzly.transformer import transformer
+from grizzly.types import ResponseContentType, str_response_content_type
+
 from . import AsyncMessageRequest, AsyncMessageResponse, AsyncMessageError, AsyncMessageHandler, JsonBytesEncoder, logger
 
+#import pymqi
 try:
     import pymqi
 except:
     from grizzly_extras import dummy_pymqi as pymqi
-
 
 AsyncMessageQueueGetArguments = Union[Tuple[Literal[None], pymqi.MD], Tuple[Literal[None], pymqi.MD, pymqi.GMO]]
 
@@ -42,6 +46,18 @@ class AsyncMessageQueue(AsyncMessageHandler):
     @contextmanager
     def queue_context(self, endpoint: str) -> Generator[pymqi.Queue, None, None]:
         queue = pymqi.Queue(self.qmgr, endpoint)
+
+        try:
+            yield queue
+        finally:
+            queue.close()
+
+    @contextmanager
+    def queue_browsing_context(self, endpoint: str) -> Generator[pymqi.Queue, None, None]:
+        queue = pymqi.Queue(self.qmgr, endpoint,
+            pymqi.CMQC.MQOO_FAIL_IF_QUIESCING
+            | pymqi.CMQC.MQOO_INPUT_SHARED
+            | pymqi.CMQC.MQOO_BROWSE)
 
         try:
             yield queue
@@ -109,6 +125,76 @@ class AsyncMessageQueue(AsyncMessageHandler):
             WaitInterval=message_wait*1000,
         )
 
+    def _create_matching_gmo(self, msg_id: bytearray, message_wait: int) -> pymqi.GMO:
+        gmo = self._create_gmo(message_wait)
+        gmo['MatchOptions'] = pymqi.CMQC.MQMO_MATCH_MSG_ID
+        gmo['MsgId'] = msg_id
+        return gmo
+
+    def _create_browsing_gmo(self) -> pymqi.GMO:
+        return pymqi.GMO(
+            Options=pymqi.CMQC.MQGMO_BROWSE_FIRST,
+        )
+
+    def _find_message(self, queue_name: str, predicate: str, content_type: ResponseContentType, message_wait: int) -> Optional[bytearray]:
+        start_time = time()
+
+        transform = transformer.available.get(content_type, None)
+        if transform is None:
+            raise AsyncMessageError(f'{self.__class__.__name__}: could not find a transformer for {content_type.name}')
+
+        try:
+            get_values = transform.parser(predicate)
+        except TransformerError as e:
+            raise AsyncMessageError(f'{self.__class__.__name__}: {str(e.message)}')
+
+        with self.queue_browsing_context(endpoint=queue_name) as browse_queue:
+            # Check the queue over and over again until timeout, if nothing was found
+            while True:
+                gmo = self._create_browsing_gmo()
+                md = pymqi.MD()
+
+                try:
+                    # Check all current messages
+                    while True:
+                        message = browse_queue.get(None, md, gmo)
+                        payload = message.decode()
+
+                        try:
+                            _, payload = transform.transform(content_type, payload)
+                        except TransformerError as e:
+                            raise AsyncMessageError(f'{self.__class__.__name__}: {str(e.message)}')
+
+                        values = get_values(payload)
+
+                        if len(values) > 0:
+                            # Found a matching message, return message id
+                            return cast(bytearray, md['MsgId'])
+
+                        gmo.Options = pymqi.CMQC.MQGMO_BROWSE_NEXT
+
+                except pymqi.MQMIError as e:
+                    if e.comp == pymqi.CMQC.MQCC_FAILED and e.reason == pymqi.CMQC.MQRC_NO_MSG_AVAILABLE:
+                        # No messages, that's OK
+                        pass
+                    else:
+                        # Some other error condition.
+                        raise AsyncMessageError(f'{self.__class__.__name__}: {str(e)}')
+
+                # Check elapsed time, sleep and check again if we haven't timed out
+                cur_time = time()
+                if cur_time - start_time >= message_wait:
+                    raise AsyncMessageError(f'{self.__class__.__name__}: timeout while waiting for matching message')
+                else:
+                    sleep(0.5)
+
+    def _get_content_type(self, request: AsyncMessageRequest) -> ResponseContentType:
+        content_type: ResponseContentType = ResponseContentType.GUESS
+        value: Optional[str] = cast(Optional[str], request.get('context', {}).get('content_type', None))
+        if value:
+            content_type = str_response_content_type(value)
+        return content_type
+
     def _request(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
         if self.qmgr is None:
             raise AsyncMessageError('not connected')
@@ -117,9 +203,23 @@ class AsyncMessageQueue(AsyncMessageHandler):
         if queue_name is None:
             raise AsyncMessageError('no queue specified')
 
+        predicate = request.get('context', {}).get('predicate', None)
+
         action = request['action']
 
         md = pymqi.MD()
+
+        message_wait: int = request.get('context', {}).get('message_wait', None) or self.message_wait_global
+
+        msg_id_to_fetch: Optional[bytearray] = None
+        if action == 'GET' and predicate is not None:
+            content_type = self._get_content_type(request)
+            start_time = time()
+            # Browse for any matching message
+            msg_id_to_fetch = self._find_message(queue_name, predicate, content_type, message_wait)
+            elapsed_time = int(time() - start_time)
+            # Adjust message_wait for getting the message
+            message_wait -= elapsed_time
 
         with self.queue_context(endpoint=queue_name) as queue:
             if action == 'PUT':
@@ -127,14 +227,12 @@ class AsyncMessageQueue(AsyncMessageHandler):
                 response_length = len(payload) if payload is not None else 0
                 queue.put(payload, md)
             elif action == 'GET':
-                message_wait: int = request.get('context', {}).get('message_wait', None) or 0
-
                 gmo: Optional[pymqi.GMO] = None
 
-                if message_wait > 0:
+                if msg_id_to_fetch:
+                    gmo = self._create_matching_gmo(msg_id_to_fetch, message_wait)
+                else:
                     gmo = self._create_gmo(message_wait)
-                elif self.message_wait_global > 0:
-                    gmo = self._create_gmo(self.message_wait_global)
 
                 payload = queue.get(None, md, gmo).decode()
                 response_length = len(payload) if payload is not None else 0

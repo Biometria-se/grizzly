@@ -72,6 +72,7 @@ Default SSL cipher is `ECDHE_RSA_AES_256_GCM_SHA384`, change it by setting `auth
 
 Default certificate label is set to `auth.username`, change it by setting `auth.cert_label` context variable.
 '''
+from re import sub as resub
 from typing import Dict, Any, Generator, Tuple, Optional, cast
 from urllib.parse import urlparse, parse_qs, unquote
 from contextlib import contextmanager
@@ -180,7 +181,29 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
 
 
     def request(self, request: RequestTask) -> None:
+
+        # Parse the endpoint to extract queue name / predicate parts
+        queue_name = request.endpoint
+        predicate: Optional[str] = None
+
+        # Remove any 'queue:' prefix
+        queue_name = resub(r'^\s*queue:\s*', '', queue_name)
+
+        if ',' in queue_name:
+            queue_name, predicate = [x.strip() for x in queue_name.split(',')]
+            if not predicate.startswith('predicate:'):
+                logger.error(f'Predicate part in endpoint needs to have "predicate:" in it: {request.endpoint}')
+                raise StopUser()
+            # Remove 'predicate:' prefix and keep the value
+            predicate = resub(r'\s*predicate:\s*(.+?)\s*$', r'\1', predicate)
+
+        # Keep queue name part in request.endpoint
+        request.endpoint = queue_name
+
         request_name, endpoint, payload = self.render(request)
+
+        # Update queue name again after render() (if it contained variables)
+        queue_name = endpoint
 
         @contextmanager
         def action(am_request: AsyncMessageRequest, name: str, abort: bool, meta: bool = False) -> Generator[None, None, None]:
@@ -273,7 +296,9 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
             'action': request.method.name,
             'worker': self.worker_id,
             'context': {
-                'queue': endpoint,
+                'queue': queue_name,
+                'predicate': predicate,
+                'content_type': request.response.content_type,
             },
             'payload': payload,
         }

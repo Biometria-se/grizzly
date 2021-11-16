@@ -6,6 +6,8 @@ from os import environ, path
 from platform import node as hostname
 from json import JSONEncoder
 
+from grizzly.types import ResponseContentType
+
 
 __all__ = [
     'AsyncMessageContext',
@@ -44,6 +46,8 @@ class AsyncMessageContext(TypedDict, total=False):
     ssl_cipher: Optional[str]
     message_wait: Optional[int]
     queue: str
+    predicate: Optional[str]
+    content_type: ResponseContentType
 
 
 class AsyncMessageRequest(TypedDict, total=False):
