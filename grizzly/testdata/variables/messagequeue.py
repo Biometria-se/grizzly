@@ -50,8 +50,8 @@ Then get request "fetch-document" from "/api/v1/document/{{ AtomicMessageQueue.d
 
 When the scenario starts `grizzly` will wait up to 120 seconds until `AtomicMessageQueue.document_id` has been populated from a message on the queue `IN.DOCUMENTS`.
 
-If there are no messages within 120 seconds, and it is the first iteration of the scenario, it will fail. If there has been at least one message on the queue since the scenario started, it will use
-the oldest of those values, and then add it back in the end of the list again.
+If there are no messages within 120 seconds, and it is the first iteration of the scenario, it will fail. If there has been at least one message on the queue since
+the scenario started, it will use the oldest of those values, and then add it back in the end of the list again.
 '''
 from typing import Dict, Any, Type, Optional, List, cast
 from urllib.parse import urlparse, parse_qs, unquote
@@ -116,7 +116,6 @@ class AtomicMessageQueue(AtomicVariable[str]):
     __base_type__ = atomicmessagequeue__base_type__
     __dependencies__ = set(['async-messaged'])
     __on_consumer__ = True
-
 
     __initialized: bool = False
 
