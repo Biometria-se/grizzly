@@ -32,7 +32,7 @@ type. If you are going to receive messages from a topic, and additional `subscri
 Example of how to use it in a scenario:
 
 ```gherkin
-Given a user of type "ServiceBus" load testing "sb://sb.example.com/;SharedAccessKeyName=authorization-key;SharedAccessKeyc2VjcmV0LXN0dWZm"
+Given a user of type "ServiceBus" load testing "sb://sb.example.com/;SharedAccessKeyName=authorization-key;SharedAccessKey=c2VjcmV0LXN0dWZm"
 And set context variable "message.wait" to "5"
 Then send request "queue-send" to endpoint "queue:shared-queue"
 Then send request "topic-send" to endpoint "topic:shared-topic"

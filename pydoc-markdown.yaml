@@ -63,6 +63,9 @@ renderer:
           - title: Message Queue
             contents:
             - grizzly.testdata.variables.messagequeue
+          - title: Service Bus
+            contents:
+            - grizzly.testdata.variables.servicebus
         - title: Templating
           name: templating
           source: docs/usage/variables/templating.md
