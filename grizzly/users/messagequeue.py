@@ -182,20 +182,20 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
 
     def request(self, request: RequestTask) -> None:
 
-        # Parse the endpoint to extract queue name / predicate parts
+        # Parse the endpoint to extract queue name / expression parts
         queue_name = request.endpoint
-        predicate: Optional[str] = None
+        expression: Optional[str] = None
 
         # Remove any 'queue:' prefix
         queue_name = resub(r'^\s*queue:\s*', '', queue_name)
 
         if ',' in queue_name:
-            queue_name, predicate = [x.strip() for x in queue_name.split(',')]
-            if not predicate.startswith('predicate:'):
-                logger.error(f'Predicate part in endpoint needs to have "predicate:" in it: {request.endpoint}')
+            queue_name, expression = [x.strip() for x in queue_name.split(',')]
+            if not expression.startswith('expression:'):
+                logger.error(f'Predicate part in endpoint needs to have "expression:" in it: {request.endpoint}')
                 raise StopUser()
-            # Remove 'predicate:' prefix and keep the value
-            predicate = resub(r'\s*predicate:\s*(.+?)\s*$', r'\1', predicate)
+            # Remove 'expression:' prefix and keep the value
+            expression = resub(r'\s*expression:\s*(.+?)\s*$', r'\1', expression)
 
         # Keep queue name part in request.endpoint
         request.endpoint = queue_name
@@ -297,7 +297,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
             'worker': self.worker_id,
             'context': {
                 'endpoint': queue_name,
-                'predicate': predicate,
+                'expression': expression,
                 'content_type': request.response.content_type,
             },
             'payload': payload,

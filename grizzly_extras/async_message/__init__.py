@@ -49,7 +49,7 @@ class AsyncMessageContext(TypedDict, total=False):
     ssl_cipher: Optional[str]
     message_wait: Optional[int]
     endpoint: str
-    predicate: Optional[str]
+    expression: Optional[str]
     content_type: ResponseContentType
 
 

@@ -546,7 +546,7 @@ class TestMessageQueueUser:
         assert kwargs['exception'] is not None
         request_event_spy.reset_mock()
 
-        # Test queue / predicate START
+        # Test queue / expression START
         response_event_spy.reset_mock()
 
         the_side_effect = [
@@ -581,7 +581,7 @@ class TestMessageQueueUser:
         user.request(request)
         ctx : Dict[str, str] = JsonMocker.sent_request['context']
         assert ctx['endpoint'] == 'IFKTEST'
-        assert ctx['predicate'] == None
+        assert ctx['expression'] == None
 
         # Test with specifying queue: prefix as endpoint
         mocker.patch(
@@ -592,42 +592,42 @@ class TestMessageQueueUser:
         user.request(request)
         ctx = JsonMocker.sent_request['context']
         assert ctx['endpoint'] == 'IFKTEST'
-        assert ctx['predicate'] == None
+        assert ctx['expression'] == None
 
-        # Test specifying queue: prefix with predicate
+        # Test specifying queue: prefix with expression
         mocker.patch(
             'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
             side_effect=the_side_effect,
         )
-        request.endpoint = 'queue:IFKTEST2, predicate:/class/student[marks>85]'
+        request.endpoint = 'queue:IFKTEST2, expression:/class/student[marks>85]'
         user.request(request)
         ctx = JsonMocker.sent_request['context']
         assert ctx['endpoint'] == 'IFKTEST2'
-        assert ctx['predicate'] == '/class/student[marks>85]'
+        assert ctx['expression'] == '/class/student[marks>85]'
 
-        # Test specifying queue: prefix with predicate, and spacing
+        # Test specifying queue: prefix with expression, and spacing
         mocker.patch(
             'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
             side_effect=the_side_effect,
         )
-        request.endpoint = 'queue: IFKTEST2  , predicate: /class/student[marks>85]'
+        request.endpoint = 'queue: IFKTEST2  , expression: /class/student[marks>85]'
         user.request(request)
         ctx = JsonMocker.sent_request['context']
         assert ctx['endpoint'] == 'IFKTEST2'
-        assert ctx['predicate'] == '/class/student[marks>85]'
+        assert ctx['expression'] == '/class/student[marks>85]'
 
-        # Test specifying queue without prefix, with predicate
+        # Test specifying queue without prefix, with expression
         mocker.patch(
             'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
             side_effect=the_side_effect,
         )
-        request.endpoint = 'IFKTEST3, predicate:/class/student[marks<55]'
+        request.endpoint = 'IFKTEST3, expression:/class/student[marks<55]'
         user.request(request)
         ctx = JsonMocker.sent_request['context']
         assert ctx['endpoint'] == 'IFKTEST3'
-        assert ctx['predicate'] == '/class/student[marks<55]'
+        assert ctx['expression'] == '/class/student[marks<55]'
 
-        # Test error when missing predicate: prefix
+        # Test error when missing expression: prefix
         mocker.patch(
             'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
             side_effect=the_side_effect,
@@ -639,7 +639,7 @@ class TestMessageQueueUser:
         request_event_spy.reset_mock()
         response_event_spy.reset_mock()
 
-        # Test queue / predicate END
+        # Test queue / expression END
 
 
     @pytest.mark.usefixtures('noop_zmq')

@@ -122,7 +122,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
         else:
             return pymqi.GMO()
 
-    def _create_matching_gmo(self, msg_id: bytearray, message_wait: int) -> pymqi.GMO:
+    def _create_matching_gmo(self, msg_id: bytearray, message_wait: Optional[int]) -> pymqi.GMO:
         gmo = self._create_gmo(message_wait)
         gmo['MatchOptions'] = pymqi.CMQC.MQMO_MATCH_MSG_ID
         gmo['MsgId'] = msg_id
@@ -133,7 +133,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
             Options=pymqi.CMQC.MQGMO_BROWSE_FIRST,
         )
 
-    def _find_message(self, queue_name: str, predicate: str, content_type: ResponseContentType, message_wait: int) -> Optional[bytearray]:
+    def _find_message(self, queue_name: str, expression: str, content_type: ResponseContentType, message_wait: Optional[int]) -> Optional[bytearray]:
         start_time = time()
 
         transform = transformer.available.get(content_type, None)
@@ -141,7 +141,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
             raise AsyncMessageError(f'{self.__class__.__name__}: could not find a transformer for {content_type.name}')
 
         try:
-            get_values = transform.parser(predicate)
+            get_values = transform.parser(expression)
         except TransformerError as e:
             raise AsyncMessageError(f'{self.__class__.__name__}: {str(e.message)}')
 
@@ -180,7 +180,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
 
                 # Check elapsed time, sleep and check again if we haven't timed out
                 cur_time = time()
-                if cur_time - start_time >= message_wait:
+                if message_wait is not None and cur_time - start_time >= message_wait:
                     raise AsyncMessageError(f'{self.__class__.__name__}: timeout while waiting for matching message')
                 else:
                     sleep(0.5)
@@ -200,7 +200,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
         if queue_name is None:
             raise AsyncMessageError('no queue specified')
 
-        predicate = request.get('context', {}).get('predicate', None)
+        expression = request.get('context', {}).get('expression', None)
 
         action = request['action']
 
@@ -209,14 +209,15 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
         message_wait = request.get('context', {}).get('message_wait', None) or self.message_wait
 
         msg_id_to_fetch: Optional[bytearray] = None
-        if action == 'GET' and predicate is not None:
+        if action == 'GET' and expression is not None:
             content_type = self._get_content_type(request)
             start_time = time()
             # Browse for any matching message
-            msg_id_to_fetch = self._find_message(queue_name, predicate, content_type, message_wait)
+            msg_id_to_fetch = self._find_message(queue_name, expression, content_type, message_wait)
             elapsed_time = int(time() - start_time)
             # Adjust message_wait for getting the message
-            message_wait -= elapsed_time
+            if message_wait is not None:
+                message_wait -= elapsed_time
 
         with self.queue_context(endpoint=queue_name) as queue:
             if action == 'PUT':
