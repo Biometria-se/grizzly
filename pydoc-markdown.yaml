@@ -35,6 +35,9 @@ renderer:
       - title: Command Line Interface
         name: cli
         source: docs/cli.md
+      - title: Tasks
+        contents:
+        - grizzly.task.*
       - title: Variables
         children:
         - title: Environment configuration
