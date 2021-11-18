@@ -145,13 +145,15 @@ class XmlTransformer(Transformer):
                 def get_values(input_payload: Any) -> List[str]:
                     values: List[str] = []
                     for match in xmlpath(input_payload):
-                        if match is not None and len(match) > 0:
+                        if match is not None:
+                            value: str
                             if isinstance(match, XML._Element):
                                 value = XML.tostring(match, with_tail=False).decode('utf-8')
                             else:
                                 value = str(match).strip()
 
-                            values.append(value)
+                            if len(value) > 0:
+                                values.append(value)
 
                     return values
 

@@ -18,3 +18,14 @@ def str_response_content_type(value: str) -> ResponseContentType:
     else:
         raise ValueError(f'"{value}" is an unknown response content type')
 
+def response_content_type_str(value: ResponseContentType) -> str:
+    if value == ResponseContentType.GUESS:
+        return 'guess'
+    elif value == ResponseContentType.JSON:
+        return 'json'
+    elif value == ResponseContentType.XML:
+        return 'xml'
+    elif value == ResponseContentType.PLAIN:
+        return 'plain'
+    else:
+        raise ValueError(f'"{value}" is an unknown response content type')

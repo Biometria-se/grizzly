@@ -85,6 +85,7 @@ import zmq
 from gevent import sleep as gsleep
 from locust.exception import StopUser
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse, AsyncMessageError
+from grizzly_extras.types import response_content_type_str
 
 from ..task import RequestTask
 from ..utils import merge_dicts
@@ -298,7 +299,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
             'context': {
                 'endpoint': queue_name,
                 'expression': expression,
-                'content_type': request.response.content_type,
+                'content_type': response_content_type_str(request.response.content_type),
             },
             'payload': payload,
         }

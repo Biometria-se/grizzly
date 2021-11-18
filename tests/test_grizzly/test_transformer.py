@@ -413,6 +413,27 @@ class TestXmlTransformer:
         actual = get_values(input_payload)
         assert actual == ['<header><id>DOCUMENT_1337-3</id><type>application/docx</type><author>Douglas Adams</author><published>2021-11-01</published><pages>241</pages></header>']
 
+        example = '''<?xml version="1.0" encoding="utf-8"?>
+<root xmlns:foo="http://www.foo.org/" xmlns:bar="http://www.bar.org">
+  <actors>
+    <actor id="7">Christian Bale</actor>
+    <actor id="8">Liam Neeson</actor>
+    <actor id="9">Michael Caine</actor>
+  </actors>
+  <foo:singers>
+    <foo:singer id="10">Tom Waits</foo:singer>
+    <foo:singer id="11">B.B. King</foo:singer>
+    <foo:singer id="12">Ray Charles</foo:singer>
+  </foo:singers>
+</root>'''
+
+        _, input_payload = XmlTransformer.transform(ResponseContentType.XML, example)
+
+        get_values = XmlTransformer.parser('/root/actors/actor[@id="9"]')
+        actual = get_values(input_payload)
+        assert actual == ['<actor id="9">Michael Caine</actor>']
+
+
 class TestPlainTransformer:
     def test_transform(self) -> None:
         unwrapped = PlainTransformer.__wrapped_transform__  # type: ignore

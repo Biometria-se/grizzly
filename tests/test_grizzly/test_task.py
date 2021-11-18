@@ -226,5 +226,31 @@ class TestTransformerTask:
 
         assert tasks.user._context['variables'].get('test_variable', None) == 'hello world!'
 
+        task = TransformerTask(
+            variable='test_variable',
+            expression='//actor[@id="9"]',
+            content_type=ResponseContentType.XML,
+            content='''<root xmlns:foo="http://www.foo.org/" xmlns:bar="http://www.bar.org">
+  <actors>
+    <actor id="7">Christian Bale</actor>
+    <actor id="8">Liam Neeson</actor>
+    <actor id="9">Michael Caine</actor>
+  </actors>
+  <foo:singers>
+    <foo:singer id="10">Tom Waits</foo:singer>
+    <foo:singer id="11">B.B. King</foo:singer>
+    <foo:singer id="12">Ray Charles</foo:singer>
+  </foo:singers>
+</root>''',
+        )
+
+        implementation = task.implementation()
+
+        assert callable(implementation)
+
+        implementation(tasks)
+
+        assert tasks.user._context['variables']['test_variable'] == '<actor id="9">Michael Caine</actor>'
+
 
 
