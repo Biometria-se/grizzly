@@ -11,12 +11,12 @@ import zmq
 from . import (
     AsyncMessageRequest,
     AsyncMessageResponse,
+    AsyncMessageHandler,
     JsonBytesEncoder,
     LRU_READY,
     SPLITTER_FRAME,
     logger,
 )
-from .mq import AsyncMessageQueue
 
 def router() -> None:
     proc.setproctitle('grizzly')
@@ -90,7 +90,7 @@ def worker(context: zmq.Context, identity: str) -> None:
     worker.connect('inproc://workers')
     worker.send_string(LRU_READY)
 
-    integration: Optional[AsyncMessageQueue] = None
+    integration: Optional[AsyncMessageHandler] = None
 
     while True:
         request_proto = worker.recv_multipart()
@@ -117,7 +117,11 @@ def worker(context: zmq.Context, identity: str) -> None:
                 parsed = urlparse(integration_url)
 
                 if parsed.scheme in ['mq', 'mqs']:
-                    integration = AsyncMessageQueue(identity)
+                    from .mq import AsyncMessageQueueHandler
+                    integration = AsyncMessageQueueHandler(identity)
+                elif parsed.scheme == 'sb':
+                    from .sb import AsyncServiceBusHandler
+                    integration = AsyncServiceBusHandler(identity)
                 else:
                     raise RuntimeError(f'integration for {str(parsed.scheme)}:// is not implemented')
             except Exception as e:
@@ -130,7 +134,7 @@ def worker(context: zmq.Context, identity: str) -> None:
 
         if response is None and integration is not None:
             logger.debug(f'{identity}: send request to handler')
-            response = integration.handler(request)
+            response = integration.handle(request)
             logger.debug(f'{identity}: got response from handler')
 
         response_proto = [

@@ -1,41 +1,35 @@
-from typing import Optional, Union, Tuple, Literal, Generator, Callable, Dict, cast
+from typing import Optional, Generator, Dict, Union, Tuple, Literal, Callable, cast
 from time import monotonic as time, sleep
 from contextlib import contextmanager
-from json import dumps as jsondumps
 
 from grizzly.exceptions import TransformerError
 from grizzly.transformer import transformer
 from grizzly.types import ResponseContentType, str_response_content_type
 
-from . import AsyncMessageRequest, AsyncMessageResponse, AsyncMessageError, AsyncMessageHandler, JsonBytesEncoder, logger
+from . import (
+    AsyncMessageRequest,
+    AsyncMessageResponse,
+    AsyncMessageError,
+    AsyncMessageRequestHandler,
+    AsyncMessageHandler,
+    register,
+    JsonBytesEncoder,
+    logger,
+)
 
-#import pymqi
 try:
     import pymqi
 except:
     from grizzly_extras import dummy_pymqi as pymqi
 
-AsyncMessageQueueGetArguments = Union[Tuple[Literal[None], pymqi.MD], Tuple[Literal[None], pymqi.MD, pymqi.GMO]]
-
-AsyncMessageRequestHandler = Callable[['AsyncMessageQueue', AsyncMessageRequest], AsyncMessageResponse]
+__all__ = [
+    'AsyncMessageQueueHandler',
+]
 
 handlers: Dict[str, AsyncMessageRequestHandler] = {}
 
-
-def register(action: str, *actions: str) -> Callable[[AsyncMessageRequestHandler], None]:
-    def decorator(func: AsyncMessageRequestHandler) -> None:
-        for a in (action, *actions):
-            if a in handlers:
-                continue
-
-            handlers.update({a: func})
-
-    return decorator
-
-
-class AsyncMessageQueue(AsyncMessageHandler):
+class AsyncMessageQueueHandler(AsyncMessageHandler):
     qmgr: Optional[pymqi.QueueManager] = None
-    message_wait_global: int = 0
 
     def __init__(self, worker: str) -> None:
         if pymqi.__name__ == 'grizzly_extras.dummy_pymqi':
@@ -64,14 +58,14 @@ class AsyncMessageQueue(AsyncMessageHandler):
         finally:
             queue.close()
 
-    @register('CONN')
+    @register(handlers, 'CONN')
     def connect(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
         if self.qmgr is not None:
             raise AsyncMessageError('already connected')
 
         context = request.get('context', None)
         if context is None:
-            raise AsyncMessageError('no context')
+            raise AsyncMessageError('no context in request')
 
         connection = context['connection']
         queue_manager = context['queue_manager']
@@ -113,17 +107,20 @@ class AsyncMessageQueue(AsyncMessageHandler):
                 password,
             )
 
-        self.message_wait_global = context.get('message_wait', None) or 0
+        self.message_wait = context.get('message_wait', None) or 0
 
         return {
             'message': 'connected',
         }
 
-    def _create_gmo(self, message_wait: int) -> pymqi.GMO:
-        return pymqi.GMO(
-            Options=pymqi.CMQC.MQGMO_WAIT | pymqi.CMQC.MQGMO_FAIL_IF_QUIESCING,
-            WaitInterval=message_wait*1000,
-        )
+    def _create_gmo(self, message_wait: Optional[int]) -> pymqi.GMO:
+        if message_wait is not None and message_wait > 0:
+            return pymqi.GMO(
+                Options=pymqi.CMQC.MQGMO_WAIT | pymqi.CMQC.MQGMO_FAIL_IF_QUIESCING,
+                WaitInterval=message_wait*1000,
+            )
+        else:
+            return pymqi.GMO()
 
     def _create_matching_gmo(self, msg_id: bytearray, message_wait: int) -> pymqi.GMO:
         gmo = self._create_gmo(message_wait)
@@ -199,7 +196,7 @@ class AsyncMessageQueue(AsyncMessageHandler):
         if self.qmgr is None:
             raise AsyncMessageError('not connected')
 
-        queue_name = request.get('context', {}).get('queue', None)
+        queue_name = request.get('context', {}).get('endpoint', None)
         if queue_name is None:
             raise AsyncMessageError('no queue specified')
 
@@ -209,7 +206,7 @@ class AsyncMessageQueue(AsyncMessageHandler):
 
         md = pymqi.MD()
 
-        message_wait: int = request.get('context', {}).get('message_wait', None) or self.message_wait_global
+        message_wait = request.get('context', {}).get('message_wait', None) or self.message_wait
 
         msg_id_to_fetch: Optional[bytearray] = None
         if action == 'GET' and predicate is not None:
@@ -243,7 +240,7 @@ class AsyncMessageQueue(AsyncMessageHandler):
                 'response_length': response_length,
             }
 
-    @register('PUT', 'SEND')
+    @register(handlers, 'PUT', 'SEND')
     def put(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
         request['action'] = 'PUT'
 
@@ -252,7 +249,7 @@ class AsyncMessageQueue(AsyncMessageHandler):
 
         return self._request(request)
 
-    @register('GET', 'RECEIVE')
+    @register(handlers, 'GET', 'RECEIVE')
     def get(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
         request['action'] = 'GET'
 
@@ -261,36 +258,5 @@ class AsyncMessageQueue(AsyncMessageHandler):
 
         return self._request(request)
 
-    def handler(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
-        action = request['action']
-        action_handler = handlers.get(action, None)
-
-        logger.debug(f'handling {action}')
-        logger.debug(jsondumps(request, indent=2, cls=JsonBytesEncoder))
-
-        response: AsyncMessageResponse
-
-        start_time = time()
-
-        try:
-            if action_handler is None:
-                raise AsyncMessageError(f'no implementation for {action}')
-
-            response = action_handler(self, request)
-            response['success'] = True
-        except Exception as e:
-            response = {
-                'success': False,
-                'message': f'{action}: {e.__class__.__name__}="{str(e)}"',
-            }
-        finally:
-            total_time = int((time() - start_time) * 1000)
-            response.update({
-                'worker': self.worker,
-                'response_time': total_time,
-            })
-
-            logger.debug(f'handled {action}')
-            logger.debug(jsondumps(response, indent=2, cls=JsonBytesEncoder))
-
-            return response
+    def get_handler(self, action: str) -> Optional[AsyncMessageRequestHandler]:
+        return handlers.get(action, None)

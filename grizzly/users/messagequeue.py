@@ -2,9 +2,9 @@
 
 User is based on `pymqi` for communicating with IBM MQ. However `pymqi` uses native libraries which `gevent` (used by `locust`) cannot patch,
 which causes any calls in `pymqi` to block the rest of `locust`. To get around this, the user implementation communicates with a stand-alone
-process via zmq, which then in turn communicates with IBM MQ.
+process via zmq, which in turn communicates with IBM MQ.
 
-The message queue daemon process is started automagically when a scenario contains the `MessageQueueUser` and `pymqi` dependencies are installed.
+`async-messaged` starts automagically when a scenario uses `MessageQueueUser` and `pymqi` dependencies are installed.
 
 ## Request methods
 
@@ -77,18 +77,18 @@ from typing import Dict, Any, Generator, Tuple, Optional, cast
 from urllib.parse import urlparse, parse_qs, unquote
 from contextlib import contextmanager
 from time import monotonic as time
-from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
 
 
 import zmq
 
 
 from gevent import sleep as gsleep
-from locust.exception import StopUser, CatchResponseError
+from locust.exception import StopUser
+from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse, AsyncMessageError
 
-from .meta import ContextVariables, ResponseHandler, RequestLogger
 from ..task import RequestTask
 from ..utils import merge_dicts
+from .meta import ContextVariables, ResponseHandler, RequestLogger
 from . import logger
 
 
@@ -241,10 +241,10 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
 
                     delta = total_time - mq_response_time
                     if delta > 100:  # @TODO: what is a suitable value?
-                        logger.warning(f'{self.__class__.__name__}: comunicating with async-messaged took {delta} ms')
+                        logger.warning(f'{self.__class__.__name__}: communicating with async-messaged took {delta} ms')
 
                     if not response['success'] and exception is None:
-                        exception = CatchResponseError(response['message'])
+                        exception = AsyncMessageError(response['message'])
                 else:
                     response = {}
 
@@ -296,7 +296,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
             'action': request.method.name,
             'worker': self.worker_id,
             'context': {
-                'queue': queue_name,
+                'endpoint': queue_name,
                 'predicate': predicate,
                 'content_type': request.response.content_type,
             },

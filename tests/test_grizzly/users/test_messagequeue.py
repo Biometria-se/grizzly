@@ -28,7 +28,7 @@ from grizzly.exceptions import ResponseHandlerError
 from grizzly.steps.helpers import add_save_handler
 from grizzly_extras.async_message import AsyncMessageRequest, AsyncMessageResponse
 
-from ..fixtures import grizzly_context, request_task, locust_environment  # pylint: disable=unused-import
+from ..fixtures import grizzly_context, request_task, locust_environment, noop_zmq  # pylint: disable=unused-import
 from ..helpers import clone_request
 
 import logging
@@ -172,37 +172,16 @@ class TestMessageQueueUser:
                 }
             }
 
-    @pytest.mark.usefixtures('locust_environment')
-    def test_request__action_conn_error(self, locust_environment: Environment, mocker: MockerFixture) -> None:
+    @pytest.mark.usefixtures('locust_environment', 'noop_zmq')
+    def test_request__action_conn_error(self, locust_environment: Environment, mocker: MockerFixture, noop_zmq: Callable[[str], None]) -> None:
         def mocked_zmq_connect(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Any:
             raise zmq.error.ZMQError(msg='error connecting')
 
-        def mocked_noop(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
-            pass
-
-        mocker.patch(
-            'grizzly.users.messagequeue.zmq.sugar.context.Context.term',
-            mocked_noop,
-        )
-
-        mocker.patch(
-            'grizzly.users.messagequeue.zmq.sugar.context.Context.__del__',
-            mocked_noop,
-        )
-
-        mocker.patch(
-            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.bind',
-            mocked_noop,
-        )
+        noop_zmq('grizzly.users.messagequeue')
 
         mocker.patch(
             'grizzly.users.messagequeue.zmq.sugar.socket.Socket.connect',
             mocked_zmq_connect,
-        )
-
-        mocker.patch(
-            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.send_json',
-            mocked_noop,
         )
 
         def mocked_request_fire(*args: Tuple[Any, ...], **_kwargs: Dict[str, Any]) -> None:
@@ -243,7 +222,7 @@ class TestMessageQueueUser:
         process: Optional[subprocess.Popen] = None
         try:
             process = subprocess.Popen(
-                ['messagequeue-daemon'],
+                ['async-messaged'],
                 env=environ.copy(),
                 shell=False,
                 stdout=subprocess.PIPE,
@@ -300,7 +279,7 @@ class TestMessageQueueUser:
         process: Optional[subprocess.Popen] = None
         try:
             process = subprocess.Popen(
-                ['messagequeue-daemon'],
+                ['async-messaged'],
                 env=environ.copy(),
                 shell=False,
                 stdout=subprocess.PIPE,
@@ -349,36 +328,11 @@ class TestMessageQueueUser:
                 }
             }
 
-    def test_get(self, mq_user: Tuple[MessageQueueUser, GrizzlyContextScenario, Environment], mocker: MockerFixture) -> None:
+    @pytest.mark.usefixtures('noop_zmq')
+    def test_get(self, mq_user: Tuple[MessageQueueUser, GrizzlyContextScenario, Environment], mocker: MockerFixture, noop_zmq: Callable[[str], None]) -> None:
         [user, scenario, _] = mq_user
 
-        def mocked_noop(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
-            pass
-
-        mocker.patch(
-            'grizzly.users.messagequeue.zmq.sugar.context.Context.term',
-            mocked_noop,
-        )
-
-        mocker.patch(
-            'grizzly.users.messagequeue.zmq.sugar.context.Context.__del__',
-            mocked_noop,
-        )
-
-        mocker.patch(
-            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.bind',
-            mocked_noop,
-        )
-
-        mocker.patch(
-            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.connect',
-            mocked_noop,
-        )
-
-        mocker.patch(
-            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.send_json',
-            mocked_noop,
-        )
+        noop_zmq('grizzly.users.messagequeue')
 
         response_connected: AsyncMessageResponse = {
             'worker': '0000-1337',
@@ -626,7 +580,7 @@ class TestMessageQueueUser:
         request.endpoint = 'IFKTEST'
         user.request(request)
         ctx : Dict[str, str] = JsonMocker.sent_request['context']
-        assert ctx['queue'] == 'IFKTEST'
+        assert ctx['endpoint'] == 'IFKTEST'
         assert ctx['predicate'] == None
 
         # Test with specifying queue: prefix as endpoint
@@ -637,7 +591,7 @@ class TestMessageQueueUser:
         request.endpoint = 'queue:IFKTEST'
         user.request(request)
         ctx = JsonMocker.sent_request['context']
-        assert ctx['queue'] == 'IFKTEST'
+        assert ctx['endpoint'] == 'IFKTEST'
         assert ctx['predicate'] == None
 
         # Test specifying queue: prefix with predicate
@@ -648,7 +602,7 @@ class TestMessageQueueUser:
         request.endpoint = 'queue:IFKTEST2, predicate:/class/student[marks>85]'
         user.request(request)
         ctx = JsonMocker.sent_request['context']
-        assert ctx['queue'] == 'IFKTEST2'
+        assert ctx['endpoint'] == 'IFKTEST2'
         assert ctx['predicate'] == '/class/student[marks>85]'
 
         # Test specifying queue: prefix with predicate, and spacing
@@ -659,7 +613,7 @@ class TestMessageQueueUser:
         request.endpoint = 'queue: IFKTEST2  , predicate: /class/student[marks>85]'
         user.request(request)
         ctx = JsonMocker.sent_request['context']
-        assert ctx['queue'] == 'IFKTEST2'
+        assert ctx['endpoint'] == 'IFKTEST2'
         assert ctx['predicate'] == '/class/student[marks>85]'
 
         # Test specifying queue without prefix, with predicate
@@ -670,7 +624,7 @@ class TestMessageQueueUser:
         request.endpoint = 'IFKTEST3, predicate:/class/student[marks<55]'
         user.request(request)
         ctx = JsonMocker.sent_request['context']
-        assert ctx['queue'] == 'IFKTEST3'
+        assert ctx['endpoint'] == 'IFKTEST3'
         assert ctx['predicate'] == '/class/student[marks<55]'
 
         # Test error when missing predicate: prefix
@@ -688,36 +642,11 @@ class TestMessageQueueUser:
         # Test queue / predicate END
 
 
-    def test_send(self, mq_user: Tuple[MessageQueueUser, GrizzlyContextScenario, Environment], mocker: MockerFixture) -> None:
+    @pytest.mark.usefixtures('noop_zmq')
+    def test_send(self, mq_user: Tuple[MessageQueueUser, GrizzlyContextScenario, Environment], mocker: MockerFixture, noop_zmq: Callable[[str], None]) -> None:
         [user, scenario, _] = mq_user
 
-        def mocked_noop(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
-            pass
-
-        mocker.patch(
-            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.bind',
-            mocked_noop,
-        )
-
-        mocker.patch(
-            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.connect',
-            mocked_noop,
-        )
-
-        mocker.patch(
-            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.send_json',
-            mocked_noop,
-        )
-
-        mocker.patch(
-            'grizzly.users.messagequeue.zmq.sugar.context.Context.term',
-            mocked_noop,
-        )
-
-        mocker.patch(
-            'grizzly.users.messagequeue.zmq.sugar.context.Context.__del__',
-            mocked_noop,
-        )
+        noop_zmq('grizzly.users.messagequeue')
 
         response_connected: AsyncMessageResponse = {
             'worker': '0000-1337',
