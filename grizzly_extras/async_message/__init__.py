@@ -9,7 +9,7 @@ from json import JSONEncoder, dumps as jsondumps
 from time import monotonic as time
 from io import StringIO
 
-from grizzly.types import ResponseContentType
+from grizzly_extras.types import ResponseContentType
 
 
 __all__ = [

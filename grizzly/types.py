@@ -7,6 +7,7 @@ from locust.clients import ResponseContextManager
 from locust.user.users import User
 from gevent.lock import Semaphore
 
+from grizzly_extras.types import ResponseContentType
 
 class ResponseTarget(Enum):
     METADATA = 0
@@ -16,13 +17,6 @@ class ResponseTarget(Enum):
 class ResponseAction(Enum):
     VALIDATE = 0
     SAVE = 1
-
-
-class ResponseContentType(Enum):
-    GUESS = 0
-    JSON = auto()
-    XML = auto()
-    PLAIN = auto()
 
 
 class RequestDirection(Enum):

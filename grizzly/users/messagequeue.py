@@ -192,7 +192,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
         if ',' in queue_name:
             queue_name, expression = [x.strip() for x in queue_name.split(',')]
             if not expression.startswith('expression:'):
-                logger.error(f'Predicate part in endpoint needs to have "expression:" in it: {request.endpoint}')
+                logger.error(f'Expression part in endpoint needs to have "expression:" in it: {request.endpoint}')
                 raise StopUser()
             # Remove 'expression:' prefix and keep the value
             expression = resub(r'\s*expression:\s*(.+?)\s*$', r'\1', expression)

@@ -8,9 +8,10 @@ from behave import register_type, when, then  # pylint: disable=no-name-in-modul
 
 from ...context import GrizzlyContext
 from ...task import RequestTask
-from ...types import ResponseContentType, ResponseTarget, str_response_content_type
+from ...types import ResponseTarget, str_response_content_type
 from ..helpers import add_save_handler, add_validation_handler, add_request_task_response_status_codes
 
+from grizzly_extras.types import ResponseContentType
 
 @parse.with_pattern(r'is( not)?', regex_group_count=1)
 def parse_condition(text: str) -> bool:

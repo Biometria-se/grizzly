@@ -5,9 +5,11 @@ from behave.runner import Context
 from behave import register_type, then  # pylint: disable=no-name-in-module
 
 from ..helpers import add_request_task
-from ...types import RequestDirection, RequestMethod, ResponseContentType, str_response_content_type
+from ...types import RequestDirection, RequestMethod, ResponseContentType
 from ...context import GrizzlyContext
 from ...task import PrintTask, SleepTask, TransformerTask
+
+from grizzly_extras.types import ResponseContentType, str_response_content_type
 
 
 def parse_method(text: str) -> RequestMethod:

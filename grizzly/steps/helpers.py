@@ -14,11 +14,13 @@ from locust.clients import ResponseContextManager
 
 from ..users.meta import ContextVariables
 from ..context import GrizzlyContext
-from ..exceptions import ResponseHandlerError
-from ..types import HandlerType, ResponseContentType, RequestMethod, ResponseTarget, ResponseAction
-from ..transformer import PlainTransformer, transformer
+from ..exceptions import ResponseHandlerError, TransformerLocustError
+from ..types import HandlerType, RequestMethod, ResponseTarget, ResponseAction
 from ..task import RequestTask
 
+from grizzly_extras.transformer import PlainTransformer, transformer
+from grizzly_extras.exceptions import TransformerError
+from grizzly_extras.types import ResponseContentType
 
 logger = logging.getLogger(__name__)
 
@@ -186,21 +188,24 @@ def handler_logic(
     interpolated_expression = j2.Template(expression).render(user.context_variables)
     interpolated_match_with = j2.Template(match_with).render(user.context_variables)
 
-    transform = transformer.available.get(input_content_type, None)
-    if transform is None:
-        raise TypeError(f'could not find a transformer for {input_content_type.name}')
+    try:
+        transform = transformer.available.get(input_content_type, None)
+        if transform is None:
+            raise TypeError(f'could not find a transformer for {input_content_type.name}')
 
-    if not transform.validate(interpolated_expression):
-        raise TypeError(f'"{interpolated_expression}" is not a valid expression for {input_content_type.name}')
+        if not transform.validate(interpolated_expression):
+            raise TypeError(f'"{interpolated_expression}" is not a valid expression for {input_content_type.name}')
 
-    input_get_values = transform.parser(interpolated_expression)
-    match_get_values = PlainTransformer.parser(interpolated_match_with)
+        input_get_values = transform.parser(interpolated_expression)
+        match_get_values = PlainTransformer.parser(interpolated_match_with)
 
-    values, matches = get_matches(
-        input_get_values,
-        match_get_values,
-        input_payload,
-    )
+        values, matches = get_matches(
+            input_get_values,
+            match_get_values,
+            input_payload,
+        )
+    except TransformerError as e:
+        raise TransformerLocustError(f'{str(e.message)}')
 
     number_of_matches = len(matches)
 

@@ -23,7 +23,8 @@ from grizzly.task import (
 )
 
 from grizzly.types import ResponseContentType, RequestMethod
-from grizzly.transformer import transformer
+
+from grizzly_extras.transformer import transformer
 
 from .fixtures import grizzly_context, request_task, behave_context, locust_environment  # pylint: disable=unused-import
 

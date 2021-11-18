@@ -8,9 +8,10 @@ from lxml import etree as XML
 from pytest_mock import mocker  # pylint: disable=unused-import
 from pytest_mock.plugin import MockerFixture
 
-from grizzly.transformer import JsonTransformer, Transformer, XmlTransformer, PlainTransformer, transformer, JsonBytesEncoder
 from grizzly.types import ResponseContentType
-from grizzly.exceptions import TransformerError
+
+from grizzly_extras.transformer import JsonTransformer, Transformer, XmlTransformer, PlainTransformer, transformer, JsonBytesEncoder
+from grizzly_extras.exceptions import TransformerError
 
 
 class TestTransformer:

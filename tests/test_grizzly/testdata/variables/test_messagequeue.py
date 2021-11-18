@@ -14,9 +14,9 @@ from behave.runner import Context
 from grizzly.testdata.variables import AtomicMessageQueue
 from grizzly.testdata.variables.messagequeue import atomicmessagequeue__base_type__
 from grizzly.context import GrizzlyContext
-from grizzly.transformer import transformer
 from grizzly.types import ResponseContentType
 from grizzly_extras.async_message import AsyncMessageResponse
+from grizzly_extras.transformer import transformer
 
 try:
     import pymqi

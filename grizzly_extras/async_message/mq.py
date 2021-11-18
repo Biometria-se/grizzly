@@ -2,9 +2,10 @@ from typing import Optional, Generator, Dict, Union, Tuple, Literal, Callable, c
 from time import monotonic as time, sleep
 from contextlib import contextmanager
 
-from grizzly.exceptions import TransformerError
-from grizzly.transformer import transformer
-from grizzly.types import ResponseContentType, str_response_content_type
+from grizzly_extras.exceptions import TransformerError
+from grizzly_extras.transformer import transformer
+from grizzly_extras.types import ResponseContentType, str_response_content_type
+
 
 from . import (
     AsyncMessageRequest,
@@ -13,7 +14,6 @@ from . import (
     AsyncMessageRequestHandler,
     AsyncMessageHandler,
     register,
-    JsonBytesEncoder,
     logger,
 )
 
