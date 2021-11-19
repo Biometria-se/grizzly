@@ -1,3 +1,8 @@
+'''This module contain different task implementations supported by grizzly.
+
+A task is something that a user can execute in each iteration of a scenario. All instances of tasks
+are created by step functions in [`grizzly.steps.scenario.tasks`](/grizzly/usage/steps/scenario/tasks/).
+'''
 from dataclasses import dataclass, field
 from typing import List, Optional, Callable, Any, Type
 
@@ -55,6 +60,18 @@ class RequestTaskResponse:
 
 @dataclass(unsafe_hash=True)
 class RequestTask(GrizzlyTask):
+    '''This task calls the `request` method of a `grizzly.users` implementation.
+
+    Instances of this task is created with the step expressions:
+
+    * `step_task_request_text_with_name_to_endpoint`
+
+    * `step_task_request_file_with_name_endpoint`
+
+    * `step_task_request_file_with_name`
+
+    * `step_task_request_text_with_name`
+    '''
     method: RequestMethod
     name: str
     endpoint: str
@@ -72,6 +89,12 @@ class RequestTask(GrizzlyTask):
 
 @dataclass
 class SleepTask(GrizzlyTask):
+    '''This task executes a `gevent.sleep` in a scenario, and is to manually create delays between steps in a scenario.
+
+    Instances of this task is created with the step expression:
+
+    * `step_task_wait_seconds`
+    '''
     sleep: float
 
     def implementation(self) -> Callable[[GrizzlyTasksBase], Any]:
@@ -85,6 +108,13 @@ class SleepTask(GrizzlyTask):
 
 @dataclass
 class PrintTask(GrizzlyTask):
+    '''This task calls the grizzly logger to print a log message at level `INFO`. It can be used to visualize values for
+    templating variables.
+
+    Instances of this task is created with the step expression:
+
+    * `step_task_print_message`
+    '''
     message: str
 
     def implementation(self) -> Callable[[GrizzlyTasksBase], Any]:
@@ -96,6 +126,16 @@ class PrintTask(GrizzlyTask):
 
 @dataclass
 class TransformerTask(GrizzlyTask):
+    '''This task transforms a variable value to a document of correct type, so an expression can be used to extract a
+    specific value from the document to be used in another variable.
+
+    This is especially useful when used in combination with `AtomicMessageQueue` and `AtomicServiceBus` variables,
+    where many parts of a message can be useful to re-use.
+
+    Instances of this task is created with the step expression:
+
+    * `step_task_transform`
+    '''
     expression: str
     variable: str
     content: str

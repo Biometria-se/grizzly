@@ -41,6 +41,7 @@ from .directory_contents import AtomicDirectoryContents
 from .csv_row import AtomicCsvRow
 from .random_string import AtomicRandomString
 from .messagequeue import AtomicMessageQueue
+from .servicebus import AtomicServiceBus
 
 __all__ = [
     'AtomicRandomInteger',
@@ -50,6 +51,7 @@ __all__ = [
     'AtomicCsvRow',
     'AtomicRandomString',
     'AtomicMessageQueue',
+    'AtomicServiceBus',
     'load_variable',
     'destroy_variables',
 ]

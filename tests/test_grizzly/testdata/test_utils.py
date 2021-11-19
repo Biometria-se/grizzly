@@ -28,7 +28,7 @@ from grizzly.testdata.utils import (
     _objectify,
     transform,
 )
-from grizzly.testdata.variables import AtomicCsvRow, AtomicIntegerIncrementer, AtomicMessageQueue
+from grizzly.testdata.variables import AtomicCsvRow, AtomicIntegerIncrementer, AtomicMessageQueue, AtomicServiceBus
 from grizzly_extras.async_message import AsyncMessageResponse
 
 from ..fixtures import grizzly_context, request_task, behave_context, locust_environment, noop_zmq  # pylint: disable=unused-import
@@ -105,6 +105,28 @@ def test__get_variable_value_AtomicMessageQueue(noop_zmq: Callable[[str], None],
         with pytest.raises(ValueError) as ve:
             AtomicMessageQueue.destroy()
         assert "'AtomicMessageQueue' is not instantiated" in str(ve)
+    finally:
+        cleanup()
+
+
+@pytest.mark.usefixtures('cleanup')
+def test__get_variable_value_AtomicServiceBus(noop_zmq: Callable[[str], None], cleanup: Callable) -> None:
+    noop_zmq('grizzly.testdata.variables.servicebus')
+
+    try:
+        grizzly = GrizzlyContext()
+        variable_name = 'AtomicServiceBus.test'
+        grizzly.state.variables[variable_name] = (
+            'queue:documents-in | url="sb://sb.example.com/;SharedAccessKeyName=name;SharedAccessKey=key", expression="$.test.result", content_type=json'
+        )
+        value, external_dependencies = _get_variable_value(variable_name)
+        assert external_dependencies == set(['async-messaged'])
+        assert not isinstance(value, AtomicServiceBus)
+        assert value == '__on_consumer__'
+
+        with pytest.raises(ValueError) as ve:
+            AtomicServiceBus.destroy()
+        assert "'AtomicServiceBus' is not instantiated" in str(ve)
     finally:
         cleanup()
 

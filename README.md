@@ -74,7 +74,7 @@ They are useful when history of test runs is needed, or when wanting to correlat
 `locust` comes with a simple user for loading an HTTP(S) endpoint and due to the nature of how the integration between `behave` and `locust` works, it is not possible to use `locust` provided users, even for HTTP(S) targets.
 
 * `RestApiUser`: send requests to REST API endpoinds, supports authentication with username+password or client secret
-* `ServiceBusUser`: send to Azure Service Bus queues and topics<sup>2</sup>
+* `ServiceBusUser`: send to and receive from Azure Service Bus queues and topics
 * `MessageQueueUser`: send and receive from IBM MQ queues
 * `SftpUser`: send and receive files from an SFTP-server
 * `BlobStorageUser`: send files to Azure Blob Storage<sup>2</sup>

@@ -58,17 +58,18 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             raise AsyncMessageError(f'only support for endpoint types queue and topic, not {endpoint_type}')
 
         if ',' in endpoint_details:
-            endpoint_name, endpoint_details = [v.strip() for v in endpoint_details.split(',', 1)]
-
             if instance_type != 'receiver':
                 raise AsyncMessageError(f'additional arguments in endpoint is not supported for {instance_type}')
+
+            endpoint_name, endpoint_details = [v.strip() for v in endpoint_details.split(',', 1)]
 
             detail_type, detail_value = [v.strip() for v in endpoint_details.split(':', 1)]
 
             if detail_type != 'subscription':
                 raise AsyncMessageError(f'argument {detail_type} is not supported')
 
-            subscription_name = detail_value
+            if len(detail_value) > 0:
+                subscription_name = detail_value
         else:
             endpoint_name = endpoint_details
 

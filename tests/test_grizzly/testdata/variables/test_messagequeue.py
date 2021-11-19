@@ -165,10 +165,8 @@ class TestAtomicMessageQueue:
             except:
                 pass
 
-    @pytest.mark.usefixtures('behave_context', 'noop_zmq')
-    def test_create_context(self, behave_context: Context, noop_zmq: Callable[[str], None] ) -> None:
-        noop_zmq('grizzly.testdata.variables.messagequeue')
-
+    @pytest.mark.usefixtures('behave_context')
+    def test_create_context(self, behave_context: Context) -> None:
         grizzly = cast(GrizzlyContext, behave_context.grizzly)
         grizzly.state.configuration.update({
             'mq.username': 'mq_test',
@@ -286,7 +284,7 @@ class TestAtomicMessageQueue:
 
 
     @pytest.mark.usefixtures('noop_zmq')
-    def test_create_client(self, mocker: MockerFixture, noop_zmq: Callable[[str], None]) -> None:
+    def test_create_client(self, noop_zmq: Callable[[str], None]) -> None:
         noop_zmq('grizzly.testdata.variables.messagequeue')
 
         try:
@@ -362,8 +360,10 @@ class TestAtomicMessageQueue:
                 side_effect=[zmq.Again(), response] * repeat
             )
 
-        from grizzly.testdata.variables import messagequeue as mq
-        gsleep_spy = mocker.spy(mq, 'gsleep')
+        gsleep_spy = mocker.patch(
+            'grizzly.testdata.variables.messagequeue.gsleep',
+            autospec=True,
+        )
 
         try:
             mock_response(None)

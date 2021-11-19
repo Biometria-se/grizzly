@@ -35,6 +35,9 @@ renderer:
       - title: Command Line Interface
         name: cli
         source: docs/cli.md
+      - title: Tasks
+        contents:
+        - grizzly.task.*
       - title: Variables
         children:
         - title: Environment configuration
@@ -63,6 +66,9 @@ renderer:
           - title: Message Queue
             contents:
             - grizzly.testdata.variables.messagequeue
+          - title: Service Bus
+            contents:
+            - grizzly.testdata.variables.servicebus
         - title: Templating
           name: templating
           source: docs/usage/variables/templating.md
