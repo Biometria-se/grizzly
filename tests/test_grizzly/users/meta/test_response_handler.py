@@ -15,8 +15,9 @@ from locust.exception import LocustError, CatchResponseError
 from grizzly.clients import ResponseEventSession
 from grizzly.users.meta import HttpRequests, ResponseEvent, ResponseHandler
 from grizzly.exceptions import ResponseHandlerError
-from grizzly.types import RequestMethod, ResponseContentType
+from grizzly.types import RequestMethod
 from grizzly.task import RequestTask
+from grizzly_extras.types import ResponseContentType
 
 from ...fixtures import locust_environment  # pylint: disable=unused-import
 from ...helpers import RequestEvent, TestUser
@@ -95,6 +96,7 @@ class TestResponseHandler:
         metadata_handler.reset_mock()
         request.response.handlers.metadata.clear()
 
+        print("STEFAN1")
         # invalid json content in payload
         response._content = '{"test: "value"}'.encode('utf-8')
         response_context_manager = ResponseContextManager(response, RequestEvent(), {})
@@ -110,12 +112,14 @@ class TestResponseHandler:
         assert 'failed to transform' in str(response_context_manager._manual_result)
         request.response.handlers.payload.clear()
 
+        print("STEFAN2")
         # XML in response
         response._content = '''<?xml version="1.0" encoding="UTF-8"?>
         <test>
             value
         </test>'''.encode('utf-8')
 
+        print("STEFAN3")
         request.response.content_type = ResponseContentType.GUESS
         request.response.handlers.add_payload(payload_handler)
         user.response_handler('test', response_context_manager, request, test_user)
@@ -133,6 +137,7 @@ class TestResponseHandler:
             value
         </test>'''.encode('utf-8')
 
+        print("STEFANHEREWEGO")
         user.response_handler('test', response_context_manager, request, test_user)
         assert payload_handler.call_count == 1
         assert isinstance(response_context_manager._manual_result, CatchResponseError)

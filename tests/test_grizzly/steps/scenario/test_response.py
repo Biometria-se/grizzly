@@ -7,9 +7,11 @@ from behave.runner import Context
 from behave.model import Table, Row
 
 from grizzly.context import GrizzlyContext
-from grizzly.types import RequestMethod, ResponseContentType, ResponseTarget, str_response_content_type
+from grizzly.types import RequestMethod, ResponseTarget
 from grizzly.task import RequestTask, SleepTask
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import
+
+from grizzly_extras.types import ResponseContentType, str_response_content_type
 
 from ...fixtures import behave_context, locust_environment  # pylint: disable=unused-import
 

@@ -50,7 +50,7 @@ class AsyncMessageContext(TypedDict, total=False):
     message_wait: Optional[int]
     endpoint: str
     expression: Optional[str]
-    content_type: ResponseContentType
+    content_type: Optional[str]
 
 
 class AsyncMessageRequest(TypedDict, total=False):

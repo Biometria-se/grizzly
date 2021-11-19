@@ -1,4 +1,4 @@
-from typing import Optional, Generator, Dict, Union, Tuple, Literal, Callable, cast
+from typing import Optional, Generator, Dict, cast
 from time import monotonic as time, sleep
 from contextlib import contextmanager
 
@@ -182,7 +182,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
 
     def _get_content_type(self, request: AsyncMessageRequest) -> ResponseContentType:
         content_type: ResponseContentType = ResponseContentType.GUESS
-        value: Optional[str] = cast(Optional[str], request.get('context', {}).get('content_type', None))
+        value: Optional[str] = request.get('context', {}).get('content_type', None)
         if value:
             content_type = str_response_content_type(value)
         return content_type

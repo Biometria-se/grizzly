@@ -22,9 +22,10 @@ from grizzly.task import (
     RequestTaskResponse,
 )
 
-from grizzly.types import ResponseContentType, RequestMethod
+from grizzly.types import RequestMethod
 
 from grizzly_extras.transformer import transformer
+from grizzly_extras.types import ResponseContentType
 
 from .fixtures import grizzly_context, request_task, behave_context, locust_environment  # pylint: disable=unused-import
 

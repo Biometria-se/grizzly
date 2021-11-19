@@ -3,13 +3,14 @@ from typing import Any, Dict, Tuple, Optional
 from locust.clients import ResponseContextManager
 
 from ...task import RequestTask
-from ...types import HandlerContextType, ResponseContentType
-from ...exceptions import TransformerLocustError, ResponseHandlerError
+from ...types import HandlerContextType
+from ...exceptions import ResponseHandlerError
 from .context_variables import ContextVariables
 from .response_event import ResponseEvent
 
 from grizzly_extras.transformer import transformer
 from grizzly_extras.types import ResponseContentType
+from grizzly_extras.exceptions import TransformerError
 
 class ResponseHandler(ResponseEvent):
     abstract = True
@@ -62,8 +63,8 @@ class ResponseHandler(ResponseEvent):
                             break
 
                 if response_content_type is ResponseContentType.GUESS:
-                    raise TransformerLocustError(f'failed to transform: {response_payload}')
-            except TransformerLocustError as e:
+                    raise TransformerError(f'failed to transform: {response_payload}')
+            except TransformerError as e:
                 if response_context is not None:
                     response_context.failure(e.message)
                     return

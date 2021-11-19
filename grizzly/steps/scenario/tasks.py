@@ -5,7 +5,7 @@ from behave.runner import Context
 from behave import register_type, then  # pylint: disable=no-name-in-module
 
 from ..helpers import add_request_task
-from ...types import RequestDirection, RequestMethod, ResponseContentType
+from ...types import RequestDirection, RequestMethod
 from ...context import GrizzlyContext
 from ...task import PrintTask, SleepTask, TransformerTask
 

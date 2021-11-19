@@ -15,7 +15,7 @@ from locust.clients import ResponseContextManager
 from requests.models import Response
 
 from grizzly.context import GrizzlyContext
-from grizzly.types import RequestMethod, ResponseTarget, ResponseContentType, ResponseAction
+from grizzly.types import RequestMethod, ResponseTarget, ResponseAction
 from grizzly.task import RequestTask, SleepTask
 from grizzly.exceptions import ResponseHandlerError
 from grizzly.steps.helpers import (
@@ -29,6 +29,8 @@ from grizzly.steps.helpers import (
     _add_response_handler,
     get_matches,
 )
+
+from grizzly_extras.types import ResponseContentType
 
 from ..helpers import TestUser
 # pylint: disable=unused-import
