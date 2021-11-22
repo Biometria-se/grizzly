@@ -5,28 +5,25 @@ from json import dumps as jsondumps
 
 import pytest
 
-from pytest_mock import mocker  # pylint: disable=unused-import
-from pytest_mock.plugin import MockerFixture
+from pytest_mock import mocker, MockerFixture  # pylint: disable=unused-import
 from _pytest.logging import LogCaptureFixture
 from locust.clients import ResponseContextManager
 from locust.user.users import User
 from behave.runner import Context
-from grizzly.context import GrizzlyContext
 
+from grizzly_extras.transformer import transformer, TransformerContentType
+from grizzly.context import GrizzlyContext
 from grizzly.task import (
     RequestTask,
-    SleepTask,
     PrintTask,
     TransformerTask,
     RequestTaskHandlers,
     RequestTaskResponse,
 )
-
 from grizzly.types import RequestMethod
+from grizzly.exceptions import TransformerLocustError
 
-from grizzly_extras.transformer import transformer, TransformerContentType
-
-from .fixtures import grizzly_context, request_task, behave_context, locust_environment  # pylint: disable=unused-import
+from ..fixtures import grizzly_context, request_task, behave_context, locust_environment  # pylint: disable=unused-import
 
 class TestRequestTaskHandlers:
     def tests(self) -> None:
@@ -104,31 +101,6 @@ class TestRequestTask:
         assert args[0] is task
 
 
-class TestSleepTask:
-    @pytest.mark.usefixtures('grizzly_context')
-    def test(self, mocker: MockerFixture, grizzly_context: Callable) -> None:
-        task = SleepTask(sleep=1.0)
-
-        assert task.sleep == 1.0
-        implementation = task.implementation()
-
-        assert callable(implementation)
-
-        _, _, tasks, _ = grizzly_context()
-
-        def noop(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Any:
-            pass
-
-        import grizzly.task
-        mocker.patch.object(grizzly.task, 'gsleep', noop)
-        gsleep_spy = mocker.spy(grizzly.task, 'gsleep')
-
-        implementation(tasks)
-
-        assert gsleep_spy.call_count == 1
-        args, _ = gsleep_spy.call_args_list[0]
-        assert args[0] == task.sleep
-
 
 class TestPrintTask:
     @pytest.mark.usefixtures('grizzly_context')
@@ -201,7 +173,7 @@ class TestTransformerTask:
 
         _, _, tasks, _ = grizzly_context()
 
-        with pytest.raises(RuntimeError) as re:
+        with pytest.raises(TransformerLocustError) as re:
             implementation(tasks)
         assert 'failed to transform JSON' in str(re)
 
@@ -251,6 +223,3 @@ class TestTransformerTask:
         implementation(tasks)
 
         assert tasks.user._context['variables']['test_variable'] == '<actor id="9">Michael Caine</actor>'
-
-
-

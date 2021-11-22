@@ -12,7 +12,7 @@ from locust.exception import StopUser
 from grizzly.tasks.iterator import IteratorTasks
 from grizzly.testdata.communication import TestdataConsumer
 from grizzly.testdata.utils import transform
-from grizzly.task import SleepTask, PrintTask
+from grizzly.task import WaitTask, PrintTask
 
 from ..fixtures import grizzly_context, request_task  # pylint: disable=unused-import
 from ..helpers import RequestCalled
@@ -44,12 +44,12 @@ class TestIterationTasks:
                 assert sleep_time == time
 
             mocker.patch(
-                'grizzly.task.gsleep',
+                'grizzly.task.wait.gsleep',
                 mocked_wait,
             )
 
         generate_mocked_wait(1.5)
-        IteratorTasks.add_scenario_task(SleepTask(sleep=1.5))
+        IteratorTasks.add_scenario_task(WaitTask(time=1.5))
         assert len(task.tasks) == 3
 
         task_method = task.tasks[-1]

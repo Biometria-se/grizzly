@@ -19,7 +19,7 @@ from jinja2 import Template, TemplateError
 from grizzly.locust import greenlet_exception_logger, on_master, on_worker, on_local, run, setup_environment_listeners, setup_locust_scenarios, setup_resource_limits
 from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
-from grizzly.task import PrintTask, RequestTask, SleepTask
+from grizzly.task import PrintTask, RequestTask, WaitTask
 from grizzly.users import RestApiUser, MessageQueueUser
 from grizzly.tasks import IteratorTasks
 from grizzly.testdata.variables import AtomicMessageQueue, AtomicIntegerIncrementer
@@ -157,7 +157,7 @@ def test_setup_locust_scenarios(behave_context: Context) -> None:
 
     task = RequestTask(RequestMethod.GET, 'test-1', '/api/v1/test/1')
     grizzly.scenario.add_task(task)
-    grizzly.scenario.add_task(SleepTask(sleep=1.5))
+    grizzly.scenario.add_task(WaitTask(time=1.5))
     grizzly.scenario.add_task(PrintTask(message='test message'))
 
     # incorrect user type
@@ -528,7 +528,7 @@ def test_run_worker(behave_context: Context, capsys: CaptureFixture, mocker: Moc
     grizzly.add_scenario('test-non-mq')
     grizzly.scenario.user.class_name = 'RestApiUser'
     grizzly.scenario.context['host'] = 'https://test.example.org'
-    grizzly.scenario.add_task(SleepTask(sleep=1.5))
+    grizzly.scenario.add_task(WaitTask(time=1.5))
     task = RequestTask(RequestMethod.GET, 'test-1', '/api/v1/test/1')
     grizzly.scenario.add_task(task)
 
@@ -674,7 +674,7 @@ def test_run_master(behave_context: Context, capsys: CaptureFixture, mocker: Moc
     grizzly.add_scenario('test')
     grizzly.scenario.user.class_name = 'RestApiUser'
     grizzly.scenario.context['host'] = 'https://test.example.org'
-    grizzly.scenario.add_task(SleepTask(sleep=1.5))
+    grizzly.scenario.add_task(WaitTask(time=1.5))
     task = RequestTask(RequestMethod.GET, 'test-1', '/api/v1/test/1')
     grizzly.scenario.add_task(task)
     grizzly.setup.spawn_rate = 1
