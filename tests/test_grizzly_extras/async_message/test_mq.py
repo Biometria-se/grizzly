@@ -312,6 +312,177 @@ class TestAsyncMessageQueueHandler:
         args, _ = create_gmo_spy.call_args_list[1]
         assert args[0] == 13
 
+    def test__request_with_expressions(self, mocker: MockerFixture) -> None:
+
+        # Mocked representation of an pymqi Queue message
+        class DummyMessage(object):
+            def __init__(self, payload: str) -> None:
+                self.payload = payload
+
+            def decode(self) -> str:
+                return self.payload
+
+        queue_messages = {
+            "id1": DummyMessage(
+                """
+                <root xmlns:foo="http://www.foo.org/" xmlns:bar="http://www.bar.org">
+                <actors>
+                    <actor id="1">Christian Bale</actor>
+                    <actor id="2">Liam Neeson</actor>
+                    <actor id="3">Michael Caine</actor>
+                </actors>
+                <foo:singers>
+                    <foo:singer id="4">Tom Waits</foo:singer>
+                    <foo:singer id="5">B.B. King</foo:singer>
+                    <foo:singer id="6">Ray Charles</foo:singer>
+                </foo:singers>
+                </root>
+                """),
+            "id2": DummyMessage(
+                """
+                <root xmlns:foo="http://www.foo.org/" xmlns:bar="http://www.bar.org">
+                <actors>
+                    <actor id="4">Christian Bale</actor>
+                    <actor id="5">Liam Neeson</actor>
+                    <actor id="6">Michael Caine</actor>
+                </actors>
+                <foo:singers>
+                    <foo:singer id="7">Tom Waits</foo:singer>
+                    <foo:singer id="8">B.B. King</foo:singer>
+                    <foo:singer id="9">Ray Charles</foo:singer>
+                </foo:singers>
+                </root>
+                """),
+        }
+
+        queue_msg_ids = [
+            "id1",
+            "id2",
+        ]
+
+        # Mocked representation of pymqi Queue
+        class DummyQueue(object):
+            def __init__(self) -> None:
+                self.msg_ix = 0
+
+            def close(self) -> None:
+                pass
+
+            def get(self, foo: Any, md: pymqi.MD, gmo: pymqi.GMO) -> DummyMessage:
+                if gmo['MatchOptions'] == pymqi.CMQC.MQMO_MATCH_MSG_ID:
+                    # Request for getting specific message
+                    return queue_messages[md['MsgId'].decode()]
+                else:
+                    # Normal request - return next message
+                    if self.msg_ix >= len(queue_msg_ids):
+                        raise pymqi.MQMIError(pymqi.CMQC.MQCC_FAILED, pymqi.CMQC.MQRC_NO_MSG_AVAILABLE)
+                    msg = queue_messages[queue_msg_ids[self.msg_ix]]
+                    md['MsgId'] = bytearray(queue_msg_ids[self.msg_ix].encode())
+                    self.msg_ix += 1
+                    return msg
+
+        def mocked_queue(*args: Any, **kvargs: Any) -> DummyQueue:
+            return DummyQueue()
+
+        mocker.patch('pymqi.Queue', mocked_queue)
+
+        handler = AsyncMessageQueueHandler(worker='asdf-asdf-asdf')
+
+        handler.qmgr = object()
+
+        request: AsyncMessageRequest = {
+            'action': 'GET',
+            'payload': None,
+            'context': {
+                'url': 'mq://hej',
+                'queue_manager': 'theqmanager',
+                'connection': 'theconnection',
+                'channel': 'thechannel',
+                'username': 'theusername',
+                'password': 'thepassword',
+                'key_file': 'thekeyfile',
+                'cert_label': 'thecertlabel',
+                'ssl_cipher': 'thecipher',
+                'message_wait': 1,
+                'endpoint': 'theendpoint',
+                'expression': "//actor[@id='3']",
+                'content_type': 'xml'
+            },
+        }
+
+        from grizzly_extras.async_message.mq import handlers
+
+        # Match first message
+        response = handlers[request['action']](handler, request)
+        assert response['payload'] == queue_messages['id1'].payload
+        assert response['response_length'] == len(queue_messages['id1'].payload)
+
+        # Match second message
+        request['context']['expression'] = "//singer[@id='9']"
+        response = handlers[request['action']](handler, request)
+        assert response['payload'] == queue_messages['id2'].payload
+        assert response['response_length'] == len(queue_messages['id2'].payload)
+
+        # Match no message = timeout
+        request['context']['expression'] = "//singer[@id='NOTEXIST']"
+        with pytest.raises(AsyncMessageError) as mqe:
+            response = handlers[request['action']](handler, request)
+            assert 'timeout while waiting for matching message' in str(mqe)
+
+        # Test Json
+
+        queue_messages = {
+            "id1": DummyMessage(
+                """
+                {
+                    "actors": [
+                        { "id": "1", "name": "Peter Stormare" },
+                        { "id": "2", "name": "Pernilla August" },
+                        { "id": "3", "name": "Stellan Skarsgård" }
+                    ],
+                    "singers": [
+                        { "id": "4", "name": "Tom Waits" },
+                        { "id": "5", "name": "B.B. King" },
+                        { "id": "6", "name": "Ray Charles" }
+                    ]
+                }
+                """),
+            "id2": DummyMessage(
+                """
+                {
+                    "actors": [
+                        { "id": "4", "name": "Christian Bale" },
+                        { "id": "5", "name": "Liam Neeson" },
+                        { "id": "6", "name": "Michael Caine" }
+                    ],
+                    "singers": [
+                        { "id": "7", "name": "Tom Waits" },
+                        { "id": "8", "name": "B.B. King" },
+                        { "id": "9", "name": "Ray Charles" }
+                    ]
+                }
+                """),
+        }
+
+        request['context']['content_type'] = "json"
+
+        # Match second message
+        request['context']['expression'] = "$.singers[?(@.id='9')]"
+        response = handlers[request['action']](handler, request)
+        assert response['payload'] == queue_messages['id2'].payload
+        assert response['response_length'] == len(queue_messages['id2'].payload)
+
+        # Match first message
+        request['context']['expression'] = "$.actors[?(@.name='Pernilla August')]"
+        response = handlers[request['action']](handler, request)
+        assert response['payload'] == queue_messages['id1'].payload
+        assert response['response_length'] == len(queue_messages['id1'].payload)
+
+        # Match no message = timeout
+        request['context']['expression'] = "$.singers[?(@.id='NOTEXIST')]"
+        with pytest.raises(AsyncMessageError) as mqe:
+            response = handlers[request['action']](handler, request)
+            assert 'timeout while waiting for matching message' in str(mqe)
 
     def test_put(self, mocker: MockerFixture) -> None:
         def mocked_request(i: AsyncMessageQueueHandler, request: AsyncMessageRequest) -> AsyncMessageRequest:
