@@ -1,4 +1,4 @@
-from enum import Enum, auto
+from enum import Enum
 from typing import Callable, Optional, Tuple, Any, Union, Dict, TypeVar, List, Type, Generic, Set, cast
 from importlib import import_module
 
@@ -7,6 +7,7 @@ from locust.clients import ResponseContextManager
 from locust.user.users import User
 from gevent.lock import Semaphore
 
+from grizzly_extras.transformer import TransformerContentType
 
 class ResponseTarget(Enum):
     METADATA = 0
@@ -16,13 +17,6 @@ class ResponseTarget(Enum):
 class ResponseAction(Enum):
     VALIDATE = 0
     SAVE = 1
-
-
-class ResponseContentType(Enum):
-    GUESS = 0
-    JSON = auto()
-    XML = auto()
-    PLAIN = auto()
 
 
 class RequestDirection(Enum):
@@ -67,7 +61,7 @@ class RequestMethod(Enum, AdvancedEnum, settings=NoAlias):
         return self.value
 
 
-HandlerType = Callable[[Tuple[ResponseContentType, Any], User, Optional[ResponseContextManager]], None]
+HandlerType = Callable[[Tuple[TransformerContentType, Any], User, Optional[ResponseContextManager]], None]
 
 HandlerContextType = Union[ResponseContextManager, Tuple[Optional[Dict[str, Any]], str]]
 
@@ -91,17 +85,6 @@ def bool_typed(value: str) -> bool:
 
 def int_rounded_float_typed(value: str) -> int:
     return int(round(float(value)))
-
-
-def str_response_content_type(value: str) -> ResponseContentType:
-    if value.strip() in ['application/json', 'json']:
-        return ResponseContentType.JSON
-    elif value.strip() in ['application/xml', 'xml']:
-        return ResponseContentType.XML
-    elif value.strip() in ['text/plain', 'plain']:
-        return ResponseContentType.PLAIN
-    else:
-        raise ValueError(f'"{value}" is an unknown response content type')
 
 
 class AbstractAtomicClass:

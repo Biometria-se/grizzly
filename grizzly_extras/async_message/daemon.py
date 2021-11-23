@@ -12,11 +12,12 @@ from . import (
     AsyncMessageRequest,
     AsyncMessageResponse,
     AsyncMessageHandler,
-    JsonBytesEncoder,
     LRU_READY,
     SPLITTER_FRAME,
     logger,
 )
+
+from grizzly_extras.transformer import JsonBytesEncoder
 
 def router() -> None:
     proc.setproctitle('grizzly')

@@ -12,11 +12,12 @@ from locust.clients import ResponseContextManager
 from jinja2 import Template
 
 from ...task import RequestTask
-from ...transformer import JsonBytesEncoder
 from ...types import HandlerContextType, RequestDirection
 from ...utils import merge_dicts
 from .response_event import ResponseEvent
 from .context_variables import ContextVariables
+
+from grizzly_extras.transformer import JsonBytesEncoder
 
 
 LOG_FILE_TEMPLATE = '''

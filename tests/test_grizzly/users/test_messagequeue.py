@@ -546,6 +546,81 @@ class TestMessageQueueUser:
         assert kwargs['exception'] is not None
         request_event_spy.reset_mock()
 
+        # Test queue / expression START
+        response_event_spy.reset_mock()
+
+        the_side_effect = [
+            {
+                'success': True,
+                'worker': '0000-1337',
+                'response_length': 24,
+                'response_time': 1337,
+                'metadata': pymqi.MD().get(),
+                'payload': '',
+            }
+        ]
+
+        send_json_spy = mocker.patch(
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.send_json',
+            autospec=True,
+        )
+
+        # Test with only queue name as endpoint
+        mocker.patch(
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
+            side_effect=the_side_effect * 6,
+        )
+        request.endpoint = 'IFKTEST'
+        user.request(request)
+        assert send_json_spy.call_count == 1
+        args, _ = send_json_spy.call_args_list[0]
+        ctx : Dict[str, str] = args[1]['context']
+        assert ctx['endpoint'] == request.endpoint
+
+        # Test with specifying queue: prefix as endpoint
+        request.endpoint = 'queue:IFKTEST'
+        user.request(request)
+        assert send_json_spy.call_count == 2
+        args, _ = send_json_spy.call_args_list[1]
+        ctx = args[1]['context']
+        assert ctx['endpoint'] == request.endpoint
+
+        # Test specifying queue: prefix with expression
+        request.endpoint = 'queue:IFKTEST2, expression:/class/student[marks>85]'
+        user.request(request)
+        assert send_json_spy.call_count == 3
+        args, _ = send_json_spy.call_args_list[2]
+        ctx = args[1]['context']
+        assert ctx['endpoint'] == request.endpoint
+
+        # Test specifying queue: prefix with expression, and spacing
+        request.endpoint = 'queue: IFKTEST2  , expression: /class/student[marks>85]'
+        user.request(request)
+        assert send_json_spy.call_count == 4
+        args, _ = send_json_spy.call_args_list[3]
+        ctx = args[1]['context']
+        assert ctx['endpoint'] == request.endpoint
+
+        # Test specifying queue without prefix, with expression
+        request.endpoint = 'IFKTEST3, expression:/class/student[marks<55]'
+        user.request(request)
+        assert send_json_spy.call_count == 5
+        args, _ = send_json_spy.call_args_list[4]
+        ctx = args[1]['context']
+        assert ctx['endpoint'] == request.endpoint
+
+        # Test error when missing expression: prefix
+        request.endpoint = 'IFKTEST3, /class/student[marks<55]'
+        with pytest.raises(StopUser):
+            user.request(request)
+
+        send_json_spy.reset_mock()
+        request_event_spy.reset_mock()
+        response_event_spy.reset_mock()
+
+        # Test queue / expression END
+
+
     @pytest.mark.usefixtures('noop_zmq')
     def test_send(self, mq_user: Tuple[MessageQueueUser, GrizzlyContextScenario, Environment], mocker: MockerFixture, noop_zmq: Callable[[str], None]) -> None:
         [user, scenario, _] = mq_user

@@ -10,7 +10,7 @@ class ResponseHandlerError(StopUser):
         self.message = message
 
 
-class TransformerError(StopUser):
+class TransformerLocustError(StopUser):
     message: Optional[str] = None
 
     def __init__(self, message: Optional[str] = None) -> None:

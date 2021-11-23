@@ -7,9 +7,11 @@ from behave.runner import Context
 from behave.model import Table, Row
 
 from grizzly.context import GrizzlyContext
-from grizzly.types import RequestMethod, ResponseContentType, ResponseTarget, str_response_content_type
+from grizzly.types import RequestMethod, ResponseTarget
 from grizzly.task import RequestTask, SleepTask
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import
+
+from grizzly_extras.transformer import TransformerContentType
 
 from ...fixtures import behave_context, locust_environment  # pylint: disable=unused-import
 
@@ -54,16 +56,16 @@ def test_parse_response_target() -> None:
 
 def test_parse_response_content_type() -> None:
     p = compile(
-        'content type is "{content_type:ResponseContentType}"',
+        'content type is "{content_type:TransformerContentType}"',
         extra_types=dict(
-            ResponseContentType=str_response_content_type,
+            TransformerContentType=TransformerContentType.from_string,
         ),
     )
 
     tests = [
-        (ResponseContentType.JSON, ['json', 'application/json']),
-        (ResponseContentType.XML, ['xml', 'application/xml']),
-        (ResponseContentType.PLAIN, ['plain', 'text/plain']),
+        (TransformerContentType.JSON, ['json', 'application/json']),
+        (TransformerContentType.XML, ['xml', 'application/xml']),
+        (TransformerContentType.PLAIN, ['plain', 'text/plain']),
     ]
 
     for test_type, values in tests:
@@ -271,27 +273,27 @@ def test_step_response_content_type(behave_context: Context) -> None:
     grizzly = cast(GrizzlyContext, behave_context.grizzly)
 
     with pytest.raises(AssertionError) as ae:
-        step_response_content_type(behave_context, ResponseContentType.JSON)
+        step_response_content_type(behave_context, TransformerContentType.JSON)
     assert 'There are no requests in the scenario' in str(ae)
 
     grizzly.scenario.add_task(SleepTask(sleep=1.0))
 
     with pytest.raises(AssertionError) as ae:
-        step_response_content_type(behave_context, ResponseContentType.JSON)
+        step_response_content_type(behave_context, TransformerContentType.JSON)
     assert 'Latest task in scenario is not a request' in str(ae)
 
     request = RequestTask(RequestMethod.POST, 'test-request', endpoint='queue:INCOMMING.MESSAGE')
 
-    assert request.response.content_type == ResponseContentType.GUESS
+    assert request.response.content_type == TransformerContentType.GUESS
 
     grizzly.scenario.add_task(request)
 
-    for content_type in ResponseContentType:
-        if content_type == ResponseContentType.GUESS:
+    for content_type in TransformerContentType:
+        if content_type == TransformerContentType.GUESS:
             continue
         step_response_content_type(behave_context, content_type)
         assert request.response.content_type == content_type
 
     with pytest.raises(AssertionError) as ae:
-        step_response_content_type(behave_context, ResponseContentType.GUESS)
+        step_response_content_type(behave_context, TransformerContentType.GUESS)
     assert 'It is now allowed to set GUESS with this step' in str(ae)

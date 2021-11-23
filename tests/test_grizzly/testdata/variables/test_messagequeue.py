@@ -14,9 +14,8 @@ from behave.runner import Context
 from grizzly.testdata.variables import AtomicMessageQueue
 from grizzly.testdata.variables.messagequeue import atomicmessagequeue__base_type__
 from grizzly.context import GrizzlyContext
-from grizzly.transformer import transformer
-from grizzly.types import ResponseContentType
 from grizzly_extras.async_message import AsyncMessageResponse
+from grizzly_extras.transformer import transformer, TransformerContentType
 
 try:
     import pymqi
@@ -51,8 +50,8 @@ def test_atomicmessagequeue__base_type__() -> None:
         atomicmessagequeue__base_type__('TEST.QUEUE | url="mq://mq.example.com/?QueueManager=QM1&Channel=SRV.CONN", expression="$."')
     assert 'AtomicMessageQueue: content_type parameter must be specified' in str(ve)
 
-    json_transformer = transformer.available[ResponseContentType.JSON]
-    del transformer.available[ResponseContentType.JSON]
+    json_transformer = transformer.available[TransformerContentType.JSON]
+    del transformer.available[TransformerContentType.JSON]
 
     with pytest.raises(ValueError) as ve:
         atomicmessagequeue__base_type__(
@@ -66,7 +65,7 @@ def test_atomicmessagequeue__base_type__() -> None:
         )
     assert 'AtomicMessageQueue: argument argument is not allowed' in str(ve)
 
-    transformer.available[ResponseContentType.JSON] = json_transformer
+    transformer.available[TransformerContentType.JSON] = json_transformer
 
     with pytest.raises(ValueError) as ve:
         atomicmessagequeue__base_type__('TEST.QUEUE | url="mq://mq.example.com/?QueueManager=QM1&Channel=SRV.CONN", expression="$.", content_type="application/json"')
@@ -129,7 +128,7 @@ class TestAtomicMessageQueue:
                 'wait': None,
                 'url': 'mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN',
                 'expression': '$.test.result',
-                'content_type': ResponseContentType.JSON,
+                'content_type': TransformerContentType.JSON,
                 'context': None,
                 'worker': None,
             }
@@ -154,7 +153,7 @@ class TestAtomicMessageQueue:
                 'wait': 15,
                 'url': 'mq://mq.example.com?QueueManager=QM2&Channel=SRV.CONN',
                 'expression': '//test/result/text()',
-                'content_type': ResponseContentType.XML,
+                'content_type': TransformerContentType.XML,
                 'context': None,
                 'worker': None,
             }
@@ -298,7 +297,7 @@ class TestAtomicMessageQueue:
                 'wait': None,
                 'url': 'mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN',
                 'expression': '$.test.result',
-                'content_type': ResponseContentType.JSON,
+                'content_type': TransformerContentType.JSON,
                 'worker': None,
                 'context': {
                     'url': 'mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN',
@@ -409,7 +408,7 @@ class TestAtomicMessageQueue:
                 'wait': None,
                 'url': 'mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN',
                 'expression': '$.test.result',
-                'content_type': ResponseContentType.JSON,
+                'content_type': TransformerContentType.JSON,
                 'worker': '1337-aaaabbbb-beef',
                 'context': {
                     'url': 'mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN',
@@ -459,8 +458,8 @@ class TestAtomicMessageQueue:
                 v['test']
             assert 'AtomicMessageQueue.test: payload in response was None' in str(re)
 
-            json_transformer = transformer.available[ResponseContentType.JSON]
-            del transformer.available[ResponseContentType.JSON]
+            json_transformer = transformer.available[TransformerContentType.JSON]
+            del transformer.available[TransformerContentType.JSON]
 
             mock_response({
                 'success': True,
@@ -475,7 +474,7 @@ class TestAtomicMessageQueue:
                 v['test']
             assert 'AtomicMessageQueue.test: could not find a transformer for JSON' in str(te)
 
-            transformer.available[ResponseContentType.JSON] = json_transformer
+            transformer.available[TransformerContentType.JSON] = json_transformer
             v._settings['test']['repeat'] = False
 
             assert len(v._queue_values['test']) == 0

@@ -3,12 +3,12 @@ from typing import Any, Dict, Tuple, Optional
 from locust.clients import ResponseContextManager
 
 from ...task import RequestTask
-from ...types import HandlerContextType, ResponseContentType
-from ...transformer import transformer
-from ...exceptions import TransformerError, ResponseHandlerError
+from ...types import HandlerContextType
+from ...exceptions import ResponseHandlerError
 from .context_variables import ContextVariables
 from .response_event import ResponseEvent
 
+from grizzly_extras.transformer import transformer, TransformerError, TransformerContentType
 
 class ResponseHandler(ResponseEvent):
     abstract = True
@@ -37,7 +37,7 @@ class ResponseHandler(ResponseEvent):
 
         response_metadata: Optional[Dict[str, Any]]
         response_payload: str
-        response_content_type: ResponseContentType = ResponseContentType.GUESS
+        response_content_type: TransformerContentType = TransformerContentType.GUESS
 
         if isinstance(context, ResponseContextManager):
             response_payload = context.text
@@ -57,10 +57,10 @@ class ResponseHandler(ResponseEvent):
                     # try transformers, until one succeeds
                     for impl in transformer.available.values():
                         response_content_type, response_payload = impl.transform(request.response.content_type, response_payload)
-                        if response_content_type is not ResponseContentType.GUESS:
+                        if response_content_type is not TransformerContentType.GUESS:
                             break
 
-                if response_content_type is ResponseContentType.GUESS:
+                if response_content_type is TransformerContentType.GUESS:
                     raise TransformerError(f'failed to transform: {response_payload}')
             except TransformerError as e:
                 if response_context is not None:
@@ -74,4 +74,4 @@ class ResponseHandler(ResponseEvent):
 
         if len(handlers.metadata) > 0 and response_metadata is not None:
             for handler in handlers.metadata:
-                handler((ResponseContentType.JSON, response_metadata), user, response_context)
+                handler((TransformerContentType.JSON, response_metadata), user, response_context)

@@ -23,7 +23,14 @@ Format of `host` is the following:
 mq://<hostname>:<port>/?QueueManager=<queue manager name>&Channel=<channel name>
 ```
 
-`endpoint` in the request is the name of an MQ queue.
+`endpoint` in the request is the name of an MQ queue. This can also be combined with an expression, if
+a specific message is to be retrieved from the queue. The format of endpoint is:
+
+```plain
+[queue:]<queue_name>[, expression: <expression>]
+```
+
+Where `<expression>` can be of XPATH or JSONPATH type, depending on the specified content type. See example below.
 
 ## Examples
 
@@ -45,6 +52,20 @@ Then get request with name "get-queue-message" from endpoint "INCOMING.MESSAGES"
 ```
 
 In this example, the request will not fail if there is a message on queue within 5 seconds.
+
+### Get message with expression
+
+When specifying an expression, the messages on the queue are first browsed. If any message matches the expression, it is
+later consumed from the queue. If no matching message was found during browsing, it is repeated again after a slight delay,
+up until the specified `message.wait` seconds has elapsed. To use expressions, a content type must be specified for the get
+request, e.g. `"application/xml"`:
+
+```gherkin
+Given a user of type "MessageQueue" load testing "mq://mq.example.com/?QueueManager=QM01&Channel=SRVCONN01"
+And set context variable "message.wait" to "5"
+Then get request with name "get-specific-queue-message" from endpoint "INCOMING.MESSAGES, expression: //document[@id='abc123']"
+And set response content type to "application/xml"
+```
 
 ### Authentication
 
@@ -72,6 +93,7 @@ Default SSL cipher is `ECDHE_RSA_AES_256_GCM_SHA384`, change it by setting `auth
 
 Default certificate label is set to `auth.username`, change it by setting `auth.cert_label` context variable.
 '''
+from re import sub as resub
 from typing import Dict, Any, Generator, Tuple, Optional, cast
 from urllib.parse import urlparse, parse_qs, unquote
 from contextlib import contextmanager
@@ -180,6 +202,19 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
 
 
     def request(self, request: RequestTask) -> None:
+
+        # Parse the endpoint to validate queue name / expression parts
+        expression: Optional[str] = None
+        validate_endpoint = resub(r'^\s*queue:\s*', '', request.endpoint)
+        if ',' in validate_endpoint:
+            queue_name, expression = [x.strip() for x in validate_endpoint.split(',')]
+            if not expression.startswith('expression:'):
+                logger.error(f'Expression part in endpoint needs to have "expression:" in it: {request.endpoint}')
+                raise StopUser()
+            elif len(queue_name) == 0:
+                logger.error(f'Failed to extract queue name from: {request.endpoint}')
+                raise StopUser()
+
         request_name, endpoint, payload = self.render(request)
 
         @contextmanager
@@ -274,6 +309,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
             'worker': self.worker_id,
             'context': {
                 'endpoint': endpoint,
+                'content_type': request.response.content_type.name.lower(),
             },
             'payload': payload,
         }

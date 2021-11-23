@@ -8,9 +8,16 @@ from lxml import etree as XML
 from pytest_mock import mocker  # pylint: disable=unused-import
 from pytest_mock.plugin import MockerFixture
 
-from grizzly.transformer import JsonTransformer, Transformer, XmlTransformer, PlainTransformer, transformer, JsonBytesEncoder
-from grizzly.types import ResponseContentType
-from grizzly.exceptions import TransformerError
+from grizzly_extras.transformer import (
+    JsonTransformer,
+    Transformer,
+    XmlTransformer,
+    PlainTransformer,
+    transformer,
+    JsonBytesEncoder,
+    TransformerError,
+    TransformerContentType,
+)
 
 
 class TestTransformer:
@@ -19,7 +26,7 @@ class TestTransformer:
             pass
 
         with pytest.raises(NotImplementedError):
-            DummyTransformer.transform(ResponseContentType.JSON, '{}')
+            DummyTransformer.transform(TransformerContentType.JSON, '{}')
 
         with pytest.raises(NotImplementedError):
             DummyTransformer.validate('')
@@ -32,8 +39,8 @@ class Testtransformer:
     def test___init__(self) -> None:
         transformers: List[transformer] = []
 
-        for content_type in ResponseContentType:
-            if content_type == ResponseContentType.GUESS:
+        for content_type in TransformerContentType:
+            if content_type == TransformerContentType.GUESS:
                 continue
 
             t = transformer(content_type)
@@ -41,7 +48,7 @@ class Testtransformer:
             transformers.append(t)
 
         with pytest.raises(ValueError) as ve:
-            transformer(ResponseContentType.GUESS)
+            transformer(TransformerContentType.GUESS)
         assert 'it is not allowed to register a transformer of type GUESS' in str(ve)
 
         for index, current in enumerate(transformers, start=1):
@@ -51,7 +58,7 @@ class Testtransformer:
     def test___call__(self, mocker: MockerFixture) -> None:
         class DummyTransformer(Transformer):
             @classmethod
-            def transform(cls, content_type: ResponseContentType, raw: str) -> Tuple[ResponseContentType, Any]:
+            def transform(cls, content_type: TransformerContentType, raw: str) -> Tuple[TransformerContentType, Any]:
                 pass
 
             @classmethod
@@ -59,13 +66,13 @@ class Testtransformer:
                 pass
 
         transform_spy = mocker.spy(DummyTransformer, 'transform')
-        transform_spy.side_effect = [None, None, None, (ResponseContentType.JSON, {'test': 'value'}), (ResponseContentType.GUESS, {'test': 'value'})]
+        transform_spy.side_effect = [None, None, None, (TransformerContentType.JSON, {'test': 'value'}), (TransformerContentType.GUESS, {'test': 'value'})]
 
         original_transformers = transformer.available.copy()
 
         try:
             assert len(transformer.available) == 3
-            transformer_decorator = transformer(ResponseContentType.JSON)
+            transformer_decorator = transformer(TransformerContentType.JSON)
 
             wrapped = transformer_decorator(DummyTransformer)
 
@@ -75,26 +82,26 @@ class Testtransformer:
             payload_json = '{"test": "value"}'
             payload_json_error = '{"test: "value"}'
 
-            assert wrapped.transform(ResponseContentType.XML, payload_xml) == (ResponseContentType.GUESS, payload_xml)
+            assert wrapped.transform(TransformerContentType.XML, payload_xml) == (TransformerContentType.GUESS, payload_xml)
             assert transform_spy.call_count == 0
 
-            assert wrapped.transform(ResponseContentType.GUESS, payload_xml) == (ResponseContentType.GUESS, payload_xml)
+            assert wrapped.transform(TransformerContentType.GUESS, payload_xml) == (TransformerContentType.GUESS, payload_xml)
             assert transform_spy.call_count == 1
 
             with pytest.raises(TransformerError) as te:
-                wrapped.transform(ResponseContentType.JSON, payload_xml)
+                wrapped.transform(TransformerContentType.JSON, payload_xml)
             assert 'failed to transform input as JSON' in str(te)
             assert transform_spy.call_count == 2
 
             with pytest.raises(TransformerError) as te:
-                wrapped.transform(ResponseContentType.JSON, payload_json_error)
+                wrapped.transform(TransformerContentType.JSON, payload_json_error)
             assert 'failed to transform input as JSON' in str(te)
             assert transform_spy.call_count == 3
 
-            wrapped.transform(ResponseContentType.JSON, payload_json)
+            wrapped.transform(TransformerContentType.JSON, payload_json)
             assert transform_spy.call_count == 4
 
-            assert wrapped.transform(ResponseContentType.GUESS, payload_json) == (ResponseContentType.JSON, {'test': 'value'})
+            assert wrapped.transform(TransformerContentType.GUESS, payload_json) == (TransformerContentType.JSON, {'test': 'value'})
             assert transform_spy.call_count == 5
         finally:
             # remove dummy transformer
@@ -104,15 +111,15 @@ class Testtransformer:
 class TestJsonTransformer:
     def test_transform(self) -> None:
         unwrapped = JsonTransformer.__wrapped_transform__  # type: ignore
-        assert unwrapped(ResponseContentType.GUESS, '{}') == (ResponseContentType.GUESS, {})
-        assert unwrapped(ResponseContentType.JSON, '{}') == (ResponseContentType.JSON, {})
+        assert unwrapped(TransformerContentType.GUESS, '{}') == (TransformerContentType.GUESS, {})
+        assert unwrapped(TransformerContentType.JSON, '{}') == (TransformerContentType.JSON, {})
 
         # this will never happen when decorated with transformer
-        assert unwrapped(ResponseContentType.XML, '{}') == (ResponseContentType.XML, {})
-        assert JsonTransformer.transform(ResponseContentType.XML, '{}') == (ResponseContentType.GUESS, '{}')
+        assert unwrapped(TransformerContentType.XML, '{}') == (TransformerContentType.XML, {})
+        assert JsonTransformer.transform(TransformerContentType.XML, '{}') == (TransformerContentType.GUESS, '{}')
 
         with pytest.raises(JSONDecodeError):
-            unwrapped(ResponseContentType.GUESS, '{')
+            unwrapped(TransformerContentType.GUESS, '{')
 
     def test_validate(self) -> None:
         assert JsonTransformer.validate('$.test.something')
@@ -212,48 +219,48 @@ class TestXmlTransformer:
     def test_transform(self) -> None:
         unwrapped = XmlTransformer.__wrapped_transform__  # type: ignore
         content_type, transformed = unwrapped(
-            ResponseContentType.GUESS,
+            TransformerContentType.GUESS,
             '''<?xml version="1.0" encoding="UTF-8"?>
             <test>
                 value
             </test>''',
         )
 
-        assert content_type == ResponseContentType.GUESS
+        assert content_type == TransformerContentType.GUESS
         print(type(transformed))
         assert isinstance(transformed, XML._Element)
 
         content_type, transformed = unwrapped(
-            ResponseContentType.XML,
+            TransformerContentType.XML,
             '''<?xml version="1.0" encoding="UTF-8"?>
             <test>
                 value
             </test>''',
         )
 
-        assert content_type == ResponseContentType.XML
+        assert content_type == TransformerContentType.XML
         assert isinstance(transformed, XML._Element)
 
         # this will never happen when decorated with transformer
         content_type, transformed = unwrapped(
-            ResponseContentType.JSON,
+            TransformerContentType.JSON,
             '''<?xml version="1.0" encoding="UTF-8"?>
             <test>
                 value
             </test>''',
         )
 
-        assert content_type == ResponseContentType.JSON
+        assert content_type == TransformerContentType.JSON
         assert isinstance(transformed, XML._Element)
 
         assert XmlTransformer.transform(
-            ResponseContentType.JSON,
+            TransformerContentType.JSON,
             '''<?xml version="1.0" encoding="UTF-8"?>
             <test>
                 value
             </test>''',
         ) == (
-            ResponseContentType.GUESS,
+            TransformerContentType.GUESS,
             '''<?xml version="1.0" encoding="UTF-8"?>
             <test>
                 value
@@ -262,7 +269,7 @@ class TestXmlTransformer:
 
         with pytest.raises(XML.ParseError):
             unwrapped(
-                ResponseContentType.XML,
+                TransformerContentType.XML,
                 '''<?xml version="1.0" encoding="UTF-8"?>
                 <test:test>
                     value
@@ -271,7 +278,7 @@ class TestXmlTransformer:
 
         with pytest.raises(XML.XMLSyntaxError):
             unwrapped(
-                ResponseContentType.XML,
+                TransformerContentType.XML,
                 '{"test": "value"}',
             )
 
@@ -288,7 +295,7 @@ class TestXmlTransformer:
             XmlTransformer.parser('/hello/')
 
         _, input_payload = XmlTransformer.transform(
-            ResponseContentType.XML,
+            TransformerContentType.XML,
             '''<?xml version="1.0" encoding="UTF-8"?>
             <test>
                 value
@@ -301,7 +308,7 @@ class TestXmlTransformer:
         assert actual[0] == 'value'
 
         _, input_payload = XmlTransformer.transform(
-            ResponseContentType.XML,
+            TransformerContentType.XML,
             '''<?xml version="1.0" encoding="UTF-8"?>
             <parent>
                 <child id="1337">
@@ -383,7 +390,7 @@ class TestXmlTransformer:
             </row>
         </response>'''
 
-        _, input_payload = XmlTransformer.transform(ResponseContentType.XML, example)
+        _, input_payload = XmlTransformer.transform(TransformerContentType.XML, example)
 
         get_values = XmlTransformer.parser('//row/@_id')
         actual = get_values(input_payload)
@@ -406,18 +413,39 @@ class TestXmlTransformer:
             </document>
         </documents>'''
 
-        _, input_payload = XmlTransformer.transform(ResponseContentType.XML, example)
+        _, input_payload = XmlTransformer.transform(TransformerContentType.XML, example)
 
         get_values = XmlTransformer.parser('/documents/document/header')
         actual = get_values(input_payload)
         assert actual == ['<header><id>DOCUMENT_1337-3</id><type>application/docx</type><author>Douglas Adams</author><published>2021-11-01</published><pages>241</pages></header>']
+
+        example = '''<?xml version="1.0" encoding="utf-8"?>
+<root xmlns:foo="http://www.foo.org/" xmlns:bar="http://www.bar.org">
+  <actors>
+    <actor id="7">Christian Bale</actor>
+    <actor id="8">Liam Neeson</actor>
+    <actor id="9">Michael Caine</actor>
+  </actors>
+  <foo:singers>
+    <foo:singer id="10">Tom Waits</foo:singer>
+    <foo:singer id="11">B.B. King</foo:singer>
+    <foo:singer id="12">Ray Charles</foo:singer>
+  </foo:singers>
+</root>'''
+
+        _, input_payload = XmlTransformer.transform(TransformerContentType.XML, example)
+
+        get_values = XmlTransformer.parser('/root/actors/actor[@id="9"]')
+        actual = get_values(input_payload)
+        assert actual == ['<actor id="9">Michael Caine</actor>']
+
 
 class TestPlainTransformer:
     def test_transform(self) -> None:
         unwrapped = PlainTransformer.__wrapped_transform__  # type: ignore
 
         with pytest.raises(NotImplementedError):
-            unwrapped(ResponseContentType.PLAIN, 'plain text')
+            unwrapped(TransformerContentType.PLAIN, 'plain text')
 
     def test_validate(self) -> None:
         assert PlainTransformer.validate('asdf')

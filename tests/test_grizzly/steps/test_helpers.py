@@ -15,7 +15,7 @@ from locust.clients import ResponseContextManager
 from requests.models import Response
 
 from grizzly.context import GrizzlyContext
-from grizzly.types import RequestMethod, ResponseTarget, ResponseContentType, ResponseAction
+from grizzly.types import RequestMethod, ResponseTarget, ResponseAction
 from grizzly.task import RequestTask, SleepTask
 from grizzly.exceptions import ResponseHandlerError
 from grizzly.steps.helpers import (
@@ -29,6 +29,8 @@ from grizzly.steps.helpers import (
     _add_response_handler,
     get_matches,
 )
+
+from grizzly_extras.transformer import TransformerContentType
 
 from ..helpers import TestUser
 # pylint: disable=unused-import
@@ -160,21 +162,21 @@ def test_generate_save_handler(locust_environment: Environment) -> None:
 
     handler = generate_save_handler('$.', '.*', 'test')
     with pytest.raises(TypeError) as te:
-        handler((ResponseContentType.GUESS, {'test': {'value': 'test'}}), user, response_context_manager)
+        handler((TransformerContentType.GUESS, {'test': {'value': 'test'}}), user, response_context_manager)
     assert 'could not find a transformer for GUESS' in str(te)
 
     with pytest.raises(TypeError) as te:
-        handler((ResponseContentType.JSON, {'test': {'value': 'test'}}), user, response_context_manager)
+        handler((TransformerContentType.JSON, {'test': {'value': 'test'}}), user, response_context_manager)
     assert 'is not a valid expression' in str(te)
 
     handler = generate_save_handler('$.test.value', '.*', 'test')
 
-    handler((ResponseContentType.JSON, {'test': {'value': 'test'}}), user, response_context_manager)
+    handler((TransformerContentType.JSON, {'test': {'value': 'test'}}), user, response_context_manager)
     assert response_context_manager._manual_result is None
     assert user.context_variables.get('test', None) == 'test'
     del user.context_variables['test']
 
-    handler((ResponseContentType.JSON, {'test': {'value': 'nottest'}}), user, response_context_manager)
+    handler((TransformerContentType.JSON, {'test': {'value': 'nottest'}}), user, response_context_manager)
     assert response_context_manager._manual_result is None
     assert user.context_variables.get('test', None) == 'nottest'
     del user.context_variables['test']
@@ -182,32 +184,32 @@ def test_generate_save_handler(locust_environment: Environment) -> None:
     user.set_context_variable('value', 'test')
     handler = generate_save_handler('$.test.value', '.*({{ value }})$', 'test')
 
-    handler((ResponseContentType.JSON, {'test': {'value': 'test'}}), user, response_context_manager)
+    handler((TransformerContentType.JSON, {'test': {'value': 'test'}}), user, response_context_manager)
     assert response_context_manager._manual_result is None
     assert user.context_variables.get('test', None) == 'test'
     del user.context_variables['test']
 
-    handler((ResponseContentType.JSON, {'test': {'value': 'nottest'}}), user, response_context_manager)
+    handler((TransformerContentType.JSON, {'test': {'value': 'nottest'}}), user, response_context_manager)
     assert response_context_manager._manual_result is None
     assert user.context_variables.get('test', None) == 'test'
     del user.context_variables['test']
 
     # failed
-    handler((ResponseContentType.JSON, {'test': {'name': 'test'}}), user, response_context_manager)
+    handler((TransformerContentType.JSON, {'test': {'name': 'test'}}), user, response_context_manager)
     assert isinstance(response_context_manager._manual_result, CatchResponseError)
     assert user.context_variables.get('test', 'test') is None
 
     with pytest.raises(ResponseHandlerError):
-        handler((ResponseContentType.JSON, {'test': {'name': 'test'}}), user, None)
+        handler((TransformerContentType.JSON, {'test': {'name': 'test'}}), user, None)
 
     # multiple matches
     handler = generate_save_handler('$.test[*].value', '.*t.*', 'test')
-    handler((ResponseContentType.JSON, {'test': [{'value': 'test'}, {'value': 'test'}]}), user, response_context_manager)
+    handler((TransformerContentType.JSON, {'test': [{'value': 'test'}, {'value': 'test'}]}), user, response_context_manager)
     assert isinstance(response_context_manager._manual_result, CatchResponseError)
     assert user._context['variables']['test'] is None
 
     with pytest.raises(ResponseHandlerError):
-        handler((ResponseContentType.JSON, {'test': [{'value': 'test'}, {'value': 'test'}]}), user, None)
+        handler((TransformerContentType.JSON, {'test': [{'value': 'test'}, {'value': 'test'}]}), user, None)
 
     # save object dict
     handler = generate_save_handler(
@@ -218,7 +220,7 @@ def test_generate_save_handler(locust_environment: Environment) -> None:
 
     handler(
         (
-            ResponseContentType.JSON,
+            TransformerContentType.JSON,
             {
                 'test': {
                     'prop1': 'value1',
@@ -267,7 +269,7 @@ def test_generate_save_handler(locust_environment: Environment) -> None:
 
     handler(
         (
-            ResponseContentType.JSON,
+            TransformerContentType.JSON,
             {
                 'test': {
                     'prop1': 'value1',
@@ -315,11 +317,11 @@ def test_generate_validation_handler_negative(locust_environment: Environment) -
     handler = generate_validation_handler('$.test.value', 'test', False)
 
     # match fixed string expression
-    handler((ResponseContentType.JSON, {'test': {'value': 'test'}}), user, response_context_manager)
+    handler((TransformerContentType.JSON, {'test': {'value': 'test'}}), user, response_context_manager)
     assert response_context_manager._manual_result is None
 
     # no match fixed string expression
-    handler((ResponseContentType.JSON, {'test': {'value': 'nottest'}}), user, response_context_manager)
+    handler((TransformerContentType.JSON, {'test': {'value': 'nottest'}}), user, response_context_manager)
     assert not response_context_manager._manual_result == None
     response_context_manager._manual_result = None
 
@@ -327,13 +329,13 @@ def test_generate_validation_handler_negative(locust_environment: Environment) -
     user.set_context_variable('expression', '$.test.value')
     user.set_context_variable('value', 'test')
     handler = generate_validation_handler('{{ expression }}', '.*({{ value }})$', False)
-    handler((ResponseContentType.JSON, {'test': {'value': 'nottest'}}), user, response_context_manager)
+    handler((TransformerContentType.JSON, {'test': {'value': 'nottest'}}), user, response_context_manager)
     assert response_context_manager._manual_result is None
 
     # ony allows 1 match per expression
     handler = generate_validation_handler('$.test[*].value', '.*(test)$', False)
     handler(
-        (ResponseContentType.JSON, {'test': [{'value': 'nottest'}, {'value': 'reallynottest'}, {'value': 'test'}]}),
+        (TransformerContentType.JSON, {'test': [{'value': 'nottest'}, {'value': 'reallynottest'}, {'value': 'test'}]}),
         user,
         response_context_manager,
     )
@@ -342,7 +344,7 @@ def test_generate_validation_handler_negative(locust_environment: Environment) -
 
     # 1 match expression
     handler(
-        (ResponseContentType.JSON, {'test': [{'value': 'not'}, {'value': 'reallynot'}, {'value': 'test'}]}),
+        (TransformerContentType.JSON, {'test': [{'value': 'not'}, {'value': 'reallynot'}, {'value': 'test'}]}),
         user,
         response_context_manager,
     )
@@ -351,7 +353,7 @@ def test_generate_validation_handler_negative(locust_environment: Environment) -
     handler = generate_validation_handler('$.[*]', 'ID_31337', False)
 
     # 1 match expression
-    handler((ResponseContentType.JSON, ['ID_1337', 'ID_31337', 'ID_73313']), user, response_context_manager)
+    handler((TransformerContentType.JSON, ['ID_1337', 'ID_31337', 'ID_73313']), user, response_context_manager)
     assert response_context_manager._manual_result is None
 
     example = {
@@ -389,32 +391,32 @@ def test_generate_validation_handler_negative(locust_environment: Environment) -
 
     # 1 match in multiple values (list)
     handler = generate_validation_handler('$.*..GlossSeeAlso[*]', 'XML', False)
-    handler((ResponseContentType.JSON, example), user, response_context_manager)
+    handler((TransformerContentType.JSON, example), user, response_context_manager)
     assert response_context_manager._manual_result is None
 
     # no match in multiple values (list)
     handler = generate_validation_handler('$.*..GlossSeeAlso[*]', 'YAML', False)
-    handler((ResponseContentType.JSON, example), user, response_context_manager)
+    handler((TransformerContentType.JSON, example), user, response_context_manager)
     assert not response_context_manager._manual_result == None
     response_context_manager._manual_result = None
 
     handler = generate_validation_handler('$.glossary.title', '.*ary$', False)
-    handler((ResponseContentType.JSON, example), user, response_context_manager)
+    handler((TransformerContentType.JSON, example), user, response_context_manager)
     assert response_context_manager._manual_result is None
 
     handler = generate_validation_handler('$..Additional[?addtitle="test2"].addvalue', '.*stuff$', False)
-    handler((ResponseContentType.JSON, example), user, response_context_manager)
+    handler((TransformerContentType.JSON, example), user, response_context_manager)
     assert response_context_manager._manual_result is None
 
     handler = generate_validation_handler('$.`this`', 'False', False)
-    handler((ResponseContentType.JSON, True), user, response_context_manager)
+    handler((TransformerContentType.JSON, True), user, response_context_manager)
     assert isinstance(response_context_manager._manual_result, CatchResponseError)
     response_context_manager._manual_result = None
 
     with pytest.raises(ResponseHandlerError):
-        handler((ResponseContentType.JSON, True), user, None)
+        handler((TransformerContentType.JSON, True), user, None)
 
-    handler((ResponseContentType.JSON, False), user, response_context_manager)
+    handler((TransformerContentType.JSON, False), user, response_context_manager)
     assert response_context_manager._manual_result is None
 
 
@@ -430,24 +432,24 @@ def test_generate_validation_handler_positive(locust_environment: Environment) -
         handler = generate_validation_handler('$.test.value', 'test', True)
 
         # match fixed string expression
-        handler((ResponseContentType.JSON, {'test': {'value': 'test'}}), user, response_context_manager)
+        handler((TransformerContentType.JSON, {'test': {'value': 'test'}}), user, response_context_manager)
         assert isinstance(response_context_manager._manual_result, CatchResponseError)
         response_context_manager._manual_result = None
 
         # no match fixed string expression
-        handler((ResponseContentType.JSON, {'test': {'value': 'nottest'}}), user, response_context_manager)
+        handler((TransformerContentType.JSON, {'test': {'value': 'nottest'}}), user, response_context_manager)
         assert response_context_manager._manual_result is None
 
         # regexp match expression value
         handler = generate_validation_handler('$.test.value', '.*(test)$', True)
-        handler((ResponseContentType.JSON, {'test': {'value': 'nottest'}}), user, response_context_manager)
+        handler((TransformerContentType.JSON, {'test': {'value': 'nottest'}}), user, response_context_manager)
         assert isinstance(response_context_manager._manual_result, CatchResponseError)
         response_context_manager._manual_result = None
 
         # ony allows 1 match per expression
         handler = generate_validation_handler('$.test[*].value', '.*(test)$', True)
         handler(
-            (ResponseContentType.JSON, {'test': [{'value': 'nottest'}, {'value': 'reallynottest'}, {'value': 'test'}]}),
+            (TransformerContentType.JSON, {'test': [{'value': 'nottest'}, {'value': 'reallynottest'}, {'value': 'test'}]}),
             user,
             response_context_manager,
         )
@@ -455,7 +457,7 @@ def test_generate_validation_handler_positive(locust_environment: Environment) -
 
         # 1 match expression
         handler(
-            (ResponseContentType.JSON, {'test': [{'value': 'not'}, {'value': 'reallynot'}, {'value': 'test'}]}),
+            (TransformerContentType.JSON, {'test': [{'value': 'not'}, {'value': 'reallynot'}, {'value': 'test'}]}),
             user,
             response_context_manager,
         )
@@ -465,7 +467,7 @@ def test_generate_validation_handler_positive(locust_environment: Environment) -
         handler = generate_validation_handler('$.[*]', 'STTO_31337', True)
 
         # 1 match expression
-        handler((ResponseContentType.JSON, ['STTO_1337', 'STTO_31337', 'STTO_73313']), user, response_context_manager)
+        handler((TransformerContentType.JSON, ['STTO_1337', 'STTO_31337', 'STTO_73313']), user, response_context_manager)
         assert isinstance(response_context_manager._manual_result, CatchResponseError)
         response_context_manager._manual_result = None
 
@@ -505,36 +507,36 @@ def test_generate_validation_handler_positive(locust_environment: Environment) -
         # 1 match in multiple values (list)
         user.set_context_variable('format', 'XML')
         handler = generate_validation_handler('$.*..GlossSeeAlso[*]', '{{ format }}', True)
-        handler((ResponseContentType.JSON, example), user, response_context_manager)
+        handler((TransformerContentType.JSON, example), user, response_context_manager)
         assert isinstance(response_context_manager._manual_result, CatchResponseError)
         response_context_manager._manual_result = None
 
         with pytest.raises(ResponseHandlerError):
-            handler((ResponseContentType.JSON, example), user, None)
+            handler((TransformerContentType.JSON, example), user, None)
 
         # no match in multiple values (list)
         user.set_context_variable('format', 'YAML')
         handler = generate_validation_handler('$.*..GlossSeeAlso[*]', '{{ format }}', True)
-        handler((ResponseContentType.JSON, example), user, response_context_manager)
+        handler((TransformerContentType.JSON, example), user, response_context_manager)
         assert response_context_manager._manual_result is None
 
         user.set_context_variable('property', 'title')
         user.set_context_variable('regexp', '.*ary$')
         handler = generate_validation_handler('$.glossary.{{ property }}', '{{ regexp }}', True)
-        handler((ResponseContentType.JSON, example), user, response_context_manager)
+        handler((TransformerContentType.JSON, example), user, response_context_manager)
         assert isinstance(response_context_manager._manual_result, CatchResponseError)
         response_context_manager._manual_result = None
 
         handler = generate_validation_handler('$..Additional[?addtitle="test1"].addvalue', '.*world$', True)
-        handler((ResponseContentType.JSON, example), user, response_context_manager)
+        handler((TransformerContentType.JSON, example), user, response_context_manager)
         assert isinstance(response_context_manager._manual_result, CatchResponseError)
         response_context_manager._manual_result = None
 
         handler = generate_validation_handler('$.`this`', 'False', True)
-        handler((ResponseContentType.JSON, True), user, response_context_manager)
+        handler((TransformerContentType.JSON, True), user, response_context_manager)
         assert response_context_manager._manual_result is None
 
-        handler((ResponseContentType.JSON, False), user, response_context_manager)
+        handler((TransformerContentType.JSON, False), user, response_context_manager)
         assert isinstance(response_context_manager._manual_result, CatchResponseError)
         response_context_manager._manual_result = None
     finally:
@@ -596,21 +598,21 @@ def test_add_save_handler(behave_context: Context, locust_environment: Environme
     metadata_handler = list(task.response.handlers.metadata)[0]
     payload_handler = list(task.response.handlers.payload)[0]
 
-    metadata_handler((ResponseContentType.JSON, {'test': {'value': 'metadata'}}), user, response_context_manager)
+    metadata_handler((TransformerContentType.JSON, {'test': {'value': 'metadata'}}), user, response_context_manager)
     assert response_context_manager._manual_result is None
     assert user.context_variables.get('test-variable-metadata', None) == 'metadata'
 
-    payload_handler((ResponseContentType.JSON, {'test': {'value': 'payload'}}), user, response_context_manager)
+    payload_handler((TransformerContentType.JSON, {'test': {'value': 'payload'}}), user, response_context_manager)
     assert response_context_manager._manual_result is None
     assert user.context_variables.get('test-variable-metadata', None) == 'metadata'
     assert user.context_variables.get('test-variable-payload', None) == 'payload'
 
-    metadata_handler((ResponseContentType.JSON, {'test': {'name': 'metadata'}}), user, response_context_manager)
+    metadata_handler((TransformerContentType.JSON, {'test': {'name': 'metadata'}}), user, response_context_manager)
     assert isinstance(response_context_manager._manual_result, CatchResponseError)
     response_context_manager._manual_result = None
     assert user.context_variables.get('test-variable-metadata', 'metadata') is None
 
-    payload_handler((ResponseContentType.JSON, {'test': {'name': 'payload'}}), user, response_context_manager)
+    payload_handler((TransformerContentType.JSON, {'test': {'name': 'payload'}}), user, response_context_manager)
     assert isinstance(response_context_manager._manual_result, CatchResponseError)
     response_context_manager._manual_result = None
     assert user.context_variables.get('test-variable-payload', 'payload') is None
@@ -671,17 +673,17 @@ def test_add_validation_handler(behave_context: Context, locust_environment: Env
     payload_handler = list(task.response.handlers.payload)[0]
 
     # test that they validates
-    metadata_handler((ResponseContentType.JSON, {'test': {'value': 'test'}}), user, response_context_manager)
+    metadata_handler((TransformerContentType.JSON, {'test': {'value': 'test'}}), user, response_context_manager)
     assert response_context_manager._manual_result is None
-    payload_handler((ResponseContentType.JSON, {'test': {'value': 'test'}}), user, response_context_manager)
+    payload_handler((TransformerContentType.JSON, {'test': {'value': 'test'}}), user, response_context_manager)
     assert response_context_manager._manual_result is None
 
     # test that they validates, negative
-    metadata_handler((ResponseContentType.JSON, {'test': {'value': 'no-test'}}), user, response_context_manager)
+    metadata_handler((TransformerContentType.JSON, {'test': {'value': 'no-test'}}), user, response_context_manager)
     assert isinstance(response_context_manager._manual_result, CatchResponseError)
     response_context_manager._manual_result = None
 
-    payload_handler((ResponseContentType.JSON, {'test': {'value': 'no-test'}}), user, response_context_manager)
+    payload_handler((TransformerContentType.JSON, {'test': {'value': 'no-test'}}), user, response_context_manager)
     assert isinstance(response_context_manager._manual_result, CatchResponseError)
     response_context_manager._manual_result = None
 
@@ -692,7 +694,7 @@ def test_add_validation_handler(behave_context: Context, locust_environment: Env
 
     # test that they validates
     for handler in task.response.handlers.payload:
-        handler((ResponseContentType.JSON, {'test': {'value': 'test', 'name': 'bob'}}), user, response_context_manager)
+        handler((TransformerContentType.JSON, {'test': {'value': 'test', 'name': 'bob'}}), user, response_context_manager)
         assert response_context_manager._manual_result is None
 
     # add_validation_handler calling _add_response_handler incorrectly
