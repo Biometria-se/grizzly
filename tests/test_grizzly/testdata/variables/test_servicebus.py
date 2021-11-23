@@ -8,8 +8,7 @@ from pytest_mock import mocker, MockerFixture  # pylint: disable=unused-import
 from grizzly.testdata.variables.servicebus import AtomicServiceBus, atomicservicebus_url, atomicservicebus_endpoint, atomicservicebus__base_type__
 from grizzly.context import GrizzlyContext
 from grizzly_extras.async_message import AsyncMessageResponse
-from grizzly_extras.transformer import transformer
-from grizzly_extras.types import ResponseContentType
+from grizzly_extras.transformer import transformer, TransformerContentType
 
 from ...fixtures import noop_zmq  # pylint: disable=unused-import
 
@@ -39,8 +38,8 @@ def test_atomicservicebus__base_type() -> None:
         atomicservicebus__base_type__('queue:documents-in | url="sb://sb.example.com/;SharedAccessKeyName=name;SharedAccessKey=asdf-asdf-asdf=", expression="$."')
     assert 'AtomicServiceBus: content_type parameter must be specified' in str(ve)
 
-    json_transformer = transformer.available[ResponseContentType.JSON]
-    del transformer.available[ResponseContentType.JSON]
+    json_transformer = transformer.available[TransformerContentType.JSON]
+    del transformer.available[TransformerContentType.JSON]
 
     with pytest.raises(ValueError) as ve:
         atomicservicebus__base_type__(
@@ -54,7 +53,7 @@ def test_atomicservicebus__base_type() -> None:
         )
     assert 'AtomicServiceBus: argument argument is not allowed' in str(ve)
 
-    transformer.available[ResponseContentType.JSON] = json_transformer
+    transformer.available[TransformerContentType.JSON] = json_transformer
 
     with pytest.raises(ValueError) as ve:
         atomicservicebus__base_type__(
@@ -205,7 +204,7 @@ class TestAtomicServiceBus:
                 'endpoint_name': 'queue:documents-in',
                 'url': 'Endpoint=sb://sb.example.org/;SharedAccessKeyName=name;SharedAccessKey=key',
                 'expression': '$.test.result',
-                'content_type': ResponseContentType.JSON,
+                'content_type': TransformerContentType.JSON,
                 'context': None,
                 'worker': None,
             }
@@ -234,7 +233,7 @@ class TestAtomicServiceBus:
                 'endpoint_name': 'topic:documents-in, subscription:application-x',
                 'url': 'sb://sb.example.org/;SharedAccessKeyName=name;SharedAccessKey=key',
                 'expression': '//test/result/text()',
-                'content_type': ResponseContentType.XML,
+                'content_type': TransformerContentType.XML,
                 'context': None,
                 'worker': None,
             }
@@ -302,7 +301,7 @@ class TestAtomicServiceBus:
                 'repeat': True,
                 'wait': 15,
                 'expression': '//test/result/text()',
-                'content_type': ResponseContentType.XML,
+                'content_type': TransformerContentType.XML,
                 'worker': None,
                 'url': 'sb://sb.example.org/;SharedAccessKeyName=name;SharedAccessKey=key',
                 'endpoint_name': 'topic:documents-in, subscription:application-x',
@@ -542,14 +541,14 @@ class TestAtomicServiceBus:
                 'success': True,
                 'payload': '<?xml version="1.0" encoding="utf-8"?><test><result>hello world</result></test>',
             }, 4)
-            xml_transformer = transformer.available[ResponseContentType.XML]
-            del transformer.available[ResponseContentType.XML]
+            xml_transformer = transformer.available[TransformerContentType.XML]
+            del transformer.available[TransformerContentType.XML]
 
             with pytest.raises(TypeError) as te:
                 v['test1']
             assert 'AtomicServiceBus.test1: could not find a transformer for XML' in str(te)
 
-            transformer.available[ResponseContentType.XML] = xml_transformer
+            transformer.available[TransformerContentType.XML] = xml_transformer
 
             assert len(v._endpoint_values['test1']) == 0
             assert v['test1'] == 'hello world'

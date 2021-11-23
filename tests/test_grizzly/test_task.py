@@ -24,8 +24,7 @@ from grizzly.task import (
 
 from grizzly.types import RequestMethod
 
-from grizzly_extras.transformer import transformer
-from grizzly_extras.types import ResponseContentType
+from grizzly_extras.transformer import transformer, TransformerContentType
 
 from .fixtures import grizzly_context, request_task, behave_context, locust_environment  # pylint: disable=unused-import
 
@@ -39,7 +38,7 @@ class TestRequestTaskHandlers:
         assert len(handlers.metadata) == 0
         assert len(handlers.payload) == 0
 
-        def handler(input: Tuple[ResponseContentType, Any], user: User, manager: Optional[ResponseContextManager]) -> None:
+        def handler(input: Tuple[TransformerContentType, Any], user: User, manager: Optional[ResponseContextManager]) -> None:
             pass
 
         handlers.add_metadata(handler)
@@ -52,7 +51,7 @@ class TestRequestTaskHandlers:
 class TestRequestTaskResponse:
     def test(self) -> None:
         response_task = RequestTaskResponse()
-        assert response_task.content_type == ResponseContentType.GUESS
+        assert response_task.content_type == TransformerContentType.GUESS
 
         assert isinstance(response_task.handlers, RequestTaskHandlers)
 
@@ -168,32 +167,32 @@ class TestTransformerTask:
     def test(self, behave_context: Context, grizzly_context: Callable) -> None:
         with pytest.raises(ValueError) as ve:
             TransformerTask(
-                variable='test_variable', expression='$.', content_type=ResponseContentType.JSON, content='',
+                variable='test_variable', expression='$.', content_type=TransformerContentType.JSON, content='',
             )
         assert 'test_variable has not been initialized' in str(ve)
 
         grizzly = cast(GrizzlyContext, behave_context.grizzly)
         grizzly.state.variables.update({'test_variable': 'none'})
 
-        json_transformer = transformer.available[ResponseContentType.JSON]
-        del transformer.available[ResponseContentType.JSON]
+        json_transformer = transformer.available[TransformerContentType.JSON]
+        del transformer.available[TransformerContentType.JSON]
 
         with pytest.raises(ValueError) as ve:
             TransformerTask(
-                variable='test_variable', expression='$.', content_type=ResponseContentType.JSON, content='',
+                variable='test_variable', expression='$.', content_type=TransformerContentType.JSON, content='',
             )
         assert 'could not find a transformer for JSON' in str(ve)
 
-        transformer.available.update({ResponseContentType.JSON: json_transformer})
+        transformer.available.update({TransformerContentType.JSON: json_transformer})
 
         with pytest.raises(ValueError) as ve:
             TransformerTask(
-                variable='test_variable', expression='$.', content_type=ResponseContentType.JSON, content='',
+                variable='test_variable', expression='$.', content_type=TransformerContentType.JSON, content='',
             )
         assert '$. is not a valid expression for JSON' in str(ve)
 
         task = TransformerTask(
-            variable='test_variable', expression='$.result.value', content_type=ResponseContentType.JSON, content='',
+            variable='test_variable', expression='$.result.value', content_type=TransformerContentType.JSON, content='',
         )
 
         implementation = task.implementation()
@@ -209,7 +208,7 @@ class TestTransformerTask:
         task = TransformerTask(
             variable='test_variable',
             expression='$.result.value',
-            content_type=ResponseContentType.JSON,
+            content_type=TransformerContentType.JSON,
             content=jsondumps({
                 'result': {
                     'value': 'hello world!',
@@ -230,7 +229,7 @@ class TestTransformerTask:
         task = TransformerTask(
             variable='test_variable',
             expression='//actor[@id="9"]',
-            content_type=ResponseContentType.XML,
+            content_type=TransformerContentType.XML,
             content='''<root xmlns:foo="http://www.foo.org/" xmlns:bar="http://www.bar.org">
   <actors>
     <actor id="7">Christian Bale</actor>

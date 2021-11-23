@@ -106,7 +106,6 @@ import zmq
 from gevent import sleep as gsleep
 from locust.exception import StopUser
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse, AsyncMessageError
-from grizzly_extras.types import response_content_type_str
 
 from ..task import RequestTask
 from ..utils import merge_dicts
@@ -219,9 +218,6 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
             # Remove 'expression:' prefix and keep the value
             expression = resub(r'\s*expression:\s*(.+?)\s*$', r'\1', expression)
 
-        # Keep queue name part in request.endpoint
-        request.endpoint = queue_name
-
         request_name, endpoint, payload = self.render(request)
 
         # Update queue name again after render() (if it contained variables)
@@ -320,7 +316,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
             'context': {
                 'endpoint': queue_name,
                 'expression': expression,
-                'content_type': response_content_type_str(request.response.content_type),
+                'content_type': request.response.content_type.name.lower(),
             },
             'payload': payload,
         }

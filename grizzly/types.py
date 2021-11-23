@@ -7,7 +7,7 @@ from locust.clients import ResponseContextManager
 from locust.user.users import User
 from gevent.lock import Semaphore
 
-from grizzly_extras.types import ResponseContentType
+from grizzly_extras.transformer import TransformerContentType
 
 class ResponseTarget(Enum):
     METADATA = 0
@@ -61,7 +61,7 @@ class RequestMethod(Enum, AdvancedEnum, settings=NoAlias):
         return self.value
 
 
-HandlerType = Callable[[Tuple[ResponseContentType, Any], User, Optional[ResponseContextManager]], None]
+HandlerType = Callable[[Tuple[TransformerContentType, Any], User, Optional[ResponseContextManager]], None]
 
 HandlerContextType = Union[ResponseContextManager, Tuple[Optional[Dict[str, Any]], str]]
 
@@ -87,13 +87,13 @@ def int_rounded_float_typed(value: str) -> int:
     return int(round(float(value)))
 
 
-def str_response_content_type(value: str) -> ResponseContentType:
+def str_response_content_type(value: str) -> TransformerContentType:
     if value.strip() in ['application/json', 'json']:
-        return ResponseContentType.JSON
+        return TransformerContentType.JSON
     elif value.strip() in ['application/xml', 'xml']:
-        return ResponseContentType.XML
+        return TransformerContentType.XML
     elif value.strip() in ['text/plain', 'plain']:
-        return ResponseContentType.PLAIN
+        return TransformerContentType.PLAIN
     else:
         raise ValueError(f'"{value}" is an unknown response content type')
 

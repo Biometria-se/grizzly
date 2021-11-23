@@ -12,9 +12,12 @@ from gevent import sleep as gsleep
 from .types import HandlerType, RequestMethod
 from .context import GrizzlyContext, GrizzlyTask, GrizzlyTasksBase
 
-from grizzly_extras.transformer import Transformer, transformer
-from grizzly_extras.types import ResponseContentType
-from grizzly_extras.exceptions import TransformerError
+from grizzly_extras.transformer import (
+    Transformer,
+    transformer,
+    TransformerError,
+    TransformerContentType,
+)
 
 __all__ = [
     'RequestTaskHandlers',
@@ -41,7 +44,7 @@ class RequestTaskHandlers:
 @dataclass(unsafe_hash=True)
 class RequestTaskResponse:
     status_codes: List[int] = field(init=False, repr=False, hash=False, default_factory=list)
-    content_type: ResponseContentType = field(init=False, repr=False, default=ResponseContentType.GUESS)
+    content_type: TransformerContentType = field(init=False, repr=False, default=TransformerContentType.GUESS)
     handlers: RequestTaskHandlers = field(init=False, repr=False, default_factory=RequestTaskHandlers)
 
     def __post_init__(self) -> None:
@@ -139,7 +142,7 @@ class TransformerTask(GrizzlyTask):
     expression: str
     variable: str
     content: str
-    content_type: ResponseContentType
+    content_type: TransformerContentType
 
     _transformer: Type[Transformer] = field(init=False, repr=False)
     _get_values: Callable[[Any], List[str]] = field(init=False, repr=False)

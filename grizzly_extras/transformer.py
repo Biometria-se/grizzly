@@ -4,20 +4,40 @@ for attributes and their value in.
 import re
 
 from abc import ABCMeta
-from typing import Tuple, Any, Dict, Type, List, Callable
+from typing import Optional, Tuple, Any, Dict, Type, List, Callable
 from functools import wraps
 from json import loads as jsonloads, dumps as jsondumps, JSONEncoder
+from enum import Enum, auto
 
 from jsonpath_ng.ext import parse as jsonpath_parse
 from lxml import etree as XML
 
-from .exceptions import TransformerError
-from .types import ResponseContentType
+class TransformerError(Exception):
+    message: Optional[str] = None
 
+    def __init__(self, message: Optional[str] = None) -> None:
+        self.message = message
+
+class TransformerContentType(Enum):
+    GUESS = 0
+    JSON = auto()
+    XML = auto()
+    PLAIN = auto()
+
+    @classmethod
+    def from_string(cls, value: str) -> 'TransformerContentType':
+        if value.strip() in ['application/json', 'json']:
+            return TransformerContentType.JSON
+        elif value.strip() in ['application/xml', 'xml']:
+            return TransformerContentType.XML
+        elif value.strip() in ['text/plain', 'plain']:
+            return TransformerContentType.PLAIN
+        else:
+            raise ValueError(f'"{value}" is an unknown response content type')
 
 class Transformer(ABCMeta):
     @classmethod
-    def transform(cls, content_type: ResponseContentType, raw: str) -> Tuple[ResponseContentType, Any]:
+    def transform(cls, content_type: TransformerContentType, raw: str) -> Tuple[TransformerContentType, Any]:
         raise NotImplementedError(f'{cls.__name__} has not implemented transform')
 
     @classmethod
@@ -29,11 +49,11 @@ class Transformer(ABCMeta):
         raise NotImplementedError(f'{cls.__name__} has not implemented parse')
 
 class transformer:
-    content_type: ResponseContentType
-    available: Dict[ResponseContentType, Type[Transformer]] = {}
+    content_type: TransformerContentType
+    available: Dict[TransformerContentType, Type[Transformer]] = {}
 
-    def __init__(self, content_type: ResponseContentType) -> None:
-        if content_type == ResponseContentType.GUESS:
+    def __init__(self, content_type: TransformerContentType) -> None:
+        if content_type == TransformerContentType.GUESS:
             raise ValueError(f'it is not allowed to register a transformer of type GUESS')
 
         self.content_type = content_type
@@ -41,13 +61,13 @@ class transformer:
     def __call__(self, impl: Type[Transformer]) -> Type[Transformer]:
         impl_transform = impl.transform
         @wraps(impl.transform)
-        def wrapped_transform(content_type: ResponseContentType, raw: str) -> Tuple[ResponseContentType, Any]:
+        def wrapped_transform(content_type: TransformerContentType, raw: str) -> Tuple[TransformerContentType, Any]:
             try:
-                if content_type in [ResponseContentType.GUESS, self.content_type]:
+                if content_type in [TransformerContentType.GUESS, self.content_type]:
                     transformed_content_type, transformed = impl_transform(content_type, raw)
 
                     # transformation was successfully guessed (no exception)
-                    if transformed_content_type == ResponseContentType.GUESS:
+                    if transformed_content_type == TransformerContentType.GUESS:
                         transformed_content_type = self.content_type
 
                     return (transformed_content_type, transformed, )
@@ -56,7 +76,7 @@ class transformer:
                     raise TransformerError(f'failed to transform input as {self.content_type.name}: {str(e)}') from e
 
             # fall through, try to transform as next content type
-            return (ResponseContentType.GUESS, raw, )
+            return (TransformerContentType.GUESS, raw, )
 
         setattr(impl, '__wrapped_transform__', impl_transform)
         setattr(impl, 'transform', wrapped_transform)
@@ -67,10 +87,10 @@ class transformer:
         return impl
 
 
-@transformer(ResponseContentType.JSON)
+@transformer(TransformerContentType.JSON)
 class JsonTransformer(Transformer):
     @classmethod
-    def transform(cls, content_type: ResponseContentType, raw: str) -> Tuple[ResponseContentType, Any]:
+    def transform(cls, content_type: TransformerContentType, raw: str) -> Tuple[TransformerContentType, Any]:
         return (content_type, jsonloads(raw), )
 
     @classmethod
@@ -105,12 +125,12 @@ class JsonTransformer(Transformer):
             raise ValueError(f'{cls.__name__}: unable to parse "{expression}": {str(e)}') from e
 
 
-@transformer(ResponseContentType.XML)
+@transformer(TransformerContentType.XML)
 class XmlTransformer(Transformer):
     _parser = XML.XMLParser(remove_blank_text=True)
 
     @classmethod
-    def transform(cls, content_type: ResponseContentType, raw: str) -> Tuple[ResponseContentType, Any]:
+    def transform(cls, content_type: TransformerContentType, raw: str) -> Tuple[TransformerContentType, Any]:
         document = XML.XML(raw.encode('utf-8'), parser=cls._parser)
 
         # remove namespaces, which makes it easier to use XPath...
@@ -164,10 +184,10 @@ class XmlTransformer(Transformer):
             raise ValueError(f'{cls.__name__}: unable to parse "{expression}": {str(e)}') from e
 
 
-@transformer(ResponseContentType.PLAIN)
+@transformer(TransformerContentType.PLAIN)
 class PlainTransformer(Transformer):
     @classmethod
-    def transform(cls, content_type: ResponseContentType, raw: str) -> Tuple[ResponseContentType, Any]:
+    def transform(cls, content_type: TransformerContentType, raw: str) -> Tuple[TransformerContentType, Any]:
         raise NotImplementedError(f'{cls.__name__} has not implemented transform')
 
     @classmethod

@@ -17,7 +17,7 @@ from grizzly.users.meta import HttpRequests, ResponseEvent, ResponseHandler
 from grizzly.exceptions import ResponseHandlerError
 from grizzly.types import RequestMethod
 from grizzly.task import RequestTask
-from grizzly_extras.types import ResponseContentType
+from grizzly_extras.transformer import TransformerContentType
 
 from ...fixtures import locust_environment  # pylint: disable=unused-import
 from ...helpers import RequestEvent, TestUser
@@ -83,7 +83,7 @@ class TestResponseHandler:
         user.response_handler('test', response_context_manager, request, test_user)
 
         assert metadata_handler.call_count == 0
-        payload_handler.assert_called_once_with((ResponseContentType.JSON, {}), test_user, response_context_manager)
+        payload_handler.assert_called_once_with((TransformerContentType.JSON, {}), test_user, response_context_manager)
         request.response.handlers.payload.clear()
         payload_handler.reset_mock()
 
@@ -92,11 +92,10 @@ class TestResponseHandler:
         user.response_handler('test', response_context_manager, request, test_user)
 
         assert payload_handler.call_count == 0
-        metadata_handler.assert_called_once_with((ResponseContentType.JSON, {}), test_user, response_context_manager)
+        metadata_handler.assert_called_once_with((TransformerContentType.JSON, {}), test_user, response_context_manager)
         metadata_handler.reset_mock()
         request.response.handlers.metadata.clear()
 
-        print("STEFAN1")
         # invalid json content in payload
         response._content = '{"test: "value"}'.encode('utf-8')
         response_context_manager = ResponseContextManager(response, RequestEvent(), {})
@@ -112,32 +111,29 @@ class TestResponseHandler:
         assert 'failed to transform' in str(response_context_manager._manual_result)
         request.response.handlers.payload.clear()
 
-        print("STEFAN2")
         # XML in response
         response._content = '''<?xml version="1.0" encoding="UTF-8"?>
         <test>
             value
         </test>'''.encode('utf-8')
 
-        print("STEFAN3")
-        request.response.content_type = ResponseContentType.GUESS
+        request.response.content_type = TransformerContentType.GUESS
         request.response.handlers.add_payload(payload_handler)
         user.response_handler('test', response_context_manager, request, test_user)
 
         assert payload_handler.call_count == 1
         ((call_content_type, call_payload), call_user, call_context, ), _ = payload_handler.call_args_list[0]
-        assert call_content_type == ResponseContentType.XML
+        assert call_content_type == TransformerContentType.XML
         assert isinstance(call_payload, XML._Element)
         assert call_user is test_user
         assert call_context is response_context_manager
 
-        request.response.content_type = ResponseContentType.XML
+        request.response.content_type = TransformerContentType.XML
         response._content = '''<?xml encoding="UTF-8"?>
         <test>
             value
         </test>'''.encode('utf-8')
 
-        print("STEFANHEREWEGO")
         user.response_handler('test', response_context_manager, request, test_user)
         assert payload_handler.call_count == 1
         assert isinstance(response_context_manager._manual_result, CatchResponseError)
@@ -162,7 +158,7 @@ class TestResponseHandler:
         request.response.handlers.add_payload(payload_handler)
         user.response_handler('test', (None, '{}'), request, test_user)
 
-        payload_handler.assert_called_once_with((ResponseContentType.JSON, {}), test_user, None)
+        payload_handler.assert_called_once_with((TransformerContentType.JSON, {}), test_user, None)
         payload_handler.reset_mock()
         request.response.handlers.payload.clear()
 
@@ -170,7 +166,7 @@ class TestResponseHandler:
         request.response.handlers.add_metadata(metadata_handler)
         user.response_handler('test', ({}, None), request, test_user)
 
-        metadata_handler.assert_called_once_with((ResponseContentType.JSON, {}), test_user, None)
+        metadata_handler.assert_called_once_with((TransformerContentType.JSON, {}), test_user, None)
         metadata_handler.reset_mock()
         request.response.handlers.metadata.clear()
 
@@ -182,23 +178,23 @@ class TestResponseHandler:
         assert 'failed to transform' in str(e)
         assert payload_handler.call_count == 0
 
-        request.response.content_type = ResponseContentType.JSON
+        request.response.content_type = TransformerContentType.JSON
         with pytest.raises(ResponseHandlerError) as e:
             user.response_handler('test', (None, '{"test: "value"'), request, test_user)
         assert 'failed to transform input as JSON' in str(e)
 
-        request.response.content_type = ResponseContentType.XML
+        request.response.content_type = TransformerContentType.XML
         with pytest.raises(ResponseHandlerError) as e:
             user.response_handler('test', ({}, '{"test": "value"}'), request, test_user)
         assert 'failed to transform input as XML' in str(e)
 
-        request.response.content_type = ResponseContentType.PLAIN
+        request.response.content_type = TransformerContentType.PLAIN
         with pytest.raises(ResponseHandlerError) as e:
             user.response_handler('test', ({}, '{"test": "value"}'), request, test_user)
         assert 'failed to transform input as PLAIN' in str(e)
 
         # XML input
-        request.response.content_type = ResponseContentType.GUESS
+        request.response.content_type = TransformerContentType.GUESS
         user.response_handler(
             'test',
             (
@@ -214,7 +210,7 @@ class TestResponseHandler:
 
         assert payload_handler.call_count == 1
         ((call_content_type, call_payload), call_user, call_context, ), _ = payload_handler.call_args_list[0]
-        assert call_content_type == ResponseContentType.XML
+        assert call_content_type == TransformerContentType.XML
         assert isinstance(call_payload, XML._Element)
         assert call_user is test_user
         assert call_context is None

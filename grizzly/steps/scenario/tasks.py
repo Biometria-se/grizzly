@@ -9,7 +9,7 @@ from ...types import RequestDirection, RequestMethod
 from ...context import GrizzlyContext
 from ...task import PrintTask, SleepTask, TransformerTask
 
-from grizzly_extras.types import ResponseContentType, str_response_content_type
+from grizzly_extras.transformer import TransformerContentType
 
 
 def parse_method(text: str) -> RequestMethod:
@@ -23,7 +23,7 @@ def parse_direction(text: str) -> RequestDirection:
 register_type(
     Direction=parse_direction,
     Method=parse_method,
-    ContentType=str_response_content_type,
+    ContentType=TransformerContentType.from_string,
 )
 
 
@@ -219,7 +219,7 @@ def step_task_print_message(context: Context, message: str) -> None:
 
 
 @then(u'parse "{content}" as "{content_type:ContentType}" and save value of "{expression}" in variable "{variable}"')
-def step_task_transform(context: Context, content: str, content_type: ResponseContentType, expression: str, variable: str) -> None:
+def step_task_transform(context: Context, content: str, content_type: TransformerContentType, expression: str, variable: str) -> None:
     '''Parse (part of) a JSON object or a XML document and extract a specific value from that and save into a variable.
 
     This can be especially useful in combination with [`AtomicMessageQueue`](/grizzly/usage/variables/testdata/messagequeue/) variable.
@@ -235,7 +235,7 @@ def step_task_transform(context: Context, content: str, content_type: ResponseCo
 
     Args:
         contents (str): contents to parse, supports templating or a static string
-        content_type (ResponseContentType): MIME type of `contents`
+        content_type (TransformerContentType): MIME type of `contents`
         expression (str): JSON or XPath expression for specific value in `contents`
         variable (str): name of variable to save value to, must have been initialized
     '''

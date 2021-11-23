@@ -18,9 +18,7 @@ from ..exceptions import ResponseHandlerError, TransformerLocustError
 from ..types import HandlerType, RequestMethod, ResponseTarget, ResponseAction
 from ..task import RequestTask
 
-from grizzly_extras.transformer import PlainTransformer, transformer
-from grizzly_extras.exceptions import TransformerError
-from grizzly_extras.types import ResponseContentType
+from grizzly_extras.transformer import PlainTransformer, transformer, TransformerError, TransformerContentType
 
 logger = logging.getLogger(__name__)
 
@@ -141,7 +139,7 @@ def get_matches(
     Args:
         input_get_values (Callable[[Any], List[str]]): function that returns all values matching `expression`
         input_match_values (Callable[[Any], List[str]]): function that checks that a value has correct value
-        input_context (Tuple[ResponseContentType, Any]): content type and transformed payload
+        input_context (Tuple[TransformerContentType, Any]): content type and transformed payload
 
     Returns:
         Tuple[List[Any], List[Any]]: list of all values and list of all matched values of those
@@ -167,7 +165,7 @@ def get_matches(
 
 
 def handler_logic(
-    input_context: Tuple[ResponseContentType, Any],
+    input_context: Tuple[TransformerContentType, Any],
     expression: str,
     match_with: str,
     user: ContextVariables,
@@ -177,7 +175,7 @@ def handler_logic(
     '''Contains common logic for both save and validation handlers.
 
     Args:
-        input_context (Tuple[ResponseContentType, Any]): content type and transformed payload
+        input_context (Tuple[TransformerContentType, Any]): content type and transformed payload
         expression (str): expression to extract value from `input_context`
         match_with (str): regular expression that the extracted value must match
         user (ContextVariablesUser): user that executed task (request)
@@ -205,7 +203,7 @@ def handler_logic(
             input_payload,
         )
     except TransformerError as e:
-        raise TransformerLocustError(f'{str(e.message)}')
+        raise TransformerLocustError(e.message) from e
 
     number_of_matches = len(matches)
 
@@ -234,14 +232,14 @@ def generate_validation_handler(expression: str, match_with: str, condition: boo
         HandlerType: function that will validate values in a response during runtime
     '''
     def validate(
-        input_context: Tuple[ResponseContentType, Any],
+        input_context: Tuple[TransformerContentType, Any],
         user: ContextVariables,
         response: Optional[ResponseContextManager] = None,
     ) -> None:
         '''Actual handler that will run after a response has been received by an task.
 
         Args:
-            input_context (Tuple[ResponseContentType, Any]): content type and transformed payload
+            input_context (Tuple[TransformerContentType, Any]): content type and transformed payload
             user (ContextVariablesUser): user that executed task (request)
             response (Optional[ResponseContextManager]): optional response context, only if `user` does HTTP requests
         '''
@@ -281,14 +279,14 @@ def generate_save_handler(expression: str, match_with: str, variable: str) -> Ha
         HandlerType: function that will save values from responses during run time
     '''
     def save(
-        input_context: Tuple[ResponseContentType, Any],
+        input_context: Tuple[TransformerContentType, Any],
         user: ContextVariables,
         response: Optional[ResponseContextManager] = None,
     ) -> None:
         '''Actual handler that will run after a response has been received by an task.
 
         Args:
-            input_context (Tuple[ResponseContentType, Any]): content type and transformed payload
+            input_context (Tuple[TransformerContentType, Any]): content type and transformed payload
             user (ContextVariablesUser): user that executed task (request)
             response (Optional[ResponseContextManager]): optional response context, only if `user` does HTTP requests
         '''

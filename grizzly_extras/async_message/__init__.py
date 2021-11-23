@@ -5,12 +5,11 @@ from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any, TypedDict, Callable, cast
 from os import environ, path
 from platform import node as hostname
-from json import JSONEncoder, dumps as jsondumps
+from json import dumps as jsondumps
 from time import monotonic as time
 from io import StringIO
 
-from grizzly_extras.types import ResponseContentType
-
+from grizzly_extras.transformer import JsonBytesEncoder
 
 __all__ = [
     'AsyncMessageContext',
@@ -24,18 +23,6 @@ __all__ = [
 
 AsyncMessageMetadata = Optional[Dict[str, Any]]
 AsyncMessagePayload = Optional[Any]
-
-
-class JsonBytesEncoder(JSONEncoder):
-    def default(self, o: Any) -> Any:
-        if isinstance(o, bytes):
-            try:
-                return o.decode('utf-8')
-            except:
-                return o.decode('latin-1')
-
-        return JSONEncoder.default(self, o)
-
 
 class AsyncMessageContext(TypedDict, total=False):
     url: str

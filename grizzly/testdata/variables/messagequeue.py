@@ -60,8 +60,7 @@ import zmq
 
 from gevent import sleep as gsleep
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
-from grizzly_extras.transformer import transformer
-from grizzly_extras.exceptions import TransformerError
+from grizzly_extras.transformer import transformer, TransformerError
 
 from ...types import bool_typed, str_response_content_type, AtomicVariable
 from ...context import GrizzlyContext

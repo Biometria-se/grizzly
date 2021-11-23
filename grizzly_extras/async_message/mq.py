@@ -2,9 +2,7 @@ from typing import Optional, Generator, Dict, cast
 from time import monotonic as time, sleep
 from contextlib import contextmanager
 
-from grizzly_extras.exceptions import TransformerError
-from grizzly_extras.transformer import transformer
-from grizzly_extras.types import ResponseContentType, str_response_content_type, response_content_type_str
+from grizzly_extras.transformer import transformer, TransformerError, TransformerContentType
 
 
 from . import (
@@ -119,16 +117,17 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
             gmo = pymqi.GMO()
 
         if matching:
-            gmo['MatchOptions'] = pymqi.CMQC.MQMO_MATCH_MSG_ID
+            gmo.MatchOptions = pymqi.CMQC.MQMO_MATCH_MSG_ID
 
         if browsing:
-            gmo.Options = pymqi.CMQC.MQGMO_BROWSE_FIRST
+            gmo.Options |= pymqi.CMQC.MQGMO_BROWSE_FIRST
+
         return gmo
 
-    def _find_message(self, queue_name: str, expression: str, content_type: ResponseContentType, message_wait: Optional[int]) -> Optional[bytearray]:
+    def _find_message(self, queue_name: str, expression: str, content_type: TransformerContentType, message_wait: Optional[int]) -> Optional[bytearray]:
         start_time = time()
 
-        logger.debug(f'_find_message: searching {queue_name} for messages matching: {expression}, content_type {response_content_type_str(content_type)}')
+        logger.debug(f'_find_message: searching {queue_name} for messages matching: {expression}, content_type {content_type.name.lower()}')
         transform = transformer.available.get(content_type, None)
         if transform is None:
             raise AsyncMessageError(f'{self.__class__.__name__}: could not find a transformer for {content_type.name}')
@@ -180,11 +179,11 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                     logger.debug(f'_find_message: no matching message found, trying again after some sleep')
                     sleep(0.5)
 
-    def _get_content_type(self, request: AsyncMessageRequest) -> ResponseContentType:
-        content_type: ResponseContentType = ResponseContentType.GUESS
+    def _get_content_type(self, request: AsyncMessageRequest) -> TransformerContentType:
+        content_type: TransformerContentType = TransformerContentType.GUESS
         value: Optional[str] = request.get('context', {}).get('content_type', None)
         if value:
-            content_type = str_response_content_type(value)
+            content_type = TransformerContentType.from_string(value)
         return content_type
 
     def _request(self, request: AsyncMessageRequest) -> AsyncMessageResponse:

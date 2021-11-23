@@ -11,7 +11,7 @@ from grizzly.types import RequestMethod, RequestDirection
 from grizzly.task import TransformerTask, PrintTask, SleepTask
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import
 
-from grizzly_extras.types import ResponseContentType
+from grizzly_extras.transformer import TransformerContentType
 
 from ...fixtures import behave_context, locust_environment  # pylint: disable=unused-import
 
@@ -157,7 +157,7 @@ def test_step_transform(behave_context: Context) -> None:
                     'title': 'TPM Report 2020',
                 },
             }),
-            ResponseContentType.JSON,
+            TransformerContentType.JSON,
             '$.document.id',
             'document_id',
         )
@@ -172,13 +172,13 @@ def test_step_transform(behave_context: Context) -> None:
                 'title': 'TPM Report 2020',
             },
         }),
-        ResponseContentType.JSON,
+        TransformerContentType.JSON,
         '$.document.id',
         'document_id',
     )
 
     task = grizzly.scenario.tasks[-1]
     assert isinstance(task, TransformerTask)
-    assert task.content_type == ResponseContentType.JSON
+    assert task.content_type == TransformerContentType.JSON
     assert task.expression == '$.document.id'
     assert task.variable == 'document_id'

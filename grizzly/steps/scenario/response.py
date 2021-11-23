@@ -11,7 +11,7 @@ from ...task import RequestTask
 from ...types import ResponseTarget, str_response_content_type
 from ..helpers import add_save_handler, add_validation_handler, add_request_task_response_status_codes
 
-from grizzly_extras.types import ResponseContentType
+from grizzly_extras.transformer import TransformerContentType
 
 @parse.with_pattern(r'is( not)?', regex_group_count=1)
 def parse_condition(text: str) -> bool:
@@ -33,7 +33,7 @@ def parse_response_target(text: str) -> ResponseTarget:
 register_type(
     Condition=parse_condition,
     ResponseTarget=parse_response_target,
-    ResponseContentType=str_response_content_type,
+    TransformerContentType=str_response_content_type,
 )
 
 
@@ -205,8 +205,8 @@ def step_response_allow_status_codes_table(context: Context) -> None:
             raise AssertionError('data table does not have column "status"')
 
 
-@then(u'set response content type to "{content_type:ResponseContentType}"')
-def step_response_content_type(context: Context, content_type: ResponseContentType) -> None:
+@then(u'set response content type to "{content_type:TransformerContentType}"')
+def step_response_content_type(context: Context, content_type: TransformerContentType) -> None:
     '''Set the content type of a response, instead of guessing it.
 
     This is applicable when there is a `step_response_validate` or `step_response_save` is included in
@@ -222,10 +222,10 @@ def step_response_content_type(context: Context, content_type: ResponseContentTy
     ```
 
     Args:
-        content_type (ResponseContentType): expected content type of response
+        content_type (TransformerContentType): expected content type of response
     '''
 
-    assert content_type != ResponseContentType.GUESS, f'It is now allowed to set GUESS with this step'
+    assert content_type != TransformerContentType.GUESS, f'It is now allowed to set GUESS with this step'
 
     grizzly = cast(GrizzlyContext, context.grizzly)
     assert len(grizzly.scenario.tasks) > 0, f'There are no requests in the scenario'

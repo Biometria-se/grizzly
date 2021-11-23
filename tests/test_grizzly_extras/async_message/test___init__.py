@@ -12,7 +12,6 @@ from _pytest.capture import CaptureFixture
 
 from grizzly_extras.async_message import (
     AsyncMessageRequestHandler,
-    JsonBytesEncoder,
     AsyncMessageResponse,
     AsyncMessageRequest,
     AsyncMessageHandler,
@@ -20,6 +19,7 @@ from grizzly_extras.async_message import (
     configure_logger,
 )
 
+from grizzly_extras.transformer import JsonBytesEncoder
 
 class TestJsonBytesEncoder:
     def test_default(self) -> None:
