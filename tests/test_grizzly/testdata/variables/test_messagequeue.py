@@ -1,7 +1,7 @@
 import subprocess
 
 from os import environ
-from typing import Dict, Any, Optional, Callable, cast
+from typing import Optional, Callable, cast
 from json import dumps as jsondumps
 
 import pytest
@@ -15,7 +15,6 @@ from grizzly.testdata.variables import AtomicMessageQueue
 from grizzly.testdata.variables.messagequeue import atomicmessagequeue__base_type__
 from grizzly.context import GrizzlyContext
 from grizzly_extras.async_message import AsyncMessageResponse
-from grizzly_extras.transformer import transformer, TransformerContentType
 
 try:
     import pymqi
@@ -43,38 +42,21 @@ def test_atomicmessagequeue__base_type__() -> None:
     assert 'AtomicMessageQueue: url parameter must be specified' in str(ve)
 
     with pytest.raises(ValueError) as ve:
-        atomicmessagequeue__base_type__('TEST.QUEUE | url="mq://mq.example.com/?QueueManager=QM1&Channel=SRV.CONN"')
-    assert 'AtomicMessageQueue: expression parameter must be specified' in str(ve)
-
-    with pytest.raises(ValueError) as ve:
-        atomicmessagequeue__base_type__('TEST.QUEUE | url="mq://mq.example.com/?QueueManager=QM1&Channel=SRV.CONN", expression="$."')
-    assert 'AtomicMessageQueue: content_type parameter must be specified' in str(ve)
-
-    json_transformer = transformer.available[TransformerContentType.JSON]
-    del transformer.available[TransformerContentType.JSON]
-
-    with pytest.raises(ValueError) as ve:
         atomicmessagequeue__base_type__(
-            'TEST.QUEUE | url="mq://mq.example.com/?QueueManager=QM1&Channel=SRV.CONN", expression="$.", content_type="application/json"',
-        )
-    assert 'AtomicMessageQueue: could not find a transformer for JSON' in str(ve)
-
-    with pytest.raises(ValueError) as ve:
-        atomicmessagequeue__base_type__(
-            'TEST.QUEUE | url="mq://mq.example.com/?QueueManager=QM1&Channel=SRV.CONN", expression="$.", content_type="application/json", argument=False',
+            'TEST.QUEUE|url="mq://mq.example.com/?QueueManager=QM1&Channel=SRV.CONN", argument=False',
         )
     assert 'AtomicMessageQueue: argument argument is not allowed' in str(ve)
 
-    transformer.available[TransformerContentType.JSON] = json_transformer
-
     with pytest.raises(ValueError) as ve:
-        atomicmessagequeue__base_type__('TEST.QUEUE | url="mq://mq.example.com/?QueueManager=QM1&Channel=SRV.CONN", expression="$.", content_type="application/json"')
-    assert 'AtomicMessageQueue: expression "$." is not a valid expression for JSON' in str(ve)
+        atomicmessagequeue__base_type__(
+            'TEST.QUEUE|url="mq://mq.example.com/?QueueManager=QM1&Channel=SRV.CONN", repeat=True, wait=asdf',
+        )
+    assert "invalid literal for int() with base 10: 'asdf'" in str(ve)
 
     safe_value = atomicmessagequeue__base_type__(
-        'TEST.QUEUE|url="mq://mq.example.com/?QueueManager=QM1&Channel=SRV.CONN", expression="$.test.result", content_type="application/json"',
+        'TEST.QUEUE|url="mq://mq.example.com/?QueueManager=QM1&Channel=SRV.CONN", repeat=True, wait=20',
     )
-    assert safe_value == 'TEST.QUEUE | url="mq://mq.example.com/?QueueManager=QM1&Channel=SRV.CONN", expression="$.test.result", content_type="application/json"'
+    assert safe_value == 'TEST.QUEUE | url="mq://mq.example.com/?QueueManager=QM1&Channel=SRV.CONN", repeat=True, wait=20'
 
 class TestAtomicMessageQueueNoPymqi:
     def test_no_pymqi_dependencies(self) -> None:
@@ -103,61 +85,53 @@ class TestAtomicMessageQueueNoPymqi:
 
 @pytest.mark.skipif(pymqi.__name__ == 'grizzly_extras.dummy_pymqi', reason='needs native IBM MQ libraries')
 class TestAtomicMessageQueue:
-
     def test___init__(self, mocker: MockerFixture) -> None:
-        def mocked_create_client(i: AtomicMessageQueue, variable: str, settings: Dict[str, Any]) -> Any:
-            return {'client': True}
-
         mocker.patch(
             'grizzly.testdata.variables.messagequeue.AtomicMessageQueue.create_client',
-            mocked_create_client
+            side_effect=[{'client': True}] * 3,
         )
 
         try:
             v = AtomicMessageQueue(
                 'test1',
-                'TEST1.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN", expression="$.test.result", content_type=json',
+                'TEST1.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"',
             )
 
             assert v._initialized
             assert 'test1' in v._values
             assert v._values.get('test1', None) == 'TEST1.QUEUE'
-            assert v._queue_values.get('test1', None) == []
+            assert v._endpoint_messages.get('test1', None) == []
             assert v._settings.get('test1', None) == {
                 'repeat': False,
                 'wait': None,
                 'url': 'mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN',
-                'expression': '$.test.result',
-                'content_type': TransformerContentType.JSON,
                 'context': None,
                 'worker': None,
             }
-            assert v._queue_clients.get('test1', None) is not None
+            assert v._endpoint_clients.get('test1', None) is not None
             assert isinstance(v._zmq_context, zmq.Context)
 
             t = AtomicMessageQueue(
                 'test2',
-                'TEST2.QUEUE | url="mq://mq.example.com?QueueManager=QM2&Channel=SRV.CONN", expression="//test/result/text()", content_type=xml, wait=15',
+                'TEST2.QUEUE | url="mq://mq.example.com?QueueManager=QM2&Channel=SRV.CONN", wait=15',
             )
 
             assert v is t
             assert len(v._values.keys()) == 2
-            assert len(v._queue_values.keys()) == 2
+            assert len(v._endpoint_messages.keys()) == 2
             assert len(v._settings.keys()) == 2
-            assert len(v._queue_clients.keys()) == 2
+            assert len(v._endpoint_clients.keys()) == 2
             assert 'test2' in v._values
             assert v._values.get('test2', None) == 'TEST2.QUEUE'
-            assert v._queue_values.get('test2', None) == []
+            assert v._endpoint_messages.get('test2', None) == []
             assert v._settings.get('test2', None) == {
                 'repeat': False,
                 'wait': 15,
                 'url': 'mq://mq.example.com?QueueManager=QM2&Channel=SRV.CONN',
-                'expression': '//test/result/text()',
-                'content_type': TransformerContentType.XML,
                 'context': None,
                 'worker': None,
             }
-            assert v._queue_clients.get('test2', None) is not None
+            assert v._endpoint_clients.get('test2', None) is not None
         finally:
             try:
                 AtomicMessageQueue.destroy()
@@ -289,15 +263,13 @@ class TestAtomicMessageQueue:
         try:
             v = AtomicMessageQueue(
                 'test',
-                'TEST.QUEUE | repeat=True, url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN", expression="$.test.result", content_type=json',
+                'TEST.QUEUE | repeat=True, url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"',
             )
-            assert isinstance(v._queue_clients.get('test', None), zmq.Socket)
+            assert isinstance(v._endpoint_clients.get('test', None), zmq.Socket)
             assert v._settings.get('test', None) == {
                 'repeat': True,
                 'wait': None,
                 'url': 'mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN',
-                'expression': '$.test.result',
-                'content_type': TransformerContentType.JSON,
                 'worker': None,
                 'context': {
                     'url': 'mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN',
@@ -326,23 +298,23 @@ class TestAtomicMessageQueue:
         try:
             v = AtomicMessageQueue(
                 'test1',
-                'TEST.QUEUE | repeat=True, url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN", expression="$.test.result", content_type=json',
+                'TEST.QUEUE | repeat=True, url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"',
             )
             v = AtomicMessageQueue(
                 'test2',
-                'TEST.QUEUE | repeat=True, url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN", expression="$.test.result", content_type=json',
+                'TEST.QUEUE | repeat=True, url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"',
             )
 
             assert len(v._settings.keys()) == 2
-            assert len(v._queue_values.keys()) == 2
-            assert len(v._queue_clients.keys()) == 2
+            assert len(v._endpoint_messages.keys()) == 2
+            assert len(v._endpoint_clients.keys()) == 2
             assert len(v._values.keys()) == 2
 
             AtomicMessageQueue.clear()
 
             assert len(v._settings.keys()) == 0
-            assert len(v._queue_values.keys()) == 0
-            assert len(v._queue_clients.keys()) == 0
+            assert len(v._endpoint_messages.keys()) == 0
+            assert len(v._endpoint_clients.keys()) == 0
             assert len(v._values.keys()) == 0
         finally:
             try:
@@ -369,7 +341,7 @@ class TestAtomicMessageQueue:
 
             v = AtomicMessageQueue(
                 'test',
-                'TEST.QUEUE | repeat=True, url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN", expression="$.test.result", content_type=json',
+                'TEST.QUEUE | repeat=True, url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"',
             )
 
             with pytest.raises(RuntimeError) as re:
@@ -386,7 +358,7 @@ class TestAtomicMessageQueue:
 
             v = AtomicMessageQueue(
                 'test',
-                'TEST.QUEUE | repeat=True, url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN", expression="$.test.result", content_type=json',
+                'TEST.QUEUE | repeat=True, url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"',
             )
             with pytest.raises(RuntimeError) as re:
                 v['test']
@@ -407,8 +379,6 @@ class TestAtomicMessageQueue:
                 'repeat': True,
                 'wait': None,
                 'url': 'mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN',
-                'expression': '$.test.result',
-                'content_type': TransformerContentType.JSON,
                 'worker': '1337-aaaabbbb-beef',
                 'context': {
                     'url': 'mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN',
@@ -433,15 +403,15 @@ class TestAtomicMessageQueue:
                 v['test']
             assert 'something something MQRC_NO_MSG_AVAILABLE something something' in str(re)
 
-            v._queue_values['test'].append('hello world')
-            v._queue_values['test'].append('world hello')
+            v._endpoint_messages['test'].append('hello world')
+            v._endpoint_messages['test'].append('world hello')
 
             assert v['test'] == 'hello world'
             assert v['test'] == 'world hello'
             assert v['test'] == 'hello world'
             assert v['test'] == 'world hello'
 
-            v._queue_values['test'].clear()
+            v._endpoint_messages['test'].clear()
 
             v._settings['test']['repeat'] = False
 
@@ -458,9 +428,6 @@ class TestAtomicMessageQueue:
                 v['test']
             assert 'AtomicMessageQueue.test: payload in response was None' in str(re)
 
-            json_transformer = transformer.available[TransformerContentType.JSON]
-            del transformer.available[TransformerContentType.JSON]
-
             mock_response({
                 'success': True,
                 'payload': jsondumps({
@@ -468,47 +435,18 @@ class TestAtomicMessageQueue:
                         'result': 'hello world',
                     },
                 }),
-            }, 4)
+            }, 3)
 
-            with pytest.raises(TypeError) as te:
-                v['test']
-            assert 'AtomicMessageQueue.test: could not find a transformer for JSON' in str(te)
-
-            transformer.available[TransformerContentType.JSON] = json_transformer
             v._settings['test']['repeat'] = False
 
-            assert len(v._queue_values['test']) == 0
-            assert v['test'] == 'hello world'
-            assert len(v._queue_values['test']) == 0
+            assert len(v._endpoint_messages['test']) == 0
+            assert v['test'] == jsondumps({'test': {'result': 'hello world'}})
+            assert len(v._endpoint_messages['test']) == 0
 
             v._settings['test']['repeat'] = True
-            assert v['test'] == 'hello world'
-            assert len(v._queue_values['test']) == 1
-            assert v._queue_values['test'][0] == 'hello world'
-
-            v._settings['test']['expression'] = '$.test.result.value'
-
-            with pytest.raises(RuntimeError) as re:
-                v['test']
-            assert 'AtomicMessageQueue.test: "$.test.result.value" returned no values'
-
-            mock_response({
-                'success': True,
-                'payload': jsondumps({
-                    'test': {
-                        'result': [
-                            {'test': 'hello'},
-                            {'test': 'world'},
-                        ],
-                    },
-                }),
-            })
-
-            v._settings['test']['expression'] = '$.test.result[*].test'
-
-            with pytest.raises(RuntimeError) as re:
-                v['test']
-            assert 'AtomicMessageQueue.test: "$.test.result.value" returned more than one value'
+            assert v['test'] == jsondumps({'test': {'result': 'hello world'}})
+            assert len(v._endpoint_messages['test']) == 1
+            assert v._endpoint_messages['test'][0] == jsondumps({'test': {'result': 'hello world'}})
         finally:
             try:
                 AtomicMessageQueue.destroy()
@@ -530,7 +468,7 @@ class TestAtomicMessageQueue:
         try:
             v = AtomicMessageQueue(
                 'test1',
-                'TEST.QUEUE | repeat=True, url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN", expression="$.test.result", content_type=json',
+                'TEST.QUEUE | repeat=True, url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"',
             )
 
             assert v['test1'] == 'TEST.QUEUE'
@@ -557,7 +495,7 @@ class TestAtomicMessageQueue:
         try:
             v = AtomicMessageQueue(
                 'test1',
-                'TEST.QUEUE | repeat=True, url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN", expression="$.test.result", content_type=json',
+                'TEST.QUEUE | repeat=True, url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"',
             )
 
             assert v['test1'] == 'TEST.QUEUE'

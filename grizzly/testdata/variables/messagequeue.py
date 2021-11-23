@@ -1,5 +1,7 @@
 # pylint: disable=line-too-long
-'''Listens for messages on IBM MQ and extracts values from messages based on JSON path or XPath expressions.
+'''Listens for messages on IBM MQ.
+
+Use [transformer task](/grizzly/usage/tasks/transformer/) to extract specific parts of the message.
 
 Grizzly *must* have been installed with the extra `mq` package and native IBM MQ libraries must be installed for being able to use this variable:
 
@@ -15,8 +17,6 @@ Initial value is the name of the queue on the MQ server specified in argument `u
 
 * `repeat` _bool_ (optional) - if `True`, values read for the queue will be saved in a list and re-used if there are no new messages available
 * `url` _str_ - see format of url below.
-* `expression` _str_ - JSON path or XPath expression for finding _one_ specific value or object in the payload
-* `content_type` _str_ - see [`step_response_content_type`](/grizzly/usage/steps/scenario/response/#step_response_content_type)
 * `wait` _int_ - number of seconds to wait for a message on the queue
 
 ### URL format
@@ -41,7 +41,7 @@ All variables in the URL have support for [templating](/grizzly/usage/variables/
 ## Example
 
 ```gherkin
-And value of variable "AtomicMessageQueue.document_id" is "IN.DOCUMENTS | wait=120, url='mqs://mq_subscription:$conf::mq.password@mq.example.com/?QueueManager=QM1&Channel=SRV.CONN', repeat=True, expression='$.document.id', content_type=json"
+And value of variable "AtomicMessageQueue.document_id" is "IN.DOCUMENTS | wait=120, url='mqs://mq_subscription:$conf::mq.password@mq.example.com/?QueueManager=QM1&Channel=SRV.CONN', repeat=True"
 ...
 Given a user of type "RestApi" load testing "http://example.com"
 ...
@@ -60,7 +60,6 @@ import zmq
 
 from gevent import sleep as gsleep
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
-from grizzly_extras.transformer import transformer, TransformerError, TransformerContentType
 
 from ...types import bool_typed, AtomicVariable
 from ...context import GrizzlyContext
@@ -83,7 +82,7 @@ def atomicmessagequeue__base_type__(value: str) -> str:
     if queue_name is None or len(queue_name) < 1:
         raise ValueError(f'AtomicMessageQueue: queue name is not valid: {queue_name}')
 
-    for argument in ['url', 'expression', 'content_type']:
+    for argument in ['url']:
         if argument not in arguments:
             raise ValueError(f'AtomicMessageQueue: {argument} parameter must be specified')
 
@@ -92,21 +91,14 @@ def atomicmessagequeue__base_type__(value: str) -> str:
             raise ValueError(f'AtomicMessageQueue: argument {argument_name} is not allowed')
         else:
             AtomicMessageQueue.arguments[argument_name](argument_value)
+            if argument_name == 'wait':
+                int(argument_value)
 
     # validate url
     AtomicMessageQueue.create_context({
         'url': arguments['url'],
         'wait': arguments.get('wait', None),
     })
-
-    content_type = AtomicMessageQueue.arguments['content_type'](arguments['content_type'])
-    transform = transformer.available.get(content_type, None)
-
-    if transform is None:
-        raise ValueError(f'AtomicMessageQueue: could not find a transformer for {content_type.name}')
-
-    if not transform.validate(arguments['expression']):
-        raise ValueError(f'AtomicMessageQueue: expression "{arguments["expression"]}" is not a valid expression for {content_type.name}')
 
     return f'{queue_name} | {queue_arguments}'
 
@@ -119,13 +111,13 @@ class AtomicMessageQueue(AtomicVariable[str]):
     __initialized: bool = False
 
     _settings: Dict[str, Dict[str, Any]]
-    _queue_clients: Dict[str, zmq.Socket]
-    _queue_values: Dict[str, List[str]]
+    _endpoint_clients: Dict[str, zmq.Socket]
+    _endpoint_messages: Dict[str, List[str]]
 
     _zmq_url = 'tcp://127.0.0.1:5554'
     _zmq_context: zmq.Context
 
-    arguments: Dict[str, Any] = {'repeat': bool_typed, 'url': str, 'expression': str, 'wait': int, 'content_type': TransformerContentType.from_string}
+    arguments: Dict[str, Any] = {'repeat': bool_typed, 'url': str, 'wait': int}
 
     def __init__(self, variable: str, value: str):
         if pymqi.__name__ == 'grizzly_extras.dummy_pymqi':
@@ -133,7 +125,7 @@ class AtomicMessageQueue(AtomicVariable[str]):
 
         safe_value = self.__class__.__base_type__(value)
 
-        settings = {'repeat': False, 'wait': None, 'expression': None, 'url': None, 'worker': None, 'context': None}
+        settings = {'repeat': False, 'wait': None, 'url': None, 'worker': None, 'context': None}
 
         queue_name, queue_arguments = self.split_value(safe_value)
 
@@ -147,21 +139,21 @@ class AtomicMessageQueue(AtomicVariable[str]):
 
         if self.__initialized:
             with self._semaphore:
-                if variable not in self._queue_values:
-                    self._queue_values[variable] = []
+                if variable not in self._endpoint_messages:
+                    self._endpoint_messages[variable] = []
 
                 if variable not in self._settings:
                     self._settings[variable] = settings
 
-                if variable not in self._queue_clients:
-                    self._queue_clients[variable] = self.create_client(variable, settings)
+                if variable not in self._endpoint_clients:
+                    self._endpoint_clients[variable] = self.create_client(variable, settings)
 
             return
 
-        self._queue_values = {variable: []}
+        self._endpoint_messages = {variable: []}
         self._settings = {variable: settings}
         self._zmq_context = zmq.Context()
-        self._queue_clients = {variable: self.create_client(variable, settings)}
+        self._endpoint_clients = {variable: self.create_client(variable, settings)}
         self.__initialized = True
 
     @classmethod
@@ -259,7 +251,7 @@ class AtomicMessageQueue(AtomicVariable[str]):
     def destroy(cls: Type['AtomicMessageQueue']) -> None:
         try:
             instance = cast(AtomicMessageQueue, cls.get())
-            queue_clients = getattr(instance, '_queue_clients', None)
+            queue_clients = getattr(instance, '_endpoint_clients', None)
 
             if queue_clients is not None:
                 variables = list(queue_clients.keys())[:]
@@ -300,13 +292,13 @@ class AtomicMessageQueue(AtomicVariable[str]):
                     'context': self._settings[variable]['context'],
                 }
 
-                self._queue_clients[variable].send_json(request)
+                self._endpoint_clients[variable].send_json(request)
 
                 response = None
 
                 while True:
                     try:
-                        response = self._queue_clients[variable].recv_json(flags=zmq.NOBLOCK)
+                        response = self._endpoint_clients[variable].recv_json(flags=zmq.NOBLOCK)
                         break
                     except zmq.Again:
                         gsleep(0.1)
@@ -329,13 +321,13 @@ class AtomicMessageQueue(AtomicVariable[str]):
                 'payload': None
             }
 
-            self._queue_clients[variable].send_json(request)
+            self._endpoint_clients[variable].send_json(request)
 
             response = None
 
             while True:
                 try:
-                    response = cast(AsyncMessageResponse, self._queue_clients[variable].recv_json(flags=zmq.NOBLOCK))
+                    response = cast(AsyncMessageResponse, self._endpoint_clients[variable].recv_json(flags=zmq.NOBLOCK))
                     break
                 except zmq.Again:
                     gsleep(0.1)
@@ -343,48 +335,25 @@ class AtomicMessageQueue(AtomicVariable[str]):
             if response is None:
                 raise RuntimeError(f'{self.__class__.__name__}.{variable}: unknown error, no response')
 
+            payload: Optional[str]
             message = response.get('message', None)
             if not response['success']:
-                if message is not None and 'MQRC_NO_MSG_AVAILABLE' in message and self._settings[variable].get('repeat', False) and len(self._queue_values[variable]) > 0:
-                    value = self._queue_values[variable].pop(0)
-                    self._queue_values[variable].append(value)
+                if message is not None and 'MQRC_NO_MSG_AVAILABLE' in message and self._settings[variable].get('repeat', False) and len(self._endpoint_messages[variable]) > 0:
+                    payload = self._endpoint_messages[variable].pop(0)
+                    self._endpoint_messages[variable].append(payload)
 
-                    return value
+                    return payload
 
                 raise RuntimeError(f'{self.__class__.__name__}.{variable}: {message}')
 
-            raw = response.get('payload', None)
-            if raw is None or len(raw) < 1:
+            payload = cast(Optional[str], response.get('payload', None))
+            if payload is None or len(payload) < 1:
                 raise RuntimeError(f'{self.__class__.__name__}.{variable}: payload in response was None')
 
-            content_type = self._settings[variable]['content_type']
-            expression = self._settings[variable]['expression']
-            transform = transformer.available.get(content_type, None)
-
-            if transform is None:
-                raise TypeError(f'{self.__class__.__name__}.{variable}: could not find a transformer for {content_type.name}')
-
-            try:
-                get_values = transform.parser(expression)
-                _, payload = transform.transform(content_type, raw)
-            except TransformerError as e:
-                raise RuntimeError(f'{self.__class__.__name__}.{variable}: {str(e.message)}')
-
-            values = get_values(payload)
-
-            number_of_values = len(values)
-
-            if number_of_values != 1:
-                if number_of_values < 1:
-                    raise RuntimeError(f'{self.__class__.__name__}.{variable}: "{expression}" returned no values')
-                elif number_of_values > 1:
-                    raise RuntimeError(f'{self.__class__.__name__}.{variable}: "{expression}" returned more than one value')
-
-            value = values[0]
             if self._settings[variable].get('repeat', False):
-                self._queue_values[variable].append(value)
+                self._endpoint_messages[variable].append(payload)
 
-            return value
+            return payload
 
     def __setitem__(self, variable: str, value: Optional[str]) -> None:
         pass
@@ -393,12 +362,12 @@ class AtomicMessageQueue(AtomicVariable[str]):
         with self._semaphore:
             try:
                 del self._settings[variable]
-                del self._queue_values[variable]
+                del self._endpoint_messages[variable]
                 try:
-                    self._queue_clients[variable].disconnect(self._zmq_url)
+                    self._endpoint_clients[variable].disconnect(self._zmq_url)
                 except zmq.ZMQError:
                     pass
-                del self._queue_clients[variable]
+                del self._endpoint_clients[variable]
             except KeyError:
                 pass
 
