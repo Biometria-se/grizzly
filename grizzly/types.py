@@ -1,4 +1,4 @@
-from enum import Enum, auto
+from enum import Enum
 from typing import Callable, Optional, Tuple, Any, Union, Dict, TypeVar, List, Type, Generic, Set, cast
 from importlib import import_module
 

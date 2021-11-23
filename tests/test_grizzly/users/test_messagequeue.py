@@ -26,7 +26,7 @@ from grizzly.types import ResponseTarget, GrizzlyDict
 from grizzly.testdata.utils import transform
 from grizzly.exceptions import ResponseHandlerError
 from grizzly.steps.helpers import add_save_handler
-from grizzly_extras.async_message import AsyncMessageRequest, AsyncMessageResponse
+from grizzly_extras.async_message import AsyncMessageResponse
 
 from ..fixtures import grizzly_context, request_task, locust_environment, noop_zmq  # pylint: disable=unused-import
 from ..helpers import clone_request

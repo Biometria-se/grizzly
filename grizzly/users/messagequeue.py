@@ -23,7 +23,14 @@ Format of `host` is the following:
 mq://<hostname>:<port>/?QueueManager=<queue manager name>&Channel=<channel name>
 ```
 
-`endpoint` in the request is the name of an MQ queue.
+`endpoint` in the request is the name of an MQ queue. This can also be combined with an expression, if
+a specific message is to be retrieved from the queue. The format of endpoint is:
+
+```plain
+[queue:]<queue_name>[, expression: <expression>]
+```
+
+Where `<expression>` can be of XPATH or JSONPATH type, depending on the specified content type. See example below.
 
 ## Examples
 
@@ -45,6 +52,20 @@ Then get request with name "get-queue-message" from endpoint "INCOMING.MESSAGES"
 ```
 
 In this example, the request will not fail if there is a message on queue within 5 seconds.
+
+### Get message with expression
+
+When specifying an expression, the messages on the queue are first browsed. If any message matches the expression, it is
+later consumed from the queue. If no matching message was found during browsing, it is repeated again after a slight delay,
+up until the specified `message.wait` seconds has elapsed. To use expressions, a content type must be specified for the get
+request, e.g. `"application/xml"`:
+
+```gherkin
+Given a user of type "MessageQueue" load testing "mq://mq.example.com/?QueueManager=QM01&Channel=SRVCONN01"
+And set context variable "message.wait" to "5"
+Then get request with name "get-specific-queue-message" from endpoint "INCOMING.MESSAGES, expression: //document[@id='abc123']"
+And set response content type to "application/xml"
+```
 
 ### Authentication
 
