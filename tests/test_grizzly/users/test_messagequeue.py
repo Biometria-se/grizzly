@@ -576,7 +576,6 @@ class TestMessageQueueUser:
         args, _ = send_json_spy.call_args_list[0]
         ctx : Dict[str, str] = args[1]['context']
         assert ctx['endpoint'] == request.endpoint
-        assert ctx['expression'] == None
 
         # Test with specifying queue: prefix as endpoint
         request.endpoint = 'queue:IFKTEST'
@@ -585,7 +584,6 @@ class TestMessageQueueUser:
         args, _ = send_json_spy.call_args_list[1]
         ctx = args[1]['context']
         assert ctx['endpoint'] == request.endpoint
-        assert ctx['expression'] == None
 
         # Test specifying queue: prefix with expression
         request.endpoint = 'queue:IFKTEST2, expression:/class/student[marks>85]'
@@ -594,7 +592,6 @@ class TestMessageQueueUser:
         args, _ = send_json_spy.call_args_list[2]
         ctx = args[1]['context']
         assert ctx['endpoint'] == request.endpoint
-        assert ctx['expression'] == '/class/student[marks>85]'
 
         # Test specifying queue: prefix with expression, and spacing
         request.endpoint = 'queue: IFKTEST2  , expression: /class/student[marks>85]'
@@ -603,7 +600,6 @@ class TestMessageQueueUser:
         args, _ = send_json_spy.call_args_list[3]
         ctx = args[1]['context']
         assert ctx['endpoint'] == request.endpoint
-        assert ctx['expression'] == '/class/student[marks>85]'
 
         # Test specifying queue without prefix, with expression
         request.endpoint = 'IFKTEST3, expression:/class/student[marks<55]'
@@ -612,7 +608,6 @@ class TestMessageQueueUser:
         args, _ = send_json_spy.call_args_list[4]
         ctx = args[1]['context']
         assert ctx['endpoint'] == request.endpoint
-        assert ctx['expression'] == '/class/student[marks<55]'
 
         # Test error when missing expression: prefix
         request.endpoint = 'IFKTEST3, /class/student[marks<55]'

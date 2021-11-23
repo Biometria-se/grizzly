@@ -266,7 +266,7 @@ class TestAsyncMessageQueueHandler:
 
         with pytest.raises(AsyncMessageError) as mqe:
             handler._request(request)
-        assert 'no queue specified' in str(mqe)
+        assert 'no endpoint specified' in str(mqe)
 
         request.update({
             'action': 'PUT',
@@ -404,8 +404,7 @@ class TestAsyncMessageQueueHandler:
                 'cert_label': 'thecertlabel',
                 'ssl_cipher': 'thecipher',
                 'message_wait': 1,
-                'endpoint': 'theendpoint',
-                'expression': "//actor[@id='3']",
+                'endpoint': "theendpoint, expression: //actor[@id='3']",
                 'content_type': 'xml'
             },
         }
@@ -418,13 +417,13 @@ class TestAsyncMessageQueueHandler:
         assert response['response_length'] == len(queue_messages['id1'].payload)
 
         # Match second message
-        request['context']['expression'] = "//singer[@id='9']"
+        request['context']['endpoint'] = "theendpoint, expression: //singer[@id='9']"
         response = handlers[request['action']](handler, request)
         assert response['payload'] == queue_messages['id2'].payload
         assert response['response_length'] == len(queue_messages['id2'].payload)
 
         # Match no message = timeout
-        request['context']['expression'] = "//singer[@id='NOTEXIST']"
+        request['context']['endpoint'] = "theendpoint, expression: //singer[@id='NOTEXIST']"
         with pytest.raises(AsyncMessageError) as mqe:
             response = handlers[request['action']](handler, request)
             assert 'timeout while waiting for matching message' in str(mqe)
@@ -467,19 +466,19 @@ class TestAsyncMessageQueueHandler:
         request['context']['content_type'] = "json"
 
         # Match second message
-        request['context']['expression'] = "$.singers[?(@.id='9')]"
+        request['context']['endpoint'] = "theendpoint, expression: $.singers[?(@.id='9')]"
         response = handlers[request['action']](handler, request)
         assert response['payload'] == queue_messages['id2'].payload
         assert response['response_length'] == len(queue_messages['id2'].payload)
 
         # Match first message
-        request['context']['expression'] = "$.actors[?(@.name='Pernilla August')]"
+        request['context']['endpoint'] = "theendpoint, expression: $.actors[?(@.name='Pernilla August')]"
         response = handlers[request['action']](handler, request)
         assert response['payload'] == queue_messages['id1'].payload
         assert response['response_length'] == len(queue_messages['id1'].payload)
 
         # Match no message = timeout
-        request['context']['expression'] = "$.singers[?(@.id='NOTEXIST')]"
+        request['context']['endpoint'] = "theendpoint, expression: $.singers[?(@.id='NOTEXIST')]"
         with pytest.raises(AsyncMessageError) as mqe:
             response = handlers[request['action']](handler, request)
             assert 'timeout while waiting for matching message' in str(mqe)
