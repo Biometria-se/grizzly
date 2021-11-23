@@ -58,7 +58,7 @@ def test_parse_response_content_type() -> None:
     p = compile(
         'content type is "{content_type:TransformerContentType}"',
         extra_types=dict(
-            TransformerContentType=str_response_content_type,
+            TransformerContentType=TransformerContentType.from_string,
         ),
     )
 

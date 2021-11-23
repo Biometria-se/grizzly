@@ -60,9 +60,9 @@ import zmq
 
 from gevent import sleep as gsleep
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
-from grizzly_extras.transformer import transformer, TransformerError
+from grizzly_extras.transformer import transformer, TransformerError, TransformerContentType
 
-from ...types import bool_typed, str_response_content_type, AtomicVariable
+from ...types import bool_typed, AtomicVariable
 from ...context import GrizzlyContext
 from ..utils import resolve_variable
 
@@ -125,7 +125,7 @@ class AtomicMessageQueue(AtomicVariable[str]):
     _zmq_url = 'tcp://127.0.0.1:5554'
     _zmq_context: zmq.Context
 
-    arguments: Dict[str, Any] = {'repeat': bool_typed, 'url': str, 'expression': str, 'wait': int, 'content_type': str_response_content_type}
+    arguments: Dict[str, Any] = {'repeat': bool_typed, 'url': str, 'expression': str, 'wait': int, 'content_type': TransformerContentType.from_string}
 
     def __init__(self, variable: str, value: str):
         if pymqi.__name__ == 'grizzly_extras.dummy_pymqi':

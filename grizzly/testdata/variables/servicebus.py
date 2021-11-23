@@ -60,9 +60,9 @@ import zmq
 
 from gevent import sleep as gsleep
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
-from grizzly_extras.transformer import transformer, TransformerError
+from grizzly_extras.transformer import transformer, TransformerError, TransformerContentType
 
-from ...types import AtomicVariable, bool_typed, str_response_content_type
+from ...types import AtomicVariable, bool_typed
 from ...context import GrizzlyContext
 from ..utils import resolve_variable
 
@@ -201,7 +201,7 @@ class AtomicServiceBus(AtomicVariable[str]):
         'url': atomicservicebus_url,
         'expression': str,
         'wait': int,
-        'content_type': str_response_content_type,
+        'content_type': TransformerContentType.from_string,
         'endpoint_name': atomicservicebus_endpoint,
     }
 

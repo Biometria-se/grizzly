@@ -87,17 +87,6 @@ def int_rounded_float_typed(value: str) -> int:
     return int(round(float(value)))
 
 
-def str_response_content_type(value: str) -> TransformerContentType:
-    if value.strip() in ['application/json', 'json']:
-        return TransformerContentType.JSON
-    elif value.strip() in ['application/xml', 'xml']:
-        return TransformerContentType.XML
-    elif value.strip() in ['text/plain', 'plain']:
-        return TransformerContentType.PLAIN
-    else:
-        raise ValueError(f'"{value}" is an unknown response content type')
-
-
 class AbstractAtomicClass:
     pass
 

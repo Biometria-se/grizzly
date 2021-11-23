@@ -8,7 +8,7 @@ from behave import register_type, when, then  # pylint: disable=no-name-in-modul
 
 from ...context import GrizzlyContext
 from ...task import RequestTask
-from ...types import ResponseTarget, str_response_content_type
+from ...types import ResponseTarget
 from ..helpers import add_save_handler, add_validation_handler, add_request_task_response_status_codes
 
 from grizzly_extras.transformer import TransformerContentType
@@ -33,7 +33,7 @@ def parse_response_target(text: str) -> ResponseTarget:
 register_type(
     Condition=parse_condition,
     ResponseTarget=parse_response_target,
-    TransformerContentType=str_response_content_type,
+    TransformerContentType=TransformerContentType.from_string,
 )
 
 
