@@ -1,6 +1,7 @@
 from typing import Optional, Generator, Dict, cast
 from time import monotonic as time, sleep
 from contextlib import contextmanager
+from re import sub as resub
 
 from grizzly_extras.transformer import transformer, TransformerError, TransformerContentType
 
@@ -190,11 +191,22 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
         if self.qmgr is None:
             raise AsyncMessageError('not connected')
 
-        queue_name = request.get('context', {}).get('endpoint', None)
-        if queue_name is None:
-            raise AsyncMessageError('no queue specified')
+        endpoint = request.get('context', {}).get('endpoint', None)
+        if endpoint is None:
+            raise AsyncMessageError('no endpoint specified')
 
-        expression = request.get('context', {}).get('expression', None)
+        # Parse the endpoint to extract queue name / expression parts
+        expression: Optional[str] = None
+
+        # Remove any 'queue:' prefix
+        queue_name = resub(r'^\s*queue:\s*', '', endpoint)
+
+        if ',' in queue_name:
+            queue_name, expression = [x.strip() for x in queue_name.split(',')]
+            if not expression.startswith('expression:'):
+                raise AsyncMessageError(f'Expression part in endpoint needs to have "expression:" in it: {request.endpoint}')
+            # Remove 'expression:' prefix and keep the value
+            expression = resub(r'\s*expression:\s*(.+?)\s*$', r'\1', expression)
 
         action = request['action']
 

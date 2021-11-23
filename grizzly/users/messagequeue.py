@@ -203,25 +203,19 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
 
     def request(self, request: RequestTask) -> None:
 
-        # Parse the endpoint to extract queue name / expression parts
-        queue_name = request.endpoint
+        # Parse the endpoint to validate queue name / expression parts
         expression: Optional[str] = None
-
-        # Remove any 'queue:' prefix
-        queue_name = resub(r'^\s*queue:\s*', '', queue_name)
-
-        if ',' in queue_name:
-            queue_name, expression = [x.strip() for x in queue_name.split(',')]
+        validate_endpoint = resub(r'^\s*queue:\s*', '', request.endpoint)
+        if ',' in validate_endpoint:
+            queue_name, expression = [x.strip() for x in validate_endpoint.split(',')]
             if not expression.startswith('expression:'):
                 logger.error(f'Expression part in endpoint needs to have "expression:" in it: {request.endpoint}')
                 raise StopUser()
-            # Remove 'expression:' prefix and keep the value
-            expression = resub(r'\s*expression:\s*(.+?)\s*$', r'\1', expression)
+            elif len(queue_name) == 0:
+                logger.error(f'Failed to extract queue name from: {request.endpoint}')
+                raise StopUser()
 
         request_name, endpoint, payload = self.render(request)
-
-        # Update queue name again after render() (if it contained variables)
-        queue_name = endpoint
 
         @contextmanager
         def action(am_request: AsyncMessageRequest, name: str, abort: bool, meta: bool = False) -> Generator[None, None, None]:
@@ -314,8 +308,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
             'action': request.method.name,
             'worker': self.worker_id,
             'context': {
-                'endpoint': queue_name,
-                'expression': expression,
+                'endpoint': endpoint,
                 'content_type': request.response.content_type.name.lower(),
             },
             'payload': payload,
