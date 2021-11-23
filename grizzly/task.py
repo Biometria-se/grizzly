@@ -89,7 +89,7 @@ class RequestTask(GrizzlyTask):
 
 @dataclass
 class SleepTask(GrizzlyTask):
-    '''This task executes a `gevent.sleep` in a scenario, and is to manually create delays between steps in a scenario.
+    '''This task executes a `gevent.sleep` and is used to manually create delays between steps in a scenario.
 
     Instances of this task is created with the step expression:
 
