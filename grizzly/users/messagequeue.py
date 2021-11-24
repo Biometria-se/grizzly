@@ -27,10 +27,10 @@ mq://<hostname>:<port>/?QueueManager=<queue manager name>&Channel=<channel name>
 a specific message is to be retrieved from the queue. The format of endpoint is:
 
 ```plain
-[queue:]<queue_name>[, expression: <expression>]
+queue:<queue_name>[, expression:<expression>]
 ```
 
-Where `<expression>` can be of XPATH or JSONPATH type, depending on the specified content type. See example below.
+Where `<expression>` can be of XPath or jsonpath type, depending on the specified content type. See example below.
 
 ## Examples
 
@@ -38,7 +38,7 @@ Example of how to use it in a scenario:
 
 ```gherkin
 Given a user of type "MessageQueue" load testing "mq://mq.example.com/?QueueManager=QM01&Channel=SRVCONN01"
-Then put request "test/queue-message.j2.json" with name "queue-message" to endpoint "INCOMING.MESSAGES"
+Then put request "test/queue-message.j2.json" with name "queue-message" to endpoint "queue:INCOMING.MESSAGES"
 ```
 ### Get message
 
@@ -48,7 +48,7 @@ set the time it should wait with `message.wait` (seconds) context variable.
 ```gherkin
 Given a user of type "MessageQueue" load testing "mq://mq.example.com/?QueueManager=QM01&Channel=SRVCONN01"
 And set context variable "message.wait" to "5"
-Then get request with name "get-queue-message" from endpoint "INCOMING.MESSAGES"
+Then get request with name "get-queue-message" from endpoint "queue:INCOMING.MESSAGES"
 ```
 
 In this example, the request will not fail if there is a message on queue within 5 seconds.
@@ -63,7 +63,7 @@ request, e.g. `"application/xml"`:
 ```gherkin
 Given a user of type "MessageQueue" load testing "mq://mq.example.com/?QueueManager=QM01&Channel=SRVCONN01"
 And set context variable "message.wait" to "5"
-Then get request with name "get-specific-queue-message" from endpoint "INCOMING.MESSAGES, expression: //document[@id='abc123']"
+Then get request with name "get-specific-queue-message" from endpoint "queue:INCOMING.MESSAGES, expression: //document[@id='abc123']"
 And set response content type to "application/xml"
 ```
 
@@ -93,7 +93,6 @@ Default SSL cipher is `ECDHE_RSA_AES_256_GCM_SHA384`, change it by setting `auth
 
 Default certificate label is set to `auth.username`, change it by setting `auth.cert_label` context variable.
 '''
-from re import sub as resub
 from typing import Dict, Any, Generator, Tuple, Optional, cast
 from urllib.parse import urlparse, parse_qs, unquote
 from contextlib import contextmanager
@@ -106,7 +105,9 @@ import zmq
 from gevent import sleep as gsleep
 from locust.exception import StopUser
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse, AsyncMessageError
+from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
 
+from ..types import RequestDirection
 from ..task import RequestTask
 from ..utils import merge_dicts
 from .meta import ContextVariables, ResponseHandler, RequestLogger
@@ -202,31 +203,22 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
 
 
     def request(self, request: RequestTask) -> None:
-
-        # Parse the endpoint to validate queue name / expression parts
-        expression: Optional[str] = None
-        validate_endpoint = resub(r'^\s*queue:\s*', '', request.endpoint)
-        if ',' in validate_endpoint:
-            queue_name, expression = [x.strip() for x in validate_endpoint.split(',')]
-            if not expression.startswith('expression:'):
-                logger.error(f'Expression part in endpoint needs to have "expression:" in it: {request.endpoint}')
-                raise StopUser()
-            elif len(queue_name) == 0:
-                logger.error(f'Failed to extract queue name from: {request.endpoint}')
-                raise StopUser()
-
         request_name, endpoint, payload = self.render(request)
 
         @contextmanager
-        def action(am_request: AsyncMessageRequest, name: str, abort: bool, meta: bool = False) -> Generator[None, None, None]:
+        def action(am_request: AsyncMessageRequest, name: str) -> Generator[Dict[str, Any], None, None]:
             exception: Optional[Exception] = None
+            metadata: Dict[str, Any] = {
+                'abort': False,
+                'meta': False,
+            }
 
             response: Optional[AsyncMessageResponse] = None
 
             try:
                 start_time = time()
 
-                yield
+                yield metadata
 
                 self.zmq_client.send_json(am_request)
 
@@ -261,7 +253,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
                     response = {}
 
                 try:
-                    if not meta:
+                    if not metadata.get('meta', False):
                         self.response_event.fire(
                             name=name,
                             request=request,
@@ -285,7 +277,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
                         exception=exception,
                     )
 
-                if exception is not None and abort:
+                if exception is not None and metadata.get('abort', False):
                     try:
                         self.zmq_client.disconnect(self.zmq_url)
                     except:
@@ -300,7 +292,11 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
             with action({
                 'action': 'CONN',
                 'context': self.am_context
-            }, self.am_context['connection'], abort=True, meta=True):
+            }, self.am_context['connection']) as metadata:
+                metadata.update({
+                    'meta': True,
+                    'abort': True,
+                })
                 self.zmq_client = self.zmq_context.socket(zmq.REQ)
                 self.zmq_client.connect(self.zmq_url)
 
@@ -314,5 +310,22 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
             'payload': payload,
         }
 
-        with action(am_request, name, abort=request.scenario.stop_on_failure):
-            pass
+        with action(am_request, name) as metadata:
+            metadata['abort'] = True
+            # Parse the endpoint to validate queue name / expression parts
+            try:
+                arguments = parse_arguments(request.endpoint, ':')
+            except ValueError as e:
+                raise RuntimeError(str(e)) from e
+
+            if 'queue' not in arguments:
+                raise RuntimeError('queue name must be prefixed with queue:')
+
+            unsupported_arguments = get_unsupported_arguments(['queue', 'expression'], arguments)
+            if len(unsupported_arguments) > 0:
+                raise RuntimeError(f'arguments {", ".join(unsupported_arguments)} is not supported')
+
+            if 'expression' in arguments and request.method.direction != RequestDirection.FROM:
+                raise RuntimeError('argument "expression" is not allowed when sending to an endpoint')
+
+            metadata['abort'] = request.scenario.stop_on_failure

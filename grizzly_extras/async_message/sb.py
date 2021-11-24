@@ -7,6 +7,8 @@ from azure.servicebus import ServiceBusClient, ServiceBusMessage, TransportType,
 from azure.servicebus.amqp import AmqpMessageBodyType
 from azure.servicebus.amqp._amqp_message import DictMixin
 
+from ..arguments import parse_arguments, get_unsupported_arguments
+
 from . import (
     AsyncMessageHandler,
     AsyncMessageRequestHandler,
@@ -52,26 +54,22 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         endpoint_name: str
         subscription_name: Optional[str] = None
 
-        endpoint_type, endpoint_details = [v.strip() for v in endpoint.split(':', 1)]
+        arguments = parse_arguments(endpoint, ':')
 
-        if endpoint_type not in ['queue', 'topic']:
-            raise AsyncMessageError(f'only support for endpoint types queue and topic, not {endpoint_type}')
+        if 'queue' not in arguments and 'topic' not in arguments:
+            raise AsyncMessageError(f'only support for endpoint types queue and topic, not {", ".join(arguments.keys())}')
 
-        if ',' in endpoint_details:
-            if instance_type != 'receiver':
-                raise AsyncMessageError(f'additional arguments in endpoint is not supported for {instance_type}')
+        endpoint_type = 'topic' if 'topic' in arguments else 'queue'
 
-            endpoint_name, endpoint_details = [v.strip() for v in endpoint_details.split(',', 1)]
+        if instance_type != 'receiver' and len(arguments) > 1:
+            raise AsyncMessageError(f'additional arguments in endpoint is not supported for {instance_type}')
 
-            detail_type, detail_value = [v.strip() for v in endpoint_details.split(':', 1)]
+        unsupported_arguments = get_unsupported_arguments(['queue', 'topic', 'subscription'], arguments)
+        if len(unsupported_arguments) > 0:
+            raise AsyncMessageError(f'arguments {", ".join(unsupported_arguments)} is not supported')
 
-            if detail_type != 'subscription':
-                raise AsyncMessageError(f'argument {detail_type} is not supported')
-
-            if len(detail_value) > 0:
-                subscription_name = detail_value
-        else:
-            endpoint_name = endpoint_details
+        endpoint_name = arguments.get(endpoint_type, None)
+        subscription_name = arguments.get('subscription', None)
 
         if endpoint_type == 'topic' and subscription_name is None and instance_type == 'receiver':
             raise AsyncMessageError('endpoint needs to include subscription when receiving messages from a topic')

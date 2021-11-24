@@ -107,36 +107,42 @@ def test_atomicservicebus_endpoint() -> None:
     endpoint = 'topic:document-in, asdf:subscription'
     with pytest.raises(ValueError) as ve:
         atomicservicebus_endpoint(endpoint)
-    assert 'AtomicServiceBus: argument asdf is not supported' in str(ve)
+    assert 'AtomicServiceBus: arguments asdf is not supported' in str(ve)
 
     endpoint = 'topic:document-in, subscription:'
     with pytest.raises(ValueError) as ve:
         atomicservicebus_endpoint(endpoint)
-    assert 'AtomicServiceBus: endpoint needs to include subscription when receiving messages from a topic' in str(ve)
+    assert 'AtomicServiceBus: invalid value for argument "subscription"' in str(ve)
 
     endpoint = 'queue:document-in, subscription:application-x'
     with pytest.raises(ValueError) as ve:
         atomicservicebus_endpoint(endpoint)
     assert 'AtomicServiceBus: additional arguments in endpoint is only supported for topic' in str(ve)
 
-    endpoint = 'queue:{{ queue_name }}'
+    endpoint = 'queue:"{{ queue_name }}"'
     with pytest.raises(ValueError) as ve:
         atomicservicebus_endpoint(endpoint)
     assert 'AtomicServiceBus: value contained variable "queue_name" which has not been set' in str(ve)
 
-    endpoint = 'queue:$conf::sb.endpoint.queue'
+    endpoint = 'queue:"$conf::sb.endpoint.queue"'
     with pytest.raises(ValueError) as ve:
         atomicservicebus_endpoint(endpoint)
     assert 'AtomicServiceBus: configuration variable "sb.endpoint.queue" is not set' in str(ve)
 
     try:
         grizzly = GrizzlyContext()
+
+        endpoint = 'queue:"{{ queue_name }}"'
+        grizzly.state.variables['queue_name'] = 'test-queue'
+        assert atomicservicebus_endpoint(endpoint) == 'queue:test-queue'
+
+        endpoint = 'queue:"$conf::sb.endpoint.queue"'
         grizzly.state.configuration['sb.endpoint.queue'] = 'test-queue'
         assert atomicservicebus_endpoint(endpoint) == 'queue:test-queue'
 
         grizzly.state.configuration['sb.endpoint.subscription'] = 'test-subscription'
         grizzly.state.configuration['sb.endpoint.topic'] = 'test-topic'
-        endpoint = 'topic:$conf::sb.endpoint.topic,subscription:$conf::sb.endpoint.subscription'
+        endpoint = 'topic:"$conf::sb.endpoint.topic",subscription:"$conf::sb.endpoint.subscription"'
 
         assert atomicservicebus_endpoint(endpoint) == 'topic:test-topic, subscription:test-subscription'
     finally:
@@ -145,7 +151,7 @@ def test_atomicservicebus_endpoint() -> None:
         except:
             pass
 
-    endpoint = 'queue:$env::QUEUE_NAME'
+    endpoint = 'queue:"$env::QUEUE_NAME"'
     with pytest.raises(ValueError) as ve:
         atomicservicebus_endpoint(endpoint)
     assert 'AtomicServiceBus: environment variable "QUEUE_NAME" is not set' in str(ve)
@@ -153,7 +159,6 @@ def test_atomicservicebus_endpoint() -> None:
 
     endpoint = 'topic:document-in, subscription:application-x'
     assert atomicservicebus_endpoint(endpoint) == endpoint
-
 
 
 class TestAtomicServiceBus:

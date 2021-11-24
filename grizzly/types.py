@@ -116,53 +116,6 @@ class AtomicVariable(Generic[T], AbstractAtomicClass):
 
         return cls.__instance
 
-    @classmethod
-    def split_value(cls, value: str, separator: str = '|') -> Tuple[str, str]:
-        return cast(Tuple[str, str], tuple([v.strip() for v in value.split(separator, 1)]))
-
-    @classmethod
-    def parse_arguments(cls, arguments: str) -> Dict[str, Any]:
-        if '=' not in arguments or (arguments.count('=') > 1 and (arguments.count('"') < 2 and arguments.count("'") < 2) and ', ' not in arguments):
-            raise ValueError(f'{cls.__name__}: incorrect format in arguments: "{arguments}"')
-
-        parsed: Dict[str, Any] = {}
-
-        for argument in arguments.split(','):
-            argument = argument.strip()
-
-            if len(argument) < 1:
-                raise ValueError(f'{cls.__name__}: incorrect format for arguments: "{arguments}"')
-
-            if '=' not in argument:
-                raise ValueError(f'{cls.__name__}: incorrect format for argument: "{argument}"')
-
-            [key, value] = argument.split('=', 1)
-
-            key = key.strip()
-            if '"' in key or "'" in key or ' ' in key:
-                raise ValueError(f'{cls.__name__}: no quotes or spaces allowed in argument names')
-
-            value = value.strip()
-
-            start_quote: Optional[str] = None
-
-            if value[0] in ['"', "'"]:
-                if value[-1] != value[0]:
-                    raise ValueError(f'{cls.__name__}: value is incorrectly quoted: "{value}"')
-                start_quote = value[0]
-                value = value[1:]
-
-            if value[-1] in ['"', "'"]:
-                if start_quote is None:
-                    raise ValueError(f'{cls.__name__}: value is incorrectly quoted: "{value}"')
-                value = value[:-1]
-
-            if start_quote is None and ' ' in value:
-                raise ValueError(f'{cls.__name__}: value needs to be quoted: "{value}"')
-
-            parsed[key] = value
-
-        return parsed
 
     @classmethod
     def get(cls) -> 'AtomicVariable[T]':

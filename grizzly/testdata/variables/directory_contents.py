@@ -37,14 +37,19 @@ from typing import Dict, List, Any, Type, Optional, cast
 from pathlib import Path
 from random import randint
 
+from grizzly_extras.arguments import split_value, parse_arguments
+
 from ...types import bool_typed, AtomicVariable
 
 def atomicdirectorycontents__base_type__(value: str) -> str:
     grizzly_context_requests = os.path.join(os.environ.get('GRIZZLY_CONTEXT_ROOT', ''), 'requests')
     if '|' in value:
-        [directory_value, directory_arguments] = AtomicDirectoryContents.split_value(value)
+        [directory_value, directory_arguments] = split_value(value)
 
-        arguments = AtomicDirectoryContents.parse_arguments(directory_arguments)
+        try:
+            arguments = parse_arguments(directory_arguments)
+        except ValueError as e:
+            raise ValueError(f'AtomicDirectoryContents: {str(e)}') from e
 
         for argument_name, argument_value in arguments.items():
             if argument_name not in AtomicDirectoryContents.arguments:
@@ -82,9 +87,9 @@ class AtomicDirectoryContents(AtomicVariable[str]):
         settings = {'repeat': False, 'random': False}
 
         if '|' in safe_value:
-            directory, directory_arguments = self.split_value(safe_value)
+            directory, directory_arguments = split_value(safe_value)
 
-            arguments = self.parse_arguments(directory_arguments)
+            arguments = parse_arguments(directory_arguments)
 
             for argument, caster in self.__class__.arguments.items():
                 if argument in arguments:

@@ -53,7 +53,9 @@ class AtomicRandomInteger(AtomicVariable[int]):
     _max: Dict[str, int]
 
     def __init__(self, variable: str, value: str) -> None:
-        minimum, maximum = [int(v) for v in value.split('..', 1)]
+        safe_value = self.__class__.__base_type__(value)
+        minimum, maximum = [int(v) for v in safe_value.split('..', 1)]
+
         super().__init__(variable, minimum)
 
         if self.__initialized:

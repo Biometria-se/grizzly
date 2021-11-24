@@ -35,6 +35,8 @@ from typing import Dict, List, Any, Callable, Optional, Set, Type, cast
 from random import randint, choice
 from string import ascii_letters
 
+from grizzly_extras.arguments import split_value, parse_arguments
+
 from ...types import bool_typed, int_rounded_float_typed, AtomicVariable
 
 
@@ -43,9 +45,12 @@ def atomicrandomstring__base_type__(value: str) -> str:
         raise ValueError(f'AtomicRandomString: no string pattern specified')
 
     if '|' in value:
-        string_pattern, string_arguments = AtomicRandomString.split_value(value)
+        string_pattern, string_arguments = split_value(value)
 
-        arguments = AtomicRandomString.parse_arguments(string_arguments)
+        try:
+            arguments = parse_arguments(string_arguments)
+        except ValueError as e:
+            raise ValueError(f'AtomicRandomString: {str(e)}') from e
 
         for argument, v in arguments.items():
             if argument not in AtomicRandomString.arguments:
@@ -91,9 +96,9 @@ class AtomicRandomString(AtomicVariable[str]):
         settings = {'upper': False, 'count': 1}
 
         if '|' in safe_value:
-            string_pattern, string_arguments = self.split_value(safe_value)
+            string_pattern, string_arguments = split_value(safe_value)
 
-            arguments = self.parse_arguments(string_arguments)
+            arguments = parse_arguments(string_arguments)
 
             for argument, caster in self.__class__.arguments.items():
                 if argument in arguments:
