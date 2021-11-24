@@ -16,7 +16,7 @@ from requests.models import Response
 
 from grizzly.context import GrizzlyContext
 from grizzly.types import RequestMethod, ResponseTarget, ResponseAction
-from grizzly.task import RequestTask, SleepTask
+from grizzly.task import RequestTask, WaitTask
 from grizzly.exceptions import ResponseHandlerError
 from grizzly.steps.helpers import (
     add_validation_handler,
@@ -135,7 +135,7 @@ def test_add_request_task(behave_context: Context, grizzly_context: Callable, tm
         rows.append(Row(['test'], ['302']))
         behave_context.table = Table(['test'], rows=rows)
 
-        grizzly.scenario.tasks = [SleepTask(sleep=1.0)]
+        grizzly.scenario.tasks = [WaitTask(time=1.0)]
 
         with pytest.raises(ValueError) as e:
             add_request_task(behave_context, method=RequestMethod.PUT, source='template.j2.json')
@@ -618,7 +618,7 @@ def test_add_save_handler(behave_context: Context, locust_environment: Environme
     assert user.context_variables.get('test-variable-payload', 'payload') is None
 
     # previous non RequestTask task
-    grizzly.scenario.tasks.append(SleepTask(sleep=1.0))
+    grizzly.scenario.tasks.append(WaitTask(time=1.0))
 
     grizzly.state.variables['test'] = 'none'
     with pytest.raises(ValueError):

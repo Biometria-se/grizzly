@@ -14,7 +14,7 @@ from jinja2 import Template
 from grizzly.users.meta import ContextVariables, RequestLogger, ResponseHandler
 from grizzly.users.servicebus import ServiceBusUser
 from grizzly.types import RequestMethod
-from grizzly.task import RequestTask, SleepTask
+from grizzly.task import RequestTask, WaitTask
 from grizzly.context import GrizzlyContextScenario
 from grizzly_extras.async_message import AsyncMessageResponse, AsyncMessageError
 
@@ -74,7 +74,7 @@ class TestServiceBusUser:
             scenario.name = 'test'
             scenario.user.class_name = 'ServiceBusUser'
 
-            scenario.add_task(SleepTask(sleep=1.54))
+            scenario.add_task(WaitTask(time=1.54))
             scenario.add_task(RequestTask(RequestMethod.SEND, name='test-send', endpoint='{{ endpoint }}'))
             scenario.add_task(RequestTask(RequestMethod.RECEIVE, name='test-receive', endpoint='queue:test-queue'))
             scenario.add_task(RequestTask(RequestMethod.SEND, name='test-send', endpoint='topic:test-topic'))

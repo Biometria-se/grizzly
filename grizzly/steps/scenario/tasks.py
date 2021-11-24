@@ -1,5 +1,6 @@
 '''This module contains step implementations that describes requests sent by `user_class_name` targeting `host`.'''
 from typing import cast
+from urllib.parse import urlparse
 
 from behave.runner import Context
 from behave import register_type, then  # pylint: disable=no-name-in-module
@@ -7,7 +8,8 @@ from behave import register_type, then  # pylint: disable=no-name-in-module
 from ..helpers import add_request_task
 from ...types import RequestDirection, RequestMethod
 from ...context import GrizzlyContext
-from ...task import PrintTask, SleepTask, TransformerTask
+from ...task import PrintTask, WaitTask, TransformerTask
+from ...task.getter import getterof
 
 from grizzly_extras.transformer import TransformerContentType
 
@@ -198,7 +200,7 @@ def step_task_wait_seconds(context: Context, wait_time: float) -> None:
 
     assert wait_time > 0.0, f'wait time cannot be less than 0.0 seconds'
 
-    grizzly.scenario.add_task(SleepTask(sleep=wait_time))
+    grizzly.scenario.add_task(WaitTask(time=wait_time))
 
 
 @then(u'print message "{message}"')
@@ -250,3 +252,42 @@ def step_task_transform(context: Context, content: str, content_type: Transforme
 
     if '{{' in content and '}}' in content:
         grizzly.scenario.orphan_templates.append(content)
+
+
+@then(u'get "{endpoint}" and save response in "{variable}"')
+def step_task_get_endpoint(context: Context, endpoint: str, variable: str) -> None:
+    '''Get information from another host or endpoint than the scenario is load testing and save the response in a variable.
+
+    Task implementations are found in `grizzly.task.getter` and each implementation is looked up through the scheme in the
+    specified endpoint. If the endpoint is a variable, one have to manually specify the endpoint scheme even though the
+    resolved variable contains the scheme. In this case the manually specified scheme will be removed to the endpoint actually
+    used by the task.
+
+    ```gherkin
+    Then get "https://www.example.org/example.json" and save response in "example_openapi"
+    Then get "http://{{ endpoint }}" and save response in "endpoint_result"
+    ```
+
+    Args:
+        endpoint (str): information about where to get information, see the specific getter task implementations for more information
+        variable (str): name of, initialized, variable where response will be saved in
+    '''
+    grizzly = cast(GrizzlyContext, context.grizzly)
+
+    scheme = urlparse(endpoint).scheme
+
+    assert scheme is not None and len(scheme) > 0, f'could not find scheme in "{endpoint}"'
+
+    getter = getterof.available.get(scheme, None)
+
+    assert getter is not None, f'no getter task registered for {scheme}'
+
+    if '{{' in endpoint and '}}' in endpoint:
+        grizzly.scenario.orphan_templates.append(endpoint)
+        index = len(scheme) + 3
+        endpoint = endpoint[index:]
+
+    grizzly.scenario.add_task(getter(
+        endpoint=endpoint,
+        variable=variable,
+    ))

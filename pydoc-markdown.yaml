@@ -12,7 +12,6 @@ processors:
     expression: not name.startswith('_') and not name.startswith('parse_') and not name.startswith('grizzly.users.meta') and default()
     documented_only: true
   - type: smart
-  - type: crossref
 renderer:
   type: mkdocs
   pages:
@@ -36,8 +35,24 @@ renderer:
         name: cli
         source: docs/cli.md
       - title: Tasks
-        contents:
-        - grizzly.task.*
+        children:
+        - title: Request
+          contents:
+          - grizzly.task.request
+        - title: Wait
+          contents:
+          - grizzly.task.wait
+        - title: Print
+          contents:
+          - grizzly.task.print
+        - title: Transformer
+          contents:
+          - grizzly.task.transformer
+        - title: Getter
+          children:
+            - title: HTTP
+              contents:
+              - grizzly.task.getter.http
       - title: Variables
         children:
         - title: Environment configuration

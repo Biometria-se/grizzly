@@ -168,6 +168,7 @@ def grizzly_context(request_task: Tuple[str, str, RequestTask]) -> Generator[Gri
         request_task[-1].name = task_type.__name__
 
         user_type.host = host
+        user_type._scenario = request_task[-1].scenario
         user = user_type(environment)
 
         if not no_tasks:
