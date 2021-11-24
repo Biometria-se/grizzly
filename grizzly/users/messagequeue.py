@@ -104,6 +104,7 @@ import zmq
 
 from gevent import sleep as gsleep
 from locust.exception import StopUser
+from grizzly.types import RequestDirection
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse, AsyncMessageError
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
 

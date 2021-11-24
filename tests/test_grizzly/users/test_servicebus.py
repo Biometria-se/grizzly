@@ -245,6 +245,7 @@ class TestServiceBusUser:
         _, kwargs = response_event_fire_spy.call_args_list[1]
         assert kwargs.get('name', None) == f'{scenario.identifier} {task.name}'
         assert kwargs.get('request', None) is task
+
         metadata, payload = kwargs.get('context', (None, None,))
         assert metadata is None
         assert payload is None
@@ -259,6 +260,7 @@ class TestServiceBusUser:
         assert kwargs.get('context', None) == user._context
         exception = kwargs.get('exception', None)
         assert 'unknown error' in str(exception)
+
         args, _ = send_json_spy.call_args_list[0]
         assert args[0] == {
             'worker': 'asdf-asdf-asdf',
@@ -294,6 +296,7 @@ class TestServiceBusUser:
         _, kwargs = response_event_fire_spy.call_args_list[2]
         assert kwargs.get('name', None) == f'{scenario.identifier} {task.name}'
         assert kwargs.get('request', None) is task
+
         metadata, payload = kwargs.get('context', (None, None,))
         assert metadata == {'meta': True}
         assert payload is 'hello'
@@ -307,8 +310,8 @@ class TestServiceBusUser:
         assert kwargs.get('response_length', None) == 133
         assert kwargs.get('context', None) == user._context
         assert kwargs.get('exception', '') is None
+
         args, _ = send_json_spy.call_args_list[1]
-        print(args[0])
         assert args[0] == {
             'worker': 'asdf-asdf-asdf',
             'action': 'RECEIVE',

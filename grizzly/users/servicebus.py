@@ -159,16 +159,20 @@ class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
             'context': context,
         }
 
-        with self.async_action(task, request, name, meta=True):
-            pass
+        with self.async_action(task, request, name) as metadata:
+            metadata['meta'] = True
 
         self.hellos.add(description)
 
     @contextmanager
-    def async_action(self, task: RequestTask, request: AsyncMessageRequest, name: str, meta: bool = False) -> Generator[None, None, None]:
+    def async_action(self, task: RequestTask, request: AsyncMessageRequest, name: str) -> Generator[Dict[str, bool], None, None]:
         request.update({'worker': self.worker_id})
         connection = 'sender' if task.method.direction == RequestDirection.TO else 'receiver'
         request['context'].update({'connection': connection})
+        metadata: Dict[str, bool] = {
+            'abort': False,
+            'meta': False,
+        }
 
         response: Optional[AsyncMessageResponse] = None
         exception: Optional[Exception] = None
@@ -176,7 +180,7 @@ class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
         try:
             start_time = time()
 
-            yield
+            yield metadata
 
             self.zmq_client.send_json(request)
 
@@ -203,7 +207,7 @@ class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
                 response = {}
 
             try:
-                if not meta:
+                if not metadata.get('meta', False):
                     self.response_event.fire(
                         name=f'{task.scenario.identifier} {task.name}',
                         request=task,
@@ -228,7 +232,7 @@ class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
                     exception=exception,
                 )
 
-        if exception is not None and not meta and task.scenario.stop_on_failure:
+        if exception is not None and not metadata.get('meta', False) and task.scenario.stop_on_failure:
             try:
                 self.zmq_client.disconnect(self.zmq_url)
             except:
@@ -254,7 +258,12 @@ class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
             'payload': payload,
         }
 
-        with self.async_action(request, am_request, name):
+        with self.async_action(request, am_request, name) as metadata:
             if request.method not in [RequestMethod.SEND, RequestMethod.RECEIVE]:
+                metadata['abort'] = True
                 raise NotImplementedError(f'{self.__class__.__name__}: no implementation for {request.method.name} requests')
+
+            #expression: Optional[str] = None
+            #validate_expression
+
 
