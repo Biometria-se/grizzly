@@ -271,7 +271,7 @@ class TestAsyncMessageQueueHandler:
         request.update({
             'action': 'PUT',
             'context': {
-                'endpoint': 'TEST.QUEUE',
+                'endpoint': 'queue:TEST.QUEUE',
             },
             'payload': 'test payload'
         })
@@ -286,7 +286,7 @@ class TestAsyncMessageQueueHandler:
         request.update({
             'action': 'GET',
             'context': {
-                'endpoint': 'TEST.QUEUE',
+                'endpoint': 'queue:TEST.QUEUE',
                 'message_wait': 10,
             },
         })
@@ -313,7 +313,6 @@ class TestAsyncMessageQueueHandler:
         assert args[0] == 13
 
     def test__request_with_expressions(self, mocker: MockerFixture) -> None:
-
         # Mocked representation of an pymqi Queue message
         class DummyMessage(object):
             def __init__(self, payload: str) -> None:
@@ -404,7 +403,7 @@ class TestAsyncMessageQueueHandler:
                 'cert_label': 'thecertlabel',
                 'ssl_cipher': 'thecipher',
                 'message_wait': 1,
-                'endpoint': "theendpoint, expression: //actor[@id='3']",
+                'endpoint': "queue:theendpoint, expression: //actor[@id='3']",
                 'content_type': 'xml'
             },
         }
@@ -417,13 +416,13 @@ class TestAsyncMessageQueueHandler:
         assert response['response_length'] == len(queue_messages['id1'].payload)
 
         # Match second message
-        request['context']['endpoint'] = "theendpoint, expression: //singer[@id='9']"
+        request['context']['endpoint'] = "queue:theendpoint, expression: //singer[@id='9']"
         response = handlers[request['action']](handler, request)
         assert response['payload'] == queue_messages['id2'].payload
         assert response['response_length'] == len(queue_messages['id2'].payload)
 
         # Match no message = timeout
-        request['context']['endpoint'] = "theendpoint, expression: //singer[@id='NOTEXIST']"
+        request['context']['endpoint'] = "queue:theendpoint, expression: //singer[@id='NOTEXIST']"
         with pytest.raises(AsyncMessageError) as mqe:
             response = handlers[request['action']](handler, request)
             assert 'timeout while waiting for matching message' in str(mqe)
@@ -466,22 +465,33 @@ class TestAsyncMessageQueueHandler:
         request['context']['content_type'] = "json"
 
         # Match second message
-        request['context']['endpoint'] = "theendpoint, expression: $.singers[?(@.id='9')]"
+        request['context']['endpoint'] = "queue:theendpoint, expression: $.singers[?(@.id='9')]"
         response = handlers[request['action']](handler, request)
         assert response['payload'] == queue_messages['id2'].payload
         assert response['response_length'] == len(queue_messages['id2'].payload)
 
         # Match first message
-        request['context']['endpoint'] = "theendpoint, expression: $.actors[?(@.name='Pernilla August')]"
+        request['context']['endpoint'] = "queue:theendpoint, expression: '$.actors[?(@.name='Pernilla August')]'"
         response = handlers[request['action']](handler, request)
         assert response['payload'] == queue_messages['id1'].payload
         assert response['response_length'] == len(queue_messages['id1'].payload)
 
         # Match no message = timeout
-        request['context']['endpoint'] = "theendpoint, expression: $.singers[?(@.id='NOTEXIST')]"
+        request['context']['endpoint'] = "queue:theendpoint, expression: $.singers[?(@.id='NOTEXIST')]"
         with pytest.raises(AsyncMessageError) as mqe:
-            response = handlers[request['action']](handler, request)
-            assert 'timeout while waiting for matching message' in str(mqe)
+            handlers[request['action']](handler, request)
+        assert 'timeout while waiting for matching message' in str(mqe)
+
+        # unsupported arguments
+        request['context']['endpoint'] = "queue:theendpoint, expression: $.singers[?(@.id='NOTEXIST')], argument=False"
+        with pytest.raises(AsyncMessageError) as mqe:
+            handlers[request['action']](handler, request)
+        assert 'incorrect format for argument: "argument=False"' in str(mqe)
+
+        request['context']['endpoint'] = "queue:theendpoint, expression: $.singers[?(@.id='NOTEXIST')], argument:False"
+        with pytest.raises(AsyncMessageError) as mqe:
+            handlers[request['action']](handler, request)
+        assert 'arguments argument is not supported' in str(mqe)
 
     def test_put(self, mocker: MockerFixture) -> None:
         def mocked_request(i: AsyncMessageQueueHandler, request: AsyncMessageRequest) -> AsyncMessageRequest:

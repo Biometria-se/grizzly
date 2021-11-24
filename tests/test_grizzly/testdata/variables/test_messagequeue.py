@@ -35,28 +35,32 @@ def test_atomicmessagequeue__base_type__() -> None:
 
     with pytest.raises(ValueError) as ve:
         atomicmessagequeue__base_type__('| url=""')
-    assert 'AtomicMessageQueue: queue name is not valid: ' in str(ve)
+    assert 'AtomicMessageQueue: incorrect format in arguments: ""' in str(ve)
 
     with pytest.raises(ValueError) as ve:
-        atomicmessagequeue__base_type__('TEST.QUEUE | argument=False')
+        atomicmessagequeue__base_type__('queue: | url=""')
+    assert 'AtomicMessageQueue: invalid value for argument "queue"' in str(ve)
+
+    with pytest.raises(ValueError) as ve:
+        atomicmessagequeue__base_type__('queue:TEST.QUEUE | argument=False')
     assert 'AtomicMessageQueue: url parameter must be specified' in str(ve)
 
     with pytest.raises(ValueError) as ve:
         atomicmessagequeue__base_type__(
-            'TEST.QUEUE|url="mq://mq.example.com/?QueueManager=QM1&Channel=SRV.CONN", argument=False',
+            'queue:TEST.QUEUE|url="mq://mq.example.com/?QueueManager=QM1&Channel=SRV.CONN", argument=False',
         )
     assert 'AtomicMessageQueue: argument argument is not allowed' in str(ve)
 
     with pytest.raises(ValueError) as ve:
         atomicmessagequeue__base_type__(
-            'TEST.QUEUE|url="mq://mq.example.com/?QueueManager=QM1&Channel=SRV.CONN", repeat=True, wait=asdf',
+            'queue:TEST.QUEUE|url="mq://mq.example.com/?QueueManager=QM1&Channel=SRV.CONN", repeat=True, wait=asdf',
         )
     assert "invalid literal for int() with base 10: 'asdf'" in str(ve)
 
     safe_value = atomicmessagequeue__base_type__(
-        'TEST.QUEUE|url="mq://mq.example.com/?QueueManager=QM1&Channel=SRV.CONN", repeat=True, wait=20',
+        'queue:TEST.QUEUE|url="mq://mq.example.com/?QueueManager=QM1&Channel=SRV.CONN", repeat=True, wait=20',
     )
-    assert safe_value == 'TEST.QUEUE | url="mq://mq.example.com/?QueueManager=QM1&Channel=SRV.CONN", repeat=True, wait=20'
+    assert safe_value == 'queue:TEST.QUEUE | url="mq://mq.example.com/?QueueManager=QM1&Channel=SRV.CONN", repeat=True, wait=20'
 
 class TestAtomicMessageQueueNoPymqi:
     def test_no_pymqi_dependencies(self) -> None:
@@ -94,12 +98,12 @@ class TestAtomicMessageQueue:
         try:
             v = AtomicMessageQueue(
                 'test1',
-                'TEST1.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"',
+                'queue:TEST1.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"',
             )
 
             assert v._initialized
             assert 'test1' in v._values
-            assert v._values.get('test1', None) == 'TEST1.QUEUE'
+            assert v._values.get('test1', None) == 'queue:TEST1.QUEUE'
             assert v._endpoint_messages.get('test1', None) == []
             assert v._settings.get('test1', None) == {
                 'repeat': False,
@@ -113,7 +117,7 @@ class TestAtomicMessageQueue:
 
             t = AtomicMessageQueue(
                 'test2',
-                'TEST2.QUEUE | url="mq://mq.example.com?QueueManager=QM2&Channel=SRV.CONN", wait=15',
+                'queue:TEST2.QUEUE | url="mq://mq.example.com?QueueManager=QM2&Channel=SRV.CONN", wait=15',
             )
 
             assert v is t
@@ -122,7 +126,7 @@ class TestAtomicMessageQueue:
             assert len(v._settings.keys()) == 2
             assert len(v._endpoint_clients.keys()) == 2
             assert 'test2' in v._values
-            assert v._values.get('test2', None) == 'TEST2.QUEUE'
+            assert v._values.get('test2', None) == 'queue:TEST2.QUEUE'
             assert v._endpoint_messages.get('test2', None) == []
             assert v._settings.get('test2', None) == {
                 'repeat': False,
@@ -263,7 +267,7 @@ class TestAtomicMessageQueue:
         try:
             v = AtomicMessageQueue(
                 'test',
-                'TEST.QUEUE | repeat=True, url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"',
+                'queue:TEST.QUEUE | repeat=True, url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"',
             )
             assert isinstance(v._endpoint_clients.get('test', None), zmq.Socket)
             assert v._settings.get('test', None) == {
@@ -298,11 +302,11 @@ class TestAtomicMessageQueue:
         try:
             v = AtomicMessageQueue(
                 'test1',
-                'TEST.QUEUE | repeat=True, url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"',
+                'queue:TEST.QUEUE | repeat=True, url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"',
             )
             v = AtomicMessageQueue(
                 'test2',
-                'TEST.QUEUE | repeat=True, url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"',
+                'queue:TEST.QUEUE | repeat=True, url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"',
             )
 
             assert len(v._settings.keys()) == 2
@@ -341,7 +345,7 @@ class TestAtomicMessageQueue:
 
             v = AtomicMessageQueue(
                 'test',
-                'TEST.QUEUE | repeat=True, url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"',
+                'queue:TEST.QUEUE | repeat=True, url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"',
             )
 
             with pytest.raises(RuntimeError) as re:
@@ -358,7 +362,7 @@ class TestAtomicMessageQueue:
 
             v = AtomicMessageQueue(
                 'test',
-                'TEST.QUEUE | repeat=True, url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"',
+                'queue:TEST.QUEUE | repeat=True, url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"',
             )
             with pytest.raises(RuntimeError) as re:
                 v['test']
@@ -468,12 +472,12 @@ class TestAtomicMessageQueue:
         try:
             v = AtomicMessageQueue(
                 'test1',
-                'TEST.QUEUE | repeat=True, url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"',
+                'queue:TEST.QUEUE | repeat=True, url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"',
             )
 
-            assert v['test1'] == 'TEST.QUEUE'
+            assert v['test1'] == 'queue:TEST.QUEUE'
             v['test1'] = 'we <3 ibm mq'
-            assert v['test1'] == 'TEST.QUEUE'
+            assert v['test1'] == 'queue:TEST.QUEUE'
         finally:
             try:
                 AtomicMessageQueue.destroy()
@@ -495,10 +499,10 @@ class TestAtomicMessageQueue:
         try:
             v = AtomicMessageQueue(
                 'test1',
-                'TEST.QUEUE | repeat=True, url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"',
+                'queue:TEST.QUEUE | repeat=True, url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"',
             )
 
-            assert v['test1'] == 'TEST.QUEUE'
+            assert v['test1'] == 'queue:TEST.QUEUE'
             assert len(v._values.keys()) == 1
             del v['test1']
             assert len(v._values.keys()) == 0

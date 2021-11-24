@@ -51,13 +51,13 @@ def step_task_request_text_with_name_to_endpoint(context: Context, method: Reque
         """
     Then get request with name "test-get" from endpoint "/api/test"
 
-    Then send request with name "test-send" to endpoint "receive-queue"
+    Then send request with name "test-send" to endpoint "queue:receive-queue"
         """
         {
             "value": "do something"
         }
         """
-    Then receive request with name "test-receive" from endpoint "receive-queue"
+    Then receive request with name "test-receive" from endpoint "queue:receive-queue"
     ```
 
     Args:
@@ -84,7 +84,7 @@ def step_task_request_file_with_name_endpoint(context: Context, method: RequestM
     '''Creates a named request to an endpoint on `host`, where the payload is defined in a template file.
 
     ```gherkin
-    Then send request "test/request.j2.json" with name "test-send" to endpoint "receive-queue"
+    Then send request "test/request.j2.json" with name "test-send" to endpoint "queue:receive-queue"
     Then post request "test/request.j2.json" with name "test-post" to endpoint "/api/test"
     Then put request "test/request.j2.json" with name "test-put" to endpoint "/api/test"
     ```

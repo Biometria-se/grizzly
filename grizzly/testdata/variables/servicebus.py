@@ -60,6 +60,7 @@ import zmq
 
 from gevent import sleep as gsleep
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
+from grizzly_extras.arguments import split_value, parse_arguments, get_unsupported_arguments
 
 from ...types import AtomicVariable, bool_typed
 from ...context import GrizzlyContext
@@ -70,9 +71,12 @@ def atomicservicebus__base_type__(value: str) -> str:
     if '|' not in value:
         raise ValueError('AtomicServiceBus: initial value must contain arguments')
 
-    endpoint_name, endpoint_arguments = AtomicServiceBus.split_value(value)
+    endpoint_name, endpoint_arguments = split_value(value)
 
-    arguments = AtomicServiceBus.parse_arguments(endpoint_arguments)
+    try:
+        arguments = parse_arguments(endpoint_arguments)
+    except ValueError as e:
+        raise ValueError(f'AtomicServiceBus: {str(e)}') from e
 
     if endpoint_name is None or len(endpoint_name) < 1:
         raise ValueError(f'AtomicServiceBus: endpoint name is not valid: "{endpoint_name}"')
@@ -128,42 +132,41 @@ def atomicservicebus_endpoint(endpoint: str) -> str:
     if ':' not in endpoint:
         raise ValueError(f'AtomicServiceBus: {endpoint} does not specify queue: or topic:')
 
-    endpoint_type, endpoint_details = endpoint.split(':', 1)
-    subscription_name: Optional[str] = None
+    try:
+        arguments = parse_arguments(endpoint, ':')
+    except ValueError as e:
+        raise ValueError(f'AtomicServiceBus: {str(e)}') from e
 
-    if endpoint_type not in ['queue', 'topic']:
-        raise ValueError(f'AtomicServiceBus: only support endpoint types queue and topic, not {endpoint_type}')
+    if 'topic' not in arguments and 'queue' not in arguments:
+        raise ValueError(f'AtomicServiceBus: only support endpoint types queue and topic, not {arguments.keys()}')
 
-    if ',' in endpoint_details:
+    endpoint_type = 'topic' if 'topic' in arguments else 'queue'
+
+    if len(arguments) > 1:
         if endpoint_type != 'topic':
             raise ValueError(f'AtomicServiceBus: additional arguments in endpoint is only supported for topic')
 
-        endpoint_name, endpoint_details = [v.strip() for v in AtomicServiceBus.split_value(endpoint_details, ',')]
-        detail_type, subscription_name = [v.strip() for v in AtomicServiceBus.split_value(endpoint_details, ':')]
+        unsupported_arguments = get_unsupported_arguments(['topic', 'queue', 'subscription'], arguments)
 
-        if detail_type != 'subscription':
-            raise ValueError(f'AtomicServiceBus: argument {detail_type} is not supported')
+        if len(unsupported_arguments) > 0:
+            raise ValueError(f'AtomicServiceBus: arguments {", ".join(unsupported_arguments)} is not supported')
 
-        if len(subscription_name) < 1:
-            subscription_name = None
-    else:
-        endpoint_name = endpoint_details
-
-    if endpoint_type == 'topic' and subscription_name is None:
+    if endpoint_type == 'topic' and arguments.get('subscription', None) is None:
         raise ValueError(f'AtomicServiceBus: endpoint needs to include subscription when receiving messages from a topic')
 
     grizzly = GrizzlyContext()
 
     try:
-        resolved_endpoint_name = resolve_variable(grizzly, endpoint_name)
+        resolved_endpoint_name = resolve_variable(grizzly, arguments[endpoint_type])
     except Exception as e:
         raise ValueError(f'AtomicServiceBus: {str(e)}') from e
 
     endpoint = f'{endpoint_type}:{resolved_endpoint_name}'
 
-    if subscription_name is not None:
+    subscription = arguments.get('subscription', None)
+    if subscription is not None:
         try:
-            resolved_subscription_name = resolve_variable(grizzly, subscription_name)
+            resolved_subscription_name = resolve_variable(grizzly, subscription)
         except Exception as e:
             raise ValueError(f'AtomicServiceBus: {str(e)}') from e
 
@@ -198,9 +201,9 @@ class AtomicServiceBus(AtomicVariable[str]):
 
         settings = {'repeat': False, 'wait': None, 'url': None, 'worker': None, 'context': None, 'endpoint_name': None}
 
-        endpoint_name, endpoint_arguments = self.split_value(safe_value)
+        endpoint_name, endpoint_arguments = split_value(safe_value)
 
-        arguments = self.parse_arguments(endpoint_arguments)
+        arguments = parse_arguments(endpoint_arguments)
 
         for argument, caster in self.__class__.arguments.items():
             if argument in arguments:

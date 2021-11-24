@@ -11,7 +11,7 @@ pip3 install grizzly-loadtester[mq]
 
 ## Format
 
-Initial value is the name of the queue on the MQ server specified in argument `url`.
+Initial value is the name of the queue, prefixed with `queue:`, on the MQ server specified in argument `url`.
 
 ## Arguments
 
@@ -41,7 +41,7 @@ All variables in the URL have support for [templating](/grizzly/usage/variables/
 ## Example
 
 ```gherkin
-And value of variable "AtomicMessageQueue.document_id" is "IN.DOCUMENTS | wait=120, url='mqs://mq_subscription:$conf::mq.password@mq.example.com/?QueueManager=QM1&Channel=SRV.CONN', repeat=True"
+And value of variable "AtomicMessageQueue.document_id" is "queue:IN.DOCUMENTS | wait=120, url='mqs://mq_subscription:$conf::mq.password@mq.example.com/?QueueManager=QM1&Channel=SRV.CONN', repeat=True"
 ...
 Given a user of type "RestApi" load testing "http://example.com"
 ...
@@ -60,6 +60,7 @@ import zmq
 
 from gevent import sleep as gsleep
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
+from grizzly_extras.arguments import split_value, parse_arguments
 
 from ...types import bool_typed, AtomicVariable
 from ...context import GrizzlyContext
@@ -75,12 +76,20 @@ def atomicmessagequeue__base_type__(value: str) -> str:
     if '|' not in value:
         raise ValueError('AtomicMessageQueue: initial value must contain arguments')
 
-    queue_name, queue_arguments = AtomicMessageQueue.split_value(value)
+    queue, queue_arguments = split_value(value)
 
-    arguments = AtomicMessageQueue.parse_arguments(queue_arguments)
+    try:
+        arguments = parse_arguments(queue_arguments)
+    except ValueError as e:
+        raise ValueError(f'AtomicMessageQueue: {str(e)}') from e
 
-    if queue_name is None or len(queue_name) < 1:
-        raise ValueError(f'AtomicMessageQueue: queue name is not valid: {queue_name}')
+    try:
+        endpoint = parse_arguments(queue, ':')
+    except ValueError as e:
+        raise ValueError(f'AtomicMessageQueue: {str(e)}') from e
+
+    if 'queue' not in endpoint:
+        raise ValueError(f'AtomicMessageQueue: queue name must be prefixed with queue:')
 
     for argument in ['url']:
         if argument not in arguments:
@@ -100,7 +109,7 @@ def atomicmessagequeue__base_type__(value: str) -> str:
         'wait': arguments.get('wait', None),
     })
 
-    return f'{queue_name} | {queue_arguments}'
+    return f'{queue} | {queue_arguments}'
 
 
 class AtomicMessageQueue(AtomicVariable[str]):
@@ -127,9 +136,9 @@ class AtomicMessageQueue(AtomicVariable[str]):
 
         settings = {'repeat': False, 'wait': None, 'url': None, 'worker': None, 'context': None}
 
-        queue_name, queue_arguments = self.split_value(safe_value)
+        queue_name, queue_arguments = split_value(safe_value)
 
-        arguments = self.parse_arguments(queue_arguments)
+        arguments = parse_arguments(queue_arguments)
 
         for argument, caster in self.__class__.arguments.items():
             if argument in arguments:

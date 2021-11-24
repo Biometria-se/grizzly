@@ -59,6 +59,8 @@ from typing import Dict, List, Any, Type, Optional, cast
 from csv import DictReader
 from random import randint
 
+from grizzly_extras.arguments import split_value, parse_arguments
+
 from ...types import bool_typed, AtomicVariable
 
 
@@ -66,9 +68,12 @@ def atomiccsvrow__base_type__(value: str) -> str:
     grizzly_context_requests = os.path.join(os.environ.get('GRIZZLY_CONTEXT_ROOT', ''), 'requests')
 
     if '|' in value:
-        csv_file, csv_arguments = AtomicCsvRow.split_value(value)
+        csv_file, csv_arguments = split_value(value)
 
-        arguments = AtomicCsvRow.parse_arguments(csv_arguments)
+        try:
+            arguments = parse_arguments(csv_arguments)
+        except ValueError as e:
+            raise ValueError(f'AtomicCsvRow: {str(e)}') from e
 
         for argument, value in arguments.items():
             if argument not in AtomicCsvRow.arguments:
@@ -109,9 +114,8 @@ class AtomicCsvRow(AtomicVariable[Dict[str, Any]]):
         settings = {'repeat': False, 'random': False}
 
         if '|' in safe_value:
-            csv_file, csv_arguments = self.split_value(safe_value)
-
-            arguments = self.parse_arguments(csv_arguments)
+            csv_file, csv_arguments = split_value(safe_value)
+            arguments = parse_arguments(csv_arguments)
 
             for argument, caster in self.__class__.arguments.items():
                 if argument in arguments:

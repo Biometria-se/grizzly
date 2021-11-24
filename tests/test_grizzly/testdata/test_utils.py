@@ -94,7 +94,7 @@ def test__get_variable_value_AtomicMessageQueue(noop_zmq: Callable[[str], None],
         grizzly = GrizzlyContext()
         variable_name = 'AtomicMessageQueue.test'
         grizzly.state.variables[variable_name] = (
-            'TEST.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"'
+            'queue:TEST.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"'
         )
         value, external_dependencies = _get_variable_value(variable_name)
         assert external_dependencies == set(['async-messaged'])
@@ -227,7 +227,7 @@ def test_initialize_testdata_with_payload_context(behave_context: Context, grizz
         grizzly.state.variables['AtomicDate.now'] = 'now'
         if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
             grizzly.state.variables['AtomicMessageQueue.document_id'] = (
-                'TEST.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"'
+                'queue:TEST.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"'
             )
             source['result']['DocumentID'] = '{{ AtomicMessageQueue.document_id }}'
         grizzly.scenario.user.class_name = 'TestUser'
@@ -527,7 +527,7 @@ def test_transform(behave_context: Context, noop_zmq: Callable[[str], None], cle
 
         if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
             grizzly.state.variables['AtomicMessageQueue.document_id'] = (
-                'TEST.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN", repeat=True'
+                'queue:TEST.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN", repeat=True'
             )
             data['AtomicMessageQueue.document_id'] = '__on_consumer__'
 

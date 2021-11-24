@@ -390,6 +390,7 @@ class TestMessageQueueUser:
         response_event_spy = mocker.spy(user.response_event, 'fire')
 
         request = cast(RequestTask, scenario.tasks[-1])
+        request.endpoint = 'queue:test-queue'
         request.method = RequestMethod.GET
         request.source = None
         request.template = None
@@ -418,6 +419,11 @@ class TestMessageQueueUser:
 
         request_event_spy.reset_mock()
         response_event_spy.reset_mock()
+
+        mocker.patch(
+            'grizzly.users.messagequeue.gsleep',
+            autospec=True,
+        )
 
         mocker.patch(
             'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
@@ -459,6 +465,7 @@ class TestMessageQueueUser:
         mocker.patch(
             'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
             side_effect=[
+                zmq.Again,
                 {
                     'success': True,
                     'worker': '0000-1337',
@@ -466,7 +473,7 @@ class TestMessageQueueUser:
                     'response_time': 1337,
                     'metadata': pymqi.MD().get(),
                     'payload': payload,
-                }
+                },
             ],
         )
 
@@ -570,7 +577,7 @@ class TestMessageQueueUser:
             'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
             side_effect=the_side_effect * 6,
         )
-        request.endpoint = 'IFKTEST'
+        request.endpoint = 'queue:IFKTEST'
         user.request(request)
         assert send_json_spy.call_count == 1
         args, _ = send_json_spy.call_args_list[0]
@@ -602,7 +609,7 @@ class TestMessageQueueUser:
         assert ctx['endpoint'] == request.endpoint
 
         # Test specifying queue without prefix, with expression
-        request.endpoint = 'IFKTEST3, expression:/class/student[marks<55]'
+        request.endpoint = 'queue:IFKTEST3, expression:/class/student[marks<55]'
         user.request(request)
         assert send_json_spy.call_count == 5
         args, _ = send_json_spy.call_args_list[4]
@@ -610,9 +617,11 @@ class TestMessageQueueUser:
         assert ctx['endpoint'] == request.endpoint
 
         # Test error when missing expression: prefix
-        request.endpoint = 'IFKTEST3, /class/student[marks<55]'
+        request.endpoint = 'queue:IFKTEST3, /class/student[marks<55]'
         with pytest.raises(StopUser):
             user.request(request)
+
+        assert send_json_spy.call_count == 5
 
         send_json_spy.reset_mock()
         request_event_spy.reset_mock()
@@ -651,9 +660,16 @@ class TestMessageQueueUser:
             }),
         }
 
+        # always throw error when disconnecting, it is ignored
+        mocker.patch(
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.disconnect',
+            side_effect=[zmq.ZMQError] * 10,
+        )
+
         request_event_spy = mocker.spy(user.environment.events.request, 'fire')
 
         request = cast(RequestTask, scenario.tasks[-1])
+        request.endpoint = 'queue:TEST.QUEUE'
 
         user.add_context(remote_variables)
 
@@ -694,7 +710,7 @@ class TestMessageQueueUser:
         user.request(request)
 
         assert request_event_spy.call_count == 1
-        _, kwargs = request_event_spy.call_args_list[0]
+        _, kwargs = request_event_spy.call_args_list[-1]
         assert kwargs['exception'] is not None
         request_event_spy.reset_mock()
 
@@ -718,7 +734,7 @@ class TestMessageQueueUser:
         user.request(request_error)
 
         assert request_event_spy.call_count == 1
-        _, kwargs = request_event_spy.call_args_list[0]
+        _, kwargs = request_event_spy.call_args_list[-1]
         assert kwargs['exception'] is not None
         assert 'no implementation for POST' in str(kwargs['exception'])
         request_event_spy.reset_mock()
@@ -727,7 +743,7 @@ class TestMessageQueueUser:
         user.request(request_error)
 
         assert request_event_spy.call_count == 1
-        _, kwargs = request_event_spy.call_args_list[0]
+        _, kwargs = request_event_spy.call_args_list[-1]
         assert kwargs['exception'] is not None
         request_event_spy.reset_mock()
 
@@ -736,6 +752,38 @@ class TestMessageQueueUser:
             user.request(request_error)
 
         assert request_event_spy.call_count == 1
-        _, kwargs = request_event_spy.call_args_list[0]
+        _, kwargs = request_event_spy.call_args_list[-1]
         assert kwargs['exception'] is not None
         request_event_spy.reset_mock()
+
+        request.scenario.stop_on_failure = False
+        request.endpoint = 'sub:TEST.QUEUE'
+
+        with pytest.raises(StopUser):
+            user.request(request)
+
+        assert request_event_spy.call_count == 1
+        _, kwargs = request_event_spy.call_args_list[-1]
+        exception = kwargs.get('exception', None)
+        assert isinstance(exception, RuntimeError)
+        assert 'queue name must be prefixed with queue:' in str(exception)
+
+        request.endpoint = 'queue:TEST.QUEUE, argument:False'
+        with pytest.raises(StopUser):
+            user.request(request)
+
+        assert request_event_spy.call_count == 2
+        _, kwargs = request_event_spy.call_args_list[-1]
+        exception = kwargs.get('exception', None)
+        assert isinstance(exception, RuntimeError)
+        assert 'arguments argument is not supported' in str(exception)
+
+        request.endpoint = 'queue:TEST.QUEUE, expression:$.test.result'
+        with pytest.raises(StopUser):
+            user.request(request)
+
+        assert request_event_spy.call_count == 3
+        _, kwargs = request_event_spy.call_args_list[-1]
+        exception = kwargs.get('exception', None)
+        assert isinstance(exception, RuntimeError)
+        assert 'argument "expression" is not allowed when sending to an endpoint' in str(exception)

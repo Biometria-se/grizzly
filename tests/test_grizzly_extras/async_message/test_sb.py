@@ -54,7 +54,7 @@ class TestAsyncServiceBusHandler:
 
         with pytest.raises(AsyncMessageError) as ame:
             AsyncServiceBusHandler.get_endpoint_details('receiver', 'topic:test, dummy:test')
-        assert 'argument dummy is not supported' in str(ame)
+        assert 'arguments dummy is not supported' in str(ame)
 
         with pytest.raises(AsyncMessageError) as ame:
             AsyncServiceBusHandler.get_endpoint_details('receiver', 'topic:test')
