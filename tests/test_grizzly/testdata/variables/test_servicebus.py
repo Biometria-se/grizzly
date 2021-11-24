@@ -104,6 +104,11 @@ def test_atomicservicebus_endpoint() -> None:
         atomicservicebus_endpoint(endpoint)
     assert 'AtomicServiceBus: endpoint needs to include subscription when receiving messages from a topic' in str(ve)
 
+    endpoint = 'topic:document-in, queue:document-in'
+    with pytest.raises(ValueError) as ve:
+        atomicservicebus_endpoint(endpoint)
+    assert 'AtomicServiceBus: cannot specify both topic: and queue: in endpoint' in str(ve)
+
     endpoint = 'topic:document-in, asdf:subscription'
     with pytest.raises(ValueError) as ve:
         atomicservicebus_endpoint(endpoint)
@@ -117,7 +122,7 @@ def test_atomicservicebus_endpoint() -> None:
     endpoint = 'queue:document-in, subscription:application-x'
     with pytest.raises(ValueError) as ve:
         atomicservicebus_endpoint(endpoint)
-    assert 'AtomicServiceBus: additional arguments in endpoint is only supported for topic' in str(ve)
+    assert 'AtomicServiceBus: argument subscription is only allowed if endpoint is a topic' in str(ve)
 
     endpoint = 'queue:"{{ queue_name }}"'
     with pytest.raises(ValueError) as ve:
@@ -128,6 +133,16 @@ def test_atomicservicebus_endpoint() -> None:
     with pytest.raises(ValueError) as ve:
         atomicservicebus_endpoint(endpoint)
     assert 'AtomicServiceBus: configuration variable "sb.endpoint.queue" is not set' in str(ve)
+
+    endpoint = 'topic:documents-in, subscription:"$conf::sb.endpoint.subscription"'
+    with pytest.raises(ValueError) as ve:
+        atomicservicebus_endpoint(endpoint)
+    assert 'AtomicServiceBus: configuration variable "sb.endpoint.subscription" is not set' in str(ve)
+
+    endpoint = 'topic:documents-in, subscription:application-x, expression:"{{ expression }}"'
+    with pytest.raises(ValueError) as ve:
+        atomicservicebus_endpoint(endpoint)
+    assert 'AtomicServiceBus: value contained variable "expression" which has not been set' in str(ve)
 
     try:
         grizzly = GrizzlyContext()
@@ -142,9 +157,13 @@ def test_atomicservicebus_endpoint() -> None:
 
         grizzly.state.configuration['sb.endpoint.subscription'] = 'test-subscription'
         grizzly.state.configuration['sb.endpoint.topic'] = 'test-topic'
-        endpoint = 'topic:"$conf::sb.endpoint.topic",subscription:"$conf::sb.endpoint.subscription"'
 
+        endpoint = 'topic:"$conf::sb.endpoint.topic",subscription:"$conf::sb.endpoint.subscription"'
         assert atomicservicebus_endpoint(endpoint) == 'topic:test-topic, subscription:test-subscription'
+
+        endpoint = 'topic:"$conf::sb.endpoint.topic",subscription:"$conf::sb.endpoint.subscription",expression:"{{ queue_name }}"'
+        assert atomicservicebus_endpoint(endpoint) == 'topic:test-topic, subscription:test-subscription, expression:test-queue'
+
     finally:
         try:
             GrizzlyContext.destroy()

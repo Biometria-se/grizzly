@@ -30,7 +30,7 @@ a specific message is to be retrieved from the queue. The format of endpoint is:
 queue:<queue_name>[, expression:<expression>]
 ```
 
-Where `<expression>` can be of XPath or jsonpath type, depending on the specified content type. See example below.
+Where `<expression>` can be a XPath or jsonpath expression, depending on the specified content type. See example below.
 
 ## Examples
 
@@ -58,7 +58,7 @@ In this example, the request will not fail if there is a message on queue within
 When specifying an expression, the messages on the queue are first browsed. If any message matches the expression, it is
 later consumed from the queue. If no matching message was found during browsing, it is repeated again after a slight delay,
 up until the specified `message.wait` seconds has elapsed. To use expressions, a content type must be specified for the get
-request, e.g. `"application/xml"`:
+request, e.g. `application/xml`:
 
 ```gherkin
 Given a user of type "MessageQueue" load testing "mq://mq.example.com/?QueueManager=QM01&Channel=SRVCONN01"
@@ -315,7 +315,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
             metadata['abort'] = True
             # Parse the endpoint to validate queue name / expression parts
             try:
-                arguments = parse_arguments(request.endpoint, ':')
+                arguments = parse_arguments(endpoint, ':')
             except ValueError as e:
                 raise RuntimeError(str(e)) from e
 

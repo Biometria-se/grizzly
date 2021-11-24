@@ -629,7 +629,7 @@ class TestMessageQueueUser:
             user.request(request)
 
         # Test with expression argument but wrong method
-        request.endpoint = 'IFKTEST3, expression:/class/student[marks<55]'
+        request.endpoint = 'queue:IFKTEST3, expression:/class/student[marks<55]'
         request.method = RequestMethod.PUT
 
         with pytest.raises(StopUser):
@@ -654,7 +654,7 @@ class TestMessageQueueUser:
         _, kwargs = response_event_spy.call_args_list[7]
         exception = kwargs.get('exception', None)
         assert isinstance(exception, RuntimeError)
-        assert str(exception) == f'failed to extract queue name from: {request.endpoint}'
+        assert str(exception) == f'invalid value for argument "queue"'
 
         send_json_spy.reset_mock()
         request_event_spy.reset_mock()

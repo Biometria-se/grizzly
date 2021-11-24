@@ -109,11 +109,14 @@ class TestServiceBusUser:
 
         user.hellos = set(['sender=queue:test-queue'])
 
-        task = RequestTask(RequestMethod.SEND, name='test-send', endpoint='queue:{{ queue_name }}')
+        task = RequestTask(RequestMethod.SEND, name='test-send', endpoint='queue:"{{ queue_name }}"')
+        scenario = GrizzlyContextScenario()
+        scenario.name = 'test'
+        scenario.add_task(task)
 
         with caplog.at_level(logging.WARNING):
             user.say_hello(task, task.endpoint)
-        assert 'ServiceBusUser: cannot say hello for test-send when endpoint (queue:{{ queue_name }}) is a template' in caplog.text
+        assert 'ServiceBusUser: cannot say hello for test-send when endpoint is a template' in caplog.text
         assert user.hellos == set(['sender=queue:test-queue'])
         assert async_action_spy.call_count == 0
         caplog.clear()
@@ -130,8 +133,7 @@ class TestServiceBusUser:
         args, kwargs = async_action_spy.call_args_list[0]
 
         assert len(args) == 4
-        assert len(kwargs) == 1
-        assert kwargs.get('meta', False)
+        assert len(kwargs) == 0
         assert args[1] is task
         assert args[2] == {
             'worker': None,
@@ -145,6 +147,7 @@ class TestServiceBusUser:
         assert args[3] == 'sender=topic:test-topic'
 
         task = RequestTask(RequestMethod.RECEIVE, name='test-recv', endpoint='topic:test-topic, subscription:test-subscription')
+        scenario.add_task(task)
 
         user.say_hello(task, task.endpoint)
 
@@ -153,8 +156,7 @@ class TestServiceBusUser:
         args, kwargs = async_action_spy.call_args_list[1]
 
         assert len(args) == 4
-        assert len(kwargs) == 1
-        assert kwargs.get('meta', False)
+        assert len(kwargs) == 0
         assert args[1] is task
         assert args[2] == {
             'worker': None,
@@ -166,6 +168,44 @@ class TestServiceBusUser:
             }
         }
         assert args[3] == 'receiver=topic:test-topic'
+
+        # error handling
+        task.endpoint = 'test-topic'
+        with pytest.raises(RuntimeError) as re:
+            user.say_hello(task, task.endpoint)
+        assert 'incorrect format in arguments: "test-topic"' in str(re)
+
+        task.endpoint = 'subscription:test-subscription'
+        with pytest.raises(RuntimeError) as re:
+            user.say_hello(task, task.endpoint)
+        assert 'endpoint needs to be prefixed with queue: or topic:' in str(re)
+
+        task.endpoint = 'topic:test-topic, queue:test-queue'
+        with pytest.raises(RuntimeError) as re:
+            user.say_hello(task, task.endpoint)
+        assert 'cannot specify both topic: and queue: in endpoint' in str(re)
+
+        task.endpoint = 'queue:test-queue, subscription:test-subscription'
+        with pytest.raises(RuntimeError) as re:
+            user.say_hello(task, task.endpoint)
+        assert 'argument subscription is only allowed if endpoint is a topic' in str(re)
+
+        task.endpoint = 'topic:test-topic, subscription:test-subscription, argument:False'
+        with pytest.raises(RuntimeError) as re:
+            user.say_hello(task, task.endpoint)
+        assert 'arguments argument is not supported' in str(re)
+
+        task.endpoint = 'topic:test-topic'
+        with pytest.raises(RuntimeError) as re:
+            user.say_hello(task, task.endpoint)
+        assert 'endpoint needs to include subscription when receiving messages from a topic' in str(re)
+
+        task.method = RequestMethod.SEND
+        task.endpoint = 'topic:test-topic, expression:$.test.result'
+        with pytest.raises(RuntimeError) as re:
+            user.say_hello(task, task.endpoint)
+        assert 'argument expression is only allowed when receiving messages' in str(re)
+
 
     @pytest.mark.usefixtures('locust_environment', 'noop_zmq')
     def test_request(self, locust_environment: Environment, noop_zmq: Callable[[str], None], mocker: MockerFixture) -> None:

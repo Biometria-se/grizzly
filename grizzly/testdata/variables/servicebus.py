@@ -4,20 +4,31 @@ Use [transformer task](/grizzly/usage/tasks/transformer/) to extract specific pa
 
 ## Format
 
-Initial value is the name of the queue or topic, prefix with the endpoint type. If the endpoint is a topic the additional value subscription
-is mandatory. Arguments support templating for their value, but not the complete endpoint value.
+Initial value for a variable must have the prefix `queue:` or `topic:` followed by the name of the targeted
+type. When receiving messages from a topic, the argument `subscription:` is mandatory. The format of endpoint is:
+
+```plain
+[queue|topic]:<endpoint name>[, subscription:<subscription name>][, expression:<expression>]
+```
+
+Where `<expression>` can be a XPath or jsonpath expression, depending on the specified content type. This argument is only allowed when
+receiving messages. See example below.
+
+Arguments support templating for their value, but not the complete endpoint value.
 
 Examples:
+
 ```plain
 queue:test-queue
 topic:test-topic, subscription:test-subscription
-queue:$conf::sb.endpoint.queue
-topic:$conf::sb.endpoint.topic, subscription:$conf::sb.endpoint.subscription
+queue:"$conf::sb.endpoint.queue"
+topic:"$conf::sb.endpoint.topic", subscription:"$conf::sb.endpoint.subscription"
+queue:"{{ queue_name }}", expression="$.document[?(@.name=='TPM report')]"
 ```
 
 ## Arguments
 
-* `repeat` _bool_ (optional) - if `True`, values read for the queue will be saved in a list and re-used if there are no new messages available
+* `repeat` _bool_ (optional) - if `True`, values read from the endpoint will be saved in a list and re-used if there are no new messages available
 * `url` _str_ - see format of url below.
 * `wait` _int_ - number of seconds to wait for a message on the queue
 
@@ -40,7 +51,7 @@ Endpoint=sb://$conf::sb.hostname/;SharedAccessKeyName=$conf::sb.keyname;SharedAc
 ## Example
 
 ```gherkin
-And value of variable "AtomicServiceBus.document_id" is "queue:documents-in | wait=120, url=$conf::sb.endpoint, repeat=True, expression='$.document.id', content_type=json"
+And value of variable "AtomicServiceBus.document_id" is "queue:documents-in | wait=120, url=$conf::sb.endpoint, repeat=True"
 ...
 Given a user of type "RestApi" load testing "http://example.com"
 ...
@@ -51,6 +62,7 @@ When the scenario starts `grizzly` will wait up to 120 seconds until `AtomicServ
 
 If there are no messages within 120 seconds, and it is the first iteration of the scenario, it will fail. If there has been at least one message on the queue since
 the scenario started, it will use the oldest of those values, and then add it back in the end of the list again.
+
 '''
 
 from typing import Dict, Any, List, Type, Optional, cast
@@ -138,20 +150,25 @@ def atomicservicebus_endpoint(endpoint: str) -> str:
         raise ValueError(f'AtomicServiceBus: {str(e)}') from e
 
     if 'topic' not in arguments and 'queue' not in arguments:
-        raise ValueError(f'AtomicServiceBus: only support endpoint types queue and topic, not {arguments.keys()}')
+        raise ValueError(f'AtomicServiceBus: endpoint needs to be prefixed with queue: or topic:')
+
+    if 'topic' in arguments and 'queue' in arguments:
+        raise ValueError('AtomicServiceBus: cannot specify both topic: and queue: in endpoint')
 
     endpoint_type = 'topic' if 'topic' in arguments else 'queue'
 
     if len(arguments) > 1:
-        if endpoint_type != 'topic':
-            raise ValueError(f'AtomicServiceBus: additional arguments in endpoint is only supported for topic')
+        if endpoint_type != 'topic' and 'subscription' in arguments:
+            raise ValueError(f'AtomicServiceBus: argument subscription is only allowed if endpoint is a topic')
 
-        unsupported_arguments = get_unsupported_arguments(['topic', 'queue', 'subscription'], arguments)
+        unsupported_arguments = get_unsupported_arguments(['topic', 'queue', 'subscription', 'expression'], arguments)
 
         if len(unsupported_arguments) > 0:
             raise ValueError(f'AtomicServiceBus: arguments {", ".join(unsupported_arguments)} is not supported')
 
-    if endpoint_type == 'topic' and arguments.get('subscription', None) is None:
+    expression = arguments.get('expression', None)
+    subscription = arguments.get('subscription', None)
+    if endpoint_type == 'topic' and subscription is None:
         raise ValueError(f'AtomicServiceBus: endpoint needs to include subscription when receiving messages from a topic')
 
     grizzly = GrizzlyContext()
@@ -163,7 +180,6 @@ def atomicservicebus_endpoint(endpoint: str) -> str:
 
     endpoint = f'{endpoint_type}:{resolved_endpoint_name}'
 
-    subscription = arguments.get('subscription', None)
     if subscription is not None:
         try:
             resolved_subscription_name = resolve_variable(grizzly, subscription)
@@ -171,6 +187,14 @@ def atomicservicebus_endpoint(endpoint: str) -> str:
             raise ValueError(f'AtomicServiceBus: {str(e)}') from e
 
         endpoint = f'{endpoint}, subscription:{resolved_subscription_name}'
+
+    if expression is not None:
+        try:
+            resolved_expression = resolve_variable(grizzly, expression)
+        except Exception as e:
+            raise ValueError(f'AtomicServiceBus: {str(e)}') from e
+
+        endpoint = f'{endpoint}, expression:{resolved_expression}'
 
     return endpoint
 

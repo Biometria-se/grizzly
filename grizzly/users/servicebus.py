@@ -25,7 +25,14 @@ Format of `host` is the following:
 ```
 
 `endpoint` in the request must have the prefix `queue:` or `topic:` followed by the name of the targeted
-type. If you are going to receive messages from a topic, and additional `subscription:` som follow the specified `topic:`.
+type. When receiving messages from a topic, the argument `subscription:` is mandatory. The format of endpoint is:
+
+```plain
+[queue|topic]:<endpoint name>[, subscription:<subscription name>][, expression:<expression>]
+```
+
+Where `<expression>` can be a XPath or jsonpath expression, depending on the specified content type. This argument is only allowed when
+receiving messages. See example below.
 
 ## Examples
 
@@ -39,6 +46,21 @@ Then send request "topic-send" to endpoint "topic:shared-topic"
 Then receive request "queue-recv" from endpoint "queue:shared-queue"
 Then receive request "topic-recv" from endpoint "topic:shared-topic, subscription:my-subscription"
 ```
+
+### Get message with expression
+
+When specifying an expression, the messages on the endpoint is first peeked on. If any message matches the expression, it is later consumed from the
+endpoint. If no matching messages was found when peeking, it is repeated again after a slight delay, up until the specified `message.wait` seconds has
+elapsed. To use expressions, a content type must be specified for the request, e.g. `application/xml`.
+
+```gherkin
+Given a user of type "ServiceBus" load testing "sb://sb.example.com/;SharedAccessKeyName=authorization-key;SharedAccessKey=c2VjcmV0LXN0dWZm"
+And set context variable "message.wait" to "5"
+Then receive request "queue-recv" from endpoint "queue:shared-queue, expression:$.document[?(@.name=='TPM report')].id"
+And set response content type to "application/json"
+Then receive request "topic-recv" from endpoint "topic:shared-topic, subscription:my-subscription, expression:/documents/document[@name='TPM Report']/id/text()"
+And set response content type to "application/xml"
+```
 '''
 from typing import Generator, Dict, Any, Tuple, Optional, Set, cast
 from urllib.parse import urlparse, parse_qs
@@ -50,6 +72,7 @@ import zmq
 from locust.exception import StopUser
 from gevent import sleep as gsleep
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageResponse, AsyncMessageRequest, AsyncMessageError
+from grizzly_extras.arguments import parse_arguments, get_unsupported_arguments
 
 from ..types import RequestMethod, RequestDirection
 from ..task import RequestTask
@@ -133,7 +156,7 @@ class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
 
     def say_hello(self, task: RequestTask, endpoint: str) -> None:
         if ('{{' in endpoint and '}}' in endpoint) or '$conf' in endpoint or '$env' in endpoint:
-            logger.warning(f'{self.__class__.__name__}: cannot say hello for {task.name} when endpoint ({endpoint}) is a template')
+            logger.warning(f'{self.__class__.__name__}: cannot say hello for {task.name} when endpoint is a template')
             return
 
         connection = 'sender' if task.method.direction == RequestDirection.TO else 'receiver'
@@ -160,7 +183,40 @@ class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
         }
 
         with self.async_action(task, request, name) as metadata:
-            metadata['meta'] = True
+            metadata.update({
+                'meta': True,
+                'abort': True,
+            })
+
+            try:
+                arguments = parse_arguments(endpoint, ':')
+            except ValueError as e:
+                raise RuntimeError(str(e)) from e
+
+            if 'queue' not in arguments and 'topic' not in arguments:
+                raise RuntimeError('endpoint needs to be prefixed with queue: or topic:')
+
+            if 'queue' in arguments and 'topic' in arguments:
+                raise RuntimeError('cannot specify both topic: and queue: in endpoint')
+
+            endpoint_type = 'topic' if 'topic' in arguments else 'queue'
+
+            if len(arguments) > 1:
+                if endpoint_type != 'topic' and 'subscription' in arguments:
+                    raise RuntimeError('argument subscription is only allowed if endpoint is a topic')
+
+                unsupported_arguments = get_unsupported_arguments(['topic', 'queue', 'subscription', 'expression'], arguments)
+
+                if len(unsupported_arguments) > 0:
+                    raise RuntimeError(f'arguments {", ".join(unsupported_arguments)} is not supported')
+
+            if endpoint_type == 'topic' and arguments.get('subscription', None) is None and task.method.direction == RequestDirection.FROM:
+                raise RuntimeError('endpoint needs to include subscription when receiving messages from a topic')
+
+            if task.method.direction == RequestDirection.TO and arguments.get('expression', None) is not None:
+                raise RuntimeError('argument expression is only allowed when receiving messages')
+
+            metadata['abort'] = task.scenario.stop_on_failure
 
         self.hellos.add(description)
 
@@ -196,10 +252,11 @@ class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
             response_time = int((time() - start_time) * 1000)
 
             if response is not None:
+                response_worker = response.get('worker', None)
                 if self.worker_id is None:
-                    self.worker_id = response.get('worker', None)
+                    self.worker_id = response_worker
 
-                assert self.worker_id == response.get('worker', '')
+                assert self.worker_id == response_worker
 
                 if not response.get('success', False) and exception is None:
                     exception = AsyncMessageError(response['message'])
@@ -259,11 +316,10 @@ class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
         }
 
         with self.async_action(request, am_request, name) as metadata:
+            metadata['abort'] = True
+
             if request.method not in [RequestMethod.SEND, RequestMethod.RECEIVE]:
-                metadata['abort'] = True
                 raise NotImplementedError(f'{self.__class__.__name__}: no implementation for {request.method.name} requests')
 
-            #expression: Optional[str] = None
-            #validate_expression
-
+            metadata['abort'] = request.scenario.stop_on_failure
 
