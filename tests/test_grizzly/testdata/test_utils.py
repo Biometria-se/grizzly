@@ -94,7 +94,7 @@ def test__get_variable_value_AtomicMessageQueue(noop_zmq: Callable[[str], None],
         grizzly = GrizzlyContext()
         variable_name = 'AtomicMessageQueue.test'
         grizzly.state.variables[variable_name] = (
-            'TEST.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN", expression="$.test.result", content_type=json'
+            'TEST.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"'
         )
         value, external_dependencies = _get_variable_value(variable_name)
         assert external_dependencies == set(['async-messaged'])
@@ -117,7 +117,7 @@ def test__get_variable_value_AtomicServiceBus(noop_zmq: Callable[[str], None], c
         grizzly = GrizzlyContext()
         variable_name = 'AtomicServiceBus.test'
         grizzly.state.variables[variable_name] = (
-            'queue:documents-in | url="sb://sb.example.com/;SharedAccessKeyName=name;SharedAccessKey=key", expression="$.test.result", content_type=json'
+            'queue:documents-in | url="sb://sb.example.com/;SharedAccessKeyName=name;SharedAccessKey=key"'
         )
         value, external_dependencies = _get_variable_value(variable_name)
         assert external_dependencies == set(['async-messaged'])
@@ -227,7 +227,7 @@ def test_initialize_testdata_with_payload_context(behave_context: Context, grizz
         grizzly.state.variables['AtomicDate.now'] = 'now'
         if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
             grizzly.state.variables['AtomicMessageQueue.document_id'] = (
-                'TEST.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN", expression="$.test.result", content_type=json'
+                'TEST.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"'
             )
             source['result']['DocumentID'] = '{{ AtomicMessageQueue.document_id }}'
         grizzly.scenario.user.class_name = 'TestUser'
@@ -527,7 +527,7 @@ def test_transform(behave_context: Context, noop_zmq: Callable[[str], None], cle
 
         if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
             grizzly.state.variables['AtomicMessageQueue.document_id'] = (
-                'TEST.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN", expression="$.document.id", content_type=json, repeat=True'
+                'TEST.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN", repeat=True'
             )
             data['AtomicMessageQueue.document_id'] = '__on_consumer__'
 
@@ -551,7 +551,7 @@ def test_transform(behave_context: Context, noop_zmq: Callable[[str], None], cle
                         'name': 'Boring presentation',
                         'author': 'Drew Ackerman',
                     }
-                })
+                }),
             })
 
             obj = transform(data)
@@ -597,7 +597,13 @@ def test_transform(behave_context: Context, noop_zmq: Callable[[str], None], cle
         assert test == 'value'
 
         if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
-            assert getattr(obj['AtomicMessageQueue'], 'document_id', None) == 'DOCUMENT_1337-1'
+            assert getattr(obj['AtomicMessageQueue'], 'document_id', None) == jsondumps({
+                'document': {
+                    'id': 'DOCUMENT_1337-1',
+                    'name': 'Boring presentation',
+                    'author': 'Drew Ackerman',
+                }
+            })
 
             # AtomicMessageQueue.document_id should repeat old values when there is no
             # new message on queue since repeat=True
@@ -611,44 +617,14 @@ def test_transform(behave_context: Context, noop_zmq: Callable[[str], None], cle
                 'AtomicMessageQueue.document_id': '__on_consumer__',
             })
 
-            assert getattr(obj['AtomicMessageQueue'], 'document_id', None) == 'DOCUMENT_1337-1'
-
-            caplog.clear()
-
-            grizzly.state.variables['AtomicMessageQueue.wrong_content_type'] = (
-                'TEST.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN", expression="$.document.id", content_type=json, repeat=True'
-            )
-
-            data = {
-                'AtomicMessageQueue.wrong_content_type': '__on_consumer__',
-            }
-
-            noop_zmq('grizzly.testdata.variables.messagequeue')
-
-            mock_response({
-                'success': True,
-                'worker': '1337-aaaabbbb-beef',
-            }, 2)
-
-            with caplog.at_level(logging.ERROR):
-                with pytest.raises(StopUser):
-                    transform(data)
-            assert 'AtomicMessageQueue.wrong_content_type: payload in response was None' in caplog.text
-            caplog.clear()
-
-            mock_response({
-                'success': True,
-                'worker': '1337-aaaabbbb-beef',
-                'payload': '<?xml encoding="utf-8" version="1.0"?><documents><document id="DOCUMENT_1337-1"></document></documents>',
+            assert getattr(obj['AtomicMessageQueue'], 'document_id', None) == jsondumps({
+                'document': {
+                    'id': 'DOCUMENT_1337-1',
+                    'name': 'Boring presentation',
+                    'author': 'Drew Ackerman',
+                }
             })
 
-            with caplog.at_level(logging.ERROR):
-                with pytest.raises(StopUser):
-                    transform({
-                        'AtomicMessageQueue.wrong_content_type': '__on_consumer__',
-                    })
-
-            assert 'AtomicMessageQueue.wrong_content_type: failed to transform input as JSON' in caplog.text
             caplog.clear()
     finally:
         cleanup()

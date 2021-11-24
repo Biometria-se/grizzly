@@ -1,4 +1,6 @@
-'''Listens for messages on Azure Service Bus queue or topic and extracts values from messages based on a JSON path or XPath expressions.
+'''Listens for messages on Azure Service Bus queue or topic.
+
+Use [transformer task](/grizzly/usage/tasks/transformer/) to extract specific parts of the message.
 
 ## Format
 
@@ -17,8 +19,6 @@ topic:$conf::sb.endpoint.topic, subscription:$conf::sb.endpoint.subscription
 
 * `repeat` _bool_ (optional) - if `True`, values read for the queue will be saved in a list and re-used if there are no new messages available
 * `url` _str_ - see format of url below.
-* `expression` _str_ - JSON path or XPath expression for finding _one_ specific value or object in the payload
-* `content_type` _str_ - see [`step_response_content_type`](/grizzly/usage/steps/scenario/response/#step_response_content_type)
 * `wait` _int_ - number of seconds to wait for a message on the queue
 
 ### URL format
@@ -60,7 +60,6 @@ import zmq
 
 from gevent import sleep as gsleep
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
-from grizzly_extras.transformer import transformer, TransformerError, TransformerContentType
 
 from ...types import AtomicVariable, bool_typed
 from ...context import GrizzlyContext
@@ -80,7 +79,7 @@ def atomicservicebus__base_type__(value: str) -> str:
 
     atomicservicebus_endpoint(endpoint_name)
 
-    for argument in ['url', 'expression', 'content_type']:
+    for argument in ['url']:
         if argument not in arguments:
             raise ValueError(f'AtomicServiceBus: {argument} parameter must be specified')
 
@@ -89,15 +88,6 @@ def atomicservicebus__base_type__(value: str) -> str:
             raise ValueError(f'AtomicServiceBus: argument {argument_name} is not allowed')
         else:
             AtomicServiceBus.arguments[argument_name](argument_value)
-
-    content_type = AtomicServiceBus.arguments['content_type'](arguments['content_type'])
-    transform = transformer.available.get(content_type, None)
-
-    if transform is None:
-        raise ValueError(f'AtomicServiceBus: could not find a transformer for {content_type.name}')
-
-    if not transform.validate(arguments['expression']):
-        raise ValueError(f'AtomicServiceBus: expression "{arguments["expression"]}" is not a valid expression for {content_type.name}')
 
     return f'{endpoint_name} | {endpoint_arguments}'
 
@@ -191,7 +181,7 @@ class AtomicServiceBus(AtomicVariable[str]):
 
     _settings: Dict[str, Dict[str, Any]]
     _endpoint_clients: Dict[str, zmq.Socket]
-    _endpoint_values: Dict[str, List[str]]
+    _endpoint_messages: Dict[str, List[str]]
 
     _zmq_url = 'tcp://127.0.0.1:5554'
     _zmq_context: zmq.Context
@@ -199,16 +189,14 @@ class AtomicServiceBus(AtomicVariable[str]):
     arguments: Dict[str, Any] = {
         'repeat': bool_typed,
         'url': atomicservicebus_url,
-        'expression': str,
         'wait': int,
-        'content_type': TransformerContentType.from_string,
         'endpoint_name': atomicservicebus_endpoint,
     }
 
     def __init__(self, variable: str, value: str) -> None:
         safe_value = self.__class__.__base_type__(value)
 
-        settings = {'repeat': False, 'wait': None, 'expression': None, 'url': None, 'worker': None, 'context': None, 'endpoint_name': None}
+        settings = {'repeat': False, 'wait': None, 'url': None, 'worker': None, 'context': None, 'endpoint_name': None}
 
         endpoint_name, endpoint_arguments = self.split_value(safe_value)
 
@@ -224,8 +212,8 @@ class AtomicServiceBus(AtomicVariable[str]):
 
         if self.__initialized:
             with self._semaphore:
-                if variable not in self._endpoint_values:
-                    self._endpoint_values[variable] = []
+                if variable not in self._endpoint_messages:
+                    self._endpoint_messages[variable] = []
 
                 if variable not in self._settings:
                     self._settings[variable] = settings
@@ -235,7 +223,7 @@ class AtomicServiceBus(AtomicVariable[str]):
 
             return
 
-        self._endpoint_values = {variable: []}
+        self._endpoint_messages = {variable: []}
         self._settings = {variable: settings}
         self._zmq_context = zmq.Context()
         self._endpoint_clients = {variable: self.create_client(variable, settings)}
@@ -362,49 +350,26 @@ class AtomicServiceBus(AtomicVariable[str]):
             if response is None:
                 raise RuntimeError(f'{self.__class__.__name__}.{variable}: unknown error, no response')
 
+            payload: Optional[str]
             message = response.get('message', None)
-            if not response['success']:
-                if message is not None and f'no message on {endpoint}' in message and settings.get('repeat', False) and len(self._endpoint_values[variable]) > 0:
-                    value = self._endpoint_values[variable].pop(0)
-                    self._endpoint_values[variable].append(value)
 
-                    return value
+            if not response['success']:
+                if message is not None and f'no message on {endpoint}' in message and settings.get('repeat', False) and len(self._endpoint_messages[variable]) > 0:
+                    payload = self._endpoint_messages[variable].pop(0)
+                    self._endpoint_messages[variable].append(payload)
+
+                    return payload
 
                 raise RuntimeError(f'{self.__class__.__name__}.{variable}: {message}')
 
-            raw = response.get('payload', None)
-            if raw is None or len(raw) < 1:
+            payload = cast(Optional[str], response.get('payload', None))
+            if payload is None or len(payload) < 1:
                 raise RuntimeError(f'{self.__class__.__name__}.{variable}: payload in response was None')
 
-            content_type = settings['content_type']
-            expression = settings['expression']
-            transform = transformer.available.get(content_type, None)
-
-            if transform is None:
-                raise TypeError(f'{self.__class__.__name__}.{variable}: could not find a transformer for {content_type.name}')
-
-            try:
-                get_values = transform.parser(expression)
-                _, payload = transform.transform(content_type, raw)
-            except TransformerError as e:
-                raise RuntimeError(f'{self.__class__.__name__}.{variable}: {str(e.message)}')
-
-            values = get_values(payload)
-
-            number_of_values = len(values)
-
-            if number_of_values != 1:
-                if number_of_values < 1:
-                    raise RuntimeError(f'{self.__class__.__name__}.{variable}: "{expression}" returned no values')
-                elif number_of_values > 1:
-                    raise RuntimeError(f'{self.__class__.__name__}.{variable}: "{expression}" returned more than one value')
-
-            value = values[0]
-
             if settings.get('repeat', False):
-                self._endpoint_values[variable].append(value)
+                self._endpoint_messages[variable].append(payload)
 
-            return value
+            return payload
 
     def __setitem__(self, variable: str, value: Optional[str]) -> None:
         pass
@@ -413,7 +378,7 @@ class AtomicServiceBus(AtomicVariable[str]):
         with self._semaphore:
             try:
                 del self._settings[variable]
-                del self._endpoint_values[variable]
+                del self._endpoint_messages[variable]
                 try:
                     self._endpoint_clients[variable].disconnect(self._zmq_url)
                 except (zmq.ZMQError, AttributeError, ):

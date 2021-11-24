@@ -91,7 +91,7 @@ class TestTestdataProducer:
             if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
                 source['result']['DocumentID'] = '{{ AtomicMessageQueue.document_id }}'
                 grizzly.state.variables['AtomicMessageQueue.document_id'] =(
-                    'TEST.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN", expression="$.test.result", content_type=json'
+                    'TEST.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"'
                 )
 
             request.source = json.dumps(source)
@@ -529,12 +529,17 @@ class TestTestdataConsumer:
 
                 grizzly = cast(GrizzlyContext, behave_context.grizzly)
                 grizzly.state.variables['AtomicMessageQueue.document_id'] = (
-                    'TEST.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN", expression="$.document.id", content_type=json'
+                    'TEST.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"'
                 )
 
                 assert consumer.request('test') == {
                     'variables': transform({
-                        'AtomicMessageQueue.document_id': 'DOCUMENT_1337-2',
+                        'AtomicMessageQueue.document_id': json.dumps({
+                            'document': {
+                                'id': 'DOCUMENT_1337-2',
+                                'name': 'Very important memo about the TPM report',
+                            },
+                        }),
                         'AtomicIntegerIncrementer.messageID': 100,
                         'test': None,
                     })
