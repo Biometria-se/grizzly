@@ -8,6 +8,7 @@ from pytest_mock import mocker, MockerFixture  # pylint: disable=unused-import
 from grizzly.testdata.variables.servicebus import AtomicServiceBus, atomicservicebus_url, atomicservicebus_endpoint, atomicservicebus__base_type__
 from grizzly.context import GrizzlyContext
 from grizzly_extras.async_message import AsyncMessageResponse
+from grizzly_extras.transformer import TransformerContentType
 
 from ...fixtures import noop_zmq  # pylint: disable=unused-import
 
@@ -203,13 +204,14 @@ class TestAtomicServiceBus:
                 'url': 'Endpoint=sb://sb.example.org/;SharedAccessKeyName=name;SharedAccessKey=key',
                 'context': None,
                 'worker': None,
+                'content_type': None,
             }
             assert v._endpoint_clients.get('test1', None) is not None
             assert isinstance(v._zmq_context, zmq.Context)
 
             t = AtomicServiceBus(
                 'test2',
-                'topic:documents-in, subscription:application-x | url="sb://sb.example.org/;SharedAccessKeyName=name;SharedAccessKey=key", wait=15',
+                'topic:documents-in, subscription:application-x | url="sb://sb.example.org/;SharedAccessKeyName=name;SharedAccessKey=key", wait=15, content_type=json',
             )
 
             assert v is t
@@ -227,8 +229,20 @@ class TestAtomicServiceBus:
                 'url': 'sb://sb.example.org/;SharedAccessKeyName=name;SharedAccessKey=key',
                 'context': None,
                 'worker': None,
+                'content_type': TransformerContentType.JSON,
             }
             assert v._endpoint_clients.get('test2', None) is not None
+
+            with pytest.raises(ValueError) as ve:
+                t = AtomicServiceBus(
+                    'test3',
+                    (
+                        'topic:documents-in, subscription:application-x, expression:"$.document[?(@.id==10)]" | '
+                        'url="sb://sb.example.org/;SharedAccessKeyName=name;SharedAccessKey=key", wait=15'
+                    ),
+                )
+            assert 'AtomicServiceBus.test3: argument "content_type" is mandatory when "expression" is used in endpoint' in str(ve)
+
         finally:
             try:
                 AtomicServiceBus.destroy()
@@ -255,6 +269,7 @@ class TestAtomicServiceBus:
                 'url': 'sb://sb.example.org/;SharedAccessKeyName=name;SharedAccessKey=key',
                 'endpoint_name': 'topic:documents-in, subscription:application-x',
                 'wait': 120,
+                'content_type': TransformerContentType.JSON,
             }
 
             context = AtomicServiceBus.create_context(settings)
@@ -263,6 +278,7 @@ class TestAtomicServiceBus:
                 'endpoint': 'topic:documents-in, subscription:application-x',
                 'connection': 'receiver',
                 'message_wait': 120,
+                'content_type': 'json',
             }
         finally:
             try:
@@ -277,7 +293,7 @@ class TestAtomicServiceBus:
         try:
             say_hello_spy = mocker.patch(
                 'grizzly.testdata.variables.servicebus.AtomicServiceBus.say_hello',
-                side_effect=[None],
+                side_effect=[None] * 2,
             )
 
             v = AtomicServiceBus(
@@ -294,6 +310,7 @@ class TestAtomicServiceBus:
                 'worker': None,
                 'url': 'sb://sb.example.org/;SharedAccessKeyName=name;SharedAccessKey=key',
                 'endpoint_name': 'topic:documents-in, subscription:application-x',
+                'content_type': None,
                 'context': {
                     'url': 'sb://sb.example.org/;SharedAccessKeyName=name;SharedAccessKey=key',
                     'endpoint': 'topic:documents-in, subscription:application-x',
@@ -302,10 +319,40 @@ class TestAtomicServiceBus:
                 },
             }
             assert say_hello_spy.call_count == 1
-            args, _ = say_hello_spy.call_args_list[0]
+            args, _ = say_hello_spy.call_args_list[-1]
             assert isinstance(args[0], zmq.Socket)
             assert args[1] == 'test'
             assert args[0] is v._endpoint_clients.get('test', None)
+
+            v = AtomicServiceBus(
+                'test-variable',
+                (
+                    'queue:documents-in, expression:"$.document[?(@.name=="TPM Report")]"  | url="Endpoint=sb://sb.example.org/;SharedAccessKeyName=name;SharedAccessKey=key", '
+                    'wait=15, content_type=json'
+                ),
+            )
+            assert isinstance(v._endpoint_clients.get('test-variable', None), zmq.Socket)
+            print(v._settings.get('test-variable', None))
+            assert v._settings.get('test-variable', None) == {
+                'repeat': False,
+                'wait': 15,
+                'worker': None,
+                'url': 'Endpoint=sb://sb.example.org/;SharedAccessKeyName=name;SharedAccessKey=key',
+                'content_type': TransformerContentType.JSON,
+                'endpoint_name': 'queue:documents-in, expression:"$.document[?(@.name=="TPM Report")]"',
+                'context': {
+                    'url': 'sb://sb.example.org/;SharedAccessKeyName=name;SharedAccessKey=key',
+                    'endpoint': 'queue:documents-in, expression:"$.document[?(@.name=="TPM Report")]"',
+                    'connection': 'receiver',
+                    'message_wait': 15,
+                    'content_type': 'json',
+                },
+            }
+            assert say_hello_spy.call_count == 2
+            args, _ = say_hello_spy.call_args_list[-1]
+            assert isinstance(args[0], zmq.Socket)
+            assert args[1] == 'test-variable'
+            assert args[0] is v._endpoint_clients.get('test-variable', None)
         finally:
             try:
                 AtomicServiceBus.destroy()

@@ -1,6 +1,7 @@
 import logging
 
 from typing import Any, Callable, Dict, Optional, Union, Tuple, Iterable, cast
+from time import monotonic as time
 from mypy_extensions import VarArg, KwArg
 
 from azure.servicebus import ServiceBusClient, ServiceBusMessage, TransportType, ServiceBusSender, ServiceBusReceiver
@@ -33,6 +34,7 @@ GenericInstance = Callable[[VarArg(Any)], GenericCacheValue]
 class AsyncServiceBusHandler(AsyncMessageHandler):
     _sender_cache: Dict[str, ServiceBusSender]
     _receiver_cache: Dict[str, ServiceBusReceiver]
+    _arguments: Dict[str, Dict[str, str]]
 
     client: Optional[ServiceBusClient] = None
 
@@ -41,84 +43,59 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
         self._sender_cache = {}
         self._receiver_cache = {}
+        self._arguments = {}
 
         # silence uamqp loggers
         logging.getLogger('uamqp').setLevel(logging.ERROR)
 
     @classmethod
-    def get_endpoint_details(cls, instance_type: str, endpoint: str) -> Tuple[str, str, Optional[str]]:
-        if ':' not in endpoint:
-            raise AsyncMessageError(f'"{endpoint}" is not prefixed with queue: or topic:')
+    def get_sender_instance(cls, client: ServiceBusClient, arguments: Dict[str, str]) -> ServiceBusSender:
+        endpoint_type = arguments['endpoint_type']
+        endpoint_name = arguments['endpoint']
 
-        endpoint_type: str
-        endpoint_name: str
-        subscription_name: Optional[str] = None
-
-        arguments = parse_arguments(endpoint, ':')
-
-        if 'queue' not in arguments and 'topic' not in arguments:
-            raise AsyncMessageError(f'only support for endpoint types queue and topic, not {", ".join(arguments.keys())}')
-
-        endpoint_type = 'topic' if 'topic' in arguments else 'queue'
-
-        if instance_type != 'receiver' and len(arguments) > 1:
-            raise AsyncMessageError(f'additional arguments in endpoint is not supported for {instance_type}')
-
-        unsupported_arguments = get_unsupported_arguments(['queue', 'topic', 'subscription'], arguments)
-        if len(unsupported_arguments) > 0:
-            raise AsyncMessageError(f'arguments {", ".join(unsupported_arguments)} is not supported')
-
-        endpoint_name = arguments.get(endpoint_type, None)
-        subscription_name = arguments.get('subscription', None)
-
-        if endpoint_type == 'topic' and subscription_name is None and instance_type == 'receiver':
-            raise AsyncMessageError('endpoint needs to include subscription when receiving messages from a topic')
-
-        return endpoint_type, endpoint_name, subscription_name
-
-    @classmethod
-    def get_sender_instance(cls, client: ServiceBusClient, endpoint: str) -> ServiceBusSender:
-        arguments: Dict[str, Any] = {}
-        endpoint_type, endpoint_name, _ = cls.get_endpoint_details('sender', endpoint)
+        sender_arguments: Dict[str, str] = {}
 
         sender_type: Callable[[KwArg(Any)], ServiceBusSender]
 
         if endpoint_type == 'queue':
-            arguments.update({'queue_name': endpoint_name})
+            sender_arguments.update({'queue_name': endpoint_name})
             sender_type = cast(
                 Callable[[KwArg(Any)], ServiceBusSender],
                 client.get_queue_sender,
             )
         else:
-            arguments.update({'topic_name': endpoint_name})
+            sender_arguments.update({'topic_name': endpoint_name})
             sender_type = cast(
                 Callable[[KwArg(Any)], ServiceBusSender],
                 client.get_topic_sender,
             )
 
-        return sender_type(**arguments)
+        return sender_type(**sender_arguments)
 
     @classmethod
-    def get_receiver_instance(cls, client: ServiceBusClient, endpoint: str, message_wait: Optional[int] = None) -> ServiceBusReceiver:
-        arguments: Dict[str, Any] = {}
-        endpoint_type, endpoint_name, subscription_name = cls.get_endpoint_details('receiver', endpoint)
+    def get_receiver_instance(cls, client: ServiceBusClient, arguments: Dict[str, str]) -> ServiceBusReceiver:
+        endpoint_type = arguments['endpoint_type']
+        endpoint_name = arguments['endpoint']
+        subscription_name = arguments.get('subscription', None)
+        message_wait = arguments.get('wait', None)
 
+        receiver_arguments: Dict[str, Any] = {}
         receiver_type: Callable[[KwArg(Any)], ServiceBusReceiver]
 
         if message_wait is not None:
-            arguments.update({'max_wait_time': message_wait})
+            receiver_arguments.update({'max_wait_time': int(message_wait)})
 
         if endpoint_type == 'queue':
             receiver_type = cast(Callable[[KwArg(Any)], ServiceBusReceiver], client.get_queue_receiver)
-            arguments.update({'queue_name': endpoint_name})
+            receiver_arguments.update({'queue_name': endpoint_name})
         else:
             receiver_type = cast(Callable[[KwArg(Any)], ServiceBusReceiver], client.get_subscription_receiver)
-            arguments.update({
+            receiver_arguments.update({
                 'topic_name': endpoint_name,
                 'subscription_name': subscription_name,
             })
 
-        return receiver_type(**arguments)
+        return receiver_type(**receiver_arguments)
 
     @classmethod
     def from_message(cls, message: Optional[ServiceBusMessage]) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
@@ -156,13 +133,49 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
         return metadata, payload
 
+    @classmethod
+    def get_arguments(cls, instance_type: str, endpoint: str) -> Dict[str, str]:
+        try:
+            arguments = parse_arguments(endpoint, ':')
+
+            if 'queue' not in arguments and 'topic' not in arguments:
+                raise ValueError('endpoint needs to be prefixed with queue: or topic:')
+
+            if 'queue' in arguments and 'topic' in arguments:
+                raise ValueError('cannot specify both topic: and queue: in endpoint')
+
+            endpoint_type = 'topic' if 'topic' in arguments else 'queue'
+
+            if len(arguments) > 1:
+                if endpoint_type != 'topic' and 'subscription' in arguments:
+                    raise ValueError('argument subscription is only allowed if endpoint is a topic')
+
+                unsupported_arguments = get_unsupported_arguments(['topic', 'queue', 'subscription', 'expression'], arguments)
+
+                if len(unsupported_arguments) > 0:
+                    raise ValueError(f'arguments {", ".join(unsupported_arguments)} is not supported')
+
+            if endpoint_type == 'topic' and arguments.get('subscription', None) is None and instance_type == 'receiver':
+                raise ValueError('endpoint needs to include subscription when receiving messages from a topic')
+
+            if instance_type == 'sender' and arguments.get('expression', None) is not None:
+                raise ValueError('argument expression is only allowed when receiving messages')
+
+            arguments['endpoint_type'] = endpoint_type
+            arguments['endpoint'] = arguments[endpoint_type]
+
+            del arguments[endpoint_type]
+
+            return arguments
+        except ValueError as e:
+            raise AsyncMessageError(str(e)) from e
+
     @register(handlers, 'HELLO')
     def hello(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
         context = request.get('context', None)
         if context is None:
             raise AsyncMessageError('no context in request')
 
-        self.message_wait = context.get('message_wait', None)
         url = context['url']
 
         if self.client is None:
@@ -174,11 +187,16 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                 transport_type=TransportType.AmqpOverWebsocket,
             )
 
+        endpoint = context['endpoint']
         instance_type = context['connection']
+        message_wait = context.get('message_wait', None)
+
+        arguments = self.get_arguments(instance_type, endpoint)
+        if message_wait is not None and instance_type == 'receiver':
+            arguments['wait'] = str(message_wait)
 
         cache: GenericCache
-        endpoint = context['endpoint']
-        arguments: Tuple[Any, ...] = (self.client, endpoint, )
+
         get_instance: GenericInstance
 
         if instance_type == 'sender':
@@ -186,13 +204,13 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             get_instance = cast(GenericInstance, self.get_sender_instance)
         elif instance_type == 'receiver':
             cache = cast(GenericCache, self._receiver_cache)
-            arguments += (self.message_wait, )
             get_instance = cast(GenericInstance, self.get_receiver_instance)
         else:
             raise AsyncMessageError(f'"{instance_type}" is not a valid value for context.connection')
 
         if endpoint not in cache:
-            cache.update({endpoint: get_instance(*arguments).__enter__()})
+            self._arguments[f'{instance_type}={endpoint}'] = arguments
+            cache.update({endpoint: get_instance(self.client, arguments).__enter__()})
 
         return {
             'message': 'there general kenobi',
@@ -211,34 +229,57 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         metadata: Optional[Dict[str, Any]] = None
         payload = request.get('payload', None)
 
+        if instance_type not in ['receiver', 'sender']:
+            raise AsyncMessageError(f'"{instance_type}" is not a valid value for context.connection')
+
+        arguments = self._arguments.get(f'{instance_type}={endpoint}', None)
+
+        if arguments is None:
+            raise AsyncMessageError(f'no HELLO received for {endpoint}')
+
+        expression = arguments.get('expression', None)
+
         if instance_type == 'sender':
             if payload is None:
                 raise AsyncMessageError('no payload')
-            sender = self._sender_cache.get(endpoint, None)
-            if sender is None:
-                raise AsyncMessageError(f'no HELLO sent for {endpoint}')
-
+            sender = self._sender_cache[endpoint]
             message = ServiceBusMessage(payload)
+
             try:
                 sender.send_messages(message)
             except Exception as e:
-                raise AsyncMessageError('failed to send message') from e
+                raise AsyncMessageError(f'failed to send message: {str(e)}') from e
         elif instance_type == 'receiver':
             if payload is not None:
                 raise AsyncMessageError('payload not allowed')
 
-            receiver = self._receiver_cache.get(endpoint, None)
-            if receiver is None:
-                raise AsyncMessageError(f'no HELLO sent for {endpoint}')
+            receiver = self._receiver_cache[endpoint]
+            message_wait = int(arguments.get('wait', 0))
+
             try:
-                message = cast(ServiceBusMessage, receiver.next())
-                receiver.complete_message(message)
+                wait_start = time()
+                while True:
+                    message = cast(ServiceBusMessage, receiver.next())
+                    receiver.complete_message(message)
+
+                    if expression is None:
+                        break
+
+                    metadata, payload = self.from_message(message)
+
+                    # @TODO: use transformer to check payload
+
+                    # return message to endpoint, and see if we should abort
+                    receiver.abandon_message(message)
+
+                    wait_now = time()
+                    if message_wait > 0 and wait_now - wait_start >= message_wait:
+                        raise StopIteration()
             except StopIteration:
                 raise AsyncMessageError(f'no messages on {endpoint}')
-        else:
-            raise AsyncMessageError(f'"{instance_type}" is not a valid value for context.connection')
 
-        metadata, payload = self.from_message(message)
+        if expression is None:
+            metadata, payload = self.from_message(message)
         response_length = len(payload or '')
 
         return {

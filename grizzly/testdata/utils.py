@@ -147,6 +147,11 @@ def resolve_variable(grizzly: GrizzlyContext, value: str, guess_datatype: Option
     if len(value) < 1:
         return value
 
+    quote_char: Optional[str] = None
+    if value[0] in ['"', "'"] and value[0] == value[-1]:
+        quote_char = value[0]
+        value = value[1:-1]
+
     resolved_variable: GrizzlyDictValueType
     if '{{' in value and '}}' in value:
         template = Template(value)
@@ -158,7 +163,7 @@ def resolve_variable(grizzly: GrizzlyContext, value: str, guess_datatype: Option
             assert template_variable in grizzly.state.variables, f'value contained variable "{template_variable}" which has not been set'
 
         resolved_variable = template.render(**grizzly.state.variables)
-    elif len(value) > 4 and value[0] == '$':
+    elif len(value) > 4 and value[0] == '$' and value[1] != '.':  # $. is jsonpath expression...
         if value[0:5] == '$conf':
             variable = value[7:]
             assert variable in grizzly.state.configuration, f'configuration variable "{variable}" is not set'
@@ -175,5 +180,8 @@ def resolve_variable(grizzly: GrizzlyContext, value: str, guess_datatype: Option
 
     if guess_datatype:
         resolved_variable = GrizzlyDict.guess_datatype(resolved_variable)
+    elif quote_char is not None and isinstance(resolved_variable, str) and resolved_variable.count(' ') > 0:
+        resolved_variable = f'{quote_char}{resolved_variable}{quote_char}'
+
 
     return resolved_variable

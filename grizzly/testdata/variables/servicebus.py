@@ -1,3 +1,4 @@
+# pylint: disable=line-too-long
 '''Listens for messages on Azure Service Bus queue or topic.
 
 Use [transformer task](/grizzly/usage/tasks/transformer/) to extract specific parts of the message.
@@ -31,6 +32,7 @@ queue:"{{ queue_name }}", expression="$.document[?(@.name=='TPM report')]"
 * `repeat` _bool_ (optional) - if `True`, values read from the endpoint will be saved in a list and re-used if there are no new messages available
 * `url` _str_ - see format of url below.
 * `wait` _int_ - number of seconds to wait for a message on the queue
+* `content_type` _str_ (optional) - specify the MIME type of the message received on the queue, only mandatory when `expression` is specified in endpoint
 
 ### URL format
 
@@ -63,6 +65,15 @@ When the scenario starts `grizzly` will wait up to 120 seconds until `AtomicServ
 If there are no messages within 120 seconds, and it is the first iteration of the scenario, it will fail. If there has been at least one message on the queue since
 the scenario started, it will use the oldest of those values, and then add it back in the end of the list again.
 
+### Get message with expression
+
+When specifying an expression, the messages on the endpoint is first peeked on. If any message matches the expression, it is later consumed from the endpoint.
+If no matching messages was found when peeking, it is repeated again up until the specified `wait` seconds has elapsed. To use expression, a content type must
+be specified for the endpint, e.g. `application/xml`.
+
+```gherking
+And value of variable "AtomicServiceBus.document_id" is "queue:documents-in | wait=120, url=$conf::sb.endpoint, repeat=True, content_type=json, expression='$.document[?(@.name=='TPM Report')'"
+```
 '''
 
 from typing import Dict, Any, List, Type, Optional, cast
@@ -73,6 +84,7 @@ import zmq
 from gevent import sleep as gsleep
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
 from grizzly_extras.arguments import split_value, parse_arguments, get_unsupported_arguments
+from grizzly_extras.transformer import TransformerContentType
 
 from ...types import AtomicVariable, bool_typed
 from ...context import GrizzlyContext
@@ -145,7 +157,7 @@ def atomicservicebus_endpoint(endpoint: str) -> str:
         raise ValueError(f'AtomicServiceBus: {endpoint} does not specify queue: or topic:')
 
     try:
-        arguments = parse_arguments(endpoint, ':')
+        arguments = parse_arguments(endpoint, ':', unquote=False)
     except ValueError as e:
         raise ValueError(f'AtomicServiceBus: {str(e)}') from e
 
@@ -174,7 +186,7 @@ def atomicservicebus_endpoint(endpoint: str) -> str:
     grizzly = GrizzlyContext()
 
     try:
-        resolved_endpoint_name = resolve_variable(grizzly, arguments[endpoint_type])
+        resolved_endpoint_name = cast(str, resolve_variable(grizzly, arguments[endpoint_type], guess_datatype=False))
     except Exception as e:
         raise ValueError(f'AtomicServiceBus: {str(e)}') from e
 
@@ -182,7 +194,7 @@ def atomicservicebus_endpoint(endpoint: str) -> str:
 
     if subscription is not None:
         try:
-            resolved_subscription_name = resolve_variable(grizzly, subscription)
+            resolved_subscription_name = cast(str, resolve_variable(grizzly, subscription, guess_datatype=False))
         except Exception as e:
             raise ValueError(f'AtomicServiceBus: {str(e)}') from e
 
@@ -190,7 +202,7 @@ def atomicservicebus_endpoint(endpoint: str) -> str:
 
     if expression is not None:
         try:
-            resolved_expression = resolve_variable(grizzly, expression)
+            resolved_expression = cast(str, resolve_variable(grizzly, expression, guess_datatype=False))
         except Exception as e:
             raise ValueError(f'AtomicServiceBus: {str(e)}') from e
 
@@ -218,20 +230,25 @@ class AtomicServiceBus(AtomicVariable[str]):
         'url': atomicservicebus_url,
         'wait': int,
         'endpoint_name': atomicservicebus_endpoint,
+        'content_type': TransformerContentType.from_string,
     }
 
     def __init__(self, variable: str, value: str) -> None:
         safe_value = self.__class__.__base_type__(value)
 
-        settings = {'repeat': False, 'wait': None, 'url': None, 'worker': None, 'context': None, 'endpoint_name': None}
+        settings = {'repeat': False, 'wait': None, 'url': None, 'worker': None, 'context': None, 'endpoint_name': None, 'content_type': None}
 
         endpoint_name, endpoint_arguments = split_value(safe_value)
 
         arguments = parse_arguments(endpoint_arguments)
+        endpoint_parameters = parse_arguments(endpoint_name, ':')
 
         for argument, caster in self.__class__.arguments.items():
             if argument in arguments:
                 settings[argument] = caster(arguments[argument])
+
+        if 'expression' in endpoint_parameters and not 'content_type' in arguments:
+            raise ValueError(f'{self.__class__.__name__}.{variable}: argument "content_type" is mandatory when "expression" is used in endpoint')
 
         settings['endpoint_name'] = self.arguments['endpoint_name'](endpoint_name)
 
@@ -269,6 +286,10 @@ class AtomicServiceBus(AtomicVariable[str]):
             'endpoint': settings['endpoint_name'],
             'message_wait': settings.get('wait', None),
         }
+
+        content_type = settings.get('content_type', None)
+        if content_type is not None:
+            context.update({'content_type': content_type.name.lower()})
 
         return context
 
@@ -406,6 +427,7 @@ class AtomicServiceBus(AtomicVariable[str]):
             try:
                 del self._settings[variable]
                 del self._endpoint_messages[variable]
+
                 try:
                     self._endpoint_clients[variable].disconnect(self._zmq_url)
                 except (zmq.ZMQError, AttributeError, ):

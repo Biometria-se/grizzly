@@ -39,6 +39,7 @@ class TestAsyncServiceBusHandler:
         assert isinstance(metadata, dict)
         assert len(metadata) > 0
 
+    '''
     def test_get_endpoint_details(self) -> None:
         with pytest.raises(AsyncMessageError) as ame:
             AsyncServiceBusHandler.get_endpoint_details('receiver', 'test')
@@ -67,6 +68,7 @@ class TestAsyncServiceBusHandler:
         assert AsyncServiceBusHandler.get_endpoint_details('receiver', 'queue:test') == ('queue', 'test', None, )
 
         assert AsyncServiceBusHandler.get_endpoint_details('receiver', 'topic:test, subscription:test') == ('topic', 'test', 'test', )
+    '''
 
     def test_get_sender_instance(self, mocker: MockerFixture) -> None:
         url = 'Endpoint=sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789='
@@ -80,7 +82,7 @@ class TestAsyncServiceBusHandler:
 
         handler = AsyncServiceBusHandler('asdf-asdf-asdf')
 
-        sender = handler.get_sender_instance(client, 'queue:test-queue')
+        sender = handler.get_sender_instance(client, handler.get_arguments('sender', 'queue:test-queue'))
         assert isinstance(sender, ServiceBusSender)
         assert topic_spy.call_count == 0
         assert queue_spy.call_count == 1
@@ -88,7 +90,7 @@ class TestAsyncServiceBusHandler:
         assert len(kwargs) == 1
         assert kwargs.get('queue_name', None) == 'test-queue'
 
-        sender = handler.get_sender_instance(client, 'topic:test-topic')
+        sender = handler.get_sender_instance(client, handler.get_arguments('sender', 'topic:test-topic'))
         assert isinstance(sender, ServiceBusSender)
         assert queue_spy.call_count == 1
         assert topic_spy.call_count == 1
@@ -108,7 +110,7 @@ class TestAsyncServiceBusHandler:
 
         handler = AsyncServiceBusHandler('asdf-asdf-asdf')
 
-        receiver = handler.get_receiver_instance(client, 'queue:test-queue')
+        receiver = handler.get_receiver_instance(client, handler.get_arguments('receiver', 'queue:test-queue'))
         assert isinstance(receiver, ServiceBusReceiver)
         assert topic_spy.call_count == 0
         assert queue_spy.call_count == 1
@@ -116,7 +118,7 @@ class TestAsyncServiceBusHandler:
         assert len(kwargs) == 1
         assert kwargs.get('queue_name', None) == 'test-queue'
 
-        handler.get_receiver_instance(client, 'queue:test-queue', 100)
+        handler.get_receiver_instance(client, dict({'wait': '100'}, **handler.get_arguments('receiver', 'queue:test-queue')))
         assert topic_spy.call_count == 0
         assert queue_spy.call_count == 2
         _, kwargs = queue_spy.call_args_list[-1]
@@ -124,7 +126,7 @@ class TestAsyncServiceBusHandler:
         assert kwargs.get('queue_name', None) == 'test-queue'
         assert kwargs.get('max_wait_time', None) == 100
 
-        receiver = handler.get_receiver_instance(client, 'topic:test-topic, subscription:test-subscription')
+        receiver = handler.get_receiver_instance(client, handler.get_arguments('receiver', 'topic:test-topic, subscription: test-subscription'))
         assert topic_spy.call_count == 1
         assert queue_spy.call_count == 2
         _, kwargs = topic_spy.call_args_list[-1]
@@ -132,7 +134,7 @@ class TestAsyncServiceBusHandler:
         assert kwargs.get('topic_name', None) == 'test-topic'
         assert kwargs.get('subscription_name', None) == 'test-subscription'
 
-        receiver = handler.get_receiver_instance(client, 'topic:test-topic, subscription:test-subscription', 100)
+        receiver = handler.get_receiver_instance(client, dict({'wait': '100'}, **handler.get_arguments('receiver', 'topic:test-topic, subscription:test-subscription')))
         assert topic_spy.call_count == 2
         assert queue_spy.call_count == 2
         _, kwargs = topic_spy.call_args_list[-1]
@@ -196,7 +198,7 @@ class TestAsyncServiceBusHandler:
         args, _ = sender_instance_spy.call_args_list[0]
         assert len(args) == 2
         assert args[0] is handler.client
-        assert args[1] == 'queue:test-queue'
+        assert args[1] == {'endpoint_type': 'queue', 'endpoint': 'test-queue'}
 
         assert handler._sender_cache.get('queue:test-queue', None) is not None
         assert handler._receiver_cache == {}
@@ -226,10 +228,9 @@ class TestAsyncServiceBusHandler:
         assert receiver_instance_spy.return_value.__enter__.call_count == 1
 
         args, _ = receiver_instance_spy.call_args_list[0]
-        assert len(args) == 3
+        assert len(args) == 2
         assert args[0] is handler.client
-        assert args[1] == 'topic:test-topic, subscription:test-subscription'
-        assert args[2] == 10
+        assert args[1] == {'endpoint_type': 'topic', 'endpoint': 'test-topic', 'subscription': 'test-subscription', 'wait': '10'}
 
         assert handler._sender_cache.get('queue:test-queue', None) is not None
         assert handler._receiver_cache.get('topic:test-topic, subscription:test-subscription', None) is not None
@@ -251,12 +252,27 @@ class TestAsyncServiceBusHandler:
         from grizzly_extras.async_message.sb import handlers
 
         handler = AsyncServiceBusHandler(worker='asdf-asdf-asdf')
-        sender_instance_spy = mocker.patch.object(handler, 'get_sender_instance', autospec=True)
-        receiver_instance_spy = mocker.patch.object(handler, 'get_receiver_instance', autospec=True)
+        sender_instance_mock = mocker.patch.object(handler, 'get_sender_instance')
+        receiver_instance_mock = mocker.patch.object(handler, 'get_receiver_instance')
 
         request: AsyncMessageRequest = {
             'action': 'SEND',
         }
+
+        def setup_handler(handler: AsyncServiceBusHandler, request: AsyncMessageRequest) -> None:
+            handler._arguments.update({
+                f'{request["context"]["connection"]}={request["context"]["endpoint"]}': handler.get_arguments(
+                    request['context']['connection'],
+                    request['context']['endpoint'],
+                )
+            })
+
+            endpoint = request['context']['endpoint']
+
+            if request['context']['connection'] == 'sender':
+                handler._sender_cache[endpoint] = sender_instance_mock.return_value
+            else:
+                handler._receiver_cache[endpoint] = receiver_instance_mock.return_value
 
         with pytest.raises(AsyncMessageError) as ame:
             handlers[request['action']](handler, request)
@@ -283,21 +299,24 @@ class TestAsyncServiceBusHandler:
 
         with pytest.raises(AsyncMessageError) as ame:
             handlers[request['action']](handler, request)
+        assert 'no HELLO received for queue:test-queue' in str(ame)
+
+        setup_handler(handler, request)
+
+        with pytest.raises(AsyncMessageError) as ame:
+            handlers[request['action']](handler, request)
         assert 'no payload' in str(ame)
 
         request['payload'] = 'grizzly <3 service bus'
 
-        with pytest.raises(AsyncMessageError) as ame:
-            handlers[request['action']](handler, request)
-        assert 'no HELLO sent for queue:test-queue' in str(ame)
-
-        handler._sender_cache[request['context']['endpoint']] = sender_instance_spy
+        sender_instance_mock.return_value.send_messages.side_effect = [RuntimeError('unknown error')]
 
         with pytest.raises(AsyncMessageError) as ame:
             handlers[request['action']](handler, request)
-        assert 'failed to send message' in str(ame)
+        assert 'failed to send message: unknown error' in str(ame)
 
-        handler._sender_cache[request['context']['endpoint']] = sender_instance_spy.return_value
+        sender_instance_mock.reset_mock(return_value=True, side_effect=True)
+        setup_handler(handler, request)
 
         response = handlers[request['action']](handler, request)
 
@@ -320,32 +339,29 @@ class TestAsyncServiceBusHandler:
             'endpoint': 'topic:test-topic, subscription:test-subscription',
         })
 
+        setup_handler(handler, request)
+
         with pytest.raises(AsyncMessageError) as ame:
             handlers[request['action']](handler, request)
         assert 'payload not allowed' in str(ame)
 
         del request['payload']
 
-        with pytest.raises(AsyncMessageError) as ame:
-            handlers[request['action']](handler, request)
-        assert 'no HELLO sent for topic:test-topic, subscription:test-subscription' in str(ame)
-
         received_message = ServiceBusMessage('grizzly >3 service bus')
-
-        receiver_instance_spy.return_value.next.side_effect = [StopIteration, received_message]
-        handler._receiver_cache[request['context']['endpoint']] = receiver_instance_spy.return_value
+        receiver_instance_mock.return_value.next.side_effect = [StopIteration, received_message]
+        handler._receiver_cache[request['context']['endpoint']] = receiver_instance_mock.return_value
 
         with pytest.raises(AsyncMessageError) as ame:
             handlers[request['action']](handler, request)
         assert 'no messages on topic:test-topic, subscription:test-subscription' in str(ame)
-        assert receiver_instance_spy.return_value.next.call_count == 1
-        assert receiver_instance_spy.return_value.complete_message.call_count == 0
+        assert receiver_instance_mock.return_value.next.call_count == 1
+        assert receiver_instance_mock.return_value.complete_message.call_count == 0
 
         response = handlers[request['action']](handler, request)
 
-        assert receiver_instance_spy.return_value.next.call_count == 2
-        assert receiver_instance_spy.return_value.complete_message.call_count == 1
-        args, _ = receiver_instance_spy.return_value.complete_message.call_args_list[0]
+        assert receiver_instance_mock.return_value.next.call_count == 2
+        assert receiver_instance_mock.return_value.complete_message.call_count == 1
+        args, _ = receiver_instance_mock.return_value.complete_message.call_args_list[0]
         assert args[0] is received_message
 
         assert len(response) == 3

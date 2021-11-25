@@ -17,6 +17,7 @@ from grizzly.types import RequestMethod
 from grizzly.task import RequestTask, WaitTask
 from grizzly.context import GrizzlyContextScenario
 from grizzly_extras.async_message import AsyncMessageResponse, AsyncMessageError
+from grizzly_extras.transformer import TransformerContentType
 
 from ..fixtures import behave_context, request_task, locust_environment, noop_zmq  # pylint: disable=unused-import
 
@@ -361,5 +362,57 @@ class TestServiceBusUser:
                 'connection': 'receiver',
                 'url': 'sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=',
                 'message_wait': None,
+            }
+        }
+
+        task.method = RequestMethod.RECEIVE
+        task.template = None
+        task.source = None
+        task.response.content_type = TransformerContentType.JSON
+        task.endpoint = f'{task.endpoint}, expression:"$.document[?(@.name=="TPM Report")]'
+
+        mock_recv_json({
+            'worker': 'asdf-asdf-asdf',
+            'success': True,
+            'payload': 'hello',
+            'metadata': {'meta': True},
+            'response_length': 133,
+        })
+
+        user.request(task)
+        assert say_hello_spy.call_count == 4
+        assert send_json_spy.call_count == 3
+        assert request_fire_spy.call_count == 4
+        assert response_event_fire_spy.call_count == 4
+
+        _, kwargs = response_event_fire_spy.call_args_list[3]
+        assert kwargs.get('name', None) == f'{scenario.identifier} {task.name}'
+        assert kwargs.get('request', None) is task
+
+        metadata, payload = kwargs.get('context', (None, None,))
+        assert metadata == {'meta': True}
+        assert payload is 'hello'
+        assert kwargs.get('user', None) is user
+        assert kwargs.get('exception', '') is None
+
+        _, kwargs = request_fire_spy.call_args_list[3]
+        assert kwargs.get('request_type', None) == 'sb:RECV'
+        assert kwargs.get('name', None) == f'{scenario.identifier} {task.name}'
+        assert kwargs.get('response_time', None) >= 0.0
+        assert kwargs.get('response_length', None) == 133
+        assert kwargs.get('context', None) == user._context
+        assert kwargs.get('exception', '') is None
+
+        args, _ = send_json_spy.call_args_list[2]
+        assert args[0] == {
+            'worker': 'asdf-asdf-asdf',
+            'action': 'RECEIVE',
+            'payload': None,
+            'context': {
+                'endpoint': 'queue:test-queue, expression:"$.document[?(@.name=="TPM Report")]',
+                'connection': 'receiver',
+                'url': 'sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=',
+                'message_wait': None,
+                'content_type': 'json',
             }
         }

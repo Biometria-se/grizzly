@@ -73,6 +73,7 @@ from locust.exception import StopUser
 from gevent import sleep as gsleep
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageResponse, AsyncMessageRequest, AsyncMessageError
 from grizzly_extras.arguments import parse_arguments, get_unsupported_arguments
+from grizzly_extras.transformer import TransformerContentType
 
 from ..types import RequestMethod, RequestDirection
 from ..task import RequestTask
@@ -305,9 +306,10 @@ class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
         self.say_hello(request, endpoint)
 
         context = cast(AsyncMessageContext, dict(self.am_context))
-        context.update({
-            'endpoint': endpoint,
-        })
+        context['endpoint'] = endpoint
+
+        if request.response.content_type != TransformerContentType.GUESS:
+            context['content_type'] = request.response.content_type.name.lower()
 
         am_request: AsyncMessageRequest = {
             'action': request.method.name,
