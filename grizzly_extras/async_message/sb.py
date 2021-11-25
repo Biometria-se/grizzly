@@ -8,6 +8,8 @@ from azure.servicebus import ServiceBusClient, ServiceBusMessage, TransportType,
 from azure.servicebus.amqp import AmqpMessageBodyType
 from azure.servicebus.amqp._amqp_message import DictMixin
 
+from grizzly_extras.transformer import TransformerError, transformer, TransformerContentType
+
 from ..arguments import parse_arguments, get_unsupported_arguments
 
 from . import (
@@ -134,41 +136,38 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         return metadata, payload
 
     @classmethod
-    def get_arguments(cls, instance_type: str, endpoint: str) -> Dict[str, str]:
-        try:
-            arguments = parse_arguments(endpoint, ':')
+    def get_endpoint_arguments(cls, instance_type: str, endpoint: str) -> Dict[str, str]:
+        arguments = parse_arguments(endpoint, ':')
 
-            if 'queue' not in arguments and 'topic' not in arguments:
-                raise ValueError('endpoint needs to be prefixed with queue: or topic:')
+        if 'queue' not in arguments and 'topic' not in arguments:
+            raise ValueError('endpoint needs to be prefixed with queue: or topic:')
 
-            if 'queue' in arguments and 'topic' in arguments:
-                raise ValueError('cannot specify both topic: and queue: in endpoint')
+        if 'queue' in arguments and 'topic' in arguments:
+            raise ValueError('cannot specify both topic: and queue: in endpoint')
 
-            endpoint_type = 'topic' if 'topic' in arguments else 'queue'
+        endpoint_type = 'topic' if 'topic' in arguments else 'queue'
 
-            if len(arguments) > 1:
-                if endpoint_type != 'topic' and 'subscription' in arguments:
-                    raise ValueError('argument subscription is only allowed if endpoint is a topic')
+        if len(arguments) > 1:
+            if endpoint_type != 'topic' and 'subscription' in arguments:
+                raise ValueError('argument subscription is only allowed if endpoint is a topic')
 
-                unsupported_arguments = get_unsupported_arguments(['topic', 'queue', 'subscription', 'expression'], arguments)
+            unsupported_arguments = get_unsupported_arguments(['topic', 'queue', 'subscription', 'expression'], arguments)
 
-                if len(unsupported_arguments) > 0:
-                    raise ValueError(f'arguments {", ".join(unsupported_arguments)} is not supported')
+            if len(unsupported_arguments) > 0:
+                raise ValueError(f'arguments {", ".join(unsupported_arguments)} is not supported')
 
-            if endpoint_type == 'topic' and arguments.get('subscription', None) is None and instance_type == 'receiver':
-                raise ValueError('endpoint needs to include subscription when receiving messages from a topic')
+        if endpoint_type == 'topic' and arguments.get('subscription', None) is None and instance_type == 'receiver':
+            raise ValueError('endpoint needs to include subscription when receiving messages from a topic')
 
-            if instance_type == 'sender' and arguments.get('expression', None) is not None:
-                raise ValueError('argument expression is only allowed when receiving messages')
+        if instance_type == 'sender' and arguments.get('expression', None) is not None:
+            raise ValueError('argument expression is only allowed when receiving messages')
 
-            arguments['endpoint_type'] = endpoint_type
-            arguments['endpoint'] = arguments[endpoint_type]
+        arguments['endpoint_type'] = endpoint_type
+        arguments['endpoint'] = arguments[endpoint_type]
 
-            del arguments[endpoint_type]
+        del arguments[endpoint_type]
 
-            return arguments
-        except ValueError as e:
-            raise AsyncMessageError(str(e)) from e
+        return arguments
 
     @register(handlers, 'HELLO')
     def hello(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
@@ -191,7 +190,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         instance_type = context['connection']
         message_wait = context.get('message_wait', None)
 
-        arguments = self.get_arguments(instance_type, endpoint)
+        arguments = self.get_endpoint_arguments(instance_type, endpoint)
         if message_wait is not None and instance_type == 'receiver':
             arguments['wait'] = str(message_wait)
 
@@ -254,32 +253,56 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                 raise AsyncMessageError('payload not allowed')
 
             receiver = self._receiver_cache[endpoint]
-            message_wait = int(arguments.get('wait', 0))
+            message_wait = int(arguments.get('message_wait', str(context.get('message_wait', 0))))
 
             try:
                 wait_start = time()
+                if expression is not None:
+                    content_type = TransformerContentType.from_string(arguments['content_type'])
+                    transform = transformer.available[content_type]
+                    get_values = transform.parser(arguments['expression'])
+
                 while True:
-                    message = cast(ServiceBusMessage, receiver.next())
-                    receiver.complete_message(message)
-
-                    if expression is None:
-                        break
-
-                    metadata, payload = self.from_message(message)
-
-                    # @TODO: use transformer to check payload
-
-                    # return message to endpoint, and see if we should abort
-                    receiver.abandon_message(message)
-
                     wait_now = time()
                     if message_wait > 0 and wait_now - wait_start >= message_wait:
                         raise StopIteration()
+
+                    message = cast(ServiceBusMessage, receiver.next())
+
+                    if expression is None:
+                        receiver.complete_message(message)
+                        break
+
+                    had_error = True
+                    try:
+                        metadata, payload = self.from_message(message)
+
+                        if payload is None:
+                            raise AsyncMessageError('no payload in message')
+
+                        try:
+                            _, transformed_payload = transform.transform(content_type, payload)
+                        except TransformerError as e:
+                            raise AsyncMessageError(e.message)
+
+                        values = get_values(transformed_payload)
+
+                        if len(values) > 0:
+                            receiver.complete_message(message)
+                            had_error = False
+                            break
+                    except:
+                        raise
+                    finally:
+                        if had_error:
+                            receiver.abandon_message(message)
+
             except StopIteration:
                 raise AsyncMessageError(f'no messages on {endpoint}')
 
         if expression is None:
             metadata, payload = self.from_message(message)
+
         response_length = len(payload or '')
 
         return {

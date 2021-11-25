@@ -1,4 +1,4 @@
-from typing import List, Tuple, Any
+from typing import List, Tuple, Any, Dict
 from json import dumps as jsondumps, loads as jsonloads
 from json.decoder import JSONDecodeError
 
@@ -150,7 +150,7 @@ class TestJsonTransformer:
         with pytest.raises(ValueError):
             JsonTransformer.parser('$.')
 
-        example = {
+        example: Dict[str, Any] = {
             'glossary': {
                 'title': 'example glossary',
                 'GlossDiv': {
@@ -213,6 +213,17 @@ class TestJsonTransformer:
         actual = get_values(False)
         assert len(actual) == 1
         assert actual == ['False']
+
+        example = {
+            'document': {
+                'name': 'test',
+                'id': 13,
+            },
+        }
+        get_values = JsonTransformer.parser('$.`this`[?(@.name="test")]')
+        actual = get_values(example)
+
+        assert len(actual) > 0
 
 
 class TestXmlTransformer:

@@ -95,7 +95,16 @@ class JsonTransformer(Transformer):
 
     @classmethod
     def validate(cls, expression: str) -> bool:
-        return expression.startswith('$.') and len(expression) > 2
+        valid = expression.startswith('$.') and len(expression) > 2
+        if not valid:
+            return valid
+
+        try:
+            jsonpath_parse(expression)
+        except:
+            valid = False
+
+        return valid
 
     @classmethod
     def parser(cls, expression: str) -> Callable[[Any], List[str]]:
