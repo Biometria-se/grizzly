@@ -126,7 +126,7 @@ class AtomicMessageQueue(AtomicVariable[str]):
     _zmq_url = 'tcp://127.0.0.1:5554'
     _zmq_context: zmq.Context
 
-    arguments: Dict[str, Any] = {'repeat': bool_typed, 'url': str, 'wait': int}
+    arguments: Dict[str, Any] = {'content_type': str, 'repeat': bool_typed, 'url': str, 'wait': int}
 
     def __init__(self, variable: str, value: str):
         if pymqi.__name__ == 'grizzly_extras.dummy_pymqi':
