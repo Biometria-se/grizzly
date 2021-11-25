@@ -245,7 +245,7 @@ class AtomicMessageQueue(AtomicVariable[str]):
             'key_file': key_file,
             'cert_label': cert_label,
             'ssl_cipher': ssl_cipher,
-            'message_wait': settings.get('wait', None)
+            'message_wait': settings.get('wait', None),
         }
 
     def create_client(self, variable: str, settings: Dict[str, Any]) -> zmq.Socket:
@@ -329,6 +329,9 @@ class AtomicMessageQueue(AtomicVariable[str]):
                 },
                 'payload': None
             }
+            if 'content_type' in self._settings[variable]:
+                request['context']['content_type'] = self._settings[variable]['content_type']
+
 
             self._endpoint_clients[variable].send_json(request)
 
