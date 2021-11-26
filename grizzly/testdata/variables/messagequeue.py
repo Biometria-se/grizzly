@@ -11,10 +11,13 @@ pip3 install grizzly-loadtester[mq]
 
 ## Format
 
+`queue:<queue_name>[, expression:<expression>] | url=<url>, wait=<wait>[, content_type=<content_type>][, repeat=<repeat>]`
+
 Initial value is the name of the queue, prefixed with `queue:`, on the MQ server specified in argument `url`.
+Expression is optional, and can be specified if a message matching specific criteria is to be fetched. The expression format depends on
+content type, which needs to be specified as an argument (e.g. XPATH expressions are used with `application/xml` content type).
 
-## Arguments
-
+* `content_type` _str_ (optional) - specifies the content type of messages on the queue, needed if expressions are to be used when getting messages
 * `repeat` _bool_ (optional) - if `True`, values read for the queue will be saved in a list and re-used if there are no new messages available
 * `url` _str_ - see format of url below.
 * `wait` _int_ - number of seconds to wait for a message on the queue
