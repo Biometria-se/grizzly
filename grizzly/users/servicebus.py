@@ -231,6 +231,9 @@ class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
             'meta': False,
         }
 
+        if task.response.content_type != TransformerContentType.GUESS:
+            request['context']['content_type'] = task.response.content_type.name.lower()
+
         response: Optional[AsyncMessageResponse] = None
         exception: Optional[Exception] = None
 
@@ -307,9 +310,6 @@ class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
 
         context = cast(AsyncMessageContext, dict(self.am_context))
         context['endpoint'] = endpoint
-
-        if request.response.content_type != TransformerContentType.GUESS:
-            context['content_type'] = request.response.content_type.name.lower()
 
         am_request: AsyncMessageRequest = {
             'action': request.method.name,

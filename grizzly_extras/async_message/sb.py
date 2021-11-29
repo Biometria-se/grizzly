@@ -19,6 +19,7 @@ from . import (
     AsyncMessageResponse,
     AsyncMessageError,
     register,
+    logger,
 )
 
 __all__ = [
@@ -258,9 +259,12 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             try:
                 wait_start = time()
                 if expression is not None:
-                    content_type = TransformerContentType.from_string(arguments['content_type'])
-                    transform = transformer.available[content_type]
-                    get_values = transform.parser(arguments['expression'])
+                    try:
+                        content_type = TransformerContentType.from_string(cast(str, request.get('context', {})['content_type']))
+                        transform = transformer.available[content_type]
+                        get_values = transform.parser(arguments['expression'])
+                    except Exception as e:
+                        raise AsyncMessageError(str(e)) from e
 
                 while True:
                     wait_now = time()
@@ -283,6 +287,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                         try:
                             _, transformed_payload = transform.transform(content_type, payload)
                         except TransformerError as e:
+                            logger.error(payload)
                             raise AsyncMessageError(e.message)
 
                         values = get_values(transformed_payload)
