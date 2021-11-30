@@ -3,7 +3,6 @@ import subprocess
 from os import environ
 from typing import Optional, Callable, cast
 from json import dumps as jsondumps
-from unittest.mock import MagicMock
 
 import pytest
 import zmq
