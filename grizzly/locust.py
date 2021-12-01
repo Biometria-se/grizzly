@@ -412,8 +412,7 @@ def run(context: Context) -> int:
                 logger.info(f'stopping {external_dependency}')
                 external_process.terminate()
                 if context.config.verbose:
-                    stdout, _ = external_process.communicate()
-                    logger.debug(stdout.decode())
+                    external_process.communicate()
                     logger.debug(f'{external_process.returncode=}')
 
             external_processes.clear()
