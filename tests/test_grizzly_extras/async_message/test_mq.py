@@ -10,7 +10,7 @@ from pytest_mock.plugin import MockerFixture
 
 from grizzly_extras.async_message import AsyncMessageRequest, AsyncMessageError
 from grizzly_extras.async_message.mq import AsyncMessageQueueHandler
-
+from grizzly_extras.transformer import transformer, TransformerContentType
 
 try:
     import pymqi
@@ -47,6 +47,13 @@ class TestAsyncMessageQueueHandler:
     def test___init__(self) -> None:
         handler = AsyncMessageQueueHandler(worker='asdf-asdf-asdf')
         assert handler.worker == 'asdf-asdf-asdf'
+
+        # pymqi check
+        tmp = pymqi.__name__
+        pymqi.__name__ = 'grizzly_extras.dummy_pymqi'
+        with pytest.raises(NotImplementedError):
+            handler = AsyncMessageQueueHandler(worker='asdf-asdf-asdf')
+        pymqi.__name__ = tmp
 
     def test_queue_context(self, mocker: MockerFixture) -> None:
         handler = AsyncMessageQueueHandler(worker='asdf-asdf-asdf')
@@ -361,6 +368,7 @@ class TestAsyncMessageQueueHandler:
 
         # Mocked representation of pymqi Queue
         class DummyQueue(object):
+            raise_error: bool = False
             def __init__(self) -> None:
                 self.msg_ix = 0
 
@@ -368,6 +376,9 @@ class TestAsyncMessageQueueHandler:
                 pass
 
             def get(self, foo: Any, md: pymqi.MD, gmo: pymqi.GMO) -> DummyMessage:
+                if DummyQueue.raise_error:
+                    raise pymqi.MQMIError(pymqi.CMQC.MQCC_FAILED, pymqi.CMQC.MQRC_SSL_INITIALIZATION_ERROR)
+
                 if gmo['MatchOptions'] == pymqi.CMQC.MQMO_MATCH_MSG_ID:
                     # Request for getting specific message
                     return queue_messages[md['MsgId'].decode()]
@@ -425,7 +436,32 @@ class TestAsyncMessageQueueHandler:
         request['context']['endpoint'] = "queue:theendpoint, expression: //singer[@id='NOTEXIST']"
         with pytest.raises(AsyncMessageError) as mqe:
             response = handlers[request['action']](handler, request)
-            assert 'timeout while waiting for matching message' in str(mqe)
+        assert 'timeout while waiting for matching message' in str(mqe)
+
+        # Match no message, and no wait time = exception
+        tmp_wait = request['context']['message_wait']
+        del request['context']['message_wait']
+        request['context']['endpoint'] = "queue:theendpoint, expression: //singer[@id='NOTEXIST']"
+        with pytest.raises(AsyncMessageError) as mqe:
+            response = handlers[request['action']](handler, request)
+        assert 'no matching message found' in str(mqe)
+        request['context']['message_wait'] = tmp_wait
+
+        # Invalid XML
+        tmp_xml = queue_messages['id1'].payload
+        queue_messages['id1'].payload = "xxx"
+        request['context']['endpoint'] = "queue:theendpoint, expression: //singer[@id='3']"
+        with pytest.raises(AsyncMessageError) as mqe:
+            response = handlers[request['action']](handler, request)
+        assert 'failed to transform input as XML' in str(mqe)
+        queue_messages['id1'].payload = tmp_xml
+
+        # Queue.get returning unexpected error
+        DummyQueue.raise_error = True
+        with pytest.raises(AsyncMessageError) as mqe:
+            response = handlers[request['action']](handler, request)
+        assert 'MQI Error. Comp: 2, Reason 2393: FAILED: MQRC_SSL_INITIALIZATION_ERROR' in str(mqe)
+        DummyQueue.raise_error = False
 
         # Test Json
 
@@ -492,6 +528,42 @@ class TestAsyncMessageQueueHandler:
         with pytest.raises(AsyncMessageError) as mqe:
             handlers[request['action']](handler, request)
         assert 'arguments argument is not supported' in str(mqe)
+
+        # invalid content type
+        request['context']['endpoint'] = "queue:theendpoint, expression: $.singers[?(@.id='NOTEXIST')]"
+        request['context']['content_type'] = "garbage"
+        with pytest.raises(ValueError) as mqve:
+            handlers[request['action']](handler, request)
+        assert 'is an unknown response content type' in str(mqve)
+
+        request['context']['content_type'] = "json"
+        json_transformer = transformer.available[TransformerContentType.JSON]
+        del transformer.available[TransformerContentType.JSON]
+
+        with pytest.raises(AsyncMessageError) as mqe:
+            handlers[request['action']](handler, request)
+        assert 'could not find a transformer for JSON' in str(mqe)
+
+        transformer.available.update({TransformerContentType.JSON: json_transformer})
+
+        # invalid expression
+        request['context']['endpoint'] = "queue:theendpoint, expression: json_blah"
+        with pytest.raises(AsyncMessageError) as mqe:
+            handlers[request['action']](handler, request)
+        assert 'unable to parse' in str(mqe)
+
+        # expression with wrong action
+        request = {
+            'action': 'PUT',
+            'context': {
+                'endpoint': 'queue:TEST.QUEUE, expression: $.singers',
+            },
+            'payload': 'test payload'
+        }
+        with pytest.raises(AsyncMessageError) as mqe:
+            handler._request(request)
+        assert 'argument expression is not allowed for action' in str(mqe)
+
 
     def test_put(self, mocker: MockerFixture) -> None:
         def mocked_request(i: AsyncMessageQueueHandler, request: AsyncMessageRequest) -> AsyncMessageRequest:

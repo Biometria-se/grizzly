@@ -132,8 +132,8 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
 
         try:
             get_values = transform.parser(expression)
-        except TransformerError as e:
-            raise AsyncMessageError(e.message)
+        except Exception as e:
+            raise AsyncMessageError(str(e))
 
         with self.queue_context(endpoint=queue_name, browsing=True) as browse_queue:
             # Check the queue over and over again until timeout, if nothing was found
@@ -173,6 +173,8 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                 cur_time = time()
                 if message_wait is not None and cur_time - start_time >= message_wait:
                     raise AsyncMessageError('timeout while waiting for matching message')
+                elif message_wait is None:
+                    return None
                 else:
                     logger.debug(f'_find_message: no matching message found, trying again after some sleep')
                     sleep(0.5)

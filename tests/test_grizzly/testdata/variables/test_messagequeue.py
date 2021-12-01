@@ -57,6 +57,12 @@ def test_atomicmessagequeue__base_type__() -> None:
         )
     assert "invalid literal for int() with base 10: 'asdf'" in str(ve)
 
+    with pytest.raises(ValueError) as ve:
+        atomicmessagequeue__base_type__(
+            'kurt:TEST.QUEUE|url="mq://mq.example.com/?QueueManager=QM1&Channel=SRV.CONN", repeat=True, wait=20',
+        )
+    assert 'AtomicMessageQueue: queue name must be prefixed with queue:' in str(ve)
+
     safe_value = atomicmessagequeue__base_type__(
         'queue:TEST.QUEUE|url="mq://mq.example.com/?QueueManager=QM1&Channel=SRV.CONN", repeat=True, wait=20',
     )
@@ -451,6 +457,17 @@ class TestAtomicMessageQueue:
             assert v['test'] == jsondumps({'test': {'result': 'hello world'}})
             assert len(v._endpoint_messages['test']) == 1
             assert v._endpoint_messages['test'][0] == jsondumps({'test': {'result': 'hello world'}})
+
+            send_json_spy = mocker.spy(zmq.sugar.socket.Socket, 'send_json')
+            v._settings['test']['content_type'] = 'xml'
+            v['test']
+            send_json_spy.assert_called_once()
+            arg_in = send_json_spy.call_args_list[0][0][1]
+            assert 'context' in arg_in
+            assert 'content_type' in arg_in['context']
+            assert arg_in['context']['content_type'] == 'xml'
+            send_json_spy.reset_mock()
+
         finally:
             try:
                 AtomicMessageQueue.destroy()

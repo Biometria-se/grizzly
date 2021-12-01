@@ -11,10 +11,13 @@ pip3 install grizzly-loadtester[mq]
 
 ## Format
 
+`queue:<queue_name>[, expression:<expression>] | url=<url>, wait=<wait>[, content_type=<content_type>][, repeat=<repeat>]`
+
 Initial value is the name of the queue, prefixed with `queue:`, on the MQ server specified in argument `url`.
+Expression is optional, and can be specified if a message matching specific criteria is to be fetched. The expression format depends on
+content type, which needs to be specified as an argument (e.g. XPATH expressions are used with `application/xml` content type).
 
-## Arguments
-
+* `content_type` _str_ (optional) - specifies the content type of messages on the queue, needed if expressions are to be used when getting messages
 * `repeat` _bool_ (optional) - if `True`, values read for the queue will be saved in a list and re-used if there are no new messages available
 * `url` _str_ - see format of url below.
 * `wait` _int_ - number of seconds to wait for a message on the queue
@@ -46,6 +49,16 @@ And value of variable "AtomicMessageQueue.document_id" is "queue:IN.DOCUMENTS | 
 Given a user of type "RestApi" load testing "http://example.com"
 ...
 Then get request "fetch-document" from "/api/v1/document/{{ AtomicMessageQueue.document_id }}"
+
+### Using expression to get specific message
+
+And value of variable "AtomicMessageQueue.document_id" is "queue:IN.DOCUMENTS, expression:'//DocumentReference[text()='123abc']' | wait=120, url='mqs://mq_subscription:$conf::mq.password@mq.example.com/?QueueManager=QM1&Channel=SRV.CONN', repeat=True"
+And set response content type to "application/xml"
+...
+Given a user of type "RestApi" load testing "http://example.com"
+...
+Then get request "fetch-document" from "/api/v1/document/{{ AtomicMessageQueue.document_id }}"
+
 ```
 
 When the scenario starts `grizzly` will wait up to 120 seconds until `AtomicMessageQueue.document_id` has been populated from a message on the queue `IN.DOCUMENTS`.
@@ -61,6 +74,7 @@ import zmq
 from gevent import sleep as gsleep
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
 from grizzly_extras.arguments import split_value, parse_arguments
+from grizzly_extras.transformer import TransformerContentType
 
 from ...types import bool_typed, AtomicVariable
 from ...context import GrizzlyContext
@@ -126,7 +140,7 @@ class AtomicMessageQueue(AtomicVariable[str]):
     _zmq_url = 'tcp://127.0.0.1:5554'
     _zmq_context: zmq.Context
 
-    arguments: Dict[str, Any] = {'repeat': bool_typed, 'url': str, 'wait': int}
+    arguments: Dict[str, Any] = {'content_type': TransformerContentType.from_string, 'repeat': bool_typed, 'url': str, 'wait': int}
 
     def __init__(self, variable: str, value: str):
         if pymqi.__name__ == 'grizzly_extras.dummy_pymqi':
@@ -245,7 +259,7 @@ class AtomicMessageQueue(AtomicVariable[str]):
             'key_file': key_file,
             'cert_label': cert_label,
             'ssl_cipher': ssl_cipher,
-            'message_wait': settings.get('wait', None)
+            'message_wait': settings.get('wait', None),
         }
 
     def create_client(self, variable: str, settings: Dict[str, Any]) -> zmq.Socket:
@@ -329,6 +343,9 @@ class AtomicMessageQueue(AtomicVariable[str]):
                 },
                 'payload': None
             }
+            if 'content_type' in self._settings[variable]:
+                request['context']['content_type'] = self._settings[variable]['content_type'].name.lower()
+
 
             self._endpoint_clients[variable].send_json(request)
 
