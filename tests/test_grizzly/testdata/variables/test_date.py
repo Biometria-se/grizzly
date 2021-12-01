@@ -6,9 +6,10 @@ import gevent
 
 from pytest_mock import MockerFixture
 from pytest_mock.plugin import mocker  # pylint: disable=unused-import
+from dateutil.relativedelta import relativedelta
 
 from grizzly.testdata.variables import AtomicDate
-from grizzly.testdata.variables.date import atomicdate__base_type__
+from grizzly.testdata.variables.date import atomicdate__base_type__, parse_timespan
 
 from ..fixtures import cleanup  # pylint: disable=unused-import
 
@@ -42,6 +43,28 @@ def test_atomicdate__base_type__() -> None:
     with pytest.raises(ValueError) as ve:
         atomicdate__base_type__('now | format="%Y", timezone=NOT_A_VALID_TIMEZONE')
     assert 'unknown timezone' in str(ve)
+
+
+def test_parse_timespan() -> None:
+    assert parse_timespan('133') == {'days': 133}
+    assert parse_timespan('-133') == {'days': -133}
+
+    with pytest.raises(ValueError) as ve:
+        parse_timespan('10P44m')
+    assert 'invalid time span format' in str(ve)
+
+    with pytest.raises(ValueError) as ve:
+        parse_timespan('{}')
+    assert 'invalid time span format' in str(ve)
+
+    assert parse_timespan('1Y-2M3D-4h5m-6s') == {
+        'years': 1,
+        'months': -2,
+        'days': 3,
+        'hours': -4,
+        'minutes': 5,
+        'seconds': -6,
+    }
 
 
 class TestAtomicDate:
@@ -132,6 +155,31 @@ class TestAtomicDate:
 
             with pytest.raises(ValueError):
                 AtomicDate('test', 'now | timezone=ASDF')
+        finally:
+            cleanup()
+
+    @pytest.mark.usefixtures('cleanup')
+    def test_offset(self, cleanup: Callable) -> None:
+        try:
+            expected = (datetime.now() + relativedelta(days=1)).strftime('%Y-%m-%d')
+
+            t = AtomicDate('actual', 'now | format="%Y-%m-%d", offset=1D')
+            assert t['actual'] == expected
+            del t['actual']
+
+            expected = (datetime.now() + relativedelta(years=-10, months=2, days=-2)).strftime('%Y-%m-%d')
+
+            t = AtomicDate('actual', 'now | format="%Y-%m-%d", offset=-10Y2M-2D')
+            assert t['actual'] == expected
+            del t['actual']
+
+            expected = '2017-10-12'
+            t = AtomicDate('actual', '2017-10-26 | format="%Y-%m-%d", offset=-14D')
+            assert t['actual'] == expected
+
+            with pytest.raises(ValueError) as ve:
+                AtomicDate('error', 'now | format="%Y", offset=10L')
+            assert 'invalid time span format' in str(ve)
         finally:
             cleanup()
 
