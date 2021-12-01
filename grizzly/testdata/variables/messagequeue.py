@@ -49,6 +49,16 @@ And value of variable "AtomicMessageQueue.document_id" is "queue:IN.DOCUMENTS | 
 Given a user of type "RestApi" load testing "http://example.com"
 ...
 Then get request "fetch-document" from "/api/v1/document/{{ AtomicMessageQueue.document_id }}"
+
+# Using expression to get specific document by text value of "DocumentReference"
+
+And value of variable "AtomicMessageQueue.document_id" is "queue:IN.DOCUMENTS, expression:'//DocumentReference[text()='123abc']' | wait=120, url='mqs://mq_subscription:$conf::mq.password@mq.example.com/?QueueManager=QM1&Channel=SRV.CONN', repeat=True"
+And set response content type to "application/xml"
+...
+Given a user of type "RestApi" load testing "http://example.com"
+...
+Then get request "fetch-document" from "/api/v1/document/{{ AtomicMessageQueue.document_id }}"
+
 ```
 
 When the scenario starts `grizzly` will wait up to 120 seconds until `AtomicMessageQueue.document_id` has been populated from a message on the queue `IN.DOCUMENTS`.
@@ -64,6 +74,7 @@ import zmq
 from gevent import sleep as gsleep
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
 from grizzly_extras.arguments import split_value, parse_arguments
+from grizzly_extras.transformer import TransformerContentType
 
 from ...types import bool_typed, AtomicVariable
 from ...context import GrizzlyContext
@@ -129,7 +140,7 @@ class AtomicMessageQueue(AtomicVariable[str]):
     _zmq_url = 'tcp://127.0.0.1:5554'
     _zmq_context: zmq.Context
 
-    arguments: Dict[str, Any] = {'content_type': str, 'repeat': bool_typed, 'url': str, 'wait': int}
+    arguments: Dict[str, Any] = {'content_type': TransformerContentType.from_string, 'repeat': bool_typed, 'url': str, 'wait': int}
 
     def __init__(self, variable: str, value: str):
         if pymqi.__name__ == 'grizzly_extras.dummy_pymqi':
@@ -333,7 +344,7 @@ class AtomicMessageQueue(AtomicVariable[str]):
                 'payload': None
             }
             if 'content_type' in self._settings[variable]:
-                request['context']['content_type'] = self._settings[variable]['content_type']
+                request['context']['content_type'] = self._settings[variable]['content_type'].name.lower()
 
 
             self._endpoint_clients[variable].send_json(request)
