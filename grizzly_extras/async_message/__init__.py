@@ -75,8 +75,8 @@ class AsyncMessageHandler(ABC):
     def handle(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
         action = request['action']
         request_handler = self.get_handler(action)
-        logger.debug(f'handling {action}')
-        logger.debug(jsondumps(request, indent=2, cls=JsonBytesEncoder))
+        logger.debug(f'{self.worker}: handling {action}')
+        logger.debug(f'{self.worker}: {jsondumps(request, indent=2, cls=JsonBytesEncoder)}')
 
         response: AsyncMessageResponse
 
@@ -93,6 +93,7 @@ class AsyncMessageHandler(ABC):
                 'success': False,
                 'message': f'{action}: {e.__class__.__name__}="{str(e)}"',
             }
+            logger.error(f'{self.worker}: {action}: {e.__class__.__name__}="{str(e)}"', exc_info=True)
         finally:
             total_time = int((time() - start_time) * 1000)
             response.update({
@@ -100,8 +101,8 @@ class AsyncMessageHandler(ABC):
                 'response_time': total_time,
             })
 
-            logger.debug(f'handled {action}')
-            logger.debug(jsondumps(response, indent=2, cls=JsonBytesEncoder))
+            logger.debug(f'{self.worker}: handled {action}')
+            logger.debug(f'{self.worker}: {jsondumps(response, indent=2, cls=JsonBytesEncoder)}')
 
             return response
 

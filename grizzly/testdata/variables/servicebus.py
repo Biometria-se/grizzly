@@ -15,6 +15,9 @@ type. When receiving messages from a topic, the argument `subscription:` is mand
 Where `<expression>` can be a XPath or jsonpath expression, depending on the specified content type. This argument is only allowed when
 receiving messages. See example below.
 
+> **Warning**: Do not use `expression` to filter messages unless you do not care about the messages that does not match the expression. If
+> you do care about them, you should setup a subscription to do the filtering in Azure.
+
 Arguments support templating for their value, but not the complete endpoint value.
 
 Examples:
@@ -305,7 +308,16 @@ class AtomicServiceBus(AtomicVariable[str]):
 
     def say_hello(self, client: zmq.Socket, variable: str) -> None:
         settings = self._settings[variable]
-        context = settings['context']
+        context = cast(AsyncMessageContext, dict(settings['context']))
+
+        endpoint_arguments = parse_arguments(context['endpoint'], ':')
+        try:
+            del endpoint_arguments['expression']
+        except:
+            pass
+
+        cache_endpoint = ', '.join([f'{key}:{value}' for key, value in endpoint_arguments.items()])
+        context['endpoint'] = cache_endpoint
 
         if settings.get('worker', None) is not None:
             return

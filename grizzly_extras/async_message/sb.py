@@ -1,7 +1,7 @@
 import logging
 
 from typing import Any, Callable, Dict, Optional, Union, Tuple, Iterable, cast
-from time import monotonic as time
+from time import monotonic as time, sleep
 from mypy_extensions import VarArg, KwArg
 
 from azure.servicebus import ServiceBusClient, ServiceBusMessage, TransportType, ServiceBusSender, ServiceBusReceiver
@@ -224,25 +224,34 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
         instance_type = context.get('connection', None)
         endpoint = context['endpoint']
+        endpoint_arguments = parse_arguments(endpoint, ':')
+        request_arguments = dict(endpoint_arguments)
 
-        message: ServiceBusMessage
+        try:
+            del endpoint_arguments['expression']
+        except:
+            pass
+
+        cache_endpoint = ', '.join([f'{key}:{value}' for key, value in endpoint_arguments.items()])
+
+        message: Optional[ServiceBusMessage] = None
         metadata: Optional[Dict[str, Any]] = None
         payload = request.get('payload', None)
 
         if instance_type not in ['receiver', 'sender']:
             raise AsyncMessageError(f'"{instance_type}" is not a valid value for context.connection')
 
-        arguments = self._arguments.get(f'{instance_type}={endpoint}', None)
+        arguments = self._arguments.get(f'{instance_type}={cache_endpoint}', None)
 
         if arguments is None:
-            raise AsyncMessageError(f'no HELLO received for {endpoint}')
+            raise AsyncMessageError(f'no HELLO received for {cache_endpoint}')
 
-        expression = arguments.get('expression', None)
+        expression = request_arguments.get('expression', None)
 
         if instance_type == 'sender':
             if payload is None:
                 raise AsyncMessageError('no payload')
-            sender = self._sender_cache[endpoint]
+            sender = self._sender_cache[cache_endpoint]
             message = ServiceBusMessage(payload)
 
             try:
@@ -253,8 +262,8 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             if payload is not None:
                 raise AsyncMessageError('payload not allowed')
 
-            receiver = self._receiver_cache[endpoint]
-            message_wait = int(arguments.get('message_wait', str(context.get('message_wait', 0))))
+            receiver = self._receiver_cache[cache_endpoint]
+            message_wait = int(request_arguments.get('message_wait', str(context.get('message_wait', 0))))
 
             try:
                 wait_start = time()
@@ -262,18 +271,17 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                     try:
                         content_type = TransformerContentType.from_string(cast(str, request.get('context', {})['content_type']))
                         transform = transformer.available[content_type]
-                        get_values = transform.parser(arguments['expression'])
+                        get_values = transform.parser(request_arguments['expression'])
                     except Exception as e:
                         raise AsyncMessageError(str(e)) from e
 
-                while True:
-                    wait_now = time()
-                    if message_wait > 0 and wait_now - wait_start >= message_wait:
-                        raise StopIteration()
+                for received_message in receiver:
+                    message = cast(ServiceBusMessage, received_message)
 
-                    message = cast(ServiceBusMessage, receiver.next())
+                    logger.debug(f'{self.worker}: got message id: {message.message_id}')
 
                     if expression is None:
+                        logger.debug(f'{self.worker}: completing message id: {message.message_id}')
                         receiver.complete_message(message)
                         break
 
@@ -287,12 +295,15 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                         try:
                             _, transformed_payload = transform.transform(content_type, payload)
                         except TransformerError as e:
-                            logger.error(payload)
+                            logger.error(f'{self.worker}: {payload}')
                             raise AsyncMessageError(e.message)
 
                         values = get_values(transformed_payload)
 
+                        logger.debug(f'{self.worker}: expression={request_arguments["expression"]}, matches={values}, payload={transformed_payload}')
+
                         if len(values) > 0:
+                            logger.debug(f'{self.worker}: completing message id: {message.message_id}, with expression "{request_arguments["expression"]}"')
                             receiver.complete_message(message)
                             had_error = False
                             break
@@ -300,10 +311,26 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                         raise
                     finally:
                         if had_error:
-                            receiver.abandon_message(message)
+                            if message is not None:
+                                logger.debug(f'{self.worker}: abandoning message id: {message.message_id}, {message._raw_amqp_message.header.delivery_count}')
+                                receiver.abandon_message(message)
+                                message = None
+
+                            wait_now = time()
+                            if message_wait > 0 and wait_now - wait_start >= message_wait:
+                                raise StopIteration()
+
+                            sleep(0.2)
+
+                if message is None:
+                    raise StopIteration()
 
             except StopIteration:
-                raise AsyncMessageError(f'no messages on {endpoint}')
+                error_message = f'no messages on {endpoint}'
+                message = None
+                if message_wait > 0:
+                    error_message = f'{error_message} within {message_wait} seconds'
+                raise AsyncMessageError(error_message)
 
         if expression is None:
             metadata, payload = self.from_message(message)

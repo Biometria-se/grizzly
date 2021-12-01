@@ -168,7 +168,7 @@ class TestServiceBusUser:
                 'message_wait': None,
             }
         }
-        assert args[3] == 'receiver=topic:test-topic'
+        assert args[3] == 'receiver=topic:test-topic, subscription:test-subscription'
 
         # error handling
         task.endpoint = 'test-topic'
@@ -202,7 +202,7 @@ class TestServiceBusUser:
         assert 'endpoint needs to include subscription when receiving messages from a topic' in str(re)
 
         task.method = RequestMethod.SEND
-        task.endpoint = 'topic:test-topic, expression:$.test.result'
+        task.endpoint = 'topic:test-topic2, expression:$.test.result'
         with pytest.raises(RuntimeError) as re:
             user.say_hello(task, task.endpoint)
         assert 'argument expression is only allowed when receiving messages' in str(re)

@@ -219,6 +219,9 @@ def step_task_print_message(context: Context, message: str) -> None:
     grizzly = cast(GrizzlyContext, context.grizzly)
     grizzly.scenario.add_task(PrintTask(message=message))
 
+    if '{{' in message and '}}' in message:
+        grizzly.scenario.orphan_templates.append(message)
+
 
 @then(u'parse "{content}" as "{content_type:ContentType}" and save value of "{expression}" in variable "{variable}"')
 def step_task_transform(context: Context, content: str, content_type: TransformerContentType, expression: str, variable: str) -> None:

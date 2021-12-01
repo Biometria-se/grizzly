@@ -8,6 +8,7 @@ import pytest
 from pytest_mock import MockerFixture, mocker  # pylint: disable=unused-import
 
 from azure.servicebus import ServiceBusMessage, TransportType, ServiceBusClient, ServiceBusSender, ServiceBusReceiver
+from grizzly_extras.arguments import parse_arguments
 from grizzly_extras.async_message import AsyncMessageError, AsyncMessageRequest
 from grizzly_extras.async_message.sb import AsyncServiceBusHandler
 
@@ -374,17 +375,17 @@ class TestAsyncServiceBusHandler:
         del request['payload']
 
         received_message = ServiceBusMessage('grizzly >3 service bus')
-        receiver_instance_mock.return_value.next.side_effect = [StopIteration, received_message]
+        receiver_instance_mock.return_value.__iter__.side_effect = [StopIteration, iter([received_message])]
 
         with pytest.raises(AsyncMessageError) as ame:
             handlers[request['action']](handler, request)
         assert 'no messages on topic:test-topic, subscription:test-subscription' in str(ame)
-        assert receiver_instance_mock.return_value.next.call_count == 1
+        assert receiver_instance_mock.return_value.__iter__.call_count == 1
         assert receiver_instance_mock.return_value.complete_message.call_count == 0
 
         response = handlers[request['action']](handler, request)
 
-        assert receiver_instance_mock.return_value.next.call_count == 2
+        assert receiver_instance_mock.return_value.__iter__.call_count == 2
         assert receiver_instance_mock.return_value.complete_message.call_count == 1
         args, _ = receiver_instance_mock.return_value.complete_message.call_args_list[0]
         assert args[0] is received_message
@@ -420,7 +421,14 @@ class TestAsyncServiceBusHandler:
         }
 
         def setup_handler(handler: AsyncServiceBusHandler, request: AsyncMessageRequest) -> None:
-            key = f'{request["context"]["connection"]}={request["context"]["endpoint"]}'
+            endpoint_arguments = parse_arguments(request['context']['endpoint'], ':')
+            try:
+                del endpoint_arguments['expression']
+            except:
+                pass
+            cache_endpoint = ', '.join([f'{key}:{value}' for key, value in endpoint_arguments.items()])
+
+            key = f'{request["context"]["connection"]}={cache_endpoint}'
             handler._arguments.update({
                 key: handler.get_endpoint_arguments(
                     request['context']['connection'],
@@ -429,10 +437,7 @@ class TestAsyncServiceBusHandler:
             })
 
             handler._arguments[key]['content_type'] = cast(str, request['context']['content_type'])
-
-            endpoint = request['context']['endpoint']
-
-            handler._receiver_cache[endpoint] = receiver_instance_mock.return_value
+            handler._receiver_cache[cache_endpoint] = receiver_instance_mock.return_value
 
         setup_handler(handler, request)
         message1 = ServiceBusMessage(jsondumps({
@@ -447,14 +452,13 @@ class TestAsyncServiceBusHandler:
                 'id': 13,
             }
         }))
-        receiver_instance_mock.return_value.next.side_effect = [
-            message1,
-            message2,
+        receiver_instance_mock.return_value.__iter__.side_effect = [
+            iter([message1, message2]),
         ]
 
         response = handlers[request['action']](handler, request)
 
-        assert receiver_instance_mock.return_value.next.call_count == 2
+        assert receiver_instance_mock.return_value.__iter__.call_count == 1
         assert receiver_instance_mock.return_value.complete_message.call_count == 1
         assert receiver_instance_mock.return_value.abandon_message.call_count == 1
 
@@ -480,19 +484,27 @@ class TestAsyncServiceBusHandler:
 
         message_error = ServiceBusMessage('<?xml version="1.0" encoding="UTF-8"?><document/>')
 
-        receiver_instance_mock.return_value.next.side_effect = [
-            message_error,
-        ]
+        receiver_instance_mock.return_value.__iter__.side_effect = [
+            iter([message_error]),
+        ] * 2
 
         with pytest.raises(AsyncMessageError) as ame:
             handlers[request['action']](handler, request)
         assert 'failed to transform input as JSON: Expecting value: line 1 column 1 (char 0)' in str(ame)
         assert receiver_instance_mock.return_value.abandon_message.call_count == 2
 
+        endpoint_backup = request['context']['endpoint']
+        request['context']['endpoint'] = 'queue:test-queue, expression:"//document[@name="test-document"]"'
+        with pytest.raises(AsyncMessageError) as ame:
+            handlers[request['action']](handler, request)
+        assert 'JsonTransformer: unable to parse "//document[@name="test-document"]": JsonTransformer: not a valid expression' in str(ame)
+
+        request['context']['endpoint'] = endpoint_backup
+
         from_message = handler.from_message
         mocker.patch.object(handler, 'from_message', side_effect=[(None, None,)])
-        receiver_instance_mock.return_value.next.side_effect = [
-            message2,
+        receiver_instance_mock.return_value.__iter__.side_effect = [
+            iter([message2]),
         ]
 
         with pytest.raises(AsyncMessageError) as ame:
@@ -503,9 +515,15 @@ class TestAsyncServiceBusHandler:
 
         setattr(handler, 'from_message', from_message)
 
-        receiver_instance_mock.return_value.next.side_effect = [
-            message1,
-            message2,
+        message3 = ServiceBusMessage(jsondumps({
+            'document': {
+                'name': 'not-test',
+                'id': 14,
+            }
+        }))
+
+        receiver_instance_mock.return_value.__iter__.side_effect = [
+            iter([message1, message3]),
         ]
 
         mocker.patch(
@@ -517,7 +535,7 @@ class TestAsyncServiceBusHandler:
             handlers[request['action']](handler, request)
         assert 'no messages on queue:test-queue, expression:"$.`this`[?(@.name="test")]"' in str(ame)
 
-        assert receiver_instance_mock.return_value.abandon_message.call_count == 4
+        assert receiver_instance_mock.return_value.abandon_message.call_count == 5
 
 
     def test_get_handler(self) -> None:

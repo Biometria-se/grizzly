@@ -387,7 +387,9 @@ class TestAtomicServiceBus:
             client = context.socket(zmq.REQ)
 
             v._settings['test2'] = {
-                'context': {},
+                'context': {
+                    'endpoint': 'topic:test-topic',
+                },
                 'worker': None,
             }
 
@@ -410,7 +412,9 @@ class TestAtomicServiceBus:
             assert args[0] == {
                 'worker': None,
                 'action': 'HELLO',
-                'context': {},
+                'context': {
+                    'endpoint': 'topic:test-topic',
+                },
             }
             assert v._settings['test2'].get('worker', '') is None
 

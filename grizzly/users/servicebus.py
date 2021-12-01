@@ -2,6 +2,9 @@
 
 > **Note**: If `message.wait` is not set, `azure.servicebus` will wait until there is a message available, and hence block the scenario.
 
+> **Warning**: Do not use `expression` to filter messages unless you do not care about the messages that does not match the expression. If
+> you do care about them, you should setup a subscription to do the filtering in Azure.
+
 User is based on `azure.servicebus` for communicating with Azure Service Bus. But creating a connection and session towards a queue or a topic
 is a costly operation, and caching of the session was causing problems with `gevent` due to the sockets blocking and hence locust/grizzly was
 blocking when finished. To get around this, the user implementation communicates with a stand-alone process via zmq, which in turn communicates
@@ -161,20 +164,28 @@ class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
             return
 
         connection = 'sender' if task.method.direction == RequestDirection.TO else 'receiver'
-        if ',' in endpoint:
-            name = endpoint.split(',', 1)[0]
-        else:
-            name = endpoint
 
-        description = f'{connection}={endpoint}'
-        name = f'{connection}={name.strip()}'
+        try:
+            arguments = parse_arguments(endpoint, ':')
+        except ValueError as e:
+            raise RuntimeError(str(e)) from e
+        endpoint_arguments = dict(arguments)
+
+        try:
+            del endpoint_arguments['expression']
+        except:
+            pass
+
+        cache_endpoint = ', '.join([f'{key}:{value}' for key, value in endpoint_arguments.items()])
+
+        description = f'{connection}={cache_endpoint}'
 
         if description in self.hellos:
             return
 
         context = cast(AsyncMessageContext, dict(self.am_context))
         context.update({
-            'endpoint': endpoint,
+            'endpoint': cache_endpoint,
         })
 
         request: AsyncMessageRequest = {
@@ -183,16 +194,11 @@ class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
             'context': context,
         }
 
-        with self.async_action(task, request, name) as metadata:
+        with self.async_action(task, request, description) as metadata:
             metadata.update({
                 'meta': True,
                 'abort': True,
             })
-
-            try:
-                arguments = parse_arguments(endpoint, ':')
-            except ValueError as e:
-                raise RuntimeError(str(e)) from e
 
             if 'queue' not in arguments and 'topic' not in arguments:
                 raise RuntimeError('endpoint needs to be prefixed with queue: or topic:')
@@ -223,6 +229,8 @@ class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
 
     @contextmanager
     def async_action(self, task: RequestTask, request: AsyncMessageRequest, name: str) -> Generator[Dict[str, bool], None, None]:
+        if len(name) > 65:
+            name = f'{name[:65]}...'
         request.update({'worker': self.worker_id})
         connection = 'sender' if task.method.direction == RequestDirection.TO else 'receiver'
         request['context'].update({'connection': connection})
