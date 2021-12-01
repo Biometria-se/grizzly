@@ -50,7 +50,7 @@ Given a user of type "RestApi" load testing "http://example.com"
 ...
 Then get request "fetch-document" from "/api/v1/document/{{ AtomicMessageQueue.document_id }}"
 
-# Using expression to get specific document by text value of "DocumentReference"
+### Using expression to get specific message
 
 And value of variable "AtomicMessageQueue.document_id" is "queue:IN.DOCUMENTS, expression:'//DocumentReference[text()='123abc']' | wait=120, url='mqs://mq_subscription:$conf::mq.password@mq.example.com/?QueueManager=QM1&Channel=SRV.CONN', repeat=True"
 And set response content type to "application/xml"
