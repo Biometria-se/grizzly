@@ -15,6 +15,7 @@ from grizzly.testdata.variables import AtomicMessageQueue
 from grizzly.testdata.variables.messagequeue import atomicmessagequeue__base_type__
 from grizzly.context import GrizzlyContext
 from grizzly_extras.async_message import AsyncMessageResponse
+from grizzly_extras.transformer import TransformerContentType
 
 try:
     import pymqi
@@ -459,7 +460,7 @@ class TestAtomicMessageQueue:
             assert v._endpoint_messages['test'][0] == jsondumps({'test': {'result': 'hello world'}})
 
             send_json_spy = mocker.spy(zmq.sugar.socket.Socket, 'send_json')
-            v._settings['test']['content_type'] = 'xml'
+            v._settings['test']['content_type'] = TransformerContentType.XML
             v['test']
             send_json_spy.assert_called_once()
             arg_in = send_json_spy.call_args_list[0][0][1]

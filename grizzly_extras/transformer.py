@@ -95,7 +95,16 @@ class JsonTransformer(Transformer):
 
     @classmethod
     def validate(cls, expression: str) -> bool:
-        return expression.startswith('$.') and len(expression) > 2
+        valid = expression.startswith('$.') and len(expression) > 2
+        if not valid:
+            return valid
+
+        try:
+            jsonpath_parse(expression)
+        except:
+            valid = False
+
+        return valid
 
     @classmethod
     def parser(cls, expression: str) -> Callable[[Any], List[str]]:
@@ -108,7 +117,7 @@ class JsonTransformer(Transformer):
             def get_values(input_payload: Any) -> List[str]:
                 values: List[str] = []
                 for m in jsonpath.find(input_payload):
-                    if m.value is None:
+                    if m is None or m.value is None:
                         continue
 
                     if isinstance(m.value, (dict, list, )):

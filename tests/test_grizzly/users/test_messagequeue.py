@@ -426,8 +426,14 @@ class TestMessageQueueUser:
         )
 
         mocker.patch(
+            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.disconnect',
+            side_effect=[zmq.ZMQError] * 10,
+        )
+
+        mocker.patch(
             'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
             side_effect=[
+                zmq.Again,
                 {
                     'success': True,
                     'worker': '0000-1337',
@@ -581,7 +587,7 @@ class TestMessageQueueUser:
         user.request(request)
         assert send_json_spy.call_count == 1
         args, _ = send_json_spy.call_args_list[0]
-        ctx : Dict[str, str] = args[1]['context']
+        ctx: Dict[str, str] = args[1]['context']
         assert ctx['endpoint'] == request.endpoint
 
         # Test with specifying queue: prefix as endpoint
@@ -599,6 +605,7 @@ class TestMessageQueueUser:
         args, _ = send_json_spy.call_args_list[2]
         ctx = args[1]['context']
         assert ctx['endpoint'] == request.endpoint
+
 
         # Test specifying queue: prefix with expression, and spacing
         request.endpoint = 'queue: IFKTEST2  , expression: /class/student[marks>85]'
@@ -621,7 +628,33 @@ class TestMessageQueueUser:
         with pytest.raises(StopUser):
             user.request(request)
 
+        # Test with expression argument but wrong method
+        request.endpoint = 'queue:IFKTEST3, expression:/class/student[marks<55]'
+        request.method = RequestMethod.PUT
+
+        with pytest.raises(StopUser):
+            user.request(request)
+
+        assert response_event_spy.call_count == 7
         assert send_json_spy.call_count == 5
+        _, kwargs = response_event_spy.call_args_list[6]
+        exception = kwargs.get('exception', None)
+        assert isinstance(exception, RuntimeError)
+        assert str(exception) == 'argument "expression" is not allowed when sending to an endpoint'
+
+        # Test with empty queue name
+        request.endpoint = 'queue:, expression:/class/student[marks<55]'
+        request.method = RequestMethod.GET
+
+        with pytest.raises(StopUser):
+            user.request(request)
+
+        assert response_event_spy.call_count == 8
+        assert send_json_spy.call_count == 5
+        _, kwargs = response_event_spy.call_args_list[7]
+        exception = kwargs.get('exception', None)
+        assert isinstance(exception, RuntimeError)
+        assert str(exception) == f'invalid value for argument "queue"'
 
         send_json_spy.reset_mock()
         request_event_spy.reset_mock()

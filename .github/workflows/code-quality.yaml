@@ -2,8 +2,8 @@ name: code quality
 
 on:
   pull_request:
-    types: [opened, synchronize]
-  workflow_dispatch:
+    branches:
+    - main
 
 jobs:
   code-quality:

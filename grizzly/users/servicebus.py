@@ -2,6 +2,9 @@
 
 > **Note**: If `message.wait` is not set, `azure.servicebus` will wait until there is a message available, and hence block the scenario.
 
+> **Warning**: Do not use `expression` to filter messages unless you do not care about the messages that does not match the expression. If
+> you do care about them, you should setup a subscription to do the filtering in Azure.
+
 User is based on `azure.servicebus` for communicating with Azure Service Bus. But creating a connection and session towards a queue or a topic
 is a costly operation, and caching of the session was causing problems with `gevent` due to the sockets blocking and hence locust/grizzly was
 blocking when finished. To get around this, the user implementation communicates with a stand-alone process via zmq, which in turn communicates
@@ -25,7 +28,14 @@ Format of `host` is the following:
 ```
 
 `endpoint` in the request must have the prefix `queue:` or `topic:` followed by the name of the targeted
-type. If you are going to receive messages from a topic, and additional `subscription:` som follow the specified `topic:`.
+type. When receiving messages from a topic, the argument `subscription:` is mandatory. The format of endpoint is:
+
+```plain
+[queue|topic]:<endpoint name>[, subscription:<subscription name>][, expression:<expression>]
+```
+
+Where `<expression>` can be a XPath or jsonpath expression, depending on the specified content type. This argument is only allowed when
+receiving messages. See example below.
 
 ## Examples
 
@@ -39,6 +49,21 @@ Then send request "topic-send" to endpoint "topic:shared-topic"
 Then receive request "queue-recv" from endpoint "queue:shared-queue"
 Then receive request "topic-recv" from endpoint "topic:shared-topic, subscription:my-subscription"
 ```
+
+### Get message with expression
+
+When specifying an expression, the messages on the endpoint is first peeked on. If any message matches the expression, it is later consumed from the
+endpoint. If no matching messages was found when peeking, it is repeated again after a slight delay, up until the specified `message.wait` seconds has
+elapsed. To use expressions, a content type must be specified for the request, e.g. `application/xml`.
+
+```gherkin
+Given a user of type "ServiceBus" load testing "sb://sb.example.com/;SharedAccessKeyName=authorization-key;SharedAccessKey=c2VjcmV0LXN0dWZm"
+And set context variable "message.wait" to "5"
+Then receive request "queue-recv" from endpoint "queue:shared-queue, expression:$.document[?(@.name=='TPM report')].id"
+And set response content type to "application/json"
+Then receive request "topic-recv" from endpoint "topic:shared-topic, subscription:my-subscription, expression:/documents/document[@name='TPM Report']/id/text()"
+And set response content type to "application/xml"
+```
 '''
 from typing import Generator, Dict, Any, Tuple, Optional, Set, cast
 from urllib.parse import urlparse, parse_qs
@@ -50,6 +75,8 @@ import zmq
 from locust.exception import StopUser
 from gevent import sleep as gsleep
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageResponse, AsyncMessageRequest, AsyncMessageError
+from grizzly_extras.arguments import parse_arguments, get_unsupported_arguments
+from grizzly_extras.transformer import TransformerContentType
 
 from ..types import RequestMethod, RequestDirection
 from ..task import RequestTask
@@ -133,24 +160,32 @@ class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
 
     def say_hello(self, task: RequestTask, endpoint: str) -> None:
         if ('{{' in endpoint and '}}' in endpoint) or '$conf' in endpoint or '$env' in endpoint:
-            logger.warning(f'{self.__class__.__name__}: cannot say hello for {task.name} when endpoint ({endpoint}) is a template')
+            logger.warning(f'{self.__class__.__name__}: cannot say hello for {task.name} when endpoint is a template')
             return
 
         connection = 'sender' if task.method.direction == RequestDirection.TO else 'receiver'
-        if ',' in endpoint:
-            name = endpoint.split(',', 1)[0]
-        else:
-            name = endpoint
 
-        description = f'{connection}={endpoint}'
-        name = f'{connection}={name.strip()}'
+        try:
+            arguments = parse_arguments(endpoint, ':')
+        except ValueError as e:
+            raise RuntimeError(str(e)) from e
+        endpoint_arguments = dict(arguments)
+
+        try:
+            del endpoint_arguments['expression']
+        except:
+            pass
+
+        cache_endpoint = ', '.join([f'{key}:{value}' for key, value in endpoint_arguments.items()])
+
+        description = f'{connection}={cache_endpoint}'
 
         if description in self.hellos:
             return
 
         context = cast(AsyncMessageContext, dict(self.am_context))
         context.update({
-            'endpoint': endpoint,
+            'endpoint': cache_endpoint,
         })
 
         request: AsyncMessageRequest = {
@@ -159,16 +194,53 @@ class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
             'context': context,
         }
 
-        with self.async_action(task, request, name, meta=True):
-            pass
+        with self.async_action(task, request, description) as metadata:
+            metadata.update({
+                'meta': True,
+                'abort': True,
+            })
+
+            if 'queue' not in arguments and 'topic' not in arguments:
+                raise RuntimeError('endpoint needs to be prefixed with queue: or topic:')
+
+            if 'queue' in arguments and 'topic' in arguments:
+                raise RuntimeError('cannot specify both topic: and queue: in endpoint')
+
+            endpoint_type = 'topic' if 'topic' in arguments else 'queue'
+
+            if len(arguments) > 1:
+                if endpoint_type != 'topic' and 'subscription' in arguments:
+                    raise RuntimeError('argument subscription is only allowed if endpoint is a topic')
+
+                unsupported_arguments = get_unsupported_arguments(['topic', 'queue', 'subscription', 'expression'], arguments)
+
+                if len(unsupported_arguments) > 0:
+                    raise RuntimeError(f'arguments {", ".join(unsupported_arguments)} is not supported')
+
+            if endpoint_type == 'topic' and arguments.get('subscription', None) is None and task.method.direction == RequestDirection.FROM:
+                raise RuntimeError('endpoint needs to include subscription when receiving messages from a topic')
+
+            if task.method.direction == RequestDirection.TO and arguments.get('expression', None) is not None:
+                raise RuntimeError('argument expression is only allowed when receiving messages')
+
+            metadata['abort'] = task.scenario.stop_on_failure
 
         self.hellos.add(description)
 
     @contextmanager
-    def async_action(self, task: RequestTask, request: AsyncMessageRequest, name: str, meta: bool = False) -> Generator[None, None, None]:
+    def async_action(self, task: RequestTask, request: AsyncMessageRequest, name: str) -> Generator[Dict[str, bool], None, None]:
+        if len(name) > 65:
+            name = f'{name[:65]}...'
         request.update({'worker': self.worker_id})
         connection = 'sender' if task.method.direction == RequestDirection.TO else 'receiver'
         request['context'].update({'connection': connection})
+        metadata: Dict[str, bool] = {
+            'abort': False,
+            'meta': False,
+        }
+
+        if task.response.content_type != TransformerContentType.GUESS:
+            request['context']['content_type'] = task.response.content_type.name.lower()
 
         response: Optional[AsyncMessageResponse] = None
         exception: Optional[Exception] = None
@@ -176,7 +248,7 @@ class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
         try:
             start_time = time()
 
-            yield
+            yield metadata
 
             self.zmq_client.send_json(request)
 
@@ -192,10 +264,11 @@ class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
             response_time = int((time() - start_time) * 1000)
 
             if response is not None:
+                response_worker = response.get('worker', None)
                 if self.worker_id is None:
-                    self.worker_id = response.get('worker', None)
+                    self.worker_id = response_worker
 
-                assert self.worker_id == response.get('worker', '')
+                assert self.worker_id == response_worker
 
                 if not response.get('success', False) and exception is None:
                     exception = AsyncMessageError(response['message'])
@@ -203,7 +276,7 @@ class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
                 response = {}
 
             try:
-                if not meta:
+                if not metadata.get('meta', False):
                     self.response_event.fire(
                         name=f'{task.scenario.identifier} {task.name}',
                         request=task,
@@ -228,7 +301,7 @@ class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
                     exception=exception,
                 )
 
-        if exception is not None and not meta and task.scenario.stop_on_failure:
+        if exception is not None and not metadata.get('meta', False) and task.scenario.stop_on_failure:
             try:
                 self.zmq_client.disconnect(self.zmq_url)
             except:
@@ -244,9 +317,7 @@ class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
         self.say_hello(request, endpoint)
 
         context = cast(AsyncMessageContext, dict(self.am_context))
-        context.update({
-            'endpoint': endpoint,
-        })
+        context['endpoint'] = endpoint
 
         am_request: AsyncMessageRequest = {
             'action': request.method.name,
@@ -254,7 +325,11 @@ class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
             'payload': payload,
         }
 
-        with self.async_action(request, am_request, name):
+        with self.async_action(request, am_request, name) as metadata:
+            metadata['abort'] = True
+
             if request.method not in [RequestMethod.SEND, RequestMethod.RECEIVE]:
                 raise NotImplementedError(f'{self.__class__.__name__}: no implementation for {request.method.name} requests')
+
+            metadata['abort'] = request.scenario.stop_on_failure
 

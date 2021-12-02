@@ -17,6 +17,7 @@ from grizzly.types import RequestMethod
 from grizzly.task import RequestTask, WaitTask
 from grizzly.context import GrizzlyContextScenario
 from grizzly_extras.async_message import AsyncMessageResponse, AsyncMessageError
+from grizzly_extras.transformer import TransformerContentType
 
 from ..fixtures import behave_context, request_task, locust_environment, noop_zmq  # pylint: disable=unused-import
 
@@ -109,11 +110,14 @@ class TestServiceBusUser:
 
         user.hellos = set(['sender=queue:test-queue'])
 
-        task = RequestTask(RequestMethod.SEND, name='test-send', endpoint='queue:{{ queue_name }}')
+        task = RequestTask(RequestMethod.SEND, name='test-send', endpoint='queue:"{{ queue_name }}"')
+        scenario = GrizzlyContextScenario()
+        scenario.name = 'test'
+        scenario.add_task(task)
 
         with caplog.at_level(logging.WARNING):
             user.say_hello(task, task.endpoint)
-        assert 'ServiceBusUser: cannot say hello for test-send when endpoint (queue:{{ queue_name }}) is a template' in caplog.text
+        assert 'ServiceBusUser: cannot say hello for test-send when endpoint is a template' in caplog.text
         assert user.hellos == set(['sender=queue:test-queue'])
         assert async_action_spy.call_count == 0
         caplog.clear()
@@ -130,8 +134,7 @@ class TestServiceBusUser:
         args, kwargs = async_action_spy.call_args_list[0]
 
         assert len(args) == 4
-        assert len(kwargs) == 1
-        assert kwargs.get('meta', False)
+        assert len(kwargs) == 0
         assert args[1] is task
         assert args[2] == {
             'worker': None,
@@ -145,6 +148,7 @@ class TestServiceBusUser:
         assert args[3] == 'sender=topic:test-topic'
 
         task = RequestTask(RequestMethod.RECEIVE, name='test-recv', endpoint='topic:test-topic, subscription:test-subscription')
+        scenario.add_task(task)
 
         user.say_hello(task, task.endpoint)
 
@@ -153,8 +157,7 @@ class TestServiceBusUser:
         args, kwargs = async_action_spy.call_args_list[1]
 
         assert len(args) == 4
-        assert len(kwargs) == 1
-        assert kwargs.get('meta', False)
+        assert len(kwargs) == 0
         assert args[1] is task
         assert args[2] == {
             'worker': None,
@@ -165,7 +168,45 @@ class TestServiceBusUser:
                 'message_wait': None,
             }
         }
-        assert args[3] == 'receiver=topic:test-topic'
+        assert args[3] == 'receiver=topic:test-topic, subscription:test-subscription'
+
+        # error handling
+        task.endpoint = 'test-topic'
+        with pytest.raises(RuntimeError) as re:
+            user.say_hello(task, task.endpoint)
+        assert 'incorrect format in arguments: "test-topic"' in str(re)
+
+        task.endpoint = 'subscription:test-subscription'
+        with pytest.raises(RuntimeError) as re:
+            user.say_hello(task, task.endpoint)
+        assert 'endpoint needs to be prefixed with queue: or topic:' in str(re)
+
+        task.endpoint = 'topic:test-topic, queue:test-queue'
+        with pytest.raises(RuntimeError) as re:
+            user.say_hello(task, task.endpoint)
+        assert 'cannot specify both topic: and queue: in endpoint' in str(re)
+
+        task.endpoint = 'queue:test-queue, subscription:test-subscription'
+        with pytest.raises(RuntimeError) as re:
+            user.say_hello(task, task.endpoint)
+        assert 'argument subscription is only allowed if endpoint is a topic' in str(re)
+
+        task.endpoint = 'topic:test-topic, subscription:test-subscription, argument:False'
+        with pytest.raises(RuntimeError) as re:
+            user.say_hello(task, task.endpoint)
+        assert 'arguments argument is not supported' in str(re)
+
+        task.endpoint = 'topic:test-topic'
+        with pytest.raises(RuntimeError) as re:
+            user.say_hello(task, task.endpoint)
+        assert 'endpoint needs to include subscription when receiving messages from a topic' in str(re)
+
+        task.method = RequestMethod.SEND
+        task.endpoint = 'topic:test-topic2, expression:$.test.result'
+        with pytest.raises(RuntimeError) as re:
+            user.say_hello(task, task.endpoint)
+        assert 'argument expression is only allowed when receiving messages' in str(re)
+
 
     @pytest.mark.usefixtures('locust_environment', 'noop_zmq')
     def test_request(self, locust_environment: Environment, noop_zmq: Callable[[str], None], mocker: MockerFixture) -> None:
@@ -245,6 +286,7 @@ class TestServiceBusUser:
         _, kwargs = response_event_fire_spy.call_args_list[1]
         assert kwargs.get('name', None) == f'{scenario.identifier} {task.name}'
         assert kwargs.get('request', None) is task
+
         metadata, payload = kwargs.get('context', (None, None,))
         assert metadata is None
         assert payload is None
@@ -259,6 +301,7 @@ class TestServiceBusUser:
         assert kwargs.get('context', None) == user._context
         exception = kwargs.get('exception', None)
         assert 'unknown error' in str(exception)
+
         args, _ = send_json_spy.call_args_list[0]
         assert args[0] == {
             'worker': 'asdf-asdf-asdf',
@@ -294,6 +337,7 @@ class TestServiceBusUser:
         _, kwargs = response_event_fire_spy.call_args_list[2]
         assert kwargs.get('name', None) == f'{scenario.identifier} {task.name}'
         assert kwargs.get('request', None) is task
+
         metadata, payload = kwargs.get('context', (None, None,))
         assert metadata == {'meta': True}
         assert payload is 'hello'
@@ -307,8 +351,8 @@ class TestServiceBusUser:
         assert kwargs.get('response_length', None) == 133
         assert kwargs.get('context', None) == user._context
         assert kwargs.get('exception', '') is None
+
         args, _ = send_json_spy.call_args_list[1]
-        print(args[0])
         assert args[0] == {
             'worker': 'asdf-asdf-asdf',
             'action': 'RECEIVE',
@@ -318,5 +362,57 @@ class TestServiceBusUser:
                 'connection': 'receiver',
                 'url': 'sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=',
                 'message_wait': None,
+            }
+        }
+
+        task.method = RequestMethod.RECEIVE
+        task.template = None
+        task.source = None
+        task.response.content_type = TransformerContentType.JSON
+        task.endpoint = f'{task.endpoint}, expression:"$.document[?(@.name=="TPM Report")]'
+
+        mock_recv_json({
+            'worker': 'asdf-asdf-asdf',
+            'success': True,
+            'payload': 'hello',
+            'metadata': {'meta': True},
+            'response_length': 133,
+        })
+
+        user.request(task)
+        assert say_hello_spy.call_count == 4
+        assert send_json_spy.call_count == 3
+        assert request_fire_spy.call_count == 4
+        assert response_event_fire_spy.call_count == 4
+
+        _, kwargs = response_event_fire_spy.call_args_list[3]
+        assert kwargs.get('name', None) == f'{scenario.identifier} {task.name}'
+        assert kwargs.get('request', None) is task
+
+        metadata, payload = kwargs.get('context', (None, None,))
+        assert metadata == {'meta': True}
+        assert payload is 'hello'
+        assert kwargs.get('user', None) is user
+        assert kwargs.get('exception', '') is None
+
+        _, kwargs = request_fire_spy.call_args_list[3]
+        assert kwargs.get('request_type', None) == 'sb:RECV'
+        assert kwargs.get('name', None) == f'{scenario.identifier} {task.name}'
+        assert kwargs.get('response_time', None) >= 0.0
+        assert kwargs.get('response_length', None) == 133
+        assert kwargs.get('context', None) == user._context
+        assert kwargs.get('exception', '') is None
+
+        args, _ = send_json_spy.call_args_list[2]
+        assert args[0] == {
+            'worker': 'asdf-asdf-asdf',
+            'action': 'RECEIVE',
+            'payload': None,
+            'context': {
+                'endpoint': 'queue:test-queue, expression:"$.document[?(@.name=="TPM Report")]',
+                'connection': 'receiver',
+                'url': 'sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=',
+                'message_wait': None,
+                'content_type': 'json',
             }
         }
