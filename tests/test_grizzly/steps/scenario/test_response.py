@@ -297,3 +297,16 @@ def test_step_response_content_type(behave_context: Context) -> None:
     with pytest.raises(AssertionError) as ae:
         step_response_content_type(behave_context, TransformerContentType.GUESS)
     assert 'It is now allowed to set GUESS with this step' in str(ae)
+
+    request = RequestTask(RequestMethod.POST, 'test-request', endpoint='queue:INCOMING.MESSAGE | content_type="application/xml"')
+
+    assert request.response.content_type == TransformerContentType.XML
+    assert request.endpoint == 'queue:INCOMING.MESSAGE'
+
+    grizzly.scenario.add_task(request)
+
+    for content_type in TransformerContentType:
+        if content_type == TransformerContentType.GUESS:
+            continue
+        step_response_content_type(behave_context, content_type)
+        assert request.response.content_type == content_type

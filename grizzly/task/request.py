@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 
 from jinja2.environment import Template
 from grizzly_extras.transformer import TransformerContentType
+from grizzly_extras.arguments import parse_arguments, split_value, unquote
 
 from ..types import HandlerType, RequestMethod
 from ..context import GrizzlyTask, GrizzlyTasksBase
@@ -63,6 +64,25 @@ class RequestTask(GrizzlyTask):
     source: Optional[str] = field(init=False, repr=False, default=None)
 
     response: RequestTaskResponse = field(init=False, repr=False, default_factory=RequestTaskResponse)
+
+    def __post_init__(self) -> None:
+        content_type: TransformerContentType = TransformerContentType.GUESS
+
+        if '|' in self.endpoint:
+            value, value_arguments = split_value(self.endpoint)
+            arguments = parse_arguments(value_arguments, unquote=False)
+
+            if 'content_type' in arguments:
+                content_type = TransformerContentType.from_string(unquote(arguments['content_type']))
+                del arguments['content_type']
+
+            value_arguments = ', '.join([f'{key}={value}' for key, value in arguments.items()])
+            if len(value_arguments) > 0:
+                self.endpoint = f'{value} | {value_arguments}'
+            else:
+                self.endpoint = value
+
+        self.response.content_type = content_type
 
     def implementation(self) -> Callable[[GrizzlyTasksBase], Any]:
         def _implementation(parent: GrizzlyTasksBase) -> Any:

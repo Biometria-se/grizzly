@@ -107,9 +107,11 @@ def test_add_request_task(behave_context: Context, grizzly_context: Callable, tm
 
     assert len(grizzly.scenario.tasks) == 4
     assert isinstance(grizzly.scenario.tasks[-1], RequestTask)
-    assert grizzly.scenario.tasks[-1].source == template_source
-    assert grizzly.scenario.tasks[-1].endpoint == 'my_container'
-    assert grizzly.scenario.tasks[-1].name == 'my_blob'
+    task = grizzly.scenario.tasks[-1]
+    assert task.source == template_source
+    assert task.endpoint == 'my_container'
+    assert task.name == 'my_blob'
+    assert task.response.content_type == TransformerContentType.GUESS
 
     with pytest.raises(ValueError):
         add_request_task(behave_context, method=RequestMethod.POST, source='{}', name='test')
@@ -148,6 +150,33 @@ def test_add_request_task(behave_context: Context, grizzly_context: Callable, tm
     finally:
         del os.environ['GRIZZLY_CONTEXT_ROOT']
         shutil.rmtree(test_context_root)
+
+    with pytest.raises(ValueError) as ve:
+        add_request_task(behave_context, method=RequestMethod.GET, endpoint='hello | world:False', source=None, name='hello-world')
+    assert 'incorrect format in arguments: "world:False"' in str(ve)
+
+    with pytest.raises(ValueError) as ve:
+        add_request_task(behave_context, method=RequestMethod.GET, source=None, endpoint='hello world | content_type=asdf', name='hello-world')
+    assert '"asdf" is an unknown response content type' in str(ve)
+
+    add_request_task(behave_context, method=RequestMethod.GET, source=None, endpoint='hello world | content_type=json', name='hello-world')
+
+    task = cast(RequestTask, grizzly.scenario.tasks[-1])
+    assert task.endpoint == 'hello world'
+    assert task.response.content_type == TransformerContentType.JSON
+
+    add_request_task(behave_context, method=RequestMethod.GET, source=None, endpoint='hello world | expression=$.test.value, content_type=json', name='hello-world')
+
+    task = cast(RequestTask, grizzly.scenario.tasks[-1])
+    assert task.endpoint == 'hello world | expression=$.test.value'
+    assert task.response.content_type == TransformerContentType.JSON
+
+    add_request_task(behave_context, method=RequestMethod.GET, source=None, endpoint=None, name='world-hello')
+
+    task = cast(RequestTask, grizzly.scenario.tasks[-1])
+    assert task.endpoint == 'hello world | expression=$.test.value'
+    assert task.response.content_type == TransformerContentType.JSON
+
 
 
 @pytest.mark.usefixtures('locust_environment')

@@ -1,6 +1,6 @@
 import pytest
 
-from grizzly_extras.arguments import split_value, get_unsupported_arguments, parse_arguments
+from grizzly_extras.arguments import split_value, get_unsupported_arguments, parse_arguments, unquote
 
 @pytest.mark.parametrize('separator', ['|', ', '])
 def test_split_value(separator: str) -> None:
@@ -26,6 +26,12 @@ def test_get_unsupported_arguments() -> None:
         'foo': True,
         'bar': False,
     }) == []
+
+
+def test_unquote() -> None:
+    assert unquote('"hello"') == 'hello'
+    assert unquote("'hello world'") == 'hello world'
+    assert unquote('foo bar') == 'foo bar'
 
 
 @pytest.mark.parametrize('separator', ['=', ':', '%'])
