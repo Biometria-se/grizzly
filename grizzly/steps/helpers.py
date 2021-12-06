@@ -12,18 +12,18 @@ from behave.runner import Context
 from behave.model import Row
 from locust.clients import ResponseContextManager
 
+from grizzly_extras.transformer import PlainTransformer, transformer, TransformerError, TransformerContentType
+
 from ..users.meta import ContextVariables
 from ..context import GrizzlyContext
 from ..exceptions import ResponseHandlerError, TransformerLocustError
 from ..types import HandlerType, RequestMethod, ResponseTarget, ResponseAction
 from ..task import RequestTask
 
-from grizzly_extras.transformer import PlainTransformer, transformer, TransformerError, TransformerContentType
-
 logger = logging.getLogger(__name__)
 
 
-def create_request_task(context: Context, method: RequestMethod, source: str, endpoint: str, name: Optional[str] = None) -> RequestTask:
+def create_request_task(context: Context, method: RequestMethod, source: Optional[str], endpoint: str, name: Optional[str] = None) -> RequestTask:
     grizzly = cast(GrizzlyContext, context.grizzly)
     request = _create_request_task(context.config.base_dir, method, source, endpoint, name)
     request.scenario = grizzly.scenario
@@ -31,7 +31,7 @@ def create_request_task(context: Context, method: RequestMethod, source: str, en
     return request
 
 
-def _create_request_task(base_dir: str, method: RequestMethod, source: str, endpoint: str, name: Optional[str] = None) -> RequestTask:
+def _create_request_task(base_dir: str, method: RequestMethod, source: Optional[str], endpoint: str, name: Optional[str] = None) -> RequestTask:
     path = os.path.join(base_dir, 'requests')
     j2env = j2.Environment(
         autoescape=False,
@@ -66,7 +66,7 @@ def _create_request_task(base_dir: str, method: RequestMethod, source: str, endp
         if name is None:
             name = '<unknown>'
 
-    request = RequestTask(method, name=name, endpoint=endpoint)
+    request = RequestTask(method, name=cast(str, name), endpoint=endpoint)
     request.template = template
     request.source = source
 
@@ -78,11 +78,12 @@ def add_request_task_response_status_codes(request: RequestTask, status_list: st
         request.response.add_status_code(int(status.strip()))
 
 
-def add_request_task(context: Context, method: RequestMethod, source: str, name: Optional[str] = None, endpoint: Optional[str] = None) -> None:
+def add_request_task(context: Context, method: RequestMethod, source: Optional[str] = None, name: Optional[str] = None, endpoint: Optional[str] = None) -> None:
     grizzly = cast(GrizzlyContext, context.grizzly)
     scenario_tasks_count = len(grizzly.scenario.tasks)
 
     table: List[Optional[Row]]
+    content_type: Optional[TransformerContentType] = None
 
     if context.table is not None:
         table = context.table
@@ -103,6 +104,7 @@ def add_request_task(context: Context, method: RequestMethod, source: str, name:
                 raise ValueError(f'can not use endpoint from previous request, it has different method')
 
             endpoint = last_request.endpoint
+            content_type = last_request.response.content_type
         else:
             parsed = urlparse(endpoint)
             if len(parsed.netloc) > 0:
@@ -121,6 +123,8 @@ def add_request_task(context: Context, method: RequestMethod, source: str, name:
                     source = source.replace(f'{{{{ {key} }}}}', value)
 
         request_task = create_request_task(context, method, source, endpoint, name)
+        if content_type is not None:
+            request_task.response.content_type = content_type
 
         endpoint = orig_endpoint
         name = orig_name

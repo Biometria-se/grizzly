@@ -60,6 +60,18 @@ def step_task_request_text_with_name_to_endpoint(context: Context, method: Reque
     Then receive request with name "test-receive" from endpoint "queue:receive-queue"
     ```
 
+    `endpoint` has support for setting response content type as a parameter:
+
+    ```gherkin
+    Then receive request with name "test-receive" from endpoint "queue:receive-queue | content_type=xml"
+
+    # same as
+    Then receive request with name "test-receive" from endpoint "queue:receive-queue"
+    And set response content type to "xml"
+    ```
+
+    `content_type` will be removed from the actual `endpoint` value.
+
     Args:
         method (RequestMethod): type of request
         name (str): name of the requests in logs, can contain variables
@@ -89,6 +101,18 @@ def step_task_request_file_with_name_endpoint(context: Context, method: RequestM
     Then put request "test/request.j2.json" with name "test-put" to endpoint "/api/test"
     ```
 
+    `endpoint` has support for setting response content type as a parameter:
+
+    ```gherkin
+    Then put request "test/request.j2.json" with name "test-put" to endpoint "/api/test | content_type=json"
+
+    # same as
+    Then put request "test/request.j2.json" with name "test-put" to endpoint "/api/test"
+    And set response content type to "application/json"
+    ```
+
+    `content_type` will be removed from the actual `endpoint` value.
+
     Args:
         method (RequestMethod): type of request
         source (str): path to a template file relative to the directory `requests/`, which **must** exist in the directory the feature file is located
@@ -112,6 +136,18 @@ def step_task_request_file_with_name(context: Context, method: RequestMethod, so
     Then post request "test/request1.j2.json" with name "test-post1" to endpoint "/api/test"
     Then post request "test/request2.j2.json" with name "test-post2" to endpoint "/api/test"
     ```
+
+    `endpoint` has support for setting response content type as a parameter:
+
+    ```gherkin
+    Then post request "test/request1.j2.json" with name "test-post1" to endpoint "/api/test | content_type=json"
+
+    # same as
+    Then post request "test/request1.j2.json" with name "test-post1" to endpoint "/api/test"
+    And set response content type to "application/json"
+    ```
+
+    `content_type` will be removed from the actual `endpoint` value.
 
     Args:
         method (RequestMethod): type of request

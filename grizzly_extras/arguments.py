@@ -9,6 +9,13 @@ def get_unsupported_arguments(valid_arguments: List[str], arguments: Dict[str, A
     return [argument for argument in arguments.keys() if argument not in valid_arguments]
 
 
+def unquote(argument: str) -> str:
+    if argument[0] == argument[-1] and argument[0] in ['"', "'"]:
+        argument = argument[1:-1]
+
+    return argument
+
+
 def parse_arguments(arguments: str, separator: str = '=', unquote: bool = True) -> Dict[str, Any]:
     if separator not in arguments or (arguments.count(separator) > 1 and (arguments.count('"') < 2 and arguments.count("'") < 2) and ', ' not in arguments):
         raise ValueError(f'incorrect format in arguments: "{arguments}"')
