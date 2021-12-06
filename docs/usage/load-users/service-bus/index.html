@@ -311,10 +311,132 @@
   
   
   
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_5_2" type="checkbox" id="__nav_5_2" >
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_2">
+          Tasks
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Tasks" data-md-level="2">
+        <label class="md-nav__title" for="__nav_5_2">
+          <span class="md-nav__icon md-icon"></span>
+          Tasks
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
     <li class="md-nav__item">
-      <a href="../../tasks/" class="md-nav__link">
-        Tasks
+      <a href="../../tasks/request/" class="md-nav__link">
+        Request
       </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tasks/wait/" class="md-nav__link">
+        Wait
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tasks/print/" class="md-nav__link">
+        Print
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tasks/transformer/" class="md-nav__link">
+        Transformer
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_5_2_5" type="checkbox" id="__nav_5_2_5" >
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_2_5">
+          Getter
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Getter" data-md-level="3">
+        <label class="md-nav__title" for="__nav_5_2_5">
+          <span class="md-nav__icon md-icon"></span>
+          Getter
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tasks/getter/http/" class="md-nav__link">
+        HTTP
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
     </li>
   
 
@@ -850,6 +972,19 @@
     Examples
   </a>
   
+    <nav class="md-nav" aria-label="Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get-message-with-expression" class="md-nav__link">
+    Get message with expression
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
     </ul>
@@ -946,6 +1081,19 @@
     Examples
   </a>
   
+    <nav class="md-nav" aria-label="Examples">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#get-message-with-expression" class="md-nav__link">
+    Get message with expression
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
     </ul>
@@ -970,6 +1118,8 @@
 <p>Send and receive messages on Azure Service Bus queues and topics.</p>
 <blockquote>
 <p><strong>Note</strong>: If <code>message.wait</code> is not set, <code>azure.servicebus</code> will wait until there is a message available, and hence block the scenario.</p>
+<p><strong>Warning</strong>: Do not use <code>expression</code> to filter messages unless you do not care about the messages that does not match the expression. If
+you do care about them, you should setup a subscription to do the filtering in Azure.</p>
 </blockquote>
 <p>User is based on <code>azure.servicebus</code> for communicating with Azure Service Bus. But creating a connection and session towards a queue or a topic
 is a costly operation, and caching of the session was causing problems with <code>gevent</code> due to the sockets blocking and hence locust/grizzly was
@@ -987,7 +1137,11 @@ with Azure Service Bus.</p>
 <div class="highlight"><pre><span></span><code>[Endpoint=]sb://&lt;hostname&gt;/;SharedAccessKeyName=&lt;shared key name&gt;;SharedAccessKey=&lt;shared key&gt;
 </code></pre></div>
 <p><code>endpoint</code> in the request must have the prefix <code>queue:</code> or <code>topic:</code> followed by the name of the targeted
-type. If you are going to receive messages from a topic, and additional <code>subscription:</code> som follow the specified <code>topic:</code>.</p>
+type. When receiving messages from a topic, the argument <code>subscription:</code> is mandatory. The format of endpoint is:</p>
+<div class="highlight"><pre><span></span><code>[queue|topic]:&lt;endpoint name&gt;[, subscription:&lt;subscription name&gt;][, expression:&lt;expression&gt;]
+</code></pre></div>
+<p>Where <code>&lt;expression&gt;</code> can be a XPath or jsonpath expression, depending on the specified content type. This argument is only allowed when
+receiving messages. See example below.</p>
 <h2 id="examples">Examples</h2>
 <p>Example of how to use it in a scenario:</p>
 <div class="highlight"><pre><span></span><code><span class="k">Given </span><span class="nf">a user of type &quot;</span><span class="s">ServiceBus</span><span class="nf">&quot; load testing &quot;</span><span class="s">sb://sb.example.com/;SharedAccessKeyName=authorization-key;SharedAccessKey=c2VjcmV0LXN0dWZm</span><span class="nf">&quot;</span>
@@ -996,6 +1150,17 @@ type. If you are going to receive messages from a topic, and additional <code>su
 <span class="k">Then </span><span class="nf">send request &quot;</span><span class="s">topic-send</span><span class="nf">&quot; to endpoint &quot;</span><span class="s">topic:shared-topic</span><span class="nf">&quot;</span>
 <span class="k">Then </span><span class="nf">receive request &quot;</span><span class="s">queue-recv</span><span class="nf">&quot; from endpoint &quot;</span><span class="s">queue:shared-queue</span><span class="nf">&quot;</span>
 <span class="k">Then </span><span class="nf">receive request &quot;</span><span class="s">topic-recv</span><span class="nf">&quot; from endpoint &quot;</span><span class="s">topic:shared-topic, subscription:my-subscription</span><span class="nf">&quot;</span>
+</code></pre></div>
+<h3 id="get-message-with-expression">Get message with expression</h3>
+<p>When specifying an expression, the messages on the endpoint is first peeked on. If any message matches the expression, it is later consumed from the
+endpoint. If no matching messages was found when peeking, it is repeated again after a slight delay, up until the specified <code>message.wait</code> seconds has
+elapsed. To use expressions, a content type must be specified for the request, e.g. <code>application/xml</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="k">Given </span><span class="nf">a user of type &quot;</span><span class="s">ServiceBus</span><span class="nf">&quot; load testing &quot;</span><span class="s">sb://sb.example.com/;SharedAccessKeyName=authorization-key;SharedAccessKey=c2VjcmV0LXN0dWZm</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">set context variable &quot;</span><span class="s">message.wait</span><span class="nf">&quot; to &quot;</span><span class="s">5</span><span class="nf">&quot;</span>
+<span class="k">Then </span><span class="nf">receive request &quot;</span><span class="s">queue-recv</span><span class="nf">&quot; from endpoint &quot;</span><span class="s">queue:shared-queue, expression:$.document[?(@.name==&#39;TPM report&#39;)].id</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">set response content type to &quot;</span><span class="s">application/json</span><span class="nf">&quot;</span>
+<span class="k">Then </span><span class="nf">receive request &quot;</span><span class="s">topic-recv</span><span class="nf">&quot; from endpoint &quot;</span><span class="s">topic:shared-topic, subscription:my-subscription, expression:/documents/document[@name=&#39;TPM Report&#39;]/id/text()</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">set response content type to &quot;</span><span class="s">application/xml</span><span class="nf">&quot;</span>
 </code></pre></div>
                 
               

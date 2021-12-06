@@ -311,10 +311,132 @@
   
   
   
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_5_2" type="checkbox" id="__nav_5_2" >
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_2">
+          Tasks
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Tasks" data-md-level="2">
+        <label class="md-nav__title" for="__nav_5_2">
+          <span class="md-nav__icon md-icon"></span>
+          Tasks
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
     <li class="md-nav__item">
-      <a href="../../../tasks/" class="md-nav__link">
-        Tasks
+      <a href="../../../tasks/request/" class="md-nav__link">
+        Request
       </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tasks/wait/" class="md-nav__link">
+        Wait
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tasks/print/" class="md-nav__link">
+        Print
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tasks/transformer/" class="md-nav__link">
+        Transformer
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_5_2_5" type="checkbox" id="__nav_5_2_5" >
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_2_5">
+          Getter
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Getter" data-md-level="3">
+        <label class="md-nav__title" for="__nav_5_2_5">
+          <span class="md-nav__icon md-icon"></span>
+          Getter
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tasks/getter/http/" class="md-nav__link">
+        HTTP
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
     </li>
   
 
@@ -941,23 +1063,33 @@
                 
                 <p><a id="grizzly.testdata.variables.servicebus"></a></p>
 <h1 id="grizzlytestdatavariablesservicebus">grizzly.testdata.variables.servicebus</h1>
-<p>Listens for messages on Azure Service Bus queue or topic and extracts values from messages based on a JSON path or XPath expressions.</p>
+<p>Listens for messages on Azure Service Bus queue or topic.</p>
+<p>Use <a href="/grizzly/usage/tasks/transformer/">transformer task</a> to extract specific parts of the message.</p>
 <h2 id="format">Format</h2>
-<p>Initial value is the name of the queue or topic, prefix with the endpoint type. If the endpoint is a topic the additional value subscription
-is mandatory. Arguments support templating for their value, but not the complete endpoint value.</p>
+<p>Initial value for a variable must have the prefix <code>queue:</code> or <code>topic:</code> followed by the name of the targeted
+type. When receiving messages from a topic, the argument <code>subscription:</code> is mandatory. The format of endpoint is:</p>
+<p>Where <code>&lt;expression&gt;</code> can be a XPath or jsonpath expression, depending on the specified content type. This argument is only allowed when
+receiving messages. See example below.</p>
+<blockquote>
+<p><strong>Warning</strong>: Do not use <code>expression</code> to filter messages unless you do not care about the messages that does not match the expression. If
+you do care about them, you should setup a subscription to do the filtering in Azure.</p>
+</blockquote>
+<p>Arguments support templating for their value, but not the complete endpoint value.</p>
+<div class="highlight"><pre><span></span><code>[queue|topic]:&lt;endpoint name&gt;[, subscription:&lt;subscription name&gt;][, expression:&lt;expression&gt;]
+</code></pre></div>
 <p><strong>Examples</strong>:</p>
 <div class="highlight"><pre><span></span><code>queue:test-queue
 topic:test-topic, subscription:test-subscription
-queue:$conf::sb.endpoint.queue
-topic:$conf::sb.endpoint.topic, subscription:$conf::sb.endpoint.subscription
+queue:&quot;$conf::sb.endpoint.queue&quot;
+topic:&quot;$conf::sb.endpoint.topic&quot;, subscription:&quot;$conf::sb.endpoint.subscription&quot;
+queue:&quot;{{ queue_name }}&quot;, expression=&quot;$.document[?(@.name==&#39;TPM report&#39;)]&quot;
 </code></pre></div>
 <p>## Arguments</p>
 <ul>
-<li><code>repeat</code> <em>bool</em> (optional) - if <code>True</code>, values read for the queue will be saved in a list and re-used if there are no new messages available</li>
+<li><code>repeat</code> <em>bool</em> (optional) - if <code>True</code>, values read from the endpoint will be saved in a list and re-used if there are no new messages available</li>
 <li><code>url</code> <em>str</em> - see format of url below.</li>
-<li><code>expression</code> <em>str</em> - JSON path or XPath expression for finding <em>one</em> specific value or object in the payload</li>
-<li><code>content_type</code> <em>str</em> - see <a href="/grizzly/usage/steps/scenario/response/step_response_content_type"><code>step_response_content_type</code></a></li>
 <li><code>wait</code> <em>int</em> - number of seconds to wait for a message on the queue</li>
+<li><code>content_type</code> <em>str</em> (optional) - specify the MIME type of the message received on the queue, only mandatory when <code>expression</code> is specified in endpoint</li>
 </ul>
 <p>### URL format</p>
 <div class="highlight"><pre><span></span><code>[Endpoint=]sb://&lt;hostname&gt;/;SharedAccessKeyName=&lt;shared key name&gt;;SharedAccessKey=&lt;shared key&gt;
@@ -970,7 +1102,7 @@ $conf::sb.url
 Endpoint=sb://$conf::sb.hostname/;SharedAccessKeyName=$conf::sb.keyname;SharedAccessKey=$conf::sb.key
 </code></pre></div>
 <p>## Example</p>
-<div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">value of variable &quot;</span><span class="s">AtomicServiceBus.document_id</span><span class="nf">&quot; is &quot;</span><span class="s">queue:documents-in | wait=120, url=$conf::sb.endpoint, repeat=True, expression=&#39;$.document.id&#39;, content_type=json</span><span class="nf">&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">value of variable &quot;</span><span class="s">AtomicServiceBus.document_id</span><span class="nf">&quot; is &quot;</span><span class="s">queue:documents-in | wait=120, url=$conf::sb.endpoint, repeat=True</span><span class="nf">&quot;</span>
 <span class="nf">...</span>
 <span class="k">Given </span><span class="nf">a user of type &quot;</span><span class="s">RestApi</span><span class="nf">&quot; load testing &quot;</span><span class="s">http://example.com</span><span class="nf">&quot;</span>
 <span class="nf">...</span>
@@ -979,6 +1111,12 @@ Endpoint=sb://$conf::sb.hostname/;SharedAccessKeyName=$conf::sb.keyname;SharedAc
 <p>When the scenario starts <code>grizzly</code> will wait up to 120 seconds until <code>AtomicServiceBus.document_id</code> has been populated from a message on the queue <code>documents-in</code>.</p>
 <p>If there are no messages within 120 seconds, and it is the first iteration of the scenario, it will fail. If there has been at least one message on the queue since
   the scenario started, it will use the oldest of those values, and then add it back in the end of the list again.</p>
+<p>### Get message with expression</p>
+<p>When specifying an expression, the messages on the endpoint is first peeked on. If any message matches the expression, it is later consumed from the endpoint.
+  If no matching messages was found when peeking, it is repeated again up until the specified <code>wait</code> seconds has elapsed. To use expression, a content type must
+  be specified for the endpint, e.g. <code>application/xml</code>.</p>
+<div class="highlight"><pre><span></span><code>And value of variable &quot;AtomicServiceBus.document_id&quot; is &quot;queue:documents-in | wait=120, url=$conf::sb.endpoint, repeat=True, content_type=json, expression=&#39;$.document[?(@.name==&#39;TPM Report&#39;)&#39;&quot;
+</code></pre></div>
                 
               
               

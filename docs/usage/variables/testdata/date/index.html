@@ -311,10 +311,132 @@
   
   
   
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_5_2" type="checkbox" id="__nav_5_2" >
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_2">
+          Tasks
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Tasks" data-md-level="2">
+        <label class="md-nav__title" for="__nav_5_2">
+          <span class="md-nav__icon md-icon"></span>
+          Tasks
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
     <li class="md-nav__item">
-      <a href="../../../tasks/" class="md-nav__link">
-        Tasks
+      <a href="../../../tasks/request/" class="md-nav__link">
+        Request
       </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tasks/wait/" class="md-nav__link">
+        Wait
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tasks/print/" class="md-nav__link">
+        Print
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tasks/transformer/" class="md-nav__link">
+        Transformer
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_5_2_5" type="checkbox" id="__nav_5_2_5" >
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_2_5">
+          Getter
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Getter" data-md-level="3">
+        <label class="md-nav__title" for="__nav_5_2_5">
+          <span class="md-nav__icon md-icon"></span>
+          Getter
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tasks/getter/http/" class="md-nav__link">
+        HTTP
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
     </li>
   
 
@@ -977,6 +1099,7 @@ at the time of access.</p>
 <ul>
 <li><code>format</code> <em>str</em> - a python <a href="https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes"><code>strftime</code> format string</a>, this argument is required</li>
 <li><code>timezone</code> <em>str</em> (optional) - a valid <a href="https://en.wikipedia.org/wiki/List_of_tz_database_time_zones">timezone name</a></li>
+<li><code>offset</code> <em>str</em> (optional) - a time span string describing the offset, Y = years, M = months, D = days, h = hours, m = minutes, s = seconds, e.g. <code>1Y-2M10D</code></li>
 </ul>
 <h2 id="example">Example</h2>
 <div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">value of variable &quot;</span><span class="s">AtomicDate.arrival</span><span class="nf">&quot; is &quot;</span><span class="s">now | format=&#39;%Y-%m-%dT%H:%M:%S.000Z&#39;, timezone=UTC</span><span class="nf">&quot;</span>

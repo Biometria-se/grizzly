@@ -311,10 +311,132 @@
   
   
   
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_5_2" type="checkbox" id="__nav_5_2" >
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_2">
+          Tasks
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Tasks" data-md-level="2">
+        <label class="md-nav__title" for="__nav_5_2">
+          <span class="md-nav__icon md-icon"></span>
+          Tasks
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
     <li class="md-nav__item">
-      <a href="../../../tasks/" class="md-nav__link">
-        Tasks
+      <a href="../../../tasks/request/" class="md-nav__link">
+        Request
       </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tasks/wait/" class="md-nav__link">
+        Wait
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tasks/print/" class="md-nav__link">
+        Print
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tasks/transformer/" class="md-nav__link">
+        Transformer
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_5_2_5" type="checkbox" id="__nav_5_2_5" >
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_2_5">
+          Getter
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Getter" data-md-level="3">
+        <label class="md-nav__title" for="__nav_5_2_5">
+          <span class="md-nav__icon md-icon"></span>
+          Getter
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tasks/getter/http/" class="md-nav__link">
+        HTTP
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
     </li>
   
 
@@ -517,14 +639,7 @@
     Format
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#arguments" class="md-nav__link">
-    Arguments
-  </a>
-  
-    <nav class="md-nav" aria-label="Arguments">
+    <nav class="md-nav" aria-label="Format">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -947,14 +1062,7 @@
     Format
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#arguments" class="md-nav__link">
-    Arguments
-  </a>
-  
-    <nav class="md-nav" aria-label="Arguments">
+    <nav class="md-nav" aria-label="Format">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
@@ -995,18 +1103,20 @@
                 
                 <p><a id="grizzly.testdata.variables.messagequeue"></a></p>
 <h1 id="grizzlytestdatavariablesmessagequeue">grizzly.testdata.variables.messagequeue</h1>
-<p>Listens for messages on IBM MQ and extracts values from messages based on JSON path or XPath expressions.</p>
+<p>Listens for messages on IBM MQ.</p>
+<p>Use <a href="/grizzly/usage/tasks/transformer/">transformer task</a> to extract specific parts of the message.</p>
 <p>Grizzly <em>must</em> have been installed with the extra <code>mq</code> package and native IBM MQ libraries must be installed for being able to use this variable:</p>
 <div class="highlight"><pre><span></span><code>pip3 install grizzly-loadtester[mq]
 </code></pre></div>
 <h2 id="format">Format</h2>
-<p>Initial value is the name of the queue on the MQ server specified in argument <code>url</code>.</p>
-<h2 id="arguments">Arguments</h2>
+<p><code>queue:&lt;queue_name&gt;[, expression:&lt;expression&gt;] | url=&lt;url&gt;, wait=&lt;wait&gt;[, content_type=&lt;content_type&gt;][, repeat=&lt;repeat&gt;]</code></p>
+<p>Initial value is the name of the queue, prefixed with <code>queue:</code>, on the MQ server specified in argument <code>url</code>.
+Expression is optional, and can be specified if a message matching specific criteria is to be fetched. The expression format depends on
+content type, which needs to be specified as an argument (e.g. XPATH expressions are used with <code>application/xml</code> content type).</p>
 <ul>
+<li><code>content_type</code> <em>str</em> (optional) - specifies the content type of messages on the queue, needed if expressions are to be used when getting messages</li>
 <li><code>repeat</code> <em>bool</em> (optional) - if <code>True</code>, values read for the queue will be saved in a list and re-used if there are no new messages available</li>
 <li><code>url</code> <em>str</em> - see format of url below.</li>
-<li><code>expression</code> <em>str</em> - JSON path or XPath expression for finding <em>one</em> specific value or object in the payload</li>
-<li><code>content_type</code> <em>str</em> - see <a href="/grizzly/usage/steps/scenario/response/step_response_content_type"><code>step_response_content_type</code></a></li>
 <li><code>wait</code> <em>int</em> - number of seconds to wait for a message on the queue</li>
 </ul>
 <h3 id="url-format">URL format</h3>
@@ -1026,7 +1136,16 @@
 <li><code>CertLabel</code> <em>str</em> (optional) - label of certificate in key repository, default <code>username</code></li>
 </ul>
 <h2 id="example">Example</h2>
-<div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">value of variable &quot;</span><span class="s">AtomicMessageQueue.document_id</span><span class="nf">&quot; is &quot;</span><span class="s">IN.DOCUMENTS | wait=120, url=&#39;mqs://mq_subscription:$conf::mq.password@mq.example.com/?QueueManager=QM1&amp;Channel=SRV.CONN&#39;, repeat=True, expression=&#39;$.document.id&#39;, content_type=json</span><span class="nf">&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">value of variable &quot;</span><span class="s">AtomicMessageQueue.document_id</span><span class="nf">&quot; is &quot;</span><span class="s">queue:IN.DOCUMENTS | wait=120, url=&#39;mqs://mq_subscription:$conf::mq.password@mq.example.com/?QueueManager=QM1&amp;Channel=SRV.CONN&#39;, repeat=True</span><span class="nf">&quot;</span>
+<span class="nf">...</span>
+<span class="k">Given </span><span class="nf">a user of type &quot;</span><span class="s">RestApi</span><span class="nf">&quot; load testing &quot;</span><span class="s">http://example.com</span><span class="nf">&quot;</span>
+<span class="nf">...</span>
+<span class="k">Then </span><span class="nf">get request &quot;</span><span class="s">fetch-document</span><span class="nf">&quot; from &quot;</span><span class="s">/api/v1/document/{{ AtomicMessageQueue.document_id }}</span><span class="nf">&quot;</span>
+
+<span class="c">### Using expression to get specific message</span><span class="nf"></span>
+
+<span class="k">And </span><span class="nf">value of variable &quot;</span><span class="s">AtomicMessageQueue.document_id</span><span class="nf">&quot; is &quot;</span><span class="s">queue:IN.DOCUMENTS, expression:&#39;//DocumentReference[text()=&#39;123abc&#39;]&#39; | wait=120, url=&#39;mqs://mq_subscription:$conf::mq.password@mq.example.com/?QueueManager=QM1&amp;Channel=SRV.CONN&#39;, repeat=True</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">set response content type to &quot;</span><span class="s">application/xml</span><span class="nf">&quot;</span>
 <span class="nf">...</span>
 <span class="k">Given </span><span class="nf">a user of type &quot;</span><span class="s">RestApi</span><span class="nf">&quot; load testing &quot;</span><span class="s">http://example.com</span><span class="nf">&quot;</span>
 <span class="nf">...</span>

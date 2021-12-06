@@ -311,10 +311,132 @@
   
   
   
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_5_2" type="checkbox" id="__nav_5_2" >
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_2">
+          Tasks
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Tasks" data-md-level="2">
+        <label class="md-nav__title" for="__nav_5_2">
+          <span class="md-nav__icon md-icon"></span>
+          Tasks
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
     <li class="md-nav__item">
-      <a href="../../../tasks/" class="md-nav__link">
-        Tasks
+      <a href="../../../tasks/request/" class="md-nav__link">
+        Request
       </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tasks/wait/" class="md-nav__link">
+        Wait
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tasks/print/" class="md-nav__link">
+        Print
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tasks/transformer/" class="md-nav__link">
+        Transformer
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_5_2_5" type="checkbox" id="__nav_5_2_5" >
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_2_5">
+          Getter
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Getter" data-md-level="3">
+        <label class="md-nav__title" for="__nav_5_2_5">
+          <span class="md-nav__icon md-icon"></span>
+          Getter
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tasks/getter/http/" class="md-nav__link">
+        HTTP
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
     </li>
   
 
@@ -1131,8 +1253,8 @@ status codes should map to.</p>
 now <code>200</code> and <code>404</code>.</p>
 <p><a id="grizzly.steps.scenario.response.step_response_content_type"></a></p>
 <h4 id="step_response_content_type">step_response_content_type</h4>
-<div class="highlight"><pre><span></span><code><span class="nd">@then</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;set response content type to &quot;{content_type:ResponseContentType}&quot;&#39;</span><span class="p">)</span>
-<span class="k">def</span> <span class="nf">step_response_content_type</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">content_type</span><span class="p">:</span> <span class="n">ResponseContentType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+<div class="highlight"><pre><span></span><code><span class="nd">@then</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;set response content type to &quot;{content_type:TransformerContentType}&quot;&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">step_response_content_type</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">content_type</span><span class="p">:</span> <span class="n">TransformerContentType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
 <p>Set the content type of a response, instead of guessing it.</p>
 <p>This is applicable when there is a <code>step_response_validate</code> or <code>step_response_save</code> is included in
@@ -1146,7 +1268,7 @@ the scenario, and is valid only for the latest defined request.</p>
 </code></pre></div>
 <p><strong>Arguments</strong>:</p>
 <ul>
-<li><code>content_type</code> <em>ResponseContentType</em> - expected content type of response</li>
+<li><code>content_type</code> <em>TransformerContentType</em> - expected content type of response</li>
 </ul>
                 
               

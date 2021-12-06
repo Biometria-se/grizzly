@@ -311,10 +311,132 @@
   
   
   
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_5_2" type="checkbox" id="__nav_5_2" >
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_2">
+          Tasks
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Tasks" data-md-level="2">
+        <label class="md-nav__title" for="__nav_5_2">
+          <span class="md-nav__icon md-icon"></span>
+          Tasks
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
     <li class="md-nav__item">
-      <a href="../../tasks/" class="md-nav__link">
-        Tasks
+      <a href="../../tasks/request/" class="md-nav__link">
+        Request
       </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tasks/wait/" class="md-nav__link">
+        Wait
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tasks/print/" class="md-nav__link">
+        Print
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tasks/transformer/" class="md-nav__link">
+        Transformer
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_5_2_5" type="checkbox" id="__nav_5_2_5" >
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_5_2_5">
+          Getter
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Getter" data-md-level="3">
+        <label class="md-nav__title" for="__nav_5_2_5">
+          <span class="md-nav__icon md-icon"></span>
+          Getter
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tasks/getter/http/" class="md-nav__link">
+        HTTP
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
     </li>
   
 
@@ -847,6 +969,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#get-message-with-expression" class="md-nav__link">
+    Get message with expression
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#authentication" class="md-nav__link">
     Authentication
   </a>
@@ -997,6 +1126,13 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#get-message-with-expression" class="md-nav__link">
+    Get message with expression
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#authentication" class="md-nav__link">
     Authentication
   </a>
@@ -1064,20 +1200,34 @@ process via zmq, which in turn communicates with IBM MQ.</p>
 <p>Format of <code>host</code> is the following:</p>
 <div class="highlight"><pre><span></span><code>mq://&lt;hostname&gt;:&lt;port&gt;/?QueueManager=&lt;queue manager name&gt;&amp;Channel=&lt;channel name&gt;
 </code></pre></div>
-<p><code>endpoint</code> in the request is the name of an MQ queue.</p>
+<p><code>endpoint</code> in the request is the name of an MQ queue. This can also be combined with an expression, if
+a specific message is to be retrieved from the queue. The format of endpoint is:</p>
+<div class="highlight"><pre><span></span><code>queue:&lt;queue_name&gt;[, expression:&lt;expression&gt;]
+</code></pre></div>
+<p>Where <code>&lt;expression&gt;</code> can be a XPath or jsonpath expression, depending on the specified content type. See example below.</p>
 <h2 id="examples">Examples</h2>
 <p>Example of how to use it in a scenario:</p>
 <div class="highlight"><pre><span></span><code><span class="k">Given </span><span class="nf">a user of type &quot;</span><span class="s">MessageQueue</span><span class="nf">&quot; load testing &quot;</span><span class="s">mq://mq.example.com/?QueueManager=QM01&amp;Channel=SRVCONN01</span><span class="nf">&quot;</span>
-<span class="k">Then </span><span class="nf">put request &quot;</span><span class="s">test/queue-message.j2.json</span><span class="nf">&quot; with name &quot;</span><span class="s">queue-message</span><span class="nf">&quot; to endpoint &quot;</span><span class="s">INCOMING.MESSAGES</span><span class="nf">&quot;</span>
+<span class="k">Then </span><span class="nf">put request &quot;</span><span class="s">test/queue-message.j2.json</span><span class="nf">&quot; with name &quot;</span><span class="s">queue-message</span><span class="nf">&quot; to endpoint &quot;</span><span class="s">queue:INCOMING.MESSAGES</span><span class="nf">&quot;</span>
 </code></pre></div>
 <h3 id="get-message">Get message</h3>
 <p>Default behavior is to fail directly if there is no message on the queue. If the request should wait until a message is available,
 set the time it should wait with <code>message.wait</code> (seconds) context variable.</p>
 <div class="highlight"><pre><span></span><code><span class="k">Given </span><span class="nf">a user of type &quot;</span><span class="s">MessageQueue</span><span class="nf">&quot; load testing &quot;</span><span class="s">mq://mq.example.com/?QueueManager=QM01&amp;Channel=SRVCONN01</span><span class="nf">&quot;</span>
 <span class="k">And </span><span class="nf">set context variable &quot;</span><span class="s">message.wait</span><span class="nf">&quot; to &quot;</span><span class="s">5</span><span class="nf">&quot;</span>
-<span class="k">Then </span><span class="nf">get request with name &quot;</span><span class="s">get-queue-message</span><span class="nf">&quot; from endpoint &quot;</span><span class="s">INCOMING.MESSAGES</span><span class="nf">&quot;</span>
+<span class="k">Then </span><span class="nf">get request with name &quot;</span><span class="s">get-queue-message</span><span class="nf">&quot; from endpoint &quot;</span><span class="s">queue:INCOMING.MESSAGES</span><span class="nf">&quot;</span>
 </code></pre></div>
 <p>In this example, the request will not fail if there is a message on queue within 5 seconds.</p>
+<h3 id="get-message-with-expression">Get message with expression</h3>
+<p>When specifying an expression, the messages on the queue are first browsed. If any message matches the expression, it is
+later consumed from the queue. If no matching message was found during browsing, it is repeated again after a slight delay,
+up until the specified <code>message.wait</code> seconds has elapsed. To use expressions, a content type must be specified for the get
+request, e.g. <code>application/xml</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="k">Given </span><span class="nf">a user of type &quot;</span><span class="s">MessageQueue</span><span class="nf">&quot; load testing &quot;</span><span class="s">mq://mq.example.com/?QueueManager=QM01&amp;Channel=SRVCONN01</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">set context variable &quot;</span><span class="s">message.wait</span><span class="nf">&quot; to &quot;</span><span class="s">5</span><span class="nf">&quot;</span>
+<span class="k">Then </span><span class="nf">get request with name &quot;</span><span class="s">get-specific-queue-message</span><span class="nf">&quot; from endpoint &quot;</span><span class="s">queue:INCOMING.MESSAGES, expression: //document[@id=&#39;abc123&#39;]</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">set response content type to &quot;</span><span class="s">application/xml</span><span class="nf">&quot;</span>
+</code></pre></div>
 <h3 id="authentication">Authentication</h3>
 <h4 id="username-and-password">Username and password</h4>
 <div class="highlight"><pre><span></span><code><span class="k">Given </span><span class="nf">a user of type &quot;</span><span class="s">MessageQueue</span><span class="nf">&quot; load testing &quot;</span><span class="s">mq://mqm:admin@mq.example.com/?QueueManager=QM01&amp;Channel=SRVCONN01</span><span class="nf">&quot;</span>
