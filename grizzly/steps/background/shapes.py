@@ -1,5 +1,5 @@
 '''This module contains step implementations that describes the actual load all scenarios in a feature will generate.'''
-from typing import cast
+from typing import Any, Dict, cast
 
 import parse
 
@@ -20,8 +20,8 @@ register_type(
 )
 
 
-@given(u'"{value}" {user_number:UserGramaticalNumber}')
-def step_shapes_user_count(context: Context, value: str, _: str) -> None:
+@given(u'"{value}" {grammar:UserGramaticalNumber}')
+def step_shapes_user_count(context: Context, value: str, **kwargs: Dict[str, Any]) -> None:
     '''Set number of users that will generate load.
 
     ```gherkin
@@ -48,8 +48,8 @@ def step_shapes_user_count(context: Context, value: str, _: str) -> None:
     grizzly.setup.user_count = user_count
 
 
-@given(u'spawn rate is "{value}" {user_number:UserGramaticalNumber} per second')
-def step_shapes_spawn_rate(context: Context, value: str, _: str) -> None:
+@given(u'spawn rate is "{value}" {grammar:UserGramaticalNumber} per second')
+def step_shapes_spawn_rate(context: Context, value: str, **kwargs: Dict[str, Any]) -> None:
     '''Set rate in which locust shall swarm new user instances.
 
     ```gherkin
