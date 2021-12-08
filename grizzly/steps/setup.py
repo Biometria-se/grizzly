@@ -1,12 +1,13 @@
 from typing import cast
 from os import environ
 
-from behave import given  # pylint: disable=no-name-in-module
+from behave import given, then  # pylint: disable=no-name-in-module
 from behave.runner import Context
 
 from ..context import GrizzlyContext
 
 
+@then(u'ask for value of variable "{name}"')
 @given(u'ask for value of variable "{name}"')
 def step_setup_variable_value_ask(context: Context, name: str) -> None:
     '''This step is used to indicate for `grizzly-cli` that it should ask for an initial value for the variable.
