@@ -3,7 +3,7 @@ import json
 import os
 import logging
 
-from typing import Optional, List, Callable, Any, Tuple, cast
+from typing import Optional, List, Callable, Any, Tuple, Dict, cast
 from urllib.parse import urlparse
 
 import jinja2 as j2
@@ -23,15 +23,21 @@ from ..task import RequestTask
 logger = logging.getLogger(__name__)
 
 
-def create_request_task(context: Context, method: RequestMethod, source: Optional[str], endpoint: str, name: Optional[str] = None) -> RequestTask:
+def create_request_task(
+    context: Context, method: RequestMethod, source: Optional[str], endpoint: str, name: Optional[str] = None, substitutes: Optional[Dict[str, str]] = None,
+) -> RequestTask:
     grizzly = cast(GrizzlyContext, context.grizzly)
-    request = _create_request_task(context.config.base_dir, method, source, endpoint, name)
+    request = _create_request_task(context.config.base_dir, method, source, endpoint, name, substitutes=substitutes)
     request.scenario = grizzly.scenario
 
     return request
 
 
-def _create_request_task(base_dir: str, method: RequestMethod, source: Optional[str], endpoint: str, name: Optional[str] = None) -> RequestTask:
+def _create_request_task(
+    base_dir: str,method: RequestMethod, source: Optional[str], endpoint: str, name: Optional[str] = None, substitutes: Optional[Dict[str, str]] = None,
+) -> RequestTask:
+    if substitutes is None:
+        substitutes = {}
     path = os.path.join(base_dir, 'requests')
     j2env = j2.Environment(
         autoescape=False,
@@ -65,6 +71,10 @@ def _create_request_task(base_dir: str, method: RequestMethod, source: Optional[
 
         if name is None:
             name = '<unknown>'
+
+    if source is not None:
+        for key, value in substitutes.items():
+            source = source.replace(f'{{{{ {key} }}}}', value)
 
     request = RequestTask(method, name=cast(str, name), endpoint=endpoint)
     request.template = template
@@ -114,15 +124,18 @@ def add_request_task(context: Context, method: RequestMethod, source: Optional[s
         orig_name = name
         orig_source = source
 
+        substitutes: Dict[str, str] = {}
+
         if row is not None:
             for key, value in row.as_dict().items():
                 endpoint = endpoint.replace(f'{{{{ {key} }}}}', value)
                 if name is not None:
                     name = name.replace(f'{{{{ {key} }}}}', value)
                 if source is not None:
+                    substitutes.update({key: value})
                     source = source.replace(f'{{{{ {key} }}}}', value)
 
-        request_task = create_request_task(context, method, source, endpoint, name)
+        request_task = create_request_task(context, method, source, endpoint, name, substitutes=substitutes)
         if content_type is not None:
             request_task.response.content_type = content_type
 
