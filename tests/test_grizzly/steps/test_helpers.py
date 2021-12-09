@@ -54,7 +54,6 @@ def test_add_request_task_response_status_codes() -> None:
     assert request.response.status_codes == [200, 302, 400]
 
 
-@pytest.mark.usefixtures('behave_context', 'grizzly_context')
 def test_add_request_task(behave_context: Context, grizzly_context: Callable, tmpdir_factory: TempdirFactory) -> None:
     grizzly = cast(GrizzlyContext, behave_context.grizzly)
     grizzly.scenario.context['host'] = 'http://test'
@@ -147,6 +146,34 @@ def test_add_request_task(behave_context: Context, grizzly_context: Callable, tm
 
         add_request_task(behave_context, method=RequestMethod.PUT, source='template.j2.json', endpoint='/api/test')
         assert cast(RequestTask, grizzly.scenario.tasks[-1]).name == 'template'
+
+        grizzly.scenario.tasks.clear()
+
+        test_datatable_template = test_context.join('datatable_template.j2.json')
+        test_datatable_template.write('Hello {{ name }} and good {{ time_of_day }}!')
+
+        values = [
+            ['bob', 'morning', '{{ AtomicRandomString.object }} is garbage'],
+            ['alice', 'noon', 'i like {{ fruit }}'],
+            ['chad', 'evening', 'have you tried {{ AtomicDate.action }} it off and on again?'],
+            ['dave', 'night', 'yabba {{ AtomicCsvRow.response.word }} doo'],
+        ]
+
+        rows = []
+        for value in values:
+            rows.append(Row(['name', 'time_of_day', 'quote'], value))
+        behave_context.table = Table(['name', 'time_of_day', 'quote'], rows=rows)
+
+        add_request_task(behave_context, method=RequestMethod.SEND, source='datatable_template.j2.json', name='quote: {{ quote }}', endpoint='/api/test/{{ time_of_day }}')
+
+        assert len(grizzly.scenario.tasks) == 4
+
+        for i, t in enumerate(grizzly.scenario.tasks):
+            request = cast(RequestTask, t)
+            name, time_of_day, quote = values[i]
+            assert request.name == f'quote: {quote}'
+            assert request.endpoint == f'/api/test/{time_of_day}'
+            assert request.source == f'Hello {name} and good {time_of_day}!'
     finally:
         del os.environ['GRIZZLY_CONTEXT_ROOT']
         shutil.rmtree(test_context_root)
