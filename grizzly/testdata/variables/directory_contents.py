@@ -99,20 +99,20 @@ class AtomicDirectoryContents(AtomicVariable[str]):
 
         super().__init__(variable, directory)
 
-        if self.__initialized:
-            with self._semaphore:
+        with self._semaphore:
+            if self.__initialized:
                 if variable not in self._files:
                     self._files[variable] = self._create_file_queue(directory)
 
                 if variable not in self._settings:
                     self._settings[variable] = settings
 
-            return
+                return
 
-        self._requests_context_root = os.path.join(os.environ.get('GRIZZLY_CONTEXT_ROOT', '.'), 'requests')
-        self._files = {variable: self._create_file_queue(directory)}
-        self._settings = {variable: settings}
-        self.__initialized = True
+            self._requests_context_root = os.path.join(os.environ.get('GRIZZLY_CONTEXT_ROOT', '.'), 'requests')
+            self._files = {variable: self._create_file_queue(directory)}
+            self._settings = {variable: settings}
+            self.__initialized = True
 
     @classmethod
     def clear(cls: Type['AtomicDirectoryContents']) -> None:

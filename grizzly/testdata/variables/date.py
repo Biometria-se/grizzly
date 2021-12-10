@@ -152,14 +152,14 @@ class AtomicDate(AtomicVariable[Union[str, datetime]]):
 
         super().__init__(variable, date_value)
 
-        if self.__initialized:
-            with self._semaphore:
+        with self._semaphore:
+            if self.__initialized:
                 self._settings[variable] = settings
 
-            return
+                return
 
-        self._settings = {variable: settings}
-        self.__initialized = True
+            self._settings = {variable: settings}
+            self.__initialized = True
 
     @classmethod
     def clear(cls: Type['AtomicDate']) -> None:

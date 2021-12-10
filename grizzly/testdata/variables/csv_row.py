@@ -125,20 +125,20 @@ class AtomicCsvRow(AtomicVariable[Dict[str, Any]]):
 
         super().__init__(variable, {})
 
-        if self.__initialized:
-            with self._semaphore:
+        with self._semaphore:
+            if self.__initialized:
                 if variable not in self._rows:
                     self._rows[variable] = self._create_row_queue(csv_file)
 
                 if variable not in self._settings:
                     self._settings[variable] = settings
 
-            return
+                return
 
-        self.context_root = os.path.join(os.environ.get('GRIZZLY_CONTEXT_ROOT', ''), 'requests')
-        self._rows = {variable: self._create_row_queue(csv_file)}
-        self._settings = {variable: settings}
-        self.__initialized = True
+            self.context_root = os.path.join(os.environ.get('GRIZZLY_CONTEXT_ROOT', ''), 'requests')
+            self._rows = {variable: self._create_row_queue(csv_file)}
+            self._settings = {variable: settings}
+            self.__initialized = True
 
     def _create_row_queue(self, value: str) -> List[Dict[str, Any]]:
         queue: List[Dict[str, Any]] = []

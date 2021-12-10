@@ -58,15 +58,15 @@ class AtomicRandomInteger(AtomicVariable[int]):
 
         super().__init__(variable, minimum)
 
-        if self.__initialized:
-            with self._semaphore:
+        with self._semaphore:
+            if self.__initialized:
                 if variable not in self._max:
                     self._max[variable] = maximum
 
-            return
+                return
 
-        self._max = {variable: maximum}
-        self.__initialized = True
+            self._max = {variable: maximum}
+            self.__initialized = True
 
     @classmethod
     def clear(cls: Type['AtomicRandomInteger']) -> None:
