@@ -51,6 +51,7 @@ class TransformerTask(GrizzlyTask):
             try:
                 _, content = self._transformer.transform(self.content_type, content_raw)
             except TransformerError as e:
+                parent.logger.error(f'failed to transform as {self.content_type.name}: {content_raw}')
                 raise TransformerLocustError(f'{self.__class__.__name__}: failed to transform {self.content_type.name}') from e
 
             values = self._get_values(content)
@@ -58,6 +59,7 @@ class TransformerTask(GrizzlyTask):
             number_of_values = len(values)
 
             if number_of_values != 1:
+                parent.logger.error(f'"{self.expression}" returned {number_of_values} matches for: {content_raw}')
                 raise RuntimeError(f'{self.__class__.__name__}: "{self.expression}" returned {number_of_values} matches')
 
             value = values[0]
