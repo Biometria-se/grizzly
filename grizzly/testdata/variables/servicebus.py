@@ -257,8 +257,8 @@ class AtomicServiceBus(AtomicVariable[str]):
 
         super().__init__(variable, endpoint_name)
 
-        if self.__initialized:
-            with self._semaphore:
+        with self._semaphore:
+            if self.__initialized:
                 if variable not in self._endpoint_messages:
                     self._endpoint_messages[variable] = []
 
@@ -268,13 +268,13 @@ class AtomicServiceBus(AtomicVariable[str]):
                 if variable not in self._endpoint_clients:
                     self._endpoint_clients[variable] = self.create_client(variable, settings)
 
-            return
+                return
 
-        self._endpoint_messages = {variable: []}
-        self._settings = {variable: settings}
-        self._zmq_context = zmq.Context()
-        self._endpoint_clients = {variable: self.create_client(variable, settings)}
-        self.__initialized = True
+            self._endpoint_messages = {variable: []}
+            self._settings = {variable: settings}
+            self._zmq_context = zmq.Context()
+            self._endpoint_clients = {variable: self.create_client(variable, settings)}
+            self.__initialized = True
 
     @classmethod
     def create_context(cls, settings: Dict[str, Any]) -> AsyncMessageContext:

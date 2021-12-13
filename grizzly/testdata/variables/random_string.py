@@ -111,15 +111,15 @@ class AtomicRandomString(AtomicVariable[str]):
 
         super().__init__(variable, string_pattern)
 
-        if self.__initialized:
-            with self._semaphore:
+        with self._semaphore:
+            if self.__initialized:
                 if variable not in self._strings:
                     self._strings[variable] = self._generate_strings(string_pattern, settings)
 
-            return
+                return
 
-        self._strings = {variable: self._generate_strings(string_pattern, settings)}
-        self.__initialized = True
+            self._strings = {variable: self._generate_strings(string_pattern, settings)}
+            self.__initialized = True
 
     def _generate_s(self) -> str:
         return choice(ascii_letters)

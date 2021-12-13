@@ -92,15 +92,15 @@ class AtomicIntegerIncrementer(AtomicVariable[int]):
 
         super().__init__(variable, int(initial_value))
 
-        if self.__initialized:
-            with self._semaphore:
+        with self._semaphore:
+            if self.__initialized:
                 if variable not in self._steps:
                     self._steps[variable] = step
 
-            return
+                return
 
-        self._steps = {variable: step}
-        self.__initialized = True
+            self._steps = {variable: step}
+            self.__initialized = True
 
     @classmethod
     def clear(cls: Type['AtomicIntegerIncrementer']) -> None:
