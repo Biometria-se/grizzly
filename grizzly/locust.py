@@ -391,6 +391,12 @@ def run(context: Context) -> int:
                 print_percentile_stats(runner.stats)
                 print_error_report(runner.stats)
 
+                print('Scenario')
+                print('{:11} {}'.format('identifier', 'description'))
+                print('-' * 25)
+                for scenario in grizzly.scenarios():
+                    print('{:11} {}'.format(scenario.identifier, scenario.description or 'unknown'))
+                print('-' * 25)
 
             return code
 

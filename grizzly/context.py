@@ -107,6 +107,7 @@ class GrizzlyContextScenarioUser:
 @dataclass(unsafe_hash=True)
 class GrizzlyContextScenario:
     name: str = field(init=False, hash=True)
+    description: str = field(init=False, hash=False)
     user: GrizzlyContextScenarioUser = field(init=False, hash=False, compare=False, default_factory=GrizzlyContextScenarioUser)
     _identifier: Optional[str] = field(init=False, hash=True, default=None)
     iterations: int = field(init=False, repr=False, hash=False, compare=False, default=1)
@@ -223,6 +224,7 @@ class GrizzlyContext:
             name = source
 
         scenario.name = name
+        scenario.description = name
         self._scenarios.append(scenario)
 
     def scenarios(self) -> List[GrizzlyContextScenario]:
