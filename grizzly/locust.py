@@ -1,3 +1,4 @@
+import sys
 import logging
 import subprocess
 
@@ -190,6 +191,32 @@ def setup_environment_listeners(context: Context, environment: Environment, requ
     grizzly.state.environment = environment
 
     return external_dependencies
+
+
+def print_scenario_summary(grizzly: GrizzlyContext) -> None:
+    def print_table_lines(length: int) -> None:
+        length -= 11
+        sys.stdout.write('-' * 10)
+        sys.stdout.write('|')
+        sys.stdout.write('-' * length)
+        sys.stdout.write('|\n')
+
+    rows: List[str] = []
+    max_length = 0
+
+    for scenario in grizzly.scenarios():
+        row = '{:11} {}'.format(scenario.identifier, scenario.description or 'unknown')
+        row_length = len(row)
+        if row_length > max_length:
+            max_length = row_length
+        rows.append(row)
+
+    print('Scenario')
+    print('{:11} {}'.format('identifier', 'description'))
+    print_table_lines(max_length)
+    for row in rows:
+        print(row)
+    print_table_lines(max_length)
 
 
 def run(context: Context) -> int:
@@ -390,7 +417,7 @@ def run(context: Context) -> int:
                 print_stats(runner.stats, current=False)
                 print_percentile_stats(runner.stats)
                 print_error_report(runner.stats)
-
+                print_scenario_summary(grizzly)
 
             return code
 
