@@ -76,3 +76,51 @@ class TestTransformerTask:
         implementation(tasks)
 
         assert tasks.user._context['variables'].get('test_variable', None) == 'hello world!'
+
+        grizzly.state.variables.update({'payload_url': 'none'})
+        content = jsondumps({
+            "entityType": "contract",
+            "entityConcreteType": "contract",
+            "entityId": "C000001",
+            "entityVersion": 1,
+            "entityStatus": "Created",
+            "entityStatusChangedAtUtc": "2021-03-10T07:03:00Z",
+            "format": "json",
+            "payloads": [{
+                "url": "https://mystorageaccount.blob.core.windows.net/mycontainer/myfile",
+                "expiresAtUtc": "2021-03-20T09:13:26.000000Z",
+            }]
+        })
+        task = TransformerTask(
+            variable='payload_url',
+            expression='$.payloads[0].url',
+            content_type=TransformerContentType.JSON,
+            content=content,
+        )
+
+        implementation = task.implementation()
+
+        assert callable(implementation)
+
+        implementation(tasks)
+
+        assert tasks.user._context['variables'].get('payload_url', None) == 'https://mystorageaccount.blob.core.windows.net/mycontainer/myfile'
+
+        tasks.user._context['variables']['payload_url'] = None
+        tasks.user._context['variables']['payload'] = content
+
+        task = TransformerTask(
+            variable='payload_url',
+            expression='$.payloads[0].url',
+            content_type=TransformerContentType.JSON,
+            content='{{ payload }}',
+        )
+
+        implementation = task.implementation()
+
+        assert callable(implementation)
+
+        implementation(tasks)
+
+        assert tasks.user._context['variables'].get('payload_url', None) == 'https://mystorageaccount.blob.core.windows.net/mycontainer/myfile'
+
