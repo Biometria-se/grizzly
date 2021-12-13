@@ -1670,7 +1670,8 @@ for it to pass.</p>
 <h1 id="grizzlystepssetup">grizzly.steps.setup</h1>
 <p><a id="grizzly.steps.setup.step_setup_variable_value_ask"></a></p>
 <h4 id="step_setup_variable_value_ask">step_setup_variable_value_ask</h4>
-<div class="highlight"><pre><span></span><code><span class="nd">@given</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;ask for value of variable &quot;</span><span class="si">{name}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="nd">@then</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;ask for value of variable &quot;</span><span class="si">{name}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
+<span class="nd">@given</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;ask for value of variable &quot;</span><span class="si">{name}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">step_setup_variable_value_ask</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
 <p>This step is used to indicate for <code>grizzly-cli</code> that it should ask for an initial value for the variable.
@@ -1798,8 +1799,8 @@ examples above will result in:</p>
 <p>This module contains step implementations that describes the actual load all scenarios in a feature will generate.</p>
 <p><a id="grizzly.steps.background.shapes.step_shapes_user_count"></a></p>
 <h4 id="step_shapes_user_count">step_shapes_user_count</h4>
-<div class="highlight"><pre><span></span><code><span class="nd">@given</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;&quot;</span><span class="si">{user_count:d}</span><span class="s1">&quot; {user_number:UserGramaticalNumber}&#39;</span><span class="p">)</span>
-<span class="k">def</span> <span class="nf">step_shapes_user_count</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">user_count</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">user_number</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+<div class="highlight"><pre><span></span><code><span class="nd">@given</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;&quot;</span><span class="si">{value}</span><span class="s1">&quot; {grammar:UserGramaticalNumber}&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">step_shapes_user_count</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
 <p>Set number of users that will generate load.</p>
 <div class="highlight"><pre><span></span><code><span class="k">Given </span><span class="nf">&quot;</span><span class="s">5</span><span class="nf">&quot; users</span>
@@ -1812,8 +1813,8 @@ examples above will result in:</p>
 </ul>
 <p><a id="grizzly.steps.background.shapes.step_shapes_spawn_rate"></a></p>
 <h4 id="step_shapes_spawn_rate">step_shapes_spawn_rate</h4>
-<div class="highlight"><pre><span></span><code><span class="nd">@given</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;spawn rate is &quot;</span><span class="si">{spawn_rate:g}</span><span class="s1">&quot; {user_number:UserGramaticalNumber} per second&#39;</span><span class="p">)</span>
-<span class="k">def</span> <span class="nf">step_shapes_spawn_rate</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">spawn_rate</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">user_number</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+<div class="highlight"><pre><span></span><code><span class="nd">@given</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;spawn rate is &quot;</span><span class="si">{value}</span><span class="s1">&quot; {grammar:UserGramaticalNumber} per second&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">step_shapes_spawn_rate</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
 <p>Set rate in which locust shall swarm new user instances.</p>
 <div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">spawn rate is &quot;</span><span class="s">5</span><span class="nf">&quot; users per second</span>
