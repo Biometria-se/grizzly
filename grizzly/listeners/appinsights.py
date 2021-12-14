@@ -25,6 +25,8 @@ from urllib.parse import parse_qs, urlparse
 from opencensus.ext.azure.log_exporter import AzureLogHandler
 from locust.env import Environment
 
+stdlogger = logging.getLogger(__name__)
+
 
 class ApplicationInsightsListener:
     def __init__(self, environment: Environment, url: str, propagate_logs: bool = True) -> None:
@@ -42,7 +44,7 @@ class ApplicationInsightsListener:
         assert 'InstrumentationKey' in params, f'InstrumentationKey not found in {parsed.query}'
         instrumentation_key = params['InstrumentationKey'][0]
         self.environment = environment
-        self.logger = logging.getLogger(__name__)
+        self.logger = logging.getLogger(f'{__name__}-azure')
 
         connection_string = f'InstrumentationKey={instrumentation_key};IngestionEndpoint={ingestion_endpoint}'
 
@@ -55,30 +57,36 @@ class ApplicationInsightsListener:
         self,
         request_type: str,
         name: str,
-        response_time: float,
+        response_time: Any,
         response_length: int,
         exception: Optional[Any] = None,
         **_kwargs: Dict[str, Any],
     ) -> None:
-        result = 'Success' if exception is None else 'Failure'
+        try:
+            result = 'Success' if exception is None else 'Failure'
 
-        custom_dimensions = self._create_custom_dimensions_dict(
-            request_type, result, response_time, response_length, name,
-        )
+            if isinstance(response_time, float):
+                response_time = int(round(response_time, 0))
 
-        message_to_log = '{}: {} {} Response time: {} Number of Threads: {}'.format(
-            result, str(request_type), str(name), str(response_time), custom_dimensions['thread_count']
-        )
-
-        if exception is not None:
-            message_to_log = '{} Exception: {}'.format(
-                message_to_log, str(exception),
+            custom_dimensions = self._create_custom_dimensions_dict(
+                request_type, result, response_time, response_length, name,
             )
 
-        self.logger.info(message_to_log, extra={'custom_dimensions': custom_dimensions})
+            message_to_log = '{}: {} {} Response time: {} Number of Threads: {}'.format(
+                result, str(request_type), str(name), str(response_time), custom_dimensions['thread_count']
+            )
+
+            if exception is not None:
+                message_to_log = '{} Exception: {}'.format(
+                    message_to_log, str(exception),
+                )
+
+            self.logger.info(message_to_log, extra={'custom_dimensions': custom_dimensions})
+        except:
+            stdlogger.error(f'failed to write metric for "{request_type} {name}"')
 
     def _create_custom_dimensions_dict(
-        self, method: str, result: str, response_time: float, response_length: int, endpoint: str, exception: Optional[Any] = None
+        self, method: str, result: str, response_time: int, response_length: int, endpoint: str, exception: Optional[Any] = None
     ) -> Dict[str, Any]:
         custom_dimensions = self._safe_return_runner_values()
 

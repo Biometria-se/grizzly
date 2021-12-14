@@ -59,7 +59,7 @@ import json
 import re
 
 from typing import Dict, Optional, Any, Tuple, List, cast
-from time import time, monotonic as time_monotonic
+from time import time, perf_counter as time_perf_counter
 from functools import wraps
 from enum import Enum
 from urllib.parse import parse_qs, urlparse
@@ -214,7 +214,7 @@ class RestApiUser(ResponseHandler, RequestLogger, ContextVariables, HttpRequests
         }
 
         auth_user_context = self._context['auth']['user']
-        start_time = time_monotonic()
+        start_time = time_perf_counter()
         total_response_length = 0
         try:
             if self._context['auth']['url'] is None:
@@ -454,7 +454,7 @@ class RestApiUser(ResponseHandler, RequestLogger, ContextVariables, HttpRequests
 
             request_meta = {
                 'request_type': 'GET',
-                'response_time': (time_monotonic() - start_time) * 1000,
+                'response_time': int((time_perf_counter() - start_time) * 1000),
                 'name': f'{name} OAuth2 user token',
                 'context': self._context,
                 'response': None,

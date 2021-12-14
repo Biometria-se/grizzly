@@ -4,12 +4,13 @@ from typing import Callable, Dict, Any, Optional
 
 import pytest
 
-from opencensus.ext.azure.log_exporter import AzureLogHandler
 from locust.env import Environment
 from locust.runners import Runner
 from locust.exception import CatchResponseError
+from opencensus.ext.azure.log_exporter import AzureLogHandler
 from pytest_mock import mocker  # pylint: disable=unused-import
 from pytest_mock.plugin import MockerFixture
+from _pytest.logging import LogCaptureFixture
 
 from ..fixtures import locust_environment  # pylint: disable=unused-import
 
@@ -74,14 +75,14 @@ class TestAppInsightsListener:
 
 
     @pytest.mark.usefixtures('locust_environment', 'patch_azureloghandler')
-    def test_request(self, locust_environment: Environment, patch_azureloghandler: Callable[[], None], mocker: MockerFixture) -> None:
+    def test_request(self, locust_environment: Environment, patch_azureloghandler: Callable[[], None], mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
         patch_azureloghandler()
 
         def generate_logger_info(
             request_type: str, name: str, response_time: float, response_length: int, exception: Optional[Any] = None
         ) -> Callable[[logging.Handler, str, Dict[str, Any]], None]:
             result = 'Success' if exception is None else 'Failure'
-            expected_message = f'{result}: {request_type} {name} Response time: {response_time} Number of Threads: {""}'
+            expected_message = f'{result}: {request_type} {name} Response time: {int(round(response_time, 0))} Number of Threads: {""}'
 
             if exception is not None:
                 expected_message = f'{expected_message} Exception: {str(exception)}'
@@ -113,6 +114,13 @@ class TestAppInsightsListener:
             )
 
             listener.request('POST', '/api/v2/test', 3133.7, 555, CatchResponseError('request failed'))
+
+            mocker.patch.object(listener, '_create_custom_dimensions_dict', side_effect=[Exception])
+
+            with caplog.at_level(logging.ERROR):
+                listener.request('GET', '/api/v2/test', 123, 100, None)
+            assert 'failed to write metric for "GET /api/v2/test' in caplog.text
+            caplog.clear()
         finally:
             locust_environment.events.request._handlers.pop()
 
@@ -126,7 +134,7 @@ class TestAppInsightsListener:
                 'thread_count', 'target_user_count', 'spawn_rate', 'method', 'result', 'response_time', 'response_length', 'endpoint', 'testplan', 'exception'
             ]
 
-            custom_dimensions = listener._create_custom_dimensions_dict('GET', 'Success', 133.7, 200, '/api/v1/test')
+            custom_dimensions = listener._create_custom_dimensions_dict('GET', 'Success', 133, 200, '/api/v1/test')
 
             for key in custom_dimensions.keys():
                 assert key in expected_keys
@@ -136,7 +144,7 @@ class TestAppInsightsListener:
 
             assert custom_dimensions.get('method', None) == 'GET'
             assert custom_dimensions.get('result', None) == 'Success'
-            assert custom_dimensions.get('response_time', None) == 133.7
+            assert custom_dimensions.get('response_time', None) == 133
             assert custom_dimensions.get('response_length', None) == 200
             assert custom_dimensions.get('endpoint', None) == '/api/v1/test'
             assert custom_dimensions.get('testplan', None) == 'appinsightstestplan'

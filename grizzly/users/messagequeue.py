@@ -96,7 +96,7 @@ Default certificate label is set to `auth.username`, change it by setting `auth.
 from typing import Dict, Any, Generator, Tuple, Optional, cast
 from urllib.parse import urlparse, parse_qs, unquote
 from contextlib import contextmanager
-from time import monotonic as time
+from time import perf_counter as time
 
 
 import zmq

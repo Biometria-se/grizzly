@@ -230,6 +230,10 @@ def test_initialize_testdata_with_payload_context(behave_context: Context, grizz
                 'queue:TEST.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"'
             )
             source['result']['DocumentID'] = '{{ AtomicMessageQueue.document_id }}'
+        grizzly.state.variables['AtomicServiceBus.event'] = (
+            'topic:events, subscription:grizzly | url="Endpoint=sb://sb.example.com?SharedAccessKey=asdfasdfasdf=&SharedAccessKeyName=test"'
+        )
+        source['result']['Event'] = '{{ AtomicServiceBus.event }}'
         grizzly.scenario.user.class_name = 'TestUser'
         grizzly.scenario.context['host'] = 'http://test.nu'
         grizzly.scenario.iterations = 2
@@ -244,10 +248,7 @@ def test_initialize_testdata_with_payload_context(behave_context: Context, grizz
         scenario_name = grizzly.scenario.get_name()
 
         assert scenario_name in testdata
-        if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
-            assert external_dependencies == set(['async-messaged'])
-        else:
-            assert external_dependencies == set()
+        assert external_dependencies == set(['async-messaged'])
 
         data = testdata[scenario_name]
 
@@ -268,6 +269,7 @@ def test_initialize_testdata_with_payload_context(behave_context: Context, grizz
         assert data['AtomicDirectoryContents.test']['test'] == f'adirectory/file1.txt'
         assert data['AtomicDirectoryContents.test']['test'] == f'adirectory/file2.txt'
         assert data['AtomicDirectoryContents.test']['test'] is None
+        assert data['AtomicServiceBus.event'] == '__on_consumer__'
         if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
             assert data['AtomicMessageQueue.document_id'] == '__on_consumer__'
     finally:
@@ -506,11 +508,11 @@ def test_transform_no_objectify() -> None:
 
 @pytest.mark.usefixtures('behave_context', 'noop_zmq', 'cleanup', 'mocker', 'noop_zmq')
 def test_transform(behave_context: Context, noop_zmq: Callable[[str], None], cleanup: Callable, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
-    noop_zmq('grizzly.testdata.variables.messagequeue')
+    noop_zmq('grizzly.testdata.variables.servicebus')
 
     def mock_response(response: Optional[AsyncMessageResponse], repeat: int = 1) -> None:
         mocker.patch(
-            'grizzly.testdata.variables.messagequeue.zmq.sugar.socket.Socket.recv_json',
+            'grizzly.testdata.variables.servicebus.zmq.sugar.socket.Socket.recv_json',
             side_effect=[zmq.Again(), response] * repeat
         )
     try:
@@ -523,40 +525,36 @@ def test_transform(behave_context: Context, noop_zmq: Callable[[str], None], cle
             'Test.test1.test2.test3': 'value',
             'Test.test1.test2.test4': 'value',
             'Test.test2.test3': 'value',
+            'AtomicServiceBus.document_id': '__on_consumer__',
         }
+        grizzly.state.variables['AtomicServiceBus.document_id'] = (
+            'queue:messages | url="Endpoint=sb://sb.example.com?SharedAccessKey=asdfasdfasdf=&SharedAccessKeyName=test", repeat=True'
+        )
 
-        if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
-            grizzly.state.variables['AtomicMessageQueue.document_id'] = (
-                'queue:TEST.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN", repeat=True'
-            )
-            data['AtomicMessageQueue.document_id'] = '__on_consumer__'
+        mock_response({
+            'success': True,
+            'worker': '1337-aaaabbbb-beef',
+        }, 2)
 
-            mock_response({
-                'success': True,
-                'worker': '1337-aaaabbbb-beef',
-            }, 2)
+        with caplog.at_level(logging.ERROR):
+            with pytest.raises(StopUser):
+                transform(data)
+        assert 'AtomicServiceBus.document_id: payload in response was None' in caplog.text
+        caplog.clear()
 
-            with caplog.at_level(logging.ERROR):
-                with pytest.raises(StopUser):
-                    transform(data)
-            assert 'AtomicMessageQueue.document_id: payload in response was None' in caplog.text
-            caplog.clear()
+        mock_response({
+            'success': True,
+            'worker': '1337-aaaabbbb-beef',
+            'payload': jsondumps({
+                'document': {
+                    'id': 'DOCUMENT_1337-1',
+                    'name': 'Boring presentation',
+                    'author': 'Drew Ackerman',
+                }
+            }),
+        })
 
-            mock_response({
-                'success': True,
-                'worker': '1337-aaaabbbb-beef',
-                'payload': jsondumps({
-                    'document': {
-                        'id': 'DOCUMENT_1337-1',
-                        'name': 'Boring presentation',
-                        'author': 'Drew Ackerman',
-                    }
-                }),
-            })
-
-            obj = transform(data)
-        else:
-            obj = transform(data)
+        obj = transform(data)
 
         assert (
             obj['AtomicIntegerIncrementer'].__module__ == 'grizzly.testdata.utils' and
@@ -596,35 +594,34 @@ def test_transform(behave_context: Context, noop_zmq: Callable[[str], None], cle
         assert isinstance(test, str)
         assert test == 'value'
 
-        if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
-            assert getattr(obj['AtomicMessageQueue'], 'document_id', None) == jsondumps({
-                'document': {
-                    'id': 'DOCUMENT_1337-1',
-                    'name': 'Boring presentation',
-                    'author': 'Drew Ackerman',
-                }
-            })
+        assert getattr(obj['AtomicServiceBus'], 'document_id', None) == jsondumps({
+            'document': {
+                'id': 'DOCUMENT_1337-1',
+                'name': 'Boring presentation',
+                'author': 'Drew Ackerman',
+            }
+        })
 
-            # AtomicMessageQueue.document_id should repeat old values when there is no
-            # new message on queue since repeat=True
-            mock_response({
-                'success': False,
-                'worker': '1337-aaaabbbb-beef',
-                'message': 'MQRC_NO_MSG_AVAILABLE',
-            })
+        # AtomicMessageQueue.document_id should repeat old values when there is no
+        # new message on queue since repeat=True
+        mock_response({
+            'success': False,
+            'worker': '1337-aaaabbbb-beef',
+            'message': 'no message on queue:messages',
+        })
 
-            obj = transform({
-                'AtomicMessageQueue.document_id': '__on_consumer__',
-            })
+        obj = transform({
+            'AtomicServiceBus.document_id': '__on_consumer__',
+        })
 
-            assert getattr(obj['AtomicMessageQueue'], 'document_id', None) == jsondumps({
-                'document': {
-                    'id': 'DOCUMENT_1337-1',
-                    'name': 'Boring presentation',
-                    'author': 'Drew Ackerman',
-                }
-            })
+        assert getattr(obj['AtomicServiceBus'], 'document_id', None) == jsondumps({
+            'document': {
+                'id': 'DOCUMENT_1337-1',
+                'name': 'Boring presentation',
+                'author': 'Drew Ackerman',
+            }
+        })
 
-            caplog.clear()
+        caplog.clear()
     finally:
         cleanup()

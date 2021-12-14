@@ -67,7 +67,7 @@ And set response content type to "application/xml"
 '''
 from typing import Generator, Dict, Any, Tuple, Optional, Set, cast
 from urllib.parse import urlparse, parse_qs
-from time import monotonic as time
+from time import perf_counter as time
 from contextlib import contextmanager
 
 import zmq
