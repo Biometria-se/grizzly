@@ -31,7 +31,7 @@ Then get request from endpoint "/pub/blobs/blob.file"
 '''
 from typing import Any, Dict, Tuple, Optional
 from urllib.parse import urlparse
-from time import monotonic as time
+from time import perf_counter as time
 from os import path, environ, mkdir
 
 from locust.exception import StopUser
@@ -132,11 +132,11 @@ class SftpUser(ContextVariables, FileRequests):
         except Exception as e:
             exception = e
         finally:
-            total_time = int((time() - start_time) * 1000)
+            response_time = int((time() - start_time) * 1000)
             self.environment.events.request.fire(
                 request_type=f'sftp:{request.method.name[:4]}',
                 name=name,
-                response_time=total_time,
+                response_time=response_time,
                 response_length=response_length,
                 context=self._context,
                 exception=exception,

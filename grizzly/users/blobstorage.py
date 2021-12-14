@@ -31,7 +31,7 @@ import os
 
 from typing import Dict, Any, Tuple, Optional
 from urllib.parse import urlparse, parse_qs
-from time import monotonic as time
+from time import perf_counter as time
 
 from azure.storage.blob import BlobServiceClient
 from locust.exception import StopUser

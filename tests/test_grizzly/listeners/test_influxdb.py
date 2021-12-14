@@ -9,6 +9,7 @@ import pytest
 
 from pytest_mock import mocker  # pylint: disable=unused-import
 from pytest_mock.plugin import MockerFixture
+from _pytest.logging import LogCaptureFixture
 from locust.runners import Runner
 from locust.exception import CatchResponseError
 from locust.env import Environment
@@ -361,14 +362,14 @@ class TestInfluxDbListener:
             del os.environ['TESTDATA_VARIABLE_TEST2']
 
     @pytest.mark.usefixtures('locust_environment', 'patch_influxdblistener')
-    def test_request(self, locust_environment: Environment, patch_influxdblistener: Callable[[], None], mocker: MockerFixture) -> None:
+    def test_request(self, locust_environment: Environment, patch_influxdblistener: Callable[[], None], mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
         patch_influxdblistener()
 
         def generate_logger_call(
             request_type: str, name: str, response_time: float, response_length: int, exception: Optional[Any] = None
         ) -> Callable[[logging.Handler, str], None]:
             result = 'Success' if exception is None else 'Failure'
-            expected_message = f'{result}: {request_type} {name} Response time: {response_time} Number of Threads: -1'
+            expected_message = f'{result}: {request_type} {name} Response time: {int(round(response_time, 0))} Number of Threads: -1'
 
             if exception is not None:
                 expected_message = f'{expected_message} Exception: {str(exception)}'
@@ -380,7 +381,7 @@ class TestInfluxDbListener:
 
         listener = InfluxDbListener(
             locust_environment,
-            'https://influx.test.com:1337/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
+            'https://influx.example.com:1337/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
         )
 
         mocker.patch(
@@ -400,16 +401,29 @@ class TestInfluxDbListener:
         assert len(listener._events) == 2
 
     @pytest.mark.usefixtures('locust_environment', 'patch_influxdblistener')
+    def test_request_exception(self, locust_environment: Environment, patch_influxdblistener: Callable[[], None], mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
+        listener = InfluxDbListener(
+            locust_environment,
+            'https://influx.example.com:1337/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
+        )
+        mocker.patch.object(listener, '_create_metrics', side_effect=[Exception])
+
+        with caplog.at_level(logging.ERROR):
+            listener.request('GET', '/api/v2/test', 555.37, 137, None)
+        assert 'failed to write metric for "GET /api/v2/test' in caplog.text
+        caplog.clear()
+
+    @pytest.mark.usefixtures('locust_environment', 'patch_influxdblistener')
     def test__create_metrics(self, locust_environment: Environment, patch_influxdblistener: Callable[[], None]) -> None:
         patch_influxdblistener()
 
         listener = InfluxDbListener(
             locust_environment,
-            'https://influx.test.com:1337/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
+            'https://influx.example.com:1337/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
         )
         expected_keys = ['thread_count', 'target_user_count', 'spawn_rate', 'response_time', 'response_length']
 
-        metrics = listener._create_metrics(133.7, -1)
+        metrics = listener._create_metrics(1337, -1)
 
         for key in metrics.keys():
             assert key in expected_keys
@@ -417,12 +431,12 @@ class TestInfluxDbListener:
         for key in expected_keys:
             assert key in metrics
 
-        assert metrics.get('response_time', None) == 133.7
+        assert metrics.get('response_time', None) == 1337
         assert metrics.get('response_length', 100) is None
 
-        metrics = listener._create_metrics(555.13, 1337)
+        metrics = listener._create_metrics(555, 1337)
 
-        assert metrics.get('response_time', None) == 555.13
+        assert metrics.get('response_time', None) == 555
         assert metrics.get('response_length', None) == 1337
 
     @pytest.mark.usefixtures('locust_environment', 'patch_influxdblistener')

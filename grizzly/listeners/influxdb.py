@@ -221,21 +221,27 @@ class InfluxDbListener:
         exception: Optional[Any] = None,
         **_kwargs: Dict[str, Any],
     ) -> None:
-        result = 'Success' if exception is None else 'Failure'
-        metrics = self._create_metrics(response_time, response_length)
+        try:
+            result = 'Success' if exception is None else 'Failure'
+            metrics = self._create_metrics(response_time, response_length)
 
-        message_to_log = f'{result}: {request_type} {name} Response time: {response_time} Number of Threads: {metrics["thread_count"]}'
+            if isinstance(response_time, float):
+                response_time = int(round(response_time, 0))
 
-        if exception is not None:
-            message_to_log = f'{message_to_log} Exception: {str(exception)}'
-            logger_method = self.logger.error
-        else:
-            logger_method = self.logger.debug
+            message_to_log = f'{result}: {request_type} {name} Response time: {response_time} Number of Threads: {metrics["thread_count"]}'
 
-        logger_method(message_to_log)
-        self._log_request(request_type, name, result, metrics, exception)
+            if exception is not None:
+                message_to_log = f'{message_to_log} Exception: {str(exception)}'
+                logger_method = self.logger.error
+            else:
+                logger_method = self.logger.debug
 
-    def _create_metrics(self, response_time: float, response_length: int) -> Dict[str, Any]:
+            logger_method(message_to_log)
+            self._log_request(request_type, name, result, metrics, exception)
+        except:
+            self.logger.error(f'failed to write metric for "{request_type} {name}"')
+
+    def _create_metrics(self, response_time: int, response_length: int) -> Dict[str, Any]:
         metrics = self._safe_return_runner_values()
 
         metrics['response_time'] = response_time

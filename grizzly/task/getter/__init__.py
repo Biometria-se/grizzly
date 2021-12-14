@@ -1,6 +1,6 @@
 from typing import Dict, Generator, Type, List, Any, Optional, Set
 from contextlib import contextmanager
-from time import monotonic as time
+from time import perf_counter as time
 
 from locust.exception import StopUser
 
