@@ -1,6 +1,7 @@
 from os import environ
 from typing import Any, Dict, Tuple, cast
 from time import perf_counter as time
+from datetime import datetime
 
 import setproctitle as proc
 
@@ -29,7 +30,8 @@ def before_feature(context: Context, *_args: Tuple[Any, ...], **kwargs: Dict[str
     grizzly.state.verbose = context.config.verbose
 
     context.grizzly = grizzly
-    context.started = time()
+    context.start = time()
+    context.started = datetime.now()
     environ['GRIZZLY_CONTEXT_ROOT'] = context.config.base_dir
 
 
@@ -44,7 +46,7 @@ def after_feature(context: Context, feature: Feature, *_args: Tuple[Any, ...], *
 
     # the features duration is the sum of all scenarios duration, which is the sum of all steps duration
     try:
-        duration = int(time() - context.started)
+        duration = int(time() - context.start)
 
         feature.scenarios[-1].steps[-1].duration = duration
     except Exception:

@@ -99,7 +99,7 @@ def test_after_feature(behave_context: Context, mocker: MockerFixture) -> None:
     assert feature.status == 'failed'
 
     assert feature.duration == 0.0
-    behave_context.started = time_monotonic() - 1.0
+    behave_context.start = time_monotonic() - 1.0
 
     after_feature(behave_context, feature)
 
