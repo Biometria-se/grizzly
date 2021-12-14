@@ -14,6 +14,8 @@ from pytablewriter import MarkdownTableWriter
 URL_MAP = {
     'tzlocal': 'https://github.com/regebro/tzlocal',
     'pylint': 'https://www.pylint.org/',
+    'msal-extensions': 'https://github.com/AzureAD/microsoft-authentication-extensions-for-python',
+    'tomli': 'https://github.com/hukkin/tomli',
 }
 
 REPO_ROOT = path.realpath(path.join(path.dirname(__file__), '..'))
