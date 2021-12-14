@@ -6,6 +6,7 @@ from typing import Optional, Callable, List, Tuple, Set, Dict, cast
 from os import environ, name as osname
 from signal import SIGTERM
 from socket import error as SocketError
+from datetime import datetime
 
 import gevent
 
@@ -418,6 +419,13 @@ def run(context: Context) -> int:
                 print_percentile_stats(runner.stats)
                 print_error_report(runner.stats)
                 print_scenario_summary(grizzly)
+
+                # show start and stop date time
+                stopped = datetime.now()
+
+                print('')
+                print(f'Started: {context.started}')
+                print(f'Stopped: {stopped}')
 
             return code
 
