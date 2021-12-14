@@ -114,10 +114,9 @@ renderer:
             - title: Results
               contents:
               - grizzly.steps.scenario.results.*
-          - title: Anywhere
-            contents:
-            - grizzly.steps.setup.*
-            - grizzly.steps.utils.*
+#          - title: Anywhere
+#            contents:
+#            - grizzly.steps.setup
       - title: Load Users
         children:
         - title: Rest API

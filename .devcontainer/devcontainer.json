@@ -1,27 +1,28 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the README at:
-// https://github.com/microsoft/vscode-dev-containers/tree/v0.154.2/containers/python-3
+// https://github.com/microsoft/vscode-dev-containers/tree/v0.209.5/containers/python-3
 {
 	"name": "Python 3",
 	"build": {
 		"dockerfile": "Dockerfile",
 		"context": "..",
 		"args": {
-			// Update 'VARIANT' to pick a Python version: 3, 3.6, 3.7, 3.8, 3.9
-			"VARIANT": "3.8"
+			// Update 'VARIANT' to pick a Python version: 3, 3.10, 3.9, 3.8, 3.7, 3.6
+			// Append -bullseye or -buster to pin to an OS version.
+			// Use -bullseye variants on local on arm64/Apple Silicon.
+			"VARIANT": "3.8",
+			// Options
+			"NODE_VERSION": "none"
 		}
 	},
-
 	// Set *default* container specific settings.json values on container create.
 	"settings": {
-		//"terminal.integrated.shell.linux": "/bin/bash",
+		"python.defaultInterpreterPath": "/usr/local/bin/python",
 		"python.pythonPath": "/usr/local/bin/python",
-        "python.defaultInterpreterPath": "/usr/local/bin/python",
 		"python.linting.enabled": true,
-        "python.linting.pylintEnabled": true,
-        "python.linting.flake8Enabled": false,
-        "python.linting.mypyEnabled": false,
-        "python.linting.pycodestyleEnabled": false,
-        "python.formatting.provider": "black",
+		"python.linting.pylintEnabled": true,
+		"python.linting.flake8Enabled": false,
+		"python.linting.mypyEnabled": false,
+		"python.linting.pycodestyleEnabled": false,
 		"python.formatting.autopep8Path": "/usr/local/py-utils/bin/autopep8",
 		"python.formatting.blackPath": "/usr/local/py-utils/bin/black",
 		"python.formatting.yapfPath": "/usr/local/py-utils/bin/yapf",
@@ -30,64 +31,60 @@
 		"python.linting.mypyPath": "mypy",
 		"python.linting.pycodestylePath": "/usr/local/py-utils/bin/pycodestyle",
 		"python.linting.pydocstylePath": "/usr/local/py-utils/bin/pydocstyle",
-        "python.linting.pylintPath": "pylint",
-        "python.languageServer": "Pylance",
-        "pythonTestExplorer.testFramework": "pytest",
-        "files.associations": {
-            "*.j2.json": "jinja-json"
-        },
-        "mypy.targets": [
-            "grizzly/",
-            "grizzly_extras/",
-            "example/",
-            "tests/"
-        ],
-        "python.testing.pytestEnabled": true,
-        "python.testing.pytestArgs": [
-            "-o testpaths=tests",
-            "--cov=.",
-            "--cov-report=xml:coverage.xml",
-            "tests/"
-        ],
-        "coverage-gutters.xmlname": "coverage.xml",
-        "coverage-gutters.ignoredPathGlobs": "**/{node_modules,venv,.venv,vendor,tests}/**"
+		"python.linting.pylintPath": "pylint",
+		"python.languageServer": "Pylance",
+		"pythonTestExplorer.testFramework": "pytest",
+		"files.associations": {
+			"*.j2.json": "jinja-json",
+            "*.j2.xml": "jinja-xml"
+		},
+		"mypy.targets": [
+			"grizzly/",
+			"grizzly_extras/",
+			"example/",
+			"tests/"
+		],
+		"python.testing.pytestEnabled": true,
+		"python.testing.pytestArgs": [
+			"-o testpaths=tests",
+			"--cov=.",
+			"--cov-report=xml:coverage.xml",
+			"tests/"
+		],
+		"coverage-gutters.xmlname": "coverage.xml",
+		"coverage-gutters.ignoredPathGlobs": "**/{node_modules,venv,.venv,vendor,tests}/**"
 	},
-
 	// Add the IDs of extensions you want installed when the container is created.
 	"extensions": [
 		"ms-python.python",
 		"ms-python.vscode-pylance",
-        "littlefoxteam.vscode-python-test-adapter",
-        "editorconfig.editorconfig",
-        "eamodio.gitlens",
+		"editorconfig.editorconfig",
+		"eamodio.gitlens",
 		"samuelcolvin.jinjahtml",
-        "mikestead.dotenv",
-        "ryanluker.vscode-coverage-gutters",
-        "stevejpurves.cucumber",
-        "silverbulleters.gherkin-autocomplete",
-        "matangover.mypy"
+		"mikestead.dotenv",
+		"ryanluker.vscode-coverage-gutters",
+		"stevejpurves.cucumber",
+		"silverbulleters.gherkin-autocomplete",
+		"matangover.mypy"
 	],
-    "mounts": [
-        "source=/etc/timezone,target=/etc/timezone,type=bind,consistency=cached",
-        "source=/etc/localtime,target=/etc/localtime,type=bind,consistency=cached",
-        "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
-    ],
-    "runArgs": ["--init"],
-    "overrideCommand": false,
+	"mounts": [
+		"source=/etc/timezone,target=/etc/timezone,type=bind",
+		"source=/etc/localtime,target=/etc/localtime,type=bind",
+	],
+	"containerEnv": {
+		"PYTHONPATH": "${containerWorkspaceFolder}"
+	},
+	"remoteEnv": {
+		"GRIZZLY_MOUNT_CONTEXT": "${localWorkspaceFolder}"
+	},
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
-
-    "containerEnv": {
-        "PYTHONPATH": "${containerWorkspaceFolder}"
-    },
-
-    "remoteEnv": {
-        "GRIZZLY_MOUNT_CONTEXT": "${localWorkspaceFolder}"
-    },
-
-	// Use 'postCreateCommand' to run commands after the container is created.
 	"postCreateCommand": "ssh-add -l && for file in requirements*.txt; do pip3 --disable-pip-version-check --no-cache-dir install --upgrade --no-warn-script-location -r $file; done",
-
 	// Comment out connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
-    "remoteUser": "vscode"
+	"remoteUser": "vscode",
+	"features": {
+		"docker-from-docker": "latest",
+		"git": "os-provided",
+		"github-cli": "latest"
+	}
 }
