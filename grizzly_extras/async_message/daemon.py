@@ -19,6 +19,7 @@ from . import (
 
 from grizzly_extras.transformer import JsonBytesEncoder
 
+
 def router() -> None:
     proc.setproctitle('grizzly')
     logger.debug('router: starting')

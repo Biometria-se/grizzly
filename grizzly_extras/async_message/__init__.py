@@ -8,6 +8,8 @@ from platform import node as hostname
 from json import dumps as jsondumps
 from time import monotonic as time
 from io import StringIO
+from threading import Lock
+from datetime import datetime
 
 from grizzly_extras.transformer import JsonBytesEncoder
 
@@ -130,30 +132,48 @@ def register(handlers: Dict[str, AsyncMessageRequestHandler], action: str, *acti
 
     return decorator
 
-def configure_logger(name: str) -> logging.Logger:
-    logger = logging.getLogger(name)
-    log_format = '[%(asctime)s] %(levelname)-5s: %(name)s: %(message)s'
-    formatter = logging.Formatter(log_format)
-    level = logging.getLevelName(environ.get('GRIZZLY_EXTRAS_LOGLEVEL', 'INFO'))
-    logger.setLevel(level)
-    logger.handlers = []
-    stdout_handler = logging.StreamHandler(sys.stderr)
-    stdout_handler.setFormatter(formatter)
-    logger.addHandler(stdout_handler)
+class ThreadLogger:
+    _logger: logging.Logger
+    _lock: Lock = Lock()
 
-    root_logger = logging.getLogger()
-    root_logger.setLevel(logging.NOTSET)  # root logger needs to have lower or equal log level
-    root_logger.handlers = []
-    root_logger.addHandler(logging.StreamHandler(StringIO()))  # disable messages from root logger
+    def __init__(self, name: str) -> None:
+        logger = logging.getLogger(name)
+        log_format = '[%(asctime)s] %(levelname)-5s: %(name)s: %(message)s'
+        formatter = logging.Formatter(log_format)
+        level = logging.getLevelName(environ.get('GRIZZLY_EXTRAS_LOGLEVEL', 'INFO'))
+        logger.setLevel(level)
+        logger.handlers = []
+        stdout_handler = logging.StreamHandler(sys.stderr)
+        stdout_handler.setFormatter(formatter)
+        logger.addHandler(stdout_handler)
 
-    if level < logging.INFO:
-        file_name = f'async-messaged.{hostname()}.log'
-        file_handler = logging.FileHandler(path.join(environ.get('GRIZZLY_CONTEXT_ROOT', '.'), 'logs', file_name))
-        file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
+        root_logger = logging.getLogger()
+        root_logger.setLevel(logging.NOTSET)  # root logger needs to have lower or equal log level
+        root_logger.handlers = []
+        root_logger.addHandler(logging.StreamHandler(StringIO()))  # disable messages from root logger
 
-    logger.info(f'level={logging.getLevelName(level)}')
+        if level < logging.INFO:
+            file_name = f'async-messaged.{hostname()}.{datetime.now().strftime("%Y%m%dT%H%M%S%f")}.log'
+            file_handler = logging.FileHandler(path.join(environ.get('GRIZZLY_CONTEXT_ROOT', '.'), 'logs', file_name))
+            file_handler.setFormatter(formatter)
+            logger.addHandler(file_handler)
 
-    return logger
+        self._logger = logger
 
-logger = configure_logger(__name__)
+        self.info(f'level={logging.getLevelName(level)}')
+
+    def _log(self, level: int, message: str, exc_info: Optional[bool] = False) -> None:
+        with self._lock:
+            self._logger.log(level, message, exc_info=exc_info)
+
+    def debug(self, message: str) -> None:
+        self._log(logging.DEBUG, message)
+
+    def info(self, message: str) -> None:
+        self._log(logging.INFO, message)
+
+    def error(self, message: str, exc_info: Optional[bool] = False) -> None:
+        self._log(logging.ERROR, message, exc_info=exc_info)
+
+
+logger = ThreadLogger(__name__)
