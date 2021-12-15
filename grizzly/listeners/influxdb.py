@@ -156,12 +156,14 @@ class InfluxDbListener:
             if self._events:
                 # Buffer samples, so that a locust greenlet will write to the new list
                 # instead of the one that has been sent into postgres client
-                events_buffer = self._events
-                self._events = []
-                self.connection.write(events_buffer)
-            else:
-                if self._finished:
-                    break
+                try:
+                    events_buffer = self._events
+                    self._events = []
+                    self.connection.write(events_buffer)
+                except Exception as e:
+                    self.logger.error(str(e))
+            elif self._finished:
+                break
             gevent.sleep(0.5)
 
     def _log_request(
@@ -223,10 +225,11 @@ class InfluxDbListener:
     ) -> None:
         try:
             result = 'Success' if exception is None else 'Failure'
-            metrics = self._create_metrics(response_time, response_length)
 
             if isinstance(response_time, float):
                 response_time = int(round(response_time, 0))
+
+            metrics = self._create_metrics(response_time, response_length)
 
             message_to_log = f'{result}: {request_type} {name} Response time: {response_time} Number of Threads: {metrics["thread_count"]}'
 
