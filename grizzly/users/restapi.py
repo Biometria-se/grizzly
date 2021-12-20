@@ -71,7 +71,7 @@ import requests
 from locust.clients import ResponseContextManager
 from locust.exception import CatchResponseError, StopUser
 
-from ..types import WrappedFunc
+from ..types import GrizzlyResponse, WrappedFunc
 from ..utils import merge_dicts
 from ..types import RequestMethod
 from ..task import RequestTask
@@ -538,7 +538,7 @@ class RestApiUser(ResponseHandler, RequestLogger, ContextVariables, HttpRequests
         return message
 
     @refresh_token()
-    def request(self, request: RequestTask) -> None:
+    def request(self, request: RequestTask) -> GrizzlyResponse:
         if request.method not in [RequestMethod.GET, RequestMethod.PUT, RequestMethod.POST]:
             raise NotImplementedError(f'{request.method.name} is not implemented for {self.__class__.__name__}')
 
@@ -591,6 +591,10 @@ class RestApiUser(ResponseHandler, RequestLogger, ContextVariables, HttpRequests
 
             if not response._manual_result == True and request.scenario.stop_on_failure:
                 raise StopUser()
+
+            headers = dict(response.headers) if response.headers not in [None, {}] else None
+
+            return headers, response.text
 
     def add_context(self, context: Dict[str, Any]) -> None:
         if context.get('auth', {}).get('user', {}).get('username', None) is not None:

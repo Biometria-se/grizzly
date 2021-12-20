@@ -6,7 +6,7 @@ from types import MethodType
 from locust import task
 
 from grizzly.users.meta import ContextVariables
-from grizzly.types import RequestMethod
+from grizzly.types import GrizzlyResponse, RequestMethod
 from grizzly.task import RequestTask
 from grizzly.tasks import GrizzlyTasks
 
@@ -52,7 +52,7 @@ class TestUser(ContextVariables):
     def config_property(self, value: Optional[str]) -> None:
         self._config_property = value
 
-    def request(self, request: RequestTask) -> None:
+    def request(self, request: RequestTask) -> GrizzlyResponse:
         raise RequestCalled(request)
 
 

@@ -3,6 +3,10 @@ from time import time
 from enum import Enum
 from urllib.parse import urlparse
 
+from locust.clients import ResponseContextManager
+from locust.exception import StopUser
+from locust.event import EventHook
+
 import pytest
 import requests
 
@@ -10,9 +14,6 @@ from pytest_mock import mocker  # pylint: disable=unused-import
 from pytest_mock.plugin import MockerFixture
 from requests.models import Response
 from json import dumps as jsondumps
-from locust.clients import ResponseContextManager
-from locust.exception import StopUser
-from locust.event import EventHook
 from jinja2 import Template
 
 from grizzly.users.restapi import AuthMethod, RestApiUser, refresh_token
@@ -664,7 +665,10 @@ class TestRestApiUser:
         scenario.stop_on_failure = False
 
         # status_code != 200, stop_on_failure = False
-        user.request(request)
+        metadata, payload = user.request(request)
+
+        assert metadata is None
+        assert payload == '{}'
 
         mock_client_post(status_code=200)
 

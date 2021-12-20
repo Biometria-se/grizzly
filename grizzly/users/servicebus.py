@@ -78,7 +78,7 @@ from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRespon
 from grizzly_extras.arguments import parse_arguments, get_unsupported_arguments
 from grizzly_extras.transformer import TransformerContentType
 
-from ..types import RequestMethod, RequestDirection
+from ..types import RequestMethod, RequestDirection, GrizzlyResponse
 from ..task import RequestTask
 from ..utils import merge_dicts
 from .meta import ContextVariables, ResponseHandler, RequestLogger
@@ -228,15 +228,17 @@ class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
         self.hellos.add(description)
 
     @contextmanager
-    def async_action(self, task: RequestTask, request: AsyncMessageRequest, name: str) -> Generator[Dict[str, bool], None, None]:
+    def async_action(self, task: RequestTask, request: AsyncMessageRequest, name: str) -> Generator[Dict[str, Any], None, None]:
         if len(name) > 65:
             name = f'{name[:65]}...'
         request.update({'worker': self.worker_id})
         connection = 'sender' if task.method.direction == RequestDirection.TO else 'receiver'
         request['context'].update({'connection': connection})
-        metadata: Dict[str, bool] = {
+        action: Dict[str, Any] = {
             'abort': False,
             'meta': False,
+            'metadata': None,
+            'payload': None,
         }
 
         if task.response.content_type != TransformerContentType.GUESS:
@@ -248,7 +250,7 @@ class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
         try:
             start_time = time()
 
-            yield metadata
+            yield action
 
             self.zmq_client.send_json(request)
 
@@ -275,8 +277,11 @@ class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
             else:
                 response = {}
 
+            action['metadata'] = response.get('metadata', None)
+            action['payload'] = response.get('payload', None)
+
             try:
-                if not metadata.get('meta', False):
+                if not action.get('meta', False):
                     self.response_event.fire(
                         name=f'{task.scenario.identifier} {task.name}',
                         request=task,
@@ -291,9 +296,9 @@ class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
                 if exception is None:
                     exception = e
             finally:
-                action = self.request_name_map.get(request['action'], request['action'][:4])
+                action_name = self.request_name_map.get(request['action'], request['action'][:4])
                 self.environment.events.request.fire(
-                    request_type=f'sb:{action}',
+                    request_type=f'sb:{action_name}',
                     name=name,
                     response_time=response_time,
                     response_length=(response or {}).get('response_length', None) or 0,
@@ -301,7 +306,14 @@ class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
                     exception=exception,
                 )
 
-        if exception is not None and not metadata.get('meta', False) and task.scenario.stop_on_failure:
+        is_meta = action.get('meta', False)
+
+        action = {
+            'metadata': action['metadata'],
+            'payload': action['payload'],
+        }
+
+        if exception is not None and not is_meta and task.scenario.stop_on_failure:
             try:
                 self.zmq_client.disconnect(self.zmq_url)
             except:
@@ -309,7 +321,7 @@ class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
 
             raise StopUser()
 
-    def request(self, request: RequestTask) -> None:
+    def request(self, request: RequestTask) -> GrizzlyResponse:
         request_name, endpoint, payload = self.render(request)
 
         name = f'{request.scenario.identifier} {request_name}'
@@ -325,11 +337,13 @@ class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
             'payload': payload,
         }
 
-        with self.async_action(request, am_request, name) as metadata:
-            metadata['abort'] = True
+        with self.async_action(request, am_request, name) as action:
+            action['abort'] = True
 
             if request.method not in [RequestMethod.SEND, RequestMethod.RECEIVE]:
                 raise NotImplementedError(f'{self.__class__.__name__}: no implementation for {request.method.name} requests')
 
-            metadata['abort'] = request.scenario.stop_on_failure
+            action['abort'] = request.scenario.stop_on_failure
+
+        return action['metadata'], action['payload']
 

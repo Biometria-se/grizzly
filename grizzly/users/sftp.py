@@ -29,21 +29,21 @@ Then put request "test/blob.file" to endpoint "/pub/blobs"
 Then get request from endpoint "/pub/blobs/blob.file"
 ```
 '''
-from typing import Any, Dict, Tuple, Optional
+from typing import Any, Dict, Tuple, Optional, Union
 from urllib.parse import urlparse
 from time import perf_counter as time
 from os import path, environ, mkdir
 
 from locust.exception import StopUser
 
-from .meta import ContextVariables, FileRequests
+from .meta import ContextVariables, FileRequests, ResponseHandler, RequestLogger
 from ..utils import merge_dicts
 from ..clients import SftpClientSession
-from ..types import RequestMethod
+from ..types import RequestMethod, GrizzlyResponse
 from ..task import RequestTask
 
 
-class SftpUser(ContextVariables, FileRequests):
+class SftpUser(ResponseHandler, RequestLogger, ContextVariables, FileRequests):
     _context: Dict[str, Any] = {
         'auth': {
             'username': None,
@@ -57,7 +57,7 @@ class SftpUser(ContextVariables, FileRequests):
     _context_root: str
     _payload_root: str
 
-    client: SftpClientSession
+    sftp_client: SftpClientSession
 
     def __init__(self, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
         super().__init__(*args, **kwargs)
@@ -100,14 +100,15 @@ class SftpUser(ContextVariables, FileRequests):
         if password is None and key_file is None:
             raise ValueError(f'{self.__class__.__name__}: "auth.password" or "auth.key" context variable must be set')
 
-        self.client = SftpClientSession(host, port)
+        self.sftp_client = SftpClientSession(host, port)
 
-    def request(self, request: RequestTask) -> None:
+    def request(self, request: RequestTask) -> GrizzlyResponse:
         request_name, endpoint, payload = self.render(request)
 
         name = f'{request.scenario.identifier} {request_name}'
 
         exception: Optional[Exception] = None
+        headers: Dict[str, Union[str, int]] = {}
         response_length = 0
         start_time = time()
 
@@ -116,7 +117,7 @@ class SftpUser(ContextVariables, FileRequests):
                 nonlocal response_length
                 response_length = transferred
 
-            with self.client.session(**self._context['auth']) as session:
+            with self.sftp_client.session(**self._context['auth']) as session:
                 if request.method == RequestMethod.PUT:
                     if payload is None:
                         raise ValueError(f'{self.__class__.__name__}: request {name} does not have a payload, incorrect method specified')
@@ -133,6 +134,28 @@ class SftpUser(ContextVariables, FileRequests):
             exception = e
         finally:
             response_time = int((time() - start_time) * 1000)
+            headers = {
+                'method': request.method.name.lower(),
+                'time': response_time,
+                'host': self.host,
+                'path': endpoint,
+            }
+
+            try:
+                self.response_event.fire(
+                    name=name,
+                    request=request,
+                    context=(
+                        headers,
+                        payload,
+                    ),
+                    user=self,
+                    exception=exception,
+                )
+            except Exception as e:
+                if exception is None:
+                    exception = e
+
             self.environment.events.request.fire(
                 request_type=f'sftp:{request.method.name[:4]}',
                 name=name,
@@ -144,3 +167,5 @@ class SftpUser(ContextVariables, FileRequests):
 
             if exception is not None and request.scenario.stop_on_failure:
                 raise StopUser()
+
+            return None, payload

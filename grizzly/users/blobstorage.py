@@ -37,7 +37,7 @@ from azure.storage.blob import BlobServiceClient
 from locust.exception import StopUser
 
 from .meta import ContextVariables
-from ..types import RequestMethod
+from ..types import RequestMethod, GrizzlyResponse
 from ..task import RequestTask
 from ..utils import merge_dicts
 
@@ -75,7 +75,7 @@ class BlobStorageUser(ContextVariables):
         self.client = BlobServiceClient.from_connection_string(conn_str=self.host)
         self._context = merge_dicts(super().context(), self.__class__._context)
 
-    def request(self, request: RequestTask) -> None:
+    def request(self, request: RequestTask) -> GrizzlyResponse:
         request_name, endpoint, payload = self.render(request)
 
         name = f'{request.scenario.identifier} {request_name}'
@@ -104,3 +104,5 @@ class BlobStorageUser(ContextVariables):
 
             if exception is not None and request.scenario.stop_on_failure:
                 raise StopUser()
+
+            return {}, payload

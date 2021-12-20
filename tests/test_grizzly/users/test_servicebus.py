@@ -328,11 +328,14 @@ class TestServiceBusUser:
             'response_length': 133,
         })
 
-        user.request(task)
+        metadata, payload = user.request(task)
         assert say_hello_spy.call_count == 3
         assert send_json_spy.call_count == 2
         assert request_fire_spy.call_count == 3
         assert response_event_fire_spy.call_count == 3
+
+        assert metadata == {'meta': True}
+        assert payload == 'hello'
 
         _, kwargs = response_event_fire_spy.call_args_list[2]
         assert kwargs.get('name', None) == f'{scenario.identifier} {task.name}'
@@ -379,11 +382,14 @@ class TestServiceBusUser:
             'response_length': 133,
         })
 
-        user.request(task)
+        metadata, payload = user.request(task)
         assert say_hello_spy.call_count == 4
         assert send_json_spy.call_count == 3
         assert request_fire_spy.call_count == 4
         assert response_event_fire_spy.call_count == 4
+
+        assert metadata == {'meta': True}
+        assert payload == 'hello'
 
         _, kwargs = response_event_fire_spy.call_args_list[3]
         assert kwargs.get('name', None) == f'{scenario.identifier} {task.name}'
@@ -391,7 +397,7 @@ class TestServiceBusUser:
 
         metadata, payload = kwargs.get('context', (None, None,))
         assert metadata == {'meta': True}
-        assert payload is 'hello'
+        assert payload == 'hello'
         assert kwargs.get('user', None) is user
         assert kwargs.get('exception', '') is None
 

@@ -57,16 +57,16 @@ class TestSftpUser:
 
             user = SftpUser(locust_environment)
 
-            assert isinstance(user.client, SftpClientSession)
-            assert user.client.port == 22
-            assert user.client.host == 'test.nu'
+            assert isinstance(user.sftp_client, SftpClientSession)
+            assert user.sftp_client.port == 22
+            assert user.sftp_client.host == 'test.nu'
 
             SftpUser.host = 'sftp://test.nu:1337'
             user = SftpUser(locust_environment)
 
-            assert isinstance(user.client, SftpClientSession)
-            assert user.client.port == 1337
-            assert user.client.host == 'test.nu'
+            assert isinstance(user.sftp_client, SftpClientSession)
+            assert user.sftp_client.port == 1337
+            assert user.sftp_client.host == 'test.nu'
 
             SftpUser._context['auth']['key_file'] = '~/.ssh/id_rsa'
 
@@ -105,7 +105,10 @@ class TestSftpUser:
             locust_environment.events.request = RequestSilentFailureEvent()
 
             request.scenario.stop_on_failure = False
-            user.request(request)
+            metadata, payload = user.request(request)
+
+            assert metadata is None
+            assert payload == 'test/file.txt'
 
             request.scenario.stop_on_failure = True
             with pytest.raises(StopUser):

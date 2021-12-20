@@ -69,6 +69,8 @@ TestdataType = Dict[str, Dict[str, Any]]
 
 GrizzlyDictValueType = Union[str, float, int, bool]
 
+GrizzlyResponse = Tuple[Optional[Dict[str, Any]], Optional[Any]]
+
 WrappedFunc = TypeVar('WrappedFunc', bound=Callable[..., Any])
 
 T = TypeVar('T')
