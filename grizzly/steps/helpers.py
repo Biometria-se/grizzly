@@ -88,9 +88,18 @@ def add_request_task_response_status_codes(request: RequestTask, status_list: st
         request.response.add_status_code(int(status.strip()))
 
 
-def add_request_task(context: Context, method: RequestMethod, source: Optional[str] = None, name: Optional[str] = None, endpoint: Optional[str] = None) -> None:
+def add_request_task(
+    context: Context,
+    method: RequestMethod,
+    source: Optional[str] = None,
+    name: Optional[str] = None,
+    endpoint: Optional[str] = None,
+    in_scenario: Optional[bool] = True,
+) -> List[RequestTask]:
     grizzly = cast(GrizzlyContext, context.grizzly)
     scenario_tasks_count = len(grizzly.scenario.tasks)
+
+    request_tasks: List[RequestTask] = []
 
     table: List[Optional[Row]]
     content_type: Optional[TransformerContentType] = None
@@ -143,7 +152,12 @@ def add_request_task(context: Context, method: RequestMethod, source: Optional[s
         name = orig_name
         source = orig_source
 
-        grizzly.scenario.tasks.append(request_task)
+        if in_scenario:
+            grizzly.scenario.tasks.append(request_task)
+        else:
+            request_tasks.append(request_task)
+
+    return request_tasks
 
 
 def get_matches(

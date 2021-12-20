@@ -8,7 +8,7 @@ from behave import register_type, then  # pylint: disable=no-name-in-module
 from ..helpers import add_request_task
 from ...types import RequestDirection, RequestMethod
 from ...context import GrizzlyContext
-from ...task import PrintTask, WaitTask, TransformerTask
+from ...task import PrintTask, WaitTask, TransformerTask, UntilRequestTask
 from ...task.getter import getterof
 
 from grizzly_extras.transformer import TransformerContentType
@@ -27,6 +27,44 @@ register_type(
     Method=parse_method,
     ContentType=TransformerContentType.from_string,
 )
+
+@then(u'{method:Method} request with name "{name}" from endpoint "{endpoint}" until "{condition}')
+def step_task_request_text_with_name_to_endpoint_until(context: Context, method: RequestMethod, name: str, endpoint: str, condition: str) -> None:
+    '''Creates a named request to an endpoint on `host` and repeat it until `condition` is true in the response.
+
+    ```gherkin
+    Then get request with name "test-get" from endpoint "/api/test | content_type=json" until "$.`this`[?success==true]"
+    Then receive request with name "test-receive" from endpoint "queue:receive-queue | content_type=xml" until "/header/success[. == 'True']"
+    ```
+
+    `content_type` will be removed from the actual `endpoint` value.
+
+    `condition` is a JSON- or Xpath expression, that also has support for "grizzly style" arguments:
+
+    - `retries` (int): maximum number of times to repeat the request if `condition` is not met (default `3`)
+
+    - `wait` (float): number of seconds to wait between retries (default `1.0`)
+
+    Args:
+        method (RequestMethod): type of request
+        name (str): name of the requests in logs, can contain variables
+        direction (RequestDirection): one of `to` or `from` depending on the value of `method`
+        endpoint (str): URI relative to `host` in the scenario, can contain variables and in certain cases `user_class_name` specific parameters
+    '''
+
+    assert method.direction == RequestDirection.FROM, 'this step is only valid for request methods with direction FROM'
+    assert context.text is None, 'this step does not have support for step text'
+
+    request_tasks = add_request_task(context, method=method, source=context.text, name=name, endpoint=endpoint, in_scenario=False)
+
+    grizzly = cast(GrizzlyContext, context.grizzly)
+
+    for request_task in request_tasks:
+        grizzly.scenario.tasks.append(UntilRequestTask(
+            request=request_task,
+            condition=condition,
+        ))
+
 
 
 @then(u'{method:Method} request with name "{name}" {direction:Direction} endpoint "{endpoint}"')
