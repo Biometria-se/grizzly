@@ -17,7 +17,7 @@ from grizzly.types import RequestMethod
 from ..fixtures import grizzly_context, request_task, behave_context, locust_environment  # pylint: disable=unused-import
 
 class TestRequestTaskHandlers:
-    def tests(self) -> None:
+    def test(self) -> None:
         handlers = RequestTaskHandlers()
 
         assert hasattr(handlers, 'metadata')

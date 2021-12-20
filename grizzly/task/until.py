@@ -20,7 +20,7 @@ from time import perf_counter as time
 from jinja2 import Template
 from gevent import sleep as gsleep
 from locust.exception import StopUser
-from grizzly_extras.transformer import Transformer, transformer
+from grizzly_extras.transformer import Transformer, TransformerContentType, transformer
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments, split_value
 
 from ..context import GrizzlyTask, GrizzlyTasksBase
@@ -38,12 +38,10 @@ class UntilRequestTask(GrizzlyTask):
     wait: float = field(init=False, default=1.0)
 
     def __post_init__(self) -> None:
+        if self.request.response.content_type == TransformerContentType.GUESS:
+            raise ValueError(f'content type must be specified for request')
+
         self.transform = transformer.available[self.request.response.content_type]
-
-
-    def implementation(self) -> Callable[[GrizzlyTasksBase], Any]:
-        if self.transform is None:
-            raise TypeError(f'could not find a transformer for {self.request.response.content_type.name}')
 
         if '|' in self.condition:
             self.condition, until_arguments = split_value(self.condition)
@@ -55,8 +53,12 @@ class UntilRequestTask(GrizzlyTask):
             if len(unsupported_arguments) > 0:
                 raise ValueError(f'unsupported arguments {", ".join(unsupported_arguments)}')
 
-            self.retries = arguments.get('retries', self.retries)
-            self.wait = arguments.get('wait', self.wait)
+            self.retries = int(arguments.get('retries', self.retries))
+            self.wait = float(arguments.get('wait', self.wait))
+
+    def implementation(self) -> Callable[[GrizzlyTasksBase], Any]:
+        if self.transform is None:
+            raise TypeError(f'could not find a transformer for {self.request.response.content_type.name}')
 
         def _implementation(parent: GrizzlyTasksBase) -> Any:
             interpolated_expression = Template(self.condition).render(parent.user.context_variables)
