@@ -13,7 +13,7 @@ Instances of this task is created with step expression:
 
 * [`step_task_request_text_with_name_to_endpoint_until`](/grizzly/usage/steps/scenario/tasks/#step_task_request_text_with_name_to_endpoint_until)
 '''
-from typing import Callable, Any, Type, List, Optional
+from typing import Callable, Any, Type, List, Optional, cast
 from dataclasses import dataclass, field
 from time import perf_counter as time
 
@@ -31,7 +31,7 @@ class UntilRequestTask(GrizzlyTask):
     request: RequestTask
     condition: str
 
-    transform: Type[Transformer] = field(init=False)
+    transform: Optional[Type[Transformer]] = field(init=False)
     matcher: Callable[[Any], List[str]] = field(init=False)
 
     retries: int = field(init=False, default=3)
@@ -41,7 +41,7 @@ class UntilRequestTask(GrizzlyTask):
         if self.request.response.content_type == TransformerContentType.GUESS:
             raise ValueError(f'content type must be specified for request')
 
-        self.transform = transformer.available[self.request.response.content_type]
+        self.transform = transformer.available.get(self.request.response.content_type, None)
 
         if '|' in self.condition:
             self.condition, until_arguments = split_value(self.condition)
@@ -60,13 +60,15 @@ class UntilRequestTask(GrizzlyTask):
         if self.transform is None:
             raise TypeError(f'could not find a transformer for {self.request.response.content_type.name}')
 
+        transform = cast(Transformer, self.transform)
+
         def _implementation(parent: GrizzlyTasksBase) -> Any:
             interpolated_expression = Template(self.condition).render(parent.user.context_variables)
 
-            if self.transform.validate(interpolated_expression):
+            if not transform.validate(interpolated_expression):
                 raise RuntimeError(f'{interpolated_expression} is not a valid expression for {self.request.response.content_type.name}')
 
-            parser = self.transform.parser(self.condition)
+            parser = transform.parser(self.condition)
             number_of_matches = 0
             retry = 0
             exception: Optional[Exception] = None
@@ -75,25 +77,25 @@ class UntilRequestTask(GrizzlyTask):
 
             try:
                 while number_of_matches != 1 and retry < self.retries:
+                    gsleep(self.wait)
                     _, payload = parent.user.request(self.request)
 
-                    number_of_matches = len(parser(payload))
+                    matches = parser(payload)
+                    number_of_matches = len(matches)
 
                     if number_of_matches != 1:
-                        parent.logger.debug(f'')
-                        gsleep(self.wait)
                         retry += 1
             except Exception as e:
                 exception = e
             finally:
                 response_time = int((time() - start) * 1000)
 
-                if exception is not None and number_of_matches != 1:
+                if exception is None and number_of_matches != 1:
                     exception = RuntimeError(f'found {number_of_matches} matching values for {interpolated_expression} in payload')
 
                 parent.user.environment.events.request.fire(
-                    request_type='UNTIL',
-                    name=f'{self.request.scenario.identifier} {self.request.name}, wait={self.wait}s, retries={self.retries}',
+                    request_type='UNTL',
+                    name=f'{self.request.scenario.identifier}, wait={self.wait}s, retries={self.retries}',
                     response_time=response_time,
                     response_length=0,
                     context=parent.user._context,

@@ -123,6 +123,7 @@ class TestJsonTransformer:
 
     def test_validate(self) -> None:
         assert JsonTransformer.validate('$.test.something')
+        assert JsonTransformer.validate('$.`this`[?status="ready"]')
         assert not JsonTransformer.validate('$.')
         assert not JsonTransformer.validate('.test.something')
 
