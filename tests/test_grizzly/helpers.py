@@ -6,27 +6,10 @@ from types import MethodType
 from locust import task
 
 from grizzly.users.meta import ContextVariables
-from grizzly.types import GrizzlyResponse, RequestMethod
+from grizzly.types import GrizzlyResponse
 from grizzly.task import RequestTask
 from grizzly.tasks import GrizzlyTasks
 
-
-def clone_request(method: str, this: RequestTask) -> RequestTask:
-    that = RequestTask(RequestMethod.from_string(method), name=this.name, endpoint=this.endpoint)
-    that.source = this.source
-    that.scenario = this.scenario
-    that.template = this.template
-
-    return that
-
-
-class WaitCalled(Exception):
-    time: float
-
-    def __init__(self, time: float) -> None:
-        super().__init__()
-
-        self.time = time
 
 class RequestCalled(Exception):
     endpoint: str

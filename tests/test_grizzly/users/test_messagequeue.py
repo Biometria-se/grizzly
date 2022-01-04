@@ -2,6 +2,7 @@ import subprocess
 
 from typing import Callable, Dict, Tuple, Any, cast, Optional
 from os import environ
+from dataclasses import replace
 
 try:
     import pymqi
@@ -29,7 +30,6 @@ from grizzly.steps.helpers import add_save_handler
 from grizzly_extras.async_message import AsyncMessageResponse
 
 from ..fixtures import grizzly_context, request_task, locust_environment, noop_zmq  # pylint: disable=unused-import
-from ..helpers import clone_request
 
 import logging
 
@@ -505,7 +505,9 @@ class TestMessageQueueUser:
         assert kwargs['exception'] is not None
         request_event_spy.reset_mock()
 
-        request_error = clone_request('POST', request)
+        request_error = replace(request)
+        request_error.scenario = request.scenario
+        request_error.method = RequestMethod.POST
 
         mocker.patch(
             'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
@@ -750,7 +752,9 @@ class TestMessageQueueUser:
         assert kwargs['exception'] is not None
         request_event_spy.reset_mock()
 
-        request_error = clone_request('POST', request)
+        request_error = replace(request)
+        request_error.scenario = request.scenario
+        request_error.method = RequestMethod.POST
 
         mocker.patch(
             'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',

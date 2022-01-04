@@ -21,7 +21,7 @@ from grizzly.task import RequestTask
 from grizzly.testdata.utils import transform
 
 from ..fixtures import grizzly_context, request_task  # pylint: disable=unused-import
-from ..helpers import ResultFailure, RequestEvent, RequestSilentFailureEvent, clone_request
+from ..helpers import ResultFailure, RequestEvent, RequestSilentFailureEvent
 
 import logging
 
@@ -163,7 +163,8 @@ class TestBlobStorageUser:
         with pytest.raises(ResultFailure):
             user.request(cast(RequestTask, scenario.tasks[-1]))
 
-        request_error = clone_request('RECEIVE', cast(RequestTask, scenario.tasks[-1]))
+        request_error = cast(RequestTask, scenario.tasks[-1])
+        request_error.method = RequestMethod.RECEIVE
         with pytest.raises(ResultFailure) as e:
             user.request(request_error)
         assert 'has not implemented RECEIVE' in str(e)
