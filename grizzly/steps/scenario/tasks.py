@@ -29,7 +29,7 @@ register_type(
 )
 
 @then(u'{method:Method} request with name "{name}" from endpoint "{endpoint}" until "{condition}')
-def step_task_request_text_with_name_to_endpoint_until(context: Context, method: RequestMethod, name: str, endpoint: str, condition: str) -> None:
+def step_task_request_with_name_to_endpoint_until(context: Context, method: RequestMethod, name: str, endpoint: str, condition: str) -> None:
     '''Creates a named request to an endpoint on `host` and repeat it until `condition` is true in the response.
 
     ```gherkin
