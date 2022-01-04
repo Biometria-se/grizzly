@@ -63,12 +63,12 @@ class UntilRequestTask(GrizzlyTask):
         transform = cast(Transformer, self.transform)
 
         def _implementation(parent: GrizzlyTasksBase) -> Any:
-            interpolated_expression = Template(self.condition).render(parent.user.context_variables)
+            condition_rendered = Template(self.condition).render(parent.user.context_variables)
 
-            if not transform.validate(interpolated_expression):
-                raise RuntimeError(f'{interpolated_expression} is not a valid expression for {self.request.response.content_type.name}')
+            if not transform.validate(condition_rendered):
+                raise RuntimeError(f'{condition_rendered} is not a valid expression for {self.request.response.content_type.name}')
 
-            parser = transform.parser(self.condition)
+            parser = transform.parser(condition_rendered)
             number_of_matches = 0
             retry = 0
             exception: Optional[Exception] = None
@@ -79,23 +79,27 @@ class UntilRequestTask(GrizzlyTask):
                 while number_of_matches != 1 and retry < self.retries:
                     gsleep(self.wait)
                     _, payload = parent.user.request(self.request)
+                    _, transformed = transform.transform(self.request.response.content_type, payload)
 
-                    matches = parser(payload)
+                    matches = parser(transformed)
+                    parent.logger.debug(f'{payload=}, condition={condition_rendered}, {matches=}')
                     number_of_matches = len(matches)
 
                     if number_of_matches != 1:
                         retry += 1
             except Exception as e:
+                import traceback
+                traceback.print_exc()
                 exception = e
             finally:
                 response_time = int((time() - start) * 1000)
 
                 if exception is None and number_of_matches != 1:
-                    exception = RuntimeError(f'found {number_of_matches} matching values for {interpolated_expression} in payload')
+                    exception = RuntimeError(f'found {number_of_matches} matching values for {condition_rendered} in payload')
 
                 parent.user.environment.events.request.fire(
                     request_type='UNTL',
-                    name=f'{self.request.scenario.identifier}, wait={self.wait}s, retries={self.retries}',
+                    name=f'{self.request.scenario.identifier} {self.request.name}, w={self.wait}s, r={self.retries}',
                     response_time=response_time,
                     response_length=0,
                     context=parent.user._context,

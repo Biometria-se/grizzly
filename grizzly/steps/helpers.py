@@ -95,11 +95,11 @@ def add_request_task(
     name: Optional[str] = None,
     endpoint: Optional[str] = None,
     in_scenario: Optional[bool] = True,
-) -> List[RequestTask]:
+) -> List[Tuple[RequestTask, Dict[str, str]]]:
     grizzly = cast(GrizzlyContext, context.grizzly)
     scenario_tasks_count = len(grizzly.scenario.tasks)
 
-    request_tasks: List[RequestTask] = []
+    request_tasks: List[Tuple[RequestTask, Dict[str, str]]] = []
 
     table: List[Optional[Row]]
     content_type: Optional[TransformerContentType] = None
@@ -137,11 +137,11 @@ def add_request_task(
 
         if row is not None:
             for key, value in row.as_dict().items():
+                substitutes.update({key: value})
                 endpoint = endpoint.replace(f'{{{{ {key} }}}}', value)
                 if name is not None:
                     name = name.replace(f'{{{{ {key} }}}}', value)
                 if source is not None:
-                    substitutes.update({key: value})
                     source = source.replace(f'{{{{ {key} }}}}', value)
 
         request_task = create_request_task(context, method, source, endpoint, name, substitutes=substitutes)
@@ -155,7 +155,7 @@ def add_request_task(
         if in_scenario:
             grizzly.scenario.tasks.append(request_task)
         else:
-            request_tasks.append(request_task)
+            request_tasks.append((request_task, substitutes,))
 
     return request_tasks
 

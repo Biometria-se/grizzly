@@ -74,17 +74,25 @@ def test_step_task_request_with_name_to_endpoint_until(behave_context: Context) 
     assert len(grizzly.scenario.tasks) == 1
 
     rows: List[Row] = []
+    rows.append(Row(['endpoint'], ['{{ variable }}']))
     rows.append(Row(['endpoint'], ['foo']))
     rows.append(Row(['endpoint'], ['bar']))
     behave_context.table = Table(['endpoint'], rows=rows)
 
-    step_task_request_with_name_to_endpoint_until(behave_context, RequestMethod.GET, 'test', '/api/{{ endpoint }} | content_type=json', '$.`this`[?status="ready"]')
+    step_task_request_with_name_to_endpoint_until(behave_context, RequestMethod.GET, 'test', '/api/{{ endpoint }} | content_type=json', '$.`this`[?status="{{ endpoint }}"]')
 
-    assert len(grizzly.scenario.tasks) == 3
+    assert len(grizzly.scenario.tasks) == 4
     tasks = cast(List[UntilRequestTask], grizzly.scenario.tasks)
 
     assert tasks[-1].request.endpoint == '/api/bar'
+    assert tasks[-1].condition == '$.`this`[?status="bar"]'
     assert tasks[-2].request.endpoint == '/api/foo'
+    assert tasks[-2].condition == '$.`this`[?status="foo"]'
+    assert tasks[-3].request.endpoint == '/api/{{ variable }}'
+    assert tasks[-3].condition == '$.`this`[?status="{{ variable }}"]'
+
+    assert len(grizzly.scenario.orphan_templates) == 1
+    assert grizzly.scenario.orphan_templates[-1] == '$.`this`[?status="{{ variable }}"]'
 
 
 @pytest.mark.usefixtures('behave_context')

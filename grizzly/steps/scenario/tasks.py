@@ -28,7 +28,7 @@ register_type(
     ContentType=TransformerContentType.from_string,
 )
 
-@then(u'{method:Method} request with name "{name}" from endpoint "{endpoint}" until "{condition}')
+@then(u'{method:Method} request with name "{name}" from endpoint "{endpoint}" until "{condition}"')
 def step_task_request_with_name_to_endpoint_until(context: Context, method: RequestMethod, name: str, endpoint: str, condition: str) -> None:
     '''Creates a named request to an endpoint on `host` and repeat it until `condition` is true in the response.
 
@@ -59,11 +59,18 @@ def step_task_request_with_name_to_endpoint_until(context: Context, method: Requ
 
     grizzly = cast(GrizzlyContext, context.grizzly)
 
-    for request_task in request_tasks:
+    for request_task, substitues in request_tasks:
+        condition_rendered = condition
+        for key, value in substitues.items():
+            condition_rendered = condition_rendered.replace(f'{{{{ {key} }}}}', value)
+
         grizzly.scenario.tasks.append(UntilRequestTask(
             request=request_task,
-            condition=condition,
+            condition=condition_rendered,
         ))
+
+        if '{{' in condition_rendered and '}}' in condition_rendered:
+            grizzly.scenario.orphan_templates.append(condition_rendered)
 
 
 

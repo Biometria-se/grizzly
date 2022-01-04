@@ -1,4 +1,5 @@
-from typing import Callable, Dict, Tuple, List, cast
+from typing import Callable, Tuple, List, cast
+from json import dumps as jsondumps
 
 import pytest
 
@@ -43,13 +44,14 @@ class TestUntilRequestTask:
         request = cast(RequestTask, request)
         request.response.content_type = TransformerContentType.JSON
         request.method = RequestMethod.GET
+        request.name = 'test-request'
 
-        def create_response(status: str) -> Dict[str, Dict[str, str]]:
-            return {
+        def create_response(status: str) -> str:
+            return jsondumps({
                 'response': {
                     'status': status,
                 }
-            }
+            })
 
         request_spy = mocker.patch.object(
             tasks.user,
@@ -88,7 +90,7 @@ class TestUntilRequestTask:
 
         transformer.available[TransformerContentType.JSON] = jsontransformer_orig
 
-        task = UntilRequestTask(request, '$.`this`[?status="ready"] | wait=100, retries=10')
+        task = UntilRequestTask(request, "$.`this`[?status='ready'] | wait=100, retries=10")
         implementation = task.implementation()
 
         implementation(tasks)
@@ -106,7 +108,7 @@ class TestUntilRequestTask:
         _, kwargs = fire_spy.call_args_list[0]
 
         assert kwargs.get('request_type', None) == 'UNTL'
-        assert kwargs.get('name', None) == f'{request.scenario.identifier}, wait=100.0s, retries=10'
+        assert kwargs.get('name', None) == f'{request.scenario.identifier} test-request, w=100.0s, r=10'
         assert kwargs.get('response_time', None) == 153500
         assert kwargs.get('response_length', None) == 0
         assert kwargs.get('context', None) == {'variables': {}}
@@ -131,7 +133,7 @@ class TestUntilRequestTask:
         _, kwargs = fire_spy.call_args_list[1]
 
         assert kwargs.get('request_type', None) == 'UNTL'
-        assert kwargs.get('name', None) == f'{request.scenario.identifier}, wait=10.0s, retries=2'
+        assert kwargs.get('name', None) == f'{request.scenario.identifier} test-request, w=10.0s, r=2'
         assert kwargs.get('response_time', None) == 12250
         assert kwargs.get('response_length', None) == 0
         assert kwargs.get('context', None) == {'variables': {}}
@@ -155,7 +157,7 @@ class TestUntilRequestTask:
         _, kwargs = fire_spy.call_args_list[2]
 
         assert kwargs.get('request_type', None) == 'UNTL'
-        assert kwargs.get('name', None) == f'{request.scenario.identifier}, wait=10.0s, retries=2'
+        assert kwargs.get('name', None) == f'{request.scenario.identifier} test-request, w=10.0s, r=2'
         assert kwargs.get('response_time', None) == 1500
         assert kwargs.get('response_length', None) == 0
         assert kwargs.get('context', None) == {'variables': {}}
