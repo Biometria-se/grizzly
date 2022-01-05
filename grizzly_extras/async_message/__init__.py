@@ -23,33 +23,35 @@ class ThreadLogger:
     _logger: logging.Logger
     _lock: Lock = Lock()
 
+    _destination: Optional[str] = None
+
     def __init__(self, name: str) -> None:
-        logger = logging.getLogger(name)
-        log_format = '[%(asctime)s] %(levelname)-5s: %(name)s: %(message)s'
-        formatter = logging.Formatter(log_format)
-        level = logging.getLevelName(environ.get('GRIZZLY_EXTRAS_LOGLEVEL', 'INFO'))
-        logger.setLevel(level)
-        logger.handlers = []
-        stdout_handler = logging.StreamHandler(sys.stderr)
-        stdout_handler.setFormatter(formatter)
-        logger.addHandler(stdout_handler)
+        with self._lock:
+            logger = logging.getLogger(name)
+            log_format = '[%(asctime)s] %(levelname)-5s: %(name)s: %(message)s'
+            formatter = logging.Formatter(log_format)
+            level = logging.getLevelName(environ.get('GRIZZLY_EXTRAS_LOGLEVEL', 'INFO'))
+            logger.setLevel(level)
+            logger.handlers = []
+            stdout_handler = logging.StreamHandler(sys.stderr)
+            stdout_handler.setFormatter(formatter)
+            logger.addHandler(stdout_handler)
 
-        root_logger = logging.getLogger()
-        root_logger.setLevel(logging.NOTSET)  # root logger needs to have lower or equal log level
-        root_logger.handlers = []
-        root_logger.addHandler(logging.StreamHandler(StringIO()))  # disable messages from root logger
+            root_logger = logging.getLogger()
+            root_logger.setLevel(logging.NOTSET)  # root logger needs to have lower or equal log level
+            root_logger.handlers = []
+            root_logger.addHandler(logging.StreamHandler(StringIO()))  # disable messages from root logger
 
-        grizzly_context_root = environ.get('GRIZZLY_CONTEXT_ROOT', None)
+            grizzly_context_root = environ.get('GRIZZLY_CONTEXT_ROOT', None)
 
-        print(f'{grizzly_context_root=}')
+            if grizzly_context_root is not None:
+                if ThreadLogger._destination is None:
+                    ThreadLogger._destination = f'async-messaged.{hostname()}.{datetime.now().strftime("%Y%m%dT%H%M%S%f")}.log'
+                file_handler = logging.FileHandler(path.join(grizzly_context_root, 'logs', ThreadLogger._destination))
+                file_handler.setFormatter(formatter)
+                logger.addHandler(file_handler)
 
-        if grizzly_context_root is not None:
-            file_name = f'async-messaged.{hostname()}.{name}.{datetime.now().strftime("%Y%m%dT%H%M%S%f")}.log'
-            file_handler = logging.FileHandler(path.join(grizzly_context_root, 'logs', file_name))
-            file_handler.setFormatter(formatter)
-            logger.addHandler(file_handler)
-
-        self._logger = logger
+            self._logger = logger
 
     def _log(self, level: int, message: str, exc_info: Optional[bool] = False) -> None:
         with self._lock:
@@ -120,8 +122,7 @@ class AsyncMessageHandler(ABC):
     def handle(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
         action = request['action']
         request_handler = self.get_handler(action)
-        self.logger.debug(f'handling {action}')
-        self.logger.debug(f'{jsondumps(request, indent=2, cls=JsonBytesEncoder)}')
+        self.logger.debug(f'handling {action}, request=\n{jsondumps(request, indent=2, cls=JsonBytesEncoder)}')
 
         response: AsyncMessageResponse
 
@@ -146,8 +147,7 @@ class AsyncMessageHandler(ABC):
                 'response_time': total_time,
             })
 
-            self.logger.debug(f'handled {action}')
-            self.logger.debug(f'{jsondumps(response, indent=2, cls=JsonBytesEncoder)}')
+            self.logger.debug(f'handled {action}, response=\n{jsondumps(response, indent=2, cls=JsonBytesEncoder)}')
 
             return response
 
