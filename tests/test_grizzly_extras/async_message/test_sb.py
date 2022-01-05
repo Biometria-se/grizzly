@@ -16,7 +16,7 @@ class TestAsyncServiceBusHandler:
     def test___init__(self, mocker: MockerFixture) -> None:
         spy = mocker.patch(
             'grizzly_extras.async_message.sb.logging.Logger.setLevel',
-            side_effect=[None],
+            side_effect=[None] * 10,
         )
 
         handler = AsyncServiceBusHandler('asdf-asdf-asdf')
@@ -25,9 +25,10 @@ class TestAsyncServiceBusHandler:
         assert handler._sender_cache == {}
         assert handler._receiver_cache == {}
 
-        assert spy.call_count == 1
-        args, _ = spy.call_args_list[0]
-        assert args[0] == logging.ERROR
+        assert spy.call_count == 3
+        assert spy.call_args_list[0][0][0] == logging.INFO  # ThreadLogger.__init__
+        assert spy.call_args_list[1][0][0] == logging.NOTSET  # ThreadLogger.__init__
+        assert spy.call_args_list[2][0][0] == logging.ERROR  # AsyncServiceBusHandler.__init__
 
     def test_from_message(self) -> None:
         assert AsyncServiceBusHandler.from_message(None) == (None, None,)

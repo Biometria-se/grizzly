@@ -117,25 +117,29 @@ class TestThreadLogger:
         test_context_root = path.dirname(str(test_context))
 
         try:
-            environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
-
             logger = ThreadLogger('test.logger')
-            logger.error('hello world')
-            logger.debug('no no')
+            logger.info('info')
+            logger.warning('warning')
+            logger.error('error')
+            logger.debug('debug')
 
             std = capsys.readouterr()
-            assert '] INFO : test.logger: level=INFO\n' in std.err
-            assert '] ERROR: test.logger: hello world\n' in std.err
-            assert '] DEBUG: test.logger: no no\n' not in std.err
+            assert '] INFO : test.logger: info\n' in std.err
+            assert '] ERROR: test.logger: error\n' in std.err
+            assert '] WARNING: test.logger: warning\n' in std.err
+            assert '] DEBUG: test.logger: debug\n' not in std.err
 
             log_files = listdir(str(test_context))
             assert len(log_files) == 0
 
+            environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
             environ['GRIZZLY_EXTRAS_LOGLEVEL'] = 'DEBUG'
 
             logger = ThreadLogger('test.logger')
-            logger.error('hello world')
-            logger.debug('no no')
+            logger.info('info')
+            logger.error('error')
+            logger.debug('debug')
+            logger.warning('warning')
 
             std = capsys.readouterr()
             log_files = listdir(str(test_context))
@@ -147,9 +151,10 @@ class TestThreadLogger:
                 file = fd.read()
 
             for sink in [std.err, file]:
-                assert '] INFO : test.logger: level=DEBUG\n' in sink
-                assert '] ERROR: test.logger: hello world\n' in sink
-                assert '] DEBUG: test.logger: no no\n' in sink
+                assert '] INFO : test.logger: info\n' in sink
+                assert '] ERROR: test.logger: error\n' in sink
+                assert '] WARNING: test.logger: warning\n' in sink
+                assert '] DEBUG: test.logger: debug\n' in sink
         finally:
             try:
                 del environ['GRIZZLY_CONTEXT_ROOT']

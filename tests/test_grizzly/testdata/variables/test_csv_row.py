@@ -48,7 +48,7 @@ def test_atomiccsvrow__base_type__(tmpdir_factory: TempdirFactory) -> None:
 
         try:
             del os.environ['GRIZZLY_CONTEXT_ROOT']
-        except KeyError:
+        except:
             pass
 
 
@@ -58,7 +58,6 @@ class TestAtomicCsvRow:
         test_context = str(tmpdir_factory.mktemp('test_context').mkdir('requests'))
         test_context_root = os.path.dirname(test_context)
 
-        old_grizzly_context_root = os.environ.get('GRIZZLY_CONTEXT_ROOT', None)
         os.environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
 
         for count in range(1, 4):
@@ -212,10 +211,11 @@ class TestAtomicCsvRow:
             ]
         finally:
             shutil.rmtree(test_context_root)
-            if old_grizzly_context_root is not None:
-                os.environ['GRIZZLY_CONTEXT_ROOT'] = old_grizzly_context_root
-            else:
+
+            try:
                 del os.environ['GRIZZLY_CONTEXT_ROOT']
+            except:
+                pass
 
             cleanup()
 
@@ -224,7 +224,6 @@ class TestAtomicCsvRow:
         test_context = str(tmpdir_factory.mktemp('test_context').mkdir('requests'))
         test_context_root = os.path.dirname(test_context)
 
-        old_grizzly_context_root = os.environ.get('GRIZZLY_CONTEXT_ROOT', None)
         os.environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
 
         with open(os.path.join(test_context, 'test.csv'), 'w') as fd:
@@ -259,10 +258,11 @@ class TestAtomicCsvRow:
             AtomicCsvRow.destroy()
         finally:
             shutil.rmtree(test_context_root)
-            if old_grizzly_context_root is not None:
-                os.environ['GRIZZLY_CONTEXT_ROOT'] = old_grizzly_context_root
-            else:
+
+            try:
                 del os.environ['GRIZZLY_CONTEXT_ROOT']
+            except:
+                pass
 
             cleanup()
 

@@ -19,7 +19,6 @@ from . import (
     AsyncMessageResponse,
     AsyncMessageError,
     register,
-    logger,
 )
 
 __all__ = [
@@ -278,10 +277,10 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                 for received_message in receiver:
                     message = cast(ServiceBusMessage, received_message)
 
-                    logger.debug(f'{self.worker}: got message id: {message.message_id}')
+                    self.logger.debug(f'got message id: {message.message_id}')
 
                     if expression is None:
-                        logger.debug(f'{self.worker}: completing message id: {message.message_id}')
+                        self.logger.debug(f'completing message id: {message.message_id}')
                         receiver.complete_message(message)
                         break
 
@@ -295,15 +294,15 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                         try:
                             _, transformed_payload = transform.transform(content_type, payload)
                         except TransformerError as e:
-                            logger.error(f'{self.worker}: {payload}')
+                            self.logger.error(payload)
                             raise AsyncMessageError(e.message)
 
                         values = get_values(transformed_payload)
 
-                        logger.debug(f'{self.worker}: expression={request_arguments["expression"]}, matches={values}, payload={transformed_payload}')
+                        self.logger.debug(f'expression={request_arguments["expression"]}, matches={values}, payload={transformed_payload}')
 
                         if len(values) > 0:
-                            logger.debug(f'{self.worker}: completing message id: {message.message_id}, with expression "{request_arguments["expression"]}"')
+                            self.logger.debug(f'completing message id: {message.message_id}, with expression "{request_arguments["expression"]}"')
                             receiver.complete_message(message)
                             had_error = False
                             break
@@ -312,7 +311,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                     finally:
                         if had_error:
                             if message is not None:
-                                logger.debug(f'{self.worker}: abandoning message id: {message.message_id}, {message._raw_amqp_message.header.delivery_count}')
+                                self.logger.debug(f'abandoning message id: {message.message_id}, {message._raw_amqp_message.header.delivery_count}')
                                 receiver.abandon_message(message)
                                 message = None
 

@@ -45,7 +45,7 @@ def test_atomicdirectorycontents__base_type__(tmpdir_factory: TempdirFactory) ->
 
         try:
             del os.environ['GRIZZLY_CONTEXT_ROOT']
-        except KeyError:
+        except:
             pass
 
 class TestAtomicDirectoryContents:
@@ -192,10 +192,12 @@ class TestAtomicDirectoryContents:
             ]
         finally:
             shutil.rmtree(test_context_root)
-            if old_grizzly_context_root is not None:
-                os.environ['GRIZZLY_CONTEXT_ROOT'] = old_grizzly_context_root
-            else:
+
+            try:
                 del os.environ['GRIZZLY_CONTEXT_ROOT']
+            except:
+                pass
+
             cleanup()
 
     @pytest.mark.usefixtures('cleanup')
@@ -203,7 +205,6 @@ class TestAtomicDirectoryContents:
         test_context = str(tmpdir_factory.mktemp('test_context').mkdir('requests'))
         test_context_root = os.path.dirname(test_context)
 
-        old_grizzly_context_root = os.environ.get('GRIZZLY_CONTEXT_ROOT', None)
         os.environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
         try:
             try:
@@ -232,8 +233,9 @@ class TestAtomicDirectoryContents:
             AtomicDirectoryContents.destroy()
         finally:
             shutil.rmtree(test_context_root)
-            if old_grizzly_context_root is not None:
-                os.environ['GRIZZLY_CONTEXT_ROOT'] = old_grizzly_context_root
-            else:
+
+            try:
                 del os.environ['GRIZZLY_CONTEXT_ROOT']
+            except:
+                pass
             cleanup()

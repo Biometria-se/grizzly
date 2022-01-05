@@ -156,6 +156,11 @@ def test__get_variable_value_AtomicCsvRow(cleanup: Callable, tmpdir_factory: Tem
         assert value['test'] == {'header1': 'value3', 'header2': 'value4'}
         assert value['test'] is None
     finally:
+        try:
+            del environ['GRIZZLY_CONTEXT_ROOT']
+        except:
+            pass
+
         shutil.rmtree(test_context_root)
         cleanup()
 

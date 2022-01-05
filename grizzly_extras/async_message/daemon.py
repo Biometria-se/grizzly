@@ -9,20 +9,21 @@ import setproctitle as proc
 import zmq
 
 from . import (
+    ThreadLogger,
     AsyncMessageRequest,
     AsyncMessageResponse,
     AsyncMessageHandler,
     LRU_READY,
     SPLITTER_FRAME,
-    logger,
 )
 
 from grizzly_extras.transformer import JsonBytesEncoder
 
 
 def router() -> None:
+    logger = ThreadLogger('router')
     proc.setproctitle('grizzly')
-    logger.debug('router: starting')
+    logger.debug('starting')
 
     context = zmq.Context(1)
     frontend = context.socket(zmq.ROUTER)
@@ -39,7 +40,7 @@ def router() -> None:
 
         thread = Thread(target=worker, args=(context, identity, ))
         thread.start()
-        logger.info(f'router: spawned worker {identity} ({thread.ident})')
+        logger.info(f'spawned worker {identity} ({thread.ident})')
 
     workers_available: List[str] = []
 
@@ -58,7 +59,7 @@ def router() -> None:
                 frontend.send_multipart(reply)
             else:
                 worker_id = backend_response[0]
-                logger.info(f'router: worker {worker_id.decode()} ready')
+                logger.info(f'worker {worker_id.decode()} ready')
                 workers_available.append(worker_id)
 
         if socks.get(frontend) == zmq.POLLIN:
@@ -72,10 +73,10 @@ def router() -> None:
             if worker_id is None:
                 worker_id = workers_available.pop()
                 payload['worker'] = worker_id.decode()
-                logger.info(f'router: assigning worker {payload["worker"]}')
+                logger.info(f'assigning worker {payload["worker"]}')
                 request = jsondumps(payload).encode()
                 if len(workers_available) == 0:
-                    logger.debug(f'router: spawning an additional worker, for next client')
+                    logger.debug(f'spawning an additional worker, for next client')
                     spawn_worker()
             else:
                 worker_id = worker_id.encode()
@@ -86,6 +87,7 @@ def router() -> None:
 
 
 def worker(context: zmq.Context, identity: str) -> None:
+    logger = ThreadLogger(f'worker::{identity}')
     worker = context.socket(zmq.REQ)
 
     worker.setsockopt_string(zmq.IDENTITY, identity)
@@ -97,7 +99,7 @@ def worker(context: zmq.Context, identity: str) -> None:
     while True:
         request_proto = worker.recv_multipart()
         if not request_proto:
-            logger.error(f'{identity}: empty msg')
+            logger.error(f'empty msg')
             continue
 
         request = cast(
@@ -135,9 +137,9 @@ def worker(context: zmq.Context, identity: str) -> None:
                 }
 
         if response is None and integration is not None:
-            logger.debug(f'{identity}: send request to handler')
+            logger.debug('send request to handler')
             response = integration.handle(request)
-            logger.debug(f'{identity}: got response from handler')
+            logger.debug('got response from handler')
 
         response_proto = [
             request_proto[0],

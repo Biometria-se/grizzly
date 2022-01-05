@@ -234,6 +234,11 @@ class TestGrizzlyDict:
             t['AtomicDirectoryContents.test7'] = 'adirectory|repeat=True, random=True'
             assert t['AtomicDirectoryContents.test7'] == 'adirectory | repeat=True, random=True'
         finally:
+            try:
+                del environ['GRIZZLY_CONTEXT_ROOT']
+            except:
+                pass
+
             rmtree(test_context_root)
             cleanup()
 
@@ -265,6 +270,11 @@ class TestGrizzlyDict:
             t['AtomicCsvRow.test2'] = 'test.csv|repeat=True'
             assert t['AtomicCsvRow.test2'] == 'test.csv | repeat=True'
         finally:
+            try:
+                del environ['GRIZZLY_CONTEXT_ROOT']
+            except:
+                pass
+
             rmtree(test_context_root)
             cleanup()
 
