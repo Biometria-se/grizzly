@@ -54,7 +54,6 @@ class TestAtomicDirectoryContents:
         test_context = str(tmpdir_factory.mktemp('test_context').mkdir('requests'))
         test_context_root = os.path.dirname(test_context)
 
-        old_grizzly_context_root = os.environ.get('GRIZZLY_CONTEXT_ROOT', None)
         os.environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
 
         for directory in ['1-test', '2-test', '3-test']:

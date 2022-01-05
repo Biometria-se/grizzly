@@ -238,8 +238,8 @@ class JsonBytesEncoder(JSONEncoder):
     def default(self, o: Any) -> Any:
         if isinstance(o, bytes):
             try:
-                return o.decode('utf-8', 'ignore')
+                return o.decode('utf-8')
             except:
-                return o.decode('latin-1', 'ignore')
+                return o.decode('latin-1')
 
         return JSONEncoder.default(self, o)

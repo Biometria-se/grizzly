@@ -115,6 +115,10 @@ class AsyncMessageHandler(ABC):
         self.message_wait = None
         self.logger = ThreadLogger(f'handler::{worker}')
 
+        # silence uamqp loggers
+        for uamqp_logger_name in ['uamqp', 'uamqp.c_uamqp']:
+            logging.getLogger(uamqp_logger_name).setLevel(logging.ERROR)
+
     @abstractmethod
     def get_handler(self, action: str) -> Optional['AsyncMessageRequestHandler']:
         raise NotImplementedError(f'{self.__class__.__name__}: get_handler is not implemented')

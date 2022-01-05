@@ -516,7 +516,9 @@ def test_run_worker(behave_context: Context, capsys: CaptureFixture, mocker: Moc
         mocked_popen___init__,
     )
 
-    from grizzly.locust import subprocess as subprocess_spy
+    mocker.patch('grizzly.locust.gevent.subprocess.Popen.wait', autospec=True)
+
+    import subprocess as subprocess_spy
 
     messagequeue_process_spy = mocker.spy(subprocess_spy.Popen, '__init__')
 
@@ -645,7 +647,7 @@ def test_run_master(behave_context: Context, capsys: CaptureFixture, mocker: Moc
         mocked_popen___init__,
     )
 
-    from grizzly.locust import subprocess as subprocess_spy
+    import subprocess as subprocess_spy
 
     messagequeue_process_spy = mocker.spy(subprocess_spy.Popen, '__init__')
 

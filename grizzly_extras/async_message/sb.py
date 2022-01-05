@@ -1,5 +1,3 @@
-import logging
-
 from typing import Any, Callable, Dict, Optional, Union, Tuple, Iterable, cast
 from time import monotonic as time, sleep
 from mypy_extensions import VarArg, KwArg
@@ -46,9 +44,6 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         self._sender_cache = {}
         self._receiver_cache = {}
         self._arguments = {}
-
-        # silence uamqp loggers
-        logging.getLogger('uamqp').setLevel(logging.ERROR)
 
     @classmethod
     def get_sender_instance(cls, client: ServiceBusClient, arguments: Dict[str, str]) -> ServiceBusSender:

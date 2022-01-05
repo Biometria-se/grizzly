@@ -34,9 +34,7 @@ from .task import RequestTask
 
 from .utils import create_task_class_type, create_user_class_type
 
-__all__ = [
-    'subprocess',
-]
+__all__: List[str] = []
 
 
 unhandled_greenlet_exception = False
@@ -221,6 +219,15 @@ def print_scenario_summary(grizzly: GrizzlyContext) -> None:
 
 
 def run(context: Context) -> int:
+    def shutdown_external_processes(processes: Dict[str, subprocess.Popen]) -> None:
+        if len(processes) > 0:
+            for dependency, process in processes.items():
+                logger.info(f'stopping {dependency}')
+                process.terminate()
+                process.wait()
+                logger.debug(f'{process.returncode=}')
+
+            processes.clear()
     grizzly = cast(GrizzlyContext, context.grizzly)
 
     log_level = 'DEBUG' if context.config.verbose else grizzly.setup.log_level
@@ -276,8 +283,8 @@ def run(context: Context) -> int:
                     [external_dependency],
                     env=env,
                     shell=False,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
                 )})
                 gevent.sleep(2)
 
@@ -427,6 +434,8 @@ def run(context: Context) -> int:
                 print(f'Started: {context.started}')
                 print(f'Stopped: {stopped}')
 
+            shutdown_external_processes(external_processes)
+
             return code
 
         def sig_term_handler() -> None:
@@ -442,12 +451,4 @@ def run(context: Context) -> int:
         finally:
             return shutdown()
     finally:
-        if len(external_processes) > 0:
-            for external_dependency, external_process in external_processes.items():
-                logger.info(f'stopping {external_dependency}')
-                external_process.terminate()
-                if context.config.verbose:
-                    external_process.communicate()
-                    logger.debug(f'{external_process.returncode=}')
-
-            external_processes.clear()
+        shutdown_external_processes(external_processes)

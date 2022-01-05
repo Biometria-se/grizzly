@@ -65,6 +65,8 @@ Then receive request "topic-recv" from endpoint "topic:shared-topic, subscriptio
 And set response content type to "application/xml"
 ```
 '''
+import logging
+
 from typing import Generator, Dict, Any, Tuple, Optional, Set, cast
 from urllib.parse import urlparse, parse_qs
 from time import perf_counter as time
@@ -144,6 +146,10 @@ class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
             'url': self.host[9:],
             'message_wait': self._context.get('message', {}).get('wait', None)
         }
+
+        # silence uamqp loggers
+        for uamqp_logger_name in ['uamqp', 'uamqp.c_uamqp']:
+            logging.getLogger(uamqp_logger_name).setLevel(logging.ERROR)
 
         self.hellos = set()
         self.worker_id = None
