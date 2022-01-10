@@ -6,9 +6,9 @@ from contextlib import contextmanager
 
 import pytest
 
-from azure.servicebus import ServiceBusMessage
 from locust.env import Environment
 from locust.exception import StopUser
+from azure.servicebus import ServiceBusMessage
 
 from pytest_mock import mocker  # pylint: disable=unused-import
 from pytest_mock.plugin import MockerFixture
@@ -21,7 +21,7 @@ from grizzly.task import RequestTask
 from grizzly.testdata.utils import transform
 
 from ..fixtures import grizzly_context, request_task  # pylint: disable=unused-import
-from ..helpers import ResultFailure, RequestEvent, RequestSilentFailureEvent, clone_request
+from ..helpers import ResultFailure, RequestEvent, RequestSilentFailureEvent
 
 import logging
 
@@ -140,15 +140,18 @@ class TestBlobStorageUser:
         dummy_blobclient = DummyBlobClient()
         dummy_client.set_blobclient(dummy_blobclient)
 
-        user.request(request)
+        metadata, payload = user.request(request)
 
         assert dummy_blobclient.blob_data is not None
+        assert metadata == {}
 
         msg: str = ''
         for part in dummy_blobclient.blob_data.body:
             msg += part.decode('utf-8')
 
         json_msg = json.loads(msg)
+        payload = json.loads(msg)
+        assert json_msg == payload
         assert json_msg['result']['id'] == 'ID-31337'
         assert dummy_blobclient.container == cast(RequestTask, scenario.tasks[-1]).endpoint
         assert dummy_blobclient.blob == os.path.basename(scenario.name)
@@ -160,7 +163,8 @@ class TestBlobStorageUser:
         with pytest.raises(ResultFailure):
             user.request(cast(RequestTask, scenario.tasks[-1]))
 
-        request_error = clone_request('RECEIVE', cast(RequestTask, scenario.tasks[-1]))
+        request_error = cast(RequestTask, scenario.tasks[-1])
+        request_error.method = RequestMethod.RECEIVE
         with pytest.raises(ResultFailure) as e:
             user.request(request_error)
         assert 'has not implemented RECEIVE' in str(e)

@@ -114,7 +114,7 @@ class JsonTransformer(Transformer):
 
             jsonpath = jsonpath_parse(expression)
 
-            def get_values(input_payload: Any) -> List[str]:
+            def _parser(input_payload: Any) -> List[str]:
                 values: List[str] = []
                 for m in jsonpath.find(input_payload):
                     if m is None or m.value is None:
@@ -129,7 +129,7 @@ class JsonTransformer(Transformer):
 
                 return values
 
-            return get_values
+            return _parser
         except Exception as e:
             raise ValueError(f'{cls.__name__}: unable to parse "{expression}": {str(e)}') from e
 

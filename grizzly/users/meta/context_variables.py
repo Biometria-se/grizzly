@@ -9,6 +9,7 @@ from locust.env import Environment
 
 from grizzly.context import GrizzlyContextScenario
 
+from ...types import GrizzlyResponse
 from ...task import RequestTask
 from ...utils import merge_dicts
 from . import logger, FileRequests
@@ -31,7 +32,7 @@ class ContextVariables(User):
         self._context = merge_dicts({}, ContextVariables._context)
 
     @abstractmethod
-    def request(self, request: RequestTask) -> None:
+    def request(self, request: RequestTask) -> GrizzlyResponse:
         raise NotImplementedError(f'{self.__class__.__name__} has not implemented request(RequestTask)')
 
     def render(self, request: RequestTask) -> Tuple[str, str, Optional[str]]:

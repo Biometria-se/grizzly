@@ -6,6 +6,7 @@ from behave.runner import Context
 from parse import compile
 from json import dumps as jsondumps
 
+from behave.model import Table, Row
 from grizzly.context import GrizzlyContext
 from grizzly.types import RequestMethod, RequestDirection
 from grizzly.task import TransformerTask, PrintTask, WaitTask
@@ -45,6 +46,53 @@ def test_parse_direction() -> None:
 
     with pytest.raises(ValueError):
         p.parse('value asdf world')
+
+
+@pytest.mark.usefixtures('behave_context')
+def test_step_task_request_with_name_to_endpoint_until(behave_context: Context) -> None:
+    grizzly = cast(GrizzlyContext, behave_context.grizzly)
+
+    assert len(grizzly.scenario.tasks) == 0
+
+    with pytest.raises(AssertionError) as ae:
+        step_task_request_with_name_to_endpoint_until(behave_context, RequestMethod.POST, 'test', '/api/test', '$.`this`[?status="ready"]')
+    assert 'this step is only valid for request methods with direction FROM' in str(ae)
+
+    behave_context.text = 'foo bar'
+    with pytest.raises(AssertionError) as ae:
+        step_task_request_with_name_to_endpoint_until(behave_context, RequestMethod.GET, 'test', '/api/test', '$.`this`[?status="ready"]')
+    assert 'this step does not have support for step text' in str(ae)
+
+    behave_context.text = None
+
+    with pytest.raises(ValueError) as ve:
+        step_task_request_with_name_to_endpoint_until(behave_context, RequestMethod.GET, 'test', '/api/test', '$.`this`[?status="ready"]')
+    assert 'content type must be specified for request' in str(ve)
+
+    step_task_request_with_name_to_endpoint_until(behave_context, RequestMethod.GET, 'test', '/api/test | content_type=json', '$.`this`[?status="ready"]')
+
+    assert len(grizzly.scenario.tasks) == 1
+
+    rows: List[Row] = []
+    rows.append(Row(['endpoint'], ['{{ variable }}']))
+    rows.append(Row(['endpoint'], ['foo']))
+    rows.append(Row(['endpoint'], ['bar']))
+    behave_context.table = Table(['endpoint'], rows=rows)
+
+    step_task_request_with_name_to_endpoint_until(behave_context, RequestMethod.GET, 'test', '/api/{{ endpoint }} | content_type=json', '$.`this`[?status="{{ endpoint }}"]')
+
+    assert len(grizzly.scenario.tasks) == 4
+    tasks = cast(List[UntilRequestTask], grizzly.scenario.tasks)
+
+    assert tasks[-1].request.endpoint == '/api/bar'
+    assert tasks[-1].condition == '$.`this`[?status="bar"]'
+    assert tasks[-2].request.endpoint == '/api/foo'
+    assert tasks[-2].condition == '$.`this`[?status="foo"]'
+    assert tasks[-3].request.endpoint == '/api/{{ variable }}'
+    assert tasks[-3].condition == '$.`this`[?status="{{ variable }}"]'
+
+    assert len(grizzly.scenario.orphan_templates) == 1
+    assert grizzly.scenario.orphan_templates[-1] == '$.`this`[?status="{{ variable }}"]'
 
 
 @pytest.mark.usefixtures('behave_context')
@@ -136,7 +184,7 @@ def test_step_task_wait_seconds(behave_context: Context) -> None:
 
 
 @pytest.mark.usefixtures('behave_context')
-def test_step_print_message(behave_context: Context) -> None:
+def test_step_task_print_message(behave_context: Context) -> None:
     grizzly = cast(GrizzlyContext, behave_context.grizzly)
 
     step_task_print_message(behave_context, 'hello {{ world }}')
@@ -146,7 +194,7 @@ def test_step_print_message(behave_context: Context) -> None:
 
 
 @pytest.mark.usefixtures('behave_context')
-def test_step_transform(behave_context: Context) -> None:
+def test_step_task_transform(behave_context: Context) -> None:
     grizzly = cast(GrizzlyContext, behave_context.grizzly)
 
     with pytest.raises(ValueError) as ve:
@@ -183,6 +231,29 @@ def test_step_transform(behave_context: Context) -> None:
     assert task.content_type == TransformerContentType.JSON
     assert task.expression == '$.document.id'
     assert task.variable == 'document_id'
+
+    assert len(grizzly.scenario.orphan_templates) == 0
+
+    step_task_transform(
+        behave_context,
+        jsondumps({
+            'document': {
+                'id': 'DOCUMENT_8483-1',
+                'title': 'TPM Report {{ year }}',
+            },
+        }),
+        TransformerContentType.JSON,
+        '$.document.id',
+        'document_id',
+    )
+
+    assert len(grizzly.scenario.orphan_templates) == 1
+    assert grizzly.scenario.orphan_templates[-1] == jsondumps({
+        'document': {
+            'id': 'DOCUMENT_8483-1',
+            'title': 'TPM Report {{ year }}',
+        },
+    })
 
 
 @pytest.mark.usefixtures('behave_context')

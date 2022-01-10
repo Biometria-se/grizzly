@@ -154,16 +154,32 @@ def test_fail_directly(behave_context: Context) -> None:
 def test_create_user_class_type(locust_environment: Environment) -> None:
     scenario = GrizzlyContextScenario()
     scenario.name = 'A scenario description'
+    scenario.description = scenario.name
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as ve:
         create_user_class_type(scenario)
+    assert 'scenario A scenario description does not have a user type set' in str(ve)
 
-    scenario.user.class_name = 'RestApiUser'
+    user_orig = scenario.user
+    delattr(scenario, 'user')
+
+    with pytest.raises(ValueError) as ve:
+        create_user_class_type(scenario)
+    assert 'scenario A scenario description has not set a user' in str(ve)
+
+    setattr(scenario, 'user', user_orig)
+
+    scenario.user.class_name = 'custom.users.CustomUser'
+    with pytest.raises(ModuleNotFoundError) as mnfe:
+        create_user_class_type(scenario)
+    assert "No module named 'custom'" in str(mnfe)
+
+    scenario.user.class_name = 'grizzly.users.RestApiUser'
     user_class_type_1 = create_user_class_type(scenario)
     user_class_type_1.host = 'http://localhost:8000'
 
     assert issubclass(user_class_type_1, (RestApiUser, User))
-    assert user_class_type_1.__name__ == f'RestApiUser_{scenario.identifier}'
+    assert user_class_type_1.__name__ == f'grizzly.users.RestApiUser_{scenario.identifier}'
     assert user_class_type_1.weight == 1
     assert user_class_type_1._scenario is scenario
     assert user_class_type_1.host == 'http://localhost:8000'
@@ -331,11 +347,15 @@ def test_create_user_class_type(locust_environment: Environment) -> None:
         scenario.user.class_name = 'DoNotExistInGrizzlyUsersUser'
         create_user_class_type(scenario)
 
-
 def test_create_task_class_type() -> None:
     scenario = GrizzlyContextScenario()
     scenario.name = 'A scenario description'
-    task_class_type_1 = create_task_class_type('IteratorTasks', scenario)
+
+    with pytest.raises(ModuleNotFoundError) as mnfe:
+        create_task_class_type('custom.tasks.CustomTasks', scenario)
+    assert "No module named 'custom'" in str(mnfe)
+
+    task_class_type_1 = create_task_class_type('grizzly.tasks.IteratorTasks', scenario)
 
     assert issubclass(task_class_type_1, (IteratorTasks, TaskSet))
     assert task_class_type_1.__name__ == 'IteratorTasks_25867809'

@@ -52,9 +52,9 @@ class TestTransformerTask:
 
         _, _, tasks, _ = grizzly_context()
 
-        with pytest.raises(TransformerLocustError) as re:
+        with pytest.raises(TransformerLocustError) as tle:
             implementation(tasks)
-        assert 'failed to transform JSON' in str(re)
+        assert 'failed to transform JSON' in str(tle)
 
         task = TransformerTask(
             variable='test_variable',
@@ -123,4 +123,36 @@ class TestTransformerTask:
         implementation(tasks)
 
         assert tasks.user._context['variables'].get('payload_url', None) == 'https://mystorageaccount.blob.core.windows.net/mycontainer/myfile'
+
+        task = TransformerTask(
+            variable='test_variable',
+            expression='$.result.name',
+            content_type=TransformerContentType.JSON,
+            content=jsondumps({
+                'result': {
+                    'value': 'hello world!',
+                },
+            })
+        )
+        implementation = task.implementation()
+        with pytest.raises(RuntimeError) as re:
+            implementation(tasks)
+        assert 'TransformerTask: "$.result.name" returned 0 matches' in str(re)
+
+        task = TransformerTask(
+            variable='test_variable',
+            expression='$.result[?value="hello world!"]',
+            content_type=TransformerContentType.JSON,
+            content=jsondumps({
+                'result': [
+                    {'value': 'hello world!'},
+                    {'value': 'hello world!'},
+                    {'value': 'hello world!'},
+                ],
+            })
+        )
+        implementation = task.implementation()
+        with pytest.raises(RuntimeError) as re:
+            implementation(tasks)
+        assert 'TransformerTask: "$.result[?value="hello world!"]" returned 3 matches' in str(re)
 

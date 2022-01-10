@@ -7,6 +7,7 @@ from jinja2.environment import Template
 import pytest
 
 from _pytest.tmpdir import TempdirFactory
+from pytest_mock import mocker, MockerFixture  # pylint: disable=unused-import
 from locust.env import Environment
 from locust.exception import StopUser
 
@@ -17,7 +18,7 @@ from grizzly.context import GrizzlyContextScenario
 from grizzly.task import RequestTask
 
 from ..fixtures import locust_environment, paramiko_mocker  # pylint: disable=unused-import
-from ..helpers import ResultFailure, ResultSuccess, RequestEvent, RequestSilentFailureEvent
+
 
 
 class TestSftpUser:
@@ -57,16 +58,16 @@ class TestSftpUser:
 
             user = SftpUser(locust_environment)
 
-            assert isinstance(user.client, SftpClientSession)
-            assert user.client.port == 22
-            assert user.client.host == 'test.nu'
+            assert isinstance(user.sftp_client, SftpClientSession)
+            assert user.sftp_client.port == 22
+            assert user.sftp_client.host == 'test.nu'
 
             SftpUser.host = 'sftp://test.nu:1337'
             user = SftpUser(locust_environment)
 
-            assert isinstance(user.client, SftpClientSession)
-            assert user.client.port == 1337
-            assert user.client.host == 'test.nu'
+            assert isinstance(user.sftp_client, SftpClientSession)
+            assert user.sftp_client.port == 1337
+            assert user.sftp_client.host == 'test.nu'
 
             SftpUser._context['auth']['key_file'] = '~/.ssh/id_rsa'
 
@@ -77,7 +78,7 @@ class TestSftpUser:
             del environ['GRIZZLY_CONTEXT_ROOT']
 
     @pytest.mark.usefixtures('locust_environment', 'paramiko_mocker', 'tmpdir_factory')
-    def test_request(self, locust_environment: Environment, paramiko_mocker: Callable, tmpdir_factory: TempdirFactory) -> None:
+    def test_request(self, locust_environment: Environment, paramiko_mocker: Callable, tmpdir_factory: TempdirFactory, mocker: MockerFixture) -> None:
         paramiko_mocker()
 
         test_context = tmpdir_factory.mktemp('test_context').mkdir('requests')
@@ -93,6 +94,8 @@ class TestSftpUser:
             }
             user = SftpUser(locust_environment)
 
+            mocker.patch('grizzly.users.sftp.time', side_effect=[0.0] * 100)
+
             request = RequestTask(RequestMethod.SEND, name='test', endpoint='/tmp')
             request.source = 'test/file.txt'
             request.template = Template(request.source)
@@ -102,34 +105,119 @@ class TestSftpUser:
 
             request.scenario = scenario
 
-            locust_environment.events.request = RequestSilentFailureEvent()
+            fire_spy = mocker.spy(user.environment.events.request, 'fire')
+            response_event_spy = mocker.spy(user.response_event, 'fire')
 
             request.scenario.stop_on_failure = False
-            user.request(request)
+            metadata, payload = user.request(request)
+
+            assert metadata is None
+            assert payload == 'test/file.txt'
+
+            assert fire_spy.call_count == 1
+            _, kwargs = fire_spy.call_args_list[0]
+
+            assert kwargs.get('request_type', None) == 'sftp:SEND'
+            assert kwargs.get('name', None) == f'{request.scenario.identifier} test'
+            assert kwargs.get('response_time', None) == 0
+            assert kwargs.get('response_length', None) == 0
+            assert kwargs.get('context', None) == user._context
+            exception = kwargs.get('exception', None)
+            assert isinstance(exception, NotImplementedError)
+            assert 'SftpUser has not implemented SEND' in str(exception)
 
             request.scenario.stop_on_failure = True
             with pytest.raises(StopUser):
                 user.request(request)
 
-            locust_environment.events.request = RequestEvent()
+            assert fire_spy.call_count == 2
+            _, kwargs = fire_spy.call_args_list[1]
+
+            assert kwargs.get('request_type', None) == 'sftp:SEND'
+            assert kwargs.get('name', None) == f'{request.scenario.identifier} test'
+            assert kwargs.get('response_time', None) == 0
+            assert kwargs.get('response_length', None) == 0
+            assert kwargs.get('context', None) == user._context
+            exception = kwargs.get('exception', None)
+            assert isinstance(exception, NotImplementedError)
+            assert 'SftpUser has not implemented SEND' in str(exception)
 
             request.method = RequestMethod.GET
 
-            with pytest.raises(ResultSuccess):
-                user.request(request)
+            user.request(request)
+
+            assert response_event_spy.call_count == 3
+            _, kwargs = response_event_spy.call_args_list[-1]
+            assert kwargs.get('name', None) == f'{request.scenario.identifier} test'
+            assert kwargs.get('request', None) is request
+            assert kwargs.get('context', None) == ({
+                'host': user.host,
+                'method': 'get',
+                'time': 0,
+                'path': '/tmp',
+            }, 'test/file.txt')
+            assert kwargs.get('user', None) is user
+            assert kwargs.get('exception', '') is None
 
             request.method = RequestMethod.PUT
             request.template = None
 
-            with pytest.raises(ResultFailure):
+            with pytest.raises(StopUser):
                 user.request(request)
 
-            request.source = 'hello world'
+            assert response_event_spy.call_count == 4
+            _, kwargs = response_event_spy.call_args_list[-1]
+
+            assert kwargs.get('name', None) == f'{request.scenario.identifier} test'
+            assert kwargs.get('request', None) is request
+            assert kwargs.get('context', None) == ({
+                'host': user.host,
+                'method': 'put',
+                'time': 0,
+                'path': '/tmp',
+            }, None)
+            assert kwargs.get('user', None) is user
+            exception = kwargs.get('exception', None)
+
+            assert exception is not None
+            assert isinstance(exception, ValueError)
+            assert 'SftpUser: request a94a8fe5 test does not have a payload, incorrect method specified' in str(exception)
+
+            request.source = 'foo.bar'
             request.template = Template(request.source)
 
-            with pytest.raises(ResultSuccess):
+            user.request(request)
+
+            assert response_event_spy.call_count == 5
+            _, kwargs = response_event_spy.call_args_list[-1]
+            assert kwargs.get('name', None) == f'{request.scenario.identifier} test'
+            assert kwargs.get('request', None) is request
+            assert kwargs.get('context', None) == ({
+                'host': user.host,
+                'method': 'put',
+                'time': 0,
+                'path': '/tmp',
+            }, path.join(test_context_root, 'requests', 'foo.bar'))
+            assert kwargs.get('user', None) is user
+            assert kwargs.get('exception', '') is None
+
+            mocker.patch.object(user.response_event, 'fire', side_effect=[RuntimeError('error error')])
+
+            with pytest.raises(StopUser):
                 user.request(request)
 
+            assert fire_spy.call_count == 6
+            _, kwargs = fire_spy.call_args_list[-1]
+
+            assert kwargs.get('request_type', None) == 'sftp:PUT'
+            assert kwargs.get('name', None) == f'{request.scenario.identifier} test'
+            assert kwargs.get('response_time', None) == 0
+            assert kwargs.get('response_length', None) == 100
+            assert kwargs.get('context', None) == user._context
+            exception = kwargs.get('exception', '')
+            assert exception is not None
+            assert isinstance(exception, RuntimeError)
+            assert str(exception) == 'error error'
         finally:
             shutil.rmtree(test_context_root)
             del environ['GRIZZLY_CONTEXT_ROOT']

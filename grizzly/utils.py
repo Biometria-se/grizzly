@@ -91,10 +91,10 @@ def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Opt
         global_context = {}
 
     if not hasattr(scenario, 'user') or scenario.user is None:
-        raise ValueError(f'{scenario.identifier} does not have user set')
+        raise ValueError(f'scenario {scenario.description} has not set a user')
 
     if not hasattr(scenario.user, 'class_name') or scenario.user.class_name is None:
-        raise ValueError(f'{scenario.identifier} user does not have class_name set')
+        raise ValueError(f'scenario {scenario.description} does not have a user type set')
 
     if scenario.user.class_name.count('.') > 0:
         module, user_class_name = scenario.user.class_name.rsplit('.', 1)

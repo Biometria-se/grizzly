@@ -2,6 +2,7 @@ import subprocess
 
 from typing import Callable, Dict, Tuple, Any, cast, Optional
 from os import environ
+from dataclasses import replace
 
 try:
     import pymqi
@@ -29,7 +30,6 @@ from grizzly.steps.helpers import add_save_handler
 from grizzly_extras.async_message import AsyncMessageResponse
 
 from ..fixtures import grizzly_context, request_task, locust_environment, noop_zmq  # pylint: disable=unused-import
-from ..helpers import clone_request
 
 import logging
 
@@ -340,7 +340,7 @@ class TestMessageQueueUser:
             'message': 'connected',
         }
 
-        payload = '<?xml encoding="utf-8"?>'
+        test_payload = '<?xml encoding="utf-8"?>'
 
         mocker.patch(
             'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
@@ -352,7 +352,7 @@ class TestMessageQueueUser:
                     'response_length': 24,
                     'response_time': -1337,  # fake so message queue daemon response time is a huge chunk
                     'metadata': pymqi.MD().get(),
-                    'payload': payload,
+                    'payload': test_payload,
                 }
             ],
         )
@@ -398,7 +398,7 @@ class TestMessageQueueUser:
 
         user.add_context(remote_variables)
 
-        user.request(request)
+        metadata, payload = user.request(request)
 
         assert request_event_spy.call_count == 2
         _, kwargs = request_event_spy.call_args_list[0]
@@ -409,13 +409,16 @@ class TestMessageQueueUser:
         _, kwargs = request_event_spy.call_args_list[1]
         assert kwargs['request_type'] == 'mq:GET'
         assert kwargs['exception'] is None
-        assert kwargs['response_length'] == len(payload)
+        assert kwargs['response_length'] == len(test_payload)
 
         assert response_event_spy.call_count == 1
         _, kwargs = response_event_spy.call_args_list[0]
         assert kwargs['request'] is request
-        assert kwargs['context'] == (pymqi.MD().get(), payload)
+        assert kwargs['context'] == (pymqi.MD().get(), test_payload)
         assert kwargs['user'] is user
+
+        assert payload == test_payload
+        assert metadata == pymqi.MD().get()
 
         request_event_spy.reset_mock()
         response_event_spy.reset_mock()
@@ -440,7 +443,7 @@ class TestMessageQueueUser:
                     'response_length': 24,
                     'response_time': 1337,
                     'metadata': pymqi.MD().get(),
-                    'payload': payload,
+                    'payload': test_payload,
                 }
             ],
         )
@@ -459,12 +462,12 @@ class TestMessageQueueUser:
         _, kwargs = response_event_spy.call_args_list[0]
         assert kwargs['request'] is request
         assert kwargs['user'] is user
-        assert kwargs['context'] == (pymqi.MD().get(), payload)
+        assert kwargs['context'] == (pymqi.MD().get(), test_payload)
 
         request_event_spy.reset_mock()
         response_event_spy.reset_mock()
 
-        payload = '''{
+        test_payload = '''{
             "test": "payload_variable value"
         }'''
 
@@ -478,7 +481,7 @@ class TestMessageQueueUser:
                     'response_length': 24,
                     'response_time': 1337,
                     'metadata': pymqi.MD().get(),
-                    'payload': payload,
+                    'payload': test_payload,
                 },
             ],
         )
@@ -502,7 +505,9 @@ class TestMessageQueueUser:
         assert kwargs['exception'] is not None
         request_event_spy.reset_mock()
 
-        request_error = clone_request('POST', request)
+        request_error = replace(request)
+        request_error.scenario = request.scenario
+        request_error.method = RequestMethod.POST
 
         mocker.patch(
             'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
@@ -513,7 +518,7 @@ class TestMessageQueueUser:
                     'response_length': 0,
                     'response_time': 1337,
                     'metadata': pymqi.MD().get(),
-                    'payload': payload,
+                    'payload': test_payload,
                     'message': 'no implementation for POST'
                 }
             ],
@@ -536,7 +541,7 @@ class TestMessageQueueUser:
                     'response_length': 0,
                     'response_time': 1337,
                     'metadata': pymqi.MD().get(),
-                    'payload': payload,
+                    'payload': test_payload,
                     'message': 'no implementation for POST'
                 } for _ in range(3)
             ],
@@ -747,7 +752,9 @@ class TestMessageQueueUser:
         assert kwargs['exception'] is not None
         request_event_spy.reset_mock()
 
-        request_error = clone_request('POST', request)
+        request_error = replace(request)
+        request_error.scenario = request.scenario
+        request_error.method = RequestMethod.POST
 
         mocker.patch(
             'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',

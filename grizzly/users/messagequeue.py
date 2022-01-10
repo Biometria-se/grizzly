@@ -109,7 +109,7 @@ from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageReques
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
 from grizzly_extras.transformer import TransformerContentType
 
-from ..types import RequestDirection
+from ..types import GrizzlyResponse, RequestDirection
 from ..task import RequestTask
 from ..utils import merge_dicts
 from .meta import ContextVariables, ResponseHandler, RequestLogger
@@ -204,15 +204,17 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
         self.worker_id = None
 
 
-    def request(self, request: RequestTask) -> None:
+    def request(self, request: RequestTask) -> GrizzlyResponse:
         request_name, endpoint, payload = self.render(request)
 
         @contextmanager
-        def action(am_request: AsyncMessageRequest, name: str) -> Generator[Dict[str, Any], None, None]:
+        def wrap_action(am_request: AsyncMessageRequest, name: str) -> Generator[Dict[str, Any], None, None]:
             exception: Optional[Exception] = None
-            metadata: Dict[str, Any] = {
+            action: Dict[str, Any] = {
                 'abort': False,
                 'meta': False,
+                'payload': None,
+                'metadata': None,
             }
 
             response: Optional[AsyncMessageResponse] = None
@@ -220,7 +222,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
             try:
                 start_time = time()
 
-                yield metadata
+                yield action
 
                 self.zmq_client.send_json(am_request)
 
@@ -254,8 +256,12 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
                 else:
                     response = {}
 
+
+                action['metadata'] = response.get('metadata', None)
+                action['payload'] = response.get('payload', None)
+
                 try:
-                    if not metadata.get('meta', False):
+                    if not action.get('meta', False):
                         self.response_event.fire(
                             name=name,
                             request=request,
@@ -279,7 +285,14 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
                         exception=exception,
                     )
 
-                if exception is not None and metadata.get('abort', False):
+                abort = action.get('abort', False)
+
+                action = {
+                    'payload': action['payload'],
+                    'metadata': action['metadata'],
+                }
+
+                if exception is not None and abort:
                     try:
                         self.zmq_client.disconnect(self.zmq_url)
                     except:
@@ -291,11 +304,11 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
 
         # connect to queue manager at first request
         if self.worker_id is None:
-            with action({
+            with wrap_action({
                 'action': 'CONN',
                 'context': self.am_context
-            }, self.am_context['connection']) as metadata:
-                metadata.update({
+            }, self.am_context['connection']) as action:
+                action.update({
                     'meta': True,
                     'abort': True,
                 })
@@ -314,8 +327,8 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
         if request.response.content_type != TransformerContentType.GUESS:
             am_request['context']['content_type'] = request.response.content_type.name.lower()
 
-        with action(am_request, name) as metadata:
-            metadata['abort'] = True
+        with wrap_action(am_request, name) as action:
+            action['abort'] = True
             # Parse the endpoint to validate queue name / expression parts
             try:
                 arguments = parse_arguments(endpoint, ':')
@@ -332,4 +345,6 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
             if 'expression' in arguments and request.method.direction != RequestDirection.FROM:
                 raise RuntimeError('argument "expression" is not allowed when sending to an endpoint')
 
-            metadata['abort'] = request.scenario.stop_on_failure
+            action['abort'] = request.scenario.stop_on_failure
+
+        return action['metadata'], action['payload']

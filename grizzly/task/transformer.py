@@ -25,7 +25,7 @@ class TransformerTask(GrizzlyTask):
     content_type: TransformerContentType
 
     _transformer: Type[Transformer] = field(init=False, repr=False)
-    _get_values: Callable[[Any], List[str]] = field(init=False, repr=False)
+    _parser: Callable[[Any], List[str]] = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         grizzly = GrizzlyContext()
@@ -42,7 +42,7 @@ class TransformerTask(GrizzlyTask):
         if not self._transformer.validate(self.expression):
             raise ValueError(f'{self.__class__.__name__}: {self.expression} is not a valid expression for {self.content_type.name}')
 
-        self._get_values = self._transformer.parser(self.expression)
+        self._parser = self._transformer.parser(self.expression)
 
     def implementation(self) -> Callable[[GrizzlyTasksBase], Any]:
         def _implementation(parent: GrizzlyTasksBase) -> Any:
@@ -54,7 +54,7 @@ class TransformerTask(GrizzlyTask):
                 parent.logger.error(f'failed to transform as {self.content_type.name}: {content_raw}')
                 raise TransformerLocustError(f'{self.__class__.__name__}: failed to transform {self.content_type.name}') from e
 
-            values = self._get_values(content)
+            values = self._parser(content)
 
             number_of_values = len(values)
 
