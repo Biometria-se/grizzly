@@ -1,5 +1,3 @@
-import logging
-
 from typing import cast
 from json import dumps as jsondumps
 
@@ -14,20 +12,11 @@ from grizzly_extras.async_message.sb import AsyncServiceBusHandler
 
 class TestAsyncServiceBusHandler:
     def test___init__(self, mocker: MockerFixture) -> None:
-        spy = mocker.patch(
-            'grizzly_extras.async_message.sb.logging.Logger.setLevel',
-            side_effect=[None],
-        )
-
         handler = AsyncServiceBusHandler('asdf-asdf-asdf')
         assert handler.worker == 'asdf-asdf-asdf'
         assert handler.message_wait is None
         assert handler._sender_cache == {}
         assert handler._receiver_cache == {}
-
-        assert spy.call_count == 1
-        args, _ = spy.call_args_list[0]
-        assert args[0] == logging.ERROR
 
     def test_from_message(self) -> None:
         assert AsyncServiceBusHandler.from_message(None) == (None, None,)

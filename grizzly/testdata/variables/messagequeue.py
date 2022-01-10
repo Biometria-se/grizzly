@@ -66,6 +66,8 @@ When the scenario starts `grizzly` will wait up to 120 seconds until `AtomicMess
 If there are no messages within 120 seconds, and it is the first iteration of the scenario, it will fail. If there has been at least one message on the queue since
 the scenario started, it will use the oldest of those values, and then add it back in the end of the list again.
 '''
+import logging
+
 from typing import Dict, Any, Type, Optional, List, cast
 from urllib.parse import urlparse, parse_qs, unquote
 
@@ -145,6 +147,10 @@ class AtomicMessageQueue(AtomicVariable[str]):
     def __init__(self, variable: str, value: str):
         if pymqi.__name__ == 'grizzly_extras.dummy_pymqi':
             raise NotImplementedError('AtomicMessageQueue could not import pymqi, have you installed IBM MQ dependencies?')
+
+        # silence uamqp loggers
+        for uamqp_logger_name in ['uamqp', 'uamqp.c_uamqp']:
+            logging.getLogger(uamqp_logger_name).setLevel(logging.ERROR)
 
         safe_value = self.__class__.__base_type__(value)
 

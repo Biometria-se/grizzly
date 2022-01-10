@@ -117,7 +117,7 @@ def locust_environment(tmpdir_factory: TempdirFactory) -> Generator[Environment,
     try:
         os.environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
         yield Environment()
-    except:
+    finally:
         try:
             del os.environ['GRIZZLY_CONTEXT_ROOT']
         except KeyError:

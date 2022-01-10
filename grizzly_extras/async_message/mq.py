@@ -13,7 +13,6 @@ from . import (
     AsyncMessageRequestHandler,
     AsyncMessageHandler,
     register,
-    logger,
 )
 
 try:
@@ -125,7 +124,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
     def _find_message(self, queue_name: str, expression: str, content_type: TransformerContentType, message_wait: Optional[int]) -> Optional[bytearray]:
         start_time = time()
 
-        logger.debug(f'{self.worker}: _find_message: searching {queue_name} for messages matching: {expression}, content_type {content_type.name.lower()}')
+        self.logger.debug(f'_find_message: searching {queue_name} for messages matching: {expression}, content_type {content_type.name.lower()}')
         transform = transformer.available.get(content_type, None)
         if transform is None:
             raise AsyncMessageError(f'could not find a transformer for {content_type.name}')
@@ -135,6 +134,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
         except Exception as e:
             raise AsyncMessageError(str(e))
 
+        retries = 1
         with self.queue_context(endpoint=queue_name, browsing=True) as browse_queue:
             # Check the queue over and over again until timeout, if nothing was found
             while True:
@@ -156,7 +156,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
 
                         if len(values) > 0:
                             # Found a matching message, return message id
-                            logger.debug(f'{self.worker}: _find_message: found matching message: {md["MsgId"]}')
+                            self.logger.debug(f'_find_message: found matching message: {md["MsgId"]} after {retries} tries')
                             return cast(bytearray, md['MsgId'])
 
                         gmo.Options = pymqi.CMQC.MQGMO_BROWSE_NEXT
@@ -176,7 +176,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                 elif message_wait is None:
                     return None
                 else:
-                    logger.debug(f'{self.worker}: _find_message: no matching message found, trying again after some sleep')
+                    retries += 1
                     sleep(0.5)
 
     def _get_content_type(self, request: AsyncMessageRequest) -> TransformerContentType:
@@ -225,7 +225,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
             # Adjust message_wait for getting the message
             if message_wait is not None:
                 message_wait -= elapsed_time
-                logger.debug(f'{self.worker}: _request: remaining message_wait after finding message: {message_wait}')
+                self.logger.debug(f'_request: remaining message_wait after finding message: {message_wait}')
 
         md = pymqi.MD()
         with self.queue_context(endpoint=queue_name) as queue:

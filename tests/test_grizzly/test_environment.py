@@ -26,34 +26,40 @@ def test_before_feature() -> None:
     except:
         pass
 
-    base_dir = '.'
-    context = Context(
-        runner=Runner(
-            config=Configuration(
-                command_args=[],
-                load_config=False,
-                base_dir=base_dir,
+    try:
+        base_dir = '.'
+        context = Context(
+            runner=Runner(
+                config=Configuration(
+                    command_args=[],
+                    load_config=False,
+                    base_dir=base_dir,
+                )
             )
         )
-    )
 
-    assert not hasattr(context ,'grizzly')
-    assert environ.get('GRIZZLY_CONTEXT_ROOT', None) is None
+        assert not hasattr(context ,'grizzly')
+        assert environ.get('GRIZZLY_CONTEXT_ROOT', None) is None
 
-    before_feature(context)
+        before_feature(context)
 
-    assert hasattr(context, 'grizzly')
-    assert context.grizzly.__class__.__name__ == 'GrizzlyContext'
-    assert environ.get('GRIZZLY_CONTEXT_ROOT', None) == base_dir
+        assert hasattr(context, 'grizzly')
+        assert context.grizzly.__class__.__name__ == 'GrizzlyContext'
+        assert environ.get('GRIZZLY_CONTEXT_ROOT', None) == base_dir
 
-    context.grizzly = object()
+        context.grizzly = object()
 
-    before_feature(context)
+        before_feature(context)
 
-    assert hasattr(context, 'grizzly')
-    assert context.grizzly.__class__.__name__ == 'GrizzlyContext'
+        assert hasattr(context, 'grizzly')
+        assert context.grizzly.__class__.__name__ == 'GrizzlyContext'
 
-    assert hasattr(context, 'started')
+        assert hasattr(context, 'started')
+    finally:
+        try:
+            del environ['GRIZZLY_CONTEXT_ROOT']
+        except:
+            pass
 
 
 @pytest.mark.usefixtures('behave_context')

@@ -1,5 +1,4 @@
 from typing import Optional, cast
-from json import dumps as jsondumps
 from os import environ, path, listdir
 from shutil import rmtree
 from platform import node as hostname
@@ -15,30 +14,9 @@ from grizzly_extras.async_message import (
     AsyncMessageResponse,
     AsyncMessageRequest,
     AsyncMessageHandler,
+    ThreadLogger,
     register,
-    configure_logger,
 )
-
-from grizzly_extras.transformer import JsonBytesEncoder
-
-class TestJsonBytesEncoder:
-    def test_default(self) -> None:
-        encoder = JsonBytesEncoder()
-
-        assert encoder.default(b'hello') == 'hello'
-        assert encoder.default(b'invalid \xe9 char') == 'invalid \xe9 char'
-
-        assert jsondumps({
-            'hello': b'world',
-            'invalid': b'\xe9 char',
-            'value': 'something',
-            'test': False,
-            'int': 1,
-            'empty': None,
-        }, cls=JsonBytesEncoder) == '{"hello": "world", "invalid": "\\u00e9 char", "value": "something", "test": false, "int": 1, "empty": null}'
-
-        with pytest.raises(TypeError):
-            encoder.default(None)
 
 
 class TestAsyncMessageHandler:
@@ -133,53 +111,59 @@ def test_register() -> None:
             pass
 
 
-def test_configure_logger(mocker: MockerFixture, tmpdir_factory: TempdirFactory, capsys: CaptureFixture) -> None:
-    test_context = tmpdir_factory.mktemp('test_context').mkdir('logs')
-    test_context_root = path.dirname(str(test_context))
-
-    try:
-        environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
-
-        logger = configure_logger('test.logger')
-        logger.error('hello world')
-        logger.debug('no no')
-
-        std = capsys.readouterr()
-        assert '] INFO : test.logger: level=INFO\n' in std.err
-        assert '] ERROR: test.logger: hello world\n' in std.err
-        assert '] DEBUG: test.logger: no no\n' not in std.err
-
-        log_files = listdir(str(test_context))
-        assert len(log_files) == 0
-
-        environ['GRIZZLY_EXTRAS_LOGLEVEL'] = 'DEBUG'
-
-        logger = configure_logger('test.logger')
-        logger.error('hello world')
-        logger.debug('no no')
-
-        std = capsys.readouterr()
-        log_files = listdir(str(test_context))
-        assert len(log_files) == 1
-        log_file = log_files[0]
-        assert log_file == f'async-messaged.{hostname()}.log'
-
-        with open(path.join(str(test_context), log_file)) as fd:
-            file = fd.read()
-
-        for sink in [std.err, file]:
-            assert '] INFO : test.logger: level=DEBUG\n' in sink
-            assert '] ERROR: test.logger: hello world\n' in sink
-            assert '] DEBUG: test.logger: no no\n' in sink
-    finally:
-        try:
-            del environ['GRIZZLY_CONTEXT_ROOT']
-        except:
-            pass
+class TestThreadLogger:
+    def test_logger(self, tmpdir_factory: TempdirFactory, capsys: CaptureFixture) -> None:
+        test_context = tmpdir_factory.mktemp('test_context').mkdir('logs')
+        test_context_root = path.dirname(str(test_context))
 
         try:
-            del environ['GRIZZLY_EXTRAS_LOGLEVEL']
-        except:
-            pass
+            logger = ThreadLogger('test.logger')
+            logger.info('info')
+            logger.warning('warning')
+            logger.error('error')
+            logger.debug('debug')
 
-        rmtree(test_context_root)
+            std = capsys.readouterr()
+            assert '] INFO : test.logger: info\n' in std.err
+            assert '] ERROR: test.logger: error\n' in std.err
+            assert '] WARNING: test.logger: warning\n' in std.err
+            assert '] DEBUG: test.logger: debug\n' not in std.err
+
+            log_files = listdir(str(test_context))
+            assert len(log_files) == 0
+
+            environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
+            environ['GRIZZLY_EXTRAS_LOGLEVEL'] = 'DEBUG'
+
+            logger = ThreadLogger('test.logger')
+            logger.info('info')
+            logger.error('error')
+            logger.debug('debug')
+            logger.warning('warning')
+
+            std = capsys.readouterr()
+            log_files = listdir(str(test_context))
+            assert len(log_files) == 1
+            log_file = log_files[0]
+            assert log_file.startswith(f'async-messaged.{hostname()}')
+
+            with open(path.join(str(test_context), log_file)) as fd:
+                file = fd.read()
+
+            for sink in [std.err, file]:
+                assert '] INFO : test.logger: info\n' in sink
+                assert '] ERROR: test.logger: error\n' in sink
+                assert '] WARNING: test.logger: warning\n' in sink
+                assert '] DEBUG: test.logger: debug\n' in sink
+        finally:
+            try:
+                del environ['GRIZZLY_CONTEXT_ROOT']
+            except:
+                pass
+
+            try:
+                del environ['GRIZZLY_EXTRAS_LOGLEVEL']
+            except:
+                pass
+
+            rmtree(test_context_root)

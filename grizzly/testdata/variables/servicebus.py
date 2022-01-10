@@ -78,6 +78,7 @@ be specified for the endpint, e.g. `application/xml`.
 And value of variable "AtomicServiceBus.document_id" is "queue:documents-in | wait=120, url=$conf::sb.endpoint, repeat=True, content_type=json, expression='$.document[?(@.name=='TPM Report')'"
 ```
 '''
+import logging
 
 from typing import Dict, Any, List, Type, Optional, cast
 from urllib.parse import urlparse, parse_qs
@@ -237,6 +238,10 @@ class AtomicServiceBus(AtomicVariable[str]):
     }
 
     def __init__(self, variable: str, value: str) -> None:
+        # silence uamqp loggers
+        for uamqp_logger_name in ['uamqp', 'uamqp.c_uamqp']:
+            logging.getLogger(uamqp_logger_name).setLevel(logging.ERROR)
+
         safe_value = self.__class__.__base_type__(value)
 
         settings = {'repeat': False, 'wait': None, 'url': None, 'worker': None, 'context': None, 'endpoint_name': None, 'content_type': None}

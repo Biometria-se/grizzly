@@ -93,14 +93,14 @@ Default SSL cipher is `ECDHE_RSA_AES_256_GCM_SHA384`, change it by setting `auth
 
 Default certificate label is set to `auth.username`, change it by setting `auth.cert_label` context variable.
 '''
+import logging
+
 from typing import Dict, Any, Generator, Tuple, Optional, cast
 from urllib.parse import urlparse, parse_qs, unquote
 from contextlib import contextmanager
 from time import perf_counter as time
 
-
 import zmq
-
 
 from gevent import sleep as gsleep
 from locust.exception import StopUser
@@ -202,6 +202,10 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
         })
 
         self.worker_id = None
+
+        # silence uamqp loggers
+        for uamqp_logger_name in ['uamqp', 'uamqp.c_uamqp']:
+            logging.getLogger(uamqp_logger_name).setLevel(logging.ERROR)
 
 
     def request(self, request: RequestTask) -> GrizzlyResponse:
