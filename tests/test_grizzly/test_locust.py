@@ -2,7 +2,7 @@ import logging
 import resource
 
 from os import environ
-from typing import cast, Tuple, Any, Dict, Type, List
+from typing import cast, Tuple, Any, Dict, Type, List, Callable
 
 import pytest
 import gevent
@@ -16,7 +16,17 @@ from locust.env import Environment
 from locust.user.users import User
 from jinja2 import Template, TemplateError
 
-from grizzly.locust import greenlet_exception_logger, on_master, on_worker, on_local, run, setup_environment_listeners, setup_locust_scenarios, setup_resource_limits
+from grizzly.locust import (
+    greenlet_exception_logger,
+    on_master,
+    on_worker,
+    on_local,
+    print_scenario_summary,
+    run,
+    setup_environment_listeners,
+    setup_locust_scenarios,
+    setup_resource_limits,
+)
 from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 from grizzly.task import PrintTask, RequestTask, WaitTask
@@ -30,7 +40,7 @@ try:
 except:
     from grizzly_extras import dummy_pymqi as pymqi
 
-from .fixtures import behave_context, locust_environment  # pylint: disable=unused-import
+from .fixtures import behave_context, locust_environment, noop_zmq  # pylint: disable=unused-import
 
 
 def test_greenlet_exception_logger(caplog: LogCaptureFixture) -> None:
@@ -449,6 +459,55 @@ def test_setup_environment_listeners(behave_context: Context, mocker: MockerFixt
             AtomicMessageQueue.destroy()
         except:
             pass
+
+@pytest.mark.usefixtures('behave_context', 'locust_environment')
+def test_print_scenario_summary(behave_context: Context, locust_environment: Environment, noop_zmq: Callable[[str], None], capsys: CaptureFixture) -> None:
+    grizzly = cast(GrizzlyContext, behave_context.grizzly)
+
+    grizzly.add_scenario('test-1')
+
+    print_scenario_summary(grizzly)
+
+    summary = capsys.readouterr().out
+    assert summary == '''Scenario
+identifier  #    description
+-----------|----|------------|
+cbda8191       1 test-1
+-----------|----|------------|
+'''
+
+    grizzly.add_scenario('test-2-test-2-test-2-test-2')
+    grizzly.scenario.iterations = 4
+
+    print_scenario_summary(grizzly)
+
+    summary = capsys.readouterr().out
+    assert summary == '''Scenario
+identifier  #    description
+-----------|----|----------------------------|
+cbda8191       1 test-1
+b4959834       4 test-2-test-2-test-2-test-2
+-----------|----|----------------------------|
+'''
+
+    grizzly.add_scenario('#3')
+
+    grizzly.scenario.iterations = 999
+
+    print_scenario_summary(grizzly)
+
+    summary = capsys.readouterr().out
+
+    print(summary)
+
+    assert summary == '''Scenario
+identifier  #    description
+-----------|----|----------------------------|
+cbda8191       1 test-1
+b4959834       4 test-2-test-2-test-2-test-2
+83189503     999 #3
+-----------|----|----------------------------|
+'''
 
 
 @pytest.mark.usefixtures('behave_context')

@@ -143,7 +143,7 @@ class AsyncMessageHandler(ABC):
                 'success': False,
                 'message': f'{action}: {e.__class__.__name__}="{str(e)}"',
             }
-            self.logger.error(f'{self.worker}: {action}: {e.__class__.__name__}="{str(e)}"', exc_info=True)
+            self.logger.error(f'{action}: {e.__class__.__name__}="{str(e)}"', exc_info=True)
         finally:
             total_time = int((time() - start_time) * 1000)
             response.update({

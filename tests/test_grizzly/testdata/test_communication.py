@@ -285,7 +285,7 @@ class TestTestdataProducer:
             pass
 
         mocker.patch(
-            'gevent.sleep',
+            'grizzly.testdata.communication.gsleep',
             mocked_gsleep,
         )
 
@@ -561,7 +561,7 @@ class TestTestdataConsumer:
             pass
 
         mocker.patch(
-            'gevent.sleep',
+            'grizzly.testdata.communication.gsleep',
             mocked_gsleep,
         )
 
@@ -614,7 +614,7 @@ class TestTestdataConsumer:
             raise zmq.error.Again()
 
         mocker.patch(
-            'gevent.sleep',
+            'grizzly.testdata.communication.gsleep',
             gsleep,
         )
 
