@@ -1142,11 +1142,11 @@ and <code>token/url</code> results in:</p>
 <p>It is also possible to have spaces in a variable name, they will then be replaced with underscore (<code>_</code>), and name will be
 converted to lowercase.</p>
 <p>E.g. <code>Client ID</code> results in <code>client_id</code></p>
-<p><div class="highlight"><pre><span></span><code><span class="p">{</span>
-    <span class="err">&#39;</span><span class="kc">t</span><span class="err">oke</span><span class="kc">n</span><span class="err">&#39;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="err">&#39;url&#39;</span><span class="p">:</span> <span class="err">&#39;&lt;value&gt;&#39;</span>
-    <span class="p">}</span>
-<span class="p">}</span>
+<p><div class="highlight"><pre><span></span><code><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="err">&#39;</span><span class="kc">t</span><span class="err">oke</span><span class="kc">n</span><span class="err">&#39;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="err">&#39;url&#39;</span><span class="p">:</span><span class="w"> </span><span class="err">&#39;&lt;value&gt;&#39;</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 </code></pre></div>
 <div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">set context variable &quot;</span><span class="s">token.url</span><span class="nf">&quot; to &quot;</span><span class="s">https://example.com/api/auth</span><span class="nf">&quot;</span>
 <span class="k">And </span><span class="nf">set context variable &quot;</span><span class="s">token/client_id</span><span class="nf">&quot; to &quot;</span><span class="s">aaaa-bbbb-cccc-dddd</span><span class="nf">&quot;</span>
@@ -1238,25 +1238,25 @@ the alias step it would look like the following structure in the context:</p>
 <span class="k">And </span><span class="nf">set alias &quot;</span><span class="s">auth.user.username</span><span class="nf">&quot; for variable &quot;</span><span class="s">AtomicCsvRow.users.username</span><span class="nf">&quot;</span>
 <span class="k">And </span><span class="nf">set alias &quot;</span><span class="s">auth.user.password</span><span class="nf">&quot; for variable &quot;</span><span class="s">AtomicCsvRow.users.password</span><span class="nf">&quot;</span>
 </code></pre></div>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-    <span class="nt">&quot;variables&quot;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="nt">&quot;AtomicCsvRow&quot;</span><span class="p">:</span> <span class="p">{</span>
-            <span class="nt">&quot;users&quot;</span><span class="p">:</span> <span class="p">{</span>
-                <span class="nt">&quot;username&quot;</span><span class="p">:</span> <span class="s2">&quot;username&quot;</span><span class="p">,</span>
-                <span class="nt">&quot;password&quot;</span><span class="p">:</span> <span class="s2">&quot;password&quot;</span>
-            <span class="p">}</span>
-        <span class="p">}</span>
-    <span class="p">}</span>
-<span class="p">}</span>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;variables&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="nt">&quot;AtomicCsvRow&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="nt">&quot;users&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">                </span><span class="nt">&quot;username&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;username&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">                </span><span class="nt">&quot;password&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;password&quot;</span><span class="w"></span>
+<span class="w">            </span><span class="p">}</span><span class="w"></span>
+<span class="w">        </span><span class="p">}</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 </code></pre></div>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-    <span class="nt">&quot;auth&quot;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="nt">&quot;user&quot;</span><span class="p">:</span> <span class="p">{</span>
-            <span class="nt">&quot;username&quot;</span><span class="p">:</span> <span class="s2">&quot;username&quot;</span><span class="p">,</span>
-            <span class="nt">&quot;password&quot;</span><span class="p">:</span> <span class="s2">&quot;password&quot;</span>
-        <span class="p">}</span>
-    <span class="p">}</span>
-<span class="p">}</span>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;auth&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="nt">&quot;user&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="nt">&quot;username&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;username&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">            </span><span class="nt">&quot;password&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;password&quot;</span><span class="w"></span>
+<span class="w">        </span><span class="p">}</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 </code></pre></div></p>
 <p><strong>Arguments</strong>:</p>
 <ul>

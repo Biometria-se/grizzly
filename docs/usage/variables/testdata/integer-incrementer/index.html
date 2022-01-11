@@ -1086,9 +1086,9 @@
 <div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">value of variable &quot;</span><span class="s">AtomicIntegerIncrementer.unique_id</span><span class="nf">&quot; is &quot;</span><span class="s">100 | step=10</span><span class="nf">&quot;</span>
 </code></pre></div>
 <p>This can then be used in a template:</p>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-    <span class="nt">&quot;id&quot;</span><span class="p">:</span> <span class="p">{{</span> <span class="err">A</span><span class="kc">t</span><span class="err">omicI</span><span class="kc">nte</span><span class="err">gerI</span><span class="kc">n</span><span class="err">creme</span><span class="kc">nter</span><span class="err">.u</span><span class="kc">n</span><span class="err">ique_id</span> <span class="p">}}</span>
-<span class="p">}</span>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;id&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{{</span><span class="w"> </span><span class="err">A</span><span class="kc">t</span><span class="err">omicI</span><span class="kc">nte</span><span class="err">gerI</span><span class="kc">n</span><span class="err">creme</span><span class="kc">nter</span><span class="err">.u</span><span class="kc">n</span><span class="err">ique_id</span><span class="w"> </span><span class="p">}}</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 </code></pre></div>
 <p>First request <code>AtomicIntegerIncrementer.unique_id</code> will be <code>100</code>, second <code>110</code>, third <code>120</code> etc.</p>
 

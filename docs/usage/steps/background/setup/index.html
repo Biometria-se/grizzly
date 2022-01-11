@@ -1154,11 +1154,11 @@ converted to lower case.</p>
 <p>E.g. <code>Client ID</code> results in <code>client_id</code>.</p>
 <p>Data type of values will be guessed, if not explicitly specified by the type of variable used (<code>Atomic*</code>). E.g. the last two
 examples above will result in:</p>
-<p><div class="highlight"><pre><span></span><code><span class="p">{</span>
-    <span class="err">&#39;</span><span class="kc">t</span><span class="err">oke</span><span class="kc">n</span><span class="err">&#39;</span><span class="p">:</span> <span class="p">{</span>
-        <span class="err">&#39;url&#39;</span><span class="p">:</span> <span class="err">&#39;&lt;value&gt;&#39;</span>
-    <span class="p">}</span>
-<span class="p">}</span>
+<p><div class="highlight"><pre><span></span><code><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="err">&#39;</span><span class="kc">t</span><span class="err">oke</span><span class="kc">n</span><span class="err">&#39;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">        </span><span class="err">&#39;url&#39;</span><span class="p">:</span><span class="w"> </span><span class="err">&#39;&lt;value&gt;&#39;</span><span class="w"></span>
+<span class="w">    </span><span class="p">}</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 </code></pre></div>
 <div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">set global context variable &quot;</span><span class="s">token.url</span><span class="nf">&quot; to &quot;</span><span class="s">http://test.nu/api/auth</span><span class="nf">&quot;</span>
 <span class="k">And </span><span class="nf">set global context variable &quot;</span><span class="s">token/client_id</span><span class="nf">&quot; to &quot;</span><span class="s">aaaa-bbbb-cccc-dddd</span><span class="nf">&quot;</span>
@@ -1168,10 +1168,10 @@ examples above will result in:</p>
 <span class="k">And </span><span class="nf">set global context variable &quot;</span><span class="s">validate_certificates</span><span class="nf">&quot; to &quot;</span><span class="s">False</span><span class="nf">&quot;</span>
 <span class="k">And </span><span class="nf">set global context variable &quot;</span><span class="s">run_id</span><span class="nf">&quot; to &quot;</span><span class="s">13</span><span class="nf">&quot;</span>
 </code></pre></div>
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-    <span class="err">&#39;valida</span><span class="kc">te</span><span class="err">_cer</span><span class="kc">t</span><span class="err">i</span><span class="kc">f</span><span class="err">ica</span><span class="kc">tes</span><span class="err">&#39;</span><span class="p">:</span> <span class="err">False</span><span class="p">,</span>
-    <span class="err">&#39;ru</span><span class="kc">n</span><span class="err">_id&#39;</span><span class="p">:</span> <span class="mi">13</span>
-<span class="p">}</span>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="err">&#39;valida</span><span class="kc">te</span><span class="err">_cer</span><span class="kc">t</span><span class="err">i</span><span class="kc">f</span><span class="err">ica</span><span class="kc">tes</span><span class="err">&#39;</span><span class="p">:</span><span class="w"> </span><span class="err">False</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="err">&#39;ru</span><span class="kc">n</span><span class="err">_id&#39;</span><span class="p">:</span><span class="w"> </span><span class="mi">13</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 </code></pre></div></p>
 <p><strong>Arguments</strong>:</p>
 <ul>

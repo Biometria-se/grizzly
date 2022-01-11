@@ -828,6 +828,13 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#step_task_request_with_name_to_endpoint_until" class="md-nav__link">
+    step_task_request_with_name_to_endpoint_until
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#step_task_request_text_with_name_to_endpoint" class="md-nav__link">
     step_task_request_text_with_name_to_endpoint
   </a>
@@ -1070,6 +1077,13 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#step_task_request_with_name_to_endpoint_until" class="md-nav__link">
+    step_task_request_with_name_to_endpoint_until
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#step_task_request_text_with_name_to_endpoint" class="md-nav__link">
     step_task_request_text_with_name_to_endpoint
   </a>
@@ -1145,6 +1159,32 @@
 <p><a id="grizzly.steps.scenario.tasks"></a></p>
 <h1 id="grizzlystepsscenariotasks">grizzly.steps.scenario.tasks</h1>
 <p>This module contains step implementations that describes requests sent by <code>user_class_name</code> targeting <code>host</code>.</p>
+<p><a id="grizzly.steps.scenario.tasks.step_task_request_with_name_to_endpoint_until"></a></p>
+<h4 id="step_task_request_with_name_to_endpoint_until">step_task_request_with_name_to_endpoint_until</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@then</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;{method:Method} request with name &quot;</span><span class="si">{name}</span><span class="s1">&quot; from endpoint &quot;</span><span class="si">{endpoint}</span><span class="s1">&quot; until &quot;</span><span class="si">{condition}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">step_task_request_with_name_to_endpoint_until</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">method</span><span class="p">:</span> <span class="n">RequestMethod</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">endpoint</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">condition</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Creates a named request to an endpoint on <code>host</code> and repeat it until <code>condition</code> is true in the response.</p>
+<p><code>content_type</code> will be removed from the actual <code>endpoint</code> value.</p>
+<p><code>condition</code> is a JSON- or Xpath expression, that also has support for "grizzly style" arguments:</p>
+<ul>
+<li>
+<p><code>retries</code> (int): maximum number of times to repeat the request if <code>condition</code> is not met (default <code>3</code>)</p>
+</li>
+<li>
+<p><code>wait</code> (float): number of seconds to wait between retries (default <code>1.0</code>)</p>
+</li>
+</ul>
+<div class="highlight"><pre><span></span><code><span class="k">Then </span><span class="nf">get request with name &quot;</span><span class="s">test-get</span><span class="nf">&quot; from endpoint &quot;</span><span class="s">/api/test | content_type=json</span><span class="nf">&quot; until &quot;</span><span class="s">$.`this`[?success==true]</span><span class="nf">&quot;</span>
+<span class="k">Then </span><span class="nf">receive request with name &quot;</span><span class="s">test-receive</span><span class="nf">&quot; from endpoint &quot;</span><span class="s">queue:receive-queue | content_type=xml</span><span class="nf">&quot; until &quot;</span><span class="s">/header/success[. == &#39;True&#39;]</span><span class="nf">&quot;</span>
+</code></pre></div>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>method</code> <em>RequestMethod</em> - type of request</li>
+<li><code>name</code> <em>str</em> - name of the requests in logs, can contain variables</li>
+<li><code>direction</code> <em>RequestDirection</em> - one of <code>to</code> or <code>from</code> depending on the value of <code>method</code></li>
+<li><code>endpoint</code> <em>str</em> - URI relative to <code>host</code> in the scenario, can contain variables and in certain cases <code>user_class_name</code> specific parameters</li>
+</ul>
 <p><a id="grizzly.steps.scenario.tasks.step_task_request_text_with_name_to_endpoint"></a></p>
 <h4 id="step_task_request_text_with_name_to_endpoint">step_task_request_text_with_name_to_endpoint</h4>
 <div class="highlight"><pre><span></span><code><span class="nd">@then</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;{method:Method} request with name &quot;</span><span class="si">{name}</span><span class="s1">&quot; {direction:Direction} endpoint &quot;</span><span class="si">{endpoint}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>

@@ -1092,9 +1092,9 @@
 <div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">value of variable &quot;</span><span class="s">AtomicRandomString.registration_plate_number</span><span class="nf">&quot; is &quot;</span><span class="s">%s%sZ%d%d0 | upper=True, count=100</span><span class="nf">&quot;</span>
 </code></pre></div>
 <p>This can then be used in a template:
-<div class="highlight"><pre><span></span><code><span class="p">{</span>
-    <span class="nt">&quot;registration_plate_number&quot;</span><span class="p">:</span> <span class="s2">&quot;{{ AtomicRandomString.registration_plate_number }}&quot;</span>
-<span class="p">}</span>
+<div class="highlight"><pre><span></span><code><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;registration_plate_number&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;{{ AtomicRandomString.registration_plate_number }}&quot;</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
 </code></pre></div></p>
 <p><code>AtomicRandomString.registration_plate_number</code> will then be a string in the format <code>[A-Z][A-Z]Z[0-9][0-9]0</code> and there will be <code>100</code> unique values for disposal.</p>
 

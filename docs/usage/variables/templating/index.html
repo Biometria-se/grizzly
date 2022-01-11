@@ -1082,76 +1082,76 @@
 </code></pre></div>
 <p><code>request.j2.json</code> is a full Jinja2 template which will be rendered before the request is sent. The reason for this is that testdata variables can be used in the template, and these can change for each request.</p>
 <p>If <code>request.j2.json</code> contains the following:</p>
-<div class="highlight"><pre><span></span><code><span class="p">[</span>
-    <span class="p">{</span><span class="err">%</span><span class="mi">-</span> <span class="kc">f</span><span class="err">or</span> <span class="kc">n</span> <span class="err">i</span><span class="kc">n</span> <span class="err">ra</span><span class="kc">n</span><span class="err">ge(A</span><span class="kc">t</span><span class="err">omicI</span><span class="kc">nte</span><span class="err">gerI</span><span class="kc">n</span><span class="err">creme</span><span class="kc">nter</span><span class="err">.i</span><span class="kc">te</span><span class="err">ms)</span> <span class="err">%</span><span class="p">}</span>
-        <span class="p">{</span>
-            <span class="nt">&quot;item&quot;</span><span class="p">:</span> <span class="p">{{</span> <span class="kc">n</span> <span class="p">}},</span>
-            <span class="nt">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;item-{{ n }}&quot;</span>
-        <span class="p">}</span>
-        <span class="p">{</span><span class="err">%</span><span class="mi">-</span> <span class="err">i</span><span class="kc">f</span> <span class="kc">n</span> <span class="err">&lt;</span> <span class="err">A</span><span class="kc">t</span><span class="err">omicI</span><span class="kc">nte</span><span class="err">gerI</span><span class="kc">n</span><span class="err">creme</span><span class="kc">nter</span><span class="err">.i</span><span class="kc">te</span><span class="err">ms</span> <span class="mi">-</span> <span class="mi">1</span> <span class="err">%</span><span class="p">},{</span><span class="err">%</span><span class="mi">-</span> <span class="err">e</span><span class="kc">n</span><span class="err">di</span><span class="kc">f</span> <span class="err">%</span><span class="p">}</span>
-    <span class="p">{</span><span class="err">%</span><span class="mi">-</span> <span class="err">e</span><span class="kc">n</span><span class="err">d</span><span class="kc">f</span><span class="err">or</span> <span class="err">%</span><span class="p">}</span>
-<span class="p">]</span>
+<div class="highlight"><pre><span></span><code><span class="p">[</span><span class="w"></span>
+<span class="w">    </span><span class="p">{</span><span class="err">%</span><span class="mi">-</span><span class="w"> </span><span class="kc">f</span><span class="err">or</span><span class="w"> </span><span class="kc">n</span><span class="w"> </span><span class="err">i</span><span class="kc">n</span><span class="w"> </span><span class="err">ra</span><span class="kc">n</span><span class="err">ge(A</span><span class="kc">t</span><span class="err">omicI</span><span class="kc">nte</span><span class="err">gerI</span><span class="kc">n</span><span class="err">creme</span><span class="kc">nter</span><span class="err">.i</span><span class="kc">te</span><span class="err">ms)</span><span class="w"> </span><span class="err">%</span><span class="p">}</span><span class="w"></span>
+<span class="w">        </span><span class="p">{</span><span class="w"></span>
+<span class="w">            </span><span class="nt">&quot;item&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{{</span><span class="w"> </span><span class="kc">n</span><span class="w"> </span><span class="p">}},</span><span class="w"></span>
+<span class="w">            </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;item-{{ n }}&quot;</span><span class="w"></span>
+<span class="w">        </span><span class="p">}</span><span class="w"></span>
+<span class="w">        </span><span class="p">{</span><span class="err">%</span><span class="mi">-</span><span class="w"> </span><span class="err">i</span><span class="kc">f</span><span class="w"> </span><span class="kc">n</span><span class="w"> </span><span class="err">&lt;</span><span class="w"> </span><span class="err">A</span><span class="kc">t</span><span class="err">omicI</span><span class="kc">nte</span><span class="err">gerI</span><span class="kc">n</span><span class="err">creme</span><span class="kc">nter</span><span class="err">.i</span><span class="kc">te</span><span class="err">ms</span><span class="w"> </span><span class="mi">-</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="err">%</span><span class="p">},{</span><span class="err">%</span><span class="mi">-</span><span class="w"> </span><span class="err">e</span><span class="kc">n</span><span class="err">di</span><span class="kc">f</span><span class="w"> </span><span class="err">%</span><span class="p">}</span><span class="w"></span>
+<span class="w">    </span><span class="p">{</span><span class="err">%</span><span class="mi">-</span><span class="w"> </span><span class="err">e</span><span class="kc">n</span><span class="err">d</span><span class="kc">f</span><span class="err">or</span><span class="w"> </span><span class="err">%</span><span class="p">}</span><span class="w"></span>
+<span class="p">]</span><span class="w"></span>
 </code></pre></div>
 <p>Since the scenario has been setup to run for <code>3</code> iterations with <code>1</code> user and assumed that we run it locally, or distributed with one worker node, the scenario will run three times.</p>
 <p>The first post request to <code>/api/v1/test</code> will have the following payload:</p>
-<div class="highlight"><pre><span></span><code><span class="p">[</span>
-  <span class="p">{</span>
-    <span class="nt">&quot;item&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-    <span class="nt">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;item-0&quot;</span>
-  <span class="p">}</span>
-<span class="p">]</span>
+<div class="highlight"><pre><span></span><code><span class="p">[</span><span class="w"></span>
+<span class="w">  </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;item&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;item-0&quot;</span><span class="w"></span>
+<span class="w">  </span><span class="p">}</span><span class="w"></span>
+<span class="p">]</span><span class="w"></span>
 </code></pre></div>
 <p>The second post request:</p>
-<div class="highlight"><pre><span></span><code><span class="p">[</span>
-  <span class="p">{</span>
-    <span class="nt">&quot;item&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-    <span class="nt">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;item-0&quot;</span>
-  <span class="p">},</span>
-  <span class="p">{</span>
-    <span class="nt">&quot;item&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
-    <span class="nt">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;item-1&quot;</span>
-  <span class="p">},</span>
-  <span class="p">{</span>
-    <span class="nt">&quot;item&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
-    <span class="nt">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;item-2&quot;</span>
-  <span class="p">},</span>
-  <span class="p">{</span>
-    <span class="nt">&quot;item&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
-    <span class="nt">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;item-3&quot;</span>
-  <span class="p">}</span>
-<span class="p">]</span>
+<div class="highlight"><pre><span></span><code><span class="p">[</span><span class="w"></span>
+<span class="w">  </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;item&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;item-0&quot;</span><span class="w"></span>
+<span class="w">  </span><span class="p">},</span><span class="w"></span>
+<span class="w">  </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;item&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;item-1&quot;</span><span class="w"></span>
+<span class="w">  </span><span class="p">},</span><span class="w"></span>
+<span class="w">  </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;item&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;item-2&quot;</span><span class="w"></span>
+<span class="w">  </span><span class="p">},</span><span class="w"></span>
+<span class="w">  </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;item&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;item-3&quot;</span><span class="w"></span>
+<span class="w">  </span><span class="p">}</span><span class="w"></span>
+<span class="p">]</span><span class="w"></span>
 </code></pre></div>
 <p>The third post request:</p>
-<div class="highlight"><pre><span></span><code><span class="p">[</span>
-  <span class="p">{</span>
-    <span class="nt">&quot;item&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
-    <span class="nt">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;item-0&quot;</span>
-  <span class="p">},</span>
-  <span class="p">{</span>
-    <span class="nt">&quot;item&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span>
-    <span class="nt">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;item-1&quot;</span>
-  <span class="p">},</span>
-  <span class="p">{</span>
-    <span class="nt">&quot;item&quot;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
-    <span class="nt">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;item-2&quot;</span>
-  <span class="p">},</span>
-  <span class="p">{</span>
-    <span class="nt">&quot;item&quot;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
-    <span class="nt">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;item-3&quot;</span>
-  <span class="p">},</span>
-  <span class="p">{</span>
-    <span class="nt">&quot;item&quot;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>
-    <span class="nt">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;item-4&quot;</span>
-  <span class="p">},</span>
-  <span class="p">{</span>
-    <span class="nt">&quot;item&quot;</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
-    <span class="nt">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;item-5&quot;</span>
-  <span class="p">},</span>
-  <span class="p">{</span>
-    <span class="nt">&quot;item&quot;</span><span class="p">:</span> <span class="mi">6</span><span class="p">,</span>
-    <span class="nt">&quot;name&quot;</span><span class="p">:</span> <span class="s2">&quot;item-6&quot;</span>
-  <span class="p">}</span>
-<span class="p">]</span>
+<div class="highlight"><pre><span></span><code><span class="p">[</span><span class="w"></span>
+<span class="w">  </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;item&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;item-0&quot;</span><span class="w"></span>
+<span class="w">  </span><span class="p">},</span><span class="w"></span>
+<span class="w">  </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;item&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;item-1&quot;</span><span class="w"></span>
+<span class="w">  </span><span class="p">},</span><span class="w"></span>
+<span class="w">  </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;item&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;item-2&quot;</span><span class="w"></span>
+<span class="w">  </span><span class="p">},</span><span class="w"></span>
+<span class="w">  </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;item&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">3</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;item-3&quot;</span><span class="w"></span>
+<span class="w">  </span><span class="p">},</span><span class="w"></span>
+<span class="w">  </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;item&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">4</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;item-4&quot;</span><span class="w"></span>
+<span class="w">  </span><span class="p">},</span><span class="w"></span>
+<span class="w">  </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;item&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">5</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;item-5&quot;</span><span class="w"></span>
+<span class="w">  </span><span class="p">},</span><span class="w"></span>
+<span class="w">  </span><span class="p">{</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;item&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">6</span><span class="p">,</span><span class="w"></span>
+<span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;item-6&quot;</span><span class="w"></span>
+<span class="w">  </span><span class="p">}</span><span class="w"></span>
+<span class="p">]</span><span class="w"></span>
 </code></pre></div>
 <h2 id="step-expression">Step expression</h2>
 <p>Most step expressions also support templating for their variables, for example:</p>
