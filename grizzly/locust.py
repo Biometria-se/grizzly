@@ -194,24 +194,30 @@ def setup_environment_listeners(context: Context, environment: Environment, requ
 
 def print_scenario_summary(grizzly: GrizzlyContext) -> None:
     def print_table_lines(length: int) -> None:
-        length -= 11
-        sys.stdout.write('-' * 10)
+        sys.stdout.write('-' * 11)
         sys.stdout.write('|')
-        sys.stdout.write('-' * length)
+        sys.stdout.write('-' * 4)
+        sys.stdout.write('|')
+        sys.stdout.write('-' * (length + 1))
         sys.stdout.write('|\n')
 
     rows: List[str] = []
-    max_length = 0
+    max_length = len('description')
 
     for scenario in grizzly.scenarios():
-        row = '{:11} {}'.format(scenario.identifier, scenario.description or 'unknown')
-        row_length = len(row)
-        if row_length > max_length:
-            max_length = row_length
+        description = scenario.description or 'unknown'
+        row = '{:11} {:>4} {}'.format(
+            scenario.identifier,
+            scenario.iterations,
+            description,
+        )
+        description_length = len(description)
+        if description_length > max_length:
+            max_length = description_length
         rows.append(row)
 
     print('Scenario')
-    print('{:11} {}'.format('identifier', 'description'))
+    print('{:11} {:4} {}'.format('identifier', '#', 'description'))
     print_table_lines(max_length)
     for row in rows:
         print(row)

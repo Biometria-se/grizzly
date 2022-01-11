@@ -3,8 +3,8 @@ import logging
 from typing import Dict, Optional, Any, cast
 
 import zmq
-import gevent
 
+from gevent import sleep as gsleep
 from gevent.lock import Semaphore
 from locust.exception import StopUser
 from locust.env import Environment
@@ -33,7 +33,7 @@ class TestdataConsumer:
         except:
             logger.error('failed to stop consumer', exc_info=True)
         finally:
-            gevent.sleep(0.1)
+            gsleep(0.1)
 
     def request(self, scenario: str) -> Optional[Dict[str, Any]]:
         logger.debug('consumer available')
@@ -50,7 +50,7 @@ class TestdataConsumer:
                 message = self.socket.recv_json(flags=zmq.NOBLOCK)
                 break
             except zmq.error.Again:
-                gevent.sleep(0.1)  # let TestdataProducer greenlet execute
+                gsleep(0.1)  # let TestdataProducer greenlet execute
 
         if message['action'] == 'stop':
             raise StopUser(f'stop command received')
@@ -117,7 +117,7 @@ class TestdataProducer:
             logger.error('failed to stop producer', exc_info=True)
         finally:
             # make sure that socket is properly released
-            gevent.sleep(0.1)
+            gsleep(0.1)
 
     def run(self) -> None:
         logger.debug('start producing...')
@@ -188,8 +188,8 @@ class TestdataProducer:
                         logger.debug(f'producing {message} for consumer')
                         self.socket.send_json(message)
 
-                    gevent.sleep(0)
+                    gsleep(0)
                 except zmq.error.Again:
-                    gevent.sleep(0.01)
+                    gsleep(0.01)
         except zmq.error.ZMQError:
             self.environment.events.test_stop.fire(environment=self.environment)
