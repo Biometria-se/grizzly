@@ -19,6 +19,7 @@ class GrizzlyTasks(GrizzlyTasksBase):
 
     def __init__(self, parent: Type[User]) -> None:
         super().__init__(parent=parent)
+        self.grizzly = GrizzlyContext()
 
     @classmethod
     def add_scenario_task(cls, task: GrizzlyTask) -> None:
