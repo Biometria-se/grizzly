@@ -165,6 +165,8 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                     if e.comp == pymqi.CMQC.MQCC_FAILED and e.reason == pymqi.CMQC.MQRC_NO_MSG_AVAILABLE:
                         # No messages, that's OK
                         pass
+                    elif e.comp == pymqi.CMQC.MQCC_FAILED and e.reason == pymqi.CMQC.MQRC_TRUNCATED_MSG_FAILED:
+                        self.logger.warning("_find_message: got MQRC_TRUNCATED_MSG_FAILED while browsing messages")
                     else:
                         # Some other error condition.
                         raise AsyncMessageError(str(e))

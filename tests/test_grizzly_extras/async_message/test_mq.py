@@ -1,6 +1,6 @@
 import subprocess
 
-from typing import Any, Optional, Tuple, Dict, cast
+from typing import Any, List, Optional, Tuple, Dict, cast
 from os import environ
 
 import pytest
@@ -368,7 +368,7 @@ class TestAsyncMessageQueueHandler:
 
         # Mocked representation of pymqi Queue
         class DummyQueue(object):
-            raise_error: bool = False
+            error_list: List[int] = []
             def __init__(self) -> None:
                 self.msg_ix = 0
 
@@ -376,8 +376,8 @@ class TestAsyncMessageQueueHandler:
                 pass
 
             def get(self, foo: Any, md: pymqi.MD, gmo: pymqi.GMO) -> DummyMessage:
-                if DummyQueue.raise_error:
-                    raise pymqi.MQMIError(pymqi.CMQC.MQCC_FAILED, pymqi.CMQC.MQRC_SSL_INITIALIZATION_ERROR)
+                if len(DummyQueue.error_list) > 0:
+                    raise pymqi.MQMIError(pymqi.CMQC.MQCC_FAILED, DummyQueue.error_list.pop())
 
                 if gmo['MatchOptions'] == pymqi.CMQC.MQMO_MATCH_MSG_ID:
                     # Request for getting specific message
@@ -457,11 +457,17 @@ class TestAsyncMessageQueueHandler:
         queue_messages['id1'].payload = tmp_xml
 
         # Queue.get returning unexpected error
-        DummyQueue.raise_error = True
+        DummyQueue.error_list.append(pymqi.CMQC.MQRC_SSL_INITIALIZATION_ERROR)
         with pytest.raises(AsyncMessageError) as mqe:
             response = handlers[request['action']](handler, request)
         assert 'MQI Error. Comp: 2, Reason 2393: FAILED: MQRC_SSL_INITIALIZATION_ERROR' in str(mqe)
-        DummyQueue.raise_error = False
+
+        # Match second message, but fail with MQRC_TRUNCATED_MSG_FAILED at first attempt (yields retry)
+        DummyQueue.error_list.append(pymqi.CMQC.MQRC_TRUNCATED_MSG_FAILED)
+        request['context']['endpoint'] = "queue:theendpoint, expression: //singer[@id='9']"
+        response = handlers[request['action']](handler, request)
+        assert response['payload'] == queue_messages['id2'].payload
+        assert response['response_length'] == len(queue_messages['id2'].payload)
 
         # Test Json
 
