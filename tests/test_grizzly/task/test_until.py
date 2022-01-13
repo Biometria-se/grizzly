@@ -60,10 +60,11 @@ class TestUntilRequestTask:
                 (None, create_response('working')),
                 (None, create_response('working')),
                 (None, create_response('ready')),
+                (None, create_response('ready')),
             ],
         )
 
-        time_spy = mocker.patch('grizzly.task.until.time', side_effect=[0.0, 153.5, 0.0, 12.25, 0.0, 1.5])
+        time_spy = mocker.patch('grizzly.task.until.time', side_effect=[0.0, 153.5, 0.0, 12.25, 0.0, 12.25, 0.0, 1.5])
 
         fire_spy = mocker.patch.object(
             tasks.user.environment.events.request,
@@ -105,7 +106,7 @@ class TestUntilRequestTask:
         assert call_args_list == [(100.0, ), (100.0, ), (100.0, )]
 
         assert fire_spy.call_count == 1
-        _, kwargs = fire_spy.call_args_list[0]
+        _, kwargs = fire_spy.call_args_list[-1]
 
         assert kwargs.get('request_type', None) == 'UNTL'
         assert kwargs.get('name', None) == f'{request.scenario.identifier} test-request, w=100.0s, r=10'
@@ -113,6 +114,34 @@ class TestUntilRequestTask:
         assert kwargs.get('response_length', None) == 0
         assert kwargs.get('context', None) == {'variables': {}}
         assert kwargs.get('exception', '') is None
+
+        # -->
+        tasks.grizzly.state.variables['wait'] = 100.0
+        tasks.grizzly.state.variables['retries'] = 10
+        task = UntilRequestTask(request, "$.`this`[?status='ready'] | wait='{{ wait }}', retries='{{ retries }}'")
+        implementation = task.implementation()
+
+        implementation(tasks)
+
+        assert time_spy.call_count == 4
+        assert request_spy.call_count == 4
+        assert gsleep_spy.call_count == 4
+        call_args_list = []
+        for args_list in gsleep_spy.call_args_list:
+            args, _ = args_list
+            call_args_list.append(args)
+        assert call_args_list == [(100.0, ), (100.0, ), (100.0, ), (100.0, )]
+
+        assert fire_spy.call_count == 2
+        _, kwargs = fire_spy.call_args_list[-1]
+
+        assert kwargs.get('request_type', None) == 'UNTL'
+        assert kwargs.get('name', None) == f'{request.scenario.identifier} test-request, w=100.0s, r=10'
+        assert kwargs.get('response_time', None) == 12250
+        assert kwargs.get('response_length', None) == 0
+        assert kwargs.get('context', None) == {'variables': {}}
+        assert kwargs.get('exception', '') is None
+        # <--
 
         request_spy = mocker.patch.object(
             tasks.user,
@@ -129,8 +158,8 @@ class TestUntilRequestTask:
         with pytest.raises(StopUser):
             implementation(tasks)
 
-        assert fire_spy.call_count == 2
-        _, kwargs = fire_spy.call_args_list[1]
+        assert fire_spy.call_count == 3
+        _, kwargs = fire_spy.call_args_list[-1]
 
         assert kwargs.get('request_type', None) == 'UNTL'
         assert kwargs.get('name', None) == f'{request.scenario.identifier} test-request, w=10.0s, r=2'
@@ -153,8 +182,8 @@ class TestUntilRequestTask:
         with pytest.raises(StopUser):
             implementation(tasks)
 
-        assert fire_spy.call_count == 3
-        _, kwargs = fire_spy.call_args_list[2]
+        assert fire_spy.call_count == 4
+        _, kwargs = fire_spy.call_args_list[-1]
 
         assert kwargs.get('request_type', None) == 'UNTL'
         assert kwargs.get('name', None) == f'{request.scenario.identifier} test-request, w=10.0s, r=2'

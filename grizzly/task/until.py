@@ -23,7 +23,7 @@ from locust.exception import StopUser
 from grizzly_extras.transformer import Transformer, TransformerContentType, transformer
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments, split_value
 
-from ..context import GrizzlyTask, GrizzlyTasksBase
+from ..context import GrizzlyContext, GrizzlyTask, GrizzlyTasksBase
 from .request import RequestTask
 
 @dataclass
@@ -46,6 +46,10 @@ class UntilRequestTask(GrizzlyTask):
         if '|' in self.condition:
             self.condition, until_arguments = split_value(self.condition)
 
+            if '{{' in until_arguments and '}}' in until_arguments:
+                grizzly = GrizzlyContext()
+                until_arguments = Template(until_arguments).render(**grizzly.state.variables)
+
             arguments = parse_arguments(until_arguments)
 
             unsupported_arguments = get_unsupported_arguments(['retries', 'wait'], arguments)
@@ -63,7 +67,11 @@ class UntilRequestTask(GrizzlyTask):
         transform = cast(Transformer, self.transform)
 
         def _implementation(parent: GrizzlyTasksBase) -> Any:
-            condition_rendered = Template(self.condition).render(parent.user.context_variables)
+            if '{{' in self.condition and '}}' in self.condition:
+                grizzly = GrizzlyContext()
+                condition_rendered = Template(self.condition).render(**parent.user.context_variables, **grizzly.state.variables)
+            else:
+                condition_rendered = self.condition
 
             if not transform.validate(condition_rendered):
                 raise RuntimeError(f'{condition_rendered} is not a valid expression for {self.request.response.content_type.name}')
