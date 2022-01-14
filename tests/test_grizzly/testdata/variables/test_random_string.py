@@ -94,6 +94,10 @@ class TestAtomicRandomString:
             AtomicRandomString.clear()
             assert len(t._strings) == 0
 
+            t = AtomicRandomString('regnr', '%sA%s1%d%d | count=10000, upper=True')
+
+            assert len(t._strings['regnr']) == 10000
+            assert sorted(t._strings['regnr']) == sorted(list(set(t._strings['regnr'])))
         finally:
             cleanup()
 

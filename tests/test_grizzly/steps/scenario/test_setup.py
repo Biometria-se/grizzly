@@ -265,6 +265,14 @@ def test_step_setup_variable_value(behave_context: Context) -> None:
     step_setup_variable_value(behave_context, 'AtomicIntegerIncrementer.test', '1 | step=10')
     assert grizzly.state.variables['AtomicIntegerIncrementer.test'] == '1 | step=10'
 
+    grizzly.state.variables['step'] = 13
+    step_setup_variable_value(behave_context, 'AtomicIntegerIncrementer.test2', '1 | step={{ step }}')
+    assert grizzly.state.variables['AtomicIntegerIncrementer.test2'] == '1 | step=13'
+
+    grizzly.state.variables['leveranser'] = 100
+    step_setup_variable_value(behave_context, 'AtomicRandomString.regnr', '%sA%s1%d%d | count={{ (leveranser * 0.25 + 1) | int }}, upper=True')
+    assert grizzly.state.variables['AtomicRandomString.regnr'] == '%sA%s1%d%d | count=26, upper=True'
+
     step_setup_variable_value(behave_context, 'AtomicDate.test', '2021-04-13')
     assert grizzly.state.variables['AtomicDate.test'] == '2021-04-13'
 
