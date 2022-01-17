@@ -38,7 +38,7 @@ from tzlocal import get_localzone as get_local_timezone
 from grizzly_extras.arguments import split_value, parse_arguments
 
 from ...types import AtomicVariable
-from ..utils import parse_timespan
+from ...utils import parse_timespan
 
 
 def atomicdate__base_type__(value: str) -> str:

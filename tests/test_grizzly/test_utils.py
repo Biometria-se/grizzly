@@ -16,7 +16,8 @@ from grizzly.utils import (
     create_task_class_type,
     create_user_class_type,
     fail_direct,
-    in_correct_section
+    in_correct_section,
+    parse_timespan,
 )
 from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
@@ -390,3 +391,24 @@ def test_in_correct_section() -> None:
 
     assert in_correct_section(cast(FunctionType, step_custom), ['grizzly.steps.scenario'])
 
+
+def test_parse_timespan() -> None:
+    assert parse_timespan('133') == {'days': 133}
+    assert parse_timespan('-133') == {'days': -133}
+
+    with pytest.raises(ValueError) as ve:
+        parse_timespan('10P44m')
+    assert 'invalid time span format' in str(ve)
+
+    with pytest.raises(ValueError) as ve:
+        parse_timespan('{}')
+    assert 'invalid time span format' in str(ve)
+
+    assert parse_timespan('1Y-2M3D-4h5m-6s') == {
+        'years': 1,
+        'months': -2,
+        'days': 3,
+        'hours': -4,
+        'minutes': 5,
+        'seconds': -6,
+    }

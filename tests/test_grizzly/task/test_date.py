@@ -84,3 +84,9 @@ class TestDateTask:
             implementation(tasks)
         assert '"asdf" is not a valid datetime string' in str(ve)
 
+        task = DateTask('date_variable', '{{ datetime.now().strftime("%Y") }} | timezone=UTC, format=%Y')
+        implementation = task.implementation()
+
+        implementation(tasks)
+
+        assert tasks.user._context['variables']['date_variable'] == datetime.now().strftime('%Y')

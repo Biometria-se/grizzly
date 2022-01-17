@@ -1,5 +1,4 @@
 import logging
-import re
 
 from typing import Optional, List, Dict, Any, Tuple, Set, cast
 from collections import namedtuple
@@ -188,20 +187,3 @@ def resolve_variable(grizzly: GrizzlyContext, value: str, guess_datatype: Option
 
 
     return resolved_variable
-
-
-def parse_timespan(timespan: str) -> Dict[str, int]:
-    if re.match(r'^-?\d+$', timespan):
-        # if an int is specified we assume they want days
-        return {'days': int(timespan)}
-
-    pattern = re.compile(r'((?P<years>-?\d+?)Y)?((?P<months>-?\d+?)M)?((?P<days>-?\d+?)D)?((?P<hours>-?\d+?)h)?((?P<minutes>-?\d+?)m)?((?P<seconds>-?\d+?)s)?')
-    parts = pattern.match(timespan)
-    if not parts:
-        raise ValueError('invalid time span format')
-    group = parts.groupdict()
-    parameters = {name: int(value) for name, value in group.items() if value}
-    if not parameters:
-        raise ValueError('invalid time span format')
-
-    return parameters

@@ -5,7 +5,7 @@ At least one arguments needs to specified.
 
 Instances of this task is created with the step expression:
 
-XXX: Link step expression here
+* [`step_task_date`](/grizzly/usage/steps/scenario/tasks/#step_task_date)
 
 ## Arguments
 
@@ -26,7 +26,7 @@ from tzlocal import get_localzone as get_local_timezone
 from grizzly_extras.arguments import get_unsupported_arguments, split_value, parse_arguments
 
 from ..context import GrizzlyTask, GrizzlyTasksBase
-from ..testdata.utils import parse_timespan
+from ..utils import parse_timespan
 
 
 @dataclass

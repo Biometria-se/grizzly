@@ -1,4 +1,4 @@
-from typing import Dict, Generator, Type, List, Any, Optional, Set
+from typing import Dict, Generator, Type, List, Any, Optional
 from contextlib import contextmanager
 from time import perf_counter as time
 

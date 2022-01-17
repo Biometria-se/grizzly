@@ -284,3 +284,27 @@ def test_step_task_get_endpoint(behave_context: Context) -> None:
 
     task = grizzly.scenario.tasks[-1]
     assert task.endpoint == '{{ endpoint_url }}'
+
+
+@pytest.mark.usefixtures('behave_context')
+def test_step_task_date(behave_context: Context) -> None:
+    grizzly = cast(GrizzlyContext, behave_context.grizzly)
+
+    with pytest.raises(AssertionError) as ae:
+        step_task_date(behave_context, '{{ datetime.now() }} | offset=1D', 'date_variable')
+    assert 'variable date_variable has not been initialized' in str(ae)
+
+    grizzly.state.variables['date_variable'] = 'none'
+
+    step_task_date(behave_context, '{{ datetime.now() }} | offset=1D', 'date_variable')
+
+    assert len(grizzly.scenario.tasks) == 1
+    assert len(grizzly.scenario.orphan_templates) == 1
+    assert isinstance(grizzly.scenario.tasks[-1], DateTask)
+
+    task = grizzly.scenario.tasks[-1]
+    assert task.value == '{{ datetime.now() }}'
+    assert task.variable == 'date_variable'
+    assert task.arguments.get('offset') == '1D'
+
+
