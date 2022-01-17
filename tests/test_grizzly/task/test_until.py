@@ -64,7 +64,7 @@ class TestUntilRequestTask:
             ],
         )
 
-        time_spy = mocker.patch('grizzly.task.until.time', side_effect=[0.0, 153.5, 0.0, 12.25, 0.0, 12.25, 0.0, 1.5])
+        time_spy = mocker.patch('grizzly.task.until.time', side_effect=[0.0, 153.5, 0.0, 12.25, 0.0, 12.25, 0.0, 1.5, 0.0, 0.8])
 
         fire_spy = mocker.patch.object(
             tasks.user.environment.events.request,
@@ -176,6 +176,8 @@ class TestUntilRequestTask:
             'request',
             side_effect=[
                 RuntimeError('foo bar'),
+                (None, create_response('working')),
+                (None, create_response('working')),
             ],
         )
 
@@ -194,3 +196,29 @@ class TestUntilRequestTask:
         assert exception is not None
         assert isinstance(exception, RuntimeError)
         assert str(exception) == 'foo bar'
+
+        request_spy = mocker.patch.object(
+            tasks.user,
+            'request',
+            side_effect=[
+                (None, create_response('working')),
+                RuntimeError('foo bar'),
+                (None, create_response('working')),
+                (None, create_response('ready')),
+            ],
+        )
+
+        task = UntilRequestTask(request, '$.`this`[?status="ready"] | wait=4, retries=4')
+        implementation = task.implementation()
+
+        implementation(tasks)
+
+        assert fire_spy.call_count == 5
+        _, kwargs = fire_spy.call_args_list[-1]
+
+        assert kwargs.get('request_type', None) == 'UNTL'
+        assert kwargs.get('name', None) == f'{request.scenario.identifier} test-request, w=4.0s, r=4'
+        assert kwargs.get('response_time', None) == 800
+        assert kwargs.get('response_length', None) == 0
+        assert kwargs.get('context', None) == {'variables': {}}
+        assert kwargs.get('exception', '') is None
