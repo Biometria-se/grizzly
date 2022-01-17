@@ -86,23 +86,29 @@ class UntilRequestTask(GrizzlyTask):
             try:
                 while number_of_matches != 1 and retry < self.retries:
                     gsleep(self.wait)
-                    _, payload = parent.user.request(self.request)
-                    _, transformed = transform.transform(self.request.response.content_type, payload)
+                    number_of_matches = 0
 
-                    matches = parser(transformed)
-                    parent.logger.debug(f'{payload=}, condition={condition_rendered}, {matches=}')
-                    number_of_matches = len(matches)
+                    try:
+                        _, payload = parent.user.request(self.request)
+                        _, transformed = transform.transform(self.request.response.content_type, payload)
 
-                    if number_of_matches != 1:
-                        retry += 1
+                        matches = parser(transformed)
+                        parent.logger.debug(f'{payload=}, condition={condition_rendered}, {matches=}')
+                        number_of_matches = len(matches)
+                    except Exception as e:
+                        exception = e
+                        number_of_matches = 0
+                    finally:
+                        if number_of_matches != 1:
+                            retry += 1
             except Exception as e:
-                import traceback
-                traceback.print_exc()
                 exception = e
             finally:
                 response_time = int((time() - start) * 1000)
 
-                if exception is None and number_of_matches != 1:
+                if number_of_matches == 1:
+                    exception = None
+                elif exception is None and number_of_matches != 1:
                     exception = RuntimeError(f'found {number_of_matches} matching values for {condition_rendered} in payload')
 
                 parent.user.environment.events.request.fire(
