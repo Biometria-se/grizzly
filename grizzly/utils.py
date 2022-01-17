@@ -1,4 +1,5 @@
 import logging
+import re
 
 from typing import Generic, Type, List, Any, Dict, Tuple, Optional, cast, Generator
 from types import FunctionType
@@ -164,3 +165,20 @@ def in_correct_section(func: FunctionType, expected: List[str]) -> bool:
     return (
         actual.startswith('grizzly.') and actual in expected
     ) or not actual.startswith('grizzly.')
+
+
+def parse_timespan(timespan: str) -> Dict[str, int]:
+    if re.match(r'^-?\d+$', timespan):
+        # if an int is specified we assume they want days
+        return {'days': int(timespan)}
+
+    pattern = re.compile(r'((?P<years>-?\d+?)Y)?((?P<months>-?\d+?)M)?((?P<days>-?\d+?)D)?((?P<hours>-?\d+?)h)?((?P<minutes>-?\d+?)m)?((?P<seconds>-?\d+?)s)?')
+    parts = pattern.match(timespan)
+    if not parts:
+        raise ValueError('invalid time span format')
+    group = parts.groupdict()
+    parameters = {name: int(value) for name, value in group.items() if value}
+    if not parameters:
+        raise ValueError('invalid time span format')
+
+    return parameters

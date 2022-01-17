@@ -263,7 +263,6 @@ def run(context: Context) -> int:
     user_classes, request_tasks, external_dependencies = setup_locust_scenarios(grizzly)
 
     assert len(user_classes) > 0, 'no users specified in feature'
-    assert len(request_tasks) > 0, 'no requests specified for users'
     assert len(user_classes) <= grizzly.setup.user_count, f"increase the number in step 'Given \"{grizzly.setup.user_count}\" users' to at least {len(user_classes)}"
 
     try:

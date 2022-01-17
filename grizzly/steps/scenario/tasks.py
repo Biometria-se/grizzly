@@ -8,7 +8,7 @@ from behave import register_type, then  # pylint: disable=no-name-in-module
 from ..helpers import add_request_task
 from ...types import RequestDirection, RequestMethod
 from ...context import GrizzlyContext
-from ...task import PrintTask, WaitTask, TransformerTask, UntilRequestTask
+from ...task import PrintTask, WaitTask, TransformerTask, UntilRequestTask, DateTask
 from ...task.getter import getterof
 
 from grizzly_extras.transformer import TransformerContentType
@@ -373,5 +373,46 @@ def step_task_get_endpoint(context: Context, endpoint: str, variable: str) -> No
 
     grizzly.scenario.add_task(getter(
         endpoint=endpoint,
+        variable=variable,
+    ))
+
+@then(u'parse date "{value}" and save in variable "{variable}"')
+def step_task_date(context: Context, value: str, variable: str) -> None:
+    '''Parses a datetime string and transforms it according to specified arguments.
+
+    This step is useful when changes has to be made to a datetime representation during an iteration of a scenario.
+
+    ```gherkin
+    ...
+    And value for variable "date1" is "none"
+    And value for variable "date2" is "none"
+    And value for variable "date3" is "none"
+    And value for variable "AtomicDate.test" is "now"
+
+    Then parse date "2022-01-17 12:21:37 | timezone=UTC, format="%Y-%m-%dT%H:%M:%S.%f", offset=1D" and save in variable "date1"
+    Then parse date "{{ AtomicDate.test }} | offset=-1D" and save in variable "date2"
+    Then parse date "{{ datetime.now() }} | offset=1Y" and save in variable "date3"
+    ```
+
+    Args:
+        value (str): datetime string and arguments
+        variable (str): name of, initialized, variable where response will be saved in
+
+    ## Arguments
+
+    At least one of the following optional arguments **must** be specified:
+
+    * `format` _str_ - a python [`strftime` format string](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes), this argument is required
+    * `timezone` _str_ (optional) - a valid [timezone name](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
+    * `offset` _str_ (optional) - a time span string describing the offset, Y = years, M = months, D = days, h = hours, m = minutes, s = seconds, e.g. `1Y-2M10D`
+    '''
+    grizzly = cast(GrizzlyContext, context.grizzly)
+    assert variable in grizzly.state.variables, f'variable {variable} has not been initialized'
+
+    if '{{' in value and '}}' in value:
+        grizzly.scenario.orphan_templates.append(value)
+
+    grizzly.scenario.add_task(DateTask(
+        value=value,
         variable=variable,
     ))

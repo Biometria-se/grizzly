@@ -39,7 +39,7 @@ class UntilRequestTask(GrizzlyTask):
 
     def __post_init__(self) -> None:
         if self.request.response.content_type == TransformerContentType.GUESS:
-            raise ValueError(f'content type must be specified for request')
+            raise ValueError('content type must be specified for request')
 
         self.transform = transformer.available.get(self.request.response.content_type, None)
 
