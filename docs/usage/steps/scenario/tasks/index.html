@@ -890,6 +890,13 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#step_task_date" class="md-nav__link">
+    step_task_date
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1135,6 +1142,13 @@
         <li class="md-nav__item">
   <a href="#step_task_get_endpoint" class="md-nav__link">
     step_task_get_endpoint
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step_task_date" class="md-nav__link">
+    step_task_date
   </a>
   
 </li>
@@ -1397,6 +1411,35 @@ used by the task.</p>
 <ul>
 <li><code>endpoint</code> <em>str</em> - information about where to get information, see the specific getter task implementations for more information</li>
 <li><code>variable</code> <em>str</em> - name of, initialized, variable where response will be saved in</li>
+</ul>
+<p><a id="grizzly.steps.scenario.tasks.step_task_date"></a></p>
+<h4 id="step_task_date">step_task_date</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@then</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;parse date &quot;</span><span class="si">{value}</span><span class="s1">&quot; and save in variable &quot;</span><span class="si">{variable}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">step_task_date</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Parses a datetime string and transforms it according to specified arguments.</p>
+<p>This step is useful when changes has to be made to a datetime representation during an iteration of a scenario.</p>
+<div class="highlight"><pre><span></span><code><span class="nf">...</span>
+<span class="k">And </span><span class="nf">value for variable &quot;</span><span class="s">date1</span><span class="nf">&quot; is &quot;</span><span class="s">none</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">value for variable &quot;</span><span class="s">date2</span><span class="nf">&quot; is &quot;</span><span class="s">none</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">value for variable &quot;</span><span class="s">date3</span><span class="nf">&quot; is &quot;</span><span class="s">none</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">value for variable &quot;</span><span class="s">AtomicDate.test</span><span class="nf">&quot; is &quot;</span><span class="s">now</span><span class="nf">&quot;</span>
+
+<span class="k">Then </span><span class="nf">parse date &quot;</span><span class="s">2022-01-17 12:21:37 | timezone=UTC, format=</span><span class="nf">&quot;%Y-%m-%dT%H:%M:%S.%f&quot;</span><span class="s">, offset=1D</span><span class="nf">&quot; and save in variable &quot;</span><span class="s">date1</span><span class="nf">&quot;</span>
+<span class="k">Then </span><span class="nf">parse date &quot;</span><span class="s">{{ AtomicDate.test }} | offset=-1D</span><span class="nf">&quot; and save in variable &quot;</span><span class="s">date2</span><span class="nf">&quot;</span>
+<span class="k">Then </span><span class="nf">parse date &quot;</span><span class="s">{{ datetime.now() }} | offset=1Y</span><span class="nf">&quot; and save in variable &quot;</span><span class="s">date3</span><span class="nf">&quot;</span>
+</code></pre></div>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>value</code> <em>str</em> - datetime string and arguments</li>
+<li><code>variable</code> <em>str</em> - name of, initialized, variable where response will be saved in</li>
+</ul>
+<p>## Arguments</p>
+<p>At least one of the following optional arguments <strong>must</strong> be specified:</p>
+<ul>
+<li><code>format</code> <em>str</em> - a python <a href="https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes"><code>strftime</code> format string</a>, this argument is required</li>
+<li><code>timezone</code> <em>str</em> (optional) - a valid <a href="https://en.wikipedia.org/wiki/List_of_tz_database_time_zones">timezone name</a></li>
+<li><code>offset</code> <em>str</em> (optional) - a time span string describing the offset, Y = years, M = months, D = days, h = hours, m = minutes, s = seconds, e.g. <code>1Y-2M10D</code></li>
 </ul>
 
               
