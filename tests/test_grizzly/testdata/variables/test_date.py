@@ -9,7 +9,7 @@ from pytest_mock.plugin import mocker  # pylint: disable=unused-import
 from dateutil.relativedelta import relativedelta
 
 from grizzly.testdata.variables import AtomicDate
-from grizzly.testdata.variables.date import atomicdate__base_type__, parse_timespan
+from grizzly.testdata.variables.date import atomicdate__base_type__
 
 from ..fixtures import cleanup  # pylint: disable=unused-import
 
@@ -43,28 +43,6 @@ def test_atomicdate__base_type__() -> None:
     with pytest.raises(ValueError) as ve:
         atomicdate__base_type__('now | format="%Y", timezone=NOT_A_VALID_TIMEZONE')
     assert 'unknown timezone' in str(ve)
-
-
-def test_parse_timespan() -> None:
-    assert parse_timespan('133') == {'days': 133}
-    assert parse_timespan('-133') == {'days': -133}
-
-    with pytest.raises(ValueError) as ve:
-        parse_timespan('10P44m')
-    assert 'invalid time span format' in str(ve)
-
-    with pytest.raises(ValueError) as ve:
-        parse_timespan('{}')
-    assert 'invalid time span format' in str(ve)
-
-    assert parse_timespan('1Y-2M3D-4h5m-6s') == {
-        'years': 1,
-        'months': -2,
-        'days': 3,
-        'hours': -4,
-        'minutes': 5,
-        'seconds': -6,
-    }
 
 
 class TestAtomicDate:

@@ -3,6 +3,7 @@ from .wait import WaitTask
 from .print import PrintTask
 from .transformer import TransformerTask
 from .until import UntilRequestTask
+from .date import DateTask
 
 __all__ = [
     'RequestTaskHandlers',
@@ -12,4 +13,5 @@ __all__ = [
     'WaitTask',
     'TransformerTask',
     'UntilRequestTask',
+    'DateTask',
 ]

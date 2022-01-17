@@ -27,6 +27,7 @@ from grizzly.testdata.utils import (
     resolve_variable,
     _objectify,
     transform,
+    parse_timespan,
 )
 from grizzly.testdata.variables import AtomicCsvRow, AtomicIntegerIncrementer, AtomicMessageQueue, AtomicServiceBus
 from grizzly_extras.async_message import AsyncMessageResponse
@@ -630,3 +631,25 @@ def test_transform(behave_context: Context, noop_zmq: Callable[[str], None], cle
         caplog.clear()
     finally:
         cleanup()
+
+
+def test_parse_timespan() -> None:
+    assert parse_timespan('133') == {'days': 133}
+    assert parse_timespan('-133') == {'days': -133}
+
+    with pytest.raises(ValueError) as ve:
+        parse_timespan('10P44m')
+    assert 'invalid time span format' in str(ve)
+
+    with pytest.raises(ValueError) as ve:
+        parse_timespan('{}')
+    assert 'invalid time span format' in str(ve)
+
+    assert parse_timespan('1Y-2M3D-4h5m-6s') == {
+        'years': 1,
+        'months': -2,
+        'days': 3,
+        'hours': -4,
+        'minutes': 5,
+        'seconds': -6,
+    }
