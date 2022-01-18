@@ -86,8 +86,6 @@ def transform(data: Dict[str, Any], objectify: Optional[bool] = True) -> Dict[st
                 try:
                     value = variable_instance[variable_name]
                 except Exception as e:
-                    import traceback
-                    traceback.print_exc()
                     exception = e
                     logger.error(str(e), exc_info=grizzly.state.verbose)
                 finally:

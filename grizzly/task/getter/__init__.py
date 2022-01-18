@@ -44,8 +44,8 @@ class GetterOfTask(GrizzlyScenarioBase):
                 exception=exception,
             )
 
-        if exception is not None and parent.user._scenario.stop_on_failure:
-            raise StopUser()
+        if exception is not None and parent.user._scenario.failure_exception is not None:
+            raise parent.user._scenario.failure_exception()
 
 class getterof:
     available: Dict[str, Type[GetterOfTask]] = {}

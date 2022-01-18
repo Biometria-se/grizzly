@@ -6,6 +6,7 @@ import pytest
 from pytest_mock import mocker, MockerFixture  # pylint: disable=unused-import
 
 from locust.exception import StopUser
+from grizzly.exceptions import RestartScenario
 from grizzly.types import RequestMethod
 from grizzly.task import UntilRequestTask, RequestTask
 from grizzly_extras.transformer import TransformerContentType, transformer
@@ -152,6 +153,7 @@ class TestUntilRequestTask:
             ],
         )
 
+        request.scenario.failure_exception = StopUser
         task = UntilRequestTask(request, '$.`this`[?status="ready"] | wait=10, retries=2')
         implementation = task.implementation()
 
@@ -181,7 +183,8 @@ class TestUntilRequestTask:
             ],
         )
 
-        with pytest.raises(StopUser):
+        request.scenario.failure_exception = RestartScenario
+        with pytest.raises(RestartScenario):
             implementation(tasks)
 
         assert fire_spy.call_count == 4

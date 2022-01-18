@@ -23,6 +23,7 @@ from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContextScenario
 from grizzly.task import RequestTask
 from grizzly.testdata.utils import transform
+from grizzly.exceptions import RestartScenario
 
 from ..fixtures import grizzly_context, request_task  # pylint: disable=unused-import
 from ..helpers import RequestSilentFailureEvent, RequestEvent, ResultSuccess
@@ -650,10 +651,16 @@ class TestRestApiUser:
 
         mock_client_post(status_code=400)
 
-        scenario.stop_on_failure = True
+        scenario.failure_exception = StopUser
 
         # status_code != 200, stop_on_failure = True
         with pytest.raises(StopUser):
+            user.request(request)
+
+        scenario.failure_exception = RestartScenario
+
+        # status_code != 200, stop_on_failure = True
+        with pytest.raises(RestartScenario):
             user.request(request)
 
         request.response.add_status_code(400)
@@ -662,7 +669,7 @@ class TestRestApiUser:
             user.request(request)
 
         request.response.add_status_code(-400)
-        scenario.stop_on_failure = False
+        scenario.failure_exception = None
 
         # status_code != 200, stop_on_failure = False
         metadata, payload = user.request(request)

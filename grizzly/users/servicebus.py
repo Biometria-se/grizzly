@@ -203,7 +203,7 @@ class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
         with self.async_action(task, request, description) as metadata:
             metadata.update({
                 'meta': True,
-                'abort': True,
+                'failure_exception': StopUser,
             })
 
             if 'queue' not in arguments and 'topic' not in arguments:
@@ -229,7 +229,7 @@ class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
             if task.method.direction == RequestDirection.TO and arguments.get('expression', None) is not None:
                 raise RuntimeError('argument expression is only allowed when receiving messages')
 
-            metadata['abort'] = task.scenario.stop_on_failure
+            metadata['failure_exception'] = task.scenario.failure_exception
 
         self.hellos.add(description)
 
@@ -241,7 +241,7 @@ class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
         connection = 'sender' if task.method.direction == RequestDirection.TO else 'receiver'
         request['context'].update({'connection': connection})
         action: Dict[str, Any] = {
-            'abort': False,
+            'failure_exception': None,
             'meta': False,
             'metadata': None,
             'payload': None,
@@ -319,13 +319,17 @@ class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
             'payload': action['payload'],
         }
 
-        if exception is not None and not is_meta and task.scenario.stop_on_failure:
-            try:
-                self.zmq_client.disconnect(self.zmq_url)
-            except:
-                pass
+        if exception is not None and not is_meta:
+            if isinstance(exception, NotImplementedError) or isinstance(task.scenario.failure_exception, StopUser):
+                try:
+                    self.zmq_client.disconnect(self.zmq_url)
+                except:
+                    pass
 
-            raise StopUser()
+            if isinstance(exception, NotImplementedError):
+                raise StopUser()
+            elif task.scenario.failure_exception is not None:
+                raise task.scenario.failure_exception()
 
     def request(self, request: RequestTask) -> GrizzlyResponse:
         request_name, endpoint, payload = self.render(request)
@@ -344,12 +348,12 @@ class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
         }
 
         with self.async_action(request, am_request, name) as action:
-            action['abort'] = True
+            action['failure_exception'] = StopUser
 
             if request.method not in [RequestMethod.SEND, RequestMethod.RECEIVE]:
                 raise NotImplementedError(f'{self.__class__.__name__}: no implementation for {request.method.name} requests')
 
-            action['abort'] = request.scenario.stop_on_failure
+            action['failure_exception'] = request.scenario.failure_exception
 
         return action['metadata'], action['payload']
 

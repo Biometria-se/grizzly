@@ -12,6 +12,7 @@ from grizzly.environment import (
     before_step,
 )
 from grizzly.context import GrizzlyContext
+from locust.exception import StopUser
 
 def before_scenario(
     context: Context, scenario: Scenario, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]
@@ -27,4 +28,4 @@ def before_scenario(
     grizzly_before_scenario(context, scenario, *args, **kwargs)
 
     grizzly = cast(GrizzlyContext, context.grizzly)
-    grizzly.scenario.stop_on_failure = True
+    grizzly.scenario.failure_exception = StopUser

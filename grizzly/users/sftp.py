@@ -165,7 +165,10 @@ class SftpUser(ResponseHandler, RequestLogger, ContextVariables, FileRequests):
                 exception=exception,
             )
 
-            if exception is not None and request.scenario.stop_on_failure:
-                raise StopUser()
+            if exception is not None:
+                if isinstance(exception, NotImplementedError):
+                    raise StopUser()
+                elif request.scenario.failure_exception is not None:
+                    raise request.scenario.failure_exception()
 
             return None, payload

@@ -16,3 +16,6 @@ class TransformerLocustError(StopUser):
     def __init__(self, message: Optional[str] = None) -> None:
         self.message = message
 
+
+class RestartScenario(Exception):
+    pass

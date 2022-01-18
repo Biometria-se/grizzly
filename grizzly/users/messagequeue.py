@@ -215,7 +215,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
         def wrap_action(am_request: AsyncMessageRequest, name: str) -> Generator[Dict[str, Any], None, None]:
             exception: Optional[Exception] = None
             action: Dict[str, Any] = {
-                'abort': False,
+                'failure_exception': None,
                 'meta': False,
                 'payload': None,
                 'metadata': None,
@@ -289,20 +289,20 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
                         exception=exception,
                     )
 
-                abort = action.get('abort', False)
+                failure_exception = action.get('failure_exception', None)
 
                 action = {
                     'payload': action['payload'],
                     'metadata': action['metadata'],
                 }
 
-                if exception is not None and abort:
+                if exception is not None and failure_exception is not None:
                     try:
                         self.zmq_client.disconnect(self.zmq_url)
                     except:
                         pass
 
-                    raise StopUser()
+                    raise failure_exception()
 
         name = f'{request.scenario.identifier} {request_name}'
 
@@ -314,7 +314,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
             }, self.am_context['connection']) as action:
                 action.update({
                     'meta': True,
-                    'abort': True,
+                    'failure_exception': request.scenario.failure_exception,
                 })
                 self.zmq_client = self.zmq_context.socket(zmq.REQ)
                 self.zmq_client.connect(self.zmq_url)
@@ -332,7 +332,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
             am_request['context']['content_type'] = request.response.content_type.name.lower()
 
         with wrap_action(am_request, name) as action:
-            action['abort'] = True
+            action['failure_exception'] = StopUser
             # Parse the endpoint to validate queue name / expression parts
             try:
                 arguments = parse_arguments(endpoint, ':')
@@ -349,6 +349,6 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
             if 'expression' in arguments and request.method.direction != RequestDirection.FROM:
                 raise RuntimeError('argument "expression" is not allowed when sending to an endpoint')
 
-            action['abort'] = request.scenario.stop_on_failure
+            action['failure_exception'] = request.scenario.failure_exception
 
         return action['metadata'], action['payload']

@@ -8,6 +8,8 @@ from urllib.parse import urlparse
 
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import
 from grizzly.context import GrizzlyContext
+from grizzly.exceptions import RestartScenario
+from locust.exception import StopUser
 
 from ...fixtures import behave_context, locust_environment  # pylint: disable=unused-import
 
@@ -86,18 +88,28 @@ def test_step_setup_save_statistics(behave_context: Context) -> None:
 
 
 @pytest.mark.usefixtures('behave_context')
-def test_step_setup_enable_stop_on_failure(behave_context: Context) -> None:
-    step_impl = step_setup_enable_stop_on_failure
-
+def test_step_setup_stop_user_on_failure(behave_context: Context) -> None:
     grizzly = cast(GrizzlyContext, behave_context.grizzly)
 
     assert not behave_context.config.stop
-    assert not grizzly.scenario.stop_on_failure
+    assert grizzly.scenario.failure_exception is None
 
-    step_impl(behave_context)
+    step_setup_stop_user_on_failure(behave_context)
 
     assert behave_context.config.stop
-    assert grizzly.scenario.stop_on_failure
+    assert grizzly.scenario.failure_exception == StopUser
+
+@pytest.mark.usefixtures('behave_context')
+def test_step_setup_restart_scenario_on_failure(behave_context: Context) -> None:
+    grizzly = cast(GrizzlyContext, behave_context.grizzly)
+
+    assert not behave_context.config.stop
+    assert grizzly.scenario.failure_exception is None
+
+    step_setup_restart_scenario_on_failure(behave_context)
+
+    assert not behave_context.config.stop
+    assert grizzly.scenario.failure_exception == RestartScenario
 
 
 @pytest.mark.usefixtures('behave_context')

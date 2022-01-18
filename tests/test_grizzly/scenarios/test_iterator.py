@@ -167,3 +167,7 @@ class TestIterationScenario:
         assert user.context_variables['AtomicIntegerIncrementer'].messageID == 1337
         assert user.context_variables['AtomicCsvRow'].test.header1 == 'value1'
         assert user.context_variables['AtomicCsvRow'].test.header2 == 'value2'
+
+    @pytest.mark.usefixtures('grizzly_context')
+    def test_run(self, grizzly_context: Callable, mocker: MockerFixture) -> None:
+        assert 0, 'implement test case'

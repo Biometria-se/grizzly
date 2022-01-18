@@ -19,6 +19,7 @@ from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContextScenario
 from grizzly.task import RequestTask
 from grizzly.testdata.utils import transform
+from grizzly.exceptions import RestartScenario
 
 from ..fixtures import grizzly_context, request_task  # pylint: disable=unused-import
 from ..helpers import ResultFailure, RequestEvent, RequestSilentFailureEvent
@@ -173,9 +174,14 @@ class TestBlobStorageUser:
         dummy_client.set_blobclient(dummy_blobclient)
         environment.events.request = RequestSilentFailureEvent()
 
-        request_error.scenario.stop_on_failure = False
-        user.request(request_error)
+        request_error.scenario.failure_exception = None
+        with pytest.raises(StopUser):
+            user.request(request_error)
 
-        request_error.scenario.stop_on_failure = True
+        request_error.scenario.failure_exception = StopUser
+        with pytest.raises(StopUser):
+            user.request(request_error)
+
+        request_error.scenario.failure_exception = RestartScenario
         with pytest.raises(StopUser):
             user.request(request_error)
