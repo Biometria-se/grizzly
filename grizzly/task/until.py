@@ -23,7 +23,7 @@ from locust.exception import StopUser
 from grizzly_extras.transformer import Transformer, TransformerContentType, transformer
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments, split_value
 
-from ..context import GrizzlyContext, GrizzlyTask, GrizzlyTasksBase
+from ..context import GrizzlyContext, GrizzlyTask, GrizzlyScenarioBase
 from .request import RequestTask
 
 @dataclass
@@ -60,16 +60,15 @@ class UntilRequestTask(GrizzlyTask):
             self.retries = int(arguments.get('retries', self.retries))
             self.wait = float(arguments.get('wait', self.wait))
 
-    def implementation(self) -> Callable[[GrizzlyTasksBase], Any]:
+    def implementation(self) -> Callable[[GrizzlyScenarioBase], Any]:
         if self.transform is None:
             raise TypeError(f'could not find a transformer for {self.request.response.content_type.name}')
 
         transform = cast(Transformer, self.transform)
 
-        def _implementation(parent: GrizzlyTasksBase) -> Any:
+        def _implementation(parent: GrizzlyScenarioBase) -> Any:
             if '{{' in self.condition and '}}' in self.condition:
-                grizzly = GrizzlyContext()
-                condition_rendered = Template(self.condition).render(**parent.user.context_variables, **grizzly.state.variables)
+                condition_rendered = Template(self.condition).render(**parent.user._context['variables'])
             else:
                 condition_rendered = self.condition
 

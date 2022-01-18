@@ -13,7 +13,7 @@ from behave.model_core import Status
 from grizzly.utils import ModuleLoader
 from grizzly.utils import (
     catch,
-    create_task_class_type,
+    create_scenario_class_type,
     create_user_class_type,
     fail_direct,
     in_correct_section,
@@ -23,7 +23,7 @@ from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 from grizzly.task import RequestTask
 from grizzly.users import RestApiUser
-from grizzly.tasks import IteratorTasks
+from grizzly.scenarios import IteratorScenario
 
 # pylint: disable=unused-import
 from .fixtures import (
@@ -348,26 +348,26 @@ def test_create_user_class_type(locust_environment: Environment) -> None:
         scenario.user.class_name = 'DoNotExistInGrizzlyUsersUser'
         create_user_class_type(scenario)
 
-def test_create_task_class_type() -> None:
+def test_create_scenario_class_type() -> None:
     scenario = GrizzlyContextScenario()
     scenario.name = 'A scenario description'
 
     with pytest.raises(ModuleNotFoundError) as mnfe:
-        create_task_class_type('custom.tasks.CustomTasks', scenario)
+        create_scenario_class_type('custom.tasks.CustomTasks', scenario)
     assert "No module named 'custom'" in str(mnfe)
 
-    task_class_type_1 = create_task_class_type('grizzly.tasks.IteratorTasks', scenario)
+    task_class_type_1 = create_scenario_class_type('grizzly.scenarios.IteratorScenario', scenario)
 
-    assert issubclass(task_class_type_1, (IteratorTasks, TaskSet))
-    assert task_class_type_1.__name__ == 'IteratorTasks_25867809'
+    assert issubclass(task_class_type_1, (IteratorScenario, TaskSet))
+    assert task_class_type_1.__name__ == 'IteratorScenario_25867809'
     assert task_class_type_1.__module__ == 'locust.user.sequential_taskset'
     task_class_type_1.add_scenario_task(RequestTask(RequestMethod.POST, name='test-request', endpoint='/api/test'))
 
     scenario = GrizzlyContextScenario()
     scenario.name = 'TestTestTest'
-    task_class_type_2 = create_task_class_type('IteratorTasks', scenario)
-    assert issubclass(task_class_type_2, (IteratorTasks, TaskSet))
-    assert task_class_type_2.__name__ == 'IteratorTasks_cf4fa8aa'
+    task_class_type_2 = create_scenario_class_type('IteratorScenario', scenario)
+    assert issubclass(task_class_type_2, (IteratorScenario, TaskSet))
+    assert task_class_type_2.__name__ == 'IteratorScenario_cf4fa8aa'
     assert task_class_type_2.__module__ == 'locust.user.sequential_taskset'
 
     assert task_class_type_1.tasks != task_class_type_2.tasks
@@ -375,7 +375,7 @@ def test_create_task_class_type() -> None:
     with pytest.raises(AttributeError):
         scenario = GrizzlyContextScenario()
         scenario.name = 'A scenario description'
-        create_task_class_type('DoesNotExistInGrizzlyScenariosModel', scenario)
+        create_scenario_class_type('DoesNotExistInGrizzlyScenariosModel', scenario)
 
 
 def test_in_correct_section() -> None:

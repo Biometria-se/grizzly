@@ -4,9 +4,9 @@ from locust import task
 from locust.user.users import User
 from locust.exception import StopUser
 
-from . import GrizzlyTasks
+from . import GrizzlyScenario
 
-class IteratorTasks(GrizzlyTasks):
+class IteratorScenario(GrizzlyScenario):
     def __init__(self, parent: Type[User]) -> None:
         super().__init__(parent=parent)
 

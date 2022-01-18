@@ -10,14 +10,14 @@ from dataclasses import dataclass
 
 from jinja2 import Template
 
-from ..context import GrizzlyTask, GrizzlyTasksBase
+from ..context import GrizzlyTask, GrizzlyScenarioBase
 
 @dataclass
 class PrintTask(GrizzlyTask):
     message: str
 
-    def implementation(self) -> Callable[[GrizzlyTasksBase], Any]:
-        def _implementation(parent: GrizzlyTasksBase) -> Any:
+    def implementation(self) -> Callable[[GrizzlyScenarioBase], Any]:
+        def _implementation(parent: GrizzlyScenarioBase) -> Any:
             message = Template(self.message).render(**parent.user._context['variables'])
             parent.logger.info(message)
 

@@ -8,7 +8,7 @@ from locust import task
 from grizzly.users.meta import ContextVariables
 from grizzly.types import GrizzlyResponse
 from grizzly.task import RequestTask
-from grizzly.tasks import GrizzlyTasks
+from grizzly.scenarios import GrizzlyScenario
 
 
 class RequestCalled(Exception):
@@ -39,7 +39,7 @@ class TestUser(ContextVariables):
         raise RequestCalled(request)
 
 
-class TestTaskSet(GrizzlyTasks):
+class TestTaskSet(GrizzlyScenario):
     __test__ = False
 
     @task

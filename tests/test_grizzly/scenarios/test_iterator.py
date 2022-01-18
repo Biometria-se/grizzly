@@ -9,7 +9,7 @@ from pytest_mock.plugin import MockerFixture
 from locust.user.task import TaskSet
 from locust.exception import StopUser
 
-from grizzly.tasks.iterator import IteratorTasks
+from grizzly.scenarios.iterator import IteratorScenario
 from grizzly.testdata.communication import TestdataConsumer
 from grizzly.testdata.utils import transform
 from grizzly.task import WaitTask, PrintTask
@@ -18,7 +18,7 @@ from ..fixtures import grizzly_context, request_task  # pylint: disable=unused-i
 from ..helpers import RequestCalled
 
 
-class TestIterationTasks:
+class TestIterationScenario:
     @pytest.mark.usefixtures('grizzly_context')
     def test_initialize(self, grizzly_context: Callable) -> None:
         _, _, task, _ = grizzly_context()
@@ -26,10 +26,10 @@ class TestIterationTasks:
 
     @pytest.mark.usefixtures('grizzly_context')
     def test_add_scenario_task(self, grizzly_context: Callable, mocker: MockerFixture) -> None:
-        _, user, task, [_, _, request] = grizzly_context(task_type=IteratorTasks)
+        _, user, task, [_, _, request] = grizzly_context(task_type=IteratorScenario)
         request.endpoint = '/api/v1/test'
-        IteratorTasks.add_scenario_task(request)
-        assert isinstance(task, IteratorTasks)
+        IteratorScenario.add_scenario_task(request)
+        assert isinstance(task, IteratorScenario)
         assert len(task.tasks) == 2
 
         task_method = task.tasks[-1]
@@ -49,14 +49,14 @@ class TestIterationTasks:
             )
 
         generate_mocked_wait(1.5)
-        IteratorTasks.add_scenario_task(WaitTask(time=1.5))
+        IteratorScenario.add_scenario_task(WaitTask(time=1.5))
         assert len(task.tasks) == 3
 
         task_method = task.tasks[-1]
         assert callable(task_method)
         task_method(task)
 
-        IteratorTasks.add_scenario_task(PrintTask(message='hello {{ world }}'))
+        IteratorScenario.add_scenario_task(PrintTask(message='hello {{ world }}'))
         assert len(task.tasks) == 4
 
         logger_spy = mocker.spy(task.logger, 'info')
@@ -80,7 +80,7 @@ class TestIterationTasks:
     @pytest.mark.usefixtures('grizzly_context')
     def test_on_event_handlers(self, grizzly_context: Callable, mocker: MockerFixture) -> None:
         try:
-            _, _, task, _ = grizzly_context(task_type=IteratorTasks)
+            _, _, task, _ = grizzly_context(task_type=IteratorScenario)
 
             def TestdataConsumer__init__(self: 'TestdataConsumer', address: str) -> None:
                 pass
@@ -117,7 +117,7 @@ class TestIterationTasks:
 
     @pytest.mark.usefixtures('grizzly_context')
     def test_iterator(self, grizzly_context: Callable, mocker: MockerFixture) -> None:
-        _, user, task, _ = grizzly_context(task_type=IteratorTasks)
+        _, user, task, _ = grizzly_context(task_type=IteratorScenario)
 
         assert task is not None
 

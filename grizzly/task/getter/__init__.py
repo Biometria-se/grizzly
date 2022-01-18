@@ -4,10 +4,10 @@ from time import perf_counter as time
 
 from locust.exception import StopUser
 
-from ...context import GrizzlyContext, GrizzlyTasksBase
+from ...context import GrizzlyContext, GrizzlyScenarioBase
 
 
-class GetterOfTask(GrizzlyTasksBase):
+class GetterOfTask(GrizzlyScenarioBase):
     endpoint: str
     variable: str
 
@@ -21,7 +21,7 @@ class GetterOfTask(GrizzlyTasksBase):
             raise ValueError(f'{self.__class__.__name__}: variable {self.variable} has not been initialized')
 
     @contextmanager
-    def get(self, parent: GrizzlyTasksBase) -> Generator[Dict[str, Any], None, None]:
+    def get(self, parent: GrizzlyScenarioBase) -> Generator[Dict[str, Any], None, None]:
         exception: Optional[Exception] = None
         response_length = 0
         start_time = time()

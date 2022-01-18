@@ -31,7 +31,7 @@ from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 from grizzly.task import PrintTask, RequestTask, WaitTask
 from grizzly.users import RestApiUser, MessageQueueUser
-from grizzly.tasks import IteratorTasks
+from grizzly.scenarios import IteratorScenario
 from grizzly.testdata.variables import AtomicMessageQueue, AtomicIntegerIncrementer
 from grizzly_extras.async_message import AsyncMessageResponse
 
@@ -186,11 +186,11 @@ def test_setup_locust_scenarios(behave_context: Context) -> None:
     assert issubclass(user_class, (RestApiUser, ))
     assert len(user_class.tasks) == 1
     assert user_class.host == 'https://test.example.org'
-    assert grizzly.scenario.name.startswith('IteratorTasks')
+    assert grizzly.scenario.name.startswith('IteratorScenario')
 
     user_tasks = user_class.tasks[-1]
-    assert issubclass(user_tasks, (IteratorTasks, ))
-    assert len(user_tasks.tasks) == 3 + 1  # IteratorTasks has an internal task other than what we've added
+    assert issubclass(user_tasks, (IteratorScenario, ))
+    assert len(user_tasks.tasks) == 3 + 1  # IteratorScenario has an internal task other than what we've added
 
     if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
         grizzly.scenario.user.class_name = 'MessageQueueUser'
@@ -204,11 +204,11 @@ def test_setup_locust_scenarios(behave_context: Context) -> None:
         assert issubclass(user_class, (MessageQueueUser, ))
         assert len(user_class.tasks) == 1
         assert user_class.host == 'https://test.example.org'
-        assert grizzly.scenario.name.startswith('IteratorTasks')
+        assert grizzly.scenario.name.startswith('IteratorScenario')
 
         user_tasks = user_class.tasks[-1]
-        assert issubclass(user_tasks, (IteratorTasks, ))
-        assert len(user_tasks.tasks) == 3 + 1  # IteratorTasks has an internal task other than what we've added
+        assert issubclass(user_tasks, (IteratorScenario, ))
+        assert len(user_tasks.tasks) == 3 + 1  # IteratorScenario has an internal task other than what we've added
 
 
 @pytest.mark.usefixtures('behave_context')

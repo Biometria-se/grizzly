@@ -25,7 +25,7 @@ from dateutil.relativedelta import relativedelta
 from tzlocal import get_localzone as get_local_timezone
 from grizzly_extras.arguments import get_unsupported_arguments, split_value, parse_arguments
 
-from ..context import GrizzlyTask, GrizzlyTasksBase
+from ..context import GrizzlyTask, GrizzlyScenarioBase
 from ..utils import parse_timespan
 
 
@@ -47,8 +47,8 @@ class DateTask(GrizzlyTask):
         else:
             raise ValueError('no arguments specified')
 
-    def implementation(self) -> Callable[[GrizzlyTasksBase], Any]:
-        def _implementation(parent: GrizzlyTasksBase) -> Any:
+    def implementation(self) -> Callable[[GrizzlyScenarioBase], Any]:
+        def _implementation(parent: GrizzlyScenarioBase) -> Any:
             value_rendered = Template(self.value).render(**parent.user._context['variables'], datetime=datetime)
 
             arguments_rendered: Dict[str, str] = {}
