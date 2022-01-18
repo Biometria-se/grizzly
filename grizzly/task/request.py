@@ -21,7 +21,7 @@ from grizzly_extras.transformer import TransformerContentType
 from grizzly_extras.arguments import parse_arguments, split_value, unquote
 
 from ..types import HandlerType, RequestMethod
-from ..context import GrizzlyTask, GrizzlyTasksBase
+from ..context import GrizzlyTask, GrizzlyScenarioBase
 
 @dataclass(unsafe_hash=True)
 class RequestTaskHandlers:
@@ -84,8 +84,8 @@ class RequestTask(GrizzlyTask):
 
         self.response.content_type = content_type
 
-    def implementation(self) -> Callable[[GrizzlyTasksBase], Any]:
-        def _implementation(parent: GrizzlyTasksBase) -> Any:
+    def implementation(self) -> Callable[[GrizzlyScenarioBase], Any]:
+        def _implementation(parent: GrizzlyScenarioBase) -> Any:
             return parent.user.request(self)
 
         return _implementation

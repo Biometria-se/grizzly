@@ -127,11 +127,11 @@ def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Opt
     })
 
 
-def create_task_class_type(base_type: str, scenario: GrizzlyContextScenario) -> Type[TaskSet]:
+def create_scenario_class_type(base_type: str, scenario: GrizzlyContextScenario) -> Type[TaskSet]:
     if base_type.count('.') > 0:
         module, base_type = base_type.rsplit('.', 1)
     else:
-        module = 'grizzly.tasks'
+        module = 'grizzly.scenarios'
 
     base_task_class_type = cast(Type[TaskSet], ModuleLoader[TaskSet].load(module, base_type))
     task_class_name = f'{base_type}_{scenario.identifier}'

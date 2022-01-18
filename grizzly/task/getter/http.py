@@ -13,13 +13,13 @@ import requests
 from jinja2 import Template
 
 from . import getterof, GetterOfTask
-from ...context import GrizzlyTasksBase
+from ...context import GrizzlyScenarioBase
 
 
 @getterof('http', 'https')
 class HttpGetTask(GetterOfTask):
-    def implementation(self) -> Callable[[GrizzlyTasksBase], Any]:
-        def _implementation(parent: GrizzlyTasksBase) -> Any:
+    def implementation(self) -> Callable[[GrizzlyScenarioBase], Any]:
+        def _implementation(parent: GrizzlyScenarioBase) -> Any:
             with self.get(parent) as meta:
                 url = Template(self.endpoint).render(**parent.user._context['variables'])
 

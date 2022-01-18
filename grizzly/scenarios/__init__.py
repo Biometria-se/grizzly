@@ -6,13 +6,13 @@ from os import environ
 from locust.user.users import User
 from locust.exception import StopUser
 
-from ..context import GrizzlyContext, GrizzlyTasksBase, GrizzlyTask
+from ..context import GrizzlyContext, GrizzlyScenarioBase, GrizzlyTask
 from ..testdata.communication import TestdataConsumer
 
 
-class GrizzlyTasks(GrizzlyTasksBase):
+class GrizzlyScenario(GrizzlyScenarioBase):
     consumer: TestdataConsumer
-    tasks: List[Callable[[GrizzlyTasksBase], None]] = []
+    tasks: List[Callable[[GrizzlyScenarioBase], None]] = []
     logger: logging.Logger = logging.getLogger(__name__)
     grizzly: GrizzlyContext
     wait_time: Callable[[float, float], float]
@@ -37,9 +37,9 @@ class GrizzlyTasks(GrizzlyTasksBase):
         self.logger.debug(f'stopping consumer for {self.__class__.__name__}')
         self.consumer.stop()
 
-from .iterator import IteratorTasks
+from .iterator import IteratorScenario
 
 __all__ = [
-    'GrizzlyTasks',
-    'IteratorTasks',
+    'GrizzlyScenario',
+    'IteratorScenario',
 ]

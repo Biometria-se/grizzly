@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 # @TODO: these two classes is needed here to avoid circular imports
-class GrizzlyTasksBase(SequentialTaskSet):
+class GrizzlyScenarioBase(SequentialTaskSet):
     pass
 
 
@@ -27,7 +27,7 @@ class GrizzlyTasksBase(SequentialTaskSet):
 class GrizzlyTask(metaclass=ABCMeta):
     scenario: 'GrizzlyContextScenario' = field(init=False, repr=False)
 
-    def implementation(self) -> Callable[[GrizzlyTasksBase], Any]:
+    def implementation(self) -> Callable[[GrizzlyScenarioBase], Any]:
         raise NotImplementedError(f'{self.__class__.__name__} has not implemented "implementation"')
 
 

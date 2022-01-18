@@ -32,7 +32,7 @@ from .types import TestdataType
 from .context import GrizzlyContext
 from .task import RequestTask
 
-from .utils import create_task_class_type, create_user_class_type
+from .utils import create_scenario_class_type, create_user_class_type
 
 __all__: List[str] = []
 
@@ -102,7 +102,7 @@ def setup_locust_scenarios(context: GrizzlyContext) -> Tuple[List[User], List[Re
 
         external_dependencies.update(user_class_type.__dependencies__)
 
-        scenario_type = create_task_class_type('IteratorTasks', scenario)
+        scenario_type = create_scenario_class_type('IteratorScenario', scenario)
         scenario.name = scenario_type.__name__
         for task in scenario.tasks:
             scenario_type.add_scenario_task(task)
