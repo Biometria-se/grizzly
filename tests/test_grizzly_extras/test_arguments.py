@@ -108,3 +108,35 @@ def test_parse_arguments(separator: str) -> None:
         'url': f'http://www.example.com?query_string{separator}value',
         'argument': 'False',
     }
+
+    arguments = parse_arguments(f'value1{separator}"hello, world!, asdf", value2{separator}"foo, bar", value3{separator}"true, false, asdf"', separator)
+    assert arguments == {
+        'value1': 'hello, world!, asdf',
+        'value2': 'foo, bar',
+        'value3': 'true, false, asdf',
+    }
+
+    arguments = parse_arguments((
+        f"queue{separator}INCOMING.MESSAGES, expression{separator}'//tag1/tag2/tag3[starts-with(text(), \"Prefix{{{{ tag3_value }}}}\") "
+        "and //tag1/tag2/tag4[text() < 13]]'"
+    ), separator)
+    assert arguments == {
+        'queue': 'INCOMING.MESSAGES',
+        'expression': '//tag1/tag2/tag3[starts-with(text(), \"Prefix{{ tag3_value }}\") and //tag1/tag2/tag4[text() < 13]]',
+    }
+
+    arguments = parse_arguments((
+        f"queue{separator}INCOMING.MESSAGES, expression{separator}'//tag1/tag2/tag3[starts-with(text(), \"Prefix{{{{ tag3_value }}}}\") "
+        "and //tag1/tag2/tag4[starts-with(text(), \"{{ tag4_value }}\"]]'"
+    ), separator)
+    assert arguments == {
+        'queue': 'INCOMING.MESSAGES',
+        'expression': '//tag1/tag2/tag3[starts-with(text(), \"Prefix{{ tag3_value }}\") and //tag1/tag2/tag4[starts-with(text(), \"{{ tag4_value }}\"]]',
+    }
+
+    arguments = parse_arguments(f'value1{separator}:, value2{separator}=, value3{separator}%', separator)
+    assert arguments == {
+        'value1': ':',
+        'value2': '=',
+        'value3': '%',
+    }

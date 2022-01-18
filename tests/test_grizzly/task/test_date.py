@@ -90,3 +90,16 @@ class TestDateTask:
         implementation(tasks)
 
         assert tasks.user._context['variables']['date_variable'] == datetime.now().strftime('%Y')
+
+        tasks.user._context['variables'].update({
+            'to_year': '2022',
+            'to_month': '01',
+            'to_day': '18',
+        })
+
+        task = DateTask('date_variable', '{{ to_year }}-{{ to_month }}-{{ to_day }} | format="%Y", offset=-1D')
+        implementation = task.implementation()
+
+        implementation(tasks)
+
+        assert tasks.user._context['variables']['date_variable'] == '2022'
