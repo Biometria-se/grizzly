@@ -166,7 +166,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                         # No messages, that's OK
                         pass
                     elif e.reason == pymqi.CMQC.MQRC_TRUNCATED_MSG_FAILED:
-                        self.logger.warning("_find_message: got MQRC_TRUNCATED_MSG_FAILED while browsing messages")
+                        self.logger.warning('got MQRC_TRUNCATED_MSG_FAILED while browsing messages')
                     else:
                         # Some other error condition.
                         raise AsyncMessageError(str(e))
@@ -251,6 +251,8 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                     try:
                         payload = queue.get(None, md, gmo).decode()
                         response_length = len(payload) if payload is not None else 0
+                        if retries > 0:
+                            self.logger.warning(f'got message after {retries} retries')
                     except pymqi.MQMIError as e:
                         if msg_id_to_fetch is not None:
                             if e.comp == pymqi.CMQC.MQCC_FAILED and e.reason == pymqi.CMQC.MQRC_NO_MSG_AVAILABLE:
@@ -258,7 +260,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                                 do_retry = True
                                 pass
                             elif e.reason == pymqi.CMQC.MQRC_TRUNCATED_MSG_FAILED:
-                                self.logger.warning("_request: got MQRC_TRUNCATED_MSG_FAILED while trying to fetch specific message")
+                                self.logger.warning('got MQRC_TRUNCATED_MSG_FAILED while trying to fetch specific message')
                                 # Concurrency issue, retry
                                 do_retry = True
                             else:
@@ -270,7 +272,6 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
 
                 if do_retry:
                     retries += 1
-                    self.logger.warning(f"_request: failed fetching message, retry #{retries}")
                     sleep(0.5)
                 else:
                     return {
