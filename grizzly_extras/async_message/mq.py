@@ -165,7 +165,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                     if e.comp == pymqi.CMQC.MQCC_FAILED and e.reason == pymqi.CMQC.MQRC_NO_MSG_AVAILABLE:
                         # No messages, that's OK
                         pass
-                    elif e.comp == pymqi.CMQC.MQCC_FAILED and e.reason == pymqi.CMQC.MQRC_TRUNCATED_MSG_FAILED:
+                    elif e.reason == pymqi.CMQC.MQRC_TRUNCATED_MSG_FAILED:
                         self.logger.warning("_find_message: got MQRC_TRUNCATED_MSG_FAILED while browsing messages")
                     else:
                         # Some other error condition.
@@ -214,42 +214,70 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
 
         message_wait = request.get('context', {}).get('message_wait', None) or self.message_wait
 
-        msg_id_to_fetch: Optional[bytearray] = None
-        if action == 'GET' and expression is not None:
-            content_type = self._get_content_type(request)
-            start_time = time()
-            # Browse for any matching message
-            msg_id_to_fetch = self._find_message(queue_name, expression, content_type, message_wait)
-            if msg_id_to_fetch is None:
-                raise AsyncMessageError('no matching message found')
+        retries: int = 0
+        while True:
+            msg_id_to_fetch: Optional[bytearray] = None
+            if action == 'GET' and expression is not None:
+                content_type = self._get_content_type(request)
+                start_time = time()
+                # Browse for any matching message
+                msg_id_to_fetch = self._find_message(queue_name, expression, content_type, message_wait)
+                if msg_id_to_fetch is None:
+                    raise AsyncMessageError('no matching message found')
 
-            elapsed_time = int(time() - start_time)
-            # Adjust message_wait for getting the message
-            if message_wait is not None:
-                message_wait -= elapsed_time
-                self.logger.debug(f'_request: remaining message_wait after finding message: {message_wait}')
+                elapsed_time = int(time() - start_time)
+                # Adjust message_wait for getting the message
+                if message_wait is not None:
+                    message_wait -= elapsed_time
+                    self.logger.debug(f'_request: remaining message_wait after finding message: {message_wait}')
 
-        md = pymqi.MD()
-        with self.queue_context(endpoint=queue_name) as queue:
-            if action == 'PUT':
-                payload = request.get('payload', None)
-                response_length = len(payload) if payload is not None else 0
-                queue.put(payload, md)
-            elif action == 'GET':
-                gmo = self._create_gmo(message_wait)
+            md = pymqi.MD()
+            with self.queue_context(endpoint=queue_name) as queue:
+                do_retry: bool = False
 
-                if msg_id_to_fetch is not None:
-                    gmo.MatchOptions = pymqi.CMQC.MQMO_MATCH_MSG_ID
-                    md.MsgId = msg_id_to_fetch
+                if action == 'PUT':
+                    payload = request.get('payload', None)
+                    response_length = len(payload) if payload is not None else 0
+                    queue.put(payload, md)
+                elif action == 'GET':
 
-                payload = queue.get(None, md, gmo).decode()
-                response_length = len(payload) if payload is not None else 0
+                    if msg_id_to_fetch is not None:
+                        gmo = self._create_gmo()
+                        gmo.MatchOptions = pymqi.CMQC.MQMO_MATCH_MSG_ID
+                        md.MsgId = msg_id_to_fetch
+                    else:
+                        gmo = self._create_gmo(message_wait)
 
-            return {
-                'payload': payload,
-                'metadata': md.get(),
-                'response_length': response_length,
-            }
+                    try:
+                        payload = queue.get(None, md, gmo).decode()
+                        response_length = len(payload) if payload is not None else 0
+                    except pymqi.MQMIError as e:
+                        if msg_id_to_fetch is not None:
+                            if e.comp == pymqi.CMQC.MQCC_FAILED and e.reason == pymqi.CMQC.MQRC_NO_MSG_AVAILABLE:
+                                # Message disappeared, retry
+                                do_retry = True
+                                pass
+                            elif e.reason == pymqi.CMQC.MQRC_TRUNCATED_MSG_FAILED:
+                                self.logger.warning("_request: got MQRC_TRUNCATED_MSG_FAILED while trying to fetch specific message")
+                                # Concurrency issue, retry
+                                do_retry = True
+                            else:
+                                # Some other error condition.
+                                raise AsyncMessageError(str(e))
+                        else:
+                            # Some other error condition.
+                            raise AsyncMessageError(str(e))
+
+                if do_retry:
+                    retries += 1
+                    self.logger.warning(f"_request: failed fetching message, retry #{retries}")
+                    sleep(0.5)
+                else:
+                    return {
+                        'payload': payload,
+                        'metadata': md.get(),
+                        'response_length': response_length,
+                    }
 
     @register(handlers, 'PUT', 'SEND')
     def put(self, request: AsyncMessageRequest) -> AsyncMessageResponse:

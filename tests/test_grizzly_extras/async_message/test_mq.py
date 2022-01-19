@@ -243,6 +243,9 @@ class TestAsyncMessageQueueHandler:
         def mocked_pymqi_get(p: pymqi.Queue, *args: Tuple[Any, ...]) -> bytes:
             return b'test payload'
 
+        def mocked_pymqi_get_that_raises(p: pymqi.Queue, *args: Tuple[Any, ...]) -> bytes:
+            raise pymqi.MQMIError(pymqi.CMQC.MQCC_FAILED, pymqi.CMQC.MQRC_UNEXPECTED_ERROR)
+
         mocker.patch.object(
             pymqi.Queue,
             'put',
@@ -319,6 +322,15 @@ class TestAsyncMessageQueueHandler:
         args, _ = create_gmo_spy.call_args_list[1]
         assert args[0] == 13
 
+        mocker.patch.object(
+            pymqi.Queue,
+            'get',
+            mocked_pymqi_get_that_raises,
+        )
+        with pytest.raises(AsyncMessageError) as mqe:
+            response = handler._request(request)
+
+
     def test__request_with_expressions(self, mocker: MockerFixture) -> None:
         # Mocked representation of an pymqi Queue message
         class DummyMessage(object):
@@ -368,7 +380,8 @@ class TestAsyncMessageQueueHandler:
 
         # Mocked representation of pymqi Queue
         class DummyQueue(object):
-            error_list: List[int] = []
+            # List with (comp, reason) errors to raise, -1 in comp means skip
+            error_list: List[Tuple[int, int]] = []
             def __init__(self) -> None:
                 self.msg_ix = 0
 
@@ -377,7 +390,9 @@ class TestAsyncMessageQueueHandler:
 
             def get(self, foo: Any, md: pymqi.MD, gmo: pymqi.GMO) -> DummyMessage:
                 if len(DummyQueue.error_list) > 0:
-                    raise pymqi.MQMIError(pymqi.CMQC.MQCC_FAILED, DummyQueue.error_list.pop())
+                    next_error = DummyQueue.error_list.pop(0)
+                    if next_error[0] != -1:
+                        raise pymqi.MQMIError(next_error[0], next_error[1])
 
                 if gmo['MatchOptions'] == pymqi.CMQC.MQMO_MATCH_MSG_ID:
                     # Request for getting specific message
@@ -457,17 +472,54 @@ class TestAsyncMessageQueueHandler:
         queue_messages['id1'].payload = tmp_xml
 
         # Queue.get returning unexpected error
-        DummyQueue.error_list.append(pymqi.CMQC.MQRC_SSL_INITIALIZATION_ERROR)
+        DummyQueue.error_list.append((pymqi.CMQC.MQCC_FAILED, pymqi.CMQC.MQRC_SSL_INITIALIZATION_ERROR))
         with pytest.raises(AsyncMessageError) as mqe:
             response = handlers[request['action']](handler, request)
         assert 'MQI Error. Comp: 2, Reason 2393: FAILED: MQRC_SSL_INITIALIZATION_ERROR' in str(mqe)
 
         # Match second message, but fail with MQRC_TRUNCATED_MSG_FAILED at first attempt (yields retry)
-        DummyQueue.error_list.append(pymqi.CMQC.MQRC_TRUNCATED_MSG_FAILED)
+        DummyQueue.error_list.append((pymqi.CMQC.MQCC_WARNING, pymqi.CMQC.MQRC_TRUNCATED_MSG_FAILED))
         request['context']['endpoint'] = "queue:theendpoint, expression: //singer[@id='9']"
         response = handlers[request['action']](handler, request)
         assert response['payload'] == queue_messages['id2'].payload
         assert response['response_length'] == len(queue_messages['id2'].payload)
+        assert len(DummyQueue.error_list) == 0
+
+        # Match second message, but fail with MQRC_TRUNCATED_MSG_FAILED when trying to fetch it by id (yields retry)
+        # No error for _find_message get #1
+        DummyQueue.error_list.append((-1, -1))
+        # No error for _find_message get #2
+        DummyQueue.error_list.append((-1, -1))
+        # Error thrown for _request get with message id --> retries and finally gets the message
+        DummyQueue.error_list.append((pymqi.CMQC.MQCC_WARNING, pymqi.CMQC.MQRC_TRUNCATED_MSG_FAILED))
+        request['context']['endpoint'] = "queue:theendpoint, expression: //singer[@id='9']"
+        response = handlers[request['action']](handler, request)
+        assert response['payload'] == queue_messages['id2'].payload
+        assert response['response_length'] == len(queue_messages['id2'].payload)
+
+        # Match second message, but fail with MQRC_NO_MSG_AVAILABLE when trying to fetch it by id (yields retry)
+        # No error for _find_message get #1
+        DummyQueue.error_list.append((-1, -1))
+        # No error for _find_message get #2
+        DummyQueue.error_list.append((-1, -1))
+        # Error thrown for _request get with message id --> retries and finally gets the message
+        DummyQueue.error_list.append((pymqi.CMQC.MQCC_FAILED, pymqi.CMQC.MQRC_NO_MSG_AVAILABLE))
+        request['context']['endpoint'] = "queue:theendpoint, expression: //singer[@id='9']"
+        response = handlers[request['action']](handler, request)
+        assert response['payload'] == queue_messages['id2'].payload
+        assert response['response_length'] == len(queue_messages['id2'].payload)
+
+        # Match second message, but fail with unexpected error when trying to fetch it by id (throws error)
+        # No error for _find_message get #1
+        DummyQueue.error_list.append((-1, -1))
+        # No error for _find_message get #2
+        DummyQueue.error_list.append((-1, -1))
+        # Error thrown for _request get with message id --> retries and finally gets the message
+        DummyQueue.error_list.append((pymqi.CMQC.MQCC_FAILED, pymqi.CMQC.MQRC_UNEXPECTED_ERROR))
+        request['context']['endpoint'] = "queue:theendpoint, expression: //singer[@id='9']"
+        with pytest.raises(AsyncMessageError) as mqe:
+            response = handlers[request['action']](handler, request)
+        assert 'MQI Error. Comp: 2, Reason 2195: FAILED: MQRC_UNEXPECTED_ERROR' in str(mqe)
 
         # Test Json
 
