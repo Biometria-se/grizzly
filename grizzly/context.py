@@ -1,6 +1,6 @@
 import logging
 
-from typing import Optional, Dict, Any, Tuple, List, Union, Callable
+from typing import Optional, Dict, Any, Tuple, List, Union, Callable, Type
 from os import environ, path
 from hashlib import sha1 as sha1_hash
 from dataclasses import dataclass, field
@@ -117,7 +117,7 @@ class GrizzlyContextScenario:
     wait: GrizzlyContextScenarioWait = field(init=False, repr=False, hash=False, compare=False, default_factory=GrizzlyContextScenarioWait)
     tasks: List[GrizzlyTask] = field(init=False, repr=False, hash=False, compare=False, default_factory=list)
     validation: GrizzlyContextScenarioValidation = field(init=False, hash=False, compare=False, default_factory=GrizzlyContextScenarioValidation)
-    stop_on_failure: bool = field(init=False, default=False)
+    failure_exception: Optional[Type[Exception]] = field(init=False, default=None)
     orphan_templates: List[str] = field(init=False, repr=False, hash=False, compare=False, default_factory=list)
 
     @property

@@ -11,7 +11,7 @@ from ...context import GrizzlyContext, GrizzlyContextScenarioResponseTimePercent
 def step_results_fail_ratio(context: Context, fail_ratio: int) -> None:
     '''Set how many percentages of requests that are allowed to fail before the whole scenario will be set as failed.
 
-    This step cannot be used in combination with `step_setup_enable_stop_on_failure`.
+    This step cannot be used in combination with `step_setup_stop_user_on_failure` or `step_setup_restart_scenario_on_failure`.
 
     Default behavior is not to validate the result for a scenario based on failed requests.
 
@@ -23,7 +23,7 @@ def step_results_fail_ratio(context: Context, fail_ratio: int) -> None:
         fail_ratio (int): percentage of requests that are allowed to fail
     '''
     grizzly = cast(GrizzlyContext, context.grizzly)
-    assert not grizzly.scenario.stop_on_failure, f"cannot use step 'fail ratio is greater than \"{fail_ratio}\" fail scenario' togheter with step 'stop on failure'"
+    assert grizzly.scenario.failure_exception is None, f"cannot use step 'fail ratio is greater than \"{fail_ratio}\" fail scenario' togheter with 'on failure' steps"
     grizzly.scenario.validation.fail_ratio = fail_ratio / 100.0
 
 

@@ -19,7 +19,6 @@ from time import perf_counter as time
 
 from jinja2 import Template
 from gevent import sleep as gsleep
-from locust.exception import StopUser
 from grizzly_extras.transformer import Transformer, TransformerContentType, transformer
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments, split_value
 
@@ -119,7 +118,7 @@ class UntilRequestTask(GrizzlyTask):
                     exception=exception,
                 )
 
-                if exception is not None:
-                    raise StopUser()
+                if exception is not None and self.request.scenario.failure_exception is not None:
+                    raise self.request.scenario.failure_exception()
 
         return _implementation

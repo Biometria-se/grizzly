@@ -242,7 +242,7 @@ class TestServiceBusUser:
         task.source = 'hello'
         task.template = Template(task.source)
         scenario.add_task(task)
-        scenario.stop_on_failure = True
+        scenario.failure_exception = StopUser
         mocker.patch.object(user.zmq_client, 'disconnect', side_effect=[TypeError])
 
         with pytest.raises(StopUser):
@@ -275,7 +275,7 @@ class TestServiceBusUser:
         task.method = RequestMethod.SEND
 
         # unsuccessful response from async-messaged
-        scenario.stop_on_failure = False
+        scenario.failure_exception = None
 
         user.request(task)
         assert say_hello_spy.call_count == 2

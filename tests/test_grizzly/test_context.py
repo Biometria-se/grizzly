@@ -291,7 +291,7 @@ class TestGrizzlyContextScenario:
         assert isinstance(scenario.wait, GrizzlyContextScenarioWait)
         assert scenario.tasks == []
         assert isinstance(scenario.validation, GrizzlyContextScenarioValidation)
-        assert not scenario.stop_on_failure
+        assert not scenario.failure_exception
 
         with pytest.raises(ValueError):
             hash_id = scenario.identifier

@@ -486,7 +486,7 @@ class RestApiUser(ResponseHandler, RequestLogger, ContextVariables, HttpRequests
                 'client_secret': auth_client_context['secret'],
                 'resource': resource,
             },
-            'verify': self._context['verify_certificates'] if 'verify_certificates' in self._context else True,
+            'verify': self._context.get('verify_certificates', None) or True
         }
 
         with self.client.post(
@@ -546,12 +546,9 @@ class RestApiUser(ResponseHandler, RequestLogger, ContextVariables, HttpRequests
 
         url = f'{self.host}{endpoint}'
         name = f'{request.scenario.identifier} {request_name}'
-
-        verify = self._context['verify_certificates'] if 'verify_certificates' in self._context else True
-
         parameters: Dict[str, Any] = {
             'headers': self.headers,
-            'verify': verify,
+            'verify': self._context.get('verify_certificates', None) or True,
         }
 
         if payload is not None:
@@ -589,8 +586,8 @@ class RestApiUser(ResponseHandler, RequestLogger, ContextVariables, HttpRequests
                     message = self.get_error_message(response)
                     response.failure(f'{response.status_code} not in {request.response.status_codes}: {message}')
 
-            if not response._manual_result == True and request.scenario.stop_on_failure:
-                raise StopUser()
+            if not response._manual_result == True and request.scenario.failure_exception is not None:
+                raise request.scenario.failure_exception()
 
             headers = dict(response.headers) if response.headers not in [None, {}] else None
 

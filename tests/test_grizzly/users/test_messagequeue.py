@@ -25,7 +25,7 @@ from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 from grizzly.task import RequestTask
 from grizzly.types import ResponseTarget, GrizzlyDict
 from grizzly.testdata.utils import transform
-from grizzly.exceptions import ResponseHandlerError
+from grizzly.exceptions import ResponseHandlerError, RestartScenario
 from grizzly.steps.helpers import add_save_handler
 from grizzly_extras.async_message import AsyncMessageResponse
 
@@ -211,9 +211,14 @@ class TestMessageQueueUser:
         request = RequestTask(RequestMethod.PUT, name='test-put', endpoint='EXAMPLE.QUEUE')
         scenario = GrizzlyContextScenario()
         scenario.name = 'test'
+        scenario.failure_exception = StopUser
         scenario.add_task(request)
 
         with pytest.raises(StopUser):
+            user.request(request)
+
+        scenario.failure_exception = RestartScenario
+        with pytest.raises(RestartScenario):
             user.request(request)
 
     @pytest.mark.skip(reason='needs real credentials and host etc.')
@@ -247,7 +252,7 @@ class TestMessageQueueUser:
             request = RequestTask(RequestMethod.GET, name='test-get', endpoint=self.real_stuff['endpoint'])
             scenario = GrizzlyContextScenario()
             scenario.name = 'test'
-            scenario.stop_on_failure = True
+            scenario.failure_exception = StopUser
             scenario.add_task(request)
 
             MessageQueueUser.host = f'mq://{self.real_stuff["host"]}/?QueueManager={self.real_stuff["queue_manager"]}&Channel={self.real_stuff["channel"]}'
@@ -303,7 +308,7 @@ class TestMessageQueueUser:
             request.template = Template(request.source)
             scenario = GrizzlyContextScenario()
             scenario.name = 'test'
-            scenario.stop_on_failure = True
+            scenario.failure_exception = StopUser
             scenario.add_task(request)
 
             MessageQueueUser.host = f'mq://{self.real_stuff["host"]}/?QueueManager={self.real_stuff["queue_manager"]}&Channel={self.real_stuff["channel"]}'
@@ -547,22 +552,30 @@ class TestMessageQueueUser:
             ],
         )
 
-        scenario.stop_on_failure = False
+        scenario.failure_exception = None
         user.request(request_error)
 
         assert request_event_spy.call_count == 1
-        _, kwargs = request_event_spy.call_args_list[0]
+        _, kwargs = request_event_spy.call_args_list[-1]
         assert kwargs['exception'] is not None
         request_event_spy.reset_mock()
 
-        scenario.stop_on_failure = True
+        scenario.failure_exception = StopUser
         with pytest.raises(StopUser):
+            user.request(request_error)
+
+        assert request_event_spy.call_count == 1
+        _, kwargs = request_event_spy.call_args_list[-1]
+        assert kwargs['exception'] is not None
+        request_event_spy.reset_mock()
+
+        scenario.failure_exception = RestartScenario
+        with pytest.raises(RestartScenario):
             user.request(request_error)
 
         assert request_event_spy.call_count == 1
         _, kwargs = request_event_spy.call_args_list[0]
         assert kwargs['exception'] is not None
-        request_event_spy.reset_mock()
 
         # Test queue / expression START
         response_event_spy.reset_mock()
@@ -779,7 +792,7 @@ class TestMessageQueueUser:
         assert 'no implementation for POST' in str(kwargs['exception'])
         request_event_spy.reset_mock()
 
-        scenario.stop_on_failure = False
+        scenario.failure_exception = None
         user.request(request_error)
 
         assert request_event_spy.call_count == 1
@@ -787,7 +800,7 @@ class TestMessageQueueUser:
         assert kwargs['exception'] is not None
         request_event_spy.reset_mock()
 
-        scenario.stop_on_failure = True
+        scenario.failure_exception = StopUser
         with pytest.raises(StopUser):
             user.request(request_error)
 
@@ -796,7 +809,16 @@ class TestMessageQueueUser:
         assert kwargs['exception'] is not None
         request_event_spy.reset_mock()
 
-        request.scenario.stop_on_failure = False
+        scenario.failure_exception = RestartScenario
+        with pytest.raises(RestartScenario):
+            user.request(request_error)
+
+        assert request_event_spy.call_count == 1
+        _, kwargs = request_event_spy.call_args_list[-1]
+        assert kwargs['exception'] is not None
+        request_event_spy.reset_mock()
+
+        request.scenario.failure_exception = None
         request.endpoint = 'sub:TEST.QUEUE'
 
         with pytest.raises(StopUser):

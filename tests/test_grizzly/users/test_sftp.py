@@ -16,6 +16,7 @@ from grizzly.clients import SftpClientSession
 from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContextScenario
 from grizzly.task import RequestTask
+from grizzly.exceptions import RestartScenario
 
 from ..fixtures import locust_environment, paramiko_mocker  # pylint: disable=unused-import
 
@@ -108,14 +109,12 @@ class TestSftpUser:
             fire_spy = mocker.spy(user.environment.events.request, 'fire')
             response_event_spy = mocker.spy(user.response_event, 'fire')
 
-            request.scenario.stop_on_failure = False
-            metadata, payload = user.request(request)
-
-            assert metadata is None
-            assert payload == 'test/file.txt'
+            request.scenario.failure_exception = None
+            with pytest.raises(StopUser):
+                user.request(request)
 
             assert fire_spy.call_count == 1
-            _, kwargs = fire_spy.call_args_list[0]
+            _, kwargs = fire_spy.call_args_list[-1]
 
             assert kwargs.get('request_type', None) == 'sftp:SEND'
             assert kwargs.get('name', None) == f'{request.scenario.identifier} test'
@@ -126,12 +125,28 @@ class TestSftpUser:
             assert isinstance(exception, NotImplementedError)
             assert 'SftpUser has not implemented SEND' in str(exception)
 
-            request.scenario.stop_on_failure = True
+            request.scenario.failure_exception = StopUser
             with pytest.raises(StopUser):
                 user.request(request)
 
             assert fire_spy.call_count == 2
-            _, kwargs = fire_spy.call_args_list[1]
+            _, kwargs = fire_spy.call_args_list[-1]
+
+            assert kwargs.get('request_type', None) == 'sftp:SEND'
+            assert kwargs.get('name', None) == f'{request.scenario.identifier} test'
+            assert kwargs.get('response_time', None) == 0
+            assert kwargs.get('response_length', None) == 0
+            assert kwargs.get('context', None) == user._context
+            exception = kwargs.get('exception', None)
+            assert isinstance(exception, NotImplementedError)
+            assert 'SftpUser has not implemented SEND' in str(exception)
+
+            request.scenario.failure_exception = RestartScenario
+            with pytest.raises(StopUser):
+                user.request(request)
+
+            assert fire_spy.call_count == 3
+            _, kwargs = fire_spy.call_args_list[-1]
 
             assert kwargs.get('request_type', None) == 'sftp:SEND'
             assert kwargs.get('name', None) == f'{request.scenario.identifier} test'
@@ -146,7 +161,7 @@ class TestSftpUser:
 
             user.request(request)
 
-            assert response_event_spy.call_count == 3
+            assert response_event_spy.call_count == 4
             _, kwargs = response_event_spy.call_args_list[-1]
             assert kwargs.get('name', None) == f'{request.scenario.identifier} test'
             assert kwargs.get('request', None) is request
@@ -162,10 +177,10 @@ class TestSftpUser:
             request.method = RequestMethod.PUT
             request.template = None
 
-            with pytest.raises(StopUser):
+            with pytest.raises(RestartScenario):
                 user.request(request)
 
-            assert response_event_spy.call_count == 4
+            assert response_event_spy.call_count == 5
             _, kwargs = response_event_spy.call_args_list[-1]
 
             assert kwargs.get('name', None) == f'{request.scenario.identifier} test'
@@ -188,7 +203,7 @@ class TestSftpUser:
 
             user.request(request)
 
-            assert response_event_spy.call_count == 5
+            assert response_event_spy.call_count == 6
             _, kwargs = response_event_spy.call_args_list[-1]
             assert kwargs.get('name', None) == f'{request.scenario.identifier} test'
             assert kwargs.get('request', None) is request
@@ -203,10 +218,12 @@ class TestSftpUser:
 
             mocker.patch.object(user.response_event, 'fire', side_effect=[RuntimeError('error error')])
 
+            request.scenario.failure_exception = StopUser
+
             with pytest.raises(StopUser):
                 user.request(request)
 
-            assert fire_spy.call_count == 6
+            assert fire_spy.call_count == 7
             _, kwargs = fire_spy.call_args_list[-1]
 
             assert kwargs.get('request_type', None) == 'sftp:PUT'
@@ -254,7 +271,7 @@ class TestSftpUser:
             scenario = GrizzlyContextScenario()
             scenario.name = 'test'
             scenario.user.class_name = 'SftpUser'
-            scenario.stop_on_failure = True
+            scenario.failure_exception = StopUser
 
             request.scenario = scenario
 

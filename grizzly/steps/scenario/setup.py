@@ -5,10 +5,12 @@ import parse
 
 from behave.runner import Context
 from behave import register_type, given  # pylint: disable=no-name-in-module
+from locust.exception import StopUser
 
 from ...context import GrizzlyContext
 from ...testdata.utils import create_context_variable, resolve_variable
 from ...utils import merge_dicts
+from ...exceptions import RestartScenario
 
 
 @parse.with_pattern(r'(iteration[s]?)')
@@ -237,16 +239,30 @@ def step_setup_log_all_requests(context: Context) -> None:
     grizzly.scenario.context['log_all_requests'] = True
 
 
-@given(u'stop on first failure')
-def step_setup_enable_stop_on_failure(context: Context) -> None:
-    '''Stop a scenario at first failed request.
+@given(u'stop user on failure')
+def step_setup_stop_user_on_failure(context: Context) -> None:
+    '''Stop user if a request fails.
 
     Default behavior is to continue the scenario if a request fails.
 
     ```gherkin
-    And stop on first failure
+    And stop user on failure
     ```
     '''
     grizzly = cast(GrizzlyContext, context.grizzly)
-    grizzly.scenario.stop_on_failure = True
+    grizzly.scenario.failure_exception = StopUser
     context.config.stop = True
+
+
+@given(u'restart scenario on failure')
+def step_setup_restart_scenario_on_failure(context: Context) -> None:
+    '''Restart scenario, from first task, if a request fails.
+    Default behavior is to continue the scenario if a request fails.
+
+    ```gherkin
+    And restart scenario on failure
+    ```
+    '''
+    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly.scenario.failure_exception = RestartScenario
+    context.config.stop = False
