@@ -856,8 +856,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step_setup_enable_stop_on_failure" class="md-nav__link">
-    step_setup_enable_stop_on_failure
+  <a href="#step_setup_stop_user_on_failure" class="md-nav__link">
+    step_setup_stop_user_on_failure
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step_setup_restart_scenario_on_failure" class="md-nav__link">
+    step_setup_restart_scenario_on_failure
   </a>
   
 </li>
@@ -1105,8 +1112,15 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step_setup_enable_stop_on_failure" class="md-nav__link">
-    step_setup_enable_stop_on_failure
+  <a href="#step_setup_stop_user_on_failure" class="md-nav__link">
+    step_setup_stop_user_on_failure
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step_setup_restart_scenario_on_failure" class="md-nav__link">
+    step_setup_restart_scenario_on_failure
   </a>
   
 </li>
@@ -1272,14 +1286,23 @@ the alias step it would look like the following structure in the context:</p>
 <p>By default only failed requests (and responses) will be logged.</p>
 <div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">log all requests</span>
 </code></pre></div>
-<p><a id="grizzly.steps.scenario.setup.step_setup_enable_stop_on_failure"></a></p>
-<h4 id="step_setup_enable_stop_on_failure">step_setup_enable_stop_on_failure</h4>
-<div class="highlight"><pre><span></span><code><span class="nd">@given</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;stop on first failure&#39;</span><span class="p">)</span>
-<span class="k">def</span> <span class="nf">step_setup_enable_stop_on_failure</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+<p><a id="grizzly.steps.scenario.setup.step_setup_stop_user_on_failure"></a></p>
+<h4 id="step_setup_stop_user_on_failure">step_setup_stop_user_on_failure</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@given</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;stop user on failure&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">step_setup_stop_user_on_failure</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
-<p>Stop a scenario at first failed request.</p>
+<p>Stop user if a request fails.</p>
 <p>Default behavior is to continue the scenario if a request fails.</p>
-<div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">stop on first failure</span>
+<div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">stop user on failure</span>
+</code></pre></div>
+<p><a id="grizzly.steps.scenario.setup.step_setup_restart_scenario_on_failure"></a></p>
+<h4 id="step_setup_restart_scenario_on_failure">step_setup_restart_scenario_on_failure</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@given</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;restart scenario on failure&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">step_setup_restart_scenario_on_failure</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Restart scenario, from first task, if a request fails.
+Default behavior is to continue the scenario if a request fails.</p>
+<div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">restart scenario on failure</span>
 </code></pre></div>
 
               

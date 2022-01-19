@@ -1081,7 +1081,7 @@
 <span class="k">def</span> <span class="nf">step_results_fail_ratio</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">fail_ratio</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
 <p>Set how many percentages of requests that are allowed to fail before the whole scenario will be set as failed.</p>
-<p>This step cannot be used in combination with <code>step_setup_enable_stop_on_failure</code>.</p>
+<p>This step cannot be used in combination with <code>step_setup_stop_user_on_failure</code> or <code>step_setup_restart_scenario_on_failure</code>.</p>
 <p>Default behavior is not to validate the result for a scenario based on failed requests.</p>
 <div class="highlight"><pre><span></span><code><span class="k">When </span><span class="nf">fail ratio is greater than &quot;</span><span class="s">8</span><span class="nf">&quot;% fail scenario</span>
 </code></pre></div>
