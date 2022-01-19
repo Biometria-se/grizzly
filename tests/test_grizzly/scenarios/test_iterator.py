@@ -1,18 +1,22 @@
+import logging
+
 from os import environ
 from typing import Callable, Dict, Any, Optional
 
 import pytest
 
+from _pytest.logging import LogCaptureFixture
 from pytest_mock import mocker  # pylint: disable=unused-import
 from pytest_mock.plugin import MockerFixture
 
-from locust.user.task import TaskSet
-from locust.exception import StopUser
+from locust.user.task import TaskSet, LOCUST_STATE_STOPPING, LOCUST_STATE_RUNNING
+from locust.exception import StopUser, InterruptTaskSet, RescheduleTask, RescheduleTaskImmediately
 
 from grizzly.scenarios.iterator import IteratorScenario
 from grizzly.testdata.communication import TestdataConsumer
 from grizzly.testdata.utils import transform
 from grizzly.task import WaitTask, PrintTask
+from grizzly.exceptions import RestartScenario
 
 from ..fixtures import grizzly_context, request_task  # pylint: disable=unused-import
 from ..helpers import RequestCalled
@@ -169,5 +173,156 @@ class TestIterationScenario:
         assert user.context_variables['AtomicCsvRow'].test.header2 == 'value2'
 
     @pytest.mark.usefixtures('grizzly_context')
-    def test_run(self, grizzly_context: Callable, mocker: MockerFixture) -> None:
-        assert 0, 'implement test case'
+    def test_run(self, grizzly_context: Callable, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
+        _, user, scenario, _ = grizzly_context(task_type=IteratorScenario)
+
+        assert scenario is not None
+
+        on_stop = mocker.patch.object(scenario, 'on_stop', autospec=True)
+        on_start = mocker.patch.object(scenario, 'on_start', side_effect=[InterruptTaskSet(reschedule=False), InterruptTaskSet(reschedule=True)] + [None] * 10)
+
+        schedule_task = mocker.patch.object(scenario, 'schedule_task', autospec=True)
+        get_next_task = mocker.patch.object(scenario, 'get_next_task', autospec=True)
+        wait = mocker.patch.object(scenario, 'wait', autospec=True)
+        user_error = mocker.spy(scenario.user.environment.events.user_error, 'fire')
+
+        with pytest.raises(RescheduleTask):
+            scenario.run()
+
+        assert on_start.call_count == 1
+
+        with pytest.raises(RescheduleTaskImmediately):
+            scenario.run()
+
+        assert on_start.call_count == 2
+
+        user._state = LOCUST_STATE_STOPPING
+
+        with pytest.raises(StopUser):
+            scenario.run()
+
+        user._state = LOCUST_STATE_RUNNING
+
+        assert on_start.call_count == 3
+        assert get_next_task.call_count == 1
+        assert schedule_task.call_count == 1
+
+        user.environment.catch_exceptions = False
+
+        get_next_task = mocker.patch.object(scenario, 'get_next_task', side_effect=[None, RuntimeError])
+        execute_next_task = mocker.patch.object(scenario, 'execute_next_task', side_effect=[RescheduleTaskImmediately])
+
+        with pytest.raises(RuntimeError):
+            scenario.run()
+
+        assert on_start.call_count == 4
+        assert get_next_task.call_count == 2
+        assert schedule_task.call_count == 2
+        assert execute_next_task.call_count == 1
+        assert wait.call_count == 0
+        assert user_error.call_count == 1
+        _, kwargs = user_error.call_args_list[-1]
+        assert kwargs.get('user_instance', None) is scenario
+        assert isinstance(kwargs.get('exception', None), RuntimeError)
+        assert kwargs.get('tb', None) is not None
+
+        get_next_task = mocker.patch.object(scenario, 'get_next_task', side_effect=[None, RuntimeError])
+        execute_next_task = mocker.patch.object(scenario, 'execute_next_task', side_effect=[RescheduleTask])
+
+        with pytest.raises(RuntimeError):
+            scenario.run()
+
+        assert on_start.call_count == 5
+        assert get_next_task.call_count == 2
+        assert schedule_task.call_count == 3
+        assert execute_next_task.call_count == 1
+        assert wait.call_count == 1
+        assert user_error.call_count == 2
+        _, kwargs = user_error.call_args_list[-1]
+        assert kwargs.get('user_instance', None) is scenario
+        assert isinstance(kwargs.get('exception', None), RuntimeError)
+        assert kwargs.get('tb', None) is not None
+
+        get_next_task = mocker.patch.object(scenario, 'get_next_task', side_effect=[None, RuntimeError])
+        execute_next_task = mocker.patch.object(scenario, 'execute_next_task', autospec=True)
+
+        with pytest.raises(RuntimeError):
+            scenario.run()
+
+        assert on_start.call_count == 6
+        assert get_next_task.call_count == 2
+        assert schedule_task.call_count == 4
+        assert execute_next_task.call_count == 1
+        assert wait.call_count == 2
+        assert user_error.call_count == 3
+        _, kwargs = user_error.call_args_list[-1]
+        assert kwargs.get('user_instance', None) is scenario
+        assert isinstance(kwargs.get('exception', None), RuntimeError)
+        assert kwargs.get('tb', None) is not None
+
+        on_stop.reset_mock()
+        wait.reset_mock()
+        schedule_task.reset_mock()
+
+        get_next_task = mocker.patch.object(scenario, 'get_next_task', side_effect=[InterruptTaskSet(reschedule=False), InterruptTaskSet(reschedule=True)])
+        execute_next_task = mocker.patch.object(scenario, 'execute_next_task', autospec=True)
+
+        with pytest.raises(RescheduleTask):
+            scenario.run()
+
+        assert on_start.call_count == 7
+        assert on_stop.call_count == 1
+        assert get_next_task.call_count == 1
+        assert schedule_task.call_count == 0
+        assert execute_next_task.call_count == 0
+        assert wait.call_count == 0
+        assert user_error.call_count == 3
+
+        with pytest.raises(RescheduleTaskImmediately):
+            scenario.run()
+
+        assert on_start.call_count == 8
+        assert on_stop.call_count == 2
+        assert get_next_task.call_count == 2
+        assert schedule_task.call_count == 0
+        assert execute_next_task.call_count == 0
+        assert wait.call_count == 0
+        assert user_error.call_count == 3
+
+        scenario._task_index = 10
+        get_next_task = mocker.patch.object(scenario, 'get_next_task', side_effect=[None, RuntimeError])
+        execute_next_task = mocker.patch.object(scenario, 'execute_next_task', side_effect=[RestartScenario])
+
+        with pytest.raises(RuntimeError):
+            scenario.run()
+
+        assert scenario._task_index == 0
+        assert on_start.call_count == 9
+        assert on_stop.call_count == 2
+        assert get_next_task.call_count == 2
+        assert schedule_task.call_count == 1
+        assert execute_next_task.call_count == 1
+        assert wait.call_count == 1
+        assert user_error.call_count == 4
+
+        user_error.reset_mock()
+        wait.reset_mock()
+        user.environment.catch_exceptions = True
+
+        get_next_task = mocker.patch.object(scenario, 'get_next_task', side_effect=[RuntimeError, StopUser])
+
+        with caplog.at_level(logging.ERROR):
+            with pytest.raises(StopUser):
+                scenario.run()
+
+        assert wait.call_count == 1
+        assert get_next_task.call_count == 2
+        assert schedule_task.call_count == 1
+        assert execute_next_task.call_count == 1
+        assert user_error.call_count == 1
+        _, kwargs = user_error.call_args_list[-1]
+        assert kwargs.get('user_instance', None) is scenario
+        assert isinstance(kwargs.get('exception', None), RuntimeError)
+        assert kwargs.get('tb', None) is not None
+        assert 'ERROR' in caplog.text and 'grizzly.scenarios' in caplog.text
+        assert 'Traceback (most recent call last):' in caplog.text
