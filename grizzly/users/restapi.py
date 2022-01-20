@@ -95,14 +95,14 @@ class refresh_token:
             auth_context = cls._context['auth']
 
             use_auth_client = (
-                auth_context['client']['id'] is not None and
-                auth_context['client']['secret'] is not None
+                auth_context.get('client', {}).get('id', None) is not None and
+                auth_context.get('client', {}).get('secret', None) is not None
             )
             use_auth_user = (
-                auth_context['client']['id'] is not None and
-                auth_context['user']['username'] is not None and
-                auth_context['user']['password'] is not None and
-                auth_context['user']['redirect_uri'] is not None
+                auth_context.get('client', {}).get('id', None) is not None and
+                auth_context.get('user', {}).get('username', None) is not None and
+                auth_context.get('user', {}).get('password', None) is not None and
+                auth_context.get('user', {}).get('redirect_uri', None) is not None
             )
 
             if use_auth_client:
@@ -117,7 +117,7 @@ class refresh_token:
                 session_duration = session_now - cls.session_started
 
                 # refresh token if session has been alive for at least refresh_time
-                if session_duration >= auth_context['refresh_time'] or cls.headers['Authorization'] is None:
+                if session_duration >= auth_context.get('refresh_time', 3000) or cls.headers['Authorization'] is None:
                     cls.get_token(auth_method)
 
             return func(cls, *args, **kwargs)
@@ -486,7 +486,7 @@ class RestApiUser(ResponseHandler, RequestLogger, ContextVariables, HttpRequests
                 'client_secret': auth_client_context['secret'],
                 'resource': resource,
             },
-            'verify': self._context.get('verify_certificates', None) or True
+            'verify': self._context.get('verify_certificates', True),
         }
 
         with self.client.post(
@@ -548,8 +548,10 @@ class RestApiUser(ResponseHandler, RequestLogger, ContextVariables, HttpRequests
         name = f'{request.scenario.identifier} {request_name}'
         parameters: Dict[str, Any] = {
             'headers': self.headers,
-            'verify': self._context.get('verify_certificates', None) or True,
+            'verify': self._context.get('verify_certificates', True),
         }
+
+        print(parameters)
 
         if payload is not None:
             try:
@@ -569,6 +571,8 @@ class RestApiUser(ResponseHandler, RequestLogger, ContextVariables, HttpRequests
                 # this is a fundemental error, so we'll always stop the user
                 raise StopUser()
 
+        print(f'{url=}')
+
         with self.client.request(
             request.method.name,
             url,
@@ -585,6 +589,8 @@ class RestApiUser(ResponseHandler, RequestLogger, ContextVariables, HttpRequests
                 else:
                     message = self.get_error_message(response)
                     response.failure(f'{response.status_code} not in {request.response.status_codes}: {message}')
+
+            print(f'{response._manual_result=}')
 
             if not response._manual_result == True and request.scenario.failure_exception is not None:
                 raise request.scenario.failure_exception()
