@@ -384,7 +384,7 @@ class TestRestApiUser:
 
         user.get_user_token()
 
-        request = RequestTask(RequestMethod.GET, name='test', endpoint='/mpsfrontendapi/api/metplats/oversikt/59117MA')
+        request = RequestTask(RequestMethod.GET, name='test', endpoint='/api/test')
         request.scenario = scenario
         #request.scenario.failure_exception = StopUser
         headers, body = user.request(request)
