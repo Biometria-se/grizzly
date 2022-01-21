@@ -361,7 +361,7 @@ class TestRestApiUser:
 
     @pytest.mark.skip(reason='needs credentials, should run explicitly manually')
     def test_get_user_token_real(self, restapi_user: Tuple[RestApiUser, GrizzlyContextScenario], mocker: MockerFixture) -> None:
-        [user, _] = restapi_user
+        [user, scenario] = restapi_user
 
         user._context = {
             'host': 'https://backend.example.com',
@@ -375,10 +375,23 @@ class TestRestApiUser:
                     'redirect_uri': 'https://www.example.com/silent',
                 },
                 'url': None,
-            }
+            },
+            'verify_certificates': False,
         }
+        user.host = user._context.get('host', '')
+
+        fire = mocker.spy(user.environment.events.request, 'fire')
 
         user.get_user_token()
+
+        request = RequestTask(RequestMethod.GET, name='test', endpoint='/mpsfrontendapi/api/metplats/oversikt/59117MA')
+        request.scenario = scenario
+        #request.scenario.failure_exception = StopUser
+        headers, body = user.request(request)
+        print(headers)
+        print(body)
+        print(fire.call_args_list[0])
+        assert 0
 
     def test_get_user_token(self, restapi_user: Tuple[RestApiUser, GrizzlyContextScenario], mocker: MockerFixture) -> None:
         [user, _] = restapi_user

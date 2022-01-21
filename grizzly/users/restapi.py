@@ -551,8 +551,6 @@ class RestApiUser(ResponseHandler, RequestLogger, ContextVariables, HttpRequests
             'verify': self._context.get('verify_certificates', True),
         }
 
-        print(parameters)
-
         if payload is not None:
             try:
                 parameters['json'] = json.loads(payload)
@@ -571,8 +569,6 @@ class RestApiUser(ResponseHandler, RequestLogger, ContextVariables, HttpRequests
                 # this is a fundemental error, so we'll always stop the user
                 raise StopUser()
 
-        print(f'{url=}')
-
         with self.client.request(
             request.method.name,
             url,
@@ -589,8 +585,6 @@ class RestApiUser(ResponseHandler, RequestLogger, ContextVariables, HttpRequests
                 else:
                     message = self.get_error_message(response)
                     response.failure(f'{response.status_code} not in {request.response.status_codes}: {message}')
-
-            print(f'{response._manual_result=}')
 
             if not response._manual_result == True and request.scenario.failure_exception is not None:
                 raise request.scenario.failure_exception()
