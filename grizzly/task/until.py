@@ -82,7 +82,7 @@ class UntilRequestTask(GrizzlyTask):
             start = time()
 
             try:
-                while number_of_matches != 1 and retry < self.retries:
+                while retry < self.retries:
                     gsleep(self.wait)
                     number_of_matches = 0
 
@@ -97,7 +97,9 @@ class UntilRequestTask(GrizzlyTask):
                         exception = e
                         number_of_matches = 0
                     finally:
-                        if number_of_matches != 1:
+                        if number_of_matches == 1:
+                            break
+                        else:
                             retry += 1
             except Exception as e:
                 exception = e
@@ -107,7 +109,10 @@ class UntilRequestTask(GrizzlyTask):
                 if number_of_matches == 1:
                     exception = None
                 elif exception is None and number_of_matches != 1:
-                    exception = RuntimeError(f'found {number_of_matches} matching values for {condition_rendered} in payload')
+                    exception = RuntimeError((
+                        f'found {number_of_matches} matching values for {condition_rendered} in payload '
+                        f'after {retry} retries and {response_time} milliseconds'
+                    ))
 
                 parent.user.environment.events.request.fire(
                     request_type='UNTL',
