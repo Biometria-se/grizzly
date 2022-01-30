@@ -88,28 +88,56 @@ First do a sparse checkout of the `example/` directory in the repository.
 
 If you have `git` older than `2.25.0`, follow these [instructions on stackoverflow.com](https://stackoverflow.com/a/13738951/3378455).
 
-```bash
-mkdir grizzly-example
-cd grizzly-example
-git init
-git remote add -f origin https://github.com/Biometria-se/grizzly.git
-git sparse-checkout init
-git sparse-checkout set example/
-git pull origin main
-rm -rf .git/
-cd example/
-```
+=== "Bash"
+
+    ```bash
+    mkdir grizzly-example
+    cd grizzly-example
+    git init
+    git remote add -f origin https://github.com/Biometria-se/grizzly.git
+    git sparse-checkout init
+    git sparse-checkout set example/
+    git pull origin main
+    rm -rf .git/
+    cd example/
+    ```
+
+=== "PowerShell"
+
+    ```powershell
+    mkdir grizzly-example
+    cd .\grizzly-example\
+    git init
+    git remote add -f origin https://github.com/Biometria-se/grizzly.git
+    git sparse-checkout init
+    git sparse-checkout set example/
+    git pull origin main
+    rm -Recurse -Force .\.git\
+    cd .\example\
+    ```
 
 Create an python virtual environment and install dependencies:
 
-```bash
-python3 -m venv .env
-. .env/bin/activate
-pip3 install -r requirements.txt
-pip3 install grizzly-loadtester-cli
-```
+=== "Bash"
 
-If you do not already have an working "IBM MQ" client setup and run `grizzly-cli` in local mode you will not be able to use `MessageQueueUser`. See [`grizzly-cli/static/Containerfile`](https://github.com/Biometria-se/grizzly-cli/blob/main/grizzly_cli/static/Containerfile#L5-L23) on how to get these. When that is done you need to install the extra dependencies:
+    ```bash
+    python3 -m venv .env
+    source .env/bin/activate
+    pip3 install -r requirements.txt
+    pip3 install grizzly-loadtester-cli
+    ```
+
+=== "PowerShell"
+
+    ```powershell
+    python3 -m venv .env
+    .\.env\Scripts\activate
+    pip3 install -r .\requirements.txt
+    pip3 install grizzly-loadtester-cli
+    ```
+
+
+If you do not already have an working "IBM MQ" client setup and run `grizzly-cli` in local mode you will not be able to use `MessageQueueUser`. See [`grizzly-cli/static/Containerfile`](https://github.com/Biometria-se/grizzly-cli/blob/main/grizzly_cli/static/Containerfile#L27-L36) on how to get these. When that is done you need to install the extra dependencies:
 
 ```bash
 pip3 install grizzly-loadtester-cli[mq]
@@ -119,16 +147,30 @@ pip3 install grizzly-loadtester-cli[mq]
 
 `grizzly` has some runtime features which is easiliest handled by using the `grizzly-cli`. It provides a simple command line interface wrapping the `behave` command, for providing initial variable values, configuration etc.
 
-If `docker` and `docker-compose` are installed, `grizzly-cli` will by default start the load test in distributed mode (override with `--local`).
-
 To run the example, in local mode:
 
-```bash
-grizzly-cli --local -c environments/example.yaml features/example.feature
-```
+=== "Bash"
 
-And in distributed mode:
+    ```bash
+    grizzly-cli run -e environments/example.yaml local features/example.feature
+    ```
 
-```bash
-grizzly-cli -c environments/example.yaml features/example.feature
-```
+=== "PowerShell"
+
+    ```powershell
+    grizzly-cli run -e .\environments\example.yaml local .\features\example.feature
+    ```
+
+And in distributed mode (requires `docker` and `docker-compose` in `PATH`):
+
+=== "Bash"
+
+    ```bash
+    grizzly-cli run -e environments/example.yaml local features/example.feature
+    ```
+
+=== "PowerShell"
+
+    ```powershell
+    grizzly-cli run -e .\environments\example.yaml dist .\features\example.feature
+    ```
