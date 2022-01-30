@@ -1181,6 +1181,9 @@ The container image <strong>should not</strong> contain <code>grizzly-cli</code>
 <h2 id="get">Get</h2>
 <p>First do a sparse checkout of the <code>example/</code> directory in the repository.</p>
 <p>If you have <code>git</code> older than <code>2.25.0</code>, follow these <a href="https://stackoverflow.com/a/13738951/3378455">instructions on stackoverflow.com</a>.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">Bash</label><label for="__tabbed_1_2">PowerShell</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
 <div class="highlight"><pre><span></span><code>mkdir grizzly-example
 <span class="nb">cd</span> grizzly-example
 git init
@@ -1191,24 +1194,71 @@ git pull origin main
 rm -rf .git/
 <span class="nb">cd</span> example/
 </code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="n">mkdir</span> <span class="n">grizzly-example</span>
+<span class="nb">cd </span><span class="p">.\</span><span class="n">grizzly-example</span><span class="p">\</span>
+<span class="n">git</span> <span class="n">init</span>
+<span class="n">git</span> <span class="n">remote</span> <span class="n">add</span> <span class="o">-f</span> <span class="n">origin</span> <span class="n">https</span><span class="p">://</span><span class="n">github</span><span class="p">.</span><span class="n">com</span><span class="p">/</span><span class="n">Biometria-se</span><span class="p">/</span><span class="n">grizzly</span><span class="p">.</span><span class="n">git</span>
+<span class="n">git</span> <span class="n">sparse-checkout</span> <span class="n">init</span>
+<span class="n">git</span> <span class="n">sparse-checkout</span> <span class="nb">set </span><span class="n">example</span><span class="p">/</span>
+<span class="n">git</span> <span class="n">pull</span> <span class="n">origin</span> <span class="n">main</span>
+<span class="nb">rm </span><span class="n">-Recurse</span> <span class="n">-Force</span> <span class="p">.\.</span><span class="n">git</span><span class="p">\</span>
+<span class="nb">cd </span><span class="p">.\</span><span class="n">example</span><span class="p">\</span>
+</code></pre></div>
+</div>
+</div>
+</div>
 <p>Create an python virtual environment and install dependencies:</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="2:2"><input checked="checked" id="__tabbed_2_1" name="__tabbed_2" type="radio" /><input id="__tabbed_2_2" name="__tabbed_2" type="radio" /><div class="tabbed-labels"><label for="__tabbed_2_1">Bash</label><label for="__tabbed_2_2">PowerShell</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
 <div class="highlight"><pre><span></span><code>python3 -m venv .env
-. .env/bin/activate
+<span class="nb">source</span> .env/bin/activate
 pip3 install -r requirements.txt
 pip3 install grizzly-loadtester-cli
 </code></pre></div>
-<p>If you do not already have an working "IBM MQ" client setup and run <code>grizzly-cli</code> in local mode you will not be able to use <code>MessageQueueUser</code>. See <a href="https://github.com/Biometria-se/grizzly-cli/blob/main/grizzly_cli/static/Containerfile#L5-L23"><code>grizzly-cli/static/Containerfile</code></a> on how to get these. When that is done you need to install the extra dependencies:</p>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="n">python3</span> <span class="n">-m</span> <span class="n">venv</span> <span class="p">.</span><span class="n">env</span>
+<span class="p">.\.</span><span class="n">env</span><span class="p">\</span><span class="n">Scripts</span><span class="p">\</span><span class="n">activate</span>
+<span class="n">pip3</span> <span class="n">install</span> <span class="n">-r</span> <span class="p">.\</span><span class="n">requirements</span><span class="p">.</span><span class="n">txt</span>
+<span class="n">pip3</span> <span class="n">install</span> <span class="n">grizzly-loadtester-cli</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<p>If you do not already have an working "IBM MQ" client setup and run <code>grizzly-cli</code> in local mode you will not be able to use <code>MessageQueueUser</code>. See <a href="https://github.com/Biometria-se/grizzly-cli/blob/main/grizzly_cli/static/Containerfile#L27-L36"><code>grizzly-cli/static/Containerfile</code></a> on how to get these. When that is done you need to install the extra dependencies:</p>
 <div class="highlight"><pre><span></span><code>pip3 install grizzly-loadtester-cli<span class="o">[</span>mq<span class="o">]</span>
 </code></pre></div>
 <h2 id="run">Run</h2>
 <p><code>grizzly</code> has some runtime features which is easiliest handled by using the <code>grizzly-cli</code>. It provides a simple command line interface wrapping the <code>behave</code> command, for providing initial variable values, configuration etc.</p>
-<p>If <code>docker</code> and <code>docker-compose</code> are installed, <code>grizzly-cli</code> will by default start the load test in distributed mode (override with <code>--local</code>).</p>
 <p>To run the example, in local mode:</p>
-<div class="highlight"><pre><span></span><code>grizzly-cli --local -c environments/example.yaml features/example.feature
+<div class="tabbed-set tabbed-alternate" data-tabs="3:2"><input checked="checked" id="__tabbed_3_1" name="__tabbed_3" type="radio" /><input id="__tabbed_3_2" name="__tabbed_3" type="radio" /><div class="tabbed-labels"><label for="__tabbed_3_1">Bash</label><label for="__tabbed_3_2">PowerShell</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code>grizzly-cli run -e environments/example.yaml <span class="nb">local</span> features/example.feature
 </code></pre></div>
-<p>And in distributed mode:</p>
-<div class="highlight"><pre><span></span><code>grizzly-cli -c environments/example.yaml features/example.feature
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="n">grizzly-cli</span> <span class="n">run</span> <span class="n">-e</span> <span class="p">.\</span><span class="n">environments</span><span class="p">\</span><span class="n">example</span><span class="p">.</span><span class="n">yaml</span> <span class="n">local</span> <span class="p">.\</span><span class="n">features</span><span class="p">\</span><span class="n">example</span><span class="p">.</span><span class="n">feature</span>
 </code></pre></div>
+</div>
+</div>
+</div>
+<p>And in distributed mode (requires <code>docker</code> and <code>docker-compose</code> in <code>PATH</code>):</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="4:2"><input checked="checked" id="__tabbed_4_1" name="__tabbed_4" type="radio" /><input id="__tabbed_4_2" name="__tabbed_4" type="radio" /><div class="tabbed-labels"><label for="__tabbed_4_1">Bash</label><label for="__tabbed_4_2">PowerShell</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code>grizzly-cli run -e environments/example.yaml <span class="nb">local</span> features/example.feature
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<div class="highlight"><pre><span></span><code><span class="n">grizzly-cli</span> <span class="n">run</span> <span class="n">-e</span> <span class="p">.\</span><span class="n">environments</span><span class="p">\</span><span class="n">example</span><span class="p">.</span><span class="n">yaml</span> <span class="n">dist</span> <span class="p">.\</span><span class="n">features</span><span class="p">\</span><span class="n">example</span><span class="p">.</span><span class="n">feature</span>
+</code></pre></div>
+</div>
+</div>
+</div>
 
               
             </article>
@@ -1274,7 +1324,7 @@ pip3 install grizzly-loadtester-cli
     <div class="md-dialog" data-md-component="dialog">
       <div class="md-dialog__inner md-typeset"></div>
     </div>
-    <script id="__config" type="application/json">{"base": "..", "features": ["navigation.sections"], "translations": {"clipboard.copy": "Copy to clipboard", "clipboard.copied": "Copied to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.placeholder": "Type to start searching", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.term.missing": "Missing", "select.version.title": "Select version"}, "search": "../assets/javascripts/workers/search.c7dec7e7.min.js"}</script>
+    <script id="__config" type="application/json">{"base": "..", "features": ["navigation.sections", "content.tabs.link"], "translations": {"clipboard.copy": "Copy to clipboard", "clipboard.copied": "Copied to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.placeholder": "Type to start searching", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.term.missing": "Missing", "select.version.title": "Select version"}, "search": "../assets/javascripts/workers/search.c7dec7e7.min.js"}</script>
     
     
       <script src="../assets/javascripts/bundle.da79ceb7.min.js"></script>
