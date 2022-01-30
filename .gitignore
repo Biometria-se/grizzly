@@ -18,3 +18,4 @@ coverage.xml
 # automagically generated
 docs/licenses.md
 docs/changelog.md
+docs/cli.md

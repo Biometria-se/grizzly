@@ -4,6 +4,8 @@ hooks:
     - python3 script/docs-generate-licenses.py
     # generates docs/changelog.md
     - python3 script/docs-generate-changelog.py
+    # generates docs/cli.md
+    - bash script/docs-generate-cli.bash
 loaders:
   - type: python
     search_path: [.]
@@ -146,7 +148,10 @@ renderer:
       favicon: assets/favicon.ico
       features:
       - navigation.sections
+      - content.tabs.link
     repo_url: https://github.com/biometria-se/grizzly
     markdown_extensions:
       - pymdownx.superfences
       - pymdownx.highlight
+      - pymdownx.tabbed:
+          alternate_style: true
