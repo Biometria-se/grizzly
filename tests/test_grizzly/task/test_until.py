@@ -171,7 +171,7 @@ class TestUntilRequestTask:
         exception = kwargs.get('exception', None)
         assert exception is not None
         assert isinstance(exception, RuntimeError)
-        assert str(exception) == 'found 0 matching values for $.`this`[?status="ready"] in payload'
+        assert str(exception) == 'found 0 matching values for $.`this`[?status="ready"] in payload after 2 retries and 12250 milliseconds'
 
         request_spy = mocker.patch.object(
             tasks.user,
