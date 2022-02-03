@@ -39,6 +39,14 @@ class TestUntilRequestTask:
         assert task.wait == 100
         assert task.retries == 10
 
+        with pytest.raises(ValueError) as ve:
+            UntilRequestTask(request, '$.`this`[?status="ready"] | wait=0.0, retries=10')
+        assert 'wait argument cannot be less than 0.1 seconds' in str(ve)
+
+        with pytest.raises(ValueError) as ve:
+            UntilRequestTask(request, '$.`this`[?status="ready"] | wait=0.1, retries=0')
+        assert 'retries argument cannot be less than 1' in str(ve)
+
     @pytest.mark.usefixtures('grizzly_context')
     def test_implementation(self, grizzly_context: Callable, mocker: MockerFixture) -> None:
         _, _, tasks, [_, _, request] = grizzly_context()

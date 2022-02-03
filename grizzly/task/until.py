@@ -59,6 +59,12 @@ class UntilRequestTask(GrizzlyTask):
             self.retries = int(arguments.get('retries', self.retries))
             self.wait = float(arguments.get('wait', self.wait))
 
+            if self.retries < 1:
+                raise ValueError('retries argument cannot be less than 1')
+
+            if self.wait < 0.1:
+                raise ValueError('wait argument cannot be less than 0.1 seconds')
+
     def implementation(self) -> Callable[[GrizzlyScenarioBase], Any]:
         if self.transform is None:
             raise TypeError(f'could not find a transformer for {self.request.response.content_type.name}')
@@ -83,10 +89,11 @@ class UntilRequestTask(GrizzlyTask):
 
             try:
                 while retry < self.retries:
-                    gsleep(self.wait)
                     number_of_matches = 0
 
                     try:
+                        gsleep(self.wait)
+
                         _, payload = parent.user.request(self.request)
                         _, transformed = transform.transform(self.request.response.content_type, payload)
 
