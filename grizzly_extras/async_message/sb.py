@@ -287,7 +287,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                             raise AsyncMessageError('no payload in message')
 
                         try:
-                            _, transformed_payload = transform.transform(content_type, payload)
+                            transformed_payload = transform.transform(payload)
                         except TransformerError as e:
                             self.logger.error(payload)
                             raise AsyncMessageError(e.message)

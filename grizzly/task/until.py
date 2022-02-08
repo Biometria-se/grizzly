@@ -37,7 +37,7 @@ class UntilRequestTask(GrizzlyTask):
     wait: float = field(init=False, default=1.0)
 
     def __post_init__(self) -> None:
-        if self.request.response.content_type == TransformerContentType.GUESS:
+        if self.request.response.content_type == TransformerContentType.UNDEFINED:
             raise ValueError('content type must be specified for request')
 
         self.transform = transformer.available.get(self.request.response.content_type, None)
@@ -96,7 +96,7 @@ class UntilRequestTask(GrizzlyTask):
                         gsleep(self.wait)
 
                         _, payload = parent.user.request(self.request)
-                        _, transformed = transform.transform(self.request.response.content_type, payload)
+                        transformed = transform.transform(payload)
 
                         matches = parser(transformed)
                         parent.logger.debug(f'{payload=}, condition={condition_rendered}, {matches=}')

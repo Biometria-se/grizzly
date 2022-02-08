@@ -38,7 +38,7 @@ class RequestTaskHandlers:
 @dataclass(unsafe_hash=True)
 class RequestTaskResponse:
     status_codes: List[int] = field(init=False, repr=False, hash=False, default_factory=list)
-    content_type: TransformerContentType = field(init=False, repr=False, default=TransformerContentType.GUESS)
+    content_type: TransformerContentType = field(init=False, repr=False, default=TransformerContentType.UNDEFINED)
     handlers: RequestTaskHandlers = field(init=False, repr=False, default_factory=RequestTaskHandlers)
 
     def __post_init__(self) -> None:
@@ -66,7 +66,7 @@ class RequestTask(GrizzlyTask):
     response: RequestTaskResponse = field(init=False, repr=False, default_factory=RequestTaskResponse)
 
     def __post_init__(self) -> None:
-        content_type: TransformerContentType = TransformerContentType.GUESS
+        content_type: TransformerContentType = TransformerContentType.UNDEFINED
 
         if '|' in self.endpoint:
             value, value_arguments = split_value(self.endpoint)

@@ -37,7 +37,6 @@ class ResponseHandler(ResponseEvent):
 
         response_metadata: Optional[Dict[str, Any]]
         response_payload: str
-        response_content_type: TransformerContentType = TransformerContentType.GUESS
 
         if isinstance(context, ResponseContextManager):
             response_payload = context.text
@@ -52,16 +51,9 @@ class ResponseHandler(ResponseEvent):
                 # do not guess which transformer to use
                 impl = transformer.available.get(request.response.content_type, None)
                 if impl is not None:
-                    response_content_type, response_payload = impl.transform(request.response.content_type, response_payload)
+                    response_payload = impl.transform(response_payload)
                 else:
-                    # try transformers, until one succeeds
-                    for impl in transformer.available.values():
-                        response_content_type, response_payload = impl.transform(request.response.content_type, response_payload)
-                        if response_content_type is not TransformerContentType.GUESS:
-                            break
-
-                if response_content_type is TransformerContentType.GUESS:
-                    raise TransformerError(f'failed to transform: {response_payload}')
+                    raise TransformerError(f'failed to transform: {response_payload} with content type {request.response.content_type.name}')
             except TransformerError as e:
                 if response_context is not None:
                     response_context.failure(e.message)
@@ -70,7 +62,7 @@ class ResponseHandler(ResponseEvent):
                 raise ResponseHandlerError(e.message) from e
 
             for handler in handlers.payload:
-                handler((response_content_type, response_payload), user, response_context)
+                handler((request.response.content_type, response_payload), user, response_context)
 
         if len(handlers.metadata) > 0 and response_metadata is not None:
             for handler in handlers.metadata:

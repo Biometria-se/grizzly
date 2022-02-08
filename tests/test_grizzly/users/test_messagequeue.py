@@ -28,6 +28,7 @@ from grizzly.testdata.utils import transform
 from grizzly.exceptions import ResponseHandlerError, RestartScenario
 from grizzly.steps.helpers import add_save_handler
 from grizzly_extras.async_message import AsyncMessageResponse
+from grizzly_extras.transformer import TransformerContentType
 
 from ..fixtures import grizzly_context, request_task, locust_environment, noop_zmq  # pylint: disable=unused-import
 
@@ -491,6 +492,7 @@ class TestMessageQueueUser:
             ],
         )
 
+        request.response.content_type = TransformerContentType.JSON
         user.request(request)
 
         assert user.context_variables['payload_variable'] == 'payload_variable value'

@@ -49,7 +49,7 @@ class TransformerTask(GrizzlyTask):
             content_raw = Template(self.content).render(**parent.user._context['variables'])
 
             try:
-                _, content = self._transformer.transform(self.content_type, content_raw)
+                content = self._transformer.transform(content_raw)
             except TransformerError as e:
                 parent.logger.error(f'failed to transform as {self.content_type.name}: {content_raw}')
                 raise TransformerLocustError(f'{self.__class__.__name__}: failed to transform {self.content_type.name}') from e

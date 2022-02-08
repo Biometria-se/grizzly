@@ -78,7 +78,6 @@ from locust.exception import StopUser
 from gevent import sleep as gsleep
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageResponse, AsyncMessageRequest, AsyncMessageError
 from grizzly_extras.arguments import parse_arguments, get_unsupported_arguments
-from grizzly_extras.transformer import TransformerContentType
 
 from ..types import RequestMethod, RequestDirection, GrizzlyResponse
 from ..task import RequestTask
@@ -247,8 +246,7 @@ class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
             'payload': None,
         }
 
-        if task.response.content_type != TransformerContentType.GUESS:
-            request['context']['content_type'] = task.response.content_type.name.lower()
+        request['context']['content_type'] = task.response.content_type.name.lower()
 
         response: Optional[AsyncMessageResponse] = None
         exception: Optional[Exception] = None

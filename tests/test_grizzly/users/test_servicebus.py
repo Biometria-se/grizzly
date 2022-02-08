@@ -310,6 +310,7 @@ class TestServiceBusUser:
             'context': {
                 'endpoint': 'queue:test-queue',
                 'connection': 'sender',
+                'content_type': 'undefined',
                 'url': 'sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=',
                 'message_wait': None,
             }
@@ -363,6 +364,7 @@ class TestServiceBusUser:
             'context': {
                 'endpoint': 'queue:test-queue',
                 'connection': 'receiver',
+                'content_type': 'undefined',
                 'url': 'sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=',
                 'message_wait': None,
             }

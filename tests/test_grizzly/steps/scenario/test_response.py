@@ -284,19 +284,19 @@ def test_step_response_content_type(behave_context: Context) -> None:
 
     request = RequestTask(RequestMethod.POST, 'test-request', endpoint='queue:INCOMMING.MESSAGE')
 
-    assert request.response.content_type == TransformerContentType.GUESS
+    assert request.response.content_type == TransformerContentType.UNDEFINED
 
     grizzly.scenario.add_task(request)
 
     for content_type in TransformerContentType:
-        if content_type == TransformerContentType.GUESS:
+        if content_type == TransformerContentType.UNDEFINED:
             continue
         step_response_content_type(behave_context, content_type)
         assert request.response.content_type == content_type
 
     with pytest.raises(AssertionError) as ae:
-        step_response_content_type(behave_context, TransformerContentType.GUESS)
-    assert 'It is now allowed to set GUESS with this step' in str(ae)
+        step_response_content_type(behave_context, TransformerContentType.UNDEFINED)
+    assert 'It is not allowed to set UNDEFINED with this step' in str(ae)
 
     request = RequestTask(RequestMethod.POST, 'test-request', endpoint='queue:INCOMING.MESSAGE | content_type="application/xml"')
 
@@ -306,7 +306,7 @@ def test_step_response_content_type(behave_context: Context) -> None:
     grizzly.scenario.add_task(request)
 
     for content_type in TransformerContentType:
-        if content_type == TransformerContentType.GUESS:
+        if content_type == TransformerContentType.UNDEFINED:
             continue
         step_response_content_type(behave_context, content_type)
         assert request.response.content_type == content_type
