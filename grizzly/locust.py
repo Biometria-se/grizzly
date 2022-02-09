@@ -241,6 +241,11 @@ def run(context: Context) -> int:
     # And locust log level is
     setup_logging(log_level, None)
 
+    import shutil, os
+
+    logger.info(f'shutil: {shutil.get_terminal_size()}')
+    logger.info(f'os: {os.get_terminal_size()}')
+
     # make sure the user hasn't screwed up
     if on_master(context) and on_worker(context):
         logger.error(f'seems to be a problem with "behave" arguments, cannot be both master and worker')
