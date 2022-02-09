@@ -72,6 +72,7 @@ class UntilRequestTask(GrizzlyTask):
         transform = cast(Transformer, self.transform)
 
         def _implementation(parent: GrizzlyScenarioBase) -> Any:
+            task_name=f'{self.request.scenario.identifier} {self.request.name}, w={self.wait}s, r={self.retries}'
             if '{{' in self.condition and '}}' in self.condition:
                 condition_rendered = Template(self.condition).render(**parent.user._context['variables'])
             else:
@@ -103,34 +104,36 @@ class UntilRequestTask(GrizzlyTask):
                     except Exception as e:
                         exception = e
                         number_of_matches = 0
-                    finally:
-                        if number_of_matches == 1:
-                            break
-                        else:
-                            retry += 1
+                        parent.logger.error(f'{task_name}: loop retry={retry}', exc_info=True)
+
+                    if number_of_matches == 1:
+                        break
+                    else:
+                        retry += 1
             except Exception as e:
                 exception = e
-            finally:
-                response_time = int((time() - start) * 1000)
+                parent.logger.error(f'{task_name}: done retry={retry}', exc_info=True)
 
-                if number_of_matches == 1:
-                    exception = None
-                elif exception is None and number_of_matches != 1:
-                    exception = RuntimeError((
-                        f'found {number_of_matches} matching values for {condition_rendered} in payload '
-                        f'after {retry} retries and {response_time} milliseconds'
-                    ))
+            response_time = int((time() - start) * 1000)
 
-                parent.user.environment.events.request.fire(
-                    request_type='UNTL',
-                    name=f'{self.request.scenario.identifier} {self.request.name}, w={self.wait}s, r={self.retries}',
-                    response_time=response_time,
-                    response_length=0,
-                    context=parent.user._context,
-                    exception=exception,
-                )
+            if number_of_matches == 1:
+                exception = None
+            elif exception is None and number_of_matches != 1:
+                exception = RuntimeError((
+                    f'found {number_of_matches} matching values for {condition_rendered} in payload '
+                    f'after {retry} retries and {response_time} milliseconds'
+                ))
 
-                if exception is not None and self.request.scenario.failure_exception is not None:
-                    raise self.request.scenario.failure_exception()
+            parent.user.environment.events.request.fire(
+                request_type='UNTL',
+                name=task_name,
+                response_time=response_time,
+                response_length=0,
+                context=parent.user._context,
+                exception=exception,
+            )
+
+            if exception is not None and self.request.scenario.failure_exception is not None:
+                raise self.request.scenario.failure_exception()
 
         return _implementation

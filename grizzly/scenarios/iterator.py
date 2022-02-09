@@ -37,6 +37,11 @@ class IteratorScenario(GrizzlyScenario):
                     pass
                 except RescheduleTask:
                     self.wait()
+                except RestartScenario:
+                    self.logger.info(f'restarting scenario for {self.__class__.__name__}::{id(self)} and {self.parent.__class__.__name__}::{id(self.parent)}')
+                    # reset locust.user.sequential_task.SequentialTaskSet index pointer to first task
+                    self._task_index = 0
+                    self.wait()
                 else:
                     self.wait()
             except InterruptTaskSet as e:
@@ -45,11 +50,6 @@ class IteratorScenario(GrizzlyScenario):
                     raise RescheduleTaskImmediately(e.reschedule) from e
                 else:
                     raise RescheduleTask(e.reschedule) from e
-            except RestartScenario:
-                self.logger.info(f'restarting scenario for {self.__class__.__name__}::{id(self)} and {self.parent.__class__.__name__}::{id(self.parent)}')
-                # reset locust.user.sequential_task.SequentialTaskSet index pointer to first task
-                self._task_index = 0
-                self.wait()
             except (StopUser, GreenletExit):
                 self.on_stop()
                 raise
