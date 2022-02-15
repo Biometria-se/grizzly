@@ -374,7 +374,7 @@ def _add_response_handler(
     if '{{' in match_with and '}}' in match_with:
         context.scenario.orphan_templates.append(match_with)
 
-    if '{{' in expression and '}}' in match_with:
+    if '{{' in expression and '}}' in expression:
         context.scenario.orphan_templates.append(expression)
 
     if action == ResponseAction.SAVE:
