@@ -154,6 +154,7 @@ class RestApiUser(ResponseHandler, RequestLogger, ContextVariables, HttpRequests
         self.headers = {
             'Authorization': None,
             'Content-Type': 'application/json',
+            'x-grizzly-user': f'{self.__class__.__name__}',
         }
 
         self.session_started = None

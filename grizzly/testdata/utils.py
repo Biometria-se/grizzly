@@ -56,7 +56,10 @@ def _get_variable_value(name: str) -> Tuple[Any, Set[str]]:
         if getattr(variable, '__on_consumer__', False):
             value = cast(Any, '__on_consumer__')
         else:
-            value = variable(variable_name, default_value)
+            try:
+                value = variable(variable_name, default_value)
+            except ValueError as e:
+                raise ValueError(f'{name}: {default_value=}, exception={str(e)}') from e
     else:
         value = default_value
 
