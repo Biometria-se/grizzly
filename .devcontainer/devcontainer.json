@@ -9,7 +9,7 @@
 			// Update 'VARIANT' to pick a Python version: 3, 3.10, 3.9, 3.8, 3.7, 3.6
 			// Append -bullseye or -buster to pin to an OS version.
 			// Use -bullseye variants on local on arm64/Apple Silicon.
-			"VARIANT": "3.8",
+			"VARIANT": "3.10",
 			// Options
 			"NODE_VERSION": "none"
 		}
@@ -36,7 +36,7 @@
 		"pythonTestExplorer.testFramework": "pytest",
 		"files.associations": {
 			"*.j2.json": "jinja-json",
-            "*.j2.xml": "jinja-xml"
+			"*.j2.xml": "jinja-xml"
 		},
 		"mypy.targets": [
 			"grizzly/",
@@ -72,14 +72,14 @@
 		"source=/etc/localtime,target=/etc/localtime,type=bind",
 	],
 	"containerEnv": {
-		"PYTHONPATH": "${containerWorkspaceFolder}"
+		"PYTHONPATH": "${containerWorkspaceFolder}",
 	},
 	"remoteEnv": {
 		"GRIZZLY_MOUNT_CONTEXT": "${localWorkspaceFolder}"
 	},
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
-	"postCreateCommand": "ssh-add -l && for file in requirements*.txt; do pip3 --disable-pip-version-check --no-cache-dir install --upgrade --no-warn-script-location -r $file; done",
+	"postCreateCommand": "ssh-add -l && pip-sync requirements-dev.txt --pip-args '--disable-pip-version-check --no-cache-dir --user --no-warn-script-location'",
 	// Comment out connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
 	"remoteUser": "vscode",
 	"features": {

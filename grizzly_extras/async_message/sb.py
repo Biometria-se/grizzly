@@ -2,7 +2,7 @@ from typing import Any, Callable, Dict, Optional, Union, Tuple, Iterable, cast
 from time import monotonic as time, sleep
 from mypy_extensions import VarArg, KwArg
 
-from azure.servicebus import ServiceBusClient, ServiceBusMessage, TransportType, ServiceBusSender, ServiceBusReceiver
+from azure.servicebus import ServiceBusClient, ServiceBusMessage, TransportType, ServiceBusSender, ServiceBusReceiver, ServiceBusReceivedMessage
 from azure.servicebus.amqp import AmqpMessageBodyType
 from azure.servicebus.amqp._amqp_message import DictMixin
 
@@ -270,7 +270,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                         raise AsyncMessageError(str(e)) from e
 
                 for received_message in receiver:
-                    message = cast(ServiceBusMessage, received_message)
+                    message = cast(ServiceBusReceivedMessage, received_message)
 
                     self.logger.debug(f'got message id: {message.message_id}')
 

@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        python-version: [3.8]
+        python-version: ['3.10']
 
     env:
       PYTHONPATH: .
@@ -40,13 +40,13 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ${{ env.pythonLocation }}
-        key: ${{ env.pythonLocation }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements.txt') }}-${{ hashFiles('requirements-dev.txt')}}
+        key: ${{ env.pythonLocation }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements-ci.txt')}}
 
     - name: install python dependencies
       id: pip
       run: |
-        pip install --upgrade wheel
-        pip install --upgrade --upgrade-strategy eager -r <(cat requirements.txt requirements-dev.txt)
+        pip install --upgrade wheel pip-tools
+        pip-sync requirements-ci.txt
 
     - name: run pytest
       id: pytest

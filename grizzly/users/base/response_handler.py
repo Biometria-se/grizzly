@@ -5,7 +5,7 @@ from locust.clients import ResponseContextManager
 from ...task import RequestTask
 from ...types import HandlerContextType
 from ...exceptions import ResponseHandlerError
-from .context_variables import ContextVariables
+from .grizzly_user import GrizzlyUser
 from .response_event import ResponseEvent
 
 from grizzly_extras.transformer import transformer, TransformerError, TransformerContentType
@@ -23,7 +23,7 @@ class ResponseHandler(ResponseEvent):
         name: str,
         context: HandlerContextType,
         request: RequestTask,
-        user: ContextVariables,
+        user: GrizzlyUser,
         **_kwargs: Dict[str, Any],
     ) -> None:
         if getattr(request, 'response', None) is None:

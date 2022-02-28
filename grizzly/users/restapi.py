@@ -75,7 +75,7 @@ from ..types import GrizzlyResponse, WrappedFunc
 from ..utils import merge_dicts
 from ..types import RequestMethod
 from ..task import RequestTask
-from .meta import RequestLogger, ResponseHandler, ContextVariables, HttpRequests
+from .base import RequestLogger, ResponseHandler, GrizzlyUser, HttpRequests
 from . import logger
 
 
@@ -125,7 +125,7 @@ class refresh_token:
         return cast(WrappedFunc, wrapper)
 
 
-class RestApiUser(ResponseHandler, RequestLogger, ContextVariables, HttpRequests):
+class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests):
     session_started: Optional[float]
     headers: Dict[str, Optional[str]]
     host: str
@@ -571,8 +571,8 @@ class RestApiUser(ResponseHandler, RequestLogger, ContextVariables, HttpRequests
                 raise StopUser()
 
         with self.client.request(
-            request.method.name,
-            url,
+            method=request.method.name,
+            url=url,
             name=name,
             catch_response=True,
             request=request,

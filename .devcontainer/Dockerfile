@@ -1,5 +1,5 @@
 # [Choice] Python version (use -bullseye variants on local arm64/Apple Silicon): 3, 3.10, 3.9, 3.8, 3.7, 3.6, 3-bullseye, 3.10-bullseye, 3.9-bullseye, 3.8-bullseye, 3.7-bullseye, 3.6-bullseye, 3-buster, 3.10-buster, 3.9-buster, 3.8-buster, 3.7-buster, 3.6-buster
-ARG VARIANT="3.8"
+ARG VARIANT="3.10"
 
 # IBM MQ libraries dependencies
 FROM alpine:latest as dependencies
@@ -32,6 +32,8 @@ ENV LD_LIBRARY_PATH="/opt/mqm/lib64:${LD_LIBRARY_PATH}"
 
 # run github workflows locally
 RUN curl https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash
+
+ RUN pip3 --disable-pip-version-check --no-cache-dir install pip-tools
 
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
      && apt-get -y install --no-install-recommends vim

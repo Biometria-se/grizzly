@@ -5,7 +5,7 @@ from typing import Callable
 
 import pytest
 
-from _pytest.tmpdir import TempdirFactory
+from _pytest.tmpdir import TempPathFactory
 
 from grizzly.testdata.variables import AtomicCsvRow
 from grizzly.testdata.variables.csv_row import atomiccsvrow__base_type__
@@ -13,8 +13,9 @@ from grizzly.testdata.variables.csv_row import atomiccsvrow__base_type__
 from ..fixtures import cleanup  # pylint: disable=unused-import
 
 
-def test_atomiccsvrow__base_type__(tmpdir_factory: TempdirFactory) -> None:
-    test_context = tmpdir_factory.mktemp('test_context').mkdir('requests')
+def test_atomiccsvrow__base_type__(tmp_path_factory: TempPathFactory) -> None:
+    test_context = tmp_path_factory.mktemp('test_context') / 'requests'
+    test_context.mkdir()
     test_context_root = os.path.dirname(str(test_context))
 
     try:
@@ -33,8 +34,8 @@ def test_atomiccsvrow__base_type__(tmpdir_factory: TempdirFactory) -> None:
             atomiccsvrow__base_type__('file1.csv')
         assert 'is not a file in' in str(ve)
 
-        test_file = test_context.join('file1.csv')
-        test_file.write('\n')
+        test_file = test_context / 'file1.csv'
+        test_file.write_text('\n')
 
         assert atomiccsvrow__base_type__('file1.csv') == 'file1.csv'
 
@@ -54,8 +55,9 @@ def test_atomiccsvrow__base_type__(tmpdir_factory: TempdirFactory) -> None:
 
 class TestAtomicCsvRow:
     @pytest.mark.usefixtures('cleanup')
-    def test(self, cleanup: Callable, tmpdir_factory: TempdirFactory) -> None:
-        test_context = str(tmpdir_factory.mktemp('test_context').mkdir('requests'))
+    def test(self, cleanup: Callable, tmp_path_factory: TempPathFactory) -> None:
+        test_context = tmp_path_factory.mktemp('test_context') / 'requests'
+        test_context.mkdir()
         test_context_root = os.path.dirname(test_context)
 
         os.environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
@@ -220,8 +222,9 @@ class TestAtomicCsvRow:
             cleanup()
 
     @pytest.mark.usefixtures('cleanup')
-    def test_clear_and_destroy(self, cleanup: Callable, tmpdir_factory: TempdirFactory) -> None:
-        test_context = str(tmpdir_factory.mktemp('test_context').mkdir('requests'))
+    def test_clear_and_destroy(self, cleanup: Callable, tmp_path_factory: TempPathFactory) -> None:
+        test_context = tmp_path_factory.mktemp('test_context') / 'requests'
+        test_context.mkdir()
         test_context_root = os.path.dirname(test_context)
 
         os.environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root

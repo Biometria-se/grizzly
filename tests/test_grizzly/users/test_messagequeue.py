@@ -19,7 +19,7 @@ from locust.exception import StopUser
 from jinja2 import Template
 
 from grizzly.users.messagequeue import MessageQueueUser
-from grizzly.users.meta import RequestLogger, ResponseHandler
+from grizzly.users.base import RequestLogger, ResponseHandler
 from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 from grizzly.task import RequestTask

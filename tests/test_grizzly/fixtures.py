@@ -7,7 +7,7 @@ from mypy_extensions import VarArg, KwArg
 
 import pytest
 
-from _pytest.tmpdir import TempdirFactory
+from _pytest.tmpdir import TempPathFactory
 from jinja2.environment import Template
 from behave.runner import Context, Runner
 from behave.model import Scenario, Step, Background
@@ -70,9 +70,12 @@ def noop_zmq(mocker: MockerFixture) -> Callable[[str], None]:
 
 
 @pytest.fixture
-def request_task(tmpdir_factory: TempdirFactory) -> Generator[Tuple[str, str, RequestTask], None, None]:
-    request_file = tmpdir_factory.mktemp('example_payload').mkdir('requests').join('payload.j2.json')
-    request_file.write(REQUEST_TASK_TEMPLATE_CONTENTS)
+def request_task(tmp_path_factory: TempPathFactory) -> Generator[Tuple[str, str, RequestTask], None, None]:
+    test_context = tmp_path_factory.mktemp('example_payload') / 'requests'
+    test_context.mkdir()
+    request_file = test_context / 'payload.j2.json'
+    request_file.touch()
+    request_file.write_text(REQUEST_TASK_TEMPLATE_CONTENTS)
     request_path = os.path.dirname(str(request_file))
 
     request = RequestTask(RequestMethod.POST, endpoint='/api/test', name='request_task')
@@ -84,35 +87,35 @@ def request_task(tmpdir_factory: TempdirFactory) -> Generator[Tuple[str, str, Re
     request.scenario.context['host'] = 'http://example.com'
     request.scenario.behave = None
 
-    yield (request_path, str(request_file).replace(f'{request_path}/', ''), request)
-
-    shutil.rmtree(os.path.dirname(request_path))
+    try:
+        yield (request_path, str(request_file).replace(f'{request_path}/', ''), request)
+    finally:
+        shutil.rmtree(os.path.dirname(request_path))
 
 
 @pytest.fixture
-def request_task_syntax_error(tmpdir_factory: TempdirFactory) -> Generator[Tuple[str, str], None, None]:
-    payload_file = tmpdir_factory.mktemp(
-        'example_payload'
-    ).mkdir(
-        'requests'
-    ).join(
-        'payload-syntax-error.j2.json'
-    )
+def request_task_syntax_error(tmp_path_factory: TempPathFactory) -> Generator[Tuple[str, str], None, None]:
+    test_context = tmp_path_factory.mktemp('example_payload') / 'requests'
+    test_context.mkdir()
+    payload_file = test_context / 'payload-syntax-error.j2.json'
+    payload_file.touch()
 
     # remove all j2 end tags, to create syntax error
-    contents = REQUEST_TASK_TEMPLATE_CONTENTS.replace('}}', '')
-    payload_file.write(contents)
-    path = os.path.dirname(str(payload_file))
+    try:
+        contents = REQUEST_TASK_TEMPLATE_CONTENTS.replace('}}', '')
+        payload_file.write_text(contents)
+        path = os.path.dirname(str(payload_file))
 
-    yield (path, str(payload_file).replace(f'{path}/', ''))
-
-    shutil.rmtree(os.path.dirname(path))
+        yield (path, str(payload_file).replace(f'{path}/', ''))
+    finally:
+        shutil.rmtree(os.path.dirname(path))
 
 
 @pytest.fixture(scope='function')
-def locust_environment(tmpdir_factory: TempdirFactory) -> Generator[Environment, None, None]:
-    test_context = tmpdir_factory.mktemp('test_context').mkdir('requests')
-    test_context_root = os.path.dirname(str(test_context))
+def locust_environment(tmp_path_factory: TempPathFactory) -> Generator[Environment, None, None]:
+    test_context = tmp_path_factory.mktemp('test_context') / 'requests'
+    test_context.mkdir()
+    test_context_root = os.path.dirname(test_context)
 
     try:
         os.environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root

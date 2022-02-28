@@ -59,8 +59,8 @@ def test_greenlet_exception_logger(caplog: LogCaptureFixture) -> None:
     assert 'unhandled exception in greenlet: ' in caplog.text
 
     # re-import to get updated value
-    from grizzly.locust import unhandled_greenlet_exception
-    assert unhandled_greenlet_exception
+    import grizzly.locust
+    assert getattr(grizzly.locust, 'unhandled_greenlet_exception', False)
 
     caplog.clear()
 

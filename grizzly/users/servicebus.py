@@ -82,11 +82,11 @@ from grizzly_extras.arguments import parse_arguments, get_unsupported_arguments
 from ..types import RequestMethod, RequestDirection, GrizzlyResponse
 from ..task import RequestTask
 from ..utils import merge_dicts
-from .meta import ContextVariables, ResponseHandler, RequestLogger
+from .base import GrizzlyUser, ResponseHandler, RequestLogger
 from . import logger
 
 
-class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
+class ServiceBusUser(ResponseHandler, RequestLogger, GrizzlyUser):
     _context: Dict[str, Any] = {
         'message': {
             'wait': None,
@@ -103,11 +103,6 @@ class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
     hellos: Set[str]
 
     host: str
-
-    request_name_map: Dict[str, str] = {
-        'RECEIVE': 'RECV',
-        'HELLO': 'HELO',
-    }
 
 
     def __init__(self, *args: Tuple[Any], **kwargs: Dict[str, Any]) -> None:
@@ -300,7 +295,7 @@ class ServiceBusUser(ResponseHandler, RequestLogger, ContextVariables):
                 if exception is None:
                     exception = e
             finally:
-                action_name = self.request_name_map.get(request['action'], request['action'][:4])
+                action_name = self.get_request_method(task)
                 self.environment.events.request.fire(
                     request_type=f'sb:{action_name}',
                     name=name,

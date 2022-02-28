@@ -36,14 +36,14 @@ from os import path, environ, mkdir
 
 from locust.exception import StopUser
 
-from .meta import ContextVariables, FileRequests, ResponseHandler, RequestLogger
+from .base import GrizzlyUser, FileRequests, ResponseHandler, RequestLogger
 from ..utils import merge_dicts
 from ..clients import SftpClientSession
 from ..types import RequestMethod, GrizzlyResponse
 from ..task import RequestTask
 
 
-class SftpUser(ResponseHandler, RequestLogger, ContextVariables, FileRequests):
+class SftpUser(ResponseHandler, RequestLogger, GrizzlyUser, FileRequests):
     _context: Dict[str, Any] = {
         'auth': {
             'username': None,

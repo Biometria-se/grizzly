@@ -9,7 +9,7 @@ from locust.user.users import User
 from requests.models import Response
 
 from grizzly.clients import ResponseEventSession
-from grizzly.users.meta import ResponseEvent, HttpRequests
+from grizzly.users.base import ResponseEvent, HttpRequests
 from grizzly.types import RequestMethod
 from grizzly.task import RequestTask
 

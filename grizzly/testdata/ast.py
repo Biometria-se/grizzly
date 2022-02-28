@@ -83,7 +83,7 @@ def _parse_templates(requests: RequestSourceMapping) -> Dict[str, Set[str]]:
                     template_source = request.source
                 sources += [request.name, request.endpoint]
             else:
-                template_source = cast(j2.BaseLoader, j2env.loader).get_source(j2env, request)[0]
+                template_source = j2env.loader.get_source(j2env, request)[0]
 
             if template_source is not None:
                 sources.append(template_source)

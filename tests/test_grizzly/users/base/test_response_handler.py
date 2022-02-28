@@ -13,7 +13,7 @@ from locust.clients import ResponseContextManager
 from locust.exception import LocustError, CatchResponseError
 
 from grizzly.clients import ResponseEventSession
-from grizzly.users.meta import HttpRequests, ResponseEvent, ResponseHandler
+from grizzly.users.base import HttpRequests, ResponseEvent, ResponseHandler
 from grizzly.exceptions import ResponseHandlerError
 from grizzly.types import RequestMethod
 from grizzly.task import RequestTask

@@ -36,12 +36,12 @@ from time import perf_counter as time
 from azure.storage.blob import BlobServiceClient
 from locust.exception import StopUser
 
-from .meta import ContextVariables
+from .base import GrizzlyUser
 from ..types import RequestMethod, GrizzlyResponse
 from ..task import RequestTask
 from ..utils import merge_dicts
 
-class BlobStorageUser(ContextVariables):
+class BlobStorageUser(GrizzlyUser):
     client: BlobServiceClient
     host: str
     _context: Dict[str, Any] = {}
@@ -94,7 +94,7 @@ class BlobStorageUser(ContextVariables):
         finally:
             total_time = int((time() - start_time) * 1000)
             self.environment.events.request.fire(
-                request_type=f'bs:{request.method.name[:4]}',
+                request_type=f'bs:{self.get_request_method(request)}',
                 name=name,
                 response_time=total_time,
                 response_length=0,

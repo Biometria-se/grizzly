@@ -6,7 +6,7 @@ from jinja2.environment import Template
 
 import pytest
 
-from _pytest.tmpdir import TempdirFactory
+from _pytest.tmpdir import TempPathFactory
 from pytest_mock import mocker, MockerFixture  # pylint: disable=unused-import
 from locust.env import Environment
 from locust.exception import StopUser
@@ -24,8 +24,9 @@ from ..fixtures import locust_environment, paramiko_mocker  # pylint: disable=un
 
 class TestSftpUser:
     @pytest.mark.usefixtures('locust_environment', 'tmpdir_factory')
-    def test_create(self, locust_environment: Environment, tmpdir_factory: TempdirFactory) -> None:
-        test_context = tmpdir_factory.mktemp('test_context').mkdir('requests')
+    def test_create(self, locust_environment: Environment, tmp_path_factory: TempPathFactory) -> None:
+        test_context = tmp_path_factory.mktemp('test_context') / 'requests'
+        test_context.mkdir()
         test_context_root = path.dirname(str(test_context))
         environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
 
@@ -79,10 +80,11 @@ class TestSftpUser:
             del environ['GRIZZLY_CONTEXT_ROOT']
 
     @pytest.mark.usefixtures('locust_environment', 'paramiko_mocker', 'tmpdir_factory')
-    def test_request(self, locust_environment: Environment, paramiko_mocker: Callable, tmpdir_factory: TempdirFactory, mocker: MockerFixture) -> None:
+    def test_request(self, locust_environment: Environment, paramiko_mocker: Callable, tmp_path_factory: TempPathFactory, mocker: MockerFixture) -> None:
         paramiko_mocker()
 
-        test_context = tmpdir_factory.mktemp('test_context').mkdir('requests')
+        test_context = tmp_path_factory.mktemp('test_context') / 'requests'
+        test_context.mkdir()
         test_context_root = path.dirname(str(test_context))
         environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
 
@@ -241,13 +243,13 @@ class TestSftpUser:
 
     @pytest.mark.skip(reason='needs preconditions outside of pytest, has to be executed explicitly manually')
     @pytest.mark.usefixtures('locust_environment', 'tmpdir_factory')
-    def test_real(self, locust_environment: Environment, tmpdir_factory: TempdirFactory) -> None:
+    def test_real(self, locust_environment: Environment, tmp_path_factory: TempPathFactory) -> None:
         # first start sftp server:
         #  mkdir /tmp/sftp-upload; \
         #  docker run --rm -it -p 2222:22 -v /tmp/sftp-upload:/home/foo/upload atmoz/sftp:alpine foo:pass:1000:::upload; \
         #  rm -rf /tmp/sftp-upload
 
-        test_context = tmpdir_factory.mktemp('test_context').mkdir('requests')
+        test_context = tmp_path_factory.mktemp('test_context') / 'requests'
         test_context_root = path.dirname(str(test_context))
         environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
 

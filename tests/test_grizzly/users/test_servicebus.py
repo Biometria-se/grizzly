@@ -11,7 +11,7 @@ from locust.env import Environment
 from locust.exception import StopUser
 from jinja2 import Template
 
-from grizzly.users.meta import ContextVariables, RequestLogger, ResponseHandler
+from grizzly.users.base import GrizzlyUser, RequestLogger, ResponseHandler
 from grizzly.users.servicebus import ServiceBusUser
 from grizzly.types import RequestMethod
 from grizzly.task import RequestTask, WaitTask
@@ -61,7 +61,7 @@ class TestServiceBusUser:
 
             ServiceBusUser.host = 'Endpoint=sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789='
             user = ServiceBusUser(environment=locust_environment)
-            assert issubclass(user.__class__, ContextVariables)
+            assert issubclass(user.__class__, GrizzlyUser)
             assert issubclass(user.__class__, ResponseHandler)
             assert issubclass(user.__class__, RequestLogger)
 
