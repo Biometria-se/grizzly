@@ -42,6 +42,7 @@ setup(
         'paramiko>=2.9.2',
         'python-dateutil>=2.8.2',
         'pytz>=2021.3',
+        'backports.zoneinfo>=0.2.1 ; python_version < "3.9"',
         'pyzmq>=22.3.0',
         'typing-extensions>=3.10.0,<4.0.0',
         'tzlocal>=4.1',

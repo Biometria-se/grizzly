@@ -47,16 +47,25 @@ jobs:
           exit 1
         fi
 
-    - name: setup python ${{ matrix.python-version }}
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
-
     - name: checkout
       uses: actions/checkout@v2
       with:
         fetch-depth: 0
         ref: main
+
+    - name: setup python (with cache)
+      if: ${{ !env.ACT }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+        cache-dependency-path: '**/requirements-ci.txt'
+
+    - name: setup python (without cache)
+      if: ${{ env.ACT }}
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
 
     - name: get last released version
       if: github.event.inputs.version == '0.0.0'
@@ -108,12 +117,6 @@ jobs:
         sudo ln -fs /usr/share/zoneinfo/Europe/Stockholm /etc/localtime
         sudo ln -fs /usr/share/zoneinfo/Europe/Stockholm /etc/timezone
         echo $HOME/.local/bin >> $GITHUB_PATH
-
-    - name: cache python environment
-      uses: actions/cache@v2
-      with:
-        path: ${{ env.pythonLocation }}
-        key: ${{ env.pythonLocation }}-${{ hashFiles('setup.py') }}-${{ hashFiles('requirements-ci.txt') }}
 
     - name: install python dependencies
       run: |
