@@ -416,9 +416,9 @@ jsonpath-ng==1.5.3 \
     --hash=sha256:a273b182a82c1256daab86a313b937059261b5c5f8c4fa3fc38b882b344dd567 \
     --hash=sha256:f75b95dbecb8a0f3b86fd2ead21c2b022c3f5770957492b9b6196ecccfeb10aa
     # via grizzly-loadtester (setup.py)
-locust==2.2.2 \
-    --hash=sha256:0ed7f5a5bdafd2544d45f59a14145a9e964bd3af08ae183f23f1639b5030c029 \
-    --hash=sha256:49f0bf2be646f12b905a50fab8501a70434194510891e236180c59197ba77a4c
+locust==2.6.1 \
+    --hash=sha256:42ec7686d41128760b1c2a0c3563e70a40856dd23dac90723077db3b0d9514ac \
+    --hash=sha256:f11fc5c06c24f59b077ea8a69857409fef0f65b0382465d55b0a19b25bedf4ac
     # via grizzly-loadtester (setup.py)
 lxml==4.8.0 \
     --hash=sha256:078306d19a33920004addeb5f4630781aaeabb6a8d01398045fcde085091a169 \
@@ -885,6 +885,7 @@ typing-extensions==3.10.0.2 \
     # via
     #   azure-servicebus
     #   grizzly-loadtester (setup.py)
+    #   locust
 tzdata==2021.5 \
     --hash=sha256:3eee491e22ebfe1e5cfcc97a4137cd70f092ce59144d81f8924a844de05ba8f5 \
     --hash=sha256:68dbe41afd01b867894bbdfd54fa03f468cfa4f0086bfb4adcd8de8f24f3ee21

@@ -66,10 +66,10 @@ from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
 from urllib3 import disable_warnings as urllib3_disable_warnings
 
-import requests
-
 from locust.clients import ResponseContextManager
 from locust.exception import CatchResponseError, StopUser
+
+import requests
 
 from ..types import GrizzlyResponse, WrappedFunc
 from ..utils import merge_dicts

@@ -33,3 +33,4 @@ class ResponseEvent(User):
             self.response_event = self.client.event_hook
         else:
             self.response_event = EventHook()
+            setattr(self, 'client', None)

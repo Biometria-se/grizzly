@@ -488,6 +488,7 @@ def test_generate_validation_handler_positive(locust_environment: Environment) -
         response._content = '{}'.encode('utf-8')
         response.status_code = 200
         response_context_manager = ResponseContextManager(response, locust_environment.events.request, {})
+        response_context_manager._entered = True
 
         handler = generate_validation_handler('$.test.value', 'test', True)
 
@@ -600,7 +601,7 @@ def test_generate_validation_handler_positive(locust_environment: Environment) -
         assert isinstance(response_context_manager._manual_result, CatchResponseError)
         response_context_manager._manual_result = None
     finally:
-        assert user._context['variables'] != TestUser(locust_environment)._context['variables']
+        assert user._context['variables'] is not TestUser(locust_environment)._context['variables']
 
 
 @pytest.mark.usefixtures('behave_context', 'locust_environment')
@@ -610,6 +611,8 @@ def test_add_save_handler(behave_context: Context, locust_environment: Environme
     response._content = '{}'.encode('utf-8')
     response.status_code = 200
     response_context_manager = ResponseContextManager(response, None, None)
+    response_context_manager._entered = True
+
     grizzly = cast(GrizzlyContext, behave_context.grizzly)
     tasks = grizzly.scenario.tasks
 
@@ -701,6 +704,8 @@ def test_add_validation_handler(behave_context: Context, locust_environment: Env
     response._content = '{}'.encode('utf-8')
     response.status_code = 200
     response_context_manager = ResponseContextManager(response, None, None)
+    response_context_manager._entered = True
+
     grizzly = cast(GrizzlyContext, behave_context.grizzly)
     tasks = grizzly.scenario.tasks
     assert len(tasks) == 0

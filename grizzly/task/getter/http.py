@@ -8,12 +8,12 @@ Instances of this task is created with the step expression, if endpoint is defin
 '''
 from typing import Callable, Any
 
-import requests
-
 from jinja2 import Template
 
 from . import getterof, GetterOfTask
 from ...context import GrizzlyScenarioBase
+
+import requests
 
 
 @getterof('http', 'https')

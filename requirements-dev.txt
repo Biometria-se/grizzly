@@ -578,9 +578,9 @@ lazy-object-proxy==1.7.1 \
     --hash=sha256:fccdf7c2c5821a8cbd0a9440a456f5050492f2270bd54e94360cac663398739b \
     --hash=sha256:fd45683c3caddf83abbb1249b653a266e7069a09f486daa8863fb0e7496a9fdb
     # via astroid
-locust==2.2.2 \
-    --hash=sha256:0ed7f5a5bdafd2544d45f59a14145a9e964bd3af08ae183f23f1639b5030c029 \
-    --hash=sha256:49f0bf2be646f12b905a50fab8501a70434194510891e236180c59197ba77a4c
+locust==2.6.1 \
+    --hash=sha256:42ec7686d41128760b1c2a0c3563e70a40856dd23dac90723077db3b0d9514ac \
+    --hash=sha256:f11fc5c06c24f59b077ea8a69857409fef0f65b0382465d55b0a19b25bedf4ac
     # via grizzly-loadtester (setup.py)
 lxml==4.8.0 \
     --hash=sha256:078306d19a33920004addeb5f4630781aaeabb6a8d01398045fcde085091a169 \
@@ -1306,9 +1306,9 @@ types-tzlocal==4.1.0 \
     --hash=sha256:baeff03c7fc3fefb05e6e635aaffebd5b1a171200c74dd77d2918ee0e79ddedd \
     --hash=sha256:da259c08b438fb7e89de151860ccf37a8bbcc8523b4775fdab16523dec675468
     # via grizzly-loadtester (setup.py)
-types-urllib3==1.26.9 \
-    --hash=sha256:4a54f6274ab1c80968115634a55fb9341a699492b95e32104a7c513db9fe02e9 \
-    --hash=sha256:abd2d4857837482b1834b4817f0587678dcc531dbc9abe4cde4da28cef3f522c
+types-urllib3==1.26.10 \
+    --hash=sha256:a26898f530e6c3f43f25b907f2b884486868ffd56a9faa94cbf9b3eb6e165d6a \
+    --hash=sha256:d755278d5ecd7a7a6479a190e54230f241f1a99c19b81518b756b19dc69e518c
     # via types-requests
 typing-extensions==3.10.0.2 \
     --hash=sha256:49f75d16ff11f1cd258e1b988ccff82a3ca5570217d7ad8c5f48205dd99a677e \
@@ -1319,6 +1319,7 @@ typing-extensions==3.10.0.2 \
     #   databind-core
     #   databind-json
     #   grizzly-loadtester (setup.py)
+    #   locust
     #   mypy
 tzdata==2021.5 \
     --hash=sha256:3eee491e22ebfe1e5cfcc97a4137cd70f092ce59144d81f8924a844de05ba8f5 \
