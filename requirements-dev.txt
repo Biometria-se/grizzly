@@ -601,9 +601,9 @@ lazy-object-proxy==1.7.1 \
     --hash=sha256:fccdf7c2c5821a8cbd0a9440a456f5050492f2270bd54e94360cac663398739b \
     --hash=sha256:fd45683c3caddf83abbb1249b653a266e7069a09f486daa8863fb0e7496a9fdb
     # via astroid
-locust==2.6.1 \
-    --hash=sha256:42ec7686d41128760b1c2a0c3563e70a40856dd23dac90723077db3b0d9514ac \
-    --hash=sha256:f11fc5c06c24f59b077ea8a69857409fef0f65b0382465d55b0a19b25bedf4ac
+locust==2.7.3 \
+    --hash=sha256:108afcf66b4bb7fad3fd80f34341503056e4062abead74c11951ad65aa6ac108 \
+    --hash=sha256:7b3b14dfb28d28bada51cb672f6f19640c8dba3beaa781ee070e34e72ffebf95
     # via grizzly-loadtester (setup.py)
 lxml==4.8.0 \
     --hash=sha256:078306d19a33920004addeb5f4630781aaeabb6a8d01398045fcde085091a169 \

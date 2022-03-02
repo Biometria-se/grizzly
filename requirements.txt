@@ -437,9 +437,9 @@ jsonpath-ng==1.5.3 \
     --hash=sha256:a273b182a82c1256daab86a313b937059261b5c5f8c4fa3fc38b882b344dd567 \
     --hash=sha256:f75b95dbecb8a0f3b86fd2ead21c2b022c3f5770957492b9b6196ecccfeb10aa
     # via grizzly-loadtester (setup.py)
-locust==2.6.1 \
-    --hash=sha256:42ec7686d41128760b1c2a0c3563e70a40856dd23dac90723077db3b0d9514ac \
-    --hash=sha256:f11fc5c06c24f59b077ea8a69857409fef0f65b0382465d55b0a19b25bedf4ac
+locust==2.7.3 \
+    --hash=sha256:108afcf66b4bb7fad3fd80f34341503056e4062abead74c11951ad65aa6ac108 \
+    --hash=sha256:7b3b14dfb28d28bada51cb672f6f19640c8dba3beaa781ee070e34e72ffebf95
     # via grizzly-loadtester (setup.py)
 lxml==4.8.0 \
     --hash=sha256:078306d19a33920004addeb5f4630781aaeabb6a8d01398045fcde085091a169 \

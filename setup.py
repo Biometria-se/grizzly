@@ -26,6 +26,10 @@ setup(
     author_email='opensource@biometria.se',
     license='MIT',
     packages=find_packages(exclude=['*tests', '*tests.*']),
+    package_data={
+        'grizzly': ['py.typed'],
+        'grizzly_extras': ['py.typed'],
+    },
     python_requires='>=3.8',
     install_requires=[
         'aenum>=3.1.8',
@@ -35,7 +39,7 @@ setup(
         'influxdb>=5.3.1',
         'Jinja2>=3.0.3',
         'jsonpath-ng>=1.5.3',
-        'locust==2.6.1',
+        'locust==2.7.3',
         'lxml>=4.8.0',
         'mypy-extensions>=0.4.3',
         'opencensus-ext-azure>=1.1.1',
