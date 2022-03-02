@@ -110,7 +110,7 @@ def test_add_request_task(behave_context: Context, grizzly_context: Callable, tm
     assert task.source == template_source
     assert task.endpoint == 'my_container'
     assert task.name == 'my_blob'
-    assert task.response.content_type == TransformerContentType.GUESS
+    assert task.response.content_type == TransformerContentType.UNDEFINED
 
     with pytest.raises(ValueError):
         add_request_task(behave_context, method=RequestMethod.POST, source='{}', name='test')
@@ -218,8 +218,8 @@ def test_generate_save_handler(locust_environment: Environment) -> None:
 
     handler = generate_save_handler('$.', '.*', 'test')
     with pytest.raises(TypeError) as te:
-        handler((TransformerContentType.GUESS, {'test': {'value': 'test'}}), user, response_context_manager)
-    assert 'could not find a transformer for GUESS' in str(te)
+        handler((TransformerContentType.UNDEFINED, {'test': {'value': 'test'}}), user, response_context_manager)
+    assert 'could not find a transformer for UNDEFINED' in str(te)
 
     with pytest.raises(TypeError) as te:
         handler((TransformerContentType.JSON, {'test': {'value': 'test'}}), user, response_context_manager)

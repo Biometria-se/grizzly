@@ -39,7 +39,7 @@ class TestRequestTaskHandlers:
 class TestRequestTaskResponse:
     def test(self) -> None:
         response_task = RequestTaskResponse()
-        assert response_task.content_type == TransformerContentType.GUESS
+        assert response_task.content_type == TransformerContentType.UNDEFINED
 
         assert isinstance(response_task.handlers, RequestTaskHandlers)
 

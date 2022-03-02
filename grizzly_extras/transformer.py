@@ -4,7 +4,7 @@ for attributes and their value in.
 import re
 
 from abc import ABCMeta
-from typing import Optional, Tuple, Any, Dict, Type, List, Callable
+from typing import Optional, Any, Dict, Type, List, Callable
 from functools import wraps
 from json import loads as jsonloads, dumps as jsondumps, JSONEncoder
 from enum import Enum, auto
@@ -19,7 +19,7 @@ class TransformerError(Exception):
         self.message = message
 
 class TransformerContentType(Enum):
-    GUESS = 0
+    UNDEFINED = 0
     JSON = auto()
     XML = auto()
     PLAIN = auto()
@@ -37,7 +37,7 @@ class TransformerContentType(Enum):
 
 class Transformer(ABCMeta):
     @classmethod
-    def transform(cls, content_type: TransformerContentType, raw: str) -> Tuple[TransformerContentType, Any]:
+    def transform(cls, raw: str) -> Any:
         raise NotImplementedError(f'{cls.__name__} has not implemented transform')
 
     @classmethod
@@ -53,30 +53,21 @@ class transformer:
     available: Dict[TransformerContentType, Type[Transformer]] = {}
 
     def __init__(self, content_type: TransformerContentType) -> None:
-        if content_type == TransformerContentType.GUESS:
-            raise ValueError(f'it is not allowed to register a transformer of type GUESS')
+        if content_type == TransformerContentType.UNDEFINED:
+            raise ValueError(f'it is not allowed to register a transformer of type UNDEFINED')
 
         self.content_type = content_type
 
     def __call__(self, impl: Type[Transformer]) -> Type[Transformer]:
         impl_transform = impl.transform
+        content_type_name = self.content_type.name
         @wraps(impl.transform)
-        def wrapped_transform(content_type: TransformerContentType, raw: str) -> Tuple[TransformerContentType, Any]:
+        def wrapped_transform(raw: str) -> Any:
             try:
-                if content_type in [TransformerContentType.GUESS, self.content_type]:
-                    transformed_content_type, transformed = impl_transform(content_type, raw)
-
-                    # transformation was successfully guessed (no exception)
-                    if transformed_content_type == TransformerContentType.GUESS:
-                        transformed_content_type = self.content_type
-
-                    return (transformed_content_type, transformed, )
+                transformed = impl_transform(raw)
+                return transformed
             except Exception as e:
-                if content_type == self.content_type:
-                    raise TransformerError(f'failed to transform input as {self.content_type.name}: {str(e)}') from e
-
-            # fall through, try to transform as next content type
-            return (TransformerContentType.GUESS, raw, )
+                raise TransformerError(f'failed to transform input as {content_type_name}: {str(e)}') from e
 
         setattr(impl, '__wrapped_transform__', impl_transform)
         setattr(impl, 'transform', wrapped_transform)
@@ -90,8 +81,8 @@ class transformer:
 @transformer(TransformerContentType.JSON)
 class JsonTransformer(Transformer):
     @classmethod
-    def transform(cls, content_type: TransformerContentType, raw: str) -> Tuple[TransformerContentType, Any]:
-        return (content_type, jsonloads(raw), )
+    def transform(cls, raw: str) -> Any:
+        return jsonloads(raw)
 
     @classmethod
     def validate(cls, expression: str) -> bool:
@@ -139,7 +130,7 @@ class XmlTransformer(Transformer):
     _parser = XML.XMLParser(remove_blank_text=True)
 
     @classmethod
-    def transform(cls, content_type: TransformerContentType, raw: str) -> Tuple[TransformerContentType, Any]:
+    def transform(cls, raw: str) -> Any:
         document = XML.XML(raw.encode('utf-8'), parser=cls._parser)
 
         # remove namespaces, which makes it easier to use XPath...
@@ -149,10 +140,7 @@ class XmlTransformer(Transformer):
 
         XML.cleanup_namespaces(document)
 
-        return (
-            content_type,
-            document,
-        )
+        return document
 
     @classmethod
     def validate(cls, expression: str) -> bool:
@@ -196,8 +184,8 @@ class XmlTransformer(Transformer):
 @transformer(TransformerContentType.PLAIN)
 class PlainTransformer(Transformer):
     @classmethod
-    def transform(cls, content_type: TransformerContentType, raw: str) -> Tuple[TransformerContentType, Any]:
-        raise NotImplementedError(f'{cls.__name__} has not implemented transform')
+    def transform(cls, raw: str) -> Any:
+        return raw
 
     @classmethod
     def validate(cls, expression: str) -> bool:

@@ -175,10 +175,10 @@ def parse_timespan(timespan: str) -> Dict[str, int]:
     pattern = re.compile(r'((?P<years>-?\d+?)Y)?((?P<months>-?\d+?)M)?((?P<days>-?\d+?)D)?((?P<hours>-?\d+?)h)?((?P<minutes>-?\d+?)m)?((?P<seconds>-?\d+?)s)?')
     parts = pattern.match(timespan)
     if not parts:
-        raise ValueError('invalid time span format')
+        raise ValueError(f'invalid time span format: {timespan}')
     group = parts.groupdict()
     parameters = {name: int(value) for name, value in group.items() if value}
     if not parameters:
-        raise ValueError('invalid time span format')
+        raise ValueError(f'invalid time span format: {timespan}')
 
     return parameters

@@ -148,7 +148,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                         payload = message.decode()
 
                         try:
-                            _, payload = transform.transform(content_type, payload)
+                            payload = transform.transform(payload)
                         except TransformerError as e:
                             raise AsyncMessageError(e.message)
 
@@ -182,7 +182,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                     sleep(0.5)
 
     def _get_content_type(self, request: AsyncMessageRequest) -> TransformerContentType:
-        content_type: TransformerContentType = TransformerContentType.GUESS
+        content_type: TransformerContentType = TransformerContentType.UNDEFINED
         value: Optional[str] = request.get('context', {}).get('content_type', None)
         if value:
             content_type = TransformerContentType.from_string(value)

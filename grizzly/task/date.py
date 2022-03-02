@@ -63,9 +63,11 @@ class DateTask(GrizzlyTask):
             except ParserError as e:
                 raise ValueError(f'"{value_rendered}" is not a valid datetime string') from e
 
+
             offset = self.arguments.get('offset', None)
             if offset is not None:
-                offset_params = cast(Any, parse_timespan(offset))
+                offset_rendered = Template(offset).render(**parent.user._context['variables'])
+                offset_params = cast(Any, parse_timespan(offset_rendered))
                 date_value += relativedelta(**offset_params)
 
             timezone_argument = self.arguments.get('timezone', None)

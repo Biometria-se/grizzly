@@ -225,7 +225,7 @@ def step_response_content_type(context: Context, content_type: TransformerConten
         content_type (TransformerContentType): expected content type of response
     '''
 
-    assert content_type != TransformerContentType.GUESS, f'It is now allowed to set GUESS with this step'
+    assert content_type != TransformerContentType.UNDEFINED, f'It is not allowed to set UNDEFINED with this step'
 
     grizzly = cast(GrizzlyContext, context.grizzly)
     assert len(grizzly.scenario.tasks) > 0, f'There are no requests in the scenario'

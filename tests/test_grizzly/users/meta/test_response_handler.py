@@ -80,6 +80,7 @@ class TestResponseHandler:
 
         # payload handler called
         request.response.handlers.add_payload(payload_handler)
+        request.response.content_type = TransformerContentType.JSON
         user.response_handler('test', response_context_manager, request, test_user)
 
         assert metadata_handler.call_count == 0
@@ -98,6 +99,7 @@ class TestResponseHandler:
 
         # invalid json content in payload
         response._content = '{"test: "value"}'.encode('utf-8')
+        request.response.content_type = TransformerContentType.JSON
         response_context_manager = ResponseContextManager(response, RequestEvent(), {})
         request.response.handlers.add_payload(payload_handler)
 
@@ -117,7 +119,7 @@ class TestResponseHandler:
             value
         </test>'''.encode('utf-8')
 
-        request.response.content_type = TransformerContentType.GUESS
+        request.response.content_type = TransformerContentType.XML
         request.response.handlers.add_payload(payload_handler)
         user.response_handler('test', response_context_manager, request, test_user)
 
@@ -155,6 +157,7 @@ class TestResponseHandler:
         user.response_handler('test', (None, ''), request, test_user)
 
         # payload handler called
+        request.response.content_type = TransformerContentType.JSON
         request.response.handlers.add_payload(payload_handler)
         user.response_handler('test', (None, '{}'), request, test_user)
 
@@ -189,12 +192,12 @@ class TestResponseHandler:
         assert 'failed to transform input as XML' in str(e)
 
         request.response.content_type = TransformerContentType.PLAIN
-        with pytest.raises(ResponseHandlerError) as e:
-            user.response_handler('test', ({}, '{"test": "value"}'), request, test_user)
-        assert 'failed to transform input as PLAIN' in str(e)
+        user.response_handler('test', ({}, '{"test": "value"}'), request, test_user)
+        assert payload_handler.call_count == 1
+        payload_handler.reset_mock()
 
         # XML input
-        request.response.content_type = TransformerContentType.GUESS
+        request.response.content_type = TransformerContentType.XML
         user.response_handler(
             'test',
             (

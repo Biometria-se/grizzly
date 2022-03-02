@@ -107,7 +107,6 @@ from locust.exception import StopUser
 from grizzly.types import RequestDirection
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse, AsyncMessageError
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
-from grizzly_extras.transformer import TransformerContentType
 
 from ..types import GrizzlyResponse, RequestDirection
 from ..task import RequestTask
@@ -328,8 +327,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
             'payload': payload,
         }
 
-        if request.response.content_type != TransformerContentType.GUESS:
-            am_request['context']['content_type'] = request.response.content_type.name.lower()
+        am_request['context']['content_type'] = request.response.content_type.name.lower()
 
         with wrap_action(am_request, name) as action:
             action['failure_exception'] = StopUser
