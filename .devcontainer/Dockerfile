@@ -33,7 +33,7 @@ ENV LD_LIBRARY_PATH="/opt/mqm/lib64:${LD_LIBRARY_PATH}"
 # run github workflows locally
 RUN curl https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash
 
- RUN pip3 --disable-pip-version-check --no-cache-dir install pip-tools
+RUN pip3 --disable-pip-version-check --no-cache-dir install pip-tools
 
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
      && apt-get -y install --no-install-recommends vim

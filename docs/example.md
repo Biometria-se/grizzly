@@ -140,7 +140,7 @@ Create an python virtual environment and install dependencies:
 If you do not already have an working "IBM MQ" client setup and run `grizzly-cli` in local mode you will not be able to use `MessageQueueUser`. See [`grizzly-cli/static/Containerfile`](https://github.com/Biometria-se/grizzly-cli/blob/main/grizzly_cli/static/Containerfile#L27-L36) on how to get these. When that is done you need to install the extra dependencies:
 
 ```bash
-pip3 install grizzly-loadtester-cli[mq]
+pip3 install grizzly-loadtester[mq]
 ```
 
 ## Run
@@ -166,7 +166,7 @@ And in distributed mode (requires `docker` and `docker-compose` in `PATH`):
 === "Bash"
 
     ```bash
-    grizzly-cli run -e environments/example.yaml local features/example.feature
+    grizzly-cli run -e environments/example.yaml dist features/example.feature
     ```
 
 === "PowerShell"
