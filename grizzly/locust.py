@@ -193,35 +193,43 @@ def setup_environment_listeners(context: Context, environment: Environment, requ
 
 
 def print_scenario_summary(grizzly: GrizzlyContext) -> None:
-    def print_table_lines(length: int) -> None:
-        sys.stdout.write('-' * 11)
-        sys.stdout.write('|')
-        sys.stdout.write('-' * 4)
-        sys.stdout.write('|')
-        sys.stdout.write('-' * (length + 1))
-        sys.stdout.write('|\n')
+    def print_table_lines(max_length_iterations: int, max_length_description: int) -> None:
+        sys.stdout.write('-' * 10)
+        sys.stdout.write('-|-')
+        sys.stdout.write('-' * max_length_iterations)
+        sys.stdout.write('|-')
+        sys.stdout.write('-' * max_length_description)
+        sys.stdout.write('-|\n')
 
     rows: List[str] = []
-    max_length = len('description')
+    max_length_description = len('description')
+    max_length_iterations = len('#')
+
+    for scenario in grizzly.scenarios():
+        description_length = len(scenario.description or 'unknown')
+        if description_length > max_length_description:
+            max_length_description = description_length
+
+        iterations_length = len(str(scenario.iterations or ''))
+        if iterations_length > max_length_iterations:
+            max_length_iterations = iterations_length
 
     for scenario in grizzly.scenarios():
         description = scenario.description or 'unknown'
-        row = '{:11} {:>4} {}'.format(
+        row = '{:10}   {:>{}}  {}'.format(
             scenario.identifier,
             scenario.iterations,
+            max_length_iterations,
             description,
         )
-        description_length = len(description)
-        if description_length > max_length:
-            max_length = description_length
         rows.append(row)
 
     print('Scenario')
-    print('{:11} {:4} {}'.format('identifier', '#', 'description'))
-    print_table_lines(max_length)
+    print('{:10}   {:>{}}  {}'.format('identifier', '#', max_length_iterations, 'description'))
+    print_table_lines(max_length_iterations, max_length_description)
     for row in rows:
         print(row)
-    print_table_lines(max_length)
+    print_table_lines(max_length_iterations, max_length_description)
 
 
 def run(context: Context) -> int:
@@ -336,11 +344,17 @@ def run(context: Context) -> int:
             headless: bool
             num_users: int
             spawn_rate: float
+            tags: List[str]
+            exclude_tags: List[str]
+            enable_rebalancing: bool
 
         setattr(environment, 'parsed_options', LocustOption())
         setattr(environment.parsed_options, 'headless', True)
         setattr(environment.parsed_options, 'num_users', grizzly.setup.user_count)
         setattr(environment.parsed_options, 'spawn_rate', grizzly.setup.spawn_rate)
+        setattr(environment.parsed_options, 'tags', [])
+        setattr(environment.parsed_options, 'exclude_tags', [])
+        setattr(environment.parsed_options, 'enable_rebalancing', False)
 
         if on_master(context):
             expected_workers = int(context.config.userdata.get('expected-workers', 1))

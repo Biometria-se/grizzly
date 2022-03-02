@@ -43,8 +43,8 @@ main() {
         user_uid="$(id -u)"
 
         cwd=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
-        python_version=$(python - <<'EOF'
-import sys, ast, os, re, packaging.version as pv
+        python_version=$(python3 - <<'EOF'
+import sys, ast, re, packaging.version as pv
 with open('setup.py') as f:
     r = [n.value.value
         for n in ast.walk(ast.parse(f.read()))

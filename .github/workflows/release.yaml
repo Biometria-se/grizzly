@@ -47,14 +47,26 @@ jobs:
           exit 1
         fi
 
+    - name: setup environment
+      run: |
+        sudo ln -fs /usr/share/zoneinfo/Europe/Stockholm /etc/localtime
+        sudo ln -fs /usr/share/zoneinfo/Europe/Stockholm /etc/timezone
+        echo $HOME/.local/bin >> $GITHUB_PATH
+
     - name: checkout
+      if: ${{ !env.ACT }}
       uses: actions/checkout@v2
       with:
         fetch-depth: 0
         ref: main
 
+    - name: checkout
+      if: ${{ env.ACT }}
+      uses: actions/checkout@v2
+
     - name: setup python (with cache)
       if: ${{ !env.ACT }}
+      id: setup-python-with-cache
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
@@ -63,6 +75,7 @@ jobs:
 
     - name: setup python (without cache)
       if: ${{ env.ACT }}
+      id: setup-python-without-cache
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
@@ -112,16 +125,10 @@ jobs:
 
         echo "::set-output name=version::${next_version}"
 
-    - name: setup environment
-      run: |
-        sudo ln -fs /usr/share/zoneinfo/Europe/Stockholm /etc/localtime
-        sudo ln -fs /usr/share/zoneinfo/Europe/Stockholm /etc/timezone
-        echo $HOME/.local/bin >> $GITHUB_PATH
-
     - name: install python dependencies
       run: |
         pip install --upgrade wheel twine pip-tools
-        pip-sync requirements-ci.txt
+        ./script/pip-sync.bash ci
 
     - name: build and publish package
       env:

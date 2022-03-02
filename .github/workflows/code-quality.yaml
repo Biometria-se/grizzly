@@ -18,12 +18,20 @@ jobs:
       PYTHONPATH: .
 
     steps:
+    - name: setup environment
+      id: env
+      run: |
+        sudo ln -fs /usr/share/zoneinfo/Europe/Stockholm /etc/localtime
+        sudo ln -fs /usr/share/zoneinfo/Europe/Stockholm /etc/timezone
+        echo $HOME/.local/bin >> $GITHUB_PATH
+
     - name: checkout
       id: checkout
       uses: actions/checkout@v2
 
     - name: setup python (with cache)
       if: ${{ !env.ACT }}
+      id: setup-python-with-cache
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
@@ -32,16 +40,10 @@ jobs:
 
     - name: setup python (without cache)
       if: ${{ env.ACT }}
+      id: setup-python-without-cache
       uses: actions/setup-python@v2
       with:
         python-version: ${{ matrix.python-version }}
-
-    - name: setup environment
-      id: env
-      run: |
-        sudo ln -fs /usr/share/zoneinfo/Europe/Stockholm /etc/localtime
-        sudo ln -fs /usr/share/zoneinfo/Europe/Stockholm /etc/timezone
-        echo $HOME/.local/bin >> $GITHUB_PATH
 
     - name: install python dependencies
       id: pip

@@ -469,12 +469,14 @@ def test_print_scenario_summary(behave_context: Context, locust_environment: Env
     print_scenario_summary(grizzly)
 
     summary = capsys.readouterr().out
-    assert summary == '''Scenario
-identifier  #    description
------------|----|------------|
-cbda8191       1 test-1
------------|----|------------|
-'''
+    print(summary)
+    assert '''Scenario
+identifier   #  description
+-----------|--|-------------|
+cbda8191     1  test-1
+-----------|--|-------------|
+''' == summary
+    capsys.readouterr()
 
     grizzly.add_scenario('test-2-test-2-test-2-test-2')
     grizzly.scenario.iterations = 4
@@ -482,13 +484,15 @@ cbda8191       1 test-1
     print_scenario_summary(grizzly)
 
     summary = capsys.readouterr().out
-    assert summary == '''Scenario
-identifier  #    description
------------|----|----------------------------|
-cbda8191       1 test-1
-b4959834       4 test-2-test-2-test-2-test-2
------------|----|----------------------------|
-'''
+    print(summary)
+    assert '''Scenario
+identifier   #  description
+-----------|--|-----------------------------|
+cbda8191     1  test-1
+b4959834     4  test-2-test-2-test-2-test-2
+-----------|--|-----------------------------|
+''' == summary
+    capsys.readouterr()
 
     grizzly.add_scenario('#3')
 
@@ -497,17 +501,37 @@ b4959834       4 test-2-test-2-test-2-test-2
     print_scenario_summary(grizzly)
 
     summary = capsys.readouterr().out
-
     print(summary)
 
-    assert summary == '''Scenario
-identifier  #    description
------------|----|----------------------------|
-cbda8191       1 test-1
-b4959834       4 test-2-test-2-test-2-test-2
-83189503     999 #3
------------|----|----------------------------|
-'''
+    assert '''Scenario
+identifier     #  description
+-----------|----|-----------------------------|
+cbda8191       1  test-1
+b4959834       4  test-2-test-2-test-2-test-2
+83189503     999  #3
+-----------|----|-----------------------------|
+''' == summary
+    capsys.readouterr()
+
+    grizzly.add_scenario('foo bar hello world')
+
+    grizzly.scenario.iterations = 99999
+
+    print_scenario_summary(grizzly)
+
+    summary = capsys.readouterr().out
+    print(summary)
+
+    assert '''Scenario
+identifier       #  description
+-----------|------|-----------------------------|
+cbda8191         1  test-1
+b4959834         4  test-2-test-2-test-2-test-2
+83189503       999  #3
+0b345183     99999  foo bar hello world
+-----------|------|-----------------------------|
+''' == summary
+    capsys.readouterr()
 
 
 @pytest.mark.usefixtures('behave_context')
