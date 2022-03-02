@@ -184,12 +184,12 @@ class TestResponseHandler:
         request.response.content_type = TransformerContentType.JSON
         with pytest.raises(ResponseHandlerError) as e:
             user.response_handler('test', (None, '{"test: "value"'), request, test_user)
-        assert 'failed to transform input' in str(e)
+        assert 'failed to transform input as JSON' in str(e)
 
         request.response.content_type = TransformerContentType.XML
         with pytest.raises(ResponseHandlerError) as e:
             user.response_handler('test', ({}, '{"test": "value"}'), request, test_user)
-        assert 'failed to transform input' in str(e)
+        assert 'failed to transform input as XML' in str(e)
 
         request.response.content_type = TransformerContentType.PLAIN
         user.response_handler('test', ({}, '{"test": "value"}'), request, test_user)

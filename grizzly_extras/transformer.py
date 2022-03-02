@@ -60,13 +60,14 @@ class transformer:
 
     def __call__(self, impl: Type[Transformer]) -> Type[Transformer]:
         impl_transform = impl.transform
+        content_type_name = self.content_type.name
         @wraps(impl.transform)
         def wrapped_transform(raw: str) -> Any:
             try:
                 transformed = impl_transform(raw)
                 return transformed
             except Exception as e:
-                raise TransformerError(f'failed to transform input: {str(e)}') from e
+                raise TransformerError(f'failed to transform input as {content_type_name}: {str(e)}') from e
 
         setattr(impl, '__wrapped_transform__', impl_transform)
         setattr(impl, 'transform', wrapped_transform)

@@ -479,7 +479,7 @@ class TestAsyncServiceBusHandler:
 
         with pytest.raises(AsyncMessageError) as ame:
             handlers[request['action']](handler, request)
-        assert 'failed to transform input: Expecting value: line 1 column 1 (char 0)' in str(ame)
+        assert 'failed to transform input as JSON: Expecting value: line 1 column 1 (char 0)' in str(ame)
         assert receiver_instance_mock.return_value.abandon_message.call_count == 2
 
         endpoint_backup = request['context']['endpoint']

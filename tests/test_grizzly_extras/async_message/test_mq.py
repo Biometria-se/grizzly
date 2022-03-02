@@ -468,7 +468,7 @@ class TestAsyncMessageQueueHandler:
         request['context']['endpoint'] = "queue:theendpoint, expression: //singer[@id='3']"
         with pytest.raises(AsyncMessageError) as mqe:
             response = handlers[request['action']](handler, request)
-        assert 'failed to transform input' in str(mqe)
+        assert 'failed to transform input as XML' in str(mqe)
         queue_messages['id1'].payload = tmp_xml
 
         # Queue.get returning unexpected error
