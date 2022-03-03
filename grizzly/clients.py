@@ -1,9 +1,8 @@
 import logging
 
-from typing import Optional, Union, Dict, Any, Tuple, Optional, Generator
+from typing import Optional, Dict, Any, Tuple, Optional, Generator, cast
 from contextlib import contextmanager
 
-from requests.models import Response
 from locust.user.users import User
 from locust.clients import ResponseContextManager, HttpSession
 from locust.event import EventHook
@@ -25,14 +24,16 @@ class ResponseEventSession(HttpSession):
 
     def request(
         self,
+        /,
         method: str,
         url: str,
-        name: str,
-        request: Optional[RequestTask] = None,
+        request: RequestTask,
+        name: Optional[str] = None,
         catch_response: bool = False,
         **kwargs: Dict[str, Any],
-    ) -> Union[ResponseContextManager, Response]:
-        response = super().request(method, url, name, catch_response, **kwargs)
+    ) -> ResponseContextManager:
+
+        response = cast(ResponseContextManager, super().request(method, url, name, catch_response, **kwargs))
 
         self.event_hook.fire(
             name=name,

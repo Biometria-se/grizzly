@@ -6,7 +6,7 @@ from platform import node as hostname
 import pytest
 
 from pytest_mock import MockerFixture, mocker  # pylint: disable=unused-import
-from _pytest.tmpdir import TempdirFactory
+from _pytest.tmpdir import TempPathFactory
 from _pytest.capture import CaptureFixture
 
 from grizzly_extras.async_message import (
@@ -112,8 +112,9 @@ def test_register() -> None:
 
 
 class TestThreadLogger:
-    def test_logger(self, tmpdir_factory: TempdirFactory, capsys: CaptureFixture) -> None:
-        test_context = tmpdir_factory.mktemp('test_context').mkdir('logs')
+    def test_logger(self, tmp_path_factory: TempPathFactory, capsys: CaptureFixture) -> None:
+        test_context = tmp_path_factory.mktemp('test_context') / 'logs'
+        test_context.mkdir()
         test_context_root = path.dirname(str(test_context))
 
         try:

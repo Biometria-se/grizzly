@@ -17,7 +17,7 @@ from json import dumps as jsondumps
 from jinja2 import Template
 
 from grizzly.users.restapi import AuthMethod, RestApiUser, refresh_token
-from grizzly.users.meta import RequestLogger, ResponseHandler, ContextVariables
+from grizzly.users.base import RequestLogger, ResponseHandler, GrizzlyUser
 from grizzly.clients import ResponseEventSession
 from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContextScenario
@@ -224,7 +224,7 @@ class TestRestApiUser:
         assert isinstance(user, RestApiUser)
         assert issubclass(user.__class__, RequestLogger)
         assert issubclass(user.__class__, ResponseHandler)
-        assert issubclass(user.__class__, ContextVariables)
+        assert issubclass(user.__class__, GrizzlyUser)
         assert user.host == 'http://test.ie'
         assert user._context == {
             'variables': {},

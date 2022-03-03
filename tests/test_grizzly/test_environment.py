@@ -195,7 +195,7 @@ def test_after_scenario(behave_context: Context) -> None:
 
     after_scenario(behave_context)
 
-    assert grizzly.state.background_section_done
+    assert getattr(grizzly.state, 'background_section_done', False)
 
     after_scenario(behave_context)
 

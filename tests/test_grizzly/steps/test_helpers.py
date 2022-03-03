@@ -8,7 +8,7 @@ import pytest
 
 from behave.runner import Context
 from behave.model import Table, Row
-from _pytest.tmpdir import TempdirFactory
+from _pytest.tmpdir import TempPathFactory
 from locust.env import Environment
 from locust.exception import CatchResponseError
 from locust.clients import ResponseContextManager
@@ -54,7 +54,7 @@ def test_add_request_task_response_status_codes() -> None:
     assert request.response.status_codes == [200, 302, 400]
 
 
-def test_add_request_task(behave_context: Context, grizzly_context: Callable, tmpdir_factory: TempdirFactory) -> None:
+def test_add_request_task(behave_context: Context, grizzly_context: Callable, tmp_path_factory: TempPathFactory) -> None:
     grizzly = cast(GrizzlyContext, behave_context.grizzly)
     grizzly.scenario.context['host'] = 'http://test'
 
@@ -124,12 +124,14 @@ def test_add_request_task(behave_context: Context, grizzly_context: Callable, tm
     assert grizzly.scenario.tasks[-1].name == 'my_blob2'
 
     try:
-        test_context = tmpdir_factory.mktemp('test_context').mkdir('requests')
-        test_context_root = os.path.dirname(str(test_context))
+        test_context = tmp_path_factory.mktemp('test_context') / 'requests'
+        test_context.mkdir()
+        test_context_root = os.path.dirname(test_context)
         os.environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
         behave_context.config.base_dir = test_context_root
-        test_template = test_context.join('template.j2.json')
-        test_template.write('{{ hello_world }}')
+        test_template = test_context / 'template.j2.json'
+        test_template.touch()
+        test_template.write_text('{{ hello_world }}')
 
         rows: List[Row] = []
         rows.append(Row(['test'], ['-200,400']))
@@ -149,8 +151,8 @@ def test_add_request_task(behave_context: Context, grizzly_context: Callable, tm
 
         grizzly.scenario.tasks.clear()
 
-        test_datatable_template = test_context.join('datatable_template.j2.json')
-        test_datatable_template.write('Hello {{ name }} and good {{ time_of_day }}!')
+        test_datatable_template = test_context / 'datatable_template.j2.json'
+        test_datatable_template.write_text('Hello {{ name }} and good {{ time_of_day }}!')
 
         values = [
             ['bob', 'morning', '{{ AtomicRandomString.object }} is garbage'],
@@ -486,6 +488,7 @@ def test_generate_validation_handler_positive(locust_environment: Environment) -
         response._content = '{}'.encode('utf-8')
         response.status_code = 200
         response_context_manager = ResponseContextManager(response, locust_environment.events.request, {})
+        response_context_manager._entered = True
 
         handler = generate_validation_handler('$.test.value', 'test', True)
 
@@ -598,7 +601,7 @@ def test_generate_validation_handler_positive(locust_environment: Environment) -
         assert isinstance(response_context_manager._manual_result, CatchResponseError)
         response_context_manager._manual_result = None
     finally:
-        assert user._context['variables'] != TestUser(locust_environment)._context['variables']
+        assert user._context['variables'] is not TestUser(locust_environment)._context['variables']
 
 
 @pytest.mark.usefixtures('behave_context', 'locust_environment')
@@ -608,6 +611,8 @@ def test_add_save_handler(behave_context: Context, locust_environment: Environme
     response._content = '{}'.encode('utf-8')
     response.status_code = 200
     response_context_manager = ResponseContextManager(response, None, None)
+    response_context_manager._entered = True
+
     grizzly = cast(GrizzlyContext, behave_context.grizzly)
     tasks = grizzly.scenario.tasks
 
@@ -699,6 +704,8 @@ def test_add_validation_handler(behave_context: Context, locust_environment: Env
     response._content = '{}'.encode('utf-8')
     response.status_code = 200
     response_context_manager = ResponseContextManager(response, None, None)
+    response_context_manager._entered = True
+
     grizzly = cast(GrizzlyContext, behave_context.grizzly)
     tasks = grizzly.scenario.tasks
     assert len(tasks) == 0

@@ -111,7 +111,7 @@ from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
 from ..types import GrizzlyResponse, RequestDirection
 from ..task import RequestTask
 from ..utils import merge_dicts
-from .meta import ContextVariables, ResponseHandler, RequestLogger
+from .base import GrizzlyUser, ResponseHandler, RequestLogger
 from . import logger
 
 
@@ -123,7 +123,7 @@ try:
 except:
     from grizzly_extras import dummy_pymqi as pymqi
 
-class MessageQueueUser(ResponseHandler, RequestLogger, ContextVariables):
+class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
     _context: Dict[str, Any] = {
         'auth': {
             'username': None,

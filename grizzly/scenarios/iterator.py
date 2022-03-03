@@ -15,7 +15,7 @@ class IteratorScenario(GrizzlyScenario):
     def __init__(self, parent: Type[User]) -> None:
         super().__init__(parent=parent)
 
-    def run(self) -> None:
+    def run(self) -> None:  # type: ignore
         try:
             self.on_start()
         except InterruptTaskSet as e:

@@ -3,24 +3,23 @@ from json import dumps as jsondumps
 import pytest
 
 from lxml import etree as XML
-from requests.models import Response
-from pytest_mock import mocker  # pylint: disable=unused-import
-from pytest_mock.plugin import MockerFixture
+from pytest_mock import mocker, MockerFixture  # pylint: disable=unused-import
 
 from locust.env import Environment
 from locust.event import EventHook
 from locust.clients import ResponseContextManager
 from locust.exception import LocustError, CatchResponseError
+from requests.models import Response
 
 from grizzly.clients import ResponseEventSession
-from grizzly.users.meta import HttpRequests, ResponseEvent, ResponseHandler
+from grizzly.users.base import HttpRequests, ResponseEvent, ResponseHandler
 from grizzly.exceptions import ResponseHandlerError
 from grizzly.types import RequestMethod
 from grizzly.task import RequestTask
 from grizzly_extras.transformer import TransformerContentType
 
 from ...fixtures import locust_environment  # pylint: disable=unused-import
-from ...helpers import RequestEvent, TestUser
+from ...helpers import TestUser
 
 
 class TestResponseHandler:
@@ -60,7 +59,9 @@ class TestResponseHandler:
         response = Response()
         response._content = jsondumps({}).encode('utf-8')
         response.status_code = 200
-        response_context_manager = ResponseContextManager(response, RequestEvent(), {})
+        response_context_manager = ResponseContextManager(response, None, {})
+
+        request_event = mocker.patch.object(response_context_manager, '_request_event', autospec=True)
 
         request = RequestTask(RequestMethod.POST, name='test-request', endpoint='/api/v2/test')
 
@@ -77,6 +78,8 @@ class TestResponseHandler:
 
         # no handler called
         user.response_handler('test', response_context_manager, request, test_user)
+
+        assert request_event.call_count == 0
 
         # payload handler called
         request.response.handlers.add_payload(payload_handler)
@@ -99,8 +102,9 @@ class TestResponseHandler:
 
         # invalid json content in payload
         response._content = '{"test: "value"}'.encode('utf-8')
-        request.response.content_type = TransformerContentType.JSON
-        response_context_manager = ResponseContextManager(response, RequestEvent(), {})
+        response_context_manager = ResponseContextManager(response, None, {})
+        response_context_manager._entered = True
+        mocker.patch.object(response_context_manager, '_request_event', autospec=True)
         request.response.handlers.add_payload(payload_handler)
 
         assert response_context_manager._manual_result is None

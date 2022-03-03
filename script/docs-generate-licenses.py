@@ -16,6 +16,9 @@ URL_MAP = {
     'pylint': 'https://www.pylint.org/',
     'msal-extensions': 'https://github.com/AzureAD/microsoft-authentication-extensions-for-python',
     'tomli': 'https://github.com/hukkin/tomli',
+    'databind.core': 'https://github.com/NiklasRosenstein/databind',
+    'databind.json': 'https://github.com/NiklasRosenstein/databind',
+    'pydoc-markdown': 'https://pydoc-markdown.readthedocs.io/en/latest/',
 }
 
 REPO_ROOT = path.realpath(path.join(path.dirname(__file__), '..'))

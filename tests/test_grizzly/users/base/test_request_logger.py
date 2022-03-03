@@ -5,20 +5,20 @@ from typing import Generator, List, Callable
 
 import pytest
 
-from _pytest.tmpdir import TempdirFactory
+from _pytest.tmpdir import TempPathFactory
 from locust.env import Environment
 from locust.clients import ResponseContextManager
 from requests.models import CaseInsensitiveDict, Response, PreparedRequest
 
-from grizzly.users.meta import RequestLogger, HttpRequests
+from grizzly.users.base import RequestLogger, HttpRequests
 from grizzly.types import RequestMethod
 from grizzly.task import RequestTask
 
 from ...fixtures import locust_environment  # pylint: disable=unused-import
 
 @pytest.fixture
-def request_logger(locust_environment: Environment, tmpdir_factory: TempdirFactory) -> Generator[RequestLogger, None, None]:
-        test_context = tmpdir_factory.mktemp('test_context').mkdir('requests')
+def request_logger(locust_environment: Environment, tmp_path_factory: TempPathFactory) -> Generator[RequestLogger, None, None]:
+        test_context = tmp_path_factory.mktemp('test_context') / 'requests'
         test_context_root = path.dirname(str(test_context))
         environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
 

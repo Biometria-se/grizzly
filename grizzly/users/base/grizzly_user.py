@@ -14,7 +14,7 @@ from ...task import RequestTask
 from ...utils import merge_dicts
 from . import logger, FileRequests
 
-class ContextVariables(User):
+class GrizzlyUser(User):
     _context_root: str
     _context: Dict[str, Any] = {
         'variables': {},
@@ -23,17 +23,26 @@ class ContextVariables(User):
 
     __dependencies__: Set[str] = set()
 
+    request_name_map: Dict[str, str] = {
+        'RECEIVE': 'RECV',
+        'HELLO': 'HELO',
+    }
+
+
     weight: int = 1
 
     def __init__(self, environment: Environment, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
         super().__init__(environment, *args, **kwargs)
 
         self._context_root = environ.get('GRIZZLY_CONTEXT_ROOT', '.')
-        self._context = merge_dicts({}, ContextVariables._context)
+        self._context = merge_dicts({}, GrizzlyUser._context)
 
     @abstractmethod
     def request(self, request: RequestTask) -> GrizzlyResponse:
         raise NotImplementedError(f'{self.__class__.__name__} has not implemented request(RequestTask)')
+
+    def get_request_method(self, request: RequestTask) -> str:
+        return self.request_name_map.get(request.method.name, request.method.name[:4])
 
     def render(self, request: RequestTask) -> Tuple[str, str, Optional[str]]:
         scenario_name = f'{request.scenario.identifier} {request.name}'

@@ -5,7 +5,7 @@ from typing import Callable
 
 import pytest
 
-from _pytest.tmpdir import TempdirFactory
+from _pytest.tmpdir import TempPathFactory
 
 from grizzly.testdata.variables import AtomicDirectoryContents
 from grizzly.testdata.variables.directory_contents import atomicdirectorycontents__base_type__
@@ -13,15 +13,17 @@ from grizzly.testdata.variables.directory_contents import atomicdirectorycontent
 from ..fixtures import cleanup  # pylint: disable=unused-import
 
 
-def test_atomicdirectorycontents__base_type__(tmpdir_factory: TempdirFactory) -> None:
-    test_context = tmpdir_factory.mktemp('test_context').mkdir('requests')
-    test_context_root = os.path.dirname(str(test_context))
+def test_atomicdirectorycontents__base_type__(tmp_path_factory: TempPathFactory) -> None:
+    test_context = tmp_path_factory.mktemp('test_context') / 'requests'
+    test_context.mkdir()
+    test_context_root = os.path.dirname(test_context)
 
     try:
         os.environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
 
-        test_file = test_context.join('test.txt')
-        test_file.write('\n')
+        test_file = test_context / 'test.txt'
+        test_file.touch()
+        test_file.write_text('\n')
 
         with pytest.raises(ValueError) as ve:
             atomicdirectorycontents__base_type__('test.txt')
@@ -50,8 +52,9 @@ def test_atomicdirectorycontents__base_type__(tmpdir_factory: TempdirFactory) ->
 
 class TestAtomicDirectoryContents:
     @pytest.mark.usefixtures('cleanup')
-    def test(self, cleanup: Callable, tmpdir_factory: TempdirFactory) -> None:
-        test_context = str(tmpdir_factory.mktemp('test_context').mkdir('requests'))
+    def test(self, cleanup: Callable, tmp_path_factory: TempPathFactory) -> None:
+        test_context = tmp_path_factory.mktemp('test_context') / 'requests'
+        test_context.mkdir()
         test_context_root = os.path.dirname(test_context)
 
         os.environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
@@ -200,8 +203,9 @@ class TestAtomicDirectoryContents:
             cleanup()
 
     @pytest.mark.usefixtures('cleanup')
-    def test_clear_and_destroy(self, cleanup: Callable, tmpdir_factory: TempdirFactory) -> None:
-        test_context = str(tmpdir_factory.mktemp('test_context').mkdir('requests'))
+    def test_clear_and_destroy(self, cleanup: Callable, tmp_path_factory: TempPathFactory) -> None:
+        test_context = tmp_path_factory.mktemp('test_context') / 'requests'
+        test_context.mkdir()
         test_context_root = os.path.dirname(test_context)
 
         os.environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root

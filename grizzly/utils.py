@@ -109,9 +109,9 @@ def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Opt
     context: Dict[str, Any] = {}
     contexts: List[Dict[str, Any]] = []
 
-    from .users.meta import ContextVariables
+    from .users.base import GrizzlyUser
 
-    if issubclass(base_user_class_type, ContextVariables):
+    if issubclass(base_user_class_type, GrizzlyUser):
         contexts.append(base_user_class_type._context)
 
     contexts += [global_context, scenario.context]

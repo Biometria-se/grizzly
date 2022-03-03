@@ -5,7 +5,7 @@ from os import path, environ
 
 import pytest
 
-from _pytest.tmpdir import TempdirFactory
+from _pytest.tmpdir import TempPathFactory
 from jinja2.environment import Template
 from behave.model import Scenario
 from behave.runner import Context
@@ -29,10 +29,10 @@ from .helpers import get_property_decorated_attributes
 from .fixtures import request_task, grizzly_context, behave_context, locust_environment  # pylint: disable=unused-import
 
 
-def test_load_configuration_file(tmpdir_factory: TempdirFactory) -> None:
-    configuration_file = tmpdir_factory.mktemp('configuration_file').join('configuration.yaml')
+def test_load_configuration_file(tmp_path_factory: TempPathFactory) -> None:
+    configuration_file = tmp_path_factory.mktemp('configuration_file') / 'configuration.yaml'
     try:
-        configuration_file.write('''
+        configuration_file.write_text('''
             configuration:
                 sut:
                     host: 'https://backend.example.com'
@@ -192,10 +192,10 @@ class TestGrizzlyContextState:
             assert getattr(state, test_attribute_name) == test_value
 
 
-    def test_configuration(self, tmpdir_factory: TempdirFactory) -> None:
-        configuration_file = tmpdir_factory.mktemp('configuration_file').join('configuration.yaml')
+    def test_configuration(self, tmp_path_factory: TempPathFactory) -> None:
+        configuration_file = tmp_path_factory.mktemp('configuration_file') / 'configuration.yaml'
         try:
-            configuration_file.write('''
+            configuration_file.write_text('''
                 configuration:
                     sut:
                         host: 'https://backend.example.com'

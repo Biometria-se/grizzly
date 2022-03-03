@@ -9,12 +9,11 @@ from os import mkdir, path
 import pytest
 import zmq
 
-from _pytest.tmpdir import TempdirFactory
+from _pytest.tmpdir import TempPathFactory
 
 from jinja2 import Template
 from behave.runner import Context
-from pytest_mock import mocker  # pylint: disable=unused-import
-from pytest_mock.plugin import MockerFixture
+from pytest_mock import mocker, MockerFixture  # pylint: disable=unused-import
 from _pytest.logging import LogCaptureFixture
 from locust.exception import StopUser
 
@@ -132,8 +131,9 @@ def test__get_variable_value_AtomicServiceBus(noop_zmq: Callable[[str], None], c
 
 
 @pytest.mark.usefixtures('cleanup', 'tmpdir_factory')
-def test__get_variable_value_AtomicCsvRow(cleanup: Callable, tmpdir_factory: TempdirFactory) -> None:
-    test_context = str(tmpdir_factory.mktemp('test_context').mkdir('requests'))
+def test__get_variable_value_AtomicCsvRow(cleanup: Callable, tmp_path_factory: TempPathFactory) -> None:
+    test_context = tmp_path_factory.mktemp('test_context') / 'requests'
+    test_context.mkdir()
     test_context_root = path.dirname(test_context)
     environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
 

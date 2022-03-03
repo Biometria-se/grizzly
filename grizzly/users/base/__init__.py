@@ -14,11 +14,11 @@ class HttpRequests:
 from .response_event import ResponseEvent
 from .request_logger import RequestLogger
 from .response_handler import ResponseHandler
-from .context_variables import ContextVariables
+from .grizzly_user import GrizzlyUser
 
 __all__ = [
     'ResponseEvent',
     'RequestLogger',
     'ResponseHandler',
-    'ContextVariables',
+    'GrizzlyUser',
 ]

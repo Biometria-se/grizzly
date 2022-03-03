@@ -5,7 +5,7 @@ from types import MethodType
 
 from locust import task
 
-from grizzly.users.meta import ContextVariables
+from grizzly.users.base import GrizzlyUser
 from grizzly.types import GrizzlyResponse
 from grizzly.task import RequestTask
 from grizzly.scenarios import GrizzlyScenario
@@ -22,7 +22,7 @@ class RequestCalled(Exception):
         self.request = request
 
 
-class TestUser(ContextVariables):
+class TestUser(GrizzlyUser):
     __test__ = False
 
     _config_property: Optional[str] = None

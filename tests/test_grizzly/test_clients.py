@@ -1,4 +1,3 @@
-
 import gevent.monkey
 gevent.monkey.patch_all()
 
@@ -72,20 +71,20 @@ class TestResponseEventSession:
 
         assert len(session.event_hook._handlers) == 1
 
-        session.request('GET', 'http://example.org', 'test-name', catch_response=False, request=request)
+        session.request(method='GET', url='http://example.org', name='test-name', catch_response=False, request=request)
 
         session.event_hook._handlers = []
         session.event_hook.add_listener(handler(request))
 
         # handler should be called, which raises StopUser
         with pytest.raises(HandlerCalled):
-            session.request('GET', 'http://example.org', 'test-name', catch_response=False, request=request)
+            session.request(method='GET', url='http://example.org', name='test-name', catch_response=False, request=request)
 
         second_request = RequestTask(RequestMethod.GET, name='test-request', endpoint='/api/test')
         second_request.scenario = scenario
 
         # handler is called, but request is not the same
-        session.request('GET', 'http://example.org', 'test-name', catch_response=False, request=second_request)
+        session.request(method='GET', url='http://example.org', name='test-name', catch_response=False, request=second_request)
 
 
 class TestSftpClientSession:

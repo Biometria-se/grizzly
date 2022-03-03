@@ -244,7 +244,7 @@ class TestIterationScenario:
         assert kwargs.get('tb', None) is not None
 
         get_next_task = mocker.patch.object(scenario, 'get_next_task', side_effect=[None, RuntimeError])
-        execute_next_task = mocker.patch.object(scenario, 'execute_next_task', autospec=True)
+        execute_next_task = mocker.patch.object(scenario, 'execute_next_task')
 
         with pytest.raises(RuntimeError):
             scenario.run()
@@ -265,7 +265,7 @@ class TestIterationScenario:
         schedule_task.reset_mock()
 
         get_next_task = mocker.patch.object(scenario, 'get_next_task', side_effect=[InterruptTaskSet(reschedule=False), InterruptTaskSet(reschedule=True)])
-        execute_next_task = mocker.patch.object(scenario, 'execute_next_task', autospec=True)
+        execute_next_task = mocker.patch.object(scenario, 'execute_next_task')
 
         with pytest.raises(RescheduleTask):
             scenario.run()

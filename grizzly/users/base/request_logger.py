@@ -15,7 +15,7 @@ from ...task import RequestTask
 from ...types import HandlerContextType, RequestDirection
 from ...utils import merge_dicts
 from .response_event import ResponseEvent
-from .context_variables import ContextVariables
+from .grizzly_user import GrizzlyUser
 
 from grizzly_extras.transformer import JsonBytesEncoder
 
@@ -41,7 +41,7 @@ payload:
 '''.strip()
 
 
-class RequestLogger(ResponseEvent, ContextVariables):
+class RequestLogger(ResponseEvent, GrizzlyUser):
     abstract = True
 
     log_dir: str
@@ -145,7 +145,7 @@ class RequestLogger(ResponseEvent, ContextVariables):
         name: str,
         context: HandlerContextType,
         request: RequestTask,
-        user: ContextVariables,
+        user: GrizzlyUser,
         exception: Optional[Exception] = None,
         **kwargs: Dict[str, Any],
     ) -> None:
@@ -216,7 +216,7 @@ class RequestLogger(ResponseEvent, ContextVariables):
 
             if exception is not None:
                 variables['stacktrace'] = ''.join(traceback.format_exception(
-                    etype=type(exception),
+                    type(exception),
                     value=exception,
                     tb=exception.__traceback__,
                 ))

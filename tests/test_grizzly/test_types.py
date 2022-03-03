@@ -4,7 +4,7 @@ from shutil import rmtree
 
 import pytest
 
-from _pytest.tmpdir import TempdirFactory
+from _pytest.tmpdir import TempPathFactory
 
 from grizzly.types import RequestDirection, RequestMethod, bool_typed, int_rounded_float_typed, AtomicVariable, GrizzlyDict
 
@@ -195,8 +195,9 @@ class TestGrizzlyDict:
             cleanup()
 
     @pytest.mark.usefixtures('cleanup')
-    def test_AtomicDirectoryContents(self, cleanup: Callable, tmpdir_factory: TempdirFactory) -> None:
-        test_context = str(tmpdir_factory.mktemp('test_context').mkdir('requests'))
+    def test_AtomicDirectoryContents(self, cleanup: Callable, tmp_path_factory: TempPathFactory) -> None:
+        test_context = tmp_path_factory.mktemp('test_context') / 'requests'
+        test_context.mkdir()
         test_context_root = path.dirname(test_context)
         environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
 
@@ -243,8 +244,9 @@ class TestGrizzlyDict:
             cleanup()
 
     @pytest.mark.usefixtures('cleanup')
-    def test_AtomicCsvRow(self, cleanup: Callable, tmpdir_factory: TempdirFactory) -> None:
-        test_context = str(tmpdir_factory.mktemp('test_context').mkdir('requests'))
+    def test_AtomicCsvRow(self, cleanup: Callable, tmp_path_factory: TempPathFactory) -> None:
+        test_context = tmp_path_factory.mktemp('test_context') / 'requests'
+        test_context.mkdir()
         test_context_root = path.dirname(test_context)
         environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
 

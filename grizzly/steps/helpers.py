@@ -14,7 +14,7 @@ from locust.clients import ResponseContextManager
 
 from grizzly_extras.transformer import PlainTransformer, transformer, TransformerError, TransformerContentType
 
-from ..users.meta import ContextVariables
+from ..users.base import GrizzlyUser
 from ..context import GrizzlyContext
 from ..exceptions import ResponseHandlerError, TransformerLocustError
 from ..types import HandlerType, RequestMethod, ResponseTarget, ResponseAction
@@ -199,7 +199,7 @@ def handler_logic(
     input_context: Tuple[TransformerContentType, Any],
     expression: str,
     match_with: str,
-    user: ContextVariables,
+    user: GrizzlyUser,
     callback: Callable[[str, Optional[Any]], None],
     condition: bool,
 ) -> None:
@@ -264,7 +264,7 @@ def generate_validation_handler(expression: str, match_with: str, condition: boo
     '''
     def validate(
         input_context: Tuple[TransformerContentType, Any],
-        user: ContextVariables,
+        user: GrizzlyUser,
         response: Optional[ResponseContextManager] = None,
     ) -> None:
         '''Actual handler that will run after a response has been received by an task.
@@ -311,7 +311,7 @@ def generate_save_handler(expression: str, match_with: str, variable: str) -> Ha
     '''
     def save(
         input_context: Tuple[TransformerContentType, Any],
-        user: ContextVariables,
+        user: GrizzlyUser,
         response: Optional[ResponseContextManager] = None,
     ) -> None:
         '''Actual handler that will run after a response has been received by an task.
