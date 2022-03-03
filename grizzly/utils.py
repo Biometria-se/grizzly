@@ -12,11 +12,13 @@ from copy import deepcopy
 from behave.runner import Context
 from behave.model import Scenario
 from behave.model_core import Status
-from locust.user.users import User
-from locust import TaskSet, between
+from locust import between
+
+from grizzly.scenarios import GrizzlyScenario
 
 from .context import GrizzlyContextScenario
 from .types import WrappedFunc, T
+from .users.base import GrizzlyUser
 
 
 logger = logging.getLogger(__name__)
@@ -87,7 +89,7 @@ def fail_direct(context: Context) -> Generator[None, None, None]:
     context.config.verbose = orig_verbose_value
 
 
-def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Optional[Dict[str, Any]] = None) -> Type[User]:
+def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Optional[Dict[str, Any]] = None) -> Type[GrizzlyUser]:
     if global_context is None:
         global_context = {}
 
@@ -103,20 +105,17 @@ def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Opt
         module = 'grizzly.users'
         user_class_name = scenario.user.class_name
 
-    base_user_class_type = cast(Type[User], ModuleLoader[User].load(module, user_class_name))
+    base_user_class_type = cast(Type[GrizzlyUser], ModuleLoader[GrizzlyUser].load(module, user_class_name))
     user_class_name = f'{scenario.user.class_name}_{scenario.identifier}'
 
     context: Dict[str, Any] = {}
-    contexts: List[Dict[str, Any]] = []
+    contexts: List[Dict[str, Any]] = [
+        base_user_class_type._context,
+        global_context,
+        scenario.context,
+    ]
 
-    from .users.base import GrizzlyUser
-
-    if issubclass(base_user_class_type, GrizzlyUser):
-        contexts.append(base_user_class_type._context)
-
-    contexts += [global_context, scenario.context]
-
-    for merge_context in [base_user_class_type._context, global_context, scenario.context]:
+    for merge_context in contexts:
         context = merge_dicts(context, merge_context)
 
     return type(user_class_name, (base_user_class_type, ), {
@@ -127,13 +126,13 @@ def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Opt
     })
 
 
-def create_scenario_class_type(base_type: str, scenario: GrizzlyContextScenario) -> Type[TaskSet]:
+def create_scenario_class_type(base_type: str, scenario: GrizzlyContextScenario) -> Type[GrizzlyScenario]:
     if base_type.count('.') > 0:
         module, base_type = base_type.rsplit('.', 1)
     else:
         module = 'grizzly.scenarios'
 
-    base_task_class_type = cast(Type[TaskSet], ModuleLoader[TaskSet].load(module, base_type))
+    base_task_class_type = cast(Type[GrizzlyScenario], ModuleLoader[GrizzlyScenario].load(module, base_type))
     task_class_name = f'{base_type}_{scenario.identifier}'
 
     return type(task_class_name, (base_task_class_type, ), {

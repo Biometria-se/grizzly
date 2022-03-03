@@ -490,7 +490,8 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests):
             'verify': self._context.get('verify_certificates', True),
         }
 
-        with self.client.post(
+        with self.client.request(
+            'POST',
             self._context['auth']['url'],
             name=f'{name} OAuth2 client token',
             request=None,

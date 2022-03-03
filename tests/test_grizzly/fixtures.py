@@ -26,6 +26,8 @@ from paramiko.sftp_client import SFTPClient
 from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 from grizzly.task import RequestTask
+from grizzly.users.base import GrizzlyUser
+from grizzly.scenarios import GrizzlyScenario
 
 from .helpers import TestUser, TestTaskSet
 # pylint: disable=redefined-outer-name
@@ -135,9 +137,9 @@ def locust_user(locust_environment: Environment) -> User:
 
 GrizzlyContextFixture = Callable[
     [
-        Optional[str],
-        Optional[Type[User]],
-        Optional[Type[TaskSet]],
+        str,
+        Optional[Type[GrizzlyUser]],
+        Optional[Type[GrizzlyScenario]],
         Optional[bool]
     ],
     Tuple[
@@ -151,11 +153,11 @@ GrizzlyContextFixture = Callable[
 @pytest.fixture(scope='function')
 def grizzly_context(request_task: Tuple[str, str, RequestTask]) -> Generator[GrizzlyContextFixture, None, None]:
     def wrapper(
-        host: Optional[str] = '',
-        user_type: Optional[Type[User]] = None,
-        task_type: Optional[Type[TaskSet]] = None,
+        host: str = '',
+        user_type: Optional[Type[GrizzlyUser]] = None,
+        task_type: Optional[Type[GrizzlyScenario]] = None,
         no_tasks: Optional[bool] = False,
-    ) -> Tuple[Environment, User, TaskSet, Tuple[str, str, RequestTask]]:
+    ) -> Tuple[Environment, GrizzlyUser, Optional[GrizzlyScenario], Tuple[str, str, RequestTask]]:
         if user_type is None:
             user_type = TestUser
 

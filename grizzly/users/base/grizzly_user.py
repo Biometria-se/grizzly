@@ -19,7 +19,7 @@ class GrizzlyUser(User):
     _context: Dict[str, Any] = {
         'variables': {},
     }
-    _scenario: Optional[GrizzlyContextScenario] = None
+    _scenario: GrizzlyContextScenario
 
     __dependencies__: Set[str] = set()
 

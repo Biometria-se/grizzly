@@ -9,14 +9,15 @@ from dataclasses import dataclass
 
 from gevent import sleep as gsleep
 
-from ..context import GrizzlyTask, GrizzlyScenarioBase
+from ..task import GrizzlyTask
+from ..scenarios import GrizzlyScenario
 
 @dataclass
 class WaitTask(GrizzlyTask):
     time: float
 
-    def implementation(self) -> Callable[[GrizzlyScenarioBase], Any]:
-        def _implementation(parent: GrizzlyScenarioBase) -> Any:
+    def implementation(self) -> Callable[[GrizzlyScenario], Any]:
+        def _implementation(parent: GrizzlyScenario) -> Any:
             parent.logger.debug(f'waiting for {self.time} seconds')
             gsleep(self.time)
             parent.logger.debug(f'done waiting for {self.time} seconds')

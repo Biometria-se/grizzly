@@ -215,6 +215,7 @@ def test_generate_save_handler(locust_environment: Environment) -> None:
     response._content = '{}'.encode('utf-8')
     response.status_code = 200
     response_context_manager = ResponseContextManager(response, locust_environment.events.request, {})
+    response_context_manager._entered = True
 
     assert 'test' not in user.context_variables
 
@@ -253,10 +254,10 @@ def test_generate_save_handler(locust_environment: Environment) -> None:
     del user.context_variables['test']
 
     # failed
-    with response_context_manager as response:
-        handler((TransformerContentType.JSON, {'test': {'name': 'test'}}), user, response)
+    handler((TransformerContentType.JSON, {'test': {'name': 'test'}}), user, response_context_manager)
+    assert response_context_manager._manual_result is not None
     assert isinstance(response_context_manager._manual_result, CatchResponseError)
-    assert user.context_variables.get('test', 'test') is None
+    assert user.context_variables.get('test', 'test')
 
     with pytest.raises(ResponseHandlerError):
         handler((TransformerContentType.JSON, {'test': {'name': 'test'}}), user, None)

@@ -7,7 +7,8 @@ main() {
 
     if [[ "${mode}" == "generate" ]]; then
         local pip_args='--disable-pip-version-check --no-cache-dir --user --no-warn-script-location'
-        local pip_compile_args="-q --generate-hashes --allow-unsafe"
+        #local pip_compile_args="-q --generate-hashes --allow-unsafe"
+        local pip_compile_args="-q --allow-unsafe"
         local arguments
 
         cd /mnt
@@ -89,7 +90,7 @@ COPY --from=dependencies /root/ibm/gskit8/lib64 /opt/mqm/gskit8/lib64/
 ENV LD_LIBRARY_PATH="/opt/mqm/lib64:\${LD_LIBRARY_PATH}"
 RUN grep -q ":${user_gid}:" /etc/group || addgroup -g "${user_gid}" grizzly
 RUN grep -q ":${user_uid}:" /etc/passwd || adduser -u "${user_uid}" -G grizzly -D grizzly
-RUN apk add --no-cache bash
+RUN apk add --no-cache bash git
 USER grizzly
 RUN pip3 install --user --no-cache-dir -U pip pip-tools
 COPY pip-generate-requirements.bash /

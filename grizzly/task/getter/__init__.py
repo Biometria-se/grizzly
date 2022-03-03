@@ -2,12 +2,12 @@ from typing import Dict, Generator, Type, List, Any, Optional
 from contextlib import contextmanager
 from time import perf_counter as time
 
-from locust.exception import StopUser
+from ...context import GrizzlyContext
+from ...scenarios import GrizzlyScenario
+from ...task import GrizzlyTask
 
-from ...context import GrizzlyContext, GrizzlyScenarioBase
 
-
-class GetterOfTask(GrizzlyScenarioBase):
+class GetterOfTask(GrizzlyTask):
     endpoint: str
     variable: str
 
@@ -21,7 +21,7 @@ class GetterOfTask(GrizzlyScenarioBase):
             raise ValueError(f'{self.__class__.__name__}: variable {self.variable} has not been initialized')
 
     @contextmanager
-    def get(self, parent: GrizzlyScenarioBase) -> Generator[Dict[str, Any], None, None]:
+    def get(self, parent: GrizzlyScenario) -> Generator[Dict[str, Any], None, None]:
         exception: Optional[Exception] = None
         response_length = 0
         start_time = time()

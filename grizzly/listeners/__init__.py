@@ -42,10 +42,10 @@ def init(testdata: Optional[TestdataType] = None) -> Callable[[Arg(Runner, 'runn
     def wrapper(runner: Runner, **_kwargs: Dict[str, Any]) -> None:
         producer_port = environ.get('TESTDATA_PRODUCER_PORT', '5555')
         if not isinstance(runner, MasterRunner):
-            if isinstance(runner, LocalRunner):
-                producer_address = '127.0.0.1'
-            else:
+            if isinstance(runner, WorkerRunner):
                 producer_address = runner.master_host
+            else:
+                producer_address = '127.0.0.1'
 
             producer_address = f'tcp://{producer_address}:{producer_port}'
             logger.debug(f'{producer_address=}')
@@ -127,11 +127,11 @@ def quitting(**_kwargs: Dict[str, Any]) -> None:
 def validate_result(grizzly: GrizzlyContext) -> Callable[[Arg(Environment, 'environment'), KwArg(Dict[str, Any])], None]:
     def wrapper(environment: Environment, **_kwargs: Dict[str, Any]) -> None:
         # first, aggregate statistics per scenario
-        scenario_stats: Dict[str, StatsEntry] = {}
+        scenario_stats: Dict[str, RequestStats] = {}
 
         for scenario in grizzly.scenarios():
             request_stats = RequestStats()
-            request_stats.total = StatsEntry(environment.stats, scenario.identifier, None, use_response_times_cache=False)
+            request_stats.total = StatsEntry(environment.stats, scenario.identifier, '', use_response_times_cache=False)
             scenario_stats[scenario.identifier] = request_stats
 
         for stats_entry in environment.stats.entries.values():
@@ -139,7 +139,7 @@ def validate_result(grizzly: GrizzlyContext) -> Callable[[Arg(Environment, 'envi
 
             if prefix in scenario_stats:
                 scenario_stats[prefix].total.extend(stats_entry)
-                scenario_stats[prefix].entries[(stats_entry.name, stats_entry.method)] = stats_entry
+                scenario_stats[prefix].entries[(stats_entry.name, stats_entry.method,)] = stats_entry
             else:
                 logger.error(f'"{prefix}" does not match any scenario')
 

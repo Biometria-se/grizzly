@@ -1,18 +1,18 @@
 import traceback
 
-from typing import Type
-
 from locust import task
-from locust.user.users import User
 from locust.user.task import LOCUST_STATE_STOPPING
 from locust.exception import StopUser, InterruptTaskSet, RescheduleTaskImmediately, RescheduleTask
 from gevent.exceptions import GreenletExit
 
 from . import GrizzlyScenario
 from ..exceptions import RestartScenario
+from ..users.base import GrizzlyUser
 
 class IteratorScenario(GrizzlyScenario):
-    def __init__(self, parent: Type[User]) -> None:
+    user: GrizzlyUser
+
+    def __init__(self, parent: GrizzlyUser) -> None:
         super().__init__(parent=parent)
 
     def run(self) -> None:  # type: ignore

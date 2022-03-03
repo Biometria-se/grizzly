@@ -70,7 +70,7 @@ class SftpUser(ResponseHandler, RequestLogger, GrizzlyUser, FileRequests):
         if not path.exists(self._download_root):
             mkdir(self._download_root)
 
-        parsed = urlparse(self.host)
+        parsed = urlparse(self.host or '')
 
         if parsed.scheme != 'sftp':
             raise ValueError(f'{self.__class__.__name__}: "{parsed.scheme}" is not supported')
@@ -137,7 +137,7 @@ class SftpUser(ResponseHandler, RequestLogger, GrizzlyUser, FileRequests):
             headers = {
                 'method': request.method.name.lower(),
                 'time': response_time,
-                'host': self.host,
+                'host': self.host or '',
                 'path': endpoint,
             }
 

@@ -27,7 +27,7 @@ class ResponseEventSession(HttpSession):
         /,
         method: str,
         url: str,
-        request: RequestTask,
+        request: Optional[RequestTask],
         name: Optional[str] = None,
         catch_response: bool = False,
         **kwargs: Dict[str, Any],

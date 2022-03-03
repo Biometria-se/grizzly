@@ -1,7 +1,7 @@
 import logging
 
 from os import environ
-from typing import Callable, Dict, Any, Optional
+from typing import Callable, Dict, Any, Optional, List
 
 import pytest
 
@@ -178,8 +178,18 @@ class TestIterationScenario:
 
         assert scenario is not None
 
+        side_effects: List[Optional[InterruptTaskSet]] = [
+            InterruptTaskSet(reschedule=False),
+            InterruptTaskSet(reschedule=True),
+        ]
+        side_effects.extend([None] * 10)
+
         on_stop = mocker.patch.object(scenario, 'on_stop', autospec=True)
-        on_start = mocker.patch.object(scenario, 'on_start', side_effect=[InterruptTaskSet(reschedule=False), InterruptTaskSet(reschedule=True)] + [None] * 10)
+        on_start = mocker.patch.object(
+            scenario,
+            'on_start',
+            side_effect=side_effects,
+        )
 
         schedule_task = mocker.patch.object(scenario, 'schedule_task', autospec=True)
         get_next_task = mocker.patch.object(scenario, 'get_next_task', autospec=True)

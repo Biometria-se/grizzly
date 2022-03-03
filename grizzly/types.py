@@ -1,13 +1,15 @@
 from enum import Enum
-from typing import Callable, Optional, Tuple, Any, Union, Dict, TypeVar, List, Type, Generic, Set, cast
+from typing import TYPE_CHECKING, Callable, Optional, Tuple, Any, Union, Dict, TypeVar, List, Type, Generic, Set, cast
 from importlib import import_module
 
 from aenum import Enum as AdvancedEnum, NoAlias
 from locust.clients import ResponseContextManager
-from locust.user.users import User
 from gevent.lock import Semaphore
 
 from grizzly_extras.transformer import TransformerContentType
+
+if TYPE_CHECKING:
+    from .users.base import GrizzlyUser
 
 class ResponseTarget(Enum):
     METADATA = 0
@@ -61,7 +63,7 @@ class RequestMethod(Enum, AdvancedEnum, settings=NoAlias):
         return self.value
 
 
-HandlerType = Callable[[Tuple[TransformerContentType, Any], User, Optional[ResponseContextManager]], None]
+HandlerType = Callable[[Tuple[TransformerContentType, Any], 'GrizzlyUser', Optional[ResponseContextManager]], None]
 
 HandlerContextType = Union[ResponseContextManager, Tuple[Optional[Dict[str, Any]], str]]
 

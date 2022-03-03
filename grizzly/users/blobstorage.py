@@ -35,6 +35,7 @@ from time import perf_counter as time
 
 from azure.storage.blob import BlobServiceClient
 from locust.exception import StopUser
+from locust.env import Environment
 
 from .base import GrizzlyUser
 from ..types import RequestMethod, GrizzlyResponse
@@ -46,8 +47,8 @@ class BlobStorageUser(GrizzlyUser):
     host: str
     _context: Dict[str, Any] = {}
 
-    def __init__(self, *args: Tuple[Any], **kwargs: Dict[str, Any]) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(self, environment: Environment, *args: Tuple[Any], **kwargs: Dict[str, Any]) -> None:
+        super().__init__(environment, *args, **kwargs)
 
         conn_str = self.host
         if conn_str.startswith('DefaultEndpointsProtocol='):

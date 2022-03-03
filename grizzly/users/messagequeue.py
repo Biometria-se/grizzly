@@ -155,7 +155,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
         super().__init__(*args, **kwargs)
 
         # Get configuration values from host string
-        parsed = urlparse(self.host)
+        parsed = urlparse(self.host or '')
 
         if parsed.scheme != 'mq':
             raise ValueError(f'"{parsed.scheme}" is not a supported scheme for {self.__class__.__name__}')
@@ -172,7 +172,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
         port = parsed.port or 1414
 
         self.am_context = {
-            'url': self.host,
+            'url': self.host or '',
             'connection': f'{parsed.hostname}({port})',
         }
 

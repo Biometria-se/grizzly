@@ -19,10 +19,12 @@ from time import perf_counter as time
 
 from jinja2 import Template
 from gevent import sleep as gsleep
-from grizzly_extras.transformer import Transformer, TransformerContentType, transformer
+from grizzly_extras.transformer import Transformer, TransformerContentType, TransformerError, transformer
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments, split_value
 
-from ..context import GrizzlyContext, GrizzlyTask, GrizzlyScenarioBase
+from ..context import GrizzlyContext
+from ..task import GrizzlyTask
+from ..scenarios import GrizzlyScenario
 from .request import RequestTask
 
 @dataclass
@@ -65,13 +67,13 @@ class UntilRequestTask(GrizzlyTask):
             if self.wait < 0.1:
                 raise ValueError('wait argument cannot be less than 0.1 seconds')
 
-    def implementation(self) -> Callable[[GrizzlyScenarioBase], Any]:
+    def implementation(self) -> Callable[[GrizzlyScenario], Any]:
         if self.transform is None:
             raise TypeError(f'could not find a transformer for {self.request.response.content_type.name}')
 
         transform = cast(Transformer, self.transform)
 
-        def _implementation(parent: GrizzlyScenarioBase) -> Any:
+        def _implementation(parent: GrizzlyScenario) -> Any:
             task_name=f'{self.request.scenario.identifier} {self.request.name}, w={self.wait}s, r={self.retries}'
             if '{{' in self.condition and '}}' in self.condition:
                 condition_rendered = Template(self.condition).render(**parent.user._context['variables'])
@@ -96,7 +98,10 @@ class UntilRequestTask(GrizzlyTask):
                         gsleep(self.wait)
 
                         _, payload = parent.user.request(self.request)
-                        transformed = transform.transform(payload)
+                        if payload is not None:
+                            transformed = transform.transform(payload)
+                        else:
+                            raise TransformerError(f'response payload was not set')
 
                         matches = parser(transformed)
                         parent.logger.debug(f'{payload=}, condition={condition_rendered}, {matches=}')

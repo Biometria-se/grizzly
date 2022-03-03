@@ -14,7 +14,9 @@ from typing import List, Callable, Any, Type
 from jinja2 import Template
 from grizzly_extras.transformer import Transformer, transformer, TransformerContentType, TransformerError
 
-from ..context import GrizzlyContext, GrizzlyTask, GrizzlyScenarioBase
+from ..context import GrizzlyContext
+from ..task import GrizzlyTask
+from ..scenarios import GrizzlyScenario
 from ..exceptions import TransformerLocustError
 
 @dataclass
@@ -44,8 +46,8 @@ class TransformerTask(GrizzlyTask):
 
         self._parser = self._transformer.parser(self.expression)
 
-    def implementation(self) -> Callable[[GrizzlyScenarioBase], Any]:
-        def _implementation(parent: GrizzlyScenarioBase) -> Any:
+    def implementation(self) -> Callable[[GrizzlyScenario], Any]:
+        def _implementation(parent: GrizzlyScenario) -> Any:
             content_raw = Template(self.content).render(**parent.user._context['variables'])
 
             try:
