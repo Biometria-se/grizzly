@@ -198,6 +198,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
             'cert_label': auth_context.get('cert_label', None) or username,
             'ssl_cipher': auth_context.get('ssl_cipher', None) or 'ECDHE_RSA_AES_256_GCM_SHA384',
             'message_wait': self._context.get('message', {}).get('wait', None),
+            'heartbeat_interval': self._context.get('connection', {}).get('heartbeat_interval', None),
         })
 
         self.worker_id = None

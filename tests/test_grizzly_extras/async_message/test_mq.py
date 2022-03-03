@@ -114,15 +114,18 @@ class TestAsyncMessageQueueHandler:
         assert 'no context' in str(mqe)
 
         def mocked_connect(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Any:
-            return pymqi.QueueManager(None)
+            pass
+            #return pymqi.QueueManager(None)
 
         mocker.patch.object(
-            pymqi,
-            'connect',
+            pymqi.QueueManager,
+            'connect_with_options',
             mocked_connect,
         )
 
-        pymqi_connect_spy = mocker.spy(pymqi, 'connect')
+        pymqi_sco_spy = mocker.spy(pymqi.SCO, '__init__')
+        pymqi_cd_spy = mocker.spy(pymqi.CD, '__init__')
+        pymqi_connect_with_options_spy = mocker.spy(pymqi.QueueManager, 'connect_with_options')
 
         request.update({
             'context': {
@@ -141,24 +144,35 @@ class TestAsyncMessageQueueHandler:
         assert handler.message_wait == 0
         assert handler.qmgr is not None
 
-        assert pymqi_connect_spy.call_count == 1
-        args, _ = pymqi_connect_spy.call_args_list[0]
-        assert tuple(args) == ('QM1', 'SYS.CONN', 'mq.example.com(1414)', 'bob', 'secret', )
+        assert pymqi_sco_spy.call_count == 1
+        _, kwargs = pymqi_sco_spy.call_args_list[0]
+        assert kwargs.get('KeyRepository', b'').decode().strip() == ''
+        assert kwargs.get('CertificateLabel', b'').decode().strip() == ''
+
+        assert pymqi_cd_spy.call_count == 1
+        _, kwargs = pymqi_cd_spy.call_args_list[0]
+        assert kwargs.get('ChannelName', b'').decode().strip() == 'SYS.CONN'
+        assert kwargs.get('ConnectionName', b'').decode().strip() == 'mq.example.com(1414)'
+        assert kwargs.get('ChannelType', None) == pymqi.CMQC.MQCHT_CLNTCONN
+        assert kwargs.get('TransportType', None) == pymqi.CMQC.MQXPT_TCP
+        assert kwargs.get('SSLCipherSpec', b'').decode().strip() == ''
+
+        assert pymqi_connect_with_options_spy.call_count == 1
+        args, kwargs = pymqi_connect_with_options_spy.call_args_list[0]
+
+        assert args[0] is handler.qmgr
+        assert kwargs.get('user', b'').decode().strip() == 'bob'
+        assert kwargs.get('password', b'').decode().strip() == 'secret'
+
+        pymqi_sco_spy.reset_mock()
+        pymqi_cd_spy.reset_mock()
+        pymqi_connect_with_options_spy.reset_mock()
+        pymqi_cd_setitem_spy = mocker.spy(pymqi.CD, '__setitem__')
 
         request['context'].update({
             'key_file': '/test/key',
             'message_wait': 10,
         })
-
-        mocker.patch.object(
-            pymqi.QueueManager,
-            'connect_with_options',
-            mocked_connect,
-        )
-
-        pymqi_sco_spy = mocker.spy(pymqi.SCO, '__init__')
-        pymqi_cd_spy = mocker.spy(pymqi.CD, '__init__')
-        pymqi_connect_with_options_spy = mocker.spy(pymqi.QueueManager, 'connect_with_options')
 
         handler.qmgr = None
 
@@ -179,7 +193,11 @@ class TestAsyncMessageQueueHandler:
         assert kwargs.get('ConnectionName', b'').decode().strip() == 'mq.example.com(1414)'
         assert kwargs.get('ChannelType', None) == pymqi.CMQC.MQCHT_CLNTCONN
         assert kwargs.get('TransportType', None) == pymqi.CMQC.MQXPT_TCP
-        assert kwargs.get('SSLCipherSpec', b'').decode().strip() == 'ECDHE_RSA_AES_256_GCM_SHA384'
+
+        assert pymqi_cd_setitem_spy.call_count == 1
+        args, _ = pymqi_cd_setitem_spy.call_args_list[0]
+        assert args[1] == 'SSLCipherSpec'
+        assert args[2].decode().strip() == 'ECDHE_RSA_AES_256_GCM_SHA384'
 
         assert pymqi_connect_with_options_spy.call_count == 1
         args, kwargs = pymqi_connect_with_options_spy.call_args_list[0]
@@ -190,6 +208,7 @@ class TestAsyncMessageQueueHandler:
 
         pymqi_sco_spy.reset_mock()
         pymqi_cd_spy.reset_mock()
+        pymqi_cd_setitem_spy.reset_mock()
         pymqi_connect_with_options_spy.reset_mock()
 
         request['context'].update({
@@ -210,8 +229,10 @@ class TestAsyncMessageQueueHandler:
         assert kwargs.get('CertificateLabel', b'').decode().strip() == 'test_certificate_label'
 
         assert pymqi_cd_spy.call_count == 1
-        _, kwargs = pymqi_cd_spy.call_args_list[0]
-        assert kwargs.get('SSLCipherSpec', b'').decode().strip() == 'rot13'
+        assert pymqi_cd_setitem_spy.call_count == 1
+        args, _ = pymqi_cd_setitem_spy.call_args_list[0]
+        assert args[1] == 'SSLCipherSpec'
+        assert args[2].decode().strip() == 'rot13'
 
         assert pymqi_connect_with_options_spy.call_count == 1
         args, kwargs = pymqi_connect_with_options_spy.call_args_list[0]

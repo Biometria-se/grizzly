@@ -82,6 +82,7 @@ class AsyncMessageContext(TypedDict, total=False):
     message_wait: Optional[int]
     endpoint: str
     content_type: Optional[str]
+    heartbeat_interval: Optional[int]
 
 
 class AsyncMessageRequest(TypedDict, total=False):
