@@ -18,7 +18,7 @@ from paramiko.sftp_client import SFTPClient
 from grizzly.clients import ResponseEventSession, SftpClientSession
 from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContextScenario
-from grizzly.task import RequestTask
+from grizzly.tasks import RequestTask
 from grizzly.users.base import GrizzlyUser
 
 from .fixtures import locust_environment, paramiko_mocker  # pylint: disable=unused-import
@@ -35,7 +35,16 @@ class TestResponseEventSession:
 
     def test_request(self, mocker: MockerFixture) -> None:
         def mock_request(payload: Dict[str, Any], status_code: int = 200) -> None:
-            def request(self: 'ResponseEventSession', method: str, url: str, data: Dict[str, Any], name: Optional[str] = None, **kwargs: Dict[str, Any]) -> ResponseContextManager:
+            def request(
+                self: 'ResponseEventSession',
+                method: str,
+                url: str,
+                data: Dict[str, Any],
+                name: Optional[str] = None,
+                catch_response: Optional[bool] = False,
+                context: Optional[Dict[str, Any]] = None,
+                **kwargs: Dict[str, Any],
+            ) -> ResponseContextManager:
                 response = Response()
                 response._content = jsondumps(payload).encode('utf-8')
                 response.status_code = status_code

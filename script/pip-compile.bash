@@ -5,8 +5,9 @@
 main() {
     local mode="${1}"
 
-    if [[ "${mode}" == "generate" ]]; then
+    if [[ "${mode}" == "compile" ]]; then
         local pip_args='--disable-pip-version-check --no-cache-dir --user --no-warn-script-location'
+        # @TODO check install_requires if any dependency has `git+`, if so, do not add --generate-hashes
         #local pip_compile_args="-q --generate-hashes --allow-unsafe"
         local pip_compile_args="-q --allow-unsafe"
         local arguments
@@ -22,7 +23,7 @@ main() {
 
         for file in "${!files[@]}"; do
             arguments="${files[${file}]}"
-            >&2 echo "generating ${file}"
+            >&2 echo "compiling ${file}"
             python3 -m piptools compile ${pip_compile_args} --pip-args "${pip_args}" ${arguments} &
             pids+=($!)
         done
@@ -93,8 +94,8 @@ RUN grep -q ":${user_uid}:" /etc/passwd || adduser -u "${user_uid}" -G grizzly -
 RUN apk add --no-cache bash git
 USER grizzly
 RUN pip3 install --user --no-cache-dir -U pip pip-tools
-COPY pip-generate-requirements.bash /
-CMD ["/pip-generate-requirements.bash", "generate"]
+COPY pip-compile.bash /
+CMD ["/pip-compile.bash", "compile"]
 EOF
 
         docker run --rm -v "${GRIZZLY_MOUNT_CONTEXT}:/mnt" pip-generate-requirements:latest

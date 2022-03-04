@@ -16,7 +16,7 @@ from grizzly.users.blobstorage import BlobStorageUser
 from grizzly.users.base.grizzly_user import GrizzlyUser
 from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContextScenario
-from grizzly.task import RequestTask
+from grizzly.tasks import RequestTask
 from grizzly.testdata.utils import transform
 from grizzly.exceptions import RestartScenario
 

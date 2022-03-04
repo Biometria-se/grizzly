@@ -21,7 +21,7 @@ from grizzly.users.base import RequestLogger, ResponseHandler, GrizzlyUser
 from grizzly.clients import ResponseEventSession
 from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContextScenario
-from grizzly.task import RequestTask
+from grizzly.tasks import RequestTask
 from grizzly.testdata.utils import transform
 from grizzly.exceptions import RestartScenario
 

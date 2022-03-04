@@ -4,7 +4,7 @@ import pytest
 
 from pytest_mock import mocker, MockerFixture  # pylint: disable=unused-import
 
-from grizzly.task import WaitTask
+from grizzly.tasks import WaitTask
 
 from ..fixtures import grizzly_context, request_task, behave_context, locust_environment  # pylint: disable=unused-import
 
@@ -23,9 +23,9 @@ class TestWaitTask:
         def noop(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Any:
             pass
 
-        import grizzly.task.wait
-        mocker.patch.object(grizzly.task.wait, 'gsleep', noop)
-        gsleep_spy = mocker.spy(grizzly.task.wait, 'gsleep')
+        import grizzly.tasks.wait
+        mocker.patch.object(grizzly.tasks.wait, 'gsleep', noop)
+        gsleep_spy = mocker.spy(grizzly.tasks.wait, 'gsleep')
 
         implementation(tasks)
 

@@ -8,7 +8,7 @@ from pytest_mock import mocker, MockerFixture  # pylint: disable=unused-import
 from locust.exception import StopUser
 from grizzly.exceptions import RestartScenario
 from grizzly.types import RequestMethod
-from grizzly.task import UntilRequestTask, RequestTask
+from grizzly.tasks import UntilRequestTask, RequestTask
 from grizzly_extras.transformer import TransformerContentType, transformer
 from ..fixtures import grizzly_context, request_task, behave_context, locust_environment  # pylint: disable=unused-import
 
@@ -73,14 +73,14 @@ class TestUntilRequestTask:
             ],
         )
 
-        time_spy = mocker.patch('grizzly.task.until.time', side_effect=[0.0, 153.5, 0.0, 12.25, 0.0, 12.25, 0.0, 1.5, 0.0, 0.8])
+        time_spy = mocker.patch('grizzly.tasks.until.time', side_effect=[0.0, 153.5, 0.0, 12.25, 0.0, 12.25, 0.0, 1.5, 0.0, 0.8])
 
         fire_spy = mocker.patch.object(
             tasks.user.environment.events.request,
             'fire',
         )
 
-        gsleep_spy = mocker.patch('grizzly.task.until.gsleep', autospec=True)
+        gsleep_spy = mocker.patch('grizzly.tasks.until.gsleep', autospec=True)
 
         task = UntilRequestTask(request, '/status[text()="ready"]')
         implementation = task.implementation()

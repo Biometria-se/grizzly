@@ -10,7 +10,7 @@ from jinja2.meta import find_undeclared_variables
 from locust.exception import StopUser
 
 from ..context import GrizzlyContext
-from ..task import RequestTask
+from ..tasks import RequestTask
 from ..types import TestdataType, GrizzlyDictValueType, GrizzlyDict
 from ..utils import merge_dicts
 from .ast import get_template_variables

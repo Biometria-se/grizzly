@@ -15,7 +15,7 @@ from jinja2 import Template
 from grizzly.users.base import GrizzlyUser, RequestLogger, ResponseHandler
 from grizzly.users.servicebus import ServiceBusUser
 from grizzly.types import RequestMethod
-from grizzly.task import RequestTask, WaitTask
+from grizzly.tasks import RequestTask, WaitTask
 from grizzly.context import GrizzlyContextScenario
 from grizzly_extras.async_message import AsyncMessageResponse, AsyncMessageError
 from grizzly_extras.transformer import TransformerContentType

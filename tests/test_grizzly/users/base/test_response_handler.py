@@ -15,7 +15,7 @@ from grizzly.clients import ResponseEventSession
 from grizzly.users.base import HttpRequests, ResponseEvent, ResponseHandler
 from grizzly.exceptions import ResponseHandlerError
 from grizzly.types import RequestMethod
-from grizzly.task import RequestTask
+from grizzly.tasks import RequestTask
 from grizzly_extras.transformer import TransformerContentType
 
 from ...fixtures import locust_environment  # pylint: disable=unused-import

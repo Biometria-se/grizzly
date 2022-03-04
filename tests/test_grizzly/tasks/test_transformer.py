@@ -8,7 +8,7 @@ from behave.runner import Context
 
 from grizzly_extras.transformer import transformer, TransformerContentType
 from grizzly.context import GrizzlyContext
-from grizzly.task import TransformerTask
+from grizzly.tasks import TransformerTask
 from grizzly.exceptions import TransformerLocustError
 
 from ..fixtures import grizzly_context, request_task, behave_context, locust_environment  # pylint: disable=unused-import

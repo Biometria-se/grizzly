@@ -29,7 +29,7 @@ from .listeners import init, init_statistics_listener, quitting, validate_result
 from .testdata.utils import initialize_testdata
 from .types import TestdataType
 from .context import GrizzlyContext
-from .task import RequestTask
+from .tasks import RequestTask
 from .users.base import GrizzlyUser
 
 from .utils import create_scenario_class_type, create_user_class_type

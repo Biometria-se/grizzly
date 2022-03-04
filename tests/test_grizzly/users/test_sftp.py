@@ -15,7 +15,7 @@ from grizzly.users.sftp import SftpUser
 from grizzly.clients import SftpClientSession
 from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContextScenario
-from grizzly.task import RequestTask
+from grizzly.tasks import RequestTask
 from grizzly.exceptions import RestartScenario
 
 from ..fixtures import locust_environment, paramiko_mocker  # pylint: disable=unused-import

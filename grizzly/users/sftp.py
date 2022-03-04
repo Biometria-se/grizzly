@@ -41,7 +41,7 @@ from .base import GrizzlyUser, FileRequests, ResponseHandler, RequestLogger
 from ..utils import merge_dicts
 from ..clients import SftpClientSession
 from ..types import RequestMethod, GrizzlyResponse
-from ..task import RequestTask
+from ..tasks import RequestTask
 
 
 class SftpUser(ResponseHandler, RequestLogger, GrizzlyUser, FileRequests):

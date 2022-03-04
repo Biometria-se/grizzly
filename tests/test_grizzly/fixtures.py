@@ -25,7 +25,7 @@ from paramiko.sftp_client import SFTPClient
 
 from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
-from grizzly.task import RequestTask
+from grizzly.tasks import RequestTask
 from grizzly.users.base import GrizzlyUser
 from grizzly.scenarios import GrizzlyScenario
 

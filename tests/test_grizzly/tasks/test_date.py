@@ -5,7 +5,7 @@ import pytest
 
 from behave.runner import Context
 from grizzly.context import GrizzlyContext
-from grizzly.task import DateTask
+from grizzly.tasks import DateTask
 
 from ..fixtures import grizzly_context, request_task, behave_context, locust_environment  # pylint: disable=unused-import
 

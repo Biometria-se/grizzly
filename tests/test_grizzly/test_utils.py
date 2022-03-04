@@ -21,7 +21,7 @@ from grizzly.utils import (
 )
 from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
-from grizzly.task import RequestTask
+from grizzly.tasks import RequestTask
 from grizzly.users import RestApiUser
 from grizzly.scenarios import IteratorScenario
 

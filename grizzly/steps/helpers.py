@@ -18,7 +18,7 @@ from ..users.base import GrizzlyUser
 from ..context import GrizzlyContext
 from ..exceptions import ResponseHandlerError, TransformerLocustError
 from ..types import HandlerType, RequestMethod, ResponseTarget, ResponseAction
-from ..task import RequestTask
+from ..tasks import RequestTask
 
 logger = logging.getLogger(__name__)
 

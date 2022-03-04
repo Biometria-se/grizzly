@@ -7,7 +7,7 @@ from behave.runner import Context
 from behave import register_type, when, then  # pylint: disable=no-name-in-module
 
 from ...context import GrizzlyContext
-from ...task import RequestTask
+from ...tasks import RequestTask
 from ...types import ResponseTarget
 from ..helpers import add_save_handler, add_validation_handler, add_request_task_response_status_codes
 

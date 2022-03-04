@@ -12,7 +12,7 @@ from locust.clients import ResponseContextManager
 from locust.env import Environment
 from jinja2 import Template
 
-from ...task import RequestTask
+from ...tasks import RequestTask
 from ...types import GrizzlyResponse, HandlerContextType, RequestDirection
 from ...utils import merge_dicts
 from .response_event import ResponseEvent

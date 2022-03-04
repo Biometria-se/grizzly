@@ -22,7 +22,7 @@ from grizzly.users.messagequeue import MessageQueueUser
 from grizzly.users.base import RequestLogger, ResponseHandler
 from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
-from grizzly.task import RequestTask
+from grizzly.tasks import RequestTask
 from grizzly.types import ResponseTarget, GrizzlyDict
 from grizzly.testdata.utils import transform
 from grizzly.exceptions import ResponseHandlerError, RestartScenario

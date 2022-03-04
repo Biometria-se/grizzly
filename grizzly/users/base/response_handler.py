@@ -3,7 +3,7 @@ from typing import Any, Dict, Tuple, Optional
 from locust.clients import ResponseContextManager
 from locust.env import Environment
 
-from ...task import RequestTask
+from ...tasks import RequestTask
 from ...types import HandlerContextType
 from ...exceptions import ResponseHandlerError
 from .grizzly_user import GrizzlyUser

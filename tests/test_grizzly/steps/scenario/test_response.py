@@ -8,7 +8,7 @@ from behave.model import Table, Row
 
 from grizzly.context import GrizzlyContext
 from grizzly.types import RequestMethod, ResponseTarget
-from grizzly.task import RequestTask, WaitTask
+from grizzly.tasks import RequestTask, WaitTask
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import
 
 from grizzly_extras.transformer import TransformerContentType

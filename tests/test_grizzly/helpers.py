@@ -8,7 +8,7 @@ from locust.event import EventHook
 
 from grizzly.users.base import GrizzlyUser
 from grizzly.types import GrizzlyResponse, RequestMethod
-from grizzly.task import RequestTask
+from grizzly.tasks import RequestTask
 from grizzly.scenarios import GrizzlyScenario
 
 

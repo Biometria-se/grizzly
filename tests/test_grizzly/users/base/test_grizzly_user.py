@@ -14,7 +14,7 @@ from locust.exception import StopUser
 from grizzly.users.base import GrizzlyUser, FileRequests
 from grizzly.types import GrizzlyResponse, RequestMethod
 from grizzly.context import GrizzlyContextScenario
-from grizzly.task import RequestTask
+from grizzly.tasks import RequestTask
 
 from ...fixtures import locust_environment  # pylint: disable=unused-import
 

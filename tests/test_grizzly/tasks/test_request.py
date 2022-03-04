@@ -7,7 +7,7 @@ from locust.clients import ResponseContextManager
 from locust.user.users import User
 
 from grizzly_extras.transformer import TransformerContentType
-from grizzly.task import (
+from grizzly.tasks import (
     RequestTask,
     RequestTaskHandlers,
     RequestTaskResponse,

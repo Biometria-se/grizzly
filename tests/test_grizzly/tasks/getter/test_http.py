@@ -8,7 +8,7 @@ from requests import Response
 from behave.runner import Context
 
 from grizzly.context import GrizzlyContext
-from grizzly.task.getter import HttpGetTask
+from grizzly.tasks.getter import HttpGetTask
 from grizzly.exceptions import RestartScenario
 
 from ...fixtures import grizzly_context, request_task, behave_context, locust_environment  # pylint: disable=unused-import
@@ -28,7 +28,7 @@ class TestHttpGetTask:
         response._content = jsondumps({'hello': 'world'}).encode()
 
         requests_get_spy = mocker.patch(
-            'grizzly.task.getter.http.requests.get',
+            'grizzly.tasks.getter.http.requests.get',
             side_effect=[response, RuntimeError, RuntimeError, RuntimeError]
         )
 

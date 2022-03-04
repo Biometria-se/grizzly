@@ -98,7 +98,7 @@ jinja2==3.0.3
     #   grizzly-loadtester (setup.py)
 jsonpath-ng==1.5.3
     # via grizzly-loadtester (setup.py)
-locust @ git+https://github.com/mgor/locust.git@bug/typing
+locust @ git+https://github.com/mgor/locust.git@fb4591cbe2074f9b8d37c7b588a8e20a25c714f8
     # via grizzly-loadtester (setup.py)
 lxml==4.8.0
     # via grizzly-loadtester (setup.py)

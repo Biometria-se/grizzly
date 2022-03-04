@@ -11,7 +11,7 @@ from jinja2.exceptions import TemplateError
 from grizzly.testdata.ast import RequestSourceMapping, _parse_templates, get_template_variables
 from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContextScenario
-from grizzly.task import RequestTask
+from grizzly.tasks import RequestTask
 from ..fixtures import request_task, request_task_syntax_error  # pylint: disable=unused-import
 
 # pylint: disable=redefined-outer-name,global-statement

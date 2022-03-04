@@ -6,7 +6,7 @@ import pytest
 
 from _pytest.logging import LogCaptureFixture
 
-from grizzly.task import PrintTask
+from grizzly.tasks import PrintTask
 
 from ..fixtures import grizzly_context, request_task, locust_environment  # pylint: disable=unused-import
 

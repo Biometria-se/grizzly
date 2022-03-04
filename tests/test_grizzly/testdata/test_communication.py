@@ -22,7 +22,7 @@ from locust.env import Environment
 from grizzly.testdata.communication import TestdataConsumer, TestdataProducer
 from grizzly.testdata.utils import initialize_testdata, transform
 from grizzly.context import GrizzlyContext
-from grizzly.task import RequestTask
+from grizzly.tasks import RequestTask
 
 from ..fixtures import grizzly_context, locust_environment, request_task, behave_context, noop_zmq  # pylint: disable=unused-import
 from .fixtures import cleanup  # pylint: disable=unused-import

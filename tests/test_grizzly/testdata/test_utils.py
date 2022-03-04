@@ -18,7 +18,7 @@ from _pytest.logging import LogCaptureFixture
 from locust.exception import StopUser
 
 from grizzly.context import GrizzlyContext
-from grizzly.task import RequestTask
+from grizzly.tasks import RequestTask
 from grizzly.testdata.utils import (
     _get_variable_value,
     initialize_testdata,

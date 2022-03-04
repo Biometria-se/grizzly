@@ -22,7 +22,7 @@ from grizzly.context import (
 )
 
 from grizzly.types import RequestMethod
-from grizzly.task import PrintTask, RequestTask, WaitTask
+from grizzly.tasks import PrintTask, RequestTask, WaitTask
 
 
 from .helpers import get_property_decorated_attributes

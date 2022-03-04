@@ -13,7 +13,7 @@ from behave.runner import Context
 
 from grizzly_extras.transformer import transformer, TransformerContentType
 from grizzly.context import GrizzlyContext
-from grizzly.task import (
+from grizzly.tasks import (
     RequestTask,
     PrintTask,
     TransformerTask,

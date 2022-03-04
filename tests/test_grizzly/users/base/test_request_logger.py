@@ -12,7 +12,7 @@ from requests.models import CaseInsensitiveDict, Response, PreparedRequest
 
 from grizzly.users.base import RequestLogger, HttpRequests
 from grizzly.types import RequestMethod
-from grizzly.task import RequestTask
+from grizzly.tasks import RequestTask
 
 from ...fixtures import locust_environment  # pylint: disable=unused-import
 

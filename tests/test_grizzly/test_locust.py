@@ -28,7 +28,7 @@ from grizzly.locust import (
 )
 from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
-from grizzly.task import PrintTask, RequestTask, WaitTask
+from grizzly.tasks import PrintTask, RequestTask, WaitTask
 from grizzly.users import RestApiUser, MessageQueueUser
 from grizzly.users.base import GrizzlyUser
 from grizzly.scenarios import IteratorScenario

@@ -74,7 +74,7 @@ import requests
 from ..types import GrizzlyResponse, WrappedFunc
 from ..utils import merge_dicts
 from ..types import RequestMethod
-from ..task import RequestTask
+from ..tasks import RequestTask
 from .base import RequestLogger, ResponseHandler, GrizzlyUser, HttpRequests
 from . import logger
 

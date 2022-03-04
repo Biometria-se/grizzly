@@ -9,8 +9,8 @@ from json import dumps as jsondumps
 from behave.model import Table, Row
 from grizzly.context import GrizzlyContext
 from grizzly.types import RequestMethod, RequestDirection
-from grizzly.task import TransformerTask, PrintTask, WaitTask
-from grizzly.task.getter import HttpGetTask
+from grizzly.tasks import TransformerTask, PrintTask, WaitTask
+from grizzly.tasks.getter import HttpGetTask
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import
 
 from grizzly_extras.transformer import TransformerContentType

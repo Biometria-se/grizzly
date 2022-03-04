@@ -10,7 +10,7 @@ from paramiko import SFTPClient, Transport
 from paramiko.pkey import PKey
 
 if TYPE_CHECKING:
-    from .task import RequestTask
+    from .tasks import RequestTask
 
 
 logger = logging.getLogger(__name__)
@@ -29,13 +29,17 @@ class ResponseEventSession(HttpSession):
         url: str,
         name: Optional[str] = None,
         catch_response: bool = False,
+        context: Optional[Dict[str, Any]] = None,
         request: Optional['RequestTask'] = None,
         **kwargs: Dict[str, Any],
     ) -> ResponseContextManager:
 
+        if context is None:
+            context = {}
+
         response_context_manager = cast(
             ResponseContextManager,
-            super().request(method, url, name, catch_response, **kwargs),
+            super().request(method, url, name, catch_response, context, **kwargs),
         )
 
         self.event_hook.fire(

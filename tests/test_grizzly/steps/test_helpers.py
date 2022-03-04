@@ -16,7 +16,7 @@ from requests.models import Response
 
 from grizzly.context import GrizzlyContext
 from grizzly.types import RequestMethod, ResponseTarget, ResponseAction
-from grizzly.task import RequestTask, WaitTask
+from grizzly.tasks import RequestTask, WaitTask
 from grizzly.exceptions import ResponseHandlerError
 from grizzly.steps.helpers import (
     add_validation_handler,

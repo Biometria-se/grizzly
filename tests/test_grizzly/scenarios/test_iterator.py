@@ -15,7 +15,7 @@ from locust.exception import StopUser, InterruptTaskSet, RescheduleTask, Resched
 from grizzly.scenarios.iterator import IteratorScenario
 from grizzly.testdata.communication import TestdataConsumer
 from grizzly.testdata.utils import transform
-from grizzly.task import WaitTask, PrintTask
+from grizzly.tasks import WaitTask, PrintTask
 from grizzly.exceptions import RestartScenario
 
 from ..fixtures import grizzly_context, request_task  # pylint: disable=unused-import
@@ -48,7 +48,7 @@ class TestIterationScenario:
                 assert sleep_time == time
 
             mocker.patch(
-                'grizzly.task.wait.gsleep',
+                'grizzly.tasks.wait.gsleep',
                 mocked_wait,
             )
 

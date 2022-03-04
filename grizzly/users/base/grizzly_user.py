@@ -10,7 +10,7 @@ from locust.env import Environment
 from grizzly.context import GrizzlyContextScenario
 
 from ...types import GrizzlyResponse
-from ...task import RequestTask
+from ...tasks import RequestTask
 from ...utils import merge_dicts
 from . import logger, FileRequests
 

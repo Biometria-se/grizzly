@@ -114,7 +114,7 @@ from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageReques
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
 
 from ..types import GrizzlyResponse, RequestDirection
-from ..task import RequestTask
+from ..tasks import RequestTask
 from ..utils import merge_dicts
 from .base import GrizzlyUser, ResponseHandler, RequestLogger
 from . import logger

@@ -39,7 +39,7 @@ from locust.env import Environment
 
 from .base import GrizzlyUser
 from ..types import RequestMethod, GrizzlyResponse
-from ..task import RequestTask
+from ..tasks import RequestTask
 from ..utils import merge_dicts
 
 class BlobStorageUser(GrizzlyUser):

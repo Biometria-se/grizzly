@@ -11,7 +11,7 @@ from requests.models import Response
 from grizzly.clients import ResponseEventSession
 from grizzly.users.base import ResponseEvent, HttpRequests
 from grizzly.types import RequestMethod
-from grizzly.task import RequestTask
+from grizzly.tasks import RequestTask
 
 from ...fixtures import locust_environment  # pylint: disable=unused-import
 from ...helpers import TestUser
