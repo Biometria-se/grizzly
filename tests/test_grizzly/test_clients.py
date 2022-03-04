@@ -12,7 +12,6 @@ from requests.models import Response
 from locust.clients import ResponseContextManager
 from locust.event import EventHook
 from locust.exception import StopUser
-from locust.user.users import User
 from paramiko.transport import Transport
 from paramiko.sftp_client import SFTPClient
 
@@ -20,6 +19,7 @@ from grizzly.clients import ResponseEventSession, SftpClientSession
 from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContextScenario
 from grizzly.task import RequestTask
+from grizzly.users.base import GrizzlyUser
 
 from .fixtures import locust_environment, paramiko_mocker  # pylint: disable=unused-import
 from .helpers import RequestEvent
@@ -58,8 +58,11 @@ class TestResponseEventSession:
         scenario.context['host'] = 'test'
         request.scenario = scenario
 
-        def handler(expected_request: Optional[RequestTask] = None) -> Callable[[str, Optional[RequestTask], User, Optional[ResponseContextManager]], None]:
-            def wrapped(name: str, context: Union[ResponseContextManager, Tuple[Dict[str, Any], str]], request: Optional[RequestTask], user: User) -> None:
+        def handler(expected_request: Optional[RequestTask] = None) -> Callable[
+            [str, Union[ResponseContextManager, Tuple[Dict[str, Any], str]],Optional[RequestTask], GrizzlyUser],
+            None,
+        ]:
+            def wrapped(name: str, context: Union[ResponseContextManager, Tuple[Dict[str, Any], str]], request: Optional[RequestTask], user: GrizzlyUser) -> None:
                 if expected_request is request:
                     raise HandlerCalled()  # one of few exceptions which event handler lets through
 

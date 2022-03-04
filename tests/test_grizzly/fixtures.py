@@ -52,13 +52,13 @@ def noop_zmq(mocker: MockerFixture) -> Callable[[str], None]:
 
     def patch(prefix: str) -> None:
         targets = [
-            'zmq.sugar.context.Context.term',
-            'zmq.sugar.context.Context.__del__',
-            'zmq.sugar.socket.Socket.bind',
-            'zmq.sugar.socket.Socket.connect',
-            'zmq.sugar.socket.Socket.send_json',
-            'zmq.sugar.socket.Socket.recv_json',
-            'zmq.sugar.socket.Socket.disconnect',
+            'zmq.Context.term',
+            'zmq.Context.__del__',
+            'zmq.Socket.bind',
+            'zmq.Socket.connect',
+            'zmq.Socket.send_json',
+            'zmq.Socket.recv_json',
+            'zmq.Socket.disconnect',
             'gsleep',
         ]
 

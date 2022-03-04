@@ -12,7 +12,7 @@ from locust.env import Environment
 from locust.exception import StopUser
 
 from grizzly.users.base import GrizzlyUser, FileRequests
-from grizzly.types import RequestMethod
+from grizzly.types import GrizzlyResponse, RequestMethod
 from grizzly.context import GrizzlyContextScenario
 from grizzly.task import RequestTask
 
@@ -22,7 +22,12 @@ from ...fixtures import locust_environment  # pylint: disable=unused-import
 logging.getLogger().setLevel(logging.CRITICAL)
 
 
-class TestContextVariable:
+class DummyGrizzlyUser(GrizzlyUser):
+    def request(self, request: RequestTask) -> GrizzlyResponse:
+        return super().request(request)
+
+
+class TestGrizzlyUser:
     @pytest.mark.usefixtures('locust_environment')
     def test_render(self, locust_environment: Environment, tmp_path_factory: TempPathFactory) -> None:
         test_context = tmp_path_factory.mktemp('renderer_test') / 'requests'
@@ -33,7 +38,8 @@ class TestContextVariable:
         environ['GRIZZLY_CONTEXT_ROOT'] = test_file_context
 
         try:
-            user = GrizzlyUser(locust_environment)
+
+            user = DummyGrizzlyUser(locust_environment)
             request = RequestTask(RequestMethod.POST, name='test', endpoint='/api/test')
 
             request.template = Template('hello {{ name }}')
@@ -115,7 +121,7 @@ class TestContextVariable:
         environ['GRIZZLY_CONTEXT_ROOT'] = test_file_context
 
         try:
-            user = GrizzlyUser(locust_environment)
+            user = DummyGrizzlyUser(locust_environment)
             request = RequestTask(RequestMethod.POST, name='{{ name }}', endpoint='/api/test/{{ value }}')
 
             request.template = Template('{{ file_path }}')
@@ -148,7 +154,7 @@ class TestContextVariable:
 
     @pytest.mark.usefixtures('locust_environment')
     def test_request(self, locust_environment: Environment) -> None:
-        user = GrizzlyUser(locust_environment)
+        user = DummyGrizzlyUser(locust_environment)
         payload = RequestTask(RequestMethod.GET, name='test', endpoint='/api/test')
 
         with pytest.raises(NotImplementedError):
@@ -156,7 +162,7 @@ class TestContextVariable:
 
     @pytest.mark.usefixtures('locust_environment')
     def test_context(self, locust_environment: Environment) -> None:
-        user = GrizzlyUser(locust_environment)
+        user = DummyGrizzlyUser(locust_environment)
 
         context = user.context()
 

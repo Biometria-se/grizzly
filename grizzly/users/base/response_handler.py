@@ -1,6 +1,7 @@
 from typing import Any, Dict, Tuple, Optional
 
 from locust.clients import ResponseContextManager
+from locust.env import Environment
 
 from ...task import RequestTask
 from ...types import HandlerContextType
@@ -13,8 +14,8 @@ from grizzly_extras.transformer import transformer, TransformerError, Transforme
 class ResponseHandler(ResponseEvent):
     abstract = True
 
-    def __init__(self, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(self, environment: Environment, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+        super().__init__(environment, *args, **kwargs)
 
         self.response_event.add_listener(self.response_handler)
 
@@ -36,7 +37,7 @@ class ResponseHandler(ResponseEvent):
             return
 
         response_metadata: Optional[Dict[str, Any]]
-        response_payload: str
+        response_payload: Optional[str]
 
         if isinstance(context, ResponseContextManager):
             response_payload = context.text

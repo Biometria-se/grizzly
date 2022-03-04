@@ -4,9 +4,10 @@ from typing import Any, Dict, Optional, Tuple, List, Set
 from types import MethodType
 
 from locust import task
+from locust.event import EventHook
 
 from grizzly.users.base import GrizzlyUser
-from grizzly.types import GrizzlyResponse
+from grizzly.types import GrizzlyResponse, RequestMethod
 from grizzly.task import RequestTask
 from grizzly.scenarios import GrizzlyScenario
 
@@ -44,7 +45,9 @@ class TestTaskSet(GrizzlyScenario):
 
     @task
     def task(self) -> None:
-        self.user.request('payload.j2.json', {})
+        self.user.request(
+            RequestTask(RequestMethod.POST, name='test', endpoint='payload.j2.json')
+        )
 
 class ResultSuccess(Exception):
     pass
@@ -63,7 +66,7 @@ def check_arguments(kwargs: Dict[str, Any]) -> Tuple[bool, List[str]]:
 
     return actual == expected, diff
 
-class RequestEvent:
+class RequestEvent(EventHook):
     def __init__(self, custom: bool = True):
         self.custom = custom
 

@@ -1,6 +1,6 @@
 import logging
 
-from typing import TYPE_CHECKING, Optional, Dict, Any, Tuple, List, Union, Type
+from typing import Optional, Dict, Any, Tuple, List, Union, Type
 from os import environ, path
 from hashlib import sha1 as sha1_hash
 from dataclasses import dataclass, field
@@ -10,15 +10,10 @@ import yaml
 from behave.model import Scenario
 from locust.env import Environment
 
-from .types import GrizzlyDict
-
-if TYPE_CHECKING:
-    from .task import GrizzlyTask
+from .types import GrizzlyDict, GrizzlyTask
 
 
 logger = logging.getLogger(__name__)
-
-
 
 
 def generate_identifier(name: str) -> str:
@@ -105,7 +100,7 @@ class GrizzlyContextScenario:
     behave: Scenario = field(init=False, repr=False, hash=False, compare=False)
     context: Dict[str, Any] = field(init=False, repr=False, hash=False, compare=False, default_factory=dict)
     wait: GrizzlyContextScenarioWait = field(init=False, repr=False, hash=False, compare=False, default_factory=GrizzlyContextScenarioWait)
-    tasks: List['GrizzlyTask'] = field(init=False, repr=False, hash=False, compare=False, default_factory=list)
+    tasks: List[GrizzlyTask] = field(init=False, repr=False, hash=False, compare=False, default_factory=list)
     validation: GrizzlyContextScenarioValidation = field(init=False, hash=False, compare=False, default_factory=GrizzlyContextScenarioValidation)
     failure_exception: Optional[Type[Exception]] = field(init=False, default=None)
     orphan_templates: List[str] = field(init=False, repr=False, hash=False, compare=False, default_factory=list)
@@ -136,7 +131,7 @@ class GrizzlyContextScenario:
             self.validation.response_time_percentile is not None
         )
 
-    def add_task(self, task: 'GrizzlyTask') -> None:
+    def add_task(self, task: GrizzlyTask) -> None:
         if not hasattr(task, 'scenario') or task.scenario is None or task.scenario is not self:
             task.scenario = self
 

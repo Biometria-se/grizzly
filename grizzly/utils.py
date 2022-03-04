@@ -1,7 +1,7 @@
 import logging
 import re
 
-from typing import Generic, Type, List, Any, Dict, Tuple, Optional, cast, Generator
+from typing import TYPE_CHECKING, Generic, Type, List, Any, Dict, Tuple, Optional, cast, Generator
 from types import FunctionType
 from importlib import import_module
 from functools import wraps
@@ -14,11 +14,13 @@ from behave.model import Scenario
 from behave.model_core import Status
 from locust import between
 
-from grizzly.scenarios import GrizzlyScenario
-
 from .context import GrizzlyContextScenario
 from .types import WrappedFunc, T
-from .users.base import GrizzlyUser
+
+if TYPE_CHECKING:
+    from .scenarios import GrizzlyScenario
+    from .users.base import GrizzlyUser
+
 
 
 logger = logging.getLogger(__name__)
@@ -89,7 +91,7 @@ def fail_direct(context: Context) -> Generator[None, None, None]:
     context.config.verbose = orig_verbose_value
 
 
-def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Optional[Dict[str, Any]] = None) -> Type[GrizzlyUser]:
+def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Optional[Dict[str, Any]] = None) -> Type['GrizzlyUser']:
     if global_context is None:
         global_context = {}
 
@@ -105,7 +107,7 @@ def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Opt
         module = 'grizzly.users'
         user_class_name = scenario.user.class_name
 
-    base_user_class_type = cast(Type[GrizzlyUser], ModuleLoader[GrizzlyUser].load(module, user_class_name))
+    base_user_class_type = cast(Type['GrizzlyUser'], ModuleLoader['GrizzlyUser'].load(module, user_class_name))
     user_class_name = f'{scenario.user.class_name}_{scenario.identifier}'
 
     context: Dict[str, Any] = {}
@@ -119,6 +121,7 @@ def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Opt
         context = merge_dicts(context, merge_context)
 
     return type(user_class_name, (base_user_class_type, ), {
+        '__module__': base_user_class_type.__module__,
         '__dependencies__': base_user_class_type.__dependencies__,
         '_context': context,
         '_scenario': scenario,
@@ -126,16 +129,17 @@ def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Opt
     })
 
 
-def create_scenario_class_type(base_type: str, scenario: GrizzlyContextScenario) -> Type[GrizzlyScenario]:
+def create_scenario_class_type(base_type: str, scenario: GrizzlyContextScenario) -> Type['GrizzlyScenario']:
     if base_type.count('.') > 0:
         module, base_type = base_type.rsplit('.', 1)
     else:
         module = 'grizzly.scenarios'
 
-    base_task_class_type = cast(Type[GrizzlyScenario], ModuleLoader[GrizzlyScenario].load(module, base_type))
+    base_task_class_type = ModuleLoader['GrizzlyScenario'].load(module, base_type)
     task_class_name = f'{base_type}_{scenario.identifier}'
 
     return type(task_class_name, (base_task_class_type, ), {
+        '__module__': base_task_class_type.__module__,
         'tasks': [],
         'wait_time': between(scenario.wait.minimum, scenario.wait.maximum)
     })

@@ -103,11 +103,13 @@ from urllib.parse import urlparse, parse_qs, unquote
 from contextlib import contextmanager
 from time import perf_counter as time
 
-import zmq
+from zmq.sugar.constants import NOBLOCK as ZMQ_NOBLOCK, REQ as ZMQ_REQ
+from zmq.error import Again as ZMQAgain
+import zmq.green as zmq
 
-from gevent import sleep as gsleep
 from locust.exception import StopUser
-from grizzly.types import RequestDirection
+from locust.env import Environment
+from gevent import sleep as gsleep
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse, AsyncMessageError
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
 
@@ -144,15 +146,15 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
 
     am_context: AsyncMessageContext
     worker_id: Optional[str]
-    zmq_context = zmq.Context()
-    zmq_client: zmq.Socket
+    zmq_context = zmq.Context()  # type: ignore
+    zmq_client: zmq.Socket  # type: ignore
     zmq_url = 'tcp://127.0.0.1:5554'
 
-    def __init__(self, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+    def __init__(self, environment: Environment, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
         if pymqi.__name__ == 'grizzly_extras.dummy_pymqi':
             raise NotImplementedError('MessageQueueUser could not import pymqi, have you installed IBM MQ dependencies?')
 
-        super().__init__(*args, **kwargs)
+        super().__init__(environment, *args, **kwargs)
 
         # Get configuration values from host string
         parsed = urlparse(self.host or '')
@@ -236,9 +238,9 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
                 # do not block all other "threads", just it self
                 while True:
                     try:
-                        response = cast(AsyncMessageResponse, self.zmq_client.recv_json(flags=zmq.NOBLOCK))
+                        response = cast(AsyncMessageResponse, self.zmq_client.recv_json(flags=ZMQ_NOBLOCK))
                         break
-                    except zmq.Again:
+                    except ZMQAgain:
                         gsleep(0.1)
 
             except Exception as e:
@@ -319,7 +321,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
                     'meta': True,
                     'failure_exception': request.scenario.failure_exception,
                 })
-                self.zmq_client = self.zmq_context.socket(zmq.REQ)
+                self.zmq_client = self.zmq_context.socket(ZMQ_REQ)
                 self.zmq_client.connect(self.zmq_url)
 
         am_request: AsyncMessageRequest = {

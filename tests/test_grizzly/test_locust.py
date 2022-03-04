@@ -13,7 +13,6 @@ from pytest_mock import mocker  # pylint: disable=unused-import
 from pytest_mock.plugin import MockerFixture
 from behave.runner import Context
 from locust.env import Environment
-from locust.user.users import User
 from jinja2 import Template, TemplateError
 
 from grizzly.locust import (
@@ -31,6 +30,7 @@ from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 from grizzly.task import PrintTask, RequestTask, WaitTask
 from grizzly.users import RestApiUser, MessageQueueUser
+from grizzly.users.base import GrizzlyUser
 from grizzly.scenarios import IteratorScenario
 from grizzly.testdata.variables import AtomicMessageQueue, AtomicIntegerIncrementer
 from grizzly_extras.async_message import AsyncMessageResponse
@@ -188,12 +188,16 @@ def test_setup_locust_scenarios(behave_context: Context) -> None:
     assert user_class.host == 'https://test.example.org'
     assert grizzly.scenario.name.startswith('IteratorScenario')
 
+    from locust.user.sequential_taskset import SequentialTaskSetMeta
+
     user_tasks = user_class.tasks[-1]
-    assert issubclass(user_tasks, (IteratorScenario, ))
+    assert issubclass(type(user_tasks), SequentialTaskSetMeta)
+    user_tasks = cast(IteratorScenario, user_tasks)
     assert len(user_tasks.tasks) == 3 + 1  # IteratorScenario has an internal task other than what we've added
 
     if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
         grizzly.scenario.user.class_name = 'MessageQueueUser'
+        grizzly.scenario.context['host'] = 'mq://test.example.org?QueueManager=QM01&Channel=TEST.CHANNEL'
         user_classes, request_tasks, start_messagequeue_daemon = setup_locust_scenarios(grizzly)
 
         assert start_messagequeue_daemon
@@ -203,11 +207,12 @@ def test_setup_locust_scenarios(behave_context: Context) -> None:
         user_class = user_classes[-1]
         assert issubclass(user_class, (MessageQueueUser, ))
         assert len(user_class.tasks) == 1
-        assert user_class.host == 'https://test.example.org'
+        assert user_class.host == 'mq://test.example.org?QueueManager=QM01&Channel=TEST.CHANNEL'
         assert grizzly.scenario.name.startswith('IteratorScenario')
 
         user_tasks = user_class.tasks[-1]
-        assert issubclass(user_tasks, (IteratorScenario, ))
+        assert issubclass(type(user_tasks), SequentialTaskSetMeta)
+        user_tasks = cast(IteratorScenario, user_tasks)
         assert len(user_tasks.tasks) == 3 + 1  # IteratorScenario has an internal task other than what we've added
 
 
@@ -284,7 +289,7 @@ def test_setup_resource_limits(behave_context: Context, mocker: MockerFixture, c
 
 
 @pytest.mark.usefixtures('behave_context')
-def test_setup_environment_listeners(behave_context: Context, mocker: MockerFixture) -> None:
+def test_setup_environment_listeners(behave_context: Context, mocker: MockerFixture, noop_zmq: Callable[[str], None]) -> None:
     from locust import events
 
     def mock_on_worker(on_worker: bool) -> None:
@@ -297,13 +302,16 @@ def test_setup_environment_listeners(behave_context: Context, mocker: MockerFixt
         )
 
     grizzly = cast(GrizzlyContext, behave_context.grizzly)
-    user_classes: List[User] = []
+    user_classes: List[Type[GrizzlyUser]] = []
     environment = Environment(
         user_classes=user_classes,
         shape_class=None,
         events=events,
     )
 
+    noop_zmq('grizzly.testdata.variables.messagequeue')
+
+    '''
     def mocked_noop(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
         pass
 
@@ -331,13 +339,14 @@ def test_setup_environment_listeners(behave_context: Context, mocker: MockerFixt
         'grizzly.testdata.variables.messagequeue.zmq.sugar.socket.Socket.send_json',
         mocked_noop,
     )
+    '''
 
     def mock_response(response: AsyncMessageResponse) -> None:
         def mocked_response(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> AsyncMessageResponse:
             return response
 
         mocker.patch(
-            'grizzly.testdata.variables.messagequeue.zmq.sugar.socket.Socket.recv_json',
+            'grizzly.testdata.variables.messagequeue.zmq.Socket.recv_json',
             mocked_response,
         )
 
@@ -461,7 +470,7 @@ def test_setup_environment_listeners(behave_context: Context, mocker: MockerFixt
             pass
 
 @pytest.mark.usefixtures('behave_context', 'locust_environment')
-def test_print_scenario_summary(behave_context: Context, locust_environment: Environment, noop_zmq: Callable[[str], None], capsys: CaptureFixture) -> None:
+def test_print_scenario_summary(behave_context: Context, capsys: CaptureFixture) -> None:
     grizzly = cast(GrizzlyContext, behave_context.grizzly)
 
     grizzly.add_scenario('test-1')
@@ -535,7 +544,7 @@ b4959834         4  test-2-test-2-test-2-test-2
 
 
 @pytest.mark.usefixtures('behave_context')
-def test_run_worker(behave_context: Context, capsys: CaptureFixture, mocker: MockerFixture) -> None:
+def test_run_worker(behave_context: Context, capsys: CaptureFixture, mocker: MockerFixture, noop_zmq: Callable[[str], None]) -> None:
     def mock_on_node(master: bool, worker: bool) -> None:
         def mocked_on_worker(context: Context) -> bool:
             return worker
@@ -565,15 +574,12 @@ def test_run_worker(behave_context: Context, capsys: CaptureFixture, mocker: Moc
         mocked_create_worker_runner,
     )
 
+    noop_zmq('grizzly.testdata.variables.messagequeue')
+
     for method in [
         'locust.runners.WorkerRunner.start_worker',
         'gevent.sleep',
         'grizzly.listeners._init_testdata_producer',
-        'grizzly.testdata.variables.messagequeue.zmq.sugar.context.Context.term',
-        'grizzly.testdata.variables.messagequeue.zmq.sugar.context.Context.__del__',
-        'grizzly.testdata.variables.messagequeue.zmq.sugar.socket.Socket.bind',
-        'grizzly.testdata.variables.messagequeue.zmq.sugar.socket.Socket.connect',
-        'grizzly.testdata.variables.messagequeue.zmq.sugar.socket.Socket.send_json',
     ]:
         mocker.patch(
             method,
@@ -587,7 +593,7 @@ def test_run_worker(behave_context: Context, capsys: CaptureFixture, mocker: Moc
         }
 
     mocker.patch(
-        'grizzly.testdata.variables.messagequeue.zmq.sugar.socket.Socket.recv_json',
+        'grizzly.testdata.variables.messagequeue.zmq.Socket.recv_json',
         mocked_response,
     )
 
@@ -666,7 +672,7 @@ def test_run_worker(behave_context: Context, capsys: CaptureFixture, mocker: Moc
 
 
 @pytest.mark.usefixtures('behave_context')
-def test_run_master(behave_context: Context, capsys: CaptureFixture, mocker: MockerFixture) -> None:
+def test_run_master(behave_context: Context, capsys: CaptureFixture, mocker: MockerFixture, noop_zmq: Callable[[str], None]) -> None:
     def mock_on_node(master: bool, worker: bool) -> None:
         def mocked_on_worker(context: Context) -> bool:
             return worker
@@ -686,17 +692,14 @@ def test_run_master(behave_context: Context, capsys: CaptureFixture, mocker: Moc
     def noop(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Any:
         pass
 
+    noop_zmq('grizzly.testdata.variables.messagequeue')
+
     for method in [
         'locust.runners.MasterRunner.start',
         'locust.runners.MasterRunner.client_listener',
         'gevent.sleep',
         'locust.rpc.zmqrpc.Server.__init__',
         'grizzly.listeners._init_testdata_producer',
-        'grizzly.testdata.variables.messagequeue.zmq.sugar.context.Context.term',
-        'grizzly.testdata.variables.messagequeue.zmq.sugar.context.Context.__del__',
-        'grizzly.testdata.variables.messagequeue.zmq.sugar.socket.Socket.bind',
-        'grizzly.testdata.variables.messagequeue.zmq.sugar.socket.Socket.connect',
-        'grizzly.testdata.variables.messagequeue.zmq.sugar.socket.Socket.send_json',
     ]:
         mocker.patch(
             method,
@@ -711,7 +714,7 @@ def test_run_master(behave_context: Context, capsys: CaptureFixture, mocker: Moc
         }
 
     mocker.patch(
-        'grizzly.testdata.variables.messagequeue.zmq.sugar.socket.Socket.recv_json',
+        'grizzly.testdata.variables.messagequeue.zmq.Socket.recv_json',
         mocked_response,
     )
 

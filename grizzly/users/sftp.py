@@ -35,6 +35,7 @@ from time import perf_counter as time
 from os import path, environ, mkdir
 
 from locust.exception import StopUser
+from locust.env import Environment
 
 from .base import GrizzlyUser, FileRequests, ResponseHandler, RequestLogger
 from ..utils import merge_dicts
@@ -59,8 +60,8 @@ class SftpUser(ResponseHandler, RequestLogger, GrizzlyUser, FileRequests):
 
     sftp_client: SftpClientSession
 
-    def __init__(self, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(self, environment: Environment, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+        super().__init__(environment, *args, **kwargs)
 
         self._context = merge_dicts(super().context(), self.__class__._context)
 

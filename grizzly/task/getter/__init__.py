@@ -4,7 +4,7 @@ from time import perf_counter as time
 
 from ...context import GrizzlyContext
 from ...scenarios import GrizzlyScenario
-from ...task import GrizzlyTask
+from ...types import GrizzlyTask
 
 
 class GetterOfTask(GrizzlyTask):

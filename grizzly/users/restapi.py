@@ -64,10 +64,10 @@ from functools import wraps
 from enum import Enum
 from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
-from urllib3 import disable_warnings as urllib3_disable_warnings
 
 from locust.clients import ResponseContextManager
 from locust.exception import CatchResponseError, StopUser
+from locust.env import Environment
 
 import requests
 
@@ -78,7 +78,7 @@ from ..task import RequestTask
 from .base import RequestLogger, ResponseHandler, GrizzlyUser, HttpRequests
 from . import logger
 
-
+from urllib3 import disable_warnings as urllib3_disable_warnings
 urllib3_disable_warnings()
 
 
@@ -148,8 +148,8 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests):
         }
     }
 
-    def __init__(self, *args: Tuple[Any], **kwargs: Dict[str, Any]) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(self, environment: Environment, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+        super().__init__(environment, *args, **kwargs)
 
         self.headers = {
             'Authorization': None,

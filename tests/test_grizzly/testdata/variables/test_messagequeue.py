@@ -5,7 +5,8 @@ from typing import Optional, Callable, cast
 from json import dumps as jsondumps
 
 import pytest
-import zmq
+from zmq.error import Again as ZMQAgain
+import zmq.green as zmq
 
 from pytest_mock import mocker  # pylint: disable=unused-import
 from pytest_mock.plugin import MockerFixture
@@ -121,7 +122,7 @@ class TestAtomicMessageQueue:
                 'worker': None,
             }
             assert v._endpoint_clients.get('test1', None) is not None
-            assert isinstance(v._zmq_context, zmq.Context)
+            assert isinstance(v._zmq_context, zmq.Context)  # type: ignore
 
             t = AtomicMessageQueue(
                 'test2',
@@ -283,7 +284,7 @@ class TestAtomicMessageQueue:
                 'test',
                 'queue:TEST.QUEUE | repeat=True, url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"',
             )
-            assert isinstance(v._endpoint_clients.get('test', None), zmq.Socket)
+            assert isinstance(v._endpoint_clients.get('test', None), zmq.Socket)  # type: ignore
             assert v._settings.get('test', None) == {
                 'repeat': True,
                 'wait': None,
@@ -347,8 +348,8 @@ class TestAtomicMessageQueue:
 
         def mock_response(response: Optional[AsyncMessageResponse], repeat: int = 1) -> None:
             mocker.patch(
-                'grizzly.testdata.variables.messagequeue.zmq.sugar.socket.Socket.recv_json',
-                side_effect=[zmq.Again(), response] * repeat
+                'grizzly.testdata.variables.messagequeue.zmq.Socket.recv_json',
+                side_effect=[ZMQAgain(), response] * repeat
             )
 
         gsleep_spy = mocker.patch(
@@ -471,7 +472,7 @@ class TestAtomicMessageQueue:
             assert len(v._endpoint_messages['test']) == 1
             assert v._endpoint_messages['test'][0] == jsondumps({'test': {'result': 'hello world'}})
 
-            send_json_spy = mocker.spy(zmq.sugar.socket.Socket, 'send_json')
+            send_json_spy = mocker.spy(zmq.Socket, 'send_json')  # type: ignore
             v._settings['test']['content_type'] = TransformerContentType.XML
             v['test']
             send_json_spy.assert_called_once()

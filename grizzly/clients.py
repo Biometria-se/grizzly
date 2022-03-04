@@ -1,6 +1,6 @@
 import logging
 
-from typing import Optional, Dict, Any, Tuple, Optional, Generator, cast
+from typing import TYPE_CHECKING, Optional, Dict, Any, Tuple, Optional, Generator, cast
 from contextlib import contextmanager
 
 from locust.user.users import User
@@ -9,7 +9,8 @@ from locust.event import EventHook
 from paramiko import SFTPClient, Transport
 from paramiko.pkey import PKey
 
-from .task import RequestTask
+if TYPE_CHECKING:
+    from .task import RequestTask
 
 
 logger = logging.getLogger(__name__)
@@ -27,7 +28,7 @@ class ResponseEventSession(HttpSession):
         /,
         method: str,
         url: str,
-        request: Optional[RequestTask],
+        request: Optional['RequestTask'],
         name: Optional[str] = None,
         catch_response: bool = False,
         **kwargs: Dict[str, Any],

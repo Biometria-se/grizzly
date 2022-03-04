@@ -1,7 +1,9 @@
 from typing import Dict, Any, Callable, Optional, cast
 
 import pytest
-import zmq
+from zmq.sugar.constants import REQ as ZMQ_REQ
+from zmq.error import ZMQError, Again as ZMQAgain
+import zmq.green as zmq
 
 from pytest_mock import mocker, MockerFixture  # pylint: disable=unused-import
 
@@ -207,7 +209,9 @@ class TestAtomicServiceBus:
                 'content_type': None,
             }
             assert v._endpoint_clients.get('test1', None) is not None
-            assert isinstance(v._zmq_context, zmq.Context)
+            assert v._zmq_context.__class__.__name__ == '_Context'
+            assert v._zmq_context.__class__.__module__ == 'zmq.green.core'
+            #assert isinstance(v._zmq_context, zmq.core._Context)
 
             t = AtomicServiceBus(
                 'test2',
@@ -303,7 +307,10 @@ class TestAtomicServiceBus:
                     'wait=15, repeat=True'
                 ),
             )
-            assert isinstance(v._endpoint_clients.get('test', None), zmq.Socket)
+            endpoint_client = v._endpoint_clients.get('test', None)
+            assert endpoint_client is not None
+            assert endpoint_client.__class__.__name__ == '_Socket'
+            assert endpoint_client.__class__.__module__ == 'zmq.green.core'
             assert v._settings.get('test', None) == {
                 'repeat': True,
                 'wait': 15,
@@ -320,7 +327,9 @@ class TestAtomicServiceBus:
             }
             assert say_hello_spy.call_count == 1
             args, _ = say_hello_spy.call_args_list[-1]
-            assert isinstance(args[0], zmq.Socket)
+            zmq_socket = args[0]
+            assert zmq_socket.__class__.__name__ == '_Socket'
+            assert zmq_socket.__class__.__module__ == 'zmq.green.core'
             assert args[1] == 'test'
             assert args[0] is v._endpoint_clients.get('test', None)
 
@@ -331,8 +340,10 @@ class TestAtomicServiceBus:
                     'wait=15, content_type=json'
                 ),
             )
-            assert isinstance(v._endpoint_clients.get('test-variable', None), zmq.Socket)
-            print(v._settings.get('test-variable', None))
+            endpoint_client = v._endpoint_clients.get('test-variable', None)
+            assert endpoint_client is not None
+            assert endpoint_client.__class__.__name__ == '_Socket'
+            assert endpoint_client.__class__.__module__ == 'zmq.green.core'
             assert v._settings.get('test-variable', None) == {
                 'repeat': False,
                 'wait': 15,
@@ -350,7 +361,9 @@ class TestAtomicServiceBus:
             }
             assert say_hello_spy.call_count == 2
             args, _ = say_hello_spy.call_args_list[-1]
-            assert isinstance(args[0], zmq.Socket)
+            zmq_socket = args[0]
+            assert zmq_socket.__class__.__name__ == '_Socket'
+            assert zmq_socket.__class__.__module__ == 'zmq.green.core'
             assert args[1] == 'test-variable'
             assert args[0] is v._endpoint_clients.get('test-variable', None)
         finally:
@@ -363,8 +376,13 @@ class TestAtomicServiceBus:
     def test_say_hello(self, mocker: MockerFixture, noop_zmq: Callable[[str], None]) -> None:
         noop_zmq('grizzly.testdata.variables.servicebus')
 
-        def mock_response(client: zmq.Socket, response: Optional[AsyncMessageResponse]) -> None:
-            mocker.patch.object(client, 'recv_json', side_effect=[zmq.Again, response])
+        def mock_response(
+            client: zmq.Socket,  # type: ignore
+            response: Optional[AsyncMessageResponse],
+        ) -> None:
+            mocker.patch.object(client, 'recv_json', side_effect=[ZMQAgain, response])
+
+        context: Optional[zmq.Context] = None  # type: ignore
 
         try:
             # <!-- lazy way to initialize an empty AtomicServiceBus...
@@ -383,8 +401,8 @@ class TestAtomicServiceBus:
             AtomicServiceBus.clear()
             # -->
 
-            context = zmq.Context()
-            client = context.socket(zmq.REQ)
+            context = zmq.Context()  # type: ignore
+            client = context.socket(ZMQ_REQ)
 
             v._settings['test2'] = {
                 'context': {
@@ -449,7 +467,9 @@ class TestAtomicServiceBus:
                 AtomicServiceBus.destroy()
             except:
                 pass
-            context.destroy()
+
+            if context is not None:
+                context.destroy()
 
     @pytest.mark.usefixtures('noop_zmq')
     def test_clear(self, mocker: MockerFixture, noop_zmq: Callable[[str], None]) -> None:
@@ -501,8 +521,8 @@ class TestAtomicServiceBus:
 
         def mock_response(response: Optional[AsyncMessageResponse], repeat: int = 1) -> None:
             mocker.patch(
-                'grizzly.testdata.variables.servicebus.zmq.sugar.socket.Socket.recv_json',
-                side_effect=[zmq.Again, response] * repeat,
+                'grizzly.testdata.variables.servicebus.zmq.Socket.recv_json',
+                side_effect=[ZMQAgain, response] * repeat,
             )
 
         mocker.patch(
@@ -660,7 +680,7 @@ class TestAtomicServiceBus:
         )
 
         zmq_disconnect_spy = mocker.patch(
-            'grizzly.testdata.variables.servicebus.zmq.sugar.socket.Socket.disconnect',
+            'grizzly.testdata.variables.servicebus.zmq.Socket.disconnect',
             side_effect=[None] * 10,
         )
 
@@ -683,7 +703,7 @@ class TestAtomicServiceBus:
             del v['asdf']
             assert zmq_disconnect_spy.call_count == 1
 
-            zmq_disconnect_spy.side_effect = [zmq.ZMQError]
+            zmq_disconnect_spy.side_effect = [ZMQError]
             v = AtomicServiceBus(
                 'test',
                 (

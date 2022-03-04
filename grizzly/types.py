@@ -1,6 +1,8 @@
+from abc import ABCMeta
 from enum import Enum
 from typing import TYPE_CHECKING, Callable, Optional, Tuple, Any, Union, Dict, TypeVar, List, Type, Generic, Set, cast
 from importlib import import_module
+from dataclasses import dataclass, field
 
 from aenum import Enum as AdvancedEnum, NoAlias
 from locust.clients import ResponseContextManager
@@ -10,6 +12,8 @@ from grizzly_extras.transformer import TransformerContentType
 
 if TYPE_CHECKING:
     from .users.base import GrizzlyUser
+    from .scenarios import GrizzlyScenario
+    from .context import GrizzlyContextScenario
 
 class ResponseTarget(Enum):
     METADATA = 0
@@ -65,7 +69,7 @@ class RequestMethod(Enum, AdvancedEnum, settings=NoAlias):
 
 HandlerType = Callable[[Tuple[TransformerContentType, Any], 'GrizzlyUser', Optional[ResponseContextManager]], None]
 
-HandlerContextType = Union[ResponseContextManager, Tuple[Optional[Dict[str, Any]], str]]
+HandlerContextType = Union[ResponseContextManager, Tuple[Optional[Dict[str, Any]], Optional[str]]]
 
 TestdataType = Dict[str, Dict[str, Any]]
 
@@ -253,3 +257,11 @@ class GrizzlyDict(dict):
             value = caster(value)
 
         super().__setitem__(key, value)
+
+
+@dataclass(unsafe_hash=True)
+class GrizzlyTask(metaclass=ABCMeta):
+    scenario: 'GrizzlyContextScenario' = field(init=False, repr=False)
+
+    def implementation(self) -> Callable[['GrizzlyScenario'], Any]:
+        raise NotImplementedError(f'{self.__class__.__name__} has not implemented "implementation"')

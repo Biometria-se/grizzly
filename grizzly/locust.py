@@ -96,10 +96,7 @@ def setup_locust_scenarios(context: GrizzlyContext) -> Tuple[List[Type[GrizzlyUs
         user_class_type.host = scenario.context['host']
 
         # fail early if there is a problem with creating an instance of the user class
-        try:
-            user_class_type(dummy_environment)
-        except TypeError:  # missing required environment argument, is OK
-            pass
+        user_class_type(dummy_environment)
 
         external_dependencies.update(user_class_type.__dependencies__)
 

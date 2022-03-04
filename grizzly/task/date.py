@@ -13,7 +13,7 @@ Instances of this task is created with the step expression:
 * `timezone` _str_ (optional) - a valid [timezone name](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
 * `offset` _str_ (optional) - a time span string describing the offset, Y = years, M = months, D = days, h = hours, m = minutes, s = seconds, e.g. `1Y-2M10D`
 '''
-from typing import Callable, Dict, Any, Optional, cast
+from typing import TYPE_CHECKING, Callable, Dict, Any, Optional, cast
 from dataclasses import dataclass, field
 from datetime import datetime
 
@@ -25,10 +25,11 @@ from dateutil.relativedelta import relativedelta
 from tzlocal import get_localzone as get_local_timezone
 from grizzly_extras.arguments import get_unsupported_arguments, split_value, parse_arguments
 
-from ..scenarios import GrizzlyScenario
-from ..task import GrizzlyTask
+from ..types import GrizzlyTask
 from ..utils import parse_timespan
 
+if TYPE_CHECKING:
+    from ..scenarios import GrizzlyScenario
 
 @dataclass
 class DateTask(GrizzlyTask):
@@ -48,8 +49,8 @@ class DateTask(GrizzlyTask):
         else:
             raise ValueError('no arguments specified')
 
-    def implementation(self) -> Callable[[GrizzlyScenario], Any]:
-        def _implementation(parent: GrizzlyScenario) -> Any:
+    def implementation(self) -> Callable[['GrizzlyScenario'], Any]:
+        def _implementation(parent: 'GrizzlyScenario') -> Any:
             value_rendered = Template(self.value).render(**parent.user._context['variables'], datetime=datetime)
 
             arguments_rendered: Dict[str, str] = {}

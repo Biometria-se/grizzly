@@ -83,7 +83,9 @@ import logging
 from typing import Dict, Any, List, Type, Optional, cast
 from urllib.parse import urlparse, parse_qs
 
-import zmq
+from zmq.sugar.constants import NOBLOCK as ZMQ_NOBLOCK, REQ as ZMQ_REQ
+from zmq.error import Again as ZMQAgain, ZMQError
+import zmq.green as zmq
 
 from gevent import sleep as gsleep
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
@@ -223,11 +225,11 @@ class AtomicServiceBus(AtomicVariable[str]):
     __initialized: bool = False
 
     _settings: Dict[str, Dict[str, Any]]
-    _endpoint_clients: Dict[str, zmq.Socket]
+    _endpoint_clients: Dict[str, zmq.Socket]  # type: ignore
     _endpoint_messages: Dict[str, List[str]]
 
     _zmq_url = 'tcp://127.0.0.1:5554'
-    _zmq_context: zmq.Context
+    _zmq_context: zmq.Context  # type: ignore
 
     arguments: Dict[str, Any] = {
         'repeat': bool_typed,
@@ -277,7 +279,7 @@ class AtomicServiceBus(AtomicVariable[str]):
 
             self._endpoint_messages = {variable: []}
             self._settings = {variable: settings}
-            self._zmq_context = zmq.Context()
+            self._zmq_context = zmq.Context()  # type: ignore
             self._endpoint_clients = {variable: self.create_client(variable, settings)}
             self.__initialized = True
 
@@ -301,17 +303,24 @@ class AtomicServiceBus(AtomicVariable[str]):
 
         return context
 
-    def create_client(self, variable: str, settings: Dict[str, Any]) -> zmq.Socket:
+    def create_client(self, variable: str, settings: Dict[str, Any]) -> zmq.Socket:  # type: ignore
         self._settings[variable].update({'context': self.create_context(settings)})
 
-        zmq_client = cast(zmq.Socket, self._zmq_context.socket(zmq.REQ))
+        zmq_client = cast(
+            zmq.Socket,  # type: ignore
+            self._zmq_context.socket(ZMQ_REQ),
+        )
         zmq_client.connect(self._zmq_url)
 
         self.say_hello(zmq_client, variable)
 
         return zmq_client
 
-    def say_hello(self, client: zmq.Socket, variable: str) -> None:
+    def say_hello(
+        self,
+        client: zmq.Socket,  # type: ignore
+        variable: str,
+    ) -> None:
         settings = self._settings[variable]
         context = cast(AsyncMessageContext, dict(settings['context']))
 
@@ -338,9 +347,9 @@ class AtomicServiceBus(AtomicVariable[str]):
 
         while True:
             try:
-                response = client.recv_json(flags=zmq.NOBLOCK)
+                response = client.recv_json(flags=ZMQ_NOBLOCK)
                 break
-            except zmq.Again:
+            except ZMQAgain:
                 gsleep(0.1)
 
         if response is None:
@@ -407,9 +416,9 @@ class AtomicServiceBus(AtomicVariable[str]):
 
             while True:
                 try:
-                    response = cast(AsyncMessageResponse, client.recv_json(flags=zmq.NOBLOCK))
+                    response = cast(AsyncMessageResponse, client.recv_json(flags=ZMQ_NOBLOCK))
                     break
-                except zmq.Again:
+                except ZMQAgain:
                     gsleep(0.1)
 
             if response is None:
@@ -447,7 +456,7 @@ class AtomicServiceBus(AtomicVariable[str]):
 
                 try:
                     self._endpoint_clients[variable].disconnect(self._zmq_url)
-                except (zmq.ZMQError, AttributeError, ):
+                except (ZMQError, AttributeError, ):
                     pass
                 finally:
                     del self._endpoint_clients[variable]

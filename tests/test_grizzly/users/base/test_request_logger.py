@@ -165,7 +165,8 @@ class TestRequestLogger:
         response.request.body = '{"test": "contents"}'.encode('utf-8')
         response.request.headers = CaseInsensitiveDict()
         response_context_manager = ResponseContextManager(response, None, None)
-        response_context_manager.locust_request_meta = {
+        response_context_manager._entered = True
+        response_context_manager.request_meta = {
             'response_time': 200,
         }
 
@@ -206,7 +207,7 @@ class TestRequestLogger:
             ('x-cookie', 'asdfasdfasdf'),
         ])
         response_context_manager = ResponseContextManager(response, None, None)
-        response_context_manager.locust_request_meta = {
+        response_context_manager.request_meta = {
             'response_time': 137.2111,
         }
 

@@ -517,7 +517,7 @@ def test_transform(behave_context: Context, noop_zmq: Callable[[str], None], cle
 
     def mock_response(response: Optional[AsyncMessageResponse], repeat: int = 1) -> None:
         mocker.patch(
-            'grizzly.testdata.variables.servicebus.zmq.sugar.socket.Socket.recv_json',
+            'grizzly.testdata.variables.servicebus.zmq.Socket.recv_json',
             side_effect=[zmq.Again(), response] * repeat
         )
     try:

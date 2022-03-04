@@ -9,15 +9,17 @@ Instances of this task is created with the step expression:
 * [`step_task_transform`](/grizzly/usage/steps/scenario/tasks/#step_task_transform)
 '''
 from dataclasses import dataclass, field
-from typing import List, Callable, Any, Type
+from typing import TYPE_CHECKING, List, Callable, Any, Type
 
 from jinja2 import Template
 from grizzly_extras.transformer import Transformer, transformer, TransformerContentType, TransformerError
 
 from ..context import GrizzlyContext
-from ..task import GrizzlyTask
-from ..scenarios import GrizzlyScenario
+from ..types import GrizzlyTask
 from ..exceptions import TransformerLocustError
+
+if TYPE_CHECKING:
+    from ..scenarios import GrizzlyScenario
 
 @dataclass
 class TransformerTask(GrizzlyTask):
@@ -46,8 +48,8 @@ class TransformerTask(GrizzlyTask):
 
         self._parser = self._transformer.parser(self.expression)
 
-    def implementation(self) -> Callable[[GrizzlyScenario], Any]:
-        def _implementation(parent: GrizzlyScenario) -> Any:
+    def implementation(self) -> Callable[['GrizzlyScenario'], Any]:
+        def _implementation(parent: 'GrizzlyScenario') -> Any:
             content_raw = Template(self.content).render(**parent.user._context['variables'])
 
             try:

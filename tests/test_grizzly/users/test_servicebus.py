@@ -3,7 +3,8 @@ import logging
 from typing import Callable, cast
 
 import pytest
-import zmq
+from zmq.sugar.constants import REQ as ZMQ_REQ
+from zmq.error import Again as ZMQAgain
 
 from pytest_mock import mocker  # pylint: disable=unused-import
 from pytest_mock.plugin import MockerFixture
@@ -28,7 +29,7 @@ class TestServiceBusUser:
         noop_zmq('grizzly.users.servicebus')
 
         try:
-            zmq_client_connect_spy = mocker.patch('grizzly.users.servicebus.zmq.sugar.socket.Socket.connect', side_effect=[None] * 10)
+            zmq_client_connect_spy = mocker.patch('grizzly.users.servicebus.zmq.Socket.connect', side_effect=[None] * 10)
             say_hello_spy = mocker.patch('grizzly.users.servicebus.ServiceBusUser.say_hello', side_effect=[None] * 10)
 
             ServiceBusUser.host = 'Endpoint=mq://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=secret='
@@ -68,7 +69,7 @@ class TestServiceBusUser:
             assert zmq_client_connect_spy.call_count == 1
             args, _ = zmq_client_connect_spy.call_args_list[0]
             assert args[0] == ServiceBusUser.zmq_url
-            assert user.zmq_client.type == zmq.REQ
+            assert user.zmq_client.type == ZMQ_REQ
             assert say_hello_spy.call_count == 0
 
             scenario = GrizzlyContextScenario()
@@ -90,7 +91,7 @@ class TestServiceBusUser:
                 assert args[1] == cast(RequestTask, scenario.tasks[index+1]).endpoint
 
         finally:
-            ServiceBusUser._scenario = None
+            setattr(ServiceBusUser, '_scenario', None)
             ServiceBusUser._context = {
                 'message': {
                     'wait': None,
@@ -225,7 +226,7 @@ class TestServiceBusUser:
         def mock_recv_json(response: AsyncMessageResponse) -> None:
             mocker.patch.object(user.zmq_client,
                 'recv_json',
-                side_effect=[zmq.Again(), response],
+                side_effect=[ZMQAgain(), response],
             )
 
         mock_recv_json({

@@ -184,7 +184,7 @@ def test_create_user_class_type(locust_environment: Environment) -> None:
     assert user_class_type_1.weight == 1
     assert user_class_type_1._scenario is scenario
     assert user_class_type_1.host == 'http://localhost:8000'
-    assert user_class_type_1.__module__ == 'locust.user.users'
+    assert user_class_type_1.__module__ == 'grizzly.users.restapi'
     assert user_class_type_1._context == {
         'verify_certificates': True,
         'auth': {
@@ -253,7 +253,7 @@ def test_create_user_class_type(locust_environment: Environment) -> None:
     assert user_class_type_2.weight == 1
     assert user_class_type_2._scenario is scenario
     assert user_class_type_2.host == 'http://localhost:8001'
-    assert user_class_type_2.__module__ == 'locust.user.users'
+    assert user_class_type_2.__module__ == 'grizzly.users.restapi'
     assert user_class_type_2._context == {
         'log_all_requests': True,
         'test': {
@@ -315,7 +315,7 @@ def test_create_user_class_type(locust_environment: Environment) -> None:
     assert user_class_type_3.weight == 1
     assert user_class_type_3._scenario is scenario
     assert user_class_type_3.host == 'http://localhost:8002'
-    assert user_class_type_3.__module__ == 'locust.user.users'
+    assert user_class_type_3.__module__ == 'grizzly.users.restapi'
     assert user_class_type_3._context == {
         'test': {
             'value': 'hello world',
@@ -360,7 +360,7 @@ def test_create_scenario_class_type() -> None:
 
     assert issubclass(task_class_type_1, (IteratorScenario, TaskSet))
     assert task_class_type_1.__name__ == 'IteratorScenario_25867809'
-    assert task_class_type_1.__module__ == 'locust.user.sequential_taskset'
+    assert task_class_type_1.__module__ == 'grizzly.scenarios.iterator'
     task_class_type_1.add_scenario_task(RequestTask(RequestMethod.POST, name='test-request', endpoint='/api/test'))
 
     scenario = GrizzlyContextScenario()
@@ -368,7 +368,7 @@ def test_create_scenario_class_type() -> None:
     task_class_type_2 = create_scenario_class_type('IteratorScenario', scenario)
     assert issubclass(task_class_type_2, (IteratorScenario, TaskSet))
     assert task_class_type_2.__name__ == 'IteratorScenario_cf4fa8aa'
-    assert task_class_type_2.__module__ == 'locust.user.sequential_taskset'
+    assert task_class_type_2.__module__ == 'grizzly.scenarios.iterator'
 
     assert task_class_type_1.tasks != task_class_type_2.tasks
 

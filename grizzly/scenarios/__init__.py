@@ -7,7 +7,7 @@ from locust.exception import StopUser
 from locust.user.sequential_taskset import SequentialTaskSet
 
 from ..context import GrizzlyContext
-from ..task import GrizzlyTask
+from ..types import GrizzlyTask
 from ..testdata.communication import TestdataConsumer
 from ..users.base import GrizzlyUser
 

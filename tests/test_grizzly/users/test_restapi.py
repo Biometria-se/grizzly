@@ -111,7 +111,7 @@ def test_refresh_token_client(restapi_user: Tuple[RestApiUser, GrizzlyContextSce
             user.request(request_task)
 
         # token is fresh and set, no refresh
-        user.session_stated = time()
+        user.session_started = time()
         user.headers['Authorization'] = f'Bearer asdf'
 
         with pytest.raises(NotRefreshed):
@@ -190,7 +190,7 @@ def test_refresh_token_user(restapi_user: Tuple[RestApiUser, GrizzlyContextScena
             user.request(request_task)
 
         # token is fresh and set, no refresh
-        user.session_stated = time()
+        user.session_started = time()
         user.headers['Authorization'] = f'Bearer asdf'
 
         with pytest.raises(NotRefreshed):

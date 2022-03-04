@@ -242,8 +242,8 @@ class InfluxDbListener:
 
             logger_method(message_to_log)
             self._log_request(request_type, name, result, metrics, exception)
-        except:
-            self.logger.error(f'failed to write metric for "{request_type} {name}"')
+        except Exception as e:
+            self.logger.error(f'failed to write metric for "{request_type} {name}": {str(e)}')
 
     def _create_metrics(self, response_time: int, response_length: int) -> Dict[str, Any]:
         metrics = self._safe_return_runner_values()
@@ -254,7 +254,11 @@ class InfluxDbListener:
         return metrics
 
     def _safe_return_runner_values(self) -> Dict[str, Any]:
-        runner_values: Dict[str, Union[int, float]] = {}
+        runner_values: Dict[str, Union[int, float]] = {
+            'thread_count': -1,
+            'target_user_count': -1,
+            'spawn_rate': -1,
+        }
 
         try:
             runner = self.environment.runner

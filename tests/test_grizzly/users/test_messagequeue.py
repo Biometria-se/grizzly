@@ -9,7 +9,7 @@ try:
 except:
     from grizzly_extras import dummy_pymqi as pymqi
 
-import zmq
+from zmq.error import ZMQError, Again as ZMQAgain
 import pytest
 
 from pytest_mock import mocker  # pylint: disable=unused-import
@@ -67,7 +67,7 @@ class TestMessageQueueUserNoPymqi:
                 '/usr/bin/env',
                 'python3',
                 '-c',
-                'import grizzly.users.messagequeue as mq; print(f"{mq.pymqi.__name__=}"); mq.MessageQueueUser()'
+                'import grizzly.users.messagequeue as mq; from locust.env import Environment; print(f"{mq.pymqi.__name__=}"); mq.MessageQueueUser(Environment())'
             ],
             env=env,
             stdout=subprocess.PIPE,
@@ -176,12 +176,12 @@ class TestMessageQueueUser:
     @pytest.mark.usefixtures('locust_environment', 'noop_zmq')
     def test_request__action_conn_error(self, locust_environment: Environment, mocker: MockerFixture, noop_zmq: Callable[[str], None]) -> None:
         def mocked_zmq_connect(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Any:
-            raise zmq.error.ZMQError(msg='error connecting')
+            raise ZMQError(msg='error connecting')
 
         noop_zmq('grizzly.users.messagequeue')
 
         mocker.patch(
-            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.connect',
+            'grizzly.users.messagequeue.zmq.Socket.connect',
             mocked_zmq_connect,
         )
 
@@ -195,7 +195,7 @@ class TestMessageQueueUser:
                 assert kwargs['name'] == user.am_context.get('connection', None)
                 assert kwargs['response_time'] >= 0
                 assert kwargs['response_length'] == 0
-                assert isinstance(kwargs['exception'], zmq.error.ZMQError)
+                assert isinstance(kwargs['exception'], ZMQError)
             elif properties == ['name', 'request', 'context', 'user', 'exception']:  # self.response_event.fire
                 pytest.fail(f'what should we do with {kwargs=}')
             else:
@@ -349,7 +349,7 @@ class TestMessageQueueUser:
         test_payload = '<?xml encoding="utf-8"?>'
 
         mocker.patch(
-            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
+            'grizzly.users.messagequeue.zmq.Socket.recv_json',
             side_effect=[
                 response_connected,
                 {
@@ -435,14 +435,14 @@ class TestMessageQueueUser:
         )
 
         mocker.patch(
-            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.disconnect',
-            side_effect=[zmq.ZMQError] * 10,
+            'grizzly.users.messagequeue.zmq.Socket.disconnect',
+            side_effect=[ZMQError] * 10,
         )
 
         mocker.patch(
-            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
+            'grizzly.users.messagequeue.zmq.Socket.recv_json',
             side_effect=[
-                zmq.Again,
+                ZMQAgain,
                 {
                     'success': True,
                     'worker': '0000-1337',
@@ -478,9 +478,9 @@ class TestMessageQueueUser:
         }'''
 
         mocker.patch(
-            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
+            'grizzly.users.messagequeue.zmq.Socket.recv_json',
             side_effect=[
-                zmq.Again,
+                ZMQAgain,
                 {
                     'success': True,
                     'worker': '0000-1337',
@@ -517,7 +517,7 @@ class TestMessageQueueUser:
         request_error.method = RequestMethod.POST
 
         mocker.patch(
-            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
+            'grizzly.users.messagequeue.zmq.Socket.recv_json',
             side_effect=[
                 {
                     'success': False,
@@ -540,7 +540,7 @@ class TestMessageQueueUser:
         request_event_spy.reset_mock()
 
         mocker.patch(
-            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
+            'grizzly.users.messagequeue.zmq.Socket.recv_json',
             side_effect=[
                 {
                     'success': False,
@@ -594,13 +594,13 @@ class TestMessageQueueUser:
         ]
 
         send_json_spy = mocker.patch(
-            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.send_json',
+            'grizzly.users.messagequeue.zmq.Socket.send_json',
             autospec=True,
         )
 
         # Test with only queue name as endpoint
         mocker.patch(
-            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
+            'grizzly.users.messagequeue.zmq.Socket.recv_json',
             side_effect=the_side_effect * 6,
         )
         request.endpoint = 'queue:IFKTEST'
@@ -715,8 +715,8 @@ class TestMessageQueueUser:
 
         # always throw error when disconnecting, it is ignored
         mocker.patch(
-            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.disconnect',
-            side_effect=[zmq.ZMQError] * 10,
+            'grizzly.users.messagequeue.zmq.Socket.disconnect',
+            side_effect=[ZMQError] * 10,
         )
 
         request_event_spy = mocker.spy(user.environment.events.request, 'fire')
@@ -731,7 +731,7 @@ class TestMessageQueueUser:
         assert payload is not None
 
         mocker.patch(
-            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
+            'grizzly.users.messagequeue.zmq.Socket.recv_json',
             side_effect=[
                 response_connected,
                 {
@@ -772,7 +772,7 @@ class TestMessageQueueUser:
         request_error.method = RequestMethod.POST
 
         mocker.patch(
-            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
+            'grizzly.users.messagequeue.zmq.Socket.recv_json',
             side_effect=[
                 {
                     'success': False,

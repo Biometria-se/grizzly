@@ -27,9 +27,6 @@ class TestResponseHandler:
     def test___init__(self, locust_environment: Environment) -> None:
         ResponseHandler.host = None
 
-        with pytest.raises(TypeError):
-            ResponseHandler()
-
         with pytest.raises(LocustError):
             ResponseHandler(locust_environment)
 
@@ -113,7 +110,7 @@ class TestResponseHandler:
 
         assert payload_handler.call_count == 0
         assert metadata_handler.call_count == 0
-        assert isinstance(response_context_manager._manual_result, CatchResponseError)
+        assert isinstance(getattr(response_context_manager, '_manual_result', None), CatchResponseError)
         assert 'failed to transform' in str(response_context_manager._manual_result)
         request.response.handlers.payload.clear()
 
@@ -142,7 +139,7 @@ class TestResponseHandler:
 
         user.response_handler('test', response_context_manager, request, test_user)
         assert payload_handler.call_count == 1
-        assert isinstance(response_context_manager._manual_result, CatchResponseError)
+        assert isinstance(getattr(response_context_manager, '_manual_result', None), CatchResponseError)
         assert 'failed to transform' in str(response_context_manager._manual_result)
 
 

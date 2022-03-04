@@ -13,7 +13,7 @@ Instances of this task is created with step expression:
 
 * [`step_task_request_text_with_name_to_endpoint_until`](/grizzly/usage/steps/scenario/tasks/#step_task_request_text_with_name_to_endpoint_until)
 '''
-from typing import Callable, Any, Type, List, Optional, cast
+from typing import TYPE_CHECKING, Callable, Any, Type, List, Optional, cast
 from dataclasses import dataclass, field
 from time import perf_counter as time
 
@@ -23,9 +23,12 @@ from grizzly_extras.transformer import Transformer, TransformerContentType, Tran
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments, split_value
 
 from ..context import GrizzlyContext
-from ..task import GrizzlyTask
-from ..scenarios import GrizzlyScenario
+from ..types import GrizzlyTask
 from .request import RequestTask
+
+if TYPE_CHECKING:
+    from ..scenarios import GrizzlyScenario
+
 
 @dataclass
 class UntilRequestTask(GrizzlyTask):
@@ -67,13 +70,13 @@ class UntilRequestTask(GrizzlyTask):
             if self.wait < 0.1:
                 raise ValueError('wait argument cannot be less than 0.1 seconds')
 
-    def implementation(self) -> Callable[[GrizzlyScenario], Any]:
+    def implementation(self) -> Callable[['GrizzlyScenario'], Any]:
         if self.transform is None:
             raise TypeError(f'could not find a transformer for {self.request.response.content_type.name}')
 
         transform = cast(Transformer, self.transform)
 
-        def _implementation(parent: GrizzlyScenario) -> Any:
+        def _implementation(parent: 'GrizzlyScenario') -> Any:
             task_name=f'{self.request.scenario.identifier} {self.request.name}, w={self.wait}s, r={self.retries}'
             if '{{' in self.condition and '}}' in self.condition:
                 condition_rendered = Template(self.condition).render(**parent.user._context['variables'])

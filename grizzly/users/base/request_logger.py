@@ -9,10 +9,11 @@ from datetime import datetime, timedelta
 from urllib.parse import urlparse, urlunparse
 
 from locust.clients import ResponseContextManager
+from locust.env import Environment
 from jinja2 import Template
 
 from ...task import RequestTask
-from ...types import HandlerContextType, RequestDirection
+from ...types import GrizzlyResponse, HandlerContextType, RequestDirection
 from ...utils import merge_dicts
 from .response_event import ResponseEvent
 from .grizzly_user import GrizzlyUser
@@ -50,8 +51,8 @@ class RequestLogger(ResponseEvent, GrizzlyUser):
         'log_all_requests': False,
     }
 
-    def __init__(self, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(self, environment: Environment, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+        super().__init__(environment, *args, **kwargs)
 
         self.response_event.add_listener(self.request_logger)
 
@@ -114,12 +115,12 @@ class RequestLogger(ResponseEvent, GrizzlyUser):
         except (json.decoder.JSONDecodeError, TypeError):
             request_body = str(request_body)
 
-        request_headers = dict(response.request.headers) if response.request.headers is not None and response.request.headers.__dict__ != {} else None
-        response_headers = dict(response.headers) if response.headers is not None and response.headers.__dict__ != {} else None
+        request_headers = dict(response.request.headers) if response.request.headers is not None and len(response.request.headers) > 0 else None
+        response_headers = dict(response.headers) if response.headers is not None and len(response.headers) > 0 else None
 
         response_time: Optional[str]
-        if hasattr(response, 'request_meta'):
-            response_time = response.request_meta['response_time']
+        if hasattr(response, 'request_meta') and response.request_meta is not None:
+            response_time = response.request_meta.get('response_time', None)
         else:
             response_time = None
 
@@ -139,6 +140,9 @@ class RequestLogger(ResponseEvent, GrizzlyUser):
                 'status': response.status_code,
             },
         }
+
+    def request(self, request: RequestTask) -> GrizzlyResponse:
+        return super().request(request)
 
     def request_logger(
         self,
