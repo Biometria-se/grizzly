@@ -23,27 +23,29 @@ class ResponseEventSession(HttpSession):
 
         self.event_hook = EventHook()
 
-    def request(
+    def request(  # type: ignore
         self,
-        /,
         method: str,
         url: str,
-        request: Optional['RequestTask'],
         name: Optional[str] = None,
         catch_response: bool = False,
+        request: Optional['RequestTask'] = None,
         **kwargs: Dict[str, Any],
     ) -> ResponseContextManager:
 
-        response = cast(ResponseContextManager, super().request(method, url, name, catch_response, **kwargs))
+        response_context_manager = cast(
+            ResponseContextManager,
+            super().request(method, url, name, catch_response, **kwargs),
+        )
 
         self.event_hook.fire(
             name=name,
             request=request,
-            context=response,
+            context=response_context_manager,
             user=self.user,
         )
 
-        return response
+        return response_context_manager
 
 
 class SftpClientSession:

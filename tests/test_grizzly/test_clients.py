@@ -74,7 +74,7 @@ class TestResponseEventSession:
 
         assert len(session.event_hook._handlers) == 1
 
-        session.request(method='GET', url='http://example.org', name='test-name', catch_response=False, request=request)
+        session.request(method='GET', url='http://example.org', name='test-name', catch_response=False, request=request, context={})
 
         session.event_hook._handlers = []
         session.event_hook.add_listener(handler(request))
