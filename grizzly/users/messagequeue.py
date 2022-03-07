@@ -45,6 +45,9 @@ Then put request "test/queue-message.j2.json" with name "queue-message" to endpo
 Default behavior is to fail directly if there is no message on the queue. If the request should wait until a message is available,
 set the time it should wait with `message.wait` (seconds) context variable.
 
+To keep the connection alive during longer waiting periods, a heartbeat interval can be configured using the
+`connection.heartbeat_interval` (seconds) context variable (default 300).
+
 ```gherkin
 Given a user of type "MessageQueue" load testing "mq://mq.example.com/?QueueManager=QM01&Channel=SRVCONN01"
 And set context variable "message.wait" to "5"
