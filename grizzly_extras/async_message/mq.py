@@ -68,37 +68,37 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
         key_file = context.get('key_file', None)
         cert_label = context.get('cert_label', None) or username
         ssl_cipher = context.get('ssl_cipher', None) or 'ECDHE_RSA_AES_256_GCM_SHA384'
+        heartbeat_interval = context.get('heartbeat_interval', None) or 300
+        connect_opts = pymqi.CMQC.MQCNO_RECONNECT
+
+        cd = pymqi.CD(
+            ChannelName=channel.encode(),
+            ConnectionName=connection.encode(),
+            ChannelType=pymqi.CMQC.MQCHT_CLNTCONN,
+            TransportType=pymqi.CMQC.MQXPT_TCP,
+            HeartbeatInterval=heartbeat_interval,
+        )
+        self.qmgr = pymqi.QueueManager(None)
+
 
         if key_file is not None:
-            cd = pymqi.CD(
-                ChannelName=channel.encode(),
-                ConnectionName=connection.encode(),
-                ChannelType=pymqi.CMQC.MQCHT_CLNTCONN,
-                TransportType=pymqi.CMQC.MQXPT_TCP,
-                SSLCipherSpec=ssl_cipher.encode() if ssl_cipher is not None else None,
-            )
+            cd['SSLCipherSpec'] = ssl_cipher.encode() if ssl_cipher is not None else None
 
             sco = pymqi.SCO(
                 KeyRepository=key_file.encode(),
                 CertificateLabel=cert_label.encode() if cert_label is not None else None,
             )
-
-            self.qmgr = pymqi.QueueManager(None)
-            self.qmgr.connect_with_options(
-                queue_manager,
-                user=username.encode() if username is not None else None,
-                password=password.encode() if password is not None else None,
-                cd=cd,
-                sco=sco,
-            )
         else:
-            self.qmgr = pymqi.connect(
-                queue_manager,
-                channel,
-                connection,
-                username,
-                password,
-            )
+            sco = pymqi.SCO()
+
+        self.qmgr.connect_with_options(
+            queue_manager,
+            user=username.encode() if username is not None else None,
+            password=password.encode() if password is not None else None,
+            cd=cd,
+            sco=sco,
+            opts=connect_opts,
+        )
 
         self.message_wait = context.get('message_wait', None) or 0
 
@@ -228,7 +228,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                 elapsed_time = int(time() - start_time)
                 # Adjust message_wait for getting the message
                 if message_wait is not None:
-                    message_wait -= elapsed_time
+                    message_wait = max(message_wait - elapsed_time, 0)
                     self.logger.debug(f'_request: remaining message_wait after finding message: {message_wait}')
 
             md = pymqi.MD()
@@ -254,25 +254,20 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                         if retries > 0:
                             self.logger.warning(f'got message after {retries} retries')
                     except pymqi.MQMIError as e:
-                        if msg_id_to_fetch is not None:
-                            if e.comp == pymqi.CMQC.MQCC_FAILED and e.reason == pymqi.CMQC.MQRC_NO_MSG_AVAILABLE:
-                                # Message disappeared, retry
-                                do_retry = True
-                                pass
-                            elif e.reason == pymqi.CMQC.MQRC_TRUNCATED_MSG_FAILED:
-                                self.logger.warning('got MQRC_TRUNCATED_MSG_FAILED while trying to fetch specific message')
-                                # Concurrency issue, retry
-                                do_retry = True
-                            else:
-                                # Some other error condition.
-                                raise AsyncMessageError(str(e))
+                        if msg_id_to_fetch is not None and e.comp == pymqi.CMQC.MQCC_FAILED and e.reason == pymqi.CMQC.MQRC_NO_MSG_AVAILABLE:
+                            # Message disappeared, retry
+                            do_retry = True
+                        elif e.reason == pymqi.CMQC.MQRC_TRUNCATED_MSG_FAILED:
+                            self.logger.warning('got MQRC_TRUNCATED_MSG_FAILED while getting message')
+                            # Concurrency issue, retry
+                            do_retry = True
                         else:
                             # Some other error condition.
                             raise AsyncMessageError(str(e))
 
                 if do_retry:
                     retries += 1
-                    sleep(0.5)
+                    sleep(retries * retries * 0.5)
                 else:
                     return {
                         'payload': payload,

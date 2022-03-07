@@ -21,6 +21,7 @@ content type, which needs to be specified as an argument (e.g. XPATH expressions
 * `repeat` _bool_ (optional) - if `True`, values read for the queue will be saved in a list and re-used if there are no new messages available
 * `url` _str_ - see format of url below.
 * `wait` _int_ - number of seconds to wait for a message on the queue
+* `heartbeat_interval` _int_ - number of seconds to use for the heartbeat interval (default 300)
 
 ### URL format
 
@@ -116,13 +117,14 @@ def atomicmessagequeue__base_type__(value: str) -> str:
             raise ValueError(f'AtomicMessageQueue: argument {argument_name} is not allowed')
         else:
             AtomicMessageQueue.arguments[argument_name](argument_value)
-            if argument_name == 'wait':
+            if argument_name in ['wait', 'heartbeat_interval']:
                 int(argument_value)
 
     # validate url
     AtomicMessageQueue.create_context({
         'url': arguments['url'],
         'wait': arguments.get('wait', None),
+        'heartbeat_interval': arguments.get('heartbeat_interval', None),
     })
 
     return f'{queue} | {queue_arguments}'
@@ -142,7 +144,13 @@ class AtomicMessageQueue(AtomicVariable[str]):
     _zmq_url = 'tcp://127.0.0.1:5554'
     _zmq_context: zmq.Context
 
-    arguments: Dict[str, Any] = {'content_type': TransformerContentType.from_string, 'repeat': bool_typed, 'url': str, 'wait': int}
+    arguments: Dict[str, Any] = {
+        'content_type': TransformerContentType.from_string,
+        'repeat': bool_typed,
+        'url': str,
+        'wait': int,
+        'heartbeat_interval': int,
+    }
 
     def __init__(self, variable: str, value: str):
         if pymqi.__name__ == 'grizzly_extras.dummy_pymqi':
@@ -154,7 +162,7 @@ class AtomicMessageQueue(AtomicVariable[str]):
 
         safe_value = self.__class__.__base_type__(value)
 
-        settings = {'repeat': False, 'wait': None, 'url': None, 'worker': None, 'context': None}
+        settings = {'repeat': False, 'wait': None, 'heartbeat_interval': None, 'url': None, 'worker': None, 'context': None}
 
         queue_name, queue_arguments = split_value(safe_value)
 
@@ -266,6 +274,7 @@ class AtomicMessageQueue(AtomicVariable[str]):
             'cert_label': cert_label,
             'ssl_cipher': ssl_cipher,
             'message_wait': settings.get('wait', None),
+            'heartbeat_interval': settings.get('heartbeat_interval', None),
         }
 
     def create_client(self, variable: str, settings: Dict[str, Any]) -> zmq.Socket:
