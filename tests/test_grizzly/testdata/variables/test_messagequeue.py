@@ -115,6 +115,7 @@ class TestAtomicMessageQueue:
             assert v._settings.get('test1', None) == {
                 'repeat': False,
                 'wait': None,
+                'heartbeat_interval': None,
                 'url': 'mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN',
                 'context': None,
                 'worker': None,
@@ -138,6 +139,7 @@ class TestAtomicMessageQueue:
             assert v._settings.get('test2', None) == {
                 'repeat': False,
                 'wait': 15,
+                'heartbeat_interval': None,
                 'url': 'mq://mq.example.com?QueueManager=QM2&Channel=SRV.CONN',
                 'context': None,
                 'worker': None,
@@ -163,6 +165,7 @@ class TestAtomicMessageQueue:
         settings = {
             'url': 'mq://$conf::mq.username:$conf::mq.password@$conf::mq.host?QueueManager=$conf::mq.queue_manager&Channel=$conf::mq.channel',
             'wait': 13,
+            'heartbeat_interval': 200,
         }
 
         try:
@@ -179,6 +182,7 @@ class TestAtomicMessageQueue:
                 'cert_label': None,
                 'ssl_cipher': None,
                 'message_wait': 13,
+                'heartbeat_interval': 200,
             }
 
             settings = {
@@ -238,11 +242,13 @@ class TestAtomicMessageQueue:
                 'cert_label': None,
                 'ssl_cipher': 'ECDHE_RSA_AES_256_GCM_SHA384',
                 'message_wait': None,
+                'heartbeat_interval': None,
             }
 
             settings = {
                 'url': 'mqs://mq_test:password@mq.example.com:1415?QueueManager=QM1&Channel=SRV.CONN&SslCipher=rot13&CertLabel=ibmmqmmq_test',
                 'wait': 18,
+                'heartbeat_interval': 201,
             }
 
             context = AtomicMessageQueue.create_context(settings)
@@ -258,6 +264,7 @@ class TestAtomicMessageQueue:
                 'cert_label': 'ibmmqmmq_test',
                 'ssl_cipher': 'rot13',
                 'message_wait': 18,
+                'heartbeat_interval': 201,
             }
         finally:
             try:
@@ -280,6 +287,7 @@ class TestAtomicMessageQueue:
             assert v._settings.get('test', None) == {
                 'repeat': True,
                 'wait': None,
+                'heartbeat_interval': None,
                 'url': 'mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN',
                 'worker': None,
                 'context': {
@@ -293,6 +301,7 @@ class TestAtomicMessageQueue:
                     'cert_label': None,
                     'ssl_cipher': None,
                     'message_wait': None,
+                    'heartbeat_interval': None,
                 }
             }
 
@@ -386,9 +395,11 @@ class TestAtomicMessageQueue:
                 v['test']
             assert 'AtomicMessageQueue.test: unknown error, no response' in str(re)
             assert gsleep_spy.call_count == 3
+            print(v._settings.get('test', None))
             assert v._settings.get('test', None) == {
                 'repeat': True,
                 'wait': None,
+                'heartbeat_interval': None,
                 'url': 'mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN',
                 'worker': '1337-aaaabbbb-beef',
                 'context': {
@@ -402,6 +413,7 @@ class TestAtomicMessageQueue:
                     'cert_label': None,
                     'ssl_cipher': None,
                     'message_wait': None,
+                    'heartbeat_interval': None,
                 }
             }
 
