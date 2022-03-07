@@ -93,7 +93,7 @@ RUN grep -q ":${user_gid}:" /etc/group || addgroup -g "${user_gid}" grizzly
 RUN grep -q ":${user_uid}:" /etc/passwd || adduser -u "${user_uid}" -G grizzly -D grizzly
 RUN apk add --no-cache bash git
 USER grizzly
-RUN pip3 install --user --no-cache-dir -U pip pip-tools
+RUN pip3 install --user --no-cache-dir --upgrade pip pip-tools
 COPY pip-compile.bash /
 CMD ["/pip-compile.bash", "compile"]
 EOF

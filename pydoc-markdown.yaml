@@ -40,21 +40,21 @@ renderer:
         children:
         - title: Request
           contents:
-          - grizzly.task.request
+          - grizzly.tasks.request
         - title: Wait
           contents:
-          - grizzly.task.wait
+          - grizzly.tasks.wait
         - title: Print
           contents:
-          - grizzly.task.print
+          - grizzly.tasks.print
         - title: Transformer
           contents:
-          - grizzly.task.transformer
+          - grizzly.tasks.transformer
         - title: Getter
           children:
             - title: HTTP
               contents:
-              - grizzly.task.getter.http
+              - grizzly.tasks.getter.http
       - title: Variables
         children:
         - title: Environment configuration

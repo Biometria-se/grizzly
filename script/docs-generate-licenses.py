@@ -19,6 +19,9 @@ URL_MAP = {
     'databind.core': 'https://github.com/NiklasRosenstein/databind',
     'databind.json': 'https://github.com/NiklasRosenstein/databind',
     'pydoc-markdown': 'https://pydoc-markdown.readthedocs.io/en/latest/',
+    'yapf': 'https://pypi.org/project/yapf/',
+    'databind': 'https://github.com/NiklasRosenstein/databind',
+    'tomli-w': 'https://github.com/hukkin/tomli-w',
 }
 
 REPO_ROOT = path.realpath(path.join(path.dirname(__file__), '..'))

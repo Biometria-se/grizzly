@@ -70,17 +70,17 @@ cryptography==36.0.1
     #   msal
     #   paramiko
     #   pyjwt
-databind-core==1.5.0
+databind==1.5.1
+    # via pydoc-markdown
+databind-core==1.5.1
     # via
+    #   databind
     #   databind-json
     #   docspec
-    #   pydoc-markdown
-databind-json==1.5.0
+databind-json==1.5.1
     # via
+    #   databind
     #   docspec
-    #   pydoc-markdown
-dataclasses==0.6
-    # via nr-parsing-date
 dataproperty==0.54.2
     # via
     #   pytablewriter
@@ -92,11 +92,11 @@ deprecated==1.2.13
     #   databind-core
     #   docspec
     #   nr-util
-docspec==1.3.0
+docspec==2.0.0
     # via
     #   docspec-python
     #   pydoc-markdown
-docspec-python==1.3.0
+docspec-python==2.0.0
     # via pydoc-markdown
 docstring-parser==0.11
     # via pydoc-markdown
@@ -149,6 +149,7 @@ jinja2==3.0.3
     #   grizzly-loadtester (setup.py)
     #   mkdocs
     #   mkdocs-material
+    #   pydoc-markdown
 jsonpath-ng==1.5.3
     # via grizzly-loadtester (setup.py)
 lazy-object-proxy==1.7.1
@@ -201,32 +202,12 @@ mypy-extensions==0.4.3
     # via
     #   grizzly-loadtester (setup.py)
     #   mypy
-nr-fs==1.6.3
-    # via pydoc-markdown
-nr-optional==0.1.1
+nr-util==0.8.4
     # via
     #   databind-core
     #   databind-json
-nr-parsing-date==1.0.3
-    # via
-    #   databind-core
-    #   databind-json
-nr-preconditions==0.0.4
-    # via
-    #   databind-core
-    #   databind-json
-nr-pylang-utils==0.1.3
-    # via
-    #   databind-core
-    #   nr-stream
-nr-stream==0.1.2
-    # via
-    #   databind-core
+    #   docspec-python
     #   pydoc-markdown
-nr-util==0.6.7
-    # via docspec-python
-nr-utils-re==0.3.1
-    # via nr-parsing-date
 oauthlib==3.2.0
     # via requests-oauthlib
 opencensus==0.8.0
@@ -280,7 +261,7 @@ pyasn1-modules==0.2.8
     # via google-auth
 pycparser==2.21
     # via cffi
-pydoc-markdown @ https://github.com/mgor/pydoc-markdown/archive/refs/heads/feature/dependencies_hell.zip
+pydoc-markdown==4.6.1
     # via grizzly-loadtester (setup.py)
 pygments==2.11.2
     # via mkdocs-material
@@ -368,7 +349,6 @@ six==1.16.0
     #   influxdb
     #   isodate
     #   jsonpath-ng
-    #   nr-fs
     #   parse-type
     #   python-dateutil
     #   uamqp
@@ -377,14 +357,15 @@ tabledata==1.3.0
 tcolorpy==0.1.2
     # via pytablewriter
 toml==0.10.2
-    # via
-    #   pydoc-markdown
-    #   pylint
+    # via pylint
 tomli==2.0.1
     # via
     #   coverage
     #   mypy
+    #   pydoc-markdown
     #   pytest
+tomli-w==1.0.0
+    # via pydoc-markdown
 typepy[datetime]==1.3.0
     # via
     #   dataproperty
@@ -425,6 +406,7 @@ typing-extensions==3.10.0.2
     #   grizzly-loadtester (setup.py)
     #   locust
     #   mypy
+    #   nr-util
     #   pylint
 tzdata==2021.5
     # via pytz-deprecation-shim
@@ -448,6 +430,8 @@ wrapt==1.13.3
     # via
     #   astroid
     #   deprecated
+yapf==0.32.0
+    # via pydoc-markdown
 zipp==3.7.0
     # via importlib-metadata
 zope-event==4.5.0
