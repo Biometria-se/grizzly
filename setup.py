@@ -33,6 +33,7 @@ setup(
     python_requires='>=3.8',
     install_requires=[
         'aenum>=3.1.8',
+        'azure-core<1.23.0',
         'azure-servicebus>=7.6.0',
         'azure-storage-blob>=12.9.0',
         'behave>=1.2.6',
@@ -49,7 +50,7 @@ setup(
         'pytz>=2021.3',
         'backports.zoneinfo>=0.2.1 ; python_version < "3.9"',
         'pyzmq>=22.3.0',
-        'typing-extensions>=3.10.0,<4.0.0',
+        'typing-extensions>=3.10.0<4.0.0',
         'tzlocal>=4.1',
         'PyYAML<6.0.0,>=5.3.0',
         'setproctitle>=1.2.2',
