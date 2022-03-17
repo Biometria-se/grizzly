@@ -82,7 +82,6 @@ class InfluxDb:
 
         return cast(List[Dict[str, Any]], result.raw['series'])
 
-
     def write(self, values: List[Dict[str, Any]]) -> None:
         try:
             self.client.write_points(values)

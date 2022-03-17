@@ -1,4 +1,3 @@
-from typing import Callable
 from os import path, environ, mkdir
 from shutil import rmtree
 
@@ -8,7 +7,7 @@ from _pytest.tmpdir import TempPathFactory
 
 from grizzly.types import RequestDirection, RequestMethod, bool_typed, int_rounded_float_typed, AtomicVariable, GrizzlyDict
 
-from .testdata.fixtures import cleanup  # pylint: disable=unused-import
+from .fixtures import AtomicVariableCleanupFixture
 
 
 class TestRequestDirection:
@@ -41,8 +40,6 @@ class TestRequestMethod:
         for method in RequestMethod:
             assert method.value == method.direction
             assert method in method.direction.methods
-
-
 
 
 def test_bool_typed() -> None:
@@ -148,15 +145,13 @@ class TestGrizzlyDict:
 
         t['test10'] = 'true'
         assert isinstance(t['test10'], bool)
-        assert t['test10'] == True
+        assert t.__getitem__('test10') is True
 
         t['test11'] = 'FaLsE'
         assert isinstance(t['test11'], bool)
-        assert t['test11'] == False
+        assert t.__getitem__('test11') is False
 
-
-    @pytest.mark.usefixtures('cleanup')
-    def test_AtomicIntegerIncrementer(self, cleanup: Callable) -> None:
+    def test_AtomicIntegerIncrementer(self, cleanup: AtomicVariableCleanupFixture) -> None:
         try:
             t = GrizzlyDict()
             t['AtomicIntegerIncrementer.test1'] = 1337
@@ -194,8 +189,7 @@ class TestGrizzlyDict:
         finally:
             cleanup()
 
-    @pytest.mark.usefixtures('cleanup')
-    def test_AtomicDirectoryContents(self, cleanup: Callable, tmp_path_factory: TempPathFactory) -> None:
+    def test_AtomicDirectoryContents(self, cleanup: AtomicVariableCleanupFixture, tmp_path_factory: TempPathFactory) -> None:
         test_context = tmp_path_factory.mktemp('test_context') / 'requests'
         test_context.mkdir()
         test_context_root = path.dirname(test_context)
@@ -243,8 +237,7 @@ class TestGrizzlyDict:
             rmtree(test_context_root)
             cleanup()
 
-    @pytest.mark.usefixtures('cleanup')
-    def test_AtomicCsvRow(self, cleanup: Callable, tmp_path_factory: TempPathFactory) -> None:
+    def test_AtomicCsvRow(self, cleanup: AtomicVariableCleanupFixture, tmp_path_factory: TempPathFactory) -> None:
         test_context = tmp_path_factory.mktemp('test_context') / 'requests'
         test_context.mkdir()
         test_context_root = path.dirname(test_context)
@@ -280,8 +273,7 @@ class TestGrizzlyDict:
             rmtree(test_context_root)
             cleanup()
 
-    @pytest.mark.usefixtures('cleanup')
-    def test_AtomicDate(self, cleanup: Callable) -> None:
+    def test_AtomicDate(self, cleanup: AtomicVariableCleanupFixture) -> None:
         try:
             t = GrizzlyDict()
             with pytest.raises(ValueError):
@@ -312,8 +304,7 @@ class TestGrizzlyDict:
         finally:
             cleanup()
 
-    @pytest.mark.usefixtures('cleanup')
-    def test_AtomicRandomInteger(self, cleanup: Callable) -> None:
+    def test_AtomicRandomInteger(self, cleanup: AtomicVariableCleanupFixture) -> None:
         try:
             t = GrizzlyDict()
 
@@ -337,8 +328,7 @@ class TestGrizzlyDict:
 
 
 class TestAtomicVariable:
-    @pytest.mark.usefixtures('cleanup')
-    def test_dont_instantiate(self, cleanup: Callable) -> None:
+    def test_dont_instantiate(self, cleanup: AtomicVariableCleanupFixture) -> None:
         try:
             with pytest.raises(TypeError):
                 AtomicVariable('dummy')
@@ -362,4 +352,3 @@ class TestAtomicVariable:
         with pytest.raises(ValueError) as ve:
             AtomicVariable.clear()
         assert 'is not instantiated' in str(ve)
-

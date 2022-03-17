@@ -23,8 +23,8 @@ class TestdataConsumer:
     # need so pytest doesn't raise PytestCollectionWarning
     __test__: bool = False
 
-    def __init__(self, address: str ='tcp://127.0.0.1:5555') -> None:
-        self.context = zmq.Context()  # type: ignore
+    def __init__(self, address: str = 'tcp://127.0.0.1:5555') -> None:
+        self.context = zmq.Context()
         self.socket = self.context.socket(ZMQ_REQ)
         self.socket.connect(address)
         logger.debug(f'conntected to producer at {address}')
@@ -55,7 +55,7 @@ class TestdataConsumer:
                 gsleep(0.1)  # let TestdataProducer greenlet execute
 
         if message['action'] == 'stop':
-            raise StopUser(f'stop command received')
+            raise StopUser('stop command received')
 
         if not message['action'] == 'consume':
             raise StopUser(f'unknown action "{message["action"]}" received')
@@ -98,7 +98,7 @@ class TestdataProducer:
 
         logger.debug(f'starting producer on {address}')
 
-        self.context = zmq.Context()  # type: ignore
+        self.context = zmq.Context()
         self.socket = self.context.socket(ZMQ_REP)
         self.socket.bind(address)
         self.grizzly = GrizzlyContext()
@@ -143,8 +143,8 @@ class TestdataProducer:
                                         self.scenarios_iteration[scenario_name] = 0
 
                                     if (
-                                        scenario_name in self.scenarios_iteration and
-                                        self.scenarios_iteration[scenario_name] < scenario.iterations
+                                        scenario_name in self.scenarios_iteration
+                                        and self.scenarios_iteration[scenario_name] < scenario.iterations
                                     ) or scenario_name not in self.scenarios_iteration:
                                         testdata = self.testdata.get(scenario_name, {})
                                         message['action'] = 'consume'

@@ -18,8 +18,9 @@ from ..context import GrizzlyContext
 from ..types import GrizzlyTask
 from ..exceptions import TransformerLocustError
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from ..scenarios import GrizzlyScenario
+
 
 @dataclass
 class TransformerTask(GrizzlyTask):

@@ -39,7 +39,9 @@ class GrizzlyScenario(SequentialTaskSet):
         self.logger.debug(f'stopping consumer for {self.__class__.__name__}')
         self.consumer.stop()
 
+
 from .iterator import IteratorScenario
+
 
 __all__ = [
     'GrizzlyScenario',

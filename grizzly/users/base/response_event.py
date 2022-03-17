@@ -8,6 +8,7 @@ from locust.env import Environment
 from ...clients import ResponseEventSession
 from . import HttpRequests
 
+
 class ResponseEvent(User):
     abstract = True
 

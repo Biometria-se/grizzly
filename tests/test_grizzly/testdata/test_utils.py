@@ -1,10 +1,9 @@
 import logging
 import shutil
 
-from os import path, environ
-from typing import Callable, List, Tuple, Dict, Any, Optional, cast
+from os import path, environ, mkdir
+from typing import List, Dict, Any, Optional, cast
 from json import dumps as jsondumps, loads as jsonloads
-from os import mkdir, path
 
 import pytest
 import zmq
@@ -12,8 +11,7 @@ import zmq
 from _pytest.tmpdir import TempPathFactory
 
 from jinja2 import Template
-from behave.runner import Context
-from pytest_mock import mocker, MockerFixture  # pylint: disable=unused-import
+from pytest_mock import MockerFixture
 from _pytest.logging import LogCaptureFixture
 from locust.exception import StopUser
 
@@ -30,19 +28,15 @@ from grizzly.testdata.utils import (
 from grizzly.testdata.variables import AtomicCsvRow, AtomicIntegerIncrementer, AtomicMessageQueue, AtomicServiceBus
 from grizzly_extras.async_message import AsyncMessageResponse
 
-from ..fixtures import grizzly_context, request_task, behave_context, locust_environment, noop_zmq  # pylint: disable=unused-import
-from .fixtures import cleanup  # pylint: disable=unused-import
+from ..fixtures import BehaveFixture, AtomicVariableCleanupFixture, GrizzlyFixture, RequestTaskFixture, NoopZmqFixture
 
 try:
     import pymqi
 except:
     from grizzly_extras import dummy_pymqi as pymqi
 
-# pylint: disable=redefined-outer-name
 
-
-@pytest.mark.usefixtures('cleanup')
-def test__get_variable_value_static(cleanup: Callable) -> None:
+def test__get_variable_value_static(cleanup: AtomicVariableCleanupFixture) -> None:
     try:
         grizzly = GrizzlyContext()
         variable_name = 'test'
@@ -62,8 +56,7 @@ def test__get_variable_value_static(cleanup: Callable) -> None:
         cleanup()
 
 
-@pytest.mark.usefixtures('cleanup')
-def test__get_variable_value_AtomicIntegerIncrementer(cleanup: Callable) -> None:
+def test__get_variable_value_AtomicIntegerIncrementer(cleanup: AtomicVariableCleanupFixture) -> None:
     try:
         grizzly = GrizzlyContext()
 
@@ -84,9 +77,9 @@ def test__get_variable_value_AtomicIntegerIncrementer(cleanup: Callable) -> None
     finally:
         cleanup()
 
+
 @pytest.mark.skipif(pymqi.__name__ == 'grizzly_extras.dummy_pymqi', reason='requires native grizzly-loadtester[mq]')
-@pytest.mark.usefixtures('cleanup')
-def test__get_variable_value_AtomicMessageQueue(noop_zmq: Callable[[str], None], cleanup: Callable) -> None:
+def test__get_variable_value_AtomicMessageQueue(noop_zmq: NoopZmqFixture, cleanup: AtomicVariableCleanupFixture) -> None:
     noop_zmq('grizzly.testdata.variables.messagequeue')
 
     try:
@@ -108,8 +101,7 @@ def test__get_variable_value_AtomicMessageQueue(noop_zmq: Callable[[str], None],
         cleanup()
 
 
-@pytest.mark.usefixtures('cleanup')
-def test__get_variable_value_AtomicServiceBus(noop_zmq: Callable[[str], None], cleanup: Callable) -> None:
+def test__get_variable_value_AtomicServiceBus(noop_zmq: NoopZmqFixture, cleanup: AtomicVariableCleanupFixture) -> None:
     noop_zmq('grizzly.testdata.variables.servicebus')
 
     try:
@@ -130,8 +122,7 @@ def test__get_variable_value_AtomicServiceBus(noop_zmq: Callable[[str], None], c
         cleanup()
 
 
-@pytest.mark.usefixtures('cleanup', 'tmpdir_factory')
-def test__get_variable_value_AtomicCsvRow(cleanup: Callable, tmp_path_factory: TempPathFactory) -> None:
+def test__get_variable_value_AtomicCsvRow(cleanup: AtomicVariableCleanupFixture, tmp_path_factory: TempPathFactory) -> None:
     test_context = tmp_path_factory.mktemp('test_context') / 'requests'
     test_context.mkdir()
     test_context_root = path.dirname(test_context)
@@ -175,16 +166,15 @@ def test_initialize_testdata_no_tasks() -> None:
     assert external_dependencies == set()
 
 
-@pytest.mark.usefixtures('request_task', 'cleanup')
 def test_initialize_testdata_with_tasks(
-    request_task: Tuple[str, str, RequestTask],
-    cleanup: Callable,
+    request_task: RequestTaskFixture,
+    cleanup: AtomicVariableCleanupFixture,
 ) -> None:
     try:
         grizzly = GrizzlyContext()
         grizzly.state.variables['AtomicIntegerIncrementer.messageID'] = 1337
         grizzly.state.variables['AtomicDate.now'] = 'now'
-        _, _, request = request_task
+        request = request_task.request
         scenario = request.scenario
         scenario.add_task(request)
         testdata, external_dependencies = initialize_testdata(cast(List[RequestTask], scenario.tasks))
@@ -201,11 +191,15 @@ def test_initialize_testdata_with_tasks(
         cleanup()
 
 
-@pytest.mark.usefixtures('behave_context', 'grizzly_context', 'cleanup', 'noop_zmq')
-def test_initialize_testdata_with_payload_context(behave_context: Context, grizzly_context: Callable, cleanup: Callable, noop_zmq: Callable[[str], None]) -> None:
+def test_initialize_testdata_with_payload_context(grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture, noop_zmq: NoopZmqFixture) -> None:
+    behave = grizzly_fixture.behave
     noop_zmq('grizzly.testdata.variables.messagequeue')
+
     try:
-        _, _, task, [context_root, _, request] = grizzly_context()
+        _, _, scenario = grizzly_fixture()
+        assert scenario is not None
+        context_root = grizzly_fixture.request_task.context_root
+        request = grizzly_fixture.request_task.request
         mkdir(path.join(context_root, 'adirectory'))
         for index in range(1, 3):
             with open(path.join(context_root, 'adirectory', f'file{index}.txt'), 'w') as fd:
@@ -218,13 +212,14 @@ def test_initialize_testdata_with_payload_context(behave_context: Context, grizz
             fd.write('value3,value4\n')
             fd.flush()
 
+        assert request.source is not None
         source = jsonloads(request.source)
         source['result']['CsvRowValue1'] = '{{ AtomicCsvRow.test.header1 }}'
         source['result']['CsvRowValue2'] = '{{ AtomicCsvRow.test.header2 }}'
         source['result']['File'] = '{{ AtomicDirectoryContents.test }}'
 
-        grizzly = cast(GrizzlyContext, behave_context.grizzly)
-        grizzly.add_scenario(task.__class__.__name__)
+        grizzly = cast(GrizzlyContext, behave.grizzly)
+        grizzly.add_scenario(scenario.__class__.__name__)
         grizzly.state.variables['messageID'] = 123
         grizzly.state.variables['AtomicIntegerIncrementer.messageID'] = 456
         grizzly.state.variables['AtomicCsvRow.test'] = 'test.csv'
@@ -271,8 +266,8 @@ def test_initialize_testdata_with_payload_context(behave_context: Context, grizz
         assert data['AtomicCsvRow.test.header2']['test'] is None
         assert data['AtomicCsvRow.test.header1']['test'] is None
 
-        assert data['AtomicDirectoryContents.test']['test'] == f'adirectory/file1.txt'
-        assert data['AtomicDirectoryContents.test']['test'] == f'adirectory/file2.txt'
+        assert data['AtomicDirectoryContents.test']['test'] == 'adirectory/file1.txt'
+        assert data['AtomicDirectoryContents.test']['test'] == 'adirectory/file2.txt'
         assert data['AtomicDirectoryContents.test']['test'] is None
         assert data['AtomicServiceBus.event'] == '__on_consumer__'
         if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
@@ -444,40 +439,40 @@ def test__objectify() -> None:
     obj = _objectify(testdata)
 
     assert (
-        obj['AtomicIntegerIncrementer'].__module__ == 'grizzly.testdata.utils' and
-        obj['AtomicIntegerIncrementer'].__class__.__name__ == 'Testdata'
+        obj['AtomicIntegerIncrementer'].__module__ == 'grizzly.testdata.utils'
+        and obj['AtomicIntegerIncrementer'].__class__.__name__ == 'Testdata'
     )
     assert getattr(obj['AtomicIntegerIncrementer'], 'test') == 1337
     assert isinstance(obj['test'], int)
     assert obj['test'] == 1338
     assert (
-        obj['AtomicCsvRow'].__module__ == 'grizzly.testdata.utils' and
-        obj['AtomicCsvRow'].__class__.__name__ == 'Testdata'
+        obj['AtomicCsvRow'].__module__ == 'grizzly.testdata.utils'
+        and obj['AtomicCsvRow'].__class__.__name__ == 'Testdata'
     )
     atomiccsvrow_input = getattr(obj['AtomicCsvRow'], 'input', None)
     assert atomiccsvrow_input is not None
     assert (
-        atomiccsvrow_input.__module__ == 'grizzly.testdata.utils' and
-        atomiccsvrow_input.__class__.__name__ == 'Testdata'
+        atomiccsvrow_input.__module__ == 'grizzly.testdata.utils'
+        and atomiccsvrow_input.__class__.__name__ == 'Testdata'
     )
     assert getattr(atomiccsvrow_input, 'test1', None) == 'hello'
     assert getattr(atomiccsvrow_input, 'test2', None) == 'world!'
 
     assert (
-        obj['Test'].__module__ == 'grizzly.testdata.utils' and
-        obj['Test'].__class__.__name__ == 'Testdata'
+        obj['Test'].__module__ == 'grizzly.testdata.utils'
+        and obj['Test'].__class__.__name__ == 'Testdata'
     )
     test = getattr(obj['Test'], 'test1', None)
     assert test is not None
     assert (
-        test.__module__ == 'grizzly.testdata.utils' and
-        test.__class__.__name__ == 'Testdata'
+        test.__module__ == 'grizzly.testdata.utils'
+        and test.__class__.__name__ == 'Testdata'
     )
     test = getattr(test, 'test2', None)
     assert test is not None
     assert (
-        test.__module__ == 'grizzly.testdata.utils' and
-        test.__class__.__name__ == 'Testdata'
+        test.__module__ == 'grizzly.testdata.utils'
+        and test.__class__.__name__ == 'Testdata'
     )
     test = getattr(test, 'test3', None)
     assert test is not None
@@ -511,8 +506,8 @@ def test_transform_no_objectify() -> None:
     }
 
 
-@pytest.mark.usefixtures('behave_context', 'noop_zmq', 'cleanup', 'mocker', 'noop_zmq')
-def test_transform(behave_context: Context, noop_zmq: Callable[[str], None], cleanup: Callable, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
+def test_transform(behave_fixture: BehaveFixture, noop_zmq: NoopZmqFixture, cleanup: AtomicVariableCleanupFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
+    behave = behave_fixture.context
     noop_zmq('grizzly.testdata.variables.servicebus')
 
     def mock_response(response: Optional[AsyncMessageResponse], repeat: int = 1) -> None:
@@ -521,7 +516,7 @@ def test_transform(behave_context: Context, noop_zmq: Callable[[str], None], cle
             side_effect=[zmq.Again(), response] * repeat
         )
     try:
-        grizzly = cast(GrizzlyContext, behave_context.grizzly)
+        grizzly = cast(GrizzlyContext, behave.grizzly)
         data: Dict[str, Any] = {
             'AtomicIntegerIncrementer.test': 1337,
             'test': 1338,
@@ -562,37 +557,37 @@ def test_transform(behave_context: Context, noop_zmq: Callable[[str], None], cle
         obj = transform(data)
 
         assert (
-            obj['AtomicIntegerIncrementer'].__module__ == 'grizzly.testdata.utils' and
-            obj['AtomicIntegerIncrementer'].__class__.__name__ == 'Testdata'
+            obj['AtomicIntegerIncrementer'].__module__ == 'grizzly.testdata.utils'
+            and obj['AtomicIntegerIncrementer'].__class__.__name__ == 'Testdata'
         )
         assert getattr(obj['AtomicIntegerIncrementer'], 'test', None) == 1337
         assert isinstance(obj['test'], int)
         assert obj['test'] == 1338
         assert (
-            obj['AtomicCsvRow'].__module__ == 'grizzly.testdata.utils' and
-            obj['AtomicCsvRow'].__class__.__name__ == 'Testdata'
+            obj['AtomicCsvRow'].__module__ == 'grizzly.testdata.utils'
+            and obj['AtomicCsvRow'].__class__.__name__ == 'Testdata'
         )
         assert (
-            obj['AtomicCsvRow'].input.__module__ == 'grizzly.testdata.utils' and
-            obj['AtomicCsvRow'].input.__class__.__name__ == 'Testdata'
+            obj['AtomicCsvRow'].input.__module__ == 'grizzly.testdata.utils'
+            and obj['AtomicCsvRow'].input.__class__.__name__ == 'Testdata'
         )
         assert getattr(obj['AtomicCsvRow'].input, 'test1', None) == 'hello'
         assert getattr(obj['AtomicCsvRow'].input, 'test2', None) == 'world!'
         assert (
-            obj['Test'].__module__ == 'grizzly.testdata.utils' and
-            obj['Test'].__class__.__name__ == 'Testdata'
+            obj['Test'].__module__ == 'grizzly.testdata.utils'
+            and obj['Test'].__class__.__name__ == 'Testdata'
         )
         test = getattr(obj['Test'], 'test1', None)
         assert test is not None
         assert (
-            test.__module__ == 'grizzly.testdata.utils' and
-            test.__class__.__name__ == 'Testdata'
+            test.__module__ == 'grizzly.testdata.utils'
+            and test.__class__.__name__ == 'Testdata'
         )
         test = getattr(test, 'test2', None)
         assert test is not None
         assert (
-            test.__module__ == 'grizzly.testdata.utils' and
-            test.__class__.__name__ == 'Testdata'
+            test.__module__ == 'grizzly.testdata.utils'
+            and test.__class__.__name__ == 'Testdata'
         )
         test = getattr(test, 'test3', None)
         assert test is not None

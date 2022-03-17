@@ -28,8 +28,9 @@ from grizzly_extras.arguments import get_unsupported_arguments, split_value, par
 from ..types import GrizzlyTask
 from ..utils import parse_timespan
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from ..scenarios import GrizzlyScenario
+
 
 @dataclass
 class DateTask(GrizzlyTask):
@@ -64,7 +65,6 @@ class DateTask(GrizzlyTask):
                 date_value = dateparser(value_rendered)
             except ParserError as e:
                 raise ValueError(f'"{value_rendered}" is not a valid datetime string') from e
-
 
             offset = self.arguments.get('offset', None)
             if offset is not None:

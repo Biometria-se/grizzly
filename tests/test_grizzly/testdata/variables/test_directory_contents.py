@@ -1,8 +1,6 @@
 import os
 import shutil
 
-from typing import Callable
-
 import pytest
 
 from _pytest.tmpdir import TempPathFactory
@@ -10,7 +8,7 @@ from _pytest.tmpdir import TempPathFactory
 from grizzly.testdata.variables import AtomicDirectoryContents
 from grizzly.testdata.variables.directory_contents import atomicdirectorycontents__base_type__
 
-from ..fixtures import cleanup  # pylint: disable=unused-import
+from ...fixtures import AtomicVariableCleanupFixture
 
 
 def test_atomicdirectorycontents__base_type__(tmp_path_factory: TempPathFactory) -> None:
@@ -50,9 +48,9 @@ def test_atomicdirectorycontents__base_type__(tmp_path_factory: TempPathFactory)
         except:
             pass
 
+
 class TestAtomicDirectoryContents:
-    @pytest.mark.usefixtures('cleanup')
-    def test(self, cleanup: Callable, tmp_path_factory: TempPathFactory) -> None:
+    def test(self, cleanup: AtomicVariableCleanupFixture, tmp_path_factory: TempPathFactory) -> None:
         test_context = tmp_path_factory.mktemp('test_context') / 'requests'
         test_context.mkdir()
         test_context_root = os.path.dirname(test_context)
@@ -73,7 +71,7 @@ class TestAtomicDirectoryContents:
             assert instance['blobfiles'] == '1-test/1-test.json'
             assert instance['blobfiles'] == '1-test/2-test.json'
             assert instance['blobfiles'] == '1-test/3-test.json'
-            assert instance['blobfiles'] == None
+            assert instance.__getitem__('blobfiles') is None
 
             del instance['blobfiles']
             del instance['blobfiles']
@@ -89,9 +87,9 @@ class TestAtomicDirectoryContents:
             assert instance['blobfiles3'] == '3-test/2-test.json'
             assert instance['blobfiles2'] == '2-test/3-test.json'
             assert instance['blobfiles3'] == '3-test/3-test.json'
-            assert instance['blobfiles2'] == None
-            assert instance['blobfiles2'] == None
-            assert instance['blobfiles3'] == None
+            assert instance.__getitem__('blobfiles2') is None
+            assert instance.__getitem__('blobfiles2') is None
+            assert instance.__getitem__('blobfiles3') is None
 
             instance = AtomicDirectoryContents('blobfiles', '.')
 
@@ -104,7 +102,7 @@ class TestAtomicDirectoryContents:
             assert instance['blobfiles'] == '3-test/1-test.json'
             assert instance['blobfiles'] == '3-test/2-test.json'
             assert instance['blobfiles'] == '3-test/3-test.json'
-            assert instance['blobfiles'] == None
+            assert instance.__getitem__('blobfiles') is None
 
             del instance['blobfiles']
 
@@ -143,7 +141,7 @@ class TestAtomicDirectoryContents:
                 '1-test/2-test.json',
                 '1-test/3-test.json',
             ]
-            assert instance['random'] == None
+            assert instance.__getitem__('random') is None
 
             instance = AtomicDirectoryContents('randomrepeat', '1-test/ | random=True, repeat=True')
 
@@ -202,8 +200,7 @@ class TestAtomicDirectoryContents:
 
             cleanup()
 
-    @pytest.mark.usefixtures('cleanup')
-    def test_clear_and_destroy(self, cleanup: Callable, tmp_path_factory: TempPathFactory) -> None:
+    def test_clear_and_destroy(self, cleanup: AtomicVariableCleanupFixture, tmp_path_factory: TempPathFactory) -> None:
         test_context = tmp_path_factory.mktemp('test_context') / 'requests'
         test_context.mkdir()
         test_context_root = os.path.dirname(test_context)
@@ -223,7 +220,7 @@ class TestAtomicDirectoryContents:
 
             instance = AtomicDirectoryContents('test', '.')
 
-            assert instance['test'] == None
+            assert instance.__getitem__('test') is None
 
             assert len(instance._values.keys()) == 1
             assert len(instance._files.keys()) == 1

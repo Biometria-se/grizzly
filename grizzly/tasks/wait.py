@@ -11,8 +11,9 @@ from gevent import sleep as gsleep
 
 from ..types import GrizzlyTask
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from ..scenarios import GrizzlyScenario
+
 
 @dataclass
 class WaitTask(GrizzlyTask):

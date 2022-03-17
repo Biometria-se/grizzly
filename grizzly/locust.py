@@ -43,7 +43,7 @@ unhandled_greenlet_exception = False
 logger = logging.getLogger('grizzly.locust')
 
 
-def greenlet_exception_logger(logger: logging.Logger, level: int=logging.CRITICAL) -> Callable[[gevent.Greenlet], None]:
+def greenlet_exception_logger(logger: logging.Logger, level: int = logging.CRITICAL) -> Callable[[gevent.Greenlet], None]:
     def exception_handler(greenlet: gevent.Greenlet) -> None:
         global unhandled_greenlet_exception
         logger.log(level, f'unhandled exception in greenlet: {greenlet}', exc_info=True)
@@ -82,7 +82,7 @@ def setup_locust_scenarios(context: GrizzlyContext) -> Tuple[List[Type[GrizzlyUs
 
     scenarios = context.scenarios()
 
-    assert len(scenarios) > 0, f'no scenarios in feature'
+    assert len(scenarios) > 0, 'no scenarios in feature'
 
     external_dependencies: Set[str] = set()
     dummy_environment = Environment()
@@ -249,15 +249,15 @@ def run(context: Context) -> int:
 
     # make sure the user hasn't screwed up
     if on_master(context) and on_worker(context):
-        logger.error(f'seems to be a problem with "behave" arguments, cannot be both master and worker')
+        logger.error('seems to be a problem with "behave" arguments, cannot be both master and worker')
         return 254
 
     if grizzly.setup.spawn_rate is None:
-        logger.error(f'spawn rate is not set')
+        logger.error('spawn rate is not set')
         return 254
 
     if grizzly.setup.user_count < 1:
-        logger.error(f"step 'Given \"user_count\" users' is not in the feature file")
+        logger.error("step 'Given \"user_count\" users' is not in the feature file")
         return 254
 
     greenlet_exception_handler = greenlet_exception_logger(logger)

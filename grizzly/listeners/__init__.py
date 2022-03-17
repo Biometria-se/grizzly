@@ -1,15 +1,15 @@
 import logging
 
-from typing import Callable, Dict, Any, Tuple, Optional
+from typing import Callable, Dict, Any, Tuple, Optional, cast
 from os import environ
 from urllib.parse import urlparse
-from mypy_extensions import KwArg, Arg, VarArg
+from mypy_extensions import KwArg, VarArg
 
 import gevent
 
 from locust.env import Environment
 from locust.exception import CatchResponseError
-from locust.runners import MasterRunner, LocalRunner, WorkerRunner
+from locust.runners import MasterRunner, WorkerRunner
 from locust.runners import Runner
 from locust.stats import RequestStats, StatsEntry
 from locust.stats import (
@@ -28,6 +28,7 @@ producer_greenlet: Optional[gevent.Greenlet] = None
 
 logger = logging.getLogger(__name__)
 
+
 def _init_testdata_producer(port: str, testdata: TestdataType, environment: Environment) -> Callable[[], None]:
     # pylint: disable=global-statement
     def wrapper() -> None:
@@ -38,7 +39,8 @@ def _init_testdata_producer(port: str, testdata: TestdataType, environment: Envi
 
     return wrapper
 
-def init(testdata: Optional[TestdataType] = None) -> Callable[[Arg(Runner, 'runner'), KwArg(Dict[str, Any])], None]:
+
+def init(testdata: Optional[TestdataType] = None) -> Callable[[Runner, KwArg(Dict[str, Any])], None]:
     def wrapper(runner: Runner, **_kwargs: Dict[str, Any]) -> None:
         producer_port = environ.get('TESTDATA_PRODUCER_PORT', '5555')
         if not isinstance(runner, MasterRunner):
@@ -56,13 +58,13 @@ def init(testdata: Optional[TestdataType] = None) -> Callable[[Arg(Runner, 'runn
                 global producer_greenlet
                 producer_greenlet = gevent.spawn(_init_testdata_producer(producer_port, testdata, runner.environment))
             else:
-                logger.error(f'There is no test data!')
+                logger.error('there is no test data!')
 
-    return wrapper
+    return cast(Callable[[Runner, KwArg(Dict[str, Any])], None], wrapper)
 
 
-def init_statistics_listener(url: str) -> Callable[[Arg(Environment, 'environment'), VarArg(Tuple[Any]), KwArg(Dict[str, Any])], None]:
-    def wrapper(environment: Environment, *args: Tuple[Any], **kwargs: Dict[str, Any]) -> None:
+def init_statistics_listener(url: str) -> Callable[[Environment, VarArg(Tuple[Any, ...]), KwArg(Dict[str, Any])], None]:
+    def wrapper(environment: Environment, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
         parsed = urlparse(url)
 
         if parsed.scheme == 'influxdb':
@@ -78,16 +80,16 @@ def init_statistics_listener(url: str) -> Callable[[Arg(Environment, 'environmen
                 url=url,
             )
 
-    return wrapper
+    return cast(Callable[[Environment, VarArg(Tuple[Any, ...]), KwArg(Dict[str, Any])], None], wrapper)
 
 
-def locust_test_start(context: GrizzlyContext) -> Callable[[Arg(Environment, 'environment'), KwArg(Dict[str, Any])], None]:
+def locust_test_start(context: GrizzlyContext) -> Callable[[Environment, KwArg(Dict[str, Any])], None]:
     def wrapper(environment: Environment, **_kwargs: Dict[str, Any]) -> None:
         if isinstance(environment.runner, MasterRunner):
             workers = (
-                len(environment.runner.clients.ready) +
-                len(environment.runner.clients.running) +
-                len(environment.runner.clients.spawning)
+                len(environment.runner.clients.ready)
+                + len(environment.runner.clients.running)
+                + len(environment.runner.clients.spawning)
             )
 
             logger.debug(f'connected workers: {workers}')
@@ -96,7 +98,7 @@ def locust_test_start(context: GrizzlyContext) -> Callable[[Arg(Environment, 'en
                 if scenario.iterations < workers:
                     logger.error(f'{scenario.name}: iterations is lower than number of workers')
 
-    return wrapper
+    return cast(Callable[[Environment, KwArg(Dict[str, Any])], None], wrapper)
 
 
 def locust_test_stop(**_kwargs: Dict[str, Any]) -> None:
@@ -124,7 +126,7 @@ def quitting(**_kwargs: Dict[str, Any]) -> None:
         producer_greenlet = None
 
 
-def validate_result(grizzly: GrizzlyContext) -> Callable[[Arg(Environment, 'environment'), KwArg(Dict[str, Any])], None]:
+def validate_result(grizzly: GrizzlyContext) -> Callable[[Environment, KwArg(Dict[str, Any])], None]:
     def wrapper(environment: Environment, **_kwargs: Dict[str, Any]) -> None:
         # first, aggregate statistics per scenario
         scenario_stats: Dict[str, RequestStats] = {}
@@ -203,4 +205,4 @@ def validate_result(grizzly: GrizzlyContext) -> Callable[[Arg(Environment, 'envi
             if environment.process_exit_code == 1 and hasattr(scenario, 'behave') and scenario.behave is not None:
                 scenario.behave.set_status('failed')
 
-    return wrapper
+    return cast(Callable[[Environment, KwArg(Dict[str, Any])], None], wrapper)

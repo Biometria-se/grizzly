@@ -1,4 +1,4 @@
-from typing import Callable, cast, Dict, Any, Optional, Tuple
+from typing import cast, Dict, Any, Optional, Tuple
 from time import time
 from enum import Enum
 from urllib.parse import urlparse
@@ -10,8 +10,7 @@ from locust.event import EventHook
 import pytest
 import requests
 
-from pytest_mock import mocker  # pylint: disable=unused-import
-from pytest_mock.plugin import MockerFixture
+from pytest_mock import MockerFixture
 from requests.models import Response
 from json import dumps as jsondumps
 from jinja2 import Template
@@ -25,29 +24,31 @@ from grizzly.tasks import RequestTask
 from grizzly.testdata.utils import transform
 from grizzly.exceptions import RestartScenario
 
-from ..fixtures import grizzly_context, request_task  # pylint: disable=unused-import
+from ..fixtures import GrizzlyFixture
 from ..helpers import RequestSilentFailureEvent, RequestEvent, ResultSuccess
 
-import logging
 
-# we are not interested in misleading log messages when unit testing
-logging.getLogger().setLevel(logging.CRITICAL)
+RestApiScenarioFixture = Tuple[RestApiUser, GrizzlyContextScenario]
 
+
+@pytest.mark.usefixtures('grizzly_fixture')
 @pytest.fixture
-def restapi_user(grizzly_context: Callable) -> Tuple[RestApiUser, GrizzlyContextScenario]:
+def restapi_user(grizzly_fixture: GrizzlyFixture) -> RestApiScenarioFixture:
     scenario = GrizzlyContextScenario()
     scenario.name = 'TestScenario'
     scenario.context['host'] = 'test'
     scenario.user.class_name = 'RestApiUser'
 
-    _, user, _, [_, _, request] = grizzly_context('http://test.ie', RestApiUser)
+    _, user, _ = grizzly_fixture('http://test.ie', RestApiUser)
+
+    request = grizzly_fixture.request_task.request
 
     scenario.add_task(request)
 
     return cast(RestApiUser, user), scenario
 
 
-def test_refresh_token_client(restapi_user: Tuple[RestApiUser, GrizzlyContextScenario], mocker: MockerFixture) -> None:
+def test_refresh_token_client(restapi_user: RestApiScenarioFixture, mocker: MockerFixture) -> None:
     [user, scenario] = restapi_user
     decorator = refresh_token()
 
@@ -112,7 +113,7 @@ def test_refresh_token_client(restapi_user: Tuple[RestApiUser, GrizzlyContextSce
 
         # token is fresh and set, no refresh
         user.session_started = time()
-        user.headers['Authorization'] = f'Bearer asdf'
+        user.headers['Authorization'] = 'Bearer asdf'
 
         with pytest.raises(NotRefreshed):
             user.request(request_task)
@@ -126,7 +127,7 @@ def test_refresh_token_client(restapi_user: Tuple[RestApiUser, GrizzlyContextSce
         pass
 
 
-def test_refresh_token_user(restapi_user: Tuple[RestApiUser, GrizzlyContextScenario], mocker: MockerFixture) -> None:
+def test_refresh_token_user(restapi_user: RestApiScenarioFixture, mocker: MockerFixture) -> None:
     [user, scenario] = restapi_user
     decorator = refresh_token()
 
@@ -191,7 +192,7 @@ def test_refresh_token_user(restapi_user: Tuple[RestApiUser, GrizzlyContextScena
 
         # token is fresh and set, no refresh
         user.session_started = time()
-        user.headers['Authorization'] = f'Bearer asdf'
+        user.headers['Authorization'] = 'Bearer asdf'
 
         with pytest.raises(NotRefreshed):
             user.request(request_task)
@@ -203,7 +204,7 @@ def test_refresh_token_user(restapi_user: Tuple[RestApiUser, GrizzlyContextScena
             user.request(request_task)
 
         user.add_context({'auth': {'user': {'username': 'alice@example.com'}}})
-        assert user.headers['Authorization'] == None
+        assert user.headers.get('Authorization', '') is None
         assert user._context['auth']['user'] == {
             'username': 'alice@example.com',
             'password': 'HemligaArne',
@@ -218,7 +219,7 @@ def test_refresh_token_user(restapi_user: Tuple[RestApiUser, GrizzlyContextScena
 
 
 class TestRestApiUser:
-    def test_create(self, restapi_user: Tuple[RestApiUser, GrizzlyContextScenario]) -> None:
+    def test_create(self, restapi_user: RestApiScenarioFixture) -> None:
         [user, _] = restapi_user
         assert user is not None
         assert isinstance(user, RestApiUser)
@@ -247,7 +248,7 @@ class TestRestApiUser:
             }
         }
 
-    def test_on_start(self, restapi_user: Tuple[RestApiUser, GrizzlyContextScenario]) -> None:
+    def test_on_start(self, restapi_user: RestApiScenarioFixture) -> None:
         [user, _] = restapi_user
         assert user.session_started is None
 
@@ -255,8 +256,9 @@ class TestRestApiUser:
 
         assert user.session_started is not None
 
-    def test_get_token(self, restapi_user: Tuple[RestApiUser, GrizzlyContextScenario], mocker: MockerFixture) -> None:
+    def test_get_token(self, restapi_user: RestApiScenarioFixture, mocker: MockerFixture) -> None:
         [user, _] = restapi_user
+
         class Called(Exception):
             pass
 
@@ -286,7 +288,7 @@ class TestRestApiUser:
 
         user.get_token(AuthMethod.NONE)
 
-    def test_get_client_token(self, restapi_user: Tuple[RestApiUser, GrizzlyContextScenario], mocker: MockerFixture) -> None:
+    def test_get_client_token(self, restapi_user: RestApiScenarioFixture, mocker: MockerFixture) -> None:
         [user, _] = restapi_user
 
         def mock_client_post(payload: Dict[str, Any], status_code: int = 200) -> None:
@@ -338,7 +340,7 @@ class TestRestApiUser:
             user.get_client_token()
 
         assert user.session_started > session_started
-        assert user.headers['Authorization'] == f'Bearer asdf'
+        assert user.headers['Authorization'] == 'Bearer asdf'
         assert user._context['auth']['url'] == 'https://login.microsoftonline.com/test/oauth2/token'
 
         # no tenant set
@@ -358,9 +360,8 @@ class TestRestApiUser:
             user.get_client_token()
         assert 'auth.client.tenant and auth.url is not set' in str(ve)
 
-
     @pytest.mark.skip(reason='needs credentials, should run explicitly manually')
-    def test_get_user_token_real(self, restapi_user: Tuple[RestApiUser, GrizzlyContextScenario], mocker: MockerFixture) -> None:
+    def test_get_user_token_real(self, restapi_user: RestApiScenarioFixture, mocker: MockerFixture) -> None:
         [user, scenario] = restapi_user
 
         user._context = {
@@ -386,14 +387,13 @@ class TestRestApiUser:
 
         request = RequestTask(RequestMethod.GET, name='test', endpoint='/api/test')
         request.scenario = scenario
-        #request.scenario.failure_exception = StopUser
         headers, body = user.request(request)
         print(headers)
         print(body)
         print(fire.call_args_list[0])
         assert 0
 
-    def test_get_user_token(self, restapi_user: Tuple[RestApiUser, GrizzlyContextScenario], mocker: MockerFixture) -> None:
+    def test_get_user_token(self, restapi_user: RestApiScenarioFixture, mocker: MockerFixture) -> None:
         [user, _] = restapi_user
 
         def fire(self: EventHook, *, reverse: bool = False, **kwargs: Dict[str, Any]) -> None:
@@ -503,7 +503,6 @@ class TestRestApiUser:
                 request,
             )
 
-
         session_started = time()
 
         user._context = {
@@ -567,11 +566,9 @@ class TestRestApiUser:
         with pytest.raises(StopUser):
             user.get_user_token()
 
-
         mock_request_session(Error.REQUEST_2_ERROR_MESSAGE)
         with pytest.raises(StopUser):
             user.get_user_token()
-
 
         # successful login sequence
         mock_request_session()
@@ -582,7 +579,7 @@ class TestRestApiUser:
         user.get_user_token()
 
         assert user.session_started > session_started
-        assert user.headers['Authorization'] == f'Bearer asdf'
+        assert user.headers['Authorization'] == 'Bearer asdf'
         assert user._context['auth']['url'] == 'https://login.microsoftonline.com/example.onmicrosoft.com/oauth2/authorize'
 
         # test no host in redirect uri
@@ -590,8 +587,7 @@ class TestRestApiUser:
 
         user.get_user_token()
 
-
-    def test_get_error_message(self, restapi_user: Tuple[RestApiUser, GrizzlyContextScenario]) -> None:
+    def test_get_error_message(self, restapi_user: RestApiScenarioFixture) -> None:
         user, _ = restapi_user
 
         response = Response()
@@ -622,7 +618,7 @@ class TestRestApiUser:
         response._content = '{"success": false}'.encode('utf-8')
         assert user.get_error_message(response_context_manager) == '{"success": false}'
 
-    def test_request(self, restapi_user: Tuple[RestApiUser, GrizzlyContextScenario], mocker: MockerFixture) -> None:
+    def test_request(self, restapi_user: RestApiScenarioFixture, mocker: MockerFixture) -> None:
         [user, scenario] = restapi_user
 
         def mock_client_post(status_code: int) -> None:
@@ -714,7 +710,7 @@ class TestRestApiUser:
         with pytest.raises(NotImplementedError):
             user.request(request)
 
-    def test_add_context(self, restapi_user: Tuple[RestApiUser, GrizzlyContextScenario]) -> None:
+    def test_add_context(self, restapi_user: RestApiScenarioFixture) -> None:
         user, _ = restapi_user
 
         assert 'test_context_variable' not in user._context

@@ -100,13 +100,12 @@ class ServiceBusUser(ResponseHandler, RequestLogger, GrizzlyUser):
 
     am_context: AsyncMessageContext
     worker_id: Optional[str]
-    zmq_context = zmq.Context()  # type: ignore
-    zmq_client: zmq.Socket  # type: ignore
+    zmq_context = zmq.Context()
+    zmq_client: zmq.Socket
     zmq_url = 'tcp://127.0.0.1:5554'
     hellos: Set[str]
 
     host: str
-
 
     def __init__(self, environment: Environment, *args: Tuple[Any], **kwargs: Dict[str, Any]) -> None:
         super().__init__(environment, *args, **kwargs)
@@ -352,4 +351,3 @@ class ServiceBusUser(ResponseHandler, RequestLogger, GrizzlyUser):
             action['failure_exception'] = request.scenario.failure_exception
 
         return action['metadata'], action['payload']
-

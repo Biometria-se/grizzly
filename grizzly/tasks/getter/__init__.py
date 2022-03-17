@@ -47,6 +47,7 @@ class GetterOfTask(GrizzlyTask):
         if exception is not None and parent.user._scenario.failure_exception is not None:
             raise parent.user._scenario.failure_exception()
 
+
 class getterof:
     available: Dict[str, Type[GetterOfTask]] = {}
     schemes: List[str]
@@ -63,7 +64,9 @@ class getterof:
 
         return impl
 
+
 from .http import HttpGetTask
+
 
 __all__ = [
     'HttpGetTask',

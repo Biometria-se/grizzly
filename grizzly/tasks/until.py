@@ -26,7 +26,7 @@ from ..context import GrizzlyContext
 from ..types import GrizzlyTask
 from .request import RequestTask
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from ..scenarios import GrizzlyScenario
 
 
@@ -77,7 +77,7 @@ class UntilRequestTask(GrizzlyTask):
         transform = cast(Transformer, self.transform)
 
         def _implementation(parent: 'GrizzlyScenario') -> Any:
-            task_name=f'{self.request.scenario.identifier} {self.request.name}, w={self.wait}s, r={self.retries}'
+            task_name = f'{self.request.scenario.identifier} {self.request.name}, w={self.wait}s, r={self.retries}'
             if '{{' in self.condition and '}}' in self.condition:
                 condition_rendered = Template(self.condition).render(**parent.user._context['variables'])
             else:
@@ -104,7 +104,7 @@ class UntilRequestTask(GrizzlyTask):
                         if payload is not None:
                             transformed = transform.transform(payload)
                         else:
-                            raise TransformerError(f'response payload was not set')
+                            raise TransformerError('response payload was not set')
 
                         matches = parser(transformed)
                         parent.logger.debug(f'{payload=}, condition={condition_rendered}, {matches=}')

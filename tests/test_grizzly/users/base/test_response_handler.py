@@ -3,9 +3,8 @@ from json import dumps as jsondumps
 import pytest
 
 from lxml import etree as XML
-from pytest_mock import mocker, MockerFixture  # pylint: disable=unused-import
+from pytest_mock import MockerFixture
 
-from locust.env import Environment
 from locust.event import EventHook
 from locust.clients import ResponseContextManager
 from locust.exception import LocustError, CatchResponseError
@@ -18,23 +17,22 @@ from grizzly.types import RequestMethod
 from grizzly.tasks import RequestTask
 from grizzly_extras.transformer import TransformerContentType
 
-from ...fixtures import locust_environment  # pylint: disable=unused-import
+from ...fixtures import LocustFixture
 from ...helpers import TestUser
 
 
 class TestResponseHandler:
-    @pytest.mark.usefixtures('mocker', 'locust_environment')
-    def test___init__(self, locust_environment: Environment) -> None:
+    def test___init__(self, locust_fixture: LocustFixture) -> None:
         ResponseHandler.host = None
 
         with pytest.raises(LocustError):
-            ResponseHandler(locust_environment)
+            ResponseHandler(locust_fixture.env)
 
         fake_user_type = type('FakeResponseHandlerUser', (ResponseHandler, HttpRequests, ), {
             'host': '',
         })
 
-        user = fake_user_type(locust_environment)
+        user = fake_user_type(locust_fixture.env)
 
         assert issubclass(user.__class__, ResponseEvent)
         assert isinstance(user.client, ResponseEventSession)
@@ -42,16 +40,15 @@ class TestResponseHandler:
         assert len(user.response_event._handlers) == 1
 
         ResponseHandler.host = ''
-        user = ResponseHandler(locust_environment)
+        user = ResponseHandler(locust_fixture.env)
         assert user.client is None
         assert isinstance(user.response_event, EventHook)
         assert len(user.response_event._handlers) == 1
 
-    @pytest.mark.usefixtures('mocker', 'locust_environment')
-    def test_response_handler_response_context(self, mocker: MockerFixture, locust_environment: Environment) -> None:
+    def test_response_handler_response_context(self, mocker: MockerFixture, locust_fixture: LocustFixture) -> None:
         ResponseHandler.host = 'http://example.com'
-        user = ResponseHandler(locust_environment)
-        test_user = TestUser(locust_environment)
+        user = ResponseHandler(locust_fixture.env)
+        test_user = TestUser(locust_fixture.env)
 
         response = Response()
         response._content = jsondumps({}).encode('utf-8')
@@ -142,12 +139,10 @@ class TestResponseHandler:
         assert isinstance(getattr(response_context_manager, '_manual_result', None), CatchResponseError)
         assert 'failed to transform' in str(response_context_manager._manual_result)
 
-
-    @pytest.mark.usefixtures('mocker', 'locust_environment')
-    def test_response_handler_custom_response(self, mocker: MockerFixture, locust_environment: Environment) -> None:
+    def test_response_handler_custom_response(self, mocker: MockerFixture, locust_fixture: LocustFixture) -> None:
         ResponseHandler.host = 'http://example.com'
-        user = ResponseHandler(locust_environment)
-        test_user = TestUser(locust_environment)
+        user = ResponseHandler(locust_fixture.env)
+        test_user = TestUser(locust_fixture.env)
 
         request = RequestTask(RequestMethod.POST, name='test-request', endpoint='/api/v2/test')
 

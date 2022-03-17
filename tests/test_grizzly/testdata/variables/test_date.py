@@ -1,17 +1,16 @@
-from typing import Callable, Literal
+from typing import Literal
 from datetime import datetime
 
 import pytest
 import gevent
 
 from pytest_mock import MockerFixture
-from pytest_mock.plugin import mocker  # pylint: disable=unused-import
 from dateutil.relativedelta import relativedelta
 
 from grizzly.testdata.variables import AtomicDate
 from grizzly.testdata.variables.date import atomicdate__base_type__
 
-from ..fixtures import cleanup  # pylint: disable=unused-import
+from ...fixtures import AtomicVariableCleanupFixture
 
 
 def test_atomicdate__base_type__() -> None:
@@ -46,8 +45,7 @@ def test_atomicdate__base_type__() -> None:
 
 
 class TestAtomicDate:
-    @pytest.mark.usefixtures('cleanup')
-    def test_now_value(self, cleanup: Callable) -> None:
+    def test_now_value(self, cleanup: AtomicVariableCleanupFixture) -> None:
         try:
             with pytest.raises(ValueError):
                 AtomicDate('now', 'asdf')
@@ -77,7 +75,7 @@ class TestAtomicDate:
             cleanup()
 
     @pytest.mark.usefixtures('cleanup')
-    def test_format(self, cleanup: Callable) -> None:
+    def test_format(self, cleanup: AtomicVariableCleanupFixture) -> None:
         try:
             expected = datetime.now()
 
@@ -105,7 +103,7 @@ class TestAtomicDate:
             del t['actual']
 
             with pytest.raises(ValueError):
-                AtomicDate('actual', f'asdfasdf|format="%Y-%m-%d %H:%M:%S.%f"')
+                AtomicDate('actual', 'asdfasdf|format="%Y-%m-%d %H:%M:%S.%f"')
 
             t = AtomicDate('actual', 'now | format="%Y"')
             assert t['actual'] == datetime.now().strftime('%Y')
@@ -122,7 +120,7 @@ class TestAtomicDate:
             cleanup()
 
     @pytest.mark.usefixtures('cleanup')
-    def test_timezone(self, cleanup: Callable) -> None:
+    def test_timezone(self, cleanup: AtomicVariableCleanupFixture) -> None:
         try:
             expected_utc = datetime.utcnow().strftime('%H:%M')
             expected_local = datetime.now().strftime('%H:%M')
@@ -137,7 +135,7 @@ class TestAtomicDate:
             cleanup()
 
     @pytest.mark.usefixtures('cleanup')
-    def test_offset(self, cleanup: Callable) -> None:
+    def test_offset(self, cleanup: AtomicVariableCleanupFixture) -> None:
         try:
             expected = (datetime.now() + relativedelta(days=1)).strftime('%Y-%m-%d')
 
@@ -162,7 +160,7 @@ class TestAtomicDate:
             cleanup()
 
     @pytest.mark.usefixtures('cleanup')
-    def test_clear_and_destory(self, cleanup: Callable) -> None:
+    def test_clear_and_destory(self, cleanup: AtomicVariableCleanupFixture) -> None:
         try:
             try:
                 AtomicDate.destroy()
@@ -192,7 +190,7 @@ class TestAtomicDate:
             cleanup()
 
     @pytest.mark.usefixtures('cleanup')
-    def test___getitem__error(self, mocker: MockerFixture, cleanup: Callable) -> None:
+    def test___getitem__error(self, mocker: MockerFixture, cleanup: AtomicVariableCleanupFixture) -> None:
         def mocked__get_value(i: AtomicDate, variable: str) -> Literal[None]:
             return None
 

@@ -9,6 +9,7 @@ from . import GrizzlyScenario
 from ..exceptions import RestartScenario
 from ..users.base import GrizzlyUser
 
+
 class IteratorScenario(GrizzlyScenario):
     user: GrizzlyUser
 

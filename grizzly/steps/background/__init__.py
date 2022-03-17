@@ -2,5 +2,6 @@
 The feature will fail if they are added into any other section.
 '''
 
+# flake8: noqa: F401,F403
 from .shapes import *
 from .setup import *

@@ -4,7 +4,6 @@ from json import dumps as jsondumps
 import pytest
 import zmq
 
-from pytest_mock import mocker  # pylint: disable=unused-import
 from pytest_mock.plugin import MockerFixture
 
 from grizzly_extras.async_message import AsyncMessageRequest, AsyncMessageResponse
@@ -62,7 +61,6 @@ def test_worker(mocker: MockerFixture) -> None:
             'grizzly_extras.async_message.AsyncMessageHandler.handle',
             side_effect=[response],
         )
-
 
     mock_recv_multipart({'worker': 'ID-12345'})
 

@@ -7,18 +7,16 @@ from json import dumps as jsondumps
 
 import pytest
 
-from pytest_mock import mocker  # pylint: disable=unused-import
-from pytest_mock.plugin import MockerFixture
+from pytest_mock import MockerFixture
 from _pytest.logging import LogCaptureFixture
 from locust.runners import Runner
 from locust.exception import CatchResponseError
-from locust.env import Environment
 from influxdb.client import InfluxDBClient
 from influxdb.exceptions import InfluxDBClientError
 
 from grizzly.listeners.influxdb import InfluxDbError, InfluxDbListener, InfluxDb
 
-from ..fixtures import locust_environment  # pylint: disable=unused-import
+from ..fixtures import LocustFixture
 
 
 @pytest.fixture
@@ -42,6 +40,7 @@ def patch_influxdblistener(mocker: MockerFixture) -> Callable[[], None]:
 
     return wrapper
 
+
 class TestInfluxDb:
     def test___init__(self) -> None:
         client = InfluxDb('https://influx.example.com', 1337, 'testdb')
@@ -62,7 +61,6 @@ class TestInfluxDb:
         client = InfluxDb('https://influx.example.com', 1337, 'testdb')
 
         assert client.connect() is client
-
 
     def test___enter__(self) -> None:
         client = InfluxDb('https://influx.example.com', 1337, 'testdb')
@@ -139,7 +137,7 @@ class TestInfluxDb:
 
         influx = InfluxDb('https://influx.example.com', 1337, 'testdb').connect()
 
-        def logger_debug(l: logging.Logger, msg: str) -> None:
+        def logger_debug(logger: logging.Logger, msg: str) -> None:
             assert msg == f'successfully wrote 0 points to {influx.database}@{influx.host}:{influx.port}'
 
         mocker.patch(
@@ -151,6 +149,7 @@ class TestInfluxDb:
 
         def generate_write_error(content: Dict[str, Any], code: Optional[int] = 500) -> None:
             raw_content = jsondumps(content)
+
             def write_error(instance: InfluxDBClient, values: List[Dict[str, Any]]) -> None:
                 raise InfluxDBClientError(raw_content, code)
 
@@ -176,62 +175,62 @@ class TestInfluxDb:
 
 
 class TestInfluxDbListener:
-    @pytest.mark.usefixtures('locust_environment', 'patch_influxdblistener')
-    def test___init__(self, locust_environment: Environment, patch_influxdblistener: Callable[[], None]) -> None:
+    @pytest.mark.usefixtures('patch_influxdblistener')
+    def test___init__(self, locust_fixture: LocustFixture, patch_influxdblistener: Callable[[], None]) -> None:
         with pytest.raises(AssertionError) as ae:
-            InfluxDbListener(locust_environment, '')
+            InfluxDbListener(locust_fixture.env, '')
         assert 'hostname not found in' in str(ae)
 
         with pytest.raises(AssertionError) as ae:
-            InfluxDbListener(locust_environment, 'https://influx.test.com')
+            InfluxDbListener(locust_fixture.env, 'https://influx.test.com')
         assert 'database was not found in' in str(ae)
 
         with pytest.raises(AssertionError) as ae:
-            InfluxDbListener(locust_environment, 'https://influx.test.com/testdb')
+            InfluxDbListener(locust_fixture.env, 'https://influx.test.com/testdb')
         assert 'Testplan not found in' in str(ae)
 
         patch_influxdblistener()
 
-        assert len(locust_environment.events.request._handlers) == 1  # interally added handler for deprecated request events
+        assert len(locust_fixture.env.events.request._handlers) == 1  # interally added handler for deprecated request events
 
-        listener = InfluxDbListener(locust_environment, 'https://influx.test.com/testdb?Testplan=unittest-plan')
+        listener = InfluxDbListener(locust_fixture.env, 'https://influx.test.com/testdb?Testplan=unittest-plan')
 
-        assert len(locust_environment.events.request._handlers) == 2
+        assert len(locust_fixture.env.events.request._handlers) == 2
         assert listener.influx_port == 8086
         assert listener._testplan == 'unittest-plan'
         assert listener._target_environment is None
         assert listener._hostname == socket.gethostname()
-        assert listener.environment is locust_environment
+        assert listener.environment is locust_fixture.env
         assert listener._username == os.getenv('USER', 'unknown')
         assert listener._events == []
         assert not listener._finished
         assert listener._profile_name == ''
         assert listener._description == ''
 
-        locust_environment.events.request._handlers.pop()
+        locust_fixture.env.events.request._handlers.pop()
 
         listener = InfluxDbListener(
-            locust_environment,
+            locust_fixture.env,
             'https://influx.test.com:1337/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
         )
-        assert len(locust_environment.events.request._handlers) == 2
+        assert len(locust_fixture.env.events.request._handlers) == 2
         assert listener.influx_port == 1337
         assert listener._testplan == 'unittest-plan'
         assert listener._target_environment == 'local'
         assert listener._hostname == socket.gethostname()
-        assert listener.environment is locust_environment
+        assert listener.environment is locust_fixture.env
         assert listener._username == os.getenv('USER', 'unknown')
         assert listener._events == []
         assert not listener._finished
         assert listener._profile_name == 'unittest-profile'
         assert listener._description == 'unittesting'
 
-    @pytest.mark.usefixtures('locust_environment', 'patch_influxdblistener')
-    def test_run(self, locust_environment: Environment, patch_influxdblistener: Callable[[], None], mocker: MockerFixture) -> None:
+    @pytest.mark.usefixtures('patch_influxdblistener')
+    def test_run(self, locust_fixture: LocustFixture, patch_influxdblistener: Callable[[], None], mocker: MockerFixture) -> None:
         patch_influxdblistener()
 
         listener = InfluxDbListener(
-            locust_environment,
+            locust_fixture.env,
             'https://influx.test.com:1337/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
         )
 
@@ -280,12 +279,12 @@ class TestInfluxDbListener:
 
         assert len(listener._events) == 0
 
-    @pytest.mark.usefixtures('locust_environment', 'patch_influxdblistener')
-    def test__log_request(self, locust_environment: Environment, patch_influxdblistener: Callable[[], None]) -> None:
+    @pytest.mark.usefixtures('patch_influxdblistener')
+    def test__log_request(self, locust_fixture: LocustFixture, patch_influxdblistener: Callable[[], None]) -> None:
         patch_influxdblistener()
 
         listener = InfluxDbListener(
-            locust_environment,
+            locust_fixture.env,
             'https://influx.test.com:1337/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
         )
 
@@ -361,8 +360,8 @@ class TestInfluxDbListener:
             del os.environ['TESTDATA_VARIABLE_TEST1']
             del os.environ['TESTDATA_VARIABLE_TEST2']
 
-    @pytest.mark.usefixtures('locust_environment', 'patch_influxdblistener')
-    def test_request(self, locust_environment: Environment, patch_influxdblistener: Callable[[], None], mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
+    @pytest.mark.usefixtures('patch_influxdblistener')
+    def test_request(self, locust_fixture: LocustFixture, patch_influxdblistener: Callable[[], None], mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
         patch_influxdblistener()
 
         def generate_logger_call(
@@ -380,7 +379,7 @@ class TestInfluxDbListener:
             return logger_call
 
         listener = InfluxDbListener(
-            locust_environment,
+            locust_fixture.env,
             'https://influx.example.com:1337/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
         )
 
@@ -400,10 +399,11 @@ class TestInfluxDbListener:
         listener.request('POST', '/api/v2/test', 555.37, 137, CatchResponseError('request failed'))
         assert len(listener._events) == 2
 
-    @pytest.mark.usefixtures('locust_environment', 'patch_influxdblistener')
-    def test_request_exception(self, locust_environment: Environment, patch_influxdblistener: Callable[[], None], mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
+    def test_request_exception(
+        self, locust_fixture: LocustFixture, mocker: MockerFixture, caplog: LogCaptureFixture,
+    ) -> None:
         listener = InfluxDbListener(
-            locust_environment,
+            locust_fixture.env,
             'https://influx.example.com:1337/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
         )
         mocker.patch.object(listener, '_create_metrics', side_effect=[Exception])
@@ -413,12 +413,12 @@ class TestInfluxDbListener:
         assert 'failed to write metric for "GET /api/v2/test' in caplog.text
         caplog.clear()
 
-    @pytest.mark.usefixtures('locust_environment', 'patch_influxdblistener')
-    def test__create_metrics(self, locust_environment: Environment, patch_influxdblistener: Callable[[], None]) -> None:
+    @pytest.mark.usefixtures('patch_influxdblistener')
+    def test__create_metrics(self, locust_fixture: LocustFixture, patch_influxdblistener: Callable[[], None]) -> None:
         patch_influxdblistener()
 
         listener = InfluxDbListener(
-            locust_environment,
+            locust_fixture.env,
             'https://influx.example.com:1337/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
         )
         expected_keys = ['thread_count', 'target_user_count', 'spawn_rate', 'response_time', 'response_length']
@@ -439,12 +439,12 @@ class TestInfluxDbListener:
         assert metrics.get('response_time', None) == 555
         assert metrics.get('response_length', None) == 1337
 
-    @pytest.mark.usefixtures('locust_environment', 'patch_influxdblistener')
-    def test__safe_return_runner_values(self, locust_environment: Environment, patch_influxdblistener: Callable[[], None]) -> None:
+    @pytest.mark.usefixtures('patch_influxdblistener')
+    def test__safe_return_runner_values(self, locust_fixture: LocustFixture, patch_influxdblistener: Callable[[], None]) -> None:
         patch_influxdblistener()
 
         listener = InfluxDbListener(
-            locust_environment,
+            locust_fixture.env,
             'https://influx.test.com:1337/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
         )
         expected_keys = ['thread_count', 'target_user_count', 'spawn_rate']
@@ -461,7 +461,7 @@ class TestInfluxDbListener:
         assert runner_values.get('target_user_count', None) == -1
         assert runner_values.get('spawn_rate', None) == -1
 
-        locust_environment.runner = Runner(locust_environment)
+        locust_fixture.env.runner = Runner(locust_fixture.env)
 
         runner_values = listener._safe_return_runner_values()
         assert runner_values.get('thread_count', None) == 0

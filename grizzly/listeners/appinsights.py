@@ -36,7 +36,7 @@ class ApplicationInsightsListener:
         params = parse_qs(parsed.query)
 
         if parsed.hostname is None:
-            assert 'IngestionEndpoint' in params, f'IngestionEndpoint was neither set as the hostname or in the query string'
+            assert 'IngestionEndpoint' in params, 'IngestionEndpoint was neither set as the hostname or in the query string'
             ingestion_endpoint = params['IngestionEndpoint'][0]
         else:
             ingestion_endpoint = f'https://{parsed.hostname}/'

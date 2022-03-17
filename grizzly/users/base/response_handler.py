@@ -11,6 +11,7 @@ from .response_event import ResponseEvent
 
 from grizzly_extras.transformer import transformer, TransformerError, TransformerContentType
 
+
 class ResponseHandler(ResponseEvent):
     abstract = True
 

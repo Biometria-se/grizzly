@@ -1,8 +1,6 @@
 import os
 import shutil
 
-from typing import Callable
-
 import pytest
 
 from _pytest.tmpdir import TempPathFactory
@@ -10,7 +8,7 @@ from _pytest.tmpdir import TempPathFactory
 from grizzly.testdata.variables import AtomicCsvRow
 from grizzly.testdata.variables.csv_row import atomiccsvrow__base_type__
 
-from ..fixtures import cleanup  # pylint: disable=unused-import
+from ...fixtures import AtomicVariableCleanupFixture
 
 
 def test_atomiccsvrow__base_type__(tmp_path_factory: TempPathFactory) -> None:
@@ -54,8 +52,7 @@ def test_atomiccsvrow__base_type__(tmp_path_factory: TempPathFactory) -> None:
 
 
 class TestAtomicCsvRow:
-    @pytest.mark.usefixtures('cleanup')
-    def test(self, cleanup: Callable, tmp_path_factory: TempPathFactory) -> None:
+    def test(self, cleanup: AtomicVariableCleanupFixture, tmp_path_factory: TempPathFactory) -> None:
         test_context = tmp_path_factory.mktemp('test_context') / 'requests'
         test_context.mkdir()
         test_context_root = os.path.dirname(test_context)
@@ -65,14 +62,14 @@ class TestAtomicCsvRow:
         for count in range(1, 4):
             file = f'{count}.csv'
             with open(os.path.join(test_context, file), 'w') as fd:
-                for column in range(1, count+1):
+                for column in range(1, count + 1):
                     fd.write(f'header{column}{count}')
                     if column < count:
                         fd.write(',')
                 fd.write('\n')
 
-                for row in range(1, count+1):
-                    for column in range(1, count+1):
+                for row in range(1, count + 1):
+                    for column in range(1, count + 1):
                         fd.write(f'value{column}{row}{count}')
                         if column < count:
                             fd.write(',')
@@ -122,7 +119,7 @@ class TestAtomicCsvRow:
             assert instance['test3'] == {'header13': 'value113', 'header23': 'value213', 'header33': 'value313'}
             assert instance['test3'] == {'header13': 'value123', 'header23': 'value223', 'header33': 'value323'}
             assert instance['test3'] == {'header13': 'value133', 'header23': 'value233', 'header33': 'value333'}
-            assert instance['test3'] == None
+            assert instance.__getitem__('test3') is None
 
             instance['test4'] = {'test': 'value'}
             assert 'test4' not in instance._rows
@@ -163,7 +160,7 @@ class TestAtomicCsvRow:
                 {'header13': 'value123', 'header23': 'value223', 'header33': 'value323'},
                 {'header13': 'value133', 'header23': 'value233', 'header33': 'value333'},
             ]
-            assert instance['random'] == None
+            assert instance.__getitem__('random') is None
 
             instance = AtomicCsvRow('randomrepeat', '3.csv | random=True, repeat=True')
             assert instance['randomrepeat'] in [
@@ -221,8 +218,7 @@ class TestAtomicCsvRow:
 
             cleanup()
 
-    @pytest.mark.usefixtures('cleanup')
-    def test_clear_and_destroy(self, cleanup: Callable, tmp_path_factory: TempPathFactory) -> None:
+    def test_clear_and_destroy(self, cleanup: AtomicVariableCleanupFixture, tmp_path_factory: TempPathFactory) -> None:
         test_context = tmp_path_factory.mktemp('test_context') / 'requests'
         test_context.mkdir()
         test_context_root = os.path.dirname(test_context)
@@ -269,8 +265,7 @@ class TestAtomicCsvRow:
 
             cleanup()
 
-    @pytest.mark.usefixtures('cleanup')
-    def test___init___error(self, cleanup: Callable) -> None:
+    def test___init___error(self, cleanup: AtomicVariableCleanupFixture) -> None:
         try:
             with pytest.raises(ValueError) as ve:
                 AtomicCsvRow('test.test', 'file1.csv')

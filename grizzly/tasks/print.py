@@ -12,8 +12,9 @@ from jinja2 import Template
 
 from ..types import GrizzlyTask
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from ..scenarios import GrizzlyScenario
+
 
 @dataclass
 class PrintTask(GrizzlyTask):

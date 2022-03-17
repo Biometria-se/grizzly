@@ -39,7 +39,7 @@ payload:
 
 {{ stacktrace }}
 {%- endif %}
-'''.strip()
+'''.strip()  # noqa: E501
 
 
 class RequestLogger(ResponseEvent, GrizzlyUser):
@@ -190,7 +190,7 @@ class RequestLogger(ResponseEvent, GrizzlyUser):
             if (len(parsed.path) > 0 and parsed.path[-1] != '/' and request.endpoint[0] != '/') or (parsed.path == '' and request.endpoint[0] != '/'):
                 sep = '/'
 
-            parsed = parsed._replace(path = f'{parsed.path}{sep}{request.endpoint}')
+            parsed = parsed._replace(path=f'{parsed.path}{sep}{request.endpoint}')
             url = urlunparse(parsed)
 
             variables['request'].update({
@@ -225,7 +225,7 @@ class RequestLogger(ResponseEvent, GrizzlyUser):
                     tb=exception.__traceback__,
                 ))
 
-            variables['response']['status'] = f'ERROR' if exception is not None else 'OK'
+            variables['response']['status'] = 'ERROR' if exception is not None else 'OK'
 
         response_time = variables['response'].get('time', None)
         if response_time is not None:

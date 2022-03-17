@@ -13,6 +13,7 @@ from ..helpers import add_save_handler, add_validation_handler, add_request_task
 
 from grizzly_extras.transformer import TransformerContentType
 
+
 @parse.with_pattern(r'is( not)?', regex_group_count=1)
 def parse_condition(text: str) -> bool:
     return text is not None and text.strip() == 'is'
@@ -149,7 +150,7 @@ def step_response_allow_status_codes(context: Context, status_list: str) -> None
 
     request = grizzly.scenario.tasks[-1]
 
-    assert isinstance(request, RequestTask), f'Previous task is not a request'
+    assert isinstance(request, RequestTask), 'Previous task is not a request'
 
     add_request_task_response_status_codes(request, status_list)
 
@@ -180,7 +181,7 @@ def step_response_allow_status_codes_table(context: Context) -> None:
     Allowed response status codes for `test-get-1` is now `200` and `302`, and for `test-get-2` is
     now `200` and `404`.
     '''
-    assert context.table is not None, f'Step data table is mandatory'
+    assert context.table is not None, 'Step data table is mandatory'
 
     grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -225,12 +226,12 @@ def step_response_content_type(context: Context, content_type: TransformerConten
         content_type (TransformerContentType): expected content type of response
     '''
 
-    assert content_type != TransformerContentType.UNDEFINED, f'It is not allowed to set UNDEFINED with this step'
+    assert content_type != TransformerContentType.UNDEFINED, 'It is not allowed to set UNDEFINED with this step'
 
     grizzly = cast(GrizzlyContext, context.grizzly)
-    assert len(grizzly.scenario.tasks) > 0, f'There are no requests in the scenario'
+    assert len(grizzly.scenario.tasks) > 0, 'There are no requests in the scenario'
 
     request = grizzly.scenario.tasks[-1]
 
-    assert isinstance(request, RequestTask), f'Latest task in scenario is not a request'
+    assert isinstance(request, RequestTask), 'Latest task in scenario is not a request'
     request.response.content_type = content_type

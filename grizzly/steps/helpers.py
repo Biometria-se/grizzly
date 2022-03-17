@@ -34,7 +34,7 @@ def create_request_task(
 
 
 def _create_request_task(
-    base_dir: str,method: RequestMethod, source: Optional[str], endpoint: str, name: Optional[str] = None, substitutes: Optional[Dict[str, str]] = None,
+    base_dir: str, method: RequestMethod, source: Optional[str], endpoint: str, name: Optional[str] = None, substitutes: Optional[Dict[str, str]] = None,
 ) -> RequestTask:
     if substitutes is None:
         substitutes = {}
@@ -112,7 +112,7 @@ def add_request_task(
     for row in table:
         if endpoint is None:
             if scenario_tasks_count == 0:
-                raise ValueError(f'no endpoint specified')
+                raise ValueError('no endpoint specified')
 
             last_request = grizzly.scenario.tasks[-1]
 
@@ -120,7 +120,7 @@ def add_request_task(
                 raise ValueError('previous task was not a request')
 
             if last_request.method != method:
-                raise ValueError(f'can not use endpoint from previous request, it has different method')
+                raise ValueError('can not use endpoint from previous request, it has different method')
 
             endpoint = last_request.endpoint
             content_type = last_request.response.content_type
@@ -284,7 +284,7 @@ def generate_validation_handler(expression: str, match_with: str, condition: boo
                 interpolated_expression (str): `expression` with templating variables resolved
                 match (Optional[Any]): value based on `expression` that matches `match_with`
             '''
-            result = match is not None if condition == True else match is None
+            result = match is not None if condition is True else match is None
 
             if result:
                 message = f'"{interpolated_expression}": "{match_with} was {match}"'
@@ -406,5 +406,3 @@ def add_validation_handler(context: GrizzlyContext, target: ResponseTarget, expr
 
 def normalize_step_name(step_name: str) -> str:
     return re.sub(r'"[^"]*"', '""', step_name)
-
-

@@ -42,6 +42,7 @@ from ..types import RequestMethod, GrizzlyResponse
 from ..tasks import RequestTask
 from ..utils import merge_dicts
 
+
 class BlobStorageUser(GrizzlyUser):
     client: BlobServiceClient
     host: str

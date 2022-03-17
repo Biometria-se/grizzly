@@ -8,7 +8,6 @@ import pytest
 
 from jinja2 import Template
 from _pytest.tmpdir import TempPathFactory
-from locust.env import Environment
 from locust.exception import StopUser
 
 from grizzly.users.base import GrizzlyUser, FileRequests
@@ -16,7 +15,7 @@ from grizzly.types import GrizzlyResponse, RequestMethod
 from grizzly.context import GrizzlyContextScenario
 from grizzly.tasks import RequestTask
 
-from ...fixtures import locust_environment  # pylint: disable=unused-import
+from ...fixtures import LocustFixture
 
 
 logging.getLogger().setLevel(logging.CRITICAL)
@@ -28,8 +27,7 @@ class DummyGrizzlyUser(GrizzlyUser):
 
 
 class TestGrizzlyUser:
-    @pytest.mark.usefixtures('locust_environment')
-    def test_render(self, locust_environment: Environment, tmp_path_factory: TempPathFactory) -> None:
+    def test_render(self, locust_fixture: LocustFixture, tmp_path_factory: TempPathFactory) -> None:
         test_context = tmp_path_factory.mktemp('renderer_test') / 'requests'
         test_context.mkdir()
         test_file = test_context / 'blobfile.txt'
@@ -39,7 +37,7 @@ class TestGrizzlyUser:
 
         try:
 
-            user = DummyGrizzlyUser(locust_environment)
+            user = DummyGrizzlyUser(locust_fixture.env)
             request = RequestTask(RequestMethod.POST, name='test', endpoint='/api/test')
 
             request.template = Template('hello {{ name }}')
@@ -81,7 +79,7 @@ class TestGrizzlyUser:
                 (GrizzlyUser, FileRequests, ),
                 {},
             )
-            user = user_type(locust_environment)
+            user = user_type(locust_fixture)
             assert issubclass(user.__class__, (FileRequests,))
 
             request.source = f'{str(test_file)}'
@@ -93,8 +91,8 @@ class TestGrizzlyUser:
             shutil.rmtree(test_file_context)
             del environ['GRIZZLY_CONTEXT_ROOT']
 
-    @pytest.mark.usefixtures('locust_environment')
-    def test_render_nested(self, locust_environment: Environment, tmp_path_factory: TempPathFactory) -> None:
+    @pytest.mark.usefixtures('locust_fixture')
+    def test_render_nested(self, locust_fixture: LocustFixture, tmp_path_factory: TempPathFactory) -> None:
         test_context = tmp_path_factory.mktemp('render_nested') / 'requests' / 'test'
         test_context.mkdir(parents=True)
         test_file = test_context / 'payload.j2.json'
@@ -121,7 +119,7 @@ class TestGrizzlyUser:
         environ['GRIZZLY_CONTEXT_ROOT'] = test_file_context
 
         try:
-            user = DummyGrizzlyUser(locust_environment)
+            user = DummyGrizzlyUser(locust_fixture.env)
             request = RequestTask(RequestMethod.POST, name='{{ name }}', endpoint='/api/test/{{ value }}')
 
             request.template = Template('{{ file_path }}')
@@ -152,17 +150,15 @@ class TestGrizzlyUser:
             shutil.rmtree(test_file_context)
             del environ['GRIZZLY_CONTEXT_ROOT']
 
-    @pytest.mark.usefixtures('locust_environment')
-    def test_request(self, locust_environment: Environment) -> None:
-        user = DummyGrizzlyUser(locust_environment)
+    def test_request(self, locust_fixture: LocustFixture) -> None:
+        user = DummyGrizzlyUser(locust_fixture.env)
         payload = RequestTask(RequestMethod.GET, name='test', endpoint='/api/test')
 
         with pytest.raises(NotImplementedError):
             user.request(payload)
 
-    @pytest.mark.usefixtures('locust_environment')
-    def test_context(self, locust_environment: Environment) -> None:
-        user = DummyGrizzlyUser(locust_environment)
+    def test_context(self, locust_fixture: LocustFixture) -> None:
+        user = DummyGrizzlyUser(locust_fixture.env)
 
         context = user.context()
 

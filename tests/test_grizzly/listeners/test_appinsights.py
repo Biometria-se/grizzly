@@ -4,17 +4,16 @@ from typing import Callable, Dict, Any, Optional
 
 import pytest
 
-from locust.env import Environment
 from locust.runners import Runner
 from locust.exception import CatchResponseError
 from opencensus.ext.azure.log_exporter import AzureLogHandler
-from pytest_mock import mocker  # pylint: disable=unused-import
-from pytest_mock.plugin import MockerFixture
+from pytest_mock import MockerFixture
 from _pytest.logging import LogCaptureFixture
 
-from ..fixtures import locust_environment  # pylint: disable=unused-import
+from ..fixtures import LocustFixture
 
 from grizzly.listeners.appinsights import ApplicationInsightsListener
+
 
 @pytest.fixture
 def patch_azureloghandler(mocker: MockerFixture) -> Callable[[], None]:
@@ -39,43 +38,41 @@ def patch_azureloghandler(mocker: MockerFixture) -> Callable[[], None]:
 
 
 class TestAppInsightsListener:
-    @pytest.mark.usefixtures('locust_environment', 'patch_azureloghandler')
-    def test___init__(self, locust_environment: Environment, patch_azureloghandler: Callable[[], None]) -> None:
+    @pytest.mark.usefixtures('patch_azureloghandler')
+    def test___init__(self, locust_fixture: LocustFixture, patch_azureloghandler: Callable[[], None]) -> None:
         patch_azureloghandler()
 
         # fire_deprecated_request_handlers is already an internal event handler for the request event
-        assert len(locust_environment.events.request._handlers) == 1
+        assert len(locust_fixture.env.events.request._handlers) == 1
 
         with pytest.raises(AssertionError) as ae:
-            ApplicationInsightsListener(locust_environment, '?')
+            ApplicationInsightsListener(locust_fixture.env, '?')
         assert 'IngestionEndpoint was neither set as the hostname or in the query string' in str(ae)
 
         with pytest.raises(AssertionError) as ae:
-            ApplicationInsightsListener(locust_environment, '?IngestionEndpoint=insights.test.com')
+            ApplicationInsightsListener(locust_fixture.env, '?IngestionEndpoint=insights.test.com')
         assert 'InstrumentationKey not found in' in str(ae)
 
-
         try:
-            listener = ApplicationInsightsListener(locust_environment, '?IngestionEndpoint=insights.test.com&InstrumentationKey=asdfasdfasdfasdf')
+            listener = ApplicationInsightsListener(locust_fixture.env, '?IngestionEndpoint=insights.test.com&InstrumentationKey=asdfasdfasdfasdf')
 
-            assert len(locust_environment.events.request._handlers) == 2
+            assert len(locust_fixture.env.events.request._handlers) == 2
             assert listener.testplan == 'appinsightstestplan'
         finally:
             # remove ApplicationInsightsListener
-            locust_environment.events.request._handlers.pop()
+            locust_fixture.env.events.request._handlers.pop()
 
         try:
-            listener = ApplicationInsightsListener(locust_environment, 'https://insights.test.com?InstrumentationKey=asdfasdfasdfasdf&Testplan=test___init__')
+            listener = ApplicationInsightsListener(locust_fixture.env, 'https://insights.test.com?InstrumentationKey=asdfasdfasdfasdf&Testplan=test___init__')
 
-            assert len(locust_environment.events.request._handlers) == 2
+            assert len(locust_fixture.env.events.request._handlers) == 2
             assert listener.testplan == 'test___init__'
         finally:
             # remove ApplicationInsightsListener
-            locust_environment.events.request._handlers.pop()
+            locust_fixture.env.events.request._handlers.pop()
 
-
-    @pytest.mark.usefixtures('locust_environment', 'patch_azureloghandler')
-    def test_request(self, locust_environment: Environment, patch_azureloghandler: Callable[[], None], mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
+    @pytest.mark.usefixtures('patch_azureloghandler')
+    def test_request(self, locust_fixture: LocustFixture, patch_azureloghandler: Callable[[], None], mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
         patch_azureloghandler()
 
         def generate_logger_info(
@@ -105,7 +102,7 @@ class TestAppInsightsListener:
         )
 
         try:
-            listener = ApplicationInsightsListener(locust_environment, 'https://insights.test.com?InstrumentationKey=asdfasdfasdfasdf')
+            listener = ApplicationInsightsListener(locust_fixture.env, 'https://insights.test.com?InstrumentationKey=asdfasdfasdfasdf')
             listener.request('GET', '/api/v1/test', 133.7, 200, None)
 
             mocker.patch(
@@ -122,13 +119,13 @@ class TestAppInsightsListener:
             assert 'failed to write metric for "GET /api/v2/test' in caplog.text
             caplog.clear()
         finally:
-            locust_environment.events.request._handlers.pop()
+            locust_fixture.env.events.request._handlers.pop()
 
-    @pytest.mark.usefixtures('locust_environment', 'patch_azureloghandler')
-    def test__create_custom_dimensions_dict(self, locust_environment: Environment, patch_azureloghandler: Callable[[], None]) -> None:
+    @pytest.mark.usefixtures('patch_azureloghandler')
+    def test__create_custom_dimensions_dict(self, locust_fixture: LocustFixture, patch_azureloghandler: Callable[[], None]) -> None:
         patch_azureloghandler()
         try:
-            listener = ApplicationInsightsListener(locust_environment, 'https://insights.test.com?InstrumentationKey=asdfasdfasdfasdf')
+            listener = ApplicationInsightsListener(locust_fixture.env, 'https://insights.test.com?InstrumentationKey=asdfasdfasdfasdf')
 
             expected_keys = [
                 'thread_count', 'target_user_count', 'spawn_rate', 'method', 'result', 'response_time', 'response_length', 'endpoint', 'testplan', 'exception'
@@ -149,14 +146,13 @@ class TestAppInsightsListener:
             assert custom_dimensions.get('endpoint', None) == '/api/v1/test'
             assert custom_dimensions.get('testplan', None) == 'appinsightstestplan'
         finally:
-            locust_environment.events.request._handlers.pop()
+            locust_fixture.env.events.request._handlers.pop()
 
-
-    @pytest.mark.usefixtures('locust_environment', 'patch_azureloghandler')
-    def test__safe_return_runner_values(self, locust_environment: Environment, patch_azureloghandler: Callable[[], None], mocker: MockerFixture) -> None:
+    @pytest.mark.usefixtures('patch_azureloghandler')
+    def test__safe_return_runner_values(self, locust_fixture: LocustFixture, patch_azureloghandler: Callable[[], None]) -> None:
         patch_azureloghandler()
         try:
-            listener = ApplicationInsightsListener(locust_environment, 'https://insights.test.com?InstrumentationKey=asdfasdfasdfasdf')
+            listener = ApplicationInsightsListener(locust_fixture.env, 'https://insights.test.com?InstrumentationKey=asdfasdfasdfasdf')
 
             expected_keys = ['thread_count', 'target_user_count', 'spawn_rate']
 
@@ -172,11 +168,11 @@ class TestAppInsightsListener:
             assert runner_values.get('target_user_count', None) == ''
             assert runner_values.get('spawn_rate', None) == ''
 
-            locust_environment.runner = Runner(locust_environment)
+            locust_fixture.env.runner = Runner(locust_fixture.env)
 
             runner_values = listener._safe_return_runner_values()
             assert runner_values.get('thread_count', None) == '0'
             assert runner_values.get('target_user_count', None) == '0'
             assert runner_values.get('spawn_rate', None) == ''
         finally:
-            locust_environment.events.request._handlers.pop()
+            locust_fixture.env.events.request._handlers.pop()

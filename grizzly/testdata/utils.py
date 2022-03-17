@@ -186,5 +186,4 @@ def resolve_variable(grizzly: GrizzlyContext, value: str, guess_datatype: Option
     elif quote_char is not None and isinstance(resolved_variable, str) and resolved_variable.count(' ') > 0:
         resolved_variable = f'{quote_char}{resolved_variable}{quote_char}'
 
-
     return resolved_variable

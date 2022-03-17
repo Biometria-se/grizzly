@@ -44,7 +44,7 @@ def load_configuration_file() -> Dict[str, Any]:
 
     try:
         if path.splitext(configuration_file)[1] not in ['.yml', '.yaml']:
-            logger.error(f'configuration file must have file extension yml or yaml')
+            logger.error('configuration file must have file extension yml or yaml')
             raise SystemExit(1)
 
         with open(configuration_file, 'r') as fd:
@@ -84,10 +84,12 @@ class GrizzlyContextScenarioValidation:
     avg_response_time: Optional[int] = field(init=False, default=None)
     response_time_percentile: Optional[GrizzlyContextScenarioResponseTimePercentile] = field(init=False, default=None)
 
+
 @dataclass(unsafe_hash=True)
 class GrizzlyContextScenarioUser:
     class_name: str = field(init=False, hash=True)
     weight: int = field(init=False, hash=True, default=1)
+
 
 @dataclass(unsafe_hash=True)
 class GrizzlyContextScenario:
@@ -126,9 +128,9 @@ class GrizzlyContextScenario:
 
     def should_validate(self) -> bool:
         return (
-            self.validation.fail_ratio is not None or
-            self.validation.avg_response_time is not None or
-            self.validation.response_time_percentile is not None
+            self.validation.fail_ratio is not None
+            or self.validation.avg_response_time is not None
+            or self.validation.response_time_percentile is not None
         )
 
     def add_task(self, task: GrizzlyTask) -> None:

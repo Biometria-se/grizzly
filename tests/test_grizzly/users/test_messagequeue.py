@@ -1,6 +1,6 @@
 import subprocess
 
-from typing import Callable, Dict, Tuple, Any, cast, Optional
+from typing import Dict, Tuple, Any, cast, Optional
 from os import environ
 from dataclasses import replace
 
@@ -12,8 +12,7 @@ except:
 from zmq.error import ZMQError, Again as ZMQAgain
 import pytest
 
-from pytest_mock import mocker  # pylint: disable=unused-import
-from pytest_mock.plugin import MockerFixture
+from pytest_mock import MockerFixture
 from locust.env import Environment
 from locust.exception import StopUser
 from jinja2 import Template
@@ -30,19 +29,18 @@ from grizzly.steps.helpers import add_save_handler
 from grizzly_extras.async_message import AsyncMessageResponse
 from grizzly_extras.transformer import TransformerContentType
 
-from ..fixtures import grizzly_context, request_task, locust_environment, noop_zmq  # pylint: disable=unused-import
+from ..fixtures import GrizzlyFixture, LocustFixture, NoopZmqFixture
 
-import logging
+MqScenarioFixture = Tuple[MessageQueueUser, GrizzlyContextScenario, Environment]
 
-# we are not interested in misleading log messages when unit testing
-logging.getLogger().setLevel(logging.CRITICAL)
 
+@pytest.mark.usefixtures('grizzly_fixture')
 @pytest.fixture
-def mq_user(grizzly_context: Callable) -> Tuple[MessageQueueUser, GrizzlyContextScenario, Environment]:
-    environment, user, task, [_, _, request] = grizzly_context(
+def mq_user(grizzly_fixture: GrizzlyFixture) -> MqScenarioFixture:
+    environment, user, task = grizzly_fixture(
         'mq://mq.example.com:1337/?QueueManager=QMGR01&Channel=Kanal1', MessageQueueUser)
 
-    request = cast(RequestTask, request)
+    request = grizzly_fixture.request_task.request
 
     scenario = GrizzlyContextScenario()
     scenario.name = task.__class__.__name__
@@ -54,7 +52,8 @@ def mq_user(grizzly_context: Callable) -> Tuple[MessageQueueUser, GrizzlyContext
 
     scenario.add_task(request)
 
-    return user, scenario, environment
+    return cast(MessageQueueUser, user), scenario, environment
+
 
 class TestMessageQueueUserNoPymqi:
     def test_no_pymqi_dependencies(self) -> None:
@@ -94,43 +93,42 @@ class TestMessageQueueUser:
         'channel': '',
     }
 
-    @pytest.mark.usefixtures('locust_environment')
-    def test_create(self, locust_environment: Environment) -> None:
+    def test_create(self, locust_fixture: LocustFixture) -> None:
         try:
             MessageQueueUser.host = 'http://mq.example.com:1337'
             with pytest.raises(ValueError) as e:
-                MessageQueueUser(environment=locust_environment)
+                MessageQueueUser(environment=locust_fixture.env)
             assert 'is not a supported scheme for MessageQueueUser' in str(e)
 
             MessageQueueUser.host = 'mq://mq.example.com:1337'
             with pytest.raises(ValueError) as e:
-                MessageQueueUser(environment=locust_environment)
+                MessageQueueUser(environment=locust_fixture.env)
             assert 'needs QueueManager and Channel in the query string' in str(e)
 
             MessageQueueUser.host = 'mq://:1337'
             with pytest.raises(ValueError) as e:
-                MessageQueueUser(environment=locust_environment)
+                MessageQueueUser(environment=locust_fixture.env)
             assert 'hostname is not specified in' in str(e)
 
             MessageQueueUser.host = 'mq://mq.example.com:1337/?Channel=Kanal1'
             with pytest.raises(ValueError) as e:
-                MessageQueueUser(environment=locust_environment)
+                MessageQueueUser(environment=locust_fixture.env)
             assert 'needs QueueManager in the query string' in str(e)
 
             MessageQueueUser.host = 'mq://mq.example.com:1337/?QueueManager=QMGR01'
             with pytest.raises(ValueError) as e:
-                MessageQueueUser(environment=locust_environment)
+                MessageQueueUser(environment=locust_fixture.env)
             assert 'needs Channel in the query string' in str(e)
 
             MessageQueueUser.host = 'mq://username:password@mq.example.com?Channel=Kanal1&QueueManager=QMGR01'
             with pytest.raises(ValueError) as e:
-                MessageQueueUser(environment=locust_environment)
+                MessageQueueUser(environment=locust_fixture.env)
             assert 'username and password should be set via context' in str(e)
 
             # Test default port and ssl_cipher
             MessageQueueUser.host = 'mq://mq.example.com?Channel=Kanal1&QueueManager=QMGR01'
-            user = MessageQueueUser(environment=locust_environment)
-            assert user.am_context.get('connection', None) == f'mq.example.com(1414)'
+            user = MessageQueueUser(environment=locust_fixture.env)
+            assert user.am_context.get('connection', None) == 'mq.example.com(1414)'
             assert user.am_context.get('ssl_cipher', None) == 'ECDHE_RSA_AES_256_GCM_SHA384'
 
             MessageQueueUser._context['auth'] = {
@@ -142,7 +140,7 @@ class TestMessageQueueUser:
             }
 
             MessageQueueUser.host = 'mq://mq.example.com:1415?Channel=Kanal1&QueueManager=QMGR01'
-            user = MessageQueueUser(environment=locust_environment)
+            user = MessageQueueUser(environment=locust_fixture.env)
 
             assert user.am_context.get('connection', None) == 'mq.example.com(1415)'
             assert user.am_context.get('queue_manager', None) == 'QMGR01'
@@ -153,13 +151,13 @@ class TestMessageQueueUser:
 
             MessageQueueUser._context['auth']['cert_label'] = None
 
-            user = MessageQueueUser(environment=locust_environment)
+            user = MessageQueueUser(environment=locust_fixture.env)
 
             assert user.am_context.get('cert_label', None) == 'syrsa'
 
             MessageQueueUser._context['message']['wait'] = 5
 
-            user = MessageQueueUser(environment=locust_environment)
+            user = MessageQueueUser(environment=locust_fixture.env)
             assert user.am_context.get('message_wait', None) == 5
             assert issubclass(user.__class__, (RequestLogger, ResponseHandler,))
         finally:
@@ -173,8 +171,7 @@ class TestMessageQueueUser:
                 }
             }
 
-    @pytest.mark.usefixtures('locust_environment', 'noop_zmq')
-    def test_request__action_conn_error(self, locust_environment: Environment, mocker: MockerFixture, noop_zmq: Callable[[str], None]) -> None:
+    def test_request__action_conn_error(self, locust_fixture: LocustFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         def mocked_zmq_connect(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Any:
             raise ZMQError(msg='error connecting')
 
@@ -207,7 +204,7 @@ class TestMessageQueueUser:
         )
 
         MessageQueueUser.host = 'mq://mq.example.com:1337/?QueueManager=QMGR01&Channel=Kanal1'
-        user = MessageQueueUser(locust_environment)
+        user = MessageQueueUser(locust_fixture.env)
 
         request = RequestTask(RequestMethod.PUT, name='test-put', endpoint='EXAMPLE.QUEUE')
         scenario = GrizzlyContextScenario()
@@ -223,8 +220,7 @@ class TestMessageQueueUser:
             user.request(request)
 
     @pytest.mark.skip(reason='needs real credentials and host etc.')
-    @pytest.mark.usefixtures('locust_environment')
-    def test_get_tls_real(self, locust_environment: Environment) -> None:
+    def test_get_tls_real(self, locust_fixture: LocustFixture) -> None:
         process: Optional[subprocess.Popen] = None
         try:
             process = subprocess.Popen(
@@ -257,7 +253,7 @@ class TestMessageQueueUser:
             scenario.add_task(request)
 
             MessageQueueUser.host = f'mq://{self.real_stuff["host"]}/?QueueManager={self.real_stuff["queue_manager"]}&Channel={self.real_stuff["channel"]}'
-            user = MessageQueueUser(locust_environment)
+            user = MessageQueueUser(locust_fixture.env)
 
             user.request(request)
             assert 0
@@ -280,8 +276,7 @@ class TestMessageQueueUser:
             }
 
     @pytest.mark.skip(reason='needs real credentials and host etc.')
-    @pytest.mark.usefixtures('locust_environment')
-    def test_put_tls_real(self, locust_environment: Environment) -> None:
+    def test_put_tls_real(self, locust_fixture: LocustFixture) -> None:
         process: Optional[subprocess.Popen] = None
         try:
             process = subprocess.Popen(
@@ -313,7 +308,7 @@ class TestMessageQueueUser:
             scenario.add_task(request)
 
             MessageQueueUser.host = f'mq://{self.real_stuff["host"]}/?QueueManager={self.real_stuff["queue_manager"]}&Channel={self.real_stuff["channel"]}'
-            user = MessageQueueUser(locust_environment)
+            user = MessageQueueUser(locust_fixture.env)
 
             user.request(request)
         finally:
@@ -334,8 +329,7 @@ class TestMessageQueueUser:
                 }
             }
 
-    @pytest.mark.usefixtures('noop_zmq')
-    def test_get(self, mq_user: Tuple[MessageQueueUser, GrizzlyContextScenario, Environment], mocker: MockerFixture, noop_zmq: Callable[[str], None]) -> None:
+    def test_get(self, mq_user: MqScenarioFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         [user, scenario, _] = mq_user
 
         noop_zmq('grizzly.users.messagequeue')
@@ -375,7 +369,6 @@ class TestMessageQueueUser:
                 'ssl_cipher': None,
             }
         }
-
 
         remote_variables = {
             'variables': transform({
@@ -626,7 +619,6 @@ class TestMessageQueueUser:
         ctx = args[1]['context']
         assert ctx['endpoint'] == request.endpoint
 
-
         # Test specifying queue: prefix with expression, and spacing
         request.endpoint = 'queue: IFKTEST2  , expression: /class/student[marks>85]'
         user.request(request)
@@ -674,7 +666,7 @@ class TestMessageQueueUser:
         _, kwargs = response_event_spy.call_args_list[7]
         exception = kwargs.get('exception', None)
         assert isinstance(exception, RuntimeError)
-        assert str(exception) == f'invalid value for argument "queue"'
+        assert str(exception) == 'invalid value for argument "queue"'
 
         send_json_spy.reset_mock()
         request_event_spy.reset_mock()
@@ -682,9 +674,7 @@ class TestMessageQueueUser:
 
         # Test queue / expression END
 
-
-    @pytest.mark.usefixtures('noop_zmq')
-    def test_send(self, mq_user: Tuple[MessageQueueUser, GrizzlyContextScenario, Environment], mocker: MockerFixture, noop_zmq: Callable[[str], None]) -> None:
+    def test_send(self, mq_user: MqScenarioFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         [user, scenario, _] = mq_user
 
         noop_zmq('grizzly.users.messagequeue')

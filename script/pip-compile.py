@@ -42,6 +42,7 @@ def parse_arguments() -> argparse.Namespace:
 
     return parser.parse_args()
 
+
 def getuid() -> int:
     if os.name == 'nt' or not hasattr(os, 'getuid'):
         return 1000
@@ -54,6 +55,7 @@ def getgid() -> int:
         return 1000
     else:
         return cast(int, getattr(os, 'getgid')())
+
 
 def get_python_version() -> str:
     setup_py_path = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', 'setup.py'))
@@ -238,6 +240,7 @@ def compile() -> int:
                 return e.code
 
     return 0
+
 
 def main() -> int:
     args = parse_arguments()

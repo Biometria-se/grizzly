@@ -84,6 +84,7 @@ def generate_license_table() -> List[str]:
 
     return license_table
 
+
 def generate_native_dependencies_section() -> List[str]:
     with open(path.join(REPO_ROOT, '.devcontainer', 'Dockerfile')) as fd:
         contents = fd.readlines()
@@ -150,6 +151,7 @@ def main() -> int:
         fd.writelines(license_contents)
 
     return 0
+
 
 if __name__ == '__main__':
     sys.exit(main())

@@ -3,12 +3,11 @@ from typing import cast
 import pytest
 
 from parse import compile
-from behave.runner import Context
 
 from grizzly.context import GrizzlyContext
-from grizzly.steps import *  # pylint: disable=unused-wildcard-import
+from grizzly.steps import *  # pylint: disable=unused-wildcard-import  # noqa: F403
 
-from ...fixtures import behave_context, locust_environment  # pylint: disable=unused-import
+from ...fixtures import BehaveFixture
 
 
 def test_parse_user_gramatical_number() -> None:
@@ -22,78 +21,77 @@ def test_parse_user_gramatical_number() -> None:
     assert p.parse('we have 3 people') is None
 
 
-@pytest.mark.usefixtures('behave_context')
-def test_step_shapes_user_count(behave_context: Context) -> None:
+def test_step_shapes_user_count(behave_fixture: BehaveFixture) -> None:
     step_impl = step_shapes_user_count
 
-    grizzly = cast(GrizzlyContext, behave_context.grizzly)
+    behave = behave_fixture.context
+    grizzly = cast(GrizzlyContext, behave.grizzly)
     assert grizzly.setup.user_count == 0
 
-    step_impl(behave_context, '10', grammar='user')
+    step_impl(behave, '10', grammar='user')
     assert grizzly.setup.user_count == 10
 
-    step_impl(behave_context, '10', grammar='users')
+    step_impl(behave, '10', grammar='users')
     assert grizzly.setup.user_count == 10
 
-    step_impl(behave_context, '1', grammar='user')
+    step_impl(behave, '1', grammar='user')
     assert grizzly.setup.user_count == 1
 
-    step_impl(behave_context, '1', grammar='users')
+    step_impl(behave, '1', grammar='users')
     assert grizzly.setup.user_count == 1
 
     grizzly.setup.spawn_rate = 10
 
     with pytest.raises(AssertionError):
-        step_impl(behave_context, '1', grammar='user')
+        step_impl(behave, '1', grammar='user')
 
     grizzly.setup.spawn_rate = 4
 
     with pytest.raises(AssertionError) as ae:
-        step_impl(behave_context, '{{ user_count }}', grammar='user')
+        step_impl(behave, '{{ user_count }}', grammar='user')
     assert 'value contained variable "user_count" which has not been set' in str(ae)
 
     grizzly.state.variables['user_count'] = 5
-    step_impl(behave_context, '{{ user_count }}', grammar='user')
+    step_impl(behave, '{{ user_count }}', grammar='user')
     assert grizzly.setup.user_count == 5
 
     grizzly.setup.spawn_rate = None
 
-    step_impl(behave_context, '{{ user_count * 0.1 }}', grammar='user')
+    step_impl(behave, '{{ user_count * 0.1 }}', grammar='user')
     assert grizzly.setup.user_count == 1
 
 
-@pytest.mark.usefixtures('behave_context')
-def test_step_shapes_spawn_rate(behave_context: Context) -> None:
+def test_step_shapes_spawn_rate(behave_fixture: BehaveFixture) -> None:
     step_impl = step_shapes_spawn_rate
 
-    grizzly = cast(GrizzlyContext, behave_context.grizzly)
+    behave = behave_fixture.context
+    grizzly = cast(GrizzlyContext, behave.grizzly)
     assert grizzly.setup.spawn_rate is None
 
     # spawn_rate must be <= user_count
     with pytest.raises(AssertionError):
-        step_impl(behave_context, '1', grammar='user')
+        step_impl(behave, '1', grammar='user')
 
     grizzly.setup.user_count = 10
-    step_impl(behave_context, '0.1', grammar='users')
+    step_impl(behave, '0.1', grammar='users')
     assert grizzly.setup.spawn_rate == 0.1
 
-    step_impl(behave_context, '10', grammar='users')
+    step_impl(behave, '10', grammar='users')
     assert grizzly.setup.spawn_rate == 10
 
     grizzly.setup.user_count = 1
 
     with pytest.raises(AssertionError):
-        step_impl(behave_context, '10', grammar='users')
+        step_impl(behave, '10', grammar='users')
 
     with pytest.raises(AssertionError) as ae:
-        step_impl(behave_context, '{{ spawn_rate }}', grammar='users')
+        step_impl(behave, '{{ spawn_rate }}', grammar='users')
     assert 'value contained variable "spawn_rate" which has not been set' in str(ae)
 
     grizzly.setup.spawn_rate = None
     grizzly.state.variables['spawn_rate'] = 1
-    step_impl(behave_context, '{{ spawn_rate }}', grammar='users')
+    step_impl(behave, '{{ spawn_rate }}', grammar='users')
     assert grizzly.setup.spawn_rate == 1.0
 
-    step_impl(behave_context, '{{ spawn_rate / 1000 }}', grammar='users')
+    step_impl(behave, '{{ spawn_rate / 1000 }}', grammar='users')
     assert grizzly.setup.spawn_rate == 0.01
-

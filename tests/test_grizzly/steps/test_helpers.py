@@ -2,14 +2,12 @@ import os
 import json
 import shutil
 
-from typing import Callable, List, Any, cast
+from typing import List, Any, cast
 
 import pytest
 
-from behave.runner import Context
 from behave.model import Table, Row
 from _pytest.tmpdir import TempPathFactory
-from locust.env import Environment
 from locust.exception import CatchResponseError
 from locust.clients import ResponseContextManager
 from requests.models import Response
@@ -33,13 +31,7 @@ from grizzly.steps.helpers import (
 from grizzly_extras.transformer import TransformerContentType
 
 from ..helpers import TestUser
-# pylint: disable=unused-import
-from ..fixtures import (
-    grizzly_context,
-    locust_environment,
-    behave_context,
-    request_task,
-)
+from ..fixtures import BehaveFixture, GrizzlyFixture, LocustFixture
 
 
 def test_add_request_task_response_status_codes() -> None:
@@ -54,33 +46,36 @@ def test_add_request_task_response_status_codes() -> None:
     assert request.response.status_codes == [200, 302, 400]
 
 
-def test_add_request_task(behave_context: Context, grizzly_context: Callable, tmp_path_factory: TempPathFactory) -> None:
-    grizzly = cast(GrizzlyContext, behave_context.grizzly)
+def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: TempPathFactory) -> None:
+    behave = grizzly_fixture.behave
+    grizzly = cast(GrizzlyContext, behave.grizzly)
     grizzly.scenario.context['host'] = 'http://test'
 
-    assert len(grizzly.scenario.tasks) == 0
-
-    with pytest.raises(ValueError):
-        add_request_task(behave_context, method=RequestMethod.POST, source='{}')
+    grizzly.scenario.tasks = []
 
     assert len(grizzly.scenario.tasks) == 0
 
     with pytest.raises(ValueError):
-        add_request_task(behave_context, method=RequestMethod.POST, source='{}', endpoint='http://test/api/v1/test')
+        add_request_task(behave, method=RequestMethod.POST, source='{}')
+
+    assert len(grizzly.scenario.tasks) == 0
 
     with pytest.raises(ValueError):
-        add_request_task(behave_context, method=RequestMethod.from_string('TEST'), source='{}', endpoint='/api/v1/test')
+        add_request_task(behave, method=RequestMethod.POST, source='{}', endpoint='http://test/api/v1/test')
 
-    add_request_task(behave_context, method=RequestMethod.POST, source='{}', endpoint='/api/v1/test')
+    with pytest.raises(ValueError):
+        add_request_task(behave, method=RequestMethod.from_string('TEST'), source='{}', endpoint='/api/v1/test')
+
+    add_request_task(behave, method=RequestMethod.POST, source='{}', endpoint='/api/v1/test')
 
     assert len(grizzly.scenario.tasks) == 1
     assert isinstance(grizzly.scenario.tasks[0], RequestTask)
     assert grizzly.scenario.tasks[0].name == '<unknown>'
 
     with pytest.raises(ValueError):
-        add_request_task(behave_context, method=RequestMethod.from_string('TEST'), source='{}', name='test')
+        add_request_task(behave, method=RequestMethod.from_string('TEST'), source='{}', name='test')
 
-    add_request_task(behave_context, method=RequestMethod.from_string('POST'), source='{}', name='test')
+    add_request_task(behave, method=RequestMethod.from_string('POST'), source='{}', name='test')
 
     assert len(grizzly.scenario.tasks) == 2
     assert isinstance(grizzly.scenario.tasks[1], RequestTask)
@@ -88,18 +83,20 @@ def test_add_request_task(behave_context: Context, grizzly_context: Callable, tm
     assert grizzly.scenario.tasks[1].name == 'test'
 
     with pytest.raises(ValueError):
-        add_request_task(behave_context, method=RequestMethod.from_string('TEST'), source='{}', name='test', endpoint='/api/v2/test')
+        add_request_task(behave, method=RequestMethod.from_string('TEST'), source='{}', name='test', endpoint='/api/v2/test')
 
-    add_request_task(behave_context, method=RequestMethod.POST, source='{}', name='test', endpoint='/api/v2/test')
+    add_request_task(behave, method=RequestMethod.POST, source='{}', name='test', endpoint='/api/v2/test')
 
     assert len(grizzly.scenario.tasks) == 3
     assert isinstance(grizzly.scenario.tasks[2], RequestTask)
     assert grizzly.scenario.tasks[1].endpoint != grizzly.scenario.tasks[2].endpoint
     assert grizzly.scenario.tasks[2].name == 'test'
 
-    _, _, _, (template_path, template_name, _) = grizzly_context()
+    template_path = grizzly_fixture.request_task.context_root
+    template_name = grizzly_fixture.request_task.relative_path
     template_full_path = os.path.join(template_path, template_name)
-    add_request_task(behave_context, method=RequestMethod.SEND, source=template_full_path, name='my_blob', endpoint='my_container')
+
+    add_request_task(behave, method=RequestMethod.SEND, source=template_full_path, name='my_blob', endpoint='my_container')
 
     with open(template_full_path, 'r') as fd:
         template_source = json.dumps(json.load(fd))
@@ -113,9 +110,9 @@ def test_add_request_task(behave_context: Context, grizzly_context: Callable, tm
     assert task.response.content_type == TransformerContentType.UNDEFINED
 
     with pytest.raises(ValueError):
-        add_request_task(behave_context, method=RequestMethod.POST, source='{}', name='test')
+        add_request_task(behave, method=RequestMethod.POST, source='{}', name='test')
 
-    add_request_task(behave_context, method=RequestMethod.SEND, source=template_full_path, name='my_blob2')
+    add_request_task(behave, method=RequestMethod.SEND, source=template_full_path, name='my_blob2')
     assert len(grizzly.scenario.tasks) == 5
     assert isinstance(grizzly.scenario.tasks[-1], RequestTask)
     assert isinstance(grizzly.scenario.tasks[-2], RequestTask)
@@ -128,7 +125,7 @@ def test_add_request_task(behave_context: Context, grizzly_context: Callable, tm
         test_context.mkdir()
         test_context_root = os.path.dirname(test_context)
         os.environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
-        behave_context.config.base_dir = test_context_root
+        behave.config.base_dir = test_context_root
         test_template = test_context / 'template.j2.json'
         test_template.touch()
         test_template.write_text('{{ hello_world }}')
@@ -136,17 +133,17 @@ def test_add_request_task(behave_context: Context, grizzly_context: Callable, tm
         rows: List[Row] = []
         rows.append(Row(['test'], ['-200,400']))
         rows.append(Row(['test'], ['302']))
-        behave_context.table = Table(['test'], rows=rows)
+        behave.table = Table(['test'], rows=rows)
 
         grizzly.scenario.tasks = [WaitTask(time=1.0)]
 
         with pytest.raises(ValueError) as e:
-            add_request_task(behave_context, method=RequestMethod.PUT, source='template.j2.json')
+            add_request_task(behave, method=RequestMethod.PUT, source='template.j2.json')
         assert 'previous task was not a request' in str(e)
 
-        add_request_task(behave_context, method=RequestMethod.PUT, source='template.j2.json', name='test', endpoint='/api/test')
+        add_request_task(behave, method=RequestMethod.PUT, source='template.j2.json', name='test', endpoint='/api/test')
 
-        add_request_task(behave_context, method=RequestMethod.PUT, source='template.j2.json', endpoint='/api/test')
+        add_request_task(behave, method=RequestMethod.PUT, source='template.j2.json', endpoint='/api/test')
         assert cast(RequestTask, grizzly.scenario.tasks[-1]).name == 'template'
 
         grizzly.scenario.tasks.clear()
@@ -164,9 +161,9 @@ def test_add_request_task(behave_context: Context, grizzly_context: Callable, tm
         rows = []
         for value in values:
             rows.append(Row(['name', 'time_of_day', 'quote'], value))
-        behave_context.table = Table(['name', 'time_of_day', 'quote'], rows=rows)
+        behave.table = Table(['name', 'time_of_day', 'quote'], rows=rows)
 
-        add_request_task(behave_context, method=RequestMethod.SEND, source='datatable_template.j2.json', name='quote: {{ quote }}', endpoint='/api/test/{{ time_of_day }}')
+        add_request_task(behave, method=RequestMethod.SEND, source='datatable_template.j2.json', name='quote: {{ quote }}', endpoint='/api/test/{{ time_of_day }}')
 
         assert len(grizzly.scenario.tasks) == 4
 
@@ -181,40 +178,38 @@ def test_add_request_task(behave_context: Context, grizzly_context: Callable, tm
         shutil.rmtree(test_context_root)
 
     with pytest.raises(ValueError) as ve:
-        add_request_task(behave_context, method=RequestMethod.GET, endpoint='hello | world:False', source=None, name='hello-world')
+        add_request_task(behave, method=RequestMethod.GET, endpoint='hello | world:False', source=None, name='hello-world')
     assert 'incorrect format in arguments: "world:False"' in str(ve)
 
     with pytest.raises(ValueError) as ve:
-        add_request_task(behave_context, method=RequestMethod.GET, source=None, endpoint='hello world | content_type=asdf', name='hello-world')
+        add_request_task(behave, method=RequestMethod.GET, source=None, endpoint='hello world | content_type=asdf', name='hello-world')
     assert '"asdf" is an unknown response content type' in str(ve)
 
-    add_request_task(behave_context, method=RequestMethod.GET, source=None, endpoint='hello world | content_type=json', name='hello-world')
+    add_request_task(behave, method=RequestMethod.GET, source=None, endpoint='hello world | content_type=json', name='hello-world')
 
     task = cast(RequestTask, grizzly.scenario.tasks[-1])
     assert task.endpoint == 'hello world'
     assert task.response.content_type == TransformerContentType.JSON
 
-    add_request_task(behave_context, method=RequestMethod.GET, source=None, endpoint='hello world | expression=$.test.value, content_type=json', name='hello-world')
+    add_request_task(behave, method=RequestMethod.GET, source=None, endpoint='hello world | expression=$.test.value, content_type=json', name='hello-world')
 
     task = cast(RequestTask, grizzly.scenario.tasks[-1])
     assert task.endpoint == 'hello world | expression=$.test.value'
     assert task.response.content_type == TransformerContentType.JSON
 
-    add_request_task(behave_context, method=RequestMethod.GET, source=None, endpoint=None, name='world-hello')
+    add_request_task(behave, method=RequestMethod.GET, source=None, endpoint=None, name='world-hello')
 
     task = cast(RequestTask, grizzly.scenario.tasks[-1])
     assert task.endpoint == 'hello world | expression=$.test.value'
     assert task.response.content_type == TransformerContentType.JSON
 
 
-
-@pytest.mark.usefixtures('locust_environment')
-def test_generate_save_handler(locust_environment: Environment) -> None:
-    user = TestUser(locust_environment)
+def test_generate_save_handler(locust_fixture: LocustFixture) -> None:
+    user = TestUser(locust_fixture.env)
     response = Response()
     response._content = '{}'.encode('utf-8')
     response.status_code = 200
-    response_context_manager = ResponseContextManager(response, locust_environment.events.request, {})
+    response_context_manager = ResponseContextManager(response, locust_fixture.env.events.request, {})
     response_context_manager._entered = True
 
     assert 'test' not in user.context_variables
@@ -365,13 +360,12 @@ def test_generate_save_handler(locust_environment: Environment) -> None:
     ]
 
 
-@pytest.mark.usefixtures('locust_environment')
-def test_generate_validation_handler_negative(locust_environment: Environment) -> None:
-    user = TestUser(locust_environment)
+def test_generate_validation_handler_negative(locust_fixture: LocustFixture) -> None:
+    user = TestUser(locust_fixture.env)
     response = Response()
     response._content = '{}'.encode('utf-8')
     response.status_code = 200
-    response_context_manager = ResponseContextManager(response, locust_environment.events.request, {})
+    response_context_manager = ResponseContextManager(response, locust_fixture.env.events.request, {})
     response_context_manager._entered = True
 
     handler = generate_validation_handler('$.test.value', 'test', False)
@@ -382,7 +376,7 @@ def test_generate_validation_handler_negative(locust_environment: Environment) -
 
     # no match fixed string expression
     handler((TransformerContentType.JSON, {'test': {'value': 'nottest'}}), user, response_context_manager)
-    assert not response_context_manager._manual_result == None
+    assert getattr(response_context_manager, '_manual_result', None) is not None
     response_context_manager._manual_result = None
 
     # regexp match expression value
@@ -399,7 +393,7 @@ def test_generate_validation_handler_negative(locust_environment: Environment) -
         user,
         response_context_manager,
     )
-    assert not response_context_manager._manual_result == None
+    assert getattr(response_context_manager, '_manual_result', None) is not None
     response_context_manager._manual_result = None
 
     # 1 match expression
@@ -457,7 +451,7 @@ def test_generate_validation_handler_negative(locust_environment: Environment) -
     # no match in multiple values (list)
     handler = generate_validation_handler('$.*..GlossSeeAlso[*]', 'YAML', False)
     handler((TransformerContentType.JSON, example), user, response_context_manager)
-    assert not response_context_manager._manual_result == None
+    assert getattr(response_context_manager, '_manual_result', None) is not None
     response_context_manager._manual_result = None
 
     handler = generate_validation_handler('$.glossary.title', '.*ary$', False)
@@ -480,14 +474,13 @@ def test_generate_validation_handler_negative(locust_environment: Environment) -
     assert response_context_manager._manual_result is None
 
 
-@pytest.mark.usefixtures('locust_environment')
-def test_generate_validation_handler_positive(locust_environment: Environment) -> None:
-    user = TestUser(locust_environment)
+def test_generate_validation_handler_positive(locust_fixture: LocustFixture) -> None:
+    user = TestUser(locust_fixture.env)
     try:
         response = Response()
         response._content = '{}'.encode('utf-8')
         response.status_code = 200
-        response_context_manager = ResponseContextManager(response, locust_environment.events.request, {})
+        response_context_manager = ResponseContextManager(response, locust_fixture.env.events.request, {})
         response_context_manager._entered = True
 
         handler = generate_validation_handler('$.test.value', 'test', True)
@@ -601,19 +594,19 @@ def test_generate_validation_handler_positive(locust_environment: Environment) -
         assert isinstance(getattr(response_context_manager, '_manual_result', None), CatchResponseError)
         response_context_manager._manual_result = None
     finally:
-        assert user._context['variables'] is not TestUser(locust_environment)._context['variables']
+        assert user._context['variables'] is not TestUser(locust_fixture.env)._context['variables']
 
 
-@pytest.mark.usefixtures('behave_context', 'locust_environment')
-def test_add_save_handler(behave_context: Context, locust_environment: Environment) -> None:
-    user = TestUser(locust_environment)
+def test_add_save_handler(behave_fixture: BehaveFixture, locust_fixture: LocustFixture) -> None:
+    user = TestUser(locust_fixture.env)
     response = Response()
     response._content = '{}'.encode('utf-8')
     response.status_code = 200
     response_context_manager = ResponseContextManager(response, None, None)
     response_context_manager._entered = True
 
-    grizzly = cast(GrizzlyContext, behave_context.grizzly)
+    behave = behave_fixture.context
+    grizzly = cast(GrizzlyContext, behave.grizzly)
     tasks = grizzly.scenario.tasks
 
     assert len(tasks) == 0
@@ -626,7 +619,7 @@ def test_add_save_handler(behave_context: Context, locust_environment: Environme
     assert len(user.context_variables) == 0
 
     # add request source
-    add_request_task(behave_context, method=RequestMethod.GET, source='{}', name='test', endpoint='/api/v2/test')
+    add_request_task(behave, method=RequestMethod.GET, source='{}', name='test', endpoint='/api/v2/test')
 
     assert len(tasks) == 1
 
@@ -696,17 +689,16 @@ def test_add_save_handler(behave_context: Context, locust_environment: Environme
     assert 'variable is not set' in str(e)
 
 
-
-@pytest.mark.usefixtures('behave_context', 'locust_environment')
-def test_add_validation_handler(behave_context: Context, locust_environment: Environment) -> None:
-    user = TestUser(locust_environment)
+def test_add_validation_handler(behave_fixture: BehaveFixture, locust_fixture: LocustFixture) -> None:
+    user = TestUser(locust_fixture.env)
     response = Response()
     response._content = '{}'.encode('utf-8')
     response.status_code = 200
     response_context_manager = ResponseContextManager(response, None, None)
     response_context_manager._entered = True
 
-    grizzly = cast(GrizzlyContext, behave_context.grizzly)
+    behave = behave_fixture.context
+    grizzly = cast(GrizzlyContext, behave.grizzly)
     tasks = grizzly.scenario.tasks
     assert len(tasks) == 0
 
@@ -715,7 +707,7 @@ def test_add_validation_handler(behave_context: Context, locust_environment: Env
         add_validation_handler(grizzly, ResponseTarget.METADATA, '$.test.value', 'test', False)
 
     # add request source
-    add_request_task(behave_context, method=RequestMethod.GET, source='{}', name='test', endpoint='/api/v2/test')
+    add_request_task(behave, method=RequestMethod.GET, source='{}', name='test', endpoint='/api/v2/test')
 
     assert len(tasks) == 1
 
@@ -783,7 +775,6 @@ def test_get_matches() -> None:
             return ['']
         else:
             return []
-
 
     def input_get_values(input_payload: Any) -> List[str]:
         return cast(List[str], input_payload)

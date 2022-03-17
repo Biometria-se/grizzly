@@ -5,8 +5,7 @@ from json.decoder import JSONDecodeError
 import pytest
 
 from lxml import etree as XML
-from pytest_mock import mocker  # pylint: disable=unused-import
-from pytest_mock.plugin import MockerFixture
+from pytest_mock import MockerFixture
 
 from grizzly_extras.transformer import (
     JsonTransformer,
@@ -51,7 +50,7 @@ class Testtransformer:
         assert 'it is not allowed to register a transformer of type UNDEFINED' in str(ve)
 
         for index, current in enumerate(transformers, start=1):
-            previous = transformers[index-1]
+            previous = transformers[index - 1]
             assert current.available is previous.available
 
     def test___call__(self, mocker: MockerFixture) -> None:
@@ -275,7 +274,12 @@ class TestXmlTransformer:
         example = '''<?xml version="1.0" encoding="UTF-8"?>
         <response>
             <row>
-                <row _id="row-yvru.xsvq_qzbq" _uuid="00000000-0000-0000-1B32-87B29F69422E" _position="0" _address="https://data.cityofnewyork.us/resource/_825b-niea/row-yvru.xsvq_qzbq">
+                <row
+                    _id="row-yvru.xsvq_qzbq"
+                    _uuid="00000000-0000-0000-1B32-87B29F69422E"
+                    _position="0"
+                    _address="https://data.cityofnewyork.us/resource/_825b-niea/row-yvru.xsvq_qzbq"
+                >
                     <grade>3</grade>
                     <year>2006</year>
                     <category>Asian</category>
@@ -283,7 +287,12 @@ class TestXmlTransformer:
                     <mean_scale_score>700</mean_scale_score>
                     <level_1_1>243</level_1_1>
                 </row>
-                <row _id="row-q8z8.q7b3.3ppa" _uuid="00000000-0000-0000-D9CE-B1F89A0D1307" _position="0" _address="https://data.cityofnewyork.us/resource/_825b-niea/row-q8z8.q7b3.3ppa">
+                <row
+                    _id="row-q8z8.q7b3.3ppa"
+                    _uuid="00000000-0000-0000-D9CE-B1F89A0D1307"
+                    _position="0"
+                    _address="https://data.cityofnewyork.us/resource/_825b-niea/row-q8z8.q7b3.3ppa"
+                >
                     <grade>4</grade>
                     <year>2006</year>
                     <category>Asian</category>
@@ -291,7 +300,12 @@ class TestXmlTransformer:
                     <mean_scale_score>699</mean_scale_score>
                     <level_1_1>294</level_1_1>
                 </row>
-                <row _id="row-i23x-4prc-46fj" _uuid="00000000-0000-0000-C9EE-2418870B5F93" _position="0" _address="https://data.cityofnewyork.us/resource/_825b-niea/row-i23x-4prc-46fj">
+                <row
+                    _id="row-i23x-4prc-46fj"
+                    _uuid="00000000-0000-0000-C9EE-2418870B5F93"
+                    _position="0"
+                    _address="https://data.cityofnewyork.us/resource/_825b-niea/row-i23x-4prc-46fj"
+                >
                     <grade>5</grade>
                     <year>2006</year>
                     <category>Asian</category>
@@ -299,7 +313,12 @@ class TestXmlTransformer:
                     <mean_scale_score>691</mean_scale_score>
                     <level_1_1>369</level_1_1>
                 </row>
-                <row _id="row-7u9v-dwwy.fhw3" _uuid="00000000-0000-0000-17FD-7D50A499A0E1" _position="0" _address="https://data.cityofnewyork.us/resource/_825b-niea/row-7u9v-dwwy.fhw3">
+                <row
+                    _id="row-7u9v-dwwy.fhw3"
+                    _uuid="00000000-0000-0000-17FD-7D50A499A0E1"
+                    _position="0"
+                    _address="https://data.cityofnewyork.us/resource/_825b-niea/row-7u9v-dwwy.fhw3"
+                >
                     <grade>6</grade>
                     <year>2006</year>
                     <category>Asian</category>
@@ -307,7 +326,12 @@ class TestXmlTransformer:
                     <mean_scale_score>682</mean_scale_score>
                     <level_1_1>452</level_1_1>
                 </row>
-                <row _id="row-64kf_k4ma_4zgq" _uuid="00000000-0000-0000-6A3C-917EFD40527E" _position="0" _address="https://data.cityofnewyork.us/resource/_825b-niea/row-64kf_k4ma_4zgq">
+                <row
+                    _id="row-64kf_k4ma_4zgq"
+                    _uuid="00000000-0000-0000-6A3C-917EFD40527E"
+                    _position="0"
+                    _address="https://data.cityofnewyork.us/resource/_825b-niea/row-64kf_k4ma_4zgq"
+                >
                     <grade>7</grade>
                     <year>2006</year>
                     <category>Asian</category>
@@ -315,7 +339,12 @@ class TestXmlTransformer:
                     <mean_scale_score>671</mean_scale_score>
                     <level_1_1>521</level_1_1>
                 </row>
-                <row _id="row-h8zg-qxyq.g4ge" _uuid="00000000-0000-0000-07BB-C9FC65F5ADEE" _position="0" _address="https://data.cityofnewyork.us/resource/_825b-niea/row-h8zg-qxyq.g4ge">
+                <row
+                    _id="row-h8zg-qxyq.g4ge"
+                    _uuid="00000000-0000-0000-07BB-C9FC65F5ADEE"
+                    _position="0"
+                    _address="https://data.cityofnewyork.us/resource/_825b-niea/row-h8zg-qxyq.g4ge"
+                >
                     <grade>8</grade>
                     <year>2006</year>
                     <category>Asian</category>
@@ -323,7 +352,12 @@ class TestXmlTransformer:
                     <mean_scale_score>675</mean_scale_score>
                     <level_1_1>671</level_1_1>
                 </row>
-                <row _id="row-2e2j.nmuz_pgdd" _uuid="00000000-0000-0000-BEEE-72B03BE38AC8" _position="0" _address="https://data.cityofnewyork.us/resource/_825b-niea/row-2e2j.nmuz_pgdd">
+                <row
+                    _id="row-2e2j.nmuz_pgdd"
+                    _uuid="00000000-0000-0000-BEEE-72B03BE38AC8"
+                    _position="0"
+                    _address="https://data.cityofnewyork.us/resource/_825b-niea/row-2e2j.nmuz_pgdd"
+                >
                     <grade>All Grades</grade>
                     <year>2006</year>
                     <category>Asian</category>

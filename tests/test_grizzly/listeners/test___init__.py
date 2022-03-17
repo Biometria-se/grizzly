@@ -8,15 +8,14 @@ from behave.model import Scenario
 import pytest
 
 from _pytest.logging import LogCaptureFixture
-from pytest_mock import mocker  # pylint: disable=unused-import
-from pytest_mock.plugin import MockerFixture
+from pytest_mock import MockerFixture
 from locust.env import Environment
 from locust.runners import LocalRunner, MasterRunner, WorkerRunner
 
 from grizzly.listeners import _init_testdata_producer, init, init_statistics_listener, locust_test_start, locust_test_stop, quitting, spawning_complete, validate_result
 from grizzly.context import GrizzlyContext, GrizzlyContextScenarioResponseTimePercentile
 
-from ..fixtures import locust_environment  # pylint: disable=unused-import
+from ..fixtures import LocustFixture
 
 
 class Running(Exception):
@@ -38,7 +37,7 @@ def mocked_noop(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
 
 
 @pytest.fixture
-def listener_test(mocker: MockerFixture, locust_environment: Environment) -> Generator[Environment, None, None]:
+def listener_test(mocker: MockerFixture, locust_fixture: LocustFixture) -> Generator[Environment, None, None]:
     mocker.patch(
         'grizzly.testdata.communication.TestdataProducer.run',
         mocked_TestdataProducer_run,
@@ -64,7 +63,7 @@ def listener_test(mocker: MockerFixture, locust_environment: Environment) -> Gen
         mocked_noop,
     )
 
-    yield locust_environment
+    yield locust_fixture.env
 
 
 def test__init_testdata_producer(listener_test: Environment) -> None:
@@ -103,11 +102,10 @@ def test_init_master(listener_test: Environment, caplog: LogCaptureFixture) -> N
             init_function = init(None)
             assert callable(init_function)
             init_function(runner)
-        assert 'There is no test data' in caplog.text
+        assert 'there is no test data' in caplog.text
     finally:
         if runner is not None:
             runner.greenlet.kill(block=False)
-
 
 
 def test_init_worker(listener_test: Environment) -> None:
@@ -158,8 +156,7 @@ def test_init_local(listener_test: Environment) -> None:
             pass
 
 
-@pytest.mark.usefixtures('locust_environment')
-def test_init_statistics_listener(mocker: MockerFixture, locust_environment: Environment) -> None:
+def test_init_statistics_listener(mocker: MockerFixture, locust_fixture: LocustFixture) -> None:
     # Influx -- short circuit
     mocker.patch(
         'grizzly.listeners.influxdb.InfluxDb.connect',
@@ -180,39 +177,41 @@ def test_init_statistics_listener(mocker: MockerFixture, locust_environment: Env
     try:
         grizzly = GrizzlyContext()
 
-        locust_environment.events.request_success._handlers = []
-        locust_environment.events.request_failure._handlers = []
-        locust_environment.events.quitting._handlers = []
-        locust_environment.events.spawning_complete._handlers = []
+        environment = locust_fixture.env
+
+        environment.events.request_success._handlers = []
+        environment.events.request_failure._handlers = []
+        environment.events.quitting._handlers = []
+        environment.events.spawning_complete._handlers = []
 
         # not a valid scheme
         grizzly.setup.statistics_url = 'http://localhost'
-        init_statistics_listener(grizzly.setup.statistics_url)(locust_environment)
-        assert len(locust_environment.events.request_success._handlers) == 0
-        assert len(locust_environment.events.request_failure._handlers) == 0
-        assert len(locust_environment.events.request._handlers) == 1
-        assert len(locust_environment.events.quitting._handlers) == 0
-        assert len(locust_environment.events.spawning_complete._handlers) == 0
+        init_statistics_listener(grizzly.setup.statistics_url)(environment)
+        assert len(environment.events.request_success._handlers) == 0
+        assert len(environment.events.request_failure._handlers) == 0
+        assert len(environment.events.request._handlers) == 1
+        assert len(environment.events.quitting._handlers) == 0
+        assert len(environment.events.spawning_complete._handlers) == 0
 
         grizzly.setup.statistics_url = 'influxdb://test/database?Testplan=test'
-        init_statistics_listener(grizzly.setup.statistics_url)(locust_environment)
-        assert len(locust_environment.events.request_success._handlers) == 0
-        assert len(locust_environment.events.request_failure._handlers) == 0
-        assert len(locust_environment.events.request._handlers) == 2
-        assert len(locust_environment.events.quitting._handlers) == 0
-        assert len(locust_environment.events.spawning_complete._handlers) == 0
+        init_statistics_listener(grizzly.setup.statistics_url)(environment)
+        assert len(environment.events.request_success._handlers) == 0
+        assert len(environment.events.request_failure._handlers) == 0
+        assert len(environment.events.request._handlers) == 2
+        assert len(environment.events.quitting._handlers) == 0
+        assert len(environment.events.spawning_complete._handlers) == 0
 
         grizzly.setup.statistics_url = 'insights://?InstrumentationKey=b9601868-cbf8-43ea-afaf-0a2b820ae1c5'
         with pytest.raises(AssertionError):
-            init_statistics_listener(grizzly.setup.statistics_url)(locust_environment)
+            init_statistics_listener(grizzly.setup.statistics_url)(environment)
 
         grizzly.setup.statistics_url = 'insights://insights.example.se/?InstrumentationKey=b9601868-cbf8-43ea-afaf-0a2b820ae1c5'
-        init_statistics_listener(grizzly.setup.statistics_url)(locust_environment)
-        assert len(locust_environment.events.request_success._handlers) == 0
-        assert len(locust_environment.events.request_failure._handlers) == 0
-        assert len(locust_environment.events.request._handlers) == 3
-        assert len(locust_environment.events.quitting._handlers) == 0
-        assert len(locust_environment.events.spawning_complete._handlers) == 0
+        init_statistics_listener(grizzly.setup.statistics_url)(environment)
+        assert len(environment.events.request_success._handlers) == 0
+        assert len(environment.events.request_failure._handlers) == 0
+        assert len(environment.events.request._handlers) == 3
+        assert len(environment.events.quitting._handlers) == 0
+        assert len(environment.events.spawning_complete._handlers) == 0
     finally:
         GrizzlyContext.destroy()
 
@@ -281,7 +280,6 @@ def test_quitting(mocker: MockerFixture, listener_test: Environment) -> None:
 
         init_function = init({})
         assert callable(init_function)
-
 
         init_function(runner)
 

@@ -70,3 +70,8 @@ jobs:
       id: mypy
       run: |
         mypy grizzly/ grizzly_extras/ tests/ example/
+
+    - name: run flake8
+      id: flake8
+      run: |
+        flake8

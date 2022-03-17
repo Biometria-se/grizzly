@@ -17,10 +17,9 @@ from locust import between
 from .context import GrizzlyContextScenario
 from .types import WrappedFunc, T
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from .scenarios import GrizzlyScenario
     from .users.base import GrizzlyUser
-
 
 
 logger = logging.getLogger(__name__)

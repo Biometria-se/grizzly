@@ -19,6 +19,7 @@ __all__: List[str] = []
 AsyncMessageMetadata = Optional[Dict[str, Any]]
 AsyncMessagePayload = Optional[Any]
 
+
 class ThreadLogger:
     _logger: logging.Logger
     _lock: Lock = Lock()
@@ -68,6 +69,7 @@ class ThreadLogger:
 
     def warning(self, message: str) -> None:
         self._log(logging.WARNING, message)
+
 
 class AsyncMessageContext(TypedDict, total=False):
     url: str
@@ -163,6 +165,7 @@ InferredAsyncMessageRequestHandler = Callable[[Any, AsyncMessageRequest], AsyncM
 
 LRU_READY = '\x01'
 SPLITTER_FRAME = ''.encode()
+
 
 def register(handlers: Dict[str, AsyncMessageRequestHandler], action: str, *actions: str) -> Callable[[InferredAsyncMessageRequestHandler], InferredAsyncMessageRequestHandler]:
     def decorator(func: InferredAsyncMessageRequestHandler) -> InferredAsyncMessageRequestHandler:

@@ -36,5 +36,3 @@ def step_setup_variable_value_ask(context: Context, name: str) -> None:
         grizzly.state.variables[name] = value
     except ValueError as e:
         assert 0, str(e)
-
-

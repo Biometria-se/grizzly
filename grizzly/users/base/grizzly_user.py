@@ -14,6 +14,7 @@ from ...tasks import RequestTask
 from ...utils import merge_dicts
 from . import logger, FileRequests
 
+
 class GrizzlyUser(User):
     _context_root: str
     _context: Dict[str, Any] = {
@@ -27,7 +28,6 @@ class GrizzlyUser(User):
         'RECEIVE': 'RECV',
         'HELLO': 'HELO',
     }
-
 
     weight: int = 1
 

@@ -1,28 +1,26 @@
-from typing import Callable, cast
+from typing import cast
 from json import dumps as jsondumps
 
 import pytest
-
-from pytest_mock import mocker, MockerFixture  # pylint: disable=unused-import
-from behave.runner import Context
 
 from grizzly_extras.transformer import transformer, TransformerContentType
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import TransformerTask
 from grizzly.exceptions import TransformerLocustError
 
-from ..fixtures import grizzly_context, request_task, behave_context, locust_environment  # pylint: disable=unused-import
+from ..fixtures import GrizzlyFixture
+
 
 class TestTransformerTask:
-    @pytest.mark.usefixtures('behave_context', 'grizzly_context')
-    def test(self, behave_context: Context, grizzly_context: Callable) -> None:
+    def test(self, grizzly_fixture: GrizzlyFixture) -> None:
+        behave = grizzly_fixture.behave
         with pytest.raises(ValueError) as ve:
             TransformerTask(
                 variable='test_variable', expression='$.', content_type=TransformerContentType.JSON, content='',
             )
         assert 'test_variable has not been initialized' in str(ve)
 
-        grizzly = cast(GrizzlyContext, behave_context.grizzly)
+        grizzly = cast(GrizzlyContext, behave.grizzly)
         grizzly.state.variables.update({'test_variable': 'none'})
 
         json_transformer = transformer.available[TransformerContentType.JSON]
@@ -50,10 +48,12 @@ class TestTransformerTask:
 
         assert callable(implementation)
 
-        _, _, tasks, _ = grizzly_context()
+        _, _, scenario = grizzly_fixture()
+
+        assert scenario is not None
 
         with pytest.raises(TransformerLocustError) as tle:
-            implementation(tasks)
+            implementation(scenario)
         assert 'failed to transform JSON' in str(tle)
 
         task = TransformerTask(
@@ -71,11 +71,11 @@ class TestTransformerTask:
 
         assert callable(implementation)
 
-        assert tasks.user._context['variables'].get('test_variable', None) is None
+        assert scenario.user._context['variables'].get('test_variable', None) is None
 
-        implementation(tasks)
+        implementation(scenario)
 
-        assert tasks.user._context['variables'].get('test_variable', None) == 'hello world!'
+        assert scenario.user._context['variables'].get('test_variable', None) == 'hello world!'
 
         grizzly.state.variables.update({'payload_url': 'none'})
         content = jsondumps({
@@ -102,12 +102,12 @@ class TestTransformerTask:
 
         assert callable(implementation)
 
-        implementation(tasks)
+        implementation(scenario)
 
-        assert tasks.user._context['variables'].get('payload_url', None) == 'https://mystorageaccount.blob.core.windows.net/mycontainer/myfile'
+        assert scenario.user._context['variables'].get('payload_url', None) == 'https://mystorageaccount.blob.core.windows.net/mycontainer/myfile'
 
-        tasks.user._context['variables']['payload_url'] = None
-        tasks.user._context['variables']['payload'] = content
+        scenario.user._context['variables']['payload_url'] = None
+        scenario.user._context['variables']['payload'] = content
 
         task = TransformerTask(
             variable='payload_url',
@@ -120,9 +120,9 @@ class TestTransformerTask:
 
         assert callable(implementation)
 
-        implementation(tasks)
+        implementation(scenario)
 
-        assert tasks.user._context['variables'].get('payload_url', None) == 'https://mystorageaccount.blob.core.windows.net/mycontainer/myfile'
+        assert scenario.user._context['variables'].get('payload_url', None) == 'https://mystorageaccount.blob.core.windows.net/mycontainer/myfile'
 
         task = TransformerTask(
             variable='test_variable',
@@ -136,7 +136,7 @@ class TestTransformerTask:
         )
         implementation = task.implementation()
         with pytest.raises(RuntimeError) as re:
-            implementation(tasks)
+            implementation(scenario)
         assert 'TransformerTask: "$.result.name" returned 0 matches' in str(re)
 
         task = TransformerTask(
@@ -153,6 +153,31 @@ class TestTransformerTask:
         )
         implementation = task.implementation()
         with pytest.raises(RuntimeError) as re:
-            implementation(tasks)
+            implementation(scenario)
         assert 'TransformerTask: "$.result[?value="hello world!"]" returned 3 matches' in str(re)
 
+        task = TransformerTask(
+            variable='test_variable',
+            expression='//actor[@id="9"]',
+            content_type=TransformerContentType.XML,
+            content='''<root xmlns:foo="http://www.foo.org/" xmlns:bar="http://www.bar.org">
+  <actors>
+    <actor id="7">Christian Bale</actor>
+    <actor id="8">Liam Neeson</actor>
+    <actor id="9">Michael Caine</actor>
+  </actors>
+  <foo:singers>
+    <foo:singer id="10">Tom Waits</foo:singer>
+    <foo:singer id="11">B.B. King</foo:singer>
+    <foo:singer id="12">Ray Charles</foo:singer>
+  </foo:singers>
+</root>''',
+        )
+
+        implementation = task.implementation()
+
+        assert callable(implementation)
+
+        implementation(scenario)
+
+        assert scenario.user._context['variables']['test_variable'] == '<actor id="9">Michael Caine</actor>'

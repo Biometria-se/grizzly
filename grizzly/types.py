@@ -10,10 +10,11 @@ from gevent.lock import Semaphore
 
 from grizzly_extras.transformer import TransformerContentType
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from .users.base import GrizzlyUser
     from .scenarios import GrizzlyScenario
     from .context import GrizzlyContextScenario
+
 
 class ResponseTarget(Enum):
     METADATA = 0
@@ -123,7 +124,6 @@ class AtomicVariable(Generic[T], AbstractAtomicClass):
             cls.__instance._initialized = False
 
         return cls.__instance
-
 
     @classmethod
     def get(cls) -> 'AtomicVariable[T]':

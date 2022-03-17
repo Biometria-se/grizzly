@@ -128,6 +128,7 @@ try:
 except:
     from grizzly_extras import dummy_pymqi as pymqi
 
+
 class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
     _context: Dict[str, Any] = {
         'auth': {
@@ -146,8 +147,8 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
 
     am_context: AsyncMessageContext
     worker_id: Optional[str]
-    zmq_context = zmq.Context()  # type: ignore
-    zmq_client: zmq.Socket  # type: ignore
+    zmq_context = zmq.Context()
+    zmq_client: zmq.Socket
     zmq_url = 'tcp://127.0.0.1:5554'
 
     def __init__(self, environment: Environment, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
@@ -212,7 +213,6 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
         for uamqp_logger_name in ['uamqp', 'uamqp.c_uamqp']:
             logging.getLogger(uamqp_logger_name).setLevel(logging.ERROR)
 
-
     def request(self, request: RequestTask) -> GrizzlyResponse:
         request_name, endpoint, payload = self.render(request)
 
@@ -264,7 +264,6 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
                         exception = AsyncMessageError(response['message'])
                 else:
                     response = {}
-
 
                 action['metadata'] = response.get('metadata', None)
                 action['payload'] = response.get('payload', None)

@@ -1,16 +1,14 @@
-from typing import Any, Tuple, Dict, Callable
+from typing import Any, Tuple, Dict
 
-import pytest
-
-from pytest_mock import mocker, MockerFixture  # pylint: disable=unused-import
+from pytest_mock import MockerFixture
 
 from grizzly.tasks import WaitTask
 
-from ..fixtures import grizzly_context, request_task, behave_context, locust_environment  # pylint: disable=unused-import
+from ..fixtures import GrizzlyFixture
+
 
 class TestWaitTask:
-    @pytest.mark.usefixtures('grizzly_context')
-    def test(self, mocker: MockerFixture, grizzly_context: Callable) -> None:
+    def test(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
         task = WaitTask(time=1.0)
 
         assert task.time == 1.0
@@ -18,7 +16,9 @@ class TestWaitTask:
 
         assert callable(implementation)
 
-        _, _, tasks, _ = grizzly_context()
+        _, _, scenario = grizzly_fixture()
+
+        assert scenario is not None
 
         def noop(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Any:
             pass
@@ -27,7 +27,7 @@ class TestWaitTask:
         mocker.patch.object(grizzly.tasks.wait, 'gsleep', noop)
         gsleep_spy = mocker.spy(grizzly.tasks.wait, 'gsleep')
 
-        implementation(tasks)
+        implementation(scenario)
 
         assert gsleep_spy.call_count == 1
         args, _ = gsleep_spy.call_args_list[0]

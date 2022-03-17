@@ -75,9 +75,9 @@ If no matching messages was found when peeking, it is repeated again up until th
 be specified for the endpint, e.g. `application/xml`.
 
 ```gherking
-And value of variable "AtomicServiceBus.document_id" is "queue:documents-in | wait=120, url=$conf::sb.endpoint, repeat=True, content_type=json, expression='$.document[?(@.name=='TPM Report')'"
+And value of variable "AtomicServiceBus.tpm_document" is "queue:documents-in | wait=120, url=$conf::sb.endpoint, repeat=True, content_type=json, expression='$.document[?(@.name=='TPM Report')'"
 ```
-'''
+'''  # noqa: E501
 import logging
 
 from typing import Dict, Any, List, Type, Optional, cast
@@ -158,6 +158,7 @@ def atomicservicebus_url(url: str) -> str:
 
     return resolved_url
 
+
 def atomicservicebus_endpoint(endpoint: str) -> str:
     if ':' not in endpoint:
         raise ValueError(f'AtomicServiceBus: {endpoint} does not specify queue: or topic:')
@@ -168,7 +169,7 @@ def atomicservicebus_endpoint(endpoint: str) -> str:
         raise ValueError(f'AtomicServiceBus: {str(e)}') from e
 
     if 'topic' not in arguments and 'queue' not in arguments:
-        raise ValueError(f'AtomicServiceBus: endpoint needs to be prefixed with queue: or topic:')
+        raise ValueError('AtomicServiceBus: endpoint needs to be prefixed with queue: or topic:')
 
     if 'topic' in arguments and 'queue' in arguments:
         raise ValueError('AtomicServiceBus: cannot specify both topic: and queue: in endpoint')
@@ -177,7 +178,7 @@ def atomicservicebus_endpoint(endpoint: str) -> str:
 
     if len(arguments) > 1:
         if endpoint_type != 'topic' and 'subscription' in arguments:
-            raise ValueError(f'AtomicServiceBus: argument subscription is only allowed if endpoint is a topic')
+            raise ValueError('AtomicServiceBus: argument subscription is only allowed if endpoint is a topic')
 
         unsupported_arguments = get_unsupported_arguments(['topic', 'queue', 'subscription', 'expression'], arguments)
 
@@ -187,7 +188,7 @@ def atomicservicebus_endpoint(endpoint: str) -> str:
     expression = arguments.get('expression', None)
     subscription = arguments.get('subscription', None)
     if endpoint_type == 'topic' and subscription is None:
-        raise ValueError(f'AtomicServiceBus: endpoint needs to include subscription when receiving messages from a topic')
+        raise ValueError('AtomicServiceBus: endpoint needs to include subscription when receiving messages from a topic')
 
     grizzly = GrizzlyContext()
 
@@ -225,11 +226,11 @@ class AtomicServiceBus(AtomicVariable[str]):
     __initialized: bool = False
 
     _settings: Dict[str, Dict[str, Any]]
-    _endpoint_clients: Dict[str, zmq.Socket]  # type: ignore
+    _endpoint_clients: Dict[str, zmq.Socket]
     _endpoint_messages: Dict[str, List[str]]
 
     _zmq_url = 'tcp://127.0.0.1:5554'
-    _zmq_context: zmq.Context  # type: ignore
+    _zmq_context: zmq.Context
 
     arguments: Dict[str, Any] = {
         'repeat': bool_typed,
@@ -257,7 +258,7 @@ class AtomicServiceBus(AtomicVariable[str]):
             if argument in arguments:
                 settings[argument] = caster(arguments[argument])
 
-        if 'expression' in endpoint_parameters and not 'content_type' in arguments:
+        if 'expression' in endpoint_parameters and 'content_type' not in arguments:
             raise ValueError(f'{self.__class__.__name__}.{variable}: argument "content_type" is mandatory when "expression" is used in endpoint')
 
         settings['endpoint_name'] = self.arguments['endpoint_name'](endpoint_name)
@@ -279,7 +280,7 @@ class AtomicServiceBus(AtomicVariable[str]):
 
             self._endpoint_messages = {variable: []}
             self._settings = {variable: settings}
-            self._zmq_context = zmq.Context()  # type: ignore
+            self._zmq_context = zmq.Context()
             self._endpoint_clients = {variable: self.create_client(variable, settings)}
             self.__initialized = True
 
@@ -303,11 +304,11 @@ class AtomicServiceBus(AtomicVariable[str]):
 
         return context
 
-    def create_client(self, variable: str, settings: Dict[str, Any]) -> zmq.Socket:  # type: ignore
+    def create_client(self, variable: str, settings: Dict[str, Any]) -> zmq.Socket:
         self._settings[variable].update({'context': self.create_context(settings)})
 
         zmq_client = cast(
-            zmq.Socket,  # type: ignore
+            zmq.Socket,
             self._zmq_context.socket(ZMQ_REQ),
         )
         zmq_client.connect(self._zmq_url)
@@ -318,7 +319,7 @@ class AtomicServiceBus(AtomicVariable[str]):
 
     def say_hello(
         self,
-        client: zmq.Socket,  # type: ignore
+        client: zmq.Socket,
         variable: str,
     ) -> None:
         settings = self._settings[variable]
@@ -381,7 +382,6 @@ class AtomicServiceBus(AtomicVariable[str]):
                 instance._zmq_context.destroy()
             except:
                 pass
-
 
         super().destroy()
 

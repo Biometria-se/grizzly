@@ -1,18 +1,18 @@
-from typing import Dict, Any, Callable, Optional, cast
+from typing import Dict, Any, Optional, cast
 
 import pytest
 from zmq.sugar.constants import REQ as ZMQ_REQ
 from zmq.error import ZMQError, Again as ZMQAgain
 import zmq.green as zmq
 
-from pytest_mock import mocker, MockerFixture  # pylint: disable=unused-import
+from pytest_mock import MockerFixture
 
 from grizzly.testdata.variables.servicebus import AtomicServiceBus, atomicservicebus_url, atomicservicebus_endpoint, atomicservicebus__base_type__
 from grizzly.context import GrizzlyContext
 from grizzly_extras.async_message import AsyncMessageResponse
 from grizzly_extras.transformer import TransformerContentType
 
-from ...fixtures import noop_zmq  # pylint: disable=unused-import
+from ...fixtures import NoopZmqFixture
 
 
 def test_atomicservicebus__base_type() -> None:
@@ -178,7 +178,6 @@ def test_atomicservicebus_endpoint() -> None:
         atomicservicebus_endpoint(endpoint)
     assert 'AtomicServiceBus: environment variable "QUEUE_NAME" is not set' in str(ve)
 
-
     endpoint = 'topic:document-in, subscription:application-x'
     assert atomicservicebus_endpoint(endpoint) == endpoint
 
@@ -211,7 +210,6 @@ class TestAtomicServiceBus:
             assert v._endpoint_clients.get('test1', None) is not None
             assert v._zmq_context.__class__.__name__ == '_Context'
             assert v._zmq_context.__class__.__module__ == 'zmq.green.core'
-            #assert isinstance(v._zmq_context, zmq.core._Context)
 
             t = AtomicServiceBus(
                 'test2',
@@ -290,8 +288,7 @@ class TestAtomicServiceBus:
             except:
                 pass
 
-    @pytest.mark.usefixtures('noop_zmq')
-    def test_create_client(self, mocker: MockerFixture, noop_zmq: Callable[[str], None]) -> None:
+    def test_create_client(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.testdata.variables.servicebus')
 
         try:
@@ -372,17 +369,16 @@ class TestAtomicServiceBus:
             except:
                 pass
 
-    @pytest.mark.usefixtures('noop_zmq')
-    def test_say_hello(self, mocker: MockerFixture, noop_zmq: Callable[[str], None]) -> None:
+    def test_say_hello(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.testdata.variables.servicebus')
 
         def mock_response(
-            client: zmq.Socket,  # type: ignore
+            client: zmq.Socket,
             response: Optional[AsyncMessageResponse],
         ) -> None:
             mocker.patch.object(client, 'recv_json', side_effect=[ZMQAgain, response])
 
-        context: Optional[zmq.Context] = None  # type: ignore
+        context: Optional[zmq.Context] = None
 
         try:
             # <!-- lazy way to initialize an empty AtomicServiceBus...
@@ -401,7 +397,7 @@ class TestAtomicServiceBus:
             AtomicServiceBus.clear()
             # -->
 
-            context = zmq.Context()  # type: ignore
+            context = zmq.Context()
             client = context.socket(ZMQ_REQ)
 
             v._settings['test2'] = {
@@ -471,8 +467,7 @@ class TestAtomicServiceBus:
             if context is not None:
                 context.destroy()
 
-    @pytest.mark.usefixtures('noop_zmq')
-    def test_clear(self, mocker: MockerFixture, noop_zmq: Callable[[str], None]) -> None:
+    def test_clear(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.testdata.variables.servicebus')
 
         try:
@@ -515,8 +510,7 @@ class TestAtomicServiceBus:
             except:
                 pass
 
-    @pytest.mark.usefixtures('noop_zmq')
-    def test___getitem__(self, mocker: MockerFixture, noop_zmq: Callable[[str], None]) -> None:
+    def test___getitem__(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.testdata.variables.servicebus')
 
         def mock_response(response: Optional[AsyncMessageResponse], repeat: int = 1) -> None:
@@ -628,8 +622,7 @@ class TestAtomicServiceBus:
             except:
                 pass
 
-    @pytest.mark.usefixtures('noop_zmq')
-    def test___setitem__(self, mocker: MockerFixture, noop_zmq: Callable[[str], None]) -> None:
+    def test___setitem__(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.testdata.variables.servicebus')
 
         def mocked___getitem__(i: AtomicServiceBus, variable: str) -> Optional[str]:
@@ -662,8 +655,7 @@ class TestAtomicServiceBus:
             except:
                 pass
 
-    @pytest.mark.usefixtures('noop_zmq')
-    def test___delitem__(self, mocker: MockerFixture, noop_zmq: Callable[[str], None]) -> None:
+    def test___delitem__(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.testdata.variables.servicebus')
 
         def mocked___getitem__(i: AtomicServiceBus, variable: str) -> Optional[str]:

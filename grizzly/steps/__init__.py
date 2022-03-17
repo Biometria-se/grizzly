@@ -18,6 +18,7 @@ Feature: description of the test
 In this package there are modules with step implementations that can be used in both `Background` and `Scenario` sections in a feature file.
 '''
 
+# flake8: noqa: F401,F403
 from .utils import *
 from .setup import *
 from .background import *

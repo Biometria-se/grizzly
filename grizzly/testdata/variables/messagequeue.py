@@ -66,7 +66,7 @@ When the scenario starts `grizzly` will wait up to 120 seconds until `AtomicMess
 
 If there are no messages within 120 seconds, and it is the first iteration of the scenario, it will fail. If there has been at least one message on the queue since
 the scenario started, it will use the oldest of those values, and then add it back in the end of the list again.
-'''
+'''  # noqa: E501
 import logging
 
 from typing import Dict, Any, Type, Optional, List, cast
@@ -108,7 +108,7 @@ def atomicmessagequeue__base_type__(value: str) -> str:
         raise ValueError(f'AtomicMessageQueue: {str(e)}') from e
 
     if 'queue' not in endpoint:
-        raise ValueError(f'AtomicMessageQueue: queue name must be prefixed with queue:')
+        raise ValueError('AtomicMessageQueue: queue name must be prefixed with queue:')
 
     for argument in ['url']:
         if argument not in arguments:
@@ -140,11 +140,11 @@ class AtomicMessageQueue(AtomicVariable[str]):
     __initialized: bool = False
 
     _settings: Dict[str, Dict[str, Any]]
-    _endpoint_clients: Dict[str, zmq.Socket]  # type: ignore
+    _endpoint_clients: Dict[str, zmq.Socket]
     _endpoint_messages: Dict[str, List[str]]
 
     _zmq_url = 'tcp://127.0.0.1:5554'
-    _zmq_context: zmq.Context  # type: ignore
+    _zmq_context: zmq.Context
 
     arguments: Dict[str, Any] = {
         'content_type': TransformerContentType.from_string,
@@ -191,7 +191,7 @@ class AtomicMessageQueue(AtomicVariable[str]):
 
             self._endpoint_messages = {variable: []}
             self._settings = {variable: settings}
-            self._zmq_context = zmq.Context()  # type: ignore
+            self._zmq_context = zmq.Context()
             self._endpoint_clients = {variable: self.create_client(variable, settings)}
             self.__initialized = True
 
@@ -279,11 +279,11 @@ class AtomicMessageQueue(AtomicVariable[str]):
             'heartbeat_interval': settings.get('heartbeat_interval', None),
         }
 
-    def create_client(self, variable: str, settings: Dict[str, Any]) -> zmq.Socket:  # type: ignore
+    def create_client(self, variable: str, settings: Dict[str, Any]) -> zmq.Socket:
         self._settings[variable].update({'context': self.create_context(settings)})
 
         zmq_client = cast(
-            zmq.Socket,  # type: ignore
+            zmq.Socket,
             self._zmq_context.socket(ZMQ_REQ),
         )
         zmq_client.connect(self._zmq_url)
@@ -365,7 +365,6 @@ class AtomicMessageQueue(AtomicVariable[str]):
             }
             if 'content_type' in self._settings[variable]:
                 request['context']['content_type'] = self._settings[variable]['content_type'].name.lower()
-
 
             self._endpoint_clients[variable].send_json(request)
 

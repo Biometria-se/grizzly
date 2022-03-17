@@ -4,9 +4,7 @@ from time import monotonic as time_monotonic
 
 import pytest
 
-from pytest_mock import mocker  # pylint: disable=unused-import
-from pytest_mock.plugin import MockerFixture
-
+from pytest_mock import MockerFixture
 from behave.runner import Context, Runner
 from behave.configuration import Configuration
 from behave.model import Feature, Step
@@ -17,7 +15,7 @@ from grizzly.steps.setup import step_setup_variable_value_ask as step_both
 from grizzly.steps.background.setup import step_setup_save_statistics as step_background
 from grizzly.steps.scenario.setup import step_setup_iterations as step_scenario
 
-from .fixtures import behave_context, locust_environment  # pylint: disable=unused-import
+from .fixtures import BehaveFixture
 
 
 def test_before_feature() -> None:
@@ -38,7 +36,7 @@ def test_before_feature() -> None:
             )
         )
 
-        assert not hasattr(context ,'grizzly')
+        assert not hasattr(context, 'grizzly')
         assert environ.get('GRIZZLY_CONTEXT_ROOT', None) is None
 
         before_feature(context)
@@ -62,10 +60,10 @@ def test_before_feature() -> None:
             pass
 
 
-@pytest.mark.usefixtures('behave_context')
-def test_after_feature(behave_context: Context, mocker: MockerFixture) -> None:
-    feature = Feature(None, None, '', '', scenarios=[behave_context.scenario])
-    behave_context.scenario.steps = [Step(None, None, '', '', '')]
+def test_after_feature(behave_fixture: BehaveFixture, mocker: MockerFixture) -> None:
+    behave = behave_fixture.context
+    feature = Feature(None, None, '', '', scenarios=[behave.scenario])
+    behave.scenario.steps = [Step(None, None, '', '', '')]
 
     class LocustRunning(Exception):
         pass
@@ -81,14 +79,13 @@ def test_after_feature(behave_context: Context, mocker: MockerFixture) -> None:
     # do not start locust if feature failed
     feature.set_status('failed')
 
-    after_feature(behave_context, feature)
+    after_feature(behave, feature)
 
     # start locust only if it's not a dry run and the feature passed
     feature.set_status('passed')
 
     with pytest.raises(LocustRunning):
-        after_feature(behave_context, feature)
-
+        after_feature(behave, feature)
 
     def locustrun_return_not_0(context: Context) -> int:
         return 1
@@ -100,20 +97,20 @@ def test_after_feature(behave_context: Context, mocker: MockerFixture) -> None:
 
     assert feature.status == 'passed'
 
-    after_feature(behave_context, feature)
+    after_feature(behave, feature)
 
     assert feature.status == 'failed'
 
     assert feature.duration == 0.0
-    behave_context.start = time_monotonic() - 1.0
+    behave.start = time_monotonic() - 1.0
 
-    after_feature(behave_context, feature)
+    after_feature(behave, feature)
 
     assert feature.duration > 0.0
 
 
-@pytest.mark.usefixtures('behave_context')
-def test_before_scenario(behave_context: Context, mocker: MockerFixture) -> None:
+def test_before_scenario(behave_fixture: BehaveFixture, mocker: MockerFixture) -> None:
+    behave = behave_fixture.context
 
     class MatchedStep:
         def __init__(self, name: str) -> None:
@@ -140,15 +137,14 @@ def test_before_scenario(behave_context: Context, mocker: MockerFixture) -> None
         find_match,
     )
 
-
     background_scenario_step = Step(filename=None, line=None, keyword='', step_type='step', name='')
     background_background_step = Step(filename=None, line=None, keyword='', step_type='step', name='background')
     scenario_background_step = Step(filename=None, line=None, keyword='', step_type='step', name='background')
     both_step = Step(filename=None, line=None, keyword='', step_type='step', name='both')
     local_step = Step(filename=None, line=None, keyword='', step_type='step', name='local')
 
-    behave_context.scenario.name = 'Test Scenario'
-    behave_context.scenario.background.steps = [
+    behave.scenario.name = 'Test Scenario'
+    behave.scenario.background.steps = [
         background_scenario_step,
         background_background_step,
         both_step,
@@ -156,73 +152,73 @@ def test_before_scenario(behave_context: Context, mocker: MockerFixture) -> None
         None,
     ]
 
-    behave_context.scenario.steps += [scenario_background_step, both_step, local_step, None]
+    behave.scenario.steps += [scenario_background_step, both_step, local_step, None]
 
-    assert len(behave_context.scenario.steps) == 5
-    assert len(behave_context.scenario.background.steps) == 5
+    assert len(behave.scenario.steps) == 5
+    assert len(behave.scenario.background.steps) == 5
 
-    grizzly = cast(GrizzlyContext, behave_context.grizzly)
+    grizzly = cast(GrizzlyContext, behave.grizzly)
 
     assert len(grizzly.scenarios()) == 0
 
-    before_scenario(behave_context, behave_context.scenario)
+    before_scenario(behave, behave.scenario)
 
     assert len(grizzly.scenarios()) == 1
     assert grizzly.scenarios()[0] is grizzly.scenario
     assert grizzly.scenario.name == 'Test Scenario'
-    assert getattr(behave_context.scenario.background.steps[0], 'location_status', None) == 'incorrect'
-    assert getattr(behave_context.scenario.background.steps[1], 'location_status', None) is None
-    assert getattr(behave_context.scenario.background.steps[2], 'location_status', None) is None
-    assert getattr(behave_context.scenario.background.steps[3], 'location_status', None) is None
-    assert getattr(behave_context.scenario.steps[0], 'location_status', None) is None
-    assert getattr(behave_context.scenario.steps[1], 'location_status', None) == 'incorrect'
-    assert getattr(behave_context.scenario.steps[2], 'location_status', None) is None
-    assert getattr(behave_context.scenario.steps[3], 'location_status', None) is None
+    assert getattr(behave.scenario.background.steps[0], 'location_status', None) == 'incorrect'
+    assert getattr(behave.scenario.background.steps[1], 'location_status', None) is None
+    assert getattr(behave.scenario.background.steps[2], 'location_status', None) is None
+    assert getattr(behave.scenario.background.steps[3], 'location_status', None) is None
+    assert getattr(behave.scenario.steps[0], 'location_status', None) is None
+    assert getattr(behave.scenario.steps[1], 'location_status', None) == 'incorrect'
+    assert getattr(behave.scenario.steps[2], 'location_status', None) is None
+    assert getattr(behave.scenario.steps[3], 'location_status', None) is None
 
     grizzly.state.background_section_done = True
     grizzly._scenarios = []
 
-    before_scenario(behave_context, behave_context.scenario)
+    before_scenario(behave, behave.scenario)
 
-    assert behave_context.scenario.background is None
+    assert behave.scenario.background is None
 
 
-@pytest.mark.usefixtures('behave_context')
-def test_after_scenario(behave_context: Context) -> None:
-    grizzly = cast(GrizzlyContext, behave_context.grizzly)
+def test_after_scenario(behave_fixture: BehaveFixture) -> None:
+    behave = behave_fixture.context
+    grizzly = cast(GrizzlyContext, behave.grizzly)
 
     assert not grizzly.state.background_section_done
 
-    after_scenario(behave_context)
+    after_scenario(behave)
 
     assert getattr(grizzly.state, 'background_section_done', False)
 
-    after_scenario(behave_context)
+    after_scenario(behave)
 
     assert grizzly.state.background_section_done
 
 
-@pytest.mark.usefixtures('behave_context')
-def test_before_step(behave_context: Context) -> None:
+def test_before_step(behave_fixture: BehaveFixture) -> None:
+    behave = behave_fixture.context
     step = Step(filename=None, line=None, keyword='', step_type='step', name='')
-    behave_context.step = None
+    behave.step = None
 
-    before_step(behave_context, step)
+    before_step(behave, step)
 
-    assert behave_context.step is step
+    assert behave.step is step
 
     setattr(step, 'location_status', 'incorrect')
 
     with pytest.raises(AssertionError):
-        before_step(behave_context, step)
+        before_step(behave, step)
 
     setattr(step, 'location_status', 'incorrect')
 
     with pytest.raises(AssertionError):
-        before_step(behave_context, step)
+        before_step(behave, step)
 
 
-@pytest.mark.usefixtures('behave_context')
-def test_after_step(behave_context: Context) -> None:
+def test_after_step(behave_fixture: BehaveFixture) -> None:
+    behave = behave_fixture.context
     step = Step(filename=None, line=None, keyword='', step_type='step', name='')
-    after_step(behave_context, step)
+    after_step(behave, step)

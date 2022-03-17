@@ -72,6 +72,6 @@ def step_shapes_spawn_rate(context: Context, value: str, **kwargs: Dict[str, Any
     assert spawn_rate > 0.0, f'{value} resolved to {spawn_rate} users, which is not valid'
 
     if grizzly.setup.user_count is not None:
-        assert int(spawn_rate) <= grizzly.setup.user_count, f'spawn rate can not be greater than user count'
+        assert int(spawn_rate) <= grizzly.setup.user_count, 'spawn rate can not be greater than user count'
 
     grizzly.setup.spawn_rate = spawn_rate

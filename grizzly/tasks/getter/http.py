@@ -28,5 +28,4 @@ class HttpGetTask(GetterOfTask):
                 parent.user._context['variables'][self.variable] = value
                 meta['response_length'] = len(value)
 
-
         return _implementation

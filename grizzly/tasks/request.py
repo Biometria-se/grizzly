@@ -24,8 +24,9 @@ from ..types import HandlerType, RequestMethod
 
 from ..types import GrizzlyTask
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from ..scenarios import GrizzlyScenario
+
 
 @dataclass(unsafe_hash=True)
 class RequestTaskHandlers:

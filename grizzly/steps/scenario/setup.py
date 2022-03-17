@@ -225,6 +225,7 @@ def step_setup_set_variable_alias(context: Context, alias: str, variable: str) -
 
     grizzly.state.alias[variable] = alias
 
+
 @given(u'log all requests')
 def step_setup_log_all_requests(context: Context) -> None:
     '''Set if all requests should be logged to a file.

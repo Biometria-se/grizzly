@@ -1,4 +1,4 @@
-from typing import Callable, List, Set
+from typing import List, Set
 
 import pytest
 import gevent
@@ -7,12 +7,11 @@ from gevent.greenlet import Greenlet
 
 from grizzly.testdata.variables import AtomicRandomString
 
-from ..fixtures import cleanup  # pylint: disable=unused-import
+from ...fixtures import AtomicVariableCleanupFixture
 
 
 class TestAtomicRandomString:
-    @pytest.mark.usefixtures('cleanup')
-    def test(self, cleanup: Callable) -> None:
+    def test(self, cleanup: AtomicVariableCleanupFixture) -> None:
         try:
             with pytest.raises(ValueError) as ve:
                 t = AtomicRandomString('test1', '')
@@ -24,9 +23,10 @@ class TestAtomicRandomString:
 
             t = AtomicRandomString('test1', '%s')
 
+            # count will be 1
             t = AtomicRandomString('testXX', '%s | count=-1')
             assert t['testXX'] is not None
-            assert t['testXX'] == None
+            assert t.__getitem__('testXX') is None
             del t['testXX']
 
             with pytest.raises(NotImplementedError) as nie:
@@ -40,7 +40,7 @@ class TestAtomicRandomString:
             v = t['test1']
             assert v is not None
             assert len(v) == 1
-            assert t['test1'] == None
+            assert t.__getitem__('test1') is None
 
             t = AtomicRandomString('test2', 'a%s%d | count=5')
 
@@ -54,7 +54,7 @@ class TestAtomicRandomString:
                 except:
                     pytest.fail()
 
-            assert t['test2'] == None
+            assert t.__getitem__('test2') is None
 
             t = AtomicRandomString('test3', 'a%s%d | count=8, upper=True')
 
@@ -68,7 +68,7 @@ class TestAtomicRandomString:
                 except:
                     pytest.fail()
 
-            assert t['test3'] == None
+            assert t.__getitem__('test3') is None
 
             t = AtomicRandomString('regnr', '%sA%s1%d%d | count=10, upper=True')
 
@@ -79,10 +79,10 @@ class TestAtomicRandomString:
                 assert rn[1] == 'A'
                 assert rn[3] == '1'
 
-            assert t['regnr'] == None
+            assert t.__getitem__('regnr') is None
 
             t['regnr'] = 'ABC123'
-            assert t['regnr'] == None
+            assert t['regnr'] is None
 
             assert len(t._strings) == 4
             assert 'regnr' in t._strings
@@ -101,8 +101,7 @@ class TestAtomicRandomString:
         finally:
             cleanup()
 
-    @pytest.mark.usefixtures('cleanup')
-    def test_multi_greenlet(self, cleanup: Callable) -> None:
+    def test_multi_greenlet(self, cleanup: AtomicVariableCleanupFixture) -> None:
         try:
             num_greenlets: int = 20
             num_iterations: int = 100

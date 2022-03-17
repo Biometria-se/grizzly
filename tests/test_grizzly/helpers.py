@@ -40,7 +40,7 @@ class TestUser(GrizzlyUser):
         raise RequestCalled(request)
 
 
-class TestTaskSet(GrizzlyScenario):
+class TestScenario(GrizzlyScenario):
     __test__ = False
 
     @task
@@ -49,12 +49,14 @@ class TestTaskSet(GrizzlyScenario):
             RequestTask(RequestMethod.POST, name='test', endpoint='payload.j2.json')
         )
 
+
 class ResultSuccess(Exception):
     pass
 
 
 class ResultFailure(Exception):
     pass
+
 
 def check_arguments(kwargs: Dict[str, Any]) -> Tuple[bool, List[str]]:
     expected = ['request_type', 'name', 'response_time', 'response_length', 'context', 'exception']
@@ -65,6 +67,7 @@ def check_arguments(kwargs: Dict[str, Any]) -> Tuple[bool, List[str]]:
     diff = list(set(expected) - set(actual))
 
     return actual == expected, diff
+
 
 class RequestEvent(EventHook):
     def __init__(self, custom: bool = True):
@@ -81,6 +84,7 @@ class RequestEvent(EventHook):
         else:
             raise ResultSuccess()
 
+
 class RequestSilentFailureEvent(RequestEvent):
     def fire(self, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
         if self.custom:
@@ -94,7 +98,8 @@ class RequestSilentFailureEvent(RequestEvent):
 
 def get_property_decorated_attributes(target: Any) -> Set[str]:
     return set(
-        [name
+        [
+            name
             for name, _ in inspect.getmembers(
                 target,
                 lambda p: isinstance(

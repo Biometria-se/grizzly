@@ -3,12 +3,13 @@ from json import dumps as jsondumps
 
 import pytest
 
-from pytest_mock import MockerFixture, mocker  # pylint: disable=unused-import
+from pytest_mock import MockerFixture
 
 from azure.servicebus import ServiceBusMessage, TransportType, ServiceBusClient, ServiceBusSender, ServiceBusReceiver
 from grizzly_extras.arguments import parse_arguments
 from grizzly_extras.async_message import AsyncMessageError, AsyncMessageRequest
 from grizzly_extras.async_message.sb import AsyncServiceBusHandler
+
 
 class TestAsyncServiceBusHandler:
     def test___init__(self, mocker: MockerFixture) -> None:
@@ -227,7 +228,6 @@ class TestAsyncServiceBusHandler:
         assert sender_instance_spy.call_count == 1
         assert sender_instance_spy.return_value.__enter__.call_count == 1
         assert receiver_instance_spy.call_count == 0
-
 
         request['context'].update({
             'connection': 'receiver',
@@ -470,7 +470,6 @@ class TestAsyncServiceBusHandler:
         assert actual_metadata == expected_metadata
         assert response.get('response_length', 0) == len(expected_payload)
 
-
         message_error = ServiceBusMessage('<?xml version="1.0" encoding="UTF-8"?><document/>')
 
         receiver_instance_mock.return_value.__iter__.side_effect = [
@@ -525,7 +524,6 @@ class TestAsyncServiceBusHandler:
         assert 'no messages on queue:test-queue, expression:"$.`this`[?(@.name="test")]"' in str(ame)
 
         assert receiver_instance_mock.return_value.abandon_message.call_count == 5
-
 
     def test_get_handler(self) -> None:
         handler = AsyncServiceBusHandler(worker='asdf-asdf-asdf')

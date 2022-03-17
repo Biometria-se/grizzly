@@ -1,7 +1,7 @@
 import json
 
 from os import path, mkdir
-from typing import Dict, Callable, List, Optional, Any, Tuple, cast
+from typing import Dict, List, Optional, Any, Tuple, cast
 from logging import Logger
 
 import pytest
@@ -11,21 +11,16 @@ import zmq.green as zmq
 import gevent
 
 from jinja2 import Template
-from behave.runner import Context
-from pytest_mock import mocker  # pylint: disable=unused-import
-from pytest_mock.plugin import MockerFixture
-from zmq.sugar.context import Context
+from pytest_mock import MockerFixture
 from zmq.sugar.socket import Socket
 from locust.exception import StopUser
-from locust.env import Environment
 
 from grizzly.testdata.communication import TestdataConsumer, TestdataProducer
 from grizzly.testdata.utils import initialize_testdata, transform
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import RequestTask
 
-from ..fixtures import grizzly_context, locust_environment, request_task, behave_context, noop_zmq  # pylint: disable=unused-import
-from .fixtures import cleanup  # pylint: disable=unused-import
+from ..fixtures import AtomicVariableCleanupFixture, LocustFixture, BehaveFixture, GrizzlyFixture, NoopZmqFixture
 
 try:
     import pymqi
@@ -34,12 +29,11 @@ except:
 
 
 class TestTestdataProducer:
-    @pytest.mark.usefixtures('grizzly_context', 'behave_context', 'cleanup')
     def test_run_with_behave(
         self,
-        behave_context: Context,
-        grizzly_context: Callable,
-        cleanup: Callable,
+        behave_fixture: BehaveFixture,
+        grizzly_fixture: GrizzlyFixture,
+        cleanup: AtomicVariableCleanupFixture,
         mocker: MockerFixture,
     ) -> None:
         def noop(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Any:
@@ -50,10 +44,12 @@ class TestTestdataProducer:
             noop,
         )
         producer: Optional[TestdataProducer] = None
-        context: Optional[zmq.Context] = None  # type: ignore
+        context: Optional[zmq.Context] = None
+        context_root = grizzly_fixture.request_task.context_root
+        request = grizzly_fixture.request_task.request
+
         try:
-            environment, _, task, [context_root, _, request] = grizzly_context()
-            request = cast(RequestTask, request)
+            environment, _, scenario = grizzly_fixture()
             address = 'tcp://127.0.0.1:5555'
 
             mkdir(path.join(context_root, 'adirectory'))
@@ -69,6 +65,8 @@ class TestTestdataProducer:
                 fd.write('value3,value4\n')
                 fd.flush()
 
+            assert request.source is not None
+
             source = json.loads(request.source)
             source['result']['File'] = '{{ AtomicDirectoryContents.test }}'
             source['result']['CsvRowValue1'] = '{{ AtomicCsvRow.test.header1 }}'
@@ -76,8 +74,8 @@ class TestTestdataProducer:
             source['result']['IntWithStep'] = '{{ AtomicIntegerIncrementer.value }}'
             source['result']['UtcDate'] = '{{ AtomicDate.utc }}'
 
-            grizzly = cast(GrizzlyContext, behave_context.grizzly)
-            grizzly.add_scenario(task.__class__.__name__)
+            grizzly = cast(GrizzlyContext, behave_fixture.context.grizzly)
+            grizzly.add_scenario(scenario.__class__.__name__)
             grizzly.state.variables['messageID'] = 123
             grizzly.state.variables['AtomicIntegerIncrementer.messageID'] = 456
             grizzly.state.variables['AtomicDirectoryContents.test'] = 'adirectory'
@@ -93,7 +91,7 @@ class TestTestdataProducer:
 
             if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
                 source['result']['DocumentID'] = '{{ AtomicMessageQueue.document_id }}'
-                grizzly.state.variables['AtomicMessageQueue.document_id'] =(
+                grizzly.state.variables['AtomicMessageQueue.document_id'] = (
                     'queue:TEST.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"'
                 )
 
@@ -113,7 +111,7 @@ class TestTestdataProducer:
             producer_thread = gevent.spawn(producer.run)
             producer_thread.start()
 
-            context = zmq.Context()  # type: ignore
+            context = zmq.Context()
             with context.socket(ZMQ_REQ) as socket:
                 socket.connect(address)
 
@@ -140,7 +138,7 @@ class TestTestdataProducer:
                 assert 'AtomicDate.utc' in variables
                 assert variables['AtomicIntegerIncrementer.messageID'] == 456
                 assert variables['messageID'] == 123
-                assert variables['AtomicDirectoryContents.test'] == f'adirectory/file1.txt'
+                assert variables['AtomicDirectoryContents.test'] == 'adirectory/file1.txt'
                 assert 'AtomicCsvRow.test.header1' not in variables
                 assert 'AtomicCsvRow.test.header2' not in variables
                 assert variables['AtomicIntegerIncrementer.value'] == 1
@@ -161,7 +159,7 @@ class TestTestdataProducer:
                 assert 'messageID' in variables
                 assert variables['AtomicIntegerIncrementer.messageID'] == 457
                 assert variables['messageID'] == 123
-                assert variables['AtomicDirectoryContents.test'] == f'adirectory/file2.txt'
+                assert variables['AtomicDirectoryContents.test'] == 'adirectory/file2.txt'
                 assert 'AtomicCsvRow.test.header1' not in variables
                 assert 'AtomicCsvRow.test.header2' not in variables
                 assert variables['AtomicIntegerIncrementer.value'] == 6
@@ -185,22 +183,24 @@ class TestTestdataProducer:
 
             cleanup()
 
-    @pytest.mark.usefixtures('grizzly_context', 'behave_context', 'cleanup')
     def test_run_variable_none(
         self,
-        behave_context: Context,
-        grizzly_context: Callable,
-        cleanup: Callable,
+        behave_fixture: BehaveFixture,
+        grizzly_fixture: GrizzlyFixture,
+        cleanup: AtomicVariableCleanupFixture,
     ) -> None:
         producer: Optional[TestdataProducer] = None
-        context: Optional[zmq.Context] = None  # type: ignore
+        context: Optional[zmq.Context] = None
 
         try:
-            environment, _, task, [context_root, _, request] = grizzly_context()
-            request = cast(RequestTask, request)
+            environment, _, scenario = grizzly_fixture()
+            context_root = grizzly_fixture.request_task.context_root
+            request = grizzly_fixture.request_task.request
             address = 'tcp://127.0.0.1:5555'
 
             mkdir(path.join(context_root, 'adirectory'))
+
+            assert request.source is not None
 
             source = json.loads(request.source)
             source['result']['File'] = '{{ AtomicDirectoryContents.file }}'
@@ -208,8 +208,8 @@ class TestTestdataProducer:
             request.source = json.dumps(source)
             request.template = Template(request.source)
 
-            grizzly = cast(GrizzlyContext, behave_context.grizzly)
-            grizzly.add_scenario(task.__class__.__name__)
+            grizzly = cast(GrizzlyContext, behave_fixture.context.grizzly)
+            grizzly.add_scenario(scenario.__class__.__name__)
             grizzly.state.variables['messageID'] = 123
             grizzly.state.variables['AtomicIntegerIncrementer.messageID'] = 456
             grizzly.state.variables['AtomicDirectoryContents.file'] = 'adirectory'
@@ -227,7 +227,7 @@ class TestTestdataProducer:
             producer_thread = gevent.spawn(producer.run)
             producer_thread.start()
 
-            context = zmq.Context()  # type: ignore
+            context = zmq.Context()
             with context.socket(ZMQ_REQ) as socket:
                 socket.connect(address)
 
@@ -257,8 +257,7 @@ class TestTestdataProducer:
 
             cleanup()
 
-    @pytest.mark.usefixtures('cleanup', 'locust_environment')
-    def test_reset(self, mocker: MockerFixture, cleanup: Callable, locust_environment: Environment) -> None:
+    def test_reset(self, mocker: MockerFixture, cleanup: AtomicVariableCleanupFixture, locust_fixture: LocustFixture) -> None:
         def socket_bind(instance: Socket, address: str) -> None:
             pass
 
@@ -268,7 +267,7 @@ class TestTestdataProducer:
         )
 
         try:
-            producer = TestdataProducer({}, environment=locust_environment)
+            producer = TestdataProducer({}, environment=locust_fixture.env)
             producer.scenarios_iteration = {
                 'test-scenario-1': 10,
                 'test-scenario-2': 5,
@@ -281,10 +280,9 @@ class TestTestdataProducer:
         finally:
             cleanup()
 
-    @pytest.mark.usefixtures('cleanup', 'locust_environment')
-    def test_stop_exception(self, mocker: MockerFixture, cleanup: Callable, locust_environment: Environment) -> None:
+    def test_stop_exception(self, mocker: MockerFixture, cleanup: AtomicVariableCleanupFixture, locust_fixture: LocustFixture) -> None:
         def mocked_destroy(
-            instance: zmq.Context,  # type: ignore
+            instance: zmq.Context,
             *args: Tuple[Any, ...],
             **kwargs: Dict[str, Any],
         ) -> None:
@@ -321,12 +319,11 @@ class TestTestdataProducer:
         )
 
         try:
-            TestdataProducer({}, environment=locust_environment).stop()
+            TestdataProducer({}, environment=locust_fixture.env).stop()
         finally:
             cleanup()
 
-    @pytest.mark.usefixtures('cleanup', 'locust_environment')
-    def test_run_type_error(self, mocker: MockerFixture, cleanup: Callable, locust_environment: Environment) -> None:
+    def test_run_type_error(self, mocker: MockerFixture, cleanup: AtomicVariableCleanupFixture, locust_fixture: LocustFixture) -> None:
         def socket_bind(instance: Socket, address: str) -> None:
             pass
 
@@ -340,7 +337,6 @@ class TestTestdataProducer:
                 'message': 'available',
                 'scenario': 'test',
             }
-
 
         mocker.patch(
             'grizzly.testdata.communication.zmq.Socket.recv_json',
@@ -356,7 +352,7 @@ class TestTestdataProducer:
             socket_send_json,
         )
 
-        def logger_error(l: Logger, msg: str, exc_info: bool) -> None:
+        def logger_error(logger: Logger, msg: str, exc_info: bool) -> None:
             assert exc_info
             assert msg == 'test data error, stop consumer'
 
@@ -375,12 +371,11 @@ class TestTestdataProducer:
 
         try:
             with pytest.raises(RuntimeError):
-                TestdataProducer({}, environment=locust_environment).run()
+                TestdataProducer({}, environment=locust_fixture.env).run()
         finally:
             cleanup()
 
-    @pytest.mark.usefixtures('cleanup', 'locust_environment')
-    def test_run_zmq_error(self, mocker: MockerFixture, cleanup: Callable, locust_environment: Environment) -> None:
+    def test_run_zmq_error(self, mocker: MockerFixture, cleanup: AtomicVariableCleanupFixture, locust_fixture: LocustFixture) -> None:
         def socket_bind(instance: Socket, address: str) -> None:
             pass
 
@@ -397,7 +392,7 @@ class TestTestdataProducer:
             socket_recv_json,
         )
 
-        def logger_error(l: Logger, msg: str, exc_info: bool) -> None:
+        def logger_error(logger: Logger, msg: str, exc_info: bool) -> None:
             assert exc_info
             assert msg == 'failed when waiting for consumers'
 
@@ -406,15 +401,14 @@ class TestTestdataProducer:
             logger_error,
         )
 
-
         try:
-            TestdataProducer({}, environment=locust_environment).run()
+            TestdataProducer({}, environment=locust_fixture.env).run()
         finally:
             cleanup()
 
 
 class TestTestdataConsumer:
-    def test_request(self, mocker: MockerFixture, behave_context: Context, noop_zmq: Callable[[str], None]) -> None:
+    def test_request(self, mocker: MockerFixture, behave_fixture: BehaveFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.testdata.variables.messagequeue')
 
         def mock_recv_json(data: Dict[str, Any], action: Optional[str] = 'consume') -> None:
@@ -520,7 +514,7 @@ class TestTestdataConsumer:
                     }
                 })
 
-                grizzly = cast(GrizzlyContext, behave_context.grizzly)
+                grizzly = cast(GrizzlyContext, behave_fixture.context.grizzly)
                 grizzly.state.variables['AtomicMessageQueue.document_id'] = (
                     'queue:TEST.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"'
                 )
@@ -543,7 +537,7 @@ class TestTestdataConsumer:
 
     def test_request_stop_exception(self, mocker: MockerFixture) -> None:
         def mocked_destroy(
-            instance: zmq.Context,  # type: ignore
+            instance: zmq.Context,
             *args: Tuple[Any, ...],
             **kwargs: Dict[str, Any],
         ) -> None:

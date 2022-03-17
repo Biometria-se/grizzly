@@ -1,16 +1,15 @@
 import logging
 
-from typing import Callable, cast
+from typing import cast
 
 import pytest
-from zmq.sugar.constants import REQ as ZMQ_REQ
-from zmq.error import Again as ZMQAgain
 
-from pytest_mock import mocker  # pylint: disable=unused-import
-from pytest_mock.plugin import MockerFixture
-from locust.env import Environment
+from pytest_mock import MockerFixture
+from _pytest.logging import LogCaptureFixture
 from locust.exception import StopUser
 from jinja2 import Template
+from zmq.sugar.constants import REQ as ZMQ_REQ
+from zmq.error import Again as ZMQAgain
 
 from grizzly.users.base import GrizzlyUser, RequestLogger, ResponseHandler
 from grizzly.users.servicebus import ServiceBusUser
@@ -20,12 +19,11 @@ from grizzly.context import GrizzlyContextScenario
 from grizzly_extras.async_message import AsyncMessageResponse, AsyncMessageError
 from grizzly_extras.transformer import TransformerContentType
 
-from ..fixtures import behave_context, request_task, locust_environment, noop_zmq  # pylint: disable=unused-import
+from ..fixtures import LocustFixture, NoopZmqFixture
 
 
 class TestServiceBusUser:
-    @pytest.mark.usefixtures('locust_environment', 'noop_zmq')
-    def test_create(self, locust_environment: Environment, mocker: MockerFixture, noop_zmq: Callable[[str], None]) -> None:
+    def test_create(self, locust_fixture: LocustFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.users.servicebus')
 
         try:
@@ -34,34 +32,34 @@ class TestServiceBusUser:
 
             ServiceBusUser.host = 'Endpoint=mq://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=secret='
             with pytest.raises(ValueError) as e:
-                user = ServiceBusUser(environment=locust_environment)
+                user = ServiceBusUser(environment=locust_fixture.env)
             assert 'ServiceBusUser: "mq" is not a supported scheme' in str(e)
 
             assert zmq_client_connect_spy.call_count == 0
 
             ServiceBusUser.host = 'Endpoint=sb://sb.example.org'
             with pytest.raises(ValueError) as e:
-                user = ServiceBusUser(environment=locust_environment)
+                user = ServiceBusUser(environment=locust_fixture.env)
             assert 'ServiceBusUser: SharedAccessKeyName and SharedAccessKey must be in the query string' in str(e)
 
             assert zmq_client_connect_spy.call_count == 0
 
             ServiceBusUser.host = 'Endpoint=sb://sb.example.org/;SharedAccessKey=secret='
             with pytest.raises(ValueError) as e:
-                user = ServiceBusUser(environment=locust_environment)
+                user = ServiceBusUser(environment=locust_fixture.env)
             assert 'ServiceBusUser: SharedAccessKeyName must be in the query string' in str(e)
 
             assert zmq_client_connect_spy.call_count == 0
 
             ServiceBusUser.host = 'Endpoint=sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey'
             with pytest.raises(ValueError) as e:
-                user = ServiceBusUser(environment=locust_environment)
+                user = ServiceBusUser(environment=locust_fixture.env)
             assert 'ServiceBusUser: SharedAccessKey must be in the query string' in str(e)
 
             assert zmq_client_connect_spy.call_count == 0
 
             ServiceBusUser.host = 'Endpoint=sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789='
-            user = ServiceBusUser(environment=locust_environment)
+            user = ServiceBusUser(environment=locust_fixture.env)
             assert issubclass(user.__class__, GrizzlyUser)
             assert issubclass(user.__class__, ResponseHandler)
             assert issubclass(user.__class__, RequestLogger)
@@ -83,12 +81,12 @@ class TestServiceBusUser:
 
             ServiceBusUser.host = 'Endpoint=sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789='
             ServiceBusUser._scenario = scenario
-            user = ServiceBusUser(environment=locust_environment)
+            user = ServiceBusUser(environment=locust_fixture.env)
             assert say_hello_spy.call_count == 3
 
             for index, (args, _) in enumerate(say_hello_spy.call_args_list):
-                assert args[0] is scenario.tasks[index+1]
-                assert args[1] == cast(RequestTask, scenario.tasks[index+1]).endpoint
+                assert args[0] is scenario.tasks[index + 1]
+                assert args[1] == cast(RequestTask, scenario.tasks[index + 1]).endpoint
 
         finally:
             setattr(ServiceBusUser, '_scenario', None)
@@ -98,13 +96,12 @@ class TestServiceBusUser:
                 }
             }
 
-    @pytest.mark.usefixtures('noop_zmq', 'locust_environment')
-    def test_say_hello(self, noop_zmq: Callable[[str], None], locust_environment: Environment, mocker: MockerFixture, caplog: pytest.LogCaptureFixture) -> None:
+    def test_say_hello(self, noop_zmq: NoopZmqFixture, locust_fixture: LocustFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
         noop_zmq('grizzly.users.servicebus')
 
         ServiceBusUser.host = 'Endpoint=sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789='
 
-        user = ServiceBusUser(environment=locust_environment)
+        user = ServiceBusUser(environment=locust_fixture.env)
         assert user.hellos == set()
 
         async_action_spy = mocker.patch('grizzly.users.servicebus.ServiceBusUser.async_action', autospec=True)
@@ -208,23 +205,22 @@ class TestServiceBusUser:
             user.say_hello(task, task.endpoint)
         assert 'argument expression is only allowed when receiving messages' in str(re)
 
-
-    @pytest.mark.usefixtures('locust_environment', 'noop_zmq')
-    def test_request(self, locust_environment: Environment, noop_zmq: Callable[[str], None], mocker: MockerFixture) -> None:
+    def test_request(self, locust_fixture: LocustFixture, noop_zmq: NoopZmqFixture, mocker: MockerFixture) -> None:
         noop_zmq('grizzly.users.servicebus')
 
         ServiceBusUser.host = 'sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789='
 
-        user = ServiceBusUser(environment=locust_environment)
+        user = ServiceBusUser(environment=locust_fixture.env)
         user.worker_id = 'asdf-asdf-asdf'
 
         send_json_spy = mocker.spy(user.zmq_client, 'send_json')
-        say_hello_spy = mocker.patch.object(user, 'say_hello', side_effect=[None]*10)
+        say_hello_spy = mocker.patch.object(user, 'say_hello', side_effect=[None] * 10)
         request_fire_spy = mocker.spy(user.environment.events.request, 'fire')
         response_event_fire_spy = mocker.spy(user.response_event, 'fire')
 
         def mock_recv_json(response: AsyncMessageResponse) -> None:
-            mocker.patch.object(user.zmq_client,
+            mocker.patch.object(
+                user.zmq_client,
                 'recv_json',
                 side_effect=[ZMQAgain(), response],
             )
@@ -345,7 +341,7 @@ class TestServiceBusUser:
 
         metadata, payload = kwargs.get('context', (None, None,))
         assert metadata == {'meta': True}
-        assert payload is 'hello'
+        assert payload == 'hello'
         assert kwargs.get('user', None) is user
         assert kwargs.get('exception', '') is None
 

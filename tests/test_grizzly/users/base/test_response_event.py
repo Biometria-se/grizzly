@@ -2,7 +2,6 @@ import pytest
 
 from typing import Optional, Union, Tuple, Dict, Any
 
-from locust.env import Environment
 from locust.exception import LocustError
 from locust.clients import ResponseContextManager
 from locust.user.users import User
@@ -13,39 +12,37 @@ from grizzly.users.base import ResponseEvent, HttpRequests
 from grizzly.types import RequestMethod
 from grizzly.tasks import RequestTask
 
-from ...fixtures import locust_environment  # pylint: disable=unused-import
+from ...fixtures import LocustFixture
 from ...helpers import TestUser
 
 
 class TestResponseEvent:
-    @pytest.mark.usefixtures('locust_environment')
-    def test_create(self, locust_environment: Environment) -> None:
+    def test_create(self, locust_fixture: LocustFixture) -> None:
         assert ResponseEvent.host is None
 
         with pytest.raises(LocustError):
-            ResponseEvent(locust_environment)
+            ResponseEvent(locust_fixture.env)
 
         ResponseEvent.host = 'http://example.org'
 
-        user = ResponseEvent(locust_environment)
-        assert user.client == None
+        user = ResponseEvent(locust_fixture.env)
+        assert getattr(user, 'client', '') is None
         assert len(user.response_event._handlers) == 0
 
         fake_user_type = type('FakeResponseEventUser', (ResponseEvent, HttpRequests,), {
             'host': 'https://example.org'
         })
 
-        user = fake_user_type(locust_environment)
+        user = fake_user_type(locust_fixture.env)
         assert isinstance(user.client, ResponseEventSession)
         assert len(user.response_event._handlers) == 0
 
-    @pytest.mark.usefixtures('locust_environment')
-    def test_add_listener(self, locust_environment: Environment) -> None:
+    def test_add_listener(self, locust_fixture: LocustFixture) -> None:
         class Called(Exception):
             pass
 
         ResponseEvent.host = 'http://example.com'
-        user = ResponseEvent(locust_environment)
+        user = ResponseEvent(locust_fixture.env)
 
         def handler(name: str, request: Optional[RequestTask], context: Union[ResponseContextManager, Tuple[Dict[str, Any], str]], user: User) -> None:
             raise Called()
@@ -61,5 +58,5 @@ class TestResponseEvent:
                 '',
                 RequestTask(RequestMethod.POST, name='test-request', endpoint='/api/test'),
                 ResponseContextManager(Response(), None, None),
-                TestUser(environment=locust_environment),
+                TestUser(environment=locust_fixture.env),
             )

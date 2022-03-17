@@ -1,12 +1,10 @@
-from typing import Callable
-
 import pytest
 
 from grizzly.testdata.variables.random_integer import atomicrandominteger__base_type__
 from grizzly.testdata.variables import AtomicRandomInteger
 
+from ...fixtures import AtomicVariableCleanupFixture
 
-from ..fixtures import cleanup  # pylint: disable=unused-import
 
 def test_atomicrandominteger__base_type__() -> None:
     with pytest.raises(ValueError):
@@ -22,8 +20,7 @@ def test_atomicrandominteger__base_type__() -> None:
 
 
 class TestAtomicRandomInteger:
-    @pytest.mark.usefixtures('cleanup')
-    def test_generate_random(self, cleanup: Callable) -> None:
+    def test_generate_random(self, cleanup: AtomicVariableCleanupFixture) -> None:
         try:
             t1 = AtomicRandomInteger('random', '1..10')
             v = t1['random']
@@ -43,8 +40,7 @@ class TestAtomicRandomInteger:
         finally:
             cleanup()
 
-    @pytest.mark.usefixtures('cleanup')
-    def test_clear_and_destroy(self, cleanup: Callable) -> None:
+    def test_clear_and_destroy(self, cleanup: AtomicVariableCleanupFixture) -> None:
         try:
             try:
                 AtomicRandomInteger.destroy()
@@ -74,8 +70,7 @@ class TestAtomicRandomInteger:
         finally:
             cleanup()
 
-    @pytest.mark.usefixtures('cleanup')
-    def test_set_and_del(self, cleanup: Callable) -> None:
+    def test_set_and_del(self, cleanup: AtomicVariableCleanupFixture) -> None:
         try:
             instance = AtomicRandomInteger('random', '1337..31337')
             v = instance['random']

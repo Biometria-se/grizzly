@@ -6,8 +6,7 @@ from json import dumps as jsondumps
 
 import pytest
 
-from pytest_mock import mocker  # pylint: disable=unused-import
-from pytest_mock.plugin import MockerFixture
+from pytest_mock import MockerFixture
 from requests.models import Response
 from locust.clients import ResponseContextManager
 from locust.event import EventHook
@@ -21,7 +20,7 @@ from grizzly.context import GrizzlyContextScenario
 from grizzly.tasks import RequestTask
 from grizzly.users.base import GrizzlyUser
 
-from .fixtures import locust_environment, paramiko_mocker  # pylint: disable=unused-import
+from .fixtures import ParamikoFixture
 from .helpers import RequestEvent
 
 
@@ -31,7 +30,6 @@ class TestResponseEventSession:
 
         assert isinstance(session.event_hook, EventHook)
         assert len(session.event_hook._handlers) == 0
-
 
     def test_request(self, mocker: MockerFixture) -> None:
         def mock_request(payload: Dict[str, Any], status_code: int = 200) -> None:
@@ -68,7 +66,7 @@ class TestResponseEventSession:
         request.scenario = scenario
 
         def handler(expected_request: Optional[RequestTask] = None) -> Callable[
-            [str, Union[ResponseContextManager, Tuple[Dict[str, Any], str]],Optional[RequestTask], GrizzlyUser],
+            [str, Union[ResponseContextManager, Tuple[Dict[str, Any], str]], Optional[RequestTask], GrizzlyUser],
             None,
         ]:
             def wrapped(name: str, context: Union[ResponseContextManager, Tuple[Dict[str, Any], str]], request: Optional[RequestTask], user: GrizzlyUser) -> None:
@@ -100,19 +98,18 @@ class TestResponseEventSession:
 
 
 class TestSftpClientSession:
-    @pytest.mark.usefixtures('paramiko_mocker')
-    def test(self, paramiko_mocker: Callable, mocker: MockerFixture) -> None:
-        paramiko_mocker()
+    def test(self, paramiko_fixture: ParamikoFixture, mocker: MockerFixture) -> None:
+        paramiko_fixture()
 
         context = SftpClientSession('example.org', 1337)
 
         assert context.host == 'example.org'
         assert context.port == 1337
-        assert context.username == None
-        assert context.key == None
-        assert context.key_file == None
-        assert context._client == None
-        assert context._transport == None
+        assert getattr(context, 'username') is None
+        assert getattr(context, 'key') is None
+        assert getattr(context, 'key_file') is None
+        assert getattr(context, '_client') is None
+        assert getattr(context, '_transport') is None
 
         with pytest.raises(NotImplementedError):
             with context.session('username', 'password', '~/.ssh/id_rsa'):
@@ -120,11 +117,11 @@ class TestSftpClientSession:
 
         assert context.host == 'example.org'
         assert context.port == 1337
-        assert context.username == None
-        assert context.key == None
-        assert context.key_file == None
-        assert context._client == None
-        assert context._transport == None
+        assert getattr(context, 'username') is None
+        assert getattr(context, 'key') is None
+        assert getattr(context, 'key_file') is None
+        assert getattr(context, '_client') is None
+        assert getattr(context, '_transport') is None
 
         username_transport: Optional[Transport] = None
         username_client: Optional[SFTPClient] = None
@@ -132,7 +129,7 @@ class TestSftpClientSession:
         # start session for user username
         with context.session('username', 'password') as session:
             assert isinstance(session, SFTPClient)
-            assert context.username == None
+            assert getattr(context, 'username') is None
             assert isinstance(context._transport, Transport)
             assert isinstance(context._client, SFTPClient)
             username_transport = context._transport
@@ -142,7 +139,7 @@ class TestSftpClientSession:
         # change username, and hence start a new client
         with context.session('test-user', 'password') as session:
             assert isinstance(session, SFTPClient)
-            assert context.username == None
+            assert getattr(context, 'username') is None
             assert isinstance(context._transport, Transport)
             assert isinstance(context._client, SFTPClient)
             assert username_client is not context._client
@@ -150,9 +147,9 @@ class TestSftpClientSession:
 
         context.close()
 
-        assert context._client == None
-        assert context._transport == None
-        assert context.username == None
+        assert getattr(context, '_client') is None
+        assert getattr(context, '_transport') is None
+        assert getattr(context, 'username') is None
 
         def _from_transport(transport: Transport, window_size: Optional[int] = None, max_packet_size: Optional[int] = None) -> Optional[SFTPClient]:
             return None

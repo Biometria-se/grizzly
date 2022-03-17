@@ -1,19 +1,20 @@
-from typing import Callable, Tuple, List, cast
+from typing import Tuple, List
 from json import dumps as jsondumps
 
 import pytest
 
-from pytest_mock import mocker, MockerFixture  # pylint: disable=unused-import
+from pytest_mock import MockerFixture
 
 from locust.exception import StopUser
 from grizzly.exceptions import RestartScenario
 from grizzly.types import RequestMethod
 from grizzly.tasks import UntilRequestTask, RequestTask
 from grizzly_extras.transformer import TransformerContentType, transformer
-from ..fixtures import grizzly_context, request_task, behave_context, locust_environment  # pylint: disable=unused-import
+
+from ..fixtures import GrizzlyFixture
+
 
 class TestUntilRequestTask:
-    @pytest.mark.usefixtures('grizzly_context')
     def test_create(self) -> None:
         request = RequestTask(RequestMethod.GET, name='test', endpoint='/api/test')
 
@@ -47,10 +48,10 @@ class TestUntilRequestTask:
             UntilRequestTask(request, '$.`this`[?status="ready"] | wait=0.1, retries=0')
         assert 'retries argument cannot be less than 1' in str(ve)
 
-    @pytest.mark.usefixtures('grizzly_context')
-    def test_implementation(self, grizzly_context: Callable, mocker: MockerFixture) -> None:
-        _, _, tasks, [_, _, request] = grizzly_context()
-        request = cast(RequestTask, request)
+    def test_implementation(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+        _, _, scenario = grizzly_fixture()
+        assert scenario is not None
+        request = grizzly_fixture.request_task.request
         request.response.content_type = TransformerContentType.JSON
         request.method = RequestMethod.GET
         request.name = 'test-request'
@@ -63,7 +64,7 @@ class TestUntilRequestTask:
             })
 
         request_spy = mocker.patch.object(
-            tasks.user,
+            scenario.user,
             'request',
             side_effect=[
                 (None, create_response('working')),
@@ -76,7 +77,7 @@ class TestUntilRequestTask:
         time_spy = mocker.patch('grizzly.tasks.until.time', side_effect=[0.0, 153.5, 0.0, 12.25, 0.0, 12.25, 0.0, 1.5, 0.0, 0.8])
 
         fire_spy = mocker.patch.object(
-            tasks.user.environment.events.request,
+            scenario.user.environment.events.request,
             'fire',
         )
 
@@ -86,7 +87,7 @@ class TestUntilRequestTask:
         implementation = task.implementation()
 
         with pytest.raises(RuntimeError) as re:
-            implementation(tasks)
+            implementation(scenario)
         assert '/status[text()="ready"] is not a valid expression for JSON' in str(re)
 
         jsontransformer_orig = transformer.available[TransformerContentType.JSON]
@@ -103,7 +104,7 @@ class TestUntilRequestTask:
         task = UntilRequestTask(request, "$.`this`[?status='ready'] | wait=100, retries=10")
         implementation = task.implementation()
 
-        implementation(tasks)
+        implementation(scenario)
 
         assert time_spy.call_count == 2
         assert request_spy.call_count == 3
@@ -125,12 +126,12 @@ class TestUntilRequestTask:
         assert kwargs.get('exception', '') is None
 
         # -->
-        tasks.grizzly.state.variables['wait'] = 100.0
-        tasks.grizzly.state.variables['retries'] = 10
+        scenario.grizzly.state.variables['wait'] = 100.0
+        scenario.grizzly.state.variables['retries'] = 10
         task = UntilRequestTask(request, "$.`this`[?status='ready'] | wait='{{ wait }}', retries='{{ retries }}'")
         implementation = task.implementation()
 
-        implementation(tasks)
+        implementation(scenario)
 
         assert time_spy.call_count == 4
         assert request_spy.call_count == 4
@@ -153,7 +154,7 @@ class TestUntilRequestTask:
         # <--
 
         request_spy = mocker.patch.object(
-            tasks.user,
+            scenario.user,
             'request',
             side_effect=[
                 (None, create_response('working')),
@@ -166,7 +167,7 @@ class TestUntilRequestTask:
         implementation = task.implementation()
 
         with pytest.raises(StopUser):
-            implementation(tasks)
+            implementation(scenario)
 
         assert fire_spy.call_count == 3
         _, kwargs = fire_spy.call_args_list[-1]
@@ -182,7 +183,7 @@ class TestUntilRequestTask:
         assert str(exception) == 'found 0 matching values for $.`this`[?status="ready"] in payload after 2 retries and 12250 milliseconds'
 
         request_spy = mocker.patch.object(
-            tasks.user,
+            scenario.user,
             'request',
             side_effect=[
                 RuntimeError('foo bar'),
@@ -193,7 +194,7 @@ class TestUntilRequestTask:
 
         request.scenario.failure_exception = RestartScenario
         with pytest.raises(RestartScenario):
-            implementation(tasks)
+            implementation(scenario)
 
         assert fire_spy.call_count == 4
         _, kwargs = fire_spy.call_args_list[-1]
@@ -209,7 +210,7 @@ class TestUntilRequestTask:
         assert str(exception) == 'foo bar'
 
         request_spy = mocker.patch.object(
-            tasks.user,
+            scenario.user,
             'request',
             side_effect=[
                 (None, create_response('working')),
@@ -222,7 +223,7 @@ class TestUntilRequestTask:
         task = UntilRequestTask(request, '$.`this`[?status="ready"] | wait=4, retries=4')
         implementation = task.implementation()
 
-        implementation(tasks)
+        implementation(scenario)
 
         assert fire_spy.call_count == 5
         _, kwargs = fire_spy.call_args_list[-1]
