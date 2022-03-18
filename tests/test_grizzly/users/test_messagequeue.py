@@ -447,6 +447,8 @@ class TestMessageQueueUser:
             ],
         )
 
+        request.response.content_type = TransformerContentType.JSON
+
         add_save_handler(grizzly, ResponseTarget.PAYLOAD, '$.test', '.*', 'payload_variable')
 
         user.request(request)

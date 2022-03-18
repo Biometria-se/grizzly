@@ -633,6 +633,7 @@ def test_add_save_handler(behave_fixture: BehaveFixture, locust_fixture: LocustF
 
     try:
         grizzly.state.variables['test-variable-metadata'] = 'none'
+        task.response.content_type = TransformerContentType.JSON
         add_save_handler(grizzly, ResponseTarget.METADATA, '$.test.value', '.*', 'test-variable-metadata')
         assert len(task.response.handlers.metadata) == 1
         assert len(task.response.handlers.payload) == 0
@@ -716,8 +717,9 @@ def test_add_validation_handler(behave_fixture: BehaveFixture, locust_fixture: L
         add_validation_handler(grizzly, ResponseTarget.METADATA, '', 'test', False)
 
     # add metadata response handler
-    add_validation_handler(grizzly, ResponseTarget.METADATA, '$.test.value', 'test', False)
     task = cast(RequestTask, tasks[0])
+    task.response.content_type = TransformerContentType.JSON
+    add_validation_handler(grizzly, ResponseTarget.METADATA, '$.test.value', 'test', False)
     assert len(task.response.handlers.metadata) == 1
     assert len(task.response.handlers.payload) == 0
 

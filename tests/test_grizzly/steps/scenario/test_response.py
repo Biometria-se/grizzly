@@ -71,22 +71,31 @@ def test_step_response_save_matches_metadata(grizzly_fixture: GrizzlyFixture) ->
     grizzly = grizzly_fixture.grizzly
     request = cast(RequestTask, grizzly.scenario.tasks[0])
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as ve:
         step_response_save_matches(behave, ResponseTarget.METADATA, '', '', '')
+    assert 'variable "" has not been declared' in str(ve)
 
     assert len(request.response.handlers.metadata) == 0
     assert len(request.response.handlers.payload) == 0
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as ve:
         step_response_save_matches(behave, ResponseTarget.METADATA, '$.test.value', '.*ary$', 'test')
+    assert 'variable "test" has not been declared' in str(ve)
 
     try:
         grizzly.state.variables['test'] = 'none'
+
+        with pytest.raises(ValueError) as ve:
+            step_response_save_matches(behave, ResponseTarget.METADATA, '$.test.value', '.*ary$', 'test')
+        assert 'content type is not set for latest request' in str(ve)
+
+        request.response.content_type = TransformerContentType.JSON
         step_response_save_matches(behave, ResponseTarget.METADATA, '$.test.value', '.*ary$', 'test')
 
         assert len(request.response.handlers.metadata) == 1
         assert len(request.response.handlers.payload) == 0
     finally:
+        request.response.content_type = TransformerContentType.UNDEFINED
         del grizzly.state.variables['test']
 
 
@@ -95,22 +104,30 @@ def test_step_response_save_matches_payload(grizzly_fixture: GrizzlyFixture) -> 
     grizzly = cast(GrizzlyContext, behave.grizzly)
     request = cast(RequestTask, grizzly.scenario.tasks[0])
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as ve:
         step_response_save_matches(behave, ResponseTarget.PAYLOAD, '', '', '')
+    assert 'variable "" has not been declared' in str(ve)
 
     assert len(request.response.handlers.metadata) == 0
     assert len(request.response.handlers.payload) == 0
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as ve:
         step_response_save_matches(behave, ResponseTarget.PAYLOAD, '$.test.value', '.*ary$', 'test')
+    assert 'variable "test" has not been declared' in str(ve)
 
     try:
         grizzly.state.variables['test'] = 'none'
+        with pytest.raises(ValueError) as ve:
+            step_response_save_matches(behave, ResponseTarget.PAYLOAD, '$.test.value', '.*ary$', 'test')
+        assert 'content type is not set for latest request' in str(ve)
+
+        request.response.content_type = TransformerContentType.JSON
 
         step_response_save_matches(behave, ResponseTarget.PAYLOAD, '$.test.value', '.*ary$', 'test')
         assert len(request.response.handlers.metadata) == 0
         assert len(request.response.handlers.payload) == 1
     finally:
+        request.response.content_type = TransformerContentType.UNDEFINED
         del grizzly.state.variables['test']
 
 
@@ -119,22 +136,30 @@ def test_step_response_save_metadata(grizzly_fixture: GrizzlyFixture) -> None:
     grizzly = cast(GrizzlyContext, behave.grizzly)
     request = cast(RequestTask, grizzly.scenario.tasks[0])
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as ve:
         step_response_save(behave, ResponseTarget.METADATA, '', '')
+    assert 'variable "" has not been declared' in str(ve)
 
     assert len(request.response.handlers.metadata) == 0
     assert len(request.response.handlers.payload) == 0
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as ve:
         step_response_save(behave, ResponseTarget.METADATA, '$.test.value', 'test')
+    assert 'variable "test" has not been declared' in str(ve)
 
     try:
         grizzly.state.variables['test'] = 'none'
+        with pytest.raises(ValueError) as ve:
+            step_response_save(behave, ResponseTarget.METADATA, '$.test.value', 'test')
+        assert 'content type is not set for latest request' in str(ve)
+
+        request.response.content_type = TransformerContentType.JSON
 
         step_response_save(behave, ResponseTarget.METADATA, '$.test.value', 'test')
         assert len(request.response.handlers.metadata) == 1
         assert len(request.response.handlers.payload) == 0
     finally:
+        request.response.content_type = TransformerContentType.UNDEFINED
         del grizzly.state.variables['test']
 
 
@@ -143,22 +168,30 @@ def test_step_response_save_payload(grizzly_fixture: GrizzlyFixture) -> None:
     grizzly = cast(GrizzlyContext, behave.grizzly)
     request = cast(RequestTask, grizzly.scenario.tasks[0])
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as ve:
         step_response_save(behave, ResponseTarget.PAYLOAD, '', '')
+    assert 'variable "" has not been declared' in str(ve)
 
     assert len(request.response.handlers.metadata) == 0
     assert len(request.response.handlers.payload) == 0
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as ve:
         step_response_save(behave, ResponseTarget.PAYLOAD, '$.test.value', 'test')
+    assert 'variable "test" has not been declared' in str(ve)
 
     try:
         grizzly.state.variables['test'] = 'none'
+        with pytest.raises(ValueError) as ve:
+            step_response_save(behave, ResponseTarget.PAYLOAD, '$.test.value', 'test')
+        assert 'content type is not set for latest request' in str(ve)
+
+        request.response.content_type = TransformerContentType.JSON
 
         step_response_save(behave, ResponseTarget.PAYLOAD, '$.test.value', 'test')
         assert len(request.response.handlers.metadata) == 0
         assert len(request.response.handlers.payload) == 1
     finally:
+        request.response.content_type = TransformerContentType.UNDEFINED
         del grizzly.state.variables['test']
 
 
@@ -167,13 +200,20 @@ def test_step_response_validate_metadata(grizzly_fixture: GrizzlyFixture) -> Non
     grizzly = cast(GrizzlyContext, behave.grizzly)
     request = cast(RequestTask, grizzly.scenario.tasks[0])
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as ve:
         step_response_validate(behave, ResponseTarget.METADATA, '', True, '')
+    assert 'expression is empty' in str(ve)
 
     assert len(request.response.handlers.metadata) == 0
     assert len(request.response.handlers.payload) == 0
 
+    with pytest.raises(ValueError) as ve:
+        step_response_validate(behave, ResponseTarget.METADATA, '$.test.value', True, '.*test')
+    assert 'content type is not set for latest request' in str(ve)
+
+    request.response.content_type = TransformerContentType.JSON
     step_response_validate(behave, ResponseTarget.METADATA, '$.test.value', True, '.*test')
+
     assert len(request.response.handlers.metadata) == 1
     assert len(request.response.handlers.payload) == 0
 
@@ -183,11 +223,14 @@ def test_step_response_validate_payload(grizzly_fixture: GrizzlyFixture) -> None
     grizzly = cast(GrizzlyContext, behave.grizzly)
     request = cast(RequestTask, grizzly.scenario.tasks[0])
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError) as ve:
         step_response_validate(behave, ResponseTarget.PAYLOAD, '', True, '')
+    assert 'expression is empty' in str(ve)
 
     assert len(request.response.handlers.metadata) == 0
     assert len(request.response.handlers.payload) == 0
+
+    request.response.content_type = TransformerContentType.JSON
 
     step_response_validate(behave, ResponseTarget.PAYLOAD, '$.test.value', True, '.*test')
 
@@ -198,8 +241,9 @@ def test_step_response_validate_payload(grizzly_fixture: GrizzlyFixture) -> None
 def test_step_response_allow_status_codes(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError) as ve:
         step_response_allow_status_codes(behave, '-200')
+    assert 'there are no requests in the scenario' in str(ve)
 
     request = RequestTask(RequestMethod.SEND, name='test', endpoint='/api/test')
     grizzly.add_scenario('test')
@@ -216,31 +260,35 @@ def test_step_response_allow_status_codes_table(behave_fixture: BehaveFixture) -
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError) as ae:
         step_response_allow_status_codes_table(behave)
+    assert 'step data table is mandatory' in str(ae)
 
     rows: List[Row] = []
     rows.append(Row(['test'], ['-200,400']))
     rows.append(Row(['test'], ['302']))
     behave.table = Table(['test'], rows=rows)
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError) as ae:
         step_response_allow_status_codes_table(behave)
+    assert 'there are no requests in the scenario' in str(ae)
 
     request = RequestTask(RequestMethod.SEND, name='test', endpoint='/api/test')
     grizzly.add_scenario('test')
     grizzly.scenario.add_task(request)
 
     # more rows in data table then there are requests
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError) as ae:
         step_response_allow_status_codes_table(behave)
+    assert 'data table has more rows than there are requests' in str(ae)
 
     request = RequestTask(RequestMethod.GET, name='test-get', endpoint='/api/test')
     grizzly.scenario.add_task(request)
 
     # data table column "code" does not exist
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError) as ae:
         step_response_allow_status_codes_table(behave)
+    assert 'data table does not have column "status"' in str(ae)
 
     request = RequestTask(RequestMethod.GET, name='no-code', endpoint='/api/test')
     grizzly.scenario.tasks.insert(0, request)

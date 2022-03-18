@@ -579,8 +579,6 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests):
             request=request,
             **parameters,
         ) as response:
-            response = cast(ResponseContextManager, response)
-
             if response._manual_result is None:
                 if response.status_code in request.response.status_codes:
                     response.success()

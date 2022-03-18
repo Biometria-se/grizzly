@@ -43,6 +43,8 @@ class ResponseEventSession(HttpSession):
             super().request(method, url, name, catch_response, context, **kwargs),
         )
 
+        response_context_manager._entered = True
+
         self.event_hook.fire(
             name=name,
             request=request,

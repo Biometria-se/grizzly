@@ -357,7 +357,7 @@ def _add_response_handler(
     scenario_tasks_count = len(context.scenario.tasks)
 
     if variable is not None and variable not in context.state.variables:
-        raise ValueError(f'variable {variable} has not been declared')
+        raise ValueError(f'variable "{variable}" has not been declared')
 
     if not scenario_tasks_count > 0:
         raise ValueError('no request source has been added!')
@@ -370,6 +370,9 @@ def _add_response_handler(
 
     if not isinstance(request, RequestTask):
         raise ValueError('latest task was not a request')
+
+    if request.response.content_type == TransformerContentType.UNDEFINED:
+        raise ValueError('content type is not set for latest request')
 
     if '{{' in match_with and '}}' in match_with:
         context.scenario.orphan_templates.append(match_with)
