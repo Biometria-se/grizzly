@@ -3,6 +3,7 @@ import subprocess
 
 from os import path
 
+
 def main() -> int:
     output = subprocess.check_output(['git', 'tag']).decode('utf-8').strip()
 
@@ -15,7 +16,7 @@ def main() -> int:
         fd.write('# Changelog\n\n')
 
         for index, previous_tag in enumerate(tags[1:], start=1):
-            current_tag = tags[index-1]
+            current_tag = tags[index - 1]
             print(f'generating changelog for {current_tag} <- {previous_tag}')
 
             output = subprocess.check_output([

@@ -28,6 +28,7 @@ from random import randint
 
 from ...types import AtomicVariable
 
+
 def atomicrandominteger__base_type__(value: str) -> str:
     if '..' not in value:
         raise ValueError(f'AtomicRandomInteger: {value} is not a valid value format, must be: "a..b"')
@@ -43,9 +44,10 @@ def atomicrandominteger__base_type__(value: str) -> str:
     minimum, maximum = [int(v) for v in range]
 
     if minimum > maximum:
-        raise ValueError(f'AtomicRandomInteger: first value needs to be less than second value')
+        raise ValueError('AtomicRandomInteger: first value needs to be less than second value')
 
     return value
+
 
 class AtomicRandomInteger(AtomicVariable[int]):
     __base_type__ = atomicrandominteger__base_type__

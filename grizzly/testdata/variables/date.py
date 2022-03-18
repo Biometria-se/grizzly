@@ -84,7 +84,6 @@ def atomicdate__base_type__(value: str) -> str:
         raise ValueError(f'AtomicDate: {str(e)}') from e
 
 
-
 class AtomicDate(AtomicVariable[Union[str, datetime]]):
     __base_type__ = atomicdate__base_type__
     __initialized: bool = False

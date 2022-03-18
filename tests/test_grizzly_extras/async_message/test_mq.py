@@ -5,7 +5,6 @@ from os import environ
 
 import pytest
 
-from pytest_mock import mocker  # pylint: disable=unused-import
 from pytest_mock.plugin import MockerFixture
 
 from grizzly_extras.async_message import AsyncMessageRequest, AsyncMessageError
@@ -92,7 +91,6 @@ class TestAsyncMessageQueueHandler:
         finally:
             assert pymqi_queue_close_spy.call_count == 2
 
-
     def test_connect(self, mocker: MockerFixture) -> None:
         from grizzly_extras.async_message.mq import handlers
 
@@ -115,7 +113,6 @@ class TestAsyncMessageQueueHandler:
 
         def mocked_connect(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Any:
             pass
-            #return pymqi.QueueManager(None)
 
         mocker.patch.object(
             pymqi.QueueManager,
@@ -250,7 +247,7 @@ class TestAsyncMessageQueueHandler:
 
         assert pymqi_gmo_spy.call_count == 1
         _, kwargs = pymqi_gmo_spy.call_args_list[0]
-        assert kwargs.get('WaitInterval', None) == 11*1000
+        assert kwargs.get('WaitInterval', None) == (11 * 1000)
         assert kwargs.get('Options', None) == pymqi.CMQC.MQGMO_WAIT | pymqi.CMQC.MQGMO_FAIL_IF_QUIESCING
         assert isinstance(gmo, pymqi.GMO)
 
@@ -351,7 +348,6 @@ class TestAsyncMessageQueueHandler:
         with pytest.raises(AsyncMessageError) as mqe:
             response = handler._request(request)
 
-
     def test__request_with_expressions(self, mocker: MockerFixture) -> None:
         # Mocked representation of an pymqi Queue message
         class DummyMessage(object):
@@ -403,6 +399,7 @@ class TestAsyncMessageQueueHandler:
         class DummyQueue(object):
             # List with (comp, reason) errors to raise, -1 in comp means skip
             error_list: List[Tuple[int, int]] = []
+
             def __init__(self) -> None:
                 self.msg_ix = 0
 
@@ -643,7 +640,6 @@ class TestAsyncMessageQueueHandler:
             handler._request(request)
         assert 'argument expression is not allowed for action' in str(mqe)
 
-
     def test_put(self, mocker: MockerFixture) -> None:
         def mocked_request(i: AsyncMessageQueueHandler, request: AsyncMessageRequest) -> AsyncMessageRequest:
             return request
@@ -711,4 +707,3 @@ class TestAsyncMessageQueueHandler:
         assert handler.get_handler('SEND') is AsyncMessageQueueHandler.put
         assert handler.get_handler('GET') is AsyncMessageQueueHandler.get
         assert handler.get_handler('RECEIVE') is AsyncMessageQueueHandler.get
-

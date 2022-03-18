@@ -64,21 +64,21 @@ from functools import wraps
 from enum import Enum
 from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
-from urllib3 import disable_warnings as urllib3_disable_warnings
 
 from locust.clients import ResponseContextManager
 from locust.exception import CatchResponseError, StopUser
+from locust.env import Environment
 
 import requests
 
 from ..types import GrizzlyResponse, WrappedFunc
 from ..utils import merge_dicts
 from ..types import RequestMethod
-from ..task import RequestTask
+from ..tasks import RequestTask
 from .base import RequestLogger, ResponseHandler, GrizzlyUser, HttpRequests
 from . import logger
 
-
+from urllib3 import disable_warnings as urllib3_disable_warnings
 urllib3_disable_warnings()
 
 
@@ -95,14 +95,14 @@ class refresh_token:
             auth_context = cls._context['auth']
 
             use_auth_client = (
-                auth_context.get('client', {}).get('id', None) is not None and
-                auth_context.get('client', {}).get('secret', None) is not None
+                auth_context.get('client', {}).get('id', None) is not None
+                and auth_context.get('client', {}).get('secret', None) is not None
             )
             use_auth_user = (
-                auth_context.get('client', {}).get('id', None) is not None and
-                auth_context.get('user', {}).get('username', None) is not None and
-                auth_context.get('user', {}).get('password', None) is not None and
-                auth_context.get('user', {}).get('redirect_uri', None) is not None
+                auth_context.get('client', {}).get('id', None) is not None
+                and auth_context.get('user', {}).get('username', None) is not None
+                and auth_context.get('user', {}).get('password', None) is not None
+                and auth_context.get('user', {}).get('redirect_uri', None) is not None
             )
 
             if use_auth_client:
@@ -148,8 +148,8 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests):
         }
     }
 
-    def __init__(self, *args: Tuple[Any], **kwargs: Dict[str, Any]) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(self, environment: Environment, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+        super().__init__(environment, *args, **kwargs)
 
         self.headers = {
             'Authorization': None,
@@ -339,7 +339,7 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests):
                     raise RuntimeError(f'error response from {url}: code={error["code"]}, message={error["message"]}')
 
                 state['apiCanary'] = data['apiCanary']
-                assert state['sFT'] == data['FlowToken'], f'flow token between user auth request 1 and 2 differed'
+                assert state['sFT'] == data['FlowToken'], 'flow token between user auth request 1 and 2 differed'
                 # // request 2 -->
 
                 # <!-- request 3
@@ -490,7 +490,8 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests):
             'verify': self._context.get('verify_certificates', True),
         }
 
-        with self.client.post(
+        with self.client.request(
+            'POST',
             self._context['auth']['url'],
             name=f'{name} OAuth2 client token',
             request=None,
@@ -578,8 +579,6 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests):
             request=request,
             **parameters,
         ) as response:
-            response = cast(ResponseContextManager, response)
-
             if response._manual_result is None:
                 if response.status_code in request.response.status_codes:
                     response.success()
@@ -587,7 +586,7 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests):
                     message = self.get_error_message(response)
                     response.failure(f'{response.status_code} not in {request.response.status_codes}: {message}')
 
-            if not response._manual_result == True and request.scenario.failure_exception is not None:
+            if response._manual_result is not True and request.scenario.failure_exception is not None:
                 raise request.scenario.failure_exception()
 
             headers = dict(response.headers) if response.headers not in [None, {}] else None

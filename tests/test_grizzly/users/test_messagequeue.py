@@ -1,6 +1,6 @@
 import subprocess
 
-from typing import Callable, Dict, Tuple, Any, cast, Optional
+from typing import Dict, Tuple, Any, cast, Optional
 from os import environ
 from dataclasses import replace
 
@@ -9,11 +9,10 @@ try:
 except:
     from grizzly_extras import dummy_pymqi as pymqi
 
-import zmq
+from zmq.error import ZMQError, Again as ZMQAgain
 import pytest
 
-from pytest_mock import mocker  # pylint: disable=unused-import
-from pytest_mock.plugin import MockerFixture
+from pytest_mock import MockerFixture
 from locust.env import Environment
 from locust.exception import StopUser
 from jinja2 import Template
@@ -22,7 +21,7 @@ from grizzly.users.messagequeue import MessageQueueUser
 from grizzly.users.base import RequestLogger, ResponseHandler
 from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
-from grizzly.task import RequestTask
+from grizzly.tasks import RequestTask
 from grizzly.types import ResponseTarget, GrizzlyDict
 from grizzly.testdata.utils import transform
 from grizzly.exceptions import ResponseHandlerError, RestartScenario
@@ -30,19 +29,18 @@ from grizzly.steps.helpers import add_save_handler
 from grizzly_extras.async_message import AsyncMessageResponse
 from grizzly_extras.transformer import TransformerContentType
 
-from ..fixtures import grizzly_context, request_task, locust_environment, noop_zmq  # pylint: disable=unused-import
+from ..fixtures import GrizzlyFixture, LocustFixture, NoopZmqFixture
 
-import logging
+MqScenarioFixture = Tuple[MessageQueueUser, GrizzlyContextScenario, Environment]
 
-# we are not interested in misleading log messages when unit testing
-logging.getLogger().setLevel(logging.CRITICAL)
 
+@pytest.mark.usefixtures('grizzly_fixture')
 @pytest.fixture
-def mq_user(grizzly_context: Callable) -> Tuple[MessageQueueUser, GrizzlyContextScenario, Environment]:
-    environment, user, task, [_, _, request] = grizzly_context(
+def mq_user(grizzly_fixture: GrizzlyFixture) -> MqScenarioFixture:
+    environment, user, task = grizzly_fixture(
         'mq://mq.example.com:1337/?QueueManager=QMGR01&Channel=Kanal1', MessageQueueUser)
 
-    request = cast(RequestTask, request)
+    request = grizzly_fixture.request_task.request
 
     scenario = GrizzlyContextScenario()
     scenario.name = task.__class__.__name__
@@ -54,7 +52,8 @@ def mq_user(grizzly_context: Callable) -> Tuple[MessageQueueUser, GrizzlyContext
 
     scenario.add_task(request)
 
-    return user, scenario, environment
+    return cast(MessageQueueUser, user), scenario, environment
+
 
 class TestMessageQueueUserNoPymqi:
     def test_no_pymqi_dependencies(self) -> None:
@@ -67,7 +66,7 @@ class TestMessageQueueUserNoPymqi:
                 '/usr/bin/env',
                 'python3',
                 '-c',
-                'import grizzly.users.messagequeue as mq; print(f"{mq.pymqi.__name__=}"); mq.MessageQueueUser()'
+                'import grizzly.users.messagequeue as mq; from locust.env import Environment; print(f"{mq.pymqi.__name__=}"); mq.MessageQueueUser(Environment())'
             ],
             env=env,
             stdout=subprocess.PIPE,
@@ -94,43 +93,42 @@ class TestMessageQueueUser:
         'channel': '',
     }
 
-    @pytest.mark.usefixtures('locust_environment')
-    def test_create(self, locust_environment: Environment) -> None:
+    def test_create(self, locust_fixture: LocustFixture) -> None:
         try:
             MessageQueueUser.host = 'http://mq.example.com:1337'
             with pytest.raises(ValueError) as e:
-                MessageQueueUser(environment=locust_environment)
+                MessageQueueUser(environment=locust_fixture.env)
             assert 'is not a supported scheme for MessageQueueUser' in str(e)
 
             MessageQueueUser.host = 'mq://mq.example.com:1337'
             with pytest.raises(ValueError) as e:
-                MessageQueueUser(environment=locust_environment)
+                MessageQueueUser(environment=locust_fixture.env)
             assert 'needs QueueManager and Channel in the query string' in str(e)
 
             MessageQueueUser.host = 'mq://:1337'
             with pytest.raises(ValueError) as e:
-                MessageQueueUser(environment=locust_environment)
+                MessageQueueUser(environment=locust_fixture.env)
             assert 'hostname is not specified in' in str(e)
 
             MessageQueueUser.host = 'mq://mq.example.com:1337/?Channel=Kanal1'
             with pytest.raises(ValueError) as e:
-                MessageQueueUser(environment=locust_environment)
+                MessageQueueUser(environment=locust_fixture.env)
             assert 'needs QueueManager in the query string' in str(e)
 
             MessageQueueUser.host = 'mq://mq.example.com:1337/?QueueManager=QMGR01'
             with pytest.raises(ValueError) as e:
-                MessageQueueUser(environment=locust_environment)
+                MessageQueueUser(environment=locust_fixture.env)
             assert 'needs Channel in the query string' in str(e)
 
             MessageQueueUser.host = 'mq://username:password@mq.example.com?Channel=Kanal1&QueueManager=QMGR01'
             with pytest.raises(ValueError) as e:
-                MessageQueueUser(environment=locust_environment)
+                MessageQueueUser(environment=locust_fixture.env)
             assert 'username and password should be set via context' in str(e)
 
             # Test default port and ssl_cipher
             MessageQueueUser.host = 'mq://mq.example.com?Channel=Kanal1&QueueManager=QMGR01'
-            user = MessageQueueUser(environment=locust_environment)
-            assert user.am_context.get('connection', None) == f'mq.example.com(1414)'
+            user = MessageQueueUser(environment=locust_fixture.env)
+            assert user.am_context.get('connection', None) == 'mq.example.com(1414)'
             assert user.am_context.get('ssl_cipher', None) == 'ECDHE_RSA_AES_256_GCM_SHA384'
 
             MessageQueueUser._context['auth'] = {
@@ -142,7 +140,7 @@ class TestMessageQueueUser:
             }
 
             MessageQueueUser.host = 'mq://mq.example.com:1415?Channel=Kanal1&QueueManager=QMGR01'
-            user = MessageQueueUser(environment=locust_environment)
+            user = MessageQueueUser(environment=locust_fixture.env)
 
             assert user.am_context.get('connection', None) == 'mq.example.com(1415)'
             assert user.am_context.get('queue_manager', None) == 'QMGR01'
@@ -153,13 +151,13 @@ class TestMessageQueueUser:
 
             MessageQueueUser._context['auth']['cert_label'] = None
 
-            user = MessageQueueUser(environment=locust_environment)
+            user = MessageQueueUser(environment=locust_fixture.env)
 
             assert user.am_context.get('cert_label', None) == 'syrsa'
 
             MessageQueueUser._context['message']['wait'] = 5
 
-            user = MessageQueueUser(environment=locust_environment)
+            user = MessageQueueUser(environment=locust_fixture.env)
             assert user.am_context.get('message_wait', None) == 5
             assert issubclass(user.__class__, (RequestLogger, ResponseHandler,))
         finally:
@@ -173,15 +171,14 @@ class TestMessageQueueUser:
                 }
             }
 
-    @pytest.mark.usefixtures('locust_environment', 'noop_zmq')
-    def test_request__action_conn_error(self, locust_environment: Environment, mocker: MockerFixture, noop_zmq: Callable[[str], None]) -> None:
+    def test_request__action_conn_error(self, locust_fixture: LocustFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         def mocked_zmq_connect(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Any:
-            raise zmq.error.ZMQError(msg='error connecting')
+            raise ZMQError(msg='error connecting')
 
         noop_zmq('grizzly.users.messagequeue')
 
         mocker.patch(
-            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.connect',
+            'grizzly.users.messagequeue.zmq.Socket.connect',
             mocked_zmq_connect,
         )
 
@@ -195,7 +192,7 @@ class TestMessageQueueUser:
                 assert kwargs['name'] == user.am_context.get('connection', None)
                 assert kwargs['response_time'] >= 0
                 assert kwargs['response_length'] == 0
-                assert isinstance(kwargs['exception'], zmq.error.ZMQError)
+                assert isinstance(kwargs['exception'], ZMQError)
             elif properties == ['name', 'request', 'context', 'user', 'exception']:  # self.response_event.fire
                 pytest.fail(f'what should we do with {kwargs=}')
             else:
@@ -207,7 +204,7 @@ class TestMessageQueueUser:
         )
 
         MessageQueueUser.host = 'mq://mq.example.com:1337/?QueueManager=QMGR01&Channel=Kanal1'
-        user = MessageQueueUser(locust_environment)
+        user = MessageQueueUser(locust_fixture.env)
 
         request = RequestTask(RequestMethod.PUT, name='test-put', endpoint='EXAMPLE.QUEUE')
         scenario = GrizzlyContextScenario()
@@ -223,8 +220,7 @@ class TestMessageQueueUser:
             user.request(request)
 
     @pytest.mark.skip(reason='needs real credentials and host etc.')
-    @pytest.mark.usefixtures('locust_environment')
-    def test_get_tls_real(self, locust_environment: Environment) -> None:
+    def test_get_tls_real(self, locust_fixture: LocustFixture) -> None:
         process: Optional[subprocess.Popen] = None
         try:
             process = subprocess.Popen(
@@ -257,7 +253,7 @@ class TestMessageQueueUser:
             scenario.add_task(request)
 
             MessageQueueUser.host = f'mq://{self.real_stuff["host"]}/?QueueManager={self.real_stuff["queue_manager"]}&Channel={self.real_stuff["channel"]}'
-            user = MessageQueueUser(locust_environment)
+            user = MessageQueueUser(locust_fixture.env)
 
             user.request(request)
             assert 0
@@ -280,8 +276,7 @@ class TestMessageQueueUser:
             }
 
     @pytest.mark.skip(reason='needs real credentials and host etc.')
-    @pytest.mark.usefixtures('locust_environment')
-    def test_put_tls_real(self, locust_environment: Environment) -> None:
+    def test_put_tls_real(self, locust_fixture: LocustFixture) -> None:
         process: Optional[subprocess.Popen] = None
         try:
             process = subprocess.Popen(
@@ -313,7 +308,7 @@ class TestMessageQueueUser:
             scenario.add_task(request)
 
             MessageQueueUser.host = f'mq://{self.real_stuff["host"]}/?QueueManager={self.real_stuff["queue_manager"]}&Channel={self.real_stuff["channel"]}'
-            user = MessageQueueUser(locust_environment)
+            user = MessageQueueUser(locust_fixture.env)
 
             user.request(request)
         finally:
@@ -334,8 +329,7 @@ class TestMessageQueueUser:
                 }
             }
 
-    @pytest.mark.usefixtures('noop_zmq')
-    def test_get(self, mq_user: Tuple[MessageQueueUser, GrizzlyContextScenario, Environment], mocker: MockerFixture, noop_zmq: Callable[[str], None]) -> None:
+    def test_get(self, mq_user: MqScenarioFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         [user, scenario, _] = mq_user
 
         noop_zmq('grizzly.users.messagequeue')
@@ -349,7 +343,7 @@ class TestMessageQueueUser:
         test_payload = '<?xml encoding="utf-8"?>'
 
         mocker.patch(
-            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
+            'grizzly.users.messagequeue.zmq.Socket.recv_json',
             side_effect=[
                 response_connected,
                 {
@@ -375,7 +369,6 @@ class TestMessageQueueUser:
                 'ssl_cipher': None,
             }
         }
-
 
         remote_variables = {
             'variables': transform({
@@ -435,14 +428,14 @@ class TestMessageQueueUser:
         )
 
         mocker.patch(
-            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.disconnect',
-            side_effect=[zmq.ZMQError] * 10,
+            'grizzly.users.messagequeue.zmq.Socket.disconnect',
+            side_effect=[ZMQError] * 10,
         )
 
         mocker.patch(
-            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
+            'grizzly.users.messagequeue.zmq.Socket.recv_json',
             side_effect=[
-                zmq.Again,
+                ZMQAgain,
                 {
                     'success': True,
                     'worker': '0000-1337',
@@ -453,6 +446,8 @@ class TestMessageQueueUser:
                 }
             ],
         )
+
+        request.response.content_type = TransformerContentType.JSON
 
         add_save_handler(grizzly, ResponseTarget.PAYLOAD, '$.test', '.*', 'payload_variable')
 
@@ -478,9 +473,9 @@ class TestMessageQueueUser:
         }'''
 
         mocker.patch(
-            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
+            'grizzly.users.messagequeue.zmq.Socket.recv_json',
             side_effect=[
-                zmq.Again,
+                ZMQAgain,
                 {
                     'success': True,
                     'worker': '0000-1337',
@@ -517,7 +512,7 @@ class TestMessageQueueUser:
         request_error.method = RequestMethod.POST
 
         mocker.patch(
-            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
+            'grizzly.users.messagequeue.zmq.Socket.recv_json',
             side_effect=[
                 {
                     'success': False,
@@ -540,7 +535,7 @@ class TestMessageQueueUser:
         request_event_spy.reset_mock()
 
         mocker.patch(
-            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
+            'grizzly.users.messagequeue.zmq.Socket.recv_json',
             side_effect=[
                 {
                     'success': False,
@@ -594,13 +589,13 @@ class TestMessageQueueUser:
         ]
 
         send_json_spy = mocker.patch(
-            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.send_json',
+            'grizzly.users.messagequeue.zmq.Socket.send_json',
             autospec=True,
         )
 
         # Test with only queue name as endpoint
         mocker.patch(
-            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
+            'grizzly.users.messagequeue.zmq.Socket.recv_json',
             side_effect=the_side_effect * 6,
         )
         request.endpoint = 'queue:IFKTEST'
@@ -625,7 +620,6 @@ class TestMessageQueueUser:
         args, _ = send_json_spy.call_args_list[2]
         ctx = args[1]['context']
         assert ctx['endpoint'] == request.endpoint
-
 
         # Test specifying queue: prefix with expression, and spacing
         request.endpoint = 'queue: IFKTEST2  , expression: /class/student[marks>85]'
@@ -674,7 +668,7 @@ class TestMessageQueueUser:
         _, kwargs = response_event_spy.call_args_list[7]
         exception = kwargs.get('exception', None)
         assert isinstance(exception, RuntimeError)
-        assert str(exception) == f'invalid value for argument "queue"'
+        assert str(exception) == 'invalid value for argument "queue"'
 
         send_json_spy.reset_mock()
         request_event_spy.reset_mock()
@@ -682,9 +676,7 @@ class TestMessageQueueUser:
 
         # Test queue / expression END
 
-
-    @pytest.mark.usefixtures('noop_zmq')
-    def test_send(self, mq_user: Tuple[MessageQueueUser, GrizzlyContextScenario, Environment], mocker: MockerFixture, noop_zmq: Callable[[str], None]) -> None:
+    def test_send(self, mq_user: MqScenarioFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         [user, scenario, _] = mq_user
 
         noop_zmq('grizzly.users.messagequeue')
@@ -715,8 +707,8 @@ class TestMessageQueueUser:
 
         # always throw error when disconnecting, it is ignored
         mocker.patch(
-            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.disconnect',
-            side_effect=[zmq.ZMQError] * 10,
+            'grizzly.users.messagequeue.zmq.Socket.disconnect',
+            side_effect=[ZMQError] * 10,
         )
 
         request_event_spy = mocker.spy(user.environment.events.request, 'fire')
@@ -731,7 +723,7 @@ class TestMessageQueueUser:
         assert payload is not None
 
         mocker.patch(
-            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
+            'grizzly.users.messagequeue.zmq.Socket.recv_json',
             side_effect=[
                 response_connected,
                 {
@@ -772,7 +764,7 @@ class TestMessageQueueUser:
         request_error.method = RequestMethod.POST
 
         mocker.patch(
-            'grizzly.users.messagequeue.zmq.sugar.socket.Socket.recv_json',
+            'grizzly.users.messagequeue.zmq.Socket.recv_json',
             side_effect=[
                 {
                     'success': False,

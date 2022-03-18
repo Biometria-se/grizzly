@@ -1,15 +1,14 @@
 import subprocess
 
 from os import environ
-from typing import Optional, Callable, cast
+from typing import Optional, cast
 from json import dumps as jsondumps
 
 import pytest
-import zmq
+from zmq.error import Again as ZMQAgain
+import zmq.green as zmq
 
-from pytest_mock import mocker  # pylint: disable=unused-import
-from pytest_mock.plugin import MockerFixture
-from behave.runner import Context
+from pytest_mock import MockerFixture
 
 from grizzly.testdata.variables import AtomicMessageQueue
 from grizzly.testdata.variables.messagequeue import atomicmessagequeue__base_type__
@@ -22,7 +21,7 @@ try:
 except:
     from grizzly_extras import dummy_pymqi as pymqi
 
-from ...fixtures import behave_context, locust_environment, noop_zmq  # pylint: disable=unused-import
+from ...fixtures import NoopZmqFixture, BehaveFixture
 
 
 def test_atomicmessagequeue__base_type__() -> None:
@@ -69,6 +68,7 @@ def test_atomicmessagequeue__base_type__() -> None:
     )
     assert safe_value == 'queue:TEST.QUEUE | url="mq://mq.example.com/?QueueManager=QM1&Channel=SRV.CONN", repeat=True, wait=20'
 
+
 class TestAtomicMessageQueueNoPymqi:
     def test_no_pymqi_dependencies(self) -> None:
         env = environ.copy()
@@ -93,6 +93,7 @@ class TestAtomicMessageQueueNoPymqi:
         assert process.returncode == 1
         assert "mq.pymqi.__name__='grizzly_extras.dummy_pymqi'" in output
         assert 'NotImplementedError: AtomicMessageQueue could not import pymqi, have you installed IBM MQ dependencies?' in output
+
 
 @pytest.mark.skipif(pymqi.__name__ == 'grizzly_extras.dummy_pymqi', reason='needs native IBM MQ libraries')
 class TestAtomicMessageQueue:
@@ -151,9 +152,9 @@ class TestAtomicMessageQueue:
             except:
                 pass
 
-    @pytest.mark.usefixtures('behave_context')
-    def test_create_context(self, behave_context: Context) -> None:
-        grizzly = cast(GrizzlyContext, behave_context.grizzly)
+    def test_create_context(self, behave_fixture: BehaveFixture) -> None:
+        behave = behave_fixture.context
+        grizzly = cast(GrizzlyContext, behave.grizzly)
         grizzly.state.configuration.update({
             'mq.username': 'mq_test',
             'mq.password': 'password',
@@ -272,10 +273,7 @@ class TestAtomicMessageQueue:
             except:
                 pass
 
-
-
-    @pytest.mark.usefixtures('noop_zmq')
-    def test_create_client(self, noop_zmq: Callable[[str], None]) -> None:
+    def test_create_client(self, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.testdata.variables.messagequeue')
 
         try:
@@ -311,8 +309,7 @@ class TestAtomicMessageQueue:
             except:
                 pass
 
-    @pytest.mark.usefixtures('noop_zmq')
-    def test_clear(self, noop_zmq: Callable[[str], None]) -> None:
+    def test_clear(self, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.testdata.variables.messagequeue')
 
         try:
@@ -342,13 +339,13 @@ class TestAtomicMessageQueue:
             except:
                 pass
 
-    def test___getitem__(self, mocker: MockerFixture, noop_zmq: Callable[[str], None]) -> None:
+    def test___getitem__(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.testdata.variables.messagequeue')
 
         def mock_response(response: Optional[AsyncMessageResponse], repeat: int = 1) -> None:
             mocker.patch(
-                'grizzly.testdata.variables.messagequeue.zmq.sugar.socket.Socket.recv_json',
-                side_effect=[zmq.Again(), response] * repeat
+                'grizzly.testdata.variables.messagequeue.zmq.Socket.recv_json',
+                side_effect=[ZMQAgain(), response] * repeat
             )
 
         gsleep_spy = mocker.patch(
@@ -471,7 +468,7 @@ class TestAtomicMessageQueue:
             assert len(v._endpoint_messages['test']) == 1
             assert v._endpoint_messages['test'][0] == jsondumps({'test': {'result': 'hello world'}})
 
-            send_json_spy = mocker.spy(zmq.sugar.socket.Socket, 'send_json')
+            send_json_spy = mocker.spy(zmq.Socket, 'send_json')
             v._settings['test']['content_type'] = TransformerContentType.XML
             v['test']
             send_json_spy.assert_called_once()
@@ -487,8 +484,7 @@ class TestAtomicMessageQueue:
             except:
                 pass
 
-    @pytest.mark.usefixtures('noop_zmq')
-    def test___setitem__(self, mocker: MockerFixture, noop_zmq: Callable[[str], None]) -> None:
+    def test___setitem__(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.testdata.variables.messagequeue')
 
         def mocked___getitem__(i: AtomicMessageQueue, variable: str) -> Optional[str]:
@@ -514,8 +510,7 @@ class TestAtomicMessageQueue:
             except:
                 pass
 
-    @pytest.mark.usefixtures('noop_zmq')
-    def test___delitem__(self, mocker: MockerFixture, noop_zmq: Callable[[str], None]) -> None:
+    def test___delitem__(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.testdata.variables.messagequeue')
 
         def mocked___getitem__(i: AtomicMessageQueue, variable: str) -> Optional[str]:

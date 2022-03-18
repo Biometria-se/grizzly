@@ -1,6 +1,6 @@
 import threading
 
-from typing import Callable, List, Set, cast
+from typing import List, Set
 from json import dumps as jsondumps
 
 import pytest
@@ -11,7 +11,7 @@ from gevent.greenlet import Greenlet
 from grizzly.testdata.variables.integer_incrementer import atomicintegerincrementer__base_type__
 from grizzly.testdata.variables import AtomicIntegerIncrementer
 
-from ..fixtures import cleanup  # pylint: disable=unused-import
+from ...fixtures import AtomicVariableCleanupFixture
 
 
 def test_atomicintegerincrementer__base_type__() -> None:
@@ -54,8 +54,7 @@ def test_atomicintegerincrementer__base_type__() -> None:
 
 
 class TestAtomicIntegerIncrementer:
-    @pytest.mark.usefixtures('cleanup')
-    def test_increments_on_access(self, cleanup: Callable) -> None:
+    def test_increments_on_access(self, cleanup: AtomicVariableCleanupFixture) -> None:
         try:
             t = AtomicIntegerIncrementer('message_id', 1)
             assert t['message_id'] == 1
@@ -72,8 +71,7 @@ class TestAtomicIntegerIncrementer:
         finally:
             cleanup()
 
-    @pytest.mark.usefixtures('cleanup')
-    def test_clear_and_destory(self, cleanup: Callable) -> None:
+    def test_clear_and_destory(self, cleanup: AtomicVariableCleanupFixture) -> None:
         try:
             try:
                 AtomicIntegerIncrementer.destroy()
@@ -103,8 +101,7 @@ class TestAtomicIntegerIncrementer:
         finally:
             cleanup()
 
-    @pytest.mark.usefixtures('cleanup')
-    def test_no_redefine_value(self, cleanup: Callable) -> None:
+    def test_no_redefine_value(self, cleanup: AtomicVariableCleanupFixture) -> None:
         try:
             t = AtomicIntegerIncrementer('message_id', 3)
             t['message_id'] = 1
@@ -116,8 +113,7 @@ class TestAtomicIntegerIncrementer:
         finally:
             cleanup()
 
-    @pytest.mark.usefixtures('cleanup')
-    def test_increments_with_step(self, cleanup: Callable) -> None:
+    def test_increments_with_step(self, cleanup: AtomicVariableCleanupFixture) -> None:
         try:
             t = AtomicIntegerIncrementer('message_id', '4 | step=10')
             t = AtomicIntegerIncrementer('test', '10 | step=20')
@@ -143,16 +139,14 @@ class TestAtomicIntegerIncrementer:
         finally:
             cleanup()
 
-    @pytest.mark.usefixtures('cleanup')
-    def test_json_serializable(self, cleanup: Callable) -> None:
+    def test_json_serializable(self, cleanup: AtomicVariableCleanupFixture) -> None:
         try:
             t = AtomicIntegerIncrementer('message_id', 1)
             jsondumps(t['message_id'])
         finally:
             cleanup()
 
-    @pytest.mark.usefixtures('cleanup')
-    def test_multi_thread(self, cleanup: Callable) -> None:
+    def test_multi_thread(self, cleanup: AtomicVariableCleanupFixture) -> None:
         try:
             start_value: int = 2
             num_threads: int = 20
@@ -161,10 +155,15 @@ class TestAtomicIntegerIncrementer:
 
             t = AtomicIntegerIncrementer('thread_var', start_value)
 
+            values: Set[int] = set()
+
             def func1() -> None:
                 for _ in range(num_iterations):
-                    # pylint: disable=pointless-statement
-                    t['thread_var']
+                    value = t.__getitem__('thread_var')
+                    assert value is not None
+                    assert value > start_value - 1
+                    assert value not in values
+                    values.add(value)
 
             threads: List[threading.Thread] = []
             for _ in range(num_threads):
@@ -181,8 +180,7 @@ class TestAtomicIntegerIncrementer:
         finally:
             cleanup()
 
-    @pytest.mark.usefixtures('cleanup')
-    def test_multi_greenlet(self, cleanup: Callable) -> None:
+    def test_multi_greenlet(self, cleanup: AtomicVariableCleanupFixture) -> None:
         try:
             start_value: int = 2
             num_threads: int = 20
@@ -198,13 +196,11 @@ class TestAtomicIntegerIncrementer:
 
             def func1() -> None:
                 for _ in range(num_iterations):
-                    # pylint: disable=pointless-statement
-                    value = t['greenlet_var']
-                    assert value != None
-                    v = cast(int, value)
-                    assert v > start_value - 1
-                    assert v not in values
-                    values.add(v)
+                    value = t.__getitem__('greenlet_var')
+                    assert value is not None
+                    assert value > start_value - 1
+                    assert value not in values
+                    values.add(value)
 
             greenlets: List[Greenlet] = []
             for _ in range(num_threads):

@@ -2,7 +2,7 @@ import sys
 import logging
 import subprocess
 
-from typing import Optional, Callable, List, Tuple, Set, Dict, cast
+from typing import Optional, Callable, List, Tuple, Set, Dict, Type, cast
 from os import environ, name as osname
 from signal import SIGTERM
 from socket import error as SocketError
@@ -11,8 +11,7 @@ from datetime import datetime
 import gevent
 
 from behave.runner import Context
-from locust.runners import WorkerRunner
-from locust.user.users import User
+from locust.runners import MasterRunner, WorkerRunner, Runner
 from locust.env import Environment
 from locust.stats import (
     print_error_report,
@@ -30,7 +29,8 @@ from .listeners import init, init_statistics_listener, quitting, validate_result
 from .testdata.utils import initialize_testdata
 from .types import TestdataType
 from .context import GrizzlyContext
-from .task import RequestTask
+from .tasks import RequestTask
+from .users.base import GrizzlyUser
 
 from .utils import create_scenario_class_type, create_user_class_type
 
@@ -43,7 +43,7 @@ unhandled_greenlet_exception = False
 logger = logging.getLogger('grizzly.locust')
 
 
-def greenlet_exception_logger(logger: logging.Logger, level: int=logging.CRITICAL) -> Callable[[gevent.Greenlet], None]:
+def greenlet_exception_logger(logger: logging.Logger, level: int = logging.CRITICAL) -> Callable[[gevent.Greenlet], None]:
     def exception_handler(greenlet: gevent.Greenlet) -> None:
         global unhandled_greenlet_exception
         logger.log(level, f'unhandled exception in greenlet: {greenlet}', exc_info=True)
@@ -76,15 +76,16 @@ def on_local(context: Context) -> bool:
     return value
 
 
-def setup_locust_scenarios(context: GrizzlyContext) -> Tuple[List[User], List[RequestTask], Set[str]]:
-    user_classes: List[User] = []
+def setup_locust_scenarios(context: GrizzlyContext) -> Tuple[List[Type[GrizzlyUser]], List[RequestTask], Set[str]]:
+    user_classes: List[Type[GrizzlyUser]] = []
     request_tasks: List[RequestTask] = []
 
     scenarios = context.scenarios()
 
-    assert len(scenarios) > 0, f'no scenarios in feature'
+    assert len(scenarios) > 0, 'no scenarios in feature'
 
     external_dependencies: Set[str] = set()
+    dummy_environment = Environment()
 
     for scenario in scenarios:
         # Given a user of type "" load testing ""
@@ -95,10 +96,7 @@ def setup_locust_scenarios(context: GrizzlyContext) -> Tuple[List[User], List[Re
         user_class_type.host = scenario.context['host']
 
         # fail early if there is a problem with creating an instance of the user class
-        try:
-            user_class_type()
-        except TypeError:  # missing required environment argument, is OK
-            pass
+        user_class_type(dummy_environment)
 
         external_dependencies.update(user_class_type.__dependencies__)
 
@@ -251,20 +249,20 @@ def run(context: Context) -> int:
 
     # make sure the user hasn't screwed up
     if on_master(context) and on_worker(context):
-        logger.error(f'seems to be a problem with "behave" arguments, cannot be both master and worker')
+        logger.error('seems to be a problem with "behave" arguments, cannot be both master and worker')
         return 254
 
     if grizzly.setup.spawn_rate is None:
-        logger.error(f'spawn rate is not set')
+        logger.error('spawn rate is not set')
         return 254
 
     if grizzly.setup.user_count < 1:
-        logger.error(f"step 'Given \"user_count\" users' is not in the feature file")
+        logger.error("step 'Given \"user_count\" users' is not in the feature file")
         return 254
 
     greenlet_exception_handler = greenlet_exception_logger(logger)
 
-    user_classes: List[User] = []
+    user_classes: List[Type[GrizzlyUser]] = []
     request_tasks: List[RequestTask] = []
     external_processes: Dict[str, subprocess.Popen] = {}
 
@@ -300,6 +298,8 @@ def run(context: Context) -> int:
                     stderr=subprocess.DEVNULL,
                 )})
                 gevent.sleep(2)
+
+        runner: Runner
 
         if on_master(context):
             host = '0.0.0.0'
@@ -356,16 +356,16 @@ def run(context: Context) -> int:
         setattr(environment.parsed_options, 'exclude_tags', [])
         setattr(environment.parsed_options, 'enable_rebalancing', False)
 
-        if on_master(context):
+        if isinstance(runner, MasterRunner):
             expected_workers = int(context.config.userdata.get('expected-workers', 1))
             if grizzly.setup.user_count is not None:
                 assert expected_workers <= grizzly.setup.user_count, (
                     f'there are more workers ({expected_workers}) than users ({grizzly.setup.user_count}), which is not supported'
                 )
 
-            while len(environment.runner.clients.ready) < expected_workers:
+            while len(runner.clients.ready) < expected_workers:
                 logger.debug(
-                    f'waiting for workers to be ready, {len(environment.runner.clients.ready)} of {expected_workers}'
+                    f'waiting for workers to be ready, {len(runner.clients.ready)} of {expected_workers}'
                 )
                 gevent.sleep(1)
 
@@ -373,9 +373,9 @@ def run(context: Context) -> int:
                 f'all {expected_workers} workers have connected and are ready'
             )
 
-        if not on_worker(context):
+        if not isinstance(runner, WorkerRunner):
             logger.info('starting locust via grizzly')
-            environment.runner.start(grizzly.setup.user_count, grizzly.setup.spawn_rate)
+            runner.start(grizzly.setup.user_count, grizzly.setup.spawn_rate)
 
             stats_printer_greenlet = gevent.spawn(stats_printer(environment.stats))
             stats_printer_greenlet.link_exception(greenlet_exception_handler)

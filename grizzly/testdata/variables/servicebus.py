@@ -75,15 +75,17 @@ If no matching messages was found when peeking, it is repeated again up until th
 be specified for the endpint, e.g. `application/xml`.
 
 ```gherking
-And value of variable "AtomicServiceBus.document_id" is "queue:documents-in | wait=120, url=$conf::sb.endpoint, repeat=True, content_type=json, expression='$.document[?(@.name=='TPM Report')'"
+And value of variable "AtomicServiceBus.tpm_document" is "queue:documents-in | wait=120, url=$conf::sb.endpoint, repeat=True, content_type=json, expression='$.document[?(@.name=='TPM Report')'"
 ```
-'''
+'''  # noqa: E501
 import logging
 
 from typing import Dict, Any, List, Type, Optional, cast
 from urllib.parse import urlparse, parse_qs
 
-import zmq
+from zmq.sugar.constants import NOBLOCK as ZMQ_NOBLOCK, REQ as ZMQ_REQ
+from zmq.error import Again as ZMQAgain, ZMQError
+import zmq.green as zmq
 
 from gevent import sleep as gsleep
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
@@ -156,6 +158,7 @@ def atomicservicebus_url(url: str) -> str:
 
     return resolved_url
 
+
 def atomicservicebus_endpoint(endpoint: str) -> str:
     if ':' not in endpoint:
         raise ValueError(f'AtomicServiceBus: {endpoint} does not specify queue: or topic:')
@@ -166,7 +169,7 @@ def atomicservicebus_endpoint(endpoint: str) -> str:
         raise ValueError(f'AtomicServiceBus: {str(e)}') from e
 
     if 'topic' not in arguments and 'queue' not in arguments:
-        raise ValueError(f'AtomicServiceBus: endpoint needs to be prefixed with queue: or topic:')
+        raise ValueError('AtomicServiceBus: endpoint needs to be prefixed with queue: or topic:')
 
     if 'topic' in arguments and 'queue' in arguments:
         raise ValueError('AtomicServiceBus: cannot specify both topic: and queue: in endpoint')
@@ -175,7 +178,7 @@ def atomicservicebus_endpoint(endpoint: str) -> str:
 
     if len(arguments) > 1:
         if endpoint_type != 'topic' and 'subscription' in arguments:
-            raise ValueError(f'AtomicServiceBus: argument subscription is only allowed if endpoint is a topic')
+            raise ValueError('AtomicServiceBus: argument subscription is only allowed if endpoint is a topic')
 
         unsupported_arguments = get_unsupported_arguments(['topic', 'queue', 'subscription', 'expression'], arguments)
 
@@ -185,7 +188,7 @@ def atomicservicebus_endpoint(endpoint: str) -> str:
     expression = arguments.get('expression', None)
     subscription = arguments.get('subscription', None)
     if endpoint_type == 'topic' and subscription is None:
-        raise ValueError(f'AtomicServiceBus: endpoint needs to include subscription when receiving messages from a topic')
+        raise ValueError('AtomicServiceBus: endpoint needs to include subscription when receiving messages from a topic')
 
     grizzly = GrizzlyContext()
 
@@ -255,7 +258,7 @@ class AtomicServiceBus(AtomicVariable[str]):
             if argument in arguments:
                 settings[argument] = caster(arguments[argument])
 
-        if 'expression' in endpoint_parameters and not 'content_type' in arguments:
+        if 'expression' in endpoint_parameters and 'content_type' not in arguments:
             raise ValueError(f'{self.__class__.__name__}.{variable}: argument "content_type" is mandatory when "expression" is used in endpoint')
 
         settings['endpoint_name'] = self.arguments['endpoint_name'](endpoint_name)
@@ -304,14 +307,21 @@ class AtomicServiceBus(AtomicVariable[str]):
     def create_client(self, variable: str, settings: Dict[str, Any]) -> zmq.Socket:
         self._settings[variable].update({'context': self.create_context(settings)})
 
-        zmq_client = cast(zmq.Socket, self._zmq_context.socket(zmq.REQ))
+        zmq_client = cast(
+            zmq.Socket,
+            self._zmq_context.socket(ZMQ_REQ),
+        )
         zmq_client.connect(self._zmq_url)
 
         self.say_hello(zmq_client, variable)
 
         return zmq_client
 
-    def say_hello(self, client: zmq.Socket, variable: str) -> None:
+    def say_hello(
+        self,
+        client: zmq.Socket,
+        variable: str,
+    ) -> None:
         settings = self._settings[variable]
         context = cast(AsyncMessageContext, dict(settings['context']))
 
@@ -338,9 +348,9 @@ class AtomicServiceBus(AtomicVariable[str]):
 
         while True:
             try:
-                response = client.recv_json(flags=zmq.NOBLOCK)
+                response = client.recv_json(flags=ZMQ_NOBLOCK)
                 break
-            except zmq.Again:
+            except ZMQAgain:
                 gsleep(0.1)
 
         if response is None:
@@ -372,7 +382,6 @@ class AtomicServiceBus(AtomicVariable[str]):
                 instance._zmq_context.destroy()
             except:
                 pass
-
 
         super().destroy()
 
@@ -407,9 +416,9 @@ class AtomicServiceBus(AtomicVariable[str]):
 
             while True:
                 try:
-                    response = cast(AsyncMessageResponse, client.recv_json(flags=zmq.NOBLOCK))
+                    response = cast(AsyncMessageResponse, client.recv_json(flags=ZMQ_NOBLOCK))
                     break
-                except zmq.Again:
+                except ZMQAgain:
                     gsleep(0.1)
 
             if response is None:
@@ -447,7 +456,7 @@ class AtomicServiceBus(AtomicVariable[str]):
 
                 try:
                     self._endpoint_clients[variable].disconnect(self._zmq_url)
-                except (zmq.ZMQError, AttributeError, ):
+                except (ZMQError, AttributeError, ):
                     pass
                 finally:
                     del self._endpoint_clients[variable]

@@ -37,6 +37,7 @@ def step_user_type_with_weight(context: Context, user_class_name: str, weight_va
     grizzly.scenario.user.weight = weight
     grizzly.scenario.context['host'] = resolve_variable(grizzly, host)
 
+
 @given(u'a user of type "{user_class_name}" load testing "{host}"')
 def step_user_type(context: Context, user_class_name: str, host: str) -> None:
     '''Set which type of user the scenario should use and which host is the target.

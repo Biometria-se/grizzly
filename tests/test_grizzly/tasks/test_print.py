@@ -1,18 +1,14 @@
 import logging
 
-from typing import Callable
-
-import pytest
-
 from _pytest.logging import LogCaptureFixture
 
-from grizzly.task import PrintTask
+from grizzly.tasks import PrintTask
 
-from ..fixtures import grizzly_context, request_task, locust_environment  # pylint: disable=unused-import
+from ..fixtures import GrizzlyFixture
+
 
 class TestPrintTask:
-    @pytest.mark.usefixtures('grizzly_context')
-    def test(self, grizzly_context: Callable, caplog: LogCaptureFixture) -> None:
+    def test(self, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture) -> None:
         task = PrintTask(message='hello world!')
         assert task.message == 'hello world!'
 
@@ -20,10 +16,12 @@ class TestPrintTask:
 
         assert callable(implementation)
 
-        _, _, tasks, _ = grizzly_context()
+        _, _, scenario = grizzly_fixture()
+
+        assert scenario is not None
 
         with caplog.at_level(logging.INFO):
-            implementation(tasks)
+            implementation(scenario)
         assert 'hello world!' in caplog.text
         caplog.clear()
 
@@ -34,9 +32,9 @@ class TestPrintTask:
 
         assert callable(implementation)
 
-        tasks.user._context['variables']['variable'] = 'hello world!'
+        scenario.user._context['variables']['variable'] = 'hello world!'
 
         with caplog.at_level(logging.INFO):
-            implementation(tasks)
+            implementation(scenario)
         assert 'variable=hello world!' in caplog.text
         caplog.clear()

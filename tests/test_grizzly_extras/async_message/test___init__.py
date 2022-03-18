@@ -5,7 +5,7 @@ from platform import node as hostname
 
 import pytest
 
-from pytest_mock import MockerFixture, mocker  # pylint: disable=unused-import
+from pytest_mock import MockerFixture
 from _pytest.tmpdir import TempPathFactory
 from _pytest.capture import CaptureFixture
 
@@ -51,7 +51,7 @@ class TestAsyncMessageHandler:
 
         response = handler.handle(request)
 
-        assert response.get('success', True) == False
+        assert response.get('success', True) is False
         assert response.get('worker', None) == 'asdf-asdf-asdf'
         assert response.get('message', None) == 'NONE: AsyncMessageError="no implementation for NONE"'
         assert response.get('response_time', None) is not None
@@ -71,7 +71,7 @@ class TestAsyncMessageHandler:
 
         response = handler.handle(request)
 
-        assert response.get('success', False) == True
+        assert response.get('success', False) is True
         assert response.get('worker', None) == 'asdf-asdf-asdf'
         assert response.get('message', None) is None
         assert response.get('response_time', None) is not None

@@ -66,13 +66,15 @@ When the scenario starts `grizzly` will wait up to 120 seconds until `AtomicMess
 
 If there are no messages within 120 seconds, and it is the first iteration of the scenario, it will fail. If there has been at least one message on the queue since
 the scenario started, it will use the oldest of those values, and then add it back in the end of the list again.
-'''
+'''  # noqa: E501
 import logging
 
 from typing import Dict, Any, Type, Optional, List, cast
 from urllib.parse import urlparse, parse_qs, unquote
 
-import zmq
+from zmq.error import Again as ZMQAgain, ZMQError
+from zmq.sugar.constants import NOBLOCK as ZMQ_NOBLOCK, REQ as ZMQ_REQ
+import zmq.green as zmq
 
 from gevent import sleep as gsleep
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
@@ -106,7 +108,7 @@ def atomicmessagequeue__base_type__(value: str) -> str:
         raise ValueError(f'AtomicMessageQueue: {str(e)}') from e
 
     if 'queue' not in endpoint:
-        raise ValueError(f'AtomicMessageQueue: queue name must be prefixed with queue:')
+        raise ValueError('AtomicMessageQueue: queue name must be prefixed with queue:')
 
     for argument in ['url']:
         if argument not in arguments:
@@ -280,7 +282,10 @@ class AtomicMessageQueue(AtomicVariable[str]):
     def create_client(self, variable: str, settings: Dict[str, Any]) -> zmq.Socket:
         self._settings[variable].update({'context': self.create_context(settings)})
 
-        zmq_client = cast(zmq.Socket, self._zmq_context.socket(zmq.REQ))
+        zmq_client = cast(
+            zmq.Socket,
+            self._zmq_context.socket(ZMQ_REQ),
+        )
         zmq_client.connect(self._zmq_url)
 
         return zmq_client
@@ -336,9 +341,9 @@ class AtomicMessageQueue(AtomicVariable[str]):
 
                 while True:
                     try:
-                        response = self._endpoint_clients[variable].recv_json(flags=zmq.NOBLOCK)
+                        response = self._endpoint_clients[variable].recv_json(flags=ZMQ_NOBLOCK)
                         break
-                    except zmq.Again:
+                    except ZMQAgain:
                         gsleep(0.1)
 
                 if response is None:
@@ -361,16 +366,15 @@ class AtomicMessageQueue(AtomicVariable[str]):
             if 'content_type' in self._settings[variable]:
                 request['context']['content_type'] = self._settings[variable]['content_type'].name.lower()
 
-
             self._endpoint_clients[variable].send_json(request)
 
             response = None
 
             while True:
                 try:
-                    response = cast(AsyncMessageResponse, self._endpoint_clients[variable].recv_json(flags=zmq.NOBLOCK))
+                    response = cast(AsyncMessageResponse, self._endpoint_clients[variable].recv_json(flags=ZMQ_NOBLOCK))
                     break
-                except zmq.Again:
+                except ZMQAgain:
                     gsleep(0.1)
 
             if response is None:
@@ -406,7 +410,7 @@ class AtomicMessageQueue(AtomicVariable[str]):
                 del self._endpoint_messages[variable]
                 try:
                     self._endpoint_clients[variable].disconnect(self._zmq_url)
-                except zmq.ZMQError:
+                except ZMQError:
                     pass
                 del self._endpoint_clients[variable]
             except KeyError:

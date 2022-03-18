@@ -1,16 +1,18 @@
-from typing import Dict, Any, Callable, Optional, cast
+from typing import Dict, Any, Optional, cast
 
 import pytest
-import zmq
+from zmq.sugar.constants import REQ as ZMQ_REQ
+from zmq.error import ZMQError, Again as ZMQAgain
+import zmq.green as zmq
 
-from pytest_mock import mocker, MockerFixture  # pylint: disable=unused-import
+from pytest_mock import MockerFixture
 
 from grizzly.testdata.variables.servicebus import AtomicServiceBus, atomicservicebus_url, atomicservicebus_endpoint, atomicservicebus__base_type__
 from grizzly.context import GrizzlyContext
 from grizzly_extras.async_message import AsyncMessageResponse
 from grizzly_extras.transformer import TransformerContentType
 
-from ...fixtures import noop_zmq  # pylint: disable=unused-import
+from ...fixtures import NoopZmqFixture
 
 
 def test_atomicservicebus__base_type() -> None:
@@ -176,7 +178,6 @@ def test_atomicservicebus_endpoint() -> None:
         atomicservicebus_endpoint(endpoint)
     assert 'AtomicServiceBus: environment variable "QUEUE_NAME" is not set' in str(ve)
 
-
     endpoint = 'topic:document-in, subscription:application-x'
     assert atomicservicebus_endpoint(endpoint) == endpoint
 
@@ -207,7 +208,8 @@ class TestAtomicServiceBus:
                 'content_type': None,
             }
             assert v._endpoint_clients.get('test1', None) is not None
-            assert isinstance(v._zmq_context, zmq.Context)
+            assert v._zmq_context.__class__.__name__ == '_Context'
+            assert v._zmq_context.__class__.__module__ == 'zmq.green.core'
 
             t = AtomicServiceBus(
                 'test2',
@@ -286,8 +288,7 @@ class TestAtomicServiceBus:
             except:
                 pass
 
-    @pytest.mark.usefixtures('noop_zmq')
-    def test_create_client(self, mocker: MockerFixture, noop_zmq: Callable[[str], None]) -> None:
+    def test_create_client(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.testdata.variables.servicebus')
 
         try:
@@ -303,7 +304,10 @@ class TestAtomicServiceBus:
                     'wait=15, repeat=True'
                 ),
             )
-            assert isinstance(v._endpoint_clients.get('test', None), zmq.Socket)
+            endpoint_client = v._endpoint_clients.get('test', None)
+            assert endpoint_client is not None
+            assert endpoint_client.__class__.__name__ == '_Socket'
+            assert endpoint_client.__class__.__module__ == 'zmq.green.core'
             assert v._settings.get('test', None) == {
                 'repeat': True,
                 'wait': 15,
@@ -320,7 +324,9 @@ class TestAtomicServiceBus:
             }
             assert say_hello_spy.call_count == 1
             args, _ = say_hello_spy.call_args_list[-1]
-            assert isinstance(args[0], zmq.Socket)
+            zmq_socket = args[0]
+            assert zmq_socket.__class__.__name__ == '_Socket'
+            assert zmq_socket.__class__.__module__ == 'zmq.green.core'
             assert args[1] == 'test'
             assert args[0] is v._endpoint_clients.get('test', None)
 
@@ -331,8 +337,10 @@ class TestAtomicServiceBus:
                     'wait=15, content_type=json'
                 ),
             )
-            assert isinstance(v._endpoint_clients.get('test-variable', None), zmq.Socket)
-            print(v._settings.get('test-variable', None))
+            endpoint_client = v._endpoint_clients.get('test-variable', None)
+            assert endpoint_client is not None
+            assert endpoint_client.__class__.__name__ == '_Socket'
+            assert endpoint_client.__class__.__module__ == 'zmq.green.core'
             assert v._settings.get('test-variable', None) == {
                 'repeat': False,
                 'wait': 15,
@@ -350,7 +358,9 @@ class TestAtomicServiceBus:
             }
             assert say_hello_spy.call_count == 2
             args, _ = say_hello_spy.call_args_list[-1]
-            assert isinstance(args[0], zmq.Socket)
+            zmq_socket = args[0]
+            assert zmq_socket.__class__.__name__ == '_Socket'
+            assert zmq_socket.__class__.__module__ == 'zmq.green.core'
             assert args[1] == 'test-variable'
             assert args[0] is v._endpoint_clients.get('test-variable', None)
         finally:
@@ -359,12 +369,16 @@ class TestAtomicServiceBus:
             except:
                 pass
 
-    @pytest.mark.usefixtures('noop_zmq')
-    def test_say_hello(self, mocker: MockerFixture, noop_zmq: Callable[[str], None]) -> None:
+    def test_say_hello(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.testdata.variables.servicebus')
 
-        def mock_response(client: zmq.Socket, response: Optional[AsyncMessageResponse]) -> None:
-            mocker.patch.object(client, 'recv_json', side_effect=[zmq.Again, response])
+        def mock_response(
+            client: zmq.Socket,
+            response: Optional[AsyncMessageResponse],
+        ) -> None:
+            mocker.patch.object(client, 'recv_json', side_effect=[ZMQAgain, response])
+
+        context: Optional[zmq.Context] = None
 
         try:
             # <!-- lazy way to initialize an empty AtomicServiceBus...
@@ -384,7 +398,7 @@ class TestAtomicServiceBus:
             # -->
 
             context = zmq.Context()
-            client = context.socket(zmq.REQ)
+            client = context.socket(ZMQ_REQ)
 
             v._settings['test2'] = {
                 'context': {
@@ -449,10 +463,11 @@ class TestAtomicServiceBus:
                 AtomicServiceBus.destroy()
             except:
                 pass
-            context.destroy()
 
-    @pytest.mark.usefixtures('noop_zmq')
-    def test_clear(self, mocker: MockerFixture, noop_zmq: Callable[[str], None]) -> None:
+            if context is not None:
+                context.destroy()
+
+    def test_clear(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.testdata.variables.servicebus')
 
         try:
@@ -495,14 +510,13 @@ class TestAtomicServiceBus:
             except:
                 pass
 
-    @pytest.mark.usefixtures('noop_zmq')
-    def test___getitem__(self, mocker: MockerFixture, noop_zmq: Callable[[str], None]) -> None:
+    def test___getitem__(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.testdata.variables.servicebus')
 
         def mock_response(response: Optional[AsyncMessageResponse], repeat: int = 1) -> None:
             mocker.patch(
-                'grizzly.testdata.variables.servicebus.zmq.sugar.socket.Socket.recv_json',
-                side_effect=[zmq.Again, response] * repeat,
+                'grizzly.testdata.variables.servicebus.zmq.Socket.recv_json',
+                side_effect=[ZMQAgain, response] * repeat,
             )
 
         mocker.patch(
@@ -608,8 +622,7 @@ class TestAtomicServiceBus:
             except:
                 pass
 
-    @pytest.mark.usefixtures('noop_zmq')
-    def test___setitem__(self, mocker: MockerFixture, noop_zmq: Callable[[str], None]) -> None:
+    def test___setitem__(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.testdata.variables.servicebus')
 
         def mocked___getitem__(i: AtomicServiceBus, variable: str) -> Optional[str]:
@@ -642,8 +655,7 @@ class TestAtomicServiceBus:
             except:
                 pass
 
-    @pytest.mark.usefixtures('noop_zmq')
-    def test___delitem__(self, mocker: MockerFixture, noop_zmq: Callable[[str], None]) -> None:
+    def test___delitem__(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.testdata.variables.servicebus')
 
         def mocked___getitem__(i: AtomicServiceBus, variable: str) -> Optional[str]:
@@ -660,7 +672,7 @@ class TestAtomicServiceBus:
         )
 
         zmq_disconnect_spy = mocker.patch(
-            'grizzly.testdata.variables.servicebus.zmq.sugar.socket.Socket.disconnect',
+            'grizzly.testdata.variables.servicebus.zmq.Socket.disconnect',
             side_effect=[None] * 10,
         )
 
@@ -683,7 +695,7 @@ class TestAtomicServiceBus:
             del v['asdf']
             assert zmq_disconnect_spy.call_count == 1
 
-            zmq_disconnect_spy.side_effect = [zmq.ZMQError]
+            zmq_disconnect_spy.side_effect = [ZMQError]
             v = AtomicServiceBus(
                 'test',
                 (

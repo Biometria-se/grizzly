@@ -14,6 +14,7 @@ coverage.xml
 *.event
 .env/
 .venv/
+script/tmp*
 
 # automagically generated
 docs/licenses.md

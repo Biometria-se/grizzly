@@ -10,7 +10,7 @@ from jinja2.meta import find_undeclared_variables
 from locust.exception import StopUser
 
 from ..context import GrizzlyContext
-from ..task import RequestTask
+from ..tasks import RequestTask
 from ..types import TestdataType, GrizzlyDictValueType, GrizzlyDict
 from ..utils import merge_dicts
 from .ast import get_template_variables
@@ -185,6 +185,5 @@ def resolve_variable(grizzly: GrizzlyContext, value: str, guess_datatype: Option
         resolved_variable = GrizzlyDict.guess_datatype(resolved_variable)
     elif quote_char is not None and isinstance(resolved_variable, str) and resolved_variable.count(' ') > 0:
         resolved_variable = f'{quote_char}{resolved_variable}{quote_char}'
-
 
     return resolved_variable

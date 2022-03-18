@@ -1,34 +1,19 @@
 import logging
 
-from typing import Optional, Dict, Any, Tuple, List, Union, Callable, Type
+from typing import Optional, Dict, Any, Tuple, List, Union, Type
 from os import environ, path
 from hashlib import sha1 as sha1_hash
 from dataclasses import dataclass, field
-from abc import ABCMeta
 
 import yaml
 
 from behave.model import Scenario
-from locust.user.sequential_taskset import SequentialTaskSet
 from locust.env import Environment
 
-from .types import GrizzlyDict
+from .types import GrizzlyDict, GrizzlyTask
 
 
 logger = logging.getLogger(__name__)
-
-
-# @TODO: these two classes is needed here to avoid circular imports
-class GrizzlyScenarioBase(SequentialTaskSet):
-    pass
-
-
-@dataclass(unsafe_hash=True)
-class GrizzlyTask(metaclass=ABCMeta):
-    scenario: 'GrizzlyContextScenario' = field(init=False, repr=False)
-
-    def implementation(self) -> Callable[[GrizzlyScenarioBase], Any]:
-        raise NotImplementedError(f'{self.__class__.__name__} has not implemented "implementation"')
 
 
 def generate_identifier(name: str) -> str:
@@ -59,7 +44,7 @@ def load_configuration_file() -> Dict[str, Any]:
 
     try:
         if path.splitext(configuration_file)[1] not in ['.yml', '.yaml']:
-            logger.error(f'configuration file must have file extension yml or yaml')
+            logger.error('configuration file must have file extension yml or yaml')
             raise SystemExit(1)
 
         with open(configuration_file, 'r') as fd:
@@ -99,10 +84,12 @@ class GrizzlyContextScenarioValidation:
     avg_response_time: Optional[int] = field(init=False, default=None)
     response_time_percentile: Optional[GrizzlyContextScenarioResponseTimePercentile] = field(init=False, default=None)
 
+
 @dataclass(unsafe_hash=True)
 class GrizzlyContextScenarioUser:
     class_name: str = field(init=False, hash=True)
     weight: int = field(init=False, hash=True, default=1)
+
 
 @dataclass(unsafe_hash=True)
 class GrizzlyContextScenario:
@@ -141,17 +128,13 @@ class GrizzlyContextScenario:
 
     def should_validate(self) -> bool:
         return (
-            self.validation.fail_ratio is not None or
-            self.validation.avg_response_time is not None or
-            self.validation.response_time_percentile is not None
+            self.validation.fail_ratio is not None
+            or self.validation.avg_response_time is not None
+            or self.validation.response_time_percentile is not None
         )
 
     def add_task(self, task: GrizzlyTask) -> None:
-        if isinstance(task, GrizzlyTask) and (
-            not hasattr(task, 'scenario') or
-            task.scenario is None or
-            task.scenario is not self
-        ):
+        if not hasattr(task, 'scenario') or task.scenario is None or task.scenario is not self:
             task.scenario = self
 
         self.tasks.append(task)

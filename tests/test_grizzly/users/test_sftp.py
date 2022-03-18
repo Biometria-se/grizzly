@@ -1,30 +1,26 @@
 import shutil
 
-from typing import Callable
 from os import path, environ
 from jinja2.environment import Template
 
 import pytest
 
 from _pytest.tmpdir import TempPathFactory
-from pytest_mock import mocker, MockerFixture  # pylint: disable=unused-import
-from locust.env import Environment
+from pytest_mock import MockerFixture
 from locust.exception import StopUser
 
 from grizzly.users.sftp import SftpUser
 from grizzly.clients import SftpClientSession
 from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContextScenario
-from grizzly.task import RequestTask
+from grizzly.tasks import RequestTask
 from grizzly.exceptions import RestartScenario
 
-from ..fixtures import locust_environment, paramiko_mocker  # pylint: disable=unused-import
-
+from ..fixtures import LocustFixture, ParamikoFixture
 
 
 class TestSftpUser:
-    @pytest.mark.usefixtures('locust_environment', 'tmpdir_factory')
-    def test_create(self, locust_environment: Environment, tmp_path_factory: TempPathFactory) -> None:
+    def test_create(self, locust_fixture: LocustFixture, tmp_path_factory: TempPathFactory) -> None:
         test_context = tmp_path_factory.mktemp('test_context') / 'requests'
         test_context.mkdir()
         test_context_root = path.dirname(str(test_context))
@@ -34,38 +30,38 @@ class TestSftpUser:
             SftpUser.host = 'http://test.nu'
 
             with pytest.raises(ValueError):
-                SftpUser(locust_environment)
+                SftpUser(locust_fixture.env)
 
             SftpUser.host = 'sftp://username:password@test.nu'
 
             with pytest.raises(ValueError):
-                SftpUser(locust_environment)
+                SftpUser(locust_fixture.env)
 
             SftpUser.host = 'sftp://test.nu/pub/test'
 
             with pytest.raises(ValueError):
-                SftpUser(locust_environment)
+                SftpUser(locust_fixture.env)
 
             SftpUser.host = 'sftp://test.nu'
 
             with pytest.raises(ValueError):
-                SftpUser(locust_environment)
+                SftpUser(locust_fixture.env)
 
             SftpUser._context['auth']['username'] = 'syrsa'
 
             with pytest.raises(ValueError):
-                SftpUser(locust_environment)
+                SftpUser(locust_fixture.env)
 
             SftpUser._context['auth']['password'] = 'hemligaarne'
 
-            user = SftpUser(locust_environment)
+            user = SftpUser(locust_fixture.env)
 
             assert isinstance(user.sftp_client, SftpClientSession)
             assert user.sftp_client.port == 22
             assert user.sftp_client.host == 'test.nu'
 
             SftpUser.host = 'sftp://test.nu:1337'
-            user = SftpUser(locust_environment)
+            user = SftpUser(locust_fixture.env)
 
             assert isinstance(user.sftp_client, SftpClientSession)
             assert user.sftp_client.port == 1337
@@ -74,14 +70,13 @@ class TestSftpUser:
             SftpUser._context['auth']['key_file'] = '~/.ssh/id_rsa'
 
             with pytest.raises(NotImplementedError):
-                SftpUser(locust_environment)
+                SftpUser(locust_fixture.env)
         finally:
             shutil.rmtree(test_context_root)
             del environ['GRIZZLY_CONTEXT_ROOT']
 
-    @pytest.mark.usefixtures('locust_environment', 'paramiko_mocker', 'tmpdir_factory')
-    def test_request(self, locust_environment: Environment, paramiko_mocker: Callable, tmp_path_factory: TempPathFactory, mocker: MockerFixture) -> None:
-        paramiko_mocker()
+    def test_request(self, locust_fixture: LocustFixture, paramiko_fixture: ParamikoFixture, tmp_path_factory: TempPathFactory, mocker: MockerFixture) -> None:
+        paramiko_fixture()
 
         test_context = tmp_path_factory.mktemp('test_context') / 'requests'
         test_context.mkdir()
@@ -95,7 +90,7 @@ class TestSftpUser:
                 'password': 'hemligaarne',
                 'key_file': None,
             }
-            user = SftpUser(locust_environment)
+            user = SftpUser(locust_fixture.env)
 
             mocker.patch('grizzly.users.sftp.time', side_effect=[0.0] * 100)
 
@@ -242,8 +237,7 @@ class TestSftpUser:
             del environ['GRIZZLY_CONTEXT_ROOT']
 
     @pytest.mark.skip(reason='needs preconditions outside of pytest, has to be executed explicitly manually')
-    @pytest.mark.usefixtures('locust_environment', 'tmpdir_factory')
-    def test_real(self, locust_environment: Environment, tmp_path_factory: TempPathFactory) -> None:
+    def test_real(self, locust_fixture: LocustFixture, tmp_path_factory: TempPathFactory) -> None:
         # first start sftp server:
         #  mkdir /tmp/sftp-upload; \
         #  docker run --rm -it -p 2222:22 -v /tmp/sftp-upload:/home/foo/upload atmoz/sftp:alpine foo:pass:1000:::upload; \
@@ -264,7 +258,7 @@ class TestSftpUser:
                 'password': 'pass',
                 'key_file': None,
             }
-            user = SftpUser(locust_environment)
+            user = SftpUser(locust_fixture.env)
 
             request = RequestTask(RequestMethod.PUT, name='test', endpoint='/upload')
             request.source = 'test.txt'

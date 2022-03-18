@@ -8,8 +8,8 @@ from behave import register_type, then  # pylint: disable=no-name-in-module
 from ..helpers import add_request_task
 from ...types import RequestDirection, RequestMethod
 from ...context import GrizzlyContext
-from ...task import PrintTask, WaitTask, TransformerTask, UntilRequestTask, DateTask
-from ...task.getter import getterof
+from ...tasks import PrintTask, WaitTask, TransformerTask, UntilRequestTask, DateTask
+from ...tasks.getter import getterof
 
 from grizzly_extras.transformer import TransformerContentType
 
@@ -27,6 +27,7 @@ register_type(
     Method=parse_method,
     ContentType=TransformerContentType.from_string,
 )
+
 
 @then(u'{method:Method} request with name "{name}" from endpoint "{endpoint}" until "{condition}"')
 def step_task_request_with_name_to_endpoint_until(context: Context, method: RequestMethod, name: str, endpoint: str, condition: str) -> None:
@@ -71,7 +72,6 @@ def step_task_request_with_name_to_endpoint_until(context: Context, method: Requ
 
         if '{{' in condition_rendered and '}}' in condition_rendered:
             grizzly.scenario.orphan_templates.append(condition_rendered)
-
 
 
 @then(u'{method:Method} request with name "{name}" {direction:Direction} endpoint "{endpoint}"')
@@ -124,7 +124,7 @@ def step_task_request_text_with_name_to_endpoint(context: Context, method: Reque
         endpoint (str): URI relative to `host` in the scenario, can contain variables and in certain cases `user_class_name` specific parameters
     '''
 
-    assert isinstance(direction, RequestDirection), f'invalid direction specified in expression'
+    assert isinstance(direction, RequestDirection), 'invalid direction specified in expression'
 
     if method.direction == RequestDirection.FROM:
         assert context.text is None, f'Step text is not allowed for {method.name}'
@@ -279,7 +279,7 @@ def step_task_wait_seconds(context: Context, wait_time: float) -> None:
     '''
     grizzly = cast(GrizzlyContext, context.grizzly)
 
-    assert wait_time > 0.0, f'wait time cannot be less than 0.0 seconds'
+    assert wait_time > 0.0, 'wait time cannot be less than 0.0 seconds'
 
     grizzly.scenario.add_task(WaitTask(time=wait_time))
 
@@ -375,6 +375,7 @@ def step_task_get_endpoint(context: Context, endpoint: str, variable: str) -> No
         endpoint=endpoint,
         variable=variable,
     ))
+
 
 @then(u'parse date "{value}" and save in variable "{variable}"')
 def step_task_date(context: Context, value: str, variable: str) -> None:

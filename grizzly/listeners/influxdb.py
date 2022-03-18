@@ -4,7 +4,7 @@ import socket
 import json
 
 from types import TracebackType
-from typing import Any, Dict, List, Optional, Type, cast
+from typing import Any, Dict, List, Optional, Type, Union, cast
 from typing_extensions import Literal
 from datetime import datetime, timezone, timedelta
 from urllib.parse import urlparse, parse_qs, unquote
@@ -15,6 +15,7 @@ from locust.env import Environment
 from influxdb import InfluxDBClient
 from influxdb.exceptions import InfluxDBClientError
 from locust.exception import CatchResponseError
+from locust.runners import MasterRunner
 
 
 logger = logging.getLogger(__name__)
@@ -80,7 +81,6 @@ class InfluxDb:
         result = self.client.query(query)
 
         return cast(List[Dict[str, Any]], result.raw['series'])
-
 
     def write(self, values: List[Dict[str, Any]]) -> None:
         try:
@@ -241,8 +241,8 @@ class InfluxDbListener:
 
             logger_method(message_to_log)
             self._log_request(request_type, name, result, metrics, exception)
-        except:
-            self.logger.error(f'failed to write metric for "{request_type} {name}"')
+        except Exception as e:
+            self.logger.error(f'failed to write metric for "{request_type} {name}": {str(e)}')
 
     def _create_metrics(self, response_time: int, response_length: int) -> Dict[str, Any]:
         metrics = self._safe_return_runner_values()
@@ -253,27 +253,40 @@ class InfluxDbListener:
         return metrics
 
     def _safe_return_runner_values(self) -> Dict[str, Any]:
-        runner_values: Dict[str, Any] = {}
+        runner_values: Dict[str, Union[int, float]] = {
+            'thread_count': -1,
+            'target_user_count': -1,
+            'spawn_rate': -1,
+        }
 
         try:
-            thread_count = int(self.environment.runner.user_count)
-        except Exception:
-            thread_count = -1
-        finally:
-            runner_values['thread_count'] = thread_count
+            runner = self.environment.runner
 
-        try:
-            target_user_count = int(self.environment.runner.target_user_count)
-        except Exception:
-            target_user_count = -1
-        finally:
-            runner_values['target_user_count'] = target_user_count
+            if runner is None:
+                raise ValueError()
 
-        try:
-            spawn_rate = float(self.environment.runner.spawn_rate)
-        except Exception:
-            spawn_rate = float(-1)
-        finally:
-            runner_values['spawn_rate'] = spawn_rate
+            try:
+                thread_count = int(runner.user_count)
+            except Exception:
+                thread_count = -1
+            finally:
+                runner_values['thread_count'] = thread_count
 
-        return runner_values
+            try:
+                target_user_count = int(runner.target_user_count)
+            except Exception:
+                target_user_count = -1
+            finally:
+                runner_values['target_user_count'] = target_user_count
+
+            try:
+                if isinstance(runner, MasterRunner):
+                    spawn_rate = float(runner.spawn_rate)
+                else:
+                    spawn_rate = -1
+            except Exception:
+                spawn_rate = -1
+            finally:
+                runner_values['spawn_rate'] = spawn_rate
+        finally:
+            return runner_values

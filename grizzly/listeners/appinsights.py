@@ -24,6 +24,7 @@ from urllib.parse import parse_qs, urlparse
 
 from opencensus.ext.azure.log_exporter import AzureLogHandler
 from locust.env import Environment
+from locust.runners import MasterRunner
 
 stdlogger = logging.getLogger(__name__)
 
@@ -35,7 +36,7 @@ class ApplicationInsightsListener:
         params = parse_qs(parsed.query)
 
         if parsed.hostname is None:
-            assert 'IngestionEndpoint' in params, f'IngestionEndpoint was neither set as the hostname or in the query string'
+            assert 'IngestionEndpoint' in params, 'IngestionEndpoint was neither set as the hostname or in the query string'
             ingestion_endpoint = params['IngestionEndpoint'][0]
         else:
             ingestion_endpoint = f'https://{parsed.hostname}/'
@@ -101,27 +102,39 @@ class ApplicationInsightsListener:
         return custom_dimensions
 
     def _safe_return_runner_values(self) -> Dict[str, Any]:
-        runner_values = {}
+        runner_values = {
+            'thread_count': '',
+            'target_user_count': '',
+            'spawn_rate': '',
+        }
 
         try:
-            thread_count = str(self.environment.runner.user_count)
-        except Exception:
-            thread_count = ''
-        finally:
-            runner_values['thread_count'] = thread_count
+            runner = self.environment.runner
 
-        try:
-            target_user_count = str(self.environment.runner.target_user_count)
-        except Exception:
-            target_user_count = ''
-        finally:
-            runner_values['target_user_count'] = target_user_count
+            if runner is None:
+                raise ValueError()
+            try:
+                thread_count = str(runner.user_count)
+            except Exception:
+                thread_count = ''
+            finally:
+                runner_values['thread_count'] = thread_count
 
-        try:
-            spawn_rate = str(self.environment.runner.spawn_rate)
-        except Exception:
-            spawn_rate = ''
-        finally:
-            runner_values['spawn_rate'] = spawn_rate
+            try:
+                target_user_count = str(runner.target_user_count)
+            except Exception:
+                target_user_count = ''
+            finally:
+                runner_values['target_user_count'] = target_user_count
 
-        return runner_values
+            try:
+                if isinstance(runner, MasterRunner):
+                    spawn_rate = str(runner.spawn_rate)
+                else:
+                    spawn_rate = ''
+            except Exception:
+                spawn_rate = ''
+            finally:
+                runner_values['spawn_rate'] = spawn_rate
+        finally:
+            return runner_values

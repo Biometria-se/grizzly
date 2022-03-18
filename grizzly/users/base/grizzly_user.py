@@ -10,16 +10,17 @@ from locust.env import Environment
 from grizzly.context import GrizzlyContextScenario
 
 from ...types import GrizzlyResponse
-from ...task import RequestTask
+from ...tasks import RequestTask
 from ...utils import merge_dicts
 from . import logger, FileRequests
+
 
 class GrizzlyUser(User):
     _context_root: str
     _context: Dict[str, Any] = {
         'variables': {},
     }
-    _scenario: Optional[GrizzlyContextScenario] = None
+    _scenario: GrizzlyContextScenario
 
     __dependencies__: Set[str] = set()
 
@@ -27,7 +28,6 @@ class GrizzlyUser(User):
         'RECEIVE': 'RECV',
         'HELLO': 'HELO',
     }
-
 
     weight: int = 1
 

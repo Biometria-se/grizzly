@@ -55,5 +55,3 @@ __all__ = [
     'load_variable',
     'destroy_variables',
 ]
-
-

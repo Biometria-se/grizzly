@@ -1,7 +1,7 @@
 import os
 import json
 
-from typing import Callable, Tuple, cast
+from typing import Tuple, cast
 
 import pytest
 
@@ -9,31 +9,32 @@ from locust.env import Environment
 from locust.exception import StopUser
 from azure.storage.blob._blob_client import BlobClient
 
-from pytest_mock import mocker  # pylint: disable=unused-import
-from pytest_mock.plugin import MockerFixture
+from pytest_mock import MockerFixture
 
 from grizzly.users.blobstorage import BlobStorageUser
 from grizzly.users.base.grizzly_user import GrizzlyUser
 from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContextScenario
-from grizzly.task import RequestTask
+from grizzly.tasks import RequestTask
 from grizzly.testdata.utils import transform
 from grizzly.exceptions import RestartScenario
 
-from ..fixtures import grizzly_context, request_task  # pylint: disable=unused-import
+from ..fixtures import GrizzlyFixture
 
 
 CONNECTION_STRING = 'DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=my-storage;AccountKey=xxxyyyyzzz=='
 
+BlobStorageScenarioFixture = Tuple[BlobStorageUser, GrizzlyContextScenario, Environment]
+
 
 @pytest.fixture
-def blob_storage_scenario(grizzly_context: Callable) -> Tuple[BlobStorageUser, GrizzlyContextScenario, Environment]:
-    environment, user, task, [_, _, request] = grizzly_context(
+def blob_storage_scenario(grizzly_fixture: GrizzlyFixture) -> BlobStorageScenarioFixture:
+    environment, user, task = grizzly_fixture(
         CONNECTION_STRING,
         BlobStorageUser,
     )
 
-    request = cast(RequestTask, request)
+    request = grizzly_fixture.request_task.request
 
     scenario = GrizzlyContextScenario()
     scenario.name = task.__class__.__name__
@@ -44,11 +45,12 @@ def blob_storage_scenario(grizzly_context: Callable) -> Tuple[BlobStorageUser, G
 
     scenario.add_task(request)
 
-    return user, scenario, environment
+    return cast(BlobStorageUser, user), scenario, environment
 
 
 class TestBlobStorageUser:
-    def test_create(self, blob_storage_scenario: Tuple[BlobStorageUser, GrizzlyContextScenario, Environment]) -> None:
+    @pytest.mark.usefixtures('blob_storage_scenario')
+    def test_create(self, blob_storage_scenario: BlobStorageScenarioFixture) -> None:
         user, _, environment = blob_storage_scenario
         assert user.client.account_name == 'my-storage'
         assert issubclass(user.__class__, GrizzlyUser)
@@ -73,8 +75,8 @@ class TestBlobStorageUser:
             user = BlobStorageUser(environment)
         assert 'needs AccountKey in the query string' in str(e)
 
-
-    def test_send(self, blob_storage_scenario: Tuple[BlobStorageUser, GrizzlyContextScenario, Environment], mocker: MockerFixture) -> None:
+    @pytest.mark.usefixtures('blob_storage_scenario')
+    def test_send(self, blob_storage_scenario: BlobStorageScenarioFixture, mocker: MockerFixture) -> None:
         [user, scenario, _] = blob_storage_scenario
 
         remote_variables = {
@@ -118,11 +120,8 @@ class TestBlobStorageUser:
         assert blob_client.container_name == cast(RequestTask, scenario.tasks[-1]).endpoint
         assert blob_client.blob_name == os.path.basename(scenario.name)
 
-        #environment.events.request = RequestEvent()
-
         request = cast(RequestTask, scenario.tasks[-1])
 
-        #with pytest.raises(ResultFailure):
         user.request(request)
 
         request_event = mocker.spy(user.environment.events.request, 'fire')
@@ -142,8 +141,6 @@ class TestBlobStorageUser:
         exception = kwargs.get('exception', None)
         assert isinstance(exception, NotImplementedError)
         assert 'has not implemented RECEIVE' in str(exception)
-
-        #environment.events.request = RequestSilentFailureEvent()
 
         request.scenario.failure_exception = None
         with pytest.raises(StopUser):

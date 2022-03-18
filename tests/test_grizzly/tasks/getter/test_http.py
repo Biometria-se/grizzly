@@ -1,23 +1,23 @@
-from typing import Callable, cast
+from typing import cast
 from json import dumps as jsondumps
+
 import pytest
 
-from pytest_mock import mocker, MockerFixture  # pylint: disable=unused-import
+from pytest_mock import MockerFixture
 from locust.exception import StopUser
 from requests import Response
-from behave.runner import Context
 
 from grizzly.context import GrizzlyContext
-from grizzly.task.getter import HttpGetTask
+from grizzly.tasks.getter import HttpGetTask
 from grizzly.exceptions import RestartScenario
 
-from ...fixtures import grizzly_context, request_task, behave_context, locust_environment  # pylint: disable=unused-import
+from ...fixtures import GrizzlyFixture
 
 
 class TestHttpGetTask:
-    @pytest.mark.usefixtures('behave_context', 'grizzly_context')
-    def test(self, mocker: MockerFixture, behave_context: Context, grizzly_context: Callable) -> None:
-        grizzly = cast(GrizzlyContext, behave_context.grizzly)
+    def test(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
+        behave = grizzly_fixture.behave
+        grizzly = cast(GrizzlyContext, behave.grizzly)
 
         with pytest.raises(ValueError) as ve:
             HttpGetTask(endpoint='http://example.org', variable='test')
@@ -28,15 +28,17 @@ class TestHttpGetTask:
         response._content = jsondumps({'hello': 'world'}).encode()
 
         requests_get_spy = mocker.patch(
-            'grizzly.task.getter.http.requests.get',
+            'grizzly.tasks.getter.http.requests.get',
             side_effect=[response, RuntimeError, RuntimeError, RuntimeError]
         )
 
         grizzly.state.variables.update({'test': 'none'})
 
-        _, _, tasks, _ = grizzly_context()
+        _, _, scenario = grizzly_fixture()
 
-        request_fire_spy = mocker.spy(tasks.user.environment.events.request, 'fire')
+        assert scenario is not None
+
+        request_fire_spy = mocker.spy(scenario.user.environment.events.request, 'fire')
 
         task = HttpGetTask(endpoint='http://example.org', variable='test')
 
@@ -44,11 +46,11 @@ class TestHttpGetTask:
 
         assert callable(implementation)
 
-        assert tasks.user._context['variables'].get('test', None) is None
+        assert scenario.user._context['variables'].get('test', None) is None
 
-        implementation(tasks)
+        implementation(scenario)
 
-        assert tasks.user._context['variables'].get('test', '') == jsondumps({'hello': 'world'})
+        assert scenario.user._context['variables'].get('test', '') == jsondumps({'hello': 'world'})
         assert requests_get_spy.call_count == 1
         args, _ = requests_get_spy.call_args_list[-1]
         assert args[0] == 'http://example.org'
@@ -56,17 +58,17 @@ class TestHttpGetTask:
         assert request_fire_spy.call_count == 1
         _, kwargs = request_fire_spy.call_args_list[-1]
         assert kwargs.get('request_type', None) == 'TASK'
-        assert kwargs.get('name', None) == f'{tasks.user._scenario.identifier} HttpGetTask->test'
+        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} HttpGetTask->test'
         assert kwargs.get('response_time', None) >= 0.0
         assert kwargs.get('response_length') == len(jsondumps({'hello': 'world'}))
-        assert kwargs.get('context', None) is tasks.user._context
+        assert kwargs.get('context', None) is scenario.user._context
         assert kwargs.get('exception', '') is None
 
-        tasks.user._context['variables']['test'] = None
+        scenario.user._context['variables']['test'] = None
 
-        implementation(tasks)
+        implementation(scenario)
 
-        assert tasks.user._context['variables'].get('test', '') is None  # not set
+        assert scenario.user._context['variables'].get('test', '') is None  # not set
         assert requests_get_spy.call_count == 2
         args, _ = requests_get_spy.call_args_list[-1]
         assert args[0] == 'http://example.org'
@@ -74,23 +76,23 @@ class TestHttpGetTask:
         assert request_fire_spy.call_count == 2
         _, kwargs = request_fire_spy.call_args_list[-1]
         assert kwargs.get('request_type', None) == 'TASK'
-        assert kwargs.get('name', None) == f'{tasks.user._scenario.identifier} HttpGetTask->test'
+        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} HttpGetTask->test'
         assert kwargs.get('response_time', None) >= 0.0
         assert kwargs.get('response_length') == 0
-        assert kwargs.get('context', None) is tasks.user._context
+        assert kwargs.get('context', None) is scenario.user._context
         assert isinstance(kwargs.get('exception', None), RuntimeError)
 
-        tasks.user._scenario.failure_exception = StopUser
+        scenario.user._scenario.failure_exception = StopUser
 
         with pytest.raises(StopUser):
-            implementation(tasks)
+            implementation(scenario)
 
-        tasks.user._scenario.failure_exception = RestartScenario
+        scenario.user._scenario.failure_exception = RestartScenario
 
         with pytest.raises(RestartScenario):
-            implementation(tasks)
+            implementation(scenario)
 
-        assert tasks.user._context['variables'].get('test', '') is None  # not set
+        assert scenario.user._context['variables'].get('test', '') is None  # not set
         assert requests_get_spy.call_count == 4
         args, _ = requests_get_spy.call_args_list[-1]
         assert args[0] == 'http://example.org'
@@ -98,8 +100,8 @@ class TestHttpGetTask:
         assert request_fire_spy.call_count == 4
         _, kwargs = request_fire_spy.call_args_list[-1]
         assert kwargs.get('request_type', None) == 'TASK'
-        assert kwargs.get('name', None) == f'{tasks.user._scenario.identifier} HttpGetTask->test'
+        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} HttpGetTask->test'
         assert kwargs.get('response_time', None) >= 0.0
         assert kwargs.get('response_length') == 0
-        assert kwargs.get('context', None) is tasks.user._context
+        assert kwargs.get('context', None) is scenario.user._context
         assert isinstance(kwargs.get('exception', None), RuntimeError)

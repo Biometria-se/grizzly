@@ -41,6 +41,7 @@ from grizzly_extras.arguments import split_value, parse_arguments
 
 from ...types import bool_typed, AtomicVariable
 
+
 def atomicdirectorycontents__base_type__(value: str) -> str:
     grizzly_context_requests = os.path.join(os.environ.get('GRIZZLY_CONTEXT_ROOT', ''), 'requests')
     if '|' in value:
@@ -67,6 +68,7 @@ def atomicdirectorycontents__base_type__(value: str) -> str:
         raise ValueError(f'AtomicDirectoryContents: {directory_value} is not a directory in {grizzly_context_requests}')
 
     return value
+
 
 class AtomicDirectoryContents(AtomicVariable[str]):
     __base_type__ = atomicdirectorycontents__base_type__
@@ -129,8 +131,8 @@ class AtomicDirectoryContents(AtomicVariable[str]):
         parent_part = len(self._requests_context_root) + 1
         queue = [
             str(path)[parent_part:]
-                for path in Path(os.path.join(self._requests_context_root, directory)).rglob('*')
-                    if path.is_file()
+            for path in Path(os.path.join(self._requests_context_root, directory)).rglob('*')
+            if path.is_file()
         ]
         queue.sort()
 

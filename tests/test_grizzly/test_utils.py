@@ -3,8 +3,6 @@ from types import FunctionType
 
 import pytest
 
-from locust.user.users import User
-from locust.env import Environment
 from locust import TaskSet
 from behave.runner import Context
 from behave.model import Scenario
@@ -21,21 +19,12 @@ from grizzly.utils import (
 )
 from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
-from grizzly.task import RequestTask
+from grizzly.tasks import RequestTask
 from grizzly.users import RestApiUser
+from grizzly.users.base import GrizzlyUser
 from grizzly.scenarios import IteratorScenario
 
-# pylint: disable=unused-import
-from .fixtures import (
-    grizzly_context,
-    locust_environment,
-    request_task,
-    behave_context,
-    behave_runner,
-    behave_scenario,
-)
-
-from .testdata.fixtures import cleanup
+from .fixtures import LocustFixture, BehaveFixture
 
 
 class TestModuleLoader:
@@ -43,28 +32,26 @@ class TestModuleLoader:
         class_name = 'ANonExistingModule'
 
         with pytest.raises(ModuleNotFoundError):
-            ModuleLoader[User].load('a.non.existing.package', class_name)
+            ModuleLoader[GrizzlyUser].load('a.non.existing.package', class_name)
 
         with pytest.raises(AttributeError):
-            ModuleLoader[User].load('grizzly.users', class_name)
+            ModuleLoader[GrizzlyUser].load('grizzly.users', class_name)
 
-
-    @pytest.mark.usefixtures('locust_environment')
-    def test_load_user_class(self, locust_environment: Environment) -> None:
+    def test_load_user_class(self, locust_fixture: LocustFixture) -> None:
         try:
             test_context = GrizzlyContext()
             test_context.scenario.context['host'] = 'test'
             user_class_name = 'RestApiUser'
             for user_package in ['', 'grizzly.users.', 'grizzly.users.restapi.']:
                 user_class_name_value = f'{user_package}{user_class_name}'
-                user_class = cast(Type[User], ModuleLoader[User].load('grizzly.users', user_class_name_value))
+                user_class = cast(Type[GrizzlyUser], ModuleLoader[GrizzlyUser].load('grizzly.users', user_class_name_value))
                 user_class.host = test_context.scenario.context['host']
                 assert user_class.__module__ == 'grizzly.users.restapi'
                 assert user_class.host == 'test'
                 assert hasattr(user_class, 'tasks')
 
                 # try to initialize it, without any token information
-                user_class_instance = user_class(locust_environment)
+                user_class_instance = user_class(locust_fixture.env)
 
                 # with token context
                 test_context.scenario.context['token'] = {
@@ -73,7 +60,7 @@ class TestModuleLoader:
                     'url': 'http://test',
                     'resource': None,
                 }
-                user_class_instance = user_class(locust_environment)
+                user_class_instance = user_class(locust_fixture.env)
 
                 # without token context
                 test_context.scenario.context['token'] = {
@@ -90,20 +77,22 @@ class TestModuleLoader:
             GrizzlyContext.destroy()
 
 
-@pytest.mark.usefixtures('behave_context', 'behave_scenario')
-def test_catch(behave_context: Context, behave_scenario: Scenario) -> None:
+def test_catch(behave_fixture: BehaveFixture) -> None:
+    behave = behave_fixture.context
+    behave_scenario = Scenario(filename=None, line=None, keyword='', name='')
+
     @catch(KeyboardInterrupt)
     def raises_KeyboardInterrupt(context: Context, scenario: Scenario) -> None:
         raise KeyboardInterrupt()
 
     try:
-        raises_KeyboardInterrupt(behave_context, behave_scenario)
+        raises_KeyboardInterrupt(behave, behave_scenario)
     except KeyboardInterrupt:
-        pytest.fail(f'function raised KeyboardInterrupt, when it should not have')
+        pytest.fail('function raised KeyboardInterrupt, when it should not have')
 
-    assert behave_context.failed
+    assert behave.failed
     assert behave_scenario.status == Status.failed
-    behave_context._set_root_attribute('failed', False)
+    behave._set_root_attribute('failed', False)
     behave_scenario.set_status(Status.undefined)
 
     @catch(ValueError)
@@ -111,11 +100,11 @@ def test_catch(behave_context: Context, behave_scenario: Scenario) -> None:
         raise KeyboardInterrupt()
 
     with pytest.raises(KeyboardInterrupt):
-        raises_ValueError_not(behave_context, behave_scenario)
+        raises_ValueError_not(behave, behave_scenario)
 
-    assert not behave_context.failed
+    assert not behave.failed
     assert not behave_scenario.status == Status.failed
-    behave_context._set_root_attribute('failed', False)
+    behave._set_root_attribute('failed', False)
     behave_scenario.set_status(Status.undefined)
 
     @catch(ValueError)
@@ -123,36 +112,35 @@ def test_catch(behave_context: Context, behave_scenario: Scenario) -> None:
         raise ValueError()
 
     with pytest.raises(ValueError):
-        raises_ValueError(behave_context)
+        raises_ValueError(behave)
 
     @catch(NotImplementedError)
     def no_scenario_argument(context: Context, other: str) -> None:
         raise NotImplementedError()
 
     with pytest.raises(NotImplementedError):
-        no_scenario_argument(behave_context, 'not a scenario')
+        no_scenario_argument(behave, 'not a scenario')
 
     try:
-        raises_ValueError(behave_context, behave_scenario)
+        raises_ValueError(behave, behave_scenario)
     except ValueError:
-        pytest.fail(f'function raised ValueError, when it should not have')
+        pytest.fail('function raised ValueError, when it should not have')
 
 
-@pytest.mark.usefixtures('behave_context')
-def test_fail_directly(behave_context: Context) -> None:
-    behave_context.config.stop = False
-    behave_context.config.verbose = True
+def test_fail_directly(behave_fixture: BehaveFixture) -> None:
+    behave = behave_fixture.context
+    behave.config.stop = False
+    behave.config.verbose = True
 
-    with fail_direct(behave_context):
-        assert behave_context.config.stop == True
-        assert behave_context.config.verbose == False
+    with fail_direct(behave):
+        assert getattr(behave.config, 'stop', False) is True
+        assert getattr(behave.config, 'verbose', True) is False
 
-    assert behave_context.config.stop == False
-    assert behave_context.config.verbose == True
+    assert behave.config.stop is False
+    assert behave.config.verbose is True
 
 
-@pytest.mark.usefixtures('locust_environment')
-def test_create_user_class_type(locust_environment: Environment) -> None:
+def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
     scenario = GrizzlyContextScenario()
     scenario.name = 'A scenario description'
     scenario.description = scenario.name
@@ -179,12 +167,12 @@ def test_create_user_class_type(locust_environment: Environment) -> None:
     user_class_type_1 = create_user_class_type(scenario)
     user_class_type_1.host = 'http://localhost:8000'
 
-    assert issubclass(user_class_type_1, (RestApiUser, User))
+    assert issubclass(user_class_type_1, (RestApiUser, GrizzlyUser))
     assert user_class_type_1.__name__ == f'grizzly.users.RestApiUser_{scenario.identifier}'
     assert user_class_type_1.weight == 1
     assert user_class_type_1._scenario is scenario
     assert user_class_type_1.host == 'http://localhost:8000'
-    assert user_class_type_1.__module__ == 'locust.user.users'
+    assert user_class_type_1.__module__ == 'grizzly.users.restapi'
     assert user_class_type_1._context == {
         'verify_certificates': True,
         'auth': {
@@ -203,7 +191,7 @@ def test_create_user_class_type(locust_environment: Environment) -> None:
             }
         }
     }
-    user_type_1 = user_class_type_1(locust_environment)
+    user_type_1 = user_class_type_1(locust_fixture.env)
 
     assert user_type_1.context() == {
         'log_all_requests': False,
@@ -248,12 +236,12 @@ def test_create_user_class_type(locust_environment: Environment) -> None:
     )
     user_class_type_2.host = 'http://localhost:8001'
 
-    assert issubclass(user_class_type_2, (RestApiUser, User))
+    assert issubclass(user_class_type_2, (RestApiUser, GrizzlyUser))
     assert user_class_type_2.__name__ == f'RestApiUser_{scenario.identifier}'
     assert user_class_type_2.weight == 1
     assert user_class_type_2._scenario is scenario
     assert user_class_type_2.host == 'http://localhost:8001'
-    assert user_class_type_2.__module__ == 'locust.user.users'
+    assert user_class_type_2.__module__ == 'grizzly.users.restapi'
     assert user_class_type_2._context == {
         'log_all_requests': True,
         'test': {
@@ -277,7 +265,7 @@ def test_create_user_class_type(locust_environment: Environment) -> None:
         }
     }
 
-    user_type_2 = user_class_type_2(locust_environment)
+    user_type_2 = user_class_type_2(locust_fixture.env)
     assert user_type_2.context() == {
         'log_all_requests': True,
         'variables': {},
@@ -310,12 +298,12 @@ def test_create_user_class_type(locust_environment: Environment) -> None:
     user_class_type_3 = create_user_class_type(scenario, {'test': {'value': 1}})
     user_class_type_3.host = 'http://localhost:8002'
 
-    assert issubclass(user_class_type_3, (RestApiUser, User))
+    assert issubclass(user_class_type_3, (RestApiUser, GrizzlyUser))
     assert user_class_type_3.__name__ == f'RestApiUser_{scenario.identifier}'
     assert user_class_type_3.weight == 1
     assert user_class_type_3._scenario is scenario
     assert user_class_type_3.host == 'http://localhost:8002'
-    assert user_class_type_3.__module__ == 'locust.user.users'
+    assert user_class_type_3.__module__ == 'grizzly.users.restapi'
     assert user_class_type_3._context == {
         'test': {
             'value': 'hello world',
@@ -348,6 +336,7 @@ def test_create_user_class_type(locust_environment: Environment) -> None:
         scenario.user.class_name = 'DoNotExistInGrizzlyUsersUser'
         create_user_class_type(scenario)
 
+
 def test_create_scenario_class_type() -> None:
     scenario = GrizzlyContextScenario()
     scenario.name = 'A scenario description'
@@ -360,7 +349,7 @@ def test_create_scenario_class_type() -> None:
 
     assert issubclass(task_class_type_1, (IteratorScenario, TaskSet))
     assert task_class_type_1.__name__ == 'IteratorScenario_25867809'
-    assert task_class_type_1.__module__ == 'locust.user.sequential_taskset'
+    assert task_class_type_1.__module__ == 'grizzly.scenarios.iterator'
     task_class_type_1.add_scenario_task(RequestTask(RequestMethod.POST, name='test-request', endpoint='/api/test'))
 
     scenario = GrizzlyContextScenario()
@@ -368,7 +357,7 @@ def test_create_scenario_class_type() -> None:
     task_class_type_2 = create_scenario_class_type('IteratorScenario', scenario)
     assert issubclass(task_class_type_2, (IteratorScenario, TaskSet))
     assert task_class_type_2.__name__ == 'IteratorScenario_cf4fa8aa'
-    assert task_class_type_2.__module__ == 'locust.user.sequential_taskset'
+    assert task_class_type_2.__module__ == 'grizzly.scenarios.iterator'
 
     assert task_class_type_1.tasks != task_class_type_2.tasks
 

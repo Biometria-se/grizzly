@@ -2,6 +2,7 @@ import pytest
 
 from grizzly_extras.arguments import split_value, get_unsupported_arguments, parse_arguments, unquote
 
+
 @pytest.mark.parametrize('separator', ['|', ', '])
 def test_split_value(separator: str) -> None:
     assert split_value(f'hello world  {separator} foo bar', separator) == ('hello world', 'foo bar',)

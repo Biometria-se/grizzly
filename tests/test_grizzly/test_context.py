@@ -8,7 +8,6 @@ import pytest
 from _pytest.tmpdir import TempPathFactory
 from jinja2.environment import Template
 from behave.model import Scenario
-from behave.runner import Context
 
 from grizzly.context import (
     GrizzlyContext,
@@ -22,11 +21,11 @@ from grizzly.context import (
 )
 
 from grizzly.types import RequestMethod
-from grizzly.task import PrintTask, RequestTask, WaitTask
+from grizzly.tasks import PrintTask, RequestTask, WaitTask
 
 
 from .helpers import get_property_decorated_attributes
-from .fixtures import request_task, grizzly_context, behave_context, locust_environment  # pylint: disable=unused-import
+from .fixtures import BehaveFixture, RequestTaskFixture
 
 
 def test_load_configuration_file(tmp_path_factory: TempPathFactory) -> None:
@@ -91,9 +90,9 @@ def test_generate_identifier() -> None:
 
 
 class TestGrizzlyContextSetup:
-    @pytest.mark.usefixtures('behave_context')
-    def test(self, behave_context: Context) -> None:
-        grizzly = getattr(behave_context, 'grizzly')
+    def test(self, behave_fixture: BehaveFixture) -> None:
+        behave = behave_fixture.context
+        grizzly = getattr(behave, 'grizzly')
         grizzly_setup = grizzly.setup
 
         expected_properties: Dict[str, Tuple[Any, Any]] = {
@@ -124,9 +123,9 @@ class TestGrizzlyContextSetup:
 
         assert expected_attributes == actual_attributes
 
-    @pytest.mark.usefixtures('behave_context')
-    def test_scenarios(self, behave_context: Context) -> None:
-        grizzly = getattr(behave_context, 'grizzly')
+    def test_scenarios(self, behave_fixture: BehaveFixture) -> None:
+        behave = behave_fixture.context
+        grizzly = getattr(behave, 'grizzly')
         assert len(grizzly.scenarios()) == 0
         assert grizzly.state.variables == {}
 
@@ -139,7 +138,6 @@ class TestGrizzlyContextSetup:
 
         grizzly.scenario.context['host'] = 'http://test:8000'
         assert grizzly.scenario.context['host'] == 'http://test:8000'
-
 
         grizzly.add_scenario('test2')
         grizzly.scenario.user_class_name = 'TestUser'
@@ -191,7 +189,6 @@ class TestGrizzlyContextState:
             setattr(state, test_attribute_name, test_value)
             assert getattr(state, test_attribute_name) == test_value
 
-
     def test_configuration(self, tmp_path_factory: TempPathFactory) -> None:
         configuration_file = tmp_path_factory.mktemp('configuration_file') / 'configuration.yaml'
         try:
@@ -237,9 +234,9 @@ class TestGrizzlyContextState:
 
 
 class TestGrizzlyContext:
-    @pytest.mark.usefixtures('behave_context')
-    def test(self, behave_context: Context) -> None:
-        grizzly = getattr(behave_context, 'grizzly')
+    def test(self, behave_fixture: BehaveFixture) -> None:
+        behave = behave_fixture.context
+        grizzly = getattr(behave, 'grizzly')
         assert grizzly is not None
         assert isinstance(grizzly, GrizzlyContext)
 
@@ -264,9 +261,9 @@ class TestGrizzlyContext:
         assert callable(getattr(grizzly, 'scenarios', None))
         assert expected_attributes == actual_attributes
 
-    @pytest.mark.usefixtures('behave_context')
-    def test_destroy(self, behave_context: Context) -> None:
-        grizzly = getattr(behave_context, 'grizzly')
+    def test_destroy(self, behave_fixture: BehaveFixture) -> None:
+        behave = behave_fixture.context
+        grizzly = getattr(behave, 'grizzly')
         assert grizzly is GrizzlyContext()
 
         GrizzlyContext.destroy()
@@ -308,13 +305,12 @@ class TestGrizzlyContextScenario:
 
         assert not scenario.should_validate()
 
-    @pytest.mark.usefixtures('request_task')
-    def test_tasks(self, request_task: Tuple[str, str, RequestTask]) -> None:
+    def test_tasks(self, request_task: RequestTaskFixture) -> None:
         scenario = GrizzlyContextScenario()
         scenario.name = 'TestScenario'
         scenario.context['host'] = 'test'
         scenario.user.class_name = 'TestUser'
-        [_, _, request] = request_task
+        request = request_task.request
 
         scenario.add_task(request)
 

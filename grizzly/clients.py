@@ -1,6 +1,6 @@
 import logging
 
-from typing import Optional, Dict, Any, Tuple, Optional, Generator, cast
+from typing import TYPE_CHECKING, Dict, Any, Tuple, Optional, Generator, cast
 from contextlib import contextmanager
 
 from locust.user.users import User
@@ -9,10 +9,12 @@ from locust.event import EventHook
 from paramiko import SFTPClient, Transport
 from paramiko.pkey import PKey
 
-from .task import RequestTask
+if TYPE_CHECKING:  # pragma: no cover
+    from .tasks import RequestTask
 
 
 logger = logging.getLogger(__name__)
+
 
 class ResponseEventSession(HttpSession):
     event_hook: EventHook
@@ -22,27 +24,35 @@ class ResponseEventSession(HttpSession):
 
         self.event_hook = EventHook()
 
-    def request(
+    def request(  # type: ignore
         self,
-        /,
         method: str,
         url: str,
-        request: RequestTask,
         name: Optional[str] = None,
         catch_response: bool = False,
+        context: Optional[Dict[str, Any]] = None,
+        request: Optional['RequestTask'] = None,
         **kwargs: Dict[str, Any],
     ) -> ResponseContextManager:
 
-        response = cast(ResponseContextManager, super().request(method, url, name, catch_response, **kwargs))
+        if context is None:
+            context = {}
+
+        response_context_manager = cast(
+            ResponseContextManager,
+            super().request(method, url, name, catch_response, context, **kwargs),
+        )
+
+        response_context_manager._entered = True
 
         self.event_hook.fire(
             name=name,
             request=request,
-            context=response,
+            context=response_context_manager,
             user=self.user,
         )
 
-        return response
+        return response_context_manager
 
 
 class SftpClientSession:

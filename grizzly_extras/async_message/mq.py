@@ -26,6 +26,7 @@ __all__ = [
 
 handlers: Dict[str, AsyncMessageRequestHandler] = {}
 
+
 class AsyncMessageQueueHandler(AsyncMessageHandler):
     qmgr: Optional[pymqi.QueueManager] = None
 
@@ -39,10 +40,12 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
     def queue_context(self, endpoint: str, browsing: Optional[bool] = False) -> Generator[pymqi.Queue, None, None]:
         queue: Optional[pymqi.Queue] = None
         if browsing:
-            queue = pymqi.Queue(self.qmgr, endpoint,
+            queue = pymqi.Queue(
+                self.qmgr, endpoint,
                 pymqi.CMQC.MQOO_FAIL_IF_QUIESCING
                 | pymqi.CMQC.MQOO_INPUT_SHARED
-                | pymqi.CMQC.MQOO_BROWSE)
+                | pymqi.CMQC.MQOO_BROWSE
+            )
         else:
             queue = pymqi.Queue(self.qmgr, endpoint)
 
@@ -80,7 +83,6 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
         )
         self.qmgr = pymqi.QueueManager(None)
 
-
         if key_file is not None:
             cd['SSLCipherSpec'] = ssl_cipher.encode() if ssl_cipher is not None else None
 
@@ -111,7 +113,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
         if message_wait is not None and message_wait > 0:
             gmo = pymqi.GMO(
                 Options=pymqi.CMQC.MQGMO_WAIT | pymqi.CMQC.MQGMO_FAIL_IF_QUIESCING,
-                WaitInterval=message_wait*1000,
+                WaitInterval=message_wait * 1000,
             )
         else:
             gmo = pymqi.GMO()

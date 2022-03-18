@@ -6,7 +6,7 @@ import jinja2 as j2
 
 from jinja2.nodes import Getattr, Getitem, Name
 
-from ..task import RequestTask
+from ..tasks import RequestTask
 
 
 RequestSourceMapping = Dict[str, Set[Tuple[str, Union[str, RequestTask]]]]
@@ -40,6 +40,7 @@ def get_template_variables(sources: Optional[List[RequestTask]]) -> Dict[str, Se
         )
 
     return _parse_templates(templates)
+
 
 def walk_attr(node: Getattr) -> List[str]:
     def _walk_attr(parent: Getattr) -> List[str]:

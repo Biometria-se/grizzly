@@ -6,40 +6,43 @@ from typing import Generator, List, Callable
 import pytest
 
 from _pytest.tmpdir import TempPathFactory
-from locust.env import Environment
 from locust.clients import ResponseContextManager
 from requests.models import CaseInsensitiveDict, Response, PreparedRequest
 
 from grizzly.users.base import RequestLogger, HttpRequests
 from grizzly.types import RequestMethod
-from grizzly.task import RequestTask
+from grizzly.tasks import RequestTask
 
-from ...fixtures import locust_environment  # pylint: disable=unused-import
+from ...fixtures import LocustFixture
 
+
+@pytest.mark.usefixtures('locust_fixture')
 @pytest.fixture
-def request_logger(locust_environment: Environment, tmp_path_factory: TempPathFactory) -> Generator[RequestLogger, None, None]:
-        test_context = tmp_path_factory.mktemp('test_context') / 'requests'
-        test_context_root = path.dirname(str(test_context))
-        environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
+def request_logger(locust_fixture: LocustFixture, tmp_path_factory: TempPathFactory) -> Generator[RequestLogger, None, None]:
+    test_context = tmp_path_factory.mktemp('test_context') / 'requests'
+    test_context_root = path.dirname(str(test_context))
+    environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
+
+    try:
+        RequestLogger.host = 'https://example.org'
+        yield RequestLogger(locust_fixture.env)
+    finally:
+        shutil.rmtree(test_context_root)
 
         try:
-            RequestLogger.host = 'https://example.org'
-            yield RequestLogger(locust_environment)
-        finally:
-            shutil.rmtree(test_context_root)
+            del environ['GRIZZLY_CONTEXT_ROOT']
+        except KeyError:
+            pass
 
-            try:
-                del environ['GRIZZLY_CONTEXT_ROOT']
-            except KeyError:
-                pass
 
 @pytest.fixture
 def get_log_files() -> Callable[[], List[str]]:
     def wrapped() -> List[str]:
         logs_root = path.join(environ['GRIZZLY_CONTEXT_ROOT'], 'logs')
         log_files = [
-            path.join(logs_root, f) for f in listdir(logs_root)
-                if path.isfile(path.join(logs_root, f)) and f.endswith('.log')
+            path.join(logs_root, f)
+            for f in listdir(logs_root)
+            if path.isfile(path.join(logs_root, f)) and f.endswith('.log')
         ]
 
         return log_files
@@ -48,22 +51,21 @@ def get_log_files() -> Callable[[], List[str]]:
 
 
 class TestRequestLogger:
-    @pytest.mark.usefixtures('locust_environment')
-    def test___init__(self, locust_environment: Environment) -> None:
+    def test___init__(self, locust_fixture: LocustFixture) -> None:
         assert not path.isdir(path.join(environ['GRIZZLY_CONTEXT_ROOT'], 'logs'))
 
         fake_user_type = type('FakeRequestLogger', (RequestLogger, HttpRequests,), {
             'host': 'https://test.example.org',
         })
 
-        user = fake_user_type(locust_environment)
+        user = fake_user_type(locust_fixture.env)
 
         assert path.isdir(path.join(environ['GRIZZLY_CONTEXT_ROOT'], 'logs'))
         assert not user._context.get('log_all_requests', None)
         assert len(user.response_event._handlers) == 1
 
         RequestLogger.host = 'mq://example.org'
-        user = RequestLogger(locust_environment)
+        user = RequestLogger(locust_fixture.env)
 
         assert len(user.response_event._handlers) == 1
         assert user.client is None
@@ -91,8 +93,8 @@ class TestRequestLogger:
         }
 
         assert request_logger._remove_secrets_attribute({'contents': 'test value'}) == {'contents': 'test value'}
-        assert request_logger._remove_secrets_attribute(None) == None
-        assert request_logger._remove_secrets_attribute(True) == True
+        assert request_logger._remove_secrets_attribute(None) is None
+        assert request_logger._remove_secrets_attribute(True) is True
         assert request_logger._remove_secrets_attribute('hello world') == 'hello world'
 
     @pytest.mark.usefixtures('request_logger', 'get_log_files')
@@ -165,7 +167,8 @@ class TestRequestLogger:
         response.request.body = '{"test": "contents"}'.encode('utf-8')
         response.request.headers = CaseInsensitiveDict()
         response_context_manager = ResponseContextManager(response, None, None)
-        response_context_manager.locust_request_meta = {
+        response_context_manager._entered = True
+        response_context_manager.request_meta = {
             'response_time': 200,
         }
 
@@ -206,7 +209,7 @@ class TestRequestLogger:
             ('x-cookie', 'asdfasdfasdf'),
         ])
         response_context_manager = ResponseContextManager(response, None, None)
-        response_context_manager.locust_request_meta = {
+        response_context_manager.request_meta = {
             'response_time': 137.2111,
         }
 

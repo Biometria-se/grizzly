@@ -19,6 +19,9 @@ URL_MAP = {
     'databind.core': 'https://github.com/NiklasRosenstein/databind',
     'databind.json': 'https://github.com/NiklasRosenstein/databind',
     'pydoc-markdown': 'https://pydoc-markdown.readthedocs.io/en/latest/',
+    'yapf': 'https://pypi.org/project/yapf/',
+    'databind': 'https://github.com/NiklasRosenstein/databind',
+    'tomli-w': 'https://github.com/hukkin/tomli-w',
 }
 
 REPO_ROOT = path.realpath(path.join(path.dirname(__file__), '..'))
@@ -80,6 +83,7 @@ def generate_license_table() -> List[str]:
     license_table = ['### Python dependencies\n'] + [f'{row}\n' for row in writer.stream.getvalue().strip().split('\n')]
 
     return license_table
+
 
 def generate_native_dependencies_section() -> List[str]:
     with open(path.join(REPO_ROOT, '.devcontainer', 'Dockerfile')) as fd:
@@ -147,6 +151,7 @@ def main() -> int:
         fd.writelines(license_contents)
 
     return 0
+
 
 if __name__ == '__main__':
     sys.exit(main())

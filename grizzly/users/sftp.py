@@ -35,12 +35,13 @@ from time import perf_counter as time
 from os import path, environ, mkdir
 
 from locust.exception import StopUser
+from locust.env import Environment
 
 from .base import GrizzlyUser, FileRequests, ResponseHandler, RequestLogger
 from ..utils import merge_dicts
 from ..clients import SftpClientSession
 from ..types import RequestMethod, GrizzlyResponse
-from ..task import RequestTask
+from ..tasks import RequestTask
 
 
 class SftpUser(ResponseHandler, RequestLogger, GrizzlyUser, FileRequests):
@@ -59,8 +60,8 @@ class SftpUser(ResponseHandler, RequestLogger, GrizzlyUser, FileRequests):
 
     sftp_client: SftpClientSession
 
-    def __init__(self, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(self, environment: Environment, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+        super().__init__(environment, *args, **kwargs)
 
         self._context = merge_dicts(super().context(), self.__class__._context)
 
@@ -70,7 +71,7 @@ class SftpUser(ResponseHandler, RequestLogger, GrizzlyUser, FileRequests):
         if not path.exists(self._download_root):
             mkdir(self._download_root)
 
-        parsed = urlparse(self.host)
+        parsed = urlparse(self.host or '')
 
         if parsed.scheme != 'sftp':
             raise ValueError(f'{self.__class__.__name__}: "{parsed.scheme}" is not supported')
@@ -137,7 +138,7 @@ class SftpUser(ResponseHandler, RequestLogger, GrizzlyUser, FileRequests):
             headers = {
                 'method': request.method.name.lower(),
                 'time': response_time,
-                'host': self.host,
+                'host': self.host or '',
                 'path': endpoint,
             }
 

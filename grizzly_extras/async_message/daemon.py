@@ -76,7 +76,7 @@ def router() -> None:
                 logger.info(f'assigning worker {payload["worker"]}')
                 request = jsondumps(payload).encode()
                 if len(workers_available) == 0:
-                    logger.debug(f'spawning an additional worker, for next client')
+                    logger.debug('spawning an additional worker, for next client')
                     spawn_worker()
             else:
                 worker_id = worker_id.encode()
@@ -99,7 +99,7 @@ def worker(context: zmq.Context, identity: str) -> None:
     while True:
         request_proto = worker.recv_multipart()
         if not request_proto:
-            logger.error(f'empty msg')
+            logger.error('empty msg')
             continue
 
         request = cast(

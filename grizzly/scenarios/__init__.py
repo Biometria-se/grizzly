@@ -1,23 +1,25 @@
 import logging
 
-from typing import Callable, Type, List
+from typing import Callable
 from os import environ
 
-from locust.user.users import User
 from locust.exception import StopUser
+from locust.user.sequential_taskset import SequentialTaskSet
 
-from ..context import GrizzlyContext, GrizzlyScenarioBase, GrizzlyTask
+from ..context import GrizzlyContext
+from ..types import GrizzlyTask
 from ..testdata.communication import TestdataConsumer
+from ..users.base import GrizzlyUser
 
 
-class GrizzlyScenario(GrizzlyScenarioBase):
+class GrizzlyScenario(SequentialTaskSet):
     consumer: TestdataConsumer
-    tasks: List[Callable[[GrizzlyScenarioBase], None]] = []
     logger: logging.Logger = logging.getLogger(__name__)
     grizzly: GrizzlyContext
     wait_time: Callable[[float, float], float]
+    user: GrizzlyUser
 
-    def __init__(self, parent: Type[User]) -> None:
+    def __init__(self, parent: GrizzlyUser) -> None:
         super().__init__(parent=parent)
         self.grizzly = GrizzlyContext()
 
@@ -37,7 +39,9 @@ class GrizzlyScenario(GrizzlyScenarioBase):
         self.logger.debug(f'stopping consumer for {self.__class__.__name__}')
         self.consumer.stop()
 
+
 from .iterator import IteratorScenario
+
 
 __all__ = [
     'GrizzlyScenario',

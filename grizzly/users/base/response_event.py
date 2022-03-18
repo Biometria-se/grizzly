@@ -3,9 +3,11 @@ from locust.event import EventHook
 
 from locust.exception import LocustError
 from locust.user.users import User
+from locust.env import Environment
 
 from ...clients import ResponseEventSession
 from . import HttpRequests
+
 
 class ResponseEvent(User):
     abstract = True
@@ -13,8 +15,8 @@ class ResponseEvent(User):
     client: ResponseEventSession
     response_event: EventHook
 
-    def __init__(self, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(self, environment: Environment, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+        super().__init__(environment, *args, **kwargs)
 
         if self.host is None:
             raise LocustError(

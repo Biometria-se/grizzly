@@ -1,6 +1,6 @@
 import os
 
-from typing import List, Tuple, cast
+from typing import List, cast
 from json import loads as jsonloads, dumps as jsondumps
 
 import pytest
@@ -11,15 +11,13 @@ from jinja2.exceptions import TemplateError
 from grizzly.testdata.ast import RequestSourceMapping, _parse_templates, get_template_variables
 from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContextScenario
-from grizzly.task import RequestTask
-from ..fixtures import request_task, request_task_syntax_error  # pylint: disable=unused-import
+from grizzly.tasks import RequestTask
 
-# pylint: disable=redefined-outer-name,global-statement
+from ..fixtures import RequestTaskFixture, RequestTaskFailureFixture
 
 
-@pytest.mark.usefixtures('request_task')
-def test__parse_template(request_task: Tuple[str, str, RequestTask]) -> None:
-    request = request_task[-1]
+def test__parse_template(request_task: RequestTaskFixture) -> None:
+    request = request_task.request
 
     assert request.source is not None
 
@@ -51,14 +49,14 @@ def test__parse_template(request_task: Tuple[str, str, RequestTask]) -> None:
     assert 'a_string' in variables['TestScenario']
 
 
-@pytest.mark.usefixtures('request_task_syntax_error')
-def test__parse_template_syntax_error(request_task_syntax_error: Tuple[str, str]) -> None:
+def test__parse_template_syntax_error(request_task_syntax_error: RequestTaskFailureFixture) -> None:
     templates: RequestSourceMapping = {
-        'TestScenario': set([request_task_syntax_error])
+        'TestScenario': set([(request_task_syntax_error.context_root, request_task_syntax_error.relative_path,)])
     }
 
     with pytest.raises(TemplateError):
         _parse_templates(templates)
+
 
 def test__parse_template_notfound() -> None:
     templates: RequestSourceMapping = {
@@ -67,6 +65,7 @@ def test__parse_template_notfound() -> None:
 
     with pytest.raises(TemplateError):
         _parse_templates(templates)
+
 
 def test_get_template_variables_none() -> None:
     variables = get_template_variables(None)

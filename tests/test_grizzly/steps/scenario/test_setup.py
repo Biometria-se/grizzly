@@ -5,15 +5,13 @@ from os import environ
 import pytest
 
 from parse import compile
-from behave.runner import Context
-from pytest_mock import mocker  # pylint: disable=unused-import
-from pytest_mock.plugin import MockerFixture
+from pytest_mock import MockerFixture
 
 from grizzly.context import GrizzlyContext
-from grizzly.steps import *  # pylint: disable=unused-wildcard-import
+from grizzly.steps import *  # pylint: disable=unused-wildcard-import  # noqa: F403
 from grizzly.types import GrizzlyDictValueType, GrizzlyDict
 
-from ...fixtures import behave_context, locust_environment  # pylint: disable=unused-import
+from ...fixtures import BehaveFixture
 
 
 def test_parse_iteration_gramatical_number() -> None:
@@ -29,18 +27,18 @@ def test_parse_iteration_gramatical_number() -> None:
     assert parse_iteration_gramatical_number(' asdf ') == 'asdf'
 
 
-@pytest.mark.usefixtures('behave_context')
-def test_step_setup_set_context_variable(behave_context: Context) -> None:
-    grizzly = cast(GrizzlyContext, behave_context.grizzly)
+def test_step_setup_set_context_variable(behave_fixture: BehaveFixture) -> None:
+    behave = behave_fixture.context
+    grizzly = cast(GrizzlyContext, behave.grizzly)
 
-    step_setup_set_context_variable(behave_context, 'token.url', 'test')
+    step_setup_set_context_variable(behave, 'token.url', 'test')
     assert grizzly.scenario.context == {
         'token': {
             'url': 'test',
         },
     }
 
-    step_setup_set_context_variable(behave_context, 'token.client_id', 'aaaa-bbbb-cccc-dddd')
+    step_setup_set_context_variable(behave, 'token.client_id', 'aaaa-bbbb-cccc-dddd')
     assert grizzly.scenario.context == {
         'token': {
             'url': 'test',
@@ -50,7 +48,7 @@ def test_step_setup_set_context_variable(behave_context: Context) -> None:
 
     grizzly.scenario.context = {}
 
-    step_setup_set_context_variable(behave_context, 'test.decimal.value', '1337')
+    step_setup_set_context_variable(behave, 'test.decimal.value', '1337')
     assert grizzly.scenario.context == {
         'test': {
             'decimal': {
@@ -59,19 +57,7 @@ def test_step_setup_set_context_variable(behave_context: Context) -> None:
         },
     }
 
-    step_setup_set_context_variable(behave_context, 'test.float.value', '1.337')
-    assert grizzly.scenario.context == {
-        'test': {
-            'decimal': {
-                'value': 1337,
-            },
-            'float': {
-                'value': 1.337,
-            },
-        },
-    }
-
-    step_setup_set_context_variable(behave_context, 'test.bool.value', 'true')
+    step_setup_set_context_variable(behave, 'test.float.value', '1.337')
     assert grizzly.scenario.context == {
         'test': {
             'decimal': {
@@ -80,13 +66,10 @@ def test_step_setup_set_context_variable(behave_context: Context) -> None:
             'float': {
                 'value': 1.337,
             },
-            'bool': {
-                'value': True,
-            },
         },
     }
 
-    step_setup_set_context_variable(behave_context, 'test.bool.value', 'True')
+    step_setup_set_context_variable(behave, 'test.bool.value', 'true')
     assert grizzly.scenario.context == {
         'test': {
             'decimal': {
@@ -101,7 +84,22 @@ def test_step_setup_set_context_variable(behave_context: Context) -> None:
         },
     }
 
-    step_setup_set_context_variable(behave_context, 'test.bool.value', 'false')
+    step_setup_set_context_variable(behave, 'test.bool.value', 'True')
+    assert grizzly.scenario.context == {
+        'test': {
+            'decimal': {
+                'value': 1337,
+            },
+            'float': {
+                'value': 1.337,
+            },
+            'bool': {
+                'value': True,
+            },
+        },
+    }
+
+    step_setup_set_context_variable(behave, 'test.bool.value', 'false')
     assert grizzly.scenario.context == {
         'test': {
             'decimal': {
@@ -116,7 +114,7 @@ def test_step_setup_set_context_variable(behave_context: Context) -> None:
         },
     }
 
-    step_setup_set_context_variable(behave_context, 'test.bool.value', 'FaLsE')
+    step_setup_set_context_variable(behave, 'test.bool.value', 'FaLsE')
     assert grizzly.scenario.context == {
         'test': {
             'decimal': {
@@ -133,7 +131,7 @@ def test_step_setup_set_context_variable(behave_context: Context) -> None:
 
     grizzly.scenario.context = {}
 
-    step_setup_set_context_variable(behave_context, 'text.string.value', 'Hello world!')
+    step_setup_set_context_variable(behave, 'text.string.value', 'Hello world!')
     assert grizzly.scenario.context == {
         'text': {
             'string': {
@@ -142,7 +140,7 @@ def test_step_setup_set_context_variable(behave_context: Context) -> None:
         },
     }
 
-    step_setup_set_context_variable(behave_context, 'text.string.description', 'simple text')
+    step_setup_set_context_variable(behave, 'text.string.description', 'simple text')
     assert grizzly.scenario.context == {
         'text': {
             'string': {
@@ -153,7 +151,7 @@ def test_step_setup_set_context_variable(behave_context: Context) -> None:
     }
 
     grizzly.scenario.context = {}
-    step_setup_set_context_variable(behave_context, 'Token/Client ID', 'aaaa-bbbb-cccc-dddd')
+    step_setup_set_context_variable(behave, 'Token/Client ID', 'aaaa-bbbb-cccc-dddd')
     assert grizzly.scenario.context == {
         'token': {
             'client_id': 'aaaa-bbbb-cccc-dddd',
@@ -161,14 +159,14 @@ def test_step_setup_set_context_variable(behave_context: Context) -> None:
     }
 
     grizzly.scenario.context = {'tenant': 'example.com'}
-    step_setup_set_context_variable(behave_context, 'url', 'AZURE')
+    step_setup_set_context_variable(behave, 'url', 'AZURE')
     assert grizzly.scenario.context == {
         'url': 'AZURE',
         'tenant': 'example.com',
     }
 
     grizzly.scenario.context['host'] = 'http://example.com'
-    step_setup_set_context_variable(behave_context, 'url', 'HOST')
+    step_setup_set_context_variable(behave, 'url', 'HOST')
     assert grizzly.scenario.context == {
         'url': 'HOST',
         'tenant': 'example.com',
@@ -176,55 +174,55 @@ def test_step_setup_set_context_variable(behave_context: Context) -> None:
     }
 
 
-@pytest.mark.usefixtures('behave_context')
-def test_step_setup_iterations(behave_context: Context) -> None:
-    grizzly = cast(GrizzlyContext, behave_context.grizzly)
+def test_step_setup_iterations(behave_fixture: BehaveFixture) -> None:
+    behave = behave_fixture.context
+    grizzly = cast(GrizzlyContext, behave.grizzly)
 
     assert grizzly.scenario.iterations == 1
 
-    step_setup_iterations(behave_context, '10', 'iterations')
+    step_setup_iterations(behave, '10', 'iterations')
     assert grizzly.scenario.iterations == 10
 
     with pytest.raises(AssertionError):
-        step_setup_iterations(behave_context, '10', 'iteration')
+        step_setup_iterations(behave, '10', 'iteration')
 
-    step_setup_iterations(behave_context, '1', 'iteration')
+    step_setup_iterations(behave, '1', 'iteration')
     assert grizzly.scenario.iterations == 1
 
     with pytest.raises(AssertionError):
-        step_setup_iterations(behave_context, '1', 'iterations')
+        step_setup_iterations(behave, '1', 'iterations')
 
     with pytest.raises(AssertionError):
-        step_setup_iterations(behave_context, '{{ iterations }}', 'iteration')
+        step_setup_iterations(behave, '{{ iterations }}', 'iteration')
 
     grizzly.state.variables['iterations'] = 100
-    step_setup_iterations(behave_context, '{{ iterations }}', 'iteration')
+    step_setup_iterations(behave, '{{ iterations }}', 'iteration')
     assert grizzly.scenario.iterations == 100
 
-    step_setup_iterations(behave_context, '{{ iterations * 0.25 }}', 'iteration')
+    step_setup_iterations(behave, '{{ iterations * 0.25 }}', 'iteration')
     assert grizzly.scenario.iterations == 25
 
     with pytest.raises(AssertionError):
-        step_setup_iterations(behave_context, '-1', 'iteration')
+        step_setup_iterations(behave, '-1', 'iteration')
 
     with pytest.raises(AssertionError):
-        step_setup_iterations(behave_context, '0', 'iteration')
+        step_setup_iterations(behave, '0', 'iteration')
 
-    step_setup_iterations(behave_context, '0', 'iterations')
+    step_setup_iterations(behave, '0', 'iterations')
     assert grizzly.scenario.iterations == 0
 
-    step_setup_iterations(behave_context, '{{ iterations / 101 }}', 'iteration')
+    step_setup_iterations(behave, '{{ iterations / 101 }}', 'iteration')
     assert grizzly.scenario.iterations == 1
 
     grizzly.state.variables['iterations'] = 0.1
-    step_setup_iterations(behave_context, '{{ iterations }}', 'iteration')
+    step_setup_iterations(behave, '{{ iterations }}', 'iteration')
 
     assert grizzly.scenario.iterations == 1
 
     try:
         environ['ITERATIONS'] = '1337'
 
-        step_setup_iterations(behave_context, '$env::ITERATIONS', 'iteration')
+        step_setup_iterations(behave, '$env::ITERATIONS', 'iteration')
         assert grizzly.scenario.iterations == 1337
     finally:
         try:
@@ -233,80 +231,80 @@ def test_step_setup_iterations(behave_context: Context) -> None:
             pass
 
     grizzly.state.configuration['test.iterations'] = 13
-    step_setup_iterations(behave_context, '$conf::test.iterations', 'iterations')
+    step_setup_iterations(behave, '$conf::test.iterations', 'iterations')
     assert grizzly.scenario.iterations == 13
 
 
-@pytest.mark.usefixtures('behave_context')
-def test_step_setup_wait_time(behave_context: Context) -> None:
-    grizzly = cast(GrizzlyContext, behave_context.grizzly)
+def test_step_setup_wait_time(behave_fixture: BehaveFixture) -> None:
+    behave = behave_fixture.context
+    grizzly = cast(GrizzlyContext, behave.grizzly)
 
     assert grizzly.scenario.wait.minimum == 1.0
     assert grizzly.scenario.wait.maximum == 1.0
 
-    step_setup_wait_time(behave_context, 8.3, 10.4)
+    step_setup_wait_time(behave, 8.3, 10.4)
 
     assert grizzly.scenario.wait.minimum == 8.3
     assert grizzly.scenario.wait.maximum == 10.4
 
 
-@pytest.mark.usefixtures('behave_context')
-def test_step_setup_variable_value(behave_context: Context) -> None:
-    grizzly = cast(GrizzlyContext, behave_context.grizzly)
+def test_step_setup_variable_value(behave_fixture: BehaveFixture) -> None:
+    behave = behave_fixture.context
+    grizzly = cast(GrizzlyContext, behave.grizzly)
 
     assert 'test' not in grizzly.state.variables
 
-    step_setup_variable_value(behave_context, 'test_string', 'test')
+    step_setup_variable_value(behave, 'test_string', 'test')
     assert grizzly.state.variables['test_string'] == 'test'
 
-    step_setup_variable_value(behave_context, 'test_int', '1')
+    step_setup_variable_value(behave, 'test_int', '1')
     assert grizzly.state.variables['test_int'] == 1
 
-    step_setup_variable_value(behave_context, 'AtomicIntegerIncrementer.test', '1 | step=10')
+    step_setup_variable_value(behave, 'AtomicIntegerIncrementer.test', '1 | step=10')
     assert grizzly.state.variables['AtomicIntegerIncrementer.test'] == '1 | step=10'
 
     grizzly.state.variables['step'] = 13
-    step_setup_variable_value(behave_context, 'AtomicIntegerIncrementer.test2', '1 | step={{ step }}')
+    step_setup_variable_value(behave, 'AtomicIntegerIncrementer.test2', '1 | step={{ step }}')
     assert grizzly.state.variables['AtomicIntegerIncrementer.test2'] == '1 | step=13'
 
     grizzly.state.variables['leveranser'] = 100
-    step_setup_variable_value(behave_context, 'AtomicRandomString.regnr', '%sA%s1%d%d | count={{ (leveranser * 0.25 + 1) | int }}, upper=True')
+    step_setup_variable_value(behave, 'AtomicRandomString.regnr', '%sA%s1%d%d | count={{ (leveranser * 0.25 + 1) | int }}, upper=True')
     assert grizzly.state.variables['AtomicRandomString.regnr'] == '%sA%s1%d%d | count=26, upper=True'
 
-    step_setup_variable_value(behave_context, 'AtomicDate.test', '2021-04-13')
+    step_setup_variable_value(behave, 'AtomicDate.test', '2021-04-13')
     assert grizzly.state.variables['AtomicDate.test'] == '2021-04-13'
 
     with pytest.raises(AssertionError):
-        step_setup_variable_value(behave_context, 'AtomicIntegerIncrementer.test', '1 | step=10')
+        step_setup_variable_value(behave, 'AtomicIntegerIncrementer.test', '1 | step=10')
 
     with pytest.raises(AssertionError):
-        step_setup_variable_value(behave_context, 'dynamic_variable_value', '{{ value }}')
+        step_setup_variable_value(behave, 'dynamic_variable_value', '{{ value }}')
 
     grizzly.state.variables['value'] = 'hello world!'
-    step_setup_variable_value(behave_context, 'dynamic_variable_value', '{{ value }}')
+    step_setup_variable_value(behave, 'dynamic_variable_value', '{{ value }}')
 
     assert grizzly.state.variables['dynamic_variable_value'] == 'hello world!'
 
     with pytest.raises(AssertionError):
-        step_setup_variable_value(behave_context, 'incorrectly_quoted', '"error\'')
+        step_setup_variable_value(behave, 'incorrectly_quoted', '"error\'')
 
 
-@pytest.mark.usefixtures('behave_context')
-def test_step_setup_set_variable_alias(behave_context: Context, mocker: MockerFixture) -> None:
-    grizzly = cast(GrizzlyContext, behave_context.grizzly)
+def test_step_setup_set_variable_alias(behave_fixture: BehaveFixture, mocker: MockerFixture) -> None:
+    behave = behave_fixture.context
+    grizzly = cast(GrizzlyContext, behave.grizzly)
 
     assert grizzly.state.alias == {}
 
     with pytest.raises(AssertionError):
-        step_setup_set_variable_alias(behave_context, 'auth.refresh_time', 'AtomicIntegerIncrementer.test')
+        step_setup_set_variable_alias(behave, 'auth.refresh_time', 'AtomicIntegerIncrementer.test')
 
-    step_setup_variable_value(behave_context, 'AtomicIntegerIncrementer.test', '1337')
-    step_setup_set_variable_alias(behave_context, 'auth.refresh_time', 'AtomicIntegerIncrementer.test')
+    step_setup_variable_value(behave, 'AtomicIntegerIncrementer.test', '1337')
+    step_setup_set_variable_alias(behave, 'auth.refresh_time', 'AtomicIntegerIncrementer.test')
 
     assert grizzly.state.alias.get('AtomicIntegerIncrementer.test', None) == 'auth.refresh_time'
 
     with pytest.raises(AssertionError):
-        step_setup_set_variable_alias(behave_context, 'auth.refresh_time', 'AtomicIntegerIncrementer.test')
+        step_setup_set_variable_alias(behave, 'auth.refresh_time', 'AtomicIntegerIncrementer.test')
 
     def setitem(self: GrizzlyDict, key: str, value: GrizzlyDictValueType) -> None:
         super(GrizzlyDict, self).__setitem__(key, value)
@@ -317,20 +315,20 @@ def test_step_setup_set_variable_alias(behave_context: Context, mocker: MockerFi
     )
 
     with pytest.raises(AssertionError):
-        step_setup_set_variable_alias(behave_context, 'auth.user.username', 'AtomicCsvRow.users.username')
+        step_setup_set_variable_alias(behave, 'auth.user.username', 'AtomicCsvRow.users.username')
 
-    step_setup_variable_value(behave_context, 'AtomicCsvRow.users', 'users.csv')
-    step_setup_set_variable_alias(behave_context, 'auth.user.username', 'AtomicCsvRow.users.username')
+    step_setup_variable_value(behave, 'AtomicCsvRow.users', 'users.csv')
+    step_setup_set_variable_alias(behave, 'auth.user.username', 'AtomicCsvRow.users.username')
 
     with pytest.raises(AssertionError):
-        step_setup_set_variable_alias(behave_context, 'auth.user.username', 'AtomicCsvRow.users.username')
+        step_setup_set_variable_alias(behave, 'auth.user.username', 'AtomicCsvRow.users.username')
 
 
-@pytest.mark.usefixtures('behave_context')
-def test_step_setup_log_all_requests(behave_context: Context) -> None:
-    grizzly = cast(GrizzlyContext, behave_context.grizzly)
+def test_step_setup_log_all_requests(behave_fixture: BehaveFixture) -> None:
+    behave = behave_fixture.context
+    grizzly = cast(GrizzlyContext, behave.grizzly)
     assert 'log_all_requests' not in grizzly.scenario.context
 
-    step_setup_log_all_requests(behave_context)
+    step_setup_log_all_requests(behave)
 
     assert grizzly.scenario.context['log_all_requests']

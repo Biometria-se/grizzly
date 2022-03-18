@@ -12,11 +12,13 @@ from enum import Enum, auto
 from jsonpath_ng.ext import parse as jsonpath_parse
 from lxml import etree as XML
 
+
 class TransformerError(Exception):
     message: Optional[str] = None
 
     def __init__(self, message: Optional[str] = None) -> None:
         self.message = message
+
 
 class TransformerContentType(Enum):
     UNDEFINED = 0
@@ -35,6 +37,7 @@ class TransformerContentType(Enum):
         else:
             raise ValueError(f'"{value}" is an unknown response content type')
 
+
 class Transformer(ABCMeta):
     @classmethod
     def transform(cls, raw: str) -> Any:
@@ -48,19 +51,21 @@ class Transformer(ABCMeta):
     def parser(cls, expression: str) -> Callable[[Any], List[str]]:
         raise NotImplementedError(f'{cls.__name__} has not implemented parse')
 
+
 class transformer:
     content_type: TransformerContentType
     available: Dict[TransformerContentType, Type[Transformer]] = {}
 
     def __init__(self, content_type: TransformerContentType) -> None:
         if content_type == TransformerContentType.UNDEFINED:
-            raise ValueError(f'it is not allowed to register a transformer of type UNDEFINED')
+            raise ValueError('it is not allowed to register a transformer of type UNDEFINED')
 
         self.content_type = content_type
 
     def __call__(self, impl: Type[Transformer]) -> Type[Transformer]:
         impl_transform = impl.transform
         content_type_name = self.content_type.name
+
         @wraps(impl.transform)
         def wrapped_transform(raw: str) -> Any:
             try:

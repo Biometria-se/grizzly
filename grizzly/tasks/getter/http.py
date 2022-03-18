@@ -11,15 +11,15 @@ from typing import Callable, Any
 from jinja2 import Template
 
 from . import getterof, GetterOfTask
-from ...context import GrizzlyScenarioBase
+from ...scenarios import GrizzlyScenario
 
 import requests
 
 
 @getterof('http', 'https')
 class HttpGetTask(GetterOfTask):
-    def implementation(self) -> Callable[[GrizzlyScenarioBase], Any]:
-        def _implementation(parent: GrizzlyScenarioBase) -> Any:
+    def implementation(self) -> Callable[[GrizzlyScenario], Any]:
+        def _implementation(parent: GrizzlyScenario) -> Any:
             with self.get(parent) as meta:
                 url = Template(self.endpoint).render(**parent.user._context['variables'])
 
@@ -27,6 +27,5 @@ class HttpGetTask(GetterOfTask):
                 value = response.text
                 parent.user._context['variables'][self.variable] = value
                 meta['response_length'] = len(value)
-
 
         return _implementation

@@ -7,11 +7,12 @@ from behave.runner import Context
 from behave import register_type, when, then  # pylint: disable=no-name-in-module
 
 from ...context import GrizzlyContext
-from ...task import RequestTask
+from ...tasks import RequestTask
 from ...types import ResponseTarget
 from ..helpers import add_save_handler, add_validation_handler, add_request_task_response_status_codes
 
 from grizzly_extras.transformer import TransformerContentType
+
 
 @parse.with_pattern(r'is( not)?', regex_group_count=1)
 def parse_condition(text: str) -> bool:
@@ -145,11 +146,11 @@ def step_response_allow_status_codes(context: Context, status_list: str) -> None
         status_list (str): comma separated list of integers
     '''
     grizzly = cast(GrizzlyContext, context.grizzly)
-    assert len(grizzly.scenario.tasks) > 0, 'There are no requests in the scenario'
+    assert len(grizzly.scenario.tasks) > 0, 'there are no requests in the scenario'
 
     request = grizzly.scenario.tasks[-1]
 
-    assert isinstance(request, RequestTask), f'Previous task is not a request'
+    assert isinstance(request, RequestTask), 'previous task is not a request'
 
     add_request_task_response_status_codes(request, status_list)
 
@@ -180,25 +181,25 @@ def step_response_allow_status_codes_table(context: Context) -> None:
     Allowed response status codes for `test-get-1` is now `200` and `302`, and for `test-get-2` is
     now `200` and `404`.
     '''
-    assert context.table is not None, f'Step data table is mandatory'
+    assert context.table is not None, 'step data table is mandatory'
 
     grizzly = cast(GrizzlyContext, context.grizzly)
 
     number_of_requests = len(grizzly.scenario.tasks)
 
-    assert number_of_requests > 0, 'There are no requests in the scenario'
-    assert len(list(context.table)) <= len(grizzly.scenario.tasks), 'Data table has more rows than there are requests'
+    assert number_of_requests > 0, 'there are no requests in the scenario'
+    assert len(list(context.table)) <= len(grizzly.scenario.tasks), 'data table has more rows than there are requests'
 
     # last row = latest added request
     index = -1
     rows = list(reversed(list(context.table)))
 
-    assert len(rows) <= number_of_requests, 'There are more rows in the table than added requests'
+    assert len(rows) <= number_of_requests, 'there are more rows in the table than added requests'
 
     for row in rows:
         try:
             request = grizzly.scenario.tasks[index]
-            assert isinstance(request, RequestTask), f'Task at index {index} is not a request'
+            assert isinstance(request, RequestTask), f'task at index {index} is not a request'
             index -= 1
             add_request_task_response_status_codes(request, row['status'])
         except KeyError:
@@ -225,12 +226,12 @@ def step_response_content_type(context: Context, content_type: TransformerConten
         content_type (TransformerContentType): expected content type of response
     '''
 
-    assert content_type != TransformerContentType.UNDEFINED, f'It is not allowed to set UNDEFINED with this step'
+    assert content_type != TransformerContentType.UNDEFINED, 'It is not allowed to set UNDEFINED with this step'
 
     grizzly = cast(GrizzlyContext, context.grizzly)
-    assert len(grizzly.scenario.tasks) > 0, f'There are no requests in the scenario'
+    assert len(grizzly.scenario.tasks) > 0, 'There are no requests in the scenario'
 
     request = grizzly.scenario.tasks[-1]
 
-    assert isinstance(request, RequestTask), f'Latest task in scenario is not a request'
+    assert isinstance(request, RequestTask), 'Latest task in scenario is not a request'
     request.response.content_type = content_type

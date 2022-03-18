@@ -1,46 +1,46 @@
 import logging
 
 from os import environ
-from typing import Callable, Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 import pytest
 
 from _pytest.logging import LogCaptureFixture
-from pytest_mock import mocker  # pylint: disable=unused-import
-from pytest_mock.plugin import MockerFixture
+from pytest_mock import MockerFixture
 
-from locust.user.task import TaskSet, LOCUST_STATE_STOPPING, LOCUST_STATE_RUNNING
+from locust.user.task import LOCUST_STATE_STOPPING, LOCUST_STATE_RUNNING
+from locust.user.sequential_taskset import SequentialTaskSet
 from locust.exception import StopUser, InterruptTaskSet, RescheduleTask, RescheduleTaskImmediately
 
 from grizzly.scenarios.iterator import IteratorScenario
 from grizzly.testdata.communication import TestdataConsumer
 from grizzly.testdata.utils import transform
-from grizzly.task import WaitTask, PrintTask
+from grizzly.tasks import WaitTask, PrintTask
 from grizzly.exceptions import RestartScenario
 
-from ..fixtures import grizzly_context, request_task  # pylint: disable=unused-import
+from ..fixtures import GrizzlyFixture
 from ..helpers import RequestCalled
 
 
 class TestIterationScenario:
-    @pytest.mark.usefixtures('grizzly_context')
-    def test_initialize(self, grizzly_context: Callable) -> None:
-        _, _, task, _ = grizzly_context()
-        assert issubclass(task.__class__, TaskSet)
+    def test_initialize(self, grizzly_fixture: GrizzlyFixture) -> None:
+        _, _, scenario = grizzly_fixture(scenario_type=IteratorScenario)
+        assert isinstance(scenario, IteratorScenario)
+        assert issubclass(scenario.__class__, SequentialTaskSet)
 
-    @pytest.mark.usefixtures('grizzly_context')
-    def test_add_scenario_task(self, grizzly_context: Callable, mocker: MockerFixture) -> None:
-        _, user, task, [_, _, request] = grizzly_context(task_type=IteratorScenario)
+    def test_add_scenario_task(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+        _, user, scenario = grizzly_fixture(scenario_type=IteratorScenario)
+        request = grizzly_fixture.request_task.request
         request.endpoint = '/api/v1/test'
         IteratorScenario.add_scenario_task(request)
-        assert isinstance(task, IteratorScenario)
-        assert len(task.tasks) == 2
+        assert isinstance(scenario, IteratorScenario)
+        assert len(scenario.tasks) == 2
 
-        task_method = task.tasks[-1]
+        task_method = scenario.tasks[-1]
 
         assert callable(task_method)
         with pytest.raises(RequestCalled) as e:
-            task_method(task)
+            task_method(scenario)
         assert e.value.endpoint == '/api/v1/test' and e.value.request is request
 
         def generate_mocked_wait(sleep_time: float) -> None:
@@ -48,26 +48,26 @@ class TestIterationScenario:
                 assert sleep_time == time
 
             mocker.patch(
-                'grizzly.task.wait.gsleep',
+                'grizzly.tasks.wait.gsleep',
                 mocked_wait,
             )
 
         generate_mocked_wait(1.5)
         IteratorScenario.add_scenario_task(WaitTask(time=1.5))
-        assert len(task.tasks) == 3
+        assert len(scenario.tasks) == 3
 
-        task_method = task.tasks[-1]
+        task_method = scenario.tasks[-1]
         assert callable(task_method)
-        task_method(task)
+        task_method(scenario)
 
         IteratorScenario.add_scenario_task(PrintTask(message='hello {{ world }}'))
-        assert len(task.tasks) == 4
+        assert len(scenario.tasks) == 4
 
-        logger_spy = mocker.spy(task.logger, 'info')
+        logger_spy = mocker.spy(scenario.logger, 'info')
 
-        task_method = task.tasks[-1]
+        task_method = scenario.tasks[-1]
         assert callable(task_method)
-        task_method(task)
+        task_method(scenario)
 
         assert logger_spy.call_count == 1
         args, _ = logger_spy.call_args_list[0]
@@ -75,16 +75,15 @@ class TestIterationScenario:
 
         user.set_context_variable('world', 'world!')
 
-        task_method(task)
+        task_method(scenario)
 
         assert logger_spy.call_count == 2
         args, _ = logger_spy.call_args_list[1]
         assert args[0] == 'hello world!'
 
-    @pytest.mark.usefixtures('grizzly_context')
-    def test_on_event_handlers(self, grizzly_context: Callable, mocker: MockerFixture) -> None:
+    def test_on_event_handlers(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         try:
-            _, _, task, _ = grizzly_context(task_type=IteratorScenario)
+            _, _, scenario = grizzly_fixture(scenario_type=IteratorScenario)
 
             def TestdataConsumer__init__(self: 'TestdataConsumer', address: str) -> None:
                 pass
@@ -102,30 +101,30 @@ class TestIterationScenario:
                 TestdataConsumer_on_stop,
             )
 
-            assert task is not None
+            assert scenario is not None
 
             with pytest.raises(StopUser):
-                task.on_start()
+                scenario.on_start()
 
             environ['TESTDATA_PRODUCER_ADDRESS'] = 'localhost:5555'
 
-            task.on_start()
+            scenario.on_start()
 
             with pytest.raises(StopUser):
-                task.on_stop()
+                scenario.on_stop()
         finally:
             try:
                 del environ['TESTDATA_PRODUCER_ADDRESS']
             except KeyError:
                 pass
 
-    @pytest.mark.usefixtures('grizzly_context')
-    def test_iterator(self, grizzly_context: Callable, mocker: MockerFixture) -> None:
-        _, user, task, _ = grizzly_context(task_type=IteratorScenario)
+    def test_iterator(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+        _, user, scenario = grizzly_fixture(scenario_type=IteratorScenario)
 
-        assert task is not None
+        assert scenario is not None
+        assert isinstance(scenario, IteratorScenario)
 
-        task.consumer = TestdataConsumer()
+        scenario.consumer = TestdataConsumer()
 
         def mock_request(data: Optional[Dict[str, Any]]) -> None:
             def request(self: 'TestdataConsumer', scenario: str) -> Optional[Dict[str, Any]]:
@@ -145,14 +144,14 @@ class TestIterationScenario:
         mock_request(None)
 
         with pytest.raises(StopUser):
-            task.iterator()
+            scenario.iterator()
 
         assert user.context_variables == {}
 
         mock_request({})
 
         with pytest.raises(StopUser):
-            task.iterator()
+            scenario.iterator()
 
         assert user.context_variables == {}
 
@@ -166,20 +165,30 @@ class TestIterationScenario:
             },
         })
 
-        task.iterator()
+        scenario.iterator()
 
         assert user.context_variables['AtomicIntegerIncrementer'].messageID == 1337
         assert user.context_variables['AtomicCsvRow'].test.header1 == 'value1'
         assert user.context_variables['AtomicCsvRow'].test.header2 == 'value2'
 
-    @pytest.mark.usefixtures('grizzly_context')
-    def test_run(self, grizzly_context: Callable, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
-        _, user, scenario, _ = grizzly_context(task_type=IteratorScenario)
+    def test_run(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
+        _, user, scenario = grizzly_fixture(scenario_type=IteratorScenario)
 
         assert scenario is not None
+        assert isinstance(scenario, IteratorScenario)
+
+        side_effects: List[Optional[InterruptTaskSet]] = [
+            InterruptTaskSet(reschedule=False),
+            InterruptTaskSet(reschedule=True),
+        ]
+        side_effects.extend([None] * 10)
 
         on_stop = mocker.patch.object(scenario, 'on_stop', autospec=True)
-        on_start = mocker.patch.object(scenario, 'on_start', side_effect=[InterruptTaskSet(reschedule=False), InterruptTaskSet(reschedule=True)] + [None] * 10)
+        on_start = mocker.patch.object(
+            scenario,
+            'on_start',
+            side_effect=side_effects,
+        )
 
         schedule_task = mocker.patch.object(scenario, 'schedule_task', autospec=True)
         get_next_task = mocker.patch.object(scenario, 'get_next_task', autospec=True)

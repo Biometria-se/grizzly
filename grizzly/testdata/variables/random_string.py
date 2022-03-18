@@ -42,7 +42,7 @@ from ...types import bool_typed, int_rounded_float_typed, AtomicVariable
 
 def atomicrandomstring__base_type__(value: str) -> str:
     if len(value) < 1:
-        raise ValueError(f'AtomicRandomString: no string pattern specified')
+        raise ValueError('AtomicRandomString: no string pattern specified')
 
     if '|' in value:
         string_pattern, string_arguments = split_value(value)
@@ -65,9 +65,10 @@ def atomicrandomstring__base_type__(value: str) -> str:
     generators = AtomicRandomString.get_generators(string_pattern)
 
     if len(generators) < 1:
-        raise ValueError(f'AtomicRandomString: specified string pattern does not contain any generators')
+        raise ValueError('AtomicRandomString: specified string pattern does not contain any generators')
 
     return value
+
 
 class AtomicRandomString(AtomicVariable[str]):
     __base_type__ = atomicrandomstring__base_type__

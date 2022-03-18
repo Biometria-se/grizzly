@@ -2,7 +2,9 @@ import logging
 
 from typing import Dict, Optional, Any, cast
 
-import zmq
+from zmq.sugar.constants import NOBLOCK as ZMQ_NOBLOCK, REQ as ZMQ_REQ, REP as ZMQ_REP
+from zmq.error import ZMQError, Again as ZMQAgain
+import zmq.green as zmq
 
 from gevent import sleep as gsleep
 from gevent.lock import Semaphore
@@ -21,9 +23,9 @@ class TestdataConsumer:
     # need so pytest doesn't raise PytestCollectionWarning
     __test__: bool = False
 
-    def __init__(self, address: str ='tcp://127.0.0.1:5555') -> None:
+    def __init__(self, address: str = 'tcp://127.0.0.1:5555') -> None:
         self.context = zmq.Context()
-        self.socket = self.context.socket(zmq.REQ)
+        self.socket = self.context.socket(ZMQ_REQ)
         self.socket.connect(address)
         logger.debug(f'conntected to producer at {address}')
 
@@ -47,13 +49,13 @@ class TestdataConsumer:
         # loop and NOBLOCK needed when running in local mode, to let other gevent threads get time
         while True:
             try:
-                message = self.socket.recv_json(flags=zmq.NOBLOCK)
+                message = self.socket.recv_json(flags=ZMQ_NOBLOCK)
                 break
-            except zmq.error.Again:
+            except ZMQAgain:
                 gsleep(0.1)  # let TestdataProducer greenlet execute
 
         if message['action'] == 'stop':
-            raise StopUser(f'stop command received')
+            raise StopUser('stop command received')
 
         if not message['action'] == 'consume':
             raise StopUser(f'unknown action "{message["action"]}" received')
@@ -97,7 +99,7 @@ class TestdataProducer:
         logger.debug(f'starting producer on {address}')
 
         self.context = zmq.Context()
-        self.socket = self.context.socket(zmq.REP)
+        self.socket = self.context.socket(ZMQ_REP)
         self.socket.bind(address)
         self.grizzly = GrizzlyContext()
         self.scenarios_iteration = {}
@@ -124,7 +126,7 @@ class TestdataProducer:
         try:
             while True:
                 try:
-                    recv = self.socket.recv_json(flags=zmq.NOBLOCK)
+                    recv = self.socket.recv_json(flags=ZMQ_NOBLOCK)
                     logger.debug('got data from consumer')
 
                     if recv['message'] == 'available':
@@ -141,8 +143,8 @@ class TestdataProducer:
                                         self.scenarios_iteration[scenario_name] = 0
 
                                     if (
-                                        scenario_name in self.scenarios_iteration and
-                                        self.scenarios_iteration[scenario_name] < scenario.iterations
+                                        scenario_name in self.scenarios_iteration
+                                        and self.scenarios_iteration[scenario_name] < scenario.iterations
                                     ) or scenario_name not in self.scenarios_iteration:
                                         testdata = self.testdata.get(scenario_name, {})
                                         message['action'] = 'consume'
@@ -189,7 +191,7 @@ class TestdataProducer:
                         self.socket.send_json(message)
 
                     gsleep(0)
-                except zmq.error.Again:
+                except ZMQAgain:
                     gsleep(0.01)
-        except zmq.error.ZMQError:
+        except ZMQError:
             self.environment.events.test_stop.fire(environment=self.environment)
