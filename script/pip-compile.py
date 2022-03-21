@@ -185,7 +185,7 @@ def compile() -> int:
 
     targets: Dict[str, Tuple[str, ...]] = {
         'requirements.txt': (),
-        'requirements-ci.txt': ('dev',),
+        'requirements-ci.txt': ('dev', 'ci',),
         'requirements-dev.txt': ('dev', 'mq',),
     }
 

@@ -100,6 +100,11 @@ setup(
             'types-tzlocal>=4.0.0',
             'types-Jinja2>=2.0.0',
         ],
+        'ci': [
+            'twine>=3.8.0',
+            'wheel>=0.37.1',
+            'pip-tools>=6.5.0',
+        ]
     },
     entry_points={
         'console_scripts': [
