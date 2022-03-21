@@ -33,9 +33,9 @@ Feature: Rest API endpoint testing
     Given a user of type "RestApi" sending requests to "https://api.example.com"
     And repeat for "2" iterations
     And wait time inbetween requests is random between "0.1" and "0.3" seconds
-    And value for variable "AtomicDate.called" is "now | format='%Y-%m-%dT%H:%M:%S.00Z' timezone=UTC"
+    And value for variable "AtomicDate.called" is "now | format='%Y-%m-%dT%H:%M:%S.00Z', timezone=UTC"
     And value for variable "callback_endpoint" is "none"
-    Then post request with name "authorize" from endpoint "/api/v1/authorize?called={{ AtomicDate.called }}"
+    Then post request with name "authorize" from endpoint "/api/v1/authorize?called={{ AtomicDate.called }} | content_type=json"
         """
         {
             "username": "test",
@@ -45,7 +45,7 @@ Feature: Rest API endpoint testing
         """
     Then save response payload "$.callback" in variable "callback_endpoint"
 
-    Then get request with name "user info" from endpoint "{{ callback_endpoint }}"
+    Then get request with name "user info" from endpoint "{{ callback_endpoint }} | content_type=json"
     When response payload "$.user.name" is not "Test User" stop user
 ```
 

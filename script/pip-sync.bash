@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -e
+
 main() {
     local version="${1:-dev}"
     case "${version}" in
