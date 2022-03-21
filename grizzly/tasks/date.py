@@ -13,16 +13,21 @@ Instances of this task is created with the step expression:
 * `timezone` _str_ (optional) - a valid [timezone name](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
 * `offset` _str_ (optional) - a time span string describing the offset, Y = years, M = months, D = days, h = hours, m = minutes, s = seconds, e.g. `1Y-2M10D`
 '''
+from sys import version_info
 from typing import TYPE_CHECKING, Callable, Dict, Any, Optional, cast
 from dataclasses import dataclass, field
 from datetime import datetime
 
-import pytz
+if version_info < (3, 9, 0):  # pragma: no cover
+    # pyright: reportMissingImports=false
+    from backports.zoneinfo import ZoneInfo, ZoneInfoNotFoundError  # pylint: disable=import-error
+else:
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError  # pylint: disable=import-error
 
 from jinja2 import Template
 from dateutil.parser import ParserError, parse as dateparser
 from dateutil.relativedelta import relativedelta
-from tzlocal import get_localzone as get_local_timezone
+
 from grizzly_extras.arguments import get_unsupported_arguments, split_value, parse_arguments
 
 from ..types import GrizzlyTask
@@ -73,14 +78,12 @@ class DateTask(GrizzlyTask):
                 date_value += relativedelta(**offset_params)
 
             timezone_argument = self.arguments.get('timezone', None)
-            timezone: pytz.BaseTzInfo
+            timezone: Optional[ZoneInfo] = None  # None in asttimezone == local time zone
             if timezone_argument is not None:
                 try:
-                    timezone = pytz.timezone(timezone_argument)
-                except pytz.exceptions.UnknownTimeZoneError as e:
+                    timezone = ZoneInfo(timezone_argument)
+                except ZoneInfoNotFoundError as e:
                     raise ValueError(f'"{timezone_argument}" is not a valid time zone') from e
-            else:
-                timezone = get_local_timezone()
 
             date_format = cast(str, self.arguments.get('format', '%Y-%m-%d %H:%M:%S'))
 

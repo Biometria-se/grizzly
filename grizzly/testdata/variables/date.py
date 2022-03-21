@@ -26,14 +26,18 @@ This can then be used in a template:
 }
 ```
 '''
+from sys import version_info
 from typing import Union, Dict, Any, List, Type, Optional, cast
 from datetime import datetime
 
-import pytz
-
 from dateutil.parser import ParserError, parse as dateparse
 from dateutil.relativedelta import relativedelta
-from tzlocal import get_localzone as get_local_timezone
+
+if version_info < (3, 9, 0,):  # pragma: no cover
+    # pyright: reportMissingImports=false
+    from backports.zoneinfo import ZoneInfo, ZoneInfoNotFoundError  # pylint: disable=import-error
+else:
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError  # pylint: disable=import-error
 
 from grizzly_extras.arguments import split_value, parse_arguments
 
@@ -62,8 +66,8 @@ def atomicdate__base_type__(value: str) -> str:
 
         if 'timezone' in arguments:
             try:
-                pytz.timezone(arguments['timezone'])
-            except pytz.UnknownTimeZoneError:
+                ZoneInfo(arguments['timezone'])
+            except ZoneInfoNotFoundError:
                 raise ValueError(f'AtomicDate: unknown timezone "{arguments["timezone"]}"')
 
         if 'offset' in arguments:
@@ -98,7 +102,7 @@ class AtomicDate(AtomicVariable[Union[str, datetime]]):
         value: str,
     ) -> None:
         initial_value: str
-        timezone: pytz.BaseTzInfo = get_local_timezone()
+        timezone: Optional[ZoneInfo] = None
         date_format = '%Y-%m-%d %H:%M:%S'
         offset: Optional[Dict[str, int]] = None
 
@@ -112,7 +116,7 @@ class AtomicDate(AtomicVariable[Union[str, datetime]]):
                 date_format = arguments['format']
 
             if 'timezone' in arguments:
-                timezone = pytz.timezone(arguments['timezone'])
+                timezone = ZoneInfo(arguments['timezone'])
 
             if 'offset' in arguments:
                 offset = parse_timespan(arguments['offset'])
