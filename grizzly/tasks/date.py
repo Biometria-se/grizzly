@@ -13,16 +13,15 @@ Instances of this task is created with the step expression:
 * `timezone` _str_ (optional) - a valid [timezone name](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
 * `offset` _str_ (optional) - a time span string describing the offset, Y = years, M = months, D = days, h = hours, m = minutes, s = seconds, e.g. `1Y-2M10D`
 '''
-from sys import version_info
 from typing import TYPE_CHECKING, Callable, Dict, Any, Optional, cast
 from dataclasses import dataclass, field
 from datetime import datetime
 
-if version_info < (3, 9, 0):  # pragma: no cover
-    # pyright: reportMissingImports=false
-    from backports.zoneinfo import ZoneInfo, ZoneInfoNotFoundError  # pylint: disable=import-error
-else:
+try:
     from zoneinfo import ZoneInfo, ZoneInfoNotFoundError  # pylint: disable=import-error
+except ImportError:
+    # pyright: reportMissingImports=false
+    from backports.zoneinfo import ZoneInfo, ZoneInfoNotFoundError  # type: ignore[no-redef]  # pylint: disable=import-error
 
 from jinja2 import Template
 from dateutil.parser import ParserError, parse as dateparser

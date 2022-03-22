@@ -26,18 +26,17 @@ This can then be used in a template:
 }
 ```
 '''
-from sys import version_info
 from typing import Union, Dict, Any, List, Type, Optional, cast
 from datetime import datetime
 
 from dateutil.parser import ParserError, parse as dateparse
 from dateutil.relativedelta import relativedelta
 
-if version_info < (3, 9, 0,):  # pragma: no cover
-    # pyright: reportMissingImports=false
-    from backports.zoneinfo import ZoneInfo, ZoneInfoNotFoundError  # pylint: disable=import-error
-else:
+try:
     from zoneinfo import ZoneInfo, ZoneInfoNotFoundError  # pylint: disable=import-error
+except ImportError:
+    # pyright: reportMissingImports=false
+    from backports.zoneinfo import ZoneInfo, ZoneInfoNotFoundError  # type: ignore[no-redef]  # pylint: disable=import-error
 
 from grizzly_extras.arguments import split_value, parse_arguments
 
