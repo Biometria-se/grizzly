@@ -48,7 +48,7 @@ jobs:
     - name: install python dependencies
       id: pip
       run: |
-        pip install --upgrade wheel pip-tools
+        pip install --upgrade pip-tools
         ./script/pip-sync.bash ci
 
     - name: run pytest

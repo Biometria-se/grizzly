@@ -51,10 +51,7 @@ backports-zoneinfo==0.2.1 ; python_version < "3.9" \
     --hash=sha256:e8236383a20872c0cdf5a62b554b27538db7fa1bbec52429d8d106effbaeca08 \
     --hash=sha256:f04e857b59d9d1ccc39ce2da1021d196e47234873820cbeaad210724b1ee28ac \
     --hash=sha256:fadbfe37f74051d024037f223b8e001611eac868b5c5b06144ef4d8b799862f2
-    # via
-    #   grizzly-loadtester (setup.py)
-    #   pytz-deprecation-shim
-    #   tzlocal
+    # via grizzly-loadtester (setup.py)
 bcrypt==3.2.0 \
     --hash=sha256:56e5da069a76470679f312a7d3d23deb3ac4519991a0361abc11da837087b61d \
     --hash=sha256:5b93c1726e50a93a033c36e5ca7fdcd29a5c7395af50a6892f5d9e7c6cfbfb29 \
@@ -747,13 +744,7 @@ python-dateutil==2.8.2 \
 pytz==2022.1 \
     --hash=sha256:1e760e2fe6a8163bc0b3d9a19c4f84342afa0a2affebfaa84b01b978a02ecaa7 \
     --hash=sha256:e68985985296d9a66a881eb3193b0906246245294a881e7c8afe623866ac6a5c
-    # via
-    #   grizzly-loadtester (setup.py)
-    #   influxdb
-pytz-deprecation-shim==0.1.0.post0 \
-    --hash=sha256:8314c9692a636c8eb3bda879b9f119e350e93223ae83e70e80c31675a0fdc1a6 \
-    --hash=sha256:af097bae1b616dde5c5744441e2ddc69e74dfdcb0c263129610d85b87445a59d
-    # via tzlocal
+    # via influxdb
 pyyaml==5.4.1 \
     --hash=sha256:08682f6b72c722394747bddaf0aa62277e02557c0fd1c42cb853016a38f8dedf \
     --hash=sha256:0f5f5786c0e09baddcd8b4b45f20a7b5d61a7e7e99846e3c799b05c7c53fa696 \
@@ -911,10 +902,6 @@ typing-extensions==4.1.1 \
 tzdata==2022.1 \
     --hash=sha256:238e70234214138ed7b4e8a0fab0e5e13872edab3be586ab8198c407620e2ab9 \
     --hash=sha256:8b536a8ec63dc0751342b3984193a3118f8fca2afe25752bb9b7fffd398552d3
-    # via pytz-deprecation-shim
-tzlocal==4.1 \
-    --hash=sha256:0f28015ac68a5c067210400a9197fc5d36ba9bc3f8eaf1da3cbd59acdfed9e09 \
-    --hash=sha256:28ba8d9fcb6c9a782d6e0078b4f6627af1ea26aeaa32b4eab5324abc7df4149f
     # via grizzly-loadtester (setup.py)
 uamqp==1.5.2 \
     --hash=sha256:053f40ba1ec3cafdec3c126bcae104b6672f45257fc47457f6bcd0a38c0e641e \

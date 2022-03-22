@@ -18,7 +18,14 @@ The project *must* have the follwoing structure:
 ```
 
 In this example there are two `requirements*.txt` files. The reason is that `requirements.txt` will be copied and installed in the container image if `grizzly-cli` is used.
-The container image **should not** contain `grizzly-cli`, which is included in `requirements-run.txt`, and should be installed where scenarios are started from.
+The container image **should not** contain `grizzly-cli` and should be installed where scenarios are started from.
+
+After installing `grizzly-cli` the easiest way to get a correct project structure is to use the builtin `init` subcommand:
+
+```bash
+grizzly-cli init my-grizzly-project
+cd my-grizzly-project/
+```
 
 ### Environment
 

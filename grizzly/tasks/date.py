@@ -17,12 +17,16 @@ from typing import TYPE_CHECKING, Callable, Dict, Any, Optional, cast
 from dataclasses import dataclass, field
 from datetime import datetime
 
-import pytz
+try:
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError  # pylint: disable=import-error
+except ImportError:
+    # pyright: reportMissingImports=false
+    from backports.zoneinfo import ZoneInfo, ZoneInfoNotFoundError  # type: ignore[no-redef]  # pylint: disable=import-error
 
 from jinja2 import Template
 from dateutil.parser import ParserError, parse as dateparser
 from dateutil.relativedelta import relativedelta
-from tzlocal import get_localzone as get_local_timezone
+
 from grizzly_extras.arguments import get_unsupported_arguments, split_value, parse_arguments
 
 from ..types import GrizzlyTask
@@ -73,14 +77,12 @@ class DateTask(GrizzlyTask):
                 date_value += relativedelta(**offset_params)
 
             timezone_argument = self.arguments.get('timezone', None)
-            timezone: pytz.BaseTzInfo
+            timezone: Optional[ZoneInfo] = None  # None in asttimezone == local time zone
             if timezone_argument is not None:
                 try:
-                    timezone = pytz.timezone(timezone_argument)
-                except pytz.exceptions.UnknownTimeZoneError as e:
+                    timezone = ZoneInfo(timezone_argument)
+                except ZoneInfoNotFoundError as e:
                     raise ValueError(f'"{timezone_argument}" is not a valid time zone') from e
-            else:
-                timezone = get_local_timezone()
 
             date_format = cast(str, self.arguments.get('format', '%Y-%m-%d %H:%M:%S'))
 
