@@ -12,7 +12,6 @@ from piplicenses import CustomNamespace, FormatArg, FromArg, OrderArg, create_ou
 from pytablewriter import MarkdownTableWriter
 
 URL_MAP = {
-    'tzlocal': 'https://github.com/regebro/tzlocal',
     'pylint': 'https://www.pylint.org/',
     'msal-extensions': 'https://github.com/AzureAD/microsoft-authentication-extensions-for-python',
     'tomli': 'https://github.com/hukkin/tomli',
@@ -22,6 +21,7 @@ URL_MAP = {
     'yapf': 'https://pypi.org/project/yapf/',
     'databind': 'https://github.com/NiklasRosenstein/databind',
     'tomli-w': 'https://github.com/hukkin/tomli-w',
+    'build': 'https://github.com/pypa/build',
 }
 
 REPO_ROOT = path.realpath(path.join(path.dirname(__file__), '..'))

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import sys
 import argparse
-import ast
 import os
 import subprocess
 import re
@@ -9,6 +8,7 @@ import re
 from tempfile import NamedTemporaryFile
 from packaging import version as versioning
 from typing import Optional, Dict, Tuple, cast
+from configparser import ConfigParser
 
 from piptools.scripts.compile import cli as pip_compile
 from piptools.locations import CACHE_DIR
@@ -37,7 +37,7 @@ def parse_arguments() -> argparse.Namespace:
         type=str,
         default=None,
         required=False,
-        help='specify python version instead of finding a suitable in setup.py',
+        help='specify python version instead of finding a suitable in setup.cfg',
     )
 
     return parser.parse_args()
@@ -58,41 +58,33 @@ def getgid() -> int:
 
 
 def get_python_version() -> str:
-    setup_py_path = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', 'setup.py'))
-    required_version: Optional[str] = None
+    config = ConfigParser()
+    setup_path = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', 'setup.cfg'))
+    config.read(setup_path)
 
-    with open(setup_py_path) as fd:
-        for node in ast.walk(ast.parse(fd.read())):
-            if not isinstance(node, ast.keyword):
-                continue
+    if 'options' not in config:
+        raise AttributeError('setup.cfg is missing [options] section')
 
-            if not node.arg == 'python_requires':
-                continue
+    python_requires: Optional[str] = config['options'].get('python_requires', None)
 
-            if not isinstance(node.value, ast.Constant):
-                raise ValueError('python_requires in setup.py/setup() is not specified as an constant')
+    if python_requires is None:
+        raise AttributeError('could not find python_requires in setup.cfg')
 
-            required_version = node.value.value
-            break
-
-    if required_version is None:
-        raise AttributeError('could not find required_version in setup.py/setup()')
-
-    version = re.sub(r'[^0-9\.]', '', required_version)
+    version = re.sub(r'[^0-9\.]', '', python_requires)
 
     parsed_version = versioning.parse(version)
     version_minor = parsed_version.minor
 
-    if '>' in required_version:
-        compare, step = (parsed_version.__le__ if '=' in required_version else parsed_version.__lt__, 1, )
-    elif '<' in required_version:
-        compare, step = (parsed_version.__ge__ if '=' in required_version else parsed_version.__gt__, -1, )
+    if '>' in python_requires:
+        compare, step = (parsed_version.__le__ if '=' in python_requires else parsed_version.__lt__, 1, )
+    elif '<' in python_requires:
+        compare, step = (parsed_version.__ge__ if '=' in python_requires else parsed_version.__gt__, -1, )
     else:
         compare, step = (parsed_version.__eq__, 0, )
 
     while not compare(versioning.parse(f'{parsed_version.major}.{version_minor}')):
         if (version_minor < 0 or version_minor > parsed_version.minor * 2):
-            raise RuntimeError(f'unable to find a suitable version based on {required_version}')
+            raise RuntimeError(f'unable to find a suitable version based on {python_requires}')
 
         version_minor += step
 
@@ -155,28 +147,26 @@ def run_container(python_version: str) -> int:
 
 
 def has_git_dependencies(where_am_i: str) -> bool:
+    setup_file = os.path.join(where_am_i, 'setup.cfg')
+    config = ConfigParser()
+    config.read(setup_file)
 
-    with open(os.path.join(where_am_i, 'setup.py')) as fd:
-        for node in ast.walk(ast.parse(fd.read())):
-            if not hasattr(node, 'arg'):
-                continue
+    if 'options' in config:
+        if 'git+' in config['options'].get('install_requires'):
+            return True
 
-            if node.arg == 'install_requires':
-                for elt in node.value.elts:
-                    if 'git+' in elt.value:
-                        return True
+    if 'options.extras_require' in config:
+        options_extras_require = config['options.extras_require']
 
-            if node.arg == 'extra_requires':
-                for value in node.value:
-                    for elt in value.elts:
-                        if 'git+' in elt.value:
-                            return True
+        for option in options_extras_require:
+            if 'git+' in options_extras_require[option]:
+                return True
 
     return False
 
 
 def compile() -> int:
-    if os.path.exists('/mnt/setup.py'):
+    if os.path.exists('/mnt/setup.cfg'):
         where_am_i = '/mnt'
     else:
         where_am_i = os.path.realpath(os.path.join(os.path.dirname(__file__), '..'))
@@ -222,7 +212,7 @@ def compile() -> int:
                     strip_extras=False,
                     generate_hashes=generate_hashes,  # <!-- --generate-hashes
                     reuse_hashes=True,
-                    src_files=(),
+                    src_files=('pyproject.toml',),
                     max_rounds=10,
                     build_isolation=True,
                     emit_find_links=True,
