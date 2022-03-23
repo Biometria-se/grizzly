@@ -6,13 +6,11 @@ from typing import List, Optional
 from os import path
 from json import loads as jsonloads
 from io import StringIO
-from datetime import datetime
 
 from piplicenses import CustomNamespace, FormatArg, FromArg, OrderArg, create_output_string
 from pytablewriter import MarkdownTableWriter
 
 URL_MAP = {
-    'tzlocal': 'https://github.com/regebro/tzlocal',
     'pylint': 'https://www.pylint.org/',
     'msal-extensions': 'https://github.com/AzureAD/microsoft-authentication-extensions-for-python',
     'tomli': 'https://github.com/hukkin/tomli',
@@ -22,6 +20,7 @@ URL_MAP = {
     'yapf': 'https://pypi.org/project/yapf/',
     'databind': 'https://github.com/NiklasRosenstein/databind',
     'tomli-w': 'https://github.com/hukkin/tomli-w',
+    'build': 'https://github.com/pypa/build',
 }
 
 REPO_ROOT = path.realpath(path.join(path.dirname(__file__), '..'))
@@ -126,21 +125,6 @@ in the [archive]({mq_url}).
 def main() -> int:
     with open(path.join(REPO_ROOT, 'LICENSE.md')) as fd:
         contents = fd.readlines()
-
-    # update copyright year
-    for index in range(0, len(contents) - 1):
-        line = contents[index]
-        if line.startswith('Copyright'):
-            parts = line.split(' ')
-            documented_year = parts[2]
-            current_year = datetime.now().strftime('%Y')
-
-            if documented_year != current_year:
-                contents[index] = ' '.join(parts)
-                print('!! updating year in LICENSE.md')
-                with open(path.join(REPO_ROOT, 'LICENSE.md'), 'w') as fd:
-                    fd.writelines(contents)
-            break
 
     license_table = generate_license_table()
     native_dependencies = generate_native_dependencies_section()
