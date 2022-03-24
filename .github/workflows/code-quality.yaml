@@ -7,6 +7,7 @@ on:
 
 jobs:
   code-quality:
+    name: python-${{ matrix.python-version }}
     runs-on: ubuntu-latest
 
     strategy:
