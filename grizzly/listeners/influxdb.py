@@ -269,15 +269,15 @@ class InfluxDbListener:
                 thread_count = int(runner.user_count)
             except Exception:
                 thread_count = -1
-            finally:
-                runner_values['thread_count'] = thread_count
+
+            runner_values['thread_count'] = thread_count
 
             try:
                 target_user_count = int(runner.target_user_count)
             except Exception:
                 target_user_count = -1
-            finally:
-                runner_values['target_user_count'] = target_user_count
+
+            runner_values['target_user_count'] = target_user_count
 
             try:
                 if isinstance(runner, MasterRunner):
@@ -286,7 +286,7 @@ class InfluxDbListener:
                     spawn_rate = -1
             except Exception:
                 spawn_rate = -1
-            finally:
-                runner_values['spawn_rate'] = spawn_rate
+
+            runner_values['spawn_rate'] = spawn_rate
         finally:
             return runner_values

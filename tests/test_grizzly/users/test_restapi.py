@@ -339,7 +339,7 @@ class TestRestApiUser:
         with pytest.raises(ResultSuccess):
             user.get_client_token()
 
-        assert user.session_started > session_started
+        assert user.session_started >= session_started
         assert user.headers['Authorization'] == 'Bearer asdf'
         assert user._context['auth']['url'] == 'https://login.microsoftonline.com/test/oauth2/token'
 

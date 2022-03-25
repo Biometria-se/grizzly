@@ -1,4 +1,8 @@
-from typing import Optional, cast
+import os
+import stat
+
+from types import TracebackType
+from typing import Optional, Callable, cast
 from os import environ, path, listdir
 from shutil import rmtree
 from platform import node as hostname
@@ -18,6 +22,20 @@ from grizzly_extras.async_message import (
     register,
 )
 
+def onerror(func: Callable, path: str, exc_info: TracebackType) -> None:
+    '''
+    Error handler for ``shutil.rmtree``.
+    If the error is due to an access error (read only file)
+    it attempts to add write permission and then retries.
+    If the error is for another reason it re-raises the error.
+    Usage : ``shutil.rmtree(path, onerror=onerror)``
+    '''
+    # Is the error an access error?
+    if not os.access(path, os.W_OK):
+        os.chmod(path, stat.S_IWUSR)
+        func(path)
+    else:
+        raise  # pylint: disable=misplaced-bare-raise
 
 class TestAsyncMessageHandler:
     def test_get_handler(self, mocker: MockerFixture) -> None:
@@ -157,6 +175,8 @@ class TestThreadLogger:
                 assert '] WARNING: test.logger: warning\n' in sink
                 assert '] DEBUG: test.logger: debug\n' in sink
         finally:
+            logger._logger.handlers = []  # force StreamHandler to close log file
+
             try:
                 del environ['GRIZZLY_CONTEXT_ROOT']
             except:
@@ -167,4 +187,4 @@ class TestThreadLogger:
             except:
                 pass
 
-            rmtree(test_context_root)
+            rmtree(test_context_root, onerror=onerror)

@@ -228,9 +228,8 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
 
             response: Optional[AsyncMessageResponse] = None
 
+            start_time = time()
             try:
-                start_time = time()
-
                 yield action
 
                 self.zmq_client.send_json(am_request)

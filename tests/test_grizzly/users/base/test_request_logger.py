@@ -362,4 +362,4 @@ metadata:
 payload:
 <empty>''' in log_file_contents
 
-            remove(log_file)
+        remove(log_file)

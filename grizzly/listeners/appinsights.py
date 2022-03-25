@@ -117,15 +117,15 @@ class ApplicationInsightsListener:
                 thread_count = str(runner.user_count)
             except Exception:
                 thread_count = ''
-            finally:
-                runner_values['thread_count'] = thread_count
+
+            runner_values['thread_count'] = thread_count
 
             try:
                 target_user_count = str(runner.target_user_count)
             except Exception:
                 target_user_count = ''
-            finally:
-                runner_values['target_user_count'] = target_user_count
+
+            runner_values['target_user_count'] = target_user_count
 
             try:
                 if isinstance(runner, MasterRunner):
@@ -134,7 +134,7 @@ class ApplicationInsightsListener:
                     spawn_rate = ''
             except Exception:
                 spawn_rate = ''
-            finally:
-                runner_values['spawn_rate'] = spawn_rate
+
+            runner_values['spawn_rate'] = spawn_rate
         finally:
             return runner_values

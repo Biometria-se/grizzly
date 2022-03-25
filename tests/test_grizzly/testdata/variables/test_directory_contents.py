@@ -68,9 +68,9 @@ class TestAtomicDirectoryContents:
 
             instance['blobfiles'] = None
 
-            assert instance['blobfiles'] == '1-test/1-test.json'
-            assert instance['blobfiles'] == '1-test/2-test.json'
-            assert instance['blobfiles'] == '1-test/3-test.json'
+            assert instance['blobfiles'] == f'1-test{os.sep}1-test.json'
+            assert instance['blobfiles'] == f'1-test{os.sep}2-test.json'
+            assert instance['blobfiles'] == f'1-test{os.sep}3-test.json'
             assert instance.__getitem__('blobfiles') is None
 
             del instance['blobfiles']
@@ -81,27 +81,27 @@ class TestAtomicDirectoryContents:
             instance = AtomicDirectoryContents('blobfiles2', '2-test/')
             instance = AtomicDirectoryContents('blobfiles3', '3-test/')
 
-            assert instance['blobfiles2'] == '2-test/1-test.json'
-            assert instance['blobfiles3'] == '3-test/1-test.json'
-            assert instance['blobfiles2'] == '2-test/2-test.json'
-            assert instance['blobfiles3'] == '3-test/2-test.json'
-            assert instance['blobfiles2'] == '2-test/3-test.json'
-            assert instance['blobfiles3'] == '3-test/3-test.json'
+            assert instance['blobfiles2'] == f'2-test{os.sep}1-test.json'
+            assert instance['blobfiles3'] == f'3-test{os.sep}1-test.json'
+            assert instance['blobfiles2'] == f'2-test{os.sep}2-test.json'
+            assert instance['blobfiles3'] == f'3-test{os.sep}2-test.json'
+            assert instance['blobfiles2'] == f'2-test{os.sep}3-test.json'
+            assert instance['blobfiles3'] == f'3-test{os.sep}3-test.json'
             assert instance.__getitem__('blobfiles2') is None
             assert instance.__getitem__('blobfiles2') is None
             assert instance.__getitem__('blobfiles3') is None
 
             instance = AtomicDirectoryContents('blobfiles', '.')
 
-            assert instance['blobfiles'] == '1-test/1-test.json'
-            assert instance['blobfiles'] == '1-test/2-test.json'
-            assert instance['blobfiles'] == '1-test/3-test.json'
-            assert instance['blobfiles'] == '2-test/1-test.json'
-            assert instance['blobfiles'] == '2-test/2-test.json'
-            assert instance['blobfiles'] == '2-test/3-test.json'
-            assert instance['blobfiles'] == '3-test/1-test.json'
-            assert instance['blobfiles'] == '3-test/2-test.json'
-            assert instance['blobfiles'] == '3-test/3-test.json'
+            assert instance['blobfiles'] == f'1-test{os.sep}1-test.json'
+            assert instance['blobfiles'] == f'1-test{os.sep}2-test.json'
+            assert instance['blobfiles'] == f'1-test{os.sep}3-test.json'
+            assert instance['blobfiles'] == f'2-test{os.sep}1-test.json'
+            assert instance['blobfiles'] == f'2-test{os.sep}2-test.json'
+            assert instance['blobfiles'] == f'2-test{os.sep}3-test.json'
+            assert instance['blobfiles'] == f'3-test{os.sep}1-test.json'
+            assert instance['blobfiles'] == f'3-test{os.sep}2-test.json'
+            assert instance['blobfiles'] == f'3-test{os.sep}3-test.json'
             assert instance.__getitem__('blobfiles') is None
 
             del instance['blobfiles']
@@ -114,81 +114,81 @@ class TestAtomicDirectoryContents:
 
             instance = AtomicDirectoryContents('blobfiles', '1-test/ | repeat=True')
 
-            assert instance['blobfiles'] == '1-test/1-test.json'
-            assert instance['blobfiles'] == '1-test/2-test.json'
-            assert instance['blobfiles'] == '1-test/3-test.json'
-            assert instance['blobfiles'] == '1-test/1-test.json'
-            assert instance['blobfiles'] == '1-test/2-test.json'
-            assert instance['blobfiles'] == '1-test/3-test.json'
-            assert instance['blobfiles'] == '1-test/1-test.json'
-            assert instance['blobfiles'] == '1-test/2-test.json'
-            assert instance['blobfiles'] == '1-test/3-test.json'
+            assert instance['blobfiles'] == f'1-test{os.sep}1-test.json'
+            assert instance['blobfiles'] == f'1-test{os.sep}2-test.json'
+            assert instance['blobfiles'] == f'1-test{os.sep}3-test.json'
+            assert instance['blobfiles'] == f'1-test{os.sep}1-test.json'
+            assert instance['blobfiles'] == f'1-test{os.sep}2-test.json'
+            assert instance['blobfiles'] == f'1-test{os.sep}3-test.json'
+            assert instance['blobfiles'] == f'1-test{os.sep}1-test.json'
+            assert instance['blobfiles'] == f'1-test{os.sep}2-test.json'
+            assert instance['blobfiles'] == f'1-test{os.sep}3-test.json'
 
             instance = AtomicDirectoryContents('random', '1-test/ | random=True')
 
             assert instance['random'] in [
-                '1-test/1-test.json',
-                '1-test/2-test.json',
-                '1-test/3-test.json',
+                f'1-test{os.sep}1-test.json',
+                f'1-test{os.sep}2-test.json',
+                f'1-test{os.sep}3-test.json',
             ]
             assert instance['random'] in [
-                '1-test/1-test.json',
-                '1-test/2-test.json',
-                '1-test/3-test.json',
+                f'1-test{os.sep}1-test.json',
+                f'1-test{os.sep}2-test.json',
+                f'1-test{os.sep}3-test.json',
             ]
             assert instance['random'] in [
-                '1-test/1-test.json',
-                '1-test/2-test.json',
-                '1-test/3-test.json',
+                f'1-test{os.sep}1-test.json',
+                f'1-test{os.sep}2-test.json',
+                f'1-test{os.sep}3-test.json',
             ]
             assert instance.__getitem__('random') is None
 
             instance = AtomicDirectoryContents('randomrepeat', '1-test/ | random=True, repeat=True')
 
             assert instance['randomrepeat'] in [
-                '1-test/1-test.json',
-                '1-test/2-test.json',
-                '1-test/3-test.json',
+                f'1-test{os.sep}1-test.json',
+                f'1-test{os.sep}2-test.json',
+                f'1-test{os.sep}3-test.json',
             ]
             assert instance['randomrepeat'] in [
-                '1-test/1-test.json',
-                '1-test/2-test.json',
-                '1-test/3-test.json',
+                f'1-test{os.sep}1-test.json',
+                f'1-test{os.sep}2-test.json',
+                f'1-test{os.sep}3-test.json',
             ]
             assert instance['randomrepeat'] in [
-                '1-test/1-test.json',
-                '1-test/2-test.json',
-                '1-test/3-test.json',
+                f'1-test{os.sep}1-test.json',
+                f'1-test{os.sep}2-test.json',
+                f'1-test{os.sep}3-test.json',
             ]
             assert instance['randomrepeat'] in [
-                '1-test/1-test.json',
-                '1-test/2-test.json',
-                '1-test/3-test.json',
+                f'1-test{os.sep}1-test.json',
+                f'1-test{os.sep}2-test.json',
+                f'1-test{os.sep}3-test.json',
             ]
             assert instance['randomrepeat'] in [
-                '1-test/1-test.json',
-                '1-test/2-test.json',
-                '1-test/3-test.json',
+                f'1-test{os.sep}1-test.json',
+                f'1-test{os.sep}2-test.json',
+                f'1-test{os.sep}3-test.json',
             ]
             assert instance['randomrepeat'] in [
-                '1-test/1-test.json',
-                '1-test/2-test.json',
-                '1-test/3-test.json',
+                f'1-test{os.sep}1-test.json',
+                f'1-test{os.sep}2-test.json',
+                f'1-test{os.sep}3-test.json',
             ]
             assert instance['randomrepeat'] in [
-                '1-test/1-test.json',
-                '1-test/2-test.json',
-                '1-test/3-test.json',
+                f'1-test{os.sep}1-test.json',
+                f'1-test{os.sep}2-test.json',
+                f'1-test{os.sep}3-test.json',
             ]
             assert instance['randomrepeat'] in [
-                '1-test/1-test.json',
-                '1-test/2-test.json',
-                '1-test/3-test.json',
+                f'1-test{os.sep}1-test.json',
+                f'1-test{os.sep}2-test.json',
+                f'1-test{os.sep}3-test.json',
             ]
             assert instance['randomrepeat'] in [
-                '1-test/1-test.json',
-                '1-test/2-test.json',
-                '1-test/3-test.json',
+                f'1-test{os.sep}1-test.json',
+                f'1-test{os.sep}2-test.json',
+                f'1-test{os.sep}3-test.json',
             ]
         finally:
             shutil.rmtree(test_context_root)

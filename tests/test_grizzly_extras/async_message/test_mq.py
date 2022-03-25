@@ -1,4 +1,5 @@
 import subprocess
+import sys
 
 from typing import Any, List, Optional, Tuple, Dict, cast
 from os import environ
@@ -19,13 +20,15 @@ except:
 
 def test_no_pymqi_dependencies() -> None:
     env = environ.copy()
-    del env['LD_LIBRARY_PATH']
+    try:
+        del env['LD_LIBRARY_PATH']
+    except KeyError:
+        pass
     env['PYTHONPATH'] = '.'
 
     process = subprocess.Popen(
         [
-            '/usr/bin/env',
-            'python3',
+            sys.executable,
             '-c',
             'import grizzly_extras.async_message.mq as mq; print(f"{mq.pymqi.__name__=}"); mq.AsyncMessageQueueHandler(worker="asdf-asdf-asdf")'
         ],
