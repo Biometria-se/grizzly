@@ -1,4 +1,5 @@
 import subprocess
+import sys
 
 from os import environ
 from typing import Optional, cast
@@ -72,13 +73,16 @@ def test_atomicmessagequeue__base_type__() -> None:
 class TestAtomicMessageQueueNoPymqi:
     def test_no_pymqi_dependencies(self) -> None:
         env = environ.copy()
-        del env['LD_LIBRARY_PATH']
+        try:
+            del env['LD_LIBRARY_PATH']
+        except KeyError:
+            pass
+
         env['PYTHONPATH'] = '.'
 
         process = subprocess.Popen(
             [
-                '/usr/bin/env',
-                'python3',
+                sys.executable,
                 '-c'
                 'import grizzly.testdata.variables.messagequeue as mq; print(f"{mq.pymqi.__name__=}"); mq.AtomicMessageQueue("test", "test");',
             ],

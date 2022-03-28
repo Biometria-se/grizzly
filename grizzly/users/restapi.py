@@ -217,6 +217,8 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests):
         auth_user_context = self._context['auth']['user']
         start_time = time_perf_counter()
         total_response_length = 0
+        exception: Optional[Exception] = None
+
         try:
             if self._context['auth']['url'] is None:
                 try:
@@ -229,7 +231,6 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests):
 
             auth_url_parsed = urlparse(self._context['auth']['url'])
 
-            exception: Optional[CatchResponseError] = None
             total_response_length = 0
 
             with requests.Session() as client:

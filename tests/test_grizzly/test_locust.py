@@ -1,8 +1,8 @@
 import logging
-import resource
 
 from os import environ
 from typing import cast, Tuple, Any, Dict, Type, List
+from sys import platform
 
 import pytest
 import gevent
@@ -215,7 +215,9 @@ def test_setup_locust_scenarios(behave_fixture: BehaveFixture) -> None:
         assert len(user_tasks.tasks) == 3 + 1  # IteratorScenario has an internal task other than what we've added
 
 
+@pytest.mark.skipif(platform.startswith("win"), reason='resource module is posix only, this is not done in locust on windows')
 def test_setup_resource_limits(behave_fixture: BehaveFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
+    import resource
     behave = behave_fixture.context
 
     def mock_on_master(is_master: bool) -> None:

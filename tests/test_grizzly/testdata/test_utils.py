@@ -1,7 +1,7 @@
 import logging
 import shutil
 
-from os import path, environ, mkdir
+from os import path, environ, mkdir, sep
 from typing import List, Dict, Any, Optional, cast
 from json import dumps as jsondumps, loads as jsonloads
 
@@ -266,8 +266,8 @@ def test_initialize_testdata_with_payload_context(grizzly_fixture: GrizzlyFixtur
         assert data['AtomicCsvRow.test.header2']['test'] is None
         assert data['AtomicCsvRow.test.header1']['test'] is None
 
-        assert data['AtomicDirectoryContents.test']['test'] == 'adirectory/file1.txt'
-        assert data['AtomicDirectoryContents.test']['test'] == 'adirectory/file2.txt'
+        assert data['AtomicDirectoryContents.test']['test'] == f'adirectory{sep}file1.txt'
+        assert data['AtomicDirectoryContents.test']['test'] == f'adirectory{sep}file2.txt'
         assert data['AtomicDirectoryContents.test']['test'] is None
         assert data['AtomicServiceBus.event'] == '__on_consumer__'
         if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':

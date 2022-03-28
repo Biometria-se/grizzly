@@ -1,6 +1,6 @@
 import json
 
-from os import path, mkdir
+from os import path, mkdir, sep
 from typing import Dict, List, Optional, Any, Tuple, cast
 from logging import Logger
 
@@ -138,7 +138,7 @@ class TestTestdataProducer:
                 assert 'AtomicDate.utc' in variables
                 assert variables['AtomicIntegerIncrementer.messageID'] == 456
                 assert variables['messageID'] == 123
-                assert variables['AtomicDirectoryContents.test'] == 'adirectory/file1.txt'
+                assert variables['AtomicDirectoryContents.test'] == f'adirectory{sep}file1.txt'
                 assert 'AtomicCsvRow.test.header1' not in variables
                 assert 'AtomicCsvRow.test.header2' not in variables
                 assert variables['AtomicIntegerIncrementer.value'] == 1
@@ -159,7 +159,7 @@ class TestTestdataProducer:
                 assert 'messageID' in variables
                 assert variables['AtomicIntegerIncrementer.messageID'] == 457
                 assert variables['messageID'] == 123
-                assert variables['AtomicDirectoryContents.test'] == 'adirectory/file2.txt'
+                assert variables['AtomicDirectoryContents.test'] == f'adirectory{sep}file2.txt'
                 assert 'AtomicCsvRow.test.header1' not in variables
                 assert 'AtomicCsvRow.test.header2' not in variables
                 assert variables['AtomicIntegerIncrementer.value'] == 6

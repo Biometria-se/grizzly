@@ -248,9 +248,9 @@ class ServiceBusUser(ResponseHandler, RequestLogger, GrizzlyUser):
         response: Optional[AsyncMessageResponse] = None
         exception: Optional[Exception] = None
 
-        try:
-            start_time = time()
+        start_time = time()
 
+        try:
             yield action
 
             self.zmq_client.send_json(request)
