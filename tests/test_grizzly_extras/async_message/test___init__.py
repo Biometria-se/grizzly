@@ -22,6 +22,7 @@ from grizzly_extras.async_message import (
     register,
 )
 
+
 def onerror(func: Callable, path: str, exc_info: TracebackType) -> None:
     '''
     Error handler for ``shutil.rmtree``.
@@ -36,6 +37,7 @@ def onerror(func: Callable, path: str, exc_info: TracebackType) -> None:
         func(path)
     else:
         raise  # pylint: disable=misplaced-bare-raise
+
 
 class TestAsyncMessageHandler:
     def test_get_handler(self, mocker: MockerFixture) -> None:

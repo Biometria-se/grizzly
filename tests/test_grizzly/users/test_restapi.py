@@ -11,6 +11,7 @@ import pytest
 import requests
 
 from pytest_mock import MockerFixture
+from _pytest.logging import LogCaptureFixture
 from requests.models import Response
 from json import dumps as jsondumps
 from jinja2 import Template
@@ -244,8 +245,9 @@ class TestRestApiUser:
                     'username': None,
                     'password': None,
                     'redirect_uri': None,
-                }
-            }
+                },
+            },
+            'metadata': None,
         }
 
     def test_on_start(self, restapi_user: RestApiScenarioFixture) -> None:
@@ -361,37 +363,42 @@ class TestRestApiUser:
         assert 'auth.client.tenant and auth.url is not set' in str(ve)
 
     @pytest.mark.skip(reason='needs credentials, should run explicitly manually')
-    def test_get_user_token_real(self, restapi_user: RestApiScenarioFixture, mocker: MockerFixture) -> None:
-        [user, scenario] = restapi_user
+    def test_get_user_token_real(self, restapi_user: RestApiScenarioFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
+        import logging
+        with caplog.at_level(logging.DEBUG):
+            [user, scenario] = restapi_user
 
-        user._context = {
-            'host': 'https://backend.example.com',
-            'auth': {
-                'client': {
-                    'id': '',
+            user._context = {
+                'host': 'https://backend.example.com',
+                'auth': {
+                    'client': {
+                        'id': '',
+                    },
+                    'user': {
+                        'username': '',
+                        'password': '',
+                        'redirect_uri': 'https://www.example.com/silent',
+                    },
+                    'url': None,
                 },
-                'user': {
-                    'username': '',
-                    'password': '',
-                    'redirect_uri': 'https://www.example.com/silent',
-                },
-                'url': None,
-            },
-            'verify_certificates': False,
-        }
-        user.host = user._context.get('host', '')
+                'verify_certificates': False,
+                'metadata': {
+                    'Ocp-Apim-Subscription-Key': '',
+                }
+            }
+            user.host = user._context.get('host', '')
 
-        fire = mocker.spy(user.environment.events.request, 'fire')
+            fire = mocker.spy(user.environment.events.request, 'fire')
 
-        user.get_user_token()
+            user.get_user_token()
 
-        request = RequestTask(RequestMethod.GET, name='test', endpoint='/api/test')
-        request.scenario = scenario
-        headers, body = user.request(request)
-        print(headers)
-        print(body)
-        print(fire.call_args_list[0])
-        assert 0
+            request = RequestTask(RequestMethod.GET, name='test', endpoint='/api/v2/test')
+            request.scenario = scenario
+            headers, body = user.request(request)
+            print(headers)
+            print(body)
+            print(fire.call_args_list[0])
+            assert 0
 
     def test_get_user_token(self, restapi_user: RestApiScenarioFixture, mocker: MockerFixture) -> None:
         [user, _] = restapi_user

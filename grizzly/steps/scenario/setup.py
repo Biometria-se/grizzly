@@ -267,3 +267,21 @@ def step_setup_restart_scenario_on_failure(context: Context) -> None:
     grizzly = cast(GrizzlyContext, context.grizzly)
     grizzly.scenario.failure_exception = RestartScenario
     context.config.stop = False
+
+
+@given(u'metadata "{key}" is "{value}')
+def step_setup_metadata(context: Context, key: str, value: str) -> None:
+    '''Set a metadata (header) value to be used by the user when sending requests.
+
+    ```gherkin
+    And metadata "Content-Type" is "application/xml"
+    And metadata "Ocp-Apim-Subscription-Key" is "9asdf00asdf00adsf034"
+    '''
+
+    grizzly = cast(GrizzlyContext, context.grizzly)
+    casted_value = resolve_variable(grizzly, value)
+
+    if grizzly.scenario.context.get('metadata', None) is None:
+        grizzly.scenario.context['metadata'] = {}
+
+    grizzly.scenario.context['metadata'].update({key: casted_value})

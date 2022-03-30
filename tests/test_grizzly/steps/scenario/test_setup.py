@@ -332,3 +332,29 @@ def test_step_setup_log_all_requests(behave_fixture: BehaveFixture) -> None:
     step_setup_log_all_requests(behave)
 
     assert grizzly.scenario.context['log_all_requests']
+
+
+def test_step_setup_metadata(behave_fixture: BehaveFixture) -> None:
+    behave = behave_fixture.context
+    grizzly = cast(GrizzlyContext, behave.grizzly)
+
+    assert grizzly.scenario.context.get('metadata', None) is None
+
+    step_setup_metadata(behave, 'Content-Type', 'application/json')
+
+    assert grizzly.scenario.context.get('metadata', None) == {
+        'Content-Type': 'application/json',
+    }
+
+    step_setup_metadata(behave, 'Content-Type', 'application/xml')
+
+    assert grizzly.scenario.context.get('metadata', None) == {
+        'Content-Type': 'application/xml',
+    }
+
+    step_setup_metadata(behave, 'Ocp-Apim-Subscription-Key', 'deadbeefb00f')
+
+    assert grizzly.scenario.context.get('metadata', None) == {
+        'Content-Type': 'application/xml',
+        'Ocp-Apim-Subscription-Key': 'deadbeefb00f',
+    }

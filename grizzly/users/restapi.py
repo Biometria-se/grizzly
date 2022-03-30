@@ -66,7 +66,7 @@ from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
 
 from locust.clients import ResponseContextManager
-from locust.exception import CatchResponseError, StopUser
+from locust.exception import StopUser
 from locust.env import Environment
 
 import requests
@@ -144,8 +144,9 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests):
                 'username': None,
                 'password': None,
                 'redirect_uri': None,
-            }
-        }
+            },
+        },
+        'metadata': None,
     }
 
     def __init__(self, environment: Environment, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
@@ -166,6 +167,10 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests):
             self.__class__._context,
         )
 
+        headers = self._context.get('metadata', None)
+        if headers is not None:
+            self.headers.update(headers)
+
     def on_start(self) -> None:
         self.session_started = time()
 
@@ -179,12 +184,12 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests):
 
     def get_user_token(self) -> None:
         def _parse_response_config(response: requests.Response) -> Dict[str, Any]:
-            match = re.search(r'Config=(.*?);', response.text, re.MULTILINE)
+            match = re.search(r'Config={(.*?)};', response.text, re.MULTILINE)
 
             if not match:
                 raise ValueError(f'no config found in response from {response.url}')
 
-            return cast(Dict[str, Any], json.loads(match.group(1)))
+            return cast(Dict[str, Any], json.loads(f'{{{match.group(1)}}}'))
 
         def update_state(state: Dict[str, str], response: requests.Response) -> Dict[str, Any]:
             config = _parse_response_config(response)
@@ -253,6 +258,7 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests):
                 # <!-- request 1
                 client_id = self._context['auth']['client']['id']
                 client_request_id = generate_uuid()
+                username_lowercase = auth_user_context['username'].lower()
 
                 redirect_uri_parsed = urlparse(auth_user_context['redirect_uri'])
 
@@ -309,7 +315,7 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests):
                 }
 
                 payload = {
-                    'username': auth_user_context['username'].lower(),
+                    'username': username_lowercase,
                     'isOtherIdpSupported': True,
                     'checkPhones': False,
                     'isRemoteNGCSupported': True,
@@ -357,8 +363,8 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests):
 
                 payload = {
                     'i13': '0',
-                    'login': auth_user_context['username'].lower(),
-                    'loginfmt': auth_user_context['username'].lower(),
+                    'login': username_lowercase,
+                    'loginfmt': username_lowercase,
                     'type': '11',
                     'LoginOptions': '3',
                     'lrt': '',
@@ -382,9 +388,6 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests):
                     'CookieDisclosure': '0',
                     'IsFidoSupported': '1',
                     'isSignupPost': '0',
-                    'i2': '1',  # client mode
-                    'i17': '',  # srsFailed
-                    'i18': '',  # srsSuccess
                     'i19': '16369',  # time on page
                 }
 
@@ -397,6 +400,20 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests):
                     raise RuntimeError(f'user auth request 3: {response.url} had unexpected status code {response.status_code}')
 
                 config = _parse_response_config(response)
+
+                exception_message = config.get('strServiceExceptionMessage', None)
+
+                if exception_message is not None and len(exception_message.strip()) > 0:
+                    logger.error(exception_message)
+                    raise RuntimeError(exception_message)
+
+                user_proofs = config.get('arrUserProofs', [])
+
+                if len(user_proofs) > 0:
+                    user_proof = user_proofs[0]
+                    error_message = f'{username_lowercase} requires MFA for login: {user_proof["authMethodId"]} = {user_proof["display"]}'
+                    logger.error(error_message)
+                    raise RuntimeError(error_message)
 
                 # update state
                 state['sessionId'] = config['sessionId']
@@ -450,7 +467,7 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests):
                 self.headers['Authorization'] = f'Bearer {id_token}'
                 self.session_started = time()
         except Exception as e:
-            exception = CatchResponseError(str(e))
+            exception = e
         finally:
             name = self.__class__.__name__.rsplit('_', 1)[-1]
 
