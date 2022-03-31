@@ -43,7 +43,7 @@ payload:
 
 
 class RequestLogger(ResponseEvent, GrizzlyUser):
-    abstract = True
+    abstract: bool = True
 
     log_dir: str
 

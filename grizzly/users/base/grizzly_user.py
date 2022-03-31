@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from os import environ, path
 from typing import Any, Dict, Tuple, Optional, Set, cast
+from logging import Logger
 
 from jinja2 import Template
 from locust.exception import StopUser
@@ -12,7 +13,8 @@ from grizzly.context import GrizzlyContextScenario
 from ...types import GrizzlyResponse
 from ...tasks import RequestTask
 from ...utils import merge_dicts
-from . import logger, FileRequests
+from ..import inject_logger
+from . import FileRequests
 
 
 class GrizzlyUser(User):
@@ -28,6 +30,8 @@ class GrizzlyUser(User):
         'RECEIVE': 'RECV',
         'HELLO': 'HELO',
     }
+
+    logger: Logger = inject_logger()
 
     weight: int = 1
 
@@ -73,7 +77,7 @@ class GrizzlyUser(User):
 
             return name, endpoint, payload
         except Exception as exception:
-            logger.error(f'{exception=}, {request.name=}, {request.endpoint=}, {self.context_variables=}', exc_info=True)
+            self.logger.error(f'{exception=}, {request.name=}, {request.endpoint=}, {self.context_variables=}', exc_info=True)
             self.environment.events.request.fire(
                 request_type=request.method.name,
                 name=scenario_name,
@@ -93,7 +97,7 @@ class GrizzlyUser(User):
     def set_context_variable(self, variable: str, value: Any) -> None:
         old_value = cast(Dict[str, Any], self._context['variables'])[variable] if variable in cast(Dict[str, Any], self._context['variables']) else None
         self._context['variables'][variable] = value
-        logger.debug(f'context: {variable=}, value: {old_value} -> {value}')
+        self.logger.debug(f'context: {variable=}, value: {old_value} -> {value}')
 
     @property
     def context_variables(self) -> Dict[str, Any]:

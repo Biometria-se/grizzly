@@ -18,3 +18,7 @@ __all__ = [
     'SftpUser',
     'BlobStorageUser',
 ]
+
+
+def inject_logger() -> logging.Logger:
+    return logger

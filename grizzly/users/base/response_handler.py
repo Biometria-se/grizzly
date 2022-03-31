@@ -1,19 +1,160 @@
-from typing import Any, Dict, Tuple, Optional
+from typing import Any, Dict, Tuple, Optional, List
+from abc import ABC, abstractmethod
+from json import dumps as jsondumps
 
+import jinja2 as j2
 from locust.clients import ResponseContextManager
 from locust.env import Environment
 
 from ...tasks import RequestTask
 from ...types import HandlerContextType
-from ...exceptions import ResponseHandlerError
+from ...exceptions import ResponseHandlerError, TransformerLocustError
 from .grizzly_user import GrizzlyUser
 from .response_event import ResponseEvent
 
-from grizzly_extras.transformer import transformer, TransformerError, TransformerContentType
+from grizzly_extras.transformer import transformer, TransformerError, PlainTransformer, TransformerContentType
+
+
+class ResponseHandlerAction(ABC):
+    def __init__(self, /, expression: str, match_with: str, expected_matches: int = 1) -> None:
+        self.expression = expression
+        self.match_with = match_with
+        self.expected_matches = expected_matches
+
+    @abstractmethod
+    def __call__(
+        self,
+        input_context: Tuple[TransformerContentType, Any],
+        user: GrizzlyUser,
+        response: Optional[ResponseContextManager] = None,
+    ) -> None:
+        raise NotImplementedError(f'{self.__class__.__name__} has not implemented __call__')
+
+    def get_match(
+        self,
+        input_context: Tuple[TransformerContentType, Any],
+        user: GrizzlyUser,
+        condition: bool = False
+    ) -> Tuple[Optional[str], str, str]:
+        '''Contains common logic for both save and validation handlers.
+
+        Args:
+            input_context (Tuple[TransformerContentType, Any]): content type and transformed payload
+            expression (str): expression to extract value from `input_context`
+            match_with (str): regular expression that the extracted value must match
+            user (ContextVariablesUser): user that executed task (request)
+            condition (bool): used by validation handler for negative matching
+        '''
+        input_content_type, input_payload = input_context
+        interpolated_expression = j2.Template(self.expression).render(user.context_variables)
+        interpolated_match_with = j2.Template(self.match_with).render(user.context_variables)
+
+        try:
+            transform = transformer.available.get(input_content_type, None)
+            if transform is None:
+                raise TypeError(f'could not find a transformer for {input_content_type.name}')
+
+            if not transform.validate(interpolated_expression):
+                raise TypeError(f'"{interpolated_expression}" is not a valid expression for {input_content_type.name}')
+
+            input_get_values = transform.parser(interpolated_expression)
+            match_get_values = PlainTransformer.parser(interpolated_match_with)
+
+            values = input_get_values(input_payload)
+
+            # get a list of all matches in values
+            matches: List[str] = []
+            for value in values:
+                matched_values = match_get_values(value)
+
+                if len(matched_values) < 1:
+                    continue
+
+                matched_value = matched_values[0]
+
+                if matched_value is None or len(matched_value) < 1:
+                    continue
+
+                matches.append(matched_value)
+        except TransformerError as e:
+            raise TransformerLocustError(e.message) from e
+
+        number_of_matches = len(matches)
+
+        if number_of_matches != self.expected_matches:
+            if number_of_matches < self.expected_matches and not condition:
+                user.logger.error(f'"{interpolated_expression}": "{interpolated_match_with}" matched too few values: "{values}"')
+            elif number_of_matches > self.expected_matches:
+                user.logger.error(f'"{interpolated_expression}": "{interpolated_match_with}" matched too many values: "{values}"')
+
+            match = None
+        else:
+            if number_of_matches == 1:
+                match = matches[0]
+            else:
+                match = jsondumps(matches)
+
+        return match, interpolated_expression, interpolated_match_with
+
+
+class ValidationHandlerAction(ResponseHandlerAction):
+    def __init__(self, condition: bool, /, expression: str, match_with: str, expected_matches: int = 1) -> None:
+        super().__init__(
+            expression=expression,
+            match_with=match_with,
+            expected_matches=expected_matches,
+        )
+
+        self.condition = condition
+
+    def __call__(
+        self,
+        input_context: Tuple[TransformerContentType, Any],
+        user: GrizzlyUser,
+        response: Optional[ResponseContextManager] = None,
+    ) -> None:
+        match, expression, match_with = self.get_match(input_context, user, self.condition)
+
+        result = match is not None if self.condition is True else match is None
+
+        if result:
+            message = f'"{expression}": "{match_with}" was {match}'
+            if response is not None:
+                response.failure(message)
+            else:
+                raise ResponseHandlerError(message)
+
+
+class SaveHandlerAction(ResponseHandlerAction):
+    def __init__(self, variable: str, /, expression: str, match_with: str, expected_matches: int = 1) -> None:
+        super().__init__(
+            expression=expression,
+            match_with=match_with,
+            expected_matches=expected_matches,
+        )
+
+        self.variable = variable
+
+    def __call__(
+        self,
+        input_context: Tuple[TransformerContentType, Any],
+        user: GrizzlyUser,
+        response: Optional[ResponseContextManager] = None,
+    ) -> None:
+        match, expression, _ = self.get_match(input_context, user)
+
+        user.set_context_variable(self.variable, match)
+
+        if match is None:
+            message = f'"{expression}" did not match value'
+            if response is not None:
+                response.failure(message)
+            else:
+                raise ResponseHandlerError(message)
 
 
 class ResponseHandler(ResponseEvent):
-    abstract = True
+    abstract: bool = True
 
     def __init__(self, environment: Environment, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
         super().__init__(environment, *args, **kwargs)

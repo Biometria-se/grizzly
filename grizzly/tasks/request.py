@@ -20,23 +20,24 @@ from jinja2.environment import Template
 from grizzly_extras.transformer import TransformerContentType
 from grizzly_extras.arguments import parse_arguments, split_value, unquote
 
-from ..types import HandlerType, RequestMethod
+from ..types import RequestMethod
 
 from ..types import GrizzlyTask
 
 if TYPE_CHECKING:  # pragma: no cover
     from ..scenarios import GrizzlyScenario
+    from ..users.base.response_handler import ResponseHandlerAction
 
 
 @dataclass(unsafe_hash=True)
 class RequestTaskHandlers:
-    metadata: List[HandlerType] = field(init=False, hash=False, default_factory=list)
-    payload: List[HandlerType] = field(init=False, hash=False, default_factory=list)
+    metadata: List['ResponseHandlerAction'] = field(init=False, hash=False, default_factory=list)
+    payload: List['ResponseHandlerAction'] = field(init=False, hash=False, default_factory=list)
 
-    def add_metadata(self, handler: HandlerType) -> None:
+    def add_metadata(self, handler: 'ResponseHandlerAction') -> None:
         self.metadata.append(handler)
 
-    def add_payload(self, handler: HandlerType) -> None:
+    def add_payload(self, handler: 'ResponseHandlerAction') -> None:
         self.payload.append(handler)
 
 

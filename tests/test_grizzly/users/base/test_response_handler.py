@@ -1,4 +1,6 @@
-from json import dumps as jsondumps
+from abc import ABC
+from json import dumps as jsondumps, loads as jsonloads
+from typing import TYPE_CHECKING, Tuple, Any, Optional
 
 import pytest
 
@@ -11,7 +13,8 @@ from locust.exception import LocustError, CatchResponseError
 from requests.models import Response
 
 from grizzly.clients import ResponseEventSession
-from grizzly.users.base import HttpRequests, ResponseEvent, ResponseHandler
+from grizzly.users.base import HttpRequests, ResponseEvent
+from grizzly.users.base.response_handler import ResponseHandler, ValidationHandlerAction, SaveHandlerAction, ResponseHandlerAction
 from grizzly.exceptions import ResponseHandlerError
 from grizzly.types import RequestMethod
 from grizzly.tasks import RequestTask
@@ -19,6 +22,542 @@ from grizzly_extras.transformer import TransformerContentType
 
 from ...fixtures import LocustFixture
 from ...helpers import TestUser
+
+if TYPE_CHECKING:
+    from grizzly.users.base import GrizzlyUser
+
+
+class TestResponseHandlerAction:
+    class Dummy(ResponseHandlerAction):
+        def __call__(
+            self,
+            input_context: Tuple[TransformerContentType, Any],
+            user: 'GrizzlyUser',
+            response: Optional[ResponseContextManager] = None,
+        ) -> None:
+            super().__call__(input_context, user, response)
+
+    def test___(self, locust_fixture: LocustFixture) -> None:
+        assert issubclass(ResponseHandlerAction, ABC)
+        user = TestUser(locust_fixture.env)
+        handler = TestResponseHandlerAction.Dummy('$.', '.*')
+        assert handler.expression == '$.'
+        assert handler.match_with == '.*'
+        assert handler.expected_matches == 1
+
+        with pytest.raises(NotImplementedError) as nie:
+            handler((TransformerContentType.JSON, None,), user)
+        assert str(nie.value) == 'Dummy has not implemented __call__'
+
+    def test_get_matches(self, locust_fixture: LocustFixture) -> None:
+        user = TestUser(locust_fixture.env)
+        handler = TestResponseHandlerAction.Dummy('//hello/world', '.*')
+
+        with pytest.raises(TypeError) as te:
+            handler.get_match((TransformerContentType.UNDEFINED, None, ), user)
+        assert str(te.value) == 'could not find a transformer for UNDEFINED'
+
+        with pytest.raises(TypeError) as te:
+            handler.get_match((TransformerContentType.JSON, None, ), user)
+        assert str(te.value) == '"//hello/world" is not a valid expression for JSON'
+
+        handler = TestResponseHandlerAction.Dummy('$.hello[?world="bar"].foo', '.*', 2)
+
+        response = {
+            'hello': [{
+                'world': 'bar',
+                'foo': 1,
+            }, {
+                'world': 'hello',
+                'foo': 999,
+            }, {
+                'world': 'bar',
+                'foo': 2,
+            }]
+        }
+        print(response)
+        match, _, _ = handler.get_match((TransformerContentType.JSON, response, ), user)
+        assert match == '["1", "2"]'
+
+
+class TestValidationHandlerAction:
+    def test___init__(self) -> None:
+        handler = ValidationHandlerAction(False, expression='$.hello.world', match_with='foo')
+
+        assert issubclass(handler.__class__, ResponseHandlerAction)
+        assert not handler.condition
+        assert handler.expression == '$.hello.world'
+        assert handler.match_with == 'foo'
+        assert handler.expected_matches == 1
+
+    def test___call___true(self, locust_fixture: LocustFixture) -> None:
+        user = TestUser(locust_fixture.env)
+        try:
+            response = Response()
+            response._content = '{}'.encode('utf-8')
+            response.status_code = 200
+            response_context_manager = ResponseContextManager(response, locust_fixture.env.events.request, {})
+            response_context_manager._entered = True
+
+            handler = ValidationHandlerAction(
+                True,
+                expression='$.test.value',
+                match_with='test',
+            )
+
+            # match fixed string expression
+            handler((TransformerContentType.JSON, {'test': {'value': 'test'}}), user, response_context_manager)
+            assert isinstance(getattr(response_context_manager, '_manual_result', None), CatchResponseError)
+            response_context_manager._manual_result = None
+
+            # no match fixed string expression
+            handler((TransformerContentType.JSON, {'test': {'value': 'nottest'}}), user, response_context_manager)
+            assert response_context_manager._manual_result is None
+
+            # regexp match expression value
+            handler = ValidationHandlerAction(
+                True,
+                expression='$.test.value',
+                match_with='.*(test)$',
+            )
+            handler((TransformerContentType.JSON, {'test': {'value': 'nottest'}}), user, response_context_manager)
+            assert isinstance(getattr(response_context_manager, '_manual_result', None), CatchResponseError)
+            response_context_manager._manual_result = None
+
+            # ony allows 1 match per expression
+            handler = ValidationHandlerAction(
+                True,
+                expression='$.test[*].value',
+                match_with='.*(test)$',
+            )
+            handler(
+                (TransformerContentType.JSON, {'test': [{'value': 'nottest'}, {'value': 'reallynottest'}, {'value': 'test'}]}),
+                user,
+                response_context_manager,
+            )
+            assert response_context_manager._manual_result is None
+
+            # 1 match expression
+            handler(
+                (TransformerContentType.JSON, {'test': [{'value': 'not'}, {'value': 'reallynot'}, {'value': 'test'}]}),
+                user,
+                response_context_manager,
+            )
+            assert isinstance(getattr(response_context_manager, '_manual_result', None), CatchResponseError)
+            response_context_manager._manual_result = None
+
+            handler = ValidationHandlerAction(
+                True,
+                expression='$.[*]',
+                match_with='STTO_31337',
+            )
+
+            # 1 match expression
+            handler((TransformerContentType.JSON, ['STTO_1337', 'STTO_31337', 'STTO_73313']), user, response_context_manager)
+            assert isinstance(getattr(response_context_manager, '_manual_result', None), CatchResponseError)
+            response_context_manager._manual_result = None
+
+            example = {
+                'glossary': {
+                    'title': 'example glossary',
+                    'GlossDiv': {
+                        'title': 'S',
+                        'GlossList': {
+                            'GlossEntry': {
+                                'ID': 'SGML',
+                                'SortAs': 'SGML',
+                                'GlossTerm': 'Standard Generalized Markup Language',
+                                'Acronym': 'SGML',
+                                'Abbrev': 'ISO 8879:1986',
+                                'GlossDef': {
+                                    'para': 'A meta-markup language, used to create markup languages such as DocBook.',
+                                    'GlossSeeAlso': ['GML', 'XML']
+                                },
+                                'GlossSee': 'markup',
+                                'Additional': [
+                                    {
+                                        'addtitle': 'test1',
+                                        'addvalue': 'hello world',
+                                    },
+                                    {
+                                        'addtitle': 'test2',
+                                        'addvalue': 'good stuff',
+                                    },
+                                ]
+                            }
+                        }
+                    }
+                }
+            }
+
+            # 1 match in multiple values (list)
+            user.set_context_variable('format', 'XML')
+            handler = ValidationHandlerAction(
+                True,
+                expression='$.*..GlossSeeAlso[*]',
+                match_with='{{ format }}',
+            )
+            handler((TransformerContentType.JSON, example), user, response_context_manager)
+            assert isinstance(getattr(response_context_manager, '_manual_result', None), CatchResponseError)
+            response_context_manager._manual_result = None
+
+            with pytest.raises(ResponseHandlerError):
+                handler((TransformerContentType.JSON, example), user, None)
+
+            # no match in multiple values (list)
+            user.set_context_variable('format', 'YAML')
+            handler = ValidationHandlerAction(
+                True,
+                expression='$.*..GlossSeeAlso[*]',
+                match_with='{{ format }}',
+            )
+            handler((TransformerContentType.JSON, example), user, response_context_manager)
+            assert response_context_manager._manual_result is None
+
+            user.set_context_variable('property', 'title')
+            user.set_context_variable('regexp', '.*ary$')
+            handler = ValidationHandlerAction(
+                True,
+                expression='$.glossary.{{ property }}',
+                match_with='{{ regexp }}',
+            )
+            handler((TransformerContentType.JSON, example), user, response_context_manager)
+            assert isinstance(getattr(response_context_manager, '_manual_result', None), CatchResponseError)
+            response_context_manager._manual_result = None
+
+            handler = ValidationHandlerAction(
+                True,
+                expression='$..Additional[?addtitle="test1"].addvalue',
+                match_with='.*world$',
+            )
+            handler((TransformerContentType.JSON, example), user, response_context_manager)
+            assert isinstance(getattr(response_context_manager, '_manual_result', None), CatchResponseError)
+            response_context_manager._manual_result = None
+
+            handler = ValidationHandlerAction(
+                True,
+                expression='$.`this`',
+                match_with='False',
+            )
+            handler((TransformerContentType.JSON, True), user, response_context_manager)
+            assert response_context_manager._manual_result is None
+
+            handler((TransformerContentType.JSON, False), user, response_context_manager)
+            assert isinstance(getattr(response_context_manager, '_manual_result', None), CatchResponseError)
+            response_context_manager._manual_result = None
+        finally:
+            assert user._context['variables'] is not TestUser(locust_fixture.env)._context['variables']
+
+    def test___call___false(self, locust_fixture: LocustFixture) -> None:
+        user = TestUser(locust_fixture.env)
+        response = Response()
+        response._content = '{}'.encode('utf-8')
+        response.status_code = 200
+        response_context_manager = ResponseContextManager(response, locust_fixture.env.events.request, {})
+        response_context_manager._entered = True
+
+        handler = ValidationHandlerAction(False, expression='$.test.value', match_with='test')
+
+        # match fixed string expression
+        handler((TransformerContentType.JSON, {'test': {'value': 'test'}}), user, response_context_manager)
+        assert response_context_manager._manual_result is None
+
+        # no match fixed string expression
+        handler((TransformerContentType.JSON, {'test': {'value': 'nottest'}}), user, response_context_manager)
+        assert getattr(response_context_manager, '_manual_result', None) is not None
+        response_context_manager._manual_result = None
+
+        # regexp match expression value
+        user.set_context_variable('expression', '$.test.value')
+        user.set_context_variable('value', 'test')
+        handler = ValidationHandlerAction(
+            False,
+            expression='{{ expression }}',
+            match_with='.*({{ value }})$',
+        )
+        handler((TransformerContentType.JSON, {'test': {'value': 'nottest'}}), user, response_context_manager)
+        assert response_context_manager._manual_result is None
+
+        # ony allows 1 match per expression
+        handler = ValidationHandlerAction(
+            False,
+            expression='$.test[*].value',
+            match_with='.*(test)$',
+        )
+        handler(
+            (TransformerContentType.JSON, {'test': [{'value': 'nottest'}, {'value': 'reallynottest'}, {'value': 'test'}]}),
+            user,
+            response_context_manager,
+        )
+        assert getattr(response_context_manager, '_manual_result', None) is not None
+        response_context_manager._manual_result = None
+
+        # 1 match expression
+        handler(
+            (TransformerContentType.JSON, {'test': [{'value': 'not'}, {'value': 'reallynot'}, {'value': 'test'}]}),
+            user,
+            response_context_manager,
+        )
+        assert response_context_manager._manual_result is None
+
+        handler = ValidationHandlerAction(
+            False,
+            expression='$.[*]',
+            match_with='ID_31337',
+        )
+
+        # 1 match expression
+        handler((TransformerContentType.JSON, ['ID_1337', 'ID_31337', 'ID_73313']), user, response_context_manager)
+        assert response_context_manager._manual_result is None
+
+        example = {
+            'glossary': {
+                'title': 'example glossary',
+                'GlossDiv': {
+                    'title': 'S',
+                    'GlossList': {
+                        'GlossEntry': {
+                            'ID': 'SGML',
+                            'SortAs': 'SGML',
+                            'GlossTerm': 'Standard Generalized Markup Language',
+                            'Acronym': 'SGML',
+                            'Abbrev': 'ISO 8879:1986',
+                            'GlossDef': {
+                                'para': 'A meta-markup language, used to create markup languages such as DocBook.',
+                                'GlossSeeAlso': ['GML', 'XML']
+                            },
+                            'GlossSee': 'markup',
+                            'Additional': [
+                                {
+                                    'addtitle': 'test1',
+                                    'addvalue': 'hello world',
+                                },
+                                {
+                                    'addtitle': 'test2',
+                                    'addvalue': 'good stuff',
+                                },
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+
+        # 1 match in multiple values (list)
+        handler = ValidationHandlerAction(
+            False,
+            expression='$.*..GlossSeeAlso[*]',
+            match_with='XML',
+        )
+        handler((TransformerContentType.JSON, example), user, response_context_manager)
+        assert response_context_manager._manual_result is None
+
+        # no match in multiple values (list)
+        handler = ValidationHandlerAction(
+            False,
+            expression='$.*..GlossSeeAlso[*]',
+            match_with='YAML',
+        )
+        handler((TransformerContentType.JSON, example), user, response_context_manager)
+        assert getattr(response_context_manager, '_manual_result', None) is not None
+        response_context_manager._manual_result = None
+
+        handler = ValidationHandlerAction(
+            False,
+            expression='$.glossary.title',
+            match_with='.*ary$',
+        )
+        handler((TransformerContentType.JSON, example), user, response_context_manager)
+        assert response_context_manager._manual_result is None
+
+        handler = ValidationHandlerAction(
+            False,
+            expression='$..Additional[?addtitle="test2"].addvalue',
+            match_with='.*stuff$',
+        )
+        handler((TransformerContentType.JSON, example), user, response_context_manager)
+        assert response_context_manager._manual_result is None
+
+        handler = ValidationHandlerAction(
+            False,
+            expression='$.`this`',
+            match_with='False',
+        )
+        handler((TransformerContentType.JSON, True), user, response_context_manager)
+        assert isinstance(getattr(response_context_manager, '_manual_result', None), CatchResponseError)
+        response_context_manager._manual_result = None
+
+        with pytest.raises(ResponseHandlerError):
+            handler((TransformerContentType.JSON, True), user, None)
+
+        handler((TransformerContentType.JSON, False), user, response_context_manager)
+        assert response_context_manager._manual_result is None
+
+
+class TestSaveHandlerAction:
+    def test___init__(self) -> None:
+        handler = SaveHandlerAction('foobar', expression='$.hello.world', match_with='foo')
+
+        assert issubclass(handler.__class__, ResponseHandlerAction)
+        assert handler.variable == 'foobar'
+        assert handler.expression == '$.hello.world'
+        assert handler.match_with == 'foo'
+        assert handler.expected_matches == 1
+
+    def test___call__(self, locust_fixture: LocustFixture) -> None:
+        user = TestUser(locust_fixture.env)
+        response = Response()
+        response._content = '{}'.encode('utf-8')
+        response.status_code = 200
+        response_context_manager = ResponseContextManager(response, locust_fixture.env.events.request, {})
+        response_context_manager._entered = True
+
+        assert 'test' not in user.context_variables
+
+        handler = SaveHandlerAction('test', expression='.*', match_with='.*')
+        with pytest.raises(TypeError) as te:
+            handler((TransformerContentType.UNDEFINED, {'test': {'value': 'test'}}), user, response_context_manager)
+        assert 'could not find a transformer for UNDEFINED' in str(te)
+
+        with pytest.raises(TypeError) as te:
+            handler((TransformerContentType.JSON, {'test': {'value': 'test'}}), user, response_context_manager)
+        assert 'is not a valid expression' in str(te)
+
+        handler = SaveHandlerAction('test', expression='$.test.value', match_with='.*')
+
+        handler((TransformerContentType.JSON, {'test': {'value': 'test'}}), user, response_context_manager)
+        assert response_context_manager._manual_result is None
+        assert user.context_variables.get('test', None) == 'test'
+        del user.context_variables['test']
+
+        handler((TransformerContentType.JSON, {'test': {'value': 'nottest'}}), user, response_context_manager)
+        assert response_context_manager._manual_result is None
+        assert user.context_variables.get('test', None) == 'nottest'
+        del user.context_variables['test']
+
+        user.set_context_variable('value', 'test')
+        handler = SaveHandlerAction('test', expression='$.test.value', match_with='.*({{ value }})$')
+
+        handler((TransformerContentType.JSON, {'test': {'value': 'test'}}), user, response_context_manager)
+        assert response_context_manager._manual_result is None
+        assert user.context_variables.get('test', None) == 'test'
+        del user.context_variables['test']
+
+        handler((TransformerContentType.JSON, {'test': {'value': 'nottest'}}), user, response_context_manager)
+        assert response_context_manager._manual_result is None
+        assert user.context_variables.get('test', None) == 'test'
+        del user.context_variables['test']
+
+        # failed
+        handler((TransformerContentType.JSON, {'test': {'name': 'test'}}), user, response_context_manager)
+        assert isinstance(getattr(response_context_manager, '_manual_result', None), CatchResponseError)
+        assert user.context_variables.get('test', 'test') is None
+
+        with pytest.raises(ResponseHandlerError):
+            handler((TransformerContentType.JSON, {'test': {'name': 'test'}}), user, None)
+
+        # multiple matches
+        handler = SaveHandlerAction('test', expression='$.test[*].value', match_with='.*t.*')
+        handler((TransformerContentType.JSON, {'test': [{'value': 'test'}, {'value': 'test'}]}), user, response_context_manager)
+        assert isinstance(getattr(response_context_manager, '_manual_result', None), CatchResponseError)
+        assert user._context['variables']['test'] is None
+
+        with pytest.raises(ResponseHandlerError):
+            handler((TransformerContentType.JSON, {'test': [{'value': 'test'}, {'value': 'test'}]}), user, None)
+
+        # save object dict
+        handler = SaveHandlerAction(
+            'test_object',
+            expression='$.test.prop2',
+            match_with='.*',
+        )
+
+        handler(
+            (
+                TransformerContentType.JSON,
+                {
+                    'test': {
+                        'prop1': 'value1',
+                        'prop2': {
+                            'prop21': False,
+                            'prop22': 100,
+                            'prop23': {
+                                'prop231': True,
+                                'prop232': 'hello',
+                                'prop233': 'world!',
+                                'prop234': 200,
+                            },
+                        },
+                        'prop3': 'value3',
+                        'prop4': [
+                            'prop41',
+                            True,
+                            'prop42',
+                            300,
+                        ],
+                    }
+                }
+            ),
+            user,
+            response_context_manager,
+        )
+
+        test_object = user.context_variables.get('test_object', None)
+        assert jsonloads(test_object) == {
+            'prop21': False,
+            'prop22': 100,
+            'prop23': {
+                'prop231': True,
+                'prop232': 'hello',
+                'prop233': 'world!',
+                'prop234': 200,
+            },
+        }
+
+        # save object list
+        handler = SaveHandlerAction(
+            'test_list',
+            expression='$.test.prop4',
+            match_with='.*',
+        )
+
+        handler(
+            (
+                TransformerContentType.JSON,
+                {
+                    'test': {
+                        'prop1': 'value1',
+                        'prop2': {
+                            'prop21': False,
+                            'prop22': 100,
+                            'prop23': {
+                                'prop231': True,
+                                'prop232': 'hello',
+                                'prop233': 'world!',
+                                'prop234': 200,
+                            },
+                        },
+                        'prop3': 'value3',
+                        'prop4': [
+                            'prop41',
+                            True,
+                            'prop42',
+                            300,
+                        ],
+                    }
+                }
+            ),
+            user,
+            response_context_manager,
+        )
+
+        test_list = user.context_variables.get('test_list', None)
+        assert jsonloads(test_list) == [
+            'prop41',
+            True,
+            'prop42',
+            300,
+        ]
 
 
 class TestResponseHandler:
@@ -227,3 +766,22 @@ class TestResponseHandler:
                 request,
                 test_user,
             )
+
+        request.response.content_type = TransformerContentType.UNDEFINED
+
+        with pytest.raises(ResponseHandlerError) as rhe:
+            user.response_handler(
+                'test',
+                (
+                    None,
+                    '''<?xml version="1.0" encoding="UTF-8"?>
+                    <test>
+                        value
+                    </test>''',
+                ),
+                request,
+                test_user,
+            )
+        assert rhe.value.message is not None
+        assert rhe.value.message.startswith('failed to transform: <?xml version=')
+        assert rhe.value.message.endswith('</test> with content type UNDEFINED')
