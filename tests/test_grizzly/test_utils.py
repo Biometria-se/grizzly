@@ -168,6 +168,7 @@ def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
     user_class_type_1.host = 'http://localhost:8000'
 
     assert issubclass(user_class_type_1, (RestApiUser, GrizzlyUser))
+    user_class_type_1 = cast(Type[RestApiUser], user_class_type_1)
     assert user_class_type_1.__name__ == f'grizzly.users.RestApiUser_{scenario.identifier}'
     assert user_class_type_1.weight == 1
     assert user_class_type_1._scenario is scenario
@@ -188,11 +189,17 @@ def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
                 'username': None,
                 'password': None,
                 'redirect_uri': None,
-            }
-        }
+            },
+        },
+        'metadata': None,
     }
     user_type_1 = user_class_type_1(locust_fixture.env)
 
+    assert user_type_1.headers == {
+        'Authorization': None,
+        'Content-Type': 'application/json',
+        'x-grizzly-user': f'grizzly.users.RestApiUser_{scenario.identifier}',
+    }
     assert user_type_1.context() == {
         'log_all_requests': False,
         'variables': {},
@@ -210,14 +217,19 @@ def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
                 'username': None,
                 'password': None,
                 'redirect_uri': None,
-            }
-        }
+            },
+        },
+        'metadata': None,
     }
     assert user_type_1._scenario is scenario
 
     scenario = GrizzlyContextScenario()
     scenario.name = 'TestTestTest'
     scenario.user.class_name = 'RestApiUser'
+    scenario.context['metadata'] = {
+        'Content-Type': 'application/xml',
+        'Foo-Bar': 'hello world',
+    }
     user_class_type_2 = create_user_class_type(
         scenario,
         {
@@ -237,6 +249,7 @@ def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
     user_class_type_2.host = 'http://localhost:8001'
 
     assert issubclass(user_class_type_2, (RestApiUser, GrizzlyUser))
+    user_class_type_2 = cast(Type[RestApiUser], user_class_type_2)
     assert user_class_type_2.__name__ == f'RestApiUser_{scenario.identifier}'
     assert user_class_type_2.weight == 1
     assert user_class_type_2._scenario is scenario
@@ -261,11 +274,21 @@ def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
                 'username': 'grizzly-user',
                 'password': None,
                 'redirect_uri': None,
-            }
-        }
+            },
+        },
+        'metadata': {
+            'Content-Type': 'application/xml',
+            'Foo-Bar': 'hello world',
+        },
     }
 
     user_type_2 = user_class_type_2(locust_fixture.env)
+    assert user_type_2.headers == {
+        'Authorization': None,
+        'Content-Type': 'application/xml',
+        'x-grizzly-user': f'RestApiUser_{scenario.identifier}',
+        'Foo-Bar': 'hello world',
+    }
     assert user_type_2.context() == {
         'log_all_requests': True,
         'variables': {},
@@ -286,8 +309,12 @@ def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
                 'username': 'grizzly-user',
                 'password': None,
                 'redirect_uri': None,
-            }
-        }
+            },
+        },
+        'metadata': {
+            'Content-Type': 'application/xml',
+            'Foo-Bar': 'hello world',
+        },
     }
     assert user_type_2._scenario is scenario
 
@@ -323,8 +350,9 @@ def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
                 'username': None,
                 'password': None,
                 'redirect_uri': None,
-            }
-        }
+            },
+        },
+        'metadata': None,
     }
 
     assert user_class_type_1.host is not user_class_type_2.host
