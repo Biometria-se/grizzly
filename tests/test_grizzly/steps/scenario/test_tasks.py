@@ -94,59 +94,82 @@ def test_step_task_request_with_name_to_endpoint_until(behave_fixture: BehaveFix
     assert grizzly.scenario.orphan_templates[-1] == '$.`this`[?status="{{ variable }}"]'
 
 
-def test_step_task_request_file_with_name_endpoint(behave_fixture: BehaveFixture) -> None:
+@pytest.mark.parametrize('method', RequestDirection.TO.methods)
+def test_step_task_request_file_with_name_endpoint(behave_fixture: BehaveFixture, method: RequestMethod) -> None:
     behave = behave_fixture.context
-    for method in RequestDirection.TO.methods:
+    step_task_request_file_with_name_endpoint(behave, method, '{}', 'the_name', 'the_container')
+
+
+@pytest.mark.parametrize('method', RequestDirection.FROM.methods)
+def test_step_task_request_file_with_name_endpoint_wrong_direction(behave_fixture: BehaveFixture, method: RequestMethod) -> None:
+    behave = behave_fixture.context
+    with pytest.raises(AssertionError) as ae:
         step_task_request_file_with_name_endpoint(behave, method, '{}', 'the_name', 'the_container')
-
-    for method in RequestDirection.FROM.methods:
-        with pytest.raises(AssertionError):
-            step_task_request_file_with_name_endpoint(behave, method, '{}', 'the_name', 'the_container')
+    assert f'{method.name} is not allowed' in str(ae)
 
 
-def test_step_task_request_file_with_name(behave_fixture: BehaveFixture) -> None:
+@pytest.mark.parametrize('method', RequestDirection.TO.methods)
+def test_step_task_request_file_with_name(behave_fixture: BehaveFixture, method: RequestMethod) -> None:
     behave = behave_fixture.context
-    for method in RequestDirection.TO.methods:
-        with pytest.raises(ValueError):
-            step_task_request_file_with_name(behave, method, '{}', f'{method.name}-test')
-
-    for method in RequestDirection.TO.methods:
-        step_task_request_file_with_name_endpoint(behave, method, '{}', f'{method.name}-test', f'/api/test/{method.name.lower()}')
+    with pytest.raises(ValueError):
         step_task_request_file_with_name(behave, method, '{}', f'{method.name}-test')
 
-    for method in RequestDirection.FROM.methods:
-        with pytest.raises(AssertionError):
-            # step_request_to_payload_file_with_name_endpoint(behave, method, '{}', f'{method.name}-test', f'/api/test/{method.name.lower()}')
-            step_task_request_file_with_name(behave, method, '{}', f'{method.name}-test')
+    step_task_request_file_with_name_endpoint(behave, method, '{}', f'{method.name}-test', f'/api/test/{method.name.lower()}')
+    step_task_request_file_with_name(behave, method, '{}', f'{method.name}-test')
 
 
-def test_step_task_request_text_with_name_to_endpoint(behave_fixture: BehaveFixture) -> None:
+@pytest.mark.parametrize('method', RequestDirection.FROM.methods)
+def test_step_task_request_file_with_name_wrong_direction(behave_fixture: BehaveFixture, method: RequestMethod) -> None:
+    behave = behave_fixture.context
+    with pytest.raises(AssertionError) as ae:
+        # step_request_to_payload_file_with_name_endpoint(behave, method, '{}', f'{method.name}-test', f'/api/test/{method.name.lower()}')
+        step_task_request_file_with_name(behave, method, '{}', f'{method.name}-test')
+    assert f'{method.name} is not allowed' in str(ae)
+
+
+@pytest.mark.parametrize('method', RequestDirection.TO.methods)
+def test_step_task_request_text_with_name_to_endpoint_to(behave_fixture: BehaveFixture, method: RequestMethod) -> None:
     behave = behave_fixture.context
     behave.text = '{}'
 
-    for method in RequestDirection.TO.methods:
+    step_task_request_text_with_name_to_endpoint(behave, method, 'test-name', RequestDirection.TO, '/api/test')
+
+    with pytest.raises(AssertionError) as ae:
+        step_task_request_text_with_name_to_endpoint(behave, method, 'test-name', RequestDirection.FROM, '/api/test')
+    assert f'"from endpoint" is not allowed for {method.name}, use "to endpoint"' in str(ae)
+
+
+@pytest.mark.parametrize('method', RequestDirection.FROM.methods)
+def test_step_task_request_text_with_name_to_endpoint_from(behave_fixture: BehaveFixture, method: RequestMethod) -> None:
+    behave = behave_fixture.context
+    behave.text = '{}'
+
+    with pytest.raises(AssertionError) as ae:
         step_task_request_text_with_name_to_endpoint(behave, method, 'test-name', RequestDirection.TO, '/api/test')
+    assert f'step text is not allowed for {method.name}' in str(ae)
 
-        with pytest.raises(AssertionError):
-            step_task_request_text_with_name_to_endpoint(behave, method, 'test-name', RequestDirection.FROM, '/api/test')
+    with pytest.raises(AssertionError) as ae:
+        step_task_request_text_with_name_to_endpoint(behave, method, 'test-name', RequestDirection.FROM, '/api/test')
+    assert f'step text is not allowed for {method.name}' in str(ae)
 
-    for method in RequestDirection.FROM.methods:
-        with pytest.raises(AssertionError):
-            step_task_request_text_with_name_to_endpoint(behave, method, 'test-name', RequestDirection.TO, '/api/test')
 
-        with pytest.raises(AssertionError):
-            step_task_request_text_with_name_to_endpoint(behave, method, 'test-name', RequestDirection.FROM, '/api/test')
-
+@pytest.mark.parametrize('method', RequestDirection.FROM.methods)
+def test_step_task_request_text_with_name_to_endpoint_no_text(behave_fixture: BehaveFixture, method: RequestMethod) -> None:
+    behave = behave_fixture.context
     behave.text = None
 
-    for method in RequestDirection.FROM.methods:
-        step_task_request_text_with_name_to_endpoint(behave, method, 'test-name', RequestDirection.FROM, '/api/test')
+    step_task_request_text_with_name_to_endpoint(behave, method, 'test-name', RequestDirection.FROM, '/api/test')
 
-        with pytest.raises(AssertionError):
-            step_task_request_text_with_name_to_endpoint(behave, method, 'test-name', RequestDirection.TO, '/api/test')
+    with pytest.raises(AssertionError) as ae:
+        step_task_request_text_with_name_to_endpoint(behave, method, 'test-name', RequestDirection.TO, '/api/test')
+    assert f'"to endpoint" is not allowed for {method.name}, use "from endpoint"' in str(ae)
 
-    with pytest.raises(AssertionError):
+
+def test_step_task_request_text_with_name_to_endpoint_no_direction(behave_fixture: BehaveFixture) -> None:
+    behave = behave_fixture.context
+    with pytest.raises(AssertionError) as ae:
         step_task_request_text_with_name_to_endpoint(behave, 'GET', 'test-name', 'asdf', '/api/test')
+    assert 'invalid direction specified in expression' in str(ae)
 
 
 def test_step_task_request_text_with_name(behave_fixture: BehaveFixture) -> None:

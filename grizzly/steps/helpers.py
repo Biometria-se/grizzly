@@ -19,6 +19,7 @@ from ..context import GrizzlyContext
 from ..exceptions import ResponseHandlerError, TransformerLocustError
 from ..types import HandlerType, RequestMethod, ResponseTarget, ResponseAction
 from ..tasks import RequestTask
+from ..testdata.utils import resolve_variable
 
 logger = logging.getLogger(__name__)
 
@@ -103,6 +104,9 @@ def add_request_task(
 
     table: List[Optional[Row]]
     content_type: Optional[TransformerContentType] = None
+
+    if endpoint is not None and endpoint[:4] in ['$env', '$con']:
+        endpoint = cast(str, resolve_variable(grizzly, endpoint, guess_datatype=False))
 
     if context.table is not None:
         table = context.table

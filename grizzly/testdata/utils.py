@@ -167,11 +167,11 @@ def resolve_variable(grizzly: GrizzlyContext, value: str, guess_datatype: Option
 
         resolved_variable = template.render(**grizzly.state.variables)
     elif len(value) > 4 and value[0] == '$' and value[1] != '.':  # $. is jsonpath expression...
-        if value[0:5] == '$conf':
+        if value[:5] == '$conf':
             variable = value[7:]
             assert variable in grizzly.state.configuration, f'configuration variable "{variable}" is not set'
             resolved_variable = grizzly.state.configuration[variable]
-        elif value[0:4] == '$env':
+        elif value[:4] == '$env':
             variable = value[6:]
             env_value = environ.get(variable, None)
             assert env_value is not None, f'environment variable "{variable}" is not set'

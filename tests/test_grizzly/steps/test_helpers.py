@@ -203,6 +203,23 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
     assert task.endpoint == 'hello world | expression=$.test.value'
     assert task.response.content_type == TransformerContentType.JSON
 
+    with pytest.raises(AssertionError) as ae:
+        add_request_task(behave, method=RequestMethod.GET, source=None, endpoint='$conf::test.endpoint', name='foo-bar')
+    assert 'configuration variable "test.endpoint" is not set' in str(ae)
+
+    grizzly.state.configuration['test.endpoint'] = '/foo/bar'
+    add_request_task(behave, method=RequestMethod.GET, source=None, endpoint='$conf::test.endpoint', name='foo-bar')
+
+    task = cast(RequestTask, grizzly.scenario.tasks[-1])
+    assert task.endpoint == '/foo/bar'
+    assert task.response.content_type == TransformerContentType.UNDEFINED
+
+    add_request_task(behave, method=RequestMethod.GET, source=None, endpoint=None, name='foo-bar')
+
+    task = cast(RequestTask, grizzly.scenario.tasks[-1])
+    assert task.endpoint == '/foo/bar'
+    assert task.response.content_type == TransformerContentType.UNDEFINED
+
 
 def test_generate_save_handler(locust_fixture: LocustFixture) -> None:
     user = TestUser(locust_fixture.env)
