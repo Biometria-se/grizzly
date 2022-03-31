@@ -62,7 +62,7 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
     with pytest.raises(ValueError):
         add_request_task(behave, method=RequestMethod.from_string('TEST'), source='{}', endpoint='/api/v1/test')
 
-    add_request_task(behave, method=RequestMethod.POST, source='{}', endpoint='/api/v1/test')
+    assert add_request_task(behave, method=RequestMethod.POST, source='{}', endpoint='/api/v1/test') == []
 
     assert len(grizzly.scenario.tasks) == 1
     assert isinstance(grizzly.scenario.tasks[0], RequestTask)
@@ -71,7 +71,7 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
     with pytest.raises(ValueError):
         add_request_task(behave, method=RequestMethod.from_string('TEST'), source='{}', name='test')
 
-    add_request_task(behave, method=RequestMethod.from_string('POST'), source='{}', name='test')
+    assert add_request_task(behave, method=RequestMethod.from_string('POST'), source='{}', name='test') == []
 
     assert len(grizzly.scenario.tasks) == 2
     assert isinstance(grizzly.scenario.tasks[1], RequestTask)
@@ -81,7 +81,7 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
     with pytest.raises(ValueError):
         add_request_task(behave, method=RequestMethod.from_string('TEST'), source='{}', name='test', endpoint='/api/v2/test')
 
-    add_request_task(behave, method=RequestMethod.POST, source='{}', name='test', endpoint='/api/v2/test')
+    assert add_request_task(behave, method=RequestMethod.POST, source='{}', name='test', endpoint='/api/v2/test') == []
 
     assert len(grizzly.scenario.tasks) == 3
     assert isinstance(grizzly.scenario.tasks[2], RequestTask)
@@ -92,7 +92,7 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
     template_name = grizzly_fixture.request_task.relative_path
     template_full_path = os.path.join(template_path, template_name)
 
-    add_request_task(behave, method=RequestMethod.SEND, source=template_full_path, name='my_blob', endpoint='my_container')
+    assert add_request_task(behave, method=RequestMethod.SEND, source=template_full_path, name='my_blob', endpoint='my_container') == []
 
     with open(template_full_path, 'r') as fd:
         template_source = json.dumps(json.load(fd))
@@ -108,7 +108,7 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
     with pytest.raises(ValueError):
         add_request_task(behave, method=RequestMethod.POST, source='{}', name='test')
 
-    add_request_task(behave, method=RequestMethod.SEND, source=template_full_path, name='my_blob2')
+    assert add_request_task(behave, method=RequestMethod.SEND, source=template_full_path, name='my_blob2') == []
     assert len(grizzly.scenario.tasks) == 5
     assert isinstance(grizzly.scenario.tasks[-1], RequestTask)
     assert isinstance(grizzly.scenario.tasks[-2], RequestTask)
@@ -137,9 +137,9 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
             add_request_task(behave, method=RequestMethod.PUT, source='template.j2.json')
         assert 'previous task was not a request' in str(e)
 
-        add_request_task(behave, method=RequestMethod.PUT, source='template.j2.json', name='test', endpoint='/api/test')
+        assert add_request_task(behave, method=RequestMethod.PUT, source='template.j2.json', name='test', endpoint='/api/test') == []
 
-        add_request_task(behave, method=RequestMethod.PUT, source='template.j2.json', endpoint='/api/test')
+        assert add_request_task(behave, method=RequestMethod.PUT, source='template.j2.json', endpoint='/api/test') == []
         assert cast(RequestTask, grizzly.scenario.tasks[-1]).name == 'template'
 
         grizzly.scenario.tasks.clear()
@@ -159,7 +159,7 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
             rows.append(Row(['name', 'time_of_day', 'quote'], value))
         behave.table = Table(['name', 'time_of_day', 'quote'], rows=rows)
 
-        add_request_task(behave, method=RequestMethod.SEND, source='datatable_template.j2.json', name='quote: {{ quote }}', endpoint='/api/test/{{ time_of_day }}')
+        assert add_request_task(behave, method=RequestMethod.SEND, source='datatable_template.j2.json', name='quote: {{ quote }}', endpoint='/api/test/{{ time_of_day }}') == []
 
         assert len(grizzly.scenario.tasks) == 4
 
@@ -181,19 +181,19 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
         add_request_task(behave, method=RequestMethod.GET, source=None, endpoint='hello world | content_type=asdf', name='hello-world')
     assert '"asdf" is an unknown response content type' in str(ve)
 
-    add_request_task(behave, method=RequestMethod.GET, source=None, endpoint='hello world | content_type=json', name='hello-world')
+    assert add_request_task(behave, method=RequestMethod.GET, source=None, endpoint='hello world | content_type=json', name='hello-world') == []
 
     task = cast(RequestTask, grizzly.scenario.tasks[-1])
     assert task.endpoint == 'hello world'
     assert task.response.content_type == TransformerContentType.JSON
 
-    add_request_task(behave, method=RequestMethod.GET, source=None, endpoint='hello world | expression=$.test.value, content_type=json', name='hello-world')
+    assert add_request_task(behave, method=RequestMethod.GET, source=None, endpoint='hello world | expression=$.test.value, content_type=json', name='hello-world') == []
 
     task = cast(RequestTask, grizzly.scenario.tasks[-1])
     assert task.endpoint == 'hello world | expression=$.test.value'
     assert task.response.content_type == TransformerContentType.JSON
 
-    add_request_task(behave, method=RequestMethod.GET, source=None, endpoint=None, name='world-hello')
+    assert add_request_task(behave, method=RequestMethod.GET, source=None, endpoint=None, name='world-hello') == []
 
     task = cast(RequestTask, grizzly.scenario.tasks[-1])
     assert task.endpoint == 'hello world | expression=$.test.value'
@@ -211,6 +211,18 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
     assert task.response.content_type == TransformerContentType.UNDEFINED
 
     add_request_task(behave, method=RequestMethod.GET, source=None, endpoint=None, name='foo-bar')
+
+    task = cast(RequestTask, grizzly.scenario.tasks[-1])
+    assert task.endpoint == '/foo/bar'
+    assert task.response.content_type == TransformerContentType.UNDEFINED
+
+    behave.table = None
+
+    tasks = add_request_task(behave, method=RequestMethod.GET, source=None, endpoint='/api/foo/bar', name='foo-bar', in_scenario=False)
+
+    assert len(tasks) == 1
+    assert tasks[0][0].endpoint == '/api/foo/bar'
+    assert tasks[0][1] == {}
 
     task = cast(RequestTask, grizzly.scenario.tasks[-1])
     assert task.endpoint == '/foo/bar'
@@ -308,6 +320,31 @@ def test_add_save_handler(behave_fixture: BehaveFixture, locust_fixture: LocustF
     with pytest.raises(ValueError) as e:
         _add_response_handler(grizzly, ResponseTarget.PAYLOAD, ResponseAction.SAVE, '$test.value', '.*', variable=None)
     assert 'variable is not set' in str(e)
+
+    try:
+        grizzly.state.variables['test']
+
+        add_save_handler(grizzly, ResponseTarget.PAYLOAD, '$.test.value | expected_matches=100', '.*', 'test')
+        assert len(task.response.handlers.metadata) == 1
+        assert len(task.response.handlers.payload) == 2
+
+        handler = task.response.handlers.payload[-1]
+
+        assert handler.expression == '$.test.value'
+        assert handler.expected_matches == 100
+
+        with pytest.raises(ValueError) as ve:
+            add_save_handler(grizzly, ResponseTarget.PAYLOAD, '$.test.value | expected_matches=100, foobar=False, hello=world', '.*', 'test')
+        assert str(ve.value) == 'unsupported arguments foobar, hello'
+
+        cast(RequestTask, grizzly.scenario.tasks[-1]).response.content_type = TransformerContentType.UNDEFINED
+
+        with pytest.raises(ValueError) as ve:
+            add_save_handler(grizzly, ResponseTarget.PAYLOAD, '$.test.value | expected_matches=100', '.*', 'test')
+        assert str(ve.value) == 'content type is not set for latest request'
+
+    finally:
+        del grizzly.state.variables['test']
 
 
 def test_add_validation_handler(behave_fixture: BehaveFixture, locust_fixture: LocustFixture) -> None:

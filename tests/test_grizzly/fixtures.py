@@ -2,7 +2,7 @@ import pkgutil
 import inspect
 import socket
 
-from typing import Optional, Union, Callable, Any, Literal, List, Tuple, Type, Dict
+from typing import TYPE_CHECKING, Optional, Union, Callable, Any, Literal, List, Tuple, Type, Dict
 from types import TracebackType
 from mypy_extensions import VarArg, KwArg
 from os import environ, path
@@ -23,14 +23,16 @@ from jinja2 import Template
 
 from grizzly.types import RequestMethod
 from grizzly.tasks.request import RequestTask
-from grizzly.users.base import GrizzlyUser
-from grizzly.scenarios import GrizzlyScenario
 
 import grizzly.testdata.variables as variables
 
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 
 from .helpers import TestUser, TestScenario
+
+if TYPE_CHECKING:
+    from grizzly.users.base import GrizzlyUser
+    from grizzly.scenarios import GrizzlyScenario
 
 __all__ = [
     'AtomicVariableCleanupFixture',
@@ -352,10 +354,10 @@ class GrizzlyFixture:
     def __call__(
         self,
         host: str = '',
-        user_type: Optional[Type[GrizzlyUser]] = None,
-        scenario_type: Optional[Type[GrizzlyScenario]] = None,
+        user_type: Optional[Type['GrizzlyUser']] = None,
+        scenario_type: Optional[Type['GrizzlyScenario']] = None,
         no_tasks: Optional[bool] = False,
-    ) -> Tuple[Environment, GrizzlyUser, Optional[GrizzlyScenario]]:
+    ) -> Tuple[Environment, 'GrizzlyUser', Optional['GrizzlyScenario']]:
         if user_type is None:
             user_type = TestUser
 

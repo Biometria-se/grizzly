@@ -12,6 +12,7 @@ from behave.runner import Context
 from behave.model import Row
 
 from grizzly_extras.transformer import TransformerContentType
+from grizzly_extras.arguments import split_value, parse_arguments, get_unsupported_arguments
 
 from ..context import GrizzlyContext
 from ..types import RequestMethod, ResponseTarget, ResponseAction
@@ -182,6 +183,18 @@ def _add_response_handler(
     if len(expression) < 1:
         raise ValueError('expression is empty')
 
+    if '|' in expression:
+        expression, expression_arguments = split_value(expression)
+        arguments = parse_arguments(expression_arguments)
+        unsupported_arguments = get_unsupported_arguments(['expected_matches'], arguments)
+
+        if len(unsupported_arguments) > 0:
+            raise ValueError(f'unsupported arguments {", ".join(unsupported_arguments)}')
+
+        expected_matches = int(arguments.get('expected_matches', '1'))
+    else:
+        expected_matches = 1
+
     # latest request
     request = context.scenario.tasks[-1]
 
@@ -207,6 +220,7 @@ def _add_response_handler(
             variable,
             expression=expression,
             match_with=match_with,
+            expected_matches=expected_matches,
         )
     elif action == ResponseAction.VALIDATE:
         if condition is None:
@@ -216,6 +230,7 @@ def _add_response_handler(
             condition,
             expression=expression,
             match_with=match_with,
+            expected_matches=expected_matches,
         )
 
     if target == ResponseTarget.METADATA:

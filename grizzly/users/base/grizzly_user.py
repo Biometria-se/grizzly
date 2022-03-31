@@ -13,7 +13,7 @@ from grizzly.context import GrizzlyContextScenario
 from ...types import GrizzlyResponse
 from ...tasks import RequestTask
 from ...utils import merge_dicts
-from ..import inject_logger
+from ..import logger as user_logger
 from . import FileRequests
 
 
@@ -31,7 +31,7 @@ class GrizzlyUser(User):
         'HELLO': 'HELO',
     }
 
-    logger: Logger = inject_logger()
+    logger: Logger = user_logger
 
     weight: int = 1
 

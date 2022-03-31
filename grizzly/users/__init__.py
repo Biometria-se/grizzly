@@ -2,7 +2,7 @@
 import logging
 
 
-logger = logging.getLogger(__name__)
+logger: logging.Logger = logging.getLogger(__name__)
 
 
 from .restapi import RestApiUser
@@ -18,7 +18,3 @@ __all__ = [
     'SftpUser',
     'BlobStorageUser',
 ]
-
-
-def inject_logger() -> logging.Logger:
-    return logger
