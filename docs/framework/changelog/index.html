@@ -1,0 +1,1709 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      <link rel="icon" href="../../assets/favicon.ico">
+      <meta name="generator" content="mkdocs-1.2.3, mkdocs-material-8.2.7">
+    
+    
+      
+        <title>Changelog - Grizzly</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.9d5733d3.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.e6a45f82.min.css">
+        
+          
+          
+          <meta name="theme-color" content="#795649">
+        
+      
+    
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="brown" data-md-color-accent="deep-orange">
+  
+    
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#changelog" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Grizzly" class="md-header__button md-logo" aria-label="Grizzly" data-md-component="logo">
+      
+  <img src="../../assets/logo/grizzly_grasshopper_orange_64px.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Grizzly
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Changelog
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5z"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" aria-label="Clear" tabindex="-1">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/biometria-se/grizzly/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.1.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Grizzly" class="md-nav__button md-logo" aria-label="Grizzly" data-md-component="logo">
+      
+  <img src="../../assets/logo/grizzly_grasshopper_orange_64px.png" alt="logo">
+
+    </a>
+    Grizzly
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/biometria-se/grizzly/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.1.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        Home
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../example/" class="md-nav__link">
+        Example
+      </a>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+  
+    
+      
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_3" type="checkbox" id="__nav_3" >
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_3">
+          Command Line Interface
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Command Line Interface" data-md-level="1">
+        <label class="md-nav__title" for="__nav_3">
+          <span class="md-nav__icon md-icon"></span>
+          Command Line Interface
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../command-line-interface/usage/" class="md-nav__link">
+        Usage
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../command-line-interface/changelog/" class="md-nav__link">
+        Changelog
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../command-line-interface/licenses/" class="md-nav__link">
+        Licenses
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+      
+      
+      
+
+  
+  
+    
+  
+  
+    
+      
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_4" type="checkbox" id="__nav_4" checked>
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4">
+          Framework
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Framework" data-md-level="1">
+        <label class="md-nav__title" for="__nav_4">
+          <span class="md-nav__icon md-icon"></span>
+          Framework
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_4_1" type="checkbox" id="__nav_4_1" >
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4_1">
+          Usage
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Usage" data-md-level="2">
+        <label class="md-nav__title" for="__nav_4_1">
+          <span class="md-nav__icon md-icon"></span>
+          Usage
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_4_1_1" type="checkbox" id="__nav_4_1_1" >
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4_1_1">
+          Tasks
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Tasks" data-md-level="3">
+        <label class="md-nav__title" for="__nav_4_1_1">
+          <span class="md-nav__icon md-icon"></span>
+          Tasks
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/tasks/request/" class="md-nav__link">
+        Request
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/tasks/wait/" class="md-nav__link">
+        Wait
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/tasks/print/" class="md-nav__link">
+        Print
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/tasks/transformer/" class="md-nav__link">
+        Transformer
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_4_1_1_5" type="checkbox" id="__nav_4_1_1_5" >
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4_1_1_5">
+          Getter
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Getter" data-md-level="4">
+        <label class="md-nav__title" for="__nav_4_1_1_5">
+          <span class="md-nav__icon md-icon"></span>
+          Getter
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/tasks/getter/http/" class="md-nav__link">
+        HTTP
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_4_1_2" type="checkbox" id="__nav_4_1_2" >
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4_1_2">
+          Variables
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Variables" data-md-level="3">
+        <label class="md-nav__title" for="__nav_4_1_2">
+          <span class="md-nav__icon md-icon"></span>
+          Variables
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/variables/environment-configuration/" class="md-nav__link">
+        Environment configuration
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_4_1_2_2" type="checkbox" id="__nav_4_1_2_2" >
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4_1_2_2">
+          Testdata
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Testdata" data-md-level="4">
+        <label class="md-nav__title" for="__nav_4_1_2_2">
+          <span class="md-nav__icon md-icon"></span>
+          Testdata
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/variables/testdata/csv-row/" class="md-nav__link">
+        CSV Row
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/variables/testdata/date/" class="md-nav__link">
+        Date
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/variables/testdata/directory-contents/" class="md-nav__link">
+        Directory Contents
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/variables/testdata/integer-incrementer/" class="md-nav__link">
+        Integer incrementer
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/variables/testdata/random-integer/" class="md-nav__link">
+        Random Integer
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/variables/testdata/random-string/" class="md-nav__link">
+        Random String
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/variables/testdata/message-queue/" class="md-nav__link">
+        Message Queue
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/variables/testdata/service-bus/" class="md-nav__link">
+        Service Bus
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/variables/templating/" class="md-nav__link">
+        Templating
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_4_1_3" type="checkbox" id="__nav_4_1_3" >
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4_1_3">
+          Steps
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Steps" data-md-level="3">
+        <label class="md-nav__title" for="__nav_4_1_3">
+          <span class="md-nav__icon md-icon"></span>
+          Steps
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_4_1_3_1" type="checkbox" id="__nav_4_1_3_1" >
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4_1_3_1">
+          Background
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Background" data-md-level="4">
+        <label class="md-nav__title" for="__nav_4_1_3_1">
+          <span class="md-nav__icon md-icon"></span>
+          Background
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/steps/background/setup/" class="md-nav__link">
+        Setup
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/steps/background/shapes/" class="md-nav__link">
+        Shapes
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_4_1_3_2" type="checkbox" id="__nav_4_1_3_2" >
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4_1_3_2">
+          Scenario
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Scenario" data-md-level="4">
+        <label class="md-nav__title" for="__nav_4_1_3_2">
+          <span class="md-nav__icon md-icon"></span>
+          Scenario
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/steps/scenario/user/" class="md-nav__link">
+        User
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/steps/scenario/setup/" class="md-nav__link">
+        Setup
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/steps/scenario/tasks/" class="md-nav__link">
+        Tasks
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/steps/scenario/response/" class="md-nav__link">
+        Response
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/steps/scenario/results/" class="md-nav__link">
+        Results
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+      
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_4_1_4" type="checkbox" id="__nav_4_1_4" >
+      
+      
+      
+      
+        <label class="md-nav__link" for="__nav_4_1_4">
+          Load Users
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <nav class="md-nav" aria-label="Load Users" data-md-level="3">
+        <label class="md-nav__title" for="__nav_4_1_4">
+          <span class="md-nav__icon md-icon"></span>
+          Load Users
+        </label>
+        <ul class="md-nav__list" data-md-scrollfix>
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/load-users/rest-api/" class="md-nav__link">
+        Rest API
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/load-users/message-queue/" class="md-nav__link">
+        Message Queue
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/load-users/service-bus/" class="md-nav__link">
+        Service Bus
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/load-users/blob-storage/" class="md-nav__link">
+        Blob Storage
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../usage/load-users/secure-file-transfer-protocol/" class="md-nav__link">
+        Secure File Transfer Protocol
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          Changelog
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        Changelog
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#v210" class="md-nav__link">
+    v2.1.0
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v200" class="md-nav__link">
+    v2.0.0
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v153" class="md-nav__link">
+    v1.5.3
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v152" class="md-nav__link">
+    v1.5.2
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v151" class="md-nav__link">
+    v1.5.1
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v150" class="md-nav__link">
+    v1.5.0
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v144" class="md-nav__link">
+    v1.4.4
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v143" class="md-nav__link">
+    v1.4.3
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v142" class="md-nav__link">
+    v1.4.2
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v141" class="md-nav__link">
+    v1.4.1
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v140" class="md-nav__link">
+    v1.4.0
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v131" class="md-nav__link">
+    v1.3.1
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v130" class="md-nav__link">
+    v1.3.0
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v120" class="md-nav__link">
+    v1.2.0
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v110" class="md-nav__link">
+    v1.1.0
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v101" class="md-nav__link">
+    v1.0.1
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../licenses/" class="md-nav__link">
+        Licenses
+      </a>
+    </li>
+  
+
+            
+          
+        </ul>
+      </nav>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#v210" class="md-nav__link">
+    v2.1.0
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v200" class="md-nav__link">
+    v2.0.0
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v153" class="md-nav__link">
+    v1.5.3
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v152" class="md-nav__link">
+    v1.5.2
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v151" class="md-nav__link">
+    v1.5.1
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v150" class="md-nav__link">
+    v1.5.0
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v144" class="md-nav__link">
+    v1.4.4
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v143" class="md-nav__link">
+    v1.4.3
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v142" class="md-nav__link">
+    v1.4.2
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v141" class="md-nav__link">
+    v1.4.1
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v140" class="md-nav__link">
+    v1.4.0
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v131" class="md-nav__link">
+    v1.3.1
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v130" class="md-nav__link">
+    v1.3.0
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v120" class="md-nav__link">
+    v1.2.0
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v110" class="md-nav__link">
+    v1.1.0
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#v101" class="md-nav__link">
+    v1.0.1
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          <div class="md-content" data-md-component="content">
+            <article class="md-content__inner md-typeset">
+              
+                
+<a href="https://github.com/biometria-se/grizzly/edit/master/docs/framework/changelog.md" title="Edit this page" class="md-content__button md-icon">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20.71 7.04c.39-.39.39-1.04 0-1.41l-2.34-2.34c-.37-.39-1.02-.39-1.41 0l-1.84 1.83 3.75 3.75M3 17.25V21h3.75L17.81 9.93l-3.75-3.75L3 17.25z"/></svg>
+</a>
+
+
+
+<h1 id="changelog">Changelog</h1>
+<h2 id="v210">v2.1.0</h2>
+<ul>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/c4260a9e69c74ce0a154711529ffc5f27bec543e" target="_blank"><code>c4260a9e</code></a>: Feature/response handlers (#77)</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/8278d17ab74a71838438d3a369133e4d9dd13d5b" target="_blank"><code>8278d17a</code></a>: step to set user metadata/header key values (#75)</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/11de9b7f2064d849fbcf27e692451c24c5994de3" target="_blank"><code>11de9b7f</code></a>: clearer job name in code-quality workflow (#70)</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/b6845b79b15446dfbed9c6106881f50453d70dc4" target="_blank"><code>b6845b79</code></a>: Feature/issue 64 pep518 (#69)</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/fbd96cfafed4279217ff5861063f66dc34e4362a" target="_blank"><code>fbd96cfa</code></a>: Feature/issue 61 pytz (#68)</p>
+</li>
+</ul>
+<h2 id="v200">v2.0.0</h2>
+<ul>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/af5e639b352b6e28ed88342f21d316d9e3419f93" target="_blank"><code>af5e639b</code></a>: twine: command not found (#67)</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/052a5ab9d117006c2319c3deb842b3ad36c8caa5" target="_blank"><code>052a5ab9</code></a>: Feature/dependency update round 2 (#66)</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/d4a3b935fe3e9a425ccb776b266a1928b7c61c35" target="_blank"><code>d4a3b935</code></a>: Feature/mq heartbeat (#65)</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/884b6761ca353d3e640ddf97e15860fff7470376" target="_blank"><code>884b6761</code></a>: Feature/dependencies update (#63)</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/02c8804578a46d2df2a7faf32b46572a52e23418" target="_blank"><code>02c88045</code></a>: Plain text transformer fix, plus added rendering of date offset value (#62)</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/001cc5e52818cc16606c7320094d71d2cf53eb38" target="_blank"><code>001cc5e5</code></a>: Bug/until task aborts (#60)</p>
+</li>
+</ul>
+<h2 id="v153">v1.5.3</h2>
+<ul>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/7c2b7a91a440b52704fb57a982f35658933325df" target="_blank"><code>7c2b7a91</code></a>: Feature/cli docs (#59)</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/a53f915902ac9eff12638a24f5529db0710c5aac" target="_blank"><code>a53f9159</code></a>: Bug/until stops too soon (#58)</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/f53bb8b82e69b976d186152d7ce2fafd4b29c2a2" target="_blank"><code>f53bb8b8</code></a>: removed debug print statements (#56)</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/fb9f493329de462a2bf84a8ded6014ab093eb8c1" target="_blank"><code>fb9f4933</code></a>: removed debug print statements (#56)</p>
+</li>
+</ul>
+<h2 id="v152">v1.5.2</h2>
+<ul>
+<li><a href="https://github.com/Biometria-se/grizzly/commit/fb9f493329de462a2bf84a8ded6014ab093eb8c1" target="_blank"><code>fb9f4933</code></a>: removed debug print statements (#56)</li>
+</ul>
+<h2 id="v151">v1.5.1</h2>
+<ul>
+<li><a href="https://github.com/Biometria-se/grizzly/commit/a28575699d920e1d336d5a988e6cb52ccbb43d5b" target="_blank"><code>a2857569</code></a>: verify_certificates bug fixed (#55)</li>
+</ul>
+<h2 id="v150">v1.5.0</h2>
+<ul>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/1c57c7f0885daa9799b89cfba3528a3b1af9590c" target="_blank"><code>1c57c7f0</code></a>: Feature/restart scenario (#54)</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/9326218f14aca5eb807806af847ba2fab796b561" target="_blank"><code>9326218f</code></a>: MQ concurrency fix (#53)</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/cc178860e60e2ab15ca5a6ba26644076e64c842f" target="_blank"><code>cc178860</code></a>: renamed grizzly.tasks to grizzly.scenarios (#52)</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/281e9beb8c7ede15d256733793e51ff984e01de7" target="_blank"><code>281e9beb</code></a>: fixed bug in parse_arguments if an argument value contained comma (#51)</p>
+</li>
+</ul>
+<h2 id="v144">v1.4.4</h2>
+<ul>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/e13ff471cce7e5aa589132151eb6317694606861" target="_blank"><code>e13ff471</code></a>: Feature/date parse task (#50)</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/d16ef8e1a27c7665f987899f696f3f237c7f4f12" target="_blank"><code>d16ef8e1</code></a>: handle exceptions during until retries (#49)</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/0994f9af9510badc36c3f7afe1b35df3f7baa127" target="_blank"><code>0994f9af</code></a>: increased test coverage (#48)</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/eaaeab22d0178ffbbf97b6ef0d34f8b20e55086d" target="_blank"><code>eaaeab22</code></a>: Fix for doing retry upon receiving MQRC_TRUNCATED_MSG_FAILED while browsing messages (#47)</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/88202428cc51091610fef229f71595543af270f9" target="_blank"><code>88202428</code></a>: support for templating in arguments in condition (#46)</p>
+</li>
+</ul>
+<h2 id="v143">v1.4.3</h2>
+<ul>
+<li><a href="https://github.com/Biometria-se/grizzly/commit/3e47adbdd512a895edb6af2168b6b5e79864d2db" target="_blank"><code>3e47adbd</code></a>: fixed alignment i scenario summary (#45)</li>
+</ul>
+<h2 id="v142">v1.4.2</h2>
+<ul>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/e976144bb4cc671bfb84be40cd137a9e609f5ae6" target="_blank"><code>e976144b</code></a>: Bug/async messaged logging (#44)</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/b4b0be63b5cf614bfa85b12595773257a3727a54" target="_blank"><code>b4b0be63</code></a>: Feature/request until (#42)</p>
+</li>
+</ul>
+<h2 id="v141">v1.4.1</h2>
+<ul>
+<li><a href="https://github.com/Biometria-se/grizzly/commit/e6d8fb3f6f7a30fb90ad028d41b5685e148336c6" target="_blank"><code>e6d8fb3f</code></a>: fix for ensuring correct data type in metric written to influx (#41)</li>
+</ul>
+<h2 id="v140">v1.4.0</h2>
+<ul>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/26b813054a504c6b56954dc242c2d241a8693d78" target="_blank"><code>26b81305</code></a>: print start and stop date and time when finished (#40)</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/4aef0eef36623b040c7528828d645e86345bec48" target="_blank"><code>4aef0eef</code></a>: request response_time fixes (#39)</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/fb95268ffb5613e9aca7d9caa75d3eee177b212b" target="_blank"><code>fb95268f</code></a>: updated dependencies and devcontainer (#38)</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/f98d904d07274da1d1a822517b9dada2c96e5161" target="_blank"><code>f98d904d</code></a>: Feature/scenario info (#37)</p>
+</li>
+</ul>
+<h2 id="v131">v1.3.1</h2>
+<ul>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/73827bf4ffc3a9ee642b25554cd651d516b322d3" target="_blank"><code>73827bf4</code></a>: error logging in transformer class (#35)</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/3e5e03aaa483b5b42e1991c9565a58b9c66224cf" target="_blank"><code>3e5e03aa</code></a>: init racecondition (#36)</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/dd0c75a5a18dbedb99e882d27b1aea36a9c9b4ad" target="_blank"><code>dd0c75a5</code></a>: support for request template files in combination with data tables (#34)</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/8d56f4fe20da7bd21e4fae6b64c6c48e1a1612ca" target="_blank"><code>8d56f4fe</code></a>: Feature/parameterize more (#33)</p>
+</li>
+</ul>
+<h2 id="v130">v1.3.0</h2>
+<ul>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/60f399884fef5b9e8b08701f2b606d06d64421a4" target="_blank"><code>60f39988</code></a>: transparent support for setting content type in endpoint (#32)</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/423bc99401f47738a67be0d5118b7a3cb5369d0e" target="_blank"><code>423bc994</code></a>: expression support for service bus functionality (#31)</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/2e2695df05163ce81107a01f9a80cedbd57e32c1" target="_blank"><code>2e2695df</code></a>: support for offset in AtomicDate (#30)</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/41b78e8930465908f2ecaf5fec9aa209d431954f" target="_blank"><code>41b78e89</code></a>: AtomicMessageQueue content type support (#29)</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/979d4bbb8af7564c51f3d473e934e2cb0020fd49" target="_blank"><code>979d4bbb</code></a>: unified arguments handling through out grizzly (#28)</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/6fad96e4a697d252fc3fe53b2031bc10c04d764e" target="_blank"><code>6fad96e4</code></a>: simplified AtomicMessageQueue and AtomicServiceBus (#27)</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/64888c054333a57dc187716880cde8c49771d795" target="_blank"><code>64888c05</code></a>: implementation of getter tasks (http) (#26)</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/2d6862d7d4cfee81ccc51d4f1503e1dcdf993edd" target="_blank"><code>2d6862d7</code></a>: Restored dummy_pymqi.py, the added stuff wasn't needed</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/4f21a8d38448560b1ff078e6ca0e7be0dcf88e24" target="_blank"><code>4f21a8d3</code></a>: MessageQueueUser: get messages that matches expression</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/1e1edc448e97812881ad09c3fc56be2fdfd0f524" target="_blank"><code>1e1edc44</code></a>: run code quality workflow when PR is updated</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/6dc839c9d74363e30c703e5fc5e26c34f7d7f8cd" target="_blank"><code>6dc839c9</code></a>: corrected sentence in documentation for SleepTask</p>
+</li>
+</ul>
+<h2 id="v120">v1.2.0</h2>
+<ul>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/6ee5fffe47ed5ba305cdbd3f6db43a52448b5fae" target="_blank"><code>6ee5fffe</code></a>: added documentation for the different task types</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/1b91d79b8e850ab36bb5bfd663a1e5ea47f37e36" target="_blank"><code>1b91d79b</code></a>: implementation of AtomicServiceBus variable</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/b867d471710c64d609ffa34096d0fd93e5d5c4d3" target="_blank"><code>b867d471</code></a>: ServiceBus support in async-messaged</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/83c0ac9c077fbcbbcccba38e481b0abf0325a2aa" target="_blank"><code>83c0ac9c</code></a>: refactoring of grizzly_extras.messagequeue</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/9b9953e621e318e16c0121a4debc0804f762a89f" target="_blank"><code>9b9953e6</code></a>: included mypy extension in devcontainer</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/aea0c288b22b20b4a0d96ddd45662bca4e7ad6dd" target="_blank"><code>aea0c288</code></a>: implemented RECEIVE for ServiceBusUser</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/b046b60cc6ac268dcadb33d2fac8132e0a16fb32" target="_blank"><code>b046b60c</code></a>: Changed spawn_rate to float and fixed tests</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/3ce0b102e220bc0fd586fad23cebabc9d52d8adf" target="_blank"><code>3ce0b102</code></a>: Changed spawn rate from int to float</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/a789a71df3bde45cc880761aa55400b22e75ce4f" target="_blank"><code>a789a71d</code></a>: Added support for user weight</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/29f7d047f0236446dd135ad721da0eeee57f4592" target="_blank"><code>29f7d047</code></a>: updated atomic variables getting value and arguments</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/81ccbed152267b3883d72bec62ea2eb6ee870de2" target="_blank"><code>81ccbed1</code></a>: change log level for grizzly_extras if started with verbose</p>
+</li>
+</ul>
+<h2 id="v110">v1.1.0</h2>
+<ul>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/b78be958e54d6cbe04f1ef155f58f3eb3937906a" target="_blank"><code>b78be958</code></a>: new task to parse data</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/b2ed98a1b82bf3411d854e586b6a9fb75dae241c" target="_blank"><code>b2ed98a1</code></a>: XmlTransformer: match parts of a document, and dump it to string</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/9c55e5a3533bf472a2a0b5c67c770263b58fa741" target="_blank"><code>9c55e5a3</code></a>: move testdata production if variable has <strong>on_consumer</strong> = True</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/cfe9875b1688738da260c6c19741fd5eb9784de7" target="_blank"><code>cfe9875b</code></a>: specify external dependencies for users and variables in the objects themself</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/2140fe7948915bce027417a4dc5dc77fbc48b856" target="_blank"><code>2140fe79</code></a>: new variable AtomicMessageQueue</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/1f6dba03f68187d8b5802ceb9bcce9452721bd5a" target="_blank"><code>1f6dba03</code></a>: refactoring for clearer distinction between utils and step helpers.</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/99fab953d963e103dd69356bcb05bb0f17ea6b58" target="_blank"><code>99fab953</code></a>: fixing empty changelog in workflow@github</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/c5ddeeb9e9b7c1f29eb5bb41a0259ae51e7f0f30" target="_blank"><code>c5ddeeb9</code></a>: generate changelog when building documentation</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/5e595637fadb30757a63c698b027797f9996c31c" target="_blank"><code>5e595637</code></a>: fixed missed float -&gt; SleepTask change in test</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/2c6885544e383860d24945afb4a340e8c0ac2a6c" target="_blank"><code>2c688554</code></a>: improved base for adding different types of tasks</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/cb8db86278182da418857d852d27e8edfc006545" target="_blank"><code>cb8db862</code></a>: reafactor LocustContext<em> to GrizzlyContext</em></p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/3f1137b960c37e0f4068359d0c25ca65e9848db2" target="_blank"><code>3f1137b9</code></a>: refactoring of grizzly.tasks</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/bd3382e0c1d35d55d6d3b8f782060fd726dd15f8" target="_blank"><code>bd3382e0</code></a>: refactoring RequestContext to RequestTask</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/031a959517b453849a97bc95a305e0b583b60e73" target="_blank"><code>031a9595</code></a>: handle edge cases with Getitem nodes</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/ca7c17d78a3a316a2df83618fe0156433e773fa9" target="_blank"><code>ca7c17d7</code></a>: handle Getitem nodes when parsing templates for variables</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/a1cabb3116d443ecb4d1c7583f6cda18a2da6fe5" target="_blank"><code>a1cabb31</code></a>: only try to remove secrets from dicts</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/1145a65133fa09e8adbc240f12648198600fee26" target="_blank"><code>1145a651</code></a>: possibility to store json objects/list in variables</p>
+</li>
+</ul>
+<h2 id="v101">v1.0.1</h2>
+<ul>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/dae7be58162b76b2c9d362c1565f889555606df3" target="_blank"><code>dae7be58</code></a>: Corrected string comparison operator</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/4b8a8470eee0122399c2aa89c26b627f7c372282" target="_blank"><code>4b8a8470</code></a>: Adjusted test for messagequeue</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/bd9bb9775f66c0df1ace69d4de6ace8194cce9f5" target="_blank"><code>bd9bb977</code></a>: Fix for being able to log MQ request payload</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/cc5dfff65a1a4233af300ad86dc2d706b4224e92" target="_blank"><code>cc5dfff6</code></a>: updated mkdocs to 1.2.3 due to CVE-2021-40978</p>
+</li>
+<li>
+<p><a href="https://github.com/Biometria-se/grizzly/commit/604f5704fe043c7b1cc5c50b9df32bada8d0a0ba" target="_blank"><code>604f5704</code></a>: fixed url</p>
+</li>
+</ul>
+
+              
+            </article>
+          </div>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    <nav class="md-footer__inner md-grid" aria-label="Footer">
+      
+        
+        <a href="../usage/load-users/secure-file-transfer-protocol/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Secure File Transfer Protocol" rel="prev">
+          <div class="md-footer__button md-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
+          </div>
+          <div class="md-footer__title">
+            <div class="md-ellipsis">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              Secure File Transfer Protocol
+            </div>
+          </div>
+        </a>
+      
+      
+        
+        <a href="../licenses/" class="md-footer__link md-footer__link--next" aria-label="Next: Licenses" rel="next">
+          <div class="md-footer__title">
+            <div class="md-ellipsis">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              Licenses
+            </div>
+          </div>
+          <div class="md-footer__button md-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4z"/></svg>
+          </div>
+        </a>
+      
+    </nav>
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.sections", "content.tabs.link"], "translations": {"clipboard.copy": "Copy to clipboard", "clipboard.copied": "Copied to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.placeholder": "Type to start searching", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.term.missing": "Missing", "select.version.title": "Select version"}, "search": "../../assets/javascripts/workers/search.5e67fbfe.min.js"}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.e87a5f81.min.js"></script>
+      
+    
+  </body>
+</html>
