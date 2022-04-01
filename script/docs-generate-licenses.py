@@ -6,6 +6,7 @@ from typing import List, Optional
 from os import path
 from json import loads as jsonloads
 from io import StringIO
+from pathlib import Path
 
 from piplicenses import CustomNamespace, FormatArg, FromArg, OrderArg, create_output_string
 from pytablewriter import MarkdownTableWriter
@@ -131,7 +132,12 @@ def main() -> int:
     contents[0] = f'#{contents[0]}'
     license_contents = ['# Licenses\n', '\n'] + contents + ['\n', '## Third party licenses\n', '\n'] + license_table + ['\n'] + native_dependencies
 
-    with open(path.join(REPO_ROOT, 'docs', 'licenses', 'grizzly-loadtester.md'), 'w') as fd:
+    licenses_dir = Path(REPO_ROOT) / 'docs' / 'licenses'
+
+    if not licenses_dir.exists():
+        licenses_dir.mkdir()
+
+    with open(licenses_dir / 'grizzly-loadtester.md', 'w') as fd:
         fd.writelines(license_contents)
 
     return 0
