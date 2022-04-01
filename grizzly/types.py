@@ -8,10 +8,7 @@ from aenum import Enum as AdvancedEnum, NoAlias
 from locust.clients import ResponseContextManager
 from gevent.lock import Semaphore
 
-from grizzly_extras.transformer import TransformerContentType
-
 if TYPE_CHECKING:  # pragma: no cover
-    from .users.base import GrizzlyUser
     from .scenarios import GrizzlyScenario
     from .context import GrizzlyContextScenario
 
@@ -67,8 +64,6 @@ class RequestMethod(Enum, AdvancedEnum, settings=NoAlias):
     def direction(self) -> RequestDirection:
         return self.value
 
-
-HandlerType = Callable[[Tuple[TransformerContentType, Any], 'GrizzlyUser', Optional[ResponseContextManager]], None]
 
 HandlerContextType = Union[ResponseContextManager, Tuple[Optional[Dict[str, Any]], Optional[str]]]
 

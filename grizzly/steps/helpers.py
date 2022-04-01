@@ -3,22 +3,22 @@ import json
 import os
 import logging
 
-from typing import Optional, List, Callable, Any, Tuple, Dict, cast
+from typing import Optional, List, Tuple, Dict, cast
 from urllib.parse import urlparse
 
 import jinja2 as j2
 
 from behave.runner import Context
 from behave.model import Row
-from locust.clients import ResponseContextManager
 
-from grizzly_extras.transformer import PlainTransformer, transformer, TransformerError, TransformerContentType
+from grizzly_extras.transformer import TransformerContentType
+from grizzly_extras.arguments import split_value, parse_arguments, get_unsupported_arguments
 
-from ..users.base import GrizzlyUser
 from ..context import GrizzlyContext
-from ..exceptions import ResponseHandlerError, TransformerLocustError
-from ..types import HandlerType, RequestMethod, ResponseTarget, ResponseAction
+from ..types import RequestMethod, ResponseTarget, ResponseAction
 from ..tasks import RequestTask
+from ..testdata.utils import resolve_variable
+from ..users.base.response_handler import ResponseHandlerAction, ValidationHandlerAction, SaveHandlerAction
 
 logger = logging.getLogger(__name__)
 
@@ -104,6 +104,9 @@ def add_request_task(
     table: List[Optional[Row]]
     content_type: Optional[TransformerContentType] = None
 
+    if endpoint is not None and endpoint[:4] in ['$env', '$con']:
+        endpoint = cast(str, resolve_variable(grizzly, endpoint, guess_datatype=False))
+
     if context.table is not None:
         table = context.table
     else:
@@ -160,191 +163,6 @@ def add_request_task(
     return request_tasks
 
 
-def get_matches(
-    input_get_values: Callable[[Any], List[str]],
-    match_get_values: Callable[[Any], List[str]],
-    input_payload: Any,
-) -> Tuple[List[Any], List[Any]]:
-    '''Find all values in `input_context`.
-
-    Args:
-        input_get_values (Callable[[Any], List[str]]): function that returns all values matching `expression`
-        input_match_values (Callable[[Any], List[str]]): function that checks that a value has correct value
-        input_context (Tuple[TransformerContentType, Any]): content type and transformed payload
-
-    Returns:
-        Tuple[List[Any], List[Any]]: list of all values and list of all matched values of those
-    '''
-    values = input_get_values(input_payload)
-
-    # get a list of all matches in values
-    matches: List[str] = []
-    for value in values:
-        matched_values = match_get_values(value)
-
-        if len(matched_values) < 1:
-            continue
-
-        matched_value = matched_values[0]
-
-        if matched_value is None or len(matched_value) < 1:
-            continue
-
-        matches.append(matched_value)
-
-    return values, matches
-
-
-def handler_logic(
-    input_context: Tuple[TransformerContentType, Any],
-    expression: str,
-    match_with: str,
-    user: GrizzlyUser,
-    callback: Callable[[str, Optional[Any]], None],
-    condition: bool,
-) -> None:
-    '''Contains common logic for both save and validation handlers.
-
-    Args:
-        input_context (Tuple[TransformerContentType, Any]): content type and transformed payload
-        expression (str): expression to extract value from `input_context`
-        match_with (str): regular expression that the extracted value must match
-        user (ContextVariablesUser): user that executed task (request)
-        callback (Callable[[str, Optional[Any]], None]): specific logic for either save or validation handler
-        condition (bool): used by validation handler for negative matching
-    '''
-    input_content_type, input_payload = input_context
-    interpolated_expression = j2.Template(expression).render(user.context_variables)
-    interpolated_match_with = j2.Template(match_with).render(user.context_variables)
-
-    try:
-        transform = transformer.available.get(input_content_type, None)
-        if transform is None:
-            raise TypeError(f'could not find a transformer for {input_content_type.name}')
-
-        if not transform.validate(interpolated_expression):
-            raise TypeError(f'"{interpolated_expression}" is not a valid expression for {input_content_type.name}')
-
-        input_get_values = transform.parser(interpolated_expression)
-        match_get_values = PlainTransformer.parser(interpolated_match_with)
-
-        values, matches = get_matches(
-            input_get_values,
-            match_get_values,
-            input_payload,
-        )
-    except TransformerError as e:
-        raise TransformerLocustError(e.message) from e
-
-    number_of_matches = len(matches)
-
-    if number_of_matches != 1:
-        if number_of_matches < 1 and not condition:
-            logger.error(f'"{interpolated_expression}": "{interpolated_match_with}" not in "{values}"')
-        elif number_of_matches > 1:
-            logger.error(f'"{interpolated_expression}": "{interpolated_match_with}" has multiple matches in "{values}"')
-
-        match = None
-    else:
-        match = matches[0]
-
-    callback(interpolated_expression, match)
-
-
-def generate_validation_handler(expression: str, match_with: str, condition: bool) -> HandlerType:
-    '''Generates a handler that will validate a value from an input.
-
-    Args:
-        expression (str): how to find the specified value, can contain templating variables
-        match_with (str): regular expression that any result from `expression` must match
-        condition (bool): if the match should or should not match
-
-    Returns:
-        HandlerType: function that will validate values in a response during runtime
-    '''
-    def validate(
-        input_context: Tuple[TransformerContentType, Any],
-        user: GrizzlyUser,
-        response: Optional[ResponseContextManager] = None,
-    ) -> None:
-        '''Actual handler that will run after a response has been received by an task.
-
-        Args:
-            input_context (Tuple[TransformerContentType, Any]): content type and transformed payload
-            user (ContextVariablesUser): user that executed task (request)
-            response (Optional[ResponseContextManager]): optional response context, only if `user` does HTTP requests
-        '''
-        def callback(
-            interpolated_expression: str,
-            match: Optional[Any],
-        ) -> None:
-            '''Validation specific logic that will handle the `match` based on `expression` and `match_with`.
-
-            Args:
-                interpolated_expression (str): `expression` with templating variables resolved
-                match (Optional[Any]): value based on `expression` that matches `match_with`
-            '''
-            result = match is not None if condition is True else match is None
-
-            if result:
-                message = f'"{interpolated_expression}": "{match_with} was {match}"'
-                if response is not None:
-                    response.failure(message)
-                else:
-                    raise ResponseHandlerError(message)
-
-        handler_logic(input_context, expression, match_with, user, callback, condition)
-
-    return validate
-
-
-def generate_save_handler(expression: str, match_with: str, variable: str) -> HandlerType:
-    '''Generates a handler that will extract a value from the response and save it in a templating variable.
-
-    Args:
-        expression (str): how to find the specified value, can contain templating variables
-        match_with (str): regular expression that any result from `expression` must match
-        variable (str): name of templating variable in the user context
-
-    Returns:
-        HandlerType: function that will save values from responses during run time
-    '''
-    def save(
-        input_context: Tuple[TransformerContentType, Any],
-        user: GrizzlyUser,
-        response: Optional[ResponseContextManager] = None,
-    ) -> None:
-        '''Actual handler that will run after a response has been received by an task.
-
-        Args:
-            input_context (Tuple[TransformerContentType, Any]): content type and transformed payload
-            user (ContextVariablesUser): user that executed task (request)
-            response (Optional[ResponseContextManager]): optional response context, only if `user` does HTTP requests
-        '''
-        def callback(
-            interpolated_expression: str,
-            match: Optional[Any],
-        ) -> None:
-            '''Validation specific logic that will handle the `match` based on `expression` and `match_with`.
-
-            Args:
-                interpolated_expression (str): `expression` with templating variables resolved
-                match (Optional[Any]): value based on `expression` that matches `match_with`
-            '''
-            user.set_context_variable(variable, match)
-
-            if match is None:
-                message = f'"{interpolated_expression}" did not match value'
-                if response is not None:
-                    response.failure(message)
-                else:
-                    raise ResponseHandlerError(message)
-
-        handler_logic(input_context, expression, match_with, user, callback, False)
-
-    return save
-
-
 def _add_response_handler(
     context: GrizzlyContext,
     target: ResponseTarget,
@@ -365,6 +183,18 @@ def _add_response_handler(
     if len(expression) < 1:
         raise ValueError('expression is empty')
 
+    if '|' in expression:
+        expression, expression_arguments = split_value(expression)
+        arguments = parse_arguments(expression_arguments)
+        unsupported_arguments = get_unsupported_arguments(['expected_matches'], arguments)
+
+        if len(unsupported_arguments) > 0:
+            raise ValueError(f'unsupported arguments {", ".join(unsupported_arguments)}')
+
+        expected_matches = int(arguments.get('expected_matches', '1'))
+    else:
+        expected_matches = 1
+
     # latest request
     request = context.scenario.tasks[-1]
 
@@ -380,16 +210,28 @@ def _add_response_handler(
     if '{{' in expression and '}}' in expression:
         context.scenario.orphan_templates.append(expression)
 
+    handler: ResponseHandlerAction
+
     if action == ResponseAction.SAVE:
         if variable is None:
             raise ValueError('variable is not set')
 
-        handler = generate_save_handler(expression, match_with, variable)
+        handler = SaveHandlerAction(
+            variable,
+            expression=expression,
+            match_with=match_with,
+            expected_matches=expected_matches,
+        )
     elif action == ResponseAction.VALIDATE:
         if condition is None:
             raise ValueError('condition is not set')
 
-        handler = generate_validation_handler(expression, match_with, condition)
+        handler = ValidationHandlerAction(
+            condition,
+            expression=expression,
+            match_with=match_with,
+            expected_matches=expected_matches,
+        )
 
     if target == ResponseTarget.METADATA:
         add_listener = request.response.handlers.add_metadata

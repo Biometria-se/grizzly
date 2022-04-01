@@ -2,7 +2,7 @@ import os
 import json
 import shutil
 
-from typing import List, Any, cast
+from typing import List, cast
 
 import pytest
 
@@ -15,17 +15,13 @@ from requests.models import Response
 from grizzly.context import GrizzlyContext
 from grizzly.types import RequestMethod, ResponseTarget, ResponseAction
 from grizzly.tasks import RequestTask, WaitTask
-from grizzly.exceptions import ResponseHandlerError
 from grizzly.steps.helpers import (
     add_validation_handler,
     add_save_handler,
     add_request_task,
     add_request_task_response_status_codes,
     normalize_step_name,
-    generate_save_handler,
-    generate_validation_handler,
     _add_response_handler,
-    get_matches,
 )
 
 from grizzly_extras.transformer import TransformerContentType
@@ -66,7 +62,7 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
     with pytest.raises(ValueError):
         add_request_task(behave, method=RequestMethod.from_string('TEST'), source='{}', endpoint='/api/v1/test')
 
-    add_request_task(behave, method=RequestMethod.POST, source='{}', endpoint='/api/v1/test')
+    assert add_request_task(behave, method=RequestMethod.POST, source='{}', endpoint='/api/v1/test') == []
 
     assert len(grizzly.scenario.tasks) == 1
     assert isinstance(grizzly.scenario.tasks[0], RequestTask)
@@ -75,7 +71,7 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
     with pytest.raises(ValueError):
         add_request_task(behave, method=RequestMethod.from_string('TEST'), source='{}', name='test')
 
-    add_request_task(behave, method=RequestMethod.from_string('POST'), source='{}', name='test')
+    assert add_request_task(behave, method=RequestMethod.from_string('POST'), source='{}', name='test') == []
 
     assert len(grizzly.scenario.tasks) == 2
     assert isinstance(grizzly.scenario.tasks[1], RequestTask)
@@ -85,7 +81,7 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
     with pytest.raises(ValueError):
         add_request_task(behave, method=RequestMethod.from_string('TEST'), source='{}', name='test', endpoint='/api/v2/test')
 
-    add_request_task(behave, method=RequestMethod.POST, source='{}', name='test', endpoint='/api/v2/test')
+    assert add_request_task(behave, method=RequestMethod.POST, source='{}', name='test', endpoint='/api/v2/test') == []
 
     assert len(grizzly.scenario.tasks) == 3
     assert isinstance(grizzly.scenario.tasks[2], RequestTask)
@@ -96,7 +92,7 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
     template_name = grizzly_fixture.request_task.relative_path
     template_full_path = os.path.join(template_path, template_name)
 
-    add_request_task(behave, method=RequestMethod.SEND, source=template_full_path, name='my_blob', endpoint='my_container')
+    assert add_request_task(behave, method=RequestMethod.SEND, source=template_full_path, name='my_blob', endpoint='my_container') == []
 
     with open(template_full_path, 'r') as fd:
         template_source = json.dumps(json.load(fd))
@@ -112,7 +108,7 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
     with pytest.raises(ValueError):
         add_request_task(behave, method=RequestMethod.POST, source='{}', name='test')
 
-    add_request_task(behave, method=RequestMethod.SEND, source=template_full_path, name='my_blob2')
+    assert add_request_task(behave, method=RequestMethod.SEND, source=template_full_path, name='my_blob2') == []
     assert len(grizzly.scenario.tasks) == 5
     assert isinstance(grizzly.scenario.tasks[-1], RequestTask)
     assert isinstance(grizzly.scenario.tasks[-2], RequestTask)
@@ -141,9 +137,9 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
             add_request_task(behave, method=RequestMethod.PUT, source='template.j2.json')
         assert 'previous task was not a request' in str(e)
 
-        add_request_task(behave, method=RequestMethod.PUT, source='template.j2.json', name='test', endpoint='/api/test')
+        assert add_request_task(behave, method=RequestMethod.PUT, source='template.j2.json', name='test', endpoint='/api/test') == []
 
-        add_request_task(behave, method=RequestMethod.PUT, source='template.j2.json', endpoint='/api/test')
+        assert add_request_task(behave, method=RequestMethod.PUT, source='template.j2.json', endpoint='/api/test') == []
         assert cast(RequestTask, grizzly.scenario.tasks[-1]).name == 'template'
 
         grizzly.scenario.tasks.clear()
@@ -163,7 +159,7 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
             rows.append(Row(['name', 'time_of_day', 'quote'], value))
         behave.table = Table(['name', 'time_of_day', 'quote'], rows=rows)
 
-        add_request_task(behave, method=RequestMethod.SEND, source='datatable_template.j2.json', name='quote: {{ quote }}', endpoint='/api/test/{{ time_of_day }}')
+        assert add_request_task(behave, method=RequestMethod.SEND, source='datatable_template.j2.json', name='quote: {{ quote }}', endpoint='/api/test/{{ time_of_day }}') == []
 
         assert len(grizzly.scenario.tasks) == 4
 
@@ -185,416 +181,52 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
         add_request_task(behave, method=RequestMethod.GET, source=None, endpoint='hello world | content_type=asdf', name='hello-world')
     assert '"asdf" is an unknown response content type' in str(ve)
 
-    add_request_task(behave, method=RequestMethod.GET, source=None, endpoint='hello world | content_type=json', name='hello-world')
+    assert add_request_task(behave, method=RequestMethod.GET, source=None, endpoint='hello world | content_type=json', name='hello-world') == []
 
     task = cast(RequestTask, grizzly.scenario.tasks[-1])
     assert task.endpoint == 'hello world'
     assert task.response.content_type == TransformerContentType.JSON
 
-    add_request_task(behave, method=RequestMethod.GET, source=None, endpoint='hello world | expression=$.test.value, content_type=json', name='hello-world')
+    assert add_request_task(behave, method=RequestMethod.GET, source=None, endpoint='hello world | expression=$.test.value, content_type=json', name='hello-world') == []
 
     task = cast(RequestTask, grizzly.scenario.tasks[-1])
     assert task.endpoint == 'hello world | expression=$.test.value'
     assert task.response.content_type == TransformerContentType.JSON
 
-    add_request_task(behave, method=RequestMethod.GET, source=None, endpoint=None, name='world-hello')
+    assert add_request_task(behave, method=RequestMethod.GET, source=None, endpoint=None, name='world-hello') == []
 
     task = cast(RequestTask, grizzly.scenario.tasks[-1])
     assert task.endpoint == 'hello world | expression=$.test.value'
     assert task.response.content_type == TransformerContentType.JSON
 
+    with pytest.raises(AssertionError) as ae:
+        add_request_task(behave, method=RequestMethod.GET, source=None, endpoint='$conf::test.endpoint', name='foo-bar')
+    assert 'configuration variable "test.endpoint" is not set' in str(ae)
 
-def test_generate_save_handler(locust_fixture: LocustFixture) -> None:
-    user = TestUser(locust_fixture.env)
-    response = Response()
-    response._content = '{}'.encode('utf-8')
-    response.status_code = 200
-    response_context_manager = ResponseContextManager(response, locust_fixture.env.events.request, {})
-    response_context_manager._entered = True
+    grizzly.state.configuration['test.endpoint'] = '/foo/bar'
+    add_request_task(behave, method=RequestMethod.GET, source=None, endpoint='$conf::test.endpoint', name='foo-bar')
 
-    assert 'test' not in user.context_variables
+    task = cast(RequestTask, grizzly.scenario.tasks[-1])
+    assert task.endpoint == '/foo/bar'
+    assert task.response.content_type == TransformerContentType.UNDEFINED
 
-    handler = generate_save_handler('$.', '.*', 'test')
-    with pytest.raises(TypeError) as te:
-        handler((TransformerContentType.UNDEFINED, {'test': {'value': 'test'}}), user, response_context_manager)
-    assert 'could not find a transformer for UNDEFINED' in str(te)
+    add_request_task(behave, method=RequestMethod.GET, source=None, endpoint=None, name='foo-bar')
 
-    with pytest.raises(TypeError) as te:
-        handler((TransformerContentType.JSON, {'test': {'value': 'test'}}), user, response_context_manager)
-    assert 'is not a valid expression' in str(te)
+    task = cast(RequestTask, grizzly.scenario.tasks[-1])
+    assert task.endpoint == '/foo/bar'
+    assert task.response.content_type == TransformerContentType.UNDEFINED
 
-    handler = generate_save_handler('$.test.value', '.*', 'test')
+    behave.table = None
 
-    handler((TransformerContentType.JSON, {'test': {'value': 'test'}}), user, response_context_manager)
-    assert response_context_manager._manual_result is None
-    assert user.context_variables.get('test', None) == 'test'
-    del user.context_variables['test']
+    tasks = add_request_task(behave, method=RequestMethod.GET, source=None, endpoint='/api/foo/bar', name='foo-bar', in_scenario=False)
 
-    handler((TransformerContentType.JSON, {'test': {'value': 'nottest'}}), user, response_context_manager)
-    assert response_context_manager._manual_result is None
-    assert user.context_variables.get('test', None) == 'nottest'
-    del user.context_variables['test']
+    assert len(tasks) == 1
+    assert tasks[0][0].endpoint == '/api/foo/bar'
+    assert tasks[0][1] == {}
 
-    user.set_context_variable('value', 'test')
-    handler = generate_save_handler('$.test.value', '.*({{ value }})$', 'test')
-
-    handler((TransformerContentType.JSON, {'test': {'value': 'test'}}), user, response_context_manager)
-    assert response_context_manager._manual_result is None
-    assert user.context_variables.get('test', None) == 'test'
-    del user.context_variables['test']
-
-    handler((TransformerContentType.JSON, {'test': {'value': 'nottest'}}), user, response_context_manager)
-    assert response_context_manager._manual_result is None
-    assert user.context_variables.get('test', None) == 'test'
-    del user.context_variables['test']
-
-    # failed
-    handler((TransformerContentType.JSON, {'test': {'name': 'test'}}), user, response_context_manager)
-    assert isinstance(getattr(response_context_manager, '_manual_result', None), CatchResponseError)
-    assert user.context_variables.get('test', 'test') is None
-
-    with pytest.raises(ResponseHandlerError):
-        handler((TransformerContentType.JSON, {'test': {'name': 'test'}}), user, None)
-
-    # multiple matches
-    handler = generate_save_handler('$.test[*].value', '.*t.*', 'test')
-    handler((TransformerContentType.JSON, {'test': [{'value': 'test'}, {'value': 'test'}]}), user, response_context_manager)
-    assert isinstance(getattr(response_context_manager, '_manual_result', None), CatchResponseError)
-    assert user._context['variables']['test'] is None
-
-    with pytest.raises(ResponseHandlerError):
-        handler((TransformerContentType.JSON, {'test': [{'value': 'test'}, {'value': 'test'}]}), user, None)
-
-    # save object dict
-    handler = generate_save_handler(
-        '$.test.prop2',
-        '.*',
-        'test_object',
-    )
-
-    handler(
-        (
-            TransformerContentType.JSON,
-            {
-                'test': {
-                    'prop1': 'value1',
-                    'prop2': {
-                        'prop21': False,
-                        'prop22': 100,
-                        'prop23': {
-                            'prop231': True,
-                            'prop232': 'hello',
-                            'prop233': 'world!',
-                            'prop234': 200,
-                        },
-                    },
-                    'prop3': 'value3',
-                    'prop4': [
-                        'prop41',
-                        True,
-                        'prop42',
-                        300,
-                    ],
-                }
-            }
-        ),
-        user,
-        response_context_manager,
-    )
-
-    test_object = user.context_variables.get('test_object', None)
-    assert json.loads(test_object) == {
-        'prop21': False,
-        'prop22': 100,
-        'prop23': {
-            'prop231': True,
-            'prop232': 'hello',
-            'prop233': 'world!',
-            'prop234': 200,
-        },
-    }
-
-    # save object list
-    handler = generate_save_handler(
-        '$.test.prop4',
-        '.*',
-        'test_list',
-    )
-
-    handler(
-        (
-            TransformerContentType.JSON,
-            {
-                'test': {
-                    'prop1': 'value1',
-                    'prop2': {
-                        'prop21': False,
-                        'prop22': 100,
-                        'prop23': {
-                            'prop231': True,
-                            'prop232': 'hello',
-                            'prop233': 'world!',
-                            'prop234': 200,
-                        },
-                    },
-                    'prop3': 'value3',
-                    'prop4': [
-                        'prop41',
-                        True,
-                        'prop42',
-                        300,
-                    ],
-                }
-            }
-        ),
-        user,
-        response_context_manager,
-    )
-
-    test_list = user.context_variables.get('test_list', None)
-    assert json.loads(test_list) == [
-        'prop41',
-        True,
-        'prop42',
-        300,
-    ]
-
-
-def test_generate_validation_handler_negative(locust_fixture: LocustFixture) -> None:
-    user = TestUser(locust_fixture.env)
-    response = Response()
-    response._content = '{}'.encode('utf-8')
-    response.status_code = 200
-    response_context_manager = ResponseContextManager(response, locust_fixture.env.events.request, {})
-    response_context_manager._entered = True
-
-    handler = generate_validation_handler('$.test.value', 'test', False)
-
-    # match fixed string expression
-    handler((TransformerContentType.JSON, {'test': {'value': 'test'}}), user, response_context_manager)
-    assert response_context_manager._manual_result is None
-
-    # no match fixed string expression
-    handler((TransformerContentType.JSON, {'test': {'value': 'nottest'}}), user, response_context_manager)
-    assert getattr(response_context_manager, '_manual_result', None) is not None
-    response_context_manager._manual_result = None
-
-    # regexp match expression value
-    user.set_context_variable('expression', '$.test.value')
-    user.set_context_variable('value', 'test')
-    handler = generate_validation_handler('{{ expression }}', '.*({{ value }})$', False)
-    handler((TransformerContentType.JSON, {'test': {'value': 'nottest'}}), user, response_context_manager)
-    assert response_context_manager._manual_result is None
-
-    # ony allows 1 match per expression
-    handler = generate_validation_handler('$.test[*].value', '.*(test)$', False)
-    handler(
-        (TransformerContentType.JSON, {'test': [{'value': 'nottest'}, {'value': 'reallynottest'}, {'value': 'test'}]}),
-        user,
-        response_context_manager,
-    )
-    assert getattr(response_context_manager, '_manual_result', None) is not None
-    response_context_manager._manual_result = None
-
-    # 1 match expression
-    handler(
-        (TransformerContentType.JSON, {'test': [{'value': 'not'}, {'value': 'reallynot'}, {'value': 'test'}]}),
-        user,
-        response_context_manager,
-    )
-    assert response_context_manager._manual_result is None
-
-    handler = generate_validation_handler('$.[*]', 'ID_31337', False)
-
-    # 1 match expression
-    handler((TransformerContentType.JSON, ['ID_1337', 'ID_31337', 'ID_73313']), user, response_context_manager)
-    assert response_context_manager._manual_result is None
-
-    example = {
-        'glossary': {
-            'title': 'example glossary',
-            'GlossDiv': {
-                'title': 'S',
-                'GlossList': {
-                    'GlossEntry': {
-                        'ID': 'SGML',
-                        'SortAs': 'SGML',
-                        'GlossTerm': 'Standard Generalized Markup Language',
-                        'Acronym': 'SGML',
-                        'Abbrev': 'ISO 8879:1986',
-                        'GlossDef': {
-                            'para': 'A meta-markup language, used to create markup languages such as DocBook.',
-                            'GlossSeeAlso': ['GML', 'XML']
-                        },
-                        'GlossSee': 'markup',
-                        'Additional': [
-                            {
-                                'addtitle': 'test1',
-                                'addvalue': 'hello world',
-                            },
-                            {
-                                'addtitle': 'test2',
-                                'addvalue': 'good stuff',
-                            },
-                        ]
-                    }
-                }
-            }
-        }
-    }
-
-    # 1 match in multiple values (list)
-    handler = generate_validation_handler('$.*..GlossSeeAlso[*]', 'XML', False)
-    handler((TransformerContentType.JSON, example), user, response_context_manager)
-    assert response_context_manager._manual_result is None
-
-    # no match in multiple values (list)
-    handler = generate_validation_handler('$.*..GlossSeeAlso[*]', 'YAML', False)
-    handler((TransformerContentType.JSON, example), user, response_context_manager)
-    assert getattr(response_context_manager, '_manual_result', None) is not None
-    response_context_manager._manual_result = None
-
-    handler = generate_validation_handler('$.glossary.title', '.*ary$', False)
-    handler((TransformerContentType.JSON, example), user, response_context_manager)
-    assert response_context_manager._manual_result is None
-
-    handler = generate_validation_handler('$..Additional[?addtitle="test2"].addvalue', '.*stuff$', False)
-    handler((TransformerContentType.JSON, example), user, response_context_manager)
-    assert response_context_manager._manual_result is None
-
-    handler = generate_validation_handler('$.`this`', 'False', False)
-    handler((TransformerContentType.JSON, True), user, response_context_manager)
-    assert isinstance(getattr(response_context_manager, '_manual_result', None), CatchResponseError)
-    response_context_manager._manual_result = None
-
-    with pytest.raises(ResponseHandlerError):
-        handler((TransformerContentType.JSON, True), user, None)
-
-    handler((TransformerContentType.JSON, False), user, response_context_manager)
-    assert response_context_manager._manual_result is None
-
-
-def test_generate_validation_handler_positive(locust_fixture: LocustFixture) -> None:
-    user = TestUser(locust_fixture.env)
-    try:
-        response = Response()
-        response._content = '{}'.encode('utf-8')
-        response.status_code = 200
-        response_context_manager = ResponseContextManager(response, locust_fixture.env.events.request, {})
-        response_context_manager._entered = True
-
-        handler = generate_validation_handler('$.test.value', 'test', True)
-
-        # match fixed string expression
-        handler((TransformerContentType.JSON, {'test': {'value': 'test'}}), user, response_context_manager)
-        assert isinstance(getattr(response_context_manager, '_manual_result', None), CatchResponseError)
-        response_context_manager._manual_result = None
-
-        # no match fixed string expression
-        handler((TransformerContentType.JSON, {'test': {'value': 'nottest'}}), user, response_context_manager)
-        assert response_context_manager._manual_result is None
-
-        # regexp match expression value
-        handler = generate_validation_handler('$.test.value', '.*(test)$', True)
-        handler((TransformerContentType.JSON, {'test': {'value': 'nottest'}}), user, response_context_manager)
-        assert isinstance(getattr(response_context_manager, '_manual_result', None), CatchResponseError)
-        response_context_manager._manual_result = None
-
-        # ony allows 1 match per expression
-        handler = generate_validation_handler('$.test[*].value', '.*(test)$', True)
-        handler(
-            (TransformerContentType.JSON, {'test': [{'value': 'nottest'}, {'value': 'reallynottest'}, {'value': 'test'}]}),
-            user,
-            response_context_manager,
-        )
-        assert response_context_manager._manual_result is None
-
-        # 1 match expression
-        handler(
-            (TransformerContentType.JSON, {'test': [{'value': 'not'}, {'value': 'reallynot'}, {'value': 'test'}]}),
-            user,
-            response_context_manager,
-        )
-        assert isinstance(getattr(response_context_manager, '_manual_result', None), CatchResponseError)
-        response_context_manager._manual_result = None
-
-        handler = generate_validation_handler('$.[*]', 'STTO_31337', True)
-
-        # 1 match expression
-        handler((TransformerContentType.JSON, ['STTO_1337', 'STTO_31337', 'STTO_73313']), user, response_context_manager)
-        assert isinstance(getattr(response_context_manager, '_manual_result', None), CatchResponseError)
-        response_context_manager._manual_result = None
-
-        example = {
-            'glossary': {
-                'title': 'example glossary',
-                'GlossDiv': {
-                    'title': 'S',
-                    'GlossList': {
-                        'GlossEntry': {
-                            'ID': 'SGML',
-                            'SortAs': 'SGML',
-                            'GlossTerm': 'Standard Generalized Markup Language',
-                            'Acronym': 'SGML',
-                            'Abbrev': 'ISO 8879:1986',
-                            'GlossDef': {
-                                'para': 'A meta-markup language, used to create markup languages such as DocBook.',
-                                'GlossSeeAlso': ['GML', 'XML']
-                            },
-                            'GlossSee': 'markup',
-                            'Additional': [
-                                {
-                                    'addtitle': 'test1',
-                                    'addvalue': 'hello world',
-                                },
-                                {
-                                    'addtitle': 'test2',
-                                    'addvalue': 'good stuff',
-                                },
-                            ]
-                        }
-                    }
-                }
-            }
-        }
-
-        # 1 match in multiple values (list)
-        user.set_context_variable('format', 'XML')
-        handler = generate_validation_handler('$.*..GlossSeeAlso[*]', '{{ format }}', True)
-        handler((TransformerContentType.JSON, example), user, response_context_manager)
-        assert isinstance(getattr(response_context_manager, '_manual_result', None), CatchResponseError)
-        response_context_manager._manual_result = None
-
-        with pytest.raises(ResponseHandlerError):
-            handler((TransformerContentType.JSON, example), user, None)
-
-        # no match in multiple values (list)
-        user.set_context_variable('format', 'YAML')
-        handler = generate_validation_handler('$.*..GlossSeeAlso[*]', '{{ format }}', True)
-        handler((TransformerContentType.JSON, example), user, response_context_manager)
-        assert response_context_manager._manual_result is None
-
-        user.set_context_variable('property', 'title')
-        user.set_context_variable('regexp', '.*ary$')
-        handler = generate_validation_handler('$.glossary.{{ property }}', '{{ regexp }}', True)
-        handler((TransformerContentType.JSON, example), user, response_context_manager)
-        assert isinstance(getattr(response_context_manager, '_manual_result', None), CatchResponseError)
-        response_context_manager._manual_result = None
-
-        handler = generate_validation_handler('$..Additional[?addtitle="test1"].addvalue', '.*world$', True)
-        handler((TransformerContentType.JSON, example), user, response_context_manager)
-        assert isinstance(getattr(response_context_manager, '_manual_result', None), CatchResponseError)
-        response_context_manager._manual_result = None
-
-        handler = generate_validation_handler('$.`this`', 'False', True)
-        handler((TransformerContentType.JSON, True), user, response_context_manager)
-        assert response_context_manager._manual_result is None
-
-        handler((TransformerContentType.JSON, False), user, response_context_manager)
-        assert isinstance(getattr(response_context_manager, '_manual_result', None), CatchResponseError)
-        response_context_manager._manual_result = None
-    finally:
-        assert user._context['variables'] is not TestUser(locust_fixture.env)._context['variables']
+    task = cast(RequestTask, grizzly.scenario.tasks[-1])
+    assert task.endpoint == '/foo/bar'
+    assert task.response.content_type == TransformerContentType.UNDEFINED
 
 
 def test_add_save_handler(behave_fixture: BehaveFixture, locust_fixture: LocustFixture) -> None:
@@ -689,6 +321,31 @@ def test_add_save_handler(behave_fixture: BehaveFixture, locust_fixture: LocustF
         _add_response_handler(grizzly, ResponseTarget.PAYLOAD, ResponseAction.SAVE, '$test.value', '.*', variable=None)
     assert 'variable is not set' in str(e)
 
+    try:
+        grizzly.state.variables['test']
+
+        add_save_handler(grizzly, ResponseTarget.PAYLOAD, '$.test.value | expected_matches=100', '.*', 'test')
+        assert len(task.response.handlers.metadata) == 1
+        assert len(task.response.handlers.payload) == 2
+
+        handler = task.response.handlers.payload[-1]
+
+        assert handler.expression == '$.test.value'
+        assert handler.expected_matches == 100
+
+        with pytest.raises(ValueError) as ve:
+            add_save_handler(grizzly, ResponseTarget.PAYLOAD, '$.test.value | expected_matches=100, foobar=False, hello=world', '.*', 'test')
+        assert str(ve.value) == 'unsupported arguments foobar, hello'
+
+        cast(RequestTask, grizzly.scenario.tasks[-1]).response.content_type = TransformerContentType.UNDEFINED
+
+        with pytest.raises(ValueError) as ve:
+            add_save_handler(grizzly, ResponseTarget.PAYLOAD, '$.test.value | expected_matches=100', '.*', 'test')
+        assert str(ve.value) == 'content type is not set for latest request'
+
+    finally:
+        del grizzly.state.variables['test']
+
 
 def test_add_validation_handler(behave_fixture: BehaveFixture, locust_fixture: LocustFixture) -> None:
     user = TestUser(locust_fixture.env)
@@ -767,20 +424,3 @@ def test_normalize_step_name() -> None:
     actual = normalize_step_name('this is just a "string" of text with quoted "words"')
 
     assert expected == actual
-
-
-def test_get_matches() -> None:
-    def match_get_values(input_payload: Any) -> List[str]:
-        if str(input_payload) == 'world':
-            return ['world']
-        elif str(input_payload) == 'hello':
-            return ['']
-        else:
-            return []
-
-    def input_get_values(input_payload: Any) -> List[str]:
-        return cast(List[str], input_payload)
-
-    matches = get_matches(input_get_values, match_get_values, ['hello', 'world', 'foo', 'bar'])
-
-    assert matches == (['hello', 'world', 'foo', 'bar'], ['world'],)

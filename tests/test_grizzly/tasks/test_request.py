@@ -2,7 +2,9 @@ from typing import Any, Tuple, Optional, Dict
 
 from pytest_mock import MockerFixture
 from locust.clients import ResponseContextManager
-from locust.user.users import User
+
+from grizzly.users.base.grizzly_user import GrizzlyUser
+from grizzly.users.base.response_handler import ResponseHandlerAction
 
 from grizzly_extras.transformer import TransformerContentType
 from grizzly.tasks import (
@@ -25,8 +27,11 @@ class TestRequestTaskHandlers:
         assert len(handlers.metadata) == 0
         assert len(handlers.payload) == 0
 
-        def handler(input: Tuple[TransformerContentType, Any], user: User, manager: Optional[ResponseContextManager]) -> None:
-            pass
+        class TestResponseHandlerAction(ResponseHandlerAction):
+            def __call__(self, input_context: Tuple[TransformerContentType, Any], user: GrizzlyUser, response: Optional[ResponseContextManager] = None) -> None:
+                super().__call__(input_context, user, response)
+
+        handler = TestResponseHandlerAction(expression='', match_with='')
 
         handlers.add_metadata(handler)
         handlers.add_payload(handler)

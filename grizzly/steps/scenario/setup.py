@@ -269,7 +269,7 @@ def step_setup_restart_scenario_on_failure(context: Context) -> None:
     context.config.stop = False
 
 
-@given(u'metadata "{key}" is "{value}')
+@given(u'metadata "{key}" is "{value}"')
 def step_setup_metadata(context: Context, key: str, value: str) -> None:
     '''Set a metadata (header) value to be used by the user when sending requests.
 
