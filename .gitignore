@@ -17,6 +17,6 @@ coverage.xml
 script/tmp*
 
 # automagically generated
-docs/licenses.md
-docs/changelog.md
+docs/licenses/*
+docs/changelog/*
 docs/cli.md
