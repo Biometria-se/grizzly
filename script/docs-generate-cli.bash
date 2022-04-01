@@ -20,6 +20,22 @@ main() {
     echo "-- generating cli.md"
     grizzly-cli --md-help > "${script_dir}/../docs/cli.md"
 
+    echo "-- cloning repo"
+    git clone https://github.com/Biometria-se/grizzly-cli.git
+
+    # @TODO: maybe check which version of grizzly-loadtester-cli is installed, and checkout that tag
+
+    echo "-- generating changelog/grizzly-cli"
+    pushd "grizzly-cli/" &> /dev/null
+    python3 "$1/script/docs-generate-changelog.py" --from-directory "$PWD"
+
+    echo "-- installing grizzly-cli dev dependencies"
+    python3 -m pip install .[dev]
+
+    echo "-- generating licenses/grizzly-loadtester-cli.md"
+    python3 script/docs-generate-licenses.py > "$1/docs/licenses/grizzly-loadtester-cli.md"
+    popd &> /dev/null
+
     echo "-- cleaning up"
     deactivate
     popd &> /dev/null

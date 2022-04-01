@@ -131,7 +131,7 @@ def main() -> int:
     contents[0] = f'#{contents[0]}'
     license_contents = ['# Licenses\n', '\n'] + contents + ['\n', '## Third party licenses\n', '\n'] + license_table + ['\n'] + native_dependencies
 
-    with open(path.join(REPO_ROOT, 'docs', 'licenses.md'), 'w') as fd:
+    with open(path.join(REPO_ROOT, 'docs', 'licenses', 'grizzly-loadtester.md'), 'w') as fd:
         fd.writelines(license_contents)
 
     return 0
