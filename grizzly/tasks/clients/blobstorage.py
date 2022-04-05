@@ -20,9 +20,8 @@ This will be resolved to `DefaultEndpointsProtocol=https;AccountName=my-storage;
 will be performed in container `my-container`.
 
 Instances of this task is created with the step expression, if endpoint is defined with scheme `bs`:
-* ~~[`step_task_client_get_endpoint`](/grizzly/usage/steps/scenario/tasks/#step_task_client_get_endpoint)~~
-* [`step_task_client_put_endpoint_file`](/grizzly/usage/steps/scenario/tasks/#step_task_client_put_endpoint_file)
-* [`step_task_client_put_endpoint_text`](/grizzly/usage/steps/scenario/tasks/#step_task_client_put_endpoint_text)
+
+* [`step_task_client_put_endpoint_file_destination`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_client_put_endpoint_file_destination)
 '''
 from typing import Any, Optional, cast
 from urllib.parse import urlparse, parse_qs
@@ -82,10 +81,10 @@ class BlobStorageClientTask(ClientTask):
         return super().get(parent)
 
     def put(self, parent: GrizzlyScenario) -> Any:
-        source = cast(str, resolve_variable(self.grizzly, cast(str, self.source), guess_datatype=False))
+        source = Template(self.source).render(**parent.user._context['variables'])
 
         if self.destination is not None:
-            destination = cast(str, resolve_variable(self.grizzly, self.destination, guess_datatype=False))
+            destination = Template(self.destination).render(**parent.user._context['variables'])
         else:
             destination = Path(source).name
 
@@ -93,9 +92,7 @@ class BlobStorageClientTask(ClientTask):
 
         if source_file.exists():
             source = source_file.read_text()
-
-        source = Template(source).render(**parent.user._context['variables'])
-        destination = Template(destination).render(**parent.user._context['variables'])
+            source = Template(source).render(**parent.user._context['variables'])
 
         with self.action(parent) as meta:
             with self.service_client.get_blob_client(container=self.container, blob=destination) as blob_client:

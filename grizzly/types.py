@@ -258,5 +258,5 @@ class GrizzlyDict(dict):
 class GrizzlyTask(metaclass=ABCMeta):
     scenario: 'GrizzlyContextScenario' = field(init=False, repr=False)
 
-    def implementation(self) -> Callable[['GrizzlyScenario'], Any]:
+    def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
         raise NotImplementedError(f'{self.__class__.__name__} has not implemented "implementation"')

@@ -2,7 +2,7 @@
 
 Instances of this task is created with the step expression:
 
-* [`step_task_wait_seconds`](/grizzly/usage/steps/scenario/tasks/#step_task_wait_seconds)
+* [`step_task_wait_seconds`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_wait_seconds)
 '''
 from typing import TYPE_CHECKING, Any, Callable
 from dataclasses import dataclass
@@ -19,10 +19,10 @@ if TYPE_CHECKING:  # pragma: no cover
 class WaitTask(GrizzlyTask):
     time: float
 
-    def implementation(self) -> Callable[['GrizzlyScenario'], Any]:
-        def _implementation(parent: 'GrizzlyScenario') -> Any:
+    def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
+        def task(parent: 'GrizzlyScenario') -> Any:
             parent.logger.debug(f'waiting for {self.time} seconds')
             gsleep(self.time)
             parent.logger.debug(f'done waiting for {self.time} seconds')
 
-        return _implementation
+        return task

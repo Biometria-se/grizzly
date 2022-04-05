@@ -1,4 +1,4 @@
-from typing import Any, Tuple, Optional, Dict
+from typing import Any, Tuple, Optional
 
 from pytest_mock import MockerFixture
 from locust.clients import ResponseContextManager
@@ -66,32 +66,29 @@ class TestRequestTaskResponse:
 
 class TestRequestTask:
     def test(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
-        task = RequestTask(RequestMethod.from_string('POST'), 'test-name', '/api/test')
+        task_factory = RequestTask(RequestMethod.from_string('POST'), 'test-name', '/api/test')
 
-        assert task.method == RequestMethod.POST
-        assert task.name == 'test-name'
-        assert task.endpoint == '/api/test'
+        assert task_factory.method == RequestMethod.POST
+        assert task_factory.name == 'test-name'
+        assert task_factory.endpoint == '/api/test'
 
-        assert not hasattr(task, 'scenario')
+        assert not hasattr(task_factory, 'scenario')
 
-        assert task.template is None
-        assert task.source is None
+        assert task_factory.template is None
+        assert task_factory.source is None
 
-        implementation = task.implementation()
-        assert callable(implementation)
+        task = task_factory()
+        assert callable(task)
 
         _, _, scenario = grizzly_fixture()
 
         assert scenario is not None
 
-        def noop(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Any:
-            pass
-
-        mocker.patch.object(scenario.user, 'request', noop)
+        mocker.patch.object(scenario.user, 'request', autospec=True)
         request_spy = mocker.spy(scenario.user, 'request')
 
-        implementation(scenario)
+        task(scenario)
 
         assert request_spy.call_count == 1
         args, _ = request_spy.call_args_list[0]
-        assert args[0] is task
+        assert args[0] is task_factory

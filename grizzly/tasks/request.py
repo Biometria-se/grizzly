@@ -5,13 +5,13 @@ against the target under test.
 
 Instances of this task is created with the step expressions:
 
-* [`step_task_request_text_with_name_to_endpoint`](/grizzly/usage/steps/scenario/tasks/#step_task_request_text_with_name_to_endpoint)
+* [`step_task_request_text_with_name_to_endpoint`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_request_text_with_name_to_endpoint)
 
-* [`step_task_request_file_with_name_endpoint`](/grizzly/usage/steps/scenario/tasks/#step_task_request_file_with_name_endpoint)
+* [`step_task_request_file_with_name_endpoint`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_request_file_with_name_endpoint)
 
-* [`step_task_request_file_with_name`](/grizzly/usage/steps/scenario/tasks/#step_task_request_file_with_name)
+* [`step_task_request_file_with_name`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_request_file_with_name)
 
-* [`step_task_request_text_with_name`](/grizzly/usage/steps/scenario/tasks/#step_task_request_text_with_name)
+* [`step_task_request_text_with_name`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_request_text_with_name)
 '''
 from typing import TYPE_CHECKING, List, Optional, Any, Callable
 from dataclasses import dataclass, field
@@ -90,8 +90,8 @@ class RequestTask(GrizzlyTask):
 
         self.response.content_type = content_type
 
-    def implementation(self) -> Callable[['GrizzlyScenario'], Any]:
-        def _implementation(parent: 'GrizzlyScenario') -> Any:
+    def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
+        def task(parent: 'GrizzlyScenario') -> Any:
             return parent.user.request(self)
 
-        return _implementation
+        return task

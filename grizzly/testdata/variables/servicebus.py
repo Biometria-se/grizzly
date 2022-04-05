@@ -1,7 +1,7 @@
 # pylint: disable=line-too-long
 '''Listens for messages on Azure Service Bus queue or topic.
 
-Use [transformer task](/grizzly/usage/tasks/transformer/) to extract specific parts of the message.
+Use [transformer task](/grizzly/framework/usage/tasks/transformer/) to extract specific parts of the message.
 
 ## Format
 

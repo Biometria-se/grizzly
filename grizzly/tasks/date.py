@@ -5,7 +5,7 @@ At least one arguments needs to specified.
 
 Instances of this task is created with the step expression:
 
-* [`step_task_date`](/grizzly/usage/steps/scenario/tasks/#step_task_date)
+* [`step_task_date`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_date)
 
 ## Arguments
 
@@ -54,8 +54,8 @@ class DateTask(GrizzlyTask):
         else:
             raise ValueError('no arguments specified')
 
-    def implementation(self) -> Callable[['GrizzlyScenario'], Any]:
-        def _implementation(parent: 'GrizzlyScenario') -> Any:
+    def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
+        def task(parent: 'GrizzlyScenario') -> Any:
             value_rendered = Template(self.value).render(**parent.user._context['variables'], datetime=datetime)
 
             arguments_rendered: Dict[str, str] = {}
@@ -88,4 +88,4 @@ class DateTask(GrizzlyTask):
 
             parent.user._context['variables'][self.variable] = date_value.astimezone(timezone).strftime(date_format)
 
-        return _implementation
+        return task

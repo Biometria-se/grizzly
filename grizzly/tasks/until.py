@@ -11,7 +11,7 @@ Arguments:
 
 Instances of this task is created with step expression:
 
-* [`step_task_request_text_with_name_to_endpoint_until`](/grizzly/usage/steps/scenario/tasks/#step_task_request_text_with_name_to_endpoint_until)
+* [`step_task_request_text_with_name_to_endpoint_until`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_request_text_with_name_to_endpoint_until)
 '''
 from typing import TYPE_CHECKING, Callable, Any, Type, List, Optional, cast
 from dataclasses import dataclass, field
@@ -70,13 +70,13 @@ class UntilRequestTask(GrizzlyTask):
             if self.wait < 0.1:
                 raise ValueError('wait argument cannot be less than 0.1 seconds')
 
-    def implementation(self) -> Callable[['GrizzlyScenario'], Any]:
+    def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
         if self.transform is None:
             raise TypeError(f'could not find a transformer for {self.request.response.content_type.name}')
 
         transform = cast(Transformer, self.transform)
 
-        def _implementation(parent: 'GrizzlyScenario') -> Any:
+        def task(parent: 'GrizzlyScenario') -> Any:
             task_name = f'{self.request.scenario.identifier} {self.request.name}, w={self.wait}s, r={self.retries}'
             if '{{' in self.condition and '}}' in self.condition:
                 condition_rendered = Template(self.condition).render(**parent.user._context['variables'])
@@ -144,4 +144,4 @@ class UntilRequestTask(GrizzlyTask):
             if exception is not None and self.request.scenario.failure_exception is not None:
                 raise self.request.scenario.failure_exception()
 
-        return _implementation
+        return task

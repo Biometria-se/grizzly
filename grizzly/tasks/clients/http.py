@@ -4,9 +4,7 @@ This is useful if the scenario is using a non-HTTP user or a request to a URL ot
 
 Instances of this task is created with the step expression, if endpoint is defined with scheme `http` or `https`:
 
-* [`step_task_client_get_endpoint`](/grizzly/usage/steps/scenario/tasks/#step_task_client_get_endpoint)
-* ~~[`step_task_client_put_endpoint_file`](/grizzly/usage/steps/scenario/tasks/#step_task_client_put_endpoint_file)~~
-* ~~[`step_task_client_put_endpoint_text`](/grizzly/usage/steps/scenario/tasks/#step_task_client_put_endpoint_text)~~
+* [`step_task_client_get_endpoint`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_client_get_endpoint)
 '''
 from typing import Any
 

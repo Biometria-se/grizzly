@@ -83,28 +83,28 @@ class TestUntilRequestTask:
 
         gsleep_spy = mocker.patch('grizzly.tasks.until.gsleep', autospec=True)
 
-        task = UntilRequestTask(request, '/status[text()="ready"]')
-        implementation = task.implementation()
+        task_factory = UntilRequestTask(request, '/status[text()="ready"]')
+        task = task_factory()
 
         with pytest.raises(RuntimeError) as re:
-            implementation(scenario)
+            task(scenario)
         assert '/status[text()="ready"] is not a valid expression for JSON' in str(re)
 
         jsontransformer_orig = transformer.available[TransformerContentType.JSON]
         del transformer.available[TransformerContentType.JSON]
 
-        task = UntilRequestTask(request, '$.`this`[?status="ready"] | wait=100, retries=10')
+        task_factory = UntilRequestTask(request, '$.`this`[?status="ready"] | wait=100, retries=10')
 
         with pytest.raises(TypeError) as te:
-            task.implementation()
+            task_factory()
         assert 'could not find a transformer for JSON' in str(te)
 
         transformer.available[TransformerContentType.JSON] = jsontransformer_orig
 
-        task = UntilRequestTask(request, "$.`this`[?status='ready'] | wait=100, retries=10")
-        implementation = task.implementation()
+        task_factory = UntilRequestTask(request, "$.`this`[?status='ready'] | wait=100, retries=10")
+        task = task_factory()
 
-        implementation(scenario)
+        task(scenario)
 
         assert time_spy.call_count == 2
         assert request_spy.call_count == 3
@@ -128,10 +128,10 @@ class TestUntilRequestTask:
         # -->
         scenario.grizzly.state.variables['wait'] = 100.0
         scenario.grizzly.state.variables['retries'] = 10
-        task = UntilRequestTask(request, "$.`this`[?status='ready'] | wait='{{ wait }}', retries='{{ retries }}'")
-        implementation = task.implementation()
+        task_factory = UntilRequestTask(request, "$.`this`[?status='ready'] | wait='{{ wait }}', retries='{{ retries }}'")
+        task = task_factory()
 
-        implementation(scenario)
+        task(scenario)
 
         assert time_spy.call_count == 4
         assert request_spy.call_count == 4
@@ -163,11 +163,11 @@ class TestUntilRequestTask:
         )
 
         request.scenario.failure_exception = StopUser
-        task = UntilRequestTask(request, '$.`this`[?status="ready"] | wait=10, retries=2')
-        implementation = task.implementation()
+        task_factory = UntilRequestTask(request, '$.`this`[?status="ready"] | wait=10, retries=2')
+        task = task_factory()
 
         with pytest.raises(StopUser):
-            implementation(scenario)
+            task(scenario)
 
         assert fire_spy.call_count == 3
         _, kwargs = fire_spy.call_args_list[-1]
@@ -194,7 +194,7 @@ class TestUntilRequestTask:
 
         request.scenario.failure_exception = RestartScenario
         with pytest.raises(RestartScenario):
-            implementation(scenario)
+            task(scenario)
 
         assert fire_spy.call_count == 4
         _, kwargs = fire_spy.call_args_list[-1]
@@ -220,10 +220,10 @@ class TestUntilRequestTask:
             ],
         )
 
-        task = UntilRequestTask(request, '$.`this`[?status="ready"] | wait=4, retries=4')
-        implementation = task.implementation()
+        task_factory = UntilRequestTask(request, '$.`this`[?status="ready"] | wait=4, retries=4')
+        task = task_factory()
 
-        implementation(scenario)
+        task(scenario)
 
         assert fire_spy.call_count == 5
         _, kwargs = fire_spy.call_args_list[-1]

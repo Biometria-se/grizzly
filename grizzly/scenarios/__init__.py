@@ -24,8 +24,8 @@ class GrizzlyScenario(SequentialTaskSet):
         self.grizzly = GrizzlyContext()
 
     @classmethod
-    def add_scenario_task(cls, task: GrizzlyTask) -> None:
-        cls.tasks.append(task.implementation())
+    def add_scenario_task(cls, task_factory: GrizzlyTask) -> None:
+        cls.tasks.append(task_factory())
 
     def on_start(self) -> None:
         producer_address = environ.get('TESTDATA_PRODUCER_ADDRESS', None)

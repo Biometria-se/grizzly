@@ -80,18 +80,18 @@ class TestBlobStorageClientTask:
         grizzly = cast(GrizzlyContext, behave.grizzly)
         grizzly.state.variables['test'] = 'none'
 
-        task = BlobStorageClientTask(
+        task_factory = BlobStorageClientTask(
             RequestDirection.FROM,
             'bs://my-storage?AccountKey=aaaabbb=&Container=my-container',
             variable='test',
         )
-        implementation = task.implementation()
+        task = task_factory()
 
         _, _, scenario = grizzly_fixture()
         assert scenario is not None
 
         with pytest.raises(NotImplementedError) as nie:
-            implementation(scenario)
+            task(scenario)
         assert 'BlobStorageClientTask has not implemented GET' in str(nie.value)
 
     def test_put(self, behave_fixture: BehaveFixture, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, tmp_path_factory: TempPathFactory) -> None:
@@ -110,24 +110,24 @@ class TestBlobStorageClientTask:
             'storage.container': 'my-container',
         })
 
-        task = BlobStorageClientTask(
+        task_factory = BlobStorageClientTask(
             RequestDirection.TO,
             'bss://$conf::storage.account?AccountKey=$conf::storage.account_key&Container=$conf::storage.container',
             source='source.json',
             destination='destination.json',
         )
-        assert task.account_name == 'my-storage'
-        assert task.account_key == 'aaaabbb='
-        assert task.container == 'my-container'
+        assert task_factory.account_name == 'my-storage'
+        assert task_factory.account_key == 'aaaabbb='
+        assert task_factory.container == 'my-container'
 
-        implementation = task.implementation()
+        task = task_factory()
 
         _, _, scenario = grizzly_fixture()
         assert scenario is not None
 
         scenario.user._context['variables'].update(grizzly.state.variables)
 
-        implementation(scenario)
+        task(scenario)
 
         assert upload_blob_mock.call_count == 1
         args, _ = upload_blob_mock.call_args_list[-1]
@@ -143,16 +143,16 @@ class TestBlobStorageClientTask:
 
         scenario.user._context_root = str(test_context)
 
-        task = BlobStorageClientTask(
+        task_factory = BlobStorageClientTask(
             RequestDirection.TO,
             'bss://$conf::storage.account?AccountKey=$conf::storage.account_key&Container=$conf::storage.container',
             source='{{ source }}',
             destination='{{ destination }}',
         )
 
-        implementation = task.implementation()
+        task = task_factory()
 
-        implementation(scenario)
+        task(scenario)
 
         assert upload_blob_mock.call_count == 2
 
@@ -163,9 +163,9 @@ class TestBlobStorageClientTask:
         assert args[0].container_name == 'my-container'
         assert args[0].blob_name == 'destination.json'
 
-        task.destination = None
+        task_factory.destination = None
 
-        implementation(scenario)
+        task(scenario)
 
         assert upload_blob_mock.call_count == 3
 

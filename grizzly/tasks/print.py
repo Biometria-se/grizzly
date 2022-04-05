@@ -3,7 +3,7 @@ templating variables.
 
 Instances of this task is created with the step expression:
 
-* [`step_task_print_message`](/grizzly/usage/steps/scenario/tasks/#step_task_print_message)
+* [`step_task_print_message`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_print_message)
 '''
 from typing import TYPE_CHECKING, Any, Callable
 from dataclasses import dataclass
@@ -20,9 +20,9 @@ if TYPE_CHECKING:  # pragma: no cover
 class PrintTask(GrizzlyTask):
     message: str
 
-    def implementation(self) -> Callable[['GrizzlyScenario'], Any]:
-        def _implementation(parent: 'GrizzlyScenario') -> Any:
+    def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
+        def task(parent: 'GrizzlyScenario') -> Any:
             message = Template(self.message).render(**parent.user._context['variables'])
             parent.logger.info(message)
 
-        return _implementation
+        return task

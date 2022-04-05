@@ -47,7 +47,7 @@ class ClientTask(GrizzlyTask):
         if self.variable is not None and self.variable not in self.grizzly.state.variables:
             raise ValueError(f'{self.__class__.__name__}: variable {self.variable} has not been initialized')
 
-    def implementation(self) -> Callable[['GrizzlyScenario'], Any]:
+    def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
         if self.direction == RequestDirection.FROM:
             return self.get
         else:

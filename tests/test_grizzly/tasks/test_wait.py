@@ -9,12 +9,12 @@ from ..fixtures import GrizzlyFixture
 
 class TestWaitTask:
     def test(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
-        task = WaitTask(time=1.0)
+        task_factory = WaitTask(time=1.0)
 
-        assert task.time == 1.0
-        implementation = task.implementation()
+        assert task_factory.time == 1.0
+        task = task_factory()
 
-        assert callable(implementation)
+        assert callable(task)
 
         _, _, scenario = grizzly_fixture()
 
@@ -27,8 +27,8 @@ class TestWaitTask:
         mocker.patch.object(grizzly.tasks.wait, 'gsleep', noop)
         gsleep_spy = mocker.spy(grizzly.tasks.wait, 'gsleep')
 
-        implementation(scenario)
+        task(scenario)
 
         assert gsleep_spy.call_count == 1
         args, _ = gsleep_spy.call_args_list[0]
-        assert args[0] == task.time
+        assert args[0] == task_factory.time

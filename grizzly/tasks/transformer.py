@@ -6,7 +6,7 @@ where many parts of a message can be useful to re-use.
 
 Instances of this task is created with the step expression:
 
-* [`step_task_transform`](/grizzly/usage/steps/scenario/tasks/#step_task_transform)
+* [`step_task_transform`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_transform)
 '''
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, List, Callable, Any, Type
@@ -49,8 +49,8 @@ class TransformerTask(GrizzlyTask):
 
         self._parser = self._transformer.parser(self.expression)
 
-    def implementation(self) -> Callable[['GrizzlyScenario'], Any]:
-        def _implementation(parent: 'GrizzlyScenario') -> Any:
+    def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
+        def task(parent: 'GrizzlyScenario') -> Any:
             content_raw = Template(self.content).render(**parent.user._context['variables'])
 
             try:
@@ -71,4 +71,4 @@ class TransformerTask(GrizzlyTask):
 
             parent.user._context['variables'][self.variable] = value
 
-        return _implementation
+        return task

@@ -49,15 +49,15 @@ class TestHttpClientTask:
 
         request_fire_spy = mocker.spy(scenario.user.environment.events.request, 'fire')
 
-        task = HttpClientTask(RequestDirection.FROM, 'http://example.org', variable='test')
+        task_factory = HttpClientTask(RequestDirection.FROM, 'http://example.org', variable='test')
 
-        implementation = task.implementation()
+        task = task_factory()
 
-        assert callable(implementation)
+        assert callable(task)
 
         assert scenario.user._context['variables'].get('test', None) is None
 
-        implementation(scenario)
+        task(scenario)
 
         assert scenario.user._context['variables'].get('test', '') == jsondumps({'hello': 'world'})
         assert requests_get_spy.call_count == 1
@@ -75,7 +75,7 @@ class TestHttpClientTask:
 
         scenario.user._context['variables']['test'] = None
 
-        implementation(scenario)
+        task(scenario)
 
         assert scenario.user._context['variables'].get('test', '') is None  # not set
         assert requests_get_spy.call_count == 2
@@ -94,12 +94,12 @@ class TestHttpClientTask:
         scenario.user._scenario.failure_exception = StopUser
 
         with pytest.raises(StopUser):
-            implementation(scenario)
+            task(scenario)
 
         scenario.user._scenario.failure_exception = RestartScenario
 
         with pytest.raises(RestartScenario):
-            implementation(scenario)
+            task(scenario)
 
         assert scenario.user._context['variables'].get('test', '') is None  # not set
         assert requests_get_spy.call_count == 4
@@ -116,12 +116,12 @@ class TestHttpClientTask:
         assert isinstance(kwargs.get('exception', None), RuntimeError)
 
     def test_put(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
-        task = HttpClientTask(RequestDirection.TO, 'http://put.example.org', source='')
-        implementation = task.implementation()
+        task_factory = HttpClientTask(RequestDirection.TO, 'http://put.example.org', source='')
+        task = task_factory()
 
         _, _, scenario = grizzly_fixture()
         assert scenario is not None
 
         with pytest.raises(NotImplementedError) as nie:
-            implementation(scenario)
+            task(scenario)
         assert 'HttpClientTask has not implemented PUT' in str(nie.value)

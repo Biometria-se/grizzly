@@ -306,7 +306,7 @@ def step_task_print_message(context: Context, message: str) -> None:
 def step_task_transform(context: Context, content: str, content_type: TransformerContentType, expression: str, variable: str) -> None:
     '''Parse (part of) a JSON object or a XML document and extract a specific value from that and save into a variable.
 
-    This can be especially useful in combination with [`AtomicMessageQueue`](/grizzly/usage/variables/testdata/messagequeue/) variable.
+    This can be especially useful in combination with [`AtomicMessageQueue`](/grizzly/framework/usage/variables/testdata/messagequeue/) variable.
 
     ```gherkin
     And value for variable "document_id" is "None"
@@ -379,7 +379,7 @@ def step_task_client_put_endpoint_file_destination(context: Context, source: str
     used by the task.
 
     ```gherkin
-    Then put "test-file.json" to "sb://my-storage?AccountKey=aaaabbb=&Container=my-container" as "uploaded-test-file.json"
+    Then put "test-file.json" to "bs://my-storage?AccountKey=aaaabbb=&Container=my-container" as "uploaded-test-file.json"
     ```
 
     Args:
