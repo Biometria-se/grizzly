@@ -4,23 +4,23 @@ This is useful if the scenario is using a non-HTTP user or a request to a URL ot
 
 Instances of this task is created with the step expression, if endpoint is defined with scheme `http` or `https`:
 
-* [`step_task_getter_of`](/grizzly/usage/steps/scenario/tasks/#step_task_get_endpoint)
+* [`step_task_client`](/grizzly/usage/steps/scenario/tasks/#step_task_client)
 '''
 from typing import Callable, Any
 
 from jinja2 import Template
 
-from . import getterof, GetterOfTask
+from . import client, ClientTask
 from ...scenarios import GrizzlyScenario
 
 import requests
 
 
-@getterof('http', 'https')
-class HttpGetTask(GetterOfTask):
+@client('http', 'https')
+class HttpClientTask(ClientTask):
     def implementation(self) -> Callable[[GrizzlyScenario], Any]:
         def _implementation(parent: GrizzlyScenario) -> Any:
-            with self.get(parent) as meta:
+            with self.action(parent) as meta:
                 url = Template(self.endpoint).render(**parent.user._context['variables'])
 
                 response = requests.get(url)

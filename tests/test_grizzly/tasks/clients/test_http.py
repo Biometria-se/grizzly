@@ -8,27 +8,27 @@ from locust.exception import StopUser
 from requests import Response
 
 from grizzly.context import GrizzlyContext
-from grizzly.tasks.getter import HttpGetTask
+from grizzly.tasks.clients import HttpClientTask
 from grizzly.exceptions import RestartScenario
 
 from ...fixtures import GrizzlyFixture
 
 
-class TestHttpGetTask:
+class TestHttpClientTask:
     def test(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
         behave = grizzly_fixture.behave
         grizzly = cast(GrizzlyContext, behave.grizzly)
 
         with pytest.raises(ValueError) as ve:
-            HttpGetTask(endpoint='http://example.org', variable='test')
-        assert 'HttpGetTask: variable test has not been initialized' in str(ve)
+            HttpClientTask(endpoint='http://example.org', variable='test')
+        assert 'HttpClientTask: variable test has not been initialized' in str(ve)
 
         response = Response()
         response.url = 'http://example.org'
         response._content = jsondumps({'hello': 'world'}).encode()
 
         requests_get_spy = mocker.patch(
-            'grizzly.tasks.getter.http.requests.get',
+            'grizzly.tasks.clients.http.requests.get',
             side_effect=[response, RuntimeError, RuntimeError, RuntimeError]
         )
 
@@ -40,7 +40,7 @@ class TestHttpGetTask:
 
         request_fire_spy = mocker.spy(scenario.user.environment.events.request, 'fire')
 
-        task = HttpGetTask(endpoint='http://example.org', variable='test')
+        task = HttpClientTask(endpoint='http://example.org', variable='test')
 
         implementation = task.implementation()
 
@@ -58,7 +58,7 @@ class TestHttpGetTask:
         assert request_fire_spy.call_count == 1
         _, kwargs = request_fire_spy.call_args_list[-1]
         assert kwargs.get('request_type', None) == 'TASK'
-        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} HttpGetTask->test'
+        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} HttpClientTask->test'
         assert kwargs.get('response_time', None) >= 0.0
         assert kwargs.get('response_length') == len(jsondumps({'hello': 'world'}))
         assert kwargs.get('context', None) is scenario.user._context
@@ -76,7 +76,7 @@ class TestHttpGetTask:
         assert request_fire_spy.call_count == 2
         _, kwargs = request_fire_spy.call_args_list[-1]
         assert kwargs.get('request_type', None) == 'TASK'
-        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} HttpGetTask->test'
+        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} HttpClientTask->test'
         assert kwargs.get('response_time', None) >= 0.0
         assert kwargs.get('response_length') == 0
         assert kwargs.get('context', None) is scenario.user._context
@@ -100,7 +100,7 @@ class TestHttpGetTask:
         assert request_fire_spy.call_count == 4
         _, kwargs = request_fire_spy.call_args_list[-1]
         assert kwargs.get('request_type', None) == 'TASK'
-        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} HttpGetTask->test'
+        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} HttpClientTask->test'
         assert kwargs.get('response_time', None) >= 0.0
         assert kwargs.get('response_length') == 0
         assert kwargs.get('context', None) is scenario.user._context

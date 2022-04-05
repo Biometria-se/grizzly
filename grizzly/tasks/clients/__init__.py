@@ -7,7 +7,7 @@ from ...scenarios import GrizzlyScenario
 from ...types import GrizzlyTask
 
 
-class GetterOfTask(GrizzlyTask):
+class ClientTask(GrizzlyTask):
     endpoint: str
     variable: str
 
@@ -21,7 +21,7 @@ class GetterOfTask(GrizzlyTask):
             raise ValueError(f'{self.__class__.__name__}: variable {self.variable} has not been initialized')
 
     @contextmanager
-    def get(self, parent: GrizzlyScenario) -> Generator[Dict[str, Any], None, None]:
+    def action(self, parent: GrizzlyScenario) -> Generator[Dict[str, Any], None, None]:
         exception: Optional[Exception] = None
         response_length = 0
         start_time = time()
@@ -48,8 +48,8 @@ class GetterOfTask(GrizzlyTask):
             raise parent.user._scenario.failure_exception()
 
 
-class getterof:
-    available: Dict[str, Type[GetterOfTask]] = {}
+class client:
+    available: Dict[str, Type[ClientTask]] = {}
     schemes: List[str]
 
     def __init__(self, scheme: str, *additional_schemes: str) -> None:
@@ -58,16 +58,16 @@ class getterof:
             schemes += list(additional_schemes)
         self.schemes = schemes
 
-    def __call__(self, impl: Type[GetterOfTask]) -> Type[GetterOfTask]:
+    def __call__(self, impl: Type[ClientTask]) -> Type[ClientTask]:
         available = {scheme: impl for scheme in self.schemes}
-        getterof.available.update(available)
+        client.available.update(available)
 
         return impl
 
 
-from .http import HttpGetTask
+from .http import HttpClientTask
 
 
 __all__ = [
-    'HttpGetTask',
+    'HttpClientTask',
 ]

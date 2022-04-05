@@ -9,7 +9,7 @@ from ..helpers import add_request_task
 from ...types import RequestDirection, RequestMethod
 from ...context import GrizzlyContext
 from ...tasks import PrintTask, WaitTask, TransformerTask, UntilRequestTask, DateTask
-from ...tasks.getter import getterof
+from ...tasks.clients import client
 
 from grizzly_extras.transformer import TransformerContentType
 
@@ -339,10 +339,10 @@ def step_task_transform(context: Context, content: str, content_type: Transforme
 
 
 @then(u'get "{endpoint}" and save response in "{variable}"')
-def step_task_get_endpoint(context: Context, endpoint: str, variable: str) -> None:
+def step_task_client_get_endpoint(context: Context, endpoint: str, variable: str) -> None:
     '''Get information from another host or endpoint than the scenario is load testing and save the response in a variable.
 
-    Task implementations are found in `grizzly.task.getter` and each implementation is looked up through the scheme in the
+    Task implementations are found in `grizzly.task.clients` and each implementation is looked up through the scheme in the
     specified endpoint. If the endpoint is a variable, one have to manually specify the endpoint scheme even though the
     resolved variable contains the scheme. In this case the manually specified scheme will be removed to the endpoint actually
     used by the task.
@@ -362,16 +362,16 @@ def step_task_get_endpoint(context: Context, endpoint: str, variable: str) -> No
 
     assert scheme is not None and len(scheme) > 0, f'could not find scheme in "{endpoint}"'
 
-    getter = getterof.available.get(scheme, None)
+    task_client = client.available.get(scheme, None)
 
-    assert getter is not None, f'no getter task registered for {scheme}'
+    assert task_client is not None, f'no client task registered for {scheme}'
 
     if '{{' in endpoint and '}}' in endpoint:
         grizzly.scenario.orphan_templates.append(endpoint)
         index = len(scheme) + 3
         endpoint = endpoint[index:]
 
-    grizzly.scenario.add_task(getter(
+    grizzly.scenario.add_task(task_client(
         endpoint=endpoint,
         variable=variable,
     ))

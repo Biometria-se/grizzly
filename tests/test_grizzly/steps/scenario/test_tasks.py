@@ -9,7 +9,7 @@ from behave.model import Table, Row
 from grizzly.context import GrizzlyContext
 from grizzly.types import RequestMethod, RequestDirection
 from grizzly.tasks import TransformerTask, PrintTask, WaitTask
-from grizzly.tasks.getter import HttpGetTask
+from grizzly.tasks.clients import HttpClientTask
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import  # noqa: F403
 
 from grizzly_extras.transformer import TransformerContentType
@@ -278,30 +278,30 @@ def test_step_task_transform(behave_fixture: BehaveFixture) -> None:
     })
 
 
-def test_step_task_get_endpoint(behave_fixture: BehaveFixture) -> None:
+def test_step_task_client_get_endpoint(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
 
     with pytest.raises(AssertionError) as ae:
-        step_task_get_endpoint(behave, 'mq.example.com', 'test')
+        step_task_client_get_endpoint(behave, 'mq.example.com', 'test')
     assert 'could not find scheme in "mq.example.com"' in str(ae)
 
     with pytest.raises(AssertionError) as ae:
-        step_task_get_endpoint(behave, 'mq://mq.example.com', 'test')
-    assert 'no getter task registered for mq' in str(ae)
+        step_task_client_get_endpoint(behave, 'mq://mq.example.com', 'test')
+    assert 'no client task registered for mq' in str(ae)
 
     with pytest.raises(ValueError) as ve:
-        step_task_get_endpoint(behave, 'http://www.example.org', 'test')
-    assert 'HttpGetTask: variable test has not been initialized' in str(ve)
+        step_task_client_get_endpoint(behave, 'http://www.example.org', 'test')
+    assert 'HttpClientTask: variable test has not been initialized' in str(ve)
 
     grizzly.state.variables['test'] = 'none'
 
     assert len(grizzly.scenario.tasks) == 0
-    step_task_get_endpoint(behave, 'http://www.example.org', 'test')
+    step_task_client_get_endpoint(behave, 'http://www.example.org', 'test')
     assert len(grizzly.scenario.tasks) == 1
-    assert isinstance(grizzly.scenario.tasks[-1], HttpGetTask)
+    assert isinstance(grizzly.scenario.tasks[-1], HttpClientTask)
 
-    step_task_get_endpoint(behave, 'https://{{ endpoint_url }}', 'test')
+    step_task_client_get_endpoint(behave, 'https://{{ endpoint_url }}', 'test')
 
     task = grizzly.scenario.tasks[-1]
     assert task.endpoint == '{{ endpoint_url }}'
