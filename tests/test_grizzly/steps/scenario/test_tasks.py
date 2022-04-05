@@ -301,6 +301,7 @@ def test_step_task_client_get_endpoint(behave_fixture: BehaveFixture) -> None:
     assert len(grizzly.scenario.tasks) == 1
     assert isinstance(grizzly.scenario.tasks[-1], HttpClientTask)
 
+    grizzly.state.variables['endpoint_url'] = 'https://example.org'
     step_task_client_get_endpoint(behave, 'https://{{ endpoint_url }}', 'test')
 
     task = grizzly.scenario.tasks[-1]

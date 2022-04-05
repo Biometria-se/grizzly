@@ -170,8 +170,8 @@ def test_init_statistics_listener(mocker: MockerFixture, locust_fixture: LocustF
 
     # ApplicationInsight -- short circuit
     mocker.patch(
-        'logging.Logger.addHandler',
-        mocked_noop,
+        'grizzly.listeners.appinsights.AzureLogHandler',
+        autospec=True,
     )
 
     try:

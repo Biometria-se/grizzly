@@ -360,8 +360,7 @@ def step_task_client_get_endpoint(context: Context, endpoint: str, variable: str
 
     if is_template(endpoint):
         index = len(scheme) + 3
-        endpoint = endpoint[index:]
-        grizzly.scenario.orphan_templates.append(endpoint)
+        grizzly.scenario.orphan_templates.append(endpoint[index:])
 
     grizzly.scenario.add_task(task_client(
         RequestDirection.FROM,
@@ -396,8 +395,7 @@ def step_task_client_put_endpoint_file_destination(context: Context, source: str
 
     if is_template(endpoint):
         index = len(scheme) + 3
-        endpoint = endpoint[index:]
-        grizzly.scenario.orphan_templates.append(endpoint)
+        grizzly.scenario.orphan_templates.append(endpoint[index:])
 
     if is_template(source):
         grizzly.scenario.orphan_templates.append(source)

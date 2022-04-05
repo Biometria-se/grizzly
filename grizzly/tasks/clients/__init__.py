@@ -2,6 +2,7 @@ from abc import abstractmethod
 from typing import Dict, Generator, Type, List, Any, Optional, Callable
 from contextlib import contextmanager
 from time import perf_counter as time
+from urllib.parse import urlparse
 
 from ...context import GrizzlyContext
 from ...scenarios import GrizzlyScenario
@@ -9,6 +10,7 @@ from ...types import GrizzlyTask, RequestDirection
 
 
 class ClientTask(GrizzlyTask):
+    _schemes: List[str]
     grizzly: GrizzlyContext
     direction: RequestDirection
     endpoint: str
@@ -19,6 +21,15 @@ class ClientTask(GrizzlyTask):
     def __init__(
         self, direction: RequestDirection, endpoint: str, /, variable: Optional[str] = None, source: Optional[str] = None, destination: Optional[str] = None,
     ) -> None:
+        parsed = urlparse(endpoint)
+
+        if parsed.scheme not in self._schemes:
+            raise AttributeError(f'{self.__class__.__name__}: "{parsed.scheme}" is not supported, must be one of {", ".join(self._schemes)}')
+
+        if '{{' in endpoint and '}}' in endpoint:
+            index = len(parsed.scheme) + 3
+            endpoint = endpoint[index:]
+
         self.direction = direction
         self.endpoint = endpoint
         self.variable = variable
@@ -90,14 +101,17 @@ class client:
 
     def __call__(self, impl: Type[ClientTask]) -> Type[ClientTask]:
         available = {scheme: impl for scheme in self.schemes}
+        impl._schemes = self.schemes
         client.available.update(available)
 
         return impl
 
 
 from .http import HttpClientTask
+from .blobstorage import BlobStorageClientTask
 
 
 __all__ = [
     'HttpClientTask',
+    'BlobStorageClientTask',
 ]
