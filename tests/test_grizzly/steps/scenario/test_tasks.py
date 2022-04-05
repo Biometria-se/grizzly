@@ -327,3 +327,37 @@ def test_step_task_date(behave_fixture: BehaveFixture) -> None:
     assert task.value == '{{ datetime.now() }}'
     assert task.variable == 'date_variable'
     assert task.arguments.get('offset') == '1D'
+
+
+def test_step_task_client_put_endpoint_file_destination(behave_fixture: BehaveFixture) -> None:
+    behave = behave_fixture.context
+    grizzly = cast(GrizzlyContext, behave.grizzly)
+
+    behave.text = 'hello'
+
+    assert len(grizzly.scenario.orphan_templates) == 0
+    assert len(grizzly.scenario.tasks) == 0
+
+    with pytest.raises(AssertionError) as ae:
+        step_task_client_put_endpoint_file_destination(behave, 'file.json', 'http://example.org/put', 'uploaded-file.json')
+    assert 'step text is not allowed for this step expression' in str(ae.value)
+
+    behave.text = None
+
+    step_task_client_put_endpoint_file_destination(behave, 'file-{{ suffix }}.json', 'http://{{ url }}', 'uploaded-file-{{ suffix }}.json')
+
+    assert len(grizzly.scenario.tasks) == 1
+    task = grizzly.scenario.tasks[-1]
+
+    assert isinstance(task, HttpClientTask)
+    assert task.source == 'file-{{ suffix }}.json'
+    assert task.destination == 'uploaded-file-{{ suffix }}.json'
+    assert task.endpoint == '{{ url }}'
+
+    assert len(grizzly.scenario.orphan_templates) == 3
+
+    assert sorted(grizzly.scenario.orphan_templates) == sorted([
+        'file-{{ suffix }}.json',
+        '{{ url }}',
+        'uploaded-file-{{ suffix }}.json',
+    ])

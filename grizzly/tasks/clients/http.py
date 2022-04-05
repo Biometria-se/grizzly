@@ -4,9 +4,11 @@ This is useful if the scenario is using a non-HTTP user or a request to a URL ot
 
 Instances of this task is created with the step expression, if endpoint is defined with scheme `http` or `https`:
 
-* [`step_task_client`](/grizzly/usage/steps/scenario/tasks/#step_task_client)
+* [`step_task_client_get_endpoint`](/grizzly/usage/steps/scenario/tasks/#step_task_client_get_endpoint)
+* ~~[`step_task_client_put_endpoint_file`](/grizzly/usage/steps/scenario/tasks/#step_task_client_put_endpoint_file)~~
+* ~~[`step_task_client_put_endpoint_text`](/grizzly/usage/steps/scenario/tasks/#step_task_client_put_endpoint_text)~~
 '''
-from typing import Callable, Any
+from typing import Any
 
 from jinja2 import Template
 
@@ -18,14 +20,14 @@ import requests
 
 @client('http', 'https')
 class HttpClientTask(ClientTask):
-    def implementation(self) -> Callable[[GrizzlyScenario], Any]:
-        def _implementation(parent: GrizzlyScenario) -> Any:
-            with self.action(parent) as meta:
-                url = Template(self.endpoint).render(**parent.user._context['variables'])
+    def get(self, parent: GrizzlyScenario) -> Any:
+        with self.action(parent) as meta:
+            url = Template(self.endpoint).render(**parent.user._context['variables'])
 
-                response = requests.get(url)
-                value = response.text
-                parent.user._context['variables'][self.variable] = value
-                meta['response_length'] = len(value)
+            response = requests.get(url)
+            value = response.text
+            parent.user._context['variables'][self.variable] = value
+            meta['response_length'] = len(value)
 
-        return _implementation
+    def put(self, parent: GrizzlyScenario) -> Any:
+        return super().put(parent)

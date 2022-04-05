@@ -1,15 +1,13 @@
 '''This module contains step implementations that describes requests sent by `user_class_name` targeting `host`.'''
 from typing import cast
-from urllib.parse import urlparse
 
 from behave.runner import Context
 from behave import register_type, then  # pylint: disable=no-name-in-module
 
-from ..helpers import add_request_task
+from ..helpers import add_request_task, get_task_client, is_template
 from ...types import RequestDirection, RequestMethod
 from ...context import GrizzlyContext
 from ...tasks import PrintTask, WaitTask, TransformerTask, UntilRequestTask, DateTask
-from ...tasks.clients import client
 
 from grizzly_extras.transformer import TransformerContentType
 
@@ -300,7 +298,7 @@ def step_task_print_message(context: Context, message: str) -> None:
     grizzly = cast(GrizzlyContext, context.grizzly)
     grizzly.scenario.add_task(PrintTask(message=message))
 
-    if '{{' in message and '}}' in message:
+    if is_template(message):
         grizzly.scenario.orphan_templates.append(message)
 
 
@@ -334,7 +332,7 @@ def step_task_transform(context: Context, content: str, content_type: Transforme
         variable=variable,
     ))
 
-    if '{{' in content and '}}' in content:
+    if is_template(content):
         grizzly.scenario.orphan_templates.append(content)
 
 
@@ -358,22 +356,60 @@ def step_task_client_get_endpoint(context: Context, endpoint: str, variable: str
     '''
     grizzly = cast(GrizzlyContext, context.grizzly)
 
-    scheme = urlparse(endpoint).scheme
+    scheme, task_client = get_task_client(endpoint)
 
-    assert scheme is not None and len(scheme) > 0, f'could not find scheme in "{endpoint}"'
-
-    task_client = client.available.get(scheme, None)
-
-    assert task_client is not None, f'no client task registered for {scheme}'
-
-    if '{{' in endpoint and '}}' in endpoint:
-        grizzly.scenario.orphan_templates.append(endpoint)
+    if is_template(endpoint):
         index = len(scheme) + 3
         endpoint = endpoint[index:]
+        grizzly.scenario.orphan_templates.append(endpoint)
 
     grizzly.scenario.add_task(task_client(
-        endpoint=endpoint,
+        RequestDirection.FROM,
+        endpoint,
         variable=variable,
+    ))
+
+
+@then(u'put "{source}" to "{endpoint}" as "{destination}"')
+def step_task_client_put_endpoint_file_destination(context: Context, source: str, endpoint: str, destination: str) -> None:
+    '''Put information to another host or endpoint than the scenario is load testing, source being a file.
+
+    Task implementations are found in `grizzly.task.clients` and each implementation is looked up through the scheme in the
+    specified endpoint. If the endpoint is a variable, one have to manually specify the endpoint scheme even though the
+    resolved variable contains the scheme. In this case the manually specified scheme will be removed to the endpoint actually
+    used by the task.
+
+    ```gherkin
+    Then put "test-file.json" to "sb://my-storage?AccountKey=aaaabbb=&Container=my-container" as "uploaded-test-file.json"
+    ```
+
+    Args:
+        source (str): relative path to file in `feature/requests`, supports templating
+        endpoint (str): information about where to get information, see the specific getter task implementations for more information
+        destination (str): name of source on the destination
+    '''
+    assert context.text is None, 'step text is not allowed for this step expression'
+
+    grizzly = cast(GrizzlyContext, context.grizzly)
+
+    scheme, task_client = get_task_client(endpoint)
+
+    if is_template(endpoint):
+        index = len(scheme) + 3
+        endpoint = endpoint[index:]
+        grizzly.scenario.orphan_templates.append(endpoint)
+
+    if is_template(source):
+        grizzly.scenario.orphan_templates.append(source)
+
+    if is_template(destination):
+        grizzly.scenario.orphan_templates.append(destination)
+
+    grizzly.scenario.add_task(task_client(
+        RequestDirection.TO,
+        endpoint,
+        source=source,
+        destination=destination,
     ))
 
 
@@ -410,7 +446,7 @@ def step_task_date(context: Context, value: str, variable: str) -> None:
     grizzly = cast(GrizzlyContext, context.grizzly)
     assert variable in grizzly.state.variables, f'variable {variable} has not been initialized'
 
-    if '{{' in value and '}}' in value:
+    if is_template(value):
         grizzly.scenario.orphan_templates.append(value)
 
     grizzly.scenario.add_task(DateTask(

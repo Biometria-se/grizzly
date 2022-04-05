@@ -10,17 +10,26 @@ from requests import Response
 from grizzly.context import GrizzlyContext
 from grizzly.tasks.clients import HttpClientTask
 from grizzly.exceptions import RestartScenario
+from grizzly.types import RequestDirection
 
 from ...fixtures import GrizzlyFixture
 
 
 class TestHttpClientTask:
-    def test(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
+    def test_get(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
         behave = grizzly_fixture.behave
         grizzly = cast(GrizzlyContext, behave.grizzly)
 
+        with pytest.raises(AttributeError) as ae:
+            HttpClientTask(RequestDirection.TO, 'http://example.org', variable='test')
+        assert 'HttpClientTask: variable argument is not applicable for direction TO' in str(ae.value)
+
+        with pytest.raises(AttributeError) as ae:
+            HttpClientTask(RequestDirection.FROM, 'http://example.org', source='test')
+        assert 'HttpClientTask: source argument is not applicable for direction FROM' in str(ae.value)
+
         with pytest.raises(ValueError) as ve:
-            HttpClientTask(endpoint='http://example.org', variable='test')
+            HttpClientTask(RequestDirection.FROM, 'http://example.org', variable='test')
         assert 'HttpClientTask: variable test has not been initialized' in str(ve)
 
         response = Response()
@@ -40,7 +49,7 @@ class TestHttpClientTask:
 
         request_fire_spy = mocker.spy(scenario.user.environment.events.request, 'fire')
 
-        task = HttpClientTask(endpoint='http://example.org', variable='test')
+        task = HttpClientTask(RequestDirection.FROM, 'http://example.org', variable='test')
 
         implementation = task.implementation()
 
@@ -105,3 +114,14 @@ class TestHttpClientTask:
         assert kwargs.get('response_length') == 0
         assert kwargs.get('context', None) is scenario.user._context
         assert isinstance(kwargs.get('exception', None), RuntimeError)
+
+    def test_put(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
+        task = HttpClientTask(RequestDirection.TO, 'http://put.example.org', source='')
+        implementation = task.implementation()
+
+        _, _, scenario = grizzly_fixture()
+        assert scenario is not None
+
+        with pytest.raises(NotImplementedError) as nie:
+            implementation(scenario)
+        assert 'HttpClientTask has not implemented PUT' in str(nie.value)

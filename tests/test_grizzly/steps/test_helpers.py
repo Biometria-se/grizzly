@@ -20,9 +20,12 @@ from grizzly.steps.helpers import (
     add_save_handler,
     add_request_task,
     add_request_task_response_status_codes,
+    get_task_client,
     normalize_step_name,
     _add_response_handler,
+    is_template,
 )
+from grizzly.tasks.clients import ClientTask, client
 
 from grizzly_extras.transformer import TransformerContentType
 
@@ -424,3 +427,29 @@ def test_normalize_step_name() -> None:
     actual = normalize_step_name('this is just a "string" of text with quoted "words"')
 
     assert expected == actual
+
+
+def test_get_task_client_error() -> None:
+    with pytest.raises(AssertionError) as ae:
+        get_task_client('')
+    assert 'could not find scheme in ""' == str(ae.value)
+
+    with pytest.raises(AssertionError) as ae:
+        get_task_client('mq://mq.example.io')
+    assert 'no client task registered for mq' == str(ae.value)
+
+
+@pytest.mark.parametrize('test_scheme', client.available.keys())
+def test_get_task_client(test_scheme: str) -> None:
+    scheme, task_client = get_task_client(f'{test_scheme}://example.net')
+
+    assert scheme == test_scheme
+    assert task_client is not None
+    assert issubclass(task_client, ClientTask)
+
+
+def test_is_template() -> None:
+    assert is_template('{{ hello_world }}')
+    assert not is_template('{{ hello_world')
+    assert not is_template('hello_world }}')
+    assert is_template('is {{ this }} really a template?')

@@ -1,24 +1,54 @@
-from typing import Dict, Generator, Type, List, Any, Optional
+from abc import abstractmethod
+from typing import Dict, Generator, Type, List, Any, Optional, Callable
 from contextlib import contextmanager
 from time import perf_counter as time
 
 from ...context import GrizzlyContext
 from ...scenarios import GrizzlyScenario
-from ...types import GrizzlyTask
+from ...types import GrizzlyTask, RequestDirection
 
 
 class ClientTask(GrizzlyTask):
+    grizzly: GrizzlyContext
+    direction: RequestDirection
     endpoint: str
-    variable: str
+    variable: Optional[str]
+    source: Optional[str]
+    destination: Optional[str]
 
-    def __init__(self, endpoint: str, variable: str) -> None:
-        self.variable = variable
+    def __init__(
+        self, direction: RequestDirection, endpoint: str, /, variable: Optional[str] = None, source: Optional[str] = None, destination: Optional[str] = None,
+    ) -> None:
+        self.direction = direction
         self.endpoint = endpoint
+        self.variable = variable
+        self.source = source
+        self.destination = destination
 
-        grizzly = GrizzlyContext()
+        self.grizzly = GrizzlyContext()
 
-        if self.variable not in grizzly.state.variables:
+        if self.variable is not None and self.direction != RequestDirection.FROM:
+            raise AttributeError(f'{self.__class__.__name__}: variable argument is not applicable for direction {self.direction.name}')
+
+        if self.source is not None and self.direction != RequestDirection.TO:
+            raise AttributeError(f'{self.__class__.__name__}: source argument is not applicable for direction {self.direction.name}')
+
+        if self.variable is not None and self.variable not in self.grizzly.state.variables:
             raise ValueError(f'{self.__class__.__name__}: variable {self.variable} has not been initialized')
+
+    def implementation(self) -> Callable[['GrizzlyScenario'], Any]:
+        if self.direction == RequestDirection.FROM:
+            return self.get
+        else:
+            return self.put
+
+    @abstractmethod
+    def get(self, parent: GrizzlyScenario) -> Any:
+        raise NotImplementedError(f'{self.__class__.__name__} has not implemented GET')
+
+    @abstractmethod
+    def put(self, parent: GrizzlyScenario) -> Any:
+        raise NotImplementedError(f'{self.__class__.__name__} has not implemented PUT')
 
     @contextmanager
     def action(self, parent: GrizzlyScenario) -> Generator[Dict[str, Any], None, None]:
