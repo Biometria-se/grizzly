@@ -25,10 +25,18 @@ jobs:
     steps:
     - name: timezone
       id: timezone
+      if: ${{ !env.ACT }}
       uses: szenius/set-timezone@v1.0
       with:
         timezoneLinux: "Europe/Stockholm"
         timezoneWindows: "W. Europe Standard Time"
+
+    - name: timezone
+      id: timezone-local
+      if: ${{ env.ACT }}
+      run: |
+        sudo ln -fs /usr/share/zoneinfo/Europe/Stockholm /etc/localtime
+        sudo ln -fs /usr/share/zoneinfo/Europe/Stockholm /etc/timezone
 
     - name: checkout
       id: checkout
