@@ -12,7 +12,6 @@ from .fixtures import (
     NoopZmqFixture,
     ParamikoFixture,
     BehaveFixture,
-    RequestTaskFailureFixture,
     RequestTaskFixture,
     GrizzlyFixture,
 )
@@ -56,17 +55,10 @@ def _noop_zmq(mocker: MockerFixture) -> Generator[NoopZmqFixture, None, None]:
     yield NoopZmqFixture(mocker)
 
 
-@pytest.mark.usefixtures('tmp_path_factory')
-def _request_task_syntax_error(tmp_path_factory: TempPathFactory) -> Generator[RequestTaskFailureFixture, None, None]:
-    with RequestTaskFailureFixture(tmp_path_factory) as fixture:
-        yield fixture
-
-
 cleanup = pytest.fixture()(_atomicvariable_cleanup)
 locust_fixture = pytest.fixture()(_locust_fixture)
 paramiko_fixture = pytest.fixture()(_paramiko_fixture)
 behave_fixture = pytest.fixture()(_behave_fixture)
 request_task = pytest.fixture()(_request_task)
-request_task_syntax_error = pytest.fixture()(_request_task_syntax_error)
 grizzly_fixture = pytest.fixture(scope='function')(_grizzly_fixture)
 noop_zmq = pytest.fixture()(_noop_zmq)

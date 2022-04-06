@@ -319,22 +319,6 @@ class RequestTaskFixture:
         return True
 
 
-class RequestTaskFailureFixture(RequestTaskFixture):
-    def __enter__(self) -> 'RequestTaskFailureFixture':
-        test_context = self._tmp_path_factory.mktemp('example_payload') / 'requests'
-        test_context.mkdir()
-        payload_file = test_context / 'payload-syntax-error.j2.json'
-        payload_file.touch()
-
-        # remove all j2 end tags, to create syntax error
-        contents = REQUEST_TASK_TEMPLATE_CONTENTS.replace('}}', '')
-        payload_file.write_text(contents)
-        self.context_root = path.dirname(str(payload_file))
-        self.relative_path = str(payload_file).replace(f'{path}/', '')
-
-        return self
-
-
 class GrizzlyFixture:
     request_task: RequestTaskFixture
     grizzly: GrizzlyContext

@@ -7,9 +7,10 @@ from urllib.parse import urlparse
 from ...context import GrizzlyContext
 from ...scenarios import GrizzlyScenario
 from ...types import RequestDirection
-from .. import GrizzlyTask
+from .. import GrizzlyTask, template
 
 
+@template('endpoint', 'destination')
 class ClientTask(GrizzlyTask):
     _schemes: List[str]
 

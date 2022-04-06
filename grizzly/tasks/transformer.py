@@ -10,17 +10,17 @@ Instances of this task is created with the step expression:
 '''
 from typing import TYPE_CHECKING, List, Callable, Any, Type
 
-from jinja2 import Template
 from grizzly_extras.transformer import Transformer, transformer, TransformerContentType, TransformerError
 
 from ..context import GrizzlyContext
 from ..exceptions import TransformerLocustError
-from . import GrizzlyTask
+from . import GrizzlyTask, template
 
 if TYPE_CHECKING:  # pragma: no cover
     from ..scenarios import GrizzlyScenario
 
 
+@template('content')
 class TransformerTask(GrizzlyTask):
     expression: str
     variable: str
@@ -54,7 +54,7 @@ class TransformerTask(GrizzlyTask):
 
     def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
         def task(parent: 'GrizzlyScenario') -> Any:
-            content_raw = Template(self.content).render(**parent.user._context['variables'])
+            content_raw = parent.render(self.content)
 
             try:
                 content = self._transformer.transform(content_raw)

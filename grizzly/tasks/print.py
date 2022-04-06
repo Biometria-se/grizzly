@@ -7,14 +7,13 @@ Instances of this task is created with the step expression:
 '''
 from typing import TYPE_CHECKING, Any, Callable
 
-from jinja2 import Template
-
-from . import GrizzlyTask
+from . import GrizzlyTask, template
 
 if TYPE_CHECKING:  # pragma: no cover
     from ..scenarios import GrizzlyScenario
 
 
+@template('message')
 class PrintTask(GrizzlyTask):
     message: str
 
@@ -23,7 +22,7 @@ class PrintTask(GrizzlyTask):
 
     def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
         def task(parent: 'GrizzlyScenario') -> Any:
-            message = Template(self.message).render(**parent.user._context['variables'])
+            message = parent.render(self.message)
             parent.logger.info(message)
 
         return task

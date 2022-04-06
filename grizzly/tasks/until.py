@@ -23,12 +23,13 @@ from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments,
 
 from ..context import GrizzlyContext
 from .request import RequestTask
-from . import GrizzlyTask
+from . import GrizzlyTask, template
 
 if TYPE_CHECKING:  # pragma: no cover
     from ..scenarios import GrizzlyScenario
 
 
+@template('condition', 'expression')
 class UntilRequestTask(GrizzlyTask):
     request: RequestTask
     condition: str
@@ -81,10 +82,7 @@ class UntilRequestTask(GrizzlyTask):
 
         def task(parent: 'GrizzlyScenario') -> Any:
             task_name = f'{self.request.scenario.identifier} {self.request.name}, w={self.wait}s, r={self.retries}'
-            if '{{' in self.condition and '}}' in self.condition:
-                condition_rendered = Template(self.condition).render(**parent.user._context['variables'])
-            else:
-                condition_rendered = self.condition
+            condition_rendered = parent.render(self.condition)
 
             if not transform.validate(condition_rendered):
                 raise RuntimeError(f'{condition_rendered} is not a valid expression for {self.request.response.content_type.name}')

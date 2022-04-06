@@ -252,7 +252,7 @@ def normalize_step_name(step_name: str) -> str:
     return re.sub(r'"[^"]*"', '""', step_name)
 
 
-def get_task_client(endpoint: str) -> Tuple[str, Type[ClientTask]]:
+def get_task_client(endpoint: str) -> Type[ClientTask]:
     scheme = urlparse(endpoint).scheme
 
     assert scheme is not None and len(scheme) > 0, f'could not find scheme in "{endpoint}"'
@@ -261,7 +261,7 @@ def get_task_client(endpoint: str) -> Tuple[str, Type[ClientTask]]:
 
     assert task_client is not None, f'no client task registered for {scheme}'
 
-    return scheme, task_client
+    return task_client
 
 
 def is_template(text: str) -> bool:

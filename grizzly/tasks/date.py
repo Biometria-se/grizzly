@@ -22,19 +22,19 @@ except ImportError:
     # pyright: reportMissingImports=false
     from backports.zoneinfo import ZoneInfo, ZoneInfoNotFoundError  # type: ignore[no-redef]  # pylint: disable=import-error
 
-from jinja2 import Template
 from dateutil.parser import ParserError, parse as dateparser
 from dateutil.relativedelta import relativedelta
 
 from grizzly_extras.arguments import get_unsupported_arguments, split_value, parse_arguments
 
 from ..utils import parse_timespan
-from . import GrizzlyTask
+from . import GrizzlyTask, template
 
 if TYPE_CHECKING:  # pragma: no cover
     from ..scenarios import GrizzlyScenario
 
 
+@template('value', 'arguments')
 class DateTask(GrizzlyTask):
     variable: str
     value: str
@@ -57,14 +57,14 @@ class DateTask(GrizzlyTask):
 
     def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
         def task(parent: 'GrizzlyScenario') -> Any:
-            value_rendered = Template(self.value).render(**parent.user._context['variables'], datetime=datetime)
+            value_rendered = parent.render(self.value, dict(datetime=datetime))
 
             arguments_rendered: Dict[str, str] = {}
 
             for argument_name, argument_value in self.arguments.items():
                 if argument_value is None:
                     continue
-                arguments_rendered[argument_name] = Template(argument_value).render(**parent.user._context['variables'])
+                arguments_rendered[argument_name] = parent.render(argument_value)
 
             try:
                 date_value = dateparser(value_rendered)
@@ -73,7 +73,7 @@ class DateTask(GrizzlyTask):
 
             offset = self.arguments.get('offset', None)
             if offset is not None:
-                offset_rendered = Template(offset).render(**parent.user._context['variables'])
+                offset_rendered = parent.render(offset)
                 offset_params = cast(Any, parse_timespan(offset_rendered))
                 date_value += relativedelta(**offset_params)
 

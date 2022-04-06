@@ -29,7 +29,7 @@ from .listeners import init, init_statistics_listener, quitting, validate_result
 from .testdata.utils import initialize_testdata
 from .types import TestdataType
 from .context import GrizzlyContext
-from .tasks import RequestTask
+from .tasks import GrizzlyTask
 from .users.base import GrizzlyUser
 
 from .utils import create_scenario_class_type, create_user_class_type
@@ -76,9 +76,9 @@ def on_local(context: Context) -> bool:
     return value
 
 
-def setup_locust_scenarios(context: GrizzlyContext) -> Tuple[List[Type[GrizzlyUser]], List[RequestTask], Set[str]]:
+def setup_locust_scenarios(context: GrizzlyContext) -> Tuple[List[Type[GrizzlyUser]], List[GrizzlyTask], Set[str]]:
     user_classes: List[Type[GrizzlyUser]] = []
-    request_tasks: List[RequestTask] = []
+    tasks: List[GrizzlyTask] = []
 
     scenarios = context.scenarios()
 
@@ -100,18 +100,18 @@ def setup_locust_scenarios(context: GrizzlyContext) -> Tuple[List[Type[GrizzlyUs
 
         external_dependencies.update(user_class_type.__dependencies__)
 
+        # @TODO: how do we specify other type of grizzly.scenarios?
         scenario_type = create_scenario_class_type('IteratorScenario', scenario)
         scenario.name = scenario_type.__name__
         for task in scenario.tasks:
             scenario_type.populate(task)
-            if isinstance(task, RequestTask):
-                request_tasks.append(task)
+            tasks.append(task)
 
         setattr(user_class_type, 'tasks', [scenario_type])
 
         user_classes.append(user_class_type)
 
-    return user_classes, request_tasks, external_dependencies
+    return user_classes, tasks, external_dependencies
 
 
 def setup_resource_limits(context: Context) -> None:
@@ -133,7 +133,7 @@ def setup_resource_limits(context: Context) -> None:
             )
 
 
-def setup_environment_listeners(context: Context, environment: Environment, request_tasks: List[RequestTask]) -> Set[str]:
+def setup_environment_listeners(context: Context, environment: Environment, tasks: List[GrizzlyTask]) -> Set[str]:
     # make sure we don't have any listeners
     environment.events.init._handlers = []
     environment.events.test_start._handlers = []
@@ -149,7 +149,7 @@ def setup_environment_listeners(context: Context, environment: Environment, requ
 
     # initialize testdata
     try:
-        testdata, external_dependencies = initialize_testdata(request_tasks)
+        testdata, external_dependencies = initialize_testdata(tasks)
         logger.debug(f'{testdata=}')
         for scenario_testdata in testdata.values():
             for variable, value in scenario_testdata.items():
@@ -262,14 +262,13 @@ def run(context: Context) -> int:
 
     greenlet_exception_handler = greenlet_exception_logger(logger)
 
-    user_classes: List[Type[GrizzlyUser]] = []
-    request_tasks: List[RequestTask] = []
     external_processes: Dict[str, subprocess.Popen] = {}
 
-    user_classes, request_tasks, external_dependencies = setup_locust_scenarios(grizzly)
+    user_classes, tasks, external_dependencies = setup_locust_scenarios(grizzly)
 
     assert len(user_classes) > 0, 'no users specified in feature'
     assert len(user_classes) <= grizzly.setup.user_count, f"increase the number in step 'Given \"{grizzly.setup.user_count}\" users' to at least {len(user_classes)}"
+    assert len(tasks) > 0, 'no tasks specified in feature'
 
     try:
         setup_resource_limits(context)
@@ -280,7 +279,7 @@ def run(context: Context) -> int:
             events=events,
         )
 
-        variable_dependencies = setup_environment_listeners(context, environment, request_tasks)
+        variable_dependencies = setup_environment_listeners(context, environment, tasks)
         external_dependencies.update(variable_dependencies)
 
         if not on_master(context) and len(external_dependencies) > 0:

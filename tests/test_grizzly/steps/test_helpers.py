@@ -441,9 +441,8 @@ def test_get_task_client_error() -> None:
 
 @pytest.mark.parametrize('test_scheme', client.available.keys())
 def test_get_task_client(test_scheme: str) -> None:
-    scheme, task_client = get_task_client(f'{test_scheme}://example.net')
+    task_client = get_task_client(f'{test_scheme}://example.net')
 
-    assert scheme == test_scheme
     assert task_client is not None
     assert issubclass(task_client, ClientTask)
 

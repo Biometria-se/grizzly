@@ -1,19 +1,14 @@
-import os
-
-from typing import List, cast
+from typing import cast
 from json import loads as jsonloads, dumps as jsondumps
 
-import pytest
-
 from jinja2 import Template
-from jinja2.exceptions import TemplateError
 
-from grizzly.testdata.ast import RequestSourceMapping, _parse_templates, get_template_variables
+from grizzly.testdata.ast import _parse_templates, get_template_variables
 from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContextScenario
-from grizzly.tasks import RequestTask
+from grizzly.tasks import RequestTask, PrintTask
 
-from ..fixtures import RequestTaskFixture, RequestTaskFailureFixture
+from ..fixtures import RequestTaskFixture
 
 
 def test__parse_template(request_task: RequestTaskFixture) -> None:
@@ -30,53 +25,29 @@ def test__parse_template(request_task: RequestTaskFixture) -> None:
 
     request.source = jsondumps(source)
     request.template = Template(request.source)
+    scenario = GrizzlyContextScenario()
+    scenario.name = 'TestScenario'
+    scenario.add_task(request)
 
-    templates: RequestSourceMapping = {
-        'TestScenario': set([('.', request)])
-    }
+    templates = {scenario: set(request.get_templates())}
 
     variables = _parse_templates(templates)
 
-    assert 'TestScenario' in variables
-    assert len(variables['TestScenario']) == 8
-    assert 'messageID' in variables['TestScenario']
-    assert 'AtomicIntegerIncrementer.messageID' in variables['TestScenario']
-    assert 'AtomicDate.now' in variables['TestScenario']
-    assert 'AtomicCsvRow.test.header1' in variables['TestScenario']
-    assert 'AtomicCsvRow.test.header2' in variables['TestScenario']
-    assert 'AtomicDirectoryContents.test' in variables['TestScenario']
-    assert 'a_sub_string' in variables['TestScenario']
-    assert 'a_string' in variables['TestScenario']
-
-
-def test__parse_template_syntax_error(request_task_syntax_error: RequestTaskFailureFixture) -> None:
-    templates: RequestSourceMapping = {
-        'TestScenario': set([(request_task_syntax_error.context_root, request_task_syntax_error.relative_path,)])
-    }
-
-    with pytest.raises(TemplateError):
-        _parse_templates(templates)
-
-
-def test__parse_template_notfound() -> None:
-    templates: RequestSourceMapping = {
-        'TestScenario': set([(os.path.join('some', 'weird', 'path'), 'non-existing.j2.json')])
-    }
-
-    with pytest.raises(TemplateError):
-        _parse_templates(templates)
-
-
-def test_get_template_variables_none() -> None:
-    variables = get_template_variables(None)
-    assert variables == {}
-
-    variables = get_template_variables([])
-    assert variables == {}
+    assert 'TestScenario_bdd2cac2' in variables
+    assert len(variables['TestScenario_bdd2cac2']) == 8
+    assert 'messageID' in variables['TestScenario_bdd2cac2']
+    assert 'AtomicIntegerIncrementer.messageID' in variables['TestScenario_bdd2cac2']
+    assert 'AtomicDate.now' in variables['TestScenario_bdd2cac2']
+    assert 'AtomicCsvRow.test.header1' in variables['TestScenario_bdd2cac2']
+    assert 'AtomicCsvRow.test.header2' in variables['TestScenario_bdd2cac2']
+    assert 'AtomicDirectoryContents.test' in variables['TestScenario_bdd2cac2']
+    assert 'a_sub_string' in variables['TestScenario_bdd2cac2']
+    assert 'a_string' in variables['TestScenario_bdd2cac2']
 
 
 def test_get_template_variables() -> None:
-    tasks: List[RequestTask] = []
+    variables = get_template_variables([])
+    assert variables == {}
 
     scenario = GrizzlyContextScenario()
     scenario.name = 'TestScenario'
@@ -85,18 +56,22 @@ def test_get_template_variables() -> None:
     scenario.add_task(
         RequestTask(RequestMethod.POST, name='Test POST request', endpoint='/api/test/post')
     )
-    tasks.append(cast(RequestTask, scenario.tasks[-1]))
-    tasks[-1].source = '{{ AtomicRandomString.test }}'
-    tasks[-1].template = Template(tasks[-1].source)
+    task = cast(RequestTask, scenario.tasks[-1])
+    task.source = '{{ AtomicRandomString.test }}'
+    task.template = Template(task.source)
 
     scenario.add_task(
-        RequestTask(RequestMethod.GET, name='Test GET request', endpoint='/api/test/get')
+        RequestTask(RequestMethod.GET, name='{{ env }} GET request', endpoint='/api/{{ env }}/get')
     )
-    tasks.append(cast(RequestTask, scenario.tasks[-1]))
-    tasks[-1].source = '{{ AtomicIntegerIncrementer.test }}'
-    tasks[-1].template = Template(tasks[-1].source)
+    task = cast(RequestTask, scenario.tasks[-1])
+    task.source = '{{ AtomicIntegerIncrementer.test }}'
+    task.template = Template(task.source)
 
-    variables = get_template_variables(tasks)
+    scenario.add_task(
+        PrintTask(message='{{ foo }}')
+    )
+
+    variables = get_template_variables(scenario.tasks)
 
     expected_scenario_name = '_'.join([scenario.name, scenario.identifier])
 
@@ -104,3 +79,5 @@ def test_get_template_variables() -> None:
     assert expected_scenario_name in variables
     assert 'AtomicRandomString.test' in variables[expected_scenario_name]
     assert 'AtomicIntegerIncrementer.test' in variables[expected_scenario_name]
+    assert 'foo' in variables[expected_scenario_name]
+    assert 'env' in variables[expected_scenario_name]

@@ -20,7 +20,7 @@ from grizzly_extras.transformer import TransformerContentType
 from grizzly_extras.arguments import parse_arguments, split_value, unquote
 
 from ..types import RequestMethod
-from . import GrizzlyTask
+from . import GrizzlyTask, template as _template  # need to rename to avoid unused-import collision due to RequestTask.template ?!
 
 if TYPE_CHECKING:  # pragma: no cover
     from ..scenarios import GrizzlyScenario
@@ -62,6 +62,7 @@ class RequestTaskResponse:
                 self.status_codes.pop(index)
 
 
+@_template('name', 'endpoint', 'source')
 class RequestTask(GrizzlyTask):
     method: RequestMethod
     name: str

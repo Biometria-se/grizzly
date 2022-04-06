@@ -68,9 +68,6 @@ def step_task_request_with_name_to_endpoint_until(context: Context, method: Requ
             condition=condition_rendered,
         ))
 
-        if '{{' in condition_rendered and '}}' in condition_rendered:
-            grizzly.scenario.orphan_templates.append(condition_rendered)
-
 
 @then(u'{method:Method} request with name "{name}" {direction:Direction} endpoint "{endpoint}"')
 def step_task_request_text_with_name_to_endpoint(context: Context, method: RequestMethod, name: str, direction: RequestDirection, endpoint: str) -> None:
@@ -163,7 +160,8 @@ def step_task_request_file_with_name_endpoint(context: Context, method: RequestM
         endpoint (str): URI relative to `host` in the scenario, can contain variables and in certain cases `user_class_name` specific parameters
     '''
     assert method.direction == RequestDirection.TO, f'{method.name} is not allowed'
-    assert context.text is None, f'Step text is not allowed for {method.name}'
+    assert context.text is None, f'step text is not allowed for {method.name}'
+    assert not is_template(source), 'source file cannot be a template'
     add_request_task(context, method=method, source=source, name=name, endpoint=endpoint)
 
 
@@ -198,7 +196,8 @@ def step_task_request_file_with_name(context: Context, method: RequestMethod, so
         name (str): name of the requests in logs, can contain variables
     '''
     assert method.direction == RequestDirection.TO, f'{method.name} is not allowed'
-    assert context.text is None, f'Step text is not allowed for {method.name}'
+    assert context.text is None, f'step text is not allowed for {method.name}'
+    assert not is_template(source), 'source file cannot be a template'
     add_request_task(context, method=method, source=source, name=name)
 
 
@@ -298,9 +297,6 @@ def step_task_print_message(context: Context, message: str) -> None:
     grizzly = cast(GrizzlyContext, context.grizzly)
     grizzly.scenario.add_task(PrintTask(message=message))
 
-    if is_template(message):
-        grizzly.scenario.orphan_templates.append(message)
-
 
 @then(u'parse "{content}" as "{content_type:ContentType}" and save value of "{expression}" in variable "{variable}"')
 def step_task_transform(context: Context, content: str, content_type: TransformerContentType, expression: str, variable: str) -> None:
@@ -332,9 +328,6 @@ def step_task_transform(context: Context, content: str, content_type: Transforme
         variable=variable,
     ))
 
-    if is_template(content):
-        grizzly.scenario.orphan_templates.append(content)
-
 
 @then(u'get "{endpoint}" and save response in "{variable}"')
 def step_task_client_get_endpoint(context: Context, endpoint: str, variable: str) -> None:
@@ -356,11 +349,7 @@ def step_task_client_get_endpoint(context: Context, endpoint: str, variable: str
     '''
     grizzly = cast(GrizzlyContext, context.grizzly)
 
-    scheme, task_client = get_task_client(endpoint)
-
-    if is_template(endpoint):
-        index = len(scheme) + 3
-        grizzly.scenario.orphan_templates.append(endpoint[index:])
+    task_client = get_task_client(endpoint)
 
     grizzly.scenario.add_task(task_client(
         RequestDirection.FROM,
@@ -391,16 +380,9 @@ def step_task_client_put_endpoint_file_destination(context: Context, source: str
 
     grizzly = cast(GrizzlyContext, context.grizzly)
 
-    scheme, task_client = get_task_client(endpoint)
+    task_client = get_task_client(endpoint)
 
     assert not is_template(source), 'source file cannot be a template'
-
-    if is_template(endpoint):
-        index = len(scheme) + 3
-        grizzly.scenario.orphan_templates.append(endpoint[index:])
-
-    if is_template(destination):
-        grizzly.scenario.orphan_templates.append(destination)
 
     grizzly.scenario.add_task(task_client(
         RequestDirection.TO,
@@ -442,9 +424,6 @@ def step_task_date(context: Context, value: str, variable: str) -> None:
     '''
     grizzly = cast(GrizzlyContext, context.grizzly)
     assert variable in grizzly.state.variables, f'variable {variable} has not been initialized'
-
-    if is_template(value):
-        grizzly.scenario.orphan_templates.append(value)
 
     grizzly.scenario.add_task(DateTask(
         value=value,

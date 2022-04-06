@@ -19,12 +19,18 @@ class TestDateTask:
             DateTask('date_variable', '2022-01-17 | asdf=True')
         assert 'unsupported arguments asdf' in str(ve)
 
-        task_factory = DateTask('date_variable', '{{ datetime.now() }} | offset=-1D, timezone=UTC, format="%Y-%m-%d"')
+        task_factory = DateTask('date_variable', '{{ datetime.now() }} | offset=-1D, timezone="{{ timezone }}", format="%Y-%m-%d"')
 
         assert task_factory.value == '{{ datetime.now() }}'
         assert task_factory.arguments.get('offset', None) == '-1D'
-        assert task_factory.arguments.get('timezone', None) == 'UTC'
+        assert task_factory.arguments.get('timezone', None) == '{{ timezone }}'
         assert task_factory.arguments.get('format', None) == '%Y-%m-%d'
+        templates = sorted(task_factory.get_templates())
+        assert len(templates) == 2
+        assert templates == sorted([
+            '{{ datetime.now() }}',
+            '{{ timezone }}',
+        ])
 
     def test___call__(self, grizzly_fixture: GrizzlyFixture) -> None:
         behave = grizzly_fixture.behave

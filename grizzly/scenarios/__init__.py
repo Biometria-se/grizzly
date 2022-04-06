@@ -1,10 +1,11 @@
 import logging
 
-from typing import Callable
+from typing import Callable, Optional, Dict, Any
 from os import environ
 
 from locust.exception import StopUser
 from locust.user.sequential_taskset import SequentialTaskSet
+from jinja2 import Template
 
 from ..context import GrizzlyContext
 from ..testdata.communication import TestdataConsumer
@@ -26,6 +27,12 @@ class GrizzlyScenario(SequentialTaskSet):
     @classmethod
     def populate(cls, task_factory: GrizzlyTask) -> None:
         cls.tasks.append(task_factory())
+
+    def render(self, input: str, variables: Optional[Dict[str, Any]] = None) -> str:
+        if variables is None:
+            variables = {}
+
+        return Template(input).render(**self.user._context['variables'], **variables)
 
     def on_start(self) -> None:
         producer_address = environ.get('TESTDATA_PRODUCER_ADDRESS', None)

@@ -83,15 +83,20 @@ def test_step_task_request_with_name_to_endpoint_until(behave_fixture: BehaveFix
     assert len(grizzly.scenario.tasks) == 4
     tasks = cast(List[UntilRequestTask], grizzly.scenario.tasks)
 
+    templates: List[str] = []
+
     assert tasks[-1].request.endpoint == '/api/bar'
     assert tasks[-1].condition == '$.`this`[?status="bar"]'
+    templates += tasks[-1].get_templates()
     assert tasks[-2].request.endpoint == '/api/foo'
     assert tasks[-2].condition == '$.`this`[?status="foo"]'
+    templates += tasks[-2].get_templates()
     assert tasks[-3].request.endpoint == '/api/{{ variable }}'
     assert tasks[-3].condition == '$.`this`[?status="{{ variable }}"]'
+    templates += tasks[-3].get_templates()
 
-    assert len(grizzly.scenario.orphan_templates) == 1
-    assert grizzly.scenario.orphan_templates[-1] == '$.`this`[?status="{{ variable }}"]'
+    assert len(templates) == 1
+    assert templates[-1] == '$.`this`[?status="{{ variable }}"]'
 
 
 @pytest.mark.parametrize('method', RequestDirection.TO.methods)
@@ -269,8 +274,10 @@ def test_step_task_transform(behave_fixture: BehaveFixture) -> None:
         'document_id',
     )
 
-    assert len(grizzly.scenario.orphan_templates) == 1
-    assert grizzly.scenario.orphan_templates[-1] == jsondumps({
+    templates = grizzly.scenario.tasks[-1].get_templates()
+
+    assert len(templates) == 1
+    assert templates[-1] == jsondumps({
         'document': {
             'id': 'DOCUMENT_8483-1',
             'title': 'TPM Report {{ year }}',
@@ -321,13 +328,15 @@ def test_step_task_date(behave_fixture: BehaveFixture) -> None:
     step_task_date(behave, '{{ datetime.now() }} | offset=1D', 'date_variable')
 
     assert len(grizzly.scenario.tasks) == 1
-    assert len(grizzly.scenario.orphan_templates) == 1
     assert isinstance(grizzly.scenario.tasks[-1], DateTask)
 
     task = grizzly.scenario.tasks[-1]
     assert task.value == '{{ datetime.now() }}'
     assert task.variable == 'date_variable'
     assert task.arguments.get('offset') == '1D'
+    templates = task.get_templates()
+    assert len(templates) == 1
+    assert templates[0] == '{{ datetime.now() }}'
 
 
 def test_step_task_client_put_endpoint_file_destination(behave_fixture: BehaveFixture) -> None:
@@ -359,8 +368,9 @@ def test_step_task_client_put_endpoint_file_destination(behave_fixture: BehaveFi
     assert task.destination == 'uploaded-file-{{ suffix }}.json'
     assert task.endpoint == '{{ url }}'
 
-    assert len(grizzly.scenario.orphan_templates) == 2
-    assert sorted(grizzly.scenario.orphan_templates) == sorted([
+    templates = task.get_templates()
+    assert len(templates) == 2
+    assert sorted(templates) == sorted([
         '{{ url }}',
         'uploaded-file-{{ suffix }}.json',
     ])
