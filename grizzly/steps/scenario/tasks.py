@@ -63,7 +63,7 @@ def step_task_request_with_name_to_endpoint_until(context: Context, method: Requ
         for key, value in substitues.items():
             condition_rendered = condition_rendered.replace(f'{{{{ {key} }}}}', value)
 
-        grizzly.scenario.tasks.append(UntilRequestTask(
+        grizzly.scenario.add_task(UntilRequestTask(
             request=request_task,
             condition=condition_rendered,
         ))

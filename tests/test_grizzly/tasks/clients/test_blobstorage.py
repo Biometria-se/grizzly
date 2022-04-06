@@ -125,6 +125,8 @@ class TestBlobStorageClientTask:
         _, _, scenario = grizzly_fixture()
         assert scenario is not None
 
+        request_fire_spy = mocker.spy(scenario.user.environment.events.request, 'fire')
+
         scenario.user._context['variables'].update(grizzly.state.variables)
 
         task(scenario)
@@ -140,6 +142,15 @@ class TestBlobStorageClientTask:
         content_settings = kwargs.get('content_settings', None)
         assert isinstance(content_settings, ContentSettings)
         assert content_settings.content_type == 'text/plain'
+
+        assert request_fire_spy.call_count == 1
+        _, kwargs = request_fire_spy.call_args_list[-1]
+        assert kwargs.get('request_type', None) == 'TASK'
+        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} BlobStorage->my-container'
+        assert kwargs.get('response_time', None) >= 0.0
+        assert kwargs.get('response_length') == len('source.json')
+        assert kwargs.get('context', None) is scenario.user._context
+        assert kwargs.get('exception', '') is None
 
         test_context = tmp_path_factory.mktemp('test_context')
         (test_context / 'requests').mkdir()
@@ -171,6 +182,15 @@ class TestBlobStorageClientTask:
         assert isinstance(content_settings, ContentSettings)
         assert content_settings.content_type == 'application/json'
 
+        assert request_fire_spy.call_count == 2
+        _, kwargs = request_fire_spy.call_args_list[-1]
+        assert kwargs.get('request_type', None) == 'TASK'
+        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} BlobStorage->my-container'
+        assert kwargs.get('response_time', None) >= 0.0
+        assert kwargs.get('response_length') == len('this is my hello world test!')
+        assert kwargs.get('context', None) is scenario.user._context
+        assert kwargs.get('exception', '') is None
+
         task_factory.destination = None
 
         task(scenario)
@@ -183,3 +203,12 @@ class TestBlobStorageClientTask:
         assert args[1] == 'this is my hello world test!'
         assert args[0].container_name == 'my-container'
         assert args[0].blob_name == 'source.json'
+
+        assert request_fire_spy.call_count == 3
+        _, kwargs = request_fire_spy.call_args_list[-1]
+        assert kwargs.get('request_type', None) == 'TASK'
+        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} BlobStorage->my-container'
+        assert kwargs.get('response_time', None) >= 0.0
+        assert kwargs.get('response_length') == len('this is my hello world test!')
+        assert kwargs.get('context', None) is scenario.user._context
+        assert kwargs.get('exception', '') is None

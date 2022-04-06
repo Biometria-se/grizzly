@@ -10,9 +10,14 @@ from ...types import RequestDirection
 from .. import GrizzlyTask, template
 
 
-@template('endpoint', 'destination')
+@template('endpoint', 'destination', 'source')
 class ClientTask(GrizzlyTask):
     _schemes: List[str]
+    _short_name: str
+    _direction_arrow: Dict[RequestDirection, str] = {
+        RequestDirection.FROM: '<-',
+        RequestDirection.TO: '->',
+    }
 
     grizzly: GrizzlyContext
     direction: RequestDirection
@@ -38,6 +43,8 @@ class ClientTask(GrizzlyTask):
         self.variable = variable
         self.source = source
         self.destination = destination
+
+        self._short_name = self.__class__.__name__.replace('ClientTask', '')
 
         self.grizzly = GrizzlyContext()
 
@@ -79,9 +86,10 @@ class ClientTask(GrizzlyTask):
         finally:
             response_time = int((time() - start_time) * 1000)
             response_length = meta.get('response_length', None) or 0
+            action = self.variable or meta.get('action', '')
             parent.user.environment.events.request.fire(
                 request_type='TASK',
-                name=f'{parent.user._scenario.identifier} {self.__class__.__name__}->{self.variable}',
+                name=f'{parent.user._scenario.identifier} {self._short_name}{self._direction_arrow[self.direction]}{action}',
                 response_time=response_time,
                 response_length=response_length,
                 context=parent.user._context,

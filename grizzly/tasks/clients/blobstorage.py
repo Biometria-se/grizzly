@@ -61,8 +61,6 @@ class BlobStorageClientTask(ClientTask):
 
         parsed = urlparse(self.endpoint)
 
-        print(parsed)
-
         self._endpoints_protocol = 'http' if parsed.scheme == 'bs' else 'https'
 
         if parsed.netloc is None or len(parsed.netloc) < 1:
@@ -114,3 +112,4 @@ class BlobStorageClientTask(ClientTask):
             with self.service_client.get_blob_client(container=self.container, blob=destination) as blob_client:
                 blob_client.upload_blob(source, content_settings=content_settings)
                 meta['response_length'] = len(source)
+                meta['action'] = f'{self.container}'

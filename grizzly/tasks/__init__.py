@@ -30,10 +30,13 @@ class GrizzlyTask(ABC):
                 continue
 
             if isinstance(value, str):
-                possible_file = Path(self._context_root) / 'features' / 'requests' / value
-                if possible_file.is_file():
-                    with open(possible_file, 'r', encoding='utf-8') as fd:
-                        value = fd.read()
+                try:
+                    possible_file = Path(self._context_root) / 'features' / 'requests' / value
+                    if possible_file.is_file():
+                        with open(possible_file, 'r', encoding='utf-8') as fd:
+                            value = fd.read()
+                except OSError:
+                    pass
 
                 if is_template(value):
                     templates.add(value)

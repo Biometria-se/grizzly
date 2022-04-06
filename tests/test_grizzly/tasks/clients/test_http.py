@@ -67,7 +67,7 @@ class TestHttpClientTask:
         assert request_fire_spy.call_count == 1
         _, kwargs = request_fire_spy.call_args_list[-1]
         assert kwargs.get('request_type', None) == 'TASK'
-        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} HttpClientTask->test'
+        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} Http<-test'
         assert kwargs.get('response_time', None) >= 0.0
         assert kwargs.get('response_length') == len(jsondumps({'hello': 'world'}))
         assert kwargs.get('context', None) is scenario.user._context
@@ -85,7 +85,7 @@ class TestHttpClientTask:
         assert request_fire_spy.call_count == 2
         _, kwargs = request_fire_spy.call_args_list[-1]
         assert kwargs.get('request_type', None) == 'TASK'
-        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} HttpClientTask->test'
+        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} Http<-test'
         assert kwargs.get('response_time', None) >= 0.0
         assert kwargs.get('response_length') == 0
         assert kwargs.get('context', None) is scenario.user._context
@@ -109,7 +109,7 @@ class TestHttpClientTask:
         assert request_fire_spy.call_count == 4
         _, kwargs = request_fire_spy.call_args_list[-1]
         assert kwargs.get('request_type', None) == 'TASK'
-        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} HttpClientTask->test'
+        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} Http<-test'
         assert kwargs.get('response_time', None) >= 0.0
         assert kwargs.get('response_length') == 0
         assert kwargs.get('context', None) is scenario.user._context
