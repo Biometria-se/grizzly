@@ -19,7 +19,8 @@ from jinja2.environment import Template
 from grizzly_extras.transformer import TransformerContentType
 from grizzly_extras.arguments import parse_arguments, split_value, unquote
 
-from ..types import GrizzlyTask, RequestMethod
+from ..types import RequestMethod
+from . import GrizzlyTask
 
 if TYPE_CHECKING:  # pragma: no cover
     from ..scenarios import GrizzlyScenario

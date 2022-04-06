@@ -14,8 +14,8 @@ from jinja2 import Template
 from grizzly_extras.transformer import Transformer, transformer, TransformerContentType, TransformerError
 
 from ..context import GrizzlyContext
-from ..types import GrizzlyTask
 from ..exceptions import TransformerLocustError
+from . import GrizzlyTask
 
 if TYPE_CHECKING:  # pragma: no cover
     from ..scenarios import GrizzlyScenario

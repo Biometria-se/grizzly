@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, Callable
 
 from gevent import sleep as gsleep
 
-from ..types import GrizzlyTask
+from . import GrizzlyTask
 
 if TYPE_CHECKING:  # pragma: no cover
     from ..scenarios import GrizzlyScenario

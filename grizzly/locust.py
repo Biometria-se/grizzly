@@ -103,7 +103,7 @@ def setup_locust_scenarios(context: GrizzlyContext) -> Tuple[List[Type[GrizzlyUs
         scenario_type = create_scenario_class_type('IteratorScenario', scenario)
         scenario.name = scenario_type.__name__
         for task in scenario.tasks:
-            scenario_type.add_scenario_task(task)
+            scenario_type.populate(task)
             if isinstance(task, RequestTask):
                 request_tasks.append(task)
 

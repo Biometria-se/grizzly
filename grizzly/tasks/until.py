@@ -22,8 +22,8 @@ from grizzly_extras.transformer import Transformer, TransformerContentType, Tran
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments, split_value
 
 from ..context import GrizzlyContext
-from ..types import GrizzlyTask
 from .request import RequestTask
+from . import GrizzlyTask
 
 if TYPE_CHECKING:  # pragma: no cover
     from ..scenarios import GrizzlyScenario

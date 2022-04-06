@@ -378,7 +378,7 @@ def test_create_scenario_class_type() -> None:
     assert issubclass(task_class_type_1, (IteratorScenario, TaskSet))
     assert task_class_type_1.__name__ == 'IteratorScenario_25867809'
     assert task_class_type_1.__module__ == 'grizzly.scenarios.iterator'
-    task_class_type_1.add_scenario_task(RequestTask(RequestMethod.POST, name='test-request', endpoint='/api/test'))
+    task_class_type_1.populate(RequestTask(RequestMethod.POST, name='test-request', endpoint='/api/test'))
 
     scenario = GrizzlyContextScenario()
     scenario.name = 'TestTestTest'

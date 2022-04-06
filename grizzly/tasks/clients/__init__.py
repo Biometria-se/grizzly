@@ -6,7 +6,8 @@ from urllib.parse import urlparse
 
 from ...context import GrizzlyContext
 from ...scenarios import GrizzlyScenario
-from ...types import GrizzlyTask, RequestDirection
+from ...types import RequestDirection
+from .. import GrizzlyTask
 
 
 class ClientTask(GrizzlyTask):

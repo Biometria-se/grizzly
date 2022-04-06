@@ -7,9 +7,9 @@ from locust.exception import StopUser
 from locust.user.sequential_taskset import SequentialTaskSet
 
 from ..context import GrizzlyContext
-from ..types import GrizzlyTask
 from ..testdata.communication import TestdataConsumer
 from ..users.base import GrizzlyUser
+from ..tasks import GrizzlyTask
 
 
 class GrizzlyScenario(SequentialTaskSet):
@@ -24,7 +24,7 @@ class GrizzlyScenario(SequentialTaskSet):
         self.grizzly = GrizzlyContext()
 
     @classmethod
-    def add_scenario_task(cls, task_factory: GrizzlyTask) -> None:
+    def populate(cls, task_factory: GrizzlyTask) -> None:
         cls.tasks.append(task_factory())
 
     def on_start(self) -> None:

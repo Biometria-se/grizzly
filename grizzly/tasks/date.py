@@ -28,8 +28,8 @@ from dateutil.relativedelta import relativedelta
 
 from grizzly_extras.arguments import get_unsupported_arguments, split_value, parse_arguments
 
-from ..types import GrizzlyTask
 from ..utils import parse_timespan
+from . import GrizzlyTask
 
 if TYPE_CHECKING:  # pragma: no cover
     from ..scenarios import GrizzlyScenario
