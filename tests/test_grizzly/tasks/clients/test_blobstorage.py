@@ -4,7 +4,7 @@ import pytest
 
 from pytest_mock import MockerFixture
 from _pytest.tmpdir import TempPathFactory
-from azure.storage.blob import BlobServiceClient, BlobClient
+from azure.storage.blob import BlobServiceClient, BlobClient, ContentSettings
 
 from grizzly.context import GrizzlyContext
 from grizzly.tasks.clients import BlobStorageClientTask
@@ -114,7 +114,7 @@ class TestBlobStorageClientTask:
             RequestDirection.TO,
             'bss://$conf::storage.account?AccountKey=$conf::storage.account_key&Container=$conf::storage.container',
             source='source.json',
-            destination='destination.json',
+            destination='destination.txt',
         )
         assert task_factory.account_name == 'my-storage'
         assert task_factory.account_key == 'aaaabbb='
@@ -130,12 +130,16 @@ class TestBlobStorageClientTask:
         task(scenario)
 
         assert upload_blob_mock.call_count == 1
-        args, _ = upload_blob_mock.call_args_list[-1]
+        args, kwargs = upload_blob_mock.call_args_list[-1]
         assert len(args) == 2
+        assert len(kwargs.keys()) == 1
         assert isinstance(args[0], BlobClient)
         assert args[1] == 'source.json'
         assert args[0].container_name == 'my-container'
-        assert args[0].blob_name == 'destination.json'
+        assert args[0].blob_name == 'destination.txt'
+        content_settings = kwargs.get('content_settings', None)
+        assert isinstance(content_settings, ContentSettings)
+        assert content_settings.content_type == 'text/plain'
 
         test_context = tmp_path_factory.mktemp('test_context')
         (test_context / 'requests').mkdir()
@@ -156,12 +160,16 @@ class TestBlobStorageClientTask:
 
         assert upload_blob_mock.call_count == 2
 
-        args, _ = upload_blob_mock.call_args_list[-1]
+        args, kwargs = upload_blob_mock.call_args_list[-1]
         assert len(args) == 2
+        assert len(kwargs.keys()) == 1
         assert isinstance(args[0], BlobClient)
         assert args[1] == 'this is my hello world test!'
         assert args[0].container_name == 'my-container'
         assert args[0].blob_name == 'destination.json'
+        content_settings = kwargs.get('content_settings', None)
+        assert isinstance(content_settings, ContentSettings)
+        assert content_settings.content_type == 'application/json'
 
         task_factory.destination = None
 

@@ -23,17 +23,24 @@ Instances of this task is created with the step expression, if endpoint is defin
 
 * [`step_task_client_put_endpoint_file_destination`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_client_put_endpoint_file_destination)
 '''
+import logging
+
 from typing import Any, Optional, cast
 from urllib.parse import urlparse, parse_qs
 from pathlib import Path
+from mimetypes import guess_type as mimetype_guess
 
 from jinja2 import Template
-from azure.storage.blob import BlobServiceClient
+from azure.storage.blob import BlobServiceClient, ContentSettings
 
 from . import client, ClientTask
 from ...scenarios import GrizzlyScenario
 from ...types import RequestDirection
 from ...testdata.utils import resolve_variable
+
+# disable verbose INFO logging
+azure_logger = logging.getLogger('azure.core.pipeline.policies.http_logging_policy')
+azure_logger.setLevel(logging.ERROR)
 
 
 @client('bs', 'bss')
@@ -94,7 +101,14 @@ class BlobStorageClientTask(ClientTask):
             source = source_file.read_text()
             source = Template(source).render(**parent.user._context['variables'])
 
+        content_type, _ = mimetype_guess(destination)
+
+        if content_type is None:
+            content_type = 'application/octet-stream'
+
+        content_settings = ContentSettings(content_type=content_type)
+
         with self.action(parent) as meta:
             with self.service_client.get_blob_client(container=self.container, blob=destination) as blob_client:
-                blob_client.upload_blob(source)
+                blob_client.upload_blob(source, content_settings=content_settings)
                 meta['response_length'] = len(source)
