@@ -8,7 +8,6 @@ Instances of this task is created with the step expression:
 
 * [`step_task_transform`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_transform)
 '''
-from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, List, Callable, Any, Type
 
 from jinja2 import Template
@@ -22,17 +21,21 @@ if TYPE_CHECKING:  # pragma: no cover
     from ..scenarios import GrizzlyScenario
 
 
-@dataclass
 class TransformerTask(GrizzlyTask):
     expression: str
     variable: str
     content: str
     content_type: TransformerContentType
 
-    _transformer: Type[Transformer] = field(init=False, repr=False)
-    _parser: Callable[[Any], List[str]] = field(init=False, repr=False)
+    _transformer: Type[Transformer]
+    _parser: Callable[[Any, Any], List[str]]
 
-    def __post_init__(self) -> None:
+    def __init__(self, expression: str, variable: str, content: str, content_type: TransformerContentType) -> None:
+        self.expression = expression
+        self.variable = variable
+        self.content = content
+        self.content_type = content_type
+
         grizzly = GrizzlyContext()
         if self.variable not in grizzly.state.variables:
             raise ValueError(f'{self.__class__.__name__}: {self.variable} has not been initialized')
@@ -47,7 +50,7 @@ class TransformerTask(GrizzlyTask):
         if not self._transformer.validate(self.expression):
             raise ValueError(f'{self.__class__.__name__}: {self.expression} is not a valid expression for {self.content_type.name}')
 
-        self._parser = self._transformer.parser(self.expression)
+        setattr(self, '_parser', self._transformer.parser(self.expression))
 
     def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
         def task(parent: 'GrizzlyScenario') -> Any:

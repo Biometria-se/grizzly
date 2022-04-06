@@ -6,7 +6,6 @@ Instances of this task is created with the step expression:
 * [`step_task_print_message`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_print_message)
 '''
 from typing import TYPE_CHECKING, Any, Callable
-from dataclasses import dataclass
 
 from jinja2 import Template
 
@@ -16,9 +15,11 @@ if TYPE_CHECKING:  # pragma: no cover
     from ..scenarios import GrizzlyScenario
 
 
-@dataclass
 class PrintTask(GrizzlyTask):
     message: str
+
+    def __init__(self, message: str) -> None:
+        self.message = message
 
     def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
         def task(parent: 'GrizzlyScenario') -> Any:

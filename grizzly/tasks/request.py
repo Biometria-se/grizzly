@@ -14,25 +14,25 @@ Instances of this task is created with the step expressions:
 * [`step_task_request_text_with_name`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_request_text_with_name)
 '''
 from typing import TYPE_CHECKING, List, Optional, Any, Callable
-from dataclasses import dataclass, field
 
 from jinja2.environment import Template
 from grizzly_extras.transformer import TransformerContentType
 from grizzly_extras.arguments import parse_arguments, split_value, unquote
 
-from ..types import RequestMethod
-
-from ..types import GrizzlyTask
+from ..types import GrizzlyTask, RequestMethod
 
 if TYPE_CHECKING:  # pragma: no cover
     from ..scenarios import GrizzlyScenario
     from ..users.base.response_handler import ResponseHandlerAction
 
 
-@dataclass(unsafe_hash=True)
 class RequestTaskHandlers:
-    metadata: List['ResponseHandlerAction'] = field(init=False, hash=False, default_factory=list)
-    payload: List['ResponseHandlerAction'] = field(init=False, hash=False, default_factory=list)
+    metadata: List['ResponseHandlerAction']
+    payload: List['ResponseHandlerAction']
+
+    def __init__(self) -> None:
+        self.metadata = []
+        self.payload = []
 
     def add_metadata(self, handler: 'ResponseHandlerAction') -> None:
         self.metadata.append(handler)
@@ -41,15 +41,15 @@ class RequestTaskHandlers:
         self.payload.append(handler)
 
 
-@dataclass(unsafe_hash=True)
 class RequestTaskResponse:
-    status_codes: List[int] = field(init=False, repr=False, hash=False, default_factory=list)
-    content_type: TransformerContentType = field(init=False, repr=False, default=TransformerContentType.UNDEFINED)
-    handlers: RequestTaskHandlers = field(init=False, repr=False, default_factory=RequestTaskHandlers)
+    status_codes: List[int]
+    content_type: TransformerContentType
+    handlers: RequestTaskHandlers
 
-    def __post_init__(self) -> None:
-        if 200 not in self.status_codes:
-            self.status_codes.append(200)
+    def __init__(self) -> None:
+        self.status_codes = [200]
+        self.content_type = TransformerContentType.UNDEFINED
+        self.handlers = RequestTaskHandlers()
 
     def add_status_code(self, status: int) -> None:
         absolute_status = abs(status)
@@ -61,17 +61,25 @@ class RequestTaskResponse:
                 self.status_codes.pop(index)
 
 
-@dataclass(unsafe_hash=True)
 class RequestTask(GrizzlyTask):
     method: RequestMethod
     name: str
     endpoint: str
-    template: Optional[Template] = field(init=False, repr=False, default=None)
-    source: Optional[str] = field(init=False, repr=False, default=None)
+    template: Optional[Template]
+    source: Optional[str]
 
-    response: RequestTaskResponse = field(init=False, repr=False, default_factory=RequestTaskResponse)
+    response: RequestTaskResponse
 
-    def __post_init__(self) -> None:
+    def __init__(self, method: RequestMethod, name: str, endpoint: str) -> None:
+        self.method = method
+        self.name = name
+        self.endpoint = endpoint
+
+        self.template = None
+        self.source = None
+
+        self.response = RequestTaskResponse()
+
         content_type: TransformerContentType = TransformerContentType.UNDEFINED
 
         if '|' in self.endpoint:

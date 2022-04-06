@@ -14,7 +14,6 @@ Instances of this task is created with step expression:
 * [`step_task_request_text_with_name_to_endpoint_until`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_request_text_with_name_to_endpoint_until)
 '''
 from typing import TYPE_CHECKING, Callable, Any, Type, List, Optional, cast
-from dataclasses import dataclass, field
 from time import perf_counter as time
 
 from jinja2 import Template
@@ -30,18 +29,22 @@ if TYPE_CHECKING:  # pragma: no cover
     from ..scenarios import GrizzlyScenario
 
 
-@dataclass
 class UntilRequestTask(GrizzlyTask):
     request: RequestTask
     condition: str
 
-    transform: Optional[Type[Transformer]] = field(init=False)
-    matcher: Callable[[Any], List[str]] = field(init=False)
+    transform: Optional[Type[Transformer]]
+    matcher: Callable[[Any], List[str]]
 
-    retries: int = field(init=False, default=3)
-    wait: float = field(init=False, default=1.0)
+    retries: int
+    wait: float
 
-    def __post_init__(self) -> None:
+    def __init__(self, request: RequestTask, condition: str) -> None:
+        self.request = request
+        self.condition = condition
+        self.retries = 3
+        self.wait = 1.0
+
         if self.request.response.content_type == TransformerContentType.UNDEFINED:
             raise ValueError('content type must be specified for request')
 

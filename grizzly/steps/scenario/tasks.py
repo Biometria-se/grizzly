@@ -393,12 +393,11 @@ def step_task_client_put_endpoint_file_destination(context: Context, source: str
 
     scheme, task_client = get_task_client(endpoint)
 
+    assert not is_template(source), 'source file cannot be a template'
+
     if is_template(endpoint):
         index = len(scheme) + 3
         grizzly.scenario.orphan_templates.append(endpoint[index:])
-
-    if is_template(source):
-        grizzly.scenario.orphan_templates.append(source)
 
     if is_template(destination):
         grizzly.scenario.orphan_templates.append(destination)

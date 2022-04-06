@@ -10,6 +10,8 @@ bs[s]://<AccountName>?AccountKey=<AccountKey>&Container=<Container>
 
 All variables in the endpoint supports templating, but not the whole string.
 
+Content-Type of an uploaded file will automagically be guessed based on the [rendered] destination file extension.
+
 Example:
 
 ```plain

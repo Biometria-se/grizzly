@@ -345,20 +345,22 @@ def test_step_task_client_put_endpoint_file_destination(behave_fixture: BehaveFi
 
     behave.text = None
 
-    step_task_client_put_endpoint_file_destination(behave, 'file-{{ suffix }}.json', 'http://{{ url }}', 'uploaded-file-{{ suffix }}.json')
+    with pytest.raises(AssertionError) as ae:
+        step_task_client_put_endpoint_file_destination(behave, 'file-{{ suffix }}.json', 'http://{{ url }}', 'uploaded-file-{{ suffix }}.json')
+    assert 'source file cannot be a template' == str(ae.value)
+
+    step_task_client_put_endpoint_file_destination(behave, 'file-test.json', 'http://{{ url }}', 'uploaded-file-{{ suffix }}.json')
 
     assert len(grizzly.scenario.tasks) == 1
     task = grizzly.scenario.tasks[-1]
 
     assert isinstance(task, HttpClientTask)
-    assert task.source == 'file-{{ suffix }}.json'
+    assert task.source == 'file-test.json'
     assert task.destination == 'uploaded-file-{{ suffix }}.json'
     assert task.endpoint == '{{ url }}'
 
-    assert len(grizzly.scenario.orphan_templates) == 3
-
+    assert len(grizzly.scenario.orphan_templates) == 2
     assert sorted(grizzly.scenario.orphan_templates) == sorted([
-        'file-{{ suffix }}.json',
         '{{ url }}',
         'uploaded-file-{{ suffix }}.json',
     ])

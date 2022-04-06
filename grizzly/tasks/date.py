@@ -14,7 +14,6 @@ Instances of this task is created with the step expression:
 * `offset` _str_ (optional) - a time span string describing the offset, Y = years, M = months, D = days, h = hours, m = minutes, s = seconds, e.g. `1Y-2M10D`
 '''
 from typing import TYPE_CHECKING, Callable, Dict, Any, Optional, cast
-from dataclasses import dataclass, field
 from datetime import datetime
 
 try:
@@ -36,16 +35,18 @@ if TYPE_CHECKING:  # pragma: no cover
     from ..scenarios import GrizzlyScenario
 
 
-@dataclass
 class DateTask(GrizzlyTask):
     variable: str
     value: str
-    arguments: Dict[str, Optional[str]] = field(init=False, default_factory=dict)
+    arguments: Dict[str, Optional[str]]
 
-    def __post_init__(self) -> None:
+    def __init__(self, variable: str, value: str) -> None:
+        self.variable = variable
+        self.value = value
+
         if '|' in self.value:
-            self.value, arguments = split_value(self.value)
-            self.arguments = parse_arguments(arguments)
+            self.value, date_arguments = split_value(self.value)
+            self.arguments = parse_arguments(date_arguments)
 
             unsupported_arguments = get_unsupported_arguments(['format', 'timezone', 'offset'], self.arguments)
 

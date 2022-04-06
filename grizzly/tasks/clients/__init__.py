@@ -11,6 +11,7 @@ from ...types import GrizzlyTask, RequestDirection
 
 class ClientTask(GrizzlyTask):
     _schemes: List[str]
+
     grizzly: GrizzlyContext
     direction: RequestDirection
     endpoint: str
