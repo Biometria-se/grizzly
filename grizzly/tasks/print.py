@@ -18,6 +18,8 @@ class PrintTask(GrizzlyTask):
     message: str
 
     def __init__(self, message: str) -> None:
+        super().__init__()
+
         self.message = message
 
     def __call__(self) -> Callable[['GrizzlyScenario'], Any]:

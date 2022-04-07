@@ -18,6 +18,8 @@ class WaitTask(GrizzlyTask):
     time: float
 
     def __init__(self, time: float) -> None:
+        super().__init__()
+
         self.time = time
 
     def __call__(self) -> Callable[['GrizzlyScenario'], Any]:

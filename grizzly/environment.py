@@ -19,6 +19,8 @@ def before_feature(context: Context, *_args: Tuple[Any, ...], **kwargs: Dict[str
     # identify as grizzly, instead of behave
     proc.setproctitle('grizzly')
 
+    environ['GRIZZLY_CONTEXT_ROOT'] = context.config.base_dir
+
     destroy_variables()
 
     try:
@@ -32,7 +34,6 @@ def before_feature(context: Context, *_args: Tuple[Any, ...], **kwargs: Dict[str
     context.grizzly = grizzly
     context.start = time()
     context.started = datetime.now()
-    environ['GRIZZLY_CONTEXT_ROOT'] = context.config.base_dir
 
 
 @catch(KeyboardInterrupt)

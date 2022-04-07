@@ -41,6 +41,8 @@ class DateTask(GrizzlyTask):
     arguments: Dict[str, Optional[str]]
 
     def __init__(self, variable: str, value: str) -> None:
+        super().__init__()
+
         self.variable = variable
         self.value = value
 

@@ -11,9 +11,12 @@ if TYPE_CHECKING:  # pragma: no cover
 class GrizzlyTask(ABC):
     __template_attributes__: List[str]
 
-    _context_root = environ.get('GRIZZLY_CONTEXT_ROOT', '.')
+    _context_root: str
 
     scenario: 'GrizzlyContextScenario'
+
+    def __init__(self) -> None:
+        self._context_root = environ.get('GRIZZLY_CONTEXT_ROOT', '.')
 
     def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
         raise NotImplementedError(f'{self.__class__.__name__} has not implemented "implementation"')

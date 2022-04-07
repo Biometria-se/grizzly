@@ -31,6 +31,8 @@ class TransformerTask(GrizzlyTask):
     _parser: Callable[[Any, Any], List[str]]
 
     def __init__(self, expression: str, variable: str, content: str, content_type: TransformerContentType) -> None:
+        super().__init__()
+
         self.expression = expression
         self.variable = variable
         self.content = content

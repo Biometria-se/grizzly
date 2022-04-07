@@ -44,6 +44,8 @@ class UntilRequestTask(GrizzlyTask):
     expected_matches: int
 
     def __init__(self, request: RequestTask, condition: str) -> None:
+        super().__init__()
+
         self.request = request
         self.condition = condition
         self.retries = 3

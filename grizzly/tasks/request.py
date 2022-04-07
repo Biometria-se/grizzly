@@ -73,6 +73,8 @@ class RequestTask(GrizzlyTask):
     response: RequestTaskResponse
 
     def __init__(self, method: RequestMethod, name: str, endpoint: str) -> None:
+        super().__init__()
+
         self.method = method
         self.name = name
         self.endpoint = endpoint

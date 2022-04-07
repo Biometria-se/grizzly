@@ -32,7 +32,6 @@ from urllib.parse import urlparse, parse_qs
 from pathlib import Path
 from mimetypes import guess_type as mimetype_guess
 
-from jinja2 import Template
 from azure.storage.blob import BlobServiceClient, ContentSettings
 
 from . import client, ClientTask
@@ -63,6 +62,9 @@ class BlobStorageClientTask(ClientTask):
 
         self._endpoints_protocol = 'http' if parsed.scheme == 'bs' else 'https'
 
+        if self.source is None and self.direction == RequestDirection.TO:
+            raise ValueError(f'{self.__class__.__name__}: source must be set for direction {self.direction.name}')
+
         if parsed.netloc is None or len(parsed.netloc) < 1:
             raise ValueError(f'{self.__class__.__name__}: could not find account name in {self.endpoint}')
 
@@ -88,18 +90,18 @@ class BlobStorageClientTask(ClientTask):
         return super().get(parent)
 
     def put(self, parent: GrizzlyScenario) -> Any:
-        source = Template(self.source).render(**parent.user._context['variables'])
+        source = parent.render(cast(str, self.source))
 
         if self.destination is not None:
-            destination = Template(self.destination).render(**parent.user._context['variables'])
+            destination = parent.render(self.destination)
         else:
             destination = Path(source).name
 
-        source_file = Path(parent.user._context_root) / 'requests' / source
+        source_file = Path(self._context_root) / 'requests' / source
 
         if source_file.exists():
             source = source_file.read_text()
-            source = Template(source).render(**parent.user._context['variables'])
+            source = parent.render(source)
 
         content_type, _ = mimetype_guess(destination)
 

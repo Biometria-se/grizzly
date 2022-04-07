@@ -29,6 +29,8 @@ class ClientTask(GrizzlyTask):
     def __init__(
         self, direction: RequestDirection, endpoint: str, /, variable: Optional[str] = None, source: Optional[str] = None, destination: Optional[str] = None,
     ) -> None:
+        super().__init__()
+
         parsed = urlparse(endpoint)
 
         if parsed.scheme not in self._schemes:
