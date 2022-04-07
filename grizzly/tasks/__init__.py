@@ -31,7 +31,7 @@ class GrizzlyTask(ABC):
 
             if isinstance(value, str):
                 try:
-                    possible_file = Path(self._context_root) / 'features' / 'requests' / value
+                    possible_file = Path(self._context_root) / 'requests' / value
                     if possible_file.is_file():
                         with open(possible_file, 'r', encoding='utf-8') as fd:
                             value = fd.read()

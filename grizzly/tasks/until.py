@@ -9,6 +9,8 @@ Arguments:
 
 * `wait` (float): number of seconds to wait between retries (default `1.0`)
 
+* `expected_matches` (int): number of matches that the expression should match (default `1`)
+
 Instances of this task is created with step expression:
 
 * [`step_task_request_text_with_name_to_endpoint_until`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_request_text_with_name_to_endpoint_until)
