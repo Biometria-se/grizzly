@@ -39,12 +39,14 @@ class UntilRequestTask(GrizzlyTask):
 
     retries: int
     wait: float
+    expected_matches: int
 
     def __init__(self, request: RequestTask, condition: str) -> None:
         self.request = request
         self.condition = condition
         self.retries = 3
         self.wait = 1.0
+        self.expected_matches = 1
 
         if self.request.response.content_type == TransformerContentType.UNDEFINED:
             raise ValueError('content type must be specified for request')
@@ -60,13 +62,14 @@ class UntilRequestTask(GrizzlyTask):
 
             arguments = parse_arguments(until_arguments)
 
-            unsupported_arguments = get_unsupported_arguments(['retries', 'wait'], arguments)
+            unsupported_arguments = get_unsupported_arguments(['retries', 'wait', 'expected_matches'], arguments)
 
             if len(unsupported_arguments) > 0:
                 raise ValueError(f'unsupported arguments {", ".join(unsupported_arguments)}')
 
             self.retries = int(arguments.get('retries', self.retries))
             self.wait = float(arguments.get('wait', self.wait))
+            self.expected_matches = int(arguments.get('expected_matches', '1'))
 
             if self.retries < 1:
                 raise ValueError('retries argument cannot be less than 1')
@@ -81,7 +84,7 @@ class UntilRequestTask(GrizzlyTask):
         transform = cast(Transformer, self.transform)
 
         def task(parent: 'GrizzlyScenario') -> Any:
-            task_name = f'{self.request.scenario.identifier} {self.request.name}, w={self.wait}s, r={self.retries}'
+            task_name = f'{self.request.scenario.identifier} {self.request.name}, w={self.wait}s, r={self.retries}, em={self.expected_matches}'
             condition_rendered = parent.render(self.condition)
 
             if not transform.validate(condition_rendered):
@@ -115,7 +118,7 @@ class UntilRequestTask(GrizzlyTask):
                         number_of_matches = 0
                         parent.logger.error(f'{task_name}: loop retry={retry}', exc_info=True)
 
-                    if number_of_matches == 1:
+                    if number_of_matches == self.expected_matches:
                         break
                     else:
                         retry += 1
@@ -125,9 +128,9 @@ class UntilRequestTask(GrizzlyTask):
 
             response_time = int((time() - start) * 1000)
 
-            if number_of_matches == 1:
+            if number_of_matches == self.expected_matches:
                 exception = None
-            elif exception is None and number_of_matches != 1:
+            elif exception is None and number_of_matches != self.expected_matches:
                 exception = RuntimeError((
                     f'found {number_of_matches} matching values for {condition_rendered} in payload '
                     f'after {retry} retries and {response_time} milliseconds'
