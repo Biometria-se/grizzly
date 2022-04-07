@@ -190,6 +190,8 @@ class TestIterationScenario:
             side_effect=side_effects,
         )
 
+        mocker.patch.object(scenario, 'tasks', [f'task-{index}' for index in range(0, 10)])
+
         schedule_task = mocker.patch.object(scenario, 'schedule_task', autospec=True)
         get_next_task = mocker.patch.object(scenario, 'get_next_task', autospec=True)
         wait = mocker.patch.object(scenario, 'wait', autospec=True)
@@ -305,7 +307,7 @@ class TestIterationScenario:
         with pytest.raises(RuntimeError):
             scenario.run()
 
-        assert scenario._task_index == 0
+        assert scenario._task_index == 20
         assert on_start.call_count == 9
         assert on_stop.call_count == 2
         assert get_next_task.call_count == 2
