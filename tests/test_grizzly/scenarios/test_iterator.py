@@ -85,7 +85,7 @@ class TestIterationScenario:
         try:
             _, _, scenario = grizzly_fixture(scenario_type=IteratorScenario)
 
-            def TestdataConsumer__init__(self: 'TestdataConsumer', address: str) -> None:
+            def TestdataConsumer__init__(self: 'TestdataConsumer', address: str, identifier: str) -> None:
                 pass
 
             mocker.patch(
@@ -124,7 +124,7 @@ class TestIterationScenario:
         assert scenario is not None
         assert isinstance(scenario, IteratorScenario)
 
-        scenario.consumer = TestdataConsumer()
+        scenario.consumer = TestdataConsumer(identifier='test')
 
         def mock_request(data: Optional[Dict[str, Any]]) -> None:
             def request(self: 'TestdataConsumer', scenario: str) -> Optional[Dict[str, Any]]:

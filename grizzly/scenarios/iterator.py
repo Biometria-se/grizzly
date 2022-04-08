@@ -34,13 +34,13 @@ class IteratorScenario(GrizzlyScenario):
                     if self.user._state == LOCUST_STATE_STOPPING:
                         raise StopUser()
                     self.execute_next_task()
-                    self.logger.debug(f'{self.__class__.__name__}::{id(self)}/{self.parent.__class__.__name__}::{id(self.parent)}: iteration={self._task_index}')
+                    self.logger.debug(f'iteration={self._task_index}')
                 except RescheduleTaskImmediately:
                     pass
                 except RescheduleTask:
                     self.wait()
                 except RestartScenario:
-                    self.logger.info(f'restarting scenario for {self.__class__.__name__}::{id(self)} and {self.parent.__class__.__name__}::{id(self.parent)}')
+                    self.logger.info('restarting scenario')
                     # move locust.user.sequential_task.SequentialTaskSet index pointer the number of tasks left until end, so it will start over
                     current_task_index = (self._task_index % len(self.tasks))
                     tasks_left = len(self.tasks) - current_task_index

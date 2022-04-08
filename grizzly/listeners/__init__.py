@@ -83,7 +83,7 @@ def init_statistics_listener(url: str) -> Callable[[Environment, VarArg(Tuple[An
     return cast(Callable[[Environment, VarArg(Tuple[Any, ...]), KwArg(Dict[str, Any])], None], wrapper)
 
 
-def locust_test_start(context: GrizzlyContext) -> Callable[[Environment, KwArg(Dict[str, Any])], None]:
+def locust_test_start(grizzly: GrizzlyContext) -> Callable[[Environment, KwArg(Dict[str, Any])], None]:
     def wrapper(environment: Environment, **_kwargs: Dict[str, Any]) -> None:
         if isinstance(environment.runner, MasterRunner):
             workers = (
@@ -94,9 +94,9 @@ def locust_test_start(context: GrizzlyContext) -> Callable[[Environment, KwArg(D
 
             logger.debug(f'connected workers: {workers}')
 
-            for scenario in context.scenarios():
-                if scenario.iterations < workers:
-                    logger.error(f'{scenario.name}: iterations is lower than number of workers')
+            total_iterations = sum([scenario.iterations for scenario in grizzly.scenarios()])
+            if total_iterations < workers:
+                logger.error(f'number of iterations is lower than number of workers, {total_iterations} < {workers}')
 
     return cast(Callable[[Environment, KwArg(Dict[str, Any])], None], wrapper)
 

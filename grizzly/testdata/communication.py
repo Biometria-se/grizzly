@@ -16,35 +16,41 @@ from ..types import TestdataType
 from .utils import transform
 
 
-logger = logging.getLogger(__name__)
-
-
 class TestdataConsumer:
     # need so pytest doesn't raise PytestCollectionWarning
     __test__: bool = False
 
-    def __init__(self, address: str = 'tcp://127.0.0.1:5555') -> None:
+    logger: logging.Logger
+    identifier: str
+
+    def __init__(self, identifier: str, address: str = 'tcp://127.0.0.1:5555') -> None:
+        self.identifier = identifier
+        self.logger = logging.getLogger(f'{__name__}/{self.identifier}')
+
         self.context = zmq.Context()
         self.socket = self.context.socket(ZMQ_REQ)
         self.socket.connect(address)
-        logger.debug(f'conntected to producer at {address}')
+
+        self.logger.debug(f'conntected to producer at {address}')
 
     def stop(self) -> None:
+        self.logger.debug('stopping consumer')
         try:
             self.context.destroy(linger=0)
         except:
-            logger.error('failed to stop consumer', exc_info=True)
+            self.logger.error('failed to stop', exc_info=True)
         finally:
             gsleep(0.1)
 
     def request(self, scenario: str) -> Optional[Dict[str, Any]]:
-        logger.debug('consumer available')
+        self.logger.debug('available')
         self.socket.send_json({
             'message': 'available',
+            'identifier': self.identifier,
             'scenario': scenario,
         })
 
-        logger.debug('waiting for response from producer')
+        self.logger.debug('waiting for response from producer')
 
         # loop and NOBLOCK needed when running in local mode, to let other gevent threads get time
         while True:
@@ -55,14 +61,16 @@ class TestdataConsumer:
                 gsleep(0.1)  # let TestdataProducer greenlet execute
 
         if message['action'] == 'stop':
-            raise StopUser('stop command received')
+            self.logger.debug('received stop command, stopping user')
+            raise StopUser()
 
         if not message['action'] == 'consume':
-            raise StopUser(f'unknown action "{message["action"]}" received')
+            self.logger.error(f'unknown action "{message["action"]}" received, stopping user')
+            raise StopUser()
 
         data = message['data']
 
-        logger.debug(f'got {data} from producer')
+        self.logger.debug(f'received: {data}')
 
         variables: Optional[Dict[str, Any]] = None
         if 'variables' in data:
@@ -81,6 +89,9 @@ class TestdataProducer:
     # need so pytest doesn't raise PytestCollectionWarning
     __test__: bool = False
 
+    _stopping: bool
+
+    logger: logging.Logger
     semaphore = Semaphore()
     grizzly: GrizzlyContext
     scenarios_iteration: Dict[str, int]
@@ -96,7 +107,9 @@ class TestdataProducer:
         self.testdata = testdata
         self.environment = environment
 
-        logger.debug(f'starting producer on {address}')
+        self.logger = logging.getLogger(f'{__name__}/producer')
+
+        self.logger.debug(f'starting on {address}')
 
         self.context = zmq.Context()
         self.socket = self.context.socket(ZMQ_REP)
@@ -104,35 +117,40 @@ class TestdataProducer:
         self.grizzly = GrizzlyContext()
         self.scenarios_iteration = {}
 
-        logger.debug(self.testdata)
+        self._stopping = False
+
+        self.logger.debug(f'servering:\n{self.testdata}')
 
     def reset(self) -> None:
-        logger.debug('reseting TestdataProducer')
+        self.logger.debug('reseting')
         with self.semaphore:
             for scenario_name in self.scenarios_iteration.keys():
                 self.scenarios_iteration[scenario_name] = 0
 
     def stop(self) -> None:
+        self._stopping = True
         try:
             self.context.destroy(linger=0)
         except:
-            logger.error('failed to stop producer', exc_info=True)
+            self.logger.error('failed to stop', exc_info=True)
         finally:
             # make sure that socket is properly released
             gsleep(0.1)
 
     def run(self) -> None:
-        logger.debug('start producing...')
+        self.logger.debug('start producing...')
         try:
             while True:
                 try:
                     recv = self.socket.recv_json(flags=ZMQ_NOBLOCK)
-                    logger.debug('got data from consumer')
+                    consumer_identifier = recv.get('identifier', '')
+                    self.logger.debug(f'got request from consumer {consumer_identifier}')
 
                     if recv['message'] == 'available':
                         message: Dict[str, Any] = {
                             'action': 'stop',
                         }
+
                         try:
                             with self.semaphore:
                                 scenario_name = recv['scenario']
@@ -169,7 +187,7 @@ class TestdataProducer:
 
                                             if value is None and scenario_name not in self.scenarios_iteration:
                                                 message['action'] = 'stop'
-                                                logger.warning(f'{key} does not have a value and iterations is not set for {scenario_name}, stop test')
+                                                self.logger.warning(f'{key} does not have a value and iterations is not set for {scenario_name}, stop test')
                                                 data = {}
                                                 break
                                             else:
@@ -183,15 +201,22 @@ class TestdataProducer:
 
                                     if scenario_name in self.scenarios_iteration:
                                         self.scenarios_iteration[scenario_name] += 1
-                                        logger.debug(f'{scenario_name}: iterations={self.scenarios_iteration[scenario_name]}')
+                                        self.logger.debug(f'{consumer_identifier}/{scenario_name}: iteration={self.scenarios_iteration[scenario_name]}')
                         except TypeError:
-                            logger.error('test data error, stop consumer', exc_info=True)
+                            message = {
+                                'action': 'stop',
+                            }
+                            self.logger.error(f'test data error, stop consumer {consumer_identifier}', exc_info=True)
 
-                        logger.debug(f'producing {message} for consumer')
+                        self.logger.debug(f'producing {message} for consumer {consumer_identifier}')
                         self.socket.send_json(message)
+                    else:
+                        self.logger.error(f'received unknown message "{recv["messsage"]}')
 
                     gsleep(0)
                 except ZMQAgain:
                     gsleep(0.01)
         except ZMQError:
+            if not self._stopping:
+                self.logger.error('failed when waiting for consumers', exc_info=True)
             self.environment.events.test_stop.fire(environment=self.environment)

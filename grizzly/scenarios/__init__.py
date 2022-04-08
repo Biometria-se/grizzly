@@ -1,6 +1,6 @@
 import logging
 
-from typing import Callable, Optional, Dict, Any
+from typing import Optional, Dict, Any, cast
 from os import environ
 
 from locust.exception import StopUser
@@ -15,14 +15,17 @@ from ..tasks import GrizzlyTask
 
 class GrizzlyScenario(SequentialTaskSet):
     consumer: TestdataConsumer
-    logger: logging.Logger = logging.getLogger(__name__)
+    logger: logging.Logger
     grizzly: GrizzlyContext
-    wait_time: Callable[[float, float], float]
-    user: GrizzlyUser
 
     def __init__(self, parent: GrizzlyUser) -> None:
         super().__init__(parent=parent)
+        self.logger = logging.getLogger(f'{__name__}/{self.__class__.__name__}::{id(self)}/{self.parent.__class__.__name__}::{id(self.parent)}')
         self.grizzly = GrizzlyContext()
+
+    @property
+    def user(self) -> GrizzlyUser:
+        return cast(GrizzlyUser, self._user)
 
     @classmethod
     def populate(cls, task_factory: GrizzlyTask) -> None:
@@ -37,13 +40,15 @@ class GrizzlyScenario(SequentialTaskSet):
     def on_start(self) -> None:
         producer_address = environ.get('TESTDATA_PRODUCER_ADDRESS', None)
         if producer_address is not None:
-            self.consumer = TestdataConsumer(address=producer_address)
+            self.consumer = TestdataConsumer(
+                address=producer_address,
+                identifier=self.__class__.__name__,
+            )
         else:
-            self.logger.error('no address to testdata producer specified')
+            self.user.logger.error('no address to testdata producer specified')
             raise StopUser()
 
     def on_stop(self) -> None:
-        self.logger.debug(f'stopping consumer for {self.__class__.__name__}')
         self.consumer.stop()
 
 
