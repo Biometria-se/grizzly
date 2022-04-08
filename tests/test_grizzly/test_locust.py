@@ -27,7 +27,7 @@ from grizzly.locust import (
 )
 from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
-from grizzly.tasks import PrintTask, RequestTask, WaitTask
+from grizzly.tasks import GrizzlyTask, PrintTask, RequestTask, WaitTask
 from grizzly.users import RestApiUser, MessageQueueUser
 from grizzly.users.base import GrizzlyUser
 from grizzly.scenarios import IteratorScenario
@@ -175,11 +175,11 @@ def test_setup_locust_scenarios(behave_fixture: BehaveFixture) -> None:
         setup_locust_scenarios(grizzly)
 
     grizzly.scenario.user.class_name = 'RestApiUser'
-    user_classes, request_tasks, start_messagequeue_daemon = setup_locust_scenarios(grizzly)
+    user_classes, tasks, start_messagequeue_daemon = setup_locust_scenarios(grizzly)
 
     assert not start_messagequeue_daemon
     assert len(user_classes) == 1
-    assert len(request_tasks) == 1
+    assert len(tasks) == 3
 
     user_class = user_classes[-1]
     assert issubclass(user_class, (RestApiUser, ))
@@ -197,11 +197,11 @@ def test_setup_locust_scenarios(behave_fixture: BehaveFixture) -> None:
     if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
         grizzly.scenario.user.class_name = 'MessageQueueUser'
         grizzly.scenario.context['host'] = 'mq://test.example.org?QueueManager=QM01&Channel=TEST.CHANNEL'
-        user_classes, request_tasks, start_messagequeue_daemon = setup_locust_scenarios(grizzly)
+        user_classes, tasks, start_messagequeue_daemon = setup_locust_scenarios(grizzly)
 
         assert start_messagequeue_daemon
         assert len(user_classes) == 1
-        assert len(request_tasks) == 1
+        assert len(tasks) == 3
 
         user_class = user_classes[-1]
         assert issubclass(user_class, (MessageQueueUser, ))
@@ -358,16 +358,16 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
         task.scenario = GrizzlyContextScenario()
         task.scenario.name = 'test-scenario-1'
         task.scenario.user.class_name = 'RestApiUser'
-        request_tasks = [task]
+        tasks: List[GrizzlyTask] = [task]
 
         with pytest.raises(AssertionError) as ae:
-            setup_environment_listeners(behave, environment, request_tasks)
+            setup_environment_listeners(behave, environment, tasks)
         assert 'variable test_id has not been initialized' in str(ae)
 
         AtomicIntegerIncrementer.destroy()
         grizzly.state.variables['test_id'] = 'test-1'
 
-        external_dependencies = setup_environment_listeners(behave, environment, request_tasks)
+        external_dependencies = setup_environment_listeners(behave, environment, tasks)
         assert len(environment.events.init._handlers) == 1
         assert len(environment.events.test_start._handlers) == 1
         assert len(environment.events.test_stop._handlers) == 1
@@ -378,7 +378,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
         AtomicIntegerIncrementer.destroy()
         grizzly.setup.statistics_url = 'influxdb://influx.example.com/testdb'
 
-        external_dependencies = setup_environment_listeners(behave, environment, request_tasks)
+        external_dependencies = setup_environment_listeners(behave, environment, tasks)
         assert len(environment.events.init._handlers) == 2
         assert len(environment.events.test_start._handlers) == 1
         assert len(environment.events.test_stop._handlers) == 1
@@ -399,11 +399,11 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
                     'TEST.QUEUE | url="mq://mq.example.com/?QueueManager=QM1&Channel=SRV.CONN", expression="$.result.value", content_type="application/json"'
                 ),
             })
-            request_tasks[0].endpoint = '/api/v1/{{ AtomicMessageQueue.test }}'
+            task.endpoint = '/api/v1/{{ AtomicMessageQueue.test }}'
 
         grizzly.scenario.validation.fail_ratio = 0.1
 
-        external_dependencies = setup_environment_listeners(behave, environment, request_tasks)
+        external_dependencies = setup_environment_listeners(behave, environment, tasks)
         assert len(environment.events.init._handlers) == 2
         assert len(environment.events.test_start._handlers) == 1
         assert len(environment.events.test_stop._handlers) == 1
@@ -432,7 +432,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
         )
 
         with pytest.raises(AssertionError) as ae:
-            setup_environment_listeners(behave, environment, request_tasks)
+            setup_environment_listeners(behave, environment, tasks)
         assert 'error parsing request payload: ' in str(ae)
     finally:
         try:

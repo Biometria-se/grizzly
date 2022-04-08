@@ -40,23 +40,23 @@ class TestTransformerTask:
             )
         assert '$. is not a valid expression for JSON' in str(ve)
 
-        task = TransformerTask(
+        task_factory = TransformerTask(
             variable='test_variable', expression='$.result.value', content_type=TransformerContentType.JSON, content='',
         )
 
-        implementation = task.implementation()
+        task = task_factory()
 
-        assert callable(implementation)
+        assert callable(task)
 
         _, _, scenario = grizzly_fixture()
 
         assert scenario is not None
 
         with pytest.raises(TransformerLocustError) as tle:
-            implementation(scenario)
+            task(scenario)
         assert 'failed to transform JSON' in str(tle)
 
-        task = TransformerTask(
+        task_factory = TransformerTask(
             variable='test_variable',
             expression='$.result.value',
             content_type=TransformerContentType.JSON,
@@ -67,13 +67,13 @@ class TestTransformerTask:
             })
         )
 
-        implementation = task.implementation()
+        task = task_factory()
 
-        assert callable(implementation)
+        assert callable(task)
 
         assert scenario.user._context['variables'].get('test_variable', None) is None
 
-        implementation(scenario)
+        task(scenario)
 
         assert scenario.user._context['variables'].get('test_variable', None) == 'hello world!'
 
@@ -91,40 +91,40 @@ class TestTransformerTask:
                 "expiresAtUtc": "2021-03-20T09:13:26.000000Z",
             }]
         })
-        task = TransformerTask(
+        task_factory = TransformerTask(
             variable='payload_url',
             expression='$.payloads[0].url',
             content_type=TransformerContentType.JSON,
             content=content,
         )
 
-        implementation = task.implementation()
+        task = task_factory()
 
-        assert callable(implementation)
+        assert callable(task)
 
-        implementation(scenario)
+        task(scenario)
 
         assert scenario.user._context['variables'].get('payload_url', None) == 'https://mystorageaccount.blob.core.windows.net/mycontainer/myfile'
 
         scenario.user._context['variables']['payload_url'] = None
         scenario.user._context['variables']['payload'] = content
 
-        task = TransformerTask(
+        task_factory = TransformerTask(
             variable='payload_url',
             expression='$.payloads[0].url',
             content_type=TransformerContentType.JSON,
             content='{{ payload }}',
         )
 
-        implementation = task.implementation()
+        task = task_factory()
 
-        assert callable(implementation)
+        assert callable(task)
 
-        implementation(scenario)
+        task(scenario)
 
         assert scenario.user._context['variables'].get('payload_url', None) == 'https://mystorageaccount.blob.core.windows.net/mycontainer/myfile'
 
-        task = TransformerTask(
+        task_factory = TransformerTask(
             variable='test_variable',
             expression='$.result.name',
             content_type=TransformerContentType.JSON,
@@ -134,12 +134,12 @@ class TestTransformerTask:
                 },
             })
         )
-        implementation = task.implementation()
+        task = task_factory()
         with pytest.raises(RuntimeError) as re:
-            implementation(scenario)
+            task(scenario)
         assert 'TransformerTask: "$.result.name" returned 0 matches' in str(re)
 
-        task = TransformerTask(
+        task_factory = TransformerTask(
             variable='test_variable',
             expression='$.result[?value="hello world!"]',
             content_type=TransformerContentType.JSON,
@@ -151,12 +151,12 @@ class TestTransformerTask:
                 ],
             })
         )
-        implementation = task.implementation()
+        task = task_factory()
         with pytest.raises(RuntimeError) as re:
-            implementation(scenario)
+            task(scenario)
         assert 'TransformerTask: "$.result[?value="hello world!"]" returned 3 matches' in str(re)
 
-        task = TransformerTask(
+        task_factory = TransformerTask(
             variable='test_variable',
             expression='//actor[@id="9"]',
             content_type=TransformerContentType.XML,
@@ -174,10 +174,10 @@ class TestTransformerTask:
 </root>''',
         )
 
-        implementation = task.implementation()
+        task = task_factory()
 
-        assert callable(implementation)
+        assert callable(task)
 
-        implementation(scenario)
+        task(scenario)
 
         assert scenario.user._context['variables']['test_variable'] == '<actor id="9">Michael Caine</actor>'

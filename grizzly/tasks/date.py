@@ -5,7 +5,7 @@ At least one arguments needs to specified.
 
 Instances of this task is created with the step expression:
 
-* [`step_task_date`](/grizzly/usage/steps/scenario/tasks/#step_task_date)
+* [`step_task_date`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_date)
 
 ## Arguments
 
@@ -14,7 +14,6 @@ Instances of this task is created with the step expression:
 * `offset` _str_ (optional) - a time span string describing the offset, Y = years, M = months, D = days, h = hours, m = minutes, s = seconds, e.g. `1Y-2M10D`
 '''
 from typing import TYPE_CHECKING, Callable, Dict, Any, Optional, cast
-from dataclasses import dataclass, field
 from datetime import datetime
 
 try:
@@ -23,29 +22,33 @@ except ImportError:
     # pyright: reportMissingImports=false
     from backports.zoneinfo import ZoneInfo, ZoneInfoNotFoundError  # type: ignore[no-redef]  # pylint: disable=import-error
 
-from jinja2 import Template
 from dateutil.parser import ParserError, parse as dateparser
 from dateutil.relativedelta import relativedelta
 
 from grizzly_extras.arguments import get_unsupported_arguments, split_value, parse_arguments
 
-from ..types import GrizzlyTask
 from ..utils import parse_timespan
+from . import GrizzlyTask, template
 
 if TYPE_CHECKING:  # pragma: no cover
     from ..scenarios import GrizzlyScenario
 
 
-@dataclass
+@template('value', 'arguments')
 class DateTask(GrizzlyTask):
     variable: str
     value: str
-    arguments: Dict[str, Optional[str]] = field(init=False, default_factory=dict)
+    arguments: Dict[str, Optional[str]]
 
-    def __post_init__(self) -> None:
+    def __init__(self, variable: str, value: str) -> None:
+        super().__init__()
+
+        self.variable = variable
+        self.value = value
+
         if '|' in self.value:
-            self.value, arguments = split_value(self.value)
-            self.arguments = parse_arguments(arguments)
+            self.value, date_arguments = split_value(self.value)
+            self.arguments = parse_arguments(date_arguments)
 
             unsupported_arguments = get_unsupported_arguments(['format', 'timezone', 'offset'], self.arguments)
 
@@ -54,16 +57,16 @@ class DateTask(GrizzlyTask):
         else:
             raise ValueError('no arguments specified')
 
-    def implementation(self) -> Callable[['GrizzlyScenario'], Any]:
-        def _implementation(parent: 'GrizzlyScenario') -> Any:
-            value_rendered = Template(self.value).render(**parent.user._context['variables'], datetime=datetime)
+    def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
+        def task(parent: 'GrizzlyScenario') -> Any:
+            value_rendered = parent.render(self.value, dict(datetime=datetime))
 
             arguments_rendered: Dict[str, str] = {}
 
             for argument_name, argument_value in self.arguments.items():
                 if argument_value is None:
                     continue
-                arguments_rendered[argument_name] = Template(argument_value).render(**parent.user._context['variables'])
+                arguments_rendered[argument_name] = parent.render(argument_value)
 
             try:
                 date_value = dateparser(value_rendered)
@@ -72,7 +75,7 @@ class DateTask(GrizzlyTask):
 
             offset = self.arguments.get('offset', None)
             if offset is not None:
-                offset_rendered = Template(offset).render(**parent.user._context['variables'])
+                offset_rendered = parent.render(offset)
                 offset_params = cast(Any, parse_timespan(offset_rendered))
                 date_value += relativedelta(**offset_params)
 
@@ -88,4 +91,4 @@ class DateTask(GrizzlyTask):
 
             parent.user._context['variables'][self.variable] = date_value.astimezone(timezone).strftime(date_format)
 
-        return _implementation
+        return task

@@ -1,7 +1,7 @@
 # pylint: disable=line-too-long
 '''Listens for messages on IBM MQ.
 
-Use [transformer task](/grizzly/usage/tasks/transformer/) to extract specific parts of the message.
+Use [transformer task](/grizzly/framework/usage/tasks/transformer/) to extract specific parts of the message.
 
 Grizzly *must* have been installed with the extra `mq` package and native IBM MQ libraries must be installed for being able to use this variable:
 
@@ -29,7 +29,7 @@ content type, which needs to be specified as an argument (e.g. XPATH expressions
 mq[s]://[<username>:<password>@]<hostname>[:<port>]/?QueueManager=<queue manager>&Channel=<channel>[&KeyFile=<key repository path>[&SslCipher=<ssl cipher>][&CertLabel=<certificate label>]]
 ```
 
-All variables in the URL have support for [templating](/grizzly/usage/variables/templating/).
+All variables in the URL have support for [templating](/grizzly/framework/usage/variables/templating/).
 
 * `mq[s]` _str_ - must be specified, `mqs` implies connecting with TLS, if `KeyFile` is not set in querystring, it will look for a key repository in `./<username>`
 * `username` _str_ (optional) - username to authenticate with, default `None`

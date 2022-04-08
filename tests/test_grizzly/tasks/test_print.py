@@ -9,32 +9,32 @@ from ..fixtures import GrizzlyFixture
 
 class TestPrintTask:
     def test(self, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture) -> None:
-        task = PrintTask(message='hello world!')
-        assert task.message == 'hello world!'
+        task_factory = PrintTask(message='hello world!')
+        assert task_factory.message == 'hello world!'
 
-        implementation = task.implementation()
+        task = task_factory()
 
-        assert callable(implementation)
+        assert callable(task)
 
         _, _, scenario = grizzly_fixture()
 
         assert scenario is not None
 
         with caplog.at_level(logging.INFO):
-            implementation(scenario)
+            task(scenario)
         assert 'hello world!' in caplog.text
         caplog.clear()
 
-        task = PrintTask(message='variable={{ variable }}')
-        assert task.message == 'variable={{ variable }}'
+        task_factory = PrintTask(message='variable={{ variable }}')
+        assert task_factory.message == 'variable={{ variable }}'
 
-        implementation = task.implementation()
+        task = task_factory()
 
-        assert callable(implementation)
+        assert callable(task)
 
         scenario.user._context['variables']['variable'] = 'hello world!'
 
         with caplog.at_level(logging.INFO):
-            implementation(scenario)
+            task(scenario)
         assert 'variable=hello world!' in caplog.text
         caplog.clear()

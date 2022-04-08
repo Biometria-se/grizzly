@@ -10,7 +10,7 @@ from jinja2.meta import find_undeclared_variables
 from locust.exception import StopUser
 
 from ..context import GrizzlyContext
-from ..tasks import RequestTask
+from ..tasks import GrizzlyTask
 from ..types import TestdataType, GrizzlyDictValueType, GrizzlyDict
 from ..utils import merge_dicts
 from .ast import get_template_variables
@@ -19,9 +19,9 @@ from .ast import get_template_variables
 logger = logging.getLogger(__name__)
 
 
-def initialize_testdata(sources: Optional[List[RequestTask]]) -> Tuple[TestdataType, Set[str]]:
+def initialize_testdata(tasks: List[GrizzlyTask]) -> Tuple[TestdataType, Set[str]]:
     testdata: TestdataType = {}
-    template_variables = get_template_variables(sources)
+    template_variables = get_template_variables(tasks)
 
     initialized_datatypes: Dict[str, Any] = {}
     external_dependencies: Set[str] = set()

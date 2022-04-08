@@ -3,7 +3,7 @@ import json
 import os
 import logging
 
-from typing import Optional, List, Tuple, Dict, cast
+from typing import Optional, List, Tuple, Dict, Type, cast
 from urllib.parse import urlparse
 
 import jinja2 as j2
@@ -17,6 +17,7 @@ from grizzly_extras.arguments import split_value, parse_arguments, get_unsupport
 from ..context import GrizzlyContext
 from ..types import RequestMethod, ResponseTarget, ResponseAction
 from ..tasks import RequestTask
+from ..tasks.clients import client, ClientTask
 from ..testdata.utils import resolve_variable
 from ..users.base.response_handler import ResponseHandlerAction, ValidationHandlerAction, SaveHandlerAction
 
@@ -36,8 +37,6 @@ def create_request_task(
 def _create_request_task(
     base_dir: str, method: RequestMethod, source: Optional[str], endpoint: str, name: Optional[str] = None, substitutes: Optional[Dict[str, str]] = None,
 ) -> RequestTask:
-    if substitutes is None:
-        substitutes = {}
     path = os.path.join(base_dir, 'requests')
     j2env = j2.Environment(
         autoescape=False,
@@ -73,7 +72,7 @@ def _create_request_task(
             name = '<unknown>'
 
     if source is not None:
-        for key, value in substitutes.items():
+        for key, value in (substitutes or {}).items():
             source = source.replace(f'{{{{ {key} }}}}', value)
 
     request = RequestTask(method, name=cast(str, name), endpoint=endpoint)
@@ -251,3 +250,19 @@ def add_validation_handler(context: GrizzlyContext, target: ResponseTarget, expr
 
 def normalize_step_name(step_name: str) -> str:
     return re.sub(r'"[^"]*"', '""', step_name)
+
+
+def get_task_client(endpoint: str) -> Type[ClientTask]:
+    scheme = urlparse(endpoint).scheme
+
+    assert scheme is not None and len(scheme) > 0, f'could not find scheme in "{endpoint}"'
+
+    task_client = client.available.get(scheme, None)
+
+    assert task_client is not None, f'no client task registered for {scheme}'
+
+    return task_client
+
+
+def is_template(text: str) -> bool:
+    return '{{' in text and '}}' in text

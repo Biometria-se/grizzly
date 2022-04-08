@@ -1,43 +1,26 @@
 import logging
 
-from typing import Set, Optional, List, Dict, Tuple, Union, cast
+from typing import Set, Optional, List, Dict
 
 import jinja2 as j2
 
 from jinja2.nodes import Getattr, Getitem, Name
 
-from ..tasks import RequestTask
-
-
-RequestSourceMapping = Dict[str, Set[Tuple[str, Union[str, RequestTask]]]]
+from ..tasks import GrizzlyTask
+from ..context import GrizzlyContextScenario
 
 logger = logging.getLogger(__name__)
 
 
-def _get_template_variables_from_request_task(requests: List[RequestTask]) -> Dict[str, Set[Tuple[str, RequestTask]]]:
-    templates: Dict[str, Set[Tuple[str, RequestTask]]] = {}
+def get_template_variables(tasks: List[GrizzlyTask]) -> Dict[str, Set[str]]:
+    templates: Dict[GrizzlyContextScenario, Set[str]] = {}
 
-    for request in requests:
-        scenario = request.scenario.get_name()
+    for task in tasks:
+        if task.scenario not in templates:
+            templates[task.scenario] = set()
 
-        if scenario not in templates:
-            templates[scenario] = set()
-
-        templates[scenario].add(('.', request))
-
-    return templates
-
-
-def get_template_variables(sources: Optional[List[RequestTask]]) -> Dict[str, Set[str]]:
-    templates: RequestSourceMapping
-
-    if sources is None or len(sources) == 0:
-        templates = {}
-    else:
-        templates = cast(
-            RequestSourceMapping,
-            _get_template_variables_from_request_task(sources),
-        )
+        for template in task.get_templates():
+            templates[task.scenario].add(template)
 
     return _parse_templates(templates)
 
@@ -60,37 +43,28 @@ def walk_attr(node: Getattr) -> List[str]:
     return attributes
 
 
-def _parse_templates(requests: RequestSourceMapping) -> Dict[str, Set[str]]:
+def _parse_templates(templates: Dict[GrizzlyContextScenario, Set[str]]) -> Dict[str, Set[str]]:
     variables: Dict[str, Set[str]] = {}
 
-    for scenario, scenario_requests in requests.items():
-        if scenario not in variables:
-            variables[scenario] = set()
+    for scenario, scenario_templates in templates.items():
+        scenario_name = scenario.get_name()
+
+        if scenario_name not in variables:
+            variables[scenario_name] = set()
 
         has_processed_orphan_templates = False
 
         # can raise TemplateError which should be handled else where
-        for (path, request) in scenario_requests:
+        for template in scenario_templates:
             j2env = j2.Environment(
                 autoescape=False,
-                loader=j2.FileSystemLoader(path),
+                loader=j2.FileSystemLoader('.'),
             )
 
-            sources: List[str] = []
-            template_source: Optional[str] = None
-            # get template source
-            if isinstance(request, RequestTask):
-                if request.source is not None:
-                    template_source = request.source
-                sources += [request.name, request.endpoint]
-            else:
-                template_source = j2env.loader.get_source(j2env, request)[0]
+            sources: List[str] = [template]
 
-            if template_source is not None:
-                sources.append(template_source)
-
-            if not has_processed_orphan_templates and isinstance(request, RequestTask):
-                sources += request.scenario.orphan_templates
+            if not has_processed_orphan_templates:
+                sources += scenario.orphan_templates
                 has_processed_orphan_templates = True
 
             for source in sources:
@@ -111,6 +85,6 @@ def _parse_templates(requests: RequestSourceMapping) -> Dict[str, Set[str]]:
                             attributes = [getattr(node, 'name')]
 
                         if attributes is not None:
-                            variables[scenario].add('.'.join(attributes))
+                            variables[scenario_name].add('.'.join(attributes))
 
     return variables

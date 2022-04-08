@@ -1,7 +1,7 @@
 import json
 
 from os import path, mkdir, sep
-from typing import Dict, List, Optional, Any, Tuple, cast
+from typing import Dict, Optional, Any, Tuple, cast
 from logging import Logger
 
 import pytest
@@ -18,7 +18,7 @@ from locust.exception import StopUser
 from grizzly.testdata.communication import TestdataConsumer, TestdataProducer
 from grizzly.testdata.utils import initialize_testdata, transform
 from grizzly.context import GrizzlyContext
-from grizzly.tasks import RequestTask
+from grizzly.tasks import PrintTask
 
 from ..fixtures import AtomicVariableCleanupFixture, LocustFixture, BehaveFixture, GrizzlyFixture, NoopZmqFixture
 
@@ -99,8 +99,9 @@ class TestTestdataProducer:
             request.template = Template(request.source)
 
             grizzly.scenario.add_task(request)
+            grizzly.scenario.add_task(PrintTask(message='hello {{ world }}'))
 
-            testdata, external_dependencies = initialize_testdata(cast(List[RequestTask], grizzly.scenario.tasks))
+            testdata, external_dependencies = initialize_testdata(grizzly.scenario.tasks)
 
             if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
                 assert external_dependencies == set(['async-messaged'])
@@ -218,8 +219,9 @@ class TestTestdataProducer:
             grizzly.scenario.user.class_name = 'TestUser'
             grizzly.scenario.context['host'] = 'http://test.nu'
             grizzly.scenario.add_task(request)
+            grizzly.scenario.add_task(PrintTask(message='are you {{ sure }}'))
 
-            testdata, external_dependencies = initialize_testdata(cast(List[RequestTask], grizzly.scenario.tasks))
+            testdata, external_dependencies = initialize_testdata(grizzly.scenario.tasks)
 
             assert external_dependencies == set()
 

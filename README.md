@@ -34,7 +34,7 @@ More detailed documentation can be found [here](https://biometria-se.github.io/g
 
 ## Description
 
-`behave` is <del>abused</del> used for being able to define `locust` load test scenarios using [gherkin](https://cucumber.io/docs/gherkin). A feature can contain more than one scenario and all scenarios will run in parallell.
+`behave` is <del>ab</del>used for being able to define `locust` load test scenarios using [gherkin](https://cucumber.io/docs/gherkin). A feature can contain more than one scenario and all scenarios will run in parallell.
 
 ```gherkin
 Feature: Rest API endpoint testing

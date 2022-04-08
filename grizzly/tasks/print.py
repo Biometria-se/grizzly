@@ -3,26 +3,28 @@ templating variables.
 
 Instances of this task is created with the step expression:
 
-* [`step_task_print_message`](/grizzly/usage/steps/scenario/tasks/#step_task_print_message)
+* [`step_task_print_message`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_print_message)
 '''
 from typing import TYPE_CHECKING, Any, Callable
-from dataclasses import dataclass
 
-from jinja2 import Template
-
-from ..types import GrizzlyTask
+from . import GrizzlyTask, template
 
 if TYPE_CHECKING:  # pragma: no cover
     from ..scenarios import GrizzlyScenario
 
 
-@dataclass
+@template('message')
 class PrintTask(GrizzlyTask):
     message: str
 
-    def implementation(self) -> Callable[['GrizzlyScenario'], Any]:
-        def _implementation(parent: 'GrizzlyScenario') -> Any:
-            message = Template(self.message).render(**parent.user._context['variables'])
+    def __init__(self, message: str) -> None:
+        super().__init__()
+
+        self.message = message
+
+    def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
+        def task(parent: 'GrizzlyScenario') -> Any:
+            message = parent.render(self.message)
             parent.logger.info(message)
 
-        return _implementation
+        return task

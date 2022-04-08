@@ -6,33 +6,38 @@ where many parts of a message can be useful to re-use.
 
 Instances of this task is created with the step expression:
 
-* [`step_task_transform`](/grizzly/usage/steps/scenario/tasks/#step_task_transform)
+* [`step_task_transform`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_transform)
 '''
-from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, List, Callable, Any, Type
 
-from jinja2 import Template
 from grizzly_extras.transformer import Transformer, transformer, TransformerContentType, TransformerError
 
 from ..context import GrizzlyContext
-from ..types import GrizzlyTask
 from ..exceptions import TransformerLocustError
+from . import GrizzlyTask, template
 
 if TYPE_CHECKING:  # pragma: no cover
     from ..scenarios import GrizzlyScenario
 
 
-@dataclass
+@template('content')
 class TransformerTask(GrizzlyTask):
     expression: str
     variable: str
     content: str
     content_type: TransformerContentType
 
-    _transformer: Type[Transformer] = field(init=False, repr=False)
-    _parser: Callable[[Any], List[str]] = field(init=False, repr=False)
+    _transformer: Type[Transformer]
+    _parser: Callable[[Any, Any], List[str]]
 
-    def __post_init__(self) -> None:
+    def __init__(self, expression: str, variable: str, content: str, content_type: TransformerContentType) -> None:
+        super().__init__()
+
+        self.expression = expression
+        self.variable = variable
+        self.content = content
+        self.content_type = content_type
+
         grizzly = GrizzlyContext()
         if self.variable not in grizzly.state.variables:
             raise ValueError(f'{self.__class__.__name__}: {self.variable} has not been initialized')
@@ -47,11 +52,11 @@ class TransformerTask(GrizzlyTask):
         if not self._transformer.validate(self.expression):
             raise ValueError(f'{self.__class__.__name__}: {self.expression} is not a valid expression for {self.content_type.name}')
 
-        self._parser = self._transformer.parser(self.expression)
+        setattr(self, '_parser', self._transformer.parser(self.expression))
 
-    def implementation(self) -> Callable[['GrizzlyScenario'], Any]:
-        def _implementation(parent: 'GrizzlyScenario') -> Any:
-            content_raw = Template(self.content).render(**parent.user._context['variables'])
+    def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
+        def task(parent: 'GrizzlyScenario') -> Any:
+            content_raw = parent.render(self.content)
 
             try:
                 content = self._transformer.transform(content_raw)
@@ -71,4 +76,4 @@ class TransformerTask(GrizzlyTask):
 
             parent.user._context['variables'][self.variable] = value
 
-        return _implementation
+        return task

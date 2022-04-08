@@ -28,11 +28,11 @@ class TestIterationScenario:
         assert isinstance(scenario, IteratorScenario)
         assert issubclass(scenario.__class__, SequentialTaskSet)
 
-    def test_add_scenario_task(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+    def test_populate(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         _, user, scenario = grizzly_fixture(scenario_type=IteratorScenario)
         request = grizzly_fixture.request_task.request
         request.endpoint = '/api/v1/test'
-        IteratorScenario.add_scenario_task(request)
+        IteratorScenario.populate(request)
         assert isinstance(scenario, IteratorScenario)
         assert len(scenario.tasks) == 2
 
@@ -53,14 +53,14 @@ class TestIterationScenario:
             )
 
         generate_mocked_wait(1.5)
-        IteratorScenario.add_scenario_task(WaitTask(time=1.5))
+        IteratorScenario.populate(WaitTask(time=1.5))
         assert len(scenario.tasks) == 3
 
         task_method = scenario.tasks[-1]
         assert callable(task_method)
         task_method(scenario)
 
-        IteratorScenario.add_scenario_task(PrintTask(message='hello {{ world }}'))
+        IteratorScenario.populate(PrintTask(message='hello {{ world }}'))
         assert len(scenario.tasks) == 4
 
         logger_spy = mocker.spy(scenario.logger, 'info')
@@ -190,6 +190,8 @@ class TestIterationScenario:
             side_effect=side_effects,
         )
 
+        mocker.patch.object(scenario, 'tasks', [f'task-{index}' for index in range(0, 10)])
+
         schedule_task = mocker.patch.object(scenario, 'schedule_task', autospec=True)
         get_next_task = mocker.patch.object(scenario, 'get_next_task', autospec=True)
         wait = mocker.patch.object(scenario, 'wait', autospec=True)
@@ -305,7 +307,7 @@ class TestIterationScenario:
         with pytest.raises(RuntimeError):
             scenario.run()
 
-        assert scenario._task_index == 0
+        assert scenario._task_index == 20
         assert on_start.call_count == 9
         assert on_stop.call_count == 2
         assert get_next_task.call_count == 2

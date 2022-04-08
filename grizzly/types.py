@@ -1,16 +1,10 @@
-from abc import ABCMeta
 from enum import Enum
-from typing import TYPE_CHECKING, Callable, Optional, Tuple, Any, Union, Dict, TypeVar, List, Type, Generic, Set, cast
+from typing import Callable, Optional, Tuple, Any, Union, Dict, TypeVar, List, Type, Generic, Set, cast
 from importlib import import_module
-from dataclasses import dataclass, field
 
 from aenum import Enum as AdvancedEnum, NoAlias
 from locust.clients import ResponseContextManager
 from gevent.lock import Semaphore
-
-if TYPE_CHECKING:  # pragma: no cover
-    from .scenarios import GrizzlyScenario
-    from .context import GrizzlyContextScenario
 
 
 class ResponseTarget(Enum):
@@ -252,11 +246,3 @@ class GrizzlyDict(dict):
             value = caster(value)
 
         super().__setitem__(key, value)
-
-
-@dataclass(unsafe_hash=True)
-class GrizzlyTask(metaclass=ABCMeta):
-    scenario: 'GrizzlyContextScenario' = field(init=False, repr=False)
-
-    def implementation(self) -> Callable[['GrizzlyScenario'], Any]:
-        raise NotImplementedError(f'{self.__class__.__name__} has not implemented "implementation"')

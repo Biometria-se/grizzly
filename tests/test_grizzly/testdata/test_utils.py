@@ -2,7 +2,7 @@ import logging
 import shutil
 
 from os import path, environ, mkdir, sep
-from typing import List, Dict, Any, Optional, cast
+from typing import Dict, Any, Optional, cast
 from json import dumps as jsondumps, loads as jsonloads
 
 import pytest
@@ -16,7 +16,7 @@ from _pytest.logging import LogCaptureFixture
 from locust.exception import StopUser
 
 from grizzly.context import GrizzlyContext
-from grizzly.tasks import RequestTask
+from grizzly.tasks import PrintTask, DateTask, TransformerTask, UntilRequestTask
 from grizzly.testdata.utils import (
     _get_variable_value,
     initialize_testdata,
@@ -27,6 +27,7 @@ from grizzly.testdata.utils import (
 )
 from grizzly.testdata.variables import AtomicCsvRow, AtomicIntegerIncrementer, AtomicMessageQueue, AtomicServiceBus
 from grizzly_extras.async_message import AsyncMessageResponse
+from grizzly_extras.transformer import TransformerContentType
 
 from ..fixtures import BehaveFixture, AtomicVariableCleanupFixture, GrizzlyFixture, RequestTaskFixture, NoopZmqFixture
 
@@ -157,10 +158,6 @@ def test__get_variable_value_AtomicCsvRow(cleanup: AtomicVariableCleanupFixture,
 
 
 def test_initialize_testdata_no_tasks() -> None:
-    testdata, external_dependencies = initialize_testdata(None)
-    assert testdata == {}
-    assert external_dependencies == set()
-
     testdata, external_dependencies = initialize_testdata([])
     assert testdata == {}
     assert external_dependencies == set()
@@ -172,21 +169,51 @@ def test_initialize_testdata_with_tasks(
 ) -> None:
     try:
         grizzly = GrizzlyContext()
+        grizzly.state.variables.update({
+            'AtomicIntegerIncrementer.messageID': 1337,
+            'AtomicDate.now': 'now',
+            'transformer_task': 'none',
+        })
         grizzly.state.variables['AtomicIntegerIncrementer.messageID'] = 1337
         grizzly.state.variables['AtomicDate.now'] = 'now'
         request = request_task.request
+        request.name = '{{ request_name }}'
+        request.endpoint = '/api/{{ endpoint_part }}/test'
+        request.response.content_type = TransformerContentType.JSON
         scenario = request.scenario
         scenario.add_task(request)
-        testdata, external_dependencies = initialize_testdata(cast(List[RequestTask], scenario.tasks))
+        scenario.add_task(PrintTask(message='{{ message }}'))
+        scenario.add_task(DateTask(variable='date_task', value='{{ date_task_date }} | timezone="{{ timezone }}", offset="-{{ days }}D"'))
+        scenario.add_task(TransformerTask(
+            expression='$.expression',
+            variable='transformer_task',
+            content='hello this is the {{ content }}!',
+            content_type=TransformerContentType.JSON,
+        ))
+        scenario.add_task(UntilRequestTask(request=request, condition='{{ condition }}'))
+        scenario.orphan_templates.append('hello {{ orphan }} template')
+        testdata, external_dependencies = initialize_testdata(scenario.tasks)
 
         scenario_name = scenario.get_name()
 
         assert external_dependencies == set()
         assert scenario_name in testdata
-        assert len(testdata[scenario_name]) == 3
-        assert 'messageID' in testdata[scenario_name]
-        assert 'AtomicIntegerIncrementer.messageID' in testdata[scenario_name]
-        assert 'AtomicDate.now' in testdata[scenario_name]
+        variables = testdata[scenario_name]
+        assert len(variables) == 12
+        assert sorted(variables.keys()) == sorted([
+            'messageID',
+            'AtomicIntegerIncrementer.messageID',
+            'AtomicDate.now',
+            'request_name',
+            'endpoint_part',
+            'message',
+            'date_task_date',
+            'timezone',
+            'days',
+            'content',
+            'condition',
+            'orphan',
+        ])
     finally:
         cleanup()
 
@@ -243,7 +270,7 @@ def test_initialize_testdata_with_payload_context(grizzly_fixture: GrizzlyFixtur
 
         grizzly.scenario.add_task(request)
 
-        testdata, external_dependencies = initialize_testdata(cast(List[RequestTask], grizzly.scenario.tasks))
+        testdata, external_dependencies = initialize_testdata(grizzly.scenario.tasks)
 
         scenario_name = grizzly.scenario.get_name()
 

@@ -15,7 +15,7 @@ from ..fixtures import GrizzlyFixture
 
 
 class TestUntilRequestTask:
-    def test_create(self) -> None:
+    def test___init__(self) -> None:
         request = RequestTask(RequestMethod.GET, name='test', endpoint='/api/test')
 
         with pytest.raises(ValueError) as ve:
@@ -48,7 +48,7 @@ class TestUntilRequestTask:
             UntilRequestTask(request, '$.`this`[?status="ready"] | wait=0.1, retries=0')
         assert 'retries argument cannot be less than 1' in str(ve)
 
-    def test_implementation(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+    def test___call__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         _, _, scenario = grizzly_fixture()
         assert scenario is not None
         request = grizzly_fixture.request_task.request
@@ -74,7 +74,7 @@ class TestUntilRequestTask:
             ],
         )
 
-        time_spy = mocker.patch('grizzly.tasks.until.time', side_effect=[0.0, 153.5, 0.0, 12.25, 0.0, 12.25, 0.0, 1.5, 0.0, 0.8])
+        time_spy = mocker.patch('grizzly.tasks.until.time', side_effect=[0.0, 153.5, 0.0, 12.25, 0.0, 12.25, 0.0, 1.5, 0.0, 0.8, 0.0, 0.8, 0.0, 0.555, 0.0, 0.666])
 
         fire_spy = mocker.patch.object(
             scenario.user.environment.events.request,
@@ -83,28 +83,28 @@ class TestUntilRequestTask:
 
         gsleep_spy = mocker.patch('grizzly.tasks.until.gsleep', autospec=True)
 
-        task = UntilRequestTask(request, '/status[text()="ready"]')
-        implementation = task.implementation()
+        task_factory = UntilRequestTask(request, '/status[text()="ready"]')
+        task = task_factory()
 
         with pytest.raises(RuntimeError) as re:
-            implementation(scenario)
+            task(scenario)
         assert '/status[text()="ready"] is not a valid expression for JSON' in str(re)
 
         jsontransformer_orig = transformer.available[TransformerContentType.JSON]
         del transformer.available[TransformerContentType.JSON]
 
-        task = UntilRequestTask(request, '$.`this`[?status="ready"] | wait=100, retries=10')
+        task_factory = UntilRequestTask(request, '$.`this`[?status="ready"] | wait=100, retries=10')
 
         with pytest.raises(TypeError) as te:
-            task.implementation()
+            task_factory()
         assert 'could not find a transformer for JSON' in str(te)
 
         transformer.available[TransformerContentType.JSON] = jsontransformer_orig
 
-        task = UntilRequestTask(request, "$.`this`[?status='ready'] | wait=100, retries=10")
-        implementation = task.implementation()
+        task_factory = UntilRequestTask(request, "$.`this`[?status='ready'] | wait=100, retries=10")
+        task = task_factory()
 
-        implementation(scenario)
+        task(scenario)
 
         assert time_spy.call_count == 2
         assert request_spy.call_count == 3
@@ -119,7 +119,7 @@ class TestUntilRequestTask:
         _, kwargs = fire_spy.call_args_list[-1]
 
         assert kwargs.get('request_type', None) == 'UNTL'
-        assert kwargs.get('name', None) == f'{request.scenario.identifier} test-request, w=100.0s, r=10'
+        assert kwargs.get('name', None) == f'{request.scenario.identifier} test-request, w=100.0s, r=10, em=1'
         assert kwargs.get('response_time', None) == 153500
         assert kwargs.get('response_length', None) == 0
         assert kwargs.get('context', None) == {'variables': {}}
@@ -128,10 +128,10 @@ class TestUntilRequestTask:
         # -->
         scenario.grizzly.state.variables['wait'] = 100.0
         scenario.grizzly.state.variables['retries'] = 10
-        task = UntilRequestTask(request, "$.`this`[?status='ready'] | wait='{{ wait }}', retries='{{ retries }}'")
-        implementation = task.implementation()
+        task_factory = UntilRequestTask(request, "$.`this`[?status='ready'] | wait='{{ wait }}', retries='{{ retries }}'")
+        task = task_factory()
 
-        implementation(scenario)
+        task(scenario)
 
         assert time_spy.call_count == 4
         assert request_spy.call_count == 4
@@ -146,7 +146,7 @@ class TestUntilRequestTask:
         _, kwargs = fire_spy.call_args_list[-1]
 
         assert kwargs.get('request_type', None) == 'UNTL'
-        assert kwargs.get('name', None) == f'{request.scenario.identifier} test-request, w=100.0s, r=10'
+        assert kwargs.get('name', None) == f'{request.scenario.identifier} test-request, w=100.0s, r=10, em=1'
         assert kwargs.get('response_time', None) == 12250
         assert kwargs.get('response_length', None) == 0
         assert kwargs.get('context', None) == {'variables': {}}
@@ -163,17 +163,17 @@ class TestUntilRequestTask:
         )
 
         request.scenario.failure_exception = StopUser
-        task = UntilRequestTask(request, '$.`this`[?status="ready"] | wait=10, retries=2')
-        implementation = task.implementation()
+        task_factory = UntilRequestTask(request, '$.`this`[?status="ready"] | wait=10, retries=2')
+        task = task_factory()
 
         with pytest.raises(StopUser):
-            implementation(scenario)
+            task(scenario)
 
         assert fire_spy.call_count == 3
         _, kwargs = fire_spy.call_args_list[-1]
 
         assert kwargs.get('request_type', None) == 'UNTL'
-        assert kwargs.get('name', None) == f'{request.scenario.identifier} test-request, w=10.0s, r=2'
+        assert kwargs.get('name', None) == f'{request.scenario.identifier} test-request, w=10.0s, r=2, em=1'
         assert kwargs.get('response_time', None) == 12250
         assert kwargs.get('response_length', None) == 0
         assert kwargs.get('context', None) == {'variables': {}}
@@ -194,13 +194,13 @@ class TestUntilRequestTask:
 
         request.scenario.failure_exception = RestartScenario
         with pytest.raises(RestartScenario):
-            implementation(scenario)
+            task(scenario)
 
         assert fire_spy.call_count == 4
         _, kwargs = fire_spy.call_args_list[-1]
 
         assert kwargs.get('request_type', None) == 'UNTL'
-        assert kwargs.get('name', None) == f'{request.scenario.identifier} test-request, w=10.0s, r=2'
+        assert kwargs.get('name', None) == f'{request.scenario.identifier} test-request, w=10.0s, r=2, em=1'
         assert kwargs.get('response_time', None) == 1500
         assert kwargs.get('response_length', None) == 0
         assert kwargs.get('context', None) == {'variables': {}}
@@ -220,17 +220,100 @@ class TestUntilRequestTask:
             ],
         )
 
-        task = UntilRequestTask(request, '$.`this`[?status="ready"] | wait=4, retries=4')
-        implementation = task.implementation()
+        task_factory = UntilRequestTask(request, '$.`this`[?status="ready"] | wait=4, retries=4')
+        task = task_factory()
 
-        implementation(scenario)
+        task(scenario)
 
         assert fire_spy.call_count == 5
         _, kwargs = fire_spy.call_args_list[-1]
 
         assert kwargs.get('request_type', None) == 'UNTL'
-        assert kwargs.get('name', None) == f'{request.scenario.identifier} test-request, w=4.0s, r=4'
+        assert kwargs.get('name', None) == f'{request.scenario.identifier} test-request, w=4.0s, r=4, em=1'
         assert kwargs.get('response_time', None) == 800
+        assert kwargs.get('response_length', None) == 0
+        assert kwargs.get('context', None) == {'variables': {}}
+        assert kwargs.get('exception', '') is None
+
+        request_spy = mocker.patch.object(
+            scenario.user,
+            'request',
+            return_value=(None, jsondumps({
+                'list': [{
+                    'count': 18,
+                    'value': 'first',
+                }, {
+                    'count': 18,
+                    'value': 'wildcard',
+                }, {
+                    'count': 19,
+                    'value': 'second',
+                }, {
+                    'count': 20,
+                    'value': 'third',
+                }, {
+                    'count': 21,
+                    'value': 'fourth'
+                }, {
+                    'count': 22,
+                    'value': 'fifth',
+                }]
+            }), ),
+        )
+
+        task_factory = UntilRequestTask(request, '$.list[?(@.count > 19)] | wait=4, expected_matches=3, retries=4')
+        assert task_factory.expected_matches == 3
+        assert task_factory.wait == 4
+        assert task_factory.retries == 4
+
+        task = task_factory()
+        task(scenario)
+
+        assert fire_spy.call_count == 6
+        _, kwargs = fire_spy.call_args_list[-1]
+
+        assert kwargs.get('request_type', None) == 'UNTL'
+        assert kwargs.get('name', None) == f'{request.scenario.identifier} test-request, w=4.0s, r=4, em=3'
+        assert kwargs.get('response_time', None) == 800
+        assert kwargs.get('response_length', None) == 0
+        assert kwargs.get('context', None) == {'variables': {}}
+        assert kwargs.get('exception', '') is None
+
+        task_factory = UntilRequestTask(request, '$.list[?(@.count > 19)] | wait=4, expected_matches=4, retries=4')
+        assert task_factory.expected_matches == 4
+        assert task_factory.wait == 4
+        assert task_factory.retries == 4
+
+        task = task_factory()
+        with pytest.raises(RestartScenario):
+            task(scenario)
+
+        assert fire_spy.call_count == 7
+        _, kwargs = fire_spy.call_args_list[-1]
+
+        assert kwargs.get('request_type', None) == 'UNTL'
+        assert kwargs.get('name', None) == f'{request.scenario.identifier} test-request, w=4.0s, r=4, em=4'
+        assert kwargs.get('response_time', None) == 555
+        assert kwargs.get('response_length', None) == 0
+        assert kwargs.get('context', None) == {'variables': {}}
+        exception = kwargs.get('exception', None)
+        assert isinstance(exception, RuntimeError)
+        assert str(exception) == 'found 3 matching values for $.list[?(@.count > 19)] in payload after 4 retries and 555 milliseconds'
+
+        task_factory = UntilRequestTask(request, '$.list[?(@.count == 18)] | wait=4, expected_matches=2, retries=4')
+        assert task_factory.expected_matches == 2
+        assert task_factory.wait == 4
+        assert task_factory.retries == 4
+
+        task = task_factory()
+        task(scenario)
+
+        assert fire_spy.call_count == 8
+        _, kwargs = fire_spy.call_args_list[-1]
+
+        assert kwargs.get('request_type', None) == 'UNTL'
+        assert kwargs.get('name', None) == f'{request.scenario.identifier} test-request, w=4.0s, r=4, em=2'
+        assert kwargs.get('response_time', None) == 666
         assert kwargs.get('response_length', None) == 0
         assert kwargs.get('context', None) == {'variables': {}}
         assert kwargs.get('exception', '') is None

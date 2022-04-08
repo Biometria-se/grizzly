@@ -1,15 +1,13 @@
 '''This module contains step implementations that describes requests sent by `user_class_name` targeting `host`.'''
 from typing import cast
-from urllib.parse import urlparse
 
 from behave.runner import Context
 from behave import register_type, then  # pylint: disable=no-name-in-module
 
-from ..helpers import add_request_task
+from ..helpers import add_request_task, get_task_client, is_template
 from ...types import RequestDirection, RequestMethod
 from ...context import GrizzlyContext
 from ...tasks import PrintTask, WaitTask, TransformerTask, UntilRequestTask, DateTask
-from ...tasks.getter import getterof
 
 from grizzly_extras.transformer import TransformerContentType
 
@@ -65,13 +63,10 @@ def step_task_request_with_name_to_endpoint_until(context: Context, method: Requ
         for key, value in substitues.items():
             condition_rendered = condition_rendered.replace(f'{{{{ {key} }}}}', value)
 
-        grizzly.scenario.tasks.append(UntilRequestTask(
+        grizzly.scenario.add_task(UntilRequestTask(
             request=request_task,
             condition=condition_rendered,
         ))
-
-        if '{{' in condition_rendered and '}}' in condition_rendered:
-            grizzly.scenario.orphan_templates.append(condition_rendered)
 
 
 @then(u'{method:Method} request with name "{name}" {direction:Direction} endpoint "{endpoint}"')
@@ -165,7 +160,8 @@ def step_task_request_file_with_name_endpoint(context: Context, method: RequestM
         endpoint (str): URI relative to `host` in the scenario, can contain variables and in certain cases `user_class_name` specific parameters
     '''
     assert method.direction == RequestDirection.TO, f'{method.name} is not allowed'
-    assert context.text is None, f'Step text is not allowed for {method.name}'
+    assert context.text is None, f'step text is not allowed for {method.name}'
+    assert not is_template(source), 'source file cannot be a template'
     add_request_task(context, method=method, source=source, name=name, endpoint=endpoint)
 
 
@@ -200,7 +196,8 @@ def step_task_request_file_with_name(context: Context, method: RequestMethod, so
         name (str): name of the requests in logs, can contain variables
     '''
     assert method.direction == RequestDirection.TO, f'{method.name} is not allowed'
-    assert context.text is None, f'Step text is not allowed for {method.name}'
+    assert context.text is None, f'step text is not allowed for {method.name}'
+    assert not is_template(source), 'source file cannot be a template'
     add_request_task(context, method=method, source=source, name=name)
 
 
@@ -300,15 +297,12 @@ def step_task_print_message(context: Context, message: str) -> None:
     grizzly = cast(GrizzlyContext, context.grizzly)
     grizzly.scenario.add_task(PrintTask(message=message))
 
-    if '{{' in message and '}}' in message:
-        grizzly.scenario.orphan_templates.append(message)
-
 
 @then(u'parse "{content}" as "{content_type:ContentType}" and save value of "{expression}" in variable "{variable}"')
 def step_task_transform(context: Context, content: str, content_type: TransformerContentType, expression: str, variable: str) -> None:
     '''Parse (part of) a JSON object or a XML document and extract a specific value from that and save into a variable.
 
-    This can be especially useful in combination with [`AtomicMessageQueue`](/grizzly/usage/variables/testdata/messagequeue/) variable.
+    This can be especially useful in combination with [`AtomicMessageQueue`](/grizzly/framework/usage/variables/testdata/messagequeue/) variable.
 
     ```gherkin
     And value for variable "document_id" is "None"
@@ -334,15 +328,12 @@ def step_task_transform(context: Context, content: str, content_type: Transforme
         variable=variable,
     ))
 
-    if '{{' in content and '}}' in content:
-        grizzly.scenario.orphan_templates.append(content)
-
 
 @then(u'get "{endpoint}" and save response in "{variable}"')
-def step_task_get_endpoint(context: Context, endpoint: str, variable: str) -> None:
+def step_task_client_get_endpoint(context: Context, endpoint: str, variable: str) -> None:
     '''Get information from another host or endpoint than the scenario is load testing and save the response in a variable.
 
-    Task implementations are found in `grizzly.task.getter` and each implementation is looked up through the scheme in the
+    Task implementations are found in `grizzly.task.clients` and each implementation is looked up through the scheme in the
     specified endpoint. If the endpoint is a variable, one have to manually specify the endpoint scheme even though the
     resolved variable contains the scheme. In this case the manually specified scheme will be removed to the endpoint actually
     used by the task.
@@ -358,22 +349,46 @@ def step_task_get_endpoint(context: Context, endpoint: str, variable: str) -> No
     '''
     grizzly = cast(GrizzlyContext, context.grizzly)
 
-    scheme = urlparse(endpoint).scheme
+    task_client = get_task_client(endpoint)
 
-    assert scheme is not None and len(scheme) > 0, f'could not find scheme in "{endpoint}"'
-
-    getter = getterof.available.get(scheme, None)
-
-    assert getter is not None, f'no getter task registered for {scheme}'
-
-    if '{{' in endpoint and '}}' in endpoint:
-        grizzly.scenario.orphan_templates.append(endpoint)
-        index = len(scheme) + 3
-        endpoint = endpoint[index:]
-
-    grizzly.scenario.add_task(getter(
-        endpoint=endpoint,
+    grizzly.scenario.add_task(task_client(
+        RequestDirection.FROM,
+        endpoint,
         variable=variable,
+    ))
+
+
+@then(u'put "{source}" to "{endpoint}" as "{destination}"')
+def step_task_client_put_endpoint_file_destination(context: Context, source: str, endpoint: str, destination: str) -> None:
+    '''Put information to another host or endpoint than the scenario is load testing, source being a file.
+
+    Task implementations are found in `grizzly.task.clients` and each implementation is looked up through the scheme in the
+    specified endpoint. If the endpoint is a variable, one have to manually specify the endpoint scheme even though the
+    resolved variable contains the scheme. In this case the manually specified scheme will be removed to the endpoint actually
+    used by the task.
+
+    ```gherkin
+    Then put "test-file.json" to "bs://my-storage?AccountKey=aaaabbb=&Container=my-container" as "uploaded-test-file.json"
+    ```
+
+    Args:
+        source (str): relative path to file in `feature/requests`, supports templating
+        endpoint (str): information about where to get information, see the specific getter task implementations for more information
+        destination (str): name of source on the destination
+    '''
+    assert context.text is None, 'step text is not allowed for this step expression'
+
+    grizzly = cast(GrizzlyContext, context.grizzly)
+
+    task_client = get_task_client(endpoint)
+
+    assert not is_template(source), 'source file cannot be a template'
+
+    grizzly.scenario.add_task(task_client(
+        RequestDirection.TO,
+        endpoint,
+        source=source,
+        destination=destination,
     ))
 
 
@@ -409,9 +424,6 @@ def step_task_date(context: Context, value: str, variable: str) -> None:
     '''
     grizzly = cast(GrizzlyContext, context.grizzly)
     assert variable in grizzly.state.variables, f'variable {variable} has not been initialized'
-
-    if '{{' in value and '}}' in value:
-        grizzly.scenario.orphan_templates.append(value)
 
     grizzly.scenario.add_task(DateTask(
         value=value,

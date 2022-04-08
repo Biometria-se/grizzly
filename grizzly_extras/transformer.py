@@ -69,8 +69,7 @@ class transformer:
         @wraps(impl.transform)
         def wrapped_transform(raw: str) -> Any:
             try:
-                transformed = impl_transform(raw)
-                return transformed
+                return impl_transform(raw)
             except Exception as e:
                 raise TransformerError(f'failed to transform input as {content_type_name}: {str(e)}') from e
 

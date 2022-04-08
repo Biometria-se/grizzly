@@ -3,7 +3,6 @@ import sys
 
 from typing import Dict, Tuple, Any, cast, Optional
 from os import environ
-from dataclasses import replace
 
 try:
     import pymqi
@@ -511,9 +510,7 @@ class TestMessageQueueUser:
         assert kwargs['exception'] is not None
         request_event_spy.reset_mock()
 
-        request_error = replace(request)
-        request_error.scenario = request.scenario
-        request_error.method = RequestMethod.POST
+        request.method = RequestMethod.POST
 
         mocker.patch(
             'grizzly.users.messagequeue.zmq.Socket.recv_json',
@@ -530,7 +527,7 @@ class TestMessageQueueUser:
             ],
         )
 
-        user.request(request_error)
+        user.request(request)
 
         assert request_event_spy.call_count == 1
         _, kwargs = request_event_spy.call_args_list[0]
@@ -554,7 +551,7 @@ class TestMessageQueueUser:
         )
 
         scenario.failure_exception = None
-        user.request(request_error)
+        user.request(request)
 
         assert request_event_spy.call_count == 1
         _, kwargs = request_event_spy.call_args_list[-1]
@@ -563,7 +560,7 @@ class TestMessageQueueUser:
 
         scenario.failure_exception = StopUser
         with pytest.raises(StopUser):
-            user.request(request_error)
+            user.request(request)
 
         assert request_event_spy.call_count == 1
         _, kwargs = request_event_spy.call_args_list[-1]
@@ -572,7 +569,7 @@ class TestMessageQueueUser:
 
         scenario.failure_exception = RestartScenario
         with pytest.raises(RestartScenario):
-            user.request(request_error)
+            user.request(request)
 
         assert request_event_spy.call_count == 1
         _, kwargs = request_event_spy.call_args_list[0]
@@ -602,6 +599,7 @@ class TestMessageQueueUser:
             'grizzly.users.messagequeue.zmq.Socket.recv_json',
             side_effect=the_side_effect * 6,
         )
+        request.method = RequestMethod.GET
         request.endpoint = 'queue:IFKTEST'
         user.request(request)
         assert send_json_spy.call_count == 1
@@ -763,9 +761,7 @@ class TestMessageQueueUser:
         assert kwargs['exception'] is not None
         request_event_spy.reset_mock()
 
-        request_error = replace(request)
-        request_error.scenario = request.scenario
-        request_error.method = RequestMethod.POST
+        request.method = RequestMethod.POST
 
         mocker.patch(
             'grizzly.users.messagequeue.zmq.Socket.recv_json',
@@ -782,7 +778,7 @@ class TestMessageQueueUser:
             ],
         )
 
-        user.request(request_error)
+        user.request(request)
 
         assert request_event_spy.call_count == 1
         _, kwargs = request_event_spy.call_args_list[-1]
@@ -791,7 +787,7 @@ class TestMessageQueueUser:
         request_event_spy.reset_mock()
 
         scenario.failure_exception = None
-        user.request(request_error)
+        user.request(request)
 
         assert request_event_spy.call_count == 1
         _, kwargs = request_event_spy.call_args_list[-1]
@@ -800,7 +796,7 @@ class TestMessageQueueUser:
 
         scenario.failure_exception = StopUser
         with pytest.raises(StopUser):
-            user.request(request_error)
+            user.request(request)
 
         assert request_event_spy.call_count == 1
         _, kwargs = request_event_spy.call_args_list[-1]
@@ -809,7 +805,7 @@ class TestMessageQueueUser:
 
         scenario.failure_exception = RestartScenario
         with pytest.raises(RestartScenario):
-            user.request(request_error)
+            user.request(request)
 
         assert request_event_spy.call_count == 1
         _, kwargs = request_event_spy.call_args_list[-1]
