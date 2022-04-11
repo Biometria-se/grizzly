@@ -34,7 +34,7 @@ class IteratorScenario(GrizzlyScenario):
                     if self.user._state == LOCUST_STATE_STOPPING:
                         raise StopUser()
                     self.execute_next_task()
-                    self.logger.debug(f'iteration={self._task_index}')
+                    self.logger.debug(f'task_index={self._task_index}')
                 except RescheduleTaskImmediately:
                     pass
                 except RescheduleTask:

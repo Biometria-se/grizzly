@@ -107,6 +107,8 @@ def setup_locust_scenarios(context: GrizzlyContext) -> Tuple[List[Type[GrizzlyUs
             scenario_type.populate(task)
             tasks.append(task)
 
+        logger.debug(f'{user_class_type.__name__}/{scenario_type.__name__}={len(scenario.tasks)}')
+
         setattr(user_class_type, 'tasks', [scenario_type])
 
         user_classes.append(user_class_type)
@@ -150,7 +152,7 @@ def setup_environment_listeners(context: Context, environment: Environment, task
     # initialize testdata
     try:
         testdata, external_dependencies = initialize_testdata(tasks)
-        logger.debug(f'{testdata=}')
+
         for scenario_testdata in testdata.values():
             for variable, value in scenario_testdata.items():
                 assert value is not None, f'variable {variable} has not been initialized'
