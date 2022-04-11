@@ -7,6 +7,7 @@ from os import environ, name as osname
 from signal import SIGTERM
 from socket import error as SocketError
 from datetime import datetime
+from math import ceil
 
 import gevent
 
@@ -76,23 +77,51 @@ def on_local(context: Context) -> bool:
     return value
 
 
-def setup_locust_scenarios(context: GrizzlyContext) -> Tuple[List[Type[GrizzlyUser]], List[GrizzlyTask], Set[str]]:
+def setup_locust_scenarios(grizzly: GrizzlyContext) -> Tuple[List[Type[GrizzlyUser]], List[GrizzlyTask], Set[str]]:
     user_classes: List[Type[GrizzlyUser]] = []
     tasks: List[GrizzlyTask] = []
 
-    scenarios = context.scenarios()
+    scenarios = grizzly.scenarios()
 
     assert len(scenarios) > 0, 'no scenarios in feature'
 
     external_dependencies: Set[str] = set()
     dummy_environment = Environment()
 
+    distribution: Dict[str, int] = {}
+    '''
+    total_weight = sum([scenario.user.weight for scenario in scenarios])
+
+
+    for scenario in scenarios:
+        user_count = ceil(grizzly.setup.user_count * (scenario.user.weight / total_weight))
+        distribution[scenario.name] = user_count
+
+    total_user_count = sum([user_count for user_count in distribution.values()])
+    user_overflow = total_user_count - grizzly.setup.user_count
+
+    assert len(distribution.keys()) <= grizzly.setup.user_count, f"increase the number in step 'Given \"{grizzly.setup.user_count}\" users' to at least {len(distribution.keys())}"
+
+    if user_overflow < 0:
+        logger.warning(f'there should be {grizzly.setup.user_count} users, but there will only be {total_user_count} users spawned')
+    elif user_overflow > 0:
+        while user_overflow > 0:
+            for scenario_name in dict(sorted(distribution.items(), key=lambda d: d[1], reverse=True)).keys():
+                if distribution[scenario_name] > 1:
+                    distribution[scenario_name] -= 1
+                    user_overflow -= 1
+
+                    if user_overflow < 1:
+                        break
+    '''
+
     for scenario in scenarios:
         # Given a user of type "" load testing ""
         assert 'host' in scenario.context, f'variable "host" is not found in the context for {scenario.name}'
         assert len(scenario.tasks) > 0, f'no tasks has been added to {scenario.name}'
 
-        user_class_type = create_user_class_type(scenario, context.setup.global_context)
+        fixed_count = distribution.get(scenario.name, None)
+        user_class_type = create_user_class_type(scenario, grizzly.setup.global_context, fixed_count=fixed_count)
         user_class_type.host = scenario.context['host']
 
         # fail early if there is a problem with creating an instance of the user class
@@ -107,7 +136,9 @@ def setup_locust_scenarios(context: GrizzlyContext) -> Tuple[List[Type[GrizzlyUs
             scenario_type.populate(task)
             tasks.append(task)
 
-        logger.debug(f'{user_class_type.__name__}/{scenario_type.__name__}={len(scenario.tasks)}')
+        logger.debug(
+            f'{user_class_type.__name__}/{scenario_type.__name__}: tasks={len(scenario.tasks)}, fixed_count={user_class_type.fixed_count}, weight={user_class_type.weight}'
+        )
 
         setattr(user_class_type, 'tasks', [scenario_type])
 
@@ -269,7 +300,6 @@ def run(context: Context) -> int:
     user_classes, tasks, external_dependencies = setup_locust_scenarios(grizzly)
 
     assert len(user_classes) > 0, 'no users specified in feature'
-    assert len(user_classes) <= grizzly.setup.user_count, f"increase the number in step 'Given \"{grizzly.setup.user_count}\" users' to at least {len(user_classes)}"
     assert len(tasks) > 0, 'no tasks specified in feature'
 
     try:
@@ -279,6 +309,7 @@ def run(context: Context) -> int:
             user_classes=user_classes,
             shape_class=None,
             events=events,
+            stop_timeout=60,
         )
 
         variable_dependencies = setup_environment_listeners(context, environment, tasks)

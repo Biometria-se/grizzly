@@ -36,8 +36,10 @@ class IteratorScenario(GrizzlyScenario):
                     self.execute_next_task()
                     self.logger.debug(f'task_index={self._task_index}')
                 except RescheduleTaskImmediately:
+                    self.logger.debug('RescheduleTaskImmediately raised')
                     pass
                 except RescheduleTask:
+                    self.logger.debug('RescheduleTask raised')
                     self.wait()
                 except RestartScenario:
                     self.logger.info('restarting scenario')
@@ -49,12 +51,14 @@ class IteratorScenario(GrizzlyScenario):
                 else:
                     self.wait()
             except InterruptTaskSet as e:
+                self.logger.debug('InterruptTaskSet raised')
                 self.on_stop()
                 if e.reschedule:
                     raise RescheduleTaskImmediately(e.reschedule) from e
                 else:
                     raise RescheduleTask(e.reschedule) from e
             except (StopUser, GreenletExit):
+                self.logger.debug('StopUser raised')
                 self.on_stop()
                 raise
             except Exception as e:

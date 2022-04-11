@@ -328,6 +328,7 @@ def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
     assert issubclass(user_class_type_3, (RestApiUser, GrizzlyUser))
     assert user_class_type_3.__name__ == f'RestApiUser_{scenario.identifier}'
     assert user_class_type_3.weight == 1
+    assert user_class_type_3.fixed_count == 0
     assert user_class_type_3._scenario is scenario
     assert user_class_type_3.host == 'http://localhost:8002'
     assert user_class_type_3.__module__ == 'grizzly.users.restapi'
@@ -357,6 +358,40 @@ def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
 
     assert user_class_type_1.host is not user_class_type_2.host
     assert user_class_type_2.host is not user_class_type_3.host
+
+    user_class_type_3 = create_user_class_type(scenario, {'test': {'value': 1}}, fixed_count=10)
+    user_class_type_3.host = 'http://localhost:8002'
+
+    assert issubclass(user_class_type_3, (RestApiUser, GrizzlyUser))
+    assert user_class_type_3.__name__ == f'RestApiUser_{scenario.identifier}'
+    assert user_class_type_3.weight == 1
+    assert user_class_type_3.fixed_count == 10
+    assert user_class_type_3._scenario is scenario
+    assert user_class_type_3.host == 'http://localhost:8002'
+    assert user_class_type_3.__module__ == 'grizzly.users.restapi'
+    assert user_class_type_3._context == {
+        'test': {
+            'value': 'hello world',
+            'description': 'simple text',
+        },
+        'verify_certificates': True,
+        'auth': {
+            'refresh_time': 3000,
+            'url': None,
+            'client': {
+                'id': None,
+                'secret': None,
+                'resource': None,
+                'tenant': None,
+            },
+            'user': {
+                'username': None,
+                'password': None,
+                'redirect_uri': None,
+            },
+        },
+        'metadata': None,
+    }
 
     with pytest.raises(AttributeError):
         scenario = GrizzlyContextScenario()
