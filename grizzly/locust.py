@@ -7,7 +7,6 @@ from os import environ, name as osname
 from signal import SIGTERM
 from socket import error as SocketError
 from datetime import datetime
-from math import ceil
 
 import gevent
 
@@ -88,40 +87,12 @@ def setup_locust_scenarios(grizzly: GrizzlyContext) -> Tuple[List[Type[GrizzlyUs
     external_dependencies: Set[str] = set()
     dummy_environment = Environment()
 
-    distribution: Dict[str, int] = {}
-    '''
-    total_weight = sum([scenario.user.weight for scenario in scenarios])
-
-
-    for scenario in scenarios:
-        user_count = ceil(grizzly.setup.user_count * (scenario.user.weight / total_weight))
-        distribution[scenario.name] = user_count
-
-    total_user_count = sum([user_count for user_count in distribution.values()])
-    user_overflow = total_user_count - grizzly.setup.user_count
-
-    assert len(distribution.keys()) <= grizzly.setup.user_count, f"increase the number in step 'Given \"{grizzly.setup.user_count}\" users' to at least {len(distribution.keys())}"
-
-    if user_overflow < 0:
-        logger.warning(f'there should be {grizzly.setup.user_count} users, but there will only be {total_user_count} users spawned')
-    elif user_overflow > 0:
-        while user_overflow > 0:
-            for scenario_name in dict(sorted(distribution.items(), key=lambda d: d[1], reverse=True)).keys():
-                if distribution[scenario_name] > 1:
-                    distribution[scenario_name] -= 1
-                    user_overflow -= 1
-
-                    if user_overflow < 1:
-                        break
-    '''
-
     for scenario in scenarios:
         # Given a user of type "" load testing ""
         assert 'host' in scenario.context, f'variable "host" is not found in the context for {scenario.name}'
         assert len(scenario.tasks) > 0, f'no tasks has been added to {scenario.name}'
 
-        fixed_count = distribution.get(scenario.name, None)
-        user_class_type = create_user_class_type(scenario, grizzly.setup.global_context, fixed_count=fixed_count)
+        user_class_type = create_user_class_type(scenario, grizzly.setup.global_context)
         user_class_type.host = scenario.context['host']
 
         # fail early if there is a problem with creating an instance of the user class

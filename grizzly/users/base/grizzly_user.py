@@ -1,7 +1,9 @@
-from abc import abstractmethod
+import logging
+
 from os import environ, path
 from typing import Any, Dict, Tuple, Optional, Set, cast
 from logging import Logger
+from abc import abstractmethod
 
 from jinja2 import Template
 from locust.exception import StopUser
@@ -13,7 +15,7 @@ from grizzly.context import GrizzlyContextScenario
 from ...types import GrizzlyResponse
 from ...tasks import RequestTask
 from ...utils import merge_dicts
-from ..import logger as user_logger
+from ...scenarios import GrizzlyScenario
 from . import FileRequests
 
 
@@ -31,7 +33,7 @@ class GrizzlyUser(User):
         'HELLO': 'HELO',
     }
 
-    logger: Logger = user_logger
+    logger: Logger
 
     weight: int = 1
 
@@ -40,10 +42,18 @@ class GrizzlyUser(User):
 
         self._context_root = environ.get('GRIZZLY_CONTEXT_ROOT', '.')
         self._context = merge_dicts({}, GrizzlyUser._context)
+        self.logger = logging.getLogger(self.__class__.__name__)
+
+    def stop(self, force: bool = False) -> bool:
+        for scenario in self.tasks:
+            if isinstance(scenario, GrizzlyScenario):
+                scenario.stop(force)
+
+        return cast(bool, super().stop(force=force))
 
     @abstractmethod
     def request(self, request: RequestTask) -> GrizzlyResponse:
-        raise NotImplementedError(f'{self.__class__.__name__} has not implemented request(RequestTask)')
+        raise NotImplementedError(f'{self.__class__.__name__} has not implemented request')
 
     def get_request_method(self, request: RequestTask) -> str:
         return self.request_name_map.get(request.method.name, request.method.name[:4])
@@ -95,9 +105,9 @@ class GrizzlyUser(User):
         self._context = merge_dicts(self._context, context)
 
     def set_context_variable(self, variable: str, value: Any) -> None:
-        old_value = cast(Dict[str, Any], self._context['variables'])[variable] if variable in cast(Dict[str, Any], self._context['variables']) else None
+        old_value = self._context['variables'].get(variable, None)
         self._context['variables'][variable] = value
-        self.logger.debug(f'context: {variable=}, value: {old_value} -> {value}')
+        self.logger.debug(f'context: {variable=}, value={old_value} -> {value}')
 
     @property
     def context_variables(self) -> Dict[str, Any]:

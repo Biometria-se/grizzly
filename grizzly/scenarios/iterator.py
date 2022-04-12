@@ -4,6 +4,7 @@ from locust import task
 from locust.user.task import LOCUST_STATE_STOPPING
 from locust.exception import StopUser, InterruptTaskSet, RescheduleTaskImmediately, RescheduleTask
 from gevent.exceptions import GreenletExit
+from gevent import sleep as gsleep
 
 from . import GrizzlyScenario
 from ..exceptions import RestartScenario
@@ -68,6 +69,23 @@ class IteratorScenario(GrizzlyScenario):
                     self.wait()
                 else:
                     raise
+
+    def stop(self, force: bool = False) -> bool:
+        task_count = len(self.tasks)
+        counter = 0
+
+        while (self._task_index % task_count) < task_count - 1:
+            gsleep(0.1)
+            counter += 1
+
+            if counter % 200 == 0:
+                self.logger.debug((
+                    f'waiting to finish, current task '
+                    f'{(self._task_index % task_count)} of {task_count}'
+                ))
+                counter = 0
+
+        return True
 
     @task
     def iterator(self) -> None:

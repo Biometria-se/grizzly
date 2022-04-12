@@ -1,3 +1,4 @@
+from abc import abstractmethod
 import logging
 
 from typing import Optional, Dict, Any, cast
@@ -45,11 +46,15 @@ class GrizzlyScenario(SequentialTaskSet):
                 identifier=self.__class__.__name__,
             )
         else:
-            self.user.logger.error('no address to testdata producer specified')
+            self.logger.error('no address to testdata producer specified')
             raise StopUser()
 
     def on_stop(self) -> None:
         self.consumer.stop()
+
+    @abstractmethod
+    def stop(self, force: bool = False) -> bool:
+        raise NotImplementedError(f'{self.__class__.__name__} has not implemented stop')
 
 
 from .iterator import IteratorScenario
