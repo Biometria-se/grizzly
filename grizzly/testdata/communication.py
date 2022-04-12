@@ -22,6 +22,7 @@ class TestdataConsumer:
 
     logger: logging.Logger
     identifier: str
+    stopped: bool
 
     def __init__(self, identifier: str, address: str = 'tcp://127.0.0.1:5555') -> None:
         self.identifier = identifier
@@ -30,16 +31,21 @@ class TestdataConsumer:
         self.context = zmq.Context()
         self.socket = self.context.socket(ZMQ_REQ)
         self.socket.connect(address)
+        self.stopped = False
 
         self.logger.debug(f'conntected to producer at {address}')
 
     def stop(self) -> None:
+        if self.stopped:
+            return
+
         self.logger.debug('stopping consumer')
         try:
             self.context.destroy(linger=0)
         except:
             self.logger.error('failed to stop', exc_info=True)
         finally:
+            self.stopped = True
             gsleep(0.1)
 
     def request(self, scenario: str) -> Optional[Dict[str, Any]]:

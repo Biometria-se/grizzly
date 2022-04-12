@@ -8,13 +8,13 @@ from abc import abstractmethod
 from jinja2 import Template
 from locust.exception import StopUser
 from locust.user.users import User
+from locust.user.task import LOCUST_STATE_RUNNING
 from locust.env import Environment
 
 from ...context import GrizzlyContextScenario
-from ...types import GrizzlyResponse
+from ...types import GrizzlyResponse, ScenarioState
 from ...tasks import RequestTask
 from ...utils import merge_dicts
-from ...scenarios import GrizzlyScenario
 from . import FileRequests
 
 
@@ -24,6 +24,8 @@ class GrizzlyUser(User):
         'variables': {},
     }
     _scenario: GrizzlyContextScenario
+
+    _scenario_state: Optional[ScenarioState]
 
     __dependencies__: Set[str] = set()
 
@@ -41,14 +43,27 @@ class GrizzlyUser(User):
 
         self._context_root = environ.get('GRIZZLY_CONTEXT_ROOT', '.')
         self._context = merge_dicts({}, GrizzlyUser._context)
-        self.logger = logging.getLogger(self.__class__.__name__)
+        self.logger = logging.getLogger(f'{self.__class__.__name__}/{id(self)}')
+        self._scenario_state = None
+
+    @property
+    def scenario_state(self) -> Optional[ScenarioState]:
+        return self._scenario_state
+
+    @scenario_state.setter
+    def scenario_state(self, value: ScenarioState) -> None:
+        old_state = self._scenario_state
+        self._scenario_state = value
+        self.logger.debug(f'scenario state={old_state} -> {value}')
 
     def stop(self, force: bool = False) -> bool:
-        for scenario in self.tasks:
-            if isinstance(scenario, GrizzlyScenario):
-                scenario.stop(force)
-
-        return cast(bool, super().stop(force=force))
+        if not force:
+            self.logger.debug('stop scenarios before stopping user')
+            self.scenario_state = ScenarioState.STOPPING
+            self._state = LOCUST_STATE_RUNNING
+            return False
+        else:
+            return cast(bool, super().stop(force=force))
 
     @abstractmethod
     def request(self, request: RequestTask) -> GrizzlyResponse:
@@ -106,7 +121,7 @@ class GrizzlyUser(User):
     def set_context_variable(self, variable: str, value: Any) -> None:
         old_value = self._context['variables'].get(variable, None)
         self._context['variables'][variable] = value
-        self.logger.debug(f'context: {variable=}, value={old_value} -> {value}')
+        self.logger.debug(f'context {variable=}, value={old_value} -> {value}')
 
     @property
     def context_variables(self) -> Dict[str, Any]:

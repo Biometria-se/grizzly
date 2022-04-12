@@ -3,13 +3,13 @@ import traceback
 from typing import TYPE_CHECKING
 
 from locust import task
-from locust.user.task import LOCUST_STATE_STOPPING
+from locust.user.task import LOCUST_STATE_STOPPING, LOCUST_STATE_RUNNING
 from locust.exception import StopUser, InterruptTaskSet, RescheduleTaskImmediately, RescheduleTask
 from gevent.exceptions import GreenletExit
-from gevent import sleep as gsleep
 
-from . import GrizzlyScenario
+from ..types import ScenarioState
 from ..exceptions import RestartScenario
+from . import GrizzlyScenario
 
 if TYPE_CHECKING:
     from ..users.base import GrizzlyUser
@@ -42,7 +42,8 @@ class IteratorScenario(GrizzlyScenario):
                 try:
                     if self.user._state == LOCUST_STATE_STOPPING:
                         raise StopUser()
-                    self.logger.debug(f'executing task {current_task_index} of {task_count}')
+                    if self.user.scenario_state != ScenarioState.STOPPING:
+                        self.logger.debug(f'executing task {current_task_index} of {task_count}')
                     self.execute_next_task()
                 except RescheduleTaskImmediately:
                     pass
@@ -57,14 +58,20 @@ class IteratorScenario(GrizzlyScenario):
                 else:
                     self.wait()
             except InterruptTaskSet as e:
-                self.on_stop()
-                if e.reschedule:
-                    raise RescheduleTaskImmediately(e.reschedule) from e
+                if self.user._scenario_state != ScenarioState.STOPPING:
+                    self.on_stop()
+                    if e.reschedule:
+                        raise RescheduleTaskImmediately(e.reschedule) from e
+                    else:
+                        raise RescheduleTask(e.reschedule) from e
                 else:
-                    raise RescheduleTask(e.reschedule) from e
+                    self.wait()
             except (StopUser, GreenletExit):
-                self.on_stop()
-                raise
+                if self.user._scenario_state != ScenarioState.STOPPING:
+                    self.on_stop()
+                    raise
+                else:
+                    self.wait()
             except Exception as e:
                 self.user.environment.events.user_error.fire(user_instance=self, exception=e, tb=e.__traceback__)
                 if self.user.environment.catch_exceptions:
@@ -73,22 +80,22 @@ class IteratorScenario(GrizzlyScenario):
                 else:
                     raise
 
-    def stop(self, force: bool = False) -> bool:
-        task_count = len(self.tasks)
-        counter = 0
+    def wait(self) -> None:
+        if self.user._scenario_state == ScenarioState.STOPPING:
+            task_count = len(self.tasks)
+            current_task_index = self._task_index % task_count
 
-        while (self._task_index % task_count) < task_count - 1:
-            gsleep(0.1)
-            counter += 1
+            if current_task_index < task_count:
+                self.logger.debug(f'not finished with scenario, currently at task {current_task_index} of {task_count}, let me be!')
+                self.user._state = LOCUST_STATE_RUNNING
+                self._sleep(self.wait_time())
+                self.user._state = LOCUST_STATE_RUNNING
+                return
+            else:
+                self.user._state = LOCUST_STATE_STOPPING
+                self.user.scenario_state = ScenarioState.STOPPED
 
-            if counter % 200 == 0:
-                self.logger.debug((
-                    f'waiting to finish, current task '
-                    f'{(self._task_index % task_count)} of {task_count}'
-                ))
-                counter = 0
-
-        return True
+        super().wait()
 
     @task
     def iterator(self) -> None:

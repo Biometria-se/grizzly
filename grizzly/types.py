@@ -17,6 +17,12 @@ class ResponseAction(Enum):
     SAVE = 1
 
 
+class ScenarioState(Enum):
+    RUNNING = 0
+    STOPPED = 1
+    STOPPING = 2
+
+
 class RequestDirection(Enum):
     FROM = 'from'
     TO = 'to'

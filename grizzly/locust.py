@@ -281,6 +281,7 @@ def run(context: Context) -> int:
             user_classes=user_classes,
             shape_class=None,
             events=events,
+            stop_timeout=300,  # only wait at most?
         )
 
         variable_dependencies = setup_environment_listeners(context, environment, tasks)
@@ -399,9 +400,13 @@ def run(context: Context) -> int:
         watch_active_users_greenlet: Optional[gevent.Greenlet] = None
 
         def watch_active_users() -> None:
+            count = 0
             while runner.user_count > 0:
-                logger.debug(f'{runner.user_count=}')
                 gevent.sleep(1.0)
+                count += 1
+                if count % 10 == 0:
+                    logger.debug(f'{runner.user_count=}')
+                    count = 0
 
             logger.info(f'{runner.user_count=}, stopping runner')
             gevent.sleep(3.0)

@@ -1,4 +1,3 @@
-from abc import abstractmethod
 import logging
 
 from typing import TYPE_CHECKING, Optional, Dict, Any, cast
@@ -11,6 +10,7 @@ from jinja2 import Template
 from ..context import GrizzlyContext
 from ..testdata.communication import TestdataConsumer
 from ..tasks import GrizzlyTask
+from ..types import ScenarioState
 
 if TYPE_CHECKING:
     from ..users.base import GrizzlyUser
@@ -23,8 +23,9 @@ class GrizzlyScenario(SequentialTaskSet):
 
     def __init__(self, parent: 'GrizzlyUser') -> None:
         super().__init__(parent=parent)
-        self.logger = logging.getLogger(self.__class__.__name__)
+        self.logger = logging.getLogger(f'{self.__class__.__name__}/{id(self)}')
         self.grizzly = GrizzlyContext()
+        self.user.scenario_state = ScenarioState.STOPPED
 
     @property
     def user(self) -> 'GrizzlyUser':
@@ -47,16 +48,14 @@ class GrizzlyScenario(SequentialTaskSet):
                 address=producer_address,
                 identifier=self.__class__.__name__,
             )
+            self.user.scenario_state = ScenarioState.RUNNING
         else:
             self.logger.error('no address to testdata producer specified')
             raise StopUser()
 
     def on_stop(self) -> None:
         self.consumer.stop()
-
-    @abstractmethod
-    def stop(self, force: bool = False) -> bool:
-        raise NotImplementedError(f'{self.__class__.__name__} has not implemented stop')
+        self.user.scenario_state = ScenarioState.STOPPED
 
 
 from .iterator import IteratorScenario
