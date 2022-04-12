@@ -43,14 +43,14 @@ class IteratorScenario(GrizzlyScenario):
                     if self.user._state == LOCUST_STATE_STOPPING:
                         raise StopUser()
                     if self.user.scenario_state != ScenarioState.STOPPING:
-                        self.logger.debug(f'executing task {current_task_index} of {task_count}')
+                        self.logger.debug(f'executing task {current_task_index+1} of {task_count}')
                     self.execute_next_task()
                 except RescheduleTaskImmediately:
                     pass
                 except RescheduleTask:
                     self.wait()
                 except RestartScenario:
-                    self.logger.info(f'restarting scenario at task {current_task_index} of {task_count}')
+                    self.logger.info(f'restarting scenario at task {current_task_index+1} of {task_count}')
                     # move locust.user.sequential_task.SequentialTaskSet index pointer the number of tasks left until end, so it will start over
                     tasks_left = task_count - current_task_index
                     self._task_index += tasks_left
@@ -85,13 +85,14 @@ class IteratorScenario(GrizzlyScenario):
             task_count = len(self.tasks)
             current_task_index = self._task_index % task_count
 
-            if current_task_index < task_count:
-                self.logger.debug(f'not finished with scenario, currently at task {current_task_index} of {task_count}, let me be!')
+            if current_task_index < task_count - 1:
+                self.logger.debug(f'not finished with scenario, currently at task {current_task_index+1} of {task_count}, let me be!')
                 self.user._state = LOCUST_STATE_RUNNING
                 self._sleep(self.wait_time())
                 self.user._state = LOCUST_STATE_RUNNING
                 return
             else:
+                self.logger.debug("okay, I'm done with my running tasks now")
                 self.user._state = LOCUST_STATE_STOPPING
                 self.user.scenario_state = ScenarioState.STOPPED
 

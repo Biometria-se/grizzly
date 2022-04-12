@@ -119,7 +119,7 @@ def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Opt
     for merge_context in contexts:
         context = merge_dicts(context, merge_context)
 
-    distribution = {'fixed_count': fixed_count} if fixed_count is not None else {'weight': scenario.user.weight}
+    distribution = {'fixed_count': fixed_count, 'weight': 1} if fixed_count is not None else {'weight': scenario.user.weight}
 
     return type(user_class_name, (base_user_class_type, ), {
         '__module__': base_user_class_type.__module__,
