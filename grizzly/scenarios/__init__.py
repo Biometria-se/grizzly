@@ -1,7 +1,7 @@
 from abc import abstractmethod
 import logging
 
-from typing import Optional, Dict, Any, cast
+from typing import TYPE_CHECKING, Optional, Dict, Any, cast
 from os import environ
 
 from locust.exception import StopUser
@@ -10,8 +10,10 @@ from jinja2 import Template
 
 from ..context import GrizzlyContext
 from ..testdata.communication import TestdataConsumer
-from ..users.base import GrizzlyUser
 from ..tasks import GrizzlyTask
+
+if TYPE_CHECKING:
+    from ..users.base import GrizzlyUser
 
 
 class GrizzlyScenario(SequentialTaskSet):
@@ -19,14 +21,14 @@ class GrizzlyScenario(SequentialTaskSet):
     logger: logging.Logger
     grizzly: GrizzlyContext
 
-    def __init__(self, parent: GrizzlyUser) -> None:
+    def __init__(self, parent: 'GrizzlyUser') -> None:
         super().__init__(parent=parent)
         self.logger = logging.getLogger(self.__class__.__name__)
         self.grizzly = GrizzlyContext()
 
     @property
-    def user(self) -> GrizzlyUser:
-        return cast(GrizzlyUser, self._user)
+    def user(self) -> 'GrizzlyUser':
+        return cast('GrizzlyUser', self._user)
 
     @classmethod
     def populate(cls, task_factory: GrizzlyTask) -> None:

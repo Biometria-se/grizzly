@@ -1,5 +1,7 @@
 import traceback
 
+from typing import TYPE_CHECKING
+
 from locust import task
 from locust.user.task import LOCUST_STATE_STOPPING
 from locust.exception import StopUser, InterruptTaskSet, RescheduleTaskImmediately, RescheduleTask
@@ -8,13 +10,15 @@ from gevent import sleep as gsleep
 
 from . import GrizzlyScenario
 from ..exceptions import RestartScenario
-from ..users.base import GrizzlyUser
+
+if TYPE_CHECKING:
+    from ..users.base import GrizzlyUser
 
 
 class IteratorScenario(GrizzlyScenario):
-    user: GrizzlyUser
+    user: 'GrizzlyUser'
 
-    def __init__(self, parent: GrizzlyUser) -> None:
+    def __init__(self, parent: 'GrizzlyUser') -> None:
         super().__init__(parent=parent)
 
     def run(self) -> None:  # type: ignore
@@ -33,18 +37,18 @@ class IteratorScenario(GrizzlyScenario):
                     self.schedule_task(self.get_next_task())
 
                 task_count = len(self.tasks)
+                current_task_index = (self._task_index % task_count)
 
                 try:
                     if self.user._state == LOCUST_STATE_STOPPING:
                         raise StopUser()
-                    self.logger.debug(f'executing task {self._task_index} of {task_count}')
+                    self.logger.debug(f'executing task {current_task_index} of {task_count}')
                     self.execute_next_task()
                 except RescheduleTaskImmediately:
                     pass
                 except RescheduleTask:
                     self.wait()
                 except RestartScenario:
-                    current_task_index = (self._task_index % task_count)
                     self.logger.info(f'restarting scenario at task {current_task_index} of {task_count}')
                     # move locust.user.sequential_task.SequentialTaskSet index pointer the number of tasks left until end, so it will start over
                     tasks_left = task_count - current_task_index

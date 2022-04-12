@@ -1,7 +1,7 @@
 import logging
 
 from os import environ, path
-from typing import TYPE_CHECKING, Any, Dict, Tuple, Optional, Set, cast
+from typing import Any, Dict, Tuple, Optional, Set, cast
 from logging import Logger
 from abc import abstractmethod
 
@@ -14,10 +14,8 @@ from ...context import GrizzlyContextScenario
 from ...types import GrizzlyResponse
 from ...tasks import RequestTask
 from ...utils import merge_dicts
+from ...scenarios import GrizzlyScenario
 from . import FileRequests
-
-if TYPE_CHECKING:
-    from ...scenarios import GrizzlyScenario
 
 
 class GrizzlyUser(User):
@@ -47,7 +45,7 @@ class GrizzlyUser(User):
 
     def stop(self, force: bool = False) -> bool:
         for scenario in self.tasks:
-            if isinstance(scenario, GrizzlyScenario):  # pylint: disable=used-before-assignment
+            if isinstance(scenario, GrizzlyScenario):
                 scenario.stop(force)
 
         return cast(bool, super().stop(force=force))
