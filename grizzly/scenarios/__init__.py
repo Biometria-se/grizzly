@@ -21,7 +21,7 @@ class GrizzlyScenario(SequentialTaskSet):
 
     def __init__(self, parent: GrizzlyUser) -> None:
         super().__init__(parent=parent)
-        self.logger = logging.getLogger(f'{__name__}/{self.__class__.__name__}::{id(self)}/{self.parent.__class__.__name__}::{id(self.parent)}')
+        self.logger = logging.getLogger(self.__class__.__name__)
         self.grizzly = GrizzlyContext()
 
     @property

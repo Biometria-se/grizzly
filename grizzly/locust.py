@@ -108,7 +108,7 @@ def setup_locust_scenarios(grizzly: GrizzlyContext) -> Tuple[List[Type[GrizzlyUs
             tasks.append(task)
 
         logger.debug(
-            f'{user_class_type.__name__}/{scenario_type.__name__}: tasks={len(scenario.tasks)}, fixed_count={user_class_type.fixed_count}, weight={user_class_type.weight}'
+            f'{user_class_type.__name__}/{scenario_type.__name__}: tasks={len(scenario.tasks)}, weight={user_class_type.weight}'
         )
 
         setattr(user_class_type, 'tasks', [scenario_type])
@@ -271,6 +271,7 @@ def run(context: Context) -> int:
     user_classes, tasks, external_dependencies = setup_locust_scenarios(grizzly)
 
     assert len(user_classes) > 0, 'no users specified in feature'
+    assert len(user_classes) <= grizzly.setup.user_count, f"increase the number in step 'Given \"{grizzly.setup.user_count}\" users' to at least {len(user_classes)}"
     assert len(tasks) > 0, 'no tasks specified in feature'
 
     try:
@@ -280,7 +281,6 @@ def run(context: Context) -> int:
             user_classes=user_classes,
             shape_class=None,
             events=events,
-            stop_timeout=60,
         )
 
         variable_dependencies = setup_environment_listeners(context, environment, tasks)

@@ -28,38 +28,37 @@ class IteratorScenario(GrizzlyScenario):
 
         while True:
             try:
+
                 if not self._task_queue:
                     self.schedule_task(self.get_next_task())
+
+                task_count = len(self.tasks)
 
                 try:
                     if self.user._state == LOCUST_STATE_STOPPING:
                         raise StopUser()
+                    self.logger.debug(f'executing task {self._task_index} of {task_count}')
                     self.execute_next_task()
-                    self.logger.debug(f'task_index={self._task_index}')
                 except RescheduleTaskImmediately:
-                    self.logger.debug('RescheduleTaskImmediately raised')
                     pass
                 except RescheduleTask:
-                    self.logger.debug('RescheduleTask raised')
                     self.wait()
                 except RestartScenario:
-                    self.logger.info('restarting scenario')
+                    current_task_index = (self._task_index % task_count)
+                    self.logger.info(f'restarting scenario at task {current_task_index} of {task_count}')
                     # move locust.user.sequential_task.SequentialTaskSet index pointer the number of tasks left until end, so it will start over
-                    current_task_index = (self._task_index % len(self.tasks))
-                    tasks_left = len(self.tasks) - current_task_index
+                    tasks_left = task_count - current_task_index
                     self._task_index += tasks_left
                     self.wait()
                 else:
                     self.wait()
             except InterruptTaskSet as e:
-                self.logger.debug('InterruptTaskSet raised')
                 self.on_stop()
                 if e.reschedule:
                     raise RescheduleTaskImmediately(e.reschedule) from e
                 else:
                     raise RescheduleTask(e.reschedule) from e
             except (StopUser, GreenletExit):
-                self.logger.debug('StopUser raised')
                 self.on_stop()
                 raise
             except Exception as e:

@@ -211,7 +211,7 @@ class TestdataProducer:
                         self.logger.debug(f'producing {message} for consumer {consumer_identifier}')
                         self.socket.send_json(message)
                     else:
-                        self.logger.error(f'received unknown message "{recv["messsage"]}')
+                        self.logger.error(f'received unknown message "{recv["messsage"]}"')
 
                     gsleep(0)
                 except ZMQAgain:
