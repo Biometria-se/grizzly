@@ -423,58 +423,38 @@ def run(context: Context) -> int:
 
         gevent.spawn(stats_history, environment.runner)
 
-        watch_active_users_greenlet: Optional[gevent.Greenlet] = None
+        if not isinstance(runner, WorkerRunner):
+            watch_running_users_greenlet: Optional[gevent.Greenlet] = None
 
-        def watch_active_users() -> None:
-            count = 0
-            while runner.user_count > 0:
-                gevent.sleep(1.0)
-                count += 1
-                if count % 10 == 0:
-                    logger.debug(f'{runner.user_count=}')
-                    count = 0
+            def watch_running_users() -> None:
+                count = 0
+                while runner.user_count > 0:
+                    gevent.sleep(1.0)
+                    count += 1
+                    if count % 10 == 0:
+                        logger.debug(f'{runner.user_count=}')
+                        count = 0
 
-            logger.info(f'{runner.user_count=}, stopping runner')
-            gevent.sleep(3.0)
+                logger.info(f'{runner.user_count=}, quit {runner.__class__.__name__}')
+                if isinstance(runner, MasterRunner):
+                    runner.send_message('grizzly_worker_quit', None)
 
-        if not on_master(context):
-            while not grizzly.state.spawning_complete:
-                logger.debug('spawning not complete...')
-                gevent.sleep(1.0)
+                    runner.stop(send_stop_to_client=False)
 
-            logger.info('all users spawn, start watching user count')
+                    # wait for all clients to quit
+                    while len(runner.clients.all) > 0:
+                        gevent.sleep(0.5)
 
-            watch_active_users_greenlet = gevent.spawn(watch_active_users)
-            watch_active_users_greenlet.link_exception(greenlet_exception_handler)
+                    runner.greenlet.kill(block=True)
+                else:
+                    runner.quit()
 
-            # shutdown when user_count reaches 0
-            main_greenlet = watch_active_users_greenlet
+                if stats_printer_greenlet is not None:
+                    stats_printer_greenlet.kill(block=False)
 
-        def shutdown() -> int:
-            logger.info('running teardowns...')
+                if watch_running_users_greenlet is not None:
+                    watch_running_users_greenlet.kill(block=False)
 
-            environment.events.quitting.fire(environment=environment, reverse=True)
-
-            if unhandled_greenlet_exception:
-                code = 2
-            elif environment.process_exit_code is not None:
-                code = environment.process_exit_code
-            elif len(runner.errors) > 0 or len(runner.exceptions) > 0:
-                code = 3
-            else:
-                code = 0
-
-            if stats_printer_greenlet is not None:
-                stats_printer_greenlet.kill(block=False)
-
-            if watch_active_users_greenlet is not None:
-                watch_active_users_greenlet.kill(block=False)
-
-            logger.info('cleaning up runner...')
-            if runner is not None:
-                runner.quit()
-
-            if not isinstance(runner, WorkerRunner):
                 print_stats(runner.stats, current=False)
                 print_percentile_stats(runner.stats)
                 print_error_report(runner.stats)
@@ -487,21 +467,45 @@ def run(context: Context) -> int:
                 print(f'Started: {context.started}')
                 print(f'Stopped: {stopped}')
 
-            shutdown_external_processes(external_processes)
+            def spawning_complete() -> bool:
+                if isinstance(runner, MasterRunner):
+                    return runner.spawning_completed
+                else:
+                    return grizzly.state.spawning_complete
 
-            return code
+            while not spawning_complete():
+                logger.debug('spawning not completed...')
+                gevent.sleep(1.0)
+
+            logger.info('all users spawn, start watching user count')
+
+            watch_running_users_greenlet = gevent.spawn(watch_running_users)
+            watch_running_users_greenlet.link_exception(greenlet_exception_handler)
+
+            # stop when user_count reaches 0
+            main_greenlet = watch_running_users_greenlet
 
         def sig_term_handler() -> None:
             logger.info('got SIGTERM signal')
-            shutdown()
+            runner.quit()
 
         gevent.signal_handler(SIGTERM, sig_term_handler)
 
         try:
             main_greenlet.join()
+            logger.debug('main greenlet finished')
         except KeyboardInterrupt as e:
             raise e
         finally:
-            return shutdown()
+            if unhandled_greenlet_exception:
+                code = 2
+            elif environment.process_exit_code is not None:
+                code = environment.process_exit_code
+            elif len(runner.errors) > 0 or len(runner.exceptions) > 0:
+                code = 3
+            else:
+                code = 0
+
+            return code
     finally:
         shutdown_external_processes(external_processes)

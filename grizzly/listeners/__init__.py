@@ -11,6 +11,7 @@ from locust.env import Environment
 from locust.exception import CatchResponseError
 from locust.runners import MasterRunner, WorkerRunner
 from locust.runners import Runner
+from locust.rpc.protocol import Message
 from locust.stats import RequestStats, StatsEntry
 from locust.stats import (
     print_error_report,
@@ -59,6 +60,9 @@ def init(testdata: Optional[TestdataType] = None) -> Callable[[Runner, KwArg(Dic
                 producer_greenlet = gevent.spawn(_init_testdata_producer(producer_port, testdata, runner.environment))
             else:
                 logger.error('there is no test data!')
+        else:
+            logger.debug('registered message "grizzly_worker_quit"')
+            runner.register_message('grizzly_worker_quit', grizzly_worker_quit)
 
     return cast(Callable[[Runner, KwArg(Dict[str, Any])], None], wrapper)
 
@@ -124,6 +128,33 @@ def quitting(**_kwargs: Dict[str, Any]) -> None:
     if producer_greenlet is not None:
         producer_greenlet.kill(block=True)
         producer_greenlet = None
+
+
+def grizzly_worker_quit(environment: Environment, msg: Message, **kwargs: Dict[str, Any]) -> None:
+    logger.debug('received message grizzly_worker_quit')
+    runner = environment.runner
+    code: Optional[int] = None
+
+    if isinstance(runner, WorkerRunner):
+        runner.stop()
+        runner._send_stats()
+        runner.client.send(Message('client_stopped', None, runner.client_id))
+
+        runner.greenlet.kill(block=True)
+
+        if environment.process_exit_code is not None:
+            code = environment.process_exit_code
+        elif len(runner.errors) > 0 or len(runner.exceptions) > 0:
+            code = 3
+        else:
+            code = 0
+    else:
+        logger.error('received grizzly_worker_quit message on a non WorkerRunner?!')
+
+    if code is None:
+        code = 1
+
+    raise SystemExit(code)
 
 
 def validate_result(grizzly: GrizzlyContext) -> Callable[[Environment, KwArg(Dict[str, Any])], None]:
