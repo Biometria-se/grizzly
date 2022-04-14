@@ -184,8 +184,8 @@ def compile(target: Optional[str] = None) -> int:
 
     targets_all: Dict[str, Tuple[str, ...]] = {
         'requirements.txt': (),
-        'requirements-ci.txt': ('dev', 'ci', 'script', ),
-        'requirements-dev.txt': ('dev', 'mq', 'script', ),
+        'requirements-ci.txt': ('dev', 'ci', ),
+        'requirements-dev.txt': ('dev', 'mq', ),
         'requirements-script.txt': (),
     }
 

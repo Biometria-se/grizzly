@@ -63,7 +63,9 @@ jobs:
       with:
         python-version: '3.x'
         cache: 'pip'
-        cache-dependency-path: '**/requirements-ci.txt'
+        cache-dependency-path: |
+          **/requirements-ci.txt
+          **/requirements-script.txt
 
     - name: get last released version
       if: github.event.inputs.version == '0.0.0'
@@ -161,6 +163,7 @@ jobs:
     - name: build documentation
       id: build-docs
       run: |
+        ./script/pip-sync.bash script
         pydoc-markdown --build --site-dir "$PWD/build/html"
 
         # this is needed since pydoc-markdown does not include them
