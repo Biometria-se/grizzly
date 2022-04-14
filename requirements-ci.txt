@@ -223,10 +223,6 @@ cffi==1.15.0 \
     #   bcrypt
     #   cryptography
     #   pynacl
-chardet==4.0.0 \
-    --hash=sha256:0d6f53a15db4120f2b08c94f11e7d93d2c911ee118b6b30a04ec3ee8310179fa \
-    --hash=sha256:f864054d66fd9118f2e67044ac8981a54775ec5b67aed0441892edb553d21da5
-    # via mbstrdecoder
 charset-normalizer==2.0.12 \
     --hash=sha256:2857e29ff0d34db842cd7ca3230549d1a697f96ee6d3fb071cfa6c7393832597 \
     --hash=sha256:6881edbebdb17b39b4eaaa821b438bf6eddffb4468cf344f09f89def34a8b1df
@@ -334,12 +330,6 @@ databind-json==1.5.2 \
     --hash=sha256:1ed60b6b46b88cfdf21941523e6ea021c651f2afb280ffe85b68c7ce1dd6a19d \
     --hash=sha256:25680d75b9002bc5dafd49018d508603b885d10c4a339f6618fd970df7d4d743
     # via databind
-dataproperty==0.55.0 \
-    --hash=sha256:73ccf10f8b123968210438a1a1aa859ea6d5a16b4e1f4d307da7a81b838e79fa \
-    --hash=sha256:a8f29175950f4b2c33a387aa3809130d87b9a8d3b92a916c906c49efdb566b32
-    # via
-    #   pytablewriter
-    #   tabledata
 decorator==5.1.1 \
     --hash=sha256:637996211036b6385ef91435e4fae22989472f9d571faba8927ba8253acbc330 \
     --hash=sha256:b8c3f85900b9dc423225913c5aace94729fe1fa9763b38939a95226f02d37186
@@ -475,9 +465,9 @@ ghp-import==2.0.2 \
     --hash=sha256:5f8962b30b20652cdffa9c5a9812f7de6bcb56ec475acac579807719bf242c46 \
     --hash=sha256:947b3771f11be850c852c64b561c600fdddf794bab363060854c1ee7ad05e071
     # via mkdocs
-google-api-core==2.7.1 \
-    --hash=sha256:6be1fc59e2a7ba9f66808bbc22f976f81e4c3e7ab20fa0620ce42686288787d0 \
-    --hash=sha256:b0fa577e512f0c8e063386b974718b8614586a798c5894ed34bedf256d9dae24
+google-api-core==2.7.2 \
+    --hash=sha256:65480309a7437f739e4476da037af02a3ec8263f1d1f89f72bbdc8f54fe402d2 \
+    --hash=sha256:8fcbe52dc129fd83dca4e638a76f22b3a11579c493e643134e50e9870b233302
     # via opencensus
 google-auth==2.6.4 \
     --hash=sha256:1a8c2c70c070b72fe038e2eb20072e5b4f0fd8ca1875e8fafe7f71b689a8d572 \
@@ -759,13 +749,6 @@ markupsafe==2.1.1 \
     --hash=sha256:f121a1420d4e173a5d96e47e9a0c0dcff965afdf1626d28de1460815f7c4ee7a \
     --hash=sha256:fc7b548b17d238737688817ab67deebb30e8073c95749d55538ed473130ec0c7
     # via jinja2
-mbstrdecoder==1.1.0 \
-    --hash=sha256:153443c34b5e0c9b2263a1f8480d33156190b3e03e1e89cccd9239581aaef0ed \
-    --hash=sha256:f4dfd549e424ad8dfc985e6af8b55cb4ec0c208782f610d57439fe6a9a44c244
-    # via
-    #   dataproperty
-    #   pytablewriter
-    #   typepy
 mccabe==0.6.1 \
     --hash=sha256:ab8a6258860da4b6677da4bd2fe5dc2c659cff31b3ee4f7f5d64e79735b80d42 \
     --hash=sha256:dd8d182285a0fe56bace7f45b5e7d1a6ebcbf524e8f3bd87eb0f125271b8831f
@@ -906,7 +889,6 @@ packaging==21.3 \
     #   build
     #   mkdocs
     #   pytest
-    #   typepy
 paramiko==2.10.3 \
     --hash=sha256:ac6593479f2b47a9422eca076b22cff9f795495e6733a64723efc75dd8c92101 \
     --hash=sha256:ddb1977853aef82804b35d72a0e597b244fa326c404c350bd00c5b01dbfee71a
@@ -920,20 +902,12 @@ parse-type==0.6.0 \
     --hash=sha256:20b43c660e48ed47f433bce5873a2a3d4b9b6a7ba47bd7f7d2a7cec4bec5551f \
     --hash=sha256:c148e88436bd54dab16484108e882be3367f44952c649c9cd6b82a7370b650cb
     # via behave
-pathvalidate==2.5.0 \
-    --hash=sha256:119ba36be7e9a405d704c7b7aea4b871c757c53c9adc0ed64f40be1ed8da2781 \
-    --hash=sha256:e5b2747ad557363e8f4124f0553d68878b12ecabd77bcca7e7312d5346d20262
-    # via pytablewriter
 pep517==0.12.0 \
     --hash=sha256:931378d93d11b298cf511dd634cf5ea4cb249a28ef84160b3247ee9afb4e8ab0 \
     --hash=sha256:dd884c326898e2c6e11f9e0b64940606a93eb10ea022a2e067959f3a110cf161
     # via
     #   build
     #   pip-tools
-pip-licenses==3.5.3 \
-    --hash=sha256:59c148d6a03784bf945d232c0dc0e9de4272a3675acaa0361ad7712398ca86ba \
-    --hash=sha256:f44860e00957b791c6c6005a3328f2d5eaeee96ddb8e7d87d4b0aa25b02252e4
-    # via grizzly-loadtester (pyproject.toml)
 pip-tools==6.6.0 \
     --hash=sha256:66318bc2e884b61fafa1cb2cf01b35fdd779ab9ce82cc1bce277adb8cf3ab845 \
     --hash=sha256:98aa24004440a1c0489d71a567a4e8afdf23c7782bff483d1219881e7302de83
@@ -1022,9 +996,6 @@ psutil==5.9.0 \
     # via
     #   locust
     #   opencensus-ext-azure
-ptable==0.9.2 \
-    --hash=sha256:aa7fc151cb40f2dabcd2275ba6f7fd0ff8577a86be3365cd3fb297cbe09cc292
-    # via pip-licenses
 py==1.11.0 \
     --hash=sha256:51c75c4126074b472f746a24399ad32f6053d1b34b68d2fa41e558e6f4a98719 \
     --hash=sha256:607c53218732647dff4acdfcd50cb62615cedf612e72d1724fb1a0cc6405b378
@@ -1089,10 +1060,6 @@ pyparsing==3.0.8 \
     --hash=sha256:7bf433498c016c4314268d95df76c81b842a4cb2b276fa3312cfb1e1d85f6954 \
     --hash=sha256:ef7b523f6356f763771559412c0d7134753f037822dad1b16945b7b846f7ad06
     # via packaging
-pytablewriter==0.64.2 \
-    --hash=sha256:99409d401d6ef5f06d1bc40f265a8e3053afe4cbfbaf709f71124076afb40dbb \
-    --hash=sha256:c46d1ddc40ef4d084213a86f8626cee33b3aa0119535aa8555da64cb5b65e382
-    # via grizzly-loadtester (pyproject.toml)
 pytest==7.1.1 \
     --hash=sha256:841132caef6b1ad17a9afde46dc4f6cfa59a05f9555aae5151f73bdf2820ca63 \
     --hash=sha256:92f723789a8fdd7180b6b06483874feca4c48a5c76968e03bb3e7f806a1869ea
@@ -1120,13 +1087,10 @@ python-dateutil==2.8.2 \
     #   ghp-import
     #   grizzly-loadtester (pyproject.toml)
     #   influxdb
-    #   typepy
 pytz==2022.1 \
     --hash=sha256:1e760e2fe6a8163bc0b3d9a19c4f84342afa0a2affebfaa84b01b978a02ecaa7 \
     --hash=sha256:e68985985296d9a66a881eb3193b0906246245294a881e7c8afe623866ac6a5c
-    # via
-    #   influxdb
-    #   typepy
+    # via influxdb
 pyyaml==5.4.1 \
     --hash=sha256:08682f6b72c722394747bddaf0aa62277e02557c0fd1c42cb853016a38f8dedf \
     --hash=sha256:0f5f5786c0e09baddcd8b4b45f20a7b5d61a7e7e99846e3c799b05c7c53fa696 \
@@ -1303,14 +1267,6 @@ six==1.16.0 \
     #   parse-type
     #   python-dateutil
     #   uamqp
-tabledata==1.3.0 \
-    --hash=sha256:2016fa561552bbf2266682fe328e9161359e605620084bac4754e91c238880f1 \
-    --hash=sha256:54541b0c9e58f8fa38251ea0a60965dbaf95737027fa80e6ab56f98d7e4d61e9
-    # via pytablewriter
-tcolorpy==0.1.2 \
-    --hash=sha256:88b1a5c1f4d14fa0a3c9fb97d93f84f0540c7a0e3f3957b1967b1b8ea93dbdbc \
-    --hash=sha256:8a669c29aada6e6715048ae04116e6b620f0864541fecb8722ede568f403b76e
-    # via pytablewriter
 tomli==2.0.1 \
     --hash=sha256:939de3e7a6161af0c887ef91b7d41a53e7c5a1ca976325f429cb46ea9bc30ecc \
     --hash=sha256:de526c12914f0c550d15924c62d72abc48d6fe7364aa87328337a31007fe8a4f
@@ -1334,13 +1290,6 @@ twine==3.8.0 \
     --hash=sha256:8efa52658e0ae770686a13b675569328f1fba9837e5de1867bfe5f46a9aefe19 \
     --hash=sha256:d0550fca9dc19f3d5e8eadfce0c227294df0a2a951251a4385797c8a6198b7c8
     # via grizzly-loadtester (pyproject.toml)
-typepy[datetime]==1.3.0 \
-    --hash=sha256:96788530614083164993d1443959f6c58e6bb8e2da839812ddf462c203e4b84c \
-    --hash=sha256:cf1913982969cf6348152c4a5feec08e324addd99670999e57cdb3ad87a61e9a
-    # via
-    #   dataproperty
-    #   pytablewriter
-    #   tabledata
 types-backports==0.1.3 \
     --hash=sha256:dafcd61848081503e738a7768872d1dd6c018401b4d2a1cfb608ea87ec9864b9 \
     --hash=sha256:f4b7206c073df88d6200891e3d27506185fd60cda66fb289737b2fa92c0010cf
@@ -1618,6 +1567,5 @@ setuptools==62.1.0 \
     #   astroid
     #   gevent
     #   pip-tools
-    #   pytablewriter
     #   zope-event
     #   zope-interface

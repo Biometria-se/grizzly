@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import sys
 
@@ -22,6 +22,7 @@ URL_MAP = {
     'databind': 'https://github.com/NiklasRosenstein/databind',
     'tomli-w': 'https://github.com/hukkin/tomli-w',
     'build': 'https://github.com/pypa/build',
+    'pyparsing': 'https://github.com/pyparsing/pyparsing/',
 }
 
 REPO_ROOT = path.realpath(path.join(path.dirname(__file__), '..'))
@@ -60,7 +61,7 @@ def generate_license_table() -> List[str]:
             if name in URL_MAP:
                 license['URL'] = URL_MAP[name]
             else:
-                print(f'!! you need to find an url for package {name}')
+                print(f'!! you need to find an url for package "{name}"', file=sys.stderr)
                 sys.exit(1)
 
         name = f'[{name}]({license["URL"]})'

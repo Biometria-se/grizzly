@@ -5,7 +5,7 @@ hooks:
     # generates docs/changelog/grizzly.md
     - python3 script/docs-generate-changelog.py
     # generates docs/cli.md and docs/changelog/grizzly-cli.md
-    - bash script/docs-generate-cli.bash "$PWD"
+    - bash script/docs-generate-cli.bash
 loaders:
   - type: python
     search_path: [.]
