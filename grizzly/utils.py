@@ -1,7 +1,7 @@
 import logging
 import re
 
-from typing import TYPE_CHECKING, Generic, Type, List, Any, Dict, Tuple, Optional, cast, Generator
+from typing import TYPE_CHECKING, Generic, Type, List, Any, Dict, Tuple, Optional, cast, Generator, Union
 from types import FunctionType
 from importlib import import_module
 from functools import wraps
@@ -90,7 +90,7 @@ def fail_direct(context: Context) -> Generator[None, None, None]:
     context.config.verbose = orig_verbose_value
 
 
-def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Optional[Dict[str, Any]] = None) -> Type['GrizzlyUser']:
+def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Optional[Dict[str, Any]] = None, fixed_count: Optional[int] = None) -> Type['GrizzlyUser']:
     if global_context is None:
         global_context = {}
 
@@ -119,12 +119,19 @@ def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Opt
     for merge_context in contexts:
         context = merge_dicts(context, merge_context)
 
+    distribution: Dict[str, Union[int, float]] = {
+        'weight': scenario.user.weight,
+    }
+
+    if fixed_count is not None:
+        distribution.update({'fixed_count': fixed_count})
+
     return type(user_class_name, (base_user_class_type, ), {
         '__module__': base_user_class_type.__module__,
         '__dependencies__': base_user_class_type.__dependencies__,
         '_context': context,
         '_scenario': scenario,
-        'weight': scenario.user.weight,
+        **distribution,
     })
 
 

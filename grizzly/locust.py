@@ -7,6 +7,7 @@ from os import environ, name as osname
 from signal import SIGTERM
 from socket import error as SocketError
 from datetime import datetime
+from math import ceil
 
 import gevent
 
@@ -76,23 +77,49 @@ def on_local(context: Context) -> bool:
     return value
 
 
-def setup_locust_scenarios(context: GrizzlyContext) -> Tuple[List[Type[GrizzlyUser]], List[GrizzlyTask], Set[str]]:
+def setup_locust_scenarios(grizzly: GrizzlyContext) -> Tuple[List[Type[GrizzlyUser]], List[GrizzlyTask], Set[str]]:
     user_classes: List[Type[GrizzlyUser]] = []
     tasks: List[GrizzlyTask] = []
 
-    scenarios = context.scenarios()
+    scenarios = grizzly.scenarios()
 
     assert len(scenarios) > 0, 'no scenarios in feature'
 
     external_dependencies: Set[str] = set()
     dummy_environment = Environment()
+    distribution: Dict[str, int] = {}
+
+    total_weight = sum([scenario.user.weight for scenario in scenarios])
+    for scenario in scenarios:
+        user_count = ceil(grizzly.setup.user_count * (scenario.user.weight / total_weight))
+        distribution[scenario.name] = user_count
+
+    total_user_count = sum([user_count for user_count in distribution.values()])
+    user_overflow = total_user_count - grizzly.setup.user_count
+
+    assert len(distribution.keys()) <= grizzly.setup.user_count, f"increase the number in step 'Given \"{grizzly.setup.user_count}\" users' to at least {len(distribution.keys())}"
+
+    if user_overflow < 0:
+        logger.warning(f'there should be {grizzly.setup.user_count} users, but there will only be {total_user_count} users spawned')
+
+    while user_overflow > 0:
+        for scenario_name in dict(sorted(distribution.items(), key=lambda d: d[1], reverse=True)).keys():
+            if distribution[scenario_name] <= 1:
+                continue
+
+            distribution[scenario_name] -= 1
+            user_overflow -= 1
+
+            if user_overflow < 1:
+                break
 
     for scenario in scenarios:
         # Given a user of type "" load testing ""
         assert 'host' in scenario.context, f'variable "host" is not found in the context for {scenario.name}'
         assert len(scenario.tasks) > 0, f'no tasks has been added to {scenario.name}'
 
-        user_class_type = create_user_class_type(scenario, context.setup.global_context)
+        fixed_count = distribution.get(scenario.name, None)
+        user_class_type = create_user_class_type(scenario, grizzly.setup.global_context, fixed_count=fixed_count)
         user_class_type.host = scenario.context['host']
 
         # fail early if there is a problem with creating an instance of the user class
@@ -106,6 +133,10 @@ def setup_locust_scenarios(context: GrizzlyContext) -> Tuple[List[Type[GrizzlyUs
         for task in scenario.tasks:
             scenario_type.populate(task)
             tasks.append(task)
+
+        logger.debug(
+            f'{user_class_type.__name__}/{scenario_type.__name__}: tasks={len(scenario.tasks)}, weight={user_class_type.weight}, fixed_count={user_class_type.fixed_count}'
+        )
 
         setattr(user_class_type, 'tasks', [scenario_type])
 
@@ -150,7 +181,7 @@ def setup_environment_listeners(context: Context, environment: Environment, task
     # initialize testdata
     try:
         testdata, external_dependencies = initialize_testdata(tasks)
-        logger.debug(f'{testdata=}')
+
         for scenario_testdata in testdata.values():
             for variable, value in scenario_testdata.items():
                 assert value is not None, f'variable {variable} has not been initialized'
@@ -267,7 +298,6 @@ def run(context: Context) -> int:
     user_classes, tasks, external_dependencies = setup_locust_scenarios(grizzly)
 
     assert len(user_classes) > 0, 'no users specified in feature'
-    assert len(user_classes) <= grizzly.setup.user_count, f"increase the number in step 'Given \"{grizzly.setup.user_count}\" users' to at least {len(user_classes)}"
     assert len(tasks) > 0, 'no tasks specified in feature'
 
     try:
@@ -277,6 +307,7 @@ def run(context: Context) -> int:
             user_classes=user_classes,
             shape_class=None,
             events=events,
+            stop_timeout=300,  # only wait at most?
         )
 
         variable_dependencies = setup_environment_listeners(context, environment, tasks)
@@ -392,54 +423,38 @@ def run(context: Context) -> int:
 
         gevent.spawn(stats_history, environment.runner)
 
-        watch_active_users_greenlet: Optional[gevent.Greenlet] = None
+        if not isinstance(runner, WorkerRunner):
+            watch_running_users_greenlet: Optional[gevent.Greenlet] = None
 
-        def watch_active_users() -> None:
-            while runner.user_count > 0:
-                logger.debug(f'{runner.user_count=}')
-                gevent.sleep(1.0)
+            def watch_running_users() -> None:
+                count = 0
+                while runner.user_count > 0:
+                    gevent.sleep(1.0)
+                    count += 1
+                    if count % 10 == 0:
+                        logger.debug(f'{runner.user_count=}')
+                        count = 0
 
-            logger.info(f'{runner.user_count=}, stopping runner')
-            gevent.sleep(3.0)
+                logger.info(f'{runner.user_count=}, quit {runner.__class__.__name__}')
+                if isinstance(runner, MasterRunner):
+                    runner.send_message('grizzly_worker_quit', None)
 
-        if not on_master(context):
-            while not grizzly.state.spawning_complete:
-                logger.debug('spawning not complete...')
-                gevent.sleep(1.0)
+                    runner.stop(send_stop_to_client=False)
 
-            logger.info('all users spawn, start watching user count')
+                    # wait for all clients to quit
+                    while len(runner.clients.all) > 0:
+                        gevent.sleep(0.5)
 
-            watch_active_users_greenlet = gevent.spawn(watch_active_users)
-            watch_active_users_greenlet.link_exception(greenlet_exception_handler)
+                    runner.greenlet.kill(block=True)
+                else:
+                    runner.quit()
 
-            # shutdown when user_count reaches 0
-            main_greenlet = watch_active_users_greenlet
+                if stats_printer_greenlet is not None:
+                    stats_printer_greenlet.kill(block=False)
 
-        def shutdown() -> int:
-            logger.info('running teardowns...')
+                if watch_running_users_greenlet is not None:
+                    watch_running_users_greenlet.kill(block=False)
 
-            environment.events.quitting.fire(environment=environment, reverse=True)
-
-            if unhandled_greenlet_exception:
-                code = 2
-            elif environment.process_exit_code is not None:
-                code = environment.process_exit_code
-            elif len(runner.errors) > 0 or len(runner.exceptions) > 0:
-                code = 3
-            else:
-                code = 0
-
-            if stats_printer_greenlet is not None:
-                stats_printer_greenlet.kill(block=False)
-
-            if watch_active_users_greenlet is not None:
-                watch_active_users_greenlet.kill(block=False)
-
-            logger.info('cleaning up runner...')
-            if runner is not None:
-                runner.quit()
-
-            if not isinstance(runner, WorkerRunner):
                 print_stats(runner.stats, current=False)
                 print_percentile_stats(runner.stats)
                 print_error_report(runner.stats)
@@ -452,21 +467,45 @@ def run(context: Context) -> int:
                 print(f'Started: {context.started}')
                 print(f'Stopped: {stopped}')
 
-            shutdown_external_processes(external_processes)
+            def spawning_complete() -> bool:
+                if isinstance(runner, MasterRunner):
+                    return runner.spawning_completed
+                else:
+                    return grizzly.state.spawning_complete
 
-            return code
+            while not spawning_complete():
+                logger.debug('spawning not completed...')
+                gevent.sleep(1.0)
+
+            logger.info('all users spawn, start watching user count')
+
+            watch_running_users_greenlet = gevent.spawn(watch_running_users)
+            watch_running_users_greenlet.link_exception(greenlet_exception_handler)
+
+            # stop when user_count reaches 0
+            main_greenlet = watch_running_users_greenlet
 
         def sig_term_handler() -> None:
             logger.info('got SIGTERM signal')
-            shutdown()
+            runner.quit()
 
         gevent.signal_handler(SIGTERM, sig_term_handler)
 
         try:
             main_greenlet.join()
+            logger.debug('main greenlet finished')
         except KeyboardInterrupt as e:
             raise e
         finally:
-            return shutdown()
+            if unhandled_greenlet_exception:
+                code = 2
+            elif environment.process_exit_code is not None:
+                code = environment.process_exit_code
+            elif len(runner.errors) > 0 or len(runner.exceptions) > 0:
+                code = 3
+            else:
+                code = 0
+
+            return code
     finally:
         shutdown_external_processes(external_processes)

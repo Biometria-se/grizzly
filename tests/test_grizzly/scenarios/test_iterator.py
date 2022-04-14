@@ -85,7 +85,7 @@ class TestIterationScenario:
         try:
             _, _, scenario = grizzly_fixture(scenario_type=IteratorScenario)
 
-            def TestdataConsumer__init__(self: 'TestdataConsumer', address: str) -> None:
+            def TestdataConsumer__init__(self: 'TestdataConsumer', address: str, identifier: str) -> None:
                 pass
 
             mocker.patch(
@@ -124,7 +124,7 @@ class TestIterationScenario:
         assert scenario is not None
         assert isinstance(scenario, IteratorScenario)
 
-        scenario.consumer = TestdataConsumer()
+        scenario.consumer = TestdataConsumer(identifier='test')
 
         def mock_request(data: Optional[Dict[str, Any]]) -> None:
             def request(self: 'TestdataConsumer', scenario: str) -> Optional[Dict[str, Any]]:
@@ -318,7 +318,7 @@ class TestIterationScenario:
 
         user_error.reset_mock()
         wait.reset_mock()
-        user.environment.catch_exceptions = True
+        scenario.user.environment.catch_exceptions = True
 
         get_next_task = mocker.patch.object(scenario, 'get_next_task', side_effect=[RuntimeError, StopUser])
 
@@ -335,5 +335,5 @@ class TestIterationScenario:
         assert kwargs.get('user_instance', None) is scenario
         assert isinstance(kwargs.get('exception', None), RuntimeError)
         assert kwargs.get('tb', None) is not None
-        assert 'ERROR' in caplog.text and 'grizzly.scenarios' in caplog.text
+        assert 'ERROR' in caplog.text and 'IteratorScenario' in caplog.text
         assert 'Traceback (most recent call last):' in caplog.text

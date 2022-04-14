@@ -1,18 +1,19 @@
 import json
+import logging
 
 from os import path, mkdir, sep
 from typing import Dict, Optional, Any, Tuple, cast
-from logging import Logger
 
 import pytest
-from zmq.sugar.constants import REQ as ZMQ_REQ
-from zmq.error import ZMQError, Again as ZMQAgain
+
 import zmq.green as zmq
 import gevent
 
+from _pytest.logging import LogCaptureFixture
 from jinja2 import Template
 from pytest_mock import MockerFixture
-from zmq.sugar.socket import Socket
+from zmq.sugar.constants import REQ as ZMQ_REQ
+from zmq.error import ZMQError, Again as ZMQAgain
 from locust.exception import StopUser
 
 from grizzly.testdata.communication import TestdataConsumer, TestdataProducer
@@ -259,14 +260,8 @@ class TestTestdataProducer:
 
             cleanup()
 
-    def test_reset(self, mocker: MockerFixture, cleanup: AtomicVariableCleanupFixture, locust_fixture: LocustFixture) -> None:
-        def socket_bind(instance: Socket, address: str) -> None:
-            pass
-
-        mocker.patch(
-            'grizzly.testdata.communication.zmq.Socket.bind',
-            socket_bind,
-        )
+    def test_reset(self, mocker: MockerFixture, cleanup: AtomicVariableCleanupFixture, locust_fixture: LocustFixture, noop_zmq: NoopZmqFixture) -> None:
+        noop_zmq('grizzly.testdata.communication')
 
         try:
             producer = TestdataProducer({}, environment=locust_fixture.env)
@@ -282,135 +277,72 @@ class TestTestdataProducer:
         finally:
             cleanup()
 
-    def test_stop_exception(self, mocker: MockerFixture, cleanup: AtomicVariableCleanupFixture, locust_fixture: LocustFixture) -> None:
-        def mocked_destroy(
-            instance: zmq.Context,
-            *args: Tuple[Any, ...],
-            **kwargs: Dict[str, Any],
-        ) -> None:
-            raise RuntimeError('zmq.Context.destroy failed')
-
-        mocker.patch(
-            'grizzly.testdata.communication.zmq.Context.destroy',
-            mocked_destroy,
-        )
-
-        def mocked_gsleep(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
-            pass
-
-        mocker.patch(
-            'grizzly.testdata.communication.gsleep',
-            mocked_gsleep,
-        )
-
-        def mocked_logger_error(instance: Logger, msg: str, exc_info: bool) -> None:
-            assert exc_info
-            assert msg == 'failed to stop producer'
-
-        mocker.patch(
-            'logging.Logger.error',
-            mocked_logger_error,
-        )
-
-        def socket_bind(instance: Socket, address: str) -> None:
-            pass
-
-        mocker.patch(
-            'grizzly.testdata.communication.zmq.Socket.bind',
-            socket_bind,
-        )
+    def test_stop_exception(
+        self, mocker: MockerFixture, cleanup: AtomicVariableCleanupFixture, locust_fixture: LocustFixture, caplog: LogCaptureFixture, noop_zmq: NoopZmqFixture,
+    ) -> None:
+        noop_zmq('grizzly.testdata.communication')
+        mocker.patch('grizzly.testdata.communication.zmq.Context.destroy', side_effect=[RuntimeError('zmq.Context.destroy failed')])
+        mocker.patch('grizzly.testdata.communication.gsleep', autospec=True)
 
         try:
-            TestdataProducer({}, environment=locust_fixture.env).stop()
+            with caplog.at_level(logging.DEBUG):
+                TestdataProducer({}, environment=locust_fixture.env).stop()
+            assert 'failed to stop' in caplog.messages[-1]
         finally:
             cleanup()
 
-    def test_run_type_error(self, mocker: MockerFixture, cleanup: AtomicVariableCleanupFixture, locust_fixture: LocustFixture) -> None:
-        def socket_bind(instance: Socket, address: str) -> None:
-            pass
+    def test_run_type_error(
+        self, mocker: MockerFixture, cleanup: AtomicVariableCleanupFixture, locust_fixture: LocustFixture, noop_zmq: NoopZmqFixture, caplog: LogCaptureFixture,
+    ) -> None:
+        noop_zmq('grizzly.testdata.communication')
 
+        mocker.patch('grizzly.testdata.communication.zmq.Socket.recv_json', return_value={
+            'message': 'available',
+            'identifier': 'test-consumer',
+            'scenario': 'test',
+        })
         mocker.patch(
-            'grizzly.testdata.communication.zmq.Socket.bind',
-            socket_bind,
+            'grizzly.testdata.communication.GrizzlyContext.get_scenario',
+            side_effect=[TypeError('TypeError raised'), ZMQError],
         )
 
-        def socket_recv_json(self: 'Socket', *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Dict[str, Any]:
-            return {
-                'message': 'available',
-                'scenario': 'test',
-            }
-
-        mocker.patch(
-            'grizzly.testdata.communication.zmq.Socket.recv_json',
-            socket_recv_json,
-        )
-
-        def socket_send_json(self: 'Socket', obj: Any, flags: Optional[int] = 0, **_kwargs: Dict[str, Any]) -> None:
-            assert obj.get('action', None) == 'stop'
-            raise RuntimeError()
-
-        mocker.patch(
-            'grizzly.testdata.communication.zmq.Socket.send_json',
-            socket_send_json,
-        )
-
-        def logger_error(logger: Logger, msg: str, exc_info: bool) -> None:
-            assert exc_info
-            assert msg == 'test data error, stop consumer'
-
-        mocker.patch(
-            'logging.Logger.error',
-            logger_error,
-        )
-
-        def mocked_get_scenario(c: GrizzlyContext, name: str) -> Any:
-            raise TypeError('TypeError raised')
-
-        mocker.patch(
-            'grizzly.context.GrizzlyContext.get_scenario',
-            mocked_get_scenario,
-        )
+        send_json_mock = mocker.patch('grizzly.testdata.communication.zmq.Socket.send_json', autospec=True)
 
         try:
-            with pytest.raises(RuntimeError):
+            with caplog.at_level(logging.DEBUG):
                 TestdataProducer({}, environment=locust_fixture.env).run()
+
+            print(caplog.text)
+            assert caplog.messages[-3] == "producing {'action': 'stop'} for consumer test-consumer"
+            assert 'test data error, stop consumer test-consumer' in caplog.messages[-4]
+            assert send_json_mock.call_count == 1
+            args, _ = send_json_mock.call_args_list[-1]
+            # send_json was autospec'ed, meaning args[0] == self
+            assert args[1].get('action', None) == 'stop'
         finally:
             cleanup()
 
-    def test_run_zmq_error(self, mocker: MockerFixture, cleanup: AtomicVariableCleanupFixture, locust_fixture: LocustFixture) -> None:
-        def socket_bind(instance: Socket, address: str) -> None:
-            pass
-
-        mocker.patch(
-            'grizzly.testdata.communication.zmq.Socket.bind',
-            socket_bind,
-        )
-
-        def socket_recv_json(self: 'Socket', *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Any:
-            raise ZMQError()
+    def test_run_zmq_error(
+        self, mocker: MockerFixture, cleanup: AtomicVariableCleanupFixture, locust_fixture: LocustFixture, noop_zmq: NoopZmqFixture, caplog: LogCaptureFixture,
+    ) -> None:
+        noop_zmq('grizzly.testdata.communication')
 
         mocker.patch(
             'grizzly.testdata.communication.zmq.Socket.recv_json',
-            socket_recv_json,
-        )
-
-        def logger_error(logger: Logger, msg: str, exc_info: bool) -> None:
-            assert exc_info
-            assert msg == 'failed when waiting for consumers'
-
-        mocker.patch(
-            'logging.Logger.error',
-            logger_error,
+            side_effect=[ZMQError]
         )
 
         try:
-            TestdataProducer({}, environment=locust_fixture.env).run()
+            with caplog.at_level(logging.ERROR):
+                TestdataProducer({}, environment=locust_fixture.env).run()
+            print(caplog.text)
+            assert caplog.messages[-1] == 'failed when waiting for consumers'
         finally:
             cleanup()
 
 
 class TestTestdataConsumer:
-    def test_request(self, mocker: MockerFixture, behave_fixture: BehaveFixture, noop_zmq: NoopZmqFixture) -> None:
+    def test_request(self, mocker: MockerFixture, behave_fixture: BehaveFixture, noop_zmq: NoopZmqFixture, caplog: LogCaptureFixture) -> None:
         noop_zmq('grizzly.testdata.variables.messagequeue')
 
         def mock_recv_json(data: Dict[str, Any], action: Optional[str] = 'consume') -> None:
@@ -437,7 +369,7 @@ class TestTestdataConsumer:
                 ]
             )
 
-        consumer = TestdataConsumer()
+        consumer = TestdataConsumer(identifier='test')
 
         try:
             # this will no longer throw StopUser, but rather go into an infinite loop
@@ -478,9 +410,12 @@ class TestTestdataConsumer:
                 }
             }, 'stop')
 
-            with pytest.raises(StopUser) as e:
-                consumer.request('test')
-            assert 'stop command received' in str(e)
+            with caplog.at_level(logging.DEBUG):
+                with pytest.raises(StopUser):
+                    consumer.request('test')
+            assert 'received stop command, stopping user' in caplog.text
+
+            caplog.clear()
 
             mock_recv_json({
                 'variables': {
@@ -489,9 +424,12 @@ class TestTestdataConsumer:
                 }
             }, 'asdf')
 
-            with pytest.raises(StopUser) as e:
-                consumer.request('test')
-            assert 'unknown action' in str(e)
+            with caplog.at_level(logging.DEBUG):
+                with pytest.raises(StopUser):
+                    consumer.request('test')
+            assert 'unknown action "asdf" received, stopping user' in caplog.text
+
+            caplog.clear()
 
             mock_recv_json({
                 'variables': {
@@ -537,79 +475,39 @@ class TestTestdataConsumer:
             consumer.stop()
             assert consumer.context._instance is None
 
-    def test_request_stop_exception(self, mocker: MockerFixture) -> None:
-        def mocked_destroy(
-            instance: zmq.Context,
-            *args: Tuple[Any, ...],
-            **kwargs: Dict[str, Any],
-        ) -> None:
-            raise RuntimeError('zmq.Context.destroy failed')
+    def test_request_stop_exception(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, caplog: LogCaptureFixture) -> None:
+        noop_zmq('grizzly.testdata.communication')
 
         mocker.patch(
             'grizzly.testdata.communication.zmq.Context.destroy',
-            mocked_destroy,
+            side_effect=[RuntimeError('zmq.Context.destroy failed')],
         )
-
-        def mocked_gsleep(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
-            pass
 
         mocker.patch(
             'grizzly.testdata.communication.gsleep',
-            mocked_gsleep,
+            autospec=True,
         )
 
-        def mocked_logger_error(instance: Logger, msg: str, exc_info: bool) -> None:
-            assert exc_info
-            assert msg == 'failed to stop consumer'
+        with caplog.at_level(logging.DEBUG):
+            TestdataConsumer(identifier='test').stop()
+        assert caplog.messages[-1] == 'failed to stop'
 
-        mocker.patch(
-            'logging.Logger.error',
-            mocked_logger_error,
-        )
-
-        def socket_connect(self: 'Socket', addr: str) -> None:
-            pass
-
-        mocker.patch(
-            'grizzly.testdata.communication.zmq.Socket.connect',
-            socket_connect,
-        )
-
-        TestdataConsumer().stop()
-
-    def test_request_exception(self, mocker: MockerFixture) -> None:
-        def socket_connect(self: 'Socket', addr: str) -> None:
-            pass
-
-        mocker.patch(
-            'grizzly.testdata.communication.zmq.Socket.connect',
-            socket_connect,
-        )
-
-        def socket_send_json(self: 'Socket', obj: Any, flags: Optional[int] = 0, **_kwargs: Dict[str, Any]) -> None:
-            pass
-
-        mocker.patch(
-            'grizzly.testdata.communication.zmq.Socket.send_json',
-            socket_send_json,
-        )
-
-        def socket_recv_json(self: 'Socket', *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Any:
-            raise ZMQAgain()
+    def test_request_exception(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
+        noop_zmq('grizzly.testdata.communication')
 
         mocker.patch(
             'grizzly.testdata.communication.zmq.Socket.recv_json',
-            socket_recv_json,
+            side_effect=[ZMQAgain],
         )
 
-        def gsleep(time: float, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
-            assert time == 0.1
-            raise ZMQAgain()
-
-        mocker.patch(
+        gsleep_mock = mocker.patch(
             'grizzly.testdata.communication.gsleep',
-            gsleep,
+            side_effect=[ZMQAgain]
         )
 
         with pytest.raises(ZMQAgain):
-            TestdataConsumer().request('test')
+            TestdataConsumer(identifier='test').request('test')
+
+        assert gsleep_mock.call_count == 1
+        args, _ = gsleep_mock.call_args_list[-1]
+        assert args[0] == 0.1

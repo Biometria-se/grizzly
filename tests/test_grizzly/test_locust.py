@@ -11,6 +11,7 @@ from _pytest.logging import LogCaptureFixture
 from _pytest.capture import CaptureFixture
 from pytest_mock import MockerFixture
 from behave.runner import Context
+from behave.model import Scenario
 from locust.env import Environment
 from jinja2 import Template, TemplateError
 
@@ -155,6 +156,12 @@ def test_setup_locust_scenarios(behave_fixture: BehaveFixture) -> None:
 
     with pytest.raises(AssertionError) as ae:
         setup_locust_scenarios(grizzly)
+    assert 'increase the number in step' in str(ae)
+
+    grizzly.setup.user_count = 1
+
+    with pytest.raises(AssertionError) as ae:
+        setup_locust_scenarios(grizzly)
     assert 'variable "host" is not found in the context for' in str(ae)
 
     grizzly.scenario.context['host'] = 'https://test.example.org'
@@ -213,6 +220,34 @@ def test_setup_locust_scenarios(behave_fixture: BehaveFixture) -> None:
         assert issubclass(type(user_tasks), SequentialTaskSetMeta)
         user_tasks = cast(IteratorScenario, user_tasks)
         assert len(user_tasks.tasks) == 3 + 1  # IteratorScenario has an internal task other than what we've added
+
+
+@pytest.mark.parametrize('user_count, user_distribution', [
+    (6, [1, 1, 1, 1, 1, 1],),
+    (10, [2, 4, 1, 1, 1, 1],),
+    (60, [14, 25, 5, 8, 4, 4],),
+    (70, [17, 29, 5, 9, 5, 5],),
+])
+def test_setup_locust_scenarios_user_distribution(behave_fixture: BehaveFixture, user_count: int, user_distribution: List[int]) -> None:
+    distribution: List[int] = [25, 42, 8, 13, 6, 6]
+    behave = behave_fixture.context
+    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.setup.user_count = user_count
+    grizzly._scenarios = []
+
+    for index in range(0, len(distribution)):
+        scenario = Scenario(filename=None, line=None, keyword='', name=f'Test-{(index + 1)}')
+        grizzly.add_scenario(scenario)
+        grizzly.scenario.context['host'] = 'http://localhost:8003'
+        grizzly.scenario.add_task(PrintTask(message='foo bar'))
+        grizzly.scenario.user.class_name = 'RestApiUser'
+        grizzly.scenario.user.weight = distribution[index]
+
+    user_classes, _, _ = setup_locust_scenarios(grizzly)
+
+    for index, user_class in enumerate(user_classes):
+        assert user_class.fixed_count == user_distribution[index]
+        assert user_class.weight == distribution[index]
 
 
 @pytest.mark.skipif(platform.startswith("win"), reason='resource module is posix only, this is not done in locust on windows')

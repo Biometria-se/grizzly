@@ -2,6 +2,7 @@ import logging
 
 from typing import TYPE_CHECKING, Dict, Any, Tuple, Optional, Generator, cast
 from contextlib import contextmanager
+from urllib3 import PoolManager
 
 from locust.user.users import User
 from locust.clients import ResponseContextManager, HttpSession
@@ -19,8 +20,16 @@ logger = logging.getLogger(__name__)
 class ResponseEventSession(HttpSession):
     event_hook: EventHook
 
-    def __init__(self, base_url: str, request_event: EventHook, user: Optional[User] = None, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
-        super().__init__(base_url, request_event, user, *args, **kwargs)
+    def __init__(
+        self,
+        base_url: str,
+        request_event: EventHook,
+        user: Optional[User] = None,
+        pool_manager: Optional[PoolManager] = None,
+        *args: Tuple[Any, ...],
+        **kwargs: Dict[str, Any],
+    ) -> None:
+        super().__init__(base_url, request_event, user, pool_manager, *args, **kwargs)
 
         self.event_hook = EventHook()
 

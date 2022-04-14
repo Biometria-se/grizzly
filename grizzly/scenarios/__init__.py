@@ -1,6 +1,6 @@
 import logging
 
-from typing import Callable, Optional, Dict, Any
+from typing import TYPE_CHECKING, Optional, Dict, Any, cast
 from os import environ
 
 from locust.exception import StopUser
@@ -9,20 +9,27 @@ from jinja2 import Template
 
 from ..context import GrizzlyContext
 from ..testdata.communication import TestdataConsumer
-from ..users.base import GrizzlyUser
 from ..tasks import GrizzlyTask
+from ..types import ScenarioState
+
+if TYPE_CHECKING:
+    from ..users.base import GrizzlyUser
 
 
 class GrizzlyScenario(SequentialTaskSet):
     consumer: TestdataConsumer
-    logger: logging.Logger = logging.getLogger(__name__)
+    logger: logging.Logger
     grizzly: GrizzlyContext
-    wait_time: Callable[[float, float], float]
-    user: GrizzlyUser
 
-    def __init__(self, parent: GrizzlyUser) -> None:
+    def __init__(self, parent: 'GrizzlyUser') -> None:
         super().__init__(parent=parent)
+        self.logger = logging.getLogger(f'{self.__class__.__name__}/{id(self)}')
         self.grizzly = GrizzlyContext()
+        self.user.scenario_state = ScenarioState.STOPPED
+
+    @property
+    def user(self) -> 'GrizzlyUser':
+        return cast('GrizzlyUser', self._user)
 
     @classmethod
     def populate(cls, task_factory: GrizzlyTask) -> None:
@@ -37,14 +44,18 @@ class GrizzlyScenario(SequentialTaskSet):
     def on_start(self) -> None:
         producer_address = environ.get('TESTDATA_PRODUCER_ADDRESS', None)
         if producer_address is not None:
-            self.consumer = TestdataConsumer(address=producer_address)
+            self.consumer = TestdataConsumer(
+                address=producer_address,
+                identifier=self.__class__.__name__,
+            )
+            self.user.scenario_state = ScenarioState.RUNNING
         else:
             self.logger.error('no address to testdata producer specified')
             raise StopUser()
 
     def on_stop(self) -> None:
-        self.logger.debug(f'stopping consumer for {self.__class__.__name__}')
         self.consumer.stop()
+        self.user.scenario_state = ScenarioState.STOPPED
 
 
 from .iterator import IteratorScenario
