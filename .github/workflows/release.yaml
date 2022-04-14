@@ -51,14 +51,20 @@ jobs:
         sudo ln -fs /usr/share/zoneinfo/Europe/Stockholm /etc/timezone
         echo $HOME/.local/bin >> $GITHUB_PATH
 
-    - name: checkout
+    - name: checkout (deep)
+      if: ${{ !env.ACT }}
       uses: actions/checkout@v2
       with:
         fetch-depth: 0
         ref: main
 
-    - name: setup python
-      id: setup-python
+    - name: checkout (shallow)
+      if: ${{ env.ACT }}
+      uses: actions/checkout@v2
+
+    - name: setup python (with cache)
+      if: ${{ !env.ACT }}
+      id: setup-python-with-cache
       uses: actions/setup-python@v2
       with:
         python-version: '3.x'
@@ -66,6 +72,11 @@ jobs:
         cache-dependency-path: |
           **/requirements-ci.txt
           **/requirements-script.txt
+
+    - name: setup python (without cache)
+      if: ${{ env.ACT }}
+      id: setup-python-without-cache
+      uses: actions/setup-python@v2
 
     - name: get last released version
       if: github.event.inputs.version == '0.0.0'
@@ -163,7 +174,7 @@ jobs:
     - name: build documentation
       id: build-docs
       run: |
-        ./script/pip-sync.bash script
+        python -m pip install -r requirements-script.txt
         pydoc-markdown --build --site-dir "$PWD/build/html"
 
         # this is needed since pydoc-markdown does not include them
