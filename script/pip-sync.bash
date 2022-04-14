@@ -5,10 +5,10 @@ set -e
 main() {
     local version="${1:-dev}"
     case "${version}" in
-        dev|prod|ci)
+        dev|prod|ci|script)
             ;;
         *)
-            >&2 echo "unknown version ${version}: choose one of prod, dev or ci"
+            >&2 echo "unknown version ${version}: choose one of prod, dev, ci or script"
             return 1
     esac
 
