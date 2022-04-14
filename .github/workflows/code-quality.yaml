@@ -127,7 +127,15 @@ jobs:
 
     - name: create script matrix
       id: create-script-matrix
-      run: echo "::set-output name=matrix::$(ls -1 script/docs-* | awk 'BEGIN {printf "["} {printf "\""$0"\", "} END {print "]"}' | sed -r 's|", \]$|"\]|')"
+      run: |
+        echo "::set-output name=matrix::$(ls -1 script/docs-* | awk 'BEGIN {printf "["} {printf "\""$0"\", "} END {print "]"}' | sed -r 's|", \]$|"\]|')"
+
+    - name: validate script matrix
+      run: |
+        echo ${{ steps.create-script-matrix.outputs.matrix }}
+
+    outputs:
+      matrix: ${{ steps.create-script-matrix.outputs.matrix }}
 
   documentation-scripts:
     name: "documentation/${{ matrix.script }}"
