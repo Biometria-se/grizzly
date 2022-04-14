@@ -26,8 +26,6 @@ jobs:
 
     strategy:
       fail-fast: true
-      matrix:
-        python-version: [3.8]
 
     steps:
     - name: input sanity check
@@ -54,31 +52,18 @@ jobs:
         echo $HOME/.local/bin >> $GITHUB_PATH
 
     - name: checkout
-      if: ${{ !env.ACT }}
       uses: actions/checkout@v2
       with:
         fetch-depth: 0
         ref: main
 
-    - name: checkout
-      if: ${{ env.ACT }}
-      uses: actions/checkout@v2
-
-    - name: setup python (with cache)
-      if: ${{ !env.ACT }}
-      id: setup-python-with-cache
+    - name: setup python
+      id: setup-python
       uses: actions/setup-python@v2
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: '3.x'
         cache: 'pip'
         cache-dependency-path: '**/requirements-ci.txt'
-
-    - name: setup python (without cache)
-      if: ${{ env.ACT }}
-      id: setup-python-without-cache
-      uses: actions/setup-python@v2
-      with:
-        python-version: ${{ matrix.python-version }}
 
     - name: get last released version
       if: github.event.inputs.version == '0.0.0'
@@ -160,11 +145,18 @@ jobs:
 
     - name: create and push release tag
       id: release-tag
-      uses: actions-ecosystem/action-push-tag@v1
       if: github.event.inputs.dry-run != 'true'
-      with:
-        tag: v${{ steps.version.outputs.version }}
-        message: 'Release ${{ steps.version.outputs.version }}'
+      run: |
+        set -e
+
+        tag="v${{ steps.version.outputs.version }}"
+        message="Release ${{ steps.version.outputs.version }}"
+
+        git config user.name "${GITHUB_ACTOR}"
+        git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+
+        git tag -a "${tag}" -m "${message}"
+        git push origin "${tag}"
 
     - name: build documentation
       id: build-docs
