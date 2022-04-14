@@ -132,7 +132,7 @@ jobs:
 
     - name: validate script matrix
       run: |
-        echo ${{ steps.create-script-matrix.outputs.matrix }}
+        echo '${{ steps.create-script-matrix.outputs.matrix }}'
 
     outputs:
       matrix: ${{ steps.create-script-matrix.outputs.matrix }}
