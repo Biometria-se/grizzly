@@ -4,6 +4,7 @@ set -e
 main() {
     local script_dir
     local workspace
+    local cwd="${1:-${PWD}}"
     script_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
     workspace=$(mktemp -d -t ws-XXXXXX)
 
@@ -15,7 +16,7 @@ main() {
     source .venv/bin/activate
 
     echo "-- installing grizzly-cli"
-    pip3 install grizzly-loadtester-cli &> /dev/null
+    pip3 install grizzly-loadtester-cli[dev] &> /dev/null
 
     echo "-- generating cli.md"
     grizzly-cli --md-help > "${script_dir}/../docs/cli.md"
@@ -27,19 +28,17 @@ main() {
 
     echo "-- generating changelog/grizzly-cli"
     pushd "grizzly-cli/" &> /dev/null
-    python3 "$1/script/docs-generate-changelog.py" --from-directory "$PWD"
-
-    echo "-- installing grizzly-cli dev dependencies"
-    python3 -m pip install .[dev]
+    python3 "${cwd}/script/docs-generate-changelog.py" --from-directory "$PWD"
 
     echo "-- generating licenses/grizzly-loadtester-cli.md"
-    python3 script/docs-generate-licenses.py > "$1/docs/licenses/grizzly-loadtester-cli.md"
+    [[ -d "${cwd}/docs/licenses" ]] || mkdir -p "${cwd}/docs/licenses"
+    python3 script/docs-generate-licenses.py > "${cwd}/docs/licenses/grizzly-loadtester-cli.md"
     popd &> /dev/null
 
     echo "-- cleaning up"
-    deactivate
+    deactivate || true
     popd &> /dev/null
-    rm -rf "${workspace}"
+    rm -rf "${workspace}" || true
 
     return 0
 }

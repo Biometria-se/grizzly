@@ -23,6 +23,14 @@ def parse_arguments() -> argparse.Namespace:
         description='use pip-compile to compile requirements files for grizzly, should be used after updating dependencies.',
     )
 
+    parser.add_argument(
+        '--target',
+        type=str,
+        required=False,
+        default=None,
+        help='only generate the specified targets, instead of all',
+    )
+
     group = parser.add_mutually_exclusive_group()
 
     group.add_argument(
@@ -92,7 +100,7 @@ def get_python_version() -> str:
 
 
 def build_container_image(python_version: str) -> int:
-    print(f'running pip-compile with python {python_version}')
+    print(f'running pip-compile with python {python_version}', flush=True)
 
     build_context = os.path.dirname(__file__)
 
@@ -122,6 +130,7 @@ USER grizzly
 RUN pip3 install --user --no-cache-dir -U pip pip-tools packaging
 WORKDIR /mnt
 COPY pip-compile.py /
+ENV PYTHONUNBUFFERED=1
 CMD ["/pip-compile.py", "--compile"]
 ''')
 
@@ -165,7 +174,7 @@ def has_git_dependencies(where_am_i: str) -> bool:
     return False
 
 
-def compile() -> int:
+def compile(target: Optional[str] = None) -> int:
     if os.path.exists('/mnt/setup.cfg'):
         where_am_i = '/mnt'
     else:
@@ -173,20 +182,32 @@ def compile() -> int:
 
     generate_hashes = not has_git_dependencies(where_am_i)
 
-    targets: Dict[str, Tuple[str, ...]] = {
+    targets_all: Dict[str, Tuple[str, ...]] = {
         'requirements.txt': (),
-        'requirements-ci.txt': ('dev', 'ci',),
-        'requirements-dev.txt': ('dev', 'mq',),
+        'requirements-ci.txt': ('dev', 'ci', 'script', ),
+        'requirements-dev.txt': ('dev', 'mq', 'script', ),
+        'requirements-script.txt': (),
     }
+
+    if target is None:
+        targets = targets_all
+    else:
+        targets = {target: targets_all[target]}
 
     click_push_context(ClickContext(command=ClickCommand(name='cli')))
 
     os.environ['CUSTOM_COMPILE_COMMAND'] = 'script/pip-compile.py'
 
     for target, extras in targets.items():
+        output_file = os.path.join(where_am_i, target)
+        base, _ = os.path.splitext(output_file)
+        if os.path.exists(f'{base}.in'):
+            src_files = (f'{base}.in', )
+        else:
+            src_files = ('pyproject.toml', )
+
         with open(os.path.join(where_am_i, target), 'w+b') as fd:
-            print(f'generating {target}')
-            sys.stdout.flush()
+            print(f'generating {target} from {src_files[0]}', flush=True)
             try:
                 pip_compile.callback(
                     verbose=0,
@@ -212,7 +233,7 @@ def compile() -> int:
                     strip_extras=False,
                     generate_hashes=generate_hashes,  # <!-- --generate-hashes
                     reuse_hashes=True,
-                    src_files=('pyproject.toml',),
+                    src_files=src_files,
                     max_rounds=10,
                     build_isolation=True,
                     emit_find_links=True,
@@ -236,7 +257,7 @@ def main() -> int:
     args = parse_arguments()
 
     if args.compile:
-        rc = compile()
+        rc = compile(args.target)
     else:
         python_version = args.python_version
         if python_version is None:
