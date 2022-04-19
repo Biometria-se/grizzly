@@ -3,7 +3,7 @@ import logging
 import subprocess
 
 from typing import Optional, Callable, List, Tuple, Set, Dict, Type, cast
-from os import environ, name as osname
+from os import environ
 from signal import SIGTERM
 from socket import error as SocketError
 from datetime import datetime
@@ -146,7 +146,7 @@ def setup_locust_scenarios(grizzly: GrizzlyContext) -> Tuple[List[Type[GrizzlyUs
 
 
 def setup_resource_limits(context: Context) -> None:
-    if osname != 'nt' and on_master(context):
+    if sys.platform != 'win32' and on_master(context):
         try:
             import resource
             minimum_open_file_limit = 10000
