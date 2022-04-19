@@ -1,4 +1,3 @@
-from sys import platform
 from typing import cast
 from datetime import datetime
 

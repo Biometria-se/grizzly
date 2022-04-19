@@ -264,9 +264,9 @@ def test_setup_resource_limits(behave_fixture: BehaveFixture, mocker: MockerFixt
             mocked_on_master,
         )
 
-    def mock_os_name(name: str) -> None:
+    def mock_sys_platform(name: str) -> None:
         mocker.patch(
-            'grizzly.locust.osname',
+            'grizzly.locust.sys.platform',
             name
         )
 
@@ -293,10 +293,10 @@ def test_setup_resource_limits(behave_fixture: BehaveFixture, mocker: MockerFixt
         )
 
     mock_on_master(False)
-    mock_os_name('nt')
+    mock_sys_platform('win32')
     setup_resource_limits(behave)
 
-    mock_os_name('posix')
+    mock_sys_platform('linux')
     setup_resource_limits(behave)
 
     # make sure setrlimit is called
