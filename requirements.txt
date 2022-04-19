@@ -4,10 +4,10 @@
 #
 #    script/pip-compile.py
 #
-aenum==3.1.11 \
-    --hash=sha256:12ae89967f2e25c0ce28c293955d643f891603488bc3d9946158ba2b35203638 \
-    --hash=sha256:525b4870a27d0b471c265bda692bc657f1e0dd7597ad4186d072c59f9db666f6 \
-    --hash=sha256:aed2c273547ae72a0d5ee869719c02a643da16bf507c80958faadc7e038e3f73
+aenum==3.1.8 \
+    --hash=sha256:07ea89f43d78b3d5997b32b8d5b0ec3e5be17b3e05b7bac0154b8c484a4aeff5 \
+    --hash=sha256:859fe994719e6b5e39f15f73acd84e08b4e57dc642373b177a5fa6646798706a \
+    --hash=sha256:8dbe15f446eb8264b788dfeca163fb0a043d408d212152397dc11377b851e4ae
     # via grizzly-loadtester (pyproject.toml)
 azure-common==1.1.28 \
     --hash=sha256:4ac0cd3214e36b6a1b6a442686722a5d8cc449603aa833f3f0f40bda836704a3 \
