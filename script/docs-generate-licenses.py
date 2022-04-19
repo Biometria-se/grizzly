@@ -2,28 +2,18 @@
 
 import sys
 
-from typing import List, Optional
+from typing import List, Optional, Dict
 from os import path
 from json import loads as jsonloads
 from io import StringIO
 from pathlib import Path
 
+import requests
+
 from piplicenses import CustomNamespace, FormatArg, FromArg, OrderArg, create_output_string
 from pytablewriter import MarkdownTableWriter
 
-URL_MAP = {
-    'pylint': 'https://www.pylint.org/',
-    'msal-extensions': 'https://github.com/AzureAD/microsoft-authentication-extensions-for-python',
-    'tomli': 'https://github.com/hukkin/tomli',
-    'databind.core': 'https://github.com/NiklasRosenstein/databind',
-    'databind.json': 'https://github.com/NiklasRosenstein/databind',
-    'pydoc-markdown': 'https://pydoc-markdown.readthedocs.io/en/latest/',
-    'yapf': 'https://pypi.org/project/yapf/',
-    'databind': 'https://github.com/NiklasRosenstein/databind',
-    'tomli-w': 'https://github.com/hukkin/tomli-w',
-    'build': 'https://github.com/pypa/build',
-    'pyparsing': 'https://github.com/pyparsing/pyparsing/',
-}
+URL_MAP: Dict[str, str] = {}
 
 REPO_ROOT = path.realpath(path.join(path.dirname(__file__), '..'))
 
@@ -58,10 +48,39 @@ def generate_license_table() -> List[str]:
             continue
 
         if license['URL'] == 'UNKNOWN':
-            if name in URL_MAP:
-                license['URL'] = URL_MAP[name]
-            else:
-                print(f'!! you need to find an url for package "{name}"', file=sys.stderr)
+            try:
+                response = requests.get(f'https://pypi.org/pypi/{name}/json')
+
+                if response.status_code != 200:
+                    raise ValueError(f'{response.url} returned {response.status_code}')
+
+                result = jsonloads(response.text)
+
+                info = result.get('info', None) or {}
+                project_urls = info.get('project_urls', None) or {}
+
+                url = project_urls.get(
+                    'Homepage',
+                    project_urls.get(
+                        'Home',
+                        info.get(
+                            'project_url',
+                            info.get(
+                                'package_url',
+                                URL_MAP.get(
+                                    name, None,
+                                ),
+                            ),
+                        ),
+                    ),
+                )
+
+                if url is None:
+                    raise ValueError(f'no URL found on {response.url} or in static map')
+
+                license['URL'] = url
+            except Exception as e:
+                print(f'!! you need to find an url for package "{name}": {str(e)}', file=sys.stderr)
                 sys.exit(1)
 
         name = f'[{name}]({license["URL"]})'
