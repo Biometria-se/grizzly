@@ -1,3 +1,4 @@
+from sys import platform
 from typing import cast
 from datetime import datetime
 
@@ -53,25 +54,25 @@ class TestDateTask:
 
         assert scenario.user._context['variables']['date_variable'] == '2000-01-16 09:37:01'
 
-        task_factory = DateTask('date_variable', '2022-01-17 10:37:01 | offset=-22Y-16D-37m59s, timezone=UTC, format="%-d/%-m %y %H.%M.%S"')
+        task_factory = DateTask('date_variable', '2022-01-17 10:37:01 | offset=-22Y-16D-37m59s, timezone=UTC, format="%d/%m %y %H.%M.%S"')
         task = task_factory()
         task(scenario)
 
-        assert scenario.user._context['variables']['date_variable'] == '1/1 00 09.01.00'
+        assert scenario.user._context['variables']['date_variable'] == '01/01 00 09.01.00'
 
-        expected = datetime.now().strftime('%-d/%-m -%y')
-        task_factory = DateTask('date_variable', '{{ datetime.now() }} | format="%-d/%-m -%y"')
+        expected = datetime.now().strftime('%d/%m -%y')
+        task_factory = DateTask('date_variable', '{{ datetime.now() }} | format="%d/%m -%y"')
         task = task_factory()
         task(scenario)
 
         assert scenario.user._context['variables']['date_variable'] == expected
 
         scenario.user._context['variables']['date_value'] = '2022-01-17T10:48:37.000'
-        task_factory = DateTask('date_variable', '{{ date_value }} | timezone=UTC, offset=-22Y2M3D, format="%-d/%-m %y %H:%M:%S"')
+        task_factory = DateTask('date_variable', '{{ date_value }} | timezone=UTC, offset=-22Y2M3D, format="%d/%m %y %H:%M:%S"')
         task = task_factory()
         task(scenario)
 
-        assert scenario.user._context['variables']['date_variable'] == '20/3 00 09:48:37'
+        assert scenario.user._context['variables']['date_variable'] == '20/03 00 09:48:37'
 
         task_factory.arguments['offset'] = 'asdf'
 
