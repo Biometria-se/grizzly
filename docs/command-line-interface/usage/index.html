@@ -1594,6 +1594,7 @@
 </table>
 <h3 id="grizzly-cli-build"><code>grizzly-cli build</code></h3>
 <p>Build grizzly compose project container image. This command is only applicable if grizzly should run distributed and is used to pre-build the container images. If worker nodes runs on different physical computers, it is mandatory to build the images before hand and push to a registry.</p>
+<p>If image includes IBM MQ native dependencies, the build time increases due to download times. It is possible to self-host the archive and override the download host with environment variable <code>IBM_MQ_LIB_HOST</code>.</p>
 <h4 id="usage_2">Usage</h4>
 <div class="highlight"><pre><span></span><code>grizzly-cli build <span class="o">[</span>-h<span class="o">]</span> <span class="o">[</span>--no-cache<span class="o">]</span> <span class="o">[</span>--registry REGISTRY<span class="o">]</span>
 </code></pre></div>
