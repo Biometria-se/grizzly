@@ -8,14 +8,16 @@ import pytest
 
 from jinja2 import Template
 from _pytest.tmpdir import TempPathFactory
+from _pytest.logging import LogCaptureFixture
+from pytest_mock import MockerFixture
 from locust.exception import StopUser
 
 from grizzly.users.base import GrizzlyUser, FileRequests
-from grizzly.types import GrizzlyResponse, RequestMethod
+from grizzly.types import GrizzlyResponse, RequestMethod, ScenarioState
 from grizzly.context import GrizzlyContextScenario
 from grizzly.tasks import RequestTask
 
-from ...fixtures import LocustFixture
+from ....fixtures import LocustFixture
 
 
 logging.getLogger().setLevel(logging.CRITICAL)
@@ -167,3 +169,26 @@ class TestGrizzlyUser:
 
         user.set_context_variable('test', 'value')
         assert user.context_variables == {'test': 'value'}
+
+    def test_stop(self, locust_fixture: LocustFixture, caplog: LogCaptureFixture, mocker: MockerFixture) -> None:
+        user = DummyGrizzlyUser(locust_fixture.env)
+
+        mocker.patch('grizzly.users.base.grizzly_user.User.stop', return_value=True)
+
+        with caplog.at_level(logging.DEBUG):
+            assert user._state is None
+            assert user._scenario_state is None
+
+            assert user.stop(force=True)
+
+            assert len(caplog.messages) == 0
+            assert user._state is None
+            assert user._scenario_state is None
+
+            assert not user.stop(force=False)
+
+            assert len(caplog.messages) == 2
+            assert caplog.messages[0] == 'stop scenarios before stopping user'
+            assert caplog.messages[1] == 'scenario state=None -> ScenarioState.STOPPING'
+            assert user._state == 'running'
+            assert user._scenario_state == ScenarioState.STOPPING

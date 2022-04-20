@@ -11,7 +11,7 @@ from grizzly.context import GrizzlyContext
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import  # noqa: F403
 from grizzly.types import GrizzlyDictValueType, GrizzlyDict
 
-from ...fixtures import BehaveFixture
+from ....fixtures import BehaveFixture
 
 
 def test_parse_iteration_gramatical_number() -> None:

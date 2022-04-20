@@ -6,7 +6,7 @@ import pytest
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import DateTask
 
-from ..fixtures import GrizzlyFixture
+from ...fixtures import GrizzlyFixture
 
 
 class TestDateTask:

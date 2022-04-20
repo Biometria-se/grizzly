@@ -19,7 +19,7 @@ class GrizzlyTask(ABC):
         self._context_root = environ.get('GRIZZLY_CONTEXT_ROOT', '.')
 
     def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
-        raise NotImplementedError(f'{self.__class__.__name__} has not implemented "implementation"')
+        raise NotImplementedError(f'{self.__class__.__name__} has not been implemented')
 
     def get_templates(self) -> List[str]:
         def is_template(value: str) -> bool:

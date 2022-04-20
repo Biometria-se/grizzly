@@ -2,7 +2,7 @@ import pytest
 
 from grizzly.testdata.variables import AtomicIntegerIncrementer, AtomicRandomString, load_variable, destroy_variables
 
-from ...fixtures import AtomicVariableCleanupFixture
+from ....fixtures import AtomicVariableCleanupFixture
 
 
 def test_load_variable_non_existent() -> None:

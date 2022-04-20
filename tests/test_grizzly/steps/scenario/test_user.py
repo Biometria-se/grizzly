@@ -6,7 +6,7 @@ import pytest
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import  # noqa: F403
 from grizzly.context import GrizzlyContext
 
-from ...fixtures import BehaveFixture
+from ....fixtures import BehaveFixture
 
 
 def test_step_user_type(behave_fixture: BehaveFixture) -> None:

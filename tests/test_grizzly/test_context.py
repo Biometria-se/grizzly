@@ -24,8 +24,8 @@ from grizzly.types import RequestMethod
 from grizzly.tasks import PrintTask, RequestTask, WaitTask
 
 
-from .helpers import get_property_decorated_attributes
-from .fixtures import BehaveFixture, RequestTaskFixture
+from ..helpers import get_property_decorated_attributes
+from ..fixtures import BehaveFixture, RequestTaskFixture
 
 
 def test_load_configuration_file(tmp_path_factory: TempPathFactory) -> None:

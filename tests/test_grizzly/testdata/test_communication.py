@@ -21,7 +21,7 @@ from grizzly.testdata.utils import initialize_testdata, transform
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import PrintTask
 
-from ..fixtures import AtomicVariableCleanupFixture, LocustFixture, BehaveFixture, GrizzlyFixture, NoopZmqFixture
+from ...fixtures import AtomicVariableCleanupFixture, LocustFixture, BehaveFixture, GrizzlyFixture, NoopZmqFixture
 
 try:
     import pymqi
@@ -282,7 +282,6 @@ class TestTestdataProducer:
     ) -> None:
         noop_zmq('grizzly.testdata.communication')
         mocker.patch('grizzly.testdata.communication.zmq.Context.destroy', side_effect=[RuntimeError('zmq.Context.destroy failed')])
-        mocker.patch('grizzly.testdata.communication.gsleep', autospec=True)
 
         try:
             with caplog.at_level(logging.DEBUG):
@@ -306,7 +305,7 @@ class TestTestdataProducer:
             side_effect=[TypeError('TypeError raised'), ZMQError],
         )
 
-        send_json_mock = mocker.patch('grizzly.testdata.communication.zmq.Socket.send_json', autospec=True)
+        send_json_mock = noop_zmq.get_mock('send_json')
 
         try:
             with caplog.at_level(logging.DEBUG):
@@ -481,11 +480,6 @@ class TestTestdataConsumer:
         mocker.patch(
             'grizzly.testdata.communication.zmq.Context.destroy',
             side_effect=[RuntimeError('zmq.Context.destroy failed')],
-        )
-
-        mocker.patch(
-            'grizzly.testdata.communication.gsleep',
-            autospec=True,
         )
 
         with caplog.at_level(logging.DEBUG):

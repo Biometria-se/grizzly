@@ -29,8 +29,8 @@ from grizzly.tasks.clients import ClientTask, client
 
 from grizzly_extras.transformer import TransformerContentType
 
-from ..helpers import TestUser
-from ..fixtures import BehaveFixture, GrizzlyFixture, LocustFixture
+from ...helpers import TestUser
+from ...fixtures import BehaveFixture, GrizzlyFixture, LocustFixture
 
 
 def test_add_request_task_response_status_codes() -> None:

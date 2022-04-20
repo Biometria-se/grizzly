@@ -4,6 +4,7 @@ import socket
 
 from typing import TYPE_CHECKING, Optional, Union, Callable, Any, Literal, List, Tuple, Type, Dict
 from types import TracebackType
+from unittest.mock import MagicMock
 from mypy_extensions import VarArg, KwArg
 from os import environ, path
 from shutil import rmtree
@@ -390,13 +391,13 @@ class GrizzlyFixture:
 class NoopZmqFixture:
     _mocker: MockerFixture
 
+    _mocks: Dict[str, MagicMock]
+
     def __init__(self, mocker: MockerFixture) -> None:
         self._mocker = mocker
+        self._mocks = {}
 
     def __call__(self, prefix: str) -> None:
-        def mocked_noop(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
-            pass
-
         targets = [
             'zmq.Context.term',
             'zmq.Context.__del__',
@@ -404,12 +405,37 @@ class NoopZmqFixture:
             'zmq.Socket.connect',
             'zmq.Socket.send_json',
             'zmq.Socket.recv_json',
+            'zmq.Socket.recv_multipart',
+            'zmq.Socket.send_multipart',
             'zmq.Socket.disconnect',
+            'zmq.Socket.send_string',
+            'zmq.Poller.poll',
+            'zmq.Poller.register',
             'gsleep',
         ]
 
         for target in targets:
-            self._mocker.patch(
-                f'{prefix}.{target}',
-                mocked_noop,
-            )
+            try:
+                self._mocks.update({target: self._mocker.patch(
+                    f'{prefix}.{target}',
+                    autospec=True,
+                )})
+            except AttributeError as e:
+                if 'gsleep' in str(e):
+                    continue
+
+                raise
+
+    def get_mock(self, attr: str) -> MagicMock:
+        mock = self._mocks.get(attr, None)
+
+        if mock is not None:
+            return mock
+
+        for full_attr, mock in self._mocks.items():
+            _, last_part = full_attr.rsplit('.', 1)
+
+            if last_part == attr:
+                return mock
+
+        raise AttributeError(f'no mocks for {attr}')

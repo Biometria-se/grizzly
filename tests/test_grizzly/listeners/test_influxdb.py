@@ -16,7 +16,7 @@ from influxdb.exceptions import InfluxDBClientError
 
 from grizzly.listeners.influxdb import InfluxDbError, InfluxDbListener, InfluxDb
 
-from ..fixtures import LocustFixture
+from ...fixtures import LocustFixture
 
 
 @pytest.fixture

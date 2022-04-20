@@ -13,7 +13,7 @@ from grizzly.users.base import RequestLogger, HttpRequests
 from grizzly.types import RequestMethod
 from grizzly.tasks import RequestTask
 
-from ...fixtures import LocustFixture
+from ....fixtures import LocustFixture
 
 
 @pytest.mark.usefixtures('locust_fixture')
@@ -96,6 +96,11 @@ class TestRequestLogger:
         assert request_logger._remove_secrets_attribute(None) is None
         assert request_logger._remove_secrets_attribute(True) is True
         assert request_logger._remove_secrets_attribute('hello world') == 'hello world'
+
+    @pytest.mark.usefixtures('request_logger')
+    def test_request(self, request_logger: RequestLogger) -> None:
+        with pytest.raises(NotImplementedError):
+            request_logger.request(RequestTask(RequestMethod.GET, 'test', endpoint='/hello'))
 
     @pytest.mark.usefixtures('request_logger', 'get_log_files')
     def test_request_logger_http(self, request_logger: RequestLogger, get_log_files: Callable[[], List[str]]) -> None:

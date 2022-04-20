@@ -24,7 +24,7 @@ from grizzly.users import RestApiUser
 from grizzly.users.base import GrizzlyUser
 from grizzly.scenarios import IteratorScenario
 
-from .fixtures import LocustFixture, BehaveFixture
+from ..fixtures import LocustFixture, BehaveFixture
 
 
 class TestModuleLoader:

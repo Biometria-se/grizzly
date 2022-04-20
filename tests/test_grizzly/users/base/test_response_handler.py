@@ -20,8 +20,8 @@ from grizzly.types import RequestMethod
 from grizzly.tasks import RequestTask
 from grizzly_extras.transformer import TransformerContentType
 
-from ...fixtures import LocustFixture
-from ...helpers import TestUser
+from ....fixtures import LocustFixture
+from ....helpers import TestUser
 
 if TYPE_CHECKING:
     from grizzly.users.base import GrizzlyUser

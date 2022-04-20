@@ -10,7 +10,7 @@ from grizzly.context import GrizzlyContext
 from grizzly.exceptions import RestartScenario
 from locust.exception import StopUser
 
-from ...fixtures import BehaveFixture
+from ....fixtures import BehaveFixture
 
 
 def test_step_setup_save_statistics(behave_fixture: BehaveFixture) -> None:

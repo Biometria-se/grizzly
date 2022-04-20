@@ -7,7 +7,7 @@ from _pytest.tmpdir import TempPathFactory
 
 from grizzly.types import RequestDirection, RequestMethod, bool_typed, int_rounded_float_typed, AtomicVariable, GrizzlyDict
 
-from .fixtures import AtomicVariableCleanupFixture
+from ..fixtures import AtomicVariableCleanupFixture
 
 
 class TestRequestDirection:
@@ -352,3 +352,22 @@ class TestAtomicVariable:
         with pytest.raises(ValueError) as ve:
             AtomicVariable.clear()
         assert 'is not instantiated' in str(ve)
+
+    def test___getitem___and___setitem__(self) -> None:
+        class AtomicTestVariable(AtomicVariable):
+            pass
+
+        t = AtomicTestVariable('hello', 'value')
+
+        with pytest.raises(AttributeError) as ae:
+            t['foo']
+        assert "'AtomicTestVariable' object has no attribute 'foo'" == str(ae.value)
+
+        assert t['hello'] == 'value'
+
+        with pytest.raises(AttributeError) as ae:
+            t['foo'] = 'bar'
+        assert "'AtomicTestVariable' object has no attribute 'foo'" == str(ae.value)
+
+        t['hello'] = 'bar'
+        assert t['hello'] == 'bar'
