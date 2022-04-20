@@ -16,7 +16,7 @@ from grizzly.context import GrizzlyContextScenario
 from grizzly.tasks import RequestTask
 from grizzly.exceptions import RestartScenario
 
-from ..fixtures import LocustFixture, ParamikoFixture
+from ...fixtures import LocustFixture, ParamikoFixture
 
 
 class TestSftpUser:

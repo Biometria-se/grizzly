@@ -8,7 +8,7 @@ from grizzly.context import GrizzlyContext
 from grizzly.tasks import TransformerTask
 from grizzly.exceptions import TransformerLocustError
 
-from ..fixtures import GrizzlyFixture
+from ...fixtures import GrizzlyFixture
 
 
 class TestTransformerTask:

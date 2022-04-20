@@ -18,8 +18,8 @@ from grizzly.testdata.utils import transform
 from grizzly.tasks import WaitTask, PrintTask
 from grizzly.exceptions import RestartScenario
 
-from ..fixtures import GrizzlyFixture
-from ..helpers import RequestCalled
+from ...fixtures import GrizzlyFixture
+from ...helpers import RequestCalled
 
 
 class TestIterationScenario:

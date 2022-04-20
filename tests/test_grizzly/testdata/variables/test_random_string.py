@@ -7,7 +7,7 @@ from gevent.greenlet import Greenlet
 
 from grizzly.testdata.variables import AtomicRandomString
 
-from ...fixtures import AtomicVariableCleanupFixture
+from ....fixtures import AtomicVariableCleanupFixture
 
 
 class TestAtomicRandomString:

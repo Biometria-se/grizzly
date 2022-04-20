@@ -12,7 +12,7 @@ from grizzly.tasks import GrizzlyTask
 from grizzly.tasks.clients import BlobStorageClientTask
 from grizzly.types import RequestDirection
 
-from ...fixtures import BehaveFixture, GrizzlyFixture
+from ....fixtures import BehaveFixture, GrizzlyFixture
 
 
 class TestBlobStorageClientTask:

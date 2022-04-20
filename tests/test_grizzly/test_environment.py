@@ -15,7 +15,7 @@ from grizzly.steps.setup import step_setup_variable_value_ask as step_both
 from grizzly.steps.background.setup import step_setup_save_statistics as step_background
 from grizzly.steps.scenario.setup import step_setup_iterations as step_scenario
 
-from .fixtures import BehaveFixture
+from ..fixtures import BehaveFixture
 
 
 def test_before_feature() -> None:
@@ -133,7 +133,7 @@ def test_before_scenario(behave_fixture: BehaveFixture, mocker: MockerFixture) -
         return MatchedStep(step.name)
 
     mocker.patch(
-        'tests.test_grizzly.fixtures.step_registry.find_match',
+        'tests.fixtures.step_registry.find_match',
         find_match,
     )
 

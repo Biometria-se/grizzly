@@ -3,7 +3,7 @@ import pytest
 from grizzly.testdata.variables.random_integer import atomicrandominteger__base_type__
 from grizzly.testdata.variables import AtomicRandomInteger
 
-from ...fixtures import AtomicVariableCleanupFixture
+from ....fixtures import AtomicVariableCleanupFixture
 
 
 def test_atomicrandominteger__base_type__() -> None:

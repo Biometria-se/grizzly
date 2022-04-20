@@ -12,7 +12,7 @@ from grizzly.context import GrizzlyContext
 from grizzly_extras.async_message import AsyncMessageResponse
 from grizzly_extras.transformer import TransformerContentType
 
-from ...fixtures import NoopZmqFixture
+from ....fixtures import NoopZmqFixture
 
 
 def test_atomicservicebus__base_type() -> None:
@@ -407,11 +407,9 @@ class TestAtomicServiceBus:
                 'worker': None,
             }
 
-            send_json_spy = mocker.patch.object(client, 'send_json', autospec=True)
-            gsleep_spy = mocker.patch(
-                'grizzly.testdata.variables.servicebus.gsleep',
-                autospec=True,
-            )
+            send_json_spy = noop_zmq.get_mock('send_json')
+            send_json_spy.reset_mock()
+            gsleep_spy = noop_zmq.get_mock('gsleep')
 
             mock_response(client, None)
 
@@ -423,7 +421,7 @@ class TestAtomicServiceBus:
             assert args[0] == 0.1
             assert send_json_spy.call_count == 1
             args, _ = send_json_spy.call_args_list[0]
-            assert args[0] == {
+            assert args[1] == {
                 'worker': None,
                 'action': 'HELLO',
                 'context': {
@@ -523,8 +521,6 @@ class TestAtomicServiceBus:
             'grizzly.testdata.variables.servicebus.AtomicServiceBus.say_hello',
             autospec=True
         )
-
-        mocker.patch('grizzly.testdata.variables.servicebus.gsleep', autospec=True)
 
         try:
             mock_response(None)

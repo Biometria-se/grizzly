@@ -8,7 +8,7 @@ from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContextScenario
 from grizzly.tasks import RequestTask, PrintTask
 
-from ..fixtures import RequestTaskFixture
+from ...fixtures import RequestTaskFixture
 
 
 def test__parse_template(request_task: RequestTaskFixture) -> None:

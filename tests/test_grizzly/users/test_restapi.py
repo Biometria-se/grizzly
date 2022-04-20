@@ -25,8 +25,8 @@ from grizzly.tasks import RequestTask
 from grizzly.testdata.utils import transform
 from grizzly.exceptions import RestartScenario
 
-from ..fixtures import GrizzlyFixture
-from ..helpers import RequestSilentFailureEvent, RequestEvent, ResultSuccess
+from ...fixtures import GrizzlyFixture
+from ...helpers import RequestSilentFailureEvent, RequestEvent, ResultSuccess
 
 
 RestApiScenarioFixture = Tuple[RestApiUser, GrizzlyContextScenario]

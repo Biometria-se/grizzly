@@ -20,8 +20,8 @@ from grizzly.context import GrizzlyContextScenario
 from grizzly.tasks import RequestTask
 from grizzly.users.base import GrizzlyUser
 
-from .fixtures import ParamikoFixture
-from .helpers import RequestEvent
+from ..fixtures import ParamikoFixture
+from ..helpers import RequestEvent
 
 
 class TestResponseEventSession:

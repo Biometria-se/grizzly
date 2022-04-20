@@ -19,7 +19,7 @@ from grizzly.context import GrizzlyContextScenario
 from grizzly_extras.async_message import AsyncMessageResponse, AsyncMessageError
 from grizzly_extras.transformer import TransformerContentType
 
-from ..fixtures import LocustFixture, NoopZmqFixture
+from ...fixtures import LocustFixture, NoopZmqFixture
 
 
 class TestServiceBusUser:
@@ -213,7 +213,7 @@ class TestServiceBusUser:
         user = ServiceBusUser(environment=locust_fixture.env)
         user.worker_id = 'asdf-asdf-asdf'
 
-        send_json_spy = mocker.spy(user.zmq_client, 'send_json')
+        send_json_spy = noop_zmq.get_mock('send_json')
         say_hello_spy = mocker.patch.object(user, 'say_hello', side_effect=[None] * 10)
         request_fire_spy = mocker.spy(user.environment.events.request, 'fire')
         response_event_fire_spy = mocker.spy(user.response_event, 'fire')
@@ -300,7 +300,7 @@ class TestServiceBusUser:
         assert 'unknown error' in str(exception)
 
         args, _ = send_json_spy.call_args_list[0]
-        assert args[0] == {
+        assert args[1] == {
             'worker': 'asdf-asdf-asdf',
             'action': 'SEND',
             'payload': 'hello',
@@ -354,7 +354,7 @@ class TestServiceBusUser:
         assert kwargs.get('exception', '') is None
 
         args, _ = send_json_spy.call_args_list[1]
-        assert args[0] == {
+        assert args[1] == {
             'worker': 'asdf-asdf-asdf',
             'action': 'RECEIVE',
             'payload': None,
@@ -409,7 +409,7 @@ class TestServiceBusUser:
         assert kwargs.get('exception', '') is None
 
         args, _ = send_json_spy.call_args_list[2]
-        assert args[0] == {
+        assert args[1] == {
             'worker': 'asdf-asdf-asdf',
             'action': 'RECEIVE',
             'payload': None,

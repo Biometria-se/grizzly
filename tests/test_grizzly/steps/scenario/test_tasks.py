@@ -14,7 +14,7 @@ from grizzly.steps import *  # pylint: disable=unused-wildcard-import  # noqa: F
 
 from grizzly_extras.transformer import TransformerContentType
 
-from ...fixtures import BehaveFixture
+from ....fixtures import BehaveFixture
 
 
 def test_parse_method() -> None:

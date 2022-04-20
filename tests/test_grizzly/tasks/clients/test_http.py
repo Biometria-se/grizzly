@@ -12,7 +12,7 @@ from grizzly.tasks.clients import HttpClientTask
 from grizzly.exceptions import RestartScenario
 from grizzly.types import RequestDirection
 
-from ...fixtures import GrizzlyFixture
+from ....fixtures import GrizzlyFixture
 
 
 class TestHttpClientTask:

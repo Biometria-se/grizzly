@@ -72,14 +72,11 @@ class RequestLogger(ResponseEvent, GrizzlyUser):
         if not isinstance(contents, dict):
             return contents
 
-        try:
-            for attribute in ['access_token', 'Authorization', 'authorization']:
-                if attribute in contents:
-                    contents[attribute] = '*** REMOVED ***'
-        except:
-            pass
-        finally:
-            return contents
+        for attribute in contents:
+            if attribute in ['access_token', 'Authorization', 'authorization']:
+                contents[attribute] = '*** REMOVED ***'
+
+        return contents
 
     def _get_http_user_data(self, response: ResponseContextManager) -> Dict[str, Dict[str, Any]]:
         request_body: Optional[str]

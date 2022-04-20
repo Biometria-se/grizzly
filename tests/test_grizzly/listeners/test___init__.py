@@ -11,11 +11,22 @@ from _pytest.logging import LogCaptureFixture
 from pytest_mock import MockerFixture
 from locust.env import Environment
 from locust.runners import LocalRunner, MasterRunner, WorkerRunner
+from locust.rpc.protocol import Message
 
-from grizzly.listeners import _init_testdata_producer, init, init_statistics_listener, locust_test_start, locust_test_stop, quitting, spawning_complete, validate_result
+from grizzly.listeners import (
+    _init_testdata_producer,
+    grizzly_worker_quit,
+    init,
+    init_statistics_listener,
+    locust_test_start,
+    locust_test_stop,
+    quitting,
+    spawning_complete,
+    validate_result,
+)
 from grizzly.context import GrizzlyContext, GrizzlyContextScenarioResponseTimePercentile
 
-from ..fixtures import LocustFixture
+from ...fixtures import LocustFixture
 
 
 class Running(Exception):
@@ -393,3 +404,79 @@ def test_validate_result(mocker: MockerFixture, listener_test: Environment, capl
 
     grizzly.scenario.validation.response_time_percentile = None
     grizzly.scenario.behave.set_status('passed')
+
+
+def test_grizzly_worker_quit_non_worker(locust_fixture: LocustFixture, caplog: LogCaptureFixture) -> None:
+    environment = locust_fixture.env
+    environment.runner = LocalRunner(environment=environment)
+
+    with caplog.at_level(logging.DEBUG):
+        with pytest.raises(SystemExit) as se:
+            grizzly_worker_quit(environment, Message(message_type='test', data=None, node_id=None))
+        assert se.value.code == 1
+
+    assert len(caplog.messages) == 2
+    assert caplog.messages[0] == 'received message grizzly_worker_quit'
+    assert caplog.messages[1] == 'received grizzly_worker_quit message on a non WorkerRunner?!'
+
+
+def test_grizzly_worker_quit_worker(locust_fixture: LocustFixture, caplog: LogCaptureFixture, mocker: MockerFixture) -> None:
+    mocker.patch('locust.runners.rpc.Client.__init__', return_value=None)
+    mocker.patch('locust.runners.rpc.BaseSocket.send', autospec=True)
+    mocker.patch('locust.runners.WorkerRunner.heartbeat', autospec=True)
+    mocker.patch('locust.runners.WorkerRunner.worker', autospec=True)
+
+    environment = locust_fixture.env
+    environment.runner = WorkerRunner(environment=environment, master_host='localhost', master_port=1337)
+
+    runner_stop_mock = mocker.patch.object(environment.runner, 'stop', autospec=True)
+    runner_send_stat_mock = mocker.patch.object(environment.runner, '_send_stats', autospec=True)
+    runner_client_send = mocker.patch('locust.runners.rpc.Client.send', return_value=None)
+
+    message = Message(message_type='test', data=None, node_id=None)
+
+    environment.process_exit_code = None
+    environment.runner.stats.errors = {}
+    environment.runner.exceptions = {}
+
+    with caplog.at_level(logging.DEBUG):
+        with pytest.raises(SystemExit) as se:
+            grizzly_worker_quit(environment, message)
+        assert se.value.code == 0
+
+    assert len(caplog.messages) == 1
+    assert caplog.messages[0] == 'received message grizzly_worker_quit'
+    caplog.clear()
+
+    runner_stop_mock.assert_called_once()
+    runner_send_stat_mock.assert_called_once()
+    runner_client_send.assert_called_once()
+    args, _ = runner_client_send.call_args_list[-1]
+    assert len(args) == 1
+    assert isinstance(args[0], Message)
+    assert args[0].type == 'client_stopped'
+    assert args[0].data is None
+    assert args[0].node_id == environment.runner.client_id
+
+    environment.process_exit_code = 1337
+
+    with caplog.at_level(logging.DEBUG):
+        with pytest.raises(SystemExit) as se:
+            grizzly_worker_quit(environment, message)
+        assert se.value.code == 1337
+
+    assert len(caplog.messages) == 1
+    assert caplog.messages[0] == 'received message grizzly_worker_quit'
+    caplog.clear()
+
+    environment.process_exit_code = None
+    environment.runner.errors.update({'test': 1})
+
+    with caplog.at_level(logging.DEBUG):
+        with pytest.raises(SystemExit) as se:
+            grizzly_worker_quit(environment, message)
+        assert se.value.code == 3
+
+    assert len(caplog.messages) == 1
+    assert caplog.messages[0] == 'received message grizzly_worker_quit'
+    caplog.clear()

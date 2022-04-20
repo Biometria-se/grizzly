@@ -29,7 +29,7 @@ from grizzly.testdata.variables import AtomicCsvRow, AtomicIntegerIncrementer, A
 from grizzly_extras.async_message import AsyncMessageResponse
 from grizzly_extras.transformer import TransformerContentType
 
-from ..fixtures import BehaveFixture, AtomicVariableCleanupFixture, GrizzlyFixture, RequestTaskFixture, NoopZmqFixture
+from ...fixtures import BehaveFixture, AtomicVariableCleanupFixture, GrizzlyFixture, RequestTaskFixture, NoopZmqFixture
 
 try:
     import pymqi

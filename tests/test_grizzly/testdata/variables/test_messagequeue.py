@@ -22,7 +22,7 @@ try:
 except:
     from grizzly_extras import dummy_pymqi as pymqi
 
-from ...fixtures import NoopZmqFixture, BehaveFixture
+from ....fixtures import NoopZmqFixture, BehaveFixture
 
 
 def test_atomicmessagequeue__base_type__() -> None:

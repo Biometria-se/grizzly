@@ -7,7 +7,7 @@ from parse import compile
 from grizzly.context import GrizzlyContext
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import  # noqa: F403
 
-from ...fixtures import BehaveFixture
+from ....fixtures import BehaveFixture
 
 
 def test_parse_user_gramatical_number() -> None:

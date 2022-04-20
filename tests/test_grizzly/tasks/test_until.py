@@ -11,7 +11,7 @@ from grizzly.types import RequestMethod
 from grizzly.tasks import UntilRequestTask, RequestTask
 from grizzly_extras.transformer import TransformerContentType, transformer
 
-from ..fixtures import GrizzlyFixture
+from ...fixtures import GrizzlyFixture
 
 
 class TestUntilRequestTask:

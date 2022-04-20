@@ -52,7 +52,7 @@ jobs:
       run: python -m flake8
 
   test-and-coverage:
-    name: test-and-coverage/${{ matrix.runs-on }}-python-${{ matrix.python-version }}
+    name: "test-and-coverage / ${{ matrix.runs-on }} / python-${{ matrix.python-version }}"
     runs-on: ${{ matrix.runs-on }}
 
     strategy:
@@ -60,9 +60,9 @@ jobs:
       matrix:
         python-version: ['3.8', '3.9', '3.10']
         runs-on: ['ubuntu-latest']
-#        include:
-#          - python-version: '3.10'
-#            runs-on: windows-latest
+        include:
+          - python-version: '3.10'
+            runs-on: windows-latest
 
     env:
       PYTHONPATH: .
@@ -138,7 +138,7 @@ jobs:
       matrix: ${{ steps.create-script-matrix.outputs.matrix }}
 
   documentation-scripts:
-    name: "documentation/${{ matrix.script }}"
+    name: "documentation / ${{ matrix.script }}"
     runs-on: 'ubuntu-latest'
     needs: pre-documentation-scripts
 

@@ -8,7 +8,7 @@ from _pytest.tmpdir import TempPathFactory
 from grizzly.testdata.variables import AtomicCsvRow
 from grizzly.testdata.variables.csv_row import atomiccsvrow__base_type__
 
-from ...fixtures import AtomicVariableCleanupFixture
+from ....fixtures import AtomicVariableCleanupFixture
 
 
 def test_atomiccsvrow__base_type__(tmp_path_factory: TempPathFactory) -> None:

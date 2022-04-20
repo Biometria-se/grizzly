@@ -1,8 +1,8 @@
 import logging
+import sys
 
 from os import environ
 from typing import cast, Tuple, Any, Dict, Type, List
-from sys import platform
 
 import pytest
 import gevent
@@ -40,7 +40,7 @@ try:
 except:
     from grizzly_extras import dummy_pymqi as pymqi
 
-from .fixtures import BehaveFixture, NoopZmqFixture
+from ..fixtures import BehaveFixture, NoopZmqFixture
 
 
 def test_greenlet_exception_logger(caplog: LogCaptureFixture) -> None:
@@ -250,7 +250,7 @@ def test_setup_locust_scenarios_user_distribution(behave_fixture: BehaveFixture,
         assert user_class.weight == distribution[index]
 
 
-@pytest.mark.skipif(platform.startswith("win"), reason='resource module is posix only, this is not done in locust on windows')
+@pytest.mark.skipif(sys.platform == 'win32', reason='resource module is posix only, this is not done in locust on windows')
 def test_setup_resource_limits(behave_fixture: BehaveFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
     import resource
     behave = behave_fixture.context
@@ -264,9 +264,9 @@ def test_setup_resource_limits(behave_fixture: BehaveFixture, mocker: MockerFixt
             mocked_on_master,
         )
 
-    def mock_os_name(name: str) -> None:
+    def mock_sys_platform(name: str) -> None:
         mocker.patch(
-            'grizzly.locust.osname',
+            'grizzly.locust.sys.platform',
             name
         )
 
@@ -281,8 +281,9 @@ def test_setup_resource_limits(behave_fixture: BehaveFixture, mocker: MockerFixt
 
     def mock_setrlimit(exception_type: Type[Exception]) -> None:
         def mocked_setrlimit(_resource: int, limits: Tuple[int, int]) -> Any:
-            assert _resource == resource.RLIMIT_NOFILE
-            assert limits == (10000, resource.RLIM_INFINITY, )
+            if sys.platform != 'win32':
+                assert _resource == resource.RLIMIT_NOFILE
+                assert limits == (10000, resource.RLIM_INFINITY, )
 
             raise exception_type()
 
@@ -292,10 +293,10 @@ def test_setup_resource_limits(behave_fixture: BehaveFixture, mocker: MockerFixt
         )
 
     mock_on_master(False)
-    mock_os_name('nt')
+    mock_sys_platform('win32')
     setup_resource_limits(behave)
 
-    mock_os_name('posix')
+    mock_sys_platform('linux')
     setup_resource_limits(behave)
 
     # make sure setrlimit is called
