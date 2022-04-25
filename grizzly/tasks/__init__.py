@@ -1,5 +1,5 @@
 from abc import ABC
-from typing import TYPE_CHECKING, Any, Callable, List, Type, Set
+from typing import TYPE_CHECKING, Any, Callable, List, Type, Set, Optional
 from os import environ
 from pathlib import Path
 
@@ -15,8 +15,10 @@ class GrizzlyTask(ABC):
 
     scenario: 'GrizzlyContextScenario'
 
-    def __init__(self) -> None:
+    def __init__(self, scenario: Optional['GrizzlyContextScenario'] = None) -> None:
         self._context_root = environ.get('GRIZZLY_CONTEXT_ROOT', '.')
+        if scenario is not None:
+            self.scenario = scenario
 
     def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
         raise NotImplementedError(f'{self.__class__.__name__} has not been implemented')
@@ -76,6 +78,7 @@ from .print import PrintTask
 from .transformer import TransformerTask
 from .until import UntilRequestTask
 from .date import DateTask
+from .parallell import ParallellRequestTask
 
 
 __all__ = [
@@ -87,4 +90,5 @@ __all__ = [
     'TransformerTask',
     'UntilRequestTask',
     'DateTask',
+    'ParallellRequestTask',
 ]

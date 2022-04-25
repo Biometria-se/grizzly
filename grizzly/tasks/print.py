@@ -5,11 +5,12 @@ Instances of this task is created with the step expression:
 
 * [`step_task_print_message`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_print_message)
 '''
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 from . import GrizzlyTask, template
 
 if TYPE_CHECKING:  # pragma: no cover
+    from ..context import GrizzlyContextScenario
     from ..scenarios import GrizzlyScenario
 
 
@@ -17,8 +18,8 @@ if TYPE_CHECKING:  # pragma: no cover
 class PrintTask(GrizzlyTask):
     message: str
 
-    def __init__(self, message: str) -> None:
-        super().__init__()
+    def __init__(self, message: str, scenario: Optional['GrizzlyContextScenario'] = None) -> None:
+        super().__init__(scenario)
 
         self.message = message
 

@@ -23,6 +23,7 @@ from ..types import RequestMethod
 from . import GrizzlyTask, template as _template  # need to rename to avoid unused-import collision due to RequestTask.template ?!
 
 if TYPE_CHECKING:  # pragma: no cover
+    from ..context import GrizzlyContextScenario
     from ..scenarios import GrizzlyScenario
     from ..users.base.response_handler import ResponseHandlerAction
 
@@ -72,8 +73,8 @@ class RequestTask(GrizzlyTask):
 
     response: RequestTaskResponse
 
-    def __init__(self, method: RequestMethod, name: str, endpoint: str) -> None:
-        super().__init__()
+    def __init__(self, method: RequestMethod, name: str, endpoint: str, scenario: Optional['GrizzlyContextScenario'] = None) -> None:
+        super().__init__(scenario)
 
         self.method = method
         self.name = name

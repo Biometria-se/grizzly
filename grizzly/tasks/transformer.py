@@ -8,7 +8,7 @@ Instances of this task is created with the step expression:
 
 * [`step_task_transform`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_transform)
 '''
-from typing import TYPE_CHECKING, List, Callable, Any, Type
+from typing import TYPE_CHECKING, List, Callable, Any, Type, Optional
 
 from grizzly_extras.transformer import Transformer, transformer, TransformerContentType, TransformerError
 
@@ -17,6 +17,7 @@ from ..exceptions import TransformerLocustError
 from . import GrizzlyTask, template
 
 if TYPE_CHECKING:  # pragma: no cover
+    from ..context import GrizzlyContextScenario
     from ..scenarios import GrizzlyScenario
 
 
@@ -30,8 +31,15 @@ class TransformerTask(GrizzlyTask):
     _transformer: Type[Transformer]
     _parser: Callable[[Any, Any], List[str]]
 
-    def __init__(self, expression: str, variable: str, content: str, content_type: TransformerContentType) -> None:
-        super().__init__()
+    def __init__(
+        self,
+        expression: str,
+        variable: str,
+        content: str,
+        content_type: TransformerContentType,
+        scenario: Optional['GrizzlyContextScenario'] = None,
+    ) -> None:
+        super().__init__(scenario)
 
         self.expression = expression
         self.variable = variable

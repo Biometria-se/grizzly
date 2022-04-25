@@ -28,6 +28,7 @@ from .request import RequestTask
 from . import GrizzlyTask, template
 
 if TYPE_CHECKING:  # pragma: no cover
+    from ..context import GrizzlyContextScenario
     from ..scenarios import GrizzlyScenario
 
 
@@ -43,8 +44,8 @@ class UntilRequestTask(GrizzlyTask):
     wait: float
     expected_matches: int
 
-    def __init__(self, request: RequestTask, condition: str) -> None:
-        super().__init__()
+    def __init__(self, request: RequestTask, condition: str, scenario: Optional['GrizzlyContextScenario'] = None) -> None:
+        super().__init__(scenario)
 
         self.request = request
         self.condition = condition
@@ -98,6 +99,7 @@ class UntilRequestTask(GrizzlyTask):
             number_of_matches = 0
             retry = 0
             exception: Optional[Exception] = None
+            response_length = 0
 
             start = time()
 
@@ -109,8 +111,10 @@ class UntilRequestTask(GrizzlyTask):
                         gsleep(self.wait)
 
                         _, payload = parent.user.request(self.request)
+
                         if payload is not None:
                             transformed = transform.transform(payload)
+                            response_length += len(payload)
                         else:
                             raise TransformerError('response payload was not set')
 
@@ -144,7 +148,7 @@ class UntilRequestTask(GrizzlyTask):
                 request_type='UNTL',
                 name=task_name,
                 response_time=response_time,
-                response_length=0,
+                response_length=response_length,
                 context=parent.user._context,
                 exception=exception,
             )

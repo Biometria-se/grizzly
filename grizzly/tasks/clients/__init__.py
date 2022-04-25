@@ -4,7 +4,7 @@ from contextlib import contextmanager
 from time import perf_counter as time
 from urllib.parse import urlparse
 
-from ...context import GrizzlyContext
+from ...context import GrizzlyContext, GrizzlyContextScenario
 from ...scenarios import GrizzlyScenario
 from ...types import RequestDirection
 from .. import GrizzlyTask, template
@@ -27,9 +27,15 @@ class ClientTask(GrizzlyTask):
     destination: Optional[str]
 
     def __init__(
-        self, direction: RequestDirection, endpoint: str, /, variable: Optional[str] = None, source: Optional[str] = None, destination: Optional[str] = None,
+        self,
+        direction: RequestDirection,
+        endpoint: str, /,
+        variable: Optional[str] = None,
+        source: Optional[str] = None,
+        destination: Optional[str] = None,
+        scenario: Optional[GrizzlyContextScenario] = None,
     ) -> None:
-        super().__init__()
+        super().__init__(scenario)
 
         parsed = urlparse(endpoint)
 

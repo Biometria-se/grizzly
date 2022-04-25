@@ -31,6 +31,7 @@ from ..utils import parse_timespan
 from . import GrizzlyTask, template
 
 if TYPE_CHECKING:  # pragma: no cover
+    from ..context import GrizzlyContextScenario
     from ..scenarios import GrizzlyScenario
 
 
@@ -40,8 +41,8 @@ class DateTask(GrizzlyTask):
     value: str
     arguments: Dict[str, Optional[str]]
 
-    def __init__(self, variable: str, value: str) -> None:
-        super().__init__()
+    def __init__(self, variable: str, value: str, scenario: Optional['GrizzlyContextScenario'] = None) -> None:
+        super().__init__(scenario)
 
         self.variable = variable
         self.value = value
