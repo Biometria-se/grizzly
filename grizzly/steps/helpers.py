@@ -97,10 +97,10 @@ def add_request_task(
 ) -> List[Tuple[RequestTask, Dict[str, str]]]:
     grizzly = cast(GrizzlyContext, context.grizzly)
 
-    if grizzly.scenario.parallell_group is None:
+    if grizzly.scenario.async_group is None:
         tasks = grizzly.scenario.tasks
     else:
-        tasks = cast(List[GrizzlyTask], grizzly.scenario.parallell_group.requests)
+        tasks = cast(List[GrizzlyTask], grizzly.scenario.async_group.requests)
 
     scenario_tasks_count = len(tasks)
 
@@ -161,10 +161,10 @@ def add_request_task(
         source = orig_source
 
         if in_scenario:
-            if grizzly.scenario.parallell_group is None:
+            if grizzly.scenario.async_group is None:
                 grizzly.scenario.tasks.append(request_task)
             else:
-                grizzly.scenario.parallell_group.add(request_task)
+                grizzly.scenario.async_group.add(request_task)
         else:
             request_tasks.append((request_task, substitutes,))
 
@@ -183,10 +183,10 @@ def _add_response_handler(
     if variable is not None and variable not in context.state.variables:
         raise ValueError(f'variable "{variable}" has not been declared')
 
-    if context.scenario.parallell_group is None:
+    if context.scenario.async_group is None:
         tasks = context.scenario.tasks
     else:
-        tasks = cast(List[GrizzlyTask], context.scenario.parallell_group.requests)
+        tasks = cast(List[GrizzlyTask], context.scenario.async_group.requests)
 
     if not len(tasks) > 0:
         raise ValueError('no request source has been added!')

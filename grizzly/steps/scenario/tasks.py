@@ -7,7 +7,7 @@ from behave import register_type, then, given  # pylint: disable=no-name-in-modu
 from ..helpers import add_request_task, get_task_client, is_template
 from ...types import RequestDirection, RequestMethod
 from ...context import GrizzlyContext
-from ...tasks import PrintTask, WaitTask, TransformerTask, UntilRequestTask, DateTask, ParallellRequestTask
+from ...tasks import PrintTask, WaitTask, TransformerTask, UntilRequestTask, DateTask, AsyncRequestGroupTask
 
 from grizzly_extras.transformer import TransformerContentType
 
@@ -60,7 +60,7 @@ def step_task_request_with_name_to_endpoint_until(context: Context, method: Requ
 
     grizzly = cast(GrizzlyContext, context.grizzly)
 
-    assert grizzly.scenario.parallell_group is None, f'until tasks cannot be in a parallell request group, close group {grizzly.scenario.parallell_group.name} first'
+    assert grizzly.scenario.async_group is None, f'until tasks cannot be in an async request group, close group {grizzly.scenario.async_group.name} first'
 
     for request_task, substitues in request_tasks:
         condition_rendered = condition
@@ -437,47 +437,47 @@ def step_task_date(context: Context, value: str, variable: str) -> None:
     ))
 
 
-@given(u'a parallell request group with name "{name}"')
-def step_task_parallell_start(context: Context, name: str) -> None:
-    '''Creates a group of requests that should run in parallell. All requests tasks created after this step will be added to the
+@given(u'an async request group with name "{name}"')
+def step_task_async_group_start(context: Context, name: str) -> None:
+    '''Creates a group of requests that should be executed asynchronously. All requests tasks created after this step will be added to the
     request group, until the group is closed.
 
     ```gherkin
-    Given a parallell request group with name "async-group-1"
+    Given an async request group with name "async-group-1"
     Then put "test-file.json" to "bs://my-storage?AccountKey=aaaabbb=&Container=my-container" as "uploaded-test-file.json"
     Then get "https://www.example.org/example.json" and save response in "example_openapi"
-    And close parallell request group
+    And close async request group
     ```
 
-    In this example, the `put` and `get` requests will run in parallell, and both requests will block following requests until both are finished.
+    In this example, the `put` and `get` requests will run asynchronously, and both requests will block following requests until both are finished.
 
     Args:
         name (str): name of the group, will be used in locust statistics
     '''
     grizzly = cast(GrizzlyContext, context.grizzly)
 
-    assert grizzly.scenario.parallell_group is None, f'parallell request group "{grizzly.scenario.parallell_group.name}" has not been closed'
+    assert grizzly.scenario.async_group is None, f'async request group "{grizzly.scenario.async_group.name}" has not been closed'
 
-    grizzly.scenario.parallell_group = ParallellRequestTask(name=name)
+    grizzly.scenario.async_group = AsyncRequestGroupTask(name=name)
 
 
-@then(u'close parallell request group')
-def step_task_parallell_close(context: Context) -> None:
-    '''Closes an open parallell request group, to end the "boxing" of requests that should run in parallell.
+@then(u'close async request group')
+def step_task_async_group_close(context: Context) -> None:
+    '''Closes an open async request group, to end the "boxing" of requests that should run asynchronously.
 
-    Must be preceeded by the expression `Given a parallell request group with name..." expression, and one or more requests expressions.
+    Must be preceeded by the expression `Given an async request group with name..." expression, and one or more requests expressions.
 
     ```gherkin
-    Given a parallell request group with name "async-group-1"
+    Given an async request group with name "async-group-1"
     Then put "test-file.json" to "bs://my-storage?AccountKey=aaaabbb=&Container=my-container" as "uploaded-test-file.json"
     Then get "https://www.example.org/example.json" and save response in "example_openapi"
-    And close parallell request group
+    And close async request group
     ```
     '''
     grizzly = cast(GrizzlyContext, context.grizzly)
 
-    assert grizzly.scenario.parallell_group is not None, 'no parallell request group is open'
-    assert len(grizzly.scenario.parallell_group.requests) > 0, f'there are no requests in group "{grizzly.scenario.parallell_group.name}"'
+    assert grizzly.scenario.async_group is not None, 'no async request group is open'
+    assert len(grizzly.scenario.async_group.requests) > 0, f'there are no requests in async group "{grizzly.scenario.async_group.name}"'
 
-    grizzly.scenario.add_task(grizzly.scenario.parallell_group)
-    grizzly.scenario.parallell_group = None
+    grizzly.scenario.add_task(grizzly.scenario.async_group)
+    grizzly.scenario.async_group = None

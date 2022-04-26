@@ -376,9 +376,9 @@ def test_step_task_client_put_endpoint_file_destination(behave_fixture: BehaveFi
     ])
 
 
-def test_step_task_parallell_start() -> None:
+def test_step_task_async_group_start() -> None:
     assert 0
 
 
-def test_step_task_parallell_end() -> None:
+def test_step_task_async_group_end() -> None:
     assert 0

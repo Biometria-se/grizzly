@@ -78,7 +78,7 @@ from .print import PrintTask
 from .transformer import TransformerTask
 from .until import UntilRequestTask
 from .date import DateTask
-from .parallell import ParallellRequestTask
+from .async_group import AsyncRequestGroupTask
 
 
 __all__ = [
@@ -90,5 +90,5 @@ __all__ = [
     'TransformerTask',
     'UntilRequestTask',
     'DateTask',
-    'ParallellRequestTask',
+    'AsyncRequestGroupTask',
 ]

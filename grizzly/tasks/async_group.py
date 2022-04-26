@@ -1,14 +1,14 @@
-'''This task runs all requests in the group in parallell.
+'''This task runs all requests in the group asynchronously.
 
 Arguments:
 
-* `name` (str): name of the group of requests running in parallell
+* `name` (str): name of the group of asynchronously requests
 
 Instances of this task is created with step expressions:
 
-* [`step_task_parallell_start`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_parallell_start)
+* [`step_task_async_group_start`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_async_group_start)
 
-* [`step_task_parallell_close`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_parallell_close)
+* [`step_task_async_group_close`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_async_group_close)
 
 Requests are added to the group with the same step expressions as [`RequestTask`](/grizzly/framework/usage/tasks/request/).
 '''
@@ -17,7 +17,6 @@ import gevent
 
 from typing import TYPE_CHECKING, Any, Callable, List, Optional, Tuple
 from time import perf_counter as time
-from datetime import datetime
 
 from . import GrizzlyTask, template
 from .request import RequestTask
@@ -28,7 +27,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 @template('name')
-class ParallellRequestTask(GrizzlyTask):
+class AsyncRequestGroupTask(GrizzlyTask):
     requests: List[RequestTask]
 
     def __init__(self, name: str, scenario: Optional['GrizzlyContextScenario'] = None) -> None:
@@ -48,12 +47,11 @@ class ParallellRequestTask(GrizzlyTask):
             response_length = 0
 
             def trace_green(event: str, args: Tuple[Any, Any]) -> None:
-                timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
                 src, target = args
                 if event == "switch":
-                    parent.user.logger.debug("!! [%s] from %s switch to %s" % (timestamp, src, target))
+                    parent.user.logger.debug("from %s switch to %s" % (src, target))
                 elif event == "throw":
-                    parent.user.logger.debug("!! [%s] from %s throw exception to %s" % (timestamp, src, target))
+                    parent.user.logger.debug("from %s throw exception to %s" % (src, target))
 
                 if src.gr_frame:
                     tracebacks = inspect.getouterframes(src.gr_frame)
@@ -64,7 +62,7 @@ class ParallellRequestTask(GrizzlyTask):
                         buff.append(trace_line %
                                     (srcfile, lineno, func_name, "".join(codesample or [])))
 
-                    parent.user.logger.debug(f'!! [{timestamp}] {"".join(buff)}')
+                    parent.user.logger.debug("".join(buff))
 
             start = time()
             try:

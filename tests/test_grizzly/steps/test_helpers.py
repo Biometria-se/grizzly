@@ -232,7 +232,7 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
     assert task.response.content_type == TransformerContentType.UNDEFINED
 
 
-def test_add_request_task_parallell_group(behave_fixture: BehaveFixture) -> None:
+def test_add_request_task_async_group(behave_fixture: BehaveFixture) -> None:
     assert 0
 
 
@@ -354,7 +354,7 @@ def test_add_save_handler(behave_fixture: BehaveFixture, locust_fixture: LocustF
         del grizzly.state.variables['test']
 
 
-def test_add_save_handler_parallell_group(behave_fixture: BehaveFixture, locust_fixture: LocustFixture) -> None:
+def test_add_save_handler_async_group(behave_fixture: BehaveFixture, locust_fixture: LocustFixture) -> None:
     assert 0
 
 
@@ -430,7 +430,7 @@ def test_add_validation_handler(behave_fixture: BehaveFixture, locust_fixture: L
     assert 'condition is not set' in str(e)
 
 
-def test_add_validation_handler_parallell_group(behave_fixture: BehaveFixture, locust_fixture: LocustFixture) -> None:
+def test_add_validation_handler_async_group(behave_fixture: BehaveFixture, locust_fixture: LocustFixture) -> None:
     assert 0
 
 
