@@ -32,17 +32,17 @@ logger = logging.getLogger(__name__)
 
 def _init_testdata_producer(port: str, testdata: TestdataType, environment: Environment) -> Callable[[], None]:
     # pylint: disable=global-statement
-    def wrapper() -> None:
+    def gtestdata_producer() -> None:
         global producer
         producer_address = f'tcp://0.0.0.0:{port}'
         producer = TestdataProducer(address=producer_address, testdata=testdata, environment=environment)
         producer.run()
 
-    return wrapper
+    return gtestdata_producer
 
 
 def init(testdata: Optional[TestdataType] = None) -> Callable[[Runner, KwArg(Dict[str, Any])], None]:
-    def wrapper(runner: Runner, **_kwargs: Dict[str, Any]) -> None:
+    def ginit(runner: Runner, **_kwargs: Dict[str, Any]) -> None:
         producer_port = environ.get('TESTDATA_PRODUCER_PORT', '5555')
         if not isinstance(runner, MasterRunner):
             if isinstance(runner, WorkerRunner):
@@ -64,11 +64,11 @@ def init(testdata: Optional[TestdataType] = None) -> Callable[[Runner, KwArg(Dic
             logger.debug('registered message "grizzly_worker_quit"')
             runner.register_message('grizzly_worker_quit', grizzly_worker_quit)
 
-    return cast(Callable[[Runner, KwArg(Dict[str, Any])], None], wrapper)
+    return cast(Callable[[Runner, KwArg(Dict[str, Any])], None], ginit)
 
 
 def init_statistics_listener(url: str) -> Callable[[Environment, VarArg(Tuple[Any, ...]), KwArg(Dict[str, Any])], None]:
-    def wrapper(environment: Environment, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+    def gstatistics_listener(environment: Environment, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
         parsed = urlparse(url)
 
         if parsed.scheme == 'influxdb':
@@ -84,11 +84,11 @@ def init_statistics_listener(url: str) -> Callable[[Environment, VarArg(Tuple[An
                 url=url,
             )
 
-    return cast(Callable[[Environment, VarArg(Tuple[Any, ...]), KwArg(Dict[str, Any])], None], wrapper)
+    return cast(Callable[[Environment, VarArg(Tuple[Any, ...]), KwArg(Dict[str, Any])], None], gstatistics_listener)
 
 
 def locust_test_start(grizzly: GrizzlyContext) -> Callable[[Environment, KwArg(Dict[str, Any])], None]:
-    def wrapper(environment: Environment, **_kwargs: Dict[str, Any]) -> None:
+    def gtest_start(environment: Environment, **_kwargs: Dict[str, Any]) -> None:
         if isinstance(environment.runner, MasterRunner):
             workers = (
                 len(environment.runner.clients.ready)
@@ -102,7 +102,7 @@ def locust_test_start(grizzly: GrizzlyContext) -> Callable[[Environment, KwArg(D
             if total_iterations < workers:
                 logger.error(f'number of iterations is lower than number of workers, {total_iterations} < {workers}')
 
-    return cast(Callable[[Environment, KwArg(Dict[str, Any])], None], wrapper)
+    return cast(Callable[[Environment, KwArg(Dict[str, Any])], None], gtest_start)
 
 
 def locust_test_stop(**_kwargs: Dict[str, Any]) -> None:
@@ -111,11 +111,11 @@ def locust_test_stop(**_kwargs: Dict[str, Any]) -> None:
 
 
 def spawning_complete(grizzly: GrizzlyContext) -> Callable[[KwArg(Dict[str, Any])], None]:
-    def wrapper(**_kwargs: Dict[str, Any]) -> None:
+    def gspawning_complete(**_kwargs: Dict[str, Any]) -> None:
         logger.debug('spawning complete!')
         grizzly.state.spawning_complete = True
 
-    return wrapper
+    return gspawning_complete
 
 
 def quitting(**_kwargs: Dict[str, Any]) -> None:
@@ -158,7 +158,7 @@ def grizzly_worker_quit(environment: Environment, msg: Message, **kwargs: Dict[s
 
 
 def validate_result(grizzly: GrizzlyContext) -> Callable[[Environment, KwArg(Dict[str, Any])], None]:
-    def wrapper(environment: Environment, **_kwargs: Dict[str, Any]) -> None:
+    def gvalidate_result(environment: Environment, **_kwargs: Dict[str, Any]) -> None:
         # first, aggregate statistics per scenario
         scenario_stats: Dict[str, RequestStats] = {}
 
@@ -236,4 +236,4 @@ def validate_result(grizzly: GrizzlyContext) -> Callable[[Environment, KwArg(Dic
             if environment.process_exit_code == 1 and hasattr(scenario, 'behave') and scenario.behave is not None:
                 scenario.behave.set_status('failed')
 
-    return cast(Callable[[Environment, KwArg(Dict[str, Any])], None], wrapper)
+    return cast(Callable[[Environment, KwArg(Dict[str, Any])], None], gvalidate_result)

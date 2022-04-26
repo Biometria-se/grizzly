@@ -1,5 +1,7 @@
 '''This task runs all requests in the group asynchronously.
 
+All request names added to the group will be prefixed with async group `<name>:`
+
 Arguments:
 
 * `name` (str): name of the group of asynchronously requests
@@ -37,6 +39,7 @@ class AsyncRequestGroupTask(GrizzlyTask):
         self.requests = []
 
     def add(self, request: RequestTask) -> None:
+        request.name = f'{self.name}:{request.name}'
         self.requests.append(request)
 
     def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
@@ -48,6 +51,10 @@ class AsyncRequestGroupTask(GrizzlyTask):
 
             def trace_green(event: str, args: Tuple[Any, Any]) -> None:
                 src, target = args
+
+                if src is gevent.hub.get_hub():
+                    return
+
                 if event == "switch":
                     parent.user.logger.debug("from %s switch to %s" % (src, target))
                 elif event == "throw":
@@ -64,10 +71,11 @@ class AsyncRequestGroupTask(GrizzlyTask):
 
                     parent.user.logger.debug("".join(buff))
 
+            greenlets: List[gevent.Greenlet] = []
             start = time()
+
             try:
                 debug_enabled = parent.user.logger.isEnabledFor(logging.DEBUG)
-                greenlets: List[gevent.Greenlet] = []
                 for request in self.requests:
                     greenlet = gevent.spawn(parent.user.request, request)
                     if debug_enabled:
@@ -77,15 +85,22 @@ class AsyncRequestGroupTask(GrizzlyTask):
                 gevent.joinall(greenlets)
 
                 for greenlet in greenlets:
-                    _, payload = greenlet.value
-                    response_length += len(payload) if payload is not None else 0
+                    try:
+                        _, payload = greenlet.get()
+                        response_length += len(payload) if payload is not None else 0
+                    except Exception as e:
+                        parent.user.logger.error(str(e), exc_info=True)
+                        if exception is None:
+                            exception = e
             except Exception as e:
-                exception = e
+                if exception is None:
+                    exception = e
             finally:
+                greenlets = []
                 response_time = int((time() - start) * 1000)
 
                 parent.user.environment.events.request.fire(
-                    request_type='PRLL',
+                    request_type='ASYNC',
                     name=f'{self.scenario.identifier} {self.name} ({len(self.requests)})',
                     response_time=response_time,
                     response_length=response_length,
