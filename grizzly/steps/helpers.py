@@ -16,7 +16,7 @@ from grizzly_extras.arguments import split_value, parse_arguments, get_unsupport
 
 from ..context import GrizzlyContext
 from ..types import RequestMethod, ResponseTarget, ResponseAction
-from ..tasks import RequestTask
+from ..tasks import GrizzlyTask, RequestTask
 from ..tasks.clients import client, ClientTask
 from ..testdata.utils import resolve_variable
 from ..users.base.response_handler import ResponseHandlerAction, ValidationHandlerAction, SaveHandlerAction
@@ -96,7 +96,13 @@ def add_request_task(
     in_scenario: Optional[bool] = True,
 ) -> List[Tuple[RequestTask, Dict[str, str]]]:
     grizzly = cast(GrizzlyContext, context.grizzly)
-    scenario_tasks_count = len(grizzly.scenario.tasks)
+
+    if grizzly.scenario.parallell_group is None:
+        tasks = grizzly.scenario.tasks
+    else:
+        tasks = cast(List[GrizzlyTask], grizzly.scenario.parallell_group.requests)
+
+    scenario_tasks_count = len(tasks)
 
     request_tasks: List[Tuple[RequestTask, Dict[str, str]]] = []
 
@@ -116,7 +122,7 @@ def add_request_task(
             if scenario_tasks_count == 0:
                 raise ValueError('no endpoint specified')
 
-            last_request = grizzly.scenario.tasks[-1]
+            last_request = tasks[-1]
 
             if not isinstance(last_request, RequestTask):
                 raise ValueError('previous task was not a request')
@@ -155,7 +161,10 @@ def add_request_task(
         source = orig_source
 
         if in_scenario:
-            grizzly.scenario.tasks.append(request_task)
+            if grizzly.scenario.parallell_group is None:
+                grizzly.scenario.tasks.append(request_task)
+            else:
+                grizzly.scenario.parallell_group.add(request_task)
         else:
             request_tasks.append((request_task, substitutes,))
 
@@ -171,12 +180,15 @@ def _add_response_handler(
     variable: Optional[str] = None,
     condition: Optional[bool] = None,
 ) -> None:
-    scenario_tasks_count = len(context.scenario.tasks)
-
     if variable is not None and variable not in context.state.variables:
         raise ValueError(f'variable "{variable}" has not been declared')
 
-    if not scenario_tasks_count > 0:
+    if context.scenario.parallell_group is None:
+        tasks = context.scenario.tasks
+    else:
+        tasks = cast(List[GrizzlyTask], context.scenario.parallell_group.requests)
+
+    if not len(tasks) > 0:
         raise ValueError('no request source has been added!')
 
     if len(expression) < 1:
@@ -195,7 +207,7 @@ def _add_response_handler(
         expected_matches = 1
 
     # latest request
-    request = context.scenario.tasks[-1]
+    request = tasks[-1]
 
     if not isinstance(request, RequestTask):
         raise ValueError('latest task was not a request')

@@ -8,16 +8,18 @@ Instances of this task is created with step expressions:
 
 * [`step_task_parallell_start`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_parallell_start)
 
-* [`step_task_parallell_add_request`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_parallell_add_request)
+* [`step_task_parallell_close`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_parallell_close)
 
-* [`step_task_parallell_end`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_parallell_end)
+Requests are added to the group with the same step expressions as [`RequestTask`](/grizzly/framework/usage/tasks/request/).
 '''
-from typing import TYPE_CHECKING, Any, Callable, List, Optional
-from time import perf_counter as time
-
+import logging
 import gevent
 
-from . import GrizzlyTask
+from typing import TYPE_CHECKING, Any, Callable, List, Optional, Tuple
+from time import perf_counter as time
+from datetime import datetime
+
+from . import GrizzlyTask, template
 from .request import RequestTask
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -25,6 +27,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from ..scenarios import GrizzlyScenario
 
 
+@template('name')
 class ParallellRequestTask(GrizzlyTask):
     requests: List[RequestTask]
 
@@ -38,16 +41,46 @@ class ParallellRequestTask(GrizzlyTask):
         self.requests.append(request)
 
     def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
+        import inspect
+
         def task(parent: 'GrizzlyScenario') -> Any:
             exception: Optional[Exception] = None
             response_length = 0
 
+            def trace_green(event: str, args: Tuple[Any, Any]) -> None:
+                timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+                src, target = args
+                if event == "switch":
+                    parent.user.logger.debug("!! [%s] from %s switch to %s" % (timestamp, src, target))
+                elif event == "throw":
+                    parent.user.logger.debug("!! [%s] from %s throw exception to %s" % (timestamp, src, target))
+
+                if src.gr_frame:
+                    tracebacks = inspect.getouterframes(src.gr_frame)
+                    buff = []
+                    for traceback in tracebacks:
+                        srcfile, lineno, func_name, codesample = traceback[1:-1]
+                        trace_line = '''File "%s", line %d, in %s\n%s '''
+                        buff.append(trace_line %
+                                    (srcfile, lineno, func_name, "".join(codesample or [])))
+
+                    parent.user.logger.debug(f'!! [{timestamp}] {"".join(buff)}')
+
             start = time()
             try:
-                group = gevent.pool.Group()
+                debug_enabled = parent.user.logger.isEnabledFor(logging.DEBUG)
+                greenlets: List[gevent.Greenlet] = []
+                for request in self.requests:
+                    greenlet = gevent.spawn(parent.user.request, request)
+                    if debug_enabled:
+                        greenlet.settrace(trace_green)
+                    greenlets.append(greenlet)
 
-                for _, payload in group.imap_unordered(parent.user.request, self.requests):
-                    response_length += len(payload)
+                gevent.joinall(greenlets)
+
+                for greenlet in greenlets:
+                    _, payload = greenlet.value
+                    response_length += len(payload) if payload is not None else 0
             except Exception as e:
                 exception = e
             finally:

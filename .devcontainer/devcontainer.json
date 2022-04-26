@@ -77,6 +77,9 @@
 	"remoteEnv": {
 		"GRIZZLY_MOUNT_CONTEXT": "${localWorkspaceFolder}"
 	},
+    "runArgs": [
+        "--add-host=host.docker.internal:host-gateway"
+    ],
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
 	"postCreateCommand": "ssh-add -l && ${containerWorkspaceFolder}/script/pip-sync.bash dev",

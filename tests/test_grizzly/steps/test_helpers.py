@@ -232,6 +232,10 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
     assert task.response.content_type == TransformerContentType.UNDEFINED
 
 
+def test_add_request_task_parallell_group(behave_fixture: BehaveFixture) -> None:
+    assert 0
+
+
 def test_add_save_handler(behave_fixture: BehaveFixture, locust_fixture: LocustFixture) -> None:
     user = TestUser(locust_fixture.env)
     response = Response()
@@ -350,6 +354,10 @@ def test_add_save_handler(behave_fixture: BehaveFixture, locust_fixture: LocustF
         del grizzly.state.variables['test']
 
 
+def test_add_save_handler_parallell_group(behave_fixture: BehaveFixture, locust_fixture: LocustFixture) -> None:
+    assert 0
+
+
 def test_add_validation_handler(behave_fixture: BehaveFixture, locust_fixture: LocustFixture) -> None:
     user = TestUser(locust_fixture.env)
     response = Response()
@@ -420,6 +428,10 @@ def test_add_validation_handler(behave_fixture: BehaveFixture, locust_fixture: L
     with pytest.raises(ValueError) as e:
         _add_response_handler(grizzly, ResponseTarget.PAYLOAD, ResponseAction.VALIDATE, '$.test', 'value', condition=None)
     assert 'condition is not set' in str(e)
+
+
+def test_add_validation_handler_parallell_group(behave_fixture: BehaveFixture, locust_fixture: LocustFixture) -> None:
+    assert 0
 
 
 def test_normalize_step_name() -> None:

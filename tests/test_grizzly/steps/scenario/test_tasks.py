@@ -374,3 +374,11 @@ def test_step_task_client_put_endpoint_file_destination(behave_fixture: BehaveFi
         '{{ url }}',
         'uploaded-file-{{ suffix }}.json',
     ])
+
+
+def test_step_task_parallell_start() -> None:
+    assert 0
+
+
+def test_step_task_parallell_end() -> None:
+    assert 0
