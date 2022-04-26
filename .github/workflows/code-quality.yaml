@@ -51,6 +51,13 @@ jobs:
       id: flake8
       run: python -m flake8
 
+#    - name: run sonar-scanner-cli
+#      uses: docker://sonarsource/sonar-scanner-cli:latest
+#      env:
+#        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+#        SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
   test-and-coverage:
     name: "test-and-coverage / ${{ matrix.runs-on }} / python-${{ matrix.python-version }}"
     runs-on: ${{ matrix.runs-on }}
