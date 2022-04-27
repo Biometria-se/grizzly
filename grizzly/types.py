@@ -3,8 +3,10 @@ from typing import Callable, Optional, Tuple, Any, Union, Dict, TypeVar, List, T
 from importlib import import_module
 
 from aenum import Enum as AdvancedEnum, NoAlias
-from locust.clients import ResponseContextManager
 from gevent.lock import Semaphore
+
+from locust.clients import ResponseContextManager as RequestsResponseContextManager
+from locust.contrib.fasthttp import ResponseContextManager as FastResponseContextManager
 
 
 class ResponseTarget(Enum):
@@ -65,13 +67,15 @@ class RequestMethod(Enum, AdvancedEnum, settings=NoAlias):
         return self.value
 
 
-HandlerContextType = Union[ResponseContextManager, Tuple[Optional[Dict[str, Any]], Optional[str]]]
+GrizzlyResponseContextManager = Union[RequestsResponseContextManager, FastResponseContextManager]
+
+GrizzlyResponse = Tuple[Optional[Dict[str, Any]], Optional[Any]]
+
+HandlerContextType = Union[GrizzlyResponseContextManager, GrizzlyResponse]
 
 TestdataType = Dict[str, Dict[str, Any]]
 
 GrizzlyDictValueType = Union[str, float, int, bool]
-
-GrizzlyResponse = Tuple[Optional[Dict[str, Any]], Optional[Any]]
 
 WrappedFunc = TypeVar('WrappedFunc', bound=Callable[..., Any])
 

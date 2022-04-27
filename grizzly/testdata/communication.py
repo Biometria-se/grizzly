@@ -221,7 +221,7 @@ class TestdataProducer:
 
                     gsleep(0)
                 except ZMQAgain:
-                    gsleep(0.01)
+                    gsleep(0.1)
         except ZMQError:
             if not self._stopping:
                 self.logger.error('failed when waiting for consumers', exc_info=True)

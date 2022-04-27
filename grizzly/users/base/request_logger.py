@@ -4,16 +4,15 @@ import unicodedata
 import re
 import traceback
 
-from typing import Dict, Any, Tuple, Optional
+from typing import Dict, Any, Tuple, Optional, cast
 from datetime import datetime, timedelta
 from urllib.parse import urlparse, urlunparse
 
-from locust.clients import ResponseContextManager
 from locust.env import Environment
 from jinja2 import Template
 
 from ...tasks import RequestTask
-from ...types import GrizzlyResponse, HandlerContextType, RequestDirection
+from ...types import GrizzlyResponse, HandlerContextType, RequestDirection, GrizzlyResponseContextManager
 from ...utils import merge_dicts
 from .response_event import ResponseEvent
 from .grizzly_user import GrizzlyUser
@@ -78,14 +77,14 @@ class RequestLogger(ResponseEvent, GrizzlyUser):
 
         return contents
 
-    def _get_http_user_data(self, response: ResponseContextManager) -> Dict[str, Dict[str, Any]]:
+    def _get_http_user_data(self, response: GrizzlyResponseContextManager) -> Dict[str, Dict[str, Any]]:
         request_body: Optional[str]
         response_body: Optional[str]
 
         try:
             response_body = json.dumps(
                 self._remove_secrets_attribute(
-                    json.loads(response.text),
+                    json.loads(response.text or ''),
                 ),
                 indent=2,
             )
@@ -153,7 +152,7 @@ class RequestLogger(ResponseEvent, GrizzlyUser):
         if getattr(request, 'response', None) is None:
             return
 
-        successful_request = context.status_code in request.response.status_codes if isinstance(context, ResponseContextManager) else exception is None
+        successful_request = context.status_code in request.response.status_codes if isinstance(context, getattr(GrizzlyResponseContextManager, '__args__')) else exception is None
 
         if successful_request and not self._context.get('log_all_requests', False):
             return
@@ -179,7 +178,7 @@ class RequestLogger(ResponseEvent, GrizzlyUser):
             },
         }
 
-        if isinstance(context, ResponseContextManager):
+        if isinstance(context, getattr(GrizzlyResponseContextManager, '__args__')):
             variables.update(self._get_http_user_data(context))
         else:
             parsed = urlparse(user.host or '')
@@ -194,9 +193,15 @@ class RequestLogger(ResponseEvent, GrizzlyUser):
                 'url': url,
             })
 
+            def unpack_context(response: HandlerContextType) -> GrizzlyResponse:
+                if not isinstance(response, tuple):
+                    raise ValueError(f'{type(response)} is not a GrizzlyResponse')
+
+                return cast(GrizzlyResponse, response)
+
             if request.method.direction == RequestDirection.TO:
                 request_metadata: Optional[Dict[str, Any]]
-                request_metadata, request_payload = context
+                request_metadata, request_payload = unpack_context(context)
 
                 variables['request'].update({
                     'metadata': request_metadata,
@@ -204,7 +209,7 @@ class RequestLogger(ResponseEvent, GrizzlyUser):
                 })
             elif request.method.direction == RequestDirection.FROM:
                 response_metadata: Optional[Dict[str, Any]]
-                response_metadata, response_payload = context
+                response_metadata, response_payload = unpack_context(context)
 
                 variables['response'].update({
                     'metadata': response_metadata,

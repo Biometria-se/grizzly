@@ -58,24 +58,25 @@ And set context variable "auth.user.redirect_uri" to "/app-registrered-redirect-
 import json
 import re
 
-from typing import Dict, Optional, Any, Tuple, List, cast
+from typing import Dict, Optional, Any, Tuple, List, Union, cast
 from time import time, perf_counter as time_perf_counter
 from functools import wraps
 from enum import Enum
 from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
 
-from locust.clients import ResponseContextManager
+from locust.contrib.fasthttp import FastHttpSession
 from locust.exception import StopUser
 from locust.env import Environment
 
 import requests
 
-from ..types import GrizzlyResponse, WrappedFunc
+from ..types import GrizzlyResponse, WrappedFunc, GrizzlyResponseContextManager
 from ..utils import merge_dicts
 from ..types import RequestMethod
 from ..tasks import RequestTask
-from .base import RequestLogger, ResponseHandler, GrizzlyUser, HttpRequests
+from ..clients import ResponseEventSession
+from .base import RequestLogger, ResponseHandler, GrizzlyUser, HttpRequests, AsyncRequests
 from . import logger
 
 from urllib3 import disable_warnings as urllib3_disable_warnings
@@ -91,7 +92,7 @@ class AuthMethod(Enum):
 class refresh_token:
     def __call__(self, func: WrappedFunc) -> WrappedFunc:
         @wraps(func)
-        def wrapper(cls: 'RestApiUser', *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Any:
+        def refresh_token(cls: 'RestApiUser', *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Any:
             auth_context = cls._context['auth']
 
             use_auth_client = (
@@ -122,10 +123,10 @@ class refresh_token:
 
             return func(cls, *args, **kwargs)
 
-        return cast(WrappedFunc, wrapper)
+        return cast(WrappedFunc, refresh_token)
 
 
-class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests):
+class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, AsyncRequests):
     session_started: Optional[float]
     headers: Dict[str, Optional[str]]
     host: str
@@ -531,7 +532,10 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests):
 
                 raise StopUser()
 
-    def get_error_message(self, response: ResponseContextManager) -> str:
+    def get_error_message(self, response: GrizzlyResponseContextManager) -> str:
+        if response.text is None:
+            return f'unknown response {type(response)}'
+
         if len(response.text) < 1:
             if response.status_code == 401:
                 message = 'unauthorized'
@@ -557,19 +561,51 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests):
 
         return message
 
-    @refresh_token()
+    def async_request(self, request: RequestTask) -> GrizzlyResponse:
+        client = FastHttpSession(
+            environment=self.environment,
+            base_url=self.host,
+            # should be FastHttpUser, but really, could just be locust.user.users.User ?
+            user=self,  # type: ignore
+            insecure=self._context.get('verify_certificates', True),
+            max_retries=1,
+            connection_timeout=60.0,
+            network_timeout=60.0,
+        )
+        return self._request(
+            client, request, {},
+        )
+
     def request(self, request: RequestTask) -> GrizzlyResponse:
+        return self._request(
+            self.client, request, {
+                'verify': self._context.get('verify_certificates', True),
+                'request': request,
+            },
+        )
+
+    @refresh_token()
+    def _request(self, client: Union[FastHttpSession, ResponseEventSession], request: RequestTask, parameters: Optional[Dict[str, Any]] = None) -> GrizzlyResponse:
         if request.method not in [RequestMethod.GET, RequestMethod.PUT, RequestMethod.POST]:
             raise NotImplementedError(f'{request.method.name} is not implemented for {self.__class__.__name__}')
 
         request_name, endpoint, payload = self.render(request)
 
+        if parameters is None:
+            parameters = {}
+
         url = f'{self.host}{endpoint}'
+
+        # only render endpoint once, so needs to be done here
+        if isinstance(client, ResponseEventSession):
+            parameters['url'] = url
+        elif isinstance(client, FastHttpSession):
+            parameters['path'] = endpoint
+
         name = f'{request.scenario.identifier} {request_name}'
-        parameters: Dict[str, Any] = {
+        parameters.update({
             'headers': self.headers,
-            'verify': self._context.get('verify_certificates', True),
-        }
+        })
 
         if payload is not None:
             try:
@@ -589,14 +625,20 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests):
                 # this is a fundemental error, so we'll always stop the user
                 raise StopUser()
 
-        with self.client.request(
+        with client.request(
             method=request.method.name,
-            url=url,
             name=name,
             catch_response=True,
-            request=request,
             **parameters,
         ) as response:
+            if not isinstance(client, ResponseEventSession):
+                self.response_event.fire(
+                    name=name,
+                    request=request,
+                    context=response,
+                    user=self,
+                )
+
             if response._manual_result is None:
                 if response.status_code in request.response.status_codes:
                     response.success()
