@@ -1,6 +1,6 @@
 '''This task runs all requests in the group asynchronously.
 
-All request names added to the group will be prefixed with async group `<name>:`
+The name of all request added to the group will be prefixed with async group `<name>:`. Request type for this task is `ASYNC`.
 
 Arguments:
 
@@ -58,7 +58,7 @@ class AsyncRequestGroupTask(GrizzlyTask):
             exception: Optional[Exception] = None
             response_length = 0
 
-            def trace_green(event: str, args: Tuple[Any, Any]) -> None:
+            def trace_green(event: str, args: Tuple[gevent.Greenlet, gevent.Greenlet]) -> None:  # pragma: no cover
                 src, target = args
 
                 if src is gevent.hub.get_hub():
@@ -100,7 +100,6 @@ class AsyncRequestGroupTask(GrizzlyTask):
                     try:
                         _, payload = greenlet.get()
                         response_length += len(payload) if payload is not None else 0
-                        # parent.user.logger.debug(f'{greenlet=}, {payload=}')
                     except Exception as e:
                         parent.user.logger.error(str(e), exc_info=True)
                         if exception is None:
@@ -120,5 +119,8 @@ class AsyncRequestGroupTask(GrizzlyTask):
                     context=parent.user._context,
                     exception=exception,
                 )
+
+                if exception is not None and self.scenario.failure_exception is not None:
+                    raise self.scenario.failure_exception()
 
         return task

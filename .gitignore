@@ -16,7 +16,6 @@ coverage.xml
 .venv/
 script/tmp*
 *.log
-test*.py
 
 # automagically generated
 docs/licenses/*

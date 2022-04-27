@@ -594,7 +594,7 @@ class TestRestApiUser:
 
         user.get_user_token()
 
-    def test_get_error_message(self, restapi_user: RestApiScenarioFixture) -> None:
+    def test_get_error_message(self, restapi_user: RestApiScenarioFixture, mocker: MockerFixture) -> None:
         user, _ = restapi_user
 
         response = Response()
@@ -624,6 +624,10 @@ class TestRestApiUser:
 
         response._content = '{"success": false}'.encode('utf-8')
         assert user.get_error_message(response_context_manager) == '{"success": false}'
+
+        text_mock = mocker.patch('requests.models.Response.text', new_callable=mocker.PropertyMock)
+        text_mock.return_value = None
+        assert user.get_error_message(response_context_manager) == "unknown response <class 'locust.clients.ResponseContextManager'>"
 
     def test_request(self, restapi_user: RestApiScenarioFixture, mocker: MockerFixture) -> None:
         [user, scenario] = restapi_user

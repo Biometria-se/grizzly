@@ -9,7 +9,7 @@ from locust.exception import StopUser
 from grizzly.exceptions import RestartScenario
 from grizzly.types import RequestMethod
 from grizzly.tasks import UntilRequestTask, RequestTask
-from grizzly_extras.transformer import TransformerContentType, transformer
+from grizzly_extras.transformer import TransformerContentType, TransformerError, transformer
 
 from ...fixtures import GrizzlyFixture
 
@@ -74,7 +74,21 @@ class TestUntilRequestTask:
             ],
         )
 
-        time_spy = mocker.patch('grizzly.tasks.until.time', side_effect=[0.0, 153.5, 0.0, 12.25, 0.0, 12.25, 0.0, 1.5, 0.0, 0.8, 0.0, 0.8, 0.0, 0.555, 0.0, 0.666])
+        time_spy = mocker.patch(
+            'grizzly.tasks.until.time',
+            side_effect=[
+                0.0, 153.5,
+                0.0, 12.25,
+                0.0, 12.25,
+                0.0, 1.5,
+                0.0, 0.8,
+                0.0, 0.8,
+                0.0, 0.555,
+                0.0, 0.666,
+                0.0, 0.666,
+                0.0, 0.111,
+            ],
+        )
 
         fire_spy = mocker.patch.object(
             scenario.user.environment.events.request,
@@ -317,3 +331,35 @@ class TestUntilRequestTask:
         assert kwargs.get('response_length', None) == 213
         assert kwargs.get('context', None) == {'variables': {}}
         assert kwargs.get('exception', '') is None
+
+        task_factory = UntilRequestTask(request, '$.list[?(@.count == 18)] | wait=4, expected_matches=1, retries=1')
+        task = task_factory()
+        request_spy.return_value = ({}, None,)
+        request.scenario.failure_exception = None
+
+        task(scenario)
+
+        assert fire_spy.call_count == 9
+        _, kwargs = fire_spy.call_args_list[-1]
+
+        assert kwargs.get('request_type', None) == 'UNTL'
+        assert kwargs.get('name', None) == f'{request.scenario.identifier} test-request, w=4.0s, r=1, em=1'
+        assert kwargs.get('response_time', None) == 666
+        assert kwargs.get('response_length', None) == 0
+        assert kwargs.get('context', None) == {'variables': {}}
+        assert isinstance(kwargs.get('exception', ''), TransformerError)
+
+        mocker.patch.object(scenario.logger, 'error', side_effect=[RuntimeError, None])
+        request_spy.return_value = ({}, None,)
+
+        task(scenario)
+
+        assert fire_spy.call_count == 10
+        _, kwargs = fire_spy.call_args_list[-1]
+
+        assert kwargs.get('request_type', None) == 'UNTL'
+        assert kwargs.get('name', None) == f'{request.scenario.identifier} test-request, w=4.0s, r=1, em=1'
+        assert kwargs.get('response_time', None) == 111
+        assert kwargs.get('response_length', None) == 0
+        assert kwargs.get('context', None) == {'variables': {}}
+        assert isinstance(kwargs.get('exception', ''), RuntimeError)

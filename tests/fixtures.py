@@ -2,7 +2,7 @@ import pkgutil
 import inspect
 import socket
 
-from typing import TYPE_CHECKING, Optional, Union, Callable, Any, Literal, List, Tuple, Type, Dict
+from typing import TYPE_CHECKING, Optional, Union, Callable, Any, Literal, List, Tuple, Type, Dict, cast
 from types import TracebackType
 from unittest.mock import MagicMock
 from mypy_extensions import VarArg, KwArg
@@ -225,6 +225,10 @@ class BehaveFixture:
 
     def __init__(self, locust_fixture: LocustFixture) -> None:
         self._locust_fixture = locust_fixture
+
+    @property
+    def grizzly(self) -> GrizzlyContext:
+        return cast(GrizzlyContext, self.context.grizzly)
 
     def __enter__(self) -> 'BehaveFixture':
         runner = Runner(

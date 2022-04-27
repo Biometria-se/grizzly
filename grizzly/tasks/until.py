@@ -122,38 +122,40 @@ class UntilRequestTask(GrizzlyTask):
                         parent.logger.debug(f'{payload=}, condition={condition_rendered}, {matches=}')
                         number_of_matches = len(matches)
                     except Exception as e:
-                        exception = e
-                        number_of_matches = 0
                         parent.logger.error(f'{task_name}: loop retry={retry}', exc_info=True)
-
-                    if number_of_matches == self.expected_matches:
-                        break
-                    else:
-                        retry += 1
+                        if exception is None:
+                            exception = e
+                        number_of_matches = 0
+                    finally:
+                        if number_of_matches == self.expected_matches:
+                            break
+                        else:
+                            retry += 1
             except Exception as e:
-                exception = e
                 parent.logger.error(f'{task_name}: done retry={retry}', exc_info=True)
+                if exception is None:
+                    exception = e
+            finally:
+                response_time = int((time() - start) * 1000)
 
-            response_time = int((time() - start) * 1000)
+                if number_of_matches == self.expected_matches:
+                    exception = None
+                elif exception is None and number_of_matches != self.expected_matches:
+                    exception = RuntimeError((
+                        f'found {number_of_matches} matching values for {condition_rendered} in payload '
+                        f'after {retry} retries and {response_time} milliseconds'
+                    ))
 
-            if number_of_matches == self.expected_matches:
-                exception = None
-            elif exception is None and number_of_matches != self.expected_matches:
-                exception = RuntimeError((
-                    f'found {number_of_matches} matching values for {condition_rendered} in payload '
-                    f'after {retry} retries and {response_time} milliseconds'
-                ))
+                parent.user.environment.events.request.fire(
+                    request_type='UNTL',
+                    name=task_name,
+                    response_time=response_time,
+                    response_length=response_length,
+                    context=parent.user._context,
+                    exception=exception,
+                )
 
-            parent.user.environment.events.request.fire(
-                request_type='UNTL',
-                name=task_name,
-                response_time=response_time,
-                response_length=response_length,
-                context=parent.user._context,
-                exception=exception,
-            )
-
-            if exception is not None and self.request.scenario.failure_exception is not None:
-                raise self.request.scenario.failure_exception()
+                if exception is not None and self.request.scenario.failure_exception is not None:
+                    raise self.request.scenario.failure_exception()
 
         return task

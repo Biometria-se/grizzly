@@ -172,7 +172,7 @@ def add_request_task(
 
 
 def _add_response_handler(
-    context: GrizzlyContext,
+    grizzly: GrizzlyContext,
     target: ResponseTarget,
     action: ResponseAction,
     expression: str,
@@ -180,13 +180,13 @@ def _add_response_handler(
     variable: Optional[str] = None,
     condition: Optional[bool] = None,
 ) -> None:
-    if variable is not None and variable not in context.state.variables:
+    if variable is not None and variable not in grizzly.state.variables:
         raise ValueError(f'variable "{variable}" has not been declared')
 
-    if context.scenario.async_group is None:
-        tasks = context.scenario.tasks
+    if grizzly.scenario.async_group is None:
+        tasks = grizzly.scenario.tasks
     else:
-        tasks = cast(List[GrizzlyTask], context.scenario.async_group.requests)
+        tasks = cast(List[GrizzlyTask], grizzly.scenario.async_group.requests)
 
     if not len(tasks) > 0:
         raise ValueError('no request source has been added!')
@@ -216,10 +216,10 @@ def _add_response_handler(
         raise ValueError('content type is not set for latest request')
 
     if '{{' in match_with and '}}' in match_with:
-        context.scenario.orphan_templates.append(match_with)
+        grizzly.scenario.orphan_templates.append(match_with)
 
     if '{{' in expression and '}}' in expression:
-        context.scenario.orphan_templates.append(expression)
+        grizzly.scenario.orphan_templates.append(expression)
 
     handler: ResponseHandlerAction
 
@@ -252,12 +252,12 @@ def _add_response_handler(
     add_listener(handler)
 
 
-def add_save_handler(context: GrizzlyContext, target: ResponseTarget, expression: str, match_with: str, variable: str) -> None:
-    _add_response_handler(context, target, ResponseAction.SAVE, expression=expression, match_with=match_with, variable=variable)
+def add_save_handler(grizzly: GrizzlyContext, target: ResponseTarget, expression: str, match_with: str, variable: str) -> None:
+    _add_response_handler(grizzly, target, ResponseAction.SAVE, expression=expression, match_with=match_with, variable=variable)
 
 
-def add_validation_handler(context: GrizzlyContext, target: ResponseTarget, expression: str, match_with: str, condition: bool) -> None:
-    _add_response_handler(context, target, ResponseAction.VALIDATE, expression=expression, match_with=match_with, condition=condition)
+def add_validation_handler(grizzly: GrizzlyContext, target: ResponseTarget, expression: str, match_with: str, condition: bool) -> None:
+    _add_response_handler(grizzly, target, ResponseAction.VALIDATE, expression=expression, match_with=match_with, condition=condition)
 
 
 def normalize_step_name(step_name: str) -> str:

@@ -92,7 +92,7 @@ def after_scenario(context: Context, *_args: Tuple[Any, ...], **_kwargs: Dict[st
     if not grizzly.state.background_section_done:
         grizzly.state.background_section_done = True
 
-    assert grizzly.scenario.async_group is None, f'async request group {grizzly.scenario.async_group.name} has not been closed'
+    assert grizzly.scenario.async_group is None, f'async request group "{grizzly.scenario.async_group.name}" has not been closed'
 
 
 def before_step(context: Context, step: Step, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
