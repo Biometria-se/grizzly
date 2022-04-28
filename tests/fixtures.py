@@ -5,10 +5,15 @@ import socket
 from typing import TYPE_CHECKING, Optional, Union, Callable, Any, Literal, List, Tuple, Type, Dict, cast
 from types import TracebackType
 from unittest.mock import MagicMock
+from urllib.parse import urlparse
 from mypy_extensions import VarArg, KwArg
 from os import environ, path
 from shutil import rmtree
+from json import dumps as jsondumps
 
+from locust.clients import ResponseContextManager
+from locust.contrib.fasthttp import FastResponse
+from geventhttpclient.header import Headers
 from _pytest.tmpdir import TempPathFactory
 from pytest_mock.plugin import MockerFixture
 from locust.env import Environment
@@ -20,16 +25,16 @@ from behave.runner import Context as BehaveContext, Runner
 from behave.model import Scenario, Step, Background
 from behave.configuration import Configuration
 from behave.step_registry import registry as step_registry
-from jinja2 import Template
+from requests.models import CaseInsensitiveDict, Response, PreparedRequest
 
-from grizzly.types import RequestMethod
+from grizzly.types import GrizzlyResponseContextManager, RequestMethod
 from grizzly.tasks.request import RequestTask
 
 import grizzly.testdata.variables as variables
 
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 
-from .helpers import TestUser, TestScenario
+from .helpers import TestUser, TestScenario, RequestSilentFailureEvent
 
 if TYPE_CHECKING:
     from grizzly.users.base import GrizzlyUser
@@ -297,7 +302,6 @@ class RequestTaskFixture:
         request_path = path.dirname(str(request_file))
 
         request = RequestTask(RequestMethod.POST, endpoint='/api/test', name='request_task')
-        request.template = Template(REQUEST_TASK_TEMPLATE_CONTENTS)
         request.source = REQUEST_TASK_TEMPLATE_CONTENTS
         request.scenario = GrizzlyContextScenario()
         request.scenario.name = 'test-scenario'
@@ -390,6 +394,108 @@ class GrizzlyFixture:
             pass
 
         return True
+
+
+class ResponseContextManagerFixture:
+    # borrowed from geventhttpclient.client._build_request
+    def _build_request(self, method: str, request_url: str, body: Optional[str] = '', headers: Optional[Dict[str, Any]] = None) -> str:
+        parsed = urlparse(request_url)
+
+        request = method + ' ' + parsed.path + ' HTTP/1.1\r\n'
+
+        for field, value in (headers or {}).items():
+            request += field + ': ' + str(value) + '\r\n'
+        request += '\r\n'
+
+        return request
+
+    def __call__(
+        self,
+        cls_rcm: Type[GrizzlyResponseContextManager],
+        status_code: int,
+        environment: Optional[Environment] = None,
+        response_body: Optional[Any] = None,
+        response_headers: Optional[Dict[str, Any]] = None,
+        request_method: Optional[str] = None,
+        request_body: Optional[Any] = None,
+        request_headers: Optional[Dict[str, Any]] = None,
+        url: Optional[str] = None,
+        **kwargs: Dict[str, Any],
+    ) -> GrizzlyResponseContextManager:
+        name = kwargs['name']
+        event: Any
+        if environment is not None:
+            event = RequestSilentFailureEvent(False)
+        else:
+            event = None
+
+        if cls_rcm == ResponseContextManager:
+            response = Response()
+            if response_headers is not None:
+                response.headers = CaseInsensitiveDict(**response_headers)
+
+            if response_body is not None:
+                response._content = jsondumps(response_body).encode('utf-8')
+            response.status_code = status_code
+
+            response.request = PreparedRequest()
+            if request_headers is not None:
+                response.request.headers = CaseInsensitiveDict(**request_headers)
+
+            if request_body is not None:
+                response.request.body = request_body.encode('utf-8')
+
+            response.request.method = (request_method or 'GET').lower()
+
+            if url is not None:
+                response.url = response.request.url = url
+        else:
+            _build_request = self._build_request
+            request_url = url
+
+            class FakeGhcResponse:
+                _headers_index: Headers
+                _sent_request: str
+
+                def __init__(self) -> None:
+                    self._headers_index = Headers()
+                    for key, value in (response_headers or {}).items():
+                        self._headers_index.add(key, value)
+
+                    self._sent_request = _build_request(
+                        request_method or '',
+                        request_url or '',
+                        body=jsondumps(request_body or ''),
+                        headers=request_headers,
+                    )
+
+                def get_code(self) -> int:
+                    return status_code
+
+            response = FastResponse(FakeGhcResponse())
+            if response_body is not None:
+                response._cached_content = jsondumps(response_body).encode('utf-8')
+            else:
+                response._cached_content = None
+
+            if request_body is not None:
+                setattr(response, 'request_body', request_body)
+
+            if environment is not None:
+                environment.events.request = event
+                event = environment
+
+        response_context_manager = cls_rcm(response, event, {})
+        response_context_manager._entered = True
+        response_context_manager.request_meta = {
+            'method': None,
+            'name': name,
+            'response_time': 1.0,
+            'content_size': 1337,
+            'exception': None,
+        }
+
+        return response_context_manager
 
 
 class NoopZmqFixture:

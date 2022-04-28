@@ -165,6 +165,7 @@ class TestAsyncRequestGroup:
         task_factory.add(RequestTask(RequestMethod.GET, name='sleep-2', endpoint='/api/sleep/2', scenario=context_scenario))
         task_factory.add(RequestTask(RequestMethod.GET, name='sleep-6', endpoint='/api/sleep/6', scenario=context_scenario))
         task_factory.add(RequestTask(RequestMethod.GET, name='sleep-1', endpoint='/api/sleep/1', scenario=context_scenario))
+        # task_factory.add(RequestTask(RequestMethod.POST, name='post-echo', endpoint='/api/echo', source='{"foo": "bar"}', scenario=context_scenario))
 
         assert len(task_factory.requests) == 3
 

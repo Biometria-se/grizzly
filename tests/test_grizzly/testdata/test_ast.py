@@ -1,8 +1,6 @@
 from typing import cast
 from json import loads as jsonloads, dumps as jsondumps
 
-from jinja2 import Template
-
 from grizzly.testdata.ast import _parse_templates, get_template_variables
 from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContextScenario
@@ -24,7 +22,6 @@ def test__parse_template(request_task: RequestTaskFixture) -> None:
     source['result']['TestString'] = '{{ a_string }}'
 
     request.source = jsondumps(source)
-    request.template = Template(request.source)
     scenario = GrizzlyContextScenario()
     scenario.name = 'TestScenario'
     scenario.add_task(request)
@@ -58,14 +55,12 @@ def test_get_template_variables() -> None:
     )
     task = cast(RequestTask, scenario.tasks[-1])
     task.source = '{{ AtomicRandomString.test }}'
-    task.template = Template(task.source)
 
     scenario.add_task(
         RequestTask(RequestMethod.GET, name='{{ env }} GET request', endpoint='/api/{{ env }}/get')
     )
     task = cast(RequestTask, scenario.tasks[-1])
     task.source = '{{ AtomicIntegerIncrementer.test }}'
-    task.template = Template(task.source)
 
     scenario.add_task(
         PrintTask(message='{{ foo }}')

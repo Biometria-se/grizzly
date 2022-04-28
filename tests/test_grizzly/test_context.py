@@ -319,9 +319,7 @@ class TestGrizzlyContextScenario:
 
         second_request = RequestTask(RequestMethod.POST, name='Second Request', endpoint='/api/test/2')
         second_request.source = '{"hello": "world!"}'
-        second_template = Template(second_request.source)
-        second_request.template = second_template
-        assert second_request.template is second_template
+        assert isinstance(second_request.template, Template)
 
         scenario.add_task(second_request)
         assert scenario.tasks == [request, second_request]

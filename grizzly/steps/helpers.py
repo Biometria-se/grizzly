@@ -76,8 +76,8 @@ def _create_request_task(
             source = source.replace(f'{{{{ {key} }}}}', value)
 
     request = RequestTask(method, name=cast(str, name), endpoint=endpoint)
-    request.template = template
-    request.source = source
+    request._source = source
+    request._template = template
 
     return request
 

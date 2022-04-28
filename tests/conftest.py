@@ -14,6 +14,7 @@ from .fixtures import (
     BehaveFixture,
     RequestTaskFixture,
     GrizzlyFixture,
+    ResponseContextManagerFixture,
 )
 
 
@@ -55,6 +56,10 @@ def _noop_zmq(mocker: MockerFixture) -> Generator[NoopZmqFixture, None, None]:
     yield NoopZmqFixture(mocker)
 
 
+def _response_context_manager() -> Generator[ResponseContextManagerFixture, None, None]:
+    yield ResponseContextManagerFixture()
+
+
 cleanup = pytest.fixture()(_atomicvariable_cleanup)
 locust_fixture = pytest.fixture()(_locust_fixture)
 paramiko_fixture = pytest.fixture()(_paramiko_fixture)
@@ -62,3 +67,4 @@ behave_fixture = pytest.fixture()(_behave_fixture)
 request_task = pytest.fixture()(_request_task)
 grizzly_fixture = pytest.fixture(scope='function')(_grizzly_fixture)
 noop_zmq = pytest.fixture()(_noop_zmq)
+response_context_manager_fixture = pytest.fixture()(_response_context_manager)

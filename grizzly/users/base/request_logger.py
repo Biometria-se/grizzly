@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from urllib.parse import urlparse, urlunparse
 
 from locust.env import Environment
+from locust.contrib.fasthttp import ResponseContextManager as FastResponseContextManager
 from jinja2 import Template
 
 from ...tasks import RequestTask
@@ -77,29 +78,79 @@ class RequestLogger(ResponseEvent, GrizzlyUser):
 
         return contents
 
-    def _get_http_user_data(self, response: GrizzlyResponseContextManager) -> Dict[str, Dict[str, Any]]:
+    def _get_http_user_data(self, response: GrizzlyResponseContextManager, user: GrizzlyUser) -> Dict[str, Dict[str, Any]]:
         request_body: Optional[str]
-        response_body: Optional[str]
+        response_body: Optional[str] = None
+
+        if response.text is not None:
+            try:
+                response_body = json.dumps(
+                    self._remove_secrets_attribute(
+                        json.loads(response.text),
+                    ),
+                    indent=2,
+                )
+            except json.decoder.JSONDecodeError:
+                response_body = str(response.text)
+                if len(response_body.strip()) < 1:
+                    response_body = None
 
         try:
-            response_body = json.dumps(
-                self._remove_secrets_attribute(
-                    json.loads(response.text or ''),
-                ),
-                indent=2,
-            )
-        except json.decoder.JSONDecodeError:
-            response_body = str(response.text)
-            if len(response_body.strip()) < 1:
-                response_body = None
+            if isinstance(response, FastResponseContextManager):
+                if response._response is not None:
+                    sent_request = response._response._sent_request  # type: ignore
 
-        try:
-            if isinstance(response.request.body, bytes):
-                request_body = response.request.body.decode('utf-8')
-            elif isinstance(response.request.body, str):
-                request_body = response.request.body
+                    if isinstance(sent_request, bytes):
+                        request = sent_request.decode('utf-8')
+                    elif isinstance(sent_request, str):
+                        request = sent_request
+                    else:
+                        request = None
+
+                    request_lines = request.split('\r\n')
+                    request_body = getattr(response, 'request_body', None)
+                    request_headers = {}
+
+                    _, request_url, _ = request_lines[0].split(' ', 2)
+                    request_url = request_url.strip()
+                    if len(request_url) < 1:
+                        request_url = None
+                    else:
+                        request_url = f'{user.host}{request_url}'
+
+                    for request_line in request_lines[1:]:
+                        request_line = request_line.strip()
+                        if ': ' not in request_line:
+                            continue
+
+                        key, value = request_line.strip().split(': ', 1)
+                        request_headers[key] = value
+
+                    if request_headers == {}:
+                        request_headers = None
+                else:
+                    request_body = None
+                    request_headers = None
+                    request_url = None
+
+                response_url = request_url
+                if response.headers is not None:
+                    response_headers = {key: value for key, value in response.headers.items()}  # type: ignore
+
+                    if len(response_headers) < 1:
+                        response_headers = None
             else:
-                request_body = None
+                if isinstance(response.request.body, bytes):
+                    request_body = response.request.body.decode('utf-8')
+                elif isinstance(response.request.body, str):
+                    request_body = response.request.body
+                else:
+                    request_body = None
+
+                request_headers = dict(response.request.headers) if response.request.headers is not None and len(response.request.headers) > 0 else None
+                request_url = response.request.url
+                response_url = response.url
+                response_headers = dict(response.headers) if response.headers is not None and len(response.headers) > 0 else None
 
             if request_body is not None:
                 request_body = json.dumps(
@@ -111,9 +162,6 @@ class RequestLogger(ResponseEvent, GrizzlyUser):
         except (json.decoder.JSONDecodeError, TypeError):
             request_body = str(request_body)
 
-        request_headers = dict(response.request.headers) if response.request.headers is not None and len(response.request.headers) > 0 else None
-        response_headers = dict(response.headers) if response.headers is not None and len(response.headers) > 0 else None
-
         response_time: Optional[str]
         if hasattr(response, 'request_meta') and response.request_meta is not None:
             response_time = response.request_meta.get('response_time', None)
@@ -124,13 +172,13 @@ class RequestLogger(ResponseEvent, GrizzlyUser):
             'request': {
                 'time': None,
                 'duration': None,
-                'url': response.request.url,
+                'url': request_url,
                 'metadata': request_headers,
                 'payload': request_body,
             },
             'response': {
                 'time': response_time,
-                'url': response.url,
+                'url': response_url,
                 'metadata': response_headers,
                 'payload': response_body,
                 'status': response.status_code,
@@ -179,7 +227,7 @@ class RequestLogger(ResponseEvent, GrizzlyUser):
         }
 
         if isinstance(context, getattr(GrizzlyResponseContextManager, '__args__')):
-            variables.update(self._get_http_user_data(context))
+            variables.update(self._get_http_user_data(context, user))
         else:
             parsed = urlparse(user.host or '')
             sep = ''

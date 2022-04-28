@@ -118,8 +118,13 @@ class refresh_token:
                 session_duration = session_now - cls.session_started
 
                 # refresh token if session has been alive for at least refresh_time
-                if session_duration >= auth_context.get('refresh_time', 3000) or cls.headers['Authorization'] is None:
+                if session_duration >= auth_context.get('refresh_time', 3000) or cls.headers.get('Authorization', None) is None:
                     cls.get_token(auth_method)
+            else:
+                try:
+                    del cls.headers['Authorization']
+                except KeyError:
+                    pass
 
             return func(cls, *args, **kwargs)
 
@@ -567,20 +572,18 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
             base_url=self.host,
             # should be FastHttpUser, but really, could just be locust.user.users.User ?
             user=self,  # type: ignore
-            insecure=self._context.get('verify_certificates', True),
+            insecure=not self._context.get('verify_certificates', True),
             max_retries=1,
             connection_timeout=60.0,
             network_timeout=60.0,
         )
-        return self._request(
-            client, request, {},
-        )
+
+        return self._request(client, request, {})
 
     def request(self, request: RequestTask) -> GrizzlyResponse:
         return self._request(
             self.client, request, {
                 'verify': self._context.get('verify_certificates', True),
-                'request': request,
             },
         )
 
@@ -591,21 +594,23 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
 
         request_name, endpoint, payload = self.render(request)
 
-        if parameters is None:
-            parameters = {}
+        parameters = parameters or {}
+        parameters.update({'headers': self.headers})
 
         url = f'{self.host}{endpoint}'
 
         # only render endpoint once, so needs to be done here
         if isinstance(client, ResponseEventSession):
-            parameters['url'] = url
-        elif isinstance(client, FastHttpSession):
-            parameters['path'] = endpoint
+            parameters.update({
+                'url': url,
+                'request': request,
+            })
+        else:
+            parameters.update({
+                'path': endpoint,
+            })
 
         name = f'{request.scenario.identifier} {request_name}'
-        parameters.update({
-            'headers': self.headers,
-        })
 
         if payload is not None:
             try:
@@ -632,6 +637,9 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
             **parameters,
         ) as response:
             if not isinstance(client, ResponseEventSession):
+                # monkey patch in request body... not available otherwise
+                setattr(response, 'request_body', payload)
+
                 self.response_event.fire(
                     name=name,
                     request=request,
@@ -649,7 +657,7 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
             if response._manual_result is not True and request.scenario.failure_exception is not None:
                 raise request.scenario.failure_exception()
 
-            headers = dict(response.headers) if response.headers not in [None, {}] else None
+            headers = dict(response.headers.items()) if response.headers not in [None, {}] else None
 
             return headers, response.text
 

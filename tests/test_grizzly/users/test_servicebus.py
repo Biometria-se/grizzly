@@ -7,7 +7,6 @@ import pytest
 from pytest_mock import MockerFixture
 from _pytest.logging import LogCaptureFixture
 from locust.exception import StopUser
-from jinja2 import Template
 from zmq.sugar.constants import REQ as ZMQ_REQ
 from zmq.error import Again as ZMQAgain
 
@@ -237,7 +236,6 @@ class TestServiceBusUser:
         # unsupported request method
         task = RequestTask(RequestMethod.PUT, name='test-send', endpoint='queue:test-queue')
         task.source = 'hello'
-        task.template = Template(task.source)
         scenario.add_task(task)
         scenario.failure_exception = StopUser
         mocker.patch.object(user.zmq_client, 'disconnect', side_effect=[TypeError])
@@ -315,7 +313,6 @@ class TestServiceBusUser:
 
         # successful request
         task.method = RequestMethod.RECEIVE
-        task.template = None
         task.source = None
 
         mock_recv_json({
@@ -368,7 +365,6 @@ class TestServiceBusUser:
         }
 
         task.method = RequestMethod.RECEIVE
-        task.template = None
         task.source = None
         task.response.content_type = TransformerContentType.JSON
         task.endpoint = f'{task.endpoint}, expression:"$.document[?(@.name=="TPM Report")]'

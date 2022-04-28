@@ -6,7 +6,6 @@ from json import loads as jsonloads
 
 import pytest
 
-from jinja2 import Template
 from _pytest.tmpdir import TempPathFactory
 from _pytest.logging import LogCaptureFixture
 from pytest_mock import MockerFixture
@@ -42,7 +41,7 @@ class TestGrizzlyUser:
             user = DummyGrizzlyUser(locust_fixture.env)
             request = RequestTask(RequestMethod.POST, name='test', endpoint='/api/test')
 
-            request.template = Template('hello {{ name }}')
+            request.source = 'hello {{ name }}'
             scenario = GrizzlyContextScenario()
             scenario.name = 'test'
             request.scenario = scenario
@@ -59,7 +58,7 @@ class TestGrizzlyUser:
             user.set_context_variable('querystring', 'querystring_data')
             assert user.render(request) == ('test', '/api/test?data=querystring_data', 'hello alice')
 
-            request.template = None
+            request.source = None
             assert user.render(request) == ('test', '/api/test?data=querystring_data', None)
 
             request.name = '{{ name }}'
@@ -72,7 +71,6 @@ class TestGrizzlyUser:
             test_file.write_text('this is a test {{ name }}')
             request.name = '{{ name }}'
             request.source = '{{ blobfile }}'
-            request.template = Template(request.source)
             user.set_context_variable('blobfile', str(test_file))
             assert user.render(request) == ('alice', '/api/test?data=querystring_data', 'this is a test alice')
 
@@ -85,7 +83,6 @@ class TestGrizzlyUser:
             assert issubclass(user.__class__, (FileRequests,))
 
             request.source = f'{str(test_file)}'
-            request.template = Template(request.source)
             request.endpoint = '/tmp'
             _, endpoint, _ = user.render(request)
             assert endpoint == '/tmp/blobfile.txt'
@@ -109,8 +106,6 @@ class TestGrizzlyUser:
         }
         ''')
 
-        print(str(test_file))
-
         test_file_context = path.dirname(
             path.dirname(
                 path.dirname(
@@ -124,7 +119,7 @@ class TestGrizzlyUser:
             user = DummyGrizzlyUser(locust_fixture.env)
             request = RequestTask(RequestMethod.POST, name='{{ name }}', endpoint='/api/test/{{ value }}')
 
-            request.template = Template('{{ file_path }}')
+            request.source = '{{ file_path }}'
             scenario = GrizzlyContextScenario()
             scenario.name = 'test'
             request.scenario = scenario
