@@ -47,7 +47,7 @@ logger = logging.getLogger('grizzly.locust')
 def greenlet_exception_logger(logger: logging.Logger, level: int = logging.CRITICAL) -> Callable[[gevent.Greenlet], None]:
     def exception_handler(greenlet: gevent.Greenlet) -> None:
         global unhandled_greenlet_exception
-        logger.log(level, f'unhandled exception in greenlet: {greenlet}', exc_info=True)
+        logger.log(level, f'unhandled exception in greenlet: {greenlet}: {greenlet.value}', exc_info=True)
         unhandled_greenlet_exception = True
 
     return exception_handler

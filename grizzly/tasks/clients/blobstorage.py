@@ -34,8 +34,10 @@ from mimetypes import guess_type as mimetype_guess
 
 from azure.storage.blob import BlobServiceClient, ContentSettings
 
+
 from . import client, ClientTask
 from ...scenarios import GrizzlyScenario
+from ...context import GrizzlyContextScenario
 from ...types import RequestDirection
 from ...testdata.utils import resolve_variable
 
@@ -54,9 +56,15 @@ class BlobStorageClientTask(ClientTask):
     _endpoints_protocol: str
 
     def __init__(
-        self, direction: RequestDirection, endpoint: str, /, variable: Optional[str] = None, source: Optional[str] = None, destination: Optional[str] = None,
+        self,
+        direction: RequestDirection,
+        endpoint: str, /,
+        variable: Optional[str] = None,
+        source: Optional[str] = None,
+        destination: Optional[str] = None,
+        scenario: Optional[GrizzlyContextScenario] = None,
     ) -> None:
-        super().__init__(direction, endpoint, variable=variable, destination=destination, source=source)
+        super().__init__(direction, endpoint, variable=variable, destination=destination, source=source, scenario=scenario)
 
         parsed = urlparse(self.endpoint)
 

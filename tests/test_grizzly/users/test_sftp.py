@@ -1,7 +1,6 @@
 import shutil
 
 from os import path, environ
-from jinja2.environment import Template
 
 import pytest
 
@@ -96,7 +95,6 @@ class TestSftpUser:
 
             request = RequestTask(RequestMethod.SEND, name='test', endpoint='/tmp')
             request.source = 'test/file.txt'
-            request.template = Template(request.source)
 
             scenario = GrizzlyContextScenario()
             scenario.name = 'test'
@@ -172,7 +170,7 @@ class TestSftpUser:
             assert kwargs.get('exception', '') is None
 
             request.method = RequestMethod.PUT
-            request.template = None
+            request.source = None
 
             with pytest.raises(RestartScenario):
                 user.request(request)
@@ -196,7 +194,6 @@ class TestSftpUser:
             assert 'SftpUser: request a94a8fe5 test does not have a payload, incorrect method specified' in str(exception)
 
             request.source = 'foo.bar'
-            request.template = Template(request.source)
 
             user.request(request)
 
@@ -262,7 +259,6 @@ class TestSftpUser:
 
             request = RequestTask(RequestMethod.PUT, name='test', endpoint='/upload')
             request.source = 'test.txt'
-            request.template = Template(request.source)
 
             scenario = GrizzlyContextScenario()
             scenario.name = 'test'

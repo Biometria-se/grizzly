@@ -15,7 +15,6 @@ import pytest
 from pytest_mock import MockerFixture
 from locust.env import Environment
 from locust.exception import StopUser
-from jinja2 import Template
 
 from grizzly.users.messagequeue import MessageQueueUser
 from grizzly.users.base import RequestLogger, ResponseHandler
@@ -304,7 +303,6 @@ class TestMessageQueueUser:
 
             request = RequestTask(RequestMethod.PUT, name='test-put', endpoint=self.real_stuff['endpoint'])
             request.source = 'we <3 IBM MQ'
-            request.template = Template(request.source)
             scenario = GrizzlyContextScenario()
             scenario.name = 'test'
             scenario.failure_exception = StopUser
@@ -395,7 +393,6 @@ class TestMessageQueueUser:
         request.endpoint = 'queue:test-queue'
         request.method = RequestMethod.GET
         request.source = None
-        request.template = None
         scenario.add_task(request)
 
         user.add_context(remote_variables)

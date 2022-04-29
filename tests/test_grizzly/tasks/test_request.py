@@ -2,6 +2,7 @@ from typing import Any, Tuple, Optional
 
 from pytest_mock import MockerFixture
 from locust.clients import ResponseContextManager
+from jinja2 import Template
 
 from grizzly.users.base.grizzly_user import GrizzlyUser
 from grizzly.users.base.response_handler import ResponseHandlerAction
@@ -71,11 +72,12 @@ class TestRequestTask:
         assert task_factory.method == RequestMethod.POST
         assert task_factory.name == 'test-name'
         assert task_factory.endpoint == '/api/test'
+        assert task_factory.response.content_type == TransformerContentType.UNDEFINED
 
         assert not hasattr(task_factory, 'scenario')
 
-        assert task_factory.template is None
         assert task_factory.source is None
+        assert task_factory.template is None
 
         task = task_factory()
         assert callable(task)
@@ -92,3 +94,16 @@ class TestRequestTask:
         assert request_spy.call_count == 1
         args, _ = request_spy.call_args_list[0]
         assert args[0] is task_factory
+
+        # automagically create template if not set
+        task_factory.source = 'hello {{ world }}'
+        assert isinstance(task_factory.template, Template)
+
+    def test_arguments(self) -> None:
+        task_factory = RequestTask(RequestMethod.GET, 'test-name', endpoint='/api/test | content_type="application/json", foo=bar')
+        assert task_factory.endpoint == '/api/test | foo=bar'
+        assert task_factory.response.content_type == TransformerContentType.JSON
+
+        task_factory = RequestTask(RequestMethod.GET, 'test-name', endpoint='/api/test | content_type="application/xml"')
+        assert task_factory.endpoint == '/api/test'
+        assert task_factory.response.content_type == TransformerContentType.XML

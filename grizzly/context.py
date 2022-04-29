@@ -13,7 +13,7 @@ from locust.env import Environment
 from .types import GrizzlyDict
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .tasks import GrizzlyTask
+    from .tasks import GrizzlyTask, AsyncRequestGroupTask
 
 
 logger = logging.getLogger(__name__)
@@ -109,6 +109,7 @@ class GrizzlyContextScenario:
     validation: GrizzlyContextScenarioValidation = field(init=False, hash=False, compare=False, default_factory=GrizzlyContextScenarioValidation)
     failure_exception: Optional[Type[Exception]] = field(init=False, default=None)
     orphan_templates: List[str] = field(init=False, repr=False, hash=False, compare=False, default_factory=list)
+    async_group: Optional['AsyncRequestGroupTask'] = field(init=False, repr=False, hash=False, compare=False, default=None)
 
     @property
     def identifier(self) -> str:

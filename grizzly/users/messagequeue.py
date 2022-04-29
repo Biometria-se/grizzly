@@ -217,7 +217,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
         request_name, endpoint, payload = self.render(request)
 
         @contextmanager
-        def wrap_action(am_request: AsyncMessageRequest, name: str) -> Generator[Dict[str, Any], None, None]:
+        def action_context(am_request: AsyncMessageRequest, name: str) -> Generator[Dict[str, Any], None, None]:
             exception: Optional[Exception] = None
             action: Dict[str, Any] = {
                 'failure_exception': None,
@@ -311,7 +311,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
 
         # connect to queue manager at first request
         if self.worker_id is None:
-            with wrap_action({
+            with action_context({
                 'action': 'CONN',
                 'context': self.am_context
             }, self.am_context['connection']) as action:
@@ -333,7 +333,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
 
         am_request['context']['content_type'] = request.response.content_type.name.lower()
 
-        with wrap_action(am_request, name) as action:
+        with action_context(am_request, name) as action:
             action['failure_exception'] = StopUser
             # Parse the endpoint to validate queue name / expression parts
             try:

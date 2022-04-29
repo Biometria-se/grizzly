@@ -15,6 +15,7 @@ coverage.xml
 .env/
 .venv/
 script/tmp*
+*.log
 
 # automagically generated
 docs/licenses/*

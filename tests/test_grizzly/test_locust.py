@@ -13,7 +13,7 @@ from pytest_mock import MockerFixture
 from behave.runner import Context
 from behave.model import Scenario
 from locust.env import Environment
-from jinja2 import Template, TemplateError
+from jinja2 import TemplateError
 
 from grizzly.locust import (
     greenlet_exception_logger,
@@ -390,7 +390,6 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
 
         task = RequestTask(RequestMethod.POST, 'test-post-1', '/api/v3/test/post/1')
         task.source = '{{ AtomicIntegerIncrementer.value }}, {{ test_id }}'
-        task.template = Template(task.source)
         task.scenario = GrizzlyContextScenario()
         task.scenario.name = 'test-scenario-1'
         task.scenario.user.class_name = 'RestApiUser'

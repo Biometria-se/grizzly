@@ -1,19 +1,20 @@
 import shutil
 
 from os import environ, path, listdir, remove
-from typing import Generator, List, Callable
+from typing import Generator, List, Callable, Type
 
 import pytest
 
 from _pytest.tmpdir import TempPathFactory
+from _pytest.capture import CaptureFixture
 from locust.clients import ResponseContextManager
-from requests.models import CaseInsensitiveDict, Response, PreparedRequest
+from locust.contrib.fasthttp import ResponseContextManager as FastResponseContextManager
 
 from grizzly.users.base import RequestLogger, HttpRequests
-from grizzly.types import RequestMethod
+from grizzly.types import RequestMethod, GrizzlyResponseContextManager
 from grizzly.tasks import RequestTask
 
-from ....fixtures import LocustFixture
+from ....fixtures import LocustFixture, ResponseContextManagerFixture
 
 
 @pytest.mark.usefixtures('locust_fixture')
@@ -103,40 +104,46 @@ class TestRequestLogger:
             request_logger.request(RequestTask(RequestMethod.GET, 'test', endpoint='/hello'))
 
     @pytest.mark.usefixtures('request_logger', 'get_log_files')
-    def test_request_logger_http(self, request_logger: RequestLogger, get_log_files: Callable[[], List[str]]) -> None:
-        response = Response()
-        response.status_code = 200
-        response_context_manager = ResponseContextManager(response, None, None)
+    @pytest.mark.parametrize('cls_rcm', [ResponseContextManager, FastResponseContextManager])
+    def test_request_logger_http(
+        self,
+        request_logger: RequestLogger,
+        get_log_files: Callable[[], List[str]],
+        cls_rcm: Type[GrizzlyResponseContextManager],
+        response_context_manager_fixture: ResponseContextManagerFixture,
+        capsys: CaptureFixture,
+    ) -> None:
+        request_logger.host = 'https://test.example.org'
         request = RequestTask(RequestMethod.POST, name='test-request', endpoint='/api/test')
+        response = response_context_manager_fixture(cls_rcm, 200, name=request.name)  # type: ignore
 
         assert get_log_files() == []
 
         # response status code == 200, don't do anything
-        request_logger.request_logger('test-request', response_context_manager, request, request_logger)
+        request_logger.request_logger('test-request', response, request, request_logger)
         assert get_log_files() == []
 
         # response status code == 401, but is added as an allowed response code, don't do anything
-        response.status_code = 401
+        response = response_context_manager_fixture(cls_rcm, 401, name=request.name)  # type: ignore
         request.response.add_status_code(401)
-        response_context_manager = ResponseContextManager(response, None, None)
 
         response_context = request.response
         setattr(request, 'response', None)
-        request_logger.request_logger('test-request', response_context_manager, request, request_logger)
+        request_logger.request_logger('test-request', response, request, request_logger)
 
         setattr(request, 'response', response_context)
 
-        request_logger.request_logger('test-request', response_context_manager, request, request_logger)
+        request_logger.request_logger('test-request', response, request, request_logger)
 
         assert get_log_files() == []
 
         # log request, name not set, byte body
         request_logger._context['log_all_requests'] = True
         request.response.status_codes = [200]
-        response.request = PreparedRequest()
-        response_context_manager = ResponseContextManager(response, None, None)
+        response = response_context_manager_fixture(cls_rcm, 401, name=request.name)  # type: ignore
+        del response.request_meta['response_time']
 
-        request_logger.request_logger('none-test', response_context_manager, request, request_logger)
+        request_logger.request_logger('none-test', response, request, request_logger)
 
         log_files = get_log_files()
 
@@ -160,24 +167,26 @@ class TestRequestLogger:
             assert log_file_contents.count('[]') == 0
 
         remove(log_file)
+        capsys.readouterr()
 
         # log failed request (400 - bad request) with locust meta data
         request_logger._context['log_all_requests'] = False
         request.method = RequestMethod.GET
-        response.status_code = 400
+        response = response_context_manager_fixture(
+            cls_rcm,
+            status_code=400,
+            request_method='GET',
+            request_headers={},
+            response_body={"test": "contents"},
+            url='https://test.example.org/api/v1/test',
+            name=request.name,  # type: ignore
+        )
         request.name = 'test-log-file'
-        response.request.method = 'get'
-        response.url = 'https://test.example.org/api/v1/test/response'
-        response.request.url = 'https://test.example.org/api/v1/test/request'
-        response.request.body = '{"test": "contents"}'.encode('utf-8')
-        response.request.headers = CaseInsensitiveDict()
-        response_context_manager = ResponseContextManager(response, None, None)
-        response_context_manager._entered = True
-        response_context_manager.request_meta = {
+        response.request_meta = {
             'response_time': 200,
         }
 
-        request_logger.request_logger(request.name, response_context_manager, request, request_logger)
+        request_logger.request_logger(request.name, response, request, request_logger)
 
         log_files = get_log_files()
 
@@ -188,37 +197,43 @@ class TestRequestLogger:
         with open(log_file) as fd:
             log_file_contents = fd.read()
 
+            print(log_file_contents)
+
             assert log_file_contents.count('None') == 0
             assert log_file_contents.count('[]') == 0
-            assert 'GET https://test.example.org/api/v1/test/request' in log_file_contents
-            assert '<- https://test.example.org/api/v1/test/response (200.00 ms) status=400' in log_file_contents
+            assert 'GET https://test.example.org/api/v1/test' in log_file_contents
+            assert '<- https://test.example.org/api/v1/test (200.00 ms) status=400' in log_file_contents
             assert '''{
   "test": "contents"
 }''' in log_file_contents
 
         remove(log_file)
+        capsys.readouterr()
 
         # log failed request (400 - bad request) with locust meta data
         request.name = 'test-log-file2'
         request.method = RequestMethod.PUT
-        response.url = 'https://test.example.org/api/v1/test/response'
-        response._content = ''.encode('utf-8')
-        response.request.url = 'https://test.example.org/api/v1/test/request'
-        response.request.method = 'PUT'
-        response.request.body = 'test body str'
-        response.request.headers = CaseInsensitiveDict(data=[
-            ('Content-Type', 'application/json'),
-            ('Content-Length', '1337'),
-        ])
-        response.headers = CaseInsensitiveDict(data=[
-            ('x-cookie', 'asdfasdfasdf'),
-        ])
-        response_context_manager = ResponseContextManager(response, None, None)
-        response_context_manager.request_meta = {
+        response = response_context_manager_fixture(
+            cls_rcm,
+            status_code=400,
+            response_body='',
+            response_headers={
+                'x-cookie': 'asdfasdfasdf',
+            },
+            request_method='PUT',
+            request_body='test body str',
+            request_headers={
+                'Content-Type': 'application/json',
+                'Content-Length': '1337',
+            },
+            url='https://test.example.org/api/v1/test',
+            name=request.name,  # type: ignore
+        )
+        response.request_meta = {
             'response_time': 137.2111,
         }
 
-        request_logger.request_logger(request.name, response_context_manager, request, request_logger)
+        request_logger.request_logger(request.name, response, request, request_logger)
 
         log_files = get_log_files()
 
@@ -229,11 +244,13 @@ class TestRequestLogger:
         with open(log_file) as fd:
             log_file_contents = fd.read()
 
+            print(log_file_contents)
+
             assert log_file_contents.count('None') == 0
             assert log_file_contents.count('[]') == 0
 
-            assert '<- https://test.example.org/api/v1/test/response (137.21 ms) status=400' in log_file_contents
-            assert 'PUT https://test.example.org/api/v1/test/request' in log_file_contents
+            assert '<- https://test.example.org/api/v1/test (137.21 ms) status=400' in log_file_contents
+            assert 'PUT https://test.example.org/api/v1/test' in log_file_contents
             assert '''payload:
 test body str''' in log_file_contents
             assert '''metadata:

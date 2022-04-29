@@ -1,13 +1,12 @@
-from typing import Any, Dict, Tuple, Optional, List
+from typing import Any, Dict, Tuple, Optional, List, cast
 from abc import ABC, abstractmethod
 from json import dumps as jsondumps
 
 import jinja2 as j2
-from locust.clients import ResponseContextManager
 from locust.env import Environment
 
 from ...tasks import RequestTask
-from ...types import HandlerContextType
+from ...types import HandlerContextType, GrizzlyResponseContextManager, GrizzlyResponse
 from ...exceptions import ResponseHandlerError, TransformerLocustError
 from .grizzly_user import GrizzlyUser
 from .response_event import ResponseEvent
@@ -26,7 +25,7 @@ class ResponseHandlerAction(ABC):
         self,
         input_context: Tuple[TransformerContentType, Any],
         user: GrizzlyUser,
-        response: Optional[ResponseContextManager] = None,
+        response: Optional[GrizzlyResponseContextManager] = None,
     ) -> None:
         raise NotImplementedError(f'{self.__class__.__name__} has not implemented __call__')
 
@@ -111,7 +110,7 @@ class ValidationHandlerAction(ResponseHandlerAction):
         self,
         input_context: Tuple[TransformerContentType, Any],
         user: GrizzlyUser,
-        response: Optional[ResponseContextManager] = None,
+        response: Optional[GrizzlyResponseContextManager] = None,
     ) -> None:
         match, expression, match_with = self.get_match(input_context, user, self.condition)
 
@@ -139,7 +138,7 @@ class SaveHandlerAction(ResponseHandlerAction):
         self,
         input_context: Tuple[TransformerContentType, Any],
         user: GrizzlyUser,
-        response: Optional[ResponseContextManager] = None,
+        response: Optional[GrizzlyResponseContextManager] = None,
     ) -> None:
         match, expression, _ = self.get_match(input_context, user)
 
@@ -181,12 +180,12 @@ class ResponseHandler(ResponseEvent):
         response_metadata: Optional[Dict[str, Any]]
         response_payload: Optional[str]
 
-        if isinstance(context, ResponseContextManager):
+        if isinstance(context, getattr(GrizzlyResponseContextManager, '__args__')):
             response_payload = context.text
             response_metadata = dict(context.headers)
             response_context = context
         else:
-            response_metadata, response_payload = context
+            response_metadata, response_payload = cast(GrizzlyResponse, context)
             response_context = None
 
         if len(handlers.payload) > 0 and response_payload is not None and len(response_payload) > 0:

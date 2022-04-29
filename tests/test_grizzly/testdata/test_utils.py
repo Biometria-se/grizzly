@@ -10,7 +10,6 @@ import zmq
 
 from _pytest.tmpdir import TempPathFactory
 
-from jinja2 import Template
 from pytest_mock import MockerFixture
 from _pytest.logging import LogCaptureFixture
 from locust.exception import StopUser
@@ -266,7 +265,6 @@ def test_initialize_testdata_with_payload_context(grizzly_fixture: GrizzlyFixtur
         grizzly.scenario.iterations = 2
 
         request.source = jsondumps(source)
-        request.template = Template(request.source)
 
         grizzly.scenario.add_task(request)
 

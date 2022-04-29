@@ -20,9 +20,11 @@ from grizzly_extras.transformer import TransformerContentType
 from grizzly_extras.arguments import parse_arguments, split_value, unquote
 
 from ..types import RequestMethod
-from . import GrizzlyTask, template as _template  # need to rename to avoid unused-import collision due to RequestTask.template ?!
+# need to rename to avoid unused-import collision due to RequestTask.template ?!
+from . import GrizzlyTask, template as _template  # pylint: disable=unused-import
 
 if TYPE_CHECKING:  # pragma: no cover
+    from ..context import GrizzlyContextScenario
     from ..scenarios import GrizzlyScenario
     from ..users.base.response_handler import ResponseHandlerAction
 
@@ -67,20 +69,20 @@ class RequestTask(GrizzlyTask):
     method: RequestMethod
     name: str
     endpoint: str
-    template: Optional[Template]
-    source: Optional[str]
+    _template: Optional[Template]
+    _source: Optional[str]
 
     response: RequestTaskResponse
 
-    def __init__(self, method: RequestMethod, name: str, endpoint: str) -> None:
-        super().__init__()
+    def __init__(self, method: RequestMethod, name: str, endpoint: str, source: Optional[str] = None, scenario: Optional['GrizzlyContextScenario'] = None) -> None:
+        super().__init__(scenario)
 
         self.method = method
         self.name = name
         self.endpoint = endpoint
 
-        self.template = None
-        self.source = None
+        self._template = None
+        self._source = source
 
         self.response = RequestTaskResponse()
 
@@ -101,6 +103,25 @@ class RequestTask(GrizzlyTask):
                 self.endpoint = value
 
         self.response.content_type = content_type
+
+    @property
+    def source(self) -> Optional[str]:
+        return self._source
+
+    @source.setter
+    def source(self, value: Optional[str]) -> None:
+        self._template = None
+        self._source = value
+
+    @property
+    def template(self) -> Optional[Template]:
+        if self._source is None:
+            return None
+
+        if self._template is None:
+            self._template = Template(self._source)
+
+        return self._template
 
     def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
         def task(parent: 'GrizzlyScenario') -> Any:

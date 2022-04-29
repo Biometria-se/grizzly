@@ -10,7 +10,6 @@ import zmq.green as zmq
 import gevent
 
 from _pytest.logging import LogCaptureFixture
-from jinja2 import Template
 from pytest_mock import MockerFixture
 from zmq.sugar.constants import REQ as ZMQ_REQ
 from zmq.error import ZMQError, Again as ZMQAgain
@@ -97,7 +96,6 @@ class TestTestdataProducer:
                 )
 
             request.source = json.dumps(source)
-            request.template = Template(request.source)
 
             grizzly.scenario.add_task(request)
             grizzly.scenario.add_task(PrintTask(message='hello {{ world }}'))
@@ -208,7 +206,6 @@ class TestTestdataProducer:
             source['result']['File'] = '{{ AtomicDirectoryContents.file }}'
 
             request.source = json.dumps(source)
-            request.template = Template(request.source)
 
             grizzly = cast(GrizzlyContext, behave_fixture.context.grizzly)
             grizzly.add_scenario(scenario.__class__.__name__)
