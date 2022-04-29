@@ -694,6 +694,7 @@ class TestRestApiUser:
 
         assert request_spy.call_count == 1
         args, _ = request_spy.call_args_list[-1]
+        assert len(args) == 2
         assert isinstance(args[0], FastHttpSession)
         assert args[0].environment is user.environment
         assert args[0].base_url == user.host
@@ -703,7 +704,6 @@ class TestRestApiUser:
         assert args[0].client.clientpool.client_args.get('network_timeout', None) == 60.0
         assert args[0].client.clientpool.client_args.get('ssl_context_factory', None) is gevent.ssl.create_default_context  # pylint: disable=no-member
         assert args[1] is request
-        assert args[2] == {}
 
         user._context['verify_certificates'] = False
 
@@ -725,18 +725,11 @@ class TestRestApiUser:
 
         assert request_spy.call_count == 1
         args, _ = request_spy.call_args_list[-1]
+        assert len(args) == 2
         assert args[0] is user.client
         assert args[1] is request
-        assert (args[2].get('verify', None) or False)
-
-        user._context['verify_certificates'] = False
 
         user.request(request)
-
-        assert request_spy.call_count == 2
-        args, _ = request_spy.call_args_list[-1]
-        print(args)
-        assert not args[2].get('verify', True)
 
     @pytest.mark.parametrize('request_func', [RestApiUser.request, RestApiUser.async_request])
     def test__request(
@@ -748,21 +741,22 @@ class TestRestApiUser:
     ) -> None:
         user, scenario = restapi_user
 
-        def mock_client_post(status_code: int) -> None:
-            def client_post(_: ResponseEventSession, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> GrizzlyResponseContextManager:
-                cls_rcm = cast(Type[GrizzlyResponseContextManager], ResponseContextManager if request_func is RestApiUser.request else FastResponseContextManager)
-                return response_context_manager_fixture(cls_rcm, status_code, user.environment, response_body={}, **kwargs)  # type: ignore
+        class ClientRequestMock:
+            def __init__(self, status_code: int, user: GrizzlyUser, request_func: Callable[[RestApiUser, RequestTask], GrizzlyResponse]) -> None:
+                self.status_code = status_code
+                self.user = user
+                self.spy = mocker.spy(self, 'request')
 
-            if request_func is RestApiUser.request:
-                mocker.patch(
-                    'grizzly.clients.ResponseEventSession.request',
-                    client_post,
-                )
-            else:
-                mocker.patch(
-                    'grizzly.users.restapi.FastHttpSession.request',
-                    client_post,
-                )
+                if request_func is RestApiUser.request:
+                    namespace = 'grizzly.clients.ResponseEventSession.request'
+                else:
+                    namespace = 'grizzly.users.restapi.FastHttpSession.request'
+
+                mocker.patch(namespace, self.request)
+
+            def request(self, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> GrizzlyResponseContextManager:
+                cls_rcm = cast(Type[GrizzlyResponseContextManager], ResponseContextManager if request_func is RestApiUser.request else FastResponseContextManager)
+                return response_context_manager_fixture(cls_rcm, self.status_code, self.user.environment, response_body={}, **kwargs)  # type: ignore
 
         request = cast(RequestTask, scenario.tasks[-1])
 
@@ -780,7 +774,7 @@ class TestRestApiUser:
 
         user.add_context(remote_variables)
 
-        mock_client_post(status_code=400)
+        request_mock = ClientRequestMock(status_code=400, user=user, request_func=request_func)
 
         scenario.failure_exception = StopUser
 
@@ -788,16 +782,22 @@ class TestRestApiUser:
         with pytest.raises(StopUser):
             request_func(user, request)
 
+        assert request_mock.spy.call_count == 1
+
         scenario.failure_exception = RestartScenario
 
         # status_code != 200, stop_on_failure = True
         with pytest.raises(RestartScenario):
             request_func(user, request)
 
+        assert request_mock.spy.call_count == 2
+
         request.response.add_status_code(400)
 
         with pytest.raises(ResultSuccess):
             request_func(user, request)
+
+        assert request_mock.spy.call_count == 3
 
         request.response.add_status_code(-400)
         scenario.failure_exception = None
@@ -805,13 +805,41 @@ class TestRestApiUser:
         # status_code != 200, stop_on_failure = False
         metadata, payload = request_func(user, request)
 
+        assert request_mock.spy.call_count == 4
+        _, kwargs = request_mock.spy.call_args_list[-1]
+        assert kwargs.get('method', None) == request.method.name
+        assert kwargs.get('name', '').startswith(request.scenario.identifier)
+        assert kwargs.get('catch_response', False)
+
+        if request_func is RestApiUser.request:
+            assert kwargs.get('url', None) == f'{user.host}{request.endpoint}'
+            assert kwargs.get('request', None) is request
+            assert kwargs.get('verify', False)
+        else:
+            assert kwargs.get('path', None) == request.endpoint
+
         assert metadata is None
         assert payload == '{}'
 
-        mock_client_post(status_code=200)
+        request_mock = ClientRequestMock(status_code=200, user=user, request_func=request_func)
+
+        user._context['verify_certificates'] = False
 
         request.response.add_status_code(-200)
         request_func(user, request)
+
+        assert request_mock.spy.call_count == 1
+        _, kwargs = request_mock.spy.call_args_list[-1]
+        assert kwargs.get('method', None) == request.method.name
+        assert kwargs.get('name', '').startswith(request.scenario.identifier)
+        assert kwargs.get('catch_response', False)
+
+        if request_func is RestApiUser.request:
+            assert kwargs.get('url', None) == f'{user.host}{request.endpoint}'
+            assert kwargs.get('request', None) is request
+            assert not kwargs.get('verify', True)
+        else:
+            assert kwargs.get('path', None) == request.endpoint
 
         request.response.add_status_code(200)
 
@@ -819,17 +847,23 @@ class TestRestApiUser:
         with pytest.raises(ResultSuccess):
             request_func(user, request)
 
+        assert request_mock.spy.call_count == 2
+
         # incorrect formated [json] payload
         request.source = '{"hello: "world"}'
 
         with pytest.raises(StopUser):
             request_func(user, request)
 
+        assert request_mock.spy.call_count == 2
+
         # unsupported request method
         request.method = RequestMethod.RECEIVE
 
         with pytest.raises(NotImplementedError):
             request_func(user, request)
+
+        assert request_mock.spy.call_count == 2
 
     def test_add_context(self, restapi_user: RestApiScenarioFixture) -> None:
         user, _ = restapi_user

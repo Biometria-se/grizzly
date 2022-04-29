@@ -570,31 +570,26 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
         client = FastHttpSession(
             environment=self.environment,
             base_url=self.host,
-            # should be FastHttpUser, but really, could just be locust.user.users.User ?
-            user=self,  # type: ignore
+            user=self,
             insecure=not self._context.get('verify_certificates', True),
             max_retries=1,
             connection_timeout=60.0,
             network_timeout=60.0,
         )
 
-        return self._request(client, request, {})
+        return self._request(client, request)
 
     def request(self, request: RequestTask) -> GrizzlyResponse:
-        return self._request(
-            self.client, request, {
-                'verify': self._context.get('verify_certificates', True),
-            },
-        )
+        return self._request(self.client, request)
 
     @refresh_token()
-    def _request(self, client: Union[FastHttpSession, ResponseEventSession], request: RequestTask, parameters: Optional[Dict[str, Any]] = None) -> GrizzlyResponse:
+    def _request(self, client: Union[FastHttpSession, ResponseEventSession], request: RequestTask) -> GrizzlyResponse:
         if request.method not in [RequestMethod.GET, RequestMethod.PUT, RequestMethod.POST]:
             raise NotImplementedError(f'{request.method.name} is not implemented for {self.__class__.__name__}')
 
         request_name, endpoint, payload = self.render(request)
 
-        parameters = parameters or {}
+        parameters: Dict[str, Any] = {}
         parameters.update({'headers': self.headers})
 
         url = f'{self.host}{endpoint}'
@@ -604,6 +599,7 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
             parameters.update({
                 'url': url,
                 'request': request,
+                'verify': self._context.get('verify_certificates', True),
             })
         else:
             parameters.update({
