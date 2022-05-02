@@ -1,6 +1,7 @@
 import pkgutil
 import inspect
 import socket
+import csv
 
 from typing import TYPE_CHECKING, Optional, Union, Callable, Any, Literal, List, Tuple, Type, Dict, cast
 from types import TracebackType
@@ -10,6 +11,8 @@ from mypy_extensions import VarArg, KwArg
 from os import environ, path
 from shutil import rmtree
 from json import dumps as jsondumps
+
+import gevent
 
 from locust.clients import ResponseContextManager
 from locust.contrib.fasthttp import FastResponse
@@ -26,6 +29,7 @@ from behave.model import Scenario, Step, Background
 from behave.configuration import Configuration
 from behave.step_registry import registry as step_registry
 from requests.models import CaseInsensitiveDict, Response, PreparedRequest
+from flask import Flask, request, jsonify, Response as FlaskResponse
 
 from grizzly.types import GrizzlyResponseContextManager, RequestMethod
 from grizzly.tasks.request import RequestTask
@@ -496,6 +500,88 @@ class ResponseContextManagerFixture:
         }
 
         return response_context_manager
+
+
+app = Flask(__name__)
+root_dir = path.realpath(path.join(path.dirname(__file__), '..'))
+
+
+@app.route('/api/v1/resources/dogs')
+def get_dog_fact() -> FlaskResponse:
+    _ = int(request.args.get('number', ''))
+
+    return jsonify(['woof woof wooof'])
+
+
+@app.route('/facts')
+def get_cat_fact() -> FlaskResponse:
+    _ = int(request.args.get('limit', ''))
+
+    return jsonify(['meow meow meow'])
+
+
+@app.route('/books/<book>.json')
+def get_book(book: str) -> FlaskResponse:
+    with open(f'{root_dir}/example/features/requests/books/books.csv', 'r') as fd:
+        reader = csv.DictReader(fd)
+        for row in reader:
+            if row['book'] == book:
+                return jsonify({
+                    'number_of_pages': row['pages'],
+                    'isbn_10': [row['isbn_10']] * 2,
+                    'authors': [
+                        {'key': '/author/' + row['author'].replace(' ', '_').strip() + '|' + row['isbn_10'].strip()},
+                    ]
+                })
+
+
+@app.route('/author/<author_key>.json')
+def get_author(author_key: str) -> FlaskResponse:
+    name, _ = author_key.rsplit('|', 1)
+
+    return jsonify({
+        'name': name.replace('_', ' ')
+    })
+
+
+class Webserver:
+    _web_server: gevent.pywsgi.WSGIServer
+    port: int
+
+    def __init__(self) -> None:
+        self._web_server = gevent.pywsgi.WSGIServer(
+            ('127.0.0.1', 0),
+            app,
+            log=None,
+        )
+
+    def __enter__(self) -> 'Webserver':
+        gevent.spawn(lambda: self._web_server.serve_forever())
+        gevent.sleep(0.01)
+        self.port = self._web_server.server_port
+
+        return self
+
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> Literal[True]:
+        self._web_server.stop_accepting()
+        self._web_server.stop()
+
+        try:
+            del environ['GRIZZLY_CONTEXT_ROOT']
+        except KeyError:
+            pass
+
+        try:
+            GrizzlyContext.destroy()
+        except:
+            pass
+
+        return True
 
 
 class NoopZmqFixture:

@@ -1,7 +1,9 @@
 import inspect
+import subprocess
 
 from typing import Any, Dict, Optional, Tuple, List, Set
 from types import MethodType
+from os import environ
 
 from locust import task
 from locust.event import EventHook
@@ -111,3 +113,41 @@ def get_property_decorated_attributes(target: Any) -> Set[str]:
                 )) if not name.startswith('_')
         ]
     )
+
+
+def run_command(command: List[str], env: Optional[Dict[str, str]] = None) -> Tuple[int, List[str]]:
+    output: List[str] = []
+    if env is None:
+        env = environ.copy()
+
+    process = subprocess.Popen(
+        command,
+        env=env,
+        stderr=subprocess.STDOUT,
+        stdout=subprocess.PIPE,
+    )
+
+    try:
+        while process.poll() is None:
+            stdout = process.stdout
+            if stdout is None:
+                break
+
+            buffer = stdout.readline()
+            if not buffer:
+                break
+
+            output.append(buffer.decode('utf-8'))
+
+        process.terminate()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        try:
+            process.kill()
+        except Exception:
+            pass
+
+    process.wait()
+
+    return process.returncode, output

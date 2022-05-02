@@ -118,11 +118,51 @@ jobs:
 
     - name: pytest
       id: pytest
-      run: python -m pytest
+      run: python -m pytest --ignore=tests/e2e
 
     - name: coverage
       id: coverage
       run: python -m coverage report --omit=**/*messagequeue*,**/*mq.py --fail-under=95
+
+  test-e2e:
+    needs: test-and-coverage
+    runs-on: ubuntu-latest
+
+    env:
+      PYTHONPATH: .
+
+    steps:
+    - name: checkout
+      id: checkout
+      uses: actions/checkout@v2
+
+    - name: setup python (with cache)
+      if: ${{ !env.ACT }}
+      id: setup-python-with-cache
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+        cache: 'pip'
+        cache-dependency-path: '**/requirements-ci.txt'
+
+    - name: setup python (without cache)
+      if: ${{ env.ACT }}
+      id: setup-python-without-cache
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+
+    - name: install python dependencies
+      id: pip
+      run: |
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+        python -m pip install --upgrade pip-tools
+        python -m piptools sync requirements-ci.txt --pip-args '--disable-pip-version-check --no-cache-dir --user --no-warn-script-location --no-deps'
+        python -m pip install .
+
+    - name: pytest (e2e)
+      id: pytest-e2e
+      run: python -m pytest tests/e2e
 
   pre-documentation-scripts:
     runs-on: 'ubuntu-latest'
