@@ -488,10 +488,10 @@ def test_print_scenario_summary(behave_fixture: BehaveFixture, capsys: CaptureFi
     summary = capsys.readouterr().out
     print(summary)
     assert '''Scenario
-identifier   #  description
------------|--|-------------|
-001          1  test-1
------------|--|-------------|
+ident   #  description
+------|--|-------------|
+001     1  test-1
+------|--|-------------|
 ''' == summary
     capsys.readouterr()
 
@@ -503,11 +503,11 @@ identifier   #  description
     summary = capsys.readouterr().out
     print(summary)
     assert '''Scenario
-identifier   #  description
------------|--|-----------------------------|
-001          1  test-1
-002          4  test-2-test-2-test-2-test-2
------------|--|-----------------------------|
+ident   #  description
+------|--|-----------------------------|
+001     1  test-1
+002     4  test-2-test-2-test-2-test-2
+------|--|-----------------------------|
 ''' == summary
     capsys.readouterr()
 
@@ -521,12 +521,12 @@ identifier   #  description
     print(summary)
 
     assert '''Scenario
-identifier     #  description
------------|----|-----------------------------|
-001            1  test-1
-002            4  test-2-test-2-test-2-test-2
-003          999  #3
------------|----|-----------------------------|
+ident     #  description
+------|----|-----------------------------|
+001       1  test-1
+002       4  test-2-test-2-test-2-test-2
+003     999  #3
+------|----|-----------------------------|
 ''' == summary
     capsys.readouterr()
 
@@ -540,13 +540,13 @@ identifier     #  description
     print(summary)
 
     assert '''Scenario
-identifier       #  description
------------|------|-----------------------------|
-001              1  test-1
-002              4  test-2-test-2-test-2-test-2
-003            999  #3
-004          99999  foo bar hello world
------------|------|-----------------------------|
+ident       #  description
+------|------|-----------------------------|
+001         1  test-1
+002         4  test-2-test-2-test-2-test-2
+003       999  #3
+004     99999  foo bar hello world
+------|------|-----------------------------|
 ''' == summary
     capsys.readouterr()
 
