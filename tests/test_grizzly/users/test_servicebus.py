@@ -69,7 +69,7 @@ class TestServiceBusUser:
             assert user.zmq_client.type == ZMQ_REQ
             assert say_hello_spy.call_count == 0
 
-            scenario = GrizzlyContextScenario()
+            scenario = GrizzlyContextScenario(2)
             scenario.name = 'test'
             scenario.user.class_name = 'ServiceBusUser'
 
@@ -108,7 +108,7 @@ class TestServiceBusUser:
         user.hellos = set(['sender=queue:test-queue'])
 
         task = RequestTask(RequestMethod.SEND, name='test-send', endpoint='queue:"{{ queue_name }}"')
-        scenario = GrizzlyContextScenario()
+        scenario = GrizzlyContextScenario(1)
         scenario.name = 'test'
         scenario.add_task(task)
 
@@ -230,7 +230,7 @@ class TestServiceBusUser:
             'message': 'unknown error',
         })
 
-        scenario = GrizzlyContextScenario()
+        scenario = GrizzlyContextScenario(1)
         scenario.name = 'test'
 
         # unsupported request method

@@ -1,9 +1,8 @@
 import logging
-import pickle
 
 from typing import Any, Dict, Tuple, Generator, Optional
-from os import environ, path
-from behave.model import Scenario
+from os import environ
+from random import uniform
 
 import pytest
 
@@ -12,6 +11,8 @@ from pytest_mock import MockerFixture
 from locust.env import Environment
 from locust.runners import LocalRunner, MasterRunner, WorkerRunner
 from locust.rpc.protocol import Message
+from locust.stats import RequestStats
+from behave.model import Scenario
 
 from grizzly.listeners import (
     _init_testdata_producer,
@@ -331,12 +332,17 @@ def test_validate_result(mocker: MockerFixture, listener_test: Environment, capl
 
     grizzly = GrizzlyContext()
 
-    static_dir = path.realpath(path.join(path.dirname(__file__), '..', '_static'))
+    listener_test.stats = RequestStats()
+    for method, name in [
+        ('POST', '001 OAuth2 client token',),
+        ('POST', '001 Register',),
+        ('GET', '001 Read',),
+    ]:
+        for i in range(100):
+            listener_test.stats.log_request(method, name, uniform(10.1, 56.5), len(name))
+            if i % 5 == 0:
+                listener_test.stats.log_error(method, name, RuntimeError('Error'))
 
-    # load pickled stats object, and modify it for triggering each result validation
-    listener_test.stats = pickle.load(open(f'{static_dir}/stats.p', 'rb'))
-    for stats_entry in listener_test.stats.entries.values():
-        stats_entry.num_failures = stats_entry.num_requests
     listener_test.stats.total.total_response_time = 2000
 
     validate_result_wrapper = validate_result(grizzly)
@@ -345,6 +351,7 @@ def test_validate_result(mocker: MockerFixture, listener_test: Environment, capl
     # environment has statistics, but can't find a matching scenario
     with caplog.at_level(logging.ERROR):
         validate_result_wrapper(listener_test)
+    assert len(caplog.messages) == 3
     assert 'does not match any scenario' in caplog.text
     caplog.clear()
 

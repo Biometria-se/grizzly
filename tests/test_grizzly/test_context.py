@@ -16,7 +16,6 @@ from grizzly.context import (
     GrizzlyContextScenarioValidation,
     GrizzlyContextScenarioWait,
     GrizzlyContextState,
-    generate_identifier,
     load_configuration_file,
 )
 
@@ -75,18 +74,6 @@ def test_load_configuration_file(tmp_path_factory: TempPathFactory) -> None:
             del environ['GRIZZLY_CONFIGURATION_FILE']
         except KeyError:
             pass
-
-
-def test_generate_identifier() -> None:
-    actual = generate_identifier('A scenario description')
-    expected = '25867809'
-
-    assert actual == expected
-
-    actual = generate_identifier('asdfasdfasdfasdfasdfasdfasdfasdf')
-    expected = '445c64a0'
-
-    assert actual == expected
 
 
 class TestGrizzlyContextSetup:
@@ -277,10 +264,20 @@ class TestGrizzlyContext:
 
 
 class TestGrizzlyContextScenario:
-    def test(self) -> None:
-        scenario = GrizzlyContextScenario()
+    @pytest.mark.parametrize('index', [
+        1,
+        12,
+        99,
+        104,
+        999,
+        1004,
+    ])
+    def test(self, index: int) -> None:
+        scenario = GrizzlyContextScenario(index)
+        identifier = f'{index:03}'
 
-        assert scenario._identifier is None
+        assert scenario.index == index
+        assert scenario.identifier == identifier
         assert not hasattr(scenario, 'name')
         assert not hasattr(scenario, 'user_class_name')
         assert scenario.iterations == 1
@@ -290,23 +287,16 @@ class TestGrizzlyContextScenario:
         assert isinstance(scenario.validation, GrizzlyContextScenarioValidation)
         assert not scenario.failure_exception
 
-        with pytest.raises(ValueError):
-            hash_id = scenario.identifier
-
         scenario.name = 'Test'
-        hash_id = scenario.identifier
-        assert hash_id == generate_identifier('Test')
+        assert scenario.get_name() == f'Test_{identifier}'
 
-        scenario._identifier = None
-        assert scenario.get_name() == f'Test_{hash_id}'
-
-        scenario.name = f'Test_{hash_id}'
-        assert scenario.get_name() == f'Test_{hash_id}'
+        scenario.name = f'Test_{identifier}'
+        assert scenario.get_name() == f'Test_{identifier}'
 
         assert not scenario.should_validate()
 
     def test_tasks(self, request_task: RequestTaskFixture) -> None:
-        scenario = GrizzlyContextScenario()
+        scenario = GrizzlyContextScenario(1)
         scenario.name = 'TestScenario'
         scenario.context['host'] = 'test'
         scenario.user.class_name = 'TestUser'

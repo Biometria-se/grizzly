@@ -41,7 +41,7 @@ def mq_user(grizzly_fixture: GrizzlyFixture) -> MqScenarioFixture:
 
     request = grizzly_fixture.request_task.request
 
-    scenario = GrizzlyContextScenario()
+    scenario = GrizzlyContextScenario(1)
     scenario.name = task.__class__.__name__
     scenario.user.class_name = 'MessageQueueUser'
     scenario.context['host'] = 'test'
@@ -209,7 +209,7 @@ class TestMessageQueueUser:
         user = MessageQueueUser(locust_fixture.env)
 
         request = RequestTask(RequestMethod.PUT, name='test-put', endpoint='EXAMPLE.QUEUE')
-        scenario = GrizzlyContextScenario()
+        scenario = GrizzlyContextScenario(3)
         scenario.name = 'test'
         scenario.failure_exception = StopUser
         scenario.add_task(request)
@@ -249,7 +249,7 @@ class TestMessageQueueUser:
             }
 
             request = RequestTask(RequestMethod.GET, name='test-get', endpoint=self.real_stuff['endpoint'])
-            scenario = GrizzlyContextScenario()
+            scenario = GrizzlyContextScenario(1)
             scenario.name = 'test'
             scenario.failure_exception = StopUser
             scenario.add_task(request)
@@ -303,7 +303,7 @@ class TestMessageQueueUser:
 
             request = RequestTask(RequestMethod.PUT, name='test-put', endpoint=self.real_stuff['endpoint'])
             request.source = 'we <3 IBM MQ'
-            scenario = GrizzlyContextScenario()
+            scenario = GrizzlyContextScenario(1)
             scenario.name = 'test'
             scenario.failure_exception = StopUser
             scenario.add_task(request)

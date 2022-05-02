@@ -36,7 +36,7 @@ def blob_storage_scenario(grizzly_fixture: GrizzlyFixture) -> BlobStorageScenari
 
     request = grizzly_fixture.request_task.request
 
-    scenario = GrizzlyContextScenario()
+    scenario = GrizzlyContextScenario(99)
     scenario.name = task.__class__.__name__
     scenario.user.class_name = 'BlobStorageUser'
     scenario.context['host'] = 'test'

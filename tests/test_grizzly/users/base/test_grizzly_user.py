@@ -42,7 +42,7 @@ class TestGrizzlyUser:
             request = RequestTask(RequestMethod.POST, name='test', endpoint='/api/test')
 
             request.source = 'hello {{ name }}'
-            scenario = GrizzlyContextScenario()
+            scenario = GrizzlyContextScenario(1)
             scenario.name = 'test'
             request.scenario = scenario
 
@@ -120,7 +120,7 @@ class TestGrizzlyUser:
             request = RequestTask(RequestMethod.POST, name='{{ name }}', endpoint='/api/test/{{ value }}')
 
             request.source = '{{ file_path }}'
-            scenario = GrizzlyContextScenario()
+            scenario = GrizzlyContextScenario(999)
             scenario.name = 'test'
             request.scenario = scenario
 

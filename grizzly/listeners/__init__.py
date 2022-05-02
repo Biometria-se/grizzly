@@ -188,7 +188,7 @@ def validate_result(grizzly: GrizzlyContext) -> Callable[[Environment, KwArg(Dic
                 actual = stats.total.fail_ratio
                 if actual > expected:
                     error_message = f'failure ration {int(actual*100)}% > {int(expected*100)}%'
-                    logger.error(f'scenario {prefix} failed due to {error_message}')
+                    logger.error(f'scenario {scenario.name} ({prefix}) failed due to {error_message}')
                     environment.events.request.fire(
                         request_type='ALL ',
                         name=f'{prefix} scenario failed',

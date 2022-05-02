@@ -22,7 +22,7 @@ def test__parse_template(request_task: RequestTaskFixture) -> None:
     source['result']['TestString'] = '{{ a_string }}'
 
     request.source = jsondumps(source)
-    scenario = GrizzlyContextScenario()
+    scenario = GrizzlyContextScenario(1)
     scenario.name = 'TestScenario'
     scenario.add_task(request)
 
@@ -30,23 +30,23 @@ def test__parse_template(request_task: RequestTaskFixture) -> None:
 
     variables = _parse_templates(templates)
 
-    assert 'TestScenario_bdd2cac2' in variables
-    assert len(variables['TestScenario_bdd2cac2']) == 8
-    assert 'messageID' in variables['TestScenario_bdd2cac2']
-    assert 'AtomicIntegerIncrementer.messageID' in variables['TestScenario_bdd2cac2']
-    assert 'AtomicDate.now' in variables['TestScenario_bdd2cac2']
-    assert 'AtomicCsvRow.test.header1' in variables['TestScenario_bdd2cac2']
-    assert 'AtomicCsvRow.test.header2' in variables['TestScenario_bdd2cac2']
-    assert 'AtomicDirectoryContents.test' in variables['TestScenario_bdd2cac2']
-    assert 'a_sub_string' in variables['TestScenario_bdd2cac2']
-    assert 'a_string' in variables['TestScenario_bdd2cac2']
+    assert 'TestScenario_001' in variables
+    assert len(variables['TestScenario_001']) == 8
+    assert 'messageID' in variables['TestScenario_001']
+    assert 'AtomicIntegerIncrementer.messageID' in variables['TestScenario_001']
+    assert 'AtomicDate.now' in variables['TestScenario_001']
+    assert 'AtomicCsvRow.test.header1' in variables['TestScenario_001']
+    assert 'AtomicCsvRow.test.header2' in variables['TestScenario_001']
+    assert 'AtomicDirectoryContents.test' in variables['TestScenario_001']
+    assert 'a_sub_string' in variables['TestScenario_001']
+    assert 'a_string' in variables['TestScenario_001']
 
 
 def test_get_template_variables() -> None:
     variables = get_template_variables([])
     assert variables == {}
 
-    scenario = GrizzlyContextScenario()
+    scenario = GrizzlyContextScenario(1)
     scenario.name = 'TestScenario'
     scenario.context['host'] = 'http://test.nu'
     scenario.user.class_name = 'TestUser'
