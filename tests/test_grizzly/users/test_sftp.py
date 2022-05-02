@@ -96,7 +96,7 @@ class TestSftpUser:
             request = RequestTask(RequestMethod.SEND, name='test', endpoint='/tmp')
             request.source = 'test/file.txt'
 
-            scenario = GrizzlyContextScenario()
+            scenario = GrizzlyContextScenario(2)
             scenario.name = 'test'
 
             request.scenario = scenario
@@ -191,7 +191,7 @@ class TestSftpUser:
 
             assert exception is not None
             assert isinstance(exception, ValueError)
-            assert 'SftpUser: request a94a8fe5 test does not have a payload, incorrect method specified' in str(exception)
+            assert 'SftpUser: request "002 test" does not have a payload, incorrect method specified' in str(exception)
 
             request.source = 'foo.bar'
 
@@ -260,7 +260,7 @@ class TestSftpUser:
             request = RequestTask(RequestMethod.PUT, name='test', endpoint='/upload')
             request.source = 'test.txt'
 
-            scenario = GrizzlyContextScenario()
+            scenario = GrizzlyContextScenario(1)
             scenario.name = 'test'
             scenario.user.class_name = 'SftpUser'
             scenario.failure_exception = StopUser

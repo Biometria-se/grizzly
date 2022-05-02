@@ -2,7 +2,6 @@ import logging
 
 from typing import TYPE_CHECKING, Optional, Dict, Any, Tuple, List, Union, Type
 from os import environ, path
-from hashlib import sha1 as sha1_hash
 from dataclasses import dataclass, field
 
 import yaml
@@ -17,10 +16,6 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 logger = logging.getLogger(__name__)
-
-
-def generate_identifier(name: str) -> str:
-    return sha1_hash(name.encode('utf-8')).hexdigest()[:8]
 
 
 def load_configuration_file() -> Dict[str, Any]:
@@ -99,7 +94,7 @@ class GrizzlyContextScenario:
     name: str = field(init=False, hash=True)
     description: str = field(init=False, hash=False)
     user: GrizzlyContextScenarioUser = field(init=False, hash=False, compare=False, default_factory=GrizzlyContextScenarioUser)
-    _identifier: Optional[str] = field(init=False, hash=True, default=None)
+    index: int = field(init=True)
     iterations: int = field(init=False, repr=False, hash=False, compare=False, default=1)
 
     behave: Scenario = field(init=False, repr=False, hash=False, compare=False)
@@ -113,19 +108,10 @@ class GrizzlyContextScenario:
 
     @property
     def identifier(self) -> str:
-        if not hasattr(self, 'name') or self.name is None:
-            raise ValueError('scenario has no name')
-
-        if self._identifier is None:
-            self._identifier = generate_identifier(self.name)
-
-        return self._identifier
+        return f'{self.index:03}'
 
     def get_name(self) -> str:
-        if self._identifier is None:
-            self._identifier = generate_identifier(self.name)
-
-        if not self.name.endswith(f'_{self._identifier}'):
+        if not self.name.endswith(f'_{self.identifier}'):
             return f'{self.name}_{self.identifier}'
         else:
             return self.name
@@ -198,12 +184,12 @@ class GrizzlyContext:
     @property
     def scenario(self) -> GrizzlyContextScenario:
         if len(self._scenarios) < 1:
-            self._scenarios.append(GrizzlyContextScenario())
+            self._scenarios.append(GrizzlyContextScenario(1))
 
         return self._scenarios[-1]
 
     def add_scenario(self, source: Union[Scenario, str]) -> None:
-        scenario = GrizzlyContextScenario()
+        scenario = GrizzlyContextScenario(len(self._scenarios) + 1)
         if isinstance(source, Scenario):
             name = source.name
             scenario.behave = source

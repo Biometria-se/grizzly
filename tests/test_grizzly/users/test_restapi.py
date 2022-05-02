@@ -37,7 +37,7 @@ RestApiScenarioFixture = Tuple[RestApiUser, GrizzlyContextScenario]
 @pytest.mark.usefixtures('grizzly_fixture')
 @pytest.fixture
 def restapi_user(grizzly_fixture: GrizzlyFixture) -> RestApiScenarioFixture:
-    scenario = GrizzlyContextScenario()
+    scenario = GrizzlyContextScenario(1)
     scenario.name = 'TestScenario'
     scenario.context['host'] = 'test'
     scenario.user.class_name = 'RestApiUser'

@@ -121,7 +121,7 @@ class SftpUser(ResponseHandler, RequestLogger, GrizzlyUser, FileRequests):
             with self.sftp_client.session(**self._context['auth']) as session:
                 if request.method == RequestMethod.PUT:
                     if payload is None:
-                        raise ValueError(f'{self.__class__.__name__}: request {name} does not have a payload, incorrect method specified')
+                        raise ValueError(f'{self.__class__.__name__}: request "{name}" does not have a payload, incorrect method specified')
 
                     payload = path.realpath(path.join(self._payload_root, payload))
                     session.put(payload, endpoint, get_response_length)

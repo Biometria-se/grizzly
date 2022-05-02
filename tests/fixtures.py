@@ -303,7 +303,7 @@ class RequestTaskFixture:
 
         request = RequestTask(RequestMethod.POST, endpoint='/api/test', name='request_task')
         request.source = REQUEST_TASK_TEMPLATE_CONTENTS
-        request.scenario = GrizzlyContextScenario()
+        request.scenario = GrizzlyContextScenario(1)
         request.scenario.name = 'test-scenario'
         request.scenario.user.class_name = 'TestUser'
         request.scenario.context['host'] = 'http://example.com'

@@ -390,7 +390,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
 
         task = RequestTask(RequestMethod.POST, 'test-post-1', '/api/v3/test/post/1')
         task.source = '{{ AtomicIntegerIncrementer.value }}, {{ test_id }}'
-        task.scenario = GrizzlyContextScenario()
+        task.scenario = GrizzlyContextScenario(1)
         task.scenario.name = 'test-scenario-1'
         task.scenario.user.class_name = 'RestApiUser'
         tasks: List[GrizzlyTask] = [task]
@@ -488,10 +488,10 @@ def test_print_scenario_summary(behave_fixture: BehaveFixture, capsys: CaptureFi
     summary = capsys.readouterr().out
     print(summary)
     assert '''Scenario
-identifier   #  description
------------|--|-------------|
-cbda8191     1  test-1
------------|--|-------------|
+ident   #  description
+------|--|-------------|
+001     1  test-1
+------|--|-------------|
 ''' == summary
     capsys.readouterr()
 
@@ -503,11 +503,11 @@ cbda8191     1  test-1
     summary = capsys.readouterr().out
     print(summary)
     assert '''Scenario
-identifier   #  description
------------|--|-----------------------------|
-cbda8191     1  test-1
-b4959834     4  test-2-test-2-test-2-test-2
------------|--|-----------------------------|
+ident   #  description
+------|--|-----------------------------|
+001     1  test-1
+002     4  test-2-test-2-test-2-test-2
+------|--|-----------------------------|
 ''' == summary
     capsys.readouterr()
 
@@ -521,12 +521,12 @@ b4959834     4  test-2-test-2-test-2-test-2
     print(summary)
 
     assert '''Scenario
-identifier     #  description
------------|----|-----------------------------|
-cbda8191       1  test-1
-b4959834       4  test-2-test-2-test-2-test-2
-83189503     999  #3
------------|----|-----------------------------|
+ident     #  description
+------|----|-----------------------------|
+001       1  test-1
+002       4  test-2-test-2-test-2-test-2
+003     999  #3
+------|----|-----------------------------|
 ''' == summary
     capsys.readouterr()
 
@@ -540,13 +540,13 @@ b4959834       4  test-2-test-2-test-2-test-2
     print(summary)
 
     assert '''Scenario
-identifier       #  description
------------|------|-----------------------------|
-cbda8191         1  test-1
-b4959834         4  test-2-test-2-test-2-test-2
-83189503       999  #3
-0b345183     99999  foo bar hello world
------------|------|-----------------------------|
+ident       #  description
+------|------|-----------------------------|
+001         1  test-1
+002         4  test-2-test-2-test-2-test-2
+003       999  #3
+004     99999  foo bar hello world
+------|------|-----------------------------|
 ''' == summary
     capsys.readouterr()
 

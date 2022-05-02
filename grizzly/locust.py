@@ -223,7 +223,7 @@ def setup_environment_listeners(context: Context, environment: Environment, task
 
 def print_scenario_summary(grizzly: GrizzlyContext) -> None:
     def print_table_lines(max_length_iterations: int, max_length_description: int) -> None:
-        sys.stdout.write('-' * 10)
+        sys.stdout.write('-' * 5)
         sys.stdout.write('-|-')
         sys.stdout.write('-' * max_length_iterations)
         sys.stdout.write('|-')
@@ -245,7 +245,7 @@ def print_scenario_summary(grizzly: GrizzlyContext) -> None:
 
     for scenario in grizzly.scenarios():
         description = scenario.description or 'unknown'
-        row = '{:10}   {:>{}}  {}'.format(
+        row = '{:5}   {:>{}}  {}'.format(
             scenario.identifier,
             scenario.iterations,
             max_length_iterations,
@@ -254,7 +254,7 @@ def print_scenario_summary(grizzly: GrizzlyContext) -> None:
         rows.append(row)
 
     print('Scenario')
-    print('{:10}   {:>{}}  {}'.format('identifier', '#', max_length_iterations, 'description'))
+    print('{:5}   {:>{}}  {}'.format('ident', '#', max_length_iterations, 'description'))
     print_table_lines(max_length_iterations, max_length_description)
     for row in rows:
         print(row)

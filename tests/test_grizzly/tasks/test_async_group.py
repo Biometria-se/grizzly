@@ -41,7 +41,7 @@ class TestAsyncRequestGroup:
 
         assert scenario is not None
 
-        scenario_context = GrizzlyContextScenario()
+        scenario_context = GrizzlyContextScenario(1)
         scenario_context.name = scenario_context.description = 'test scenario'
 
         task_factory = AsyncRequestGroupTask(name='test-async-group', scenario=scenario_context)
@@ -157,7 +157,7 @@ class TestAsyncRequestGroup:
 
         assert user.host == 'http://host.docker.internal:8002'
 
-        context_scenario = GrizzlyContextScenario()
+        context_scenario = GrizzlyContextScenario(1)
         context_scenario.name = context_scenario.description = 'test scenario'
 
         task_factory = AsyncRequestGroupTask(name='test', scenario=context_scenario)

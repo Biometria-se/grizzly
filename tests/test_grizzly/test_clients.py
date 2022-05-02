@@ -60,7 +60,7 @@ class TestResponseEventSession:
 
         session = ResponseEventSession(base_url='', request_event=RequestEvent())
         request = RequestTask(RequestMethod.POST, name='test-request', endpoint='/api/test')
-        scenario = GrizzlyContextScenario()
+        scenario = GrizzlyContextScenario(1)
         scenario.name = 'TestScenario'
         scenario.context['host'] = 'test'
         request.scenario = scenario

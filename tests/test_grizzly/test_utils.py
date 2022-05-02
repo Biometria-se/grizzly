@@ -141,7 +141,7 @@ def test_fail_directly(behave_fixture: BehaveFixture) -> None:
 
 
 def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
-    scenario = GrizzlyContextScenario()
+    scenario = GrizzlyContextScenario(1)
     scenario.name = 'A scenario description'
     scenario.description = scenario.name
 
@@ -223,7 +223,7 @@ def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
     }
     assert user_type_1._scenario is scenario
 
-    scenario = GrizzlyContextScenario()
+    scenario = GrizzlyContextScenario(1)
     scenario.name = 'TestTestTest'
     scenario.user.class_name = 'RestApiUser'
     scenario.context['metadata'] = {
@@ -318,7 +318,7 @@ def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
     }
     assert user_type_2._scenario is scenario
 
-    scenario = GrizzlyContextScenario()
+    scenario = GrizzlyContextScenario(1)
     scenario.name = 'TestTestTest2'
     scenario.user.class_name = 'RestApiUser'
     scenario.context = {'test': {'value': 'hello world', 'description': 'simple text'}}
@@ -394,14 +394,14 @@ def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
     }
 
     with pytest.raises(AttributeError):
-        scenario = GrizzlyContextScenario()
+        scenario = GrizzlyContextScenario(1)
         scenario.name = 'A scenario description'
         scenario.user.class_name = 'DoNotExistInGrizzlyUsersUser'
         create_user_class_type(scenario)
 
 
 def test_create_scenario_class_type() -> None:
-    scenario = GrizzlyContextScenario()
+    scenario = GrizzlyContextScenario(1)
     scenario.name = 'A scenario description'
 
     with pytest.raises(ModuleNotFoundError) as mnfe:
@@ -411,21 +411,21 @@ def test_create_scenario_class_type() -> None:
     task_class_type_1 = create_scenario_class_type('grizzly.scenarios.IteratorScenario', scenario)
 
     assert issubclass(task_class_type_1, (IteratorScenario, TaskSet))
-    assert task_class_type_1.__name__ == 'IteratorScenario_25867809'
+    assert task_class_type_1.__name__ == 'IteratorScenario_001'
     assert task_class_type_1.__module__ == 'grizzly.scenarios.iterator'
     task_class_type_1.populate(RequestTask(RequestMethod.POST, name='test-request', endpoint='/api/test'))
 
-    scenario = GrizzlyContextScenario()
+    scenario = GrizzlyContextScenario(2)
     scenario.name = 'TestTestTest'
     task_class_type_2 = create_scenario_class_type('IteratorScenario', scenario)
     assert issubclass(task_class_type_2, (IteratorScenario, TaskSet))
-    assert task_class_type_2.__name__ == 'IteratorScenario_cf4fa8aa'
+    assert task_class_type_2.__name__ == 'IteratorScenario_002'
     assert task_class_type_2.__module__ == 'grizzly.scenarios.iterator'
 
     assert task_class_type_1.tasks != task_class_type_2.tasks
 
     with pytest.raises(AttributeError):
-        scenario = GrizzlyContextScenario()
+        scenario = GrizzlyContextScenario(3)
         scenario.name = 'A scenario description'
         create_scenario_class_type('DoesNotExistInGrizzlyScenariosModel', scenario)
 
