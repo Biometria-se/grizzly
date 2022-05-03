@@ -13,7 +13,7 @@ from os import chdir, environ, getcwd, path
 from shutil import rmtree
 from json import dumps as jsondumps
 from pathlib import Path
-from textwrap import dedent
+from textwrap import dedent, indent
 
 import gevent
 
@@ -647,14 +647,23 @@ BehaveKeyword = Literal['Then', 'Given', 'And', 'When']
 class BehaveValidator:
     name: str
     implementation: Any
+    table: Optional[List[Dict[str, str]]]
 
-    def __init__(self, name: str, implementation: Callable[[BehaveContext], None]) -> None:
+    def __init__(self, name: str, implementation: Callable[[BehaveContext], None], table: Optional[List[Dict[str, str]]] = None) -> None:
         self.name = name
         self.implementation = implementation
+        self.table = table
 
     @property
     def expression(self) -> str:
-        return f'Then run validator {self.name}'
+        lines: List[str] = [f'Then run validator {self.name}']
+        if self.table is not None and len(self.table) > 0:
+            lines.append(f'  | {" | ".join([key for key in self.table[0].keys()])} |')
+
+            for row in self.table:
+                lines.append(f'  | {" | ".join([value for value in row.values()])} |')
+
+        return '\n'.join(lines)
 
     @property
     def impl(self) -> str:
@@ -747,9 +756,9 @@ class BehaveContextFixture:
 
         return True
 
-    def add_validator(self, implementation: Callable[[BehaveContext], None]) -> None:
+    def add_validator(self, implementation: Callable[[BehaveContext], None], table: Optional[List[Dict[str, str]]] = None) -> None:
         callee = inspect.stack()[1].function
-        self._validators.append(BehaveValidator(callee, implementation))
+        self._validators.append(BehaveValidator(callee, implementation, table))
 
     def test_steps(self, /, scenario: Optional[List[str]] = None, background: Optional[List[str]] = None) -> str:
         callee = inspect.stack()[1].function
@@ -815,13 +824,17 @@ class BehaveContextFixture:
             ffd.write(contents)
 
             with open(self.root / 'features' / 'steps' / 'steps.py', 'w') as sfd:
+                sfd.write('import json\n\n')
                 sfd.write('from typing import cast\n\n')
                 sfd.write('from behave import then\n')
                 sfd.write('from behave.runner import Context\n')
                 sfd.write('from grizzly.context import GrizzlyContext\n')
                 sfd.write('from grizzly.steps import *\n')
                 for validator in self._validators:
-                    ffd.write(f'    {validator.expression}\n')
+                    # write step to feature file
+                    ffd.write(indent(f'{validator.expression}\n', prefix='    '))
+
+                    # write expression and step implementation to steps/steps.py
                     sfd.write(f'\n\n{validator.impl}')
 
             # they are now "burned"...
@@ -845,8 +858,13 @@ class BehaveContextFixture:
             for key, value in testdata.items():
                 command += ['-T', f'{key}={value}']
 
-        return run_command(
+        rc, output = run_command(
             command,
             cwd=str(self.root),
             env=self._env,
         )
+
+        if rc != 0:
+            print(''.join(output))
+
+        return rc, output
