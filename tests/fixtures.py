@@ -2,15 +2,18 @@ import pkgutil
 import inspect
 import socket
 import csv
+import re
 
 from typing import TYPE_CHECKING, Optional, Union, Callable, Any, Literal, List, Tuple, Type, Dict, cast
 from types import TracebackType
 from unittest.mock import MagicMock
 from urllib.parse import urlparse
 from mypy_extensions import VarArg, KwArg
-from os import environ, path
+from os import chdir, environ, getcwd, path
 from shutil import rmtree
 from json import dumps as jsondumps
+from pathlib import Path
+from textwrap import dedent
 
 import gevent
 
@@ -39,6 +42,7 @@ import grizzly.testdata.variables as variables
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 
 from .helpers import TestUser, TestScenario, RequestSilentFailureEvent
+from .helpers import onerror, run_command
 
 if TYPE_CHECKING:
     from grizzly.users.base import GrizzlyUser
@@ -635,3 +639,214 @@ class NoopZmqFixture:
                 return mock
 
         raise AttributeError(f'no mocks for {attr}')
+
+
+BehaveKeyword = Literal['Then', 'Given', 'And', 'When']
+
+
+class BehaveValidator:
+    name: str
+    implementation: Any
+
+    def __init__(self, name: str, implementation: Callable[[BehaveContext], None]) -> None:
+        self.name = name
+        self.implementation = implementation
+
+    @property
+    def expression(self) -> str:
+        return f'Then run validator {self.name}'
+
+    @property
+    def impl(self) -> str:
+        source_lines = inspect.getsource(self.implementation).split('\n')
+        source_lines[0] = source_lines[0].replace('def ', f'def {self.name}_')
+        source = '\n'.join(source_lines)
+
+        return f'''@then(u'run validator {self.name}')
+{dedent(source)}
+'''
+
+
+class BehaveContextFixture:
+    _tmp_path_factory: TempPathFactory
+    _cwd: str
+    _env: Dict[str, str]
+    _validators: List[BehaveValidator]
+
+    root: Optional[Path]
+
+    def __init__(self, tmp_path_factory: TempPathFactory) -> None:
+        self._tmp_path_factory = tmp_path_factory
+        self._cwd = getcwd()
+        self._env = {}
+        self._validators = []
+        self.root = None
+
+    def __enter__(self) -> 'BehaveContextFixture':
+        test_context = self._tmp_path_factory.mktemp('test_context')
+
+        # create grizzly project
+        rc, output = run_command(
+            ['grizzly-cli', 'init', '--yes', 'test-project'],
+            cwd=str(test_context),
+        )
+
+        try:
+            assert rc == 0
+        except AssertionError:
+            print(''.join(output))
+            raise
+
+        self.root = test_context / 'test-project'
+
+        assert self.root.is_dir()
+
+        # create virtualenv
+        rc, output = run_command(
+            ['python3', '-m', 'venv', '.virtual-env'],
+            cwd=str(self.root),
+        )
+
+        try:
+            assert rc == 0
+        except AssertionError:
+            print(''.join(output))
+
+            raise
+
+        path = environ.get('PATH', '')
+
+        virtual_env_path = self.root / '.virtual-env'
+
+        self._env.update({
+            'PATH': f'{str(virtual_env_path)}/bin:{path}',
+            'VIRTUAL_ENV': str(virtual_env_path),
+        })
+
+        # install dependencies
+        rc, output = run_command(
+            ['python3', '-m', 'pip', 'install', '-r', 'requirements.txt'],
+            cwd=str(self.root),
+            env=self._env,
+        )
+
+        chdir(self.root)
+
+        return self
+
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> Literal[True]:
+        chdir(self._cwd)
+
+        if self.root is not None:
+            rmtree(self.root.parent.parent, onerror=onerror)
+
+        return True
+
+    def add_validator(self, implementation: Callable[[BehaveContext], None]) -> None:
+        callee = inspect.stack()[1].function
+        self._validators.append(BehaveValidator(callee, implementation))
+
+    def test_steps(self, /, scenario: Optional[List[str]] = None, background: Optional[List[str]] = None) -> str:
+        callee = inspect.stack()[1].function
+        contents: List[str] = ['Feature:']
+        add_user_count_step = True
+        add_user_type_step = True
+        add_spawn_rate_step = True
+
+        if background is None:
+            background = []
+
+        if scenario is None:
+            scenario = []
+
+        # check required steps
+        for step in background + scenario:
+            if re.match(r'Given "[0-9]" user[s]?', step) is not None:
+                add_user_count_step = False
+
+            if re.match(r'Given a user of type "[^"]*"', step) is not None:
+                add_user_type_step = False
+
+            if re.match(r'And spawn rate is "[0-9]+" user[s]? per second', step) is not None:
+                add_spawn_rate_step = False
+
+        if add_user_count_step:
+            background.insert(0, 'Given "1" user')
+
+        if add_user_type_step:
+            scenario.insert(0, 'Given a user of type "RestApi" load testing "http://localhost:1"')
+
+        if add_spawn_rate_step:
+            background.append('And spawn rate is "1" user per second')
+
+        contents.append('  Background: common configuration')
+        for step in background:
+            contents.append(f'    {step}')
+
+        contents.append('')
+
+        if scenario is not None:
+            contents.append(f'  Scenario: {callee} scenario')
+            for step in scenario or []:
+                contents.append(f'    {step}')
+            contents.append('    Then print message "dummy"')
+
+        contents.append('')
+
+        return self.create_feature('\n'.join(contents), name=callee)
+
+    def create_feature(self, contents: str, name: Optional[str] = None) -> str:
+        if self.root is None:
+            raise FileNotFoundError('no test project created')
+
+        if name is None:
+            name = inspect.stack()[1].function
+
+        with open(self.root / 'features' / f'{name}.feature', 'w+') as ffd:
+            feature_lines = contents.split('\n')
+            feature_lines[0] = f'Feature: test {name}'
+            contents = '\n'.join(feature_lines)
+
+            ffd.write(contents)
+
+            with open(self.root / 'features' / 'steps' / 'steps.py', 'w') as sfd:
+                sfd.write('from typing import cast\n\n')
+                sfd.write('from behave import then\n')
+                sfd.write('from behave.runner import Context\n')
+                sfd.write('from grizzly.context import GrizzlyContext\n')
+                sfd.write('from grizzly.steps import *\n')
+                for validator in self._validators:
+                    ffd.write(f'    {validator.expression}\n')
+                    sfd.write(f'\n\n{validator.impl}')
+
+            # they are now "burned"...
+            self._validators.clear()
+
+            return ffd.name.replace(f'{self.root}/', '')
+
+    def execute(self, feature_file: str, env_conf_file: Optional[str] = None, testdata: Optional[Dict[str, str]] = None) -> Tuple[int, List[str]]:
+        command = [
+            'grizzly-cli',
+            'local',
+            'run',
+            '--yes',
+            feature_file,
+        ]
+
+        if env_conf_file is not None:
+            command += ['-e', env_conf_file]
+
+        if testdata is not None:
+            for key, value in testdata.items():
+                command += ['-T', f'{key}={value}']
+
+        return run_command(
+            command,
+            cwd=str(self.root),
+            env=self._env,
+        )

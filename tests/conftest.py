@@ -1,13 +1,15 @@
-from typing import Generator
+from typing import Generator, List
 
 import pytest
 
 from _pytest.tmpdir import TempPathFactory
+from _pytest.config import Config
 
 from pytest_mock.plugin import MockerFixture
 
 from .fixtures import (
     AtomicVariableCleanupFixture,
+    BehaveContextFixture,
     LocustFixture,
     NoopZmqFixture,
     ParamikoFixture,
@@ -17,6 +19,23 @@ from .fixtures import (
     ResponseContextManagerFixture,
     Webserver,
 )
+
+
+PYTEST_TIMEOUT = 120
+
+
+# if we're only running E2E tests, set global timeout
+def pytest_configure(config: Config) -> None:
+    target = getattr(config.known_args_namespace, 'file_or_dir', ['foobar'])
+    if 'tests/e2e' in target[0]:
+        config._inicache['timeout'] = PYTEST_TIMEOUT
+
+
+# also, add markers for each test function that starts with test_e2e_, if we're running everything
+def pytest_collection_modifyitems(items: List[pytest.Function]) -> None:
+    for item in items:
+        if item.originalname.startswith('test_e2e_') and item.get_closest_marker('timeout') is None:
+            item.add_marker(pytest.mark.timeout(PYTEST_TIMEOUT))
 
 
 def _atomicvariable_cleanup() -> Generator[AtomicVariableCleanupFixture, None, None]:
@@ -66,6 +85,12 @@ def _webserver() -> Generator[Webserver, None, None]:
         yield fixture
 
 
+@pytest.mark.usefixtures('tmp_path_factory')
+def _behave_context_fixture(tmp_path_factory: TempPathFactory) -> Generator[BehaveContextFixture, None, None]:
+    with BehaveContextFixture(tmp_path_factory) as fixture:
+        yield fixture
+
+
 cleanup = pytest.fixture()(_atomicvariable_cleanup)
 locust_fixture = pytest.fixture()(_locust_fixture)
 paramiko_fixture = pytest.fixture()(_paramiko_fixture)
@@ -75,3 +100,4 @@ grizzly_fixture = pytest.fixture(scope='function')(_grizzly_fixture)
 noop_zmq = pytest.fixture()(_noop_zmq)
 response_context_manager_fixture = pytest.fixture()(_response_context_manager)
 webserver = pytest.fixture(scope='session')(_webserver)
+behave_context_fixture = pytest.fixture(scope='session')(_behave_context_fixture)

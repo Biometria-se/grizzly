@@ -1,9 +1,10 @@
 import inspect
 import subprocess
+import os
+import stat
 
-from typing import Any, Dict, Optional, Tuple, List, Set
-from types import MethodType
-from os import environ
+from typing import Any, Dict, Optional, Tuple, List, Set, Callable
+from types import MethodType, TracebackType
 
 from locust import task
 from locust.event import EventHook
@@ -115,14 +116,18 @@ def get_property_decorated_attributes(target: Any) -> Set[str]:
     )
 
 
-def run_command(command: List[str], env: Optional[Dict[str, str]] = None) -> Tuple[int, List[str]]:
+def run_command(command: List[str], env: Optional[Dict[str, str]] = None, cwd: Optional[str] = None) -> Tuple[int, List[str]]:
     output: List[str] = []
     if env is None:
-        env = environ.copy()
+        env = os.environ.copy()
+
+    if cwd is None:
+        cwd = os.getcwd()
 
     process = subprocess.Popen(
         command,
         env=env,
+        cwd=cwd,
         stderr=subprocess.STDOUT,
         stdout=subprocess.PIPE,
     )
@@ -151,3 +156,19 @@ def run_command(command: List[str], env: Optional[Dict[str, str]] = None) -> Tup
     process.wait()
 
     return process.returncode, output
+
+
+def onerror(func: Callable, path: str, exc_info: TracebackType) -> None:
+    '''
+    Error handler for ``shutil.rmtree``.
+    If the error is due to an access error (read only file)
+    it attempts to add write permission and then retries.
+    If the error is for another reason it re-raises the error.
+    Usage : ``shutil.rmtree(path, onerror=onerror)``
+    '''
+    # Is the error an access error?
+    if not os.access(path, os.W_OK):
+        os.chmod(path, stat.S_IWUSR)
+        func(path)
+    else:
+        raise  # pylint: disable=misplaced-bare-raise
