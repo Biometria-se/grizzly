@@ -1,5 +1,6 @@
 from tempfile import NamedTemporaryFile
 from os import chdir, getcwd
+from typing import Optional
 
 import yaml
 
@@ -7,10 +8,11 @@ from ..fixtures import Webserver
 from ..helpers import run_command
 
 
-def test_example(webserver: Webserver) -> None:
+def test_e2e_example(webserver: Webserver) -> None:
     cwd = getcwd()
 
     try:
+        result: Optional[str] = None
         with open('example/environments/example.yaml') as env_yaml_file:
             env_conf = yaml.full_load(env_yaml_file)
 
@@ -38,5 +40,9 @@ def test_example(webserver: Webserver) -> None:
             assert '1 feature passed, 0 failed, 0 skipped' in result
             assert '3 scenarios passed, 0 failed, 0 skipped' in result
             assert '21 steps passed, 0 failed, 0 skipped, 0 undefined' in result
+    except:
+        if result is not None:
+            print(result)
+        raise
     finally:
         chdir(cwd)
