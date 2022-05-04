@@ -253,6 +253,7 @@ def test_e2e_step_allow_status_codes_table(behave_context_fixture: BehaveContext
     rc, _ = behave_context_fixture.execute(feature_file)
     assert rc == 0
 
+
 @pytest.mark.parametrize('content_type', [
     'json', 'application/json',
     'xml', 'application/xml',

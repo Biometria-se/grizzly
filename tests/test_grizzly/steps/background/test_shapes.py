@@ -60,6 +60,10 @@ def test_step_shapes_user_count(behave_fixture: BehaveFixture) -> None:
     step_impl(behave, '{{ user_count * 0.1 }}', grammar='user')
     assert grizzly.setup.user_count == 1
 
+    with pytest.raises(AssertionError) as ae:
+        step_impl(behave, '$conf::user.count', grammar='users')
+    assert 'this expression does not support $conf or $env variables' == str(ae.value)
+
 
 def test_step_shapes_spawn_rate(behave_fixture: BehaveFixture) -> None:
     step_impl = step_shapes_spawn_rate
@@ -95,3 +99,7 @@ def test_step_shapes_spawn_rate(behave_fixture: BehaveFixture) -> None:
 
     step_impl(behave, '{{ spawn_rate / 1000 }}', grammar='users')
     assert grizzly.setup.spawn_rate == 0.01
+
+    with pytest.raises(AssertionError) as ae:
+        step_impl(behave, '$conf::user.rate', grammar='users')
+    assert 'this expression does not support $conf or $env variables' == str(ae.value)

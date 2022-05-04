@@ -785,13 +785,13 @@ class BehaveContextFixture:
 
         # check required steps
         for step in background + scenario:
-            if re.match(r'Given "[0-9]" user[s]?', step) is not None:
+            if re.match(r'Given "[^"]*" user[s]?', step) is not None:
                 add_user_count_step = False
 
             if re.match(r'Given a user of type "[^"]*"', step) is not None:
                 add_user_type_step = False
 
-            if re.match(r'And spawn rate is "[0-9]+" user[s]? per second', step) is not None:
+            if re.match(r'(And|Given) spawn rate is "[^"]*" user[s]? per second', step) is not None:
                 add_spawn_rate_step = False
 
         if add_user_count_step:

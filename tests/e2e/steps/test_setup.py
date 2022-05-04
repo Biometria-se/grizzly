@@ -13,6 +13,8 @@ def test_e2e_step_setup_variable_value_ask(behave_context_fixture: BehaveContext
         assert grizzly.state.variables['background_variable'] == 'foo-background-value'
         assert grizzly.state.variables['scenario_variable'] == 'bar-scenario-value'
 
+        raise SystemExit(0)
+
     behave_context_fixture.add_validator(validate_variables)
 
     feature_file = behave_context_fixture.test_steps(
