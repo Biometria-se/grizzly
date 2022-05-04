@@ -45,7 +45,7 @@ All variables in the URL have support for [templating](/grizzly/framework/usage/
 ## Example
 
 ```gherkin
-And value of variable "AtomicMessageQueue.document_id" is "queue:IN.DOCUMENTS | wait=120, url='mqs://mq_subscription:$conf::mq.password@mq.example.com/?QueueManager=QM1&Channel=SRV.CONN', repeat=True"
+And value for variable "AtomicMessageQueue.document_id" is "queue:IN.DOCUMENTS | wait=120, url='mqs://mq_subscription:$conf::mq.password@mq.example.com/?QueueManager=QM1&Channel=SRV.CONN', repeat=True"
 ...
 Given a user of type "RestApi" load testing "http://example.com"
 ...
@@ -53,7 +53,7 @@ Then get request "fetch-document" from "/api/v1/document/{{ AtomicMessageQueue.d
 
 ### Using expression to get specific message
 
-And value of variable "AtomicMessageQueue.document_id" is "queue:IN.DOCUMENTS, expression:'//DocumentReference[text()='123abc']' | wait=120, url='mqs://mq_subscription:$conf::mq.password@mq.example.com/?QueueManager=QM1&Channel=SRV.CONN', repeat=True"
+And value for variable "AtomicMessageQueue.document_id" is "queue:IN.DOCUMENTS, expression:'//DocumentReference[text()='123abc']' | wait=120, url='mqs://mq_subscription:$conf::mq.password@mq.example.com/?QueueManager=QM1&Channel=SRV.CONN', repeat=True"
 And set response content type to "application/xml"
 ...
 Given a user of type "RestApi" load testing "http://example.com"

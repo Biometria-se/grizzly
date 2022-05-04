@@ -56,7 +56,7 @@ Endpoint=sb://$conf::sb.hostname/;SharedAccessKeyName=$conf::sb.keyname;SharedAc
 ## Example
 
 ```gherkin
-And value of variable "AtomicServiceBus.document_id" is "queue:documents-in | wait=120, url=$conf::sb.endpoint, repeat=True"
+And value for variable "AtomicServiceBus.document_id" is "queue:documents-in | wait=120, url=$conf::sb.endpoint, repeat=True"
 ...
 Given a user of type "RestApi" load testing "http://example.com"
 ...
@@ -75,7 +75,7 @@ If no matching messages was found when peeking, it is repeated again up until th
 be specified for the endpint, e.g. `application/xml`.
 
 ```gherking
-And value of variable "AtomicServiceBus.tpm_document" is "queue:documents-in | wait=120, url=$conf::sb.endpoint, repeat=True, content_type=json, expression='$.document[?(@.name=='TPM Report')'"
+And value for variable "AtomicServiceBus.tpm_document" is "queue:documents-in | wait=120, url=$conf::sb.endpoint, repeat=True, content_type=json, expression='$.document[?(@.name=='TPM Report')'"
 ```
 '''  # noqa: E501
 import logging

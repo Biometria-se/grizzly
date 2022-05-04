@@ -649,14 +649,19 @@ class BehaveValidator:
     implementation: Any
     table: Optional[List[Dict[str, str]]]
 
-    def __init__(self, name: str, implementation: Callable[[BehaveContext], None], table: Optional[List[Dict[str, str]]] = None) -> None:
+    def __init__(
+        self,
+        name: str,
+        implementation: Callable[[BehaveContext], None],
+        table: Optional[List[Dict[str, str]]] = None,
+    ) -> None:
         self.name = name
         self.implementation = implementation
         self.table = table
 
     @property
     def expression(self) -> str:
-        lines: List[str] = [f'Then run validator {self.name}']
+        lines: List[str] = [f'Then run validator {self.name}_{self.implementation.__name__}']
         if self.table is not None and len(self.table) > 0:
             lines.append(f'  | {" | ".join([key for key in self.table[0].keys()])} |')
 
@@ -671,7 +676,7 @@ class BehaveValidator:
         source_lines[0] = source_lines[0].replace('def ', f'def {self.name}_')
         source = '\n'.join(source_lines)
 
-        return f'''@then(u'run validator {self.name}')
+        return f'''@then(u'run validator {self.name}_{self.implementation.__name__}')
 {dedent(source)}
 '''
 
@@ -756,7 +761,12 @@ class BehaveContextFixture:
 
         return True
 
-    def add_validator(self, implementation: Callable[[BehaveContext], None], table: Optional[List[Dict[str, str]]] = None) -> None:
+    def add_validator(
+        self,
+        implementation: Callable[[BehaveContext], None],
+        /,
+        table: Optional[List[Dict[str, str]]] = None,
+    ) -> None:
         callee = inspect.stack()[1].function
         self._validators.append(BehaveValidator(callee, implementation, table))
 
@@ -800,7 +810,7 @@ class BehaveContextFixture:
         contents.append('')
 
         if scenario is not None:
-            contents.append(f'  Scenario: {callee} scenario')
+            contents.append(f'  Scenario: {callee}')
             for step in scenario or []:
                 contents.append(f'    {step}')
             contents.append('    Then print message "dummy"')

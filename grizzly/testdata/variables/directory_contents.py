@@ -25,7 +25,7 @@ With the following directory structure:
 ```
 
 ```gherkin
-And value of variable "AtomicDirectoryContents.files" is "files/ | repeat=True, random=False"
+And value for variable "AtomicDirectoryContents.files" is "files/ | repeat=True, random=False"
 And put request "{{ AtomicDirectoryContents.files }}" with name "put-file" to endpoint "/tmp"
 ```
 
