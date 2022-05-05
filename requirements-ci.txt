@@ -538,9 +538,9 @@ greenlet==1.1.2 \
     --hash=sha256:fa877ca7f6b48054f847b61d6fa7bed5cebb663ebc55e018fda12db09dcc664c \
     --hash=sha256:fdcec0b8399108577ec290f55551d926d9a1fa6cad45882093a7a07ac5ec147b
     # via gevent
-grizzly-loadtester-cli==3.0.0 \
-    --hash=sha256:8520ad0dfe5b1595e3b8e4348c81a8064c6f9415bf95a977fdd789d72ae3aa47 \
-    --hash=sha256:dbdeeef09232cbbb20a7a8c05b6aec38ea808d13eb7ee1a39631ad95a79c58ca
+grizzly-loadtester-cli==3.0.1 \
+    --hash=sha256:779ee76f6e8cdb0de98596d2af8791b71535c288b990198c3a76ed941ca76ea2 \
+    --hash=sha256:870ada30fe5b50549a0e573036b0da363e03be5f9d5238d49275b902f3d1d7d4
     # via grizzly-loadtester (pyproject.toml)
 idna==3.3 \
     --hash=sha256:84d9dd047ffa80596e0f246e2eab0b391788b0503584e8945f2368256d2735ff \

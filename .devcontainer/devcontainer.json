@@ -65,7 +65,8 @@
 		"ryanluker.vscode-coverage-gutters",
 		"stevejpurves.cucumber",
 		"silverbulleters.gherkin-autocomplete",
-		"matangover.mypy"
+		"matangover.mypy",
+        "redhat.vscode-yaml"
 	],
 	"mounts": [
 		"source=/etc/timezone,target=/etc/timezone,type=bind",

@@ -125,8 +125,10 @@ jobs:
       run: python -m coverage report --omit=**/*messagequeue*,**/*mq.py --fail-under=95
 
   test-e2e:
+    name: 'e2e tests'
     needs: test-and-coverage
     runs-on: ubuntu-latest
+    if: always()
 
     env:
       PYTHONPATH: .
@@ -165,6 +167,7 @@ jobs:
       run: python -m pytest tests/e2e
 
   pre-documentation-scripts:
+    name: 'documentation / build script matrix'
     runs-on: 'ubuntu-latest'
 
     steps:
@@ -233,3 +236,18 @@ jobs:
 
     - name: runnable
       run: ./${{ matrix.script }}
+
+  release-quality:
+    name: releasable
+    runs-on: 'ubuntu-latest'
+    if: always()
+    needs:
+    - linting
+    - documentation-scripts
+    - test-e2e
+    - test-and-coverage
+
+    steps:
+    - uses: technote-space/workflow-conclusion-action@v2
+    - run: |
+        [[ "${{ env.WORKFLOW_CONCLUSION }}" == "success" ]] || exit 1
