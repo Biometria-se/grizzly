@@ -87,7 +87,7 @@ def step_task_request_text_with_name_to_endpoint(context: Context, method: Reque
             "test": "hello world"
         }
         """
-    Then put request with name "test-post" to endpoint "/api/test"
+    Then put request with name "test-put" to endpoint "/api/test"
         """
         {
             "test": "hello world"
@@ -269,11 +269,11 @@ def step_task_wait_seconds(context: Context, wait_time: float) -> None:
     ```gherkin
     And wait time inbetween requests is random between "1.5" and "2.5" seconds
     ...
-    And wait for "1.5" seconds
+    Then wait for "1.5" seconds
     ```
 
     Above combinations of steps will result in a wait time between 3 and 4 seconds for the first request that is defined after the
-    `And wait for...`-step.
+    `Then wait for...`-step.
 
     Args:
         wait_time (float): wait time in seconds
@@ -444,8 +444,14 @@ def step_task_async_group_start(context: Context, name: str) -> None:
 
     ```gherkin
     Given an async request group with name "async-group-1"
-    Then put "test-file.json" to "bs://my-storage?AccountKey=aaaabbb=&Container=my-container" as "uploaded-test-file.json"
-    Then get "https://www.example.org/example.json" and save response in "example_openapi"
+    Then post request with name "test-post-2" to endpoint "/api/test"
+        """
+        {
+            "value": "i have good news!"
+        }
+        """
+
+    Then get request with name "test-get-1" from endpoint "/api/test"
     And close async request group
     ```
 
@@ -469,8 +475,14 @@ def step_task_async_group_close(context: Context) -> None:
 
     ```gherkin
     Given an async request group with name "async-group-1"
-    Then put "test-file.json" to "bs://my-storage?AccountKey=aaaabbb=&Container=my-container" as "uploaded-test-file.json"
-    Then get "https://www.example.org/example.json" and save response in "example_openapi"
+    Then post request with name "test-post-2" to endpoint "/api/test"
+        """
+        {
+            "value": "i have good news!"
+        }
+        """
+
+    Then get request with name "test-get-1" from endpoint "/api/test"
     And close async request group
     ```
     '''

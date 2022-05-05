@@ -34,7 +34,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from ..scenarios import GrizzlyScenario
 
 
-@template('name')
+@template('name', 'requests')
 class AsyncRequestGroupTask(GrizzlyTask):
     requests: List[RequestTask]
 

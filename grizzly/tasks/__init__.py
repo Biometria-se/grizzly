@@ -47,12 +47,21 @@ class GrizzlyTask(ABC):
                     templates.add(value)
             elif isinstance(value, list):
                 for list_value in value:
-                    if is_template(list_value):
+                    if isinstance(list_value, GrizzlyTask):
+                        for template in list_value.get_templates():
+                            templates.add(template)
+                    elif is_template(list_value):
                         templates.add(list_value)
             elif isinstance(value, dict):
                 for dict_value in value.values():
-                    if is_template(dict_value):
+                    if isinstance(dict_value, GrizzlyTask):
+                        for template in dict_value.get_templates():
+                            templates.add(template)
+                    elif is_template(dict_value):
                         templates.add(dict_value)
+            elif isinstance(value, GrizzlyTask):
+                for template in value.get_templates():
+                    templates.add(template)
 
         return list(templates)
 
