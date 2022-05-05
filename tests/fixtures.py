@@ -723,6 +723,16 @@ class BehaveContextFixture:
 
         assert self._root.is_dir()
 
+        (self._root / 'features' / 'test-project.feature').unlink()
+
+        # create base steps.py
+        with open(self._root / 'features' / 'steps' / 'steps.py', 'w') as fd:
+            fd.write('from typing import cast\n\n')
+            fd.write('from behave import then\n')
+            fd.write('from behave.runner import Context\n')
+            fd.write('from grizzly.context import GrizzlyContext\n')
+            fd.write('from grizzly.steps import *\n')
+
         # create virtualenv
         rc, output = run_command(
             ['python3', '-m', 'venv', '.virtual-env'],
@@ -752,8 +762,6 @@ class BehaveContextFixture:
             env=self._env,
         )
 
-        chdir(self._root)
-
         return self
 
     def __exit__(
@@ -762,8 +770,6 @@ class BehaveContextFixture:
         exc: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> Literal[True]:
-        chdir(self._cwd)
-
         try:
             rmtree(self.root.parent.parent, onerror=onerror)
         except AttributeError:
@@ -850,19 +856,18 @@ class BehaveContextFixture:
 
             ffd.write(contents)
 
-            with open(self.root / 'features' / 'steps' / 'steps.py', 'w') as sfd:
-                sfd.write('import json\n\n')
-                sfd.write('from typing import cast\n\n')
-                sfd.write('from behave import then\n')
-                sfd.write('from behave.runner import Context\n')
-                sfd.write('from grizzly.context import GrizzlyContext\n')
-                sfd.write('from grizzly.steps import *\n')
+            steps_file = self.root / 'features' / 'steps' / 'steps.py'
+            with open(steps_file, 'r') as sfd:
+                steps_impl = sfd.read()
+
+            with open(steps_file, 'a') as sfd:
                 for validator in self._validators:
                     # write step to feature file
                     ffd.write(indent(f'{validator.expression}\n', prefix='    '))
 
                     # write expression and step implementation to steps/steps.py
-                    sfd.write(f'\n\n{validator.impl}')
+                    if validator.impl not in steps_impl:
+                        sfd.write(f'\n\n{validator.impl}')
 
             # they are now "burned"...
             self._validators.clear()
@@ -870,6 +875,8 @@ class BehaveContextFixture:
             return ffd.name.replace(f'{self.root}/', '')
 
     def execute(self, feature_file: str, env_conf_file: Optional[str] = None, testdata: Optional[Dict[str, str]] = None) -> Tuple[int, List[str]]:
+        chdir(self.root)
+
         command = [
             'grizzly-cli',
             'local',
@@ -893,5 +900,7 @@ class BehaveContextFixture:
 
         if rc != 0:
             print(''.join(output))
+
+        chdir(self._cwd)
 
         return rc, output

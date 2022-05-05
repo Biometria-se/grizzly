@@ -36,6 +36,22 @@ class TestAsyncRequestGroup:
         assert len(task_factory.requests) == 1
         assert task_factory.requests[-1].name == 'test:test'
 
+    def test_get_templates(self) -> None:
+        task_factory = AsyncRequestGroupTask(name='async-{{ name }}')
+        assert len(task_factory.requests) == 0
+
+        task_factory.add(RequestTask(RequestMethod.GET, name='test-{{ name }}-1', endpoint='/api/test'))
+        task_factory.add(RequestTask(RequestMethod.GET, name='test-{{ name }}-2', endpoint='/api/test'))
+        task_factory.add(RequestTask(RequestMethod.GET, name='test-{{ name }}-3', endpoint='/api/test'))
+
+        assert len(task_factory.requests) == 3
+        assert sorted(task_factory.get_templates()) == sorted([
+            'async-{{ name }}',
+            'async-{{ name }}:test-{{ name }}-1',
+            'async-{{ name }}:test-{{ name }}-2',
+            'async-{{ name }}:test-{{ name }}-3',
+        ])
+
     def test___call__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
         _, _, scenario = grizzly_fixture()
 

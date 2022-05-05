@@ -27,9 +27,12 @@ class GrizzlyTask(ABC):
         def is_template(value: str) -> bool:
             return '{{' in value and '}}' in value
 
+        # tasks with no @template decorator
+        if not hasattr(self, '__template_attributes__'):
+            return []
+
         templates: Set[str] = set()
-        attributes = getattr(self, '__template_attributes__', [])
-        for attribute in attributes:
+        for attribute in self.__template_attributes__:
             value = getattr(self, attribute, None)
             if value is None:
                 continue
@@ -74,11 +77,10 @@ class template:
         if len(additional_attributes) > 0:
             self.attributes += list(additional_attributes)
 
-    def __call__(self, task: Type[GrizzlyTask]) -> Type[GrizzlyTask]:
+    def __call__(self, cls: Type[GrizzlyTask]) -> Type[GrizzlyTask]:
+        cls.__template_attributes__ = self.attributes
 
-        setattr(task, '__template_attributes__', self.attributes)
-
-        return task
+        return cls
 
 
 from .request import RequestTask, RequestTaskHandlers, RequestTaskResponse

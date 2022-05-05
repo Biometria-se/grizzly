@@ -1,5 +1,3 @@
-import json
-
 from tempfile import NamedTemporaryFile
 from typing import cast, Dict, Any, List
 
@@ -146,10 +144,11 @@ def test_e2e_step_setup_run_time(behave_context_fixture: BehaveContextFixture, t
 ])
 def test_e2e_step_setup_global_context_variable(behave_context_fixture: BehaveContextFixture, name: str, value: str, expected: str) -> None:
     def validate_global_context_variable(context: Context) -> None:
+        from json import loads as jsonloads
         grizzly = cast(GrizzlyContext, context.grizzly)
         data = list(context.table)[0].as_dict()
 
-        global_context = json.loads(data['expected'])
+        global_context = jsonloads(data['expected'])
         global_context['hello'] = {'world': 'foobar'}
         if 'token' not in global_context:
             global_context['token'] = {'client_secret': 'something'}

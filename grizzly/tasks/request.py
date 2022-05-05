@@ -21,7 +21,7 @@ from grizzly_extras.arguments import parse_arguments, split_value, unquote
 
 from ..types import RequestMethod
 # need to rename to avoid unused-import collision due to RequestTask.template ?!
-from . import GrizzlyTask, template as _template  # pylint: disable=unused-import
+from . import GrizzlyTask, template  # pylint: disable=unused-import
 
 if TYPE_CHECKING:  # pragma: no cover
     from ..context import GrizzlyContextScenario
@@ -64,7 +64,7 @@ class RequestTaskResponse:
                 self.status_codes.pop(index)
 
 
-@_template('name', 'endpoint', 'source')
+@template('name', 'endpoint', 'source')
 class RequestTask(GrizzlyTask):
     method: RequestMethod
     name: str

@@ -1,4 +1,3 @@
-import json
 import textwrap
 
 from typing import cast, List, Dict
@@ -18,10 +17,11 @@ from ....fixtures import BehaveContextFixture
 ])
 def test_e2e_step_setup_set_context_variable(behave_context_fixture: BehaveContextFixture, name: str, value: str, expected: str) -> None:
     def validate_context_variable(context: Context) -> None:
+        from json import loads as jsonloads
         grizzly = cast(GrizzlyContext, context.grizzly)
         data = list(context.table)[0].as_dict()
 
-        expected = json.loads(data['expected'])
+        expected = jsonloads(data['expected'])
         expected['hello'] = {'world': 'foobar'}
         if 'token' not in expected:
             expected['token'] = {'client_secret': 'something'}

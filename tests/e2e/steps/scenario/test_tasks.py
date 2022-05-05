@@ -163,7 +163,7 @@ def test_e2e_step_task_request_file_with_name_endpoint(behave_context_fixture: B
     behave_context_fixture.add_validator(validate_requests)
 
     request_files = behave_context_fixture.root / 'features' / 'requests' / 'test'
-    request_files.mkdir()
+    request_files.mkdir(exist_ok=True)
 
     (request_files / 'request-send.j2.json').write_text(jsondumps({'test': 'request-send'}))
     (request_files / 'request-post.j2.json').write_text(jsondumps({'test': 'request-{{ post }}'}))
@@ -214,7 +214,7 @@ def test_e2e_step_task_request_file_with_name(behave_context_fixture: BehaveCont
     behave_context_fixture.add_validator(validate_requests)
 
     request_files = behave_context_fixture.root / 'features' / 'requests' / 'test'
-    request_files.mkdir()
+    request_files.mkdir(exist_ok=True)
 
     (request_files / 'request-post-1.j2.json').write_text(jsondumps({'test': 'request-{{ post_1 }}-1'}))
     (request_files / 'request-post-2.j2.json').write_text(jsondumps({'test': 'request-{{ post_2 }}-2'}))
@@ -607,11 +607,11 @@ def test_e2e_step_async_group(behave_context_fixture: BehaveContextFixture) -> N
 
         task = tasks[0]
         assert isinstance(task, AsyncRequestGroupTask)
-        assert task.get_templates() == [
+        assert sorted(task.get_templates()) == sorted([
             'async-group-{{ index }}',
             'async-group-{{ index }}:test-post-1',
             'async-group-{{ index }}:test-get-1',
-        ], str(task.get_templates())
+        ]), str(task.get_templates())
         assert task.name == 'async-group-{{ index }}'
         assert len(task.requests) == 2
 

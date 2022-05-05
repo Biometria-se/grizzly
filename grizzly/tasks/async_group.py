@@ -17,6 +17,7 @@ Requests are added to the group with the same step expressions as [`RequestTask`
 Enable `gevent` debugging for this task by running with argument `--verbose` and setting environment variable `GEVENT_MONITOR_THREAD_ENABLE`.
 '''
 import logging
+import inspect
 
 from os import environ
 
@@ -49,8 +50,6 @@ class AsyncRequestGroupTask(GrizzlyTask):
         self.requests.append(request)
 
     def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
-        import inspect
-
         def task(parent: 'GrizzlyScenario') -> Any:
             if not isinstance(parent.user, AsyncRequests):
                 raise NotImplementedError(f'{parent.user.__class__.__name__} does not inherit AsyncRequests')
