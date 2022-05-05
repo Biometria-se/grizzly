@@ -44,7 +44,8 @@ def test_e2e_step_shapes_user_count(behave_context_fixture: BehaveContextFixture
         ],
         scenario=[
             f'And repeat for "{count}" iteration{suffix}',
-        ]
+        ],
+        identifier=count,
     )
 
     rc, _ = behave_context_fixture.execute(feature_file, testdata={'user_count': '10'})
@@ -79,6 +80,7 @@ def test_e2e_step_shapes_spawn_rate(behave_context_fixture: BehaveContextFixture
             'Then ask for value of variable "spawn_rate"',
             f'Given spawn rate is "{rate}" users per second',
         ],
+        identifier=rate,
     )
 
     rc, _ = behave_context_fixture.execute(feature_file, testdata={'spawn_rate': '0.001'})

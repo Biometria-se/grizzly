@@ -57,6 +57,7 @@ def test_e2e_step_response_save_matches(behave_context_fixture: BehaveContextFix
             f'Then get request with name "{target.name.lower()}-handler" from endpoint "/api/test | content_type=json"',
             f'Then save response {target.name.lower()} "{{{{ expression }}}} | expected_matches=10" that matches "foo[bar]?" in variable "tmp"',
         ],
+        identifier=target.name,
     )
 
     rc, _ = behave_context_fixture.execute(feature_file)
@@ -110,6 +111,7 @@ def test_e2e_step_response_save(behave_context_fixture: BehaveContextFixture, ta
             f'Then get request with name "{target.name.lower()}-handler" from endpoint "/api/test | content_type=json"',
             f'Then save response {target.name.lower()} "$.hello.world" in variable "foobar"',
         ],
+        identifier=target.name,
     )
 
     rc, _ = behave_context_fixture.execute(feature_file)
@@ -168,6 +170,7 @@ def test_e2e_step_response_validate(behave_context_fixture: BehaveContextFixture
             f'Then get request with name "{target.name.lower()}-handler" from endpoint "/api/test | content_type=json"',
             f'When response {target.name.lower()} "$.hello.world" {condition} "foo[bar]?" stop user',
         ],
+        identifier=target.name,
     )
 
     rc, _ = behave_context_fixture.execute(feature_file)
@@ -210,6 +213,7 @@ def test_e2e_step_allow_status_codes(behave_context_fixture: BehaveContextFixtur
             'Then get request with name "test-allow-status-codes" from endpoint "/api/test"',
             f'And allow response status codes "{status_codes}"',
         ],
+        identifier=status_codes,
     )
 
     rc, _ = behave_context_fixture.execute(feature_file)
@@ -288,6 +292,7 @@ def test_e2e_step_response_content_type(behave_context_fixture: BehaveContextFix
             'Then get request with name "test-get-1" from endpoint "/api/test"',
             f'And set response content type to "{content_type}"',
         ],
+        identifier=content_type,
     )
 
     rc, _ = behave_context_fixture.execute(feature_file)

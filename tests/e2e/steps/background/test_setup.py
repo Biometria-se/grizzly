@@ -56,6 +56,7 @@ def test_e2e_step_setup_save_statistics(behave_context_fixture: BehaveContextFix
         background=[
             f'And save statistics to "{url}"',
         ],
+        identifier=url,
     )
 
     with NamedTemporaryFile(delete=True, suffix='.yaml') as env_conf_file:
@@ -94,6 +95,7 @@ def test_e2e_step_setup_log_level(behave_context_fixture: BehaveContextFixture, 
         background=[
             f'And log level is "{level}"',
         ],
+        identifier=level,
     )
 
     rc, _ = behave_context_fixture.execute(feature_file)
@@ -128,6 +130,7 @@ def test_e2e_step_setup_run_time(behave_context_fixture: BehaveContextFixture, t
         background=[
             f'And run for maximum "{timespan}"'
         ],
+        identifier=timespan,
     )
 
     rc, _ = behave_context_fixture.execute(feature_file)
@@ -169,6 +172,7 @@ def test_e2e_step_setup_global_context_variable(behave_context_fixture: BehaveCo
             'And set global context variable "hello.world" to "foobar"',
             'And set global context variable "token/client_secret" to "something"',
         ],
+        identifier=name,
     )
 
     rc, _ = behave_context_fixture.execute(feature_file)

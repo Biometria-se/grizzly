@@ -14,6 +14,7 @@ from shutil import rmtree
 from json import dumps as jsondumps
 from pathlib import Path
 from textwrap import dedent, indent
+from hashlib import sha1
 
 import gevent
 
@@ -687,14 +688,21 @@ class BehaveContextFixture:
     _env: Dict[str, str]
     _validators: List[BehaveValidator]
 
-    root: Optional[Path]
+    _root: Optional[Path]
 
     def __init__(self, tmp_path_factory: TempPathFactory) -> None:
         self._tmp_path_factory = tmp_path_factory
         self._cwd = getcwd()
         self._env = {}
         self._validators = []
-        self.root = None
+        self._root = None
+
+    @property
+    def root(self) -> Path:
+        if self._root is None:
+            raise AttributeError('root is not set')
+
+        return self._root
 
     def __enter__(self) -> 'BehaveContextFixture':
         test_context = self._tmp_path_factory.mktemp('test_context')
@@ -711,14 +719,14 @@ class BehaveContextFixture:
             print(''.join(output))
             raise
 
-        self.root = test_context / 'test-project'
+        self._root = test_context / 'test-project'
 
-        assert self.root.is_dir()
+        assert self._root.is_dir()
 
         # create virtualenv
         rc, output = run_command(
             ['python3', '-m', 'venv', '.virtual-env'],
-            cwd=str(self.root),
+            cwd=str(self._root),
         )
 
         try:
@@ -730,7 +738,7 @@ class BehaveContextFixture:
 
         path = environ.get('PATH', '')
 
-        virtual_env_path = self.root / '.virtual-env'
+        virtual_env_path = self._root / '.virtual-env'
 
         self._env.update({
             'PATH': f'{str(virtual_env_path)}/bin:{path}',
@@ -740,11 +748,11 @@ class BehaveContextFixture:
         # install dependencies
         rc, output = run_command(
             ['python3', '-m', 'pip', 'install', '-r', 'requirements.txt'],
-            cwd=str(self.root),
+            cwd=str(self._root),
             env=self._env,
         )
 
-        chdir(self.root)
+        chdir(self._root)
 
         return self
 
@@ -756,8 +764,10 @@ class BehaveContextFixture:
     ) -> Literal[True]:
         chdir(self._cwd)
 
-        if self.root is not None:
+        try:
             rmtree(self.root.parent.parent, onerror=onerror)
+        except AttributeError:
+            pass
 
         return True
 
@@ -770,7 +780,7 @@ class BehaveContextFixture:
         callee = inspect.stack()[1].function
         self._validators.append(BehaveValidator(callee, implementation, table))
 
-    def test_steps(self, /, scenario: Optional[List[str]] = None, background: Optional[List[str]] = None) -> str:
+    def test_steps(self, /, scenario: Optional[List[str]] = None, background: Optional[List[str]] = None, identifier: Optional[str] = None) -> str:
         callee = inspect.stack()[1].function
         contents: List[str] = ['Feature:']
         add_user_count_step = True
@@ -796,11 +806,13 @@ class BehaveContextFixture:
 
         if add_user_count_step:
             background.insert(0, 'Given "1" user')
+            if add_spawn_rate_step:
+                background.insert(1, 'And spawn rate is "1" user per second')
 
         if add_user_type_step:
             scenario.insert(0, 'Given a user of type "RestApi" load testing "http://localhost:1"')
 
-        if add_spawn_rate_step:
+        if add_spawn_rate_step and not add_user_count_step:
             background.append('And spawn rate is "1" user per second')
 
         contents.append('  Background: common configuration')
@@ -817,14 +829,19 @@ class BehaveContextFixture:
 
         contents.append('')
 
-        return self.create_feature('\n'.join(contents), name=callee)
+        return self.create_feature(
+            '\n'.join(contents),
+            name=callee,
+            identifier=identifier,
+        )
 
-    def create_feature(self, contents: str, name: Optional[str] = None) -> str:
-        if self.root is None:
-            raise FileNotFoundError('no test project created')
-
+    def create_feature(self, contents: str, name: Optional[str] = None, identifier: Optional[str] = None) -> str:
         if name is None:
             name = inspect.stack()[1].function
+
+        if identifier is not None:
+            identifier = sha1(identifier.encode()).hexdigest()[:8]
+            name = f'{name}_{identifier}'
 
         with open(self.root / 'features' / f'{name}.feature', 'w+') as ffd:
             feature_lines = contents.split('\n')
