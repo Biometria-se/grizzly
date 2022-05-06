@@ -43,7 +43,7 @@ def step_user_type(context: Context, user_class_name: str, host: str) -> None:
     '''Set which type of user the scenario should use and which host is the target.
 
     ```gherkin
-    Given a user of type "RestApi" load testing "http://api.google.com"
+    Given a user of type "RestApi" load testing "http://api.example.com"
     Given a user of type "MessageQueue" load testing "mq://mqm:secret@mq.example.com/?QueueManager=QMGR01&Channel=Channel01"
     Given a user of type "ServiceBus" load testing "sb://sb.example.com/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789="
     Given a user of type "BlobStorage" load testing "DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=examplestorage;AccountKey=xxxyyyyzzz=="
