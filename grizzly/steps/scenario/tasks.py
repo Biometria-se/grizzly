@@ -7,7 +7,7 @@ from behave import register_type, then, given  # pylint: disable=no-name-in-modu
 from ..helpers import add_request_task, get_task_client, is_template
 from ...types import RequestDirection, RequestMethod
 from ...context import GrizzlyContext
-from ...tasks import PrintTask, WaitTask, TransformerTask, UntilRequestTask, DateTask, AsyncRequestGroupTask
+from ...tasks import LogMessage, WaitTask, TransformerTask, UntilRequestTask, DateTask, AsyncRequestGroupTask
 
 from grizzly_extras.transformer import TransformerContentType
 
@@ -299,7 +299,7 @@ def step_task_print_message(context: Context, message: str) -> None:
     '''
 
     grizzly = cast(GrizzlyContext, context.grizzly)
-    grizzly.scenario.add_task(PrintTask(message=message))
+    grizzly.scenario.add_task(LogMessage(message=message))
 
 
 @then(u'parse "{content}" as "{content_type:ContentType}" and save value of "{expression}" in variable "{variable}"')

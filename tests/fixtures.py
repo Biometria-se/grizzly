@@ -753,6 +753,7 @@ class BehaveContextFixture:
         self._env.update({
             'PATH': f'{str(virtual_env_path)}/bin:{path}',
             'VIRTUAL_ENV': str(virtual_env_path),
+            'PYTHONPATH': environ.get('PYTHONPATH', '.'),
         })
 
         # install dependencies
@@ -770,10 +771,12 @@ class BehaveContextFixture:
         exc: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> Literal[True]:
-        try:
-            rmtree(self.root.parent.parent, onerror=onerror)
-        except AttributeError:
-            pass
+
+        if environ.get('KEEP_FILES', None) is None:
+            try:
+                rmtree(self.root.parent.parent, onerror=onerror)
+            except AttributeError:
+                pass
 
         return True
 
@@ -882,6 +885,7 @@ class BehaveContextFixture:
             'local',
             'run',
             '--yes',
+            '--verbose',
             feature_file,
         ]
 

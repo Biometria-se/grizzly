@@ -334,7 +334,7 @@ def test_e2e_step_task_wait_seconds(behave_context_fixture: BehaveContextFixture
 
 def test_e2e_step_task_print_message(behave_context_fixture: BehaveContextFixture) -> None:
     def validate_task_wait(context: Context) -> None:
-        from grizzly.tasks import PrintTask
+        from grizzly.tasks import LogMessage
         grizzly = cast(GrizzlyContext, context.grizzly)
 
         tasks = grizzly.scenario.tasks
@@ -343,12 +343,12 @@ def test_e2e_step_task_print_message(behave_context_fixture: BehaveContextFixtur
         assert len(tasks) == 2
 
         task = tasks[0]
-        assert isinstance(task, PrintTask)
+        assert isinstance(task, LogMessage)
         assert task.message == 'hello world!'
         assert len(task.get_templates()) == 0
 
         task = tasks[1]
-        assert isinstance(task, PrintTask)
+        assert isinstance(task, LogMessage)
         assert task.message == 'foobar={{ foobar }}'
         assert len(task.get_templates()) == 1
 
@@ -566,7 +566,10 @@ def test_e2e_step_task_date(behave_context_fixture: BehaveContextFixture) -> Non
             'offset': '1Y',
             'timezone': '{{ timezone }}',
         }
-        assert task.get_templates() == ['{{ datetime.now() }}', '{{ timezone }}']
+        assert sorted(task.get_templates()) == sorted([
+            '{{ datetime.now() }}',
+            '{{ timezone }}',
+        ]), str(task.get_templates())
 
         raise SystemExit(0)
 
@@ -606,7 +609,9 @@ def test_e2e_step_async_group(behave_context_fixture: BehaveContextFixture) -> N
         assert len(tasks) == 2
 
         task = tasks[0]
+        print(type(task))
         assert isinstance(task, AsyncRequestGroupTask)
+        print(task.__template_attributes__)
         assert sorted(task.get_templates()) == sorted([
             'async-group-{{ index }}',
             'async-group-{{ index }}:test-post-1',

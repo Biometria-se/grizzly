@@ -26,8 +26,7 @@ import gevent
 from typing import TYPE_CHECKING, Any, Callable, List, Optional, Tuple
 from time import perf_counter as time_perf_counter
 
-from . import GrizzlyTask, template
-from .request import RequestTask
+from . import GrizzlyTask, RequestTask, template
 from ..users.base import AsyncRequests
 
 if TYPE_CHECKING:  # pragma: no cover

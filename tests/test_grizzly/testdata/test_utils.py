@@ -15,7 +15,7 @@ from _pytest.logging import LogCaptureFixture
 from locust.exception import StopUser
 
 from grizzly.context import GrizzlyContext
-from grizzly.tasks import PrintTask, DateTask, TransformerTask, UntilRequestTask
+from grizzly.tasks import LogMessage, DateTask, TransformerTask, UntilRequestTask
 from grizzly.testdata.utils import (
     _get_variable_value,
     initialize_testdata,
@@ -181,7 +181,7 @@ def test_initialize_testdata_with_tasks(
         request.response.content_type = TransformerContentType.JSON
         scenario = request.scenario
         scenario.add_task(request)
-        scenario.add_task(PrintTask(message='{{ message }}'))
+        scenario.add_task(LogMessage(message='{{ message }}'))
         scenario.add_task(DateTask(variable='date_task', value='{{ date_task_date }} | timezone="{{ timezone }}", offset="-{{ days }}D"'))
         scenario.add_task(TransformerTask(
             expression='$.expression',

@@ -14,7 +14,7 @@ coverage.xml
 *.event
 .env/
 .venv/
-script/tmp*
+**/tmp*
 *.log
 
 # automagically generated

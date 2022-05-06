@@ -51,20 +51,17 @@ class GrizzlyTask(ABC):
             elif isinstance(value, list):
                 for list_value in value:
                     if isinstance(list_value, GrizzlyTask):
-                        for template in list_value.get_templates():
-                            templates.add(template)
+                        templates.update(list_value.get_templates())
                     elif is_template(list_value):
                         templates.add(list_value)
             elif isinstance(value, dict):
                 for dict_value in value.values():
                     if isinstance(dict_value, GrizzlyTask):
-                        for template in dict_value.get_templates():
-                            templates.add(template)
+                        templates.update(dict_value.get_templates())
                     elif is_template(dict_value):
                         templates.add(dict_value)
             elif isinstance(value, GrizzlyTask):
-                for template in value.get_templates():
-                    templates.add(template)
+                templates.update(value.get_templates())
 
         return list(templates)
 
@@ -85,7 +82,7 @@ class template:
 
 from .request import RequestTask, RequestTaskHandlers, RequestTaskResponse
 from .wait import WaitTask
-from .print import PrintTask
+from .log_message import LogMessage
 from .transformer import TransformerTask
 from .until import UntilRequestTask
 from .date import DateTask
@@ -96,7 +93,7 @@ __all__ = [
     'RequestTaskHandlers',
     'RequestTaskResponse',
     'RequestTask',
-    'PrintTask',
+    'LogMessage',
     'WaitTask',
     'TransformerTask',
     'UntilRequestTask',

@@ -4,7 +4,7 @@ from json import loads as jsonloads, dumps as jsondumps
 from grizzly.testdata.ast import _parse_templates, get_template_variables
 from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContextScenario
-from grizzly.tasks import RequestTask, PrintTask
+from grizzly.tasks import RequestTask, LogMessage
 
 from ...fixtures import RequestTaskFixture
 
@@ -63,7 +63,7 @@ def test_get_template_variables() -> None:
     task.source = '{{ AtomicIntegerIncrementer.test }}'
 
     scenario.add_task(
-        PrintTask(message='{{ foo }}')
+        LogMessage(message='{{ foo }}')
     )
 
     variables = get_template_variables(scenario.tasks)
