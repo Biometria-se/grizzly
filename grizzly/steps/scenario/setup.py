@@ -172,7 +172,7 @@ def step_setup_set_variable_alias(context: Context, alias: str, variable: str) -
     user, e.g. username and password.
 
     ```gherkin
-    And set variable "AtomicCsvRow.users" to "users.csv | repeat=True"
+    And value for variable "AtomicCsvRow.users" is "users.csv | repeat=True"
     And set alias "auth.user.username" for variable "AtomicCsvRow.users.username"
     And set alias "auth.user.password" for variable "AtomicCsvRow.users.password"
     ```

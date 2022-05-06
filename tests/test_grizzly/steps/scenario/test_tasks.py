@@ -8,7 +8,7 @@ from json import dumps as jsondumps
 from behave.model import Table, Row
 from grizzly.context import GrizzlyContext
 from grizzly.types import RequestMethod, RequestDirection
-from grizzly.tasks import TransformerTask, PrintTask, WaitTask
+from grizzly.tasks import TransformerTask, LogMessage, WaitTask
 from grizzly.tasks.clients import HttpClientTask
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import  # noqa: F403
 
@@ -95,8 +95,11 @@ def test_step_task_request_with_name_to_endpoint_until(behave_fixture: BehaveFix
     assert tasks[-3].condition == '$.`this`[?status="{{ variable }}"]'
     templates += tasks[-3].get_templates()
 
-    assert len(templates) == 1
-    assert templates[-1] == '$.`this`[?status="{{ variable }}"]'
+    assert len(templates) == 2
+    assert sorted(templates) == sorted([
+        '$.`this`[?status="{{ variable }}"]',
+        '/api/{{ variable }}',
+    ])
 
 
 @pytest.mark.parametrize('method', RequestDirection.TO.methods)
@@ -216,7 +219,7 @@ def test_step_task_print_message(behave_fixture: BehaveFixture) -> None:
 
     step_task_print_message(behave, 'hello {{ world }}')
 
-    assert isinstance(grizzly.scenario.tasks[-1], PrintTask)
+    assert isinstance(grizzly.scenario.tasks[-1], LogMessage)
     assert grizzly.scenario.tasks[-1].message == 'hello {{ world }}'
 
 

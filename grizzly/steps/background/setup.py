@@ -149,7 +149,7 @@ def step_setup_set_global_context_variable(context: Context, variable: str, valu
     E.g. `Client ID` results in `client_id`.
 
     ```gherkin
-    And set global context variable "token.url" to "http://test.nu/api/auth"
+    And set global context variable "token.url" to "http://example.com/api/auth"
     And set global context variable "token/client_id" to "aaaa-bbbb-cccc-dddd"
     And set global context variable "token/client secret" to "aasdfasdfasdf=="
     And set global context variable "token.resource" to "0000-aaaaaaa-1111-1111-1111"

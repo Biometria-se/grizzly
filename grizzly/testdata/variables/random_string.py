@@ -19,7 +19,7 @@ Parts of the string can be static, e.g. not random.
 ## Example
 
 ```gherkin
-And value of variable "AtomicRandomString.registration_plate_number" is "%s%sZ%d%d0 | upper=True, count=100"
+And value for variable "AtomicRandomString.registration_plate_number" is "%s%sZ%d%d0 | upper=True, count=100"
 ```
 
 This can then be used in a template:

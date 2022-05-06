@@ -27,9 +27,12 @@ class GrizzlyTask(ABC):
         def is_template(value: str) -> bool:
             return '{{' in value and '}}' in value
 
+        # tasks with no @template decorator
+        if not hasattr(self, '__template_attributes__'):
+            return []
+
         templates: Set[str] = set()
-        attributes = getattr(self, '__template_attributes__', [])
-        for attribute in attributes:
+        for attribute in self.__template_attributes__:
             value = getattr(self, attribute, None)
             if value is None:
                 continue
@@ -47,12 +50,18 @@ class GrizzlyTask(ABC):
                     templates.add(value)
             elif isinstance(value, list):
                 for list_value in value:
-                    if is_template(list_value):
+                    if isinstance(list_value, GrizzlyTask):
+                        templates.update(list_value.get_templates())
+                    elif is_template(list_value):
                         templates.add(list_value)
             elif isinstance(value, dict):
                 for dict_value in value.values():
-                    if is_template(dict_value):
+                    if isinstance(dict_value, GrizzlyTask):
+                        templates.update(dict_value.get_templates())
+                    elif is_template(dict_value):
                         templates.add(dict_value)
+            elif isinstance(value, GrizzlyTask):
+                templates.update(value.get_templates())
 
         return list(templates)
 
@@ -65,16 +74,15 @@ class template:
         if len(additional_attributes) > 0:
             self.attributes += list(additional_attributes)
 
-    def __call__(self, task: Type[GrizzlyTask]) -> Type[GrizzlyTask]:
+    def __call__(self, cls: Type[GrizzlyTask]) -> Type[GrizzlyTask]:
+        cls.__template_attributes__ = self.attributes
 
-        setattr(task, '__template_attributes__', self.attributes)
-
-        return task
+        return cls
 
 
 from .request import RequestTask, RequestTaskHandlers, RequestTaskResponse
 from .wait import WaitTask
-from .print import PrintTask
+from .log_message import LogMessage
 from .transformer import TransformerTask
 from .until import UntilRequestTask
 from .date import DateTask
@@ -85,7 +93,7 @@ __all__ = [
     'RequestTaskHandlers',
     'RequestTaskResponse',
     'RequestTask',
-    'PrintTask',
+    'LogMessage',
     'WaitTask',
     'TransformerTask',
     'UntilRequestTask',

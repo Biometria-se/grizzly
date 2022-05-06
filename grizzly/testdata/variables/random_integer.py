@@ -11,7 +11,7 @@ This variable does not have any arguments.
 ## Example
 
 ```gherkin
-And value of variable "AtomicRandomInteger.weight" is "10..30"
+And value for variable "AtomicRandomInteger.weight" is "10..30"
 ```
 
 This can then be used in a template:

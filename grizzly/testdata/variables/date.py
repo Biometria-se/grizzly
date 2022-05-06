@@ -14,7 +14,7 @@ at the time of access.
 ## Example
 
 ```gherkin
-And value of variable "AtomicDate.arrival" is "now | format='%Y-%m-%dT%H:%M:%S.000Z', timezone=UTC"
+And value for variable "AtomicDate.arrival" is "now | format='%Y-%m-%dT%H:%M:%S.000Z', timezone=UTC"
 ```
 
 This can then be used in a template:

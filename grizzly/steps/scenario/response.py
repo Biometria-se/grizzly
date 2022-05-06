@@ -48,25 +48,24 @@ def step_response_save_matches(context: Context, target: ResponseTarget, express
 
     ```gherkin
     # only token is matched and saved in TOKEN, by using regexp match groups
-    And value of variable "TOKEN" is "none"
+    And value for variable "TOKEN" is "none"
     Then save response metadata "$.Authentication" that matches "Bearer (.*)$" in variabel "TOKEN"
 
     # the whole value is saved, as long as Authentication starts with "Bearer"
-    And value of variable "HEADER_AUTHENTICATION" is "none"
+    And value for variable "HEADER_AUTHENTICATION" is "none"
     Then save response metadata "$.Authentication" that matches "^Bearer .*$" in variable "HEADER_AUTHENTICATION"
 
     # only the numerical suffix is saved in the variable
-    And value of variable "AtomicIntegerIncrementer.measurermentId" is "1"
+    And value for variable "AtomicIntegerIncrementer.measurermentId" is "1"
     Then save response payload "$.measurement.id" that matches "^cpu([\\d]+)$" in "measurementId"
 
     # the whole value is saved, as long as the value starts with "cpu"
-    And value of variable "measurementId" is "0"
+    And value for variable "measurementId" is "0"
     Then save response payload "$.measurement.id" that matches "^cpu[\\d]+$" in "measurementId"
 
     # xpath example
-    And set response content type to "application/xml"
-    And value of variable "xmlMeasurementId" is "none"
-    Then save response payload "//measurement[0]/id/text()" that matches "^cpu[\\d]+$" in "xmlMeasurementId"
+    And value for variable "xmlMeasurementId" is "none"
+    Then save response payload "//measurement[0]/id/text() | content_type=xml" that matches "^cpu[\\d]+$" in "xmlMeasurementId"
     ```
 
     Args:

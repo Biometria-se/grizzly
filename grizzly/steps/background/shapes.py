@@ -27,14 +27,15 @@ def step_shapes_user_count(context: Context, value: str, **kwargs: Dict[str, Any
     ```gherkin
     Given "5" users
     Given "1" user
-    Given "$conf::load.user.count"
+    Given "{{ user_count }}"
     ```
 
     Args:
         user_count (int): Number of users locust should create
     '''
     grizzly = cast(GrizzlyContext, context.grizzly)
-    should_resolve = '{{' in value and '}}' in value or value[0] == '$'
+    assert value[0] != '$', 'this expression does not support $conf or $env variables'
+    should_resolve = '{{' in value and '}}' in value
     user_count = int(round(float(resolve_variable(grizzly, value)), 0))
 
     if should_resolve and user_count < 1:
@@ -62,8 +63,9 @@ def step_shapes_spawn_rate(context: Context, value: str, **kwargs: Dict[str, Any
         spawn_rate (float): number of users per second
     '''
     assert isinstance(value, str), f'{value} is not a string'
+    assert value[0] != '$', 'this expression does not support $conf or $env variables'
     grizzly = cast(GrizzlyContext, context.grizzly)
-    should_resolve = '{{' in value and '}}' in value or value[0] == '$'
+    should_resolve = '{{' in value and '}}' in value
     spawn_rate = float(resolve_variable(grizzly, value))
 
     if should_resolve and spawn_rate < 0.01:

@@ -2,14 +2,14 @@ import logging
 
 from _pytest.logging import LogCaptureFixture
 
-from grizzly.tasks import PrintTask
+from grizzly.tasks import LogMessage
 
 from ...fixtures import GrizzlyFixture
 
 
-class TestPrintTask:
+class TestLogMessage:
     def test(self, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture) -> None:
-        task_factory = PrintTask(message='hello world!')
+        task_factory = LogMessage(message='hello world!')
         assert task_factory.message == 'hello world!'
 
         task = task_factory()
@@ -25,7 +25,7 @@ class TestPrintTask:
         assert 'hello world!' in caplog.text
         caplog.clear()
 
-        task_factory = PrintTask(message='variable={{ variable }}')
+        task_factory = LogMessage(message='variable={{ variable }}')
         assert task_factory.message == 'variable={{ variable }}'
 
         task = task_factory()

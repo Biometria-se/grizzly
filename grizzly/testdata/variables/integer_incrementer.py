@@ -13,7 +13,7 @@ The first value of an integer that is going to be used.
 ## Example
 
 ```gherkin
-And value of variable "AtomicIntegerIncrementer.unique_id" is "100 | step=10"
+And value for variable "AtomicIntegerIncrementer.unique_id" is "100 | step=10"
 ```
 
 This can then be used in a template:

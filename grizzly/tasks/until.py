@@ -32,7 +32,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from ..scenarios import GrizzlyScenario
 
 
-@template('condition', 'expression')
+@template('condition', 'request')
 class UntilRequestTask(GrizzlyTask):
     request: RequestTask
     condition: str

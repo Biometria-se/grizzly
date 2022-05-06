@@ -41,9 +41,9 @@ pathvalidate==2.5.0 \
     --hash=sha256:119ba36be7e9a405d704c7b7aea4b871c757c53c9adc0ed64f40be1ed8da2781 \
     --hash=sha256:e5b2747ad557363e8f4124f0553d68878b12ecabd77bcca7e7312d5346d20262
     # via pytablewriter
-pip-licenses==3.5.3 \
-    --hash=sha256:59c148d6a03784bf945d232c0dc0e9de4272a3675acaa0361ad7712398ca86ba \
-    --hash=sha256:f44860e00957b791c6c6005a3328f2d5eaeee96ddb8e7d87d4b0aa25b02252e4
+pip-licenses==3.5.4 \
+    --hash=sha256:5e23593c670b8db616b627c68729482a65bb88498eefd8df337762fdaf7936a8 \
+    --hash=sha256:a8b4dabe2b83901f9ac876afc47b57cff9a5ebe19a6d90c0b2579fa8cf2db176
     # via -r /mnt/requirements-script.in
 ptable==0.9.2 \
     --hash=sha256:aa7fc151cb40f2dabcd2275ba6f7fd0ff8577a86be3365cd3fb297cbe09cc292

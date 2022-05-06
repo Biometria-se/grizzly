@@ -23,7 +23,7 @@ bob2,password
 ```
 
 ```gherkin
-And value of variable "AtomicCsvRow.example" is "example.csv | random=False, repeat=True"
+And value for variable "AtomicCsvRow.example" is "example.csv | random=False, repeat=True"
 Then post request with name "authenticate" to endpoint "/api/v1/authenticate"
   """
   {
