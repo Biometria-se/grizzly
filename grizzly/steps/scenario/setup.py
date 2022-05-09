@@ -258,6 +258,7 @@ def step_setup_stop_user_on_failure(context: Context) -> None:
 @given(u'restart scenario on failure')
 def step_setup_restart_scenario_on_failure(context: Context) -> None:
     '''Restart scenario, from first task, if a request fails.
+
     Default behavior is to continue the scenario if a request fails.
 
     ```gherkin

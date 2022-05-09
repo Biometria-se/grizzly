@@ -8,8 +8,6 @@ def test_e2e_step_utils_fail(behave_context_fixture: BehaveContextFixture) -> No
         ]
     )
 
-    assert feature_file == 'features/test_e2e_step_utils_fail.feature'
-
     rc, output = behave_context_fixture.execute(feature_file)
     result = ''.join(output)
 

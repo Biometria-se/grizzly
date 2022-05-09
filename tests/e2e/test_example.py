@@ -17,7 +17,7 @@ def test_e2e_example(webserver: Webserver) -> None:
             env_conf = yaml.full_load(env_yaml_file)
 
             for name in ['dog', 'cat', 'book']:
-                env_conf['configuration']['facts'][name]['host'] = f'http://127.0.0.1:{webserver._web_server.server_port}'
+                env_conf['configuration']['facts'][name]['host'] = f'http://127.0.0.1:{webserver.port}'
 
         with NamedTemporaryFile(delete=True, suffix='.yaml') as env_conf_file:
             chdir('example/')

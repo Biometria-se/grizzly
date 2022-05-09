@@ -12,7 +12,7 @@ from ....fixtures import BehaveContextFixture
     '5', '1', "{{ user_count }}",
 ])
 def test_e2e_step_shapes_user_count(behave_context_fixture: BehaveContextFixture, count: str) -> None:
-    def validate_user_count(context: Context) -> None:
+    def validator(context: Context) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
         data = list(context.table)[0].as_dict()
 
@@ -35,7 +35,7 @@ def test_e2e_step_shapes_user_count(behave_context_fixture: BehaveContextFixture
     except:
         pass
 
-    behave_context_fixture.add_validator(validate_user_count, table=table)
+    behave_context_fixture.add_validator(validator, table=table)
 
     feature_file = behave_context_fixture.test_steps(
         background=[
@@ -57,7 +57,7 @@ def test_e2e_step_shapes_user_count(behave_context_fixture: BehaveContextFixture
     '1', '0.5', "{{ spawn_rate }}",
 ])
 def test_e2e_step_shapes_spawn_rate(behave_context_fixture: BehaveContextFixture, rate: str) -> None:
-    def validate_spawn_rate(context: Context) -> None:
+    def validator(context: Context) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
         data = list(context.table)[0].as_dict()
 
@@ -73,7 +73,7 @@ def test_e2e_step_shapes_spawn_rate(behave_context_fixture: BehaveContextFixture
         }
     ]
 
-    behave_context_fixture.add_validator(validate_spawn_rate, table=table)
+    behave_context_fixture.add_validator(validator, table=table)
 
     feature_file = behave_context_fixture.test_steps(
         background=[

@@ -26,7 +26,7 @@ def test_e2e_step_setup_save_statistics(behave_context_fixture: BehaveContextFix
         }
     }
 
-    def validate_statistics_url(context: Context) -> None:
+    def validator(context: Context) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
         data = list(context.table)[0].as_dict()
 
@@ -48,7 +48,7 @@ def test_e2e_step_setup_save_statistics(behave_context_fixture: BehaveContextFix
         }
     ]
 
-    behave_context_fixture.add_validator(validate_statistics_url, table=table)
+    behave_context_fixture.add_validator(validator, table=table)
 
     feature_file = behave_context_fixture.test_steps(
         background=[
@@ -73,7 +73,7 @@ def test_e2e_step_setup_save_statistics(behave_context_fixture: BehaveContextFix
     'ERROR',
 ])
 def test_e2e_step_setup_log_level(behave_context_fixture: BehaveContextFixture, level: str) -> None:
-    def validate_log_level(context: Context) -> None:
+    def validator(context: Context) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
         data = list(context.table)[0].as_dict()
 
@@ -87,7 +87,7 @@ def test_e2e_step_setup_log_level(behave_context_fixture: BehaveContextFixture, 
         'level': level,
     }]
 
-    behave_context_fixture.add_validator(validate_log_level, table=table)
+    behave_context_fixture.add_validator(validator, table=table)
 
     feature_file = behave_context_fixture.test_steps(
         background=[
@@ -108,7 +108,7 @@ def test_e2e_step_setup_log_level(behave_context_fixture: BehaveContextFixture, 
     'asdf',
 ])
 def test_e2e_step_setup_run_time(behave_context_fixture: BehaveContextFixture, timespan: str) -> None:
-    def validate_run_time(context: Context) -> None:
+    def validator(context: Context) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
         data = list(context.table)[0].as_dict()
 
@@ -122,7 +122,7 @@ def test_e2e_step_setup_run_time(behave_context_fixture: BehaveContextFixture, t
         'timespan': timespan,
     }]
 
-    behave_context_fixture.add_validator(validate_run_time, table=table)
+    behave_context_fixture.add_validator(validator, table=table)
 
     feature_file = behave_context_fixture.test_steps(
         background=[
@@ -143,7 +143,7 @@ def test_e2e_step_setup_run_time(behave_context_fixture: BehaveContextFixture, t
     ('run_id', '13', '{"run_id": 13}',),
 ])
 def test_e2e_step_setup_global_context_variable(behave_context_fixture: BehaveContextFixture, name: str, value: str, expected: str) -> None:
-    def validate_global_context_variable(context: Context) -> None:
+    def validator(context: Context) -> None:
         from json import loads as jsonloads
         grizzly = cast(GrizzlyContext, context.grizzly)
         data = list(context.table)[0].as_dict()
@@ -163,7 +163,7 @@ def test_e2e_step_setup_global_context_variable(behave_context_fixture: BehaveCo
         'expected': expected,
     }]
 
-    behave_context_fixture.add_validator(validate_global_context_variable, table=table)
+    behave_context_fixture.add_validator(validator, table=table)
 
     feature_file = behave_context_fixture.test_steps(
         background=[

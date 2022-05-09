@@ -12,7 +12,7 @@ from ....fixtures import BehaveContextFixture
 
 @pytest.mark.parametrize('target', [target for target in ResponseTarget])
 def test_e2e_step_response_save_matches(behave_context_fixture: BehaveContextFixture, target: ResponseTarget) -> None:
-    def add_validate_save_handler(context: Context) -> None:
+    def validator(context: Context) -> None:
         from grizzly.tasks import RequestTask
         from grizzly.users.base.response_handler import SaveHandlerAction
 
@@ -47,7 +47,7 @@ def test_e2e_step_response_save_matches(behave_context_fixture: BehaveContextFix
     }]
 
     behave_context_fixture.add_validator(
-        add_validate_save_handler,
+        validator,
         table=table,
     )
 
@@ -67,7 +67,7 @@ def test_e2e_step_response_save_matches(behave_context_fixture: BehaveContextFix
 
 @pytest.mark.parametrize('target', [target for target in ResponseTarget])
 def test_e2e_step_response_save(behave_context_fixture: BehaveContextFixture, target: ResponseTarget) -> None:
-    def validate_save_handler(context: Context) -> None:
+    def validator(context: Context) -> None:
         from grizzly.tasks import RequestTask
         from grizzly.users.base.response_handler import SaveHandlerAction
 
@@ -101,7 +101,7 @@ def test_e2e_step_response_save(behave_context_fixture: BehaveContextFixture, ta
     }]
 
     behave_context_fixture.add_validator(
-        validate_save_handler,
+        validator,
         table=table,
     )
 
@@ -121,7 +121,7 @@ def test_e2e_step_response_save(behave_context_fixture: BehaveContextFixture, ta
 
 @pytest.mark.parametrize('target,condition', list(product(ResponseTarget, ['is', 'is not'])))
 def test_e2e_step_response_validate(behave_context_fixture: BehaveContextFixture, target: ResponseTarget, condition: str) -> None:
-    def validate_validation_handler(context: Context) -> None:
+    def validator(context: Context) -> None:
         from grizzly.tasks import RequestTask
         from grizzly.users.base.response_handler import ValidationHandlerAction
 
@@ -134,6 +134,8 @@ def test_e2e_step_response_validate(behave_context_fixture: BehaveContextFixture
         grizzly.scenario.tasks.pop()  # latest task is a dummy task
 
         assert len(grizzly.scenario.orphan_templates) == 0, 'unexpected number of orphan templates'
+
+        assert grizzly.scenario.failure_exception is None
 
         request = grizzly.scenario.tasks[-1]
 
@@ -161,14 +163,14 @@ def test_e2e_step_response_validate(behave_context_fixture: BehaveContextFixture
     }]
 
     behave_context_fixture.add_validator(
-        validate_validation_handler,
+        validator,
         table=table,
     )
 
     feature_file = behave_context_fixture.test_steps(
         scenario=[
             f'Then get request with name "{target.name.lower()}-handler" from endpoint "/api/test | content_type=json"',
-            f'When response {target.name.lower()} "$.hello.world" {condition} "foo[bar]?" stop user',
+            f'When response {target.name.lower()} "$.hello.world" {condition} "foo[bar]?" fail scenario',
         ],
         identifier=target.name,
     )
@@ -183,7 +185,7 @@ def test_e2e_step_response_validate(behave_context_fixture: BehaveContextFixture
     '-200,404',
 ])
 def test_e2e_step_allow_status_codes(behave_context_fixture: BehaveContextFixture, status_codes: str) -> None:
-    def validate_status_codes(context: Context) -> None:
+    def validator(context: Context) -> None:
         from grizzly.tasks import RequestTask
 
         grizzly = cast(GrizzlyContext, context.grizzly)
@@ -204,7 +206,7 @@ def test_e2e_step_allow_status_codes(behave_context_fixture: BehaveContextFixtur
     }]
 
     behave_context_fixture.add_validator(
-        validate_status_codes,
+        validator,
         table=table,
     )
 
@@ -221,17 +223,19 @@ def test_e2e_step_allow_status_codes(behave_context_fixture: BehaveContextFixtur
 
 
 def test_e2e_step_allow_status_codes_table(behave_context_fixture: BehaveContextFixture) -> None:
-    def validate_status_codes_table(context: Context) -> None:
+    def validator(context: Context) -> None:
         from grizzly.tasks import RequestTask
 
         grizzly = cast(GrizzlyContext, context.grizzly)
 
-        request = grizzly.scenario.tasks[-2]
+        grizzly.scenario.tasks.pop()
+
+        request = grizzly.scenario.tasks[-1]
         assert isinstance(request, RequestTask), f'{request.__class__.__name__} != RequestTask'
         assert request.name == 'test-get-2', f'{request.name} != test-get-2'
         assert request.response.status_codes == [404], f'{str(request.response.status_codes)} != [404]'
 
-        request = grizzly.scenario.tasks[-3]
+        request = grizzly.scenario.tasks[-2]
         assert isinstance(request, RequestTask), f'{request.__class__.__name__} != RequestTask'
         assert request.name == 'test-get-1', f'{request.name} != test-get-1'
         assert request.response.status_codes == [200, 302], f'{str(request.response.status_codes)} != [200, 302]'
@@ -239,7 +243,7 @@ def test_e2e_step_allow_status_codes_table(behave_context_fixture: BehaveContext
         raise SystemExit(0)
 
     behave_context_fixture.add_validator(
-        validate_status_codes_table,
+        validator,
     )
 
     feature_file = behave_context_fixture.test_steps(
@@ -247,9 +251,9 @@ def test_e2e_step_allow_status_codes_table(behave_context_fixture: BehaveContext
             'Then get request with name "test-get-1" from endpoint "/api/test"',
             'Then get request with name "test-get-2" from endpoint "/api/test"',
             '''And allow response status codes
-  | status   |
-  | 200, 302 |
-  | -200,404 |
+      | status   |
+      | 200, 302 |
+      | -200,404 |
 ''',
         ],
     )
@@ -264,7 +268,7 @@ def test_e2e_step_allow_status_codes_table(behave_context_fixture: BehaveContext
     'plain', 'text/plain',
 ])
 def test_e2e_step_response_content_type(behave_context_fixture: BehaveContextFixture, content_type: str) -> None:
-    def validate_response_content_type(context: Context) -> None:
+    def validator(context: Context) -> None:
         from grizzly.tasks import RequestTask
         from grizzly_extras.transformer import TransformerContentType
 
@@ -283,7 +287,7 @@ def test_e2e_step_response_content_type(behave_context_fixture: BehaveContextFix
     }]
 
     behave_context_fixture.add_validator(
-        validate_response_content_type,
+        validator,
         table=table,
     )
 

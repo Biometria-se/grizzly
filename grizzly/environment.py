@@ -37,7 +37,7 @@ def before_feature(context: Context, *_args: Tuple[Any, ...], **kwargs: Dict[str
 
 
 @catch(KeyboardInterrupt)
-def after_feature(context: Context, feature: Feature, *_args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+def after_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
     # all scenarios has been processed, let's run locust
     if feature.status == Status.passed:
         return_code = locustrun(context)
@@ -54,7 +54,7 @@ def after_feature(context: Context, feature: Feature, *_args: Tuple[Any, ...], *
         pass
 
 
-def before_scenario(context: Context, scenario: Scenario, *_args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+def before_scenario(context: Context, scenario: Scenario, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
     grizzly = cast(GrizzlyContext, context.grizzly)
 
     if grizzly.state.background_section_done:
@@ -85,7 +85,7 @@ def before_scenario(context: Context, scenario: Scenario, *_args: Tuple[Any, ...
     grizzly.add_scenario(scenario)
 
 
-def after_scenario(context: Context, *_args: Tuple[Any, ...], **_kwargs: Dict[str, Any]) -> None:
+def after_scenario(context: Context, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
     grizzly = cast(GrizzlyContext, context.grizzly)
 
     # first scenario is done, do not process background for any (possible) other scenarios

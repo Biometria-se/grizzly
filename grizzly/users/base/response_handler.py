@@ -117,11 +117,11 @@ class ValidationHandlerAction(ResponseHandlerAction):
         result = match is not None if self.condition is True else match is None
 
         if result:
-            message = f'"{expression}": "{match_with}" was {match}'
+            failure = (user._scenario.failure_exception or ResponseHandlerError)(f'"{expression}": "{match_with}" was {match}')
             if response is not None:
-                response.failure(message)
+                response.failure(failure)
             else:
-                raise ResponseHandlerError(message)
+                raise failure
 
 
 class SaveHandlerAction(ResponseHandlerAction):
@@ -145,11 +145,11 @@ class SaveHandlerAction(ResponseHandlerAction):
         user.set_context_variable(self.variable, match)
 
         if match is None:
-            message = f'"{expression}" did not match value'
+            failure = (user._scenario.failure_exception or ResponseHandlerError)(f'"{expression}" did not match value')
             if response is not None:
-                response.failure(message)
+                response.failure(failure)
             else:
-                raise ResponseHandlerError(message)
+                raise failure
 
 
 class ResponseHandler(ResponseEvent):
@@ -166,7 +166,7 @@ class ResponseHandler(ResponseEvent):
         context: HandlerContextType,
         request: RequestTask,
         user: GrizzlyUser,
-        **_kwargs: Dict[str, Any],
+        **kwargs: Dict[str, Any],
     ) -> None:
         if getattr(request, 'response', None) is None:
             return
