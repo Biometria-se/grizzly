@@ -103,18 +103,23 @@ def step_response_save(context: Context, target: ResponseTarget, expression: str
     add_save_handler(cast(GrizzlyContext, context.grizzly), target, expression, '.*', variable)
 
 
-@when(u'response {target:ResponseTarget} "{expression}" {condition:Condition} "{match_with}" stop user')
+@when(u'response {target:ResponseTarget} "{expression}" {condition:Condition} "{match_with}" fail scenario')
 def step_response_validate(context: Context, target: ResponseTarget, expression: str, condition: bool, match_with: str) -> None:
     '''Fails the scenario based on the value of a response meta data (header) or payload (body).
 
-    ```gherkin
-    When response metadata "$.['content-type']" is not ".*application/json.*" stop user
-    When response metadata "$.['x-test-command']" is "abort" stop user
-    When response metadata "$.Authentication" is not "Bearer .*$" stop user
+    How the step will fail is based on step `And ... on failure`. If this step is not present, it will default to
+    stopping the user.
 
-    When response payload "$.measurement.id" is not "cpu[0-9]+" stop user
-    When response payload "$.success" is "false" stop user
-    When response payload "/root/measurement[@id="cpu"]/success/text()" is "'false'" stop user
+    ```gherkin
+    And restart scenario on failure
+    When response metadata "$.['content-type']" is not ".*application/json.*" fail scenario
+    When response metadata "$.['x-test-command']" is "abort" fail scenario
+    When response metadata "$.Authentication" is not "Bearer .*$" fail scenario
+
+    And stop user on failure
+    When response payload "$.measurement.id" is not "cpu[0-9]+" fail scenario
+    When response payload "$.success" is "false" fail scenario
+    When response payload "/root/measurement[@id="cpu"]/success/text()" is "'false'" fail scenario
     ```
 
     Args:

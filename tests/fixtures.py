@@ -1,7 +1,6 @@
 import pkgutil
 import inspect
 import socket
-import csv
 import re
 
 from typing import TYPE_CHECKING, Optional, Union, Callable, Any, Literal, List, Tuple, Type, Dict, cast
@@ -29,14 +28,13 @@ from paramiko.channel import Channel
 from paramiko.sftp import BaseSFTP
 from paramiko.sftp_client import SFTPClient
 from behave.runner import Context as BehaveContext, Runner
-from behave.model import Scenario, Step, Background
+from behave.model import Scenario, Step, Background, Feature
 from behave.configuration import Configuration
 from behave.step_registry import registry as step_registry
 from requests.models import CaseInsensitiveDict, Response, PreparedRequest
-from flask import Flask, request, jsonify, Response as FlaskResponse
 
 from grizzly.types import GrizzlyResponseContextManager, RequestMethod
-from grizzly.tasks.request import RequestTask
+from grizzly.tasks import RequestTask
 
 import grizzly.testdata.variables as variables
 
@@ -44,6 +42,7 @@ from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 
 from .helpers import TestUser, TestScenario, RequestSilentFailureEvent
 from .helpers import onerror, run_command
+from .app import app
 
 if TYPE_CHECKING:
     from grizzly.users.base import GrizzlyUser
@@ -507,51 +506,8 @@ class ResponseContextManagerFixture:
         return response_context_manager
 
 
-app = Flask(__name__)
-root_dir = path.realpath(path.join(path.dirname(__file__), '..'))
-
-
-@app.route('/api/v1/resources/dogs')
-def get_dog_fact() -> FlaskResponse:
-    _ = int(request.args.get('number', ''))
-
-    return jsonify(['woof woof wooof'])
-
-
-@app.route('/facts')
-def get_cat_fact() -> FlaskResponse:
-    _ = int(request.args.get('limit', ''))
-
-    return jsonify(['meow meow meow'])
-
-
-@app.route('/books/<book>.json')
-def get_book(book: str) -> FlaskResponse:
-    with open(f'{root_dir}/example/features/requests/books/books.csv', 'r') as fd:
-        reader = csv.DictReader(fd)
-        for row in reader:
-            if row['book'] == book:
-                return jsonify({
-                    'number_of_pages': row['pages'],
-                    'isbn_10': [row['isbn_10']] * 2,
-                    'authors': [
-                        {'key': '/author/' + row['author'].replace(' ', '_').strip() + '|' + row['isbn_10'].strip()},
-                    ]
-                })
-
-
-@app.route('/author/<author_key>.json')
-def get_author(author_key: str) -> FlaskResponse:
-    name, _ = author_key.rsplit('|', 1)
-
-    return jsonify({
-        'name': name.replace('_', ' ')
-    })
-
-
 class Webserver:
     _web_server: gevent.pywsgi.WSGIServer
-    port: int
 
     def __init__(self) -> None:
         self._web_server = gevent.pywsgi.WSGIServer(
@@ -560,10 +516,13 @@ class Webserver:
             log=None,
         )
 
+    @property
+    def port(self) -> int:
+        return cast(int, self._web_server.server_port)
+
     def __enter__(self) -> 'Webserver':
         gevent.spawn(lambda: self._web_server.serve_forever())
         gevent.sleep(0.01)
-        self.port = self._web_server.server_port
 
         return self
 
@@ -686,7 +645,9 @@ class BehaveContextFixture:
     _tmp_path_factory: TempPathFactory
     _cwd: str
     _env: Dict[str, str]
-    _validators: List[BehaveValidator]
+    _validators: Dict[Optional[str], List[BehaveValidator]]
+
+    _after_features: Dict[str, Callable[[BehaveContext, Feature], None]]
 
     _root: Optional[Path]
 
@@ -694,8 +655,9 @@ class BehaveContextFixture:
         self._tmp_path_factory = tmp_path_factory
         self._cwd = getcwd()
         self._env = {}
-        self._validators = []
+        self._validators = {}
         self._root = None
+        self._after_features = {}
 
     @property
     def root(self) -> Path:
@@ -727,10 +689,12 @@ class BehaveContextFixture:
 
         # create base steps.py
         with open(self._root / 'features' / 'steps' / 'steps.py', 'w') as fd:
-            fd.write('from typing import cast\n\n')
+            fd.write('from typing import cast, Callable, Any\n\n')
             fd.write('from behave import then\n')
             fd.write('from behave.runner import Context\n')
-            fd.write('from grizzly.context import GrizzlyContext\n')
+            fd.write('from grizzly.context import GrizzlyContext, GrizzlyContextScenario\n')
+            fd.write('from grizzly.tasks import GrizzlyTask\n')
+            fd.write('from grizzly.scenarios import GrizzlyScenario\n')
             fd.write('from grizzly.steps import *\n')
 
         # create virtualenv
@@ -777,6 +741,8 @@ class BehaveContextFixture:
                 rmtree(self.root.parent.parent, onerror=onerror)
             except AttributeError:
                 pass
+        else:
+            print(self._root)
 
         return True
 
@@ -784,10 +750,19 @@ class BehaveContextFixture:
         self,
         implementation: Callable[[BehaveContext], None],
         /,
+        scenario: Optional[str] = None,
         table: Optional[List[Dict[str, str]]] = None,
     ) -> None:
         callee = inspect.stack()[1].function
-        self._validators.append(BehaveValidator(callee, implementation, table))
+
+        if self._validators.get(scenario, None) is None:
+            self._validators[scenario] = []
+
+        self._validators[scenario].append(BehaveValidator(callee, implementation, table))
+
+    def add_after_feature(self, implementation: Callable[[BehaveContext, Feature], None]) -> None:
+        callee = inspect.stack()[1].function
+        self._after_features[callee] = implementation
 
     def test_steps(self, /, scenario: Optional[List[str]] = None, background: Optional[List[str]] = None, identifier: Optional[str] = None) -> str:
         callee = inspect.stack()[1].function
@@ -830,13 +805,10 @@ class BehaveContextFixture:
 
         contents.append('')
 
-        if scenario is not None:
-            contents.append(f'  Scenario: {callee}')
-            for step in scenario or []:
-                contents.append(f'    {step}')
-            contents.append('    Then print message "dummy"')
-
-        contents.append('')
+        contents.append(f'  Scenario: {callee}')
+        for step in scenario or []:
+            contents.append(f'    {step}')
+        contents.append('    Then print message "dummy"\n')
 
         return self.create_feature(
             '\n'.join(contents),
@@ -852,30 +824,94 @@ class BehaveContextFixture:
             identifier = sha1(identifier.encode()).hexdigest()[:8]
             name = f'{name}_{identifier}'
 
-        with open(self.root / 'features' / f'{name}.feature', 'w+') as ffd:
-            feature_lines = contents.split('\n')
-            feature_lines[0] = f'Feature: test {name}'
-            contents = '\n'.join(feature_lines)
+        feature_lines = contents.strip().split('\n')
+        feature_lines[0] = f'Feature: {name}'
+        steps_file = self.root / 'features' / 'steps' / 'steps.py'
+        environment_file = self.root / 'features' / 'environment.py'
 
-            ffd.write(contents)
+        scenario: Optional[str] = None
+        indentation = '    '
+        modified_feature_lines: List[str] = []
+        offset = 0  # number of added steps
 
-            steps_file = self.root / 'features' / 'steps' / 'steps.py'
-            with open(steps_file, 'r') as sfd:
-                steps_impl = sfd.read()
+        for nr, line in enumerate(feature_lines):
+            modified_feature_lines.append(line)
 
-            with open(steps_file, 'a') as sfd:
-                for validator in self._validators:
-                    # write step to feature file
-                    ffd.write(indent(f'{validator.expression}\n', prefix='    '))
+            last_line = nr == len(feature_lines) - 1
+            scenario_definition = line.strip().startswith('Scenario:')
 
+            if scenario_definition or last_line:
+                if scenario is not None:
+                    validators = self._validators.get(scenario, self._validators.get(None, None))
+                    if validators is not None:
+                        for validator in validators:
+                            nr += offset
+                            validator_expression = indent(f'{validator.expression}', prefix=indentation * 2)
+                            index = nr
+                            while modified_feature_lines[index].strip() == '' or 'Scenario:' in modified_feature_lines[index]:
+                                index -= 1
+
+                            index += 1
+                            modified_feature_lines.insert(index, validator_expression)
+
+                            offset += 1
+
+                if scenario_definition:
+                    scenario = line.replace('Scenario:', '').strip()
+                    indentation, _ = line.split('Scenario:', 1)
+
+        modified_feature_lines.append('')
+
+        contents = '\n'.join(modified_feature_lines)
+
+        # write feature file
+        with open(self.root / 'features' / f'{name}.feature', 'w+') as fd:
+            fd.write(contents)
+
+        feature_file_name = fd.name.replace(f'{self.root}/', '')
+
+        # cache current step implementations
+        with open(steps_file, 'r') as fd:
+            steps_impl = fd.read()
+
+        # add step implementations
+        with open(steps_file, 'a') as fd:
+            added_validators: List[str] = []
+            for validators in self._validators.values():
+                for validator in validators:
                     # write expression and step implementation to steps/steps.py
-                    if validator.impl not in steps_impl:
-                        sfd.write(f'\n\n{validator.impl}')
+                    if validator.impl not in steps_impl and validator.impl not in added_validators:
+                        fd.write(f'\n\n{validator.impl}')
+                        added_validators.append(validator.impl)
 
-            # they are now "burned"...
-            self._validators.clear()
+            added_validators = []
 
-            return ffd.name.replace(f'{self.root}/', '')
+        # add after_feature hook, always write all of 'em
+        with open(environment_file, 'w') as fd:
+            fd.write('from typing import Any, Tuple, Dict, cast\n\n')
+            fd.write('from behave.runner import Context\n')
+            fd.write('from behave.model import Feature\n')
+            fd.write('from grizzly.context import GrizzlyContext\n')
+            fd.write('from grizzly.environment import before_feature, after_feature as grizzly_after_feature, before_scenario, after_scenario, before_step\n\n')
+
+            fd.write('def after_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:\n')
+            fd.write('    grizzly_after_feature(context, feature)\n\n')
+            if len(self._after_features) > 0:
+                for feature_name in self._after_features.keys():
+                    fd.write(f'    if feature.name == "{feature_name}":\n')
+                    fd.write(f'        {feature_name}_after_feature(context, feature)\n\n')
+
+            for key, after_feature_impl in self._after_features.items():
+                source_lines = dedent(inspect.getsource(after_feature_impl)).split('\n')
+                source_lines[0] = re.sub(r'^def .*?\(', f'def {key}_after_feature(', source_lines[0])
+                source = '\n'.join(source_lines)
+
+                fd.write(source + '\n\n')
+
+        # step validators are are now "burned"...
+        self._validators.clear()
+
+        return feature_file_name
 
     def execute(self, feature_file: str, env_conf_file: Optional[str] = None, testdata: Optional[Dict[str, str]] = None) -> Tuple[int, List[str]]:
         chdir(self.root)

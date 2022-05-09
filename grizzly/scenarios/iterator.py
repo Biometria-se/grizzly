@@ -103,7 +103,7 @@ class IteratorScenario(GrizzlyScenario):
         remote_context = self.consumer.request(self.__class__.__name__)
 
         if remote_context is None:
-            self.logger.debug('no iteration data available, abort')
+            self.logger.debug('no iteration data available, stop scenario')
             raise StopUser()
 
         self.user.add_context(remote_context)

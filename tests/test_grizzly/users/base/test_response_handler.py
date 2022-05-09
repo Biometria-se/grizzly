@@ -9,13 +9,14 @@ from pytest_mock import MockerFixture
 
 from locust.event import EventHook
 from locust.clients import ResponseContextManager
-from locust.exception import LocustError, CatchResponseError
+from locust.exception import LocustError, CatchResponseError, StopUser
 from requests.models import Response
 
 from grizzly.clients import ResponseEventSession
+from grizzly.context import GrizzlyContextScenario
 from grizzly.users.base import HttpRequests, ResponseEvent
 from grizzly.users.base.response_handler import ResponseHandler, ValidationHandlerAction, SaveHandlerAction, ResponseHandlerAction
-from grizzly.exceptions import ResponseHandlerError
+from grizzly.exceptions import ResponseHandlerError, RestartScenario
 from grizzly.types import RequestMethod
 from grizzly.tasks import RequestTask
 from grizzly_extras.transformer import TransformerContentType
@@ -91,7 +92,11 @@ class TestValidationHandlerAction:
         assert handler.expected_matches == 1
 
     def test___call___true(self, locust_fixture: LocustFixture) -> None:
+        scenario = GrizzlyContextScenario(index=1)
+        scenario.name = 'test-scenario'
         user = TestUser(locust_fixture.env)
+        user._scenario = scenario
+
         try:
             response = Response()
             response._content = '{}'.encode('utf-8')
@@ -107,7 +112,7 @@ class TestValidationHandlerAction:
 
             # match fixed string expression
             handler((TransformerContentType.JSON, {'test': {'value': 'test'}}), user, response_context_manager)
-            assert isinstance(getattr(response_context_manager, '_manual_result', None), CatchResponseError)
+            assert isinstance(getattr(response_context_manager, '_manual_result', None), ResponseHandlerError)
             response_context_manager._manual_result = None
 
             # no match fixed string expression
@@ -121,7 +126,7 @@ class TestValidationHandlerAction:
                 match_with='.*(test)$',
             )
             handler((TransformerContentType.JSON, {'test': {'value': 'nottest'}}), user, response_context_manager)
-            assert isinstance(getattr(response_context_manager, '_manual_result', None), CatchResponseError)
+            assert isinstance(getattr(response_context_manager, '_manual_result', None), ResponseHandlerError)
             response_context_manager._manual_result = None
 
             # ony allows 1 match per expression
@@ -143,7 +148,7 @@ class TestValidationHandlerAction:
                 user,
                 response_context_manager,
             )
-            assert isinstance(getattr(response_context_manager, '_manual_result', None), CatchResponseError)
+            assert isinstance(getattr(response_context_manager, '_manual_result', None), ResponseHandlerError)
             response_context_manager._manual_result = None
 
             handler = ValidationHandlerAction(
@@ -154,7 +159,7 @@ class TestValidationHandlerAction:
 
             # 1 match expression
             handler((TransformerContentType.JSON, ['STTO_1337', 'STTO_31337', 'STTO_73313']), user, response_context_manager)
-            assert isinstance(getattr(response_context_manager, '_manual_result', None), CatchResponseError)
+            assert isinstance(getattr(response_context_manager, '_manual_result', None), ResponseHandlerError)
             response_context_manager._manual_result = None
 
             example = {
@@ -198,7 +203,7 @@ class TestValidationHandlerAction:
                 match_with='{{ format }}',
             )
             handler((TransformerContentType.JSON, example), user, response_context_manager)
-            assert isinstance(getattr(response_context_manager, '_manual_result', None), CatchResponseError)
+            assert isinstance(getattr(response_context_manager, '_manual_result', None), ResponseHandlerError)
             response_context_manager._manual_result = None
 
             with pytest.raises(ResponseHandlerError):
@@ -222,7 +227,7 @@ class TestValidationHandlerAction:
                 match_with='{{ regexp }}',
             )
             handler((TransformerContentType.JSON, example), user, response_context_manager)
-            assert isinstance(getattr(response_context_manager, '_manual_result', None), CatchResponseError)
+            assert isinstance(getattr(response_context_manager, '_manual_result', None), ResponseHandlerError)
             response_context_manager._manual_result = None
 
             handler = ValidationHandlerAction(
@@ -231,7 +236,7 @@ class TestValidationHandlerAction:
                 match_with='.*world$',
             )
             handler((TransformerContentType.JSON, example), user, response_context_manager)
-            assert isinstance(getattr(response_context_manager, '_manual_result', None), CatchResponseError)
+            assert isinstance(getattr(response_context_manager, '_manual_result', None), ResponseHandlerError)
             response_context_manager._manual_result = None
 
             handler = ValidationHandlerAction(
@@ -243,13 +248,16 @@ class TestValidationHandlerAction:
             assert response_context_manager._manual_result is None
 
             handler((TransformerContentType.JSON, False), user, response_context_manager)
-            assert isinstance(getattr(response_context_manager, '_manual_result', None), CatchResponseError)
+            assert isinstance(getattr(response_context_manager, '_manual_result', None), ResponseHandlerError)
             response_context_manager._manual_result = None
         finally:
             assert user._context['variables'] is not TestUser(locust_fixture.env)._context['variables']
 
     def test___call___false(self, locust_fixture: LocustFixture) -> None:
+        scenario = GrizzlyContextScenario(index=1)
+        scenario.name = 'test-scenario'
         user = TestUser(locust_fixture.env)
+        user._scenario = scenario
         response = Response()
         response._content = '{}'.encode('utf-8')
         response.status_code = 200
@@ -384,11 +392,25 @@ class TestValidationHandlerAction:
             match_with='False',
         )
         handler((TransformerContentType.JSON, True), user, response_context_manager)
-        assert isinstance(getattr(response_context_manager, '_manual_result', None), CatchResponseError)
+        assert isinstance(getattr(response_context_manager, '_manual_result', None), ResponseHandlerError)
         response_context_manager._manual_result = None
+
+        scenario.failure_exception = None
 
         with pytest.raises(ResponseHandlerError):
             handler((TransformerContentType.JSON, True), user, None)
+
+        scenario.failure_exception = StopUser
+
+        with pytest.raises(StopUser):
+            handler((TransformerContentType.JSON, True), user, None)
+
+        scenario.failure_exception = RestartScenario
+
+        with pytest.raises(RestartScenario):
+            handler((TransformerContentType.JSON, True), user, None)
+
+        scenario.failure_exception = None
 
         handler((TransformerContentType.JSON, False), user, response_context_manager)
         assert response_context_manager._manual_result is None
@@ -411,6 +433,9 @@ class TestSaveHandlerAction:
         response.status_code = 200
         response_context_manager = ResponseContextManager(response, locust_fixture.env.events.request, {})
         response_context_manager._entered = True
+        scenario = GrizzlyContextScenario(index=1)
+        scenario.name = 'test-scenario'
+        user._scenario = scenario
 
         assert 'test' not in user.context_variables
 
@@ -450,19 +475,31 @@ class TestSaveHandlerAction:
 
         # failed
         handler((TransformerContentType.JSON, {'test': {'name': 'test'}}), user, response_context_manager)
-        assert isinstance(getattr(response_context_manager, '_manual_result', None), CatchResponseError)
+        assert isinstance(getattr(response_context_manager, '_manual_result', None), ResponseHandlerError)
         assert user.context_variables.get('test', 'test') is None
 
-        with pytest.raises(ResponseHandlerError):
+        scenario.failure_exception = None
+
+        with pytest.raises(StopUser):
+            handler((TransformerContentType.JSON, {'test': {'name': 'test'}}), user, None)
+
+        scenario.failure_exception = StopUser
+
+        with pytest.raises(StopUser):
+            handler((TransformerContentType.JSON, {'test': {'name': 'test'}}), user, None)
+
+        scenario.failure_exception = RestartScenario
+
+        with pytest.raises(RestartScenario):
             handler((TransformerContentType.JSON, {'test': {'name': 'test'}}), user, None)
 
         # multiple matches
         handler = SaveHandlerAction('test', expression='$.test[*].value', match_with='.*t.*')
         handler((TransformerContentType.JSON, {'test': [{'value': 'test'}, {'value': 'test'}]}), user, response_context_manager)
-        assert isinstance(getattr(response_context_manager, '_manual_result', None), CatchResponseError)
+        assert isinstance(getattr(response_context_manager, '_manual_result', None), RestartScenario)
         assert user._context['variables']['test'] is None
 
-        with pytest.raises(ResponseHandlerError):
+        with pytest.raises(RestartScenario):
             handler((TransformerContentType.JSON, {'test': [{'value': 'test'}, {'value': 'test'}]}), user, None)
 
         # save object dict
