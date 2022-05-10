@@ -64,11 +64,11 @@ class TestdataConsumer:
                 message = self.socket.recv_json(flags=ZMQ_NOBLOCK)
                 break
             except ZMQAgain:
-                gsleep(0.1)  # let TestdataProducer greenlet execute
+                gsleep(0.1)  # let other greenlets execute
 
         if message['action'] == 'stop':
-            self.logger.debug('received stop command, stopping user')
-            raise StopUser()
+            self.logger.debug('received stop command')
+            return None
 
         if not message['action'] == 'consume':
             self.logger.error(f'unknown action "{message["action"]}" received, stopping user')

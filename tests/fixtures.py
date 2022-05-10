@@ -370,6 +370,7 @@ class GrizzlyFixture:
             user_classes=[user_type],
         )
 
+        self.request_task.request.scenario.description = self.request_task.request.scenario.name
         self.request_task.request.name = scenario_type.__name__
 
         user_type.host = host

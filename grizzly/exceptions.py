@@ -19,3 +19,7 @@ class TransformerLocustError(StopUser):
 
 class RestartScenario(Exception):
     pass
+
+
+class StopScenario(Exception):
+    pass

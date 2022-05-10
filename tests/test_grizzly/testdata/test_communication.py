@@ -407,9 +407,8 @@ class TestTestdataConsumer:
             }, 'stop')
 
             with caplog.at_level(logging.DEBUG):
-                with pytest.raises(StopUser):
-                    consumer.request('test')
-            assert 'received stop command, stopping user' in caplog.text
+                assert consumer.request('test') is None
+            assert caplog.messages[-1] == 'received stop command'
 
             caplog.clear()
 
