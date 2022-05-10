@@ -89,6 +89,27 @@ class GrizzlyContextScenarioUser:
     weight: int = field(init=False, hash=True, default=1)
 
 
+class GrizzlyContextTasks(List['GrizzlyTask']):
+    scenario: 'GrizzlyContextScenario'
+
+    def __init__(self, scenario: 'GrizzlyContextScenario', *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+        super().__init__(*args, **kwargs)
+
+        self.scenario = scenario
+
+    def __call__(self) -> List['GrizzlyTask']:
+        return cast(List['GrizzlyTask'], self)
+
+    def add(self, task: 'GrizzlyTask', pos: Optional[int] = None) -> None:
+        if not hasattr(task, 'scenario') or task.scenario is None or task.scenario is not self.scenario:
+            task.scenario = self.scenario
+
+        if pos is None:
+            self.append(task)
+        else:
+            self.insert(pos, task)
+
+
 @dataclass(unsafe_hash=True)
 class GrizzlyContextScenario:
     _name: str = field(init=False, hash=True)
@@ -100,11 +121,18 @@ class GrizzlyContextScenario:
     behave: Scenario = field(init=False, repr=False, hash=False, compare=False)
     context: Dict[str, Any] = field(init=False, repr=False, hash=False, compare=False, default_factory=dict)
     wait: GrizzlyContextScenarioWait = field(init=False, repr=False, hash=False, compare=False, default_factory=GrizzlyContextScenarioWait)
-    tasks: List['GrizzlyTask'] = field(init=False, repr=False, hash=False, compare=False, default_factory=list)
+    _tasks: GrizzlyContextTasks = field(init=False, repr=False, hash=False, compare=False)
     validation: GrizzlyContextScenarioValidation = field(init=False, hash=False, compare=False, default_factory=GrizzlyContextScenarioValidation)
     failure_exception: Optional[Type[Exception]] = field(init=False, default=None)
     orphan_templates: List[str] = field(init=False, repr=False, hash=False, compare=False, default_factory=list)
     async_group: Optional['AsyncRequestGroupTask'] = field(init=False, repr=False, hash=False, compare=False, default=None)
+
+    def __post_init__(self) -> None:
+        self._tasks = GrizzlyContextTasks(self)
+
+    @property
+    def tasks(self) -> GrizzlyContextTasks:
+        return self._tasks
 
     @property
     def identifier(self) -> str:
@@ -134,12 +162,6 @@ class GrizzlyContextScenario:
             or self.validation.avg_response_time is not None
             or self.validation.response_time_percentile is not None
         )
-
-    def add_task(self, task: 'GrizzlyTask') -> None:
-        if not hasattr(task, 'scenario') or task.scenario is None or task.scenario is not self:
-            task.scenario = self
-
-        self.tasks.append(task)
 
 
 @dataclass

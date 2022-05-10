@@ -247,7 +247,7 @@ def test_step_response_allow_status_codes(behave_fixture: BehaveFixture) -> None
 
     request = RequestTask(RequestMethod.SEND, name='test', endpoint='/api/test')
     grizzly.scenarios.create(behave_fixture.create_scenario('test'))
-    grizzly.scenario.add_task(request)
+    grizzly.scenario.tasks.add(request)
 
     step_response_allow_status_codes(behave, '-200')
     assert request.response.status_codes == []
@@ -275,7 +275,7 @@ def test_step_response_allow_status_codes_table(behave_fixture: BehaveFixture) -
 
     request = RequestTask(RequestMethod.SEND, name='test', endpoint='/api/test')
     grizzly.scenarios.create(behave_fixture.create_scenario('test'))
-    grizzly.scenario.add_task(request)
+    grizzly.scenario.tasks.add(request)
 
     # more rows in data table then there are requests
     with pytest.raises(AssertionError) as ae:
@@ -283,7 +283,7 @@ def test_step_response_allow_status_codes_table(behave_fixture: BehaveFixture) -
     assert 'data table has more rows than there are requests' in str(ae)
 
     request = RequestTask(RequestMethod.GET, name='test-get', endpoint='/api/test')
-    grizzly.scenario.add_task(request)
+    grizzly.scenario.tasks.add(request)
 
     # data table column "code" does not exist
     with pytest.raises(AssertionError) as ae:
@@ -291,7 +291,7 @@ def test_step_response_allow_status_codes_table(behave_fixture: BehaveFixture) -
     assert 'data table does not have column "status"' in str(ae)
 
     request = RequestTask(RequestMethod.GET, name='no-code', endpoint='/api/test')
-    grizzly.scenario.tasks.insert(0, request)
+    grizzly.scenario.tasks.add(request, pos=0)
 
     rows = []
     '''
@@ -318,7 +318,7 @@ def test_step_response_content_type(behave_fixture: BehaveFixture) -> None:
         step_response_content_type(behave, TransformerContentType.JSON)
     assert 'There are no requests in the scenario' in str(ae)
 
-    grizzly.scenario.add_task(WaitTask(time=1.0))
+    grizzly.scenario.tasks.add(WaitTask(time=1.0))
 
     with pytest.raises(AssertionError) as ae:
         step_response_content_type(behave, TransformerContentType.JSON)
@@ -328,7 +328,7 @@ def test_step_response_content_type(behave_fixture: BehaveFixture) -> None:
 
     assert request.response.content_type == TransformerContentType.UNDEFINED
 
-    grizzly.scenario.add_task(request)
+    grizzly.scenario.tasks.add(request)
 
     for content_type in TransformerContentType:
         if content_type == TransformerContentType.UNDEFINED:
@@ -345,7 +345,7 @@ def test_step_response_content_type(behave_fixture: BehaveFixture) -> None:
     assert request.response.content_type == TransformerContentType.XML
     assert request.endpoint == 'queue:INCOMING.MESSAGE'
 
-    grizzly.scenario.add_task(request)
+    grizzly.scenario.tasks.add(request)
 
     for content_type in TransformerContentType:
         if content_type == TransformerContentType.UNDEFINED:

@@ -73,10 +73,10 @@ class TestServiceBusUser:
             scenario.name = 'test'
             scenario.user.class_name = 'ServiceBusUser'
 
-            scenario.add_task(WaitTask(time=1.54))
-            scenario.add_task(RequestTask(RequestMethod.SEND, name='test-send', endpoint='{{ endpoint }}'))
-            scenario.add_task(RequestTask(RequestMethod.RECEIVE, name='test-receive', endpoint='queue:test-queue'))
-            scenario.add_task(RequestTask(RequestMethod.SEND, name='test-send', endpoint='topic:test-topic'))
+            scenario.tasks.add(WaitTask(time=1.54))
+            scenario.tasks.add(RequestTask(RequestMethod.SEND, name='test-send', endpoint='{{ endpoint }}'))
+            scenario.tasks.add(RequestTask(RequestMethod.RECEIVE, name='test-receive', endpoint='queue:test-queue'))
+            scenario.tasks.add(RequestTask(RequestMethod.SEND, name='test-send', endpoint='topic:test-topic'))
 
             ServiceBusUser.host = 'Endpoint=sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789='
             ServiceBusUser._scenario = scenario
@@ -110,7 +110,7 @@ class TestServiceBusUser:
         task = RequestTask(RequestMethod.SEND, name='test-send', endpoint='queue:"{{ queue_name }}"')
         scenario = GrizzlyContextScenario(1)
         scenario.name = 'test'
-        scenario.add_task(task)
+        scenario.tasks.add(task)
 
         with caplog.at_level(logging.WARNING):
             user.say_hello(task, task.endpoint)
@@ -145,7 +145,7 @@ class TestServiceBusUser:
         assert args[3] == 'sender=topic:test-topic'
 
         task = RequestTask(RequestMethod.RECEIVE, name='test-recv', endpoint='topic:test-topic, subscription:test-subscription')
-        scenario.add_task(task)
+        scenario.tasks.add(task)
 
         user.say_hello(task, task.endpoint)
 
@@ -236,7 +236,7 @@ class TestServiceBusUser:
         # unsupported request method
         task = RequestTask(RequestMethod.PUT, name='test-send', endpoint='queue:test-queue')
         task.source = 'hello'
-        scenario.add_task(task)
+        scenario.tasks.add(task)
         scenario.failure_exception = StopUser
         mocker.patch.object(user.zmq_client, 'disconnect', side_effect=[TypeError])
 

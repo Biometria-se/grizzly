@@ -24,7 +24,7 @@ def test__parse_template(request_task: RequestTaskFixture) -> None:
     request.source = jsondumps(source)
     scenario = GrizzlyContextScenario(1)
     scenario.name = 'TestScenario'
-    scenario.add_task(request)
+    scenario.tasks.add(request)
 
     templates = {scenario: set(request.get_templates())}
 
@@ -50,19 +50,19 @@ def test_get_template_variables() -> None:
     scenario.name = 'TestScenario'
     scenario.context['host'] = 'http://test.nu'
     scenario.user.class_name = 'TestUser'
-    scenario.add_task(
+    scenario.tasks.add(
         RequestTask(RequestMethod.POST, name='Test POST request', endpoint='/api/test/post')
     )
     task = cast(RequestTask, scenario.tasks[-1])
     task.source = '{{ AtomicRandomString.test }}'
 
-    scenario.add_task(
+    scenario.tasks.add(
         RequestTask(RequestMethod.GET, name='{{ env }} GET request', endpoint='/api/{{ env }}/get')
     )
     task = cast(RequestTask, scenario.tasks[-1])
     task.source = '{{ AtomicIntegerIncrementer.test }}'
 
-    scenario.add_task(
+    scenario.tasks.add(
         LogMessage(message='{{ foo }}')
     )
 

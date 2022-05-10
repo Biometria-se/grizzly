@@ -172,9 +172,9 @@ def test_setup_locust_scenarios(behave_fixture: BehaveFixture) -> None:
     assert 'no tasks has been added to' in str(ae)
 
     task = RequestTask(RequestMethod.GET, 'test-1', '/api/v1/test/1')
-    grizzly.scenario.add_task(task)
-    grizzly.scenario.add_task(WaitTask(time=1.5))
-    grizzly.scenario.add_task(LogMessage(message='test message'))
+    grizzly.scenario.tasks.add(task)
+    grizzly.scenario.tasks.add(WaitTask(time=1.5))
+    grizzly.scenario.tasks.add(LogMessage(message='test message'))
 
     # incorrect user type
     grizzly.scenario.user.class_name = 'NonExistingUser'
@@ -239,7 +239,7 @@ def test_setup_locust_scenarios_user_distribution(behave_fixture: BehaveFixture,
         scenario = Scenario(filename=None, line=None, keyword='', name=f'Test-{(index + 1)}')
         grizzly.scenarios.create(scenario)
         grizzly.scenario.context['host'] = 'http://localhost:8003'
-        grizzly.scenario.add_task(LogMessage(message='foo bar'))
+        grizzly.scenario.tasks.add(LogMessage(message='foo bar'))
         grizzly.scenario.user.class_name = 'RestApiUser'
         grizzly.scenario.user.weight = distribution[index]
 
@@ -625,9 +625,9 @@ def test_run_worker(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
     grizzly.scenarios.create(behave_fixture.create_scenario('test-non-mq'))
     grizzly.scenario.user.class_name = 'RestApiUser'
     grizzly.scenario.context['host'] = 'https://test.example.org'
-    grizzly.scenario.add_task(WaitTask(time=1.5))
+    grizzly.scenario.tasks.add(WaitTask(time=1.5))
     task = RequestTask(RequestMethod.GET, 'test-1', '/api/v1/test/1')
-    grizzly.scenario.add_task(task)
+    grizzly.scenario.tasks.add(task)
 
     assert run(behave) == 1
     assert 'failed to connect to the locust master' in capsys.readouterr().err
@@ -638,7 +638,7 @@ def test_run_worker(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
         grizzly.scenarios.create(behave_fixture.create_scenario('test-mq'))
         grizzly.scenario.user.class_name = 'MessageQueueUser'
         grizzly.scenario.context['host'] = 'mq://mq.example.org?QueueManager=QM01&Channel=TEST.CONN'
-        grizzly.scenario.add_task(RequestTask(RequestMethod.PUT, 'test-2', 'TEST.QUEUE'))
+        grizzly.scenario.tasks.add(RequestTask(RequestMethod.PUT, 'test-2', 'TEST.QUEUE'))
 
         with pytest.raises(AssertionError) as ae:
             run(behave)
@@ -664,7 +664,7 @@ def test_run_worker(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
 
         task.endpoint = '/api/v1/{{ AtomicMessageQueue.test }}'
 
-        grizzly.scenario.add_task(task)
+        grizzly.scenario.tasks.add(task)
 
         assert run(behave) == 1
         assert 'failed to connect to the locust master' in capsys.readouterr().err
@@ -765,9 +765,9 @@ def test_run_master(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
     grizzly.scenarios.create(behave_fixture.create_scenario('test'))
     grizzly.scenario.user.class_name = 'RestApiUser'
     grizzly.scenario.context['host'] = 'https://test.example.org'
-    grizzly.scenario.add_task(WaitTask(time=1.5))
+    grizzly.scenario.tasks.add(WaitTask(time=1.5))
     task = RequestTask(RequestMethod.GET, 'test-1', '/api/v1/test/1')
-    grizzly.scenario.add_task(task)
+    grizzly.scenario.tasks.add(task)
     grizzly.setup.spawn_rate = 1
 
     grizzly.setup.timespan = 'adsf'
@@ -798,7 +798,7 @@ def test_run_master(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
 
         task.endpoint = '/api/v1/{{ AtomicMessageQueue.test }}'
 
-        grizzly.scenario.add_task(task)
+        grizzly.scenario.tasks.add(task)
 
         with pytest.raises(AssertionError) as ae:
             run(behave)

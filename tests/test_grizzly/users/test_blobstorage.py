@@ -43,7 +43,7 @@ def blob_storage_scenario(grizzly_fixture: GrizzlyFixture) -> BlobStorageScenari
 
     request.method = RequestMethod.SEND
 
-    scenario.add_task(request)
+    scenario.tasks.add(request)
 
     return cast(BlobStorageUser, user), scenario, environment
 

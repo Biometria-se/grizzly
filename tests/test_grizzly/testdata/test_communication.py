@@ -95,8 +95,8 @@ class TestTestdataProducer:
 
             request.source = json.dumps(source)
 
-            grizzly.scenario.add_task(request)
-            grizzly.scenario.add_task(LogMessage(message='hello {{ world }}'))
+            grizzly.scenario.tasks.add(request)
+            grizzly.scenario.tasks.add(LogMessage(message='hello {{ world }}'))
 
             testdata, external_dependencies = initialize_testdata(grizzly.scenario.tasks)
 
@@ -214,8 +214,8 @@ class TestTestdataProducer:
             grizzly.scenario.iterations = 0
             grizzly.scenario.user.class_name = 'TestUser'
             grizzly.scenario.context['host'] = 'http://test.nu'
-            grizzly.scenario.add_task(request)
-            grizzly.scenario.add_task(LogMessage(message='are you {{ sure }}'))
+            grizzly.scenario.tasks.add(request)
+            grizzly.scenario.tasks.add(LogMessage(message='are you {{ sure }}'))
 
             testdata, external_dependencies = initialize_testdata(grizzly.scenario.tasks)
 

@@ -98,7 +98,7 @@ def add_request_task(
     grizzly = cast(GrizzlyContext, context.grizzly)
 
     if grizzly.scenario.async_group is None:
-        tasks = grizzly.scenario.tasks
+        tasks = grizzly.scenario.tasks()
     else:
         tasks = cast(List[GrizzlyTask], grizzly.scenario.async_group.requests)
 
@@ -184,7 +184,7 @@ def _add_response_handler(
         raise ValueError(f'variable "{variable}" has not been declared')
 
     if grizzly.scenario.async_group is None:
-        tasks = grizzly.scenario.tasks
+        tasks = grizzly.scenario.tasks()
     else:
         tasks = cast(List[GrizzlyTask], grizzly.scenario.async_group.requests)
 

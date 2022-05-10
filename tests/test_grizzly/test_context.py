@@ -333,7 +333,7 @@ class TestGrizzlyContextScenario:
         scenario.user.class_name = 'TestUser'
         request = request_task.request
 
-        scenario.add_task(request)
+        scenario.tasks.add(request)
 
         assert scenario.tasks == [request]
         assert isinstance(scenario.tasks[-1], RequestTask) and scenario.tasks[-1].scenario is scenario
@@ -342,14 +342,14 @@ class TestGrizzlyContextScenario:
         second_request.source = '{"hello": "world!"}'
         assert isinstance(second_request.template, Template)
 
-        scenario.add_task(second_request)
+        scenario.tasks.add(second_request)
         assert scenario.tasks == [request, second_request]
         assert isinstance(scenario.tasks[-1], RequestTask) and scenario.tasks[-1].scenario is scenario
 
         wait_task = WaitTask(time=1.337)
-        scenario.add_task(wait_task)
+        scenario.tasks.add(wait_task)
         assert scenario.tasks == [request, second_request, wait_task]
 
         log_task = LogMessage(message='hello general')
-        scenario.add_task(log_task)
+        scenario.tasks.add(log_task)
         assert scenario.tasks == [request, second_request, wait_task, log_task]

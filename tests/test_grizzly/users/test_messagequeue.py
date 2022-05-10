@@ -49,7 +49,7 @@ def mq_user(grizzly_fixture: GrizzlyFixture) -> MqScenarioFixture:
     request.method = RequestMethod.SEND
     request.scenario = scenario
 
-    scenario.add_task(request)
+    scenario.tasks.add(request)
 
     return cast(MessageQueueUser, user), scenario, environment
 
@@ -212,7 +212,7 @@ class TestMessageQueueUser:
         scenario = GrizzlyContextScenario(3)
         scenario.name = 'test'
         scenario.failure_exception = StopUser
-        scenario.add_task(request)
+        scenario.tasks.add(request)
 
         with pytest.raises(StopUser):
             user.request(request)
@@ -252,7 +252,7 @@ class TestMessageQueueUser:
             scenario = GrizzlyContextScenario(1)
             scenario.name = 'test'
             scenario.failure_exception = StopUser
-            scenario.add_task(request)
+            scenario.tasks.add(request)
 
             MessageQueueUser.host = f'mq://{self.real_stuff["host"]}/?QueueManager={self.real_stuff["queue_manager"]}&Channel={self.real_stuff["channel"]}'
             user = MessageQueueUser(locust_fixture.env)
@@ -306,7 +306,7 @@ class TestMessageQueueUser:
             scenario = GrizzlyContextScenario(1)
             scenario.name = 'test'
             scenario.failure_exception = StopUser
-            scenario.add_task(request)
+            scenario.tasks.add(request)
 
             MessageQueueUser.host = f'mq://{self.real_stuff["host"]}/?QueueManager={self.real_stuff["queue_manager"]}&Channel={self.real_stuff["channel"]}'
             user = MessageQueueUser(locust_fixture.env)
@@ -393,7 +393,7 @@ class TestMessageQueueUser:
         request.endpoint = 'queue:test-queue'
         request.method = RequestMethod.GET
         request.source = None
-        scenario.add_task(request)
+        scenario.tasks.add(request)
 
         user.add_context(remote_variables)
 

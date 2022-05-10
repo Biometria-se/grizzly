@@ -320,7 +320,7 @@ class RequestTaskFixture:
         request.scenario.context['host'] = 'http://example.com'
         request.scenario.behave = None
 
-        request.scenario.add_task(request)
+        request.scenario.tasks.add(request)
 
         self.context_root = request_path
         self.request = request
