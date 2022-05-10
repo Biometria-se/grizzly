@@ -227,6 +227,8 @@ def print_scenario_summary(grizzly: GrizzlyContext) -> None:
         sys.stdout.write('-|-')
         sys.stdout.write('-' * max_length_iterations)
         sys.stdout.write('|-')
+        sys.stdout.write('-' * 6)
+        sys.stdout.write('-|-')
         sys.stdout.write('-' * max_length_description)
         sys.stdout.write('-|\n')
 
@@ -235,26 +237,37 @@ def print_scenario_summary(grizzly: GrizzlyContext) -> None:
     max_length_iterations = len('#')
 
     for scenario in grizzly.scenarios():
+        stat = grizzly.state.environment.stats.get(f'{scenario.identifier} {scenario.description}', 'SCEN')
         description_length = len(scenario.description or 'unknown')
         if description_length > max_length_description:
             max_length_description = description_length
 
-        iterations_length = len(str(scenario.iterations or ''))
+        iterations_length = len(f'{stat.num_requests}/{scenario.iterations or 0}')
         if iterations_length > max_length_iterations:
             max_length_iterations = iterations_length
 
     for scenario in grizzly.scenarios():
+        stat = grizzly.state.environment.stats.get(f'{scenario.identifier} {scenario.description}', 'SCEN')
+        if stat.num_requests > 0:
+            if stat.num_failures == 0 and stat.num_requests == scenario.iterations:
+                status = 'passed'
+            else:
+                status = 'failed'
+        else:
+            status = 'inconc'
+
         description = scenario.description or 'unknown'
-        row = '{:5}   {:>{}}  {}'.format(
+        row = '{:5}   {:>{}}  {:6}   {}'.format(
             scenario.identifier,
-            scenario.iterations,
+            f'{stat.num_requests}/{scenario.iterations}',
             max_length_iterations,
+            status,
             description,
         )
         rows.append(row)
 
     print('Scenario')
-    print('{:5}   {:>{}}  {}'.format('ident', '#', max_length_iterations, 'description'))
+    print('{:5}   {:>{}}  {:6}   {}'.format('ident', '#', max_length_iterations, 'status', 'description'))
     print_table_lines(max_length_iterations, max_length_description)
     for row in rows:
         print(row)

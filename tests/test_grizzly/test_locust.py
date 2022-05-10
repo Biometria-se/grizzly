@@ -488,30 +488,40 @@ def test_print_scenario_summary(behave_fixture: BehaveFixture, capsys: CaptureFi
     summary = capsys.readouterr().out
     print(summary)
     assert '''Scenario
-ident   #  description
-------|--|-------------|
-001     1  test-1
-------|--|-------------|
+ident     #  status   description
+------|----|--------|-------------|
+001     0/1  inconc   test-1
+------|----|--------|-------------|
 ''' == summary
     capsys.readouterr()
 
     grizzly.scenarios.create(behave_fixture.create_scenario('test-2-test-2-test-2-test-2'))
     grizzly.scenario.iterations = 4
+    stat = grizzly.state.environment.stats.get(f'{grizzly.scenario.identifier} {grizzly.scenario.name}', 'SCEN')
+    stat.num_failures = 1
+    stat.num_requests = 3
+
+    stat = grizzly.state.environment.stats.get(f'{grizzly.scenarios[-2].identifier} {grizzly.scenarios[-2].name}', 'SCEN')
+    stat.num_failures = 0
+    stat.num_requests = 1
 
     print_scenario_summary(grizzly)
 
     summary = capsys.readouterr().out
     print(summary)
     assert '''Scenario
-ident   #  description
-------|--|-----------------------------|
-001     1  test-1
-002     4  test-2-test-2-test-2-test-2
-------|--|-----------------------------|
+ident     #  status   description
+------|----|--------|-----------------------------|
+001     1/1  passed   test-1
+002     3/4  failed   test-2-test-2-test-2-test-2
+------|----|--------|-----------------------------|
 ''' == summary
     capsys.readouterr()
 
     grizzly.scenarios.create(behave_fixture.create_scenario('#3'))
+    stat = grizzly.state.environment.stats.get(f'{grizzly.scenario.identifier} {grizzly.scenario.name}', 'SCEN')
+    stat.num_failures = 0
+    stat.num_requests = 998
 
     grizzly.scenario.iterations = 999
 
@@ -521,12 +531,12 @@ ident   #  description
     print(summary)
 
     assert '''Scenario
-ident     #  description
-------|----|-----------------------------|
-001       1  test-1
-002       4  test-2-test-2-test-2-test-2
-003     999  #3
-------|----|-----------------------------|
+ident         #  status   description
+------|--------|--------|-----------------------------|
+001         1/1  passed   test-1
+002         3/4  failed   test-2-test-2-test-2-test-2
+003     998/999  failed   #3
+------|--------|--------|-----------------------------|
 ''' == summary
     capsys.readouterr()
 
@@ -540,13 +550,13 @@ ident     #  description
     print(summary)
 
     assert '''Scenario
-ident       #  description
-------|------|-----------------------------|
-001         1  test-1
-002         4  test-2-test-2-test-2-test-2
-003       999  #3
-004     99999  foo bar hello world
-------|------|-----------------------------|
+ident         #  status   description
+------|--------|--------|-----------------------------|
+001         1/1  passed   test-1
+002         3/4  failed   test-2-test-2-test-2-test-2
+003     998/999  failed   #3
+004     0/99999  inconc   foo bar hello world
+------|--------|--------|-----------------------------|
 ''' == summary
     capsys.readouterr()
 

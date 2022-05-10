@@ -1,5 +1,5 @@
 from os import environ
-from typing import Any, Dict, Tuple, cast
+from typing import Any, Dict, Tuple, List, cast
 from time import perf_counter as time
 from datetime import datetime
 
@@ -45,7 +45,29 @@ def after_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], **
         if return_code != 0:
             feature.set_status('failed')
 
-        # @TODO: check statistics for failed scenarios, and steps, and set them as failed in behave
+        grizzly = cast(GrizzlyContext, context.grizzly)
+        stats = grizzly.state.environment.stats
+
+        for behave_scenario in cast(List[Scenario], feature.scenarios):
+            grizzly_scenario = grizzly.scenarios.find_by_description(behave_scenario.name)
+            if grizzly_scenario is None:
+                continue
+
+            scenario_stat = stats.get(f'{grizzly_scenario.identifier} {grizzly_scenario.description}', 'SCEN')
+
+            if scenario_stat.num_failures > 0 or scenario_stat.num_requests != grizzly_scenario.iterations:
+                behave_scenario.set_status('failed')
+
+            rindex = -1
+
+            for stat in stats.entries.values():
+                if stat.method == 'SCEN' or not stat.name.startswith(f'{grizzly_scenario.identifier} '):
+                    continue
+
+                if stat.num_failures > 0:
+                    rindex -= 1
+                    behave_step = cast(Step, behave_scenario.steps[rindex])
+                    behave_step.status = Status.failed
 
     # the features duration is the sum of all scenarios duration, which is the sum of all steps duration
     try:
