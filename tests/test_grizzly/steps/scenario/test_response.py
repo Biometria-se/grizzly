@@ -246,7 +246,7 @@ def test_step_response_allow_status_codes(behave_fixture: BehaveFixture) -> None
     assert 'there are no requests in the scenario' in str(ve)
 
     request = RequestTask(RequestMethod.SEND, name='test', endpoint='/api/test')
-    grizzly.add_scenario('test')
+    grizzly.scenarios.create(behave_fixture.create_scenario('test'))
     grizzly.scenario.add_task(request)
 
     step_response_allow_status_codes(behave, '-200')
@@ -274,7 +274,7 @@ def test_step_response_allow_status_codes_table(behave_fixture: BehaveFixture) -
     assert 'there are no requests in the scenario' in str(ae)
 
     request = RequestTask(RequestMethod.SEND, name='test', endpoint='/api/test')
-    grizzly.add_scenario('test')
+    grizzly.scenarios.create(behave_fixture.create_scenario('test'))
     grizzly.scenario.add_task(request)
 
     # more rows in data table then there are requests

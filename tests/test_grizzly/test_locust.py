@@ -152,7 +152,7 @@ def test_setup_locust_scenarios(behave_fixture: BehaveFixture) -> None:
     assert 'no scenarios in feature' in str(ae)
 
     # scenario is missing host
-    grizzly.add_scenario('test')
+    grizzly.scenarios.create(behave_fixture.create_scenario('test'))
 
     with pytest.raises(AssertionError) as ae:
         setup_locust_scenarios(grizzly)
@@ -233,11 +233,11 @@ def test_setup_locust_scenarios_user_distribution(behave_fixture: BehaveFixture,
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
     grizzly.setup.user_count = user_count
-    grizzly._scenarios = []
+    grizzly.scenarios.clear()
 
     for index in range(0, len(distribution)):
         scenario = Scenario(filename=None, line=None, keyword='', name=f'Test-{(index + 1)}')
-        grizzly.add_scenario(scenario)
+        grizzly.scenarios.create(scenario)
         grizzly.scenario.context['host'] = 'http://localhost:8003'
         grizzly.scenario.add_task(LogMessage(message='foo bar'))
         grizzly.scenario.user.class_name = 'RestApiUser'
@@ -481,7 +481,7 @@ def test_print_scenario_summary(behave_fixture: BehaveFixture, capsys: CaptureFi
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
 
-    grizzly.add_scenario('test-1')
+    grizzly.scenarios.create(behave_fixture.create_scenario('test-1'))
 
     print_scenario_summary(grizzly)
 
@@ -495,7 +495,7 @@ ident   #  description
 ''' == summary
     capsys.readouterr()
 
-    grizzly.add_scenario('test-2-test-2-test-2-test-2')
+    grizzly.scenarios.create(behave_fixture.create_scenario('test-2-test-2-test-2-test-2'))
     grizzly.scenario.iterations = 4
 
     print_scenario_summary(grizzly)
@@ -511,7 +511,7 @@ ident   #  description
 ''' == summary
     capsys.readouterr()
 
-    grizzly.add_scenario('#3')
+    grizzly.scenarios.create(behave_fixture.create_scenario('#3'))
 
     grizzly.scenario.iterations = 999
 
@@ -530,7 +530,7 @@ ident     #  description
 ''' == summary
     capsys.readouterr()
 
-    grizzly.add_scenario('foo bar hello world')
+    grizzly.scenarios.create(behave_fixture.create_scenario('foo bar hello world'))
 
     grizzly.scenario.iterations = 99999
 
@@ -571,9 +571,6 @@ def test_run_worker(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
             mocked_on_master,
         )
 
-    def noop(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Any:
-        pass
-
     def mocked_create_worker_runner(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Any:
         from socket import error
         raise error()
@@ -592,7 +589,7 @@ def test_run_worker(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
     ]:
         mocker.patch(
             method,
-            noop,
+            return_value=None,
         )
 
     def mocked_response(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> AsyncMessageResponse:
@@ -625,7 +622,7 @@ def test_run_worker(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
 
     grizzly.setup.user_count = 1
     grizzly.setup.spawn_rate = 1
-    grizzly.add_scenario('test-non-mq')
+    grizzly.scenarios.create(behave_fixture.create_scenario('test-non-mq'))
     grizzly.scenario.user.class_name = 'RestApiUser'
     grizzly.scenario.context['host'] = 'https://test.example.org'
     grizzly.scenario.add_task(WaitTask(time=1.5))
@@ -638,7 +635,7 @@ def test_run_worker(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
     assert messagequeue_process_spy.call_count == 0
 
     if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
-        grizzly.add_scenario('test-mq')
+        grizzly.scenarios.create(behave_fixture.create_scenario('test-mq'))
         grizzly.scenario.user.class_name = 'MessageQueueUser'
         grizzly.scenario.context['host'] = 'mq://mq.example.org?QueueManager=QM01&Channel=TEST.CONN'
         grizzly.scenario.add_task(RequestTask(RequestMethod.PUT, 'test-2', 'TEST.QUEUE'))
@@ -700,9 +697,6 @@ def test_run_master(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
             mocked_on_master,
         )
 
-    def noop(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Any:
-        pass
-
     noop_zmq('grizzly.testdata.variables.messagequeue')
 
     for method in [
@@ -714,7 +708,7 @@ def test_run_master(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
     ]:
         mocker.patch(
             method,
-            noop,
+            return_value=None,
         )
 
     def mocked_response(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> AsyncMessageResponse:
@@ -731,7 +725,7 @@ def test_run_master(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
     for printer in ['print_error_report', 'print_percentile_stats', 'print_stats', 'stats_printer', 'stats_history']:
         mocker.patch(
             f'grizzly.locust.{printer}',
-            noop,
+            return_value=None,
         )
 
     def mocked_popen___init__(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
@@ -768,7 +762,7 @@ def test_run_master(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
     assert 'step \'Given "user_count" users\' is not in the feature file' in capsys.readouterr().err
 
     grizzly.setup.user_count = 2
-    grizzly.add_scenario('test')
+    grizzly.scenarios.create(behave_fixture.create_scenario('test'))
     grizzly.scenario.user.class_name = 'RestApiUser'
     grizzly.scenario.context['host'] = 'https://test.example.org'
     grizzly.scenario.add_task(WaitTask(time=1.5))

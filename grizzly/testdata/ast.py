@@ -47,7 +47,7 @@ def _parse_templates(templates: Dict[GrizzlyContextScenario, Set[str]]) -> Dict[
     variables: Dict[str, Set[str]] = {}
 
     for scenario, scenario_templates in templates.items():
-        scenario_name = scenario.get_name()
+        scenario_name = scenario.class_name
 
         if scenario_name not in variables:
             variables[scenario_name] = set()

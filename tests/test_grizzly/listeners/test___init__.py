@@ -231,7 +231,8 @@ def test_init_statistics_listener(mocker: MockerFixture, locust_fixture: LocustF
 def test_locust_test_start(listener_test: Environment) -> None:
     try:
         grizzly = GrizzlyContext()
-        grizzly.add_scenario('Test Scenario')
+        scenario = Scenario(filename=None, line=None, keyword='', name='Test Scenario')
+        grizzly.scenarios.create(scenario)
         grizzly.scenario.iterations = -1
         runner = MasterRunner(listener_test, '0.0.0.0', 5555)
         listener_test.runner = runner
@@ -357,7 +358,7 @@ def test_validate_result(mocker: MockerFixture, listener_test: Environment, capl
 
     # scenario name must match with the name that the pickled stats object was dumped from
     scenario = Scenario(None, None, '', 'do some posts')
-    grizzly.add_scenario(scenario)
+    grizzly.scenarios.create(scenario)
 
     # fail ratio
     listener_test.process_exit_code = 0

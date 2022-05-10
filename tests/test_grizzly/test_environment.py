@@ -177,7 +177,7 @@ def test_before_scenario(behave_fixture: BehaveFixture, mocker: MockerFixture) -
     assert getattr(behave.scenario.steps[3], 'location_status', None) is None
 
     grizzly.state.background_section_done = True
-    grizzly._scenarios = []
+    grizzly.scenarios.clear()
 
     before_scenario(behave, behave.scenario)
 

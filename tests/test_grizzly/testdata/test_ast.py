@@ -70,7 +70,7 @@ def test_get_template_variables() -> None:
 
     expected_scenario_name = '_'.join([scenario.name, scenario.identifier])
 
-    assert scenario.get_name() == expected_scenario_name
+    assert scenario.class_name == expected_scenario_name
     assert expected_scenario_name in variables
     assert 'AtomicRandomString.test' in variables[expected_scenario_name]
     assert 'AtomicIntegerIncrementer.test' in variables[expected_scenario_name]

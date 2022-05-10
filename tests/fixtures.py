@@ -243,6 +243,9 @@ class BehaveFixture:
     def grizzly(self) -> GrizzlyContext:
         return cast(GrizzlyContext, self.context.grizzly)
 
+    def create_scenario(self, name: str) -> Scenario:
+        return Scenario(filename=None, line=None, keyword='', name=name)
+
     def __enter__(self) -> 'BehaveFixture':
         runner = Runner(
             config=Configuration(
@@ -348,7 +351,7 @@ class GrizzlyFixture:
     def __enter__(self) -> 'GrizzlyFixture':
         environ['GRIZZLY_CONTEXT_ROOT'] = path.abspath(path.join(self.request_task.context_root, '..'))
         self.grizzly = GrizzlyContext()
-        self.grizzly._scenarios = [self.request_task.request.scenario]
+        self.grizzly.scenarios.append(self.request_task.request.scenario)
 
         return self
 

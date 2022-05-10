@@ -359,7 +359,7 @@ class TestMessageQueueUser:
         )
 
         grizzly = GrizzlyContext()
-        grizzly._scenarios = [scenario]
+        grizzly.scenarios.append(scenario)
 
         user._context = {
             'auth': {

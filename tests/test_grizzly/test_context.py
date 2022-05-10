@@ -1,6 +1,6 @@
 import shutil
 
-from typing import Tuple, Dict, Any
+from typing import Tuple, Dict, Any, cast
 from os import path, environ
 
 import pytest
@@ -11,6 +11,7 @@ from behave.model import Scenario
 
 from grizzly.context import (
     GrizzlyContext,
+    GrizzlyContextScenarios,
     GrizzlyContextSetup,
     GrizzlyContextScenario,
     GrizzlyContextScenarioValidation,
@@ -112,12 +113,12 @@ class TestGrizzlyContextSetup:
 
     def test_scenarios(self, behave_fixture: BehaveFixture) -> None:
         behave = behave_fixture.context
-        grizzly = getattr(behave, 'grizzly')
+        grizzly = cast(GrizzlyContext, behave.grizzly)
         assert len(grizzly.scenarios()) == 0
         assert grizzly.state.variables == {}
 
-        grizzly.add_scenario('test1')
-        grizzly.scenario.user_class_name = 'TestUser'
+        grizzly.scenarios.create(behave_fixture.create_scenario('test1'))
+        grizzly.scenario.user.class_name = 'TestUser'
         first_scenario = grizzly.scenario
         assert len(grizzly.scenarios()) == 1
         assert grizzly.state.variables == {}
@@ -126,16 +127,16 @@ class TestGrizzlyContextSetup:
         grizzly.scenario.context['host'] = 'http://test:8000'
         assert grizzly.scenario.context['host'] == 'http://test:8000'
 
-        grizzly.add_scenario('test2')
-        grizzly.scenario.user_class_name = 'TestUser'
+        grizzly.scenarios.create(behave_fixture.create_scenario('test2'))
+        grizzly.scenario.user.class_name = 'TestUser'
         grizzly.scenario.context['host'] = 'http://test:8001'
         assert len(grizzly.scenarios()) == 2
         assert grizzly.scenario.name == 'test2'
         assert grizzly.scenario.context['host'] != 'http://test:8000'
 
         behave_scenario = Scenario(filename=None, line=None, keyword='', name='test3')
-        grizzly.add_scenario(behave_scenario)
-        grizzly.scenario.user_class_name = 'TestUser'
+        grizzly.scenarios.create(behave_scenario)
+        grizzly.scenario.user.class_name = 'TestUser'
         third_scenario = grizzly.scenario
         assert grizzly.scenario.name == 'test3'
         assert grizzly.scenario.behave is behave_scenario
@@ -143,11 +144,11 @@ class TestGrizzlyContextSetup:
         for index, scenario in enumerate(grizzly.scenarios(), start=1):
             assert scenario.name == f'test{index}'
 
-        assert grizzly.get_scenario('test4') is None
-        assert grizzly.get_scenario('test1') is None
-        assert grizzly.get_scenario('test3') is None
-        assert grizzly.get_scenario(first_scenario.get_name()) is first_scenario
-        assert grizzly.get_scenario(third_scenario.get_name()) is third_scenario
+        assert grizzly.scenarios.find_by_name('test4') is None
+        assert grizzly.scenarios.find_by_name('test1') is first_scenario
+        assert grizzly.scenarios.find_by_name('test3') is third_scenario
+        assert grizzly.scenarios.find_by_class_name(first_scenario.class_name) is first_scenario
+        assert grizzly.scenarios.find_by_class_name(third_scenario.class_name) is third_scenario
 
 
 class TestGrizzlyContextState:
@@ -235,6 +236,7 @@ class TestGrizzlyContext:
             'setup',
             'state',
             'scenario',
+            'scenarios',
         ]
         expected_attributes.sort()
 
@@ -263,6 +265,35 @@ class TestGrizzlyContext:
         assert grizzly is GrizzlyContext()
 
 
+class TestGrizzlyContextScenarios:
+    def test(self) -> None:
+        scenarios = GrizzlyContextScenarios()
+
+        assert issubclass(scenarios.__class__, list)
+        assert len(scenarios) == 0
+
+        behave_scenario = Scenario(filename=None, line=None, keyword='', name='test-1')
+        scenarios.create(behave_scenario)
+        assert len(scenarios) == 1
+        assert scenarios[-1].name == 'test-1'
+        assert scenarios[-1].description == 'test-1'
+        assert scenarios[-1].class_name == 'test-1_001'
+        assert scenarios[-1].behave is behave_scenario
+
+        behave_scenario = Scenario(filename=None, line=None, keyword='', name='test-2')
+        scenarios.create(behave_scenario)
+        assert len(scenarios) == 2
+        assert scenarios[-1].name == 'test-2'
+        assert scenarios[-1].description == 'test-2'
+        assert scenarios[-1].class_name == 'test-2_002'
+        assert scenarios[-1].behave is behave_scenario
+
+        assert len(scenarios()) == 2
+
+        assert scenarios.find_by_class_name('test-2_002') is scenarios[-1]
+        assert scenarios.find_by_name('test-1') is scenarios[-2]
+
+
 class TestGrizzlyContextScenario:
     @pytest.mark.parametrize('index', [
         1,
@@ -288,10 +319,10 @@ class TestGrizzlyContextScenario:
         assert not scenario.failure_exception
 
         scenario.name = 'Test'
-        assert scenario.get_name() == f'Test_{identifier}'
+        assert scenario.class_name == f'Test_{identifier}'
 
         scenario.name = f'Test_{identifier}'
-        assert scenario.get_name() == f'Test_{identifier}'
+        assert scenario.class_name == f'Test_{identifier}'
 
         assert not scenario.should_validate()
 

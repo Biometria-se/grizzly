@@ -160,7 +160,7 @@ class TestdataProducer:
                         try:
                             with self.semaphore:
                                 scenario_name = recv['scenario']
-                                scenario = self.grizzly.get_scenario(scenario_name)
+                                scenario = self.grizzly.scenarios.find_by_class_name(scenario_name)
 
                                 if scenario is not None:
                                     if scenario_name not in self.scenarios_iteration and scenario.iterations > 0:

@@ -13,6 +13,7 @@ from _pytest.tmpdir import TempPathFactory
 from pytest_mock import MockerFixture
 from _pytest.logging import LogCaptureFixture
 from locust.exception import StopUser
+from behave.model import Scenario
 
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import LogMessage, DateTask, TransformerTask, UntilRequestTask
@@ -193,7 +194,7 @@ def test_initialize_testdata_with_tasks(
         scenario.orphan_templates.append('hello {{ orphan }} template')
         testdata, external_dependencies = initialize_testdata(scenario.tasks)
 
-        scenario_name = scenario.get_name()
+        scenario_name = scenario.class_name
 
         assert external_dependencies == set()
         assert scenario_name in testdata
@@ -245,7 +246,8 @@ def test_initialize_testdata_with_payload_context(grizzly_fixture: GrizzlyFixtur
         source['result']['File'] = '{{ AtomicDirectoryContents.test }}'
 
         grizzly = cast(GrizzlyContext, behave.grizzly)
-        grizzly.add_scenario(scenario.__class__.__name__)
+        behave_scenario = Scenario(filename=None, line=None, keyword='', name=scenario.__class__.__name__)
+        grizzly.scenarios.create(behave_scenario)
         grizzly.state.variables['messageID'] = 123
         grizzly.state.variables['AtomicIntegerIncrementer.messageID'] = 456
         grizzly.state.variables['AtomicCsvRow.test'] = 'test.csv'
@@ -270,7 +272,7 @@ def test_initialize_testdata_with_payload_context(grizzly_fixture: GrizzlyFixtur
 
         testdata, external_dependencies = initialize_testdata(grizzly.scenario.tasks)
 
-        scenario_name = grizzly.scenario.get_name()
+        scenario_name = grizzly.scenario.class_name
 
         assert scenario_name in testdata
         assert external_dependencies == set(['async-messaged'])

@@ -2,7 +2,7 @@ import json
 import logging
 
 from os import path, mkdir, sep
-from typing import Dict, Optional, Any, Tuple, cast
+from typing import Dict, Optional, Any, cast
 
 import pytest
 
@@ -36,12 +36,9 @@ class TestTestdataProducer:
         cleanup: AtomicVariableCleanupFixture,
         mocker: MockerFixture,
     ) -> None:
-        def noop(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Any:
-            pass
-
         mocker.patch(
             'grizzly.testdata.variables.messagequeue.AtomicMessageQueue.create_client',
-            noop,
+            return_value=None,
         )
         producer: Optional[TestdataProducer] = None
         context: Optional[zmq.Context] = None
@@ -75,7 +72,8 @@ class TestTestdataProducer:
             source['result']['UtcDate'] = '{{ AtomicDate.utc }}'
 
             grizzly = cast(GrizzlyContext, behave_fixture.context.grizzly)
-            grizzly.add_scenario(scenario.__class__.__name__)
+            grizzly.scenarios.clear()
+            grizzly.scenarios.create(behave_fixture.create_scenario(scenario.__class__.__name__))
             grizzly.state.variables['messageID'] = 123
             grizzly.state.variables['AtomicIntegerIncrementer.messageID'] = 456
             grizzly.state.variables['AtomicDirectoryContents.test'] = 'adirectory'
@@ -119,7 +117,7 @@ class TestTestdataProducer:
                     message: Dict[str, Any] = {}
                     socket.send_json({
                         'message': 'available',
-                        'scenario': grizzly.scenario.get_name(),
+                        'scenario': grizzly.scenario.class_name,
                     })
 
                     gevent.sleep(0.1)
@@ -208,7 +206,7 @@ class TestTestdataProducer:
             request.source = json.dumps(source)
 
             grizzly = cast(GrizzlyContext, behave_fixture.context.grizzly)
-            grizzly.add_scenario(scenario.__class__.__name__)
+            grizzly.scenarios.create(behave_fixture.create_scenario(scenario.__class__.__name__))
             grizzly.state.variables['messageID'] = 123
             grizzly.state.variables['AtomicIntegerIncrementer.messageID'] = 456
             grizzly.state.variables['AtomicDirectoryContents.file'] = 'adirectory'
@@ -235,7 +233,7 @@ class TestTestdataProducer:
                     message: Dict[str, Any] = {}
                     socket.send_json({
                         'message': 'available',
-                        'scenario': grizzly.scenario.get_name(),
+                        'scenario': grizzly.scenario.class_name,
                     })
 
                     gevent.sleep(0.1)
@@ -298,7 +296,7 @@ class TestTestdataProducer:
             'scenario': 'test',
         })
         mocker.patch(
-            'grizzly.testdata.communication.GrizzlyContext.get_scenario',
+            'grizzly.context.GrizzlyContextScenarios.find_by_class_name',
             side_effect=[TypeError('TypeError raised'), ZMQError],
         )
 

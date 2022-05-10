@@ -45,6 +45,8 @@ def after_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], **
         if return_code != 0:
             feature.set_status('failed')
 
+        # @TODO: check statistics for failed scenarios, and steps, and set them as failed in behave
+
     # the features duration is the sum of all scenarios duration, which is the sum of all steps duration
     try:
         duration = int(time() - context.start)
@@ -82,7 +84,7 @@ def before_scenario(context: Context, scenario: Scenario, *args: Tuple[Any, ...]
             # to get a nicer error message, the step should fail before it's executed, see before_step hook
             setattr(step, 'location_status', 'incorrect')
 
-    grizzly.add_scenario(scenario)
+    grizzly.scenarios.create(scenario)
 
 
 def after_scenario(context: Context, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
