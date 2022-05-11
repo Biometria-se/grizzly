@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 
 from ...context import GrizzlyContext, GrizzlyContextScenario
 from ...scenarios import GrizzlyScenario
-from ...types import RequestDirection
+from ...types import RequestType, RequestDirection
 from .. import GrizzlyTask, template
 
 
@@ -96,7 +96,7 @@ class ClientTask(GrizzlyTask):
             response_length = meta.get('response_length', None) or 0
             action = self.variable or meta.get('action', '')
             parent.user.environment.events.request.fire(
-                request_type='TASK',
+                request_type=RequestType.CLIENT_TASK(),
                 name=f'{parent.user._scenario.identifier} {self._short_name}{self._direction_arrow[self.direction]}{action}',
                 response_time=response_time,
                 response_length=response_length,

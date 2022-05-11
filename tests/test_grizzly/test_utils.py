@@ -92,7 +92,7 @@ def test_catch(behave_fixture: BehaveFixture) -> None:
 
     assert behave.failed
     assert behave_scenario.status == Status.failed
-    behave._set_root_attribute('failed', False)
+    behave._set_root_attribute(Status.failed.name, False)
     behave_scenario.set_status(Status.undefined)
 
     @catch(ValueError)
@@ -104,7 +104,7 @@ def test_catch(behave_fixture: BehaveFixture) -> None:
 
     assert not behave.failed
     assert not behave_scenario.status == Status.failed
-    behave._set_root_attribute('failed', False)
+    behave._set_root_attribute(Status.failed.name, False)
     behave_scenario.set_status(Status.undefined)
 
     @catch(ValueError)

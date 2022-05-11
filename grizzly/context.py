@@ -150,6 +150,10 @@ class GrizzlyContextScenario:
         self._name = value
 
     @property
+    def locust_name(self) -> str:
+        return f'{self.identifier} {self.description}'
+
+    @property
     def class_name(self) -> str:
         if not self.name.endswith(f'_{self.identifier}'):
             return f'{self.name}_{self.identifier}'

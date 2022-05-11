@@ -5,7 +5,7 @@ import pytest
 
 from _pytest.tmpdir import TempPathFactory
 
-from grizzly.types import RequestDirection, RequestMethod, bool_typed, int_rounded_float_typed, AtomicVariable, GrizzlyDict
+from grizzly.types import RequestType, RequestDirection, RequestMethod, bool_typed, int_rounded_float_typed, AtomicVariable, GrizzlyDict
 
 from ..fixtures import AtomicVariableCleanupFixture
 
@@ -26,6 +26,39 @@ class TestRequestDirection:
                 assert method in RequestDirection.TO.methods
             else:
                 pytest.fail(f'{method.name} does not have a direction registered')
+
+
+class TestRequestType:
+    def test___str__(self) -> None:
+        for custom_type in RequestType:
+            assert str(custom_type) == custom_type.value
+
+    @pytest.mark.parametrize('input,expected', [
+        (RequestMethod.GET, 'GET',),
+        (RequestMethod.RECEIVE, 'RECV',),
+        (RequestMethod.PUT, 'PUT',),
+        (RequestMethod.SEND, 'SEND',),
+    ])
+    def test_from_method(self, input: RequestMethod, expected: str) -> None:
+        assert RequestType.from_method(input) == expected
+
+    @pytest.mark.parametrize('input,expected', [
+        (e.name, e.value,) for e in RequestType
+    ] + [
+        (e.name, e.name,) for e in RequestMethod if getattr(RequestType, e.name, None) is None
+    ] + [
+        (e.value, e.value,) for e in RequestType
+    ])
+    def test_from_string(self, input: str, expected: str) -> None:
+        assert RequestType.from_string(input) == expected
+
+        with pytest.raises(AttributeError) as ae:
+            RequestType.from_string('foobar')
+        assert str(ae.value) == 'foobar does not exist'
+
+    @pytest.mark.parametrize('input', [e for e in RequestType])
+    def test___call___and___str__(self, input: RequestType) -> None:
+        assert input() == input.value == str(input)
 
 
 class TestRequestMethod:

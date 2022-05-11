@@ -92,7 +92,7 @@ from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageReques
 from grizzly_extras.arguments import split_value, parse_arguments, get_unsupported_arguments
 from grizzly_extras.transformer import TransformerContentType
 
-from ...types import AtomicVariable, bool_typed
+from ...types import AtomicVariable, RequestType, bool_typed
 from ...context import GrizzlyContext
 from ..utils import resolve_variable
 
@@ -340,7 +340,7 @@ class AtomicServiceBus(AtomicVariable[str]):
         response: Optional[AsyncMessageResponse] = None
         request: AsyncMessageRequest = {
             'worker': settings['worker'],
-            'action': 'HELLO',
+            'action': RequestType.HELLO.name,
             'context': context,
         }
 

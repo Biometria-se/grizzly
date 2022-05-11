@@ -67,6 +67,47 @@ class RequestMethod(Enum, AdvancedEnum, settings=NoAlias):
         return self.value
 
 
+class RequestType(Enum, AdvancedEnum, settings=NoAlias):
+    SCENARIO = 'SCEN'
+    TESTDATA = 'TSTD'
+    UNTIL = 'UNTL'
+    VARIABLE = 'VAR'
+    ASYNC_GROUP = 'ASYNC'
+    CLIENT_TASK = 'CLTSK'
+    HELLO = 'HELO'
+    RECEIVE = 'RECV'
+    CONNECT = 'CONN'
+
+    def __call__(self) -> str:
+        return str(self)
+
+    def __str__(self) -> str:
+        return self.value
+
+    @classmethod
+    def from_method(cls, request_type: RequestMethod) -> str:
+        method_name = cast(Optional[RequestType], getattr(cls, request_type.name, None))
+        if method_name is not None:
+            return method_name.value
+
+        return request_type.name
+
+    @classmethod
+    def from_string(cls, key: str) -> str:
+        attribute = cast(Optional[RequestType], getattr(cls, key, None))
+        if attribute is not None:
+            return attribute.value
+
+        if key in [e.value for e in cls]:
+            return key
+
+        attribute = cast(Optional[RequestMethod], getattr(RequestMethod, key, None))
+        if attribute is not None:
+            return attribute.name
+
+        raise AttributeError(f'{key} does not exist')
+
+
 GrizzlyResponseContextManager = Union[RequestsResponseContextManager, FastResponseContextManager]
 
 GrizzlyResponse = Tuple[Optional[Dict[str, Any]], Optional[Any]]

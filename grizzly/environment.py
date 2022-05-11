@@ -13,6 +13,7 @@ from .context import GrizzlyContext
 from .testdata.variables import destroy_variables
 from .locust import run as locustrun
 from .utils import catch, fail_direct, in_correct_section
+from .types import RequestType
 
 
 def before_feature(context: Context, *_args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
@@ -43,7 +44,7 @@ def after_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], **
         return_code = locustrun(context)
 
         if return_code != 0:
-            feature.set_status('failed')
+            feature.set_status(Status.failed)
 
         grizzly = cast(GrizzlyContext, context.grizzly)
         stats = grizzly.state.environment.stats
@@ -53,15 +54,15 @@ def after_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], **
             if grizzly_scenario is None:
                 continue
 
-            scenario_stat = stats.get(f'{grizzly_scenario.identifier} {grizzly_scenario.description}', 'SCEN')
+            scenario_stat = stats.get(grizzly_scenario.locust_name, RequestType.SCENARIO())
 
             if scenario_stat.num_failures > 0 or scenario_stat.num_requests != grizzly_scenario.iterations:
-                behave_scenario.set_status('failed')
+                behave_scenario.set_status(Status.failed)
 
             rindex = -1
 
             for stat in stats.entries.values():
-                if stat.method == 'SCEN' or not stat.name.startswith(f'{grizzly_scenario.identifier} '):
+                if stat.method == RequestType.SCENARIO() or not stat.name.startswith(f'{grizzly_scenario.identifier} '):
                     continue
 
                 if stat.num_failures > 0:

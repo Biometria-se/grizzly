@@ -82,7 +82,7 @@ from gevent import sleep as gsleep
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageResponse, AsyncMessageRequest, AsyncMessageError
 from grizzly_extras.arguments import parse_arguments, get_unsupported_arguments
 
-from ..types import RequestMethod, RequestDirection, GrizzlyResponse
+from ..types import RequestMethod, RequestDirection, GrizzlyResponse, RequestType
 from ..tasks import RequestTask
 from ..utils import merge_dicts
 from .base import GrizzlyUser, ResponseHandler, RequestLogger
@@ -192,7 +192,7 @@ class ServiceBusUser(ResponseHandler, RequestLogger, GrizzlyUser):
 
         request: AsyncMessageRequest = {
             'worker': self.worker_id,
-            'action': 'HELLO',
+            'action': RequestType.HELLO.name,
             'context': context,
         }
 
@@ -297,9 +297,8 @@ class ServiceBusUser(ResponseHandler, RequestLogger, GrizzlyUser):
                 if exception is None:
                     exception = e
             finally:
-                action_name = self.get_request_method(task)
                 self.environment.events.request.fire(
-                    request_type=f'sb:{action_name}',
+                    request_type=RequestType.from_method(task.method),
                     name=name,
                     response_time=response_time,
                     response_length=(response or {}).get('response_length', None) or 0,

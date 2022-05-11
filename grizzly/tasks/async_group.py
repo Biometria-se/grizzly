@@ -28,6 +28,7 @@ from time import perf_counter as time_perf_counter
 
 from . import GrizzlyTask, RequestTask, template
 from ..users.base import AsyncRequests
+from ..types import RequestType
 
 if TYPE_CHECKING:  # pragma: no cover
     from ..context import GrizzlyContextScenario
@@ -110,7 +111,7 @@ class AsyncRequestGroupTask(GrizzlyTask):
                 response_time = int((time_perf_counter() - start) * 1000)
 
                 parent.user.environment.events.request.fire(
-                    request_type='ASYNC',
+                    request_type=RequestType.ASYNC_GROUP(),
                     name=f'{self.scenario.identifier} {self.name} ({len(self.requests)})',
                     response_time=response_time,
                     response_length=response_length,

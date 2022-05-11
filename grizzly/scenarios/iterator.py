@@ -10,7 +10,7 @@ from locust.exception import StopUser, InterruptTaskSet, RescheduleTaskImmediate
 from locust.stats import StatsEntry
 from gevent.exceptions import GreenletExit
 
-from ..types import ScenarioState
+from ..types import RequestType, ScenarioState
 from ..exceptions import RestartScenario, StopScenario
 from . import GrizzlyScenario
 
@@ -22,18 +22,15 @@ class IteratorScenario(GrizzlyScenario):
     user: 'GrizzlyUser'
 
     start: Optional[float]
-    name: str
     task_count: int
-    request_type: str = 'SCEN'
     stats: StatsEntry
 
     def __init__(self, parent: 'GrizzlyUser') -> None:
         super().__init__(parent=parent)
 
         self.start = None
-        self.name = f'{self.user._scenario.identifier} {self.user._scenario.description}'
         self.task_count = len(self.tasks)
-        self.stats = self.user.environment.stats.get(self.name, self.request_type)
+        self.stats = self.user.environment.stats.get(self.user._scenario.locust_name, RequestType.SCENARIO())
 
     def run(self) -> None:  # type: ignore
         try:
@@ -131,8 +128,8 @@ class IteratorScenario(GrizzlyScenario):
         if self.start is not None:
             response_time = int((perf_counter() - self.start) * 1000)
             self.user.environment.events.request.fire(
-                request_type=self.request_type,
-                name=self.name,
+                request_type=RequestType.SCENARIO(),
+                name=self.user._scenario.locust_name,
                 response_time=response_time,
                 response_length=self.task_count,
                 context=self.user._context,
@@ -154,8 +151,8 @@ class IteratorScenario(GrizzlyScenario):
         response_time = int((perf_counter() - start) * 1000)
 
         self.user.environment.events.request.fire(
-            request_type='TSTD',
-            name=self.name,
+            request_type=RequestType.TESTDATA(),
+            name=self.user._scenario.locust_name,
             response_time=response_time,
             response_length=len(jsondumps(remote_context)),
             context=self.user._context,

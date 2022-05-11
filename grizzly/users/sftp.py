@@ -40,7 +40,7 @@ from locust.env import Environment
 from .base import GrizzlyUser, FileRequests, ResponseHandler, RequestLogger
 from ..utils import merge_dicts
 from ..clients import SftpClientSession
-from ..types import RequestMethod, GrizzlyResponse
+from ..types import RequestMethod, GrizzlyResponse, RequestType
 from ..tasks import RequestTask
 
 
@@ -158,7 +158,7 @@ class SftpUser(ResponseHandler, RequestLogger, GrizzlyUser, FileRequests):
                     exception = e
 
             self.environment.events.request.fire(
-                request_type=f'sftp:{request.method.name[:4]}',
+                request_type=RequestType.from_method(request.method),
                 name=name,
                 response_time=response_time,
                 response_length=response_length,

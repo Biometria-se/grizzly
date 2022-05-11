@@ -71,7 +71,7 @@ from locust.env import Environment
 
 import requests
 
-from ..types import GrizzlyResponse, WrappedFunc, GrizzlyResponseContextManager
+from ..types import GrizzlyResponse, RequestType, WrappedFunc, GrizzlyResponseContextManager
 from ..utils import merge_dicts
 from ..types import RequestMethod
 from ..tasks import RequestTask
@@ -618,7 +618,7 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
             except json.decoder.JSONDecodeError as exception:
                 # so that locust treats it as a failure
                 self.environment.events.request.fire(
-                    request_type=request.method.name,
+                    request_type=RequestType.from_method(request.method),
                     name=name,
                     response_time=0,
                     response_length=0,

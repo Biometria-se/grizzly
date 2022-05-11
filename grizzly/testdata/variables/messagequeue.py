@@ -81,7 +81,7 @@ from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageReques
 from grizzly_extras.arguments import split_value, parse_arguments
 from grizzly_extras.transformer import TransformerContentType
 
-from ...types import bool_typed, AtomicVariable
+from ...types import RequestType, bool_typed, AtomicVariable
 from ...context import GrizzlyContext
 from ..utils import resolve_variable
 
@@ -331,7 +331,7 @@ class AtomicMessageQueue(AtomicVariable[str]):
             # first request, connect to async-messaged
             if self._settings[variable].get('worker', None) is None:
                 request = {
-                    'action': 'CONN',
+                    'action': RequestType.CONNECT(),
                     'context': self._settings[variable]['context'],
                 }
 

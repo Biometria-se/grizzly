@@ -190,7 +190,7 @@ class TestMessageQueueUser:
             properties = list(kwargs.keys())
             # self.environment.events.request.fire
             if properties == ['request_type', 'name', 'response_time', 'response_length', 'context', 'exception']:
-                assert kwargs['request_type'] == 'mq:CONN'
+                assert kwargs['request_type'] == 'CONN'
                 assert kwargs['name'] == user.am_context.get('connection', None)
                 assert kwargs['response_time'] >= 0
                 assert kwargs['response_length'] == 0
@@ -401,12 +401,12 @@ class TestMessageQueueUser:
 
         assert request_event_spy.call_count == 2
         _, kwargs = request_event_spy.call_args_list[0]
-        assert kwargs['request_type'] == 'mq:CONN'
+        assert kwargs['request_type'] == 'CONN'
         assert kwargs['exception'] is None
         assert kwargs['response_length'] == 0
 
         _, kwargs = request_event_spy.call_args_list[1]
-        assert kwargs['request_type'] == 'mq:GET'
+        assert kwargs['request_type'] == 'GET'
         assert kwargs['exception'] is None
         assert kwargs['response_length'] == len(test_payload)
 
@@ -456,7 +456,7 @@ class TestMessageQueueUser:
         assert user.context_variables['payload_variable'] == ''
         assert request_event_spy.call_count == 1
         _, kwargs = request_event_spy.call_args_list[0]
-        assert kwargs['request_type'] == 'mq:GET'
+        assert kwargs['request_type'] == 'GET'
         assert isinstance(kwargs['exception'], ResponseHandlerError)
 
         assert response_event_spy.call_count == 1
@@ -740,12 +740,12 @@ class TestMessageQueueUser:
 
         assert request_event_spy.call_count == 2
         _, kwargs = request_event_spy.call_args_list[0]
-        assert kwargs['request_type'] == 'mq:CONN'
+        assert kwargs['request_type'] == 'CONN'
         assert kwargs['exception'] is None
         assert kwargs['response_length'] == 0
 
         _, kwargs = request_event_spy.call_args_list[1]
-        assert kwargs['request_type'] == 'mq:SEND'
+        assert kwargs['request_type'] == 'SEND'
         assert kwargs['exception'] is None
         assert kwargs['response_length'] == len(payload)
 

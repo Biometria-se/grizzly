@@ -26,7 +26,7 @@ from grizzly.locust import (
     setup_locust_scenarios,
     setup_resource_limits,
 )
-from grizzly.types import RequestMethod
+from grizzly.types import RequestMethod, RequestType
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 from grizzly.tasks import GrizzlyTask, LogMessage, RequestTask, WaitTask
 from grizzly.users import RestApiUser, MessageQueueUser
@@ -488,20 +488,20 @@ def test_print_scenario_summary(behave_fixture: BehaveFixture, capsys: CaptureFi
     summary = capsys.readouterr().out
     print(summary)
     assert '''Scenario
-ident     #  status   description
-------|----|--------|-------------|
-001     0/1  inconc   test-1
-------|----|--------|-------------|
+ident   iter  status      description
+------|-----|-----------|-------------|
+001      0/1  undefined   test-1
+------|-----|-----------|-------------|
 ''' == summary
     capsys.readouterr()
 
     grizzly.scenarios.create(behave_fixture.create_scenario('test-2-test-2-test-2-test-2'))
     grizzly.scenario.iterations = 4
-    stat = grizzly.state.environment.stats.get(f'{grizzly.scenario.identifier} {grizzly.scenario.name}', 'SCEN')
+    stat = grizzly.state.environment.stats.get(grizzly.scenario.locust_name, RequestType.SCENARIO())
     stat.num_failures = 1
     stat.num_requests = 3
 
-    stat = grizzly.state.environment.stats.get(f'{grizzly.scenarios[-2].identifier} {grizzly.scenarios[-2].name}', 'SCEN')
+    stat = grizzly.state.environment.stats.get(grizzly.scenarios[-2].locust_name, RequestType.SCENARIO())
     stat.num_failures = 0
     stat.num_requests = 1
 
@@ -510,16 +510,16 @@ ident     #  status   description
     summary = capsys.readouterr().out
     print(summary)
     assert '''Scenario
-ident     #  status   description
-------|----|--------|-----------------------------|
-001     1/1  passed   test-1
-002     3/4  failed   test-2-test-2-test-2-test-2
-------|----|--------|-----------------------------|
+ident   iter  status   description
+------|-----|--------|-----------------------------|
+001      1/1  passed   test-1
+002      3/4  failed   test-2-test-2-test-2-test-2
+------|-----|--------|-----------------------------|
 ''' == summary
     capsys.readouterr()
 
     grizzly.scenarios.create(behave_fixture.create_scenario('#3'))
-    stat = grizzly.state.environment.stats.get(f'{grizzly.scenario.identifier} {grizzly.scenario.name}', 'SCEN')
+    stat = grizzly.state.environment.stats.get(grizzly.scenario.locust_name, RequestType.SCENARIO())
     stat.num_failures = 0
     stat.num_requests = 998
 
@@ -531,7 +531,7 @@ ident     #  status   description
     print(summary)
 
     assert '''Scenario
-ident         #  status   description
+ident      iter  status   description
 ------|--------|--------|-----------------------------|
 001         1/1  passed   test-1
 002         3/4  failed   test-2-test-2-test-2-test-2
@@ -550,13 +550,13 @@ ident         #  status   description
     print(summary)
 
     assert '''Scenario
-ident         #  status   description
-------|--------|--------|-----------------------------|
-001         1/1  passed   test-1
-002         3/4  failed   test-2-test-2-test-2-test-2
-003     998/999  failed   #3
-004     0/99999  inconc   foo bar hello world
-------|--------|--------|-----------------------------|
+ident      iter  status      description
+------|--------|-----------|-----------------------------|
+001         1/1  passed      test-1
+002         3/4  failed      test-2-test-2-test-2-test-2
+003     998/999  failed      #3
+004     0/99999  undefined   foo bar hello world
+------|--------|-----------|-----------------------------|
 ''' == summary
     capsys.readouterr()
 

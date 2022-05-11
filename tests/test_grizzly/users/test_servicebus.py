@@ -258,7 +258,7 @@ class TestServiceBusUser:
         assert isinstance(kwargs.get('exception', None), NotImplementedError)
 
         _, kwargs = request_fire_spy.call_args_list[0]
-        assert kwargs.get('request_type', None) == 'sb:PUT'
+        assert kwargs.get('request_type', None) == 'PUT'
         assert kwargs.get('name', None) == f'{scenario.identifier} {task.name}'
         assert kwargs.get('response_time', None) >= 0.0
         assert kwargs.get('response_length', None) == 0
@@ -289,7 +289,7 @@ class TestServiceBusUser:
         assert isinstance(kwargs.get('exception', None), AsyncMessageError)
 
         _, kwargs = request_fire_spy.call_args_list[1]
-        assert kwargs.get('request_type', None) == 'sb:SEND'
+        assert kwargs.get('request_type', None) == 'SEND'
         assert kwargs.get('name', None) == f'{scenario.identifier} {task.name}'
         assert kwargs.get('response_time', None) >= 0.0
         assert kwargs.get('response_length', None) == 0
@@ -343,7 +343,7 @@ class TestServiceBusUser:
         assert kwargs.get('exception', '') is None
 
         _, kwargs = request_fire_spy.call_args_list[2]
-        assert kwargs.get('request_type', None) == 'sb:RECV'
+        assert kwargs.get('request_type', None) == 'RECV'
         assert kwargs.get('name', None) == f'{scenario.identifier} {task.name}'
         assert kwargs.get('response_time', None) >= 0.0
         assert kwargs.get('response_length', None) == 133
@@ -397,7 +397,7 @@ class TestServiceBusUser:
         assert kwargs.get('exception', '') is None
 
         _, kwargs = request_fire_spy.call_args_list[3]
-        assert kwargs.get('request_type', None) == 'sb:RECV'
+        assert kwargs.get('request_type', None) == 'RECV'
         assert kwargs.get('name', None) == f'{scenario.identifier} {task.name}'
         assert kwargs.get('response_time', None) >= 0.0
         assert kwargs.get('response_length', None) == 133

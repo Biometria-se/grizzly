@@ -24,6 +24,7 @@ from grizzly_extras.transformer import Transformer, TransformerContentType, Tran
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments, split_value
 
 from ..context import GrizzlyContext
+from ..types import RequestType
 from .request import RequestTask
 from . import GrizzlyTask, template
 
@@ -147,7 +148,7 @@ class UntilRequestTask(GrizzlyTask):
                     ))
 
                 parent.user.environment.events.request.fire(
-                    request_type='UNTL',
+                    request_type=RequestType.UNTIL(),
                     name=task_name,
                     response_time=response_time,
                     response_length=response_length,

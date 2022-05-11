@@ -113,7 +113,7 @@ from gevent import sleep as gsleep
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse, AsyncMessageError
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
 
-from ..types import GrizzlyResponse, RequestDirection
+from ..types import GrizzlyResponse, RequestDirection, RequestType
 from ..tasks import RequestTask
 from ..utils import merge_dicts
 from .base import GrizzlyUser, ResponseHandler, RequestLogger
@@ -284,7 +284,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
                         exception = e
                 finally:
                     self.environment.events.request.fire(
-                        request_type=f'mq:{am_request["action"][:4]}',
+                        request_type=RequestType.from_string(am_request['action']),
                         name=name,
                         response_time=total_time,
                         response_length=response.get('response_length', None) or 0,
@@ -312,7 +312,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
         # connect to queue manager at first request
         if self.worker_id is None:
             with action_context({
-                'action': 'CONN',
+                'action': RequestType.CONNECT(),
                 'context': self.am_context
             }, self.am_context['connection']) as action:
                 action.update({
