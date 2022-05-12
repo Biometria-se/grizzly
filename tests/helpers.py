@@ -10,9 +10,13 @@ from locust import task
 from locust.event import EventHook
 
 from grizzly.users.base import GrizzlyUser
-from grizzly.types import GrizzlyResponse, RequestMethod, Message, Environment
+from grizzly.types import GrizzlyResponse, RequestMethod, Message, Environment, AtomicVariable
 from grizzly.tasks import RequestTask
 from grizzly.scenarios import GrizzlyScenario
+
+
+class AtomicCustomVariable(AtomicVariable[str]):
+    pass
 
 
 message_callback_not_a_method = True

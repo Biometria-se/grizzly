@@ -50,7 +50,7 @@ def _get_variable_value(name: str) -> Tuple[Any, Set[str]]:
     external_dependencies: Set[str] = set()
 
     if '.' in name:
-        [variable_type, variable_name] = name.split('.', 1)
+        variable_type, variable_name = name.rsplit('.', 1)
         variable = GrizzlyDict.load_variable(variable_type)
         external_dependencies = variable.__dependencies__
         if getattr(variable, '__on_consumer__', False):
@@ -73,7 +73,9 @@ def transform(data: Dict[str, Any], objectify: Optional[bool] = True) -> Dict[st
         if '.' in key:
             if value == '__on_consumer__':
                 grizzly = GrizzlyContext()
-                [variable_type, variable_name] = key.split('.', 1)
+                variable_type, variable_name = key.rsplit('.', 1)
+                if 'Custom' in key:
+                    print(f'transform: {variable_type=}, {variable_name=}')
                 variable_class_type = GrizzlyDict.load_variable(variable_type)
                 try:
                     initial_value = grizzly.state.variables.get(key, None)

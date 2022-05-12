@@ -79,6 +79,26 @@ def test__get_variable_value_AtomicIntegerIncrementer(cleanup: AtomicVariableCle
         cleanup()
 
 
+def test__get_variable_value_custom_variable(cleanup: AtomicVariableCleanupFixture) -> None:
+    try:
+        grizzly = GrizzlyContext()
+
+        variable_name = 'tests.helpers.AtomicCustomVariable.hello'
+        grizzly.state.variables[variable_name] = 'world'
+
+        value, external_dependencies = _get_variable_value(variable_name)
+        assert external_dependencies == set()
+        assert value['hello'] == 'world'
+
+        variable_name = 'tests.helpers.AtomicCustomVariable.foo'
+        grizzly.state.variables[variable_name] = 'bar'
+
+        _, external_dependencies = _get_variable_value(variable_name)
+        assert value['foo'] == 'bar'
+    finally:
+        cleanup()
+
+
 @pytest.mark.skipif(pymqi.__name__ == 'grizzly_extras.dummy_pymqi', reason='requires native grizzly-loadtester[mq]')
 def test__get_variable_value_AtomicMessageQueue(noop_zmq: NoopZmqFixture, cleanup: AtomicVariableCleanupFixture) -> None:
     noop_zmq('grizzly.testdata.variables.messagequeue')
@@ -460,6 +480,14 @@ def test__objectify() -> None:
                     'test3': 'value',
                 }
             }
+        },
+        'tests': {
+            'helpers': {
+                'AtomicCustomVariable': {
+                    'hello': 'world',
+                    'foo': 'bar',
+                }
+            }
         }
     }
 
@@ -513,6 +541,7 @@ def test_transform_no_objectify() -> None:
         'test.number.description': 'simple description',
         'test.string.value': 'hello world!',
         'test.bool.value': True,
+        'tests.helpers.AtomicCustomVariable.hello': 'world',
     }
 
     actual = transform(data, objectify=False)
@@ -528,8 +557,15 @@ def test_transform_no_objectify() -> None:
             },
             'bool': {
                 'value': True,
-            }
-        }
+            },
+        },
+        'tests': {
+            'helpers': {
+                'AtomicCustomVariable': {
+                    'hello': 'world',
+                },
+            },
+        },
     }
 
 
@@ -553,6 +589,8 @@ def test_transform(behave_fixture: BehaveFixture, noop_zmq: NoopZmqFixture, clea
             'Test.test1.test2.test4': 'value',
             'Test.test2.test3': 'value',
             'AtomicServiceBus.document_id': '__on_consumer__',
+            'tests.helpers.AtomicCustomVariable.hello': 'world',
+            'tests.helpers.AtomicCustomVariable.foo': 'bar',
         }
         grizzly.state.variables['AtomicServiceBus.document_id'] = (
             'queue:messages | url="Endpoint=sb://sb.example.com?SharedAccessKey=asdfasdfasdf=&SharedAccessKeyName=test", repeat=True'
@@ -620,6 +658,11 @@ def test_transform(behave_fixture: BehaveFixture, noop_zmq: NoopZmqFixture, clea
         assert test is not None
         assert isinstance(test, str)
         assert test == 'value'
+
+        custom_variable = getattr(getattr(obj['tests'], 'helpers', None), 'AtomicCustomVariable', None)
+        assert custom_variable is not None
+        assert getattr(custom_variable, 'hello', None) == 'world'
+        assert getattr(custom_variable, 'foo', None) == 'bar'
 
         assert getattr(obj['AtomicServiceBus'], 'document_id', None) == jsondumps({
             'document': {

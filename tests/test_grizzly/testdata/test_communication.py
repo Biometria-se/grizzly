@@ -70,6 +70,7 @@ class TestTestdataProducer:
             source['result']['CsvRowValue2'] = '{{ AtomicCsvRow.test.header2 }}'
             source['result']['IntWithStep'] = '{{ AtomicIntegerIncrementer.value }}'
             source['result']['UtcDate'] = '{{ AtomicDate.utc }}'
+            source['result']['CustomVariable'] = '{{ tests.helpers.AtomicCustomVariable.foo }}'
 
             grizzly = cast(GrizzlyContext, behave_fixture.context.grizzly)
             grizzly.scenarios.clear()
@@ -83,6 +84,7 @@ class TestTestdataProducer:
             grizzly.state.variables['AtomicIntegerIncrementer.value'] = '1 | step=5'
             grizzly.state.variables['AtomicDate.utc'] = "now | format='%Y-%m-%dT%H:%M:%S.000Z', timezone=UTC"
             grizzly.state.variables['AtomicDate.now'] = 'now'
+            grizzly.state.variables['tests.helpers.AtomicCustomVariable.foo'] = 'bar'
             grizzly.scenario.iterations = 2
             grizzly.scenario.user.class_name = 'TestUser'
             grizzly.scenario.context['host'] = 'http://test.nu'
@@ -144,6 +146,7 @@ class TestTestdataProducer:
                 assert 'T' in utc_date and utc_date.endswith('Z')
                 assert data['auth.user.username'] == 'value1'
                 assert data['auth.user.password'] == 'value2'
+                assert variables['tests.helpers.AtomicCustomVariable.foo'] == 'bar'
 
                 message = get_message_from_producer()
                 assert message['action'] == 'consume'

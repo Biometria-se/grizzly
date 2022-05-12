@@ -261,12 +261,26 @@ class AtomicVariable(Generic[T], AbstractAtomicClass):
 
 class GrizzlyDict(dict):
     @classmethod
-    def load_variable(cls, name: str) -> Type[AtomicVariable]:
-        if name not in globals():
-            module = import_module('grizzly.testdata.variables')
-            globals()[name] = getattr(module, name)
+    def load_variable(cls, class_name: str) -> Type[AtomicVariable]:
+        name_parts = list(filter(lambda p: len(p.strip()) > 0, class_name.split('Atomic', 1)))
 
-        variable = globals()[name]
+        if len(name_parts) == 1:
+            module_name = 'grizzly.testdata.variables'
+            class_name = name_parts[0]
+            if not class_name.startswith('Atomic'):
+                class_name = f'Atomic{class_name}'
+        else:
+            module_name = name_parts[0][:-1]  # removing trailing .
+            class_name = f'Atomic{name_parts[1]}'
+
+        if 'Custom' in class_name:
+            print(f'load_variable: {module_name}.{class_name}')
+
+        if module_name not in globals():
+            module = import_module(module_name)
+            globals()[class_name] = getattr(module, class_name)
+
+        variable = globals()[class_name]
         return cast(Type[AtomicVariable], variable)
 
     @classmethod
@@ -307,7 +321,9 @@ class GrizzlyDict(dict):
         caster: Optional[Callable] = None
 
         if '.' in key:
-            [name, _] = key.split('.', 1)
+            name, _ = key.rsplit('.', 1)
+            if 'Custom' in key:
+                print(f'__setitem__: {name=}')
             try:
                 variable = self.load_variable(name)
                 caster = variable.__base_type__
