@@ -15,7 +15,7 @@ from grizzly.context import GrizzlyContext
 from grizzly.types import MessageDirection
 from locust.exception import StopUser
 
-from steps.custom import callback_server_client
+from steps.custom import callback_server_client  # pylint: disable=import-error
 
 
 def before_feature(context: Context, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
