@@ -93,7 +93,7 @@ def transform(data: Dict[str, Any], objectify: Optional[bool] = True) -> Dict[st
                     logger.error(str(e), exc_info=grizzly.state.verbose)
                 finally:
                     response_time = int((time() - start_time) * 1000)
-                    grizzly.state.environment.events.request.fire(
+                    grizzly.state.locust.environment.events.request.fire(
                         request_type=RequestType.VARIABLE(),
                         name=key,
                         response_time=response_time,

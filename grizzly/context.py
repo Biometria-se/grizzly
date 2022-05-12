@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 import yaml
 
 from behave.model import Scenario
-from locust.env import Environment
+from locust.runners import Runner
 
 from .types import GrizzlyDict
 
@@ -61,7 +61,7 @@ class GrizzlyContextState:
     configuration: Dict[str, Any] = field(init=False, default_factory=load_configuration_file)
     alias: Dict[str, str] = field(init=False, default_factory=dict)
     verbose: bool = field(default=False)
-    environment: Environment = field(init=False, repr=False)
+    locust: Runner = field(init=False, repr=False)
 
 
 @dataclass

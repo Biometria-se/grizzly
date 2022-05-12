@@ -217,8 +217,6 @@ def setup_environment_listeners(context: Context, environment: Environment, task
     if grizzly.setup.statistics_url is not None:
         environment.events.init.add_listener(init_statistics_listener(grizzly.setup.statistics_url))
 
-    grizzly.state.environment = environment
-
     return external_dependencies
 
 
@@ -241,14 +239,16 @@ def print_scenario_summary(grizzly: GrizzlyContext) -> None:
     max_length_iterations = len('iter')
     max_length_status = len('status')
 
+    stats = grizzly.state.locust.environment.stats
+
     for scenario in grizzly.scenarios():
-        stat = grizzly.state.environment.stats.get(scenario.locust_name, RequestType.SCENARIO())
+        stat = stats.get(scenario.locust_name, RequestType.SCENARIO())
         max_length_description = max(len(scenario.description or 'unknown'), max_length_description)
         max_length_iterations = max(len(f'{stat.num_requests}/{scenario.iterations or 0}'), max_length_iterations)
         max_length_status = max(len(Status.undefined.name) if stat.num_requests < 1 else len(Status.passed.name), max_length_status)
 
     for scenario in grizzly.scenarios():
-        stat = grizzly.state.environment.stats.get(scenario.locust_name, RequestType.SCENARIO())
+        stat = stats.get(scenario.locust_name, RequestType.SCENARIO())
         if stat.num_requests > 0:
             if stat.num_failures == 0 and stat.num_requests == scenario.iterations:
                 status = Status.passed
@@ -370,6 +370,8 @@ def run(context: Context) -> int:
                 return 1
         else:
             runner = environment.create_local_runner()
+
+        grizzly.state.locust = runner
 
         main_greenlet = runner.greenlet
 

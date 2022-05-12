@@ -47,7 +47,7 @@ def after_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], **
             feature.set_status(Status.failed)
 
         grizzly = cast(GrizzlyContext, context.grizzly)
-        stats = grizzly.state.environment.stats
+        stats = grizzly.state.locust.environment.stats
 
         for behave_scenario in cast(List[Scenario], feature.scenarios):
             grizzly_scenario = grizzly.scenarios.find_by_description(behave_scenario.name)

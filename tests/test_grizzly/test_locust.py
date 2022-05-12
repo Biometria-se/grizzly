@@ -347,6 +347,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
         shape_class=None,
         events=events,
     )
+    grizzly.state.locust.environment = environment
 
     noop_zmq('grizzly.testdata.variables.messagequeue')
 
@@ -380,7 +381,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
         assert len(environment.events.spawning_complete._handlers) == 1
         assert len(environment.events.quitting._handlers) == 0
         assert external_dependencies == set()
-        assert grizzly.state.environment is environment
+        assert grizzly.state.locust.environment is environment
 
         grizzly.setup.statistics_url = None
         grizzly.state.variables['AtomicIntegerIncrementer.value'] = '1 | step=10'
@@ -497,11 +498,11 @@ ident   iter  status      description
 
     grizzly.scenarios.create(behave_fixture.create_scenario('test-2-test-2-test-2-test-2'))
     grizzly.scenario.iterations = 4
-    stat = grizzly.state.environment.stats.get(grizzly.scenario.locust_name, RequestType.SCENARIO())
+    stat = grizzly.state.locust.environment.stats.get(grizzly.scenario.locust_name, RequestType.SCENARIO())
     stat.num_failures = 1
     stat.num_requests = 3
 
-    stat = grizzly.state.environment.stats.get(grizzly.scenarios[-2].locust_name, RequestType.SCENARIO())
+    stat = grizzly.state.locust.environment.stats.get(grizzly.scenarios[-2].locust_name, RequestType.SCENARIO())
     stat.num_failures = 0
     stat.num_requests = 1
 
@@ -519,7 +520,7 @@ ident   iter  status   description
     capsys.readouterr()
 
     grizzly.scenarios.create(behave_fixture.create_scenario('#3'))
-    stat = grizzly.state.environment.stats.get(grizzly.scenario.locust_name, RequestType.SCENARIO())
+    stat = grizzly.state.locust.environment.stats.get(grizzly.scenario.locust_name, RequestType.SCENARIO())
     stat.num_failures = 0
     stat.num_requests = 998
 
