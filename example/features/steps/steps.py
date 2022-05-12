@@ -30,11 +30,11 @@ def step_log_all_requests(context: Context) -> None:
     grizzly.scenario.context = merge_dicts(grizzly.scenario.context, context_variable)
 
 
-@then(u'send message to server')
-def setp_send_message_to_server(context: Context) -> None:
+@then(u'send message "{data}"')
+def step_send_message(context: Context, data: str) -> None:
     '''This step adds task steps.custom.Task to the scenario, which sends a message of type
     "example_message" from the server to the client, which will trigger the callback registered
     in `before_feature` in the projects `environment.py`.
     '''
     grizzly = cast(GrizzlyContext, context.grizzly)
-    grizzly.scenario.tasks.add(Task())
+    grizzly.scenario.tasks.add(Task(data))
