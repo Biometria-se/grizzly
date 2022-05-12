@@ -10,9 +10,10 @@ Feature: grizzly example
     # custom step
     And also log successful requests
     Then get request with name "get-dog-facts" from endpoint "/api/v1/resources/dogs?number={{ AtomicRandomInteger.dog_facts_count }}"
+    Then send message to server
 
   Scenario: cat facts api
-    Given a user of type "RestApi" load testing "$conf::facts.cat.host"
+    Given a user of type "steps.custom.User" load testing "$conf::facts.cat.host"
     And repeat for "1" iteration
     And value for variable "AtomicRandomInteger.cat_facts_count" is "1..5"
     Then get request with name "get-cat-facts" from endpoint "/facts?limit={{ AtomicRandomInteger.cat_facts_count }}"

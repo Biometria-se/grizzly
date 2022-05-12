@@ -122,8 +122,8 @@ def test_init_master(listener_test: Environment, caplog: LogCaptureFixture, griz
         def callback_ack(environment: Environment, msg: Message, **kwargs: Dict[str, Any]) -> None:
             pass
 
-        grizzly.setup.locust.messages.register(MessageDirection.TO_MASTER, 'test_message', callback)
-        grizzly.setup.locust.messages.register(MessageDirection.FROM_MASTER, 'test_message_ack', callback_ack)
+        grizzly.setup.locust.messages.register(MessageDirection.CLIENT_SERVER, 'test_message', callback)
+        grizzly.setup.locust.messages.register(MessageDirection.SERVER_CLIENT, 'test_message_ack', callback_ack)
 
         init_function = init(grizzly, {})
 
@@ -162,8 +162,8 @@ def test_init_worker(listener_test: Environment, grizzly_fixture: GrizzlyFixture
         def callback_ack(environment: Environment, msg: Message, **kwargs: Dict[str, Any]) -> None:
             pass
 
-        grizzly.setup.locust.messages.register(MessageDirection.TO_MASTER, 'test_message', callback)
-        grizzly.setup.locust.messages.register(MessageDirection.FROM_MASTER, 'test_message_ack', callback_ack)
+        grizzly.setup.locust.messages.register(MessageDirection.CLIENT_SERVER, 'test_message', callback)
+        grizzly.setup.locust.messages.register(MessageDirection.SERVER_CLIENT, 'test_message_ack', callback_ack)
 
         init_function(runner)
 
@@ -208,8 +208,8 @@ def test_init_local(listener_test: Environment, grizzly_fixture: GrizzlyFixture)
         def callback_ack(environment: Environment, msg: Message, **kwargs: Dict[str, Any]) -> None:
             pass
 
-        grizzly.setup.locust.messages.register(MessageDirection.TO_MASTER, 'test_message', callback)
-        grizzly.setup.locust.messages.register(MessageDirection.FROM_MASTER, 'test_message_ack', callback_ack)
+        grizzly.setup.locust.messages.register(MessageDirection.CLIENT_SERVER, 'test_message', callback)
+        grizzly.setup.locust.messages.register(MessageDirection.SERVER_CLIENT, 'test_message_ack', callback_ack)
 
         init_function(runner)
 

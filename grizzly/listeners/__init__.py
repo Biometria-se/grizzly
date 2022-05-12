@@ -65,11 +65,11 @@ def init(grizzly: GrizzlyContext, testdata: Optional[TestdataType] = None) -> Ca
             runner.register_message('grizzly_worker_quit', grizzly_worker_quit)
 
         if not isinstance(runner, MasterRunner):
-            for message_type, callback in grizzly.setup.locust.messages.get(MessageDirection.FROM_MASTER, {}).items():
+            for message_type, callback in grizzly.setup.locust.messages.get(MessageDirection.SERVER_CLIENT, {}).items():
                 runner.register_message(message_type, callback)
 
         if not isinstance(runner, WorkerRunner):
-            for message_type, callback in grizzly.setup.locust.messages.get(MessageDirection.TO_MASTER, {}).items():
+            for message_type, callback in grizzly.setup.locust.messages.get(MessageDirection.CLIENT_SERVER, {}).items():
                 runner.register_message(message_type, callback)
 
     return cast(Callable[[Runner, KwArg(Dict[str, Any])], None], ginit)

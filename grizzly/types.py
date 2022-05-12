@@ -10,16 +10,20 @@ from locust.clients import ResponseContextManager as RequestsResponseContextMana
 from locust.contrib.fasthttp import ResponseContextManager as FastResponseContextManager
 from locust.env import Environment
 from locust.rpc.protocol import Message
+from locust.runners import WorkerRunner, MasterRunner, LocalRunner
 
 __all__ = [
     'Message',
     'Environment',
+    'WorkerRunner',
+    'MasterRunner',
+    'LocalRunner',
 ]
 
 
 class MessageDirection(Enum):
-    TO_MASTER = 0
-    FROM_MASTER = 1
+    CLIENT_SERVER = 0
+    SERVER_CLIENT = 1
 
 
 class ResponseTarget(Enum):

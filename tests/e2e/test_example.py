@@ -39,7 +39,20 @@ def test_e2e_example(webserver: Webserver) -> None:
             assert 'WARNING' not in result
             assert '1 feature passed, 0 failed, 0 skipped' in result
             assert '3 scenarios passed, 0 failed, 0 skipped' in result
-            assert '21 steps passed, 0 failed, 0 skipped, 0 undefined' in result
+            assert '22 steps passed, 0 failed, 0 skipped, 0 undefined' in result
+
+            assert '''Scenario
+ident   iter  status   description
+------|-----|--------|---------------|
+001      1/1  passed   dog facts api
+002      1/1  passed   cat facts api
+003      1/1  passed   book api
+------|-----|--------|---------------|''' in result
+
+            assert 'executing custom.User.request for get-cat-facts and /facts?limit=' in result
+
+            assert 'sending "example_message" from SERVER' in result
+            assert "received from SERVER: msg.node_id='local', msg.data={'hello': 'world'}" in result
     except:
         if result is not None:
             print(result)

@@ -16,7 +16,7 @@ from .utils import catch, fail_direct, in_correct_section
 from .types import RequestType
 
 
-def before_feature(context: Context, *_args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+def before_feature(context: Context, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
     # identify as grizzly, instead of behave
     proc.setproctitle('grizzly')
 

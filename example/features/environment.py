@@ -5,14 +5,29 @@ from behave.model import Scenario
 
 # pylint: disable=unused-import
 from grizzly.environment import (  # noqa: F401
-    before_feature,
+    before_feature as grizzly_before_feature,
     after_feature,
     before_scenario as grizzly_before_scenario,
     after_scenario,
     before_step,
 )
 from grizzly.context import GrizzlyContext
+from grizzly.types import MessageDirection
 from locust.exception import StopUser
+
+from steps.custom import callback_example_message
+
+
+def before_feature(context: Context, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+    '''
+    Overloads before_feature from grizzly, to register custom message types and their callbacks,
+    which must be done before after_feature is called
+    '''
+    grizzly_before_feature(context, *args, **kwargs)
+
+    grizzly = cast(GrizzlyContext, context.grizzly)
+
+    grizzly.setup.locust.messages.register(MessageDirection.SERVER_CLIENT, 'example_message', callback_example_message)
 
 
 def before_scenario(
