@@ -43,7 +43,7 @@ def blob_storage_scenario(grizzly_fixture: GrizzlyFixture) -> BlobStorageScenari
 
     request.method = RequestMethod.SEND
 
-    scenario.add_task(request)
+    scenario.tasks.add(request)
 
     return cast(BlobStorageUser, user), scenario, environment
 
@@ -133,7 +133,7 @@ class TestBlobStorageUser:
         assert request_event.call_count == 1
         _, kwargs = request_event.call_args_list[-1]
 
-        assert kwargs.get('request_type', None) == 'bs:RECV'
+        assert kwargs.get('request_type', None) == 'RECV'
         assert kwargs.get('name', None) == f'{request.scenario.identifier} {request.scenario.name}'
         assert kwargs.get('response_time', -1) > -1
         assert kwargs.get('response_length', None) == 0

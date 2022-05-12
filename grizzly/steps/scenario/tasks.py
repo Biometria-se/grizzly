@@ -67,7 +67,7 @@ def step_task_request_with_name_to_endpoint_until(context: Context, method: Requ
         for key, value in substitues.items():
             condition_rendered = condition_rendered.replace(f'{{{{ {key} }}}}', value)
 
-        grizzly.scenario.add_task(UntilRequestTask(
+        grizzly.scenario.tasks.add(UntilRequestTask(
             request=request_task,
             condition=condition_rendered,
         ))
@@ -282,7 +282,7 @@ def step_task_wait_seconds(context: Context, wait_time: float) -> None:
 
     assert wait_time > 0.0, 'wait time cannot be less than 0.0 seconds'
 
-    grizzly.scenario.add_task(WaitTask(time=wait_time))
+    grizzly.scenario.tasks.add(WaitTask(time=wait_time))
 
 
 @then(u'print message "{message}"')
@@ -299,7 +299,7 @@ def step_task_print_message(context: Context, message: str) -> None:
     '''
 
     grizzly = cast(GrizzlyContext, context.grizzly)
-    grizzly.scenario.add_task(LogMessage(message=message))
+    grizzly.scenario.tasks.add(LogMessage(message=message))
 
 
 @then(u'parse "{content}" as "{content_type:ContentType}" and save value of "{expression}" in variable "{variable}"')
@@ -325,7 +325,7 @@ def step_task_transform(context: Context, content: str, content_type: Transforme
     '''
 
     grizzly = cast(GrizzlyContext, context.grizzly)
-    grizzly.scenario.add_task(TransformerTask(
+    grizzly.scenario.tasks.add(TransformerTask(
         content=content,
         content_type=content_type,
         expression=expression,
@@ -355,7 +355,7 @@ def step_task_client_get_endpoint(context: Context, endpoint: str, variable: str
 
     task_client = get_task_client(endpoint)
 
-    grizzly.scenario.add_task(task_client(
+    grizzly.scenario.tasks.add(task_client(
         RequestDirection.FROM,
         endpoint,
         variable=variable,
@@ -388,7 +388,7 @@ def step_task_client_put_endpoint_file_destination(context: Context, source: str
 
     assert not is_template(source), 'source file cannot be a template'
 
-    grizzly.scenario.add_task(task_client(
+    grizzly.scenario.tasks.add(task_client(
         RequestDirection.TO,
         endpoint,
         source=source,
@@ -431,7 +431,7 @@ def step_task_date(context: Context, value: str, variable: str) -> None:
     grizzly = cast(GrizzlyContext, context.grizzly)
     assert variable in grizzly.state.variables, f'variable {variable} has not been initialized'
 
-    grizzly.scenario.add_task(DateTask(
+    grizzly.scenario.tasks.add(DateTask(
         value=value,
         variable=variable,
     ))
@@ -491,5 +491,5 @@ def step_task_async_group_close(context: Context) -> None:
     assert grizzly.scenario.async_group is not None, 'no async request group is open'
     assert len(grizzly.scenario.async_group.requests) > 0, f'there are no requests in async group "{grizzly.scenario.async_group.name}"'
 
-    grizzly.scenario.add_task(grizzly.scenario.async_group)
+    grizzly.scenario.tasks.add(grizzly.scenario.async_group)
     grizzly.scenario.async_group = None

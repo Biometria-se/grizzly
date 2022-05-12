@@ -169,7 +169,7 @@ class TestBlobStorageClientTask:
 
             assert request_fire_spy.call_count == 1
             _, kwargs = request_fire_spy.call_args_list[-1]
-            assert kwargs.get('request_type', None) == 'TASK'
+            assert kwargs.get('request_type', None) == 'CLTSK'
             assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} BlobStorage->my-container'
             assert kwargs.get('response_time', None) >= 0.0
             assert kwargs.get('response_length') == len('source.json')
@@ -209,7 +209,7 @@ class TestBlobStorageClientTask:
 
             assert request_fire_spy.call_count == 2
             _, kwargs = request_fire_spy.call_args_list[-1]
-            assert kwargs.get('request_type', None) == 'TASK'
+            assert kwargs.get('request_type', None) == 'CLTSK'
             assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} BlobStorage->my-container'
             assert kwargs.get('response_time', None) >= 0.0
             assert kwargs.get('response_length') == len('this is my hello world test!')
@@ -231,7 +231,7 @@ class TestBlobStorageClientTask:
 
             assert request_fire_spy.call_count == 3
             _, kwargs = request_fire_spy.call_args_list[-1]
-            assert kwargs.get('request_type', None) == 'TASK'
+            assert kwargs.get('request_type', None) == 'CLTSK'
             assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} BlobStorage->my-container'
             assert kwargs.get('response_time', None) >= 0.0
             assert kwargs.get('response_length') == len('this is my hello world test!')

@@ -1,5 +1,5 @@
 from os import environ
-from typing import Any, Dict, Tuple, cast
+from typing import Any, Dict, Tuple, List, cast
 from time import perf_counter as time
 from datetime import datetime
 
@@ -13,6 +13,7 @@ from .context import GrizzlyContext
 from .testdata.variables import destroy_variables
 from .locust import run as locustrun
 from .utils import catch, fail_direct, in_correct_section
+from .types import RequestType
 
 
 def before_feature(context: Context, *_args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
@@ -43,7 +44,31 @@ def after_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], **
         return_code = locustrun(context)
 
         if return_code != 0:
-            feature.set_status('failed')
+            feature.set_status(Status.failed)
+
+        grizzly = cast(GrizzlyContext, context.grizzly)
+        stats = grizzly.state.environment.stats
+
+        for behave_scenario in cast(List[Scenario], feature.scenarios):
+            grizzly_scenario = grizzly.scenarios.find_by_description(behave_scenario.name)
+            if grizzly_scenario is None:
+                continue
+
+            scenario_stat = stats.get(grizzly_scenario.locust_name, RequestType.SCENARIO())
+
+            if scenario_stat.num_failures > 0 or scenario_stat.num_requests != grizzly_scenario.iterations:
+                behave_scenario.set_status(Status.failed)
+
+            rindex = -1
+
+            for stat in stats.entries.values():
+                if stat.method == RequestType.SCENARIO() or not stat.name.startswith(f'{grizzly_scenario.identifier} '):
+                    continue
+
+                if stat.num_failures > 0:
+                    rindex -= 1
+                    behave_step = cast(Step, behave_scenario.steps[rindex])
+                    behave_step.status = Status.failed
 
     # the features duration is the sum of all scenarios duration, which is the sum of all steps duration
     try:
@@ -82,7 +107,7 @@ def before_scenario(context: Context, scenario: Scenario, *args: Tuple[Any, ...]
             # to get a nicer error message, the step should fail before it's executed, see before_step hook
             setattr(step, 'location_status', 'incorrect')
 
-    grizzly.add_scenario(scenario)
+    grizzly.scenarios.create(scenario)
 
 
 def after_scenario(context: Context, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:

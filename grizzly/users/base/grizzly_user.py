@@ -12,7 +12,7 @@ from locust.user.task import LOCUST_STATE_RUNNING
 from locust.env import Environment
 
 from ...context import GrizzlyContextScenario
-from ...types import GrizzlyResponse, ScenarioState
+from ...types import GrizzlyResponse, RequestType, ScenarioState
 from ...tasks import RequestTask
 from ...utils import merge_dicts
 from . import FileRequests
@@ -28,11 +28,6 @@ class GrizzlyUser(User):
     _scenario_state: Optional[ScenarioState]
 
     __dependencies__: Set[str] = set()
-
-    request_name_map: Dict[str, str] = {
-        'RECEIVE': 'RECV',
-        'HELLO': 'HELO',
-    }
 
     logger: Logger
 
@@ -69,9 +64,6 @@ class GrizzlyUser(User):
     def request(self, request: RequestTask) -> GrizzlyResponse:
         raise NotImplementedError(f'{self.__class__.__name__} has not implemented request')
 
-    def get_request_method(self, request: RequestTask) -> str:
-        return self.request_name_map.get(request.method.name, request.method.name[:4])
-
     def render(self, request: RequestTask) -> Tuple[str, str, Optional[str]]:
         scenario_name = f'{request.scenario.identifier} {request.name}'
 
@@ -103,7 +95,7 @@ class GrizzlyUser(User):
         except Exception as exception:
             self.logger.error(f'{exception=}, {request.name=}, {request.endpoint=}, {self.context_variables=}', exc_info=True)
             self.environment.events.request.fire(
-                request_type=request.method.name,
+                request_type=RequestType.from_method(request.method),
                 name=scenario_name,
                 response_time=0,
                 response_length=0,

@@ -10,8 +10,7 @@ from collections.abc import Mapping
 from copy import deepcopy
 
 from behave.runner import Context
-from behave.model import Scenario
-from behave.model_core import Status
+from behave.model import Scenario, Status
 from locust import between
 
 from .context import GrizzlyContextScenario
@@ -55,7 +54,7 @@ class catch:
             try:
                 return func(context, *args, **kwargs)
             except exception_type as e:
-                context._set_root_attribute('failed', True)
+                context._set_root_attribute(Status.failed.name, True)
 
                 if len(args) > 0:
                     if isinstance(args[0], Scenario):

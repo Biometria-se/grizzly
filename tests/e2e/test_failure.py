@@ -14,44 +14,31 @@ def test_e2e_failure(behave_context_fixture: BehaveContextFixture, webserver: We
 
         stats = grizzly.state.environment.stats
 
-        # failure exception is StopUser, abort user/scenario when there's a failure
-        stat = stats.get('001 stop-get1', 'GET')
-        assert stat.num_failures == 0, f'{stat.name}.num_failures: {stats.num_failures} != 0'
-        assert stat.num_requests == 1, f'{stat.name}.num_requests: {stats.num_requests} != 0'
+        expectations = [
+            # failure exception is StopUser, abort user/scenario when there's a failure
+            ('001 stop user', 'SCEN', 1, 1,),
+            ('001 stop user', 'TSTD', 0, 1,),
+            ('001 stop-get1', 'GET', 0, 1,),
+            ('001 stop-get2', 'GET', 1, 1,),
+            ('001 stop-get3', 'GET', 0, 0,),
+            # failure exception is RestartScenario, do not run steps after the failing step, restart from task 0
+            ('002 restart scenario', 'SCEN', 1, 2,),
+            ('002 restart scenario', 'TSTD', 0, 2,),
+            ('002 restart-get1', 'GET', 0, 2,),
+            ('002 restart-get2', 'GET', 1, 2,),
+            ('002 restart-get3', 'GET', 0, 1,),
+            # failure exception is None, just continue
+            ('003 default', 'SCEN', 0, 2,),
+            ('003 default', 'TSTD', 0, 2,),
+            ('003 default-get1', 'GET', 0, 2,),
+            ('003 default-get2', 'GET', 1, 2,),
+            ('003 default-get3', 'GET', 0, 2,),
+        ]
 
-        stat = stats.get('001 stop-get2', 'GET')
-        assert stat.num_failures == 1, f'{stat.name}.num_failures: {stats.num_failures} != 0'
-        assert stat.num_requests == 1
-
-        stat = stats.get('001 stop-get3', 'GET')
-        assert stat.num_failures == 0, f'{stat.name}.num_failures: {stats.num_failures} != 0'
-        assert stat.num_requests == 0
-
-        # failure exception is RestartScenario, do not run steps after the failing step, restart from task 0
-        stat = stats.get('002 restart-get1', 'GET')
-        assert stat.num_failures == 0, f'{stat.name}.num_failures: {stats.num_failures} != 0'
-        assert stat.num_requests == 2
-
-        stat = stats.get('002 restart-get2', 'GET')
-        assert stat.num_failures == 1, f'{stat.name}.num_failures: {stats.num_failures} != 0'
-        assert stat.num_requests == 2
-
-        stat = stats.get('002 restart-get3', 'GET')
-        assert stat.num_failures == 0, f'{stat.name}.num_failures: {stats.num_failures} != 0'
-        assert stat.num_requests == 1
-
-        # failure exception is None, just continue
-        stat = stats.get('003 default-get1', 'GET')
-        assert stat.num_failures == 0, f'{stat.name}.num_failures: {stats.num_failures} != 0'
-        assert stat.num_requests == 2
-
-        stat = stats.get('003 default-get2', 'GET')
-        assert stat.num_failures == 1, f'{stat.name}.num_failures: {stats.num_failures} != 0'
-        assert stat.num_requests == 2
-
-        stat = stats.get('003 default-get3', 'GET')
-        assert stat.num_failures == 0, f'{stat.name}.num_failures: {stats.num_failures} != 0'
-        assert stat.num_requests == 2
+        for name, method, expected_num_failures, expected_num_requests in expectations:
+            stat = stats.get(name, method)
+            assert stat.num_failures == expected_num_failures, f'{stat.method}:{stat.name}.num_failures: {stat.num_failures} != {expected_num_failures}'
+            assert stat.num_requests == expected_num_requests, f'{stat.method}:{stat.name}.num_requests: {stat.num_requests} != {expected_num_requests}'
 
     behave_context_fixture.add_after_feature(after_feature)
 
@@ -66,7 +53,7 @@ def test_e2e_failure(behave_context_fixture: BehaveContextFixture, webserver: We
         And stop user on failure
         Then get request with name "stop-get1" from endpoint "/api/echo"
         Then get request with name "stop-get2" from endpoint "/api/until/hello?nth=2&wrong=foobar&right=world | content_type=json"
-        When response payload "$.hello" is not "world" fail scenario
+        When response payload "$.hello" is not "world" fail request
         Then get request with name "stop-get3" from endpoint "/api/echo"
 
     Scenario: restart scenario
@@ -75,7 +62,7 @@ def test_e2e_failure(behave_context_fixture: BehaveContextFixture, webserver: We
         And restart scenario on failure
         Then get request with name "restart-get1" from endpoint "/api/echo"
         Then get request with name "restart-get2" from endpoint "/api/until/hello?nth=2&wrong=foobar&right=world | content_type=json"
-        When response payload "$.hello" is not "world" fail scenario
+        When response payload "$.hello" is not "world" fail request
         Then get request with name "restart-get3" from endpoint "/api/echo"
 
     Scenario: default
@@ -83,7 +70,7 @@ def test_e2e_failure(behave_context_fixture: BehaveContextFixture, webserver: We
         And repeat for "2" iterations
         Then get request with name "default-get1" from endpoint "/api/echo"
         Then get request with name "default-get2" from endpoint "/api/until/hello?nth=2&wrong=foobar&right=world | content_type=json"
-        When response payload "$.hello" is not "world" fail scenario
+        When response payload "$.hello" is not "world" fail request
         Then get request with name "default-get3" from endpoint "/api/echo"
     '''))
 

@@ -16,7 +16,8 @@ from grizzly.scenarios.iterator import IteratorScenario
 from grizzly.testdata.communication import TestdataConsumer
 from grizzly.testdata.utils import transform
 from grizzly.tasks import WaitTask, LogMessage
-from grizzly.exceptions import RestartScenario
+from grizzly.exceptions import RestartScenario, StopScenario
+from grizzly.types import ScenarioState
 
 from ...fixtures import GrizzlyFixture
 from ...helpers import RequestCalled
@@ -143,14 +144,14 @@ class TestIterationScenario:
 
         mock_request(None)
 
-        with pytest.raises(StopUser):
+        with pytest.raises(StopScenario):
             scenario.iterator()
 
         assert user.context_variables == {}
 
         mock_request({})
 
-        with pytest.raises(StopUser):
+        with pytest.raises(StopScenario):
             scenario.iterator()
 
         assert user.context_variables == {}
@@ -170,6 +171,52 @@ class TestIterationScenario:
         assert user.context_variables['AtomicIntegerIncrementer'].messageID == 1337
         assert user.context_variables['AtomicCsvRow'].test.header1 == 'value1'
         assert user.context_variables['AtomicCsvRow'].test.header2 == 'value2'
+
+    def test_wait(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
+        _, _, scenario = grizzly_fixture(scenario_type=IteratorScenario)
+
+        assert scenario is not None
+        assert isinstance(scenario, IteratorScenario)
+
+        wait_mocked = mocker.patch('grizzly.scenarios.iterator.GrizzlyScenario.wait', return_value=None)
+        sleep_mocked = mocker.patch.object(scenario, '_sleep', return_value=None)
+
+        scenario.user._scenario_state = ScenarioState.STOPPING
+        scenario.user._state = LOCUST_STATE_STOPPING
+        scenario.task_count = 10
+        scenario._task_index = 3
+
+        with caplog.at_level(logging.DEBUG):
+            scenario.wait()
+
+        assert wait_mocked.call_count == 0
+        assert sleep_mocked.call_count == 1
+        assert scenario.user._state == LOCUST_STATE_RUNNING
+        assert len(caplog.messages) == 1
+        assert caplog.messages[-1] == 'not finished with scenario, currently at task 4 of 10, let me be!'
+        caplog.clear()
+
+        scenario._task_index = 9
+
+        with caplog.at_level(logging.DEBUG):
+            scenario.wait()
+
+        assert wait_mocked.call_count == 1
+        assert scenario.user._state == LOCUST_STATE_STOPPING
+        assert scenario.user.scenario_state == ScenarioState.STOPPED
+
+        assert len(caplog.messages) == 2
+        assert caplog.messages[-2] == "okay, I'm done with my running tasks now"
+        assert caplog.messages[-1] == "scenario state=ScenarioState.STOPPING -> ScenarioState.STOPPED"
+        caplog.clear()
+
+        scenario.user._scenario_state = ScenarioState.STOPPED
+
+        with caplog.at_level(logging.DEBUG):
+            scenario.wait()
+
+        assert wait_mocked.call_count == 2
+        assert len(caplog.messages) == 0
 
     def test_run(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
         _, user, scenario = grizzly_fixture(scenario_type=IteratorScenario)
@@ -191,6 +238,7 @@ class TestIterationScenario:
         )
 
         mocker.patch.object(scenario, 'tasks', [f'task-{index}' for index in range(0, 10)])
+        scenario.task_count = len(scenario.tasks)
 
         schedule_task = mocker.patch.object(scenario, 'schedule_task', autospec=True)
         get_next_task = mocker.patch.object(scenario, 'get_next_task', autospec=True)

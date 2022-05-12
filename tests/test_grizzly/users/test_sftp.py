@@ -111,7 +111,7 @@ class TestSftpUser:
             assert fire_spy.call_count == 1
             _, kwargs = fire_spy.call_args_list[-1]
 
-            assert kwargs.get('request_type', None) == 'sftp:SEND'
+            assert kwargs.get('request_type', None) == 'SEND'
             assert kwargs.get('name', None) == f'{request.scenario.identifier} test'
             assert kwargs.get('response_time', None) == 0
             assert kwargs.get('response_length', None) == 0
@@ -127,7 +127,7 @@ class TestSftpUser:
             assert fire_spy.call_count == 2
             _, kwargs = fire_spy.call_args_list[-1]
 
-            assert kwargs.get('request_type', None) == 'sftp:SEND'
+            assert kwargs.get('request_type', None) == 'SEND'
             assert kwargs.get('name', None) == f'{request.scenario.identifier} test'
             assert kwargs.get('response_time', None) == 0
             assert kwargs.get('response_length', None) == 0
@@ -143,7 +143,7 @@ class TestSftpUser:
             assert fire_spy.call_count == 3
             _, kwargs = fire_spy.call_args_list[-1]
 
-            assert kwargs.get('request_type', None) == 'sftp:SEND'
+            assert kwargs.get('request_type', None) == 'SEND'
             assert kwargs.get('name', None) == f'{request.scenario.identifier} test'
             assert kwargs.get('response_time', None) == 0
             assert kwargs.get('response_length', None) == 0
@@ -220,7 +220,7 @@ class TestSftpUser:
             assert fire_spy.call_count == 7
             _, kwargs = fire_spy.call_args_list[-1]
 
-            assert kwargs.get('request_type', None) == 'sftp:PUT'
+            assert kwargs.get('request_type', None) == 'PUT'
             assert kwargs.get('name', None) == f'{request.scenario.identifier} test'
             assert kwargs.get('response_time', None) == 0
             assert kwargs.get('response_length', None) == 100

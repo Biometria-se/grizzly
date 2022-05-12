@@ -1,6 +1,6 @@
 import logging
 
-from typing import TYPE_CHECKING, Optional, Dict, Any, Tuple, List, Union, Type
+from typing import TYPE_CHECKING, Optional, Dict, Any, Tuple, List, Type, cast
 from os import environ, path
 from dataclasses import dataclass, field
 
@@ -89,9 +89,30 @@ class GrizzlyContextScenarioUser:
     weight: int = field(init=False, hash=True, default=1)
 
 
+class GrizzlyContextTasks(List['GrizzlyTask']):
+    scenario: 'GrizzlyContextScenario'
+
+    def __init__(self, scenario: 'GrizzlyContextScenario', *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+        super().__init__(*args, **kwargs)
+
+        self.scenario = scenario
+
+    def __call__(self) -> List['GrizzlyTask']:
+        return cast(List['GrizzlyTask'], self)
+
+    def add(self, task: 'GrizzlyTask', pos: Optional[int] = None) -> None:
+        if not hasattr(task, 'scenario') or task.scenario is None or task.scenario is not self.scenario:
+            task.scenario = self.scenario
+
+        if pos is None:
+            self.append(task)
+        else:
+            self.insert(pos, task)
+
+
 @dataclass(unsafe_hash=True)
 class GrizzlyContextScenario:
-    name: str = field(init=False, hash=True)
+    _name: str = field(init=False, hash=True)
     description: str = field(init=False, hash=False)
     user: GrizzlyContextScenarioUser = field(init=False, hash=False, compare=False, default_factory=GrizzlyContextScenarioUser)
     index: int = field(init=True)
@@ -100,17 +121,40 @@ class GrizzlyContextScenario:
     behave: Scenario = field(init=False, repr=False, hash=False, compare=False)
     context: Dict[str, Any] = field(init=False, repr=False, hash=False, compare=False, default_factory=dict)
     wait: GrizzlyContextScenarioWait = field(init=False, repr=False, hash=False, compare=False, default_factory=GrizzlyContextScenarioWait)
-    tasks: List['GrizzlyTask'] = field(init=False, repr=False, hash=False, compare=False, default_factory=list)
+    _tasks: GrizzlyContextTasks = field(init=False, repr=False, hash=False, compare=False)
     validation: GrizzlyContextScenarioValidation = field(init=False, hash=False, compare=False, default_factory=GrizzlyContextScenarioValidation)
     failure_exception: Optional[Type[Exception]] = field(init=False, default=None)
     orphan_templates: List[str] = field(init=False, repr=False, hash=False, compare=False, default_factory=list)
     async_group: Optional['AsyncRequestGroupTask'] = field(init=False, repr=False, hash=False, compare=False, default=None)
 
+    def __post_init__(self) -> None:
+        self._tasks = GrizzlyContextTasks(self)
+
+    @property
+    def tasks(self) -> GrizzlyContextTasks:
+        return self._tasks
+
     @property
     def identifier(self) -> str:
         return f'{self.index:03}'
 
-    def get_name(self) -> str:
+    @property
+    def name(self) -> str:
+        if self._name.endswith(f'_{self.identifier}'):
+            return self._name.replace(f'_{self.identifier}', '')
+        else:
+            return self._name
+
+    @name.setter
+    def name(self, value: str) -> None:
+        self._name = value
+
+    @property
+    def locust_name(self) -> str:
+        return f'{self.identifier} {self.description}'
+
+    @property
+    def class_name(self) -> str:
         if not self.name.endswith(f'_{self.identifier}'):
             return f'{self.name}_{self.identifier}'
         else:
@@ -122,12 +166,6 @@ class GrizzlyContextScenario:
             or self.validation.avg_response_time is not None
             or self.validation.response_time_percentile is not None
         )
-
-    def add_task(self, task: 'GrizzlyTask') -> None:
-        if not hasattr(task, 'scenario') or task.scenario is None or task.scenario is not self:
-            task.scenario = self
-
-        self.tasks.append(task)
 
 
 @dataclass
@@ -143,13 +181,42 @@ class GrizzlyContextSetup:
     statistics_url: Optional[str] = field(init=False, default=None)
 
 
+class GrizzlyContextScenarios(List[GrizzlyContextScenario]):
+    def __call__(self) -> List[GrizzlyContextScenario]:
+        return cast(List[GrizzlyContextScenario], self)
+
+    def find_by_class_name(self, class_name: str) -> Optional[GrizzlyContextScenario]:
+        return self._find(class_name, 'class_name')
+
+    def find_by_name(self, name: str) -> Optional[GrizzlyContextScenario]:
+        return self._find(name, 'name')
+
+    def find_by_description(self, description: str) -> Optional[GrizzlyContextScenario]:
+        return self._find(description, 'description')
+
+    def _find(self, value: str, attribute: str) -> Optional[GrizzlyContextScenario]:
+        for item in self:
+            if getattr(item, attribute, None) == value:
+                return item
+
+        return None
+
+    def create(self, behave_scenario: Scenario) -> None:
+        grizzly_scenario = GrizzlyContextScenario(len(self) + 1)
+        grizzly_scenario.behave = behave_scenario
+        grizzly_scenario.name = behave_scenario.name
+        grizzly_scenario.description = behave_scenario.name
+
+        self.append(grizzly_scenario)
+
+
 class GrizzlyContext:
     __instance: Optional['GrizzlyContext'] = None
 
     _initialized: bool
     _state: GrizzlyContextState
     _setup: GrizzlyContextSetup
-    _scenarios: List[GrizzlyContextScenario]
+    _scenarios: GrizzlyContextScenarios
 
     @classmethod
     def __new__(cls, *_args: Tuple[Any, ...], **_kwargs: Dict[str, Any]) -> 'GrizzlyContext':
@@ -170,7 +237,7 @@ class GrizzlyContext:
         if not self._initialized:
             self._state = GrizzlyContextState()
             self._setup = GrizzlyContextSetup()
-            self._scenarios = []
+            self._scenarios = GrizzlyContextScenarios()
             self._initialized = True
 
     @property
@@ -188,24 +255,6 @@ class GrizzlyContext:
 
         return self._scenarios[-1]
 
-    def add_scenario(self, source: Union[Scenario, str]) -> None:
-        scenario = GrizzlyContextScenario(len(self._scenarios) + 1)
-        if isinstance(source, Scenario):
-            name = source.name
-            scenario.behave = source
-        else:
-            name = source
-
-        scenario.name = name
-        scenario.description = name
-        self._scenarios.append(scenario)
-
-    def scenarios(self) -> List[GrizzlyContextScenario]:
+    @property
+    def scenarios(self) -> GrizzlyContextScenarios:
         return self._scenarios
-
-    def get_scenario(self, name: str) -> Optional[GrizzlyContextScenario]:
-        for scenario in self._scenarios:
-            if scenario.get_name() == name:
-                return scenario
-
-        return None

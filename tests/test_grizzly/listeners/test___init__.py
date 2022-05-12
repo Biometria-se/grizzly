@@ -12,7 +12,7 @@ from locust.env import Environment
 from locust.runners import LocalRunner, MasterRunner, WorkerRunner
 from locust.rpc.protocol import Message
 from locust.stats import RequestStats
-from behave.model import Scenario
+from behave.model import Scenario, Status
 
 from grizzly.listeners import (
     _init_testdata_producer,
@@ -44,10 +44,6 @@ def mocked_TestdataProducer___init__(self: Any, testdata: Any, address: str, env
     setattr(self, 'environment', environment)
 
 
-def mocked_noop(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
-    pass
-
-
 @pytest.fixture
 def listener_test(mocker: MockerFixture, locust_fixture: LocustFixture) -> Generator[Environment, None, None]:
     mocker.patch(
@@ -62,17 +58,17 @@ def listener_test(mocker: MockerFixture, locust_fixture: LocustFixture) -> Gener
 
     mocker.patch(
         'zmq.sugar.socket.Socket.bind',
-        mocked_noop,
+        return_value=None,
     )
 
     mocker.patch(
         'zmq.sugar.socket.Socket.connect',
-        mocked_noop,
+        return_value=None,
     )
 
     mocker.patch(
         'zmq.sugar.socket.Socket.send',
-        mocked_noop,
+        return_value=None,
     )
 
     yield locust_fixture.env
@@ -172,12 +168,12 @@ def test_init_statistics_listener(mocker: MockerFixture, locust_fixture: LocustF
     # Influx -- short circuit
     mocker.patch(
         'grizzly.listeners.influxdb.InfluxDb.connect',
-        mocked_noop,
+        return_value=None,
     )
 
     mocker.patch(
         'grizzly.listeners.influxdb.InfluxDbListener.run',
-        mocked_noop,
+        return_value=None,
     )
 
     # ApplicationInsight -- short circuit
@@ -231,7 +227,8 @@ def test_init_statistics_listener(mocker: MockerFixture, locust_fixture: LocustF
 def test_locust_test_start(listener_test: Environment) -> None:
     try:
         grizzly = GrizzlyContext()
-        grizzly.add_scenario('Test Scenario')
+        scenario = Scenario(filename=None, line=None, keyword='', name='Test Scenario')
+        grizzly.scenarios.create(scenario)
         grizzly.scenario.iterations = -1
         runner = MasterRunner(listener_test, '0.0.0.0', 5555)
         listener_test.runner = runner
@@ -277,7 +274,7 @@ def test_spawning_complete() -> None:
 def test_quitting(mocker: MockerFixture, listener_test: Environment) -> None:
     mocker.patch(
         'grizzly.testdata.communication.TestdataProducer.stop',
-        mocked_noop,
+        return_value=None,
     )
 
     runner: Optional[MasterRunner] = None
@@ -357,24 +354,24 @@ def test_validate_result(mocker: MockerFixture, listener_test: Environment, capl
 
     # scenario name must match with the name that the pickled stats object was dumped from
     scenario = Scenario(None, None, '', 'do some posts')
-    grizzly.add_scenario(scenario)
+    grizzly.scenarios.create(scenario)
 
     # fail ratio
     listener_test.process_exit_code = 0
     grizzly.scenario.validation.fail_ratio = 0.1
 
     assert listener_test.process_exit_code == 0
-    assert grizzly.scenario.behave.status == 'passed'
+    assert grizzly.scenario.behave.status == Status.passed
 
     with caplog.at_level(logging.ERROR):
         validate_result_wrapper(listener_test)
 
     assert 'failed due to' in caplog.text
     assert listener_test.process_exit_code == 1
-    assert grizzly.scenario.behave.status == 'failed'
+    assert grizzly.scenario.behave.status == Status.failed
 
     grizzly.scenario.validation.fail_ratio = None
-    grizzly.scenario.behave.set_status('passed')
+    grizzly.scenario.behave.set_status(Status.passed)
     caplog.clear()
 
     # avg response time
@@ -382,17 +379,17 @@ def test_validate_result(mocker: MockerFixture, listener_test: Environment, capl
     grizzly.scenario.validation.avg_response_time = 2
 
     assert listener_test.process_exit_code == 0
-    assert grizzly.scenario.behave.status == 'passed'
+    assert grizzly.scenario.behave.status == Status.passed
 
     with caplog.at_level(logging.ERROR):
         validate_result_wrapper(listener_test)
 
     assert 'failed due to' in caplog.text
     assert listener_test.process_exit_code == 1
-    assert grizzly.scenario.behave.status == 'failed'
+    assert grizzly.scenario.behave.status == Status.failed
 
     grizzly.scenario.validation.avg_response_time = None
-    grizzly.scenario.behave.set_status('passed')
+    grizzly.scenario.behave.set_status(Status.passed)
     caplog.clear()
 
     # response time percentile
@@ -400,17 +397,17 @@ def test_validate_result(mocker: MockerFixture, listener_test: Environment, capl
     grizzly.scenario.validation.response_time_percentile = GrizzlyContextScenarioResponseTimePercentile(2, 0.99)
 
     assert listener_test.process_exit_code == 0
-    assert grizzly.scenario.behave.status == 'passed'
+    assert grizzly.scenario.behave.status == Status.passed
 
     with caplog.at_level(logging.ERROR):
         validate_result_wrapper(listener_test)
 
     assert 'failed due to' in caplog.text
     assert listener_test.process_exit_code == 1
-    assert grizzly.scenario.behave.status == 'failed'
+    assert grizzly.scenario.behave.status == Status.failed
 
     grizzly.scenario.validation.response_time_percentile = None
-    grizzly.scenario.behave.set_status('passed')
+    grizzly.scenario.behave.set_status(Status.passed)
 
 
 def test_grizzly_worker_quit_non_worker(locust_fixture: LocustFixture, caplog: LogCaptureFixture) -> None:

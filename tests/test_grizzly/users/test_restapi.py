@@ -46,7 +46,7 @@ def restapi_user(grizzly_fixture: GrizzlyFixture) -> RestApiScenarioFixture:
 
     request = grizzly_fixture.request_task.request
 
-    scenario.add_task(request)
+    scenario.tasks.add(request)
 
     return cast(RestApiUser, user), scenario
 
@@ -86,7 +86,7 @@ def test_refresh_token_client(restapi_user: RestApiScenarioFixture, mocker: Mock
         auth_client_context = auth_context['client']
         request_task = RequestTask(RequestMethod.POST, name='test-request', endpoint='/api/test')
         scenario.tasks.clear()
-        scenario.add_task(request_task)
+        scenario.tasks.add(request_task)
 
         # no authentication for api, request will be called which raises NotRefreshed
         assert user._context['auth']['url'] is None
@@ -165,7 +165,7 @@ def test_refresh_token_user(restapi_user: RestApiScenarioFixture, mocker: Mocker
         auth_user_context = auth_context['user']
         request_task = RequestTask(RequestMethod.POST, name='test-request', endpoint='/api/test')
         scenario.tasks.clear()
-        scenario.add_task(request_task)
+        scenario.tasks.add(request_task)
 
         # no authentication for api, request will be called which raises NotRefreshed
         assert auth_user_context['username'] is None

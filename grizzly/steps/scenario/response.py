@@ -103,23 +103,24 @@ def step_response_save(context: Context, target: ResponseTarget, expression: str
     add_save_handler(cast(GrizzlyContext, context.grizzly), target, expression, '.*', variable)
 
 
-@when(u'response {target:ResponseTarget} "{expression}" {condition:Condition} "{match_with}" fail scenario')
+@when(u'response {target:ResponseTarget} "{expression}" {condition:Condition} "{match_with}" fail request')
 def step_response_validate(context: Context, target: ResponseTarget, expression: str, condition: bool, match_with: str) -> None:
-    '''Fails the scenario based on the value of a response meta data (header) or payload (body).
+    '''Fails the request based on the value of a response meta data (header) or payload (body).
 
-    How the step will fail is based on step `And ... on failure`. If this step is not present, it will default to
-    stopping the user.
+    How the step will fail is based on step `And ... on failure`. If this step is not present, the default behaviour
+    is to continue the scenario.
+
 
     ```gherkin
     And restart scenario on failure
-    When response metadata "$.['content-type']" is not ".*application/json.*" fail scenario
-    When response metadata "$.['x-test-command']" is "abort" fail scenario
-    When response metadata "$.Authentication" is not "Bearer .*$" fail scenario
+    When response metadata "$.['content-type']" is not ".*application/json.*" fail request
+    When response metadata "$.['x-test-command']" is "abort" fail request
+    When response metadata "$.Authentication" is not "Bearer .*$" fail request
 
     And stop user on failure
-    When response payload "$.measurement.id" is not "cpu[0-9]+" fail scenario
-    When response payload "$.success" is "false" fail scenario
-    When response payload "/root/measurement[@id="cpu"]/success/text()" is "'false'" fail scenario
+    When response payload "$.measurement.id" is not "cpu[0-9]+" fail request
+    When response payload "$.success" is "false" fail request
+    When response payload "/root/measurement[@id="cpu"]/success/text()" is "'false'" fail request
     ```
 
     Args:

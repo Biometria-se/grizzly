@@ -12,6 +12,7 @@ from math import ceil
 import gevent
 
 from behave.runner import Context
+from behave.model import Status
 from locust.runners import MasterRunner, WorkerRunner, Runner
 from locust.env import Environment
 from locust.stats import (
@@ -28,7 +29,7 @@ from jinja2.exceptions import TemplateError
 
 from .listeners import init, init_statistics_listener, quitting, validate_result, spawning_complete, locust_test_start, locust_test_stop
 from .testdata.utils import initialize_testdata
-from .types import TestdataType
+from .types import RequestType, TestdataType
 from .context import GrizzlyContext
 from .tasks import GrizzlyTask
 from .users.base import GrizzlyUser
@@ -222,43 +223,58 @@ def setup_environment_listeners(context: Context, environment: Environment, task
 
 
 def print_scenario_summary(grizzly: GrizzlyContext) -> None:
-    def print_table_lines(max_length_iterations: int, max_length_description: int) -> None:
-        sys.stdout.write('-' * 5)
-        sys.stdout.write('-|-')
-        sys.stdout.write('-' * max_length_iterations)
-        sys.stdout.write('|-')
-        sys.stdout.write('-' * max_length_description)
-        sys.stdout.write('-|\n')
+    def create_separator(max_length_iterations: int, max_length_status: int, max_length_description: int) -> str:
+        separator: List[str] = []
+        separator.append('-' * 5)
+        separator.append('-|-')
+        separator.append('-' * max_length_iterations)
+        separator.append('|-')
+        separator.append('-' * max_length_status)
+        separator.append('-|-')
+        separator.append('-' * max_length_description)
+        separator.append('-|')
+
+        return ''.join(separator)
 
     rows: List[str] = []
     max_length_description = len('description')
-    max_length_iterations = len('#')
+    max_length_iterations = len('iter')
+    max_length_status = len('status')
 
     for scenario in grizzly.scenarios():
-        description_length = len(scenario.description or 'unknown')
-        if description_length > max_length_description:
-            max_length_description = description_length
-
-        iterations_length = len(str(scenario.iterations or ''))
-        if iterations_length > max_length_iterations:
-            max_length_iterations = iterations_length
+        stat = grizzly.state.environment.stats.get(scenario.locust_name, RequestType.SCENARIO())
+        max_length_description = max(len(scenario.description or 'unknown'), max_length_description)
+        max_length_iterations = max(len(f'{stat.num_requests}/{scenario.iterations or 0}'), max_length_iterations)
+        max_length_status = max(len(Status.undefined.name) if stat.num_requests < 1 else len(Status.passed.name), max_length_status)
 
     for scenario in grizzly.scenarios():
+        stat = grizzly.state.environment.stats.get(scenario.locust_name, RequestType.SCENARIO())
+        if stat.num_requests > 0:
+            if stat.num_failures == 0 and stat.num_requests == scenario.iterations:
+                status = Status.passed
+            else:
+                status = Status.failed
+        else:
+            status = Status.undefined
+
         description = scenario.description or 'unknown'
-        row = '{:5}   {:>{}}  {}'.format(
+        row = '{:5}   {:>{}}  {:{}}   {}'.format(
             scenario.identifier,
-            scenario.iterations,
+            f'{stat.num_requests}/{scenario.iterations}',
             max_length_iterations,
+            status.name,
+            max_length_status,
             description,
         )
         rows.append(row)
 
     print('Scenario')
-    print('{:5}   {:>{}}  {}'.format('ident', '#', max_length_iterations, 'description'))
-    print_table_lines(max_length_iterations, max_length_description)
+    print('{:5}   {:>{}}  {:{}}   {}'.format('ident', 'iter', max_length_iterations, 'status', max_length_status, 'description'))
+    separator = create_separator(max_length_iterations, max_length_status, max_length_description)
+    print(separator)
     for row in rows:
         print(row)
-    print_table_lines(max_length_iterations, max_length_description)
+    print(separator)
 
 
 def run(context: Context) -> int:

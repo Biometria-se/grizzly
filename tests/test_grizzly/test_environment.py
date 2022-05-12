@@ -7,7 +7,7 @@ import pytest
 from pytest_mock import MockerFixture
 from behave.runner import Context, Runner
 from behave.configuration import Configuration
-from behave.model import Feature, Step
+from behave.model import Feature, Step, Status
 
 from grizzly.environment import before_feature, after_feature, before_scenario, after_scenario, before_step, after_step
 from grizzly.context import GrizzlyContext
@@ -78,12 +78,12 @@ def test_after_feature(behave_fixture: BehaveFixture, mocker: MockerFixture) -> 
     )
 
     # do not start locust if feature failed
-    feature.set_status('failed')
+    feature.set_status(Status.failed)
 
     after_feature(behave, feature)
 
     # start locust only if it's not a dry run and the feature passed
-    feature.set_status('passed')
+    feature.set_status(Status.passed)
 
     with pytest.raises(LocustRunning):
         after_feature(behave, feature)
@@ -96,11 +96,11 @@ def test_after_feature(behave_fixture: BehaveFixture, mocker: MockerFixture) -> 
         locustrun_return_not_0,
     )
 
-    assert feature.status == 'passed'
+    assert feature.status == Status.passed
 
     after_feature(behave, feature)
 
-    assert feature.status == 'failed'
+    assert feature.status == Status.failed
 
     assert feature.duration == 0.0
     behave.start = time_monotonic() - 1.0
@@ -177,7 +177,7 @@ def test_before_scenario(behave_fixture: BehaveFixture, mocker: MockerFixture) -
     assert getattr(behave.scenario.steps[3], 'location_status', None) is None
 
     grizzly.state.background_section_done = True
-    grizzly._scenarios = []
+    grizzly.scenarios.clear()
 
     before_scenario(behave, behave.scenario)
 

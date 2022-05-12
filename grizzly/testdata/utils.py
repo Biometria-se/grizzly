@@ -11,7 +11,7 @@ from locust.exception import StopUser
 
 from ..context import GrizzlyContext
 from ..tasks import GrizzlyTask
-from ..types import TestdataType, GrizzlyDictValueType, GrizzlyDict
+from ..types import RequestType, TestdataType, GrizzlyDictValueType, GrizzlyDict
 from ..utils import merge_dicts
 from .ast import get_template_variables
 
@@ -94,7 +94,7 @@ def transform(data: Dict[str, Any], objectify: Optional[bool] = True) -> Dict[st
                 finally:
                     response_time = int((time() - start_time) * 1000)
                     grizzly.state.environment.events.request.fire(
-                        request_type='VAR ',
+                        request_type=RequestType.VARIABLE(),
                         name=key,
                         response_time=response_time,
                         response_length=0,

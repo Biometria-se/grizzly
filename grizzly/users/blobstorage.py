@@ -38,7 +38,7 @@ from locust.exception import StopUser
 from locust.env import Environment
 
 from .base import GrizzlyUser
-from ..types import RequestMethod, GrizzlyResponse
+from ..types import RequestMethod, GrizzlyResponse, RequestType
 from ..tasks import RequestTask
 from ..utils import merge_dicts
 
@@ -84,11 +84,13 @@ class BlobStorageUser(GrizzlyUser):
 
         exception: Optional[Exception] = None
         start_time = time()
+        response_length = 0
 
         try:
             with self.client.get_blob_client(container=endpoint, blob=os.path.basename(request_name)) as blob_client:
                 if request.method in [RequestMethod.SEND, RequestMethod.PUT]:
                     blob_client.upload_blob(payload)
+                    response_length = len(payload or '')
                 else:
                     raise NotImplementedError(f'{self.__class__.__name__} has not implemented {request.method.name}')
         except Exception as e:
@@ -96,10 +98,10 @@ class BlobStorageUser(GrizzlyUser):
         finally:
             total_time = int((time() - start_time) * 1000)
             self.environment.events.request.fire(
-                request_type=f'bs:{self.get_request_method(request)}',
+                request_type=RequestType.from_method(request.method),
                 name=name,
                 response_time=total_time,
-                response_length=0,
+                response_length=response_length,
                 context=self._context,
                 exception=exception
             )

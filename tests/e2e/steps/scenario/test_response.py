@@ -170,7 +170,7 @@ def test_e2e_step_response_validate(behave_context_fixture: BehaveContextFixture
     feature_file = behave_context_fixture.test_steps(
         scenario=[
             f'Then get request with name "{target.name.lower()}-handler" from endpoint "/api/test | content_type=json"',
-            f'When response {target.name.lower()} "$.hello.world" {condition} "foo[bar]?" fail scenario',
+            f'When response {target.name.lower()} "$.hello.world" {condition} "foo[bar]?" fail request',
         ],
         identifier=target.name,
     )

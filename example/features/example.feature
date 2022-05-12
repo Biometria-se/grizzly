@@ -24,10 +24,10 @@ Feature: grizzly example
     And value for variable "author_endpoint" is "none"
 
     Then get request with name "1-get-book" from endpoint "/books/{{ AtomicCsvRow.books.book }}.json | content_type=json"
-    When response payload "$.number_of_pages" is not "{{ AtomicCsvRow.books.pages }}" fail scenario
-    When response payload "$.isbn_10[0]" is not "{{ AtomicCsvRow.books.isbn_10 }}" fail scenario
+    When response payload "$.number_of_pages" is not "{{ AtomicCsvRow.books.pages }}" fail request
+    When response payload "$.isbn_10[0]" is not "{{ AtomicCsvRow.books.isbn_10 }}" fail request
     Then save response payload "$.authors[0].key" in variable "author_endpoint"
 
     Then get request with name "2-get-author" from endpoint "{{ author_endpoint }}.json | content_type=json"
-    When response payload "$.name" is not "{{ AtomicCsvRow.books.author }}" fail scenario
+    When response payload "$.name" is not "{{ AtomicCsvRow.books.author }}" fail request
 
