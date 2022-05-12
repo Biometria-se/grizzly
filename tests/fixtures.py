@@ -19,15 +19,16 @@ import gevent
 
 from locust.clients import ResponseContextManager
 from locust.contrib.fasthttp import FastResponse
+from locust.env import Environment
+from locust.runners import Runner
 from geventhttpclient.header import Headers
 from _pytest.tmpdir import TempPathFactory
 from pytest_mock.plugin import MockerFixture
-from locust.env import Environment
 from paramiko.transport import Transport
 from paramiko.channel import Channel
 from paramiko.sftp import BaseSFTP
 from paramiko.sftp_client import SFTPClient
-from behave.runner import Context as BehaveContext, Runner
+from behave.runner import Context as BehaveContext, Runner as BehaveRunner
 from behave.model import Scenario, Step, Background, Feature
 from behave.configuration import Configuration
 from behave.step_registry import registry as step_registry
@@ -91,6 +92,7 @@ class LocustFixture:
     _tmp_path_factory: TempPathFactory
 
     env: Environment
+    runner: Runner
 
     def __init__(self, tmp_path_factory: TempPathFactory) -> None:
         self._tmp_path_factory = tmp_path_factory
@@ -102,6 +104,9 @@ class LocustFixture:
 
         environ['GRIZZLY_CONTEXT_ROOT'] = self._test_context_root
         self.env = Environment()
+        self.runner = Runner(
+            self.env,
+        )
 
         return self
 
@@ -247,7 +252,7 @@ class BehaveFixture:
         return Scenario(filename=None, line=None, keyword='', name=name)
 
     def __enter__(self) -> 'BehaveFixture':
-        runner = Runner(
+        runner = BehaveRunner(
             config=Configuration(
                 command_args=[],
                 load_config=False,
@@ -262,7 +267,7 @@ class BehaveFixture:
         context.scenario.background = Background(filename=None, line=None, keyword='', steps=[context.step], name='')
         context._runner.step_registry = step_registry
         grizzly = GrizzlyContext()
-        grizzly.state.environment = self._locust_fixture.env
+        grizzly.state.locust = self._locust_fixture.runner
         setattr(context, 'grizzly', grizzly)
 
         self.context = context

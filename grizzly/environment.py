@@ -16,7 +16,7 @@ from .utils import catch, fail_direct, in_correct_section
 from .types import RequestType
 
 
-def before_feature(context: Context, *_args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+def before_feature(context: Context, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
     # identify as grizzly, instead of behave
     proc.setproctitle('grizzly')
 
@@ -47,7 +47,7 @@ def after_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], **
             feature.set_status(Status.failed)
 
         grizzly = cast(GrizzlyContext, context.grizzly)
-        stats = grizzly.state.environment.stats
+        stats = grizzly.state.locust.environment.stats
 
         for behave_scenario in cast(List[Scenario], feature.scenarios):
             grizzly_scenario = grizzly.scenarios.find_by_description(behave_scenario.name)

@@ -12,7 +12,7 @@ def test_e2e_failure(behave_context_fixture: BehaveContextFixture, webserver: We
     def after_feature(context: Context, feature: Feature) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
 
-        stats = grizzly.state.environment.stats
+        stats = grizzly.state.locust.environment.stats
 
         expectations = [
             # failure exception is StopUser, abort user/scenario when there's a failure

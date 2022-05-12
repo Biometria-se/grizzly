@@ -1,6 +1,6 @@
 import shutil
 
-from typing import Tuple, Dict, Any, cast
+from typing import Tuple, Dict, Any, Optional, cast
 from os import path, environ
 
 import pytest
@@ -8,6 +8,8 @@ import pytest
 from _pytest.tmpdir import TempPathFactory
 from jinja2.environment import Template
 from behave.model import Scenario
+from locust.env import Environment
+from locust.rpc.protocol import Message
 
 from grizzly.context import (
     GrizzlyContext,
@@ -16,11 +18,13 @@ from grizzly.context import (
     GrizzlyContextScenario,
     GrizzlyContextScenarioValidation,
     GrizzlyContextScenarioWait,
+    GrizzlyContextSetupLocust,
+    GrizzlyContextSetupLocustMessages,
     GrizzlyContextState,
     load_configuration_file,
 )
 
-from grizzly.types import RequestMethod
+from grizzly.types import MessageDirection, RequestMethod
 from grizzly.tasks import LogMessage, RequestTask, WaitTask
 
 
@@ -83,13 +87,14 @@ class TestGrizzlyContextSetup:
         grizzly = getattr(behave, 'grizzly')
         grizzly_setup = grizzly.setup
 
-        expected_properties: Dict[str, Tuple[Any, Any]] = {
+        expected_properties: Dict[str, Optional[Tuple[Any, Any]]] = {
             'log_level': ('INFO', 'DEBUG'),
             'user_count': (0, 10),
             'spawn_rate': (None, 2),
             'timespan': (None, '10s'),
             'statistics_url': (None, 'influxdb://influx.example.org/grizzly'),
             'global_context': ({}, {'test': 'hello world'}),
+            'locust': None,
         }
 
         expected_attributes = list(expected_properties.keys())
@@ -100,55 +105,51 @@ class TestGrizzlyContextSetup:
         for test_attribute_name, test_attribute_values in expected_properties.items():
             assert hasattr(grizzly_setup, test_attribute_name), f'attribute {test_attribute_name} does not exist in GrizzlyContextSetup'
 
-            [default_value, test_value] = test_attribute_values
+            if test_attribute_values is not None:
+                default_value, test_value = test_attribute_values
 
-            assert getattr(grizzly_setup, test_attribute_name) == default_value
-            setattr(grizzly_setup, test_attribute_name, test_value)
-            assert getattr(grizzly_setup, test_attribute_name) == test_value
+                assert getattr(grizzly_setup, test_attribute_name) == default_value
+                setattr(grizzly_setup, test_attribute_name, test_value)
+                assert getattr(grizzly_setup, test_attribute_name) == test_value
 
         actual_attributes = list(grizzly_setup.__dict__.keys())
         actual_attributes.sort()
 
         assert expected_attributes == actual_attributes
 
-    def test_scenarios(self, behave_fixture: BehaveFixture) -> None:
-        behave = behave_fixture.context
-        grizzly = cast(GrizzlyContext, behave.grizzly)
-        assert len(grizzly.scenarios()) == 0
-        assert grizzly.state.variables == {}
+        assert isinstance(grizzly_setup.locust, GrizzlyContextSetupLocust)
+        assert isinstance(grizzly_setup.locust.messages, GrizzlyContextSetupLocustMessages)
 
-        grizzly.scenarios.create(behave_fixture.create_scenario('test1'))
-        grizzly.scenario.user.class_name = 'TestUser'
-        first_scenario = grizzly.scenario
-        assert len(grizzly.scenarios()) == 1
-        assert grizzly.state.variables == {}
-        assert grizzly.scenario.name == 'test1'
 
-        grizzly.scenario.context['host'] = 'http://test:8000'
-        assert grizzly.scenario.context['host'] == 'http://test:8000'
+class TestGrizzlyContextSetupLocustMessages:
+    def test_register(self) -> None:
+        context = GrizzlyContextSetupLocustMessages()
 
-        grizzly.scenarios.create(behave_fixture.create_scenario('test2'))
-        grizzly.scenario.user.class_name = 'TestUser'
-        grizzly.scenario.context['host'] = 'http://test:8001'
-        assert len(grizzly.scenarios()) == 2
-        assert grizzly.scenario.name == 'test2'
-        assert grizzly.scenario.context['host'] != 'http://test:8000'
+        assert isinstance(context, dict)
+        assert context == {}
 
-        behave_scenario = Scenario(filename=None, line=None, keyword='', name='test3')
-        grizzly.scenarios.create(behave_scenario)
-        grizzly.scenario.user.class_name = 'TestUser'
-        third_scenario = grizzly.scenario
-        assert grizzly.scenario.name == 'test3'
-        assert grizzly.scenario.behave is behave_scenario
+        def callback(environment: Environment, msg: Message, **kwargs: Dict[str, Any]) -> None:
+            pass
 
-        for index, scenario in enumerate(grizzly.scenarios(), start=1):
-            assert scenario.name == f'test{index}'
+        def callback_ack(environment: Environment, msg: Message, **kwargs: Dict[str, Any]) -> None:
+            pass
 
-        assert grizzly.scenarios.find_by_name('test4') is None
-        assert grizzly.scenarios.find_by_name('test1') is first_scenario
-        assert grizzly.scenarios.find_by_name('test3') is third_scenario
-        assert grizzly.scenarios.find_by_class_name(first_scenario.class_name) is first_scenario
-        assert grizzly.scenarios.find_by_class_name(third_scenario.class_name) is third_scenario
+        context.register(MessageDirection.SERVER_CLIENT, 'test_message', callback)
+
+        assert context.get(MessageDirection.SERVER_CLIENT, {}) == {
+            'test_message': callback,
+        }
+
+        context.register(MessageDirection.CLIENT_SERVER, 'test_message_ack', callback_ack)
+
+        assert context == {
+            MessageDirection.SERVER_CLIENT: {
+                'test_message': callback,
+            },
+            MessageDirection.CLIENT_SERVER: {
+                'test_message_ack': callback_ack,
+            }
+        }
 
 
 class TestGrizzlyContextState:
@@ -353,3 +354,42 @@ class TestGrizzlyContextScenario:
         log_task = LogMessage(message='hello general')
         scenario.tasks.add(log_task)
         assert scenario.tasks == [request, second_request, wait_task, log_task]
+
+    def test_scenarios(self, behave_fixture: BehaveFixture) -> None:
+        behave = behave_fixture.context
+        grizzly = cast(GrizzlyContext, behave.grizzly)
+        assert len(grizzly.scenarios()) == 0
+        assert grizzly.state.variables == {}
+
+        grizzly.scenarios.create(behave_fixture.create_scenario('test1'))
+        grizzly.scenario.user.class_name = 'TestUser'
+        first_scenario = grizzly.scenario
+        assert len(grizzly.scenarios()) == 1
+        assert grizzly.state.variables == {}
+        assert grizzly.scenario.name == 'test1'
+
+        grizzly.scenario.context['host'] = 'http://test:8000'
+        assert grizzly.scenario.context['host'] == 'http://test:8000'
+
+        grizzly.scenarios.create(behave_fixture.create_scenario('test2'))
+        grizzly.scenario.user.class_name = 'TestUser'
+        grizzly.scenario.context['host'] = 'http://test:8001'
+        assert len(grizzly.scenarios()) == 2
+        assert grizzly.scenario.name == 'test2'
+        assert grizzly.scenario.context['host'] != 'http://test:8000'
+
+        behave_scenario = Scenario(filename=None, line=None, keyword='', name='test3')
+        grizzly.scenarios.create(behave_scenario)
+        grizzly.scenario.user.class_name = 'TestUser'
+        third_scenario = grizzly.scenario
+        assert grizzly.scenario.name == 'test3'
+        assert grizzly.scenario.behave is behave_scenario
+
+        for index, scenario in enumerate(grizzly.scenarios(), start=1):
+            assert scenario.name == f'test{index}'
+
+        assert grizzly.scenarios.find_by_name('test4') is None
+        assert grizzly.scenarios.find_by_name('test1') is first_scenario
+        assert grizzly.scenarios.find_by_name('test3') is third_scenario
+        assert grizzly.scenarios.find_by_class_name(first_scenario.class_name) is first_scenario
+        assert grizzly.scenarios.find_by_class_name(third_scenario.class_name) is third_scenario

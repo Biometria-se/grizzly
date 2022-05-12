@@ -1,14 +1,29 @@
 '''This module contains step implementations that configures the load test scenario with parameters applicable for all scenarios.'''
+import parse
 
 from urllib.parse import urlparse, parse_qs, urlunparse
 from typing import cast, List
+from importlib import import_module
+from inspect import signature
 
-from behave import given  # pylint: disable=no-name-in-module
+from behave import register_type, given  # pylint: disable=no-name-in-module
 from behave.runner import Context
+
+from grizzly.types import MessageDirection, Environment, Message
 
 from ...context import GrizzlyContext
 from ...utils import merge_dicts
 from ...testdata.utils import create_context_variable, resolve_variable
+
+
+@parse.with_pattern(r'(client|server)', regex_group_count=1)
+def parse_message_direction(text: str) -> str:
+    return text.strip()
+
+
+register_type(
+    MessageDirection=parse_message_direction,
+)
 
 
 @given(u'save statistics to "{url}"')
@@ -176,3 +191,41 @@ def step_setup_set_global_context_variable(context: Context, variable: str, valu
     context_variable = create_context_variable(grizzly, variable, value)
 
     grizzly.setup.global_context = merge_dicts(grizzly.setup.global_context, context_variable)
+
+
+@given(u'add callback "{callback_name}" for message type "{message_type}" from {from_node:MessageDirection} to {to_node:MessageDirection}')
+def step_setup_message_type_callback(context: Context, callback_name: str, message_type: str, from_node: str, to_node: str) -> None:
+    grizzly = cast(GrizzlyContext, context.grizzly)
+
+    assert from_node != to_node, f'cannot register message handler that sends from {from_node} and is received at {to_node}'
+
+    message_direction = MessageDirection.from_string(f'{from_node}_{to_node}')
+
+    module_name, callback_name = callback_name.rsplit('.', 1)
+
+    try:
+        module = import_module(module_name)
+    except ModuleNotFoundError as e:
+        assert 0, f'no module named {e.name}'
+
+    callback = getattr(module, callback_name, None)
+
+    assert callback is not None, f'module {module_name} has no method {callback_name}'
+    assert callable(callback), f'{module_name}.{callback_name} is not a method'
+
+    method_signature = signature(callback)
+    parameters = method_signature.parameters
+    parameter_names = list(method_signature.parameters.keys())
+
+    correct_signature = (
+        len(parameter_names) >= 2
+        and parameter_names[0] == 'environment'
+        and issubclass(parameters['environment'].annotation, Environment)
+        and parameter_names[1] == 'msg'
+        and issubclass(parameters['msg'].annotation, Message)
+        and method_signature.return_annotation is None
+    )
+
+    assert correct_signature, f'{module_name}.{callback_name} does not have grizzly.types.MessageCallback method signature: {method_signature}'
+
+    grizzly.setup.locust.messages.register(message_direction, message_type, callback)
