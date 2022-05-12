@@ -1,5 +1,6 @@
 from enum import Enum
 from typing import Callable, Optional, Tuple, Any, Union, Dict, TypeVar, List, Type, Generic, Set, cast
+from mypy_extensions import KwArg, Arg
 from importlib import import_module
 
 from aenum import Enum as AdvancedEnum, NoAlias
@@ -7,6 +8,18 @@ from gevent.lock import Semaphore
 
 from locust.clients import ResponseContextManager as RequestsResponseContextManager
 from locust.contrib.fasthttp import ResponseContextManager as FastResponseContextManager
+from locust.env import Environment
+from locust.rpc.protocol import Message
+
+__all__ = [
+    'Message',
+    'Environment',
+]
+
+
+class MessageDirection(Enum):
+    TO_MASTER = 0
+    FROM_MASTER = 1
 
 
 class ResponseTarget(Enum):
@@ -117,6 +130,8 @@ HandlerContextType = Union[GrizzlyResponseContextManager, GrizzlyResponse]
 TestdataType = Dict[str, Dict[str, Any]]
 
 GrizzlyDictValueType = Union[str, float, int, bool]
+
+MessageCallback = Callable[[Arg(Environment, 'environment'), Arg(Message, 'msg'), KwArg(Dict[str, Any])], None]  # noqa: F821
 
 WrappedFunc = TypeVar('WrappedFunc', bound=Callable[..., Any])
 

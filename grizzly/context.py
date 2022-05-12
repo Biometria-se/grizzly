@@ -9,7 +9,7 @@ import yaml
 from behave.model import Scenario
 from locust.runners import Runner
 
-from .types import GrizzlyDict
+from .types import GrizzlyDict, MessageCallback, MessageDirection
 
 if TYPE_CHECKING:  # pragma: no cover
     from .tasks import GrizzlyTask, AsyncRequestGroupTask
@@ -168,6 +168,22 @@ class GrizzlyContextScenario:
         )
 
 
+class GrizzlyContextSetupLocustMessages(Dict[MessageDirection, Dict[str, MessageCallback]]):
+    def register(self, direction: MessageDirection, message_type: str, callback: MessageCallback) -> None:
+        if direction not in self:
+            self[direction] = {}
+
+        if message_type not in self[direction]:
+            self[direction][message_type] = callback
+        else:
+            raise AttributeError(f'message type {message_type} was already registered in direction {direction.name}')
+
+
+@dataclass
+class GrizzlyContextSetupLocust:
+    messages: GrizzlyContextSetupLocustMessages = field(default_factory=GrizzlyContextSetupLocustMessages)
+
+
 @dataclass
 class GrizzlyContextSetup:
     log_level: str = field(init=False, default='INFO')
@@ -179,6 +195,8 @@ class GrizzlyContextSetup:
     timespan: Optional[str] = field(init=False, default=None)
 
     statistics_url: Optional[str] = field(init=False, default=None)
+
+    locust: GrizzlyContextSetupLocust = field(init=False, default_factory=GrizzlyContextSetupLocust)
 
 
 class GrizzlyContextScenarios(List[GrizzlyContextScenario]):

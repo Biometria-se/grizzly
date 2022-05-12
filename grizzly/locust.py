@@ -206,7 +206,7 @@ def setup_environment_listeners(context: Context, environment: Environment, task
 
         environment.events.quitting.add_listener(quitting)
 
-    environment.events.init.add_listener(init(testdata))
+    environment.events.init.add_listener(init(grizzly, testdata))
     environment.events.test_start.add_listener(locust_test_start(grizzly))
     environment.events.test_stop.add_listener(locust_test_stop)
 
