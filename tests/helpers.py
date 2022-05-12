@@ -10,9 +10,20 @@ from locust import task
 from locust.event import EventHook
 
 from grizzly.users.base import GrizzlyUser
-from grizzly.types import GrizzlyResponse, RequestMethod
+from grizzly.types import GrizzlyResponse, RequestMethod, Message, Environment
 from grizzly.tasks import RequestTask
 from grizzly.scenarios import GrizzlyScenario
+
+
+message_callback_not_a_method = True
+
+
+def message_callback(environment: Environment, msg: Message) -> None:
+    pass
+
+
+def message_callback_incorrect_sig(msg: Message, environment: Environment) -> Message:
+    pass
 
 
 class RequestCalled(Exception):

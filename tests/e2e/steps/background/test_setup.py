@@ -177,3 +177,52 @@ def test_e2e_step_setup_global_context_variable(behave_context_fixture: BehaveCo
     rc, _ = behave_context_fixture.execute(feature_file)
 
     assert rc == 0
+
+
+@pytest.mark.parametrize('from_node,to_node,message_type', [
+    ('server', 'client', 'server_to_client',),
+    ('client', 'server', 'client_to_server',),
+])
+def test_e2e_step_setup_message_type_callback(
+    behave_context_fixture: BehaveContextFixture,
+    from_node: str,
+    to_node: str,
+    message_type: str,
+) -> None:
+    def validator(context: Context) -> None:
+        from grizzly.types import MessageDirection
+        grizzly = cast(GrizzlyContext, context.grizzly)
+        data = list(context.table)[0].as_dict()
+
+        direction = MessageDirection.from_string(data['direction'])
+        message_type = data['message_type']
+
+        from tests.helpers import message_callback
+
+        assert grizzly.setup.locust.messages == {
+            direction: {
+                message_type: message_callback,
+            }
+        }
+
+        grizzly.setup.locust.messages.clear()
+
+        raise SystemExit(0)
+
+    table: List[Dict[str, str]] = [{
+        'direction': f'{from_node}_{to_node}',
+        'message_type': message_type,
+    }]
+
+    behave_context_fixture.add_validator(validator, table=table)
+
+    feature_file = behave_context_fixture.test_steps(
+        background=[
+            f'And add callback "tests.helpers.message_callback" for message type "{message_type}" from {from_node} to {to_node}',
+        ],
+        identifier=message_type,
+    )
+
+    rc, _ = behave_context_fixture.execute(feature_file)
+
+    assert rc == 0

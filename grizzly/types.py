@@ -25,6 +25,13 @@ class MessageDirection(Enum):
     CLIENT_SERVER = 0
     SERVER_CLIENT = 1
 
+    @classmethod
+    def from_string(cls, value: str) -> 'MessageDirection':
+        try:
+            return cls[value.upper()]
+        except KeyError as e:
+            raise ValueError(f'"{value.upper()}" is not a valid value of {cls.__name__}') from e
+
 
 class ResponseTarget(Enum):
     METADATA = 0
@@ -49,7 +56,7 @@ class RequestDirection(Enum):
     @classmethod
     def from_string(cls, value: str) -> 'RequestDirection':
         try:
-            return RequestDirection[value.upper()]
+            return cls[value.upper()]
         except KeyError as e:
             raise ValueError(f'"{value.upper()}" is not a valid value of {cls.__name__}') from e
 
