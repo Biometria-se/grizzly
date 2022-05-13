@@ -16,9 +16,6 @@ __all__ = [
 class GrizzlyDict(dict):
     @classmethod
     def load_variable(cls, module_name: str, class_name: str) -> Type['AtomicVariable']:
-        if 'Custom' in class_name:
-            print(f'load_variable: {module_name}.{class_name}')
-
         if module_name not in globals():
             module = import_module(module_name)
             globals()[class_name] = getattr(module, class_name)
@@ -96,8 +93,6 @@ class GrizzlyDict(dict):
 
         module_name, variable_type, _ = self.get_variable_spec(key)
         if module_name is not None and variable_type is not None:
-            if 'Custom' in key:
-                print(f'__setitem__: {key=}')
             try:
                 variable = self.load_variable(module_name, variable_type)
                 caster = variable.__base_type__

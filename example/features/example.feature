@@ -24,6 +24,7 @@ Feature: grizzly example
     Given a user of type "RestApi" load testing "$conf::facts.book.host"
     And repeat for "1" iteration
     And value for variable "AtomicCsvRow.books" is "books/books.csv | random=True"
+    And value for variable "steps.custom.AtomicCustomVariable.foobar" is "foobar"
     And value for variable "author_endpoint" is "none"
 
     Then get request with name "1-get-book" from endpoint "/books/{{ AtomicCsvRow.books.book }}.json | content_type=json"
@@ -33,4 +34,5 @@ Feature: grizzly example
 
     Then get request with name "2-get-author" from endpoint "{{ author_endpoint }}.json | content_type=json"
     When response payload "$.name" is not "{{ AtomicCsvRow.books.author }}" fail request
+    Then print message "AtomicCustomVariable.foobar='{{ steps.custom.AtomicCustomVariable.foobar }}'"
 

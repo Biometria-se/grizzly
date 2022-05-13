@@ -39,7 +39,7 @@ def test_e2e_example(webserver: Webserver) -> None:
             assert 'WARNING' not in result
             assert '1 feature passed, 0 failed, 0 skipped' in result
             assert '3 scenarios passed, 0 failed, 0 skipped' in result
-            assert '24 steps passed, 0 failed, 0 skipped, 0 undefined' in result
+            assert '26 steps passed, 0 failed, 0 skipped, 0 undefined' in result
 
             assert '''Scenario
 ident   iter  status   description
@@ -55,6 +55,7 @@ ident   iter  status   description
             assert "received from SERVER: msg.node_id='local', msg.data={'server': 'client'}" in result
             assert 'sending "client_server" from CLIENT' in result
             assert "received from CLIENT: msg.node_id='local', msg.data={'client': 'server'}" in result
+            assert "AtomicCustomVariable.foobar='foobar'" in result
     except:
         if result is not None:
             print(result)

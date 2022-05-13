@@ -82,9 +82,6 @@ def transform(grizzly: 'GrizzlyContext', data: Dict[str, Any], objectify: Option
         if '.' in key:
             if module_name is not None and variable_type is not None:
                 if value == '__on_consumer__':
-                    if 'Custom' in key:
-                        print(f'transform: {module_name=}, {variable_type=}, {variable_name=}')
-
                     variable_type_instance = GrizzlyDict.load_variable(module_name, variable_type)
                     initial_value = grizzly.state.variables.get(key, None)
                     variable_instance = variable_type_instance.obtain(variable_name, initial_value)

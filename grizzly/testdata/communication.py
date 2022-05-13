@@ -178,14 +178,10 @@ class TestdataProducer:
 
                                         for key, variable in testdata.items():
                                             if '.' in key and not variable == '__on_consumer__':
-                                                print(f'{key=}')
-                                                # [data_type, testdata_value] = key.split('.', 1)
                                                 module_name, variable_type, variable_name = GrizzlyDict.get_variable_spec(key)
                                                 _, data_attribute = key.rsplit('.', 1)
-                                                print(f'{module_name=}, {variable_type=}')
-                                                print(f'{variable_name=}, {data_attribute=}')
+
                                                 if variable_name != data_attribute:
-                                                    # @TODO: what if name contains deeper levels (.)?
                                                     testdata_type = f'{variable_type}.{variable_name}'
                                                     if module_name != 'grizzly.testdata.variables':
                                                         testdata_type = f'{module_name}.{testdata_type}'
