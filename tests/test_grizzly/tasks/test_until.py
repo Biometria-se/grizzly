@@ -15,37 +15,40 @@ from ...fixtures import GrizzlyFixture
 
 
 class TestUntilRequestTask:
-    def test___init__(self) -> None:
+    def test___init__(self, grizzly_fixture: GrizzlyFixture) -> None:
+        grizzly_fixture()
+        grizzly = grizzly_fixture.grizzly
+
         request = RequestTask(RequestMethod.GET, name='test', endpoint='/api/test')
 
         with pytest.raises(ValueError) as ve:
-            UntilRequestTask(request, '$.`this`[?status="ready"]')
+            UntilRequestTask(grizzly, request, '$.`this`[?status="ready"]')
         assert 'content type must be specified for request' in str(ve)
 
         request.response.content_type = TransformerContentType.JSON
 
         with pytest.raises(ValueError) as ve:
-            UntilRequestTask(request, '$.`this`[?status="ready"] | foo=bar, bar=foo')
+            UntilRequestTask(grizzly, request, '$.`this`[?status="ready"] | foo=bar, bar=foo')
         assert 'unsupported arguments foo, bar' in str(ve)
 
-        task = UntilRequestTask(request, '$.`this`[?status="ready"]')
+        task = UntilRequestTask(grizzly, request, '$.`this`[?status="ready"]')
 
         assert task.condition == '$.`this`[?status="ready"]'
         assert task.wait == 1.0
         assert task.retries == 3
 
-        task = UntilRequestTask(request, '$.`this`[?status="ready"] | wait=100, retries=10')
+        task = UntilRequestTask(grizzly, request, '$.`this`[?status="ready"] | wait=100, retries=10')
 
         assert task.condition == '$.`this`[?status="ready"]'
         assert task.wait == 100
         assert task.retries == 10
 
         with pytest.raises(ValueError) as ve:
-            UntilRequestTask(request, '$.`this`[?status="ready"] | wait=0.0, retries=10')
+            UntilRequestTask(grizzly, request, '$.`this`[?status="ready"] | wait=0.0, retries=10')
         assert 'wait argument cannot be less than 0.1 seconds' in str(ve)
 
         with pytest.raises(ValueError) as ve:
-            UntilRequestTask(request, '$.`this`[?status="ready"] | wait=0.1, retries=0')
+            UntilRequestTask(grizzly, request, '$.`this`[?status="ready"] | wait=0.1, retries=0')
         assert 'retries argument cannot be less than 1' in str(ve)
 
     def test___call__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
@@ -55,6 +58,8 @@ class TestUntilRequestTask:
         request.response.content_type = TransformerContentType.JSON
         request.method = RequestMethod.GET
         request.name = 'test-request'
+
+        grizzly = grizzly_fixture.grizzly
 
         def create_response(status: str) -> str:
             return jsondumps({
@@ -97,7 +102,7 @@ class TestUntilRequestTask:
 
         gsleep_spy = mocker.patch('grizzly.tasks.until.gsleep', autospec=True)
 
-        task_factory = UntilRequestTask(request, '/status[text()="ready"]')
+        task_factory = UntilRequestTask(grizzly, request, '/status[text()="ready"]')
         task = task_factory()
 
         with pytest.raises(RuntimeError) as re:
@@ -107,7 +112,7 @@ class TestUntilRequestTask:
         jsontransformer_orig = transformer.available[TransformerContentType.JSON]
         del transformer.available[TransformerContentType.JSON]
 
-        task_factory = UntilRequestTask(request, '$.`this`[?status="ready"] | wait=100, retries=10')
+        task_factory = UntilRequestTask(grizzly, request, '$.`this`[?status="ready"] | wait=100, retries=10')
 
         with pytest.raises(TypeError) as te:
             task_factory()
@@ -115,7 +120,7 @@ class TestUntilRequestTask:
 
         transformer.available[TransformerContentType.JSON] = jsontransformer_orig
 
-        task_factory = UntilRequestTask(request, "$.`this`[?status='ready'] | wait=100, retries=10")
+        task_factory = UntilRequestTask(grizzly, request, "$.`this`[?status='ready'] | wait=100, retries=10")
         task = task_factory()
 
         task(scenario)
@@ -142,7 +147,7 @@ class TestUntilRequestTask:
         # -->
         scenario.grizzly.state.variables['wait'] = 100.0
         scenario.grizzly.state.variables['retries'] = 10
-        task_factory = UntilRequestTask(request, "$.`this`[?status='ready'] | wait='{{ wait }}', retries='{{ retries }}'")
+        task_factory = UntilRequestTask(grizzly, request, "$.`this`[?status='ready'] | wait='{{ wait }}', retries='{{ retries }}'")
         task = task_factory()
 
         task(scenario)
@@ -177,7 +182,7 @@ class TestUntilRequestTask:
         )
 
         request.scenario.failure_exception = StopUser
-        task_factory = UntilRequestTask(request, '$.`this`[?status="ready"] | wait=10, retries=2')
+        task_factory = UntilRequestTask(grizzly, request, '$.`this`[?status="ready"] | wait=10, retries=2')
         task = task_factory()
 
         with pytest.raises(StopUser):
@@ -234,7 +239,7 @@ class TestUntilRequestTask:
             ],
         )
 
-        task_factory = UntilRequestTask(request, '$.`this`[?status="ready"] | wait=4, retries=4')
+        task_factory = UntilRequestTask(grizzly, request, '$.`this`[?status="ready"] | wait=4, retries=4')
         task = task_factory()
 
         task(scenario)
@@ -275,7 +280,7 @@ class TestUntilRequestTask:
             }), ),
         )
 
-        task_factory = UntilRequestTask(request, '$.list[?(@.count > 19)] | wait=4, expected_matches=3, retries=4')
+        task_factory = UntilRequestTask(grizzly, request, '$.list[?(@.count > 19)] | wait=4, expected_matches=3, retries=4')
         assert task_factory.expected_matches == 3
         assert task_factory.wait == 4
         assert task_factory.retries == 4
@@ -293,7 +298,7 @@ class TestUntilRequestTask:
         assert kwargs.get('context', None) == {'variables': {}}
         assert kwargs.get('exception', '') is None
 
-        task_factory = UntilRequestTask(request, '$.list[?(@.count > 19)] | wait=4, expected_matches=4, retries=4')
+        task_factory = UntilRequestTask(grizzly, request, '$.list[?(@.count > 19)] | wait=4, expected_matches=4, retries=4')
         assert task_factory.expected_matches == 4
         assert task_factory.wait == 4
         assert task_factory.retries == 4
@@ -314,7 +319,7 @@ class TestUntilRequestTask:
         assert isinstance(exception, RuntimeError)
         assert str(exception) == 'found 3 matching values for $.list[?(@.count > 19)] in payload after 4 retries and 555 milliseconds'
 
-        task_factory = UntilRequestTask(request, '$.list[?(@.count == 18)] | wait=4, expected_matches=2, retries=4')
+        task_factory = UntilRequestTask(grizzly, request, '$.list[?(@.count == 18)] | wait=4, expected_matches=2, retries=4')
         assert task_factory.expected_matches == 2
         assert task_factory.wait == 4
         assert task_factory.retries == 4
@@ -332,7 +337,7 @@ class TestUntilRequestTask:
         assert kwargs.get('context', None) == {'variables': {}}
         assert kwargs.get('exception', '') is None
 
-        task_factory = UntilRequestTask(request, '$.list[?(@.count == 18)] | wait=4, expected_matches=1, retries=1')
+        task_factory = UntilRequestTask(grizzly, request, '$.list[?(@.count == 18)] | wait=4, expected_matches=1, retries=1')
         task = task_factory()
         request_spy.return_value = ({}, None,)
         request.scenario.failure_exception = None

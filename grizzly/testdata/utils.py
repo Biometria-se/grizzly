@@ -1,6 +1,6 @@
 import logging
 
-from typing import Optional, List, Dict, Any, Tuple, Set, cast
+from typing import TYPE_CHECKING, Optional, List, Dict, Any, Tuple, Set
 from collections import namedtuple
 from os import environ
 from time import perf_counter as time
@@ -9,17 +9,21 @@ from jinja2 import Template, Environment
 from jinja2.meta import find_undeclared_variables
 from locust.exception import StopUser
 
-from ..context import GrizzlyContext
 from ..tasks import GrizzlyTask
-from ..types import RequestType, TestdataType, GrizzlyDictValueType, GrizzlyDict
+from ..types import RequestType, TestdataType, GrizzlyVariableType
 from ..utils import merge_dicts
 from .ast import get_template_variables
+from . import GrizzlyVariables
+
+
+if TYPE_CHECKING:
+    from ..context import GrizzlyContext
 
 
 logger = logging.getLogger(__name__)
 
 
-def initialize_testdata(tasks: List[GrizzlyTask]) -> Tuple[TestdataType, Set[str]]:
+def initialize_testdata(grizzly: 'GrizzlyContext', tasks: List[GrizzlyTask]) -> Tuple[TestdataType, Set[str]]:
     testdata: TestdataType = {}
     template_variables = get_template_variables(tasks)
 
@@ -30,13 +34,16 @@ def initialize_testdata(tasks: List[GrizzlyTask]) -> Tuple[TestdataType, Set[str
         testdata[scenario] = {}
 
         for variable in variables:
-            if variable.count('.') > 1:
-                variable_datatype = '.'.join(variable.split('.')[0:2])
+            module_name, variable_type, variable_name = GrizzlyVariables.get_variable_spec(variable)
+            if module_name is not None and variable_type is not None:
+                variable_datatype = f'{variable_type}.{variable_name}'
+                if module_name != 'grizzly.testdata.variables':
+                    variable_datatype = f'{module_name}.{variable_datatype}'
             else:
-                variable_datatype = variable
+                variable_datatype = variable_name
 
             if variable_datatype not in initialized_datatypes:
-                initialized_datatypes[variable_datatype], dependencies = _get_variable_value(variable_datatype)
+                initialized_datatypes[variable_datatype], dependencies = GrizzlyVariables.get_variable_value(grizzly, variable_datatype)
                 external_dependencies.update(dependencies)
 
             testdata[scenario][variable] = initialized_datatypes[variable_datatype]
@@ -44,66 +51,39 @@ def initialize_testdata(tasks: List[GrizzlyTask]) -> Tuple[TestdataType, Set[str
     return testdata, external_dependencies
 
 
-def _get_variable_value(name: str) -> Tuple[Any, Set[str]]:
-    grizzly = GrizzlyContext()
-    default_value = grizzly.state.variables.get(name, None)
-    external_dependencies: Set[str] = set()
-
-    if '.' in name:
-        [variable_type, variable_name] = name.split('.', 1)
-        variable = GrizzlyDict.load_variable(variable_type)
-        external_dependencies = variable.__dependencies__
-        if getattr(variable, '__on_consumer__', False):
-            value = cast(Any, '__on_consumer__')
-        else:
-            try:
-                value = variable(variable_name, default_value)
-            except ValueError as e:
-                raise ValueError(f'{name}: {default_value=}, exception={str(e)}') from e
-    else:
-        value = default_value
-
-    return value, external_dependencies
-
-
-def transform(data: Dict[str, Any], objectify: Optional[bool] = True) -> Dict[str, Any]:
+def transform(grizzly: 'GrizzlyContext', data: Dict[str, Any], objectify: Optional[bool] = True) -> Dict[str, Any]:
     testdata: Dict[str, Any] = {}
 
     for key, value in data.items():
+        module_name, variable_type, variable_name = GrizzlyVariables.get_variable_spec(key)
+
         if '.' in key:
-            if value == '__on_consumer__':
-                grizzly = GrizzlyContext()
-                [variable_type, variable_name] = key.split('.', 1)
-                variable_class_type = GrizzlyDict.load_variable(variable_type)
-                try:
+            if module_name is not None and variable_type is not None:
+                if value == '__on_consumer__':
+                    variable_type_instance = GrizzlyVariables.load_variable(module_name, variable_type)
                     initial_value = grizzly.state.variables.get(key, None)
-                    variable_instance = variable_class_type(variable_name, initial_value)
-                except ValueError as e:
-                    if 'object already has attribute' in str(e):
-                        variable_instance = variable_class_type.get()
-                    else:
-                        raise e
+                    variable_instance = variable_type_instance.obtain(variable_name, initial_value)
 
-                start_time = time()
-                exception: Optional[Exception] = None
-                try:
-                    value = variable_instance[variable_name]
-                except Exception as e:
-                    exception = e
-                    logger.error(str(e), exc_info=grizzly.state.verbose)
-                finally:
-                    response_time = int((time() - start_time) * 1000)
-                    grizzly.state.locust.environment.events.request.fire(
-                        request_type=RequestType.VARIABLE(),
-                        name=key,
-                        response_time=response_time,
-                        response_length=0,
-                        context=None,
-                        exception=exception,
-                    )
+                    start_time = time()
+                    exception: Optional[Exception] = None
+                    try:
+                        value = variable_instance[variable_name]
+                    except Exception as e:
+                        exception = e
+                        logger.error(str(e), exc_info=grizzly.state.verbose)
+                    finally:
+                        response_time = int((time() - start_time) * 1000)
+                        grizzly.state.locust.environment.events.request.fire(
+                            request_type=RequestType.VARIABLE(),
+                            name=key,
+                            response_time=response_time,
+                            response_length=0,
+                            context=None,
+                            exception=exception,
+                        )
 
-                if exception is not None:
-                    raise StopUser()
+                    if exception is not None:
+                        raise StopUser()
 
             paths: List[str] = key.split('.')
             variable = paths.pop(0)
@@ -138,15 +118,15 @@ def _objectify(testdata: Dict[str, Any]) -> Dict[str, Any]:
     return testdata
 
 
-def create_context_variable(grizzly: GrizzlyContext, variable: str, value: str) -> Dict[str, Any]:
+def create_context_variable(grizzly: 'GrizzlyContext', variable: str, value: str) -> Dict[str, Any]:
     casted_value = resolve_variable(grizzly, value)
 
     variable = variable.lower().replace(' ', '_').replace('/', '.')
 
-    return transform({variable: casted_value}, objectify=False)
+    return transform(grizzly, {variable: casted_value}, objectify=False)
 
 
-def resolve_variable(grizzly: GrizzlyContext, value: str, guess_datatype: Optional[bool] = True) -> GrizzlyDictValueType:
+def resolve_variable(grizzly: 'GrizzlyContext', value: str, guess_datatype: Optional[bool] = True) -> GrizzlyVariableType:
     if len(value) < 1:
         return value
 
@@ -155,7 +135,7 @@ def resolve_variable(grizzly: GrizzlyContext, value: str, guess_datatype: Option
         quote_char = value[0]
         value = value[1:-1]
 
-    resolved_variable: GrizzlyDictValueType
+    resolved_variable: GrizzlyVariableType
     if '{{' in value and '}}' in value:
         template = Template(value)
         j2env = Environment(autoescape=False)
@@ -182,7 +162,7 @@ def resolve_variable(grizzly: GrizzlyContext, value: str, guess_datatype: Option
         resolved_variable = value
 
     if guess_datatype:
-        resolved_variable = GrizzlyDict.guess_datatype(resolved_variable)
+        resolved_variable = GrizzlyVariables.guess_datatype(resolved_variable)
     elif quote_char is not None and isinstance(resolved_variable, str) and resolved_variable.count(' ') > 0:
         resolved_variable = f'{quote_char}{resolved_variable}{quote_char}'
 

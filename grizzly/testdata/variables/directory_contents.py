@@ -39,7 +39,8 @@ from random import randint
 
 from grizzly_extras.arguments import split_value, parse_arguments
 
-from ...types import bool_typed, AtomicVariable
+from ...types import bool_typed
+from . import AtomicVariable
 
 
 def atomicdirectorycontents__base_type__(value: str) -> str:

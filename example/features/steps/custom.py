@@ -5,6 +5,7 @@ from grizzly.scenarios import GrizzlyScenario
 from grizzly.users import RestApiUser
 from grizzly.tasks import RequestTask, GrizzlyTask
 from grizzly.types import GrizzlyResponse, Message, Environment, MasterRunner, WorkerRunner, LocalRunner
+from grizzly.testdata.variables import AtomicVariable
 
 
 class User(RestApiUser):
@@ -41,3 +42,7 @@ def callback_server_client(environment: Environment, msg: Message, **kwargs: Dic
 def callback_client_server(environment: Environment, msg: Message) -> None:
     import logging
     logging.info(f'received from CLIENT: {msg.node_id=}, {msg.data=}')
+
+
+class AtomicCustomVariable(AtomicVariable[str]):
+    pass

@@ -165,7 +165,11 @@ def setup_resource_limits(context: Context) -> None:
             )
 
 
-def setup_environment_listeners(context: Context, environment: Environment, tasks: List[GrizzlyTask]) -> Set[str]:
+def setup_environment_listeners(context: Context, tasks: List[GrizzlyTask]) -> Set[str]:
+    grizzly = cast(GrizzlyContext, context.grizzly)
+
+    environment = grizzly.state.locust.environment
+
     # make sure we don't have any listeners
     environment.events.init._handlers = []
     environment.events.test_start._handlers = []
@@ -173,15 +177,13 @@ def setup_environment_listeners(context: Context, environment: Environment, task
     environment.events.spawning_complete._handlers = []
     environment.events.quitting._handlers = []
 
-    grizzly = cast(GrizzlyContext, context.grizzly)
-
     # add standard listeners
     testdata: Optional[TestdataType] = None
     external_dependencies: Set[str] = set()
 
     # initialize testdata
     try:
-        testdata, external_dependencies = initialize_testdata(tasks)
+        testdata, external_dependencies = initialize_testdata(grizzly, tasks)
 
         for scenario_testdata in testdata.values():
             for variable, value in scenario_testdata.items():
@@ -287,6 +289,7 @@ def run(context: Context) -> int:
                 logger.debug(f'{process.returncode=}')
 
             processes.clear()
+
     grizzly = cast(GrizzlyContext, context.grizzly)
 
     log_level = 'DEBUG' if context.config.verbose else grizzly.setup.log_level
@@ -326,25 +329,6 @@ def run(context: Context) -> int:
             stop_timeout=300,  # only wait at most?
         )
 
-        variable_dependencies = setup_environment_listeners(context, environment, tasks)
-        external_dependencies.update(variable_dependencies)
-
-        if not on_master(context) and len(external_dependencies) > 0:
-            env = environ.copy()
-            if grizzly.state.verbose:
-                env['GRIZZLY_EXTRAS_LOGLEVEL'] = 'DEBUG'
-
-            for external_dependency in external_dependencies:
-                logger.info(f'starting {external_dependency}')
-                external_processes.update({external_dependency: subprocess.Popen(
-                    [external_dependency],
-                    env=env,
-                    shell=False,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                )})
-                gevent.sleep(2)
-
         runner: Runner
 
         if on_master(context):
@@ -372,6 +356,25 @@ def run(context: Context) -> int:
             runner = environment.create_local_runner()
 
         grizzly.state.locust = runner
+
+        variable_dependencies = setup_environment_listeners(context, tasks)
+        external_dependencies.update(variable_dependencies)
+
+        if not on_master(context) and len(external_dependencies) > 0:
+            env = environ.copy()
+            if grizzly.state.verbose:
+                env['GRIZZLY_EXTRAS_LOGLEVEL'] = 'DEBUG'
+
+            for external_dependency in external_dependencies:
+                logger.info(f'starting {external_dependency}')
+                external_processes.update({external_dependency: subprocess.Popen(
+                    [external_dependency],
+                    env=env,
+                    shell=False,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )})
+                gevent.sleep(2)
 
         main_greenlet = runner.greenlet
 

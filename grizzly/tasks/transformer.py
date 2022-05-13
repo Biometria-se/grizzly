@@ -12,12 +12,11 @@ from typing import TYPE_CHECKING, List, Callable, Any, Type, Optional
 
 from grizzly_extras.transformer import Transformer, transformer, TransformerContentType, TransformerError
 
-from ..context import GrizzlyContext
 from ..exceptions import TransformerLocustError
 from . import GrizzlyTask, template
 
 if TYPE_CHECKING:  # pragma: no cover
-    from ..context import GrizzlyContextScenario
+    from ..context import GrizzlyContextScenario, GrizzlyContext
     from ..scenarios import GrizzlyScenario
 
 
@@ -33,6 +32,7 @@ class TransformerTask(GrizzlyTask):
 
     def __init__(
         self,
+        grizzly: 'GrizzlyContext',
         expression: str,
         variable: str,
         content: str,
@@ -46,7 +46,6 @@ class TransformerTask(GrizzlyTask):
         self.content = content
         self.content_type = content_type
 
-        grizzly = GrizzlyContext()
         if self.variable not in grizzly.state.variables:
             raise ValueError(f'{self.__class__.__name__}: {self.variable} has not been initialized')
 

@@ -30,19 +30,23 @@ producer_greenlet: Optional[gevent.Greenlet] = None
 logger = logging.getLogger(__name__)
 
 
-def _init_testdata_producer(port: str, testdata: TestdataType, environment: Environment) -> Callable[[], None]:
+def _init_testdata_producer(grizzly: GrizzlyContext, port: str, testdata: TestdataType) -> Callable[[], None]:
     # pylint: disable=global-statement
     def gtestdata_producer() -> None:
         global producer
         producer_address = f'tcp://0.0.0.0:{port}'
-        producer = TestdataProducer(address=producer_address, testdata=testdata, environment=environment)
+        producer = TestdataProducer(
+            grizzly=grizzly,
+            address=producer_address,
+            testdata=testdata,
+        )
         producer.run()
 
     return gtestdata_producer
 
 
 def init(grizzly: GrizzlyContext, testdata: Optional[TestdataType] = None) -> Callable[[Runner, KwArg(Dict[str, Any])], None]:
-    def ginit(runner: Runner, **_kwargs: Dict[str, Any]) -> None:
+    def ginit(runner: Runner, **kwargs: Dict[str, Any]) -> None:
         producer_port = environ.get('TESTDATA_PRODUCER_PORT', '5555')
         if not isinstance(runner, MasterRunner):
             if isinstance(runner, WorkerRunner):
@@ -57,7 +61,13 @@ def init(grizzly: GrizzlyContext, testdata: Optional[TestdataType] = None) -> Ca
         if not isinstance(runner, WorkerRunner):
             if testdata is not None:
                 global producer_greenlet
-                producer_greenlet = gevent.spawn(_init_testdata_producer(producer_port, testdata, runner.environment))
+                producer_greenlet = gevent.spawn(
+                    _init_testdata_producer(
+                        grizzly,
+                        producer_port,
+                        testdata,
+                    )
+                )
             else:
                 logger.error('there is no test data!')
         else:

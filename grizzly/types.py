@@ -1,10 +1,8 @@
 from enum import Enum
-from typing import Callable, Optional, Tuple, Any, Union, Dict, TypeVar, List, Type, Generic, Set, cast
+from typing import Callable, Optional, Tuple, Any, Union, Dict, TypeVar, List, cast
 from mypy_extensions import KwArg, Arg
-from importlib import import_module
 
 from aenum import Enum as AdvancedEnum, NoAlias
-from gevent.lock import Semaphore
 
 from locust.clients import ResponseContextManager as RequestsResponseContextManager
 from locust.contrib.fasthttp import ResponseContextManager as FastResponseContextManager
@@ -140,7 +138,7 @@ HandlerContextType = Union[GrizzlyResponseContextManager, GrizzlyResponse]
 
 TestdataType = Dict[str, Dict[str, Any]]
 
-GrizzlyDictValueType = Union[str, float, int, bool]
+GrizzlyVariableType = Union[str, float, int, bool]
 
 MessageCallback = Callable[[Arg(Environment, 'environment'), Arg(Message, 'msg'), KwArg(Dict[str, Any])], None]  # noqa: F821
 
@@ -160,166 +158,3 @@ def bool_typed(value: str) -> bool:
 
 def int_rounded_float_typed(value: str) -> int:
     return int(round(float(value)))
-
-
-class AbstractAtomicClass:
-    pass
-
-
-class AtomicVariable(Generic[T], AbstractAtomicClass):
-    __base_type__: Optional[Callable] = None
-    __dependencies__: Set[str] = set()
-    __on_consumer__ = False
-
-    __instance: Optional['AtomicVariable'] = None
-
-    _initialized: bool
-    _values: Dict[str, Optional[T]]
-    _semaphore: Semaphore
-
-    arguments: Dict[str, Any]
-
-    @classmethod
-    def __new__(cls, *_args: Tuple[Any, ...], **_kwargs: Dict[str, Any]) -> 'AtomicVariable':
-        if AbstractAtomicClass in cls.__bases__:
-            raise TypeError(f"Can't instantiate abstract class {cls.__name__}")
-
-        if cls.__instance is None:
-            cls.__instance = super().__new__(cls)
-            cls.__instance._semaphore = Semaphore()
-            cls.__instance._initialized = False
-
-        return cls.__instance
-
-    @classmethod
-    def get(cls) -> 'AtomicVariable[T]':
-        if cls.__instance is None:
-            raise ValueError(f"'{cls.__name__}' is not instantiated")
-
-        return cls.__instance
-
-    @classmethod
-    def destroy(cls) -> None:
-        if cls.__instance is None:
-            raise ValueError(f"'{cls.__name__}' is not instantiated")
-
-        del cls.__instance
-
-    @classmethod
-    def clear(cls) -> None:
-        if cls.__instance is None:
-            raise ValueError(f"'{cls.__name__}' is not instantiated")
-
-        variables = list(cls.__instance._values.keys())
-        for variable in variables:
-            del cls.__instance._values[variable]
-
-    def __init__(self, variable: str, value: Optional[T] = None) -> None:
-        with self._semaphore:
-            if self._initialized:
-                if variable not in self._values:
-                    self._values[variable] = value
-                else:
-                    raise ValueError(
-                        f"'{self.__class__.__name__}' object already has attribute '{variable}'"
-                    )
-
-                return
-
-            self._semaphore = self._semaphore  # ugly hack to fool mypy?
-            self._values = {variable: value}
-            self._initialized = True
-
-    def __getitem__(self, variable: str) -> Optional[T]:
-        with self._semaphore:
-            return self._get_value(variable)
-
-    def __setitem__(self, variable: str, value: Optional[T]) -> None:
-        with self._semaphore:
-            if variable not in self._values:
-                raise AttributeError(
-                    f"'{self.__class__.__name__}' object has no attribute '{variable}'"
-                )
-
-            self._values[variable] = value
-
-    def __delitem__(self, variable: str) -> None:
-        with self._semaphore:
-            try:
-                del self._values[variable]
-            except KeyError:
-                pass
-
-    def _get_value(self, variable: str) -> Optional[T]:
-        try:
-            return self._values[variable]
-        except KeyError as e:
-            raise AttributeError(
-                f"'{self.__class__.__name__}' object has no attribute '{variable}'"
-            ) from e
-
-
-class GrizzlyDict(dict):
-    @classmethod
-    def load_variable(cls, name: str) -> Type[AtomicVariable]:
-        if name not in globals():
-            module = import_module('grizzly.testdata.variables')
-            globals()[name] = getattr(module, name)
-
-        variable = globals()[name]
-        return cast(Type[AtomicVariable], variable)
-
-    @classmethod
-    def guess_datatype(cls, value: Any) -> GrizzlyDictValueType:
-        if isinstance(value, (int, bool, float)):
-            return value
-
-        check_value = value.replace('.', '', 1)
-        casted_value: GrizzlyDictValueType
-
-        if check_value[0] == '-':
-            check_value = check_value[1:]
-
-        if check_value.isdecimal():
-            if float(value) % 1 == 0:
-                if value.startswith('0'):
-                    casted_value = str(value)
-                else:
-                    casted_value = int(float(value))
-            else:
-                casted_value = float(value)
-        elif value.lower() in ['true', 'false']:
-            casted_value = value.lower() == 'true'
-        else:
-            casted_value = str(value)
-            if casted_value[0] in ['"', "'"]:
-                if casted_value[0] != casted_value[-1] and casted_value.count(casted_value[0]) % 2 != 0:
-                    raise ValueError(f'{value} is incorrectly quoted')
-
-                if casted_value[0] == casted_value[-1]:
-                    casted_value = casted_value[1:-1]
-            elif casted_value[-1] in ['"', "'"] and casted_value[-1] != casted_value[0] and casted_value.count(casted_value[-1]) % 2 != 0:
-                raise ValueError(f'{value} is incorrectly quoted')
-
-        return casted_value
-
-    def __setitem__(self, key: str, value: GrizzlyDictValueType) -> None:
-        caster: Optional[Callable] = None
-
-        if '.' in key:
-            [name, _] = key.split('.', 1)
-            try:
-                variable = self.load_variable(name)
-                caster = variable.__base_type__
-            except AttributeError:
-                pass
-
-        if isinstance(value, str):
-            if caster is None:
-                value = self.guess_datatype(value)
-            else:
-                value = caster(value)
-        elif caster is not None:
-            value = caster(value)
-
-        super().__setitem__(key, value)

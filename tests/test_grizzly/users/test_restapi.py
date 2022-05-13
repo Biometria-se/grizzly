@@ -22,7 +22,7 @@ from grizzly.users.restapi import AuthMethod, RestApiUser, refresh_token
 from grizzly.users.base import AsyncRequests, RequestLogger, ResponseHandler, GrizzlyUser
 from grizzly.clients import ResponseEventSession
 from grizzly.types import GrizzlyResponse, RequestMethod, GrizzlyResponseContextManager
-from grizzly.context import GrizzlyContextScenario
+from grizzly.context import GrizzlyContextScenario, GrizzlyContext
 from grizzly.tasks import RequestTask
 from grizzly.testdata.utils import transform
 from grizzly.exceptions import RestartScenario
@@ -771,7 +771,7 @@ class TestRestApiUser:
             request_func(user, request)
 
         remote_variables = {
-            'variables': transform({
+            'variables': transform(GrizzlyContext(), {
                 'AtomicIntegerIncrementer.messageID': 1,
                 'AtomicDate.now': '',
                 'messageID': 137,

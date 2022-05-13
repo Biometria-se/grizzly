@@ -1,22 +1,9 @@
 import pytest
 
-from grizzly.testdata.variables import AtomicIntegerIncrementer, AtomicRandomString, load_variable, destroy_variables
+from grizzly.testdata.variables import AtomicVariable, AtomicIntegerIncrementer, AtomicRandomString, destroy_variables
 
 from ....fixtures import AtomicVariableCleanupFixture
-
-
-def test_load_variable_non_existent() -> None:
-    with pytest.raises(AttributeError):
-        load_variable('AtomicIntegerWithAnAbsurdNameThatReallyReallyShouldNotExist')
-
-
-def test_load_variable_Atomic_types(cleanup: AtomicVariableCleanupFixture) -> None:
-    try:
-        for name in ['AtomicRandomInteger', 'AtomicDate', 'AtomicIntegerIncrementer']:
-            v = load_variable(name)
-            assert callable(v)
-    finally:
-        cleanup()
+from ....helpers import AtomicCustomVariable
 
 
 def test_destroy_variables(cleanup: AtomicVariableCleanupFixture) -> None:
@@ -26,10 +13,10 @@ def test_destroy_variables(cleanup: AtomicVariableCleanupFixture) -> None:
         assert t1['test1'] is not None
         assert t2['test2'] == 1337
 
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             AtomicRandomString('test1', '%s%d')
 
-        with pytest.raises(ValueError):
+        with pytest.raises(AttributeError):
             AtomicIntegerIncrementer('test2', 1338)
 
         destroy_variables()
@@ -40,3 +27,61 @@ def test_destroy_variables(cleanup: AtomicVariableCleanupFixture) -> None:
         assert t2['test2'] == 1337
     finally:
         cleanup()
+
+
+class TestAtomicVariable:
+    def test_dont_instantiate(self, cleanup: AtomicVariableCleanupFixture) -> None:
+        try:
+            with pytest.raises(TypeError):
+                AtomicVariable('dummy')
+
+            with pytest.raises(TypeError):
+                AtomicVariable[int]('dummy')
+        finally:
+            cleanup()
+
+    def test_get(self) -> None:
+        with pytest.raises(ValueError) as ve:
+            AtomicVariable.get()
+        assert 'is not instantiated' in str(ve)
+
+    def test_destroy(self) -> None:
+        with pytest.raises(ValueError) as ve:
+            AtomicVariable.destroy()
+        assert 'is not instantiated' in str(ve)
+
+    def test_clear(self) -> None:
+        with pytest.raises(ValueError) as ve:
+            AtomicVariable.clear()
+        assert 'is not instantiated' in str(ve)
+
+    def test_obtain(self, cleanup: AtomicVariableCleanupFixture) -> None:
+        try:
+            v = AtomicCustomVariable.obtain('foo', 'hello')
+            assert v['foo'] == 'hello'
+            v = AtomicCustomVariable.obtain('foo', 'world')
+            assert v['foo'] == 'hello'
+            v = AtomicCustomVariable.obtain('bar', 'world')
+            assert v['foo'] == 'hello'
+            assert v['bar'] == 'world'
+        finally:
+            cleanup()
+
+    def test___getitem___and___setitem__(self, cleanup: AtomicVariableCleanupFixture) -> None:
+        try:
+            t = AtomicCustomVariable('hello', 'value')
+
+            with pytest.raises(AttributeError) as ae:
+                t['foo']
+            assert "'AtomicCustomVariable' object has no attribute 'foo'" == str(ae.value)
+
+            assert t['hello'] == 'value'
+
+            with pytest.raises(AttributeError) as ae:
+                t['foo'] = 'bar'
+            assert "'AtomicCustomVariable' object has no attribute 'foo'" == str(ae.value)
+
+            t['hello'] = 'bar'
+            assert t['hello'] == 'bar'
+        finally:
+            cleanup()

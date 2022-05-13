@@ -9,7 +9,7 @@ from pytest_mock import MockerFixture
 
 from grizzly.context import GrizzlyContext
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import  # noqa: F403
-from grizzly.types import GrizzlyDictValueType, GrizzlyDict
+from grizzly.testdata import GrizzlyVariables, GrizzlyVariableType
 
 from ....fixtures import BehaveFixture
 
@@ -306,11 +306,11 @@ def test_step_setup_set_variable_alias(behave_fixture: BehaveFixture, mocker: Mo
     with pytest.raises(AssertionError):
         step_setup_set_variable_alias(behave, 'auth.refresh_time', 'AtomicIntegerIncrementer.test')
 
-    def setitem(self: GrizzlyDict, key: str, value: GrizzlyDictValueType) -> None:
-        super(GrizzlyDict, self).__setitem__(key, value)
+    def setitem(self: GrizzlyVariables, key: str, value: GrizzlyVariableType) -> None:
+        super(GrizzlyVariables, self).__setitem__(key, value)
 
     mocker.patch(
-        'grizzly.types.GrizzlyDict.__setitem__',
+        'grizzly.testdata.GrizzlyVariables.__setitem__',
         setitem,
     )
 

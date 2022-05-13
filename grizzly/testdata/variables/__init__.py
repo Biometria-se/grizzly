@@ -1,23 +1,124 @@
 '''This package contains special variables that can be used in a feature file and is synchronized between locust workers.'''
-from typing import Type, cast
+from typing import Generic, Optional, Callable, Set, Any, Tuple, Dict, TypeVar
 
-from importlib import import_module
+from gevent.lock import Semaphore
 
-from ...types import AtomicVariable
+from ...context import GrizzlyContext
 
 
-def load_variable(name: str) -> Type[AtomicVariable]:
-    if name not in globals():
-        module = import_module(__name__)
-        globals()[name] = getattr(module, name)
+T = TypeVar('T')
 
-    variable = globals()[name]
-    return cast(Type[AtomicVariable], variable)
+
+class AbstractAtomicClass:
+    pass
+
+
+class AtomicVariable(Generic[T], AbstractAtomicClass):
+    __base_type__: Optional[Callable] = None
+    __dependencies__: Set[str] = set()
+    __on_consumer__ = False
+
+    __instance: Optional['AtomicVariable'] = None
+
+    _initialized: bool
+    _values: Dict[str, Optional[T]]
+    _semaphore: Semaphore
+
+    arguments: Dict[str, Any]
+    grizzly: GrizzlyContext
+
+    @classmethod
+    def __new__(cls, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> 'AtomicVariable[T]':
+        if AbstractAtomicClass in cls.__bases__:
+            raise TypeError(f"Can't instantiate abstract class {cls.__name__}")
+
+        if cls.__instance is None:
+            cls.__instance = super().__new__(cls)
+            cls.__instance._semaphore = Semaphore()
+            cls.__instance._initialized = False
+            cls.__instance.grizzly = GrizzlyContext()
+            globals()[cls.__name__] = cls  # load it, globally, needed for custom variables mostly
+
+        return cls.__instance
+
+    @classmethod
+    def get(cls) -> 'AtomicVariable[T]':
+        if cls.__instance is None:
+            raise ValueError(f"'{cls.__name__}' is not instantiated")
+
+        return cls.__instance
+
+    @classmethod
+    def destroy(cls) -> None:
+        if cls.__instance is None:
+            raise ValueError(f"'{cls.__name__}' is not instantiated")
+
+        del cls.__instance
+
+    @classmethod
+    def clear(cls) -> None:
+        if cls.__instance is None:
+            raise ValueError(f"'{cls.__name__}' is not instantiated")
+
+        variables = list(cls.__instance._values.keys())
+        for variable in variables:
+            del cls.__instance._values[variable]
+
+    @classmethod
+    def obtain(cls, variable: str, value: Optional[T] = None) -> 'AtomicVariable[T]':
+        if cls.__instance is not None and variable in cls.__instance._values:
+            return cls.__instance.get()
+
+        return cls(variable, value)
+
+    def __init__(self, variable: str, value: Optional[T] = None) -> None:
+        with self._semaphore:
+            if self._initialized:
+                if variable not in self._values:
+                    self._values[variable] = value
+                else:
+                    raise AttributeError(
+                        f"'{self.__class__.__name__}' object already has attribute '{variable}'"
+                    )
+
+                return
+
+            self._semaphore = self._semaphore  # ugly hack to fool mypy?
+            self._values = {variable: value}
+            self._initialized = True
+
+    def __getitem__(self, variable: str) -> Optional[T]:
+        with self._semaphore:
+            return self._get_value(variable)
+
+    def __setitem__(self, variable: str, value: Optional[T]) -> None:
+        with self._semaphore:
+            if variable not in self._values:
+                raise AttributeError(
+                    f"'{self.__class__.__name__}' object has no attribute '{variable}'"
+                )
+
+            self._values[variable] = value
+
+    def __delitem__(self, variable: str) -> None:
+        with self._semaphore:
+            try:
+                del self._values[variable]
+            except KeyError:
+                pass
+
+    def _get_value(self, variable: str) -> Optional[T]:
+        try:
+            return self._values[variable]
+        except KeyError as e:
+            raise AttributeError(
+                f"'{self.__class__.__name__}' object has no attribute '{variable}'"
+            ) from e
 
 
 def destroy_variables() -> None:
     for name in globals().keys():
-        if not (name.startswith('Atomic') and not name == 'AtomicVariable'):
+        if not ('Atomic' in name and not name == 'AtomicVariable'):
             continue
 
         module = globals()[name]
@@ -52,6 +153,5 @@ __all__ = [
     'AtomicRandomString',
     'AtomicMessageQueue',
     'AtomicServiceBus',
-    'load_variable',
     'destroy_variables',
 ]

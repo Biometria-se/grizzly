@@ -81,9 +81,9 @@ from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageReques
 from grizzly_extras.arguments import split_value, parse_arguments
 from grizzly_extras.transformer import TransformerContentType
 
-from ...types import RequestType, bool_typed, AtomicVariable
-from ...context import GrizzlyContext
+from ...types import RequestType, bool_typed
 from ..utils import resolve_variable
+from . import AtomicVariable
 
 try:
     import pymqi
@@ -123,11 +123,25 @@ def atomicmessagequeue__base_type__(value: str) -> str:
                 int(argument_value)
 
     # validate url
-    AtomicMessageQueue.create_context({
-        'url': arguments['url'],
-        'wait': arguments.get('wait', None),
-        'heartbeat_interval': arguments.get('heartbeat_interval', None),
-    })
+    url = arguments.get('url', None)
+    parsed = urlparse(url)
+
+    if parsed.scheme is None or parsed.scheme not in ['mq', 'mqs']:
+        raise ValueError(f'AtomicMessageQueue: "{parsed.scheme}" is not a supported scheme for url')
+
+    if parsed.hostname is None or len(parsed.hostname) < 1:
+        raise ValueError(f'AtomicMessageQueue: hostname is not specified in "{url}"')
+
+    if parsed.query == '':
+        raise ValueError(f'AtomicMessageQueue: QueueManager and Channel must be specified in the query string of "{url}"')
+
+    params = parse_qs(parsed.query)
+
+    if 'QueueManager' not in params:
+        raise ValueError('AtomicMessageQueue: QueueManager must be specified in the query string')
+
+    if 'Channel' not in params:
+        raise ValueError('AtomicMessageQueue: Channel must be specified in the query string')
 
     return f'{queue} | {queue_arguments}'
 
@@ -195,26 +209,23 @@ class AtomicMessageQueue(AtomicVariable[str]):
             self._endpoint_clients = {variable: self.create_client(variable, settings)}
             self.__initialized = True
 
-    @classmethod
-    def create_context(cls, settings: Dict[str, Any]) -> AsyncMessageContext:
+    def create_context(self, settings: Dict[str, Any]) -> AsyncMessageContext:
         url = settings.get('url', None)
         parsed = urlparse(url)
 
         if parsed.scheme is None or parsed.scheme not in ['mq', 'mqs']:
-            raise ValueError(f'{cls.__name__}: "{parsed.scheme}" is not a supported scheme for url')
+            raise ValueError(f'{self.__class__.__name__}: "{parsed.scheme}" is not a supported scheme for url')
 
         if parsed.hostname is None or len(parsed.hostname) < 1:
-            raise ValueError(f'{cls.__name__}: hostname is not specified in "{url}"')
+            raise ValueError(f'{self.__class__.__name__}: hostname is not specified in "{url}"')
 
         if parsed.query == '':
-            raise ValueError(f'{cls.__name__}: QueueManager and Channel must be specified in the query string of "{url}"')
+            raise ValueError(f'{self.__class__.__name__}: QueueManager and Channel must be specified in the query string of "{url}"')
 
         paths: List[str] = []
 
-        grizzly = GrizzlyContext()
-
         for path in parsed.path.split('/'):
-            resolved = cast(str, resolve_variable(grizzly, path))
+            resolved = cast(str, resolve_variable(self.grizzly, path))
             paths.append(resolved)
 
         parsed = parsed._replace(path='/'.join(paths))
@@ -224,21 +235,21 @@ class AtomicMessageQueue(AtomicVariable[str]):
         parameters: List[str] = []
 
         for querystring in querystrings:
-            resolved = cast(str, resolve_variable(grizzly, querystrings[querystring][0]))
+            resolved = cast(str, resolve_variable(self.grizzly, querystrings[querystring][0]))
             parameters.append(f'{querystring}={resolved}')
 
         parsed = parsed._replace(query='&'.join(parameters))
 
         if '@' in parsed.netloc:
             credentials, host = parsed.netloc.split('@')
-            host = cast(str, resolve_variable(grizzly, host))
+            host = cast(str, resolve_variable(self.grizzly, host))
             credentials = credentials.replace('::', '%%')
             username, password = credentials.split(':', 1)
-            username = cast(str, resolve_variable(grizzly, username.replace('%%', '::')))
-            password = cast(str, resolve_variable(grizzly, password.replace('%%', '::')))
+            username = cast(str, resolve_variable(self.grizzly, username.replace('%%', '::')))
+            password = cast(str, resolve_variable(self.grizzly, password.replace('%%', '::')))
             host = f'{username}:{password}@{host}'
         else:
-            host = cast(str, resolve_variable(grizzly, parsed.netloc))
+            host = cast(str, resolve_variable(self.grizzly, parsed.netloc))
 
         parsed = parsed._replace(netloc=host)
 
@@ -247,10 +258,10 @@ class AtomicMessageQueue(AtomicVariable[str]):
         params = parse_qs(parsed.query)
 
         if 'QueueManager' not in params:
-            raise ValueError(f'{cls.__name__}: QueueManager must be specified in the query string')
+            raise ValueError(f'{self.__class__.__name__}: QueueManager must be specified in the query string')
 
         if 'Channel' not in params:
-            raise ValueError(f'{cls.__name__}: Channel must be specified in the query string')
+            raise ValueError(f'{self.__class__.__name__}: Channel must be specified in the query string')
 
         key_file: Optional[str] = None
         cert_label: Optional[str] = None

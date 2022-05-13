@@ -21,7 +21,8 @@ from grizzly.users.base import RequestLogger, ResponseHandler
 from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 from grizzly.tasks import RequestTask
-from grizzly.types import ResponseTarget, GrizzlyDict
+from grizzly.types import ResponseTarget
+from grizzly.testdata import GrizzlyVariables
 from grizzly.testdata.utils import transform
 from grizzly.exceptions import ResponseHandlerError, RestartScenario
 from grizzly.steps.helpers import add_save_handler
@@ -372,7 +373,7 @@ class TestMessageQueueUser:
         }
 
         remote_variables = {
-            'variables': transform({
+            'variables': transform(grizzly, {
                 'AtomicIntegerIncrementer.messageID': 31337,
                 'AtomicDate.now': '',
                 'messageID': 137,
@@ -381,7 +382,7 @@ class TestMessageQueueUser:
             }),
         }
 
-        grizzly.state.variables = cast(GrizzlyDict, {
+        grizzly.state.variables = cast(GrizzlyVariables, {
             'payload_variable': '',
             'metadata_variable': '',
         })
@@ -697,7 +698,7 @@ class TestMessageQueueUser:
         }
 
         remote_variables = {
-            'variables': transform({
+            'variables': transform(GrizzlyContext(), {
                 'AtomicIntegerIncrementer.messageID': 31337,
                 'AtomicDate.now': '',
                 'messageID': 137,

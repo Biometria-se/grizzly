@@ -1,7 +1,7 @@
 import logging
 
 from os import environ, path
-from typing import Any, Dict, Tuple, Optional, Set, cast
+from typing import TYPE_CHECKING, Any, Dict, Tuple, Optional, Set, cast
 from logging import Logger
 from abc import abstractmethod
 
@@ -11,11 +11,14 @@ from locust.user.users import User
 from locust.user.task import LOCUST_STATE_RUNNING
 from locust.env import Environment
 
-from ...context import GrizzlyContextScenario
 from ...types import GrizzlyResponse, RequestType, ScenarioState
 from ...tasks import RequestTask
 from ...utils import merge_dicts
 from . import FileRequests
+
+
+if TYPE_CHECKING:
+    from ...context import GrizzlyContextScenario
 
 
 class GrizzlyUser(User):
@@ -23,7 +26,7 @@ class GrizzlyUser(User):
     _context: Dict[str, Any] = {
         'variables': {},
     }
-    _scenario: GrizzlyContextScenario
+    _scenario: 'GrizzlyContextScenario'
 
     _scenario_state: Optional[ScenarioState]
 
