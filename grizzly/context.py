@@ -10,7 +10,7 @@ from behave.model import Scenario
 from locust.runners import Runner
 
 from .types import MessageCallback, MessageDirection
-from .testdata import GrizzlyDict
+from .testdata import GrizzlyVariables
 
 if TYPE_CHECKING:  # pragma: no cover
     from .tasks import GrizzlyTask, AsyncRequestGroupTask
@@ -108,7 +108,7 @@ class GrizzlyContext:
 class GrizzlyContextState:
     spawning_complete: bool = field(default=False)
     background_section_done: bool = field(default=False)
-    variables: GrizzlyDict = field(init=False, default_factory=GrizzlyDict)
+    variables: GrizzlyVariables = field(init=False, default_factory=GrizzlyVariables)
     configuration: Dict[str, Any] = field(init=False, default_factory=load_configuration_file)
     alias: Dict[str, str] = field(init=False, default_factory=dict)
     verbose: bool = field(default=False)

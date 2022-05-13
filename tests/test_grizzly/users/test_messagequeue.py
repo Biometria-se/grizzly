@@ -22,7 +22,7 @@ from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 from grizzly.tasks import RequestTask
 from grizzly.types import ResponseTarget
-from grizzly.testdata import GrizzlyDict
+from grizzly.testdata import GrizzlyVariables
 from grizzly.testdata.utils import transform
 from grizzly.exceptions import ResponseHandlerError, RestartScenario
 from grizzly.steps.helpers import add_save_handler
@@ -382,7 +382,7 @@ class TestMessageQueueUser:
             }),
         }
 
-        grizzly.state.variables = cast(GrizzlyDict, {
+        grizzly.state.variables = cast(GrizzlyVariables, {
             'payload_variable': '',
             'metadata_variable': '',
         })

@@ -6,14 +6,21 @@ import pytest
 
 from _pytest.tmpdir import TempPathFactory
 
-from grizzly.testdata import GrizzlyDict
+from grizzly.testdata import GrizzlyVariables
+from grizzly.testdata.variables import AtomicCsvRow, AtomicIntegerIncrementer, AtomicMessageQueue, AtomicServiceBus
+from grizzly.context import GrizzlyContext
 
-from ...fixtures import AtomicVariableCleanupFixture
+from ...fixtures import AtomicVariableCleanupFixture, NoopZmqFixture
+
+try:
+    import pymqi
+except:
+    from grizzly_extras import dummy_pymqi as pymqi
 
 
-class TestGrizzlyDict:
+class TestGrizzlyVariables:
     def test_static_str(self) -> None:
-        t = GrizzlyDict()
+        t = GrizzlyVariables()
 
         t['test1'] = 'hallo'
         assert isinstance(t['test1'], str)
@@ -41,7 +48,7 @@ class TestGrizzlyDict:
         assert t['test8'] == '02002-00000'
 
     def test_static_float(self) -> None:
-        t = GrizzlyDict()
+        t = GrizzlyVariables()
 
         t['test2'] = 1.337
         assert isinstance(t['test2'], float)
@@ -62,7 +69,7 @@ class TestGrizzlyDict:
         assert t['test2.4'] == 0.01
 
     def test_static_int(self) -> None:
-        t = GrizzlyDict()
+        t = GrizzlyVariables()
         t['test3'] = 1337
         assert isinstance(t['test3'], int)
 
@@ -78,7 +85,7 @@ class TestGrizzlyDict:
         assert t['test3.3'] == -1337
 
     def test_static_bool(self) -> None:
-        t: GrizzlyDict = GrizzlyDict()
+        t: GrizzlyVariables = GrizzlyVariables()
 
         t['test6'] = True
         assert isinstance(t['test6'], bool)
@@ -99,7 +106,7 @@ class TestGrizzlyDict:
 
     def test_AtomicIntegerIncrementer(self, cleanup: AtomicVariableCleanupFixture) -> None:
         try:
-            t = GrizzlyDict()
+            t = GrizzlyVariables()
             t['AtomicIntegerIncrementer.test1'] = 1337
             assert isinstance(t['AtomicIntegerIncrementer.test1'], str)
 
@@ -142,7 +149,7 @@ class TestGrizzlyDict:
         environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
 
         try:
-            t = GrizzlyDict()
+            t = GrizzlyVariables()
 
             with pytest.raises(ValueError):
                 t['AtomicDirectoryContents.test1'] = 'doesnotexist/'
@@ -195,7 +202,7 @@ class TestGrizzlyDict:
             fd.flush()
 
         try:
-            t = GrizzlyDict()
+            t = GrizzlyVariables()
 
             with pytest.raises(ValueError):
                 t['AtomicCsvRow.test'] = 'doesnotexist.csv'
@@ -221,7 +228,7 @@ class TestGrizzlyDict:
 
     def test_AtomicDate(self, cleanup: AtomicVariableCleanupFixture) -> None:
         try:
-            t = GrizzlyDict()
+            t = GrizzlyVariables()
             with pytest.raises(ValueError):
                 t['AtomicDate.test1'] = 1337
 
@@ -252,7 +259,7 @@ class TestGrizzlyDict:
 
     def test_AtomicRandomInteger(self, cleanup: AtomicVariableCleanupFixture) -> None:
         try:
-            t = GrizzlyDict()
+            t = GrizzlyVariables()
 
             with pytest.raises(ValueError):
                 t['AtomicRandomInteger.test1'] = '10'
@@ -281,4 +288,138 @@ class TestGrizzlyDict:
         ('a.custom.struct', (None, None, 'a.custom.struct',),),
     ])
     def test_get_variable_spec(self, input: str, expected: Tuple[Optional[str], Optional[str], str]) -> None:
-        assert GrizzlyDict.get_variable_spec(input) == expected
+        assert GrizzlyVariables.get_variable_spec(input) == expected
+
+    def test__get_variable_value_static(self, cleanup: AtomicVariableCleanupFixture) -> None:
+        try:
+            grizzly = GrizzlyContext()
+            variable_name = 'test'
+
+            grizzly.state.variables[variable_name] = 1337
+            value, _ = GrizzlyVariables.get_variable_value(grizzly, variable_name)
+            assert value == 1337
+
+            grizzly.state.variables[variable_name] = '1337'
+            value, _ = GrizzlyVariables.get_variable_value(grizzly, variable_name)
+            assert value == 1337
+
+            grizzly.state.variables[variable_name] = "'1337'"
+            value, _ = GrizzlyVariables.get_variable_value(grizzly, variable_name)
+            assert value == '1337'
+        finally:
+            cleanup()
+
+    def test__get_variable_value_AtomicIntegerIncrementer(self, cleanup: AtomicVariableCleanupFixture) -> None:
+        try:
+            grizzly = GrizzlyContext()
+
+            variable_name = 'AtomicIntegerIncrementer.test'
+            grizzly.state.variables[variable_name] = 1337
+            value, external_dependencies = GrizzlyVariables.get_variable_value(grizzly, variable_name)
+            assert external_dependencies == set()
+            assert value['test'] == 1337
+            assert value['test'] == 1338
+            AtomicIntegerIncrementer.destroy()
+
+            grizzly.state.variables[variable_name] = '1337'
+            value, external_dependencies = GrizzlyVariables.get_variable_value(grizzly, variable_name)
+            assert external_dependencies == set()
+            assert value['test'] == 1337
+            assert value['test'] == 1338
+            AtomicIntegerIncrementer.destroy()
+        finally:
+            cleanup()
+
+    def test__get_variable_value_custom_variable(self, cleanup: AtomicVariableCleanupFixture) -> None:
+        try:
+            grizzly = GrizzlyContext()
+
+            variable_name = 'tests.helpers.AtomicCustomVariable.hello'
+            grizzly.state.variables[variable_name] = 'world'
+
+            value, external_dependencies = GrizzlyVariables.get_variable_value(grizzly, variable_name)
+            assert external_dependencies == set()
+            assert value['hello'] == 'world'
+
+            variable_name = 'tests.helpers.AtomicCustomVariable.foo'
+            grizzly.state.variables[variable_name] = 'bar'
+
+            _, external_dependencies = GrizzlyVariables.get_variable_value(grizzly, variable_name)
+            assert value['foo'] == 'bar'
+        finally:
+            cleanup()
+
+    @pytest.mark.skipif(pymqi.__name__ == 'grizzly_extras.dummy_pymqi', reason='requires native grizzly-loadtester[mq]')
+    def test__get_variable_value_AtomicMessageQueue(self, noop_zmq: NoopZmqFixture, cleanup: AtomicVariableCleanupFixture) -> None:
+        noop_zmq('grizzly.testdata.variables.messagequeue')
+
+        try:
+            grizzly = GrizzlyContext()
+            variable_name = 'AtomicMessageQueue.test'
+            grizzly.state.variables[variable_name] = (
+                'queue:TEST.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"'
+            )
+            value, external_dependencies = GrizzlyVariables.get_variable_value(grizzly, variable_name)
+            assert external_dependencies == set(['async-messaged'])
+            assert not isinstance(value, AtomicMessageQueue)
+            assert value == '__on_consumer__'
+
+            # this fails because it shouldn't have been initiated here
+            with pytest.raises(ValueError) as ve:
+                AtomicMessageQueue.destroy()
+            assert "'AtomicMessageQueue' is not instantiated" in str(ve)
+        finally:
+            cleanup()
+
+    def test__get_variable_value_AtomicServiceBus(self, noop_zmq: NoopZmqFixture, cleanup: AtomicVariableCleanupFixture) -> None:
+        noop_zmq('grizzly.testdata.variables.servicebus')
+
+        try:
+            grizzly = GrizzlyContext()
+            variable_name = 'AtomicServiceBus.test'
+            grizzly.state.variables[variable_name] = (
+                'queue:documents-in | url="sb://sb.example.com/;SharedAccessKeyName=name;SharedAccessKey=key"'
+            )
+            value, external_dependencies = GrizzlyVariables.get_variable_value(grizzly, variable_name)
+            assert external_dependencies == set(['async-messaged'])
+            assert not isinstance(value, AtomicServiceBus)
+            assert value == '__on_consumer__'
+
+            with pytest.raises(ValueError) as ve:
+                AtomicServiceBus.destroy()
+            assert "'AtomicServiceBus' is not instantiated" in str(ve)
+        finally:
+            cleanup()
+
+    def test__get_variable_value_AtomicCsvRow(self, cleanup: AtomicVariableCleanupFixture, tmp_path_factory: TempPathFactory) -> None:
+        test_context = tmp_path_factory.mktemp('test_context') / 'requests'
+        test_context.mkdir()
+        test_context_root = path.dirname(test_context)
+        environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
+
+        with open(path.join(test_context, 'test.csv'), 'w') as fd:
+            fd.write('header1,header2\n')
+            fd.write('value1,value2\n')
+            fd.write('value3,value4\n')
+            fd.flush()
+        try:
+            grizzly = GrizzlyContext()
+            variable_name = 'AtomicCsvRow.test'
+            grizzly.state.variables['AtomicCsvRow.test'] = 'test.csv'
+            value, external_dependencies = GrizzlyVariables.get_variable_value(grizzly, variable_name)
+
+            assert isinstance(value, AtomicCsvRow)
+            assert external_dependencies == set()
+            assert 'test' in value._values
+            assert 'test' in value._rows
+            assert value['test'] == {'header1': 'value1', 'header2': 'value2'}
+            assert value['test'] == {'header1': 'value3', 'header2': 'value4'}
+            assert value['test'] is None
+        finally:
+            try:
+                del environ['GRIZZLY_CONTEXT_ROOT']
+            except:
+                pass
+
+            rmtree(test_context_root)
+            cleanup()

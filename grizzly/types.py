@@ -138,7 +138,7 @@ HandlerContextType = Union[GrizzlyResponseContextManager, GrizzlyResponse]
 
 TestdataType = Dict[str, Dict[str, Any]]
 
-GrizzlyDictValueType = Union[str, float, int, bool]
+GrizzlyVariableType = Union[str, float, int, bool]
 
 MessageCallback = Callable[[Arg(Environment, 'environment'), Arg(Message, 'msg'), KwArg(Dict[str, Any])], None]  # noqa: F821
 

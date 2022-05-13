@@ -13,7 +13,7 @@ from locust.env import Environment
 
 from ..types import TestdataType
 from .utils import transform
-from . import GrizzlyDict
+from . import GrizzlyVariables
 
 
 if TYPE_CHECKING:
@@ -178,7 +178,7 @@ class TestdataProducer:
 
                                         for key, variable in testdata.items():
                                             if '.' in key and not variable == '__on_consumer__':
-                                                module_name, variable_type, variable_name = GrizzlyDict.get_variable_spec(key)
+                                                module_name, variable_type, variable_name = GrizzlyVariables.get_variable_spec(key)
                                                 _, data_attribute = key.rsplit('.', 1)
 
                                                 if variable_name != data_attribute:

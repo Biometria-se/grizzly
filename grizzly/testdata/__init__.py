@@ -1,19 +1,20 @@
-from typing import TYPE_CHECKING, Type, Any, Optional, Callable, List, Tuple, cast
+from typing import TYPE_CHECKING, Type, Any, Optional, Callable, List, Tuple, Set, cast
 from importlib import import_module
 
-from ..types import GrizzlyDictValueType
+from ..types import GrizzlyVariableType
 
 
 if TYPE_CHECKING:
+    from ..context import GrizzlyContext
     from .variables import AtomicVariable
 
 
 __all__ = [
-    'GrizzlyDictValueType',
+    'GrizzlyVariableType',
 ]
 
 
-class GrizzlyDict(dict):
+class GrizzlyVariables(dict):
     @classmethod
     def load_variable(cls, module_name: str, class_name: str) -> Type['AtomicVariable']:
         if module_name not in globals():
@@ -55,12 +56,34 @@ class GrizzlyDict(dict):
             return module_name, variable_type, cast(str, variable_name)
 
     @classmethod
-    def guess_datatype(cls, value: Any) -> GrizzlyDictValueType:
+    def get_variable_value(cls, grizzly: 'GrizzlyContext', name: str) -> Tuple[Any, Set[str]]:
+        external_dependencies: Set[str] = set()
+
+        default_value = grizzly.state.variables.get(name, None)
+        module_name, variable_type, variable_name = cls.get_variable_spec(name)
+
+        if module_name is not None and variable_type is not None:
+            variable = cls.load_variable(module_name, variable_type)
+            external_dependencies = variable.__dependencies__
+            if getattr(variable, '__on_consumer__', False):
+                value = cast(Any, '__on_consumer__')
+            else:
+                try:
+                    value = variable(variable_name, default_value)
+                except ValueError as e:
+                    raise ValueError(f'{name}: {default_value=}, exception={str(e)}') from e
+        else:
+            value = default_value
+
+        return value, external_dependencies
+
+    @classmethod
+    def guess_datatype(cls, value: Any) -> GrizzlyVariableType:
         if isinstance(value, (int, bool, float)):
             return value
 
         check_value = value.replace('.', '', 1)
-        casted_value: GrizzlyDictValueType
+        casted_value: GrizzlyVariableType
 
         if check_value[0] == '-':
             check_value = check_value[1:]
@@ -88,7 +111,7 @@ class GrizzlyDict(dict):
 
         return casted_value
 
-    def __setitem__(self, key: str, value: GrizzlyDictValueType) -> None:
+    def __setitem__(self, key: str, value: GrizzlyVariableType) -> None:
         caster: Optional[Callable] = None
 
         module_name, variable_type, _ = self.get_variable_spec(key)
