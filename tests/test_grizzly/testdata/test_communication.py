@@ -20,7 +20,7 @@ from grizzly.testdata.utils import initialize_testdata, transform
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import LogMessage
 
-from ...fixtures import AtomicVariableCleanupFixture, LocustFixture, BehaveFixture, GrizzlyFixture, NoopZmqFixture
+from ...fixtures import AtomicVariableCleanupFixture, BehaveFixture, GrizzlyFixture, NoopZmqFixture
 
 try:
     import pymqi
@@ -46,7 +46,7 @@ class TestTestdataProducer:
         request = grizzly_fixture.request_task.request
 
         try:
-            environment, _, scenario = grizzly_fixture()
+            _, _, scenario = grizzly_fixture()
             address = 'tcp://127.0.0.1:5555'
 
             mkdir(path.join(context_root, 'adirectory'))
@@ -100,14 +100,20 @@ class TestTestdataProducer:
             grizzly.scenario.tasks.add(request)
             grizzly.scenario.tasks.add(LogMessage(message='hello {{ world }}'))
 
-            testdata, external_dependencies = initialize_testdata(grizzly.scenario.tasks)
+            testdata, external_dependencies = initialize_testdata(grizzly, grizzly.scenario.tasks)
+
+            print(testdata)
 
             if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
                 assert external_dependencies == set(['async-messaged'])
             else:
                 assert external_dependencies == set()
 
-            producer = TestdataProducer(address=address, testdata=testdata, environment=environment)
+            producer = TestdataProducer(
+                grizzly=grizzly,
+                address=address,
+                testdata=testdata,
+            )
             producer_thread = gevent.spawn(producer.run)
             producer_thread.start()
 
@@ -194,7 +200,7 @@ class TestTestdataProducer:
         context: Optional[zmq.Context] = None
 
         try:
-            environment, _, scenario = grizzly_fixture()
+            _, _, scenario = grizzly_fixture()
             context_root = grizzly_fixture.request_task.context_root
             request = grizzly_fixture.request_task.request
             address = 'tcp://127.0.0.1:5555'
@@ -220,11 +226,15 @@ class TestTestdataProducer:
             grizzly.scenario.tasks.add(request)
             grizzly.scenario.tasks.add(LogMessage(message='are you {{ sure }}'))
 
-            testdata, external_dependencies = initialize_testdata(grizzly.scenario.tasks)
+            testdata, external_dependencies = initialize_testdata(grizzly, grizzly.scenario.tasks)
 
             assert external_dependencies == set()
 
-            producer = TestdataProducer(address=address, testdata=testdata, environment=environment)
+            producer = TestdataProducer(
+                grizzly=grizzly,
+                address=address,
+                testdata=testdata,
+            )
             producer_thread = gevent.spawn(producer.run)
             producer_thread.start()
 
@@ -258,11 +268,11 @@ class TestTestdataProducer:
 
             cleanup()
 
-    def test_reset(self, mocker: MockerFixture, cleanup: AtomicVariableCleanupFixture, locust_fixture: LocustFixture, noop_zmq: NoopZmqFixture) -> None:
+    def test_reset(self, mocker: MockerFixture, cleanup: AtomicVariableCleanupFixture, grizzly_fixture: GrizzlyFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.testdata.communication')
 
         try:
-            producer = TestdataProducer({}, environment=locust_fixture.env)
+            producer = TestdataProducer(grizzly_fixture.grizzly, {})
             producer.scenarios_iteration = {
                 'test-scenario-1': 10,
                 'test-scenario-2': 5,
@@ -276,20 +286,20 @@ class TestTestdataProducer:
             cleanup()
 
     def test_stop_exception(
-        self, mocker: MockerFixture, cleanup: AtomicVariableCleanupFixture, locust_fixture: LocustFixture, caplog: LogCaptureFixture, noop_zmq: NoopZmqFixture,
+        self, mocker: MockerFixture, cleanup: AtomicVariableCleanupFixture, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture, noop_zmq: NoopZmqFixture,
     ) -> None:
         noop_zmq('grizzly.testdata.communication')
         mocker.patch('grizzly.testdata.communication.zmq.Context.destroy', side_effect=[RuntimeError('zmq.Context.destroy failed')])
 
         try:
             with caplog.at_level(logging.DEBUG):
-                TestdataProducer({}, environment=locust_fixture.env).stop()
+                TestdataProducer(grizzly_fixture.grizzly, {}).stop()
             assert 'failed to stop' in caplog.messages[-1]
         finally:
             cleanup()
 
     def test_run_type_error(
-        self, mocker: MockerFixture, cleanup: AtomicVariableCleanupFixture, locust_fixture: LocustFixture, noop_zmq: NoopZmqFixture, caplog: LogCaptureFixture,
+        self, mocker: MockerFixture, cleanup: AtomicVariableCleanupFixture, grizzly_fixture: GrizzlyFixture, noop_zmq: NoopZmqFixture, caplog: LogCaptureFixture,
     ) -> None:
         noop_zmq('grizzly.testdata.communication')
 
@@ -307,7 +317,7 @@ class TestTestdataProducer:
 
         try:
             with caplog.at_level(logging.DEBUG):
-                TestdataProducer({}, environment=locust_fixture.env).run()
+                TestdataProducer(grizzly_fixture.grizzly, {}).run()
 
             print(caplog.text)
             assert caplog.messages[-3] == "producing {'action': 'stop'} for consumer test-consumer"
@@ -320,7 +330,7 @@ class TestTestdataProducer:
             cleanup()
 
     def test_run_zmq_error(
-        self, mocker: MockerFixture, cleanup: AtomicVariableCleanupFixture, locust_fixture: LocustFixture, noop_zmq: NoopZmqFixture, caplog: LogCaptureFixture,
+        self, mocker: MockerFixture, cleanup: AtomicVariableCleanupFixture, grizzly_fixture: GrizzlyFixture, noop_zmq: NoopZmqFixture, caplog: LogCaptureFixture,
     ) -> None:
         noop_zmq('grizzly.testdata.communication')
 
@@ -331,7 +341,7 @@ class TestTestdataProducer:
 
         try:
             with caplog.at_level(logging.ERROR):
-                TestdataProducer({}, environment=locust_fixture.env).run()
+                TestdataProducer(grizzly_fixture.grizzly, {}).run()
             print(caplog.text)
             assert caplog.messages[-1] == 'failed when waiting for consumers'
         finally:
@@ -339,7 +349,7 @@ class TestTestdataProducer:
 
 
 class TestTestdataConsumer:
-    def test_request(self, mocker: MockerFixture, behave_fixture: BehaveFixture, noop_zmq: NoopZmqFixture, caplog: LogCaptureFixture) -> None:
+    def test_request(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture, noop_zmq: NoopZmqFixture, caplog: LogCaptureFixture) -> None:
         noop_zmq('grizzly.testdata.variables.messagequeue')
 
         def mock_recv_json(data: Dict[str, Any], action: Optional[str] = 'consume') -> None:
@@ -366,7 +376,9 @@ class TestTestdataConsumer:
                 ]
             )
 
-        consumer = TestdataConsumer(identifier='test')
+        grizzly = grizzly_fixture.grizzly
+
+        consumer = TestdataConsumer(grizzly, identifier='test')
 
         try:
             # this will no longer throw StopUser, but rather go into an infinite loop
@@ -394,7 +406,7 @@ class TestTestdataConsumer:
                         'password': 'password',
                     },
                 },
-                'variables': transform({
+                'variables': transform(grizzly, {
                     'AtomicIntegerIncrementer.messageID': 100,
                     'test': 1,
                 }),
@@ -435,7 +447,7 @@ class TestTestdataConsumer:
             }, 'consume')
 
             assert consumer.request('test') == {
-                'variables': transform({
+                'variables': transform(grizzly, {
                     'AtomicIntegerIncrementer.messageID': 100,
                     'test': None,
                 })
@@ -450,13 +462,12 @@ class TestTestdataConsumer:
                     }
                 })
 
-                grizzly = cast(GrizzlyContext, behave_fixture.context.grizzly)
                 grizzly.state.variables['AtomicMessageQueue.document_id'] = (
                     'queue:TEST.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"'
                 )
 
                 assert consumer.request('test') == {
-                    'variables': transform({
+                    'variables': transform(grizzly, {
                         'AtomicMessageQueue.document_id': json.dumps({
                             'document': {
                                 'id': 'DOCUMENT_1337-2',
@@ -471,7 +482,7 @@ class TestTestdataConsumer:
             consumer.stop()
             assert consumer.context._instance is None
 
-    def test_request_stop_exception(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, caplog: LogCaptureFixture) -> None:
+    def test_request_stop_exception(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, caplog: LogCaptureFixture, grizzly_fixture: GrizzlyFixture) -> None:
         noop_zmq('grizzly.testdata.communication')
 
         mocker.patch(
@@ -480,10 +491,10 @@ class TestTestdataConsumer:
         )
 
         with caplog.at_level(logging.DEBUG):
-            TestdataConsumer(identifier='test').stop()
+            TestdataConsumer(grizzly_fixture.grizzly, identifier='test').stop()
         assert caplog.messages[-1] == 'failed to stop'
 
-    def test_request_exception(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
+    def test_request_exception(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture) -> None:
         noop_zmq('grizzly.testdata.communication')
 
         mocker.patch(
@@ -497,7 +508,7 @@ class TestTestdataConsumer:
         )
 
         with pytest.raises(ZMQAgain):
-            TestdataConsumer(identifier='test').request('test')
+            TestdataConsumer(grizzly_fixture.grizzly, identifier='test').request('test')
 
         assert gsleep_mock.call_count == 1
         args, _ = gsleep_mock.call_args_list[-1]

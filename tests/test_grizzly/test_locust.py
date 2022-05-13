@@ -363,7 +363,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
     try:
         # event listeners for worker node
         mock_on_worker(True)
-        external_dependencies = setup_environment_listeners(behave, environment, [])
+        external_dependencies = setup_environment_listeners(behave, [])
 
         assert len(environment.events.init._handlers) == 1
         assert len(environment.events.test_start._handlers) == 1
@@ -374,7 +374,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
 
         grizzly.setup.statistics_url = 'influxdb://influx.example.com/testdb'
 
-        external_dependencies = setup_environment_listeners(behave, environment, [])
+        external_dependencies = setup_environment_listeners(behave, [])
         assert len(environment.events.init._handlers) == 2
         assert len(environment.events.test_start._handlers) == 1
         assert len(environment.events.test_stop._handlers) == 1
@@ -397,13 +397,13 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
         tasks: List[GrizzlyTask] = [task]
 
         with pytest.raises(AssertionError) as ae:
-            setup_environment_listeners(behave, environment, tasks)
+            setup_environment_listeners(behave, tasks)
         assert 'variable test_id has not been initialized' in str(ae)
 
         AtomicIntegerIncrementer.destroy()
         grizzly.state.variables['test_id'] = 'test-1'
 
-        external_dependencies = setup_environment_listeners(behave, environment, tasks)
+        external_dependencies = setup_environment_listeners(behave, tasks)
         assert len(environment.events.init._handlers) == 1
         assert len(environment.events.test_start._handlers) == 1
         assert len(environment.events.test_stop._handlers) == 1
@@ -414,7 +414,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
         AtomicIntegerIncrementer.destroy()
         grizzly.setup.statistics_url = 'influxdb://influx.example.com/testdb'
 
-        external_dependencies = setup_environment_listeners(behave, environment, tasks)
+        external_dependencies = setup_environment_listeners(behave, tasks)
         assert len(environment.events.init._handlers) == 2
         assert len(environment.events.test_start._handlers) == 1
         assert len(environment.events.test_stop._handlers) == 1
@@ -439,7 +439,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
 
         grizzly.scenario.validation.fail_ratio = 0.1
 
-        external_dependencies = setup_environment_listeners(behave, environment, tasks)
+        external_dependencies = setup_environment_listeners(behave, tasks)
         assert len(environment.events.init._handlers) == 2
         assert len(environment.events.test_start._handlers) == 1
         assert len(environment.events.test_stop._handlers) == 1
@@ -459,7 +459,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
         grizzly.setup.statistics_url = None
 
         # problems initializing testdata
-        def mocked_initialize_testdata(request_tasks: List[RequestTask]) -> Any:
+        def mocked_initialize_testdata(grizzly: GrizzlyContext, request_tasks: List[RequestTask]) -> Any:
             raise TemplateError('failed to initialize testdata')
 
         mocker.patch(
@@ -468,7 +468,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
         )
 
         with pytest.raises(AssertionError) as ae:
-            setup_environment_listeners(behave, environment, tasks)
+            setup_environment_listeners(behave, tasks)
         assert 'error parsing request payload: ' in str(ae)
     finally:
         try:
@@ -660,8 +660,7 @@ def test_run_worker(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
         assert run(behave) == 1
         assert 'failed to connect to the locust master' in capsys.readouterr().err
 
-        assert messagequeue_process_spy.call_count == 1
-        assert messagequeue_process_spy.call_args_list[0][0][1][0] == 'async-messaged'
+        assert messagequeue_process_spy.call_count == 0
         messagequeue_process_spy.reset_mock()
 
         # messagequeue-daemon should start on worker if a scenario has AtomicMessageQueue variable
@@ -679,8 +678,10 @@ def test_run_worker(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
 
         assert run(behave) == 1
         assert 'failed to connect to the locust master' in capsys.readouterr().err
-        assert messagequeue_process_spy.call_count == 1
-        assert messagequeue_process_spy.call_args_list[0][0][1][0] == 'async-messaged'
+        assert messagequeue_process_spy.call_count == 0
+        # assert messagequeue_process_spy.call_args_list[0][0][1][0] == 'async-messaged'
+
+        # @TODO: test coverage further down in run is needed!
 
         try:
             AtomicMessageQueue.destroy()

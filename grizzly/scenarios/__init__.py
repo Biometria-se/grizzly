@@ -45,6 +45,7 @@ class GrizzlyScenario(SequentialTaskSet):
         producer_address = environ.get('TESTDATA_PRODUCER_ADDRESS', None)
         if producer_address is not None:
             self.consumer = TestdataConsumer(
+                grizzly=self.grizzly,
                 address=producer_address,
                 identifier=self.__class__.__name__,
             )

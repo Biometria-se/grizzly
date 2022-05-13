@@ -40,8 +40,8 @@ except ImportError:
 
 from grizzly_extras.arguments import split_value, parse_arguments
 
-from ...types import AtomicVariable
 from ...utils import parse_timespan
+from . import AtomicVariable
 
 
 def atomicdate__base_type__(value: str) -> str:

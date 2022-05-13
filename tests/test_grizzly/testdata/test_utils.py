@@ -43,15 +43,15 @@ def test__get_variable_value_static(cleanup: AtomicVariableCleanupFixture) -> No
         variable_name = 'test'
 
         grizzly.state.variables[variable_name] = 1337
-        value, _ = _get_variable_value(variable_name)
+        value, _ = _get_variable_value(grizzly, variable_name)
         assert value == 1337
 
         grizzly.state.variables[variable_name] = '1337'
-        value, _ = _get_variable_value(variable_name)
+        value, _ = _get_variable_value(grizzly, variable_name)
         assert value == 1337
 
         grizzly.state.variables[variable_name] = "'1337'"
-        value, _ = _get_variable_value(variable_name)
+        value, _ = _get_variable_value(grizzly, variable_name)
         assert value == '1337'
     finally:
         cleanup()
@@ -63,14 +63,14 @@ def test__get_variable_value_AtomicIntegerIncrementer(cleanup: AtomicVariableCle
 
         variable_name = 'AtomicIntegerIncrementer.test'
         grizzly.state.variables[variable_name] = 1337
-        value, external_dependencies = _get_variable_value(variable_name)
+        value, external_dependencies = _get_variable_value(grizzly, variable_name)
         assert external_dependencies == set()
         assert value['test'] == 1337
         assert value['test'] == 1338
         AtomicIntegerIncrementer.destroy()
 
         grizzly.state.variables[variable_name] = '1337'
-        value, external_dependencies = _get_variable_value(variable_name)
+        value, external_dependencies = _get_variable_value(grizzly, variable_name)
         assert external_dependencies == set()
         assert value['test'] == 1337
         assert value['test'] == 1338
@@ -86,14 +86,14 @@ def test__get_variable_value_custom_variable(cleanup: AtomicVariableCleanupFixtu
         variable_name = 'tests.helpers.AtomicCustomVariable.hello'
         grizzly.state.variables[variable_name] = 'world'
 
-        value, external_dependencies = _get_variable_value(variable_name)
+        value, external_dependencies = _get_variable_value(grizzly, variable_name)
         assert external_dependencies == set()
         assert value['hello'] == 'world'
 
         variable_name = 'tests.helpers.AtomicCustomVariable.foo'
         grizzly.state.variables[variable_name] = 'bar'
 
-        _, external_dependencies = _get_variable_value(variable_name)
+        _, external_dependencies = _get_variable_value(grizzly, variable_name)
         assert value['foo'] == 'bar'
     finally:
         cleanup()
@@ -109,7 +109,7 @@ def test__get_variable_value_AtomicMessageQueue(noop_zmq: NoopZmqFixture, cleanu
         grizzly.state.variables[variable_name] = (
             'queue:TEST.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"'
         )
-        value, external_dependencies = _get_variable_value(variable_name)
+        value, external_dependencies = _get_variable_value(grizzly, variable_name)
         assert external_dependencies == set(['async-messaged'])
         assert not isinstance(value, AtomicMessageQueue)
         assert value == '__on_consumer__'
@@ -131,7 +131,7 @@ def test__get_variable_value_AtomicServiceBus(noop_zmq: NoopZmqFixture, cleanup:
         grizzly.state.variables[variable_name] = (
             'queue:documents-in | url="sb://sb.example.com/;SharedAccessKeyName=name;SharedAccessKey=key"'
         )
-        value, external_dependencies = _get_variable_value(variable_name)
+        value, external_dependencies = _get_variable_value(grizzly, variable_name)
         assert external_dependencies == set(['async-messaged'])
         assert not isinstance(value, AtomicServiceBus)
         assert value == '__on_consumer__'
@@ -158,7 +158,7 @@ def test__get_variable_value_AtomicCsvRow(cleanup: AtomicVariableCleanupFixture,
         grizzly = GrizzlyContext()
         variable_name = 'AtomicCsvRow.test'
         grizzly.state.variables['AtomicCsvRow.test'] = 'test.csv'
-        value, external_dependencies = _get_variable_value(variable_name)
+        value, external_dependencies = _get_variable_value(grizzly, variable_name)
 
         assert isinstance(value, AtomicCsvRow)
         assert external_dependencies == set()
@@ -177,18 +177,19 @@ def test__get_variable_value_AtomicCsvRow(cleanup: AtomicVariableCleanupFixture,
         cleanup()
 
 
-def test_initialize_testdata_no_tasks() -> None:
-    testdata, external_dependencies = initialize_testdata([])
+def test_initialize_testdata_no_tasks(grizzly_fixture: GrizzlyFixture) -> None:
+    testdata, external_dependencies = initialize_testdata(grizzly_fixture.grizzly, [])
     assert testdata == {}
     assert external_dependencies == set()
 
 
 def test_initialize_testdata_with_tasks(
+    grizzly_fixture: GrizzlyFixture,
     request_task: RequestTaskFixture,
     cleanup: AtomicVariableCleanupFixture,
 ) -> None:
     try:
-        grizzly = GrizzlyContext()
+        grizzly = grizzly_fixture.grizzly
         grizzly.state.variables.update({
             'AtomicIntegerIncrementer.messageID': 1337,
             'AtomicDate.now': 'now',
@@ -205,14 +206,15 @@ def test_initialize_testdata_with_tasks(
         scenario.tasks.add(LogMessage(message='{{ message }}'))
         scenario.tasks.add(DateTask(variable='date_task', value='{{ date_task_date }} | timezone="{{ timezone }}", offset="-{{ days }}D"'))
         scenario.tasks.add(TransformerTask(
+            grizzly,
             expression='$.expression',
             variable='transformer_task',
             content='hello this is the {{ content }}!',
             content_type=TransformerContentType.JSON,
         ))
-        scenario.tasks.add(UntilRequestTask(request=request, condition='{{ condition }}'))
+        scenario.tasks.add(UntilRequestTask(grizzly, request=request, condition='{{ condition }}'))
         scenario.orphan_templates.append('hello {{ orphan }} template')
-        testdata, external_dependencies = initialize_testdata(scenario.tasks)
+        testdata, external_dependencies = initialize_testdata(grizzly, scenario.tasks)
 
         scenario_name = scenario.class_name
 
@@ -239,10 +241,10 @@ def test_initialize_testdata_with_tasks(
 
 
 def test_initialize_testdata_with_payload_context(grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture, noop_zmq: NoopZmqFixture) -> None:
-    behave = grizzly_fixture.behave
     noop_zmq('grizzly.testdata.variables.messagequeue')
 
     try:
+        grizzly = grizzly_fixture.grizzly
         _, _, scenario = grizzly_fixture()
         assert scenario is not None
         context_root = grizzly_fixture.request_task.context_root
@@ -265,7 +267,6 @@ def test_initialize_testdata_with_payload_context(grizzly_fixture: GrizzlyFixtur
         source['result']['CsvRowValue2'] = '{{ AtomicCsvRow.test.header2 }}'
         source['result']['File'] = '{{ AtomicDirectoryContents.test }}'
 
-        grizzly = cast(GrizzlyContext, behave.grizzly)
         behave_scenario = Scenario(filename=None, line=None, keyword='', name=scenario.__class__.__name__)
         grizzly.scenarios.create(behave_scenario)
         grizzly.state.variables['messageID'] = 123
@@ -290,7 +291,7 @@ def test_initialize_testdata_with_payload_context(grizzly_fixture: GrizzlyFixtur
 
         grizzly.scenario.tasks.add(request)
 
-        testdata, external_dependencies = initialize_testdata(grizzly.scenario.tasks)
+        testdata, external_dependencies = initialize_testdata(grizzly, grizzly.scenario.tasks)
 
         scenario_name = grizzly.scenario.class_name
 
@@ -535,7 +536,9 @@ def test__objectify() -> None:
     assert test == 'value'
 
 
-def test_transform_no_objectify() -> None:
+def test_transform_no_objectify(grizzly_fixture: GrizzlyFixture) -> None:
+    grizzly = grizzly_fixture.grizzly
+
     data = {
         'test.number.value': 1337,
         'test.number.description': 'simple description',
@@ -544,7 +547,7 @@ def test_transform_no_objectify() -> None:
         'tests.helpers.AtomicCustomVariable.hello': 'world',
     }
 
-    actual = transform(data, objectify=False)
+    actual = transform(grizzly, data, objectify=False)
 
     assert actual == {
         'test': {
@@ -603,7 +606,7 @@ def test_transform(behave_fixture: BehaveFixture, noop_zmq: NoopZmqFixture, clea
 
         with caplog.at_level(logging.ERROR):
             with pytest.raises(StopUser):
-                transform(data)
+                transform(grizzly, data)
         assert 'AtomicServiceBus.document_id: payload in response was None' in caplog.text
         caplog.clear()
 
@@ -619,7 +622,7 @@ def test_transform(behave_fixture: BehaveFixture, noop_zmq: NoopZmqFixture, clea
             }),
         })
 
-        obj = transform(data)
+        obj = transform(grizzly, data)
 
         assert (
             obj['AtomicIntegerIncrementer'].__module__ == 'grizzly.testdata.utils'
@@ -680,7 +683,7 @@ def test_transform(behave_fixture: BehaveFixture, noop_zmq: NoopZmqFixture, clea
             'message': 'no message on queue:messages',
         })
 
-        obj = transform({
+        obj = transform(grizzly, {
             'AtomicServiceBus.document_id': '__on_consumer__',
         })
 

@@ -26,7 +26,7 @@ This can then be used in a template:
 from typing import Type, Dict, Optional, cast
 from random import randint
 
-from ...types import AtomicVariable
+from . import AtomicVariable
 
 
 def atomicrandominteger__base_type__(value: str) -> str:

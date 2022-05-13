@@ -37,7 +37,8 @@ from string import ascii_letters
 
 from grizzly_extras.arguments import split_value, parse_arguments
 
-from ...types import bool_typed, int_rounded_float_typed, AtomicVariable
+from ...types import bool_typed, int_rounded_float_typed
+from . import AtomicVariable
 
 
 def atomicrandomstring__base_type__(value: str) -> str:

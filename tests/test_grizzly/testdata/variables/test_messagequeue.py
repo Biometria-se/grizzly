@@ -173,8 +173,10 @@ class TestAtomicMessageQueue:
             'heartbeat_interval': 200,
         }
 
+        variable = AtomicMessageQueue('test', f'queue:test | url="{settings["url"]}", wait={settings["wait"]}, heartbeat_interval={settings["heartbeat_interval"]}')
+
         try:
-            context = AtomicMessageQueue.create_context(settings)
+            context = variable.create_context(settings)
 
             assert context == {
                 'url': settings['url'],
@@ -195,7 +197,7 @@ class TestAtomicMessageQueue:
             }
 
             with pytest.raises(ValueError) as ve:
-                AtomicMessageQueue.create_context(settings)
+                variable.create_context(settings)
             assert 'AtomicMessageQueue: "http" is not a supported scheme for url' in str(ve)
 
             settings = {
@@ -203,7 +205,7 @@ class TestAtomicMessageQueue:
             }
 
             with pytest.raises(ValueError) as ve:
-                AtomicMessageQueue.create_context(settings)
+                variable.create_context(settings)
             assert 'AtomicMessageQueue: hostname is not specified in "mq:///"' in str(ve)
 
             settings = {
@@ -211,7 +213,7 @@ class TestAtomicMessageQueue:
             }
 
             with pytest.raises(ValueError) as ve:
-                AtomicMessageQueue.create_context(settings)
+                variable.create_context(settings)
             assert 'AtomicMessageQueue: QueueManager and Channel must be specified in the query string of "mq://mq.example.com"' in str(ve)
 
             settings = {
@@ -219,7 +221,7 @@ class TestAtomicMessageQueue:
             }
 
             with pytest.raises(ValueError) as ve:
-                AtomicMessageQueue.create_context(settings)
+                variable.create_context(settings)
             assert 'AtomicMessageQueue: QueueManager must be specified in the query string' in str(ve)
 
             settings = {
@@ -227,14 +229,14 @@ class TestAtomicMessageQueue:
             }
 
             with pytest.raises(ValueError) as ve:
-                AtomicMessageQueue.create_context(settings)
+                variable.create_context(settings)
             assert 'AtomicMessageQueue: Channel must be specified in the query string' in str(ve)
 
             settings = {
                 'url': 'mq://mq.example.com:1415?QueueManager=QM1&Channel=SRV.CONN&KeyFile=mq_test',
             }
 
-            context = AtomicMessageQueue.create_context(settings)
+            context = variable.create_context(settings)
 
             assert context == {
                 'url': settings['url'],
@@ -256,7 +258,7 @@ class TestAtomicMessageQueue:
                 'heartbeat_interval': 201,
             }
 
-            context = AtomicMessageQueue.create_context(settings)
+            context = variable.create_context(settings)
 
             assert context == {
                 'url': settings['url'],

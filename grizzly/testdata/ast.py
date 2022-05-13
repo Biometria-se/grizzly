@@ -1,19 +1,22 @@
 import logging
 
-from typing import Set, Optional, List, Dict
+from typing import TYPE_CHECKING, Set, Optional, List, Dict
 
 import jinja2 as j2
 
 from jinja2.nodes import Getattr, Getitem, Name
 
 from ..tasks import GrizzlyTask
-from ..context import GrizzlyContextScenario
+
+
+if TYPE_CHECKING:
+    from ..context import GrizzlyContextScenario
 
 logger = logging.getLogger(__name__)
 
 
 def get_template_variables(tasks: List[GrizzlyTask]) -> Dict[str, Set[str]]:
-    templates: Dict[GrizzlyContextScenario, Set[str]] = {}
+    templates: Dict['GrizzlyContextScenario', Set[str]] = {}
 
     for task in tasks:
         if task.scenario not in templates:
@@ -43,7 +46,7 @@ def walk_attr(node: Getattr) -> List[str]:
     return attributes
 
 
-def _parse_templates(templates: Dict[GrizzlyContextScenario, Set[str]]) -> Dict[str, Set[str]]:
+def _parse_templates(templates: Dict['GrizzlyContextScenario', Set[str]]) -> Dict[str, Set[str]]:
     variables: Dict[str, Set[str]] = {}
 
     for scenario, scenario_templates in templates.items():

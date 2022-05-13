@@ -9,7 +9,7 @@ from pytest_mock import MockerFixture
 
 from grizzly.context import GrizzlyContext
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import  # noqa: F403
-from grizzly.types import GrizzlyDictValueType, GrizzlyDict
+from grizzly.testdata import GrizzlyDict, GrizzlyDictValueType
 
 from ....fixtures import BehaveFixture
 
@@ -310,7 +310,7 @@ def test_step_setup_set_variable_alias(behave_fixture: BehaveFixture, mocker: Mo
         super(GrizzlyDict, self).__setitem__(key, value)
 
     mocker.patch(
-        'grizzly.types.GrizzlyDict.__setitem__',
+        'grizzly.testdata.GrizzlyDict.__setitem__',
         setitem,
     )
 

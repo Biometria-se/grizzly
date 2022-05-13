@@ -1,7 +1,7 @@
 import logging
 
 from os import environ
-from typing import Dict, Any, Optional, List
+from typing import TYPE_CHECKING, Dict, Any, Optional, List
 
 import pytest
 
@@ -21,6 +21,10 @@ from grizzly.types import ScenarioState
 
 from ...fixtures import GrizzlyFixture
 from ...helpers import RequestCalled
+
+
+if TYPE_CHECKING:
+    from grizzly.context import GrizzlyContext
 
 
 class TestIterationScenario:
@@ -86,7 +90,7 @@ class TestIterationScenario:
         try:
             _, _, scenario = grizzly_fixture(scenario_type=IteratorScenario)
 
-            def TestdataConsumer__init__(self: 'TestdataConsumer', address: str, identifier: str) -> None:
+            def TestdataConsumer__init__(self: 'TestdataConsumer', grizzly: 'GrizzlyContext', address: str, identifier: str) -> None:
                 pass
 
             mocker.patch(
@@ -122,10 +126,12 @@ class TestIterationScenario:
     def test_iterator(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         _, user, scenario = grizzly_fixture(scenario_type=IteratorScenario)
 
+        grizzly = grizzly_fixture.grizzly
+
         assert scenario is not None
         assert isinstance(scenario, IteratorScenario)
 
-        scenario.consumer = TestdataConsumer(identifier='test')
+        scenario.consumer = TestdataConsumer(grizzly, identifier='test')
 
         def mock_request(data: Optional[Dict[str, Any]]) -> None:
             def request(self: 'TestdataConsumer', scenario: str) -> Optional[Dict[str, Any]]:
@@ -133,7 +139,7 @@ class TestIterationScenario:
                     return None
 
                 if 'variables' in data:
-                    data['variables'] = transform(data['variables'])
+                    data['variables'] = transform(grizzly, data['variables'])
 
                 return data
 

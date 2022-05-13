@@ -1,6 +1,6 @@
 import logging
 
-from typing import Dict, Optional, Any, cast
+from typing import TYPE_CHECKING, Dict, Optional, Any, cast
 
 from zmq.sugar.constants import NOBLOCK as ZMQ_NOBLOCK, REQ as ZMQ_REQ, REP as ZMQ_REP
 from zmq.error import ZMQError, Again as ZMQAgain
@@ -11,20 +11,26 @@ from gevent.lock import Semaphore
 from locust.exception import StopUser
 from locust.env import Environment
 
-from ..context import GrizzlyContext
 from ..types import TestdataType
 from .utils import transform
+from . import GrizzlyDict
+
+
+if TYPE_CHECKING:
+    from ..context import GrizzlyContext
 
 
 class TestdataConsumer:
     # need so pytest doesn't raise PytestCollectionWarning
     __test__: bool = False
 
+    grizzly: 'GrizzlyContext'
     logger: logging.Logger
     identifier: str
     stopped: bool
 
-    def __init__(self, identifier: str, address: str = 'tcp://127.0.0.1:5555') -> None:
+    def __init__(self, grizzly: 'GrizzlyContext', identifier: str, address: str = 'tcp://127.0.0.1:5555') -> None:
+        self.grizzly = grizzly
         self.identifier = identifier
         self.logger = logging.getLogger(f'{__name__}/{self.identifier}')
 
@@ -80,10 +86,10 @@ class TestdataConsumer:
 
         variables: Optional[Dict[str, Any]] = None
         if 'variables' in data:
-            variables = transform(data['variables'], objectify=True)
+            variables = transform(self.grizzly, data['variables'], objectify=True)
             del data['variables']
 
-        data = transform(data, objectify=False)
+        data = transform(self.grizzly, data, objectify=False)
 
         if variables is not None:
             data['variables'] = variables
@@ -99,19 +105,15 @@ class TestdataProducer:
 
     logger: logging.Logger
     semaphore = Semaphore()
-    grizzly: GrizzlyContext
+    grizzly: 'GrizzlyContext'
     scenarios_iteration: Dict[str, int]
     testdata: TestdataType
     environment: Environment
 
-    def __init__(
-        self,
-        testdata: TestdataType,
-        environment: Environment,
-        address: str = 'tcp://127.0.0.1:5555',
-    ) -> None:
+    def __init__(self, grizzly: 'GrizzlyContext', testdata: TestdataType, address: str = 'tcp://127.0.0.1:5555') -> None:
+        self.grizzly = grizzly
         self.testdata = testdata
-        self.environment = environment
+        self.environment = self.grizzly.state.locust.environment
 
         self.logger = logging.getLogger(f'{__name__}/producer')
 
@@ -120,7 +122,6 @@ class TestdataProducer:
         self.context = zmq.Context()
         self.socket = self.context.socket(ZMQ_REP)
         self.socket.bind(address)
-        self.grizzly = GrizzlyContext()
         self.scenarios_iteration = {}
 
         self._stopping = False
@@ -177,17 +178,24 @@ class TestdataProducer:
 
                                         for key, variable in testdata.items():
                                             if '.' in key and not variable == '__on_consumer__':
-                                                [data_type, testdata_value] = key.split('.', 1)
-                                                if '.' in testdata_value:
+                                                print(f'{key=}')
+                                                # [data_type, testdata_value] = key.split('.', 1)
+                                                module_name, variable_type, variable_name = GrizzlyDict.get_variable_spec(key)
+                                                _, data_attribute = key.rsplit('.', 1)
+                                                print(f'{module_name=}, {variable_type=}')
+                                                print(f'{variable_name=}, {data_attribute=}')
+                                                if variable_name != data_attribute:
                                                     # @TODO: what if name contains deeper levels (.)?
-                                                    [testdata_value, name] = testdata_value.split('.', 1)
-                                                    testdata_type = '.'.join([data_type, testdata_value])
-                                                    if testdata_type not in loaded_variable_datatypes:
-                                                        loaded_variable_datatypes[testdata_type] = variable[testdata_value]
+                                                    testdata_type = f'{variable_type}.{variable_name}'
+                                                    if module_name != 'grizzly.testdata.variables':
+                                                        testdata_type = f'{module_name}.{testdata_type}'
 
-                                                    value = loaded_variable_datatypes[testdata_type][name]
+                                                    if testdata_type not in loaded_variable_datatypes:
+                                                        loaded_variable_datatypes[testdata_type] = variable[variable_name]
+
+                                                    value = loaded_variable_datatypes[testdata_type][data_attribute]
                                                 else:
-                                                    value = variable[testdata_value]
+                                                    value = variable[variable_name]
                                             else:
                                                 value = variable
 

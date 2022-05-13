@@ -76,11 +76,13 @@ class TestBlobStorageUser:
         assert 'needs AccountKey in the query string' in str(e)
 
     @pytest.mark.usefixtures('blob_storage_scenario')
-    def test_send(self, blob_storage_scenario: BlobStorageScenarioFixture, mocker: MockerFixture) -> None:
+    def test_send(self, blob_storage_scenario: BlobStorageScenarioFixture, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
         [user, scenario, _] = blob_storage_scenario
 
+        grizzly = grizzly_fixture.grizzly
+
         remote_variables = {
-            'variables': transform({
+            'variables': transform(grizzly, {
                 'AtomicIntegerIncrementer.messageID': 31337,
                 'AtomicDate.now': '',
                 'messageID': 137,

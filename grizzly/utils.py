@@ -13,10 +13,10 @@ from behave.runner import Context
 from behave.model import Scenario, Status
 from locust import between
 
-from .context import GrizzlyContextScenario
 from .types import WrappedFunc, T
 
 if TYPE_CHECKING:  # pragma: no cover
+    from .context import GrizzlyContextScenario
     from .scenarios import GrizzlyScenario
     from .users.base import GrizzlyUser
 
@@ -89,7 +89,7 @@ def fail_direct(context: Context) -> Generator[None, None, None]:
     context.config.verbose = orig_verbose_value
 
 
-def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Optional[Dict[str, Any]] = None, fixed_count: Optional[int] = None) -> Type['GrizzlyUser']:
+def create_user_class_type(scenario: 'GrizzlyContextScenario', global_context: Optional[Dict[str, Any]] = None, fixed_count: Optional[int] = None) -> Type['GrizzlyUser']:
     if global_context is None:
         global_context = {}
 
@@ -134,7 +134,7 @@ def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Opt
     })
 
 
-def create_scenario_class_type(base_type: str, scenario: GrizzlyContextScenario) -> Type['GrizzlyScenario']:
+def create_scenario_class_type(base_type: str, scenario: 'GrizzlyContextScenario') -> Type['GrizzlyScenario']:
     if base_type.count('.') > 0:
         module, base_type = base_type.rsplit('.', 1)
     else:

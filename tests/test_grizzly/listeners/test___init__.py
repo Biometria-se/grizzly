@@ -1,6 +1,6 @@
 import logging
 
-from typing import Any, Dict, Tuple, Generator, Optional
+from typing import Any, Dict, Tuple, Optional
 from os import environ
 from random import uniform
 
@@ -38,14 +38,14 @@ def mocked_TestdataProducer_run(self: Any) -> None:
     raise Running()
 
 
-def mocked_TestdataProducer___init__(self: Any, testdata: Any, address: str, environment: Environment) -> None:
+def mocked_TestdataProducer___init__(self: Any, grizzly: Any, testdata: Any, address: str) -> None:
+    setattr(self, 'grizzly', GrizzlyContext())
     setattr(self, 'address', address)
     setattr(self, 'testdata', testdata)
-    setattr(self, 'environment', environment)
 
 
 @pytest.fixture
-def listener_test(mocker: MockerFixture, locust_fixture: LocustFixture) -> Generator[Environment, None, None]:
+def listener_test_mocker(mocker: MockerFixture) -> None:
     mocker.patch(
         'grizzly.testdata.communication.TestdataProducer.run',
         mocked_TestdataProducer_run,
@@ -71,11 +71,9 @@ def listener_test(mocker: MockerFixture, locust_fixture: LocustFixture) -> Gener
         return_value=None,
     )
 
-    yield locust_fixture.env
 
-
-def test__init_testdata_producer(listener_test: Environment) -> None:
-    init_function = _init_testdata_producer('1337', {}, listener_test)
+def test__init_testdata_producer(listener_test_mocker: None, grizzly_fixture: GrizzlyFixture) -> None:
+    init_function = _init_testdata_producer(grizzly_fixture.grizzly, '1337', {})
 
     assert callable(init_function)
 
@@ -91,11 +89,12 @@ def test__init_testdata_producer(listener_test: Environment) -> None:
     assert producer.testdata == {}
 
 
-def test_init_master(listener_test: Environment, caplog: LogCaptureFixture, grizzly_fixture: GrizzlyFixture) -> None:
+def test_init_master(listener_test_mocker: None, caplog: LogCaptureFixture, grizzly_fixture: GrizzlyFixture) -> None:
     runner: Optional[MasterRunner] = None
     try:
+        grizzly_fixture()
         grizzly = grizzly_fixture.grizzly
-        runner = MasterRunner(listener_test, '0.0.0.0', 5555)
+        runner = MasterRunner(grizzly_fixture.locust_env, '0.0.0.0', 5555)
         grizzly.state.locust = runner
 
         init_function = init(grizzly, {})
@@ -137,7 +136,8 @@ def test_init_master(listener_test: Environment, caplog: LogCaptureFixture, griz
             runner.quit()
 
 
-def test_init_worker(listener_test: Environment, grizzly_fixture: GrizzlyFixture) -> None:
+def test_init_worker(listener_test_mocker: None, grizzly_fixture: GrizzlyFixture) -> None:
+    grizzly_fixture()
     runner: Optional[WorkerRunner] = None
 
     try:
@@ -146,7 +146,7 @@ def test_init_worker(listener_test: Environment, grizzly_fixture: GrizzlyFixture
         init_function = init(grizzly)
         assert callable(init_function)
 
-        runner = WorkerRunner(listener_test, 'localhost', 5555)
+        runner = WorkerRunner(grizzly_fixture.locust_env, 'localhost', 5555)
         grizzly.state.locust = runner
 
         init_function(runner)
@@ -181,12 +181,13 @@ def test_init_worker(listener_test: Environment, grizzly_fixture: GrizzlyFixture
             pass
 
 
-def test_init_local(listener_test: Environment, grizzly_fixture: GrizzlyFixture) -> None:
+def test_init_local(listener_test_mocker: None, grizzly_fixture: GrizzlyFixture) -> None:
+    grizzly_fixture()
     runner: Optional[LocalRunner] = None
 
     try:
         grizzly = grizzly_fixture.grizzly
-        runner = LocalRunner(listener_test)
+        runner = LocalRunner(grizzly_fixture.locust_env)
         grizzly.state.locust = runner
 
         init_function = init(grizzly, {})
@@ -287,21 +288,24 @@ def test_init_statistics_listener(mocker: MockerFixture, locust_fixture: LocustF
         GrizzlyContext.destroy()
 
 
-def test_locust_test_start(listener_test: Environment) -> None:
+def test_locust_test_start(listener_test_mocker: None, grizzly_fixture: GrizzlyFixture) -> None:
+    grizzly_fixture()
     try:
-        grizzly = GrizzlyContext()
+        grizzly = grizzly_fixture.grizzly
         scenario = Scenario(filename=None, line=None, keyword='', name='Test Scenario')
         grizzly.scenarios.create(scenario)
         grizzly.scenario.iterations = -1
-        runner = MasterRunner(listener_test, '0.0.0.0', 5555)
-        listener_test.runner = runner
+        runner = MasterRunner(grizzly_fixture.locust_env, '0.0.0.0', 5555)
+        grizzly.state.locust = runner
 
-        locust_test_start(grizzly)(listener_test)
+        locust_test_start(grizzly)(grizzly.state.locust.environment)
     finally:
         GrizzlyContext.destroy()
 
 
-def test_locust_test_stop(mocker: MockerFixture, listener_test: Environment) -> None:
+def test_locust_test_stop(mocker: MockerFixture, listener_test_mocker: None, grizzly_fixture: GrizzlyFixture) -> None:
+    grizzly_fixture()
+
     def mocked_reset(self: Any) -> None:
         raise Running()
 
@@ -309,7 +313,7 @@ def test_locust_test_stop(mocker: MockerFixture, listener_test: Environment) -> 
         'grizzly.testdata.communication.TestdataProducer.reset',
         mocked_reset,
     )
-    init_function = _init_testdata_producer('1337', {}, listener_test)
+    init_function = _init_testdata_producer(grizzly_fixture.grizzly, '1337', {})
 
     assert callable(init_function)
 
@@ -334,7 +338,8 @@ def test_spawning_complete() -> None:
         GrizzlyContext.destroy()
 
 
-def test_quitting(mocker: MockerFixture, listener_test: Environment, grizzly_fixture: GrizzlyFixture) -> None:
+def test_quitting(mocker: MockerFixture, listener_test_mocker: None, grizzly_fixture: GrizzlyFixture) -> None:
+    grizzly_fixture()
     mocker.patch(
         'grizzly.testdata.communication.TestdataProducer.stop',
         return_value=None,
@@ -344,10 +349,10 @@ def test_quitting(mocker: MockerFixture, listener_test: Environment, grizzly_fix
 
     try:
         grizzly = grizzly_fixture.grizzly
-        runner = MasterRunner(listener_test, '0.0.0.0', 5555)
+        runner = MasterRunner(grizzly_fixture.locust_env, '0.0.0.0', 5555)
         grizzly.state.locust = runner
 
-        init_testdata = _init_testdata_producer('5557', {}, listener_test)
+        init_testdata = _init_testdata_producer(grizzly, '5557', {})
 
         with pytest.raises(Running):
             init_testdata()
@@ -373,7 +378,9 @@ def test_quitting(mocker: MockerFixture, listener_test: Environment, grizzly_fix
             runner.greenlet.kill(block=False)
 
 
-def test_validate_result(mocker: MockerFixture, listener_test: Environment, caplog: LogCaptureFixture) -> None:
+def test_validate_result(mocker: MockerFixture, listener_test_mocker: None, caplog: LogCaptureFixture, grizzly_fixture: GrizzlyFixture) -> None:
+    grizzly_fixture()
+
     def print_stats(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
         pass
 
@@ -392,27 +399,30 @@ def test_validate_result(mocker: MockerFixture, listener_test: Environment, capl
         print_stats,
     )
 
-    grizzly = GrizzlyContext()
+    grizzly = grizzly_fixture.grizzly
+    grizzly.scenarios.clear()
 
-    listener_test.stats = RequestStats()
+    environment = grizzly.state.locust.environment
+
+    environment.stats = RequestStats()
     for method, name in [
         ('POST', '001 OAuth2 client token',),
         ('POST', '001 Register',),
         ('GET', '001 Read',),
     ]:
         for i in range(100):
-            listener_test.stats.log_request(method, name, uniform(10.1, 56.5), len(name))
+            environment.stats.log_request(method, name, uniform(10.1, 56.5), len(name))
             if i % 5 == 0:
-                listener_test.stats.log_error(method, name, RuntimeError('Error'))
+                environment.stats.log_error(method, name, RuntimeError('Error'))
 
-    listener_test.stats.total.total_response_time = 2000
+    environment.stats.total.total_response_time = 2000
 
     validate_result_wrapper = validate_result(grizzly)
     assert callable(validate_result_wrapper)
 
     # environment has statistics, but can't find a matching scenario
     with caplog.at_level(logging.ERROR):
-        validate_result_wrapper(listener_test)
+        validate_result_wrapper(environment)
     assert len(caplog.messages) == 3
     assert 'does not match any scenario' in caplog.text
     caplog.clear()
@@ -422,17 +432,17 @@ def test_validate_result(mocker: MockerFixture, listener_test: Environment, capl
     grizzly.scenarios.create(scenario)
 
     # fail ratio
-    listener_test.process_exit_code = 0
+    environment.process_exit_code = 0
     grizzly.scenario.validation.fail_ratio = 0.1
 
-    assert listener_test.process_exit_code == 0
+    assert environment.process_exit_code == 0
     assert grizzly.scenario.behave.status == Status.passed
 
     with caplog.at_level(logging.ERROR):
-        validate_result_wrapper(listener_test)
+        validate_result_wrapper(environment)
 
     assert 'failed due to' in caplog.text
-    assert listener_test.process_exit_code == 1
+    assert environment.process_exit_code == 1
     assert grizzly.scenario.behave.status == Status.failed
 
     grizzly.scenario.validation.fail_ratio = None
@@ -440,17 +450,17 @@ def test_validate_result(mocker: MockerFixture, listener_test: Environment, capl
     caplog.clear()
 
     # avg response time
-    listener_test.process_exit_code = 0
+    environment.process_exit_code = 0
     grizzly.scenario.validation.avg_response_time = 2
 
-    assert listener_test.process_exit_code == 0
+    assert environment.process_exit_code == 0
     assert grizzly.scenario.behave.status == Status.passed
 
     with caplog.at_level(logging.ERROR):
-        validate_result_wrapper(listener_test)
+        validate_result_wrapper(environment)
 
     assert 'failed due to' in caplog.text
-    assert listener_test.process_exit_code == 1
+    assert environment.process_exit_code == 1
     assert grizzly.scenario.behave.status == Status.failed
 
     grizzly.scenario.validation.avg_response_time = None
@@ -458,17 +468,17 @@ def test_validate_result(mocker: MockerFixture, listener_test: Environment, capl
     caplog.clear()
 
     # response time percentile
-    listener_test.process_exit_code = 0
+    environment.process_exit_code = 0
     grizzly.scenario.validation.response_time_percentile = GrizzlyContextScenarioResponseTimePercentile(2, 0.99)
 
-    assert listener_test.process_exit_code == 0
+    assert environment.process_exit_code == 0
     assert grizzly.scenario.behave.status == Status.passed
 
     with caplog.at_level(logging.ERROR):
-        validate_result_wrapper(listener_test)
+        validate_result_wrapper(environment)
 
     assert 'failed due to' in caplog.text
-    assert listener_test.process_exit_code == 1
+    assert environment.process_exit_code == 1
     assert grizzly.scenario.behave.status == Status.failed
 
     grizzly.scenario.validation.response_time_percentile = None

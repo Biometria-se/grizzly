@@ -23,13 +23,12 @@ from gevent import sleep as gsleep
 from grizzly_extras.transformer import Transformer, TransformerContentType, TransformerError, transformer
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments, split_value
 
-from ..context import GrizzlyContext
 from ..types import RequestType
 from .request import RequestTask
 from . import GrizzlyTask, template
 
 if TYPE_CHECKING:  # pragma: no cover
-    from ..context import GrizzlyContextScenario
+    from ..context import GrizzlyContextScenario, GrizzlyContext
     from ..scenarios import GrizzlyScenario
 
 
@@ -45,7 +44,7 @@ class UntilRequestTask(GrizzlyTask):
     wait: float
     expected_matches: int
 
-    def __init__(self, request: RequestTask, condition: str, scenario: Optional['GrizzlyContextScenario'] = None) -> None:
+    def __init__(self, grizzly: 'GrizzlyContext', request: RequestTask, condition: str, scenario: Optional['GrizzlyContextScenario'] = None) -> None:
         super().__init__(scenario)
 
         self.request = request
@@ -63,7 +62,6 @@ class UntilRequestTask(GrizzlyTask):
             self.condition, until_arguments = split_value(self.condition)
 
             if '{{' in until_arguments and '}}' in until_arguments:
-                grizzly = GrizzlyContext()
                 until_arguments = Template(until_arguments).render(**grizzly.state.variables)
 
             arguments = parse_arguments(until_arguments)

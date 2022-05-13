@@ -1,4 +1,3 @@
-import pkgutil
 import inspect
 import socket
 import re
@@ -36,8 +35,7 @@ from requests.models import CaseInsensitiveDict, Response, PreparedRequest
 
 from grizzly.types import GrizzlyResponseContextManager, RequestMethod
 from grizzly.tasks import RequestTask
-
-import grizzly.testdata.variables as variables
+from grizzly.testdata.variables import destroy_variables
 
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 
@@ -67,19 +65,7 @@ class AtomicVariableCleanupFixture:
         except:
             pass
 
-        # automagically find all Atomic variables and try to destroy them, instead of explicitlly define them one by one
-        for _, package_name, _ in pkgutil.iter_modules([path.dirname(variables.__file__)]):
-            module = getattr(variables, package_name)
-            for member_name, member in inspect.getmembers(module):
-                if inspect.isclass(member) and member_name.startswith('Atomic') and member_name != 'AtomicVariable':
-                    destroy = getattr(member, 'destroy', None)
-                    if destroy is None:
-                        continue
-
-                    try:
-                        destroy()
-                    except:
-                        pass
+        destroy_variables()
 
         try:
             del environ['GRIZZLY_CONTEXT_ROOT']
@@ -348,6 +334,7 @@ class GrizzlyFixture:
     request_task: RequestTaskFixture
     grizzly: GrizzlyContext
     behave: BehaveContext
+    locust_env: Environment
 
     def __init__(self, request_task: RequestTaskFixture, behave_fixture: BehaveFixture) -> None:
         self.request_task = request_task
@@ -373,7 +360,7 @@ class GrizzlyFixture:
         if scenario_type is None:
             scenario_type = TestScenario
 
-        environment = Environment(
+        self.locust_env = Environment(
             host=host,
             user_classes=[user_type],
         )
@@ -383,7 +370,7 @@ class GrizzlyFixture:
 
         user_type.host = host
         user_type._scenario = self.request_task.request.scenario
-        user = user_type(environment)
+        user = user_type(self.locust_env)
 
         if not no_tasks:
             user_type.tasks = [scenario_type]
@@ -392,7 +379,9 @@ class GrizzlyFixture:
             user_type.tasks = []
             scenario = None
 
-        return environment, user, scenario
+        self.grizzly.state.locust = Runner(self.locust_env)
+
+        return self.locust_env, user, scenario
 
     def __exit__(
         self,

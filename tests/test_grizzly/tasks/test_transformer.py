@@ -1,10 +1,8 @@
-from typing import cast
 from json import dumps as jsondumps
 
 import pytest
 
 from grizzly_extras.transformer import transformer, TransformerContentType
-from grizzly.context import GrizzlyContext
 from grizzly.tasks import TransformerTask
 from grizzly.exceptions import TransformerLocustError
 
@@ -13,14 +11,14 @@ from ...fixtures import GrizzlyFixture
 
 class TestTransformerTask:
     def test(self, grizzly_fixture: GrizzlyFixture) -> None:
-        behave = grizzly_fixture.behave
+        grizzly = grizzly_fixture.grizzly
+
         with pytest.raises(ValueError) as ve:
             TransformerTask(
-                variable='test_variable', expression='$.', content_type=TransformerContentType.JSON, content='',
+                grizzly, variable='test_variable', expression='$.', content_type=TransformerContentType.JSON, content='',
             )
         assert 'test_variable has not been initialized' in str(ve)
 
-        grizzly = cast(GrizzlyContext, behave.grizzly)
         grizzly.state.variables.update({'test_variable': 'none'})
 
         json_transformer = transformer.available[TransformerContentType.JSON]
@@ -28,7 +26,7 @@ class TestTransformerTask:
 
         with pytest.raises(ValueError) as ve:
             TransformerTask(
-                variable='test_variable', expression='$.', content_type=TransformerContentType.JSON, content='',
+                grizzly, variable='test_variable', expression='$.', content_type=TransformerContentType.JSON, content='',
             )
         assert 'could not find a transformer for JSON' in str(ve)
 
@@ -36,12 +34,12 @@ class TestTransformerTask:
 
         with pytest.raises(ValueError) as ve:
             TransformerTask(
-                variable='test_variable', expression='$.', content_type=TransformerContentType.JSON, content='',
+                grizzly, variable='test_variable', expression='$.', content_type=TransformerContentType.JSON, content='',
             )
         assert '$. is not a valid expression for JSON' in str(ve)
 
         task_factory = TransformerTask(
-            variable='test_variable', expression='$.result.value', content_type=TransformerContentType.JSON, content='',
+            grizzly, variable='test_variable', expression='$.result.value', content_type=TransformerContentType.JSON, content='',
         )
 
         task = task_factory()
@@ -57,6 +55,7 @@ class TestTransformerTask:
         assert 'failed to transform JSON' in str(tle)
 
         task_factory = TransformerTask(
+            grizzly,
             variable='test_variable',
             expression='$.result.value',
             content_type=TransformerContentType.JSON,
@@ -92,6 +91,7 @@ class TestTransformerTask:
             }]
         })
         task_factory = TransformerTask(
+            grizzly,
             variable='payload_url',
             expression='$.payloads[0].url',
             content_type=TransformerContentType.JSON,
@@ -110,6 +110,7 @@ class TestTransformerTask:
         scenario.user._context['variables']['payload'] = content
 
         task_factory = TransformerTask(
+            grizzly,
             variable='payload_url',
             expression='$.payloads[0].url',
             content_type=TransformerContentType.JSON,
@@ -125,6 +126,7 @@ class TestTransformerTask:
         assert scenario.user._context['variables'].get('payload_url', None) == 'https://mystorageaccount.blob.core.windows.net/mycontainer/myfile'
 
         task_factory = TransformerTask(
+            grizzly,
             variable='test_variable',
             expression='$.result.name',
             content_type=TransformerContentType.JSON,
@@ -140,6 +142,7 @@ class TestTransformerTask:
         assert 'TransformerTask: "$.result.name" returned 0 matches' in str(re)
 
         task_factory = TransformerTask(
+            grizzly,
             variable='test_variable',
             expression='$.result[?value="hello world!"]',
             content_type=TransformerContentType.JSON,
@@ -157,6 +160,7 @@ class TestTransformerTask:
         assert 'TransformerTask: "$.result[?value="hello world!"]" returned 3 matches' in str(re)
 
         task_factory = TransformerTask(
+            grizzly,
             variable='test_variable',
             expression='//actor[@id="9"]',
             content_type=TransformerContentType.XML,

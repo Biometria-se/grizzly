@@ -30,7 +30,7 @@ from typing import Union, Dict, Any, Type, Optional, cast
 
 from grizzly_extras.arguments import split_value, parse_arguments
 
-from ...types import AtomicVariable
+from . import AtomicVariable
 
 
 def atomicintegerincrementer__base_type__(value: Union[str, int]) -> str:

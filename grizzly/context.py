@@ -9,7 +9,8 @@ import yaml
 from behave.model import Scenario
 from locust.runners import Runner
 
-from .types import GrizzlyDict, MessageCallback, MessageDirection
+from .types import MessageCallback, MessageDirection
+from .testdata import GrizzlyDict
 
 if TYPE_CHECKING:  # pragma: no cover
     from .tasks import GrizzlyTask, AsyncRequestGroupTask
@@ -51,6 +52,56 @@ def load_configuration_file() -> Dict[str, Any]:
     except FileNotFoundError:
         logger.error(f'{configuration_file} does not exist')
         raise SystemExit(1)
+
+
+class GrizzlyContext:
+    __instance: Optional['GrizzlyContext'] = None
+
+    _initialized: bool
+    _state: 'GrizzlyContextState'
+    _setup: 'GrizzlyContextSetup'
+    _scenarios: 'GrizzlyContextScenarios'
+
+    @classmethod
+    def __new__(cls, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> 'GrizzlyContext':
+        if cls.__instance is None:
+            cls.__instance = super().__new__(cls)
+            cls.__instance._initialized = False
+
+        return cls.__instance
+
+    @classmethod
+    def destroy(cls) -> None:
+        if cls.__instance is None:
+            raise ValueError(f"'{cls.__name__}' is not instantiated")
+
+        cls.__instance = None
+
+    def __init__(self) -> None:
+        if not self._initialized:
+            self._state = GrizzlyContextState()
+            self._setup = GrizzlyContextSetup()
+            self._scenarios = GrizzlyContextScenarios()
+            self._initialized = True
+
+    @property
+    def setup(self) -> 'GrizzlyContextSetup':
+        return self._setup
+
+    @property
+    def state(self) -> 'GrizzlyContextState':
+        return self._state
+
+    @property
+    def scenario(self) -> 'GrizzlyContextScenario':
+        if len(self._scenarios) < 1:
+            self._scenarios.append(GrizzlyContextScenario(1))
+
+        return self._scenarios[-1]
+
+    @property
+    def scenarios(self) -> 'GrizzlyContextScenarios':
+        return self._scenarios
 
 
 @dataclass
@@ -226,53 +277,3 @@ class GrizzlyContextScenarios(List[GrizzlyContextScenario]):
         grizzly_scenario.description = behave_scenario.name
 
         self.append(grizzly_scenario)
-
-
-class GrizzlyContext:
-    __instance: Optional['GrizzlyContext'] = None
-
-    _initialized: bool
-    _state: GrizzlyContextState
-    _setup: GrizzlyContextSetup
-    _scenarios: GrizzlyContextScenarios
-
-    @classmethod
-    def __new__(cls, *_args: Tuple[Any, ...], **_kwargs: Dict[str, Any]) -> 'GrizzlyContext':
-        if cls.__instance is None:
-            cls.__instance = super().__new__(cls)
-            cls.__instance._initialized = False
-
-        return cls.__instance
-
-    @classmethod
-    def destroy(cls) -> None:
-        if cls.__instance is None:
-            raise ValueError(f"'{cls.__name__}' is not instantiated")
-
-        cls.__instance = None
-
-    def __init__(self) -> None:
-        if not self._initialized:
-            self._state = GrizzlyContextState()
-            self._setup = GrizzlyContextSetup()
-            self._scenarios = GrizzlyContextScenarios()
-            self._initialized = True
-
-    @property
-    def setup(self) -> GrizzlyContextSetup:
-        return self._setup
-
-    @property
-    def state(self) -> GrizzlyContextState:
-        return self._state
-
-    @property
-    def scenario(self) -> GrizzlyContextScenario:
-        if len(self._scenarios) < 1:
-            self._scenarios.append(GrizzlyContextScenario(1))
-
-        return self._scenarios[-1]
-
-    @property
-    def scenarios(self) -> GrizzlyContextScenarios:
-        return self._scenarios
