@@ -135,6 +135,10 @@ def setup_locust_scenarios(grizzly: GrizzlyContext) -> Tuple[List[Type[GrizzlyUs
             scenario_type.populate(task)
             tasks.append(task)
 
+            dependencies = getattr(task, '__dependencies__', None)
+            if dependencies is not None:
+                external_dependencies.update(dependencies)
+
         logger.debug(
             f'{user_class_type.__name__}/{scenario_type.__name__}: tasks={len(scenario.tasks)}, weight={user_class_type.weight}, fixed_count={user_class_type.fixed_count}'
         )

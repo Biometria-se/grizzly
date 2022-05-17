@@ -65,7 +65,7 @@ class ClientTask(GrizzlyTask):
         if self.variable is not None and self.variable not in self.grizzly.state.variables:
             raise ValueError(f'{self.__class__.__name__}: variable {self.variable} has not been initialized')
 
-    def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
+    def __call__(self) -> Callable[[GrizzlyScenario], Any]:
         if self.direction == RequestDirection.FROM:
             return self.get
         else:
@@ -94,10 +94,10 @@ class ClientTask(GrizzlyTask):
         finally:
             response_time = int((time() - start_time) * 1000)
             response_length = meta.get('response_length', None) or 0
-            action = self.variable or meta.get('action', '')
+            action = meta.get('action', self.variable)
             parent.user.environment.events.request.fire(
                 request_type=RequestType.CLIENT_TASK(),
-                name=f'{parent.user._scenario.identifier} {self._short_name}{self._direction_arrow[self.direction]}{action}',
+                name=f'{parent.user._scenario.identifier} {self._short_name}{meta.get("direction", self._direction_arrow[self.direction])}{action}',
                 response_time=response_time,
                 response_length=response_length,
                 context=parent.user._context,
@@ -128,9 +128,11 @@ class client:
 
 from .http import HttpClientTask
 from .blobstorage import BlobStorageClientTask
+from .messagequeue import MessageQueueClientTask
 
 
 __all__ = [
     'HttpClientTask',
     'BlobStorageClientTask',
+    'MessageQueueClientTask',
 ]

@@ -1,4 +1,4 @@
-'''This task performs Azure Blob Storage get or put operations to a specified endpoint.
+'''This task performs Azure Blob Storage put operations to a specified endpoint.
 
 This is useful if the scenario is another user type than `BlobStorageUser`, but the scenario still requires an action towards a blob container.
 

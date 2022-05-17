@@ -46,32 +46,34 @@ def test_no_pymqi_dependencies() -> None:
 
 @pytest.mark.skipif(pymqi.__name__ == 'grizzly_extras.dummy_pymqi', reason='needs native IBM MQ libraries')
 class TestAsyncMessageQueueHandler:
-    def test___init__(self) -> None:
+    def test___init__(self, mocker: MockerFixture) -> None:
         handler = AsyncMessageQueueHandler(worker='asdf-asdf-asdf')
         assert handler.worker == 'asdf-asdf-asdf'
 
+        from grizzly_extras.dummy_pymqi import raise_for_error
+
         # pymqi check
         tmp = pymqi.__name__
-        pymqi.__name__ = 'grizzly_extras.dummy_pymqi'
-        with pytest.raises(NotImplementedError):
-            handler = AsyncMessageQueueHandler(worker='asdf-asdf-asdf')
-        pymqi.__name__ = tmp
+        setattr(pymqi, 'raise_for_error', raise_for_error)
+        try:
+            pymqi.__name__ = 'grizzly_extras.dummy_pymqi'
+            with pytest.raises(NotImplementedError):
+                handler = AsyncMessageQueueHandler(worker='asdf-asdf-asdf')
+        finally:
+            delattr(pymqi, 'raise_for_error')
+            pymqi.__name__ = tmp
 
     def test_queue_context(self, mocker: MockerFixture) -> None:
         handler = AsyncMessageQueueHandler(worker='asdf-asdf-asdf')
         handler.qmgr = pymqi.QueueManager(None)
 
-        def mocked_pymqi_close(p: pymqi.Queue, options: Optional[Any] = None) -> None:
-            pass
-
-        mocker.patch.object(
+        pymqi_queue_close_spy = mocker.patch.object(
             pymqi.Queue,
             'close',
-            mocked_pymqi_close,
+            return_value=None,
         )
 
         pymqi_queue_spy = mocker.spy(pymqi.Queue, '__init__')
-        pymqi_queue_close_spy = mocker.spy(pymqi.Queue, 'close')
 
         with handler.queue_context('TEST.QUEUE'):
             assert pymqi_queue_spy.call_count == 1

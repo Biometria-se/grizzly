@@ -293,16 +293,20 @@ def test_step_task_client_get_endpoint(behave_fixture: BehaveFixture) -> None:
     grizzly = cast(GrizzlyContext, behave.grizzly)
 
     with pytest.raises(AssertionError) as ae:
-        step_task_client_get_endpoint(behave, 'mq.example.com', 'test')
-    assert 'could not find scheme in "mq.example.com"' in str(ae)
+        step_task_client_get_endpoint(behave, 'obscure.example.com', 'test')
+    assert 'could not find scheme in "obscure.example.com"' in str(ae)
 
     with pytest.raises(AssertionError) as ae:
-        step_task_client_get_endpoint(behave, 'mq://mq.example.com', 'test')
-    assert 'no client task registered for mq' in str(ae)
+        step_task_client_get_endpoint(behave, 'obscure://obscure.example.com', 'test')
+    assert 'no client task registered for obscure' in str(ae)
 
     with pytest.raises(ValueError) as ve:
         step_task_client_get_endpoint(behave, 'http://www.example.org', 'test')
     assert 'HttpClientTask: variable test has not been initialized' in str(ve)
+
+    with pytest.raises(ValueError) as ve:
+        step_task_client_get_endpoint(behave, 'mq://mq.example.org', 'test')
+    assert 'MessageQueueClientTask: variable test has not been initialized' in str(ve)
 
     grizzly.state.variables['test'] = 'none'
 

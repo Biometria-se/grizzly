@@ -468,8 +468,8 @@ def test_get_task_client_error() -> None:
     assert 'could not find scheme in ""' == str(ae.value)
 
     with pytest.raises(AssertionError) as ae:
-        get_task_client('mq://mq.example.io')
-    assert 'no client task registered for mq' == str(ae.value)
+        get_task_client('obscure://obscure.example.io')
+    assert 'no client task registered for obscure' == str(ae.value)
 
 
 @pytest.mark.parametrize('test_scheme', client.available.keys())

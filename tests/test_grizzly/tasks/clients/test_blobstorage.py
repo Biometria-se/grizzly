@@ -16,7 +16,7 @@ from ....fixtures import BehaveFixture, GrizzlyFixture
 
 
 class TestBlobStorageClientTask:
-    def test___init__(self, mocker: MockerFixture) -> None:
+    def test___init__(self) -> None:
         with pytest.raises(AttributeError) as ae:
             BlobStorageClientTask(
                 RequestDirection.TO,

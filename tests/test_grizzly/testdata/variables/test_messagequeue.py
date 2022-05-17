@@ -83,7 +83,7 @@ class TestAtomicMessageQueueNoPymqi:
         process = subprocess.Popen(
             [
                 sys.executable,
-                '-c'
+                '-c',
                 'import grizzly.testdata.variables.messagequeue as mq; print(f"{mq.pymqi.__name__=}"); mq.AtomicMessageQueue("test", "test");',
             ],
             env=env,

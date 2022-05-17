@@ -32,7 +32,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
 
     def __init__(self, worker: str) -> None:
         if pymqi.__name__ == 'grizzly_extras.dummy_pymqi':
-            raise NotImplementedError(f'{self.__class__.__name__} could not import pymqi, have you installed IBM MQ dependencies?')
+            pymqi.raise_for_error(self.__class__)
 
         super().__init__(worker)
 
