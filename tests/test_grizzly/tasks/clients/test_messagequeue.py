@@ -14,6 +14,11 @@ from zmq.error import Again as ZMQAgain
 from grizzly.tasks.clients import MessageQueueClientTask
 from grizzly.types import RequestDirection
 
+try:
+    import pymqi
+except:
+    from grizzly_extras import dummy_pymqi as pymqi
+
 from ....fixtures import GrizzlyFixture, NoopZmqFixture
 
 
@@ -49,6 +54,7 @@ class TestMessageQueueClientTaskNoPymqi:
         assert 'NotImplementedError: MessageQueueClientTask could not import pymqi, have you installed IBM MQ dependencies?' in output
 
 
+@pytest.mark.skipif(pymqi.__name__ == 'grizzly_extras.dummy_pymqi', reason='needs native IBM MQ libraries')
 class TestMessageQueueClientTask:
     def test___init__(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.tasks.clients.messagequeue')

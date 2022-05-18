@@ -14,6 +14,11 @@ from grizzly.steps import *  # pylint: disable=unused-wildcard-import  # noqa: F
 
 from grizzly_extras.transformer import TransformerContentType
 
+try:
+    import pymqi
+except:
+    from grizzly_extras import dummy_pymqi as pymqi
+
 from ....fixtures import BehaveFixture
 
 
@@ -304,9 +309,10 @@ def test_step_task_client_get_endpoint(behave_fixture: BehaveFixture) -> None:
         step_task_client_get_endpoint(behave, 'http://www.example.org', 'test')
     assert 'HttpClientTask: variable test has not been initialized' in str(ve)
 
-    with pytest.raises(ValueError) as ve:
-        step_task_client_get_endpoint(behave, 'mq://mq.example.org', 'test')
-    assert 'MessageQueueClientTask: variable test has not been initialized' in str(ve)
+    if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
+        with pytest.raises(ValueError) as ve:
+            step_task_client_get_endpoint(behave, 'mq://mq.example.org', 'test')
+        assert 'MessageQueueClientTask: variable test has not been initialized' in str(ve)
 
     grizzly.state.variables['test'] = 'none'
 
