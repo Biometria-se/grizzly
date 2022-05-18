@@ -29,18 +29,27 @@ renderer:
         children:
         - title: Tasks
           children:
-          - title: Request
+          - title: Async Request Group
             contents:
-            - grizzly.tasks.request
-          - title: Wait
+            - grizzly.tasks.async_group
+          - title: Date
             contents:
-            - grizzly.tasks.wait
+            - grizzly.tasks.date
           - title: Log Message
             contents:
             - grizzly.tasks.log_message
+          - title: Request
+            contents:
+            - grizzly.tasks.request
           - title: Transformer
             contents:
             - grizzly.tasks.transformer
+          - title: Until Request
+            contents:
+            - grizzly.tasks.until
+          - title: Wait
+            contents:
+            - grizzly.tasks.wait
           - title: Clients
             children:
               - title: HTTP
