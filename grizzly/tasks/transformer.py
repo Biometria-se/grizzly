@@ -1,5 +1,5 @@
-'''This task transforms a variable value to a document of correct type, so an expression can be used to extract a
-specific value from the document to be used in another variable.
+'''This task transforms a variable value to a document of correct type, so an expression can be used to extract
+values from the document to be used in another variable.
 
 This is especially useful when used in combination with other variables variables containing a lot of information,
 where many parts of a message can be useful to re-use.
@@ -75,11 +75,11 @@ class TransformerTask(GrizzlyTask):
 
             number_of_values = len(values)
 
-            if number_of_values != 1:
+            if number_of_values < 1:
                 parent.logger.error(f'"{self.expression}" returned {number_of_values} matches for: {content_raw}')
                 raise RuntimeError(f'{self.__class__.__name__}: "{self.expression}" returned {number_of_values} matches')
 
-            value = values[0]
+            value = '\n'.join(values)
 
             parent.user._context['variables'][self.variable] = value
 

@@ -155,9 +155,11 @@ class TestTransformerTask:
             })
         )
         task = task_factory()
-        with pytest.raises(RuntimeError) as re:
-            task(scenario)
-        assert 'TransformerTask: "$.result[?value="hello world!"]" returned 3 matches' in str(re)
+        task(scenario)
+
+        assert scenario.user._context['variables']['test_variable'] == '''{"value": "hello world!"}
+{"value": "hello world!"}
+{"value": "hello world!"}'''
 
         task_factory = TransformerTask(
             grizzly,
@@ -185,3 +187,34 @@ class TestTransformerTask:
         task(scenario)
 
         assert scenario.user._context['variables']['test_variable'] == '<actor id="9">Michael Caine</actor>'
+
+        grizzly.state.variables['child_elem'] = 'none'
+
+        task_factory = TransformerTask(
+            grizzly,
+            variable='child_elem',
+            expression='/root/actors/child::*',
+            content_type=TransformerContentType.XML,
+            content='''<root xmlns:foo="http://www.foo.org/" xmlns:bar="http://www.bar.org">
+  <actors>
+    <actor id="7">Christian Bale</actor>
+    <actor id="8">Liam Neeson</actor>
+    <actor id="9">Michael Caine</actor>
+  </actors>
+  <foo:singers>
+    <foo:singer id="10">Tom Waits</foo:singer>
+    <foo:singer id="11">B.B. King</foo:singer>
+    <foo:singer id="12">Ray Charles</foo:singer>
+  </foo:singers>
+</root>''',
+        )
+
+        task = task_factory()
+
+        assert callable(task)
+
+        task(scenario)
+
+        assert scenario.user._context['variables']['child_elem'] == '''<actor id="7">Christian Bale</actor>
+<actor id="8">Liam Neeson</actor>
+<actor id="9">Michael Caine</actor>'''

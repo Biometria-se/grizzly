@@ -230,6 +230,7 @@ class TestXmlTransformer:
     def test_validate(self) -> None:
         assert XmlTransformer.validate('/test/something')
         assert XmlTransformer.validate('//*[@id="root"]/section')
+        assert XmlTransformer.validate('/test/something/child::*')
 
         assert not XmlTransformer.validate('/hello/')
         assert not XmlTransformer.validate('/[id="root"]/section')
@@ -416,6 +417,14 @@ class TestXmlTransformer:
         get_values = XmlTransformer.parser('/root/actors/actor[@id="9"]')
         actual = get_values(input_payload)
         assert actual == ['<actor id="9">Michael Caine</actor>']
+
+        get_values = XmlTransformer.parser('/root/actors/child::*')
+        actual = get_values(input_payload)
+        assert actual == [
+            '<actor id="7">Christian Bale</actor>',
+            '<actor id="8">Liam Neeson</actor>',
+            '<actor id="9">Michael Caine</actor>',
+        ]
 
 
 class TestPlainTransformer:
