@@ -259,7 +259,7 @@ class TestMessageQueueClientTask:
             assert send_json_mock.call_count == 1
             args, _ = send_json_mock.call_args_list[-1]
             assert args[1] == {
-                'action': 'CONNECT',
+                'action': 'CONN',
                 'context': {
                     'url': task_factory.endpoint,
                     'connection': 'mq.example.io(1414)',

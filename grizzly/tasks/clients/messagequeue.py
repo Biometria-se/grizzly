@@ -204,7 +204,7 @@ class MessageQueueClientTask(ClientTask):
 
     def connect(self, meta: Dict[str, Any]) -> None:
         request = {
-            'action': RequestType.CONNECT.name,
+            'action': RequestType.CONNECT(),
             'context': self.context,
         }
 
