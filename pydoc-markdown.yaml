@@ -35,9 +35,9 @@ renderer:
           - title: Wait
             contents:
             - grizzly.tasks.wait
-          - title: Print
+          - title: Log Message
             contents:
-            - grizzly.tasks.print
+            - grizzly.tasks.log_message
           - title: Transformer
             contents:
             - grizzly.tasks.transformer
@@ -49,6 +49,9 @@ renderer:
               - title: Blob Storage
                 contents:
                 - grizzly.tasks.clients.blobstorage
+              - title: Message Queue
+                contents:
+                - grizzly.tasks.clients.messagequeue
         - title: Variables
           children:
           - title: Environment configuration
