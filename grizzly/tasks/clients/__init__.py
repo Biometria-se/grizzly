@@ -52,18 +52,21 @@ class ClientTask(GrizzlyTask):
         self.source = source
         self.destination = destination
 
-        self._short_name = self.__class__.__name__.replace('ClientTask', '')
-
-        self.grizzly = GrizzlyContext()
-
         if self.variable is not None and self.direction != RequestDirection.FROM:
             raise AttributeError(f'{self.__class__.__name__}: variable argument is not applicable for direction {self.direction.name}')
 
         if self.source is not None and self.direction != RequestDirection.TO:
             raise AttributeError(f'{self.__class__.__name__}: source argument is not applicable for direction {self.direction.name}')
 
+        self.grizzly = GrizzlyContext()
+
         if self.variable is not None and self.variable not in self.grizzly.state.variables:
             raise ValueError(f'{self.__class__.__name__}: variable {self.variable} has not been initialized')
+
+        if self.source is None and self.direction == RequestDirection.TO:
+            raise ValueError(f'{self.__class__.__name__}: source must be set for direction {self.direction.name}')
+
+        self._short_name = self.__class__.__name__.replace('ClientTask', '')
 
     def __call__(self) -> Callable[[GrizzlyScenario], Any]:
         if self.direction == RequestDirection.FROM:

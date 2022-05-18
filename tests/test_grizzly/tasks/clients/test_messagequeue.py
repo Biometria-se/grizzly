@@ -3,9 +3,11 @@ import sys
 
 from os import environ
 from typing import Optional, Dict, Any, List
+from pathlib import Path
 
 import pytest
 
+from _pytest.tmpdir import TempPathFactory
 from pytest_mock import MockerFixture
 
 import zmq.green as zmq
@@ -294,7 +296,7 @@ class TestMessageQueueClientTask:
 
             assert send_json_mock.call_count == 2
             assert recv_json_mock.call_count == 3
-            assert meta.get('response_length', None) == len(message)
+            assert meta.get('response_length', None) == 0
             assert meta.get('action', None) == 'topic:INCOMING.MSG'
 
             meta = {}
@@ -305,7 +307,7 @@ class TestMessageQueueClientTask:
 
             assert send_json_mock.call_count == 3
             assert recv_json_mock.call_count == 4
-            assert meta.get('response_length', None) == len(message)
+            assert meta.get('response_length', None) == 0
             assert meta.get('action', None) == 'topic:INCOMING.MSG'
             assert task_factory._worker == 'aaaa-bbbb-cccc-dddd'
         finally:
@@ -363,7 +365,7 @@ class TestMessageQueueClientTask:
             assert kwargs.get('request_type', None) == 'CLTSK'
             assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} MessageQueue<->topic:INCOMING.MSG'
             assert kwargs.get('response_time', None) >= 0.0
-            assert kwargs.get('response_length', None) == len(messages[0])
+            assert kwargs.get('response_length', None) == 0
             assert kwargs.get('context', None) == scenario.user._context
             assert kwargs.get('exception', '') is None
 
@@ -391,7 +393,7 @@ class TestMessageQueueClientTask:
             assert kwargs.get('request_type', None) == 'CLTSK'
             assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} MessageQueue<-topic:INCOMING.MSG'
             assert kwargs.get('response_time', None) >= 0.0
-            assert kwargs.get('response_length', None) == len(messages[0])
+            assert kwargs.get('response_length', None) == 0
             assert kwargs.get('context', None) == scenario.user._context
             exception = kwargs.get('exception', None)
             assert isinstance(exception, RuntimeError)
@@ -411,7 +413,7 @@ class TestMessageQueueClientTask:
             assert kwargs.get('request_type', None) == 'CLTSK'
             assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} MessageQueue<-topic:INCOMING.MSG'
             assert kwargs.get('response_time', None) >= 0.0
-            assert kwargs.get('response_length', None) == len(messages[0])
+            assert kwargs.get('response_length', None) == 0
             assert kwargs.get('context', None) == scenario.user._context
             exception = kwargs.get('exception', None)
             assert isinstance(exception, RuntimeError)
@@ -431,14 +433,14 @@ class TestMessageQueueClientTask:
             assert kwargs.get('request_type', None) == 'CLTSK'
             assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} MessageQueue<-topic:INCOMING.MSG'
             assert kwargs.get('response_time', None) >= 0.0
-            assert kwargs.get('response_length', None) == len(messages[0])
+            assert kwargs.get('response_length', None) == len(messages[0].get('payload', ''))
             assert kwargs.get('context', None) == scenario.user._context
             assert kwargs.get('exception', RuntimeError) is None
         finally:
             if zmq_context is not None:
                 zmq_context.destroy()
 
-    def test_put(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture) -> None:
+    def test_put(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture, tmp_path_factory: TempPathFactory) -> None:
         noop_zmq('grizzly.tasks.clients.messagequeue')
 
         _, _, scenario = grizzly_fixture()
@@ -446,34 +448,106 @@ class TestMessageQueueClientTask:
         assert scenario is not None
 
         fire_spy = mocker.spy(scenario.user.environment.events.request, 'fire')
+        recv_json_mock = noop_zmq.get_mock('recv_json')
+        send_json_mock = noop_zmq.get_mock('send_json')
 
         zmq_context: Optional[zmq.Context] = None
         try:
+            with pytest.raises(ValueError) as ve:
+                task_factory = MessageQueueClientTask(
+                    RequestDirection.TO,
+                    'mqs://mq_username:mq_password@mq.example.io/topic:INCOMING.MSG?QueueManager=QM01&Channel=TCP.IN',
+                    source=None,
+                    destination=None,
+                )
+            assert str(ve.value) == 'MessageQueueClientTask: source must be set for direction TO'
+
+            source = 'tests/source.json'
+
+            with pytest.raises(ValueError) as ve:
+                task_factory = MessageQueueClientTask(
+                    RequestDirection.TO,
+                    'mqs://mq_username:mq_password@mq.example.io/topic:INCOMING.MSG?QueueManager=QM01&Channel=TCP.IN',
+                    source=source,
+                    destination='destination-source.json',
+                )
+            assert str(ve.value) == 'MessageQueueClientTask: destination is not allowed'
+
             task_factory = MessageQueueClientTask(
                 RequestDirection.TO,
-                'mqs://mq_username:mq_password@mq.example.io/topic:INCOMING.MSG?QueueManager=QM01&Channel=TCP.IN',
+                'mqs://mq_username:mq_password@mq.example.io/queue:INCOMING.MSG?QueueManager=QM01&Channel=TCP.IN',
+                source=source,
+                destination=None,
             )
-            task_factory._worker = 'aaaa-bbbb-cccc-dddd'
             zmq_context = task_factory._zmq_context
-
-            task_factory.put(scenario)
-
-            assert fire_spy.call_count == 1
-            _, kwargs = fire_spy.call_args_list[-1]
-            assert kwargs.get('request_type', None) == 'CLTSK'
-            assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} MessageQueue->topic:INCOMING.MSG'
-            assert kwargs.get('response_time', None) >= 0.0
-            assert kwargs.get('response_length', None) == 0
-            assert kwargs.get('context', None) == scenario.user._context
-            exception = kwargs.get('exception', None)
-            assert isinstance(exception, NotImplementedError)
-            assert str(exception) == 'MessageQueueClientTask has not implemented PUT'
+            messages: List[Any] = [{'success': True, 'message': 'hello there', 'worker': 'dddd-eeee-ffff-9999'}, {'success': True, 'payload': source}]
+            recv_json_mock.side_effect = messages
 
             task = task_factory()
 
             task(scenario)
 
+            assert task_factory._worker == 'dddd-eeee-ffff-9999'
+
+            assert recv_json_mock.call_count == 2
+            assert send_json_mock.call_count == 2
+            args, _ = send_json_mock.call_args_list[-1]
+            assert args[1] == {
+                'action': 'PUT',
+                'worker': 'dddd-eeee-ffff-9999',
+                'context': {
+                    'endpoint': 'queue:INCOMING.MSG',
+                },
+                'payload': source,
+            }
+
             assert fire_spy.call_count == 2
+            _, kwargs = fire_spy.call_args_list[0]
+            assert kwargs.get('request_type', None) == 'CLTSK'
+            assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} MessageQueue<->queue:INCOMING.MSG'
+            assert kwargs.get('response_time', None) >= 0.0
+            assert kwargs.get('response_length', None) == 0
+            assert kwargs.get('context', None) == scenario.user._context
+            assert kwargs.get('exception', RuntimeError) is None
+
+            _, kwargs = fire_spy.call_args_list[-1]
+            assert kwargs.get('request_type', None) == 'CLTSK'
+            assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} MessageQueue->queue:INCOMING.MSG'
+            assert kwargs.get('response_time', None) >= 0.0
+            assert kwargs.get('response_length', None) == len(source)
+            assert kwargs.get('context', None) == scenario.user._context
+            assert kwargs.get('exception', RuntimeError) is None
+
+            test_context = Path(task_factory._context_root)
+            (test_context / 'requests' / 'tests').mkdir(exist_ok=True)
+            source_file = test_context / 'requests' / 'tests' / 'source.json'
+            source_file.write_text('''{
+    "hello": "world!"
+}''')
+            recv_json_mock.side_effect = [{'success': True, 'payload': source_file.read_text()}]
+
+            task(scenario)
+
+            assert recv_json_mock.call_count == 3
+            assert send_json_mock.call_count == 3
+            args, _ = send_json_mock.call_args_list[-1]
+            assert args[1] == {
+                'action': 'PUT',
+                'worker': 'dddd-eeee-ffff-9999',
+                'context': {
+                    'endpoint': 'queue:INCOMING.MSG',
+                },
+                'payload': source_file.read_text(),
+            }
+
+            assert fire_spy.call_count == 3
+            _, kwargs = fire_spy.call_args_list[-1]
+            assert kwargs.get('request_type', None) == 'CLTSK'
+            assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} MessageQueue->queue:INCOMING.MSG'
+            assert kwargs.get('response_time', None) >= 0.0
+            assert kwargs.get('response_length', None) == len(source_file.read_text())
+            assert kwargs.get('context', None) == scenario.user._context
+            assert kwargs.get('exception', RuntimeError) is None
         finally:
             if zmq_context is not None:
                 zmq_context.destroy()

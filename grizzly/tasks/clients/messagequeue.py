@@ -38,6 +38,7 @@ Instances of this task is created with the step expression, if endpoint is defin
 '''  # noqa: E501
 from typing import Optional, Dict, Any, List, cast
 from urllib.parse import urlparse, parse_qs, unquote
+from pathlib import Path
 
 import zmq.green as zmq
 
@@ -45,7 +46,7 @@ from zmq.error import Again as ZMQAgain
 from zmq.sugar.constants import NOBLOCK as ZMQ_NOBLOCK, REQ as ZMQ_REQ
 
 from gevent import sleep as gsleep
-from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageResponse
+from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageResponse, AsyncMessageRequest
 
 from . import client, ClientTask
 from ...context import GrizzlyContextScenario
@@ -83,6 +84,9 @@ class MessageQueueClientTask(ClientTask):
     ) -> None:
         if pymqi.__name__ == 'grizzly_extras.dummy_pymqi':
             pymqi.raise_for_error(self.__class__)
+
+        if destination is not None:
+            raise ValueError(f'{self.__class__.__name__}: destination is not allowed')
 
         super().__init__(direction, endpoint, variable=variable, destination=destination, source=source, scenario=scenario)
 
@@ -221,7 +225,7 @@ class MessageQueueClientTask(ClientTask):
             except ZMQAgain:
                 gsleep(0.1)
 
-        meta.update({'response_length': len(response or '')})
+        meta.update({'response_length': len((response or {}).get('payload', None) or '')})
 
         if response is None:
             raise RuntimeError('no response when trying to connect')
@@ -232,22 +236,14 @@ class MessageQueueClientTask(ClientTask):
 
         self._worker = response['worker']
 
-    def get(self, parent: GrizzlyScenario) -> Any:
+    def request(self, parent: GrizzlyScenario, request: AsyncMessageRequest) -> AsyncMessageResponse:
         if self._worker is None:
             with self.action(parent) as meta:
                 self.connect(meta)
 
         with self.action(parent) as meta:
             meta['action'] = self.endpoint_path
-            request = {
-                'action': 'GET',
-                'worker': self._worker,
-                'context': {
-                    'endpoint': self.endpoint_path,
-                },
-                'payload': None,
-            }
-            meta['action'] = self.endpoint_path
+            request['worker'] = self._worker
 
             self._client.send_json(request)
 
@@ -260,7 +256,9 @@ class MessageQueueClientTask(ClientTask):
                 except ZMQAgain:
                     gsleep(0.1)
 
-            meta.update({'response_length': len(response or '')})
+            response_length_source = (response or {}).get('payload', None) or ''
+
+            meta.update({'response_length': len(response_length_source)})
 
             if response is None:
                 raise RuntimeError('no response')
@@ -273,9 +271,38 @@ class MessageQueueClientTask(ClientTask):
             if payload is None or len(payload) < 1:
                 raise RuntimeError('response did not contain any payload')
 
-            parent.user._context['variables'][self.variable] = payload
+            return response
+
+    def get(self, parent: GrizzlyScenario) -> Any:
+        request: AsyncMessageRequest = {
+            'action': 'GET',
+            'worker': None,
+            'context': {
+                'endpoint': self.endpoint_path,
+            },
+            'payload': None,
+
+        }
+        response = self.request(parent, request)
+
+        if response is not None:
+            parent.user._context['variables'][self.variable] = response['payload']
 
     def put(self, parent: GrizzlyScenario) -> Any:
-        with self.action(parent) as meta:
-            meta['action'] = self.endpoint_path
-            return super().put(parent)
+        source = parent.render(cast(str, self.source))
+        source_file = Path(self._context_root) / 'requests' / source
+
+        if source_file.exists():
+            source = parent.render(source_file.read_text())
+
+        request: AsyncMessageRequest = {
+            'action': 'PUT',
+            'worker': None,
+            'context': {
+                'endpoint': self.endpoint_path,
+            },
+            'payload': source,
+
+        }
+
+        self.request(parent, request)

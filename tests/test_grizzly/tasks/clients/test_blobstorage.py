@@ -1,5 +1,6 @@
 from typing import cast
 from os import environ
+from pathlib import Path
 
 import pytest
 
@@ -176,8 +177,8 @@ class TestBlobStorageClientTask:
             assert kwargs.get('context', None) is scenario.user._context
             assert kwargs.get('exception', '') is None
 
-            test_context = tmp_path_factory.mktemp('test_context')
-            (test_context / 'requests').mkdir()
+            test_context = Path(task_factory._context_root)
+            (test_context / 'requests').mkdir(exist_ok=True)
             (test_context / 'requests' / 'source.json').write_text('this is my {{ test }} test!')
 
             environ['GRIZZLY_CONTEXT_ROOT'] = str(test_context)
