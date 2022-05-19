@@ -454,6 +454,42 @@ def test_step_task_client_put_endpoint_file_destination(behave_fixture: BehaveFi
     ])
 
 
+def test_step_task_client_put_endpoint_file(behave_fixture: BehaveFixture) -> None:
+    behave = behave_fixture.context
+    grizzly = cast(GrizzlyContext, behave.grizzly)
+
+    behave.text = 'hello'
+
+    assert len(grizzly.scenario.orphan_templates) == 0
+    assert len(grizzly.scenario.tasks) == 0
+
+    with pytest.raises(AssertionError) as ae:
+        step_task_client_put_endpoint_file(behave, 'file.json', 'http://example.org/put')
+    assert 'step text is not allowed for this step expression' in str(ae.value)
+
+    behave.text = None
+
+    with pytest.raises(AssertionError) as ae:
+        step_task_client_put_endpoint_file(behave, 'file-{{ suffix }}.json', 'http://{{ url }}')
+    assert 'source file cannot be a template' == str(ae.value)
+
+    step_task_client_put_endpoint_file(behave, 'file-test.json', 'http://{{ url }}')
+
+    assert len(grizzly.scenario.tasks) == 1
+    task = grizzly.scenario.tasks[-1]
+
+    assert isinstance(task, HttpClientTask)
+    assert task.source == 'file-test.json'
+    assert task.destination is None
+    assert task.endpoint == '{{ url }}'
+
+    templates = task.get_templates()
+    assert len(templates) == 1
+    assert sorted(templates) == sorted([
+        '{{ url }}',
+    ])
+
+
 def test_step_task_async_group_start(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = behave_fixture.grizzly

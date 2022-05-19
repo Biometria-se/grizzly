@@ -398,6 +398,39 @@ def step_task_client_put_endpoint_file_destination(context: Context, source: str
     ))
 
 
+@then(u'put "{source}" to "{endpoint}"')
+def step_task_client_put_endpoint_file(context: Context, source: str, endpoint: str) -> None:
+    '''Put information to another host or endpoint than the scenario is load testing, source being a file.
+
+    Task implementations are found in `grizzly.task.clients` and each implementation is looked up through the scheme in the
+    specified endpoint. If the endpoint is a variable, one have to manually specify the endpoint scheme even though the
+    resolved variable contains the scheme. In this case the manually specified scheme will be removed to the endpoint actually
+    used by the task.
+
+    ```gherkin
+    Then put "test-file.json" to "bs://my-storage?AccountKey=aaaabbb=&Container=my-container"
+    ```
+
+    Args:
+        source (str): relative path to file in `feature/requests`, supports templating
+        endpoint (str): information about where to get information, see the specific getter task implementations for more information
+    '''
+    assert context.text is None, 'step text is not allowed for this step expression'
+
+    grizzly = cast(GrizzlyContext, context.grizzly)
+
+    task_client = get_task_client(endpoint)
+
+    assert not is_template(source), 'source file cannot be a template'
+
+    grizzly.scenario.tasks.add(task_client(
+        RequestDirection.TO,
+        endpoint,
+        source=source,
+        destination=None,
+    ))
+
+
 @then(u'parse date "{value}" and save in variable "{variable}"')
 def step_task_date(context: Context, value: str, variable: str) -> None:
     '''Parses a datetime string and transforms it according to specified arguments.

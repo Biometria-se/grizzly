@@ -527,6 +527,64 @@ def test_e2e_step_task_client_put_endpoint_file_destination(behave_context_fixtu
     assert rc == 0
 
 
+def test_e2e_step_task_client_put_endpoint_file(behave_context_fixture: BehaveContextFixture) -> None:
+    def validate_client_task(context: Context) -> None:
+        from grizzly.types import RequestDirection
+        from grizzly.tasks.clients import BlobStorageClientTask
+
+        grizzly = cast(GrizzlyContext, context.grizzly)
+
+        tasks = grizzly.scenario.tasks
+        tasks.pop()
+
+        assert len(tasks) == 2
+
+        task = tasks[0]
+        assert isinstance(task, BlobStorageClientTask)
+        assert task.direction == RequestDirection.TO
+        assert task.endpoint == 'bs://my-unsecure-storage?AccountKey=aaaabbb=&Container=my-container'
+        assert task.variable is None
+        assert task.source == 'test-file.json'
+        assert task.destination is None
+        assert task._short_name == 'BlobStorage'
+        assert task.get_templates() == []
+        assert task._endpoints_protocol == 'http'
+        assert task.account_name == 'my-unsecure-storage'
+        assert task.account_key == 'aaaabbb='
+        assert task.container == 'my-container'
+        assert task.connection_string == 'DefaultEndpointsProtocol=http;AccountName=my-unsecure-storage;AccountKey=aaaabbb=;EndpointSuffix=core.windows.net'
+
+        task = tasks[1]
+        assert isinstance(task, BlobStorageClientTask)
+        assert task.direction == RequestDirection.TO
+        assert task.endpoint == 'bss://my-storage?AccountKey=aaaabbb=&Container=my-container'
+        assert task.variable is None
+        assert task.source == 'test-files.json'
+        assert task.destination is None
+        assert task._short_name == 'BlobStorage'
+        assert task.get_templates() == []
+        assert task._endpoints_protocol == 'https'
+        assert task.account_name == 'my-storage'
+        assert task.account_key == 'aaaabbb='
+        assert task.container == 'my-container'
+        assert task.connection_string == 'DefaultEndpointsProtocol=https;AccountName=my-storage;AccountKey=aaaabbb=;EndpointSuffix=core.windows.net'
+
+        raise SystemExit(0)
+
+    behave_context_fixture.add_validator(validate_client_task)
+
+    feature_file = behave_context_fixture.test_steps(
+        scenario=[
+            'Then put "test-file.json" to "bs://my-unsecure-storage?AccountKey=aaaabbb=&Container=my-container"',
+            'Then put "test-files.json" to "bss://my-storage?AccountKey=aaaabbb=&Container=my-container"',
+        ]
+    )
+
+    rc, _ = behave_context_fixture.execute(feature_file)
+
+    assert rc == 0
+
+
 def test_e2e_step_task_date(behave_context_fixture: BehaveContextFixture) -> None:
     def validate_date_task(context: Context) -> None:
         from grizzly.tasks import DateTask
