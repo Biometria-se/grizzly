@@ -26,9 +26,10 @@ from grizzly.locust import (
     setup_locust_scenarios,
     setup_resource_limits,
 )
-from grizzly.types import RequestMethod, RequestType
+from grizzly.types import RequestDirection, RequestMethod, RequestType
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 from grizzly.tasks import GrizzlyTask, LogMessage, RequestTask, WaitTask
+from grizzly.tasks.clients import MessageQueueClientTask
 from grizzly.users import RestApiUser, MessageQueueUser
 from grizzly.users.base import GrizzlyUser
 from grizzly.scenarios import IteratorScenario
@@ -143,7 +144,8 @@ def test_on_local(behave_fixture: BehaveFixture) -> None:
             pass
 
 
-def test_setup_locust_scenarios(behave_fixture: BehaveFixture) -> None:
+def test_setup_locust_scenarios(behave_fixture: BehaveFixture, noop_zmq: NoopZmqFixture) -> None:
+    noop_zmq('grizzly.tasks.clients.messagequeue')
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
 
@@ -206,7 +208,7 @@ def test_setup_locust_scenarios(behave_fixture: BehaveFixture) -> None:
         grizzly.scenario.context['host'] = 'mq://test.example.org?QueueManager=QM01&Channel=TEST.CHANNEL'
         user_classes, tasks, start_messagequeue_daemon = setup_locust_scenarios(grizzly)
 
-        assert start_messagequeue_daemon
+        assert start_messagequeue_daemon == set(['async-messaged'])
         assert len(user_classes) == 1
         assert len(tasks) == 3
 
@@ -220,6 +222,15 @@ def test_setup_locust_scenarios(behave_fixture: BehaveFixture) -> None:
         assert issubclass(type(user_tasks), SequentialTaskSetMeta)
         user_tasks = cast(IteratorScenario, user_tasks)
         assert len(user_tasks.tasks) == 3 + 1  # IteratorScenario has an internal task other than what we've added
+
+        grizzly.scenario.user.class_name = 'RestApiUser'
+        grizzly.scenario.context['host'] = 'https://api.example.io'
+        grizzly.scenario.tasks.add(MessageQueueClientTask(RequestDirection.FROM, 'mqs://username:password@mq.example.io/queue:INCOMING?QueueManager=QM01&Channel=TCP.IN'))
+        user_classes, tasks, start_messagequeue_daemon = setup_locust_scenarios(grizzly)
+
+        assert start_messagequeue_daemon == set(['async-messaged'])
+        assert len(user_classes) == 1
+        assert len(tasks) == 4
 
 
 @pytest.mark.parametrize('user_count, user_distribution', [

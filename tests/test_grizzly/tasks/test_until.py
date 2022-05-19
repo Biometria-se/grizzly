@@ -80,7 +80,7 @@ class TestUntilRequestTask:
         )
 
         time_spy = mocker.patch(
-            'grizzly.tasks.until.time',
+            'grizzly.tasks.until.perf_counter',
             side_effect=[
                 0.0, 153.5,
                 0.0, 12.25,

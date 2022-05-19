@@ -1,4 +1,4 @@
-'''This task performs Azure Blob Storage get or put operations to a specified endpoint.
+'''This task performs Azure Blob Storage put operations to a specified endpoint.
 
 This is useful if the scenario is another user type than `BlobStorageUser`, but the scenario still requires an action towards a blob container.
 
@@ -70,9 +70,6 @@ class BlobStorageClientTask(ClientTask):
 
         self._endpoints_protocol = 'http' if parsed.scheme == 'bs' else 'https'
 
-        if self.source is None and self.direction == RequestDirection.TO:
-            raise ValueError(f'{self.__class__.__name__}: source must be set for direction {self.direction.name}')
-
         if parsed.netloc is None or len(parsed.netloc) < 1:
             raise ValueError(f'{self.__class__.__name__}: could not find account name in {self.endpoint}')
 
@@ -122,4 +119,4 @@ class BlobStorageClientTask(ClientTask):
             with self.service_client.get_blob_client(container=self.container, blob=destination) as blob_client:
                 blob_client.upload_blob(source, content_settings=content_settings)
                 meta['response_length'] = len(source)
-                meta['action'] = f'{self.container}'
+                meta['action'] = self.container

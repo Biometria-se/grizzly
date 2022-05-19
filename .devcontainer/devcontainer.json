@@ -66,24 +66,24 @@
 		"stevejpurves.cucumber",
 		"silverbulleters.gherkin-autocomplete",
 		"matangover.mypy",
-        "redhat.vscode-yaml"
+		"redhat.vscode-yaml"
 	],
 	"mounts": [
 		"source=/etc/timezone,target=/etc/timezone,type=bind",
-		"source=/etc/localtime,target=/etc/localtime,type=bind",
+		"source=/etc/localtime,target=/etc/localtime,type=bind"
 	],
 	"containerEnv": {
-		"PYTHONPATH": "${containerWorkspaceFolder}",
+		"PYTHONPATH": "${containerWorkspaceFolder}"
 	},
 	"remoteEnv": {
 		"GRIZZLY_MOUNT_CONTEXT": "${localWorkspaceFolder}"
 	},
-    "runArgs": [
-        "--add-host=host.docker.internal:host-gateway"
-    ],
+	"runArgs": [
+		"--add-host=host.docker.internal:host-gateway"
+	],
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
-	"postCreateCommand": "ssh-add -l && ${containerWorkspaceFolder}/script/pip-sync.bash dev",
+	"postCreateCommand": "ssh-add -l && ${containerWorkspaceFolder}/script/pip-sync.bash dev && python3 -m pip install -r requirements-script.txt",
 	// Comment out connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
 	"remoteUser": "vscode",
 	"features": {

@@ -153,7 +153,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
 
     def __init__(self, environment: Environment, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
         if pymqi.__name__ == 'grizzly_extras.dummy_pymqi':
-            raise NotImplementedError('MessageQueueUser could not import pymqi, have you installed IBM MQ dependencies?')
+            pymqi.raise_for_error(self.__class__)
 
         super().__init__(environment, *args, **kwargs)
 

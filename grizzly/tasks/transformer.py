@@ -1,5 +1,5 @@
-'''This task transforms a variable value to a document of correct type, so an expression can be used to extract a
-specific value from the document to be used in another variable.
+'''This task transforms a variable value to a document of correct type, so an expression can be used to extract
+values from the document to be used in another variable.
 
 This is especially useful when used in combination with other variables variables containing a lot of information,
 where many parts of a message can be useful to re-use.
@@ -8,6 +8,7 @@ Instances of this task is created with the step expression:
 
 * [`step_task_transform`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_transform)
 '''
+from time import perf_counter
 from typing import TYPE_CHECKING, List, Callable, Any, Type, Optional
 
 from grizzly_extras.transformer import Transformer, transformer, TransformerContentType, TransformerError
@@ -63,24 +64,42 @@ class TransformerTask(GrizzlyTask):
 
     def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
         def task(parent: 'GrizzlyScenario') -> Any:
-            content_raw = parent.render(self.content)
+            start = perf_counter()
+            response_length = 0
 
             try:
-                content = self._transformer.transform(content_raw)
-            except TransformerError as e:
-                parent.logger.error(f'failed to transform as {self.content_type.name}: {content_raw}')
-                raise TransformerLocustError(f'{self.__class__.__name__}: failed to transform {self.content_type.name}') from e
+                content_raw = parent.render(self.content)
+                response_length = len(content_raw)
 
-            values = self._parser(content)
+                try:
+                    content = self._transformer.transform(content_raw)
+                except TransformerError as e:
+                    parent.logger.error(f'failed to transform as {self.content_type.name}: {content_raw}')
+                    raise TransformerLocustError(f'failed to transform {self.content_type.name}') from e
 
-            number_of_values = len(values)
+                values = self._parser(content)
 
-            if number_of_values != 1:
-                parent.logger.error(f'"{self.expression}" returned {number_of_values} matches for: {content_raw}')
-                raise RuntimeError(f'{self.__class__.__name__}: "{self.expression}" returned {number_of_values} matches')
+                number_of_values = len(values)
 
-            value = values[0]
+                if number_of_values < 1:
+                    parent.logger.error(f'"{self.expression}" returned {number_of_values} matches for: {content_raw}')
+                    raise RuntimeError(f'"{self.expression}" returned {number_of_values} matches')
 
-            parent.user._context['variables'][self.variable] = value
+                value = '\n'.join(values)
+
+                parent.user._context['variables'][self.variable] = value
+            except Exception as exception:
+                response_time = int((perf_counter() - start) * 1000)
+                parent.user.environment.events.request.fire(
+                    request_type='TRNSF',
+                    name=f'{self.scenario.identifier} Transformer=>{self.variable}',
+                    response_time=response_time,
+                    response_length=response_length,
+                    context=parent.user._context,
+                    exception=exception,
+                )
+
+                if exception is not None and self.scenario.failure_exception is not None:
+                    raise self.scenario.failure_exception()
 
         return task

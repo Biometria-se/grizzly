@@ -29,18 +29,27 @@ renderer:
         children:
         - title: Tasks
           children:
+          - title: Async Request Group
+            contents:
+            - grizzly.tasks.async_group
+          - title: Date
+            contents:
+            - grizzly.tasks.date
+          - title: Log Message
+            contents:
+            - grizzly.tasks.log_message
           - title: Request
             contents:
             - grizzly.tasks.request
-          - title: Wait
-            contents:
-            - grizzly.tasks.wait
-          - title: Print
-            contents:
-            - grizzly.tasks.print
           - title: Transformer
             contents:
             - grizzly.tasks.transformer
+          - title: Until Request
+            contents:
+            - grizzly.tasks.until
+          - title: Wait
+            contents:
+            - grizzly.tasks.wait
           - title: Clients
             children:
               - title: HTTP
@@ -49,6 +58,9 @@ renderer:
               - title: Blob Storage
                 contents:
                 - grizzly.tasks.clients.blobstorage
+              - title: Message Queue
+                contents:
+                - grizzly.tasks.clients.messagequeue
         - title: Variables
           children:
           - title: Environment configuration

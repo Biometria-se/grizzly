@@ -16,7 +16,7 @@ Instances of this task is created with step expression:
 * [`step_task_request_text_with_name_to_endpoint_until`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_request_text_with_name_to_endpoint_until)
 '''
 from typing import TYPE_CHECKING, Callable, Any, Type, List, Optional, cast
-from time import perf_counter as time
+from time import perf_counter
 
 from jinja2 import Template
 from gevent import sleep as gsleep
@@ -100,7 +100,7 @@ class UntilRequestTask(GrizzlyTask):
             exception: Optional[Exception] = None
             response_length = 0
 
-            start = time()
+            start = perf_counter()
 
             try:
                 while retry < self.retries:
@@ -135,7 +135,7 @@ class UntilRequestTask(GrizzlyTask):
                 if exception is None:
                     exception = e
             finally:
-                response_time = int((time() - start) * 1000)
+                response_time = int((perf_counter() - start) * 1000)
 
                 if number_of_matches == self.expected_matches:
                     exception = None

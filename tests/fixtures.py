@@ -725,6 +725,13 @@ class BehaveContextFixture:
             env=self._env,
         )
 
+        try:
+            assert rc == 0
+        except AssertionError:
+            print(''.join(output))
+
+            raise
+
         return self
 
     def __exit__(

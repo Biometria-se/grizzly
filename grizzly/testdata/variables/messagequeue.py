@@ -170,7 +170,7 @@ class AtomicMessageQueue(AtomicVariable[str]):
 
     def __init__(self, variable: str, value: str):
         if pymqi.__name__ == 'grizzly_extras.dummy_pymqi':
-            raise NotImplementedError('AtomicMessageQueue could not import pymqi, have you installed IBM MQ dependencies?')
+            pymqi.raise_for_error(self.__class__)
 
         # silence uamqp loggers
         for uamqp_logger_name in ['uamqp', 'uamqp.c_uamqp']:
