@@ -1,3 +1,4 @@
+# pylint: disable=line-too-long
 '''This task parses a string representation of a date/time and allows transformation of it, such as specifying an offset or changing the format,
 and saves the result as a date/time string in an variable.
 
@@ -9,10 +10,13 @@ Instances of this task is created with the step expression:
 
 ## Arguments
 
-* `format` _str_ - a python [`strftime` format string](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes), this argument is required
+* `format` _str_ - a python [`strftime` format string](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes) or `ISO-8601:[DateTime|Time][:ms]`, this argument is required
+
 * `timezone` _str_ (optional) - a valid [timezone name](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
+
 * `offset` _str_ (optional) - a time span string describing the offset, Y = years, M = months, D = days, h = hours, m = minutes, s = seconds, e.g. `1Y-2M10D`
-'''
+'''  # noqa: E501
+# pylint: enable=line-too-long
 from typing import TYPE_CHECKING, Callable, Dict, Any, Optional, cast
 from datetime import datetime
 
@@ -90,6 +94,21 @@ class DateTask(GrizzlyTask):
 
             date_format = cast(str, self.arguments.get('format', '%Y-%m-%d %H:%M:%S'))
 
-            parent.user._context['variables'][self.variable] = date_value.astimezone(timezone).strftime(date_format)
+            if date_format.startswith('ISO-8601'):
+                _, date_format = date_format.split(':', 1)
+                iso_date_value = date_value.astimezone(timezone)
+                if not date_format.endswith(':ms'):
+                    iso_date_value = iso_date_value.replace(microsecond=0)
+
+                iso_value = iso_date_value.isoformat()
+
+                if date_format.startswith('Time'):
+                    _, iso_value = iso_value.split('T', 1)
+
+                value = iso_value
+            else:
+                value = date_value.astimezone(timezone).strftime(date_format)
+
+            parent.user._context['variables'][self.variable] = value
 
         return task
