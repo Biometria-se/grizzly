@@ -3,6 +3,9 @@ from datetime import datetime
 
 import pytest
 
+from pytest_mock import MockerFixture
+from dateutil.parser import parse as dateparser
+
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import DateTask
 
@@ -32,7 +35,7 @@ class TestDateTask:
             '{{ timezone }}',
         ])
 
-    def test___call__(self, grizzly_fixture: GrizzlyFixture) -> None:
+    def test___call__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         behave = grizzly_fixture.behave
         grizzly = cast(GrizzlyContext, behave.grizzly)
         grizzly.state.variables.update({'date_variable': 'none'})
@@ -111,3 +114,42 @@ class TestDateTask:
         task(scenario)
 
         assert scenario.user._context['variables']['date_variable'] == '2022'
+
+        expected_datetime = dateparser('2022-05-19 07:20:00.123456+0200')
+
+        datetime_mock = mocker.patch(
+            'grizzly.tasks.date.datetime',
+            side_effect=lambda *args, **kwargs: datetime(*args, **kwargs)
+        )
+        datetime_mock.now.return_value = expected_datetime
+
+        task_factory = DateTask('date_variable', '{{ datetime.now() }} | format="ISO-8601:DateTime"')
+        task = task_factory()
+
+        task(scenario)
+
+        assert scenario.user._context['variables']['date_variable'] == '2022-05-19T07:20:00+02:00'
+
+        task_factory = DateTask('date_variable', '{{ datetime.now() }} | format="ISO-8601:DateTime:ms"')
+        task = task_factory()
+
+        task(scenario)
+
+        assert scenario.user._context['variables']['date_variable'] == '2022-05-19T07:20:00.123456+02:00'
+
+        task_factory = DateTask('date_variable', '{{ datetime.now() }} | format="ISO-8601:Time"')
+        task = task_factory()
+
+        task(scenario)
+
+        expected = expected_datetime.replace(microsecond=0).isoformat()
+        _, expected = expected.split('T', 1)
+
+        assert scenario.user._context['variables']['date_variable'] == '07:20:00+02:00'
+
+        task_factory = DateTask('date_variable', '{{ datetime.now() }} | format="ISO-8601:Time:ms"')
+        task = task_factory()
+
+        task(scenario)
+
+        assert scenario.user._context['variables']['date_variable'] == '07:20:00.123456+02:00'
