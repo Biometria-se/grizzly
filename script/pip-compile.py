@@ -143,16 +143,23 @@ CMD ["/pip-compile.py", "--compile"]
     return rc
 
 
-def run_container(python_version: str) -> int:
-    return subprocess.check_call([
-        'docker',
-        'container',
-        'run',
-        '--rm',
-        '-v', f"{os.getenv('GRIZZLY_MOUNT_CONTEXT')}:/mnt",
-        '--name', IMAGE_NAME,
-        f'{IMAGE_NAME}:{python_version}',
-    ], shell=False, close_fds=True)
+def run_container(python_version: str) -> Tuple[int, Optional[str]]:
+    output: Optional[str] = None
+    try:
+        output = subprocess.check_output([
+            'docker',
+            'container',
+            'run',
+            '--rm',
+            '-v', f"{os.getenv('GRIZZLY_MOUNT_CONTEXT')}:/mnt",
+            '--name', IMAGE_NAME,
+            f'{IMAGE_NAME}:{python_version}',
+        ], shell=False, close_fds=True)
+        rc = 0
+    except subprocess.CalledProcessError as e:
+        rc = e.returncode
+
+    return rc, output
 
 
 def has_git_dependencies(where_am_i: str) -> bool:
@@ -266,7 +273,10 @@ def main() -> int:
         rc = build_container_image(python_version)
 
         if rc == 0:
-            rc = run_container(python_version)
+            rc, output = run_container(python_version)
+
+            if rc != 0:
+                print(output)
 
     return rc
 
