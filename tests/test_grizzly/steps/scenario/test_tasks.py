@@ -363,31 +363,31 @@ def test_step_task_client_get_endpoint(behave_fixture: BehaveFixture) -> None:
     grizzly = cast(GrizzlyContext, behave.grizzly)
 
     with pytest.raises(AssertionError) as ae:
-        step_task_client_get_endpoint(behave, 'obscure.example.com', 'test')
+        step_task_client_get_endpoint(behave, 'obscure.example.com', 'step-name', 'test')
     assert 'could not find scheme in "obscure.example.com"' in str(ae)
 
     with pytest.raises(AssertionError) as ae:
-        step_task_client_get_endpoint(behave, 'obscure://obscure.example.com', 'test')
+        step_task_client_get_endpoint(behave, 'obscure://obscure.example.com', 'step-name', 'test')
     assert 'no client task registered for obscure' in str(ae)
 
     with pytest.raises(ValueError) as ve:
-        step_task_client_get_endpoint(behave, 'http://www.example.org', 'test')
+        step_task_client_get_endpoint(behave, 'http://www.example.org', 'step-name', 'test')
     assert 'HttpClientTask: variable test has not been initialized' in str(ve)
 
     if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
         with pytest.raises(ValueError) as ve:
-            step_task_client_get_endpoint(behave, 'mq://mq.example.org', 'test')
+            step_task_client_get_endpoint(behave, 'mq://mq.example.org', 'step-name', 'test')
         assert 'MessageQueueClientTask: variable test has not been initialized' in str(ve)
 
     grizzly.state.variables['test'] = 'none'
 
     assert len(grizzly.scenario.tasks) == 0
-    step_task_client_get_endpoint(behave, 'http://www.example.org', 'test')
+    step_task_client_get_endpoint(behave, 'http://www.example.org', 'step-name', 'test')
     assert len(grizzly.scenario.tasks) == 1
     assert isinstance(grizzly.scenario.tasks[-1], HttpClientTask)
 
     grizzly.state.variables['endpoint_url'] = 'https://example.org'
-    step_task_client_get_endpoint(behave, 'https://{{ endpoint_url }}', 'test')
+    step_task_client_get_endpoint(behave, 'https://{{ endpoint_url }}', 'step-name', 'test')
 
     task = grizzly.scenario.tasks[-1]
     assert task.endpoint == '{{ endpoint_url }}'
@@ -427,16 +427,16 @@ def test_step_task_client_put_endpoint_file_destination(behave_fixture: BehaveFi
     assert len(grizzly.scenario.tasks) == 0
 
     with pytest.raises(AssertionError) as ae:
-        step_task_client_put_endpoint_file_destination(behave, 'file.json', 'http://example.org/put', 'uploaded-file.json')
+        step_task_client_put_endpoint_file_destination(behave, 'file.json', 'http://example.org/put', 'step-name', 'uploaded-file.json')
     assert 'step text is not allowed for this step expression' in str(ae.value)
 
     behave.text = None
 
     with pytest.raises(AssertionError) as ae:
-        step_task_client_put_endpoint_file_destination(behave, 'file-{{ suffix }}.json', 'http://{{ url }}', 'uploaded-file-{{ suffix }}.json')
+        step_task_client_put_endpoint_file_destination(behave, 'file-{{ suffix }}.json', 'http://{{ url }}', 'step-name', 'uploaded-file-{{ suffix }}.json')
     assert 'source file cannot be a template' == str(ae.value)
 
-    step_task_client_put_endpoint_file_destination(behave, 'file-test.json', 'http://{{ url }}', 'uploaded-file-{{ suffix }}.json')
+    step_task_client_put_endpoint_file_destination(behave, 'file-test.json', 'http://{{ url }}', 'step-name', 'uploaded-file-{{ suffix }}.json')
 
     assert len(grizzly.scenario.tasks) == 1
     task = grizzly.scenario.tasks[-1]
@@ -464,16 +464,16 @@ def test_step_task_client_put_endpoint_file(behave_fixture: BehaveFixture) -> No
     assert len(grizzly.scenario.tasks) == 0
 
     with pytest.raises(AssertionError) as ae:
-        step_task_client_put_endpoint_file(behave, 'file.json', 'http://example.org/put')
+        step_task_client_put_endpoint_file(behave, 'file.json', 'http://example.org/put', 'step-name')
     assert 'step text is not allowed for this step expression' in str(ae.value)
 
     behave.text = None
 
     with pytest.raises(AssertionError) as ae:
-        step_task_client_put_endpoint_file(behave, 'file-{{ suffix }}.json', 'http://{{ url }}')
+        step_task_client_put_endpoint_file(behave, 'file-{{ suffix }}.json', 'http://{{ url }}', 'step-name')
     assert 'source file cannot be a template' == str(ae.value)
 
-    step_task_client_put_endpoint_file(behave, 'file-test.json', 'http://{{ url }}')
+    step_task_client_put_endpoint_file(behave, 'file-test.json', 'http://{{ url }}', 'step-name')
 
     assert len(grizzly.scenario.tasks) == 1
     task = grizzly.scenario.tasks[-1]

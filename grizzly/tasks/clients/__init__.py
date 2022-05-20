@@ -10,7 +10,7 @@ from ...types import RequestType, RequestDirection
 from .. import GrizzlyTask, template
 
 
-@template('endpoint', 'destination', 'source')
+@template('endpoint', 'destination', 'source', 'name')
 class ClientTask(GrizzlyTask):
     _schemes: List[str]
     _short_name: str
@@ -103,7 +103,8 @@ class ClientTask(GrizzlyTask):
                 action = meta.get('action', self.variable)
                 name = f'{parent.user._scenario.identifier} {self._short_name}{meta.get("direction", self._direction_arrow[self.direction])}{action}'
             else:
-                name = f'{parent.user._scenario.identifier} {self.name}'
+                rendered_name = parent.render(self.name)
+                name = f'{parent.user._scenario.identifier} {rendered_name}'
             response_time = int((time() - start_time) * 1000)
             response_length = meta.get('response_length', None) or 0
 
