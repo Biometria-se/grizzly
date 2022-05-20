@@ -24,7 +24,8 @@ class TestRequestDirection:
 class TestRequestType:
     def test___str__(self) -> None:
         for custom_type in RequestType:
-            assert str(custom_type) == custom_type.value
+            assert str(custom_type) == custom_type.value[0]
+            assert custom_type.weight >= 0
 
     @pytest.mark.parametrize('input,expected', [
         (RequestMethod.GET, 'GET',),
@@ -36,11 +37,11 @@ class TestRequestType:
         assert RequestType.from_method(input) == expected
 
     @pytest.mark.parametrize('input,expected', [
-        (e.name, e.value,) for e in RequestType
+        (e.name, e.value[0],) for e in RequestType
     ] + [
         (e.name, e.name,) for e in RequestMethod if getattr(RequestType, e.name, None) is None
     ] + [
-        (e.value, e.value,) for e in RequestType
+        (e.value[0], e.value[0],) for e in RequestType
     ])
     def test_from_string(self, input: str, expected: str) -> None:
         assert RequestType.from_string(input) == expected
@@ -51,7 +52,18 @@ class TestRequestType:
 
     @pytest.mark.parametrize('input', [e for e in RequestType])
     def test___call___and___str__(self, input: RequestType) -> None:
-        assert input() == input.value == str(input)
+        assert input() == input.value[0] == str(input)
+
+    def test_weight(self) -> None:
+        assert RequestType.SCENARIO.weight == 0
+        assert RequestType.TESTDATA.weight > RequestType.SCENARIO.weight
+        assert RequestType.UNTIL.weight > RequestType.TESTDATA.weight
+        assert RequestType.VARIABLE.weight == RequestType.UNTIL.weight
+        assert RequestType.ASYNC_GROUP.weight == RequestType.VARIABLE.weight
+        assert RequestType.CLIENT_TASK.weight == RequestType.ASYNC_GROUP.weight
+        assert RequestType.HELLO.weight == RequestType.CLIENT_TASK.weight
+        assert RequestType.RECEIVE.weight == RequestType.HELLO.weight
+        assert RequestType.CONNECT.weight == RequestType.RECEIVE.weight
 
 
 class TestRequestMethod:
