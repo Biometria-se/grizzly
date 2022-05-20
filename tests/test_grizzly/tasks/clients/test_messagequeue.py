@@ -76,6 +76,28 @@ class TestMessageQueueClientTask:
             assert task_factory._zmq_url == 'tcp://127.0.0.1:5554'
             assert task_factory._worker is None
             assert task_factory.endpoint == 'mqs://localhost:1'
+            assert task_factory.name is None
+            assert task_factory.variable is None
+            assert task_factory.destination is None
+            assert task_factory.source is None
+            assert not hasattr(task_factory, 'scenario')
+        finally:
+            if zmq_context is not None:
+                zmq_context.destroy()
+                zmq_context = None
+
+        try:
+            task_factory = MessageQueueClientTask(RequestDirection.FROM, 'mqs://localhost:1', 'messagequeue-request')
+            zmq_context = task_factory._zmq_context
+
+            assert create_context_mocked.call_count == 2
+            assert create_client_mocked.call_count == 2
+
+            assert isinstance(task_factory._zmq_context, zmq.Context)
+            assert task_factory._zmq_url == 'tcp://127.0.0.1:5554'
+            assert task_factory._worker is None
+            assert task_factory.endpoint == 'mqs://localhost:1'
+            assert task_factory.name == 'messagequeue-request'
             assert task_factory.variable is None
             assert task_factory.destination is None
             assert task_factory.source is None
@@ -360,16 +382,8 @@ class TestMessageQueueClientTask:
             }
             assert recv_json_mock.call_count == 3
 
-            assert fire_spy.call_count == 2
-            _, kwargs = fire_spy.call_args_list[0]  # connect
-            assert kwargs.get('request_type', None) == 'CLTSK'
-            assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} MessageQueue<->topic:INCOMING.MSG'
-            assert kwargs.get('response_time', None) >= 0.0
-            assert kwargs.get('response_length', None) == 0
-            assert kwargs.get('context', None) == scenario.user._context
-            assert kwargs.get('exception', '') is None
-
-            _, kwargs = fire_spy.call_args_list[1]  # get
+            assert fire_spy.call_count == 1
+            _, kwargs = fire_spy.call_args_list[-1]  # get
             assert kwargs.get('request_type', None) == 'CLTSK'
             assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} MessageQueue<-topic:INCOMING.MSG'
             assert kwargs.get('response_time', None) >= 0.0
@@ -388,7 +402,7 @@ class TestMessageQueueClientTask:
             assert send_json_mock.call_count == 3
             assert recv_json_mock.call_count == 4
 
-            assert fire_spy.call_count == 3
+            assert fire_spy.call_count == 2
             _, kwargs = fire_spy.call_args_list[-1]
             assert kwargs.get('request_type', None) == 'CLTSK'
             assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} MessageQueue<-topic:INCOMING.MSG'
@@ -408,7 +422,7 @@ class TestMessageQueueClientTask:
             assert send_json_mock.call_count == 4
             assert recv_json_mock.call_count == 5
 
-            assert fire_spy.call_count == 4
+            assert fire_spy.call_count == 3
             _, kwargs = fire_spy.call_args_list[-1]
             assert kwargs.get('request_type', None) == 'CLTSK'
             assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} MessageQueue<-topic:INCOMING.MSG'
@@ -421,6 +435,7 @@ class TestMessageQueueClientTask:
 
             messages = [{'success': True, 'payload': '{"hello": "world", "foo": "bar"}'}]
             recv_json_mock.side_effect = messages
+            task_factory.name = 'mq-get-example'
 
             task(scenario)
 
@@ -428,10 +443,10 @@ class TestMessageQueueClientTask:
             assert send_json_mock.call_count == 5
             assert recv_json_mock.call_count == 6
 
-            assert fire_spy.call_count == 5
+            assert fire_spy.call_count == 4
             _, kwargs = fire_spy.call_args_list[-1]
             assert kwargs.get('request_type', None) == 'CLTSK'
-            assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} MessageQueue<-topic:INCOMING.MSG'
+            assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} mq-get-example'
             assert kwargs.get('response_time', None) >= 0.0
             assert kwargs.get('response_length', None) == len(messages[0].get('payload', ''))
             assert kwargs.get('context', None) == scenario.user._context
@@ -501,15 +516,7 @@ class TestMessageQueueClientTask:
                 'payload': source,
             }
 
-            assert fire_spy.call_count == 2
-            _, kwargs = fire_spy.call_args_list[0]
-            assert kwargs.get('request_type', None) == 'CLTSK'
-            assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} MessageQueue<->queue:INCOMING.MSG'
-            assert kwargs.get('response_time', None) >= 0.0
-            assert kwargs.get('response_length', None) == 0
-            assert kwargs.get('context', None) == scenario.user._context
-            assert kwargs.get('exception', RuntimeError) is None
-
+            assert fire_spy.call_count == 1
             _, kwargs = fire_spy.call_args_list[-1]
             assert kwargs.get('request_type', None) == 'CLTSK'
             assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} MessageQueue->queue:INCOMING.MSG'
@@ -525,6 +532,7 @@ class TestMessageQueueClientTask:
     "hello": "world!"
 }''')
             recv_json_mock.side_effect = [{'success': True, 'payload': source_file.read_text()}]
+            task_factory.name = 'mq-example-put'
 
             task(scenario)
 
@@ -540,10 +548,10 @@ class TestMessageQueueClientTask:
                 'payload': source_file.read_text(),
             }
 
-            assert fire_spy.call_count == 3
+            assert fire_spy.call_count == 2
             _, kwargs = fire_spy.call_args_list[-1]
             assert kwargs.get('request_type', None) == 'CLTSK'
-            assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} MessageQueue->queue:INCOMING.MSG'
+            assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} mq-example-put'
             assert kwargs.get('response_time', None) >= 0.0
             assert kwargs.get('response_length', None) == len(source_file.read_text())
             assert kwargs.get('context', None) == scenario.user._context

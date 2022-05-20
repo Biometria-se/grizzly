@@ -435,6 +435,7 @@ def test_e2e_step_task_client_get_endpoint(behave_context_fixture: BehaveContext
         assert isinstance(task, HttpClientTask)
         assert task.direction == RequestDirection.FROM
         assert task.endpoint == 'https://www.example.org/example.json'
+        assert task.name == 'https-get'
         assert task.variable == 'example_openapi', f'{task.variable} != example_openapi'
         assert task.source is None
         assert task.destination is None
@@ -445,6 +446,7 @@ def test_e2e_step_task_client_get_endpoint(behave_context_fixture: BehaveContext
         assert isinstance(task, HttpClientTask)
         assert task.direction == RequestDirection.FROM
         assert task.endpoint == '{{ endpoint }}'
+        assert task.name == 'http-get'
         assert task.variable == 'endpoint_result'
         assert task.source is None
         assert task.destination is None
@@ -459,8 +461,8 @@ def test_e2e_step_task_client_get_endpoint(behave_context_fixture: BehaveContext
         scenario=[
             'And value for variable "example_openapi" is "None"',
             'And value for variable "endpoint_result" is "None"',
-            'Then get "https://www.example.org/example.json" and save response in "example_openapi"',
-            'Then get "http://{{ endpoint }}" and save response in "endpoint_result"',
+            'Then get "https://www.example.org/example.json" with name "https-get" and save response in "example_openapi"',
+            'Then get "http://{{ endpoint }}" with name "http-get" and save response in "endpoint_result"',
         ]
     )
 
@@ -485,6 +487,7 @@ def test_e2e_step_task_client_put_endpoint_file_destination(behave_context_fixtu
         assert isinstance(task, BlobStorageClientTask)
         assert task.direction == RequestDirection.TO
         assert task.endpoint == 'bs://my-unsecure-storage?AccountKey=aaaabbb=&Container=my-container'
+        assert task.name == 'bs-put'
         assert task.variable is None
         assert task.source == 'test-file.json'
         assert task.destination == 'uploaded-test-file.json'
@@ -500,6 +503,7 @@ def test_e2e_step_task_client_put_endpoint_file_destination(behave_context_fixtu
         assert isinstance(task, BlobStorageClientTask)
         assert task.direction == RequestDirection.TO
         assert task.endpoint == 'bss://my-storage?AccountKey=aaaabbb=&Container=my-container'
+        assert task.name == 'bss-put'
         assert task.variable is None
         assert task.source == 'test-files.json'
         assert task.destination == 'uploaded-test-files.json'
@@ -517,8 +521,8 @@ def test_e2e_step_task_client_put_endpoint_file_destination(behave_context_fixtu
 
     feature_file = behave_context_fixture.test_steps(
         scenario=[
-            'Then put "test-file.json" to "bs://my-unsecure-storage?AccountKey=aaaabbb=&Container=my-container" as "uploaded-test-file.json"',
-            'Then put "test-files.json" to "bss://my-storage?AccountKey=aaaabbb=&Container=my-container" as "uploaded-test-files.json"',
+            'Then put "test-file.json" to "bs://my-unsecure-storage?AccountKey=aaaabbb=&Container=my-container" with name "bs-put" as "uploaded-test-file.json"',
+            'Then put "test-files.json" to "bss://my-storage?AccountKey=aaaabbb=&Container=my-container" with name "bss-put" as "uploaded-test-files.json"',
         ]
     )
 
@@ -543,6 +547,7 @@ def test_e2e_step_task_client_put_endpoint_file(behave_context_fixture: BehaveCo
         assert isinstance(task, BlobStorageClientTask)
         assert task.direction == RequestDirection.TO
         assert task.endpoint == 'bs://my-unsecure-storage?AccountKey=aaaabbb=&Container=my-container'
+        assert task.name == 'bs-put'
         assert task.variable is None
         assert task.source == 'test-file.json'
         assert task.destination is None
@@ -558,6 +563,7 @@ def test_e2e_step_task_client_put_endpoint_file(behave_context_fixture: BehaveCo
         assert isinstance(task, BlobStorageClientTask)
         assert task.direction == RequestDirection.TO
         assert task.endpoint == 'bss://my-storage?AccountKey=aaaabbb=&Container=my-container'
+        assert task.name == 'bss-put'
         assert task.variable is None
         assert task.source == 'test-files.json'
         assert task.destination is None
@@ -575,8 +581,8 @@ def test_e2e_step_task_client_put_endpoint_file(behave_context_fixture: BehaveCo
 
     feature_file = behave_context_fixture.test_steps(
         scenario=[
-            'Then put "test-file.json" to "bs://my-unsecure-storage?AccountKey=aaaabbb=&Container=my-container"',
-            'Then put "test-files.json" to "bss://my-storage?AccountKey=aaaabbb=&Container=my-container"',
+            'Then put "test-file.json" to "bs://my-unsecure-storage?AccountKey=aaaabbb=&Container=my-container" with name "bs-put"',
+            'Then put "test-files.json" to "bss://my-storage?AccountKey=aaaabbb=&Container=my-container" with name "bss-put"',
         ]
     )
 

@@ -8,8 +8,6 @@ Instances of this task is created with the step expression, if endpoint is defin
 '''
 from typing import Any
 
-from jinja2 import Template
-
 from . import client, ClientTask
 from ...scenarios import GrizzlyScenario
 
@@ -20,7 +18,7 @@ import requests
 class HttpClientTask(ClientTask):
     def get(self, parent: GrizzlyScenario) -> Any:
         with self.action(parent) as meta:
-            url = Template(self.endpoint).render(**parent.user._context['variables'])
+            url = parent.render(self.endpoint)
 
             response = requests.get(url)
             value = response.text
