@@ -64,6 +64,7 @@ class TestBlobStorageClientTask:
 
         assert isinstance(task.service_client, BlobServiceClient)
         assert task.endpoint == 'bs://my-storage?AccountKey=aaaabbb=&Container=my-container'
+        assert task.name is None
         assert task.source == ''
         assert task.variable is None
         assert task.destination is None
@@ -76,11 +77,13 @@ class TestBlobStorageClientTask:
         task = BlobStorageClientTask(
             RequestDirection.TO,
             'bss://my-storage?AccountKey=aaaabbb=&Container=my-container',
+            'upload-empty-file',
             source='',
         )
 
         assert isinstance(task.service_client, BlobServiceClient)
         assert task.endpoint == 'bss://my-storage?AccountKey=aaaabbb=&Container=my-container'
+        assert task.name == 'upload-empty-file'
         assert task.source == ''
         assert task.variable is None
         assert task.destination is None
@@ -187,6 +190,7 @@ class TestBlobStorageClientTask:
             task_factory = BlobStorageClientTask(
                 RequestDirection.TO,
                 'bss://$conf::storage.account?AccountKey=$conf::storage.account_key&Container=$conf::storage.container',
+                'test-bss-request',
                 source='{{ source }}',
                 destination='{{ destination }}',
             )
@@ -211,7 +215,7 @@ class TestBlobStorageClientTask:
             assert request_fire_spy.call_count == 2
             _, kwargs = request_fire_spy.call_args_list[-1]
             assert kwargs.get('request_type', None) == 'CLTSK'
-            assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} BlobStorage->my-container'
+            assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} test-bss-request'
             assert kwargs.get('response_time', None) >= 0.0
             assert kwargs.get('response_length') == len('this is my hello world test!')
             assert kwargs.get('context', None) is scenario.user._context
@@ -233,7 +237,7 @@ class TestBlobStorageClientTask:
             assert request_fire_spy.call_count == 3
             _, kwargs = request_fire_spy.call_args_list[-1]
             assert kwargs.get('request_type', None) == 'CLTSK'
-            assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} BlobStorage->my-container'
+            assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} test-bss-request'
             assert kwargs.get('response_time', None) >= 0.0
             assert kwargs.get('response_length') == len('this is my hello world test!')
             assert kwargs.get('context', None) is scenario.user._context

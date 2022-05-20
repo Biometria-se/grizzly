@@ -76,7 +76,9 @@ class MessageQueueClientTask(ClientTask):
     def __init__(
         self,
         direction: RequestDirection,
-        endpoint: str, /,
+        endpoint: str,
+        name: Optional[str] = None,
+        /,
         variable: Optional[str] = None,
         source: Optional[str] = None,
         destination: Optional[str] = None,
@@ -88,7 +90,7 @@ class MessageQueueClientTask(ClientTask):
         if destination is not None:
             raise ValueError(f'{self.__class__.__name__}: destination is not allowed')
 
-        super().__init__(direction, endpoint, variable=variable, destination=destination, source=source, scenario=scenario)
+        super().__init__(direction, endpoint, name, variable=variable, destination=destination, source=source, scenario=scenario)
 
         self.create_context()
 
@@ -238,7 +240,7 @@ class MessageQueueClientTask(ClientTask):
 
     def request(self, parent: GrizzlyScenario, request: AsyncMessageRequest) -> AsyncMessageResponse:
         if self._worker is None:
-            with self.action(parent) as meta:
+            with self.action(parent, supress=True) as meta:
                 self.connect(meta)
 
         with self.action(parent) as meta:

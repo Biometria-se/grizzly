@@ -38,7 +38,7 @@ class TestHttpClientTask:
 
         requests_get_spy = mocker.patch(
             'grizzly.tasks.clients.http.requests.get',
-            side_effect=[response, RuntimeError, RuntimeError, RuntimeError]
+            side_effect=[response, RuntimeError, RuntimeError, RuntimeError, RuntimeError]
         )
 
         grizzly.state.variables.update({'test': 'none'})
@@ -115,7 +115,28 @@ class TestHttpClientTask:
         assert kwargs.get('context', None) is scenario.user._context
         assert isinstance(kwargs.get('exception', None), RuntimeError)
 
-    def test_put(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
+        scenario.user._scenario.failure_exception = None
+
+        task_factory = HttpClientTask(RequestDirection.FROM, 'http://example.org', 'http-get', variable='test')
+        task = task_factory()
+
+        task(scenario)
+
+        assert scenario.user._context['variables'].get('test', '') is None  # not set
+        assert requests_get_spy.call_count == 5
+        args, _ = requests_get_spy.call_args_list[-1]
+        assert args[0] == 'http://example.org'
+
+        assert request_fire_spy.call_count == 5
+        _, kwargs = request_fire_spy.call_args_list[-1]
+        assert kwargs.get('request_type', None) == 'CLTSK'
+        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} http-get'
+        assert kwargs.get('response_time', None) >= 0.0
+        assert kwargs.get('response_length') == 0
+        assert kwargs.get('context', None) is scenario.user._context
+        assert isinstance(kwargs.get('exception', None), RuntimeError)
+
+    def test_put(self, grizzly_fixture: GrizzlyFixture) -> None:
         task_factory = HttpClientTask(RequestDirection.TO, 'http://put.example.org', source='')
         task = task_factory()
 

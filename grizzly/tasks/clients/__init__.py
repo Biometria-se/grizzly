@@ -22,6 +22,7 @@ class ClientTask(GrizzlyTask):
     grizzly: GrizzlyContext
     direction: RequestDirection
     endpoint: str
+    name: Optional[str]
     variable: Optional[str]
     source: Optional[str]
     destination: Optional[str]
@@ -29,7 +30,9 @@ class ClientTask(GrizzlyTask):
     def __init__(
         self,
         direction: RequestDirection,
-        endpoint: str, /,
+        endpoint: str,
+        name: Optional[str] = None,
+        /,
         variable: Optional[str] = None,
         source: Optional[str] = None,
         destination: Optional[str] = None,
@@ -48,6 +51,7 @@ class ClientTask(GrizzlyTask):
 
         self.direction = direction
         self.endpoint = endpoint
+        self.name = name
         self.variable = variable
         self.source = source
         self.destination = destination
@@ -83,7 +87,7 @@ class ClientTask(GrizzlyTask):
         raise NotImplementedError(f'{self.__class__.__name__} has not implemented PUT')
 
     @contextmanager
-    def action(self, parent: GrizzlyScenario) -> Generator[Dict[str, Any], None, None]:
+    def action(self, parent: GrizzlyScenario, supress: bool = False) -> Generator[Dict[str, Any], None, None]:
         exception: Optional[Exception] = None
         response_length = 0
         start_time = time()
@@ -95,17 +99,23 @@ class ClientTask(GrizzlyTask):
         except Exception as e:
             exception = e
         finally:
+            if self.name is None:
+                action = meta.get('action', self.variable)
+                name = f'{parent.user._scenario.identifier} {self._short_name}{meta.get("direction", self._direction_arrow[self.direction])}{action}'
+            else:
+                name = f'{parent.user._scenario.identifier} {self.name}'
             response_time = int((time() - start_time) * 1000)
             response_length = meta.get('response_length', None) or 0
-            action = meta.get('action', self.variable)
-            parent.user.environment.events.request.fire(
-                request_type=RequestType.CLIENT_TASK(),
-                name=f'{parent.user._scenario.identifier} {self._short_name}{meta.get("direction", self._direction_arrow[self.direction])}{action}',
-                response_time=response_time,
-                response_length=response_length,
-                context=parent.user._context,
-                exception=exception,
-            )
+
+            if not supress or exception is not None:
+                parent.user.environment.events.request.fire(
+                    request_type=RequestType.CLIENT_TASK(),
+                    name=name,
+                    response_time=response_time,
+                    response_length=response_length,
+                    context=parent.user._context,
+                    exception=exception,
+                )
 
         if exception is not None and parent.user._scenario.failure_exception is not None:
             raise parent.user._scenario.failure_exception()

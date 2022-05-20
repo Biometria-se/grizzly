@@ -335,8 +335,8 @@ def step_task_transform(context: Context, content: str, content_type: Transforme
     ))
 
 
-@then(u'get "{endpoint}" and save response in "{variable}"')
-def step_task_client_get_endpoint(context: Context, endpoint: str, variable: str) -> None:
+@then(u'get "{endpoint}" with name "{name}" and save response in "{variable}"')
+def step_task_client_get_endpoint(context: Context, endpoint: str, name: str, variable: str) -> None:
     '''Get information from another host or endpoint than the scenario is load testing and save the response in a variable.
 
     Task implementations are found in `grizzly.task.clients` and each implementation is looked up through the scheme in the
@@ -345,12 +345,13 @@ def step_task_client_get_endpoint(context: Context, endpoint: str, variable: str
     used by the task.
 
     ```gherkin
-    Then get "https://www.example.org/example.json" and save response in "example_openapi"
-    Then get "http://{{ endpoint }}" and save response in "endpoint_result"
+    Then get "https://www.example.org/example.json" with name "example-1" and save response in "example_openapi"
+    Then get "http://{{ endpoint }}" with name "example-2" and save response in "endpoint_result"
     ```
 
     Args:
         endpoint (str): information about where to get information, see the specific getter task implementations for more information
+        name (str): name of the request, used in request statistics
         variable (str): name of, initialized, variable where response will be saved in
     '''
     grizzly = cast(GrizzlyContext, context.grizzly)
@@ -360,12 +361,13 @@ def step_task_client_get_endpoint(context: Context, endpoint: str, variable: str
     grizzly.scenario.tasks.add(task_client(
         RequestDirection.FROM,
         endpoint,
+        name,
         variable=variable,
     ))
 
 
-@then(u'put "{source}" to "{endpoint}" as "{destination}"')
-def step_task_client_put_endpoint_file_destination(context: Context, source: str, endpoint: str, destination: str) -> None:
+@then(u'put "{source}" to "{endpoint}" with name "{name}" as "{destination}"')
+def step_task_client_put_endpoint_file_destination(context: Context, source: str, endpoint: str, name: str, destination: str) -> None:
     '''Put information to another host or endpoint than the scenario is load testing, source being a file.
 
     Task implementations are found in `grizzly.task.clients` and each implementation is looked up through the scheme in the
@@ -374,12 +376,13 @@ def step_task_client_put_endpoint_file_destination(context: Context, source: str
     used by the task.
 
     ```gherkin
-    Then put "test-file.json" to "bs://my-storage?AccountKey=aaaabbb=&Container=my-container" as "uploaded-test-file.json"
+    Then put "test-file.json" to "bs://my-storage?AccountKey=aaaabbb=&Container=my-container" with name "upload-file" as "uploaded-test-file.json"
     ```
 
     Args:
         source (str): relative path to file in `feature/requests`, supports templating
         endpoint (str): information about where to get information, see the specific getter task implementations for more information
+        name (str): name of the request, used in request statistics
         destination (str): name of source on the destination
     '''
     assert context.text is None, 'step text is not allowed for this step expression'
@@ -393,13 +396,14 @@ def step_task_client_put_endpoint_file_destination(context: Context, source: str
     grizzly.scenario.tasks.add(task_client(
         RequestDirection.TO,
         endpoint,
+        name,
         source=source,
         destination=destination,
     ))
 
 
-@then(u'put "{source}" to "{endpoint}"')
-def step_task_client_put_endpoint_file(context: Context, source: str, endpoint: str) -> None:
+@then(u'put "{source}" to "{endpoint}" with name "{name}"')
+def step_task_client_put_endpoint_file(context: Context, source: str, endpoint: str, name: str) -> None:
     '''Put information to another host or endpoint than the scenario is load testing, source being a file.
 
     Task implementations are found in `grizzly.task.clients` and each implementation is looked up through the scheme in the
@@ -408,12 +412,13 @@ def step_task_client_put_endpoint_file(context: Context, source: str, endpoint: 
     used by the task.
 
     ```gherkin
-    Then put "test-file.json" to "bs://my-storage?AccountKey=aaaabbb=&Container=my-container"
+    Then put "test-file.json" to "bs://my-storage?AccountKey=aaaabbb=&Container=my-container" with name "upload-file"
     ```
 
     Args:
         source (str): relative path to file in `feature/requests`, supports templating
         endpoint (str): information about where to get information, see the specific getter task implementations for more information
+        name (str): name of the request, used in request statistics
     '''
     assert context.text is None, 'step text is not allowed for this step expression'
 
@@ -426,6 +431,7 @@ def step_task_client_put_endpoint_file(context: Context, source: str, endpoint: 
     grizzly.scenario.tasks.add(task_client(
         RequestDirection.TO,
         endpoint,
+        name,
         source=source,
         destination=None,
     ))
