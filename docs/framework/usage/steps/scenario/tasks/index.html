@@ -9,7 +9,7 @@
       
       
       <link rel="icon" href="../../../../../assets/favicon.ico">
-      <meta name="generator" content="mkdocs-1.3.0, mkdocs-material-8.2.9">
+      <meta name="generator" content="mkdocs-1.3.0, mkdocs-material-8.2.15">
     
     
       
@@ -17,10 +17,10 @@
       
     
     
-      <link rel="stylesheet" href="../../../../../assets/stylesheets/main.120efc48.min.css">
+      <link rel="stylesheet" href="../../../../../assets/stylesheets/main.c382b1dc.min.css">
       
         
-        <link rel="stylesheet" href="../../../../../assets/stylesheets/palette.9647289d.min.css">
+        <link rel="stylesheet" href="../../../../../assets/stylesheets/palette.cc9b2e1e.min.css">
         
           
           
@@ -318,36 +318,50 @@
   
   
     <li class="md-nav__item">
+      <a href="../../../tasks/async-request-group/" class="md-nav__link">
+        Async Request Group
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tasks/date/" class="md-nav__link">
+        Date
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tasks/log-message/" class="md-nav__link">
+        Log Message
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../../../tasks/request/" class="md-nav__link">
         Request
-      </a>
-    </li>
-  
-
-            
-          
-            
-              
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../../tasks/wait/" class="md-nav__link">
-        Wait
-      </a>
-    </li>
-  
-
-            
-          
-            
-              
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../../tasks/print/" class="md-nav__link">
-        Print
       </a>
     </li>
   
@@ -373,22 +387,50 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../../tasks/until-request/" class="md-nav__link">
+        Until Request
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tasks/wait/" class="md-nav__link">
+        Wait
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
     
     <li class="md-nav__item md-nav__item--nested">
       
       
-        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_3_1_1_5" type="checkbox" id="__nav_3_1_1_5" >
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_3_1_1_8" type="checkbox" id="__nav_3_1_1_8" >
       
       
       
       
-        <label class="md-nav__link" for="__nav_3_1_1_5">
+        <label class="md-nav__link" for="__nav_3_1_1_8">
           Clients
           <span class="md-nav__icon md-icon"></span>
         </label>
       
       <nav class="md-nav" aria-label="Clients" data-md-level="4">
-        <label class="md-nav__title" for="__nav_3_1_1_5">
+        <label class="md-nav__title" for="__nav_3_1_1_8">
           <span class="md-nav__icon md-icon"></span>
           Clients
         </label>
@@ -416,6 +458,20 @@
     <li class="md-nav__item">
       <a href="../../../tasks/clients/blob-storage/" class="md-nav__link">
         Blob Storage
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tasks/clients/message-queue/" class="md-nav__link">
+        Message Queue
       </a>
     </li>
   
@@ -897,6 +953,13 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#step_task_client_put_endpoint_file" class="md-nav__link">
+    step_task_client_put_endpoint_file
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#step_task_date" class="md-nav__link">
     step_task_date
   </a>
@@ -1287,6 +1350,13 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#step_task_client_put_endpoint_file" class="md-nav__link">
+    step_task_client_put_endpoint_file
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#step_task_date" class="md-nav__link">
     step_task_date
   </a>
@@ -1382,7 +1452,7 @@ If <code>method</code> in the expression is <code>post</code>, <code>pust</code>
 <span class="s">        &quot;test&quot;: &quot;hello world&quot;</span>
 <span class="s">    }</span>
 <span class="s">    </span><span class="k">&quot;&quot;&quot;</span><span class="nf"></span>
-<span class="k">Then </span><span class="nf">put request with name &quot;</span><span class="s">test-post</span><span class="nf">&quot; to endpoint &quot;</span><span class="s">/api/test</span><span class="nf">&quot;</span>
+<span class="k">Then </span><span class="nf">put request with name &quot;</span><span class="s">test-put</span><span class="nf">&quot; to endpoint &quot;</span><span class="s">/api/test</span><span class="nf">&quot;</span>
 <span class="nf">    </span><span class="k">&quot;&quot;&quot;</span><span class="s"></span>
 <span class="s">    {</span>
 <span class="s">        &quot;test&quot;: &quot;hello world&quot;</span>
@@ -1525,10 +1595,10 @@ This step is useful if <code>method</code> and <code>endpoint</code> are the sam
 <p>Create an explicit wait (task) in the scenario. The scenario will wait the time specified (seconds) on top
 of what has been defined in <code>step_setup_wait_time</code>.</p>
 <p>Above combinations of steps will result in a wait time between 3 and 4 seconds for the first request that is defined after the
-<code>And wait for...</code>-step.</p>
+<code>Then wait for...</code>-step.</p>
 <div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">wait time inbetween requests is random between &quot;</span><span class="s">1.5</span><span class="nf">&quot; and &quot;</span><span class="s">2.5</span><span class="nf">&quot; seconds</span>
 <span class="nf">...</span>
-<span class="k">And </span><span class="nf">wait for &quot;</span><span class="s">1.5</span><span class="nf">&quot; seconds</span>
+<span class="k">Then </span><span class="nf">wait for &quot;</span><span class="s">1.5</span><span class="nf">&quot; seconds</span>
 </code></pre></div>
 <p><strong>Arguments</strong>:</p>
 <ul>
@@ -1611,6 +1681,24 @@ used by the task.</p>
 <li><code>endpoint</code> <em>str</em> - information about where to get information, see the specific getter task implementations for more information</li>
 <li><code>destination</code> <em>str</em> - name of source on the destination</li>
 </ul>
+<p><a id="grizzly.steps.scenario.tasks.step_task_client_put_endpoint_file"></a></p>
+<h4 id="step_task_client_put_endpoint_file">step_task_client_put_endpoint_file</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@then</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;put &quot;</span><span class="si">{source}</span><span class="s1">&quot; to &quot;</span><span class="si">{endpoint}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">step_task_client_put_endpoint_file</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                                       <span class="n">endpoint</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Put information to another host or endpoint than the scenario is load testing, source being a file.</p>
+<p>Task implementations are found in <code>grizzly.task.clients</code> and each implementation is looked up through the scheme in the
+specified endpoint. If the endpoint is a variable, one have to manually specify the endpoint scheme even though the
+resolved variable contains the scheme. In this case the manually specified scheme will be removed to the endpoint actually
+used by the task.</p>
+<div class="highlight"><pre><span></span><code><span class="k">Then </span><span class="nf">put &quot;</span><span class="s">test-file.json</span><span class="nf">&quot; to &quot;</span><span class="s">bs://my-storage?AccountKey=aaaabbb=&amp;Container=my-container</span><span class="nf">&quot;</span>
+</code></pre></div>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>source</code> <em>str</em> - relative path to file in <code>feature/requests</code>, supports templating</li>
+<li><code>endpoint</code> <em>str</em> - information about where to get information, see the specific getter task implementations for more information</li>
+</ul>
 <p><a id="grizzly.steps.scenario.tasks.step_task_date"></a></p>
 <h4 id="step_task_date">step_task_date</h4>
 <div class="highlight"><pre><span></span><code><span class="nd">@then</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;parse date &quot;</span><span class="si">{value}</span><span class="s1">&quot; and save in variable &quot;</span><span class="si">{variable}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
@@ -1655,8 +1743,14 @@ used by the task.</p>
 request group, until the group is closed.</p>
 <p>In this example, the <code>put</code> and <code>get</code> requests will run asynchronously, and both requests will block following requests until both are finished.</p>
 <div class="highlight"><pre><span></span><code><span class="k">Given </span><span class="nf">an async request group with name &quot;</span><span class="s">async-group-1</span><span class="nf">&quot;</span>
-<span class="k">Then </span><span class="nf">put &quot;</span><span class="s">test-file.json</span><span class="nf">&quot; to &quot;</span><span class="s">bs://my-storage?AccountKey=aaaabbb=&amp;Container=my-container</span><span class="nf">&quot; as &quot;</span><span class="s">uploaded-test-file.json</span><span class="nf">&quot;</span>
-<span class="k">Then </span><span class="nf">get &quot;</span><span class="s">https://www.example.org/example.json</span><span class="nf">&quot; and save response in &quot;</span><span class="s">example_openapi</span><span class="nf">&quot;</span>
+<span class="k">Then </span><span class="nf">post request with name &quot;</span><span class="s">test-post-2</span><span class="nf">&quot; to endpoint &quot;</span><span class="s">/api/test</span><span class="nf">&quot;</span>
+<span class="nf">    </span><span class="k">&quot;&quot;&quot;</span><span class="s"></span>
+<span class="s">    {</span>
+<span class="s">        &quot;value&quot;: &quot;i have good news!&quot;</span>
+<span class="s">    }</span>
+<span class="s">    </span><span class="k">&quot;&quot;&quot;</span><span class="nf"></span>
+
+<span class="k">Then </span><span class="nf">get request with name &quot;</span><span class="s">test-get-1</span><span class="nf">&quot; from endpoint &quot;</span><span class="s">/api/test</span><span class="nf">&quot;</span>
 <span class="k">And </span><span class="nf">close async request group</span>
 </code></pre></div>
 <p><strong>Arguments</strong>:</p>
@@ -1671,8 +1765,14 @@ request group, until the group is closed.</p>
 <p>Closes an open async request group, to end the "boxing" of requests that should run asynchronously.</p>
 <p>Must be preceeded by the expression `Given an async request group with name..." expression, and one or more requests expressions.</p>
 <div class="highlight"><pre><span></span><code><span class="k">Given </span><span class="nf">an async request group with name &quot;</span><span class="s">async-group-1</span><span class="nf">&quot;</span>
-<span class="k">Then </span><span class="nf">put &quot;</span><span class="s">test-file.json</span><span class="nf">&quot; to &quot;</span><span class="s">bs://my-storage?AccountKey=aaaabbb=&amp;Container=my-container</span><span class="nf">&quot; as &quot;</span><span class="s">uploaded-test-file.json</span><span class="nf">&quot;</span>
-<span class="k">Then </span><span class="nf">get &quot;</span><span class="s">https://www.example.org/example.json</span><span class="nf">&quot; and save response in &quot;</span><span class="s">example_openapi</span><span class="nf">&quot;</span>
+<span class="k">Then </span><span class="nf">post request with name &quot;</span><span class="s">test-post-2</span><span class="nf">&quot; to endpoint &quot;</span><span class="s">/api/test</span><span class="nf">&quot;</span>
+<span class="nf">    </span><span class="k">&quot;&quot;&quot;</span><span class="s"></span>
+<span class="s">    {</span>
+<span class="s">        &quot;value&quot;: &quot;i have good news!&quot;</span>
+<span class="s">    }</span>
+<span class="s">    </span><span class="k">&quot;&quot;&quot;</span><span class="nf"></span>
+
+<span class="k">Then </span><span class="nf">get request with name &quot;</span><span class="s">test-get-1</span><span class="nf">&quot; from endpoint &quot;</span><span class="s">/api/test</span><span class="nf">&quot;</span>
 <span class="k">And </span><span class="nf">close async request group</span>
 </code></pre></div>
 
@@ -1743,7 +1843,7 @@ request group, until the group is closed.</p>
     <script id="__config" type="application/json">{"base": "../../../../..", "features": ["navigation.sections", "content.tabs.link"], "search": "../../../../../assets/javascripts/workers/search.2a1c317c.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.config.lang": "en", "search.config.pipeline": "trimmer, stopWordFilter", "search.config.separator": "[\\s\\-]+", "search.placeholder": "Search", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version.title": "Select version"}}</script>
     
     
-      <script src="../../../../../assets/javascripts/bundle.6e54b5cd.min.js"></script>
+      <script src="../../../../../assets/javascripts/bundle.a6c66575.min.js"></script>
       
     
   </body>
