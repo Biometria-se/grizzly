@@ -2,12 +2,13 @@ import sys
 import logging
 import subprocess
 
-from typing import Optional, Callable, List, Tuple, Set, Dict, Type, cast
+from typing import NoReturn, Optional, Callable, List, Tuple, Set, Dict, Type, Union, cast
 from os import environ
 from signal import SIGTERM
 from socket import error as SocketError
 from datetime import datetime
 from math import ceil
+from operator import itemgetter
 
 import gevent
 
@@ -16,10 +17,13 @@ from behave.model import Status
 from locust.runners import MasterRunner, WorkerRunner, Runner
 from locust.env import Environment
 from locust.stats import (
+    RequestStats,
+    CONSOLE_STATS_INTERVAL_SEC,
+    STATS_NAME_WIDTH,
+    # STATS_TYPE_WIDTH,
     print_error_report,
     print_percentile_stats,
     print_stats,
-    stats_printer,
     stats_history,
 )
 from locust.log import setup_logging
@@ -43,6 +47,8 @@ unhandled_greenlet_exception = False
 
 
 logger = logging.getLogger('grizzly.locust')
+
+stats_logger = logging.getLogger('locust.stats_logger')
 
 
 def greenlet_exception_logger(logger: logging.Logger, level: int = logging.CRITICAL) -> Callable[[gevent.Greenlet], None]:
@@ -432,7 +438,7 @@ def run(context: Context) -> int:
             logger.info('starting locust via grizzly')
             runner.start(grizzly.setup.user_count, grizzly.setup.spawn_rate)
 
-            stats_printer_greenlet = gevent.spawn(stats_printer(environment.stats))
+            stats_printer_greenlet = gevent.spawn(grizzly_stats_printer(environment.stats))
             stats_printer_greenlet.link_exception(greenlet_exception_handler)
 
         def spawn_run_time_limit_greenlet() -> None:
@@ -480,7 +486,7 @@ def run(context: Context) -> int:
                 if watch_running_users_greenlet is not None:
                     watch_running_users_greenlet.kill(block=False)
 
-                print_stats(runner.stats, current=False)
+                grizzly_print_stats(runner.stats, current=False)
                 print_percentile_stats(runner.stats)
                 print_error_report(runner.stats)
                 print_scenario_summary(grizzly)
@@ -534,3 +540,69 @@ def run(context: Context) -> int:
             return code
     finally:
         shutdown_external_processes(external_processes)
+
+
+def grizzly_stats_printer(stats: RequestStats) -> Callable[[], NoReturn]:
+    def _grizzly_stats_printer() -> NoReturn:
+        while True:
+            grizzly_print_stats(stats)
+            gevent.sleep(CONSOLE_STATS_INTERVAL_SEC)
+
+    return _grizzly_stats_printer
+
+
+def grizzly_print_stats(stats: RequestStats, current: bool = True, grizzly_style: bool = True) -> None:
+    print(stats_logger.name)
+    if not grizzly_style:
+        print_stats(stats, current=current)
+        return
+
+    # @TODO: change when upgrading to locust 2.9.x
+    # name_column_width = (STATS_NAME_WIDTH - STATS_TYPE_WIDTH) + 4  # saved characters by compacting other columns
+    # console_logger.info(
+    #    ("%-" + str(STATS_TYPE_WIDTH) + "s %-" + str(name_column_width) + "s %7s %12s |%7s %7s %7s%7s | %7s %11s")
+    #    % ("Type", "Name", "# reqs", "# fails", "Avg", "Min", "Max", "Med", "req/s", "failures/s")
+    # )
+    # separator = f'{"-" * STATS_TYPE_WIDTH}|{"-" * (name_column_width)}|{"-" * 7}|{"-" * 13}|{"-" * 7}|{"-" * 7}|{"-" * 7}|{"-" * 7}|{"-" * 8}|{"-" * 11}'
+    # console_logger.info(separator)
+
+    stats_logger.info(
+        (" %-" + str(STATS_NAME_WIDTH) + "s %7s %12s  | %7s %7s %7s %7s  | %7s %7s")
+        % ("Name", "# reqs", "# fails", "Avg", "Min", "Max", "Median", "req/s", "failures/s")
+    )
+    stats_logger.info("-" * (80 + STATS_NAME_WIDTH))
+
+    keys: List[Union[Tuple[str, str], Tuple[str, str, int]]] = sorted(stats.entries.keys())
+
+    previous_ident: Optional[str] = None
+    scenario_keys: List[Tuple[str, str]] = []
+    scenario_sorted_keys: List[Tuple[str, str, int]] = []
+    for index, key in enumerate(keys):
+        ident, _ = key[0].split(' ', 1)
+        is_last = index == len(keys) - 1
+        if (previous_ident is not None and previous_ident != ident) or is_last:
+            if is_last:
+                scenario_keys.append(key[:2])
+
+            scenario_sorted_keys += sorted([
+                (name, method, RequestType.get_method_weight(method), ) for name, method in scenario_keys
+            ], key=itemgetter(2, 0))
+            scenario_keys.clear()
+
+        previous_ident = ident
+        scenario_keys.append(key[:2])
+
+    keys = cast(List[Union[Tuple[str, str], Tuple[str, str, int]]], scenario_sorted_keys)
+
+    for key in keys:
+        r = stats.entries[key[:2]]
+        stats_logger.info(r.to_string(current=current))
+
+    stats_logger.info("-" * (80 + STATS_NAME_WIDTH))
+    stats_logger.info(stats.total.to_string(current=current))
+    stats_logger.info("")
+
+    # @TODO: change when upgrading to locust 2.9.x
+    # console_logger.info(separator)
+    # console_logger.info(stats.total.to_string(current=current))
+    # console_logger.info("")

@@ -89,38 +89,61 @@ class RequestMethod(Enum, AdvancedEnum, settings=NoAlias):
         return self.value
 
 
-class RequestType(Enum, AdvancedEnum, settings=NoAlias):
-    SCENARIO = 'SCEN'
-    TESTDATA = 'TSTD'
-    UNTIL = 'UNTL'
-    VARIABLE = 'VAR'
-    ASYNC_GROUP = 'ASYNC'
-    CLIENT_TASK = 'CLTSK'
-    HELLO = 'HELO'
-    RECEIVE = 'RECV'
-    CONNECT = 'CONN'
+class RequestType(Enum, AdvancedEnum, init='alias _weight'):
+    SCENARIO = ('SCEN', 0,)
+    TESTDATA = ('TSTD', 1,)
+    UNTIL = ('UNTL', None,)
+    VARIABLE = ('VAR', None,)
+    ASYNC_GROUP = ('ASYNC', None,)
+    CLIENT_TASK = ('CLTSK', None,)
+    HELLO = ('HELO', None,)
+    RECEIVE = ('RECV', None,)
+    CONNECT = ('CONN', None,)
 
     def __call__(self) -> str:
         return str(self)
 
     def __str__(self) -> str:
-        return self.value
+        return cast(str, getattr(self, 'alias'))
+
+    @property
+    def weight(self) -> int:
+        weight = getattr(self, '_weight', None)
+        return cast(int, weight) if weight is not None else 10
+
+    @classmethod
+    def get_method_weight(cls, method: str) -> int:
+        try:
+            request_type = cls.from_alias(method)
+            weight = request_type.weight
+        except AttributeError:
+            weight = 10
+
+        return weight
 
     @classmethod
     def from_method(cls, request_type: RequestMethod) -> str:
         method_name = cast(Optional[RequestType], getattr(cls, request_type.name, None))
         if method_name is not None:
-            return method_name.value
+            return cast(str, method_name.alias)
 
         return request_type.name
+
+    @classmethod
+    def from_alias(cls, alias: str) -> 'RequestType':
+        for request_type in cls:
+            if request_type.alias == alias:
+                return request_type
+
+        raise AttributeError(f'no request type with alias {alias}')
 
     @classmethod
     def from_string(cls, key: str) -> str:
         attribute = cast(Optional[RequestType], getattr(cls, key, None))
         if attribute is not None:
-            return attribute.value
+            return cast(str, attribute.alias)
 
-        if key in [e.value for e in cls]:
+        if key in [e.alias for e in cls]:
             return key
 
         attribute = cast(Optional[RequestMethod], getattr(RequestMethod, key, None))
