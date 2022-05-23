@@ -112,12 +112,30 @@ class RequestType(Enum, AdvancedEnum, init='alias _weight'):
         return cast(int, weight) if weight is not None else 10
 
     @classmethod
+    def get_method_weight(cls, method: str) -> int:
+        try:
+            request_type = cls.from_alias(method)
+            weight = request_type.weight
+        except AttributeError:
+            weight = 10
+
+        return weight
+
+    @classmethod
     def from_method(cls, request_type: RequestMethod) -> str:
         method_name = cast(Optional[RequestType], getattr(cls, request_type.name, None))
         if method_name is not None:
             return cast(str, method_name.alias)
 
         return request_type.name
+
+    @classmethod
+    def from_alias(cls, alias: str) -> 'RequestType':
+        for request_type in cls:
+            if request_type.alias == alias:
+                return request_type
+
+        raise AttributeError(f'no request type with alias {alias}')
 
     @classmethod
     def from_string(cls, key: str) -> str:

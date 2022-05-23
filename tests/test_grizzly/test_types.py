@@ -65,6 +65,30 @@ class TestRequestType:
         assert RequestType.RECEIVE.weight == RequestType.HELLO.weight
         assert RequestType.CONNECT.weight == RequestType.RECEIVE.weight
 
+    def test_get_method_weight(self) -> None:
+        assert RequestType.get_method_weight('ASDF') == RequestType.get_method_weight('GET')
+        assert RequestType.get_method_weight('GET') == RequestType.get_method_weight('POST')
+        assert RequestType.get_method_weight('SCEN') == 0
+        assert RequestType.get_method_weight('TSTD') == 1
+
+        for request_type in RequestType:
+            if request_type.weight < 10:
+                continue
+
+            assert RequestType.get_method_weight(request_type.alias) == 10
+
+        for request_method in RequestMethod:
+            assert RequestType.get_method_weight(request_method.name) == 10
+
+    @pytest.mark.parametrize('alias,request_type', [(request_type.alias, request_type,) for request_type in RequestType])
+    def test_from_alias(self, alias: str, request_type: RequestType) -> None:
+        assert RequestType.from_alias(alias) == request_type
+
+    def test_from_alias_non_existing(self) -> None:
+        with pytest.raises(AttributeError) as ae:
+            RequestType.from_alias('ASDF')
+        assert str(ae.value) == 'no request type with alias ASDF'
+
 
 class TestRequestMethod:
     def test_from_string(self) -> None:
