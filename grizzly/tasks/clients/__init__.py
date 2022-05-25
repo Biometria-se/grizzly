@@ -87,7 +87,7 @@ class ClientTask(GrizzlyTask):
         raise NotImplementedError(f'{self.__class__.__name__} has not implemented PUT')
 
     @contextmanager
-    def action(self, parent: GrizzlyScenario, supress: bool = False) -> Generator[Dict[str, Any], None, None]:
+    def action(self, parent: GrizzlyScenario, action: Optional[str] = None, supress: bool = False) -> Generator[Dict[str, Any], None, None]:
         exception: Optional[Exception] = None
         response_length = 0
         start_time = time()
@@ -100,11 +100,12 @@ class ClientTask(GrizzlyTask):
             exception = e
         finally:
             if self.name is None:
-                action = meta.get('action', self.variable)
+                action = action or meta.get('action', self.variable)
                 name = f'{parent.user._scenario.identifier} {self._short_name}{meta.get("direction", self._direction_arrow[self.direction])}{action}'
             else:
                 rendered_name = parent.render(self.name)
                 name = f'{parent.user._scenario.identifier} {rendered_name}'
+
             response_time = int((time() - start_time) * 1000)
             response_length = meta.get('response_length', None) or 0
 

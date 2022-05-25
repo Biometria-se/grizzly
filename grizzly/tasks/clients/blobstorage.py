@@ -104,12 +104,6 @@ class BlobStorageClientTask(ClientTask):
         else:
             destination = Path(source).name
 
-        source_file = Path(self._context_root) / 'requests' / source
-
-        if source_file.exists():
-            source = source_file.read_text()
-            source = parent.render(source)
-
         content_type, _ = mimetype_guess(destination)
 
         if content_type is None:
@@ -117,8 +111,14 @@ class BlobStorageClientTask(ClientTask):
 
         content_settings = ContentSettings(content_type=content_type)
 
-        with self.action(parent) as meta:
+        with self.action(parent, action=self.container) as meta:
+            source_file = Path(self._context_root) / 'requests' / source
+
+            if not source_file.exists():
+                raise FileNotFoundError(source)
+
+            source = parent.render(source_file.read_text())
+
             with self.service_client.get_blob_client(container=self.container, blob=destination) as blob_client:
                 blob_client.upload_blob(source, content_settings=content_settings)
                 meta['response_length'] = len(source)
-                meta['action'] = self.container
