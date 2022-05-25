@@ -9,7 +9,9 @@ of tasks (e.g. Transform, Date or Log Messages) that should execute as fast as p
 
 Instances of this task is created with the step expression:
 
-* [`step_task_request_wait`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_request_wait)
+* [`step_task_request_wait_constant`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_request_wait_constant)
+
+* [`step_task_request_wait_between`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_request_wait_between)
 '''
 from typing import TYPE_CHECKING, Optional, Callable, Any
 

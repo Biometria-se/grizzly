@@ -7,7 +7,7 @@ from behave import register_type, then, given  # pylint: disable=no-name-in-modu
 from ..helpers import add_request_task, get_task_client, is_template
 from ...types import RequestDirection, RequestMethod
 from ...context import GrizzlyContext
-from ...tasks import LogMessage, WaitTask, TransformerTask, UntilRequestTask, DateTask, AsyncRequestGroupTask, TimerTask
+from ...tasks import LogMessage, WaitTask, TransformerTask, UntilRequestTask, DateTask, AsyncRequestGroupTask, TimerTask, RequestWaitTask
 
 from grizzly_extras.transformer import TransformerContentType
 
@@ -576,3 +576,50 @@ def step_task_timer_stop(context: Context, name: str) -> None:
 
     grizzly.scenario.tasks.add(task)
     grizzly.scenario.timers.update({name: None})
+
+
+@given(u'wait "{min_time:g}..{max_time:g}" seconds between tasks')
+def step_task_request_wait_between(context: Context, min_time: float, max_time: float) -> None:
+    '''Set number of, randomly, seconds the user will wait between executing tasks.
+
+    ```gherkin
+    And wait randomly "1.4..1.7" seconds between tasks
+    # wait between 1.4 and 1.7 seconds
+    Then get request with name "test-get-1" from endpoint "..."
+    # wait between 1.4 and 1.7 seconds
+    Then get request with name "test-get-2" from endpoint "..."
+    # wait between 1.4 and 1.7 seconds
+    And wait "0.1" seconds between tasks
+    # wait 0.1 seconds
+    Then get request with name "test-get-3" from endpoint "..."
+    # wait 0.1 seconds
+    ...
+    ```
+    '''
+    grizzly = cast(GrizzlyContext, context.grizzly)
+    if min_time > max_time:
+        min_time, max_time = max_time, min_time
+
+    grizzly.scenario.tasks.add(RequestWaitTask(min_time=min_time, max_time=max_time))
+
+
+@given(u'wait "{time:g}" seconds between tasks')
+def step_task_request_wait_constant(context: Context, time: float) -> None:
+    '''Set number of, constant, seconds the user will wait between executing tasks.
+
+    ```gherkin
+    And wait "1.4" seconds between tasks
+    # wait 1.4 seconds
+    Then get request with name "test-get-1" from endpoint "..."
+    # wait 1.4 seconds
+    Then get request with name "test-get-2" from endpoint "..."
+    # wait 1.4 seconds
+    And wait "0.1" seconds between tasks
+    # wait 0.1 seconds
+    Then get request with name "test-get-3" from endpoint "..."
+    # wait 0.1 seconds
+    ...
+    ```
+    '''
+    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly.scenario.tasks.add(RequestWaitTask(time))
