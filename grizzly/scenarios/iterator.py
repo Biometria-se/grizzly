@@ -82,15 +82,7 @@ class IteratorScenario(GrizzlyScenario):
                 if self.user._scenario_state != ScenarioState.STOPPING:
                     # unexpected exit of scenario, log as error
                     if not isinstance(e, StopScenario):
-                        if self.start is not None:
-                            response_time = int((perf_counter() - self.start) * 1000)
-                        else:
-                            response_time = 0
-
-                        response_length = (self._task_index % self.task_count) + 1
-
-                        self.stats.log(response_time, response_length)
-                        self.stats.log_error(None)
+                        self.iterator_error()
                     else:
                         e = StopUser()
 
@@ -99,12 +91,24 @@ class IteratorScenario(GrizzlyScenario):
                 else:
                     self.wait()
             except Exception as e:
+                self.iterator_error()
                 self.user.environment.events.user_error.fire(user_instance=self, exception=e, tb=e.__traceback__)
                 if self.user.environment.catch_exceptions:
                     self.logger.error("%s\n%s", e, traceback.format_exc())
                     self.wait()
                 else:
                     raise
+
+    def iterator_error(self) -> None:
+        if self.start is not None:
+            response_time = int((perf_counter() - self.start) * 1000)
+        else:
+            response_time = 0
+
+        response_length = (self._task_index % self.task_count) + 1
+
+        self.stats.log(response_time, response_length)
+        self.stats.log_error(None)
 
     def wait(self) -> None:
         if self.user._scenario_state == ScenarioState.STOPPING:

@@ -159,26 +159,18 @@ class TestBlobStorageClientTask:
 
             task(scenario)
 
-            assert upload_blob_mock.call_count == 1
-            args, kwargs = upload_blob_mock.call_args_list[-1]
-            assert len(args) == 2
-            assert len(kwargs.keys()) == 1
-            assert isinstance(args[0], BlobClient)
-            assert args[1] == 'source.json'
-            assert args[0].container_name == 'my-container'
-            assert args[0].blob_name == 'destination.txt'
-            content_settings = kwargs.get('content_settings', None)
-            assert isinstance(content_settings, ContentSettings)
-            assert content_settings.content_type == 'text/plain'
+            assert upload_blob_mock.call_count == 0
 
             assert request_fire_spy.call_count == 1
             _, kwargs = request_fire_spy.call_args_list[-1]
             assert kwargs.get('request_type', None) == 'CLTSK'
             assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} BlobStorage->my-container'
             assert kwargs.get('response_time', None) >= 0.0
-            assert kwargs.get('response_length') == len('source.json')
+            assert kwargs.get('response_length') == 0
             assert kwargs.get('context', None) is scenario.user._context
-            assert kwargs.get('exception', '') is None
+            exception = kwargs.get('exception', '')
+            assert isinstance(exception, FileNotFoundError)
+            assert str(exception) == 'source.json'
 
             test_context = Path(task_factory._context_root)
             (test_context / 'requests').mkdir(exist_ok=True)
@@ -199,7 +191,7 @@ class TestBlobStorageClientTask:
 
             task(scenario)
 
-            assert upload_blob_mock.call_count == 2
+            assert upload_blob_mock.call_count == 1
 
             args, kwargs = upload_blob_mock.call_args_list[-1]
             assert len(args) == 2
@@ -225,7 +217,7 @@ class TestBlobStorageClientTask:
 
             task(scenario)
 
-            assert upload_blob_mock.call_count == 3
+            assert upload_blob_mock.call_count == 2
 
             args, _ = upload_blob_mock.call_args_list[-1]
             assert len(args) == 2

@@ -178,6 +178,45 @@ class TestIterationScenario:
         assert user.context_variables['AtomicCsvRow'].test.header1 == 'value1'
         assert user.context_variables['AtomicCsvRow'].test.header2 == 'value2'
 
+    def test_iterator_error(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+        _, _, scenario = grizzly_fixture(scenario_type=IteratorScenario)
+        assert isinstance(scenario, IteratorScenario)
+
+        stats_log_mock = mocker.patch.object(scenario.stats, 'log', return_value=None)
+        stats_log_error_mock = mocker.patch.object(scenario.stats, 'log_error', return_value=None)
+
+        mocker.patch('grizzly.scenarios.iterator.perf_counter', return_value=11.0)
+
+        scenario.start = None
+
+        scenario.iterator_error()
+
+        assert stats_log_mock.call_count == 1
+        args, _ = stats_log_mock.call_args_list[-1]
+        assert len(args) == 2
+        assert args[0] == 0
+        assert args[1] == (scenario._task_index % scenario.task_count) + 1
+
+        assert stats_log_error_mock.call_count == 1
+        args, _ = stats_log_error_mock.call_args_list[-1]
+        assert len(args) == 1
+        assert args[0] is None
+
+        scenario.start = 1.0
+
+        scenario.iterator_error()
+
+        assert stats_log_mock.call_count == 2
+        args, _ = stats_log_mock.call_args_list[-1]
+        assert len(args) == 2
+        assert args[0] == 10000
+        assert args[1] == (scenario._task_index % scenario.task_count) + 1
+
+        assert stats_log_error_mock.call_count == 2
+        args, _ = stats_log_error_mock.call_args_list[-1]
+        assert len(args) == 1
+        assert args[0] is None
+
     def test_wait(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
         _, _, scenario = grizzly_fixture(scenario_type=IteratorScenario)
 
