@@ -552,7 +552,6 @@ def grizzly_stats_printer(stats: RequestStats) -> Callable[[], NoReturn]:
 
 
 def grizzly_print_stats(stats: RequestStats, current: bool = True, grizzly_style: bool = True) -> None:
-    print(stats_logger.name)
     if not grizzly_style:
         print_stats(stats, current=current)
         return
