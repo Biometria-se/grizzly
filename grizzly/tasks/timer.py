@@ -45,7 +45,6 @@ class TimerTask(GrizzlyTask):
                     'start': perf_counter(),
                     'task-index': (parent._task_index % len(parent.tasks)),
                 }
-
             else:  # stop timer
                 response_time = int((perf_counter() - variable['start']) * 1000)
                 start_task_index = variable.get('task-index', 0)

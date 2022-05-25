@@ -118,7 +118,8 @@ def after_scenario(context: Context, *args: Tuple[Any, ...], **kwargs: Dict[str,
         grizzly.state.background_section_done = True
 
     assert grizzly.scenario.async_group is None, f'async request group "{grizzly.scenario.async_group.name}" has not been closed'
-    assert len(grizzly.scenario.timers) < 1, f'timers {", ".join(grizzly.scenario.timers.keys())} has not been closed'
+    open_timers = {name: timer for name, timer in grizzly.scenario.timers.items() if timer is not None}
+    assert len(open_timers) < 1, f'timers {", ".join(open_timers.keys())} has not been closed'
 
 
 def before_step(context: Context, step: Step, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:

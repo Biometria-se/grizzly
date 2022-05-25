@@ -8,7 +8,7 @@ from json import dumps as jsondumps
 from behave.model import Table, Row
 from grizzly.context import GrizzlyContext
 from grizzly.types import RequestMethod, RequestDirection
-from grizzly.tasks import TransformerTask, LogMessage, WaitTask
+from grizzly.tasks import TransformerTask, LogMessage, WaitTask, TimerTask
 from grizzly.tasks.clients import HttpClientTask
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import  # noqa: F403
 
@@ -531,3 +531,33 @@ def test_step_task_async_group_end(behave_fixture: BehaveFixture) -> None:
 
     assert len(grizzly.scenario.tasks) == 1
     assert grizzly.scenario.async_group is None
+
+
+def test_step_task_timer_start_and_stop(behave_fixture: BehaveFixture) -> None:
+    behave = behave_fixture.context
+    grizzly = behave_fixture.grizzly
+
+    assert grizzly.scenario.timers == {}
+
+    with pytest.raises(AssertionError) as ae:
+        step_task_timer_stop(behave, 'test-timer-1')
+    assert str(ae.value) == 'timer with name test-timer-1 has not been defined'
+
+    step_task_timer_start(behave, 'test-timer-1')
+
+    timer = grizzly.scenario.timers.get('test-timer-1', None)
+    assert isinstance(timer, TimerTask)
+    assert timer.name == 'test-timer-1'
+    assert grizzly.scenario.tasks[-1] is timer
+
+    with pytest.raises(AssertionError) as ae:
+        step_task_timer_start(behave, 'test-timer-1')
+    assert str(ae.value) == 'timer with name test-timer-1 has already been defined'
+
+    step_task_timer_stop(behave, 'test-timer-1')
+
+    assert grizzly.scenario.timers == {
+        'test-timer-1': None,
+    }
+
+    assert grizzly.scenario.tasks[-2] is grizzly.scenario.tasks[-1]
