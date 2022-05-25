@@ -235,19 +235,6 @@ def test_step_setup_iterations(behave_fixture: BehaveFixture) -> None:
     assert grizzly.scenario.iterations == 13
 
 
-def test_step_setup_wait_time(behave_fixture: BehaveFixture) -> None:
-    behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
-
-    assert grizzly.scenario.wait.minimum == 1.0
-    assert grizzly.scenario.wait.maximum == 1.0
-
-    step_setup_wait_time(behave, 8.3, 10.4)
-
-    assert grizzly.scenario.wait.minimum == 8.3
-    assert grizzly.scenario.wait.maximum == 10.4
-
-
 def test_step_setup_variable_value(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)

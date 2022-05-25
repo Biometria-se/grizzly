@@ -102,28 +102,6 @@ def test_e2e_step_setup_iterations(behave_context_fixture: BehaveContextFixture,
     assert rc == 0
 
 
-def test_e2e_step_setup_wait_time(behave_context_fixture: BehaveContextFixture) -> None:
-    def validate_wait_time(context: Context) -> None:
-        grizzly = cast(GrizzlyContext, context.grizzly)
-
-        assert grizzly.scenario.wait.minimum == 0.3
-        assert grizzly.scenario.wait.maximum == 0.5
-
-        raise SystemExit(0)
-
-    behave_context_fixture.add_validator(validate_wait_time)
-
-    feature_file = behave_context_fixture.test_steps(
-        scenario=[
-            'And wait time inbetween requests is random between "0.3" and "0.5" seconds',
-        ],
-    )
-
-    rc, _ = behave_context_fixture.execute(feature_file)
-
-    assert rc == 0
-
-
 def test_e2e_step_variable_value(behave_context_fixture: BehaveContextFixture) -> None:
     def validate_variable_value(context: Context) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)

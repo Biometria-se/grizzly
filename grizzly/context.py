@@ -116,12 +116,6 @@ class GrizzlyContextState:
 
 
 @dataclass
-class GrizzlyContextScenarioWait:
-    minimum: float = field(default=1.0)
-    maximum: float = field(default=1.0)
-
-
-@dataclass
 class GrizzlyContextScenarioResponseTimePercentile:
     response_time: int
     percentile: float
@@ -171,7 +165,6 @@ class GrizzlyContextScenario:
 
     behave: Scenario = field(init=False, repr=False, hash=False, compare=False)
     context: Dict[str, Any] = field(init=False, repr=False, hash=False, compare=False, default_factory=dict)
-    wait: GrizzlyContextScenarioWait = field(init=False, repr=False, hash=False, compare=False, default_factory=GrizzlyContextScenarioWait)
     _tasks: GrizzlyContextTasks = field(init=False, repr=False, hash=False, compare=False)
     validation: GrizzlyContextScenarioValidation = field(init=False, hash=False, compare=False, default_factory=GrizzlyContextScenarioValidation)
     failure_exception: Optional[Type[Exception]] = field(init=False, default=None)

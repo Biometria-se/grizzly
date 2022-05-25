@@ -754,7 +754,6 @@ def test_e2e_step_task_timer_start_and_stop(behave_context_fixture: BehaveContex
 
     feature_file = behave_context_fixture.test_steps(
         scenario=[
-            'And wait time inbetween requests is random between "0.0" and "0.0" seconds',
             'Then print message "before-timer-1"',
             'Then start timer with name "timer-1"',
             'Then wait for "1.0" seconds',

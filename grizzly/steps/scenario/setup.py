@@ -98,26 +98,6 @@ def step_setup_iterations(context: Context, value: str, iteration_number: str) -
     grizzly.scenario.iterations = iterations
 
 
-@given(u'wait time inbetween requests is random between "{minimum:f}" and "{maximum:f}" seconds')
-def step_setup_wait_time(context: Context, minimum: float, maximum: float) -> None:
-    '''Set how long (seconds) locust should wait between tasks.
-
-    Default value is `1.0` seconds. Set `wait_min = wait_max` if the wait shouldn't be random in the
-    specified interval.
-
-    ```gherkin
-    And wait time inbetween requests is random between "0.3" and "0.5" seconds
-    ```
-
-    Args:
-        wait_min (float): minimum wait time
-        wait_max (float): maximum wait time
-    '''
-    grizzly = cast(GrizzlyContext, context.grizzly)
-    grizzly.scenario.wait.minimum = minimum
-    grizzly.scenario.wait.maximum = maximum
-
-
 @given(u'value for variable "{name}" is "{value}"')
 def step_setup_variable_value(context: Context, name: str, value: str) -> None:
     '''Initialize a variable.
