@@ -99,6 +99,7 @@ class RequestType(Enum, AdvancedEnum, init='alias _weight'):
     HELLO = ('HELO', None,)
     RECEIVE = ('RECV', None,)
     CONNECT = ('CONN', None,)
+    TIMER = ('TIMR', None,)
 
     def __call__(self) -> str:
         return str(self)

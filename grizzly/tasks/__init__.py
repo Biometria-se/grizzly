@@ -87,6 +87,7 @@ from .transformer import TransformerTask
 from .until import UntilRequestTask
 from .date import DateTask
 from .async_group import AsyncRequestGroupTask
+from .timer import TimerTask
 
 
 __all__ = [
@@ -99,4 +100,5 @@ __all__ = [
     'UntilRequestTask',
     'DateTask',
     'AsyncRequestGroupTask',
+    'TimerTask',
 ]

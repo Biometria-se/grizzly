@@ -3,6 +3,7 @@ from typing import cast
 from textwrap import dedent
 
 from behave.runner import Context
+from behave.model import Feature
 from grizzly.context import GrizzlyContext
 
 from ....fixtures import BehaveContextFixture
@@ -673,9 +674,7 @@ def test_e2e_step_async_group(behave_context_fixture: BehaveContextFixture) -> N
         assert len(tasks) == 2
 
         task = tasks[0]
-        print(type(task))
         assert isinstance(task, AsyncRequestGroupTask)
-        print(task.__template_attributes__)
         assert sorted(task.get_templates()) == sorted([
             'async-group-{{ index }}',
             'async-group-{{ index }}:test-post-1',
@@ -734,3 +733,43 @@ def test_e2e_step_async_group(behave_context_fixture: BehaveContextFixture) -> N
     rc, _ = behave_context_fixture.execute(feature_file)
 
     assert rc == 0
+
+
+def test_e2e_step_task_timer_start_and_stop(behave_context_fixture: BehaveContextFixture) -> None:
+    def after_feature(context: Context, feature: Feature) -> None:
+        grizzly = cast(GrizzlyContext, context.grizzly)
+
+        stats = grizzly.state.locust.environment.stats
+
+        timer_1 = stats.get('001 timer-1', 'TIMR')
+        timer_2 = stats.get('001 timer-2', 'TIMR')
+
+        assert timer_1.num_requests == 1, f'{timer_1.num_requests=} != 1'
+        assert timer_1.total_response_time > 3900 and timer_1.total_response_time < 4100, f'timer_1.total_response_time != 3900<{timer_1.total_response_time}<4100'
+
+        assert timer_2.num_requests == 1, f'{timer_2.num_requests=} != 1'
+        assert timer_2.total_response_time > 2900 and timer_2.total_response_time < 3100, f'timer_2.total_response_time != 2900<{timer_2.total_response_time}<3100'
+
+    behave_context_fixture.add_after_feature(after_feature)
+
+    feature_file = behave_context_fixture.test_steps(
+        scenario=[
+            'And wait time inbetween requests is random between "0.0" and "0.0" seconds',
+            'Then print message "before-timer-1"',
+            'Then start timer with name "timer-1"',
+            'Then wait for "1.0" seconds',
+            'Then print message "before-timer-2"',
+            'Then start timer with name "timer-2"',
+            'Then wait for "3.0" seconds',
+            'Then stop timer with name "timer-1"',
+            'Then stop timer with name "timer-2"',
+        ],
+    )
+
+    rc, output = behave_context_fixture.execute(feature_file)
+
+    assert rc == 0
+
+    result = ''.join(output)
+
+    assert result.index('before-timer-1') < result.index('before-timer-2')

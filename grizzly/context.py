@@ -13,7 +13,7 @@ from .types import MessageCallback, MessageDirection
 from .testdata import GrizzlyVariables
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .tasks import GrizzlyTask, AsyncRequestGroupTask
+    from .tasks import GrizzlyTask, AsyncRequestGroupTask, TimerTask
 
 
 logger = logging.getLogger(__name__)
@@ -177,6 +177,7 @@ class GrizzlyContextScenario:
     failure_exception: Optional[Type[Exception]] = field(init=False, default=None)
     orphan_templates: List[str] = field(init=False, repr=False, hash=False, compare=False, default_factory=list)
     async_group: Optional['AsyncRequestGroupTask'] = field(init=False, repr=False, hash=False, compare=False, default=None)
+    timers: Dict[str, Optional['TimerTask']] = field(init=False, repr=False, hash=False, compare=False, default_factory=dict)
 
     def __post_init__(self) -> None:
         self._tasks = GrizzlyContextTasks(self)

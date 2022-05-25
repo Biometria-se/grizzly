@@ -7,7 +7,7 @@ from behave import register_type, then, given  # pylint: disable=no-name-in-modu
 from ..helpers import add_request_task, get_task_client, is_template
 from ...types import RequestDirection, RequestMethod
 from ...context import GrizzlyContext
-from ...tasks import LogMessage, WaitTask, TransformerTask, UntilRequestTask, DateTask, AsyncRequestGroupTask
+from ...tasks import LogMessage, WaitTask, TransformerTask, UntilRequestTask, DateTask, AsyncRequestGroupTask, TimerTask
 
 from grizzly_extras.transformer import TransformerContentType
 
@@ -534,3 +534,45 @@ def step_task_async_group_close(context: Context) -> None:
 
     grizzly.scenario.tasks.add(grizzly.scenario.async_group)
     grizzly.scenario.async_group = None
+
+
+@then(u'start timer with name "{name}"')
+def step_task_timer_start(context: Context, name: str) -> None:
+    '''Start a timer to measure the "request time" for all tasks between the start and stop of the timer.
+
+    ```gherkin
+    Then start timer with name "parsing-xml"
+    ...
+    And stop timer with name "parsing-xml"
+    ```
+    '''
+    grizzly = cast(GrizzlyContext, context.grizzly)
+    assert name not in grizzly.scenario.timers, f'timer with name {name} has already been defined'
+
+    task = TimerTask(name=name)
+
+    grizzly.scenario.timers.update({
+        name: task,
+    })
+
+    grizzly.scenario.tasks.add(task)
+
+
+@then(u'stop timer with name "{name}"')
+def step_task_timer_stop(context: Context, name: str) -> None:
+    '''Stop a timer to measure the "request time" for all tasks between the start and stop of the timer.
+
+    ```gherkin
+    Then start timer with name "parsing-xml"
+    ...
+    And stop timer with name "parsing-xml"
+    ```
+    '''
+    grizzly = cast(GrizzlyContext, context.grizzly)
+
+    task = grizzly.scenario.timers.get(name, None)
+
+    assert task is not None, f'timer with name {name} has not been defined'
+
+    grizzly.scenario.tasks.add(task)
+    grizzly.scenario.timers.update({name: None})
