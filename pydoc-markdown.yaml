@@ -50,6 +50,9 @@ renderer:
           - title: Wait
             contents:
             - grizzly.tasks.wait
+          - title: Timer
+            contents:
+            - grizzly.tasks.timer
           - title: Clients
             children:
               - title: HTTP
