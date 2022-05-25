@@ -130,6 +130,7 @@ def create_user_class_type(scenario: 'GrizzlyContextScenario', global_context: O
         '__dependencies__': base_user_class_type.__dependencies__,
         '_context': context,
         '_scenario': scenario,
+        'wait_time': between(scenario.wait.minimum, scenario.wait.maximum),
         **distribution,
     })
 
@@ -146,7 +147,6 @@ def create_scenario_class_type(base_type: str, scenario: 'GrizzlyContextScenario
     return type(task_class_name, (base_task_class_type, ), {
         '__module__': base_task_class_type.__module__,
         'tasks': [],
-        'wait_time': between(scenario.wait.minimum, scenario.wait.maximum)
     })
 
 
