@@ -1,8 +1,6 @@
-'''This task changes the default wait time between tasks that has been set with step:
+'''This task sets the wait time between tasks in a scenario.
 
-```gherkin
-And wait time inbetween requests is random between "1.0" and "1.0" seconds
-```
+The default is to wait `0` seconds between each task.
 
 This is useful in a scenario with many requests that should have some wait time between them, but there are a group
 of tasks (e.g. Transform, Date or Log Messages) that should execute as fast as possible.

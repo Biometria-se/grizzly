@@ -40,17 +40,17 @@ def step_task_request_with_name_to_endpoint_until(context: Context, method: Requ
 
     `condition` is a JSON- or Xpath expression, that also has support for "grizzly style" arguments:
 
+    __Endpoint Arguments__:
+
+    * `retries` (int): maximum number of times to repeat the request if `condition` is not met (default `3`)
+
+    * `wait` (float): number of seconds to wait between retries (default `1.0`)
+
     Args:
         method (RequestMethod): type of request
         name (str): name of the requests in logs, can contain variables
         direction (RequestDirection): one of `to` or `from` depending on the value of `method`
         endpoint (str): URI relative to `host` in the scenario, can contain variables and in certain cases `user_class_name` specific parameters
-
-    ## Arguments:
-
-    * `retries` (int): maximum number of times to repeat the request if `condition` is not met (default `3`)
-
-    * `wait` (float): number of seconds to wait between retries (default `1.0`)
     '''
 
     assert method.direction == RequestDirection.FROM, 'this step is only valid for request methods with direction FROM'
@@ -455,11 +455,7 @@ def step_task_date(context: Context, value: str, variable: str) -> None:
     Then parse date "{{ datetime.now() }} | offset=1Y" and save in variable "date3"
     ```
 
-    Args:
-        value (str): datetime string and arguments
-        variable (str): name of, initialized, variable where response will be saved in
-
-    ## Arguments
+    __Endpoint Arguments__:
 
     At least one of the following optional arguments **must** be specified:
 
@@ -468,6 +464,10 @@ def step_task_date(context: Context, value: str, variable: str) -> None:
     * `timezone` _str_ (optional) - a valid [timezone name](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
 
     * `offset` _str_ (optional) - a time span string describing the offset, Y = years, M = months, D = days, h = hours, m = minutes, s = seconds, e.g. `1Y-2M10D`
+
+    Args:
+        value (str): datetime string and arguments
+        variable (str): name of, initialized, variable where response will be saved in
     '''
     grizzly = cast(GrizzlyContext, context.grizzly)
     assert variable in grizzly.state.variables, f'variable {variable} has not been initialized'
@@ -583,7 +583,7 @@ def step_task_request_wait_between(context: Context, min_time: float, max_time: 
     '''Set number of, randomly, seconds the user will wait between executing tasks.
 
     ```gherkin
-    And wait randomly "1.4..1.7" seconds between tasks
+    And wait "1.4..1.7" seconds between tasks
     # wait between 1.4 and 1.7 seconds
     Then get request with name "test-get-1" from endpoint "..."
     # wait between 1.4 and 1.7 seconds

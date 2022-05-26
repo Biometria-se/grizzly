@@ -790,8 +790,20 @@ def test_e2e_step_task_request_wait(behave_context_fixture: BehaveContextFixture
         task = grizzly.scenario.tasks.pop()
 
         assert isinstance(task, RequestWaitTask), f'{type(task)} is not expected RequestWaitTask'
+        assert task.min_time == 15
+        assert task.max_time is None
+
+        task = grizzly.scenario.tasks.pop()
+
+        assert isinstance(task, RequestWaitTask), f'{type(task)} is not expected RequestWaitTask'
         assert task.min_time == 1.4
         assert task.max_time == 1.7
+
+        task = grizzly.scenario.tasks.pop()
+
+        assert isinstance(task, RequestWaitTask), f'{type(task)} is not expected RequestWaitTask'
+        assert task.min_time == 15
+        assert task.max_time == 18
 
         raise SystemExit(0)
 
@@ -799,7 +811,9 @@ def test_e2e_step_task_request_wait(behave_context_fixture: BehaveContextFixture
 
     feature_file = behave_context_fixture.test_steps(
         scenario=[
+            'Given wait "15..18" seconds between tasks',
             'And wait "1.4..1.7" seconds between tasks',
+            'Given wait "15" seconds between tasks',
             'And wait "1.4" seconds between tasks',
         ]
     )
