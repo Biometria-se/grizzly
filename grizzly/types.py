@@ -1,8 +1,8 @@
-from enum import Enum
+from enum import Enum, EnumMeta
 from typing import Callable, Optional, Tuple, Any, Union, Dict, TypeVar, List, cast
 from mypy_extensions import KwArg, Arg
 
-from aenum import Enum as AdvancedEnum, NoAlias
+from aenum import Enum as AdvancedEnum, NoAlias, EnumType as AdvancedEnumType
 
 from locust.clients import ResponseContextManager as RequestsResponseContextManager
 from locust.contrib.fasthttp import ResponseContextManager as FastResponseContextManager
@@ -70,7 +70,11 @@ class RequestDirection(Enum):
 
 
 # Enum is needed for keeping mypy happy
-class RequestMethod(Enum, AdvancedEnum, settings=NoAlias):
+class MixedEnumMeta(AdvancedEnumType, EnumMeta):
+    pass
+
+
+class RequestMethod(Enum, AdvancedEnum, metaclass=MixedEnumMeta, settings=NoAlias):
     SEND = RequestDirection.TO
     POST = RequestDirection.TO
     PUT = RequestDirection.TO
@@ -89,7 +93,7 @@ class RequestMethod(Enum, AdvancedEnum, settings=NoAlias):
         return self.value
 
 
-class RequestType(Enum, AdvancedEnum, init='alias _weight'):
+class RequestType(Enum, AdvancedEnum, metaclass=MixedEnumMeta, init='alias _weight'):
     SCENARIO = ('SCEN', 0,)
     TESTDATA = ('TSTD', 1,)
     UNTIL = ('UNTL', None,)

@@ -4,8 +4,7 @@ import socket
 import json
 
 from types import TracebackType
-from typing import Any, Dict, List, Optional, Type, Union, cast
-from typing_extensions import Literal
+from typing import Any, Dict, List, Optional, Type, Union, Literal, cast
 from datetime import datetime, timezone, timedelta
 from urllib.parse import urlparse, parse_qs, unquote
 

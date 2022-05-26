@@ -257,7 +257,7 @@ test body str''' in log_file_contents
 {
   "Content-Type": "application/json",
   "Content-Length": "1337"
-}''' in log_file_contents
+}'''.lower() in log_file_contents.lower()
             assert '''metadata:
 {
   "x-cookie": "asdfasdfasdf"

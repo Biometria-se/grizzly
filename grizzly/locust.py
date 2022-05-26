@@ -20,7 +20,7 @@ from locust.stats import (
     RequestStats,
     CONSOLE_STATS_INTERVAL_SEC,
     STATS_NAME_WIDTH,
-    # STATS_TYPE_WIDTH,
+    STATS_TYPE_WIDTH,
     print_error_report,
     print_percentile_stats,
     print_stats,
@@ -556,20 +556,13 @@ def grizzly_print_stats(stats: RequestStats, current: bool = True, grizzly_style
         print_stats(stats, current=current)
         return
 
-    # @TODO: change when upgrading to locust 2.9.x
-    # name_column_width = (STATS_NAME_WIDTH - STATS_TYPE_WIDTH) + 4  # saved characters by compacting other columns
-    # console_logger.info(
-    #    ("%-" + str(STATS_TYPE_WIDTH) + "s %-" + str(name_column_width) + "s %7s %12s |%7s %7s %7s%7s | %7s %11s")
-    #    % ("Type", "Name", "# reqs", "# fails", "Avg", "Min", "Max", "Med", "req/s", "failures/s")
-    # )
-    # separator = f'{"-" * STATS_TYPE_WIDTH}|{"-" * (name_column_width)}|{"-" * 7}|{"-" * 13}|{"-" * 7}|{"-" * 7}|{"-" * 7}|{"-" * 7}|{"-" * 8}|{"-" * 11}'
-    # console_logger.info(separator)
-
+    name_column_width = (STATS_NAME_WIDTH - STATS_TYPE_WIDTH) + 4  # saved characters by compacting other columns
     stats_logger.info(
-        (" %-" + str(STATS_NAME_WIDTH) + "s %7s %12s  | %7s %7s %7s %7s  | %7s %7s")
-        % ("Name", "# reqs", "# fails", "Avg", "Min", "Max", "Median", "req/s", "failures/s")
+        ("%-" + str(STATS_TYPE_WIDTH) + "s %-" + str(name_column_width) + "s %7s %12s |%7s %7s %7s%7s | %7s %11s")
+        % ("Type", "Name", "# reqs", "# fails", "Avg", "Min", "Max", "Med", "req/s", "failures/s")
     )
-    stats_logger.info("-" * (80 + STATS_NAME_WIDTH))
+    separator = f'{"-" * STATS_TYPE_WIDTH}|{"-" * (name_column_width)}|{"-" * 7}|{"-" * 13}|{"-" * 7}|{"-" * 7}|{"-" * 7}|{"-" * 7}|{"-" * 8}|{"-" * 11}'
+    stats_logger.info(separator)
 
     keys: List[Union[Tuple[str, str], Tuple[str, str, int]]] = sorted(stats.entries.keys())
 
@@ -597,11 +590,6 @@ def grizzly_print_stats(stats: RequestStats, current: bool = True, grizzly_style
         r = stats.entries[key[:2]]
         stats_logger.info(r.to_string(current=current))
 
-    stats_logger.info("-" * (80 + STATS_NAME_WIDTH))
+    stats_logger.info(separator)
     stats_logger.info(stats.total.to_string(current=current))
-    stats_logger.info("")
-
-    # @TODO: change when upgrading to locust 2.9.x
-    # console_logger.info(separator)
-    # console_logger.info(stats.total.to_string(current=current))
-    # console_logger.info("")
+    stats_logger.info('')

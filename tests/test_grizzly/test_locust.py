@@ -919,12 +919,14 @@ def test_grizzly_print_stats(caplog: LogCaptureFixture, mocker: MockerFixture) -
     locust_stats = caplog.messages
     caplog.clear()
 
+    import re
+
     for ident in range(1, scenario_count):
         index = (ident - 1) * ((len(request_types_sequence) * request_types_sequence_count) + 4) + 2
-        assert grizzly_stats[index].strip().startswith(f'SCEN {ident:03}')
-        assert grizzly_stats[index + 1].strip().startswith(f'TSTD {ident:03}')
-        assert grizzly_stats[index + 2].strip().startswith(f'GET {ident:03} 01-get-test')
-        assert grizzly_stats[index + (len(request_types_sequence) * request_types_sequence_count) + 3].strip().startswith(f'VAR {ident:03} var-test')
+        assert re.match(fr'^SCEN\s+{ident:03}', grizzly_stats[index].strip())
+        assert re.match(fr'^TSTD\s+{ident:03}', grizzly_stats[index + 1].strip())
+        assert re.match(fr'^GET\s+{ident:03} 01-get-test', grizzly_stats[index + 2].strip())
+        assert re.match(fr'^VAR\s+{ident:03} var-test', grizzly_stats[index + (len(request_types_sequence) * request_types_sequence_count) + 3].strip())
 
     for stat in grizzly_stats:
         assert stat in locust_stats
