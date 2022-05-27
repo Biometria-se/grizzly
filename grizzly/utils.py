@@ -11,7 +11,6 @@ from copy import deepcopy
 
 from behave.runner import Context
 from behave.model import Scenario, Status
-from locust import between
 
 from .types import WrappedFunc, T
 
@@ -146,7 +145,6 @@ def create_scenario_class_type(base_type: str, scenario: 'GrizzlyContextScenario
     return type(task_class_name, (base_task_class_type, ), {
         '__module__': base_task_class_type.__module__,
         'tasks': [],
-        'wait_time': between(scenario.wait.minimum, scenario.wait.maximum)
     })
 
 

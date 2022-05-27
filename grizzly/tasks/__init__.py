@@ -88,6 +88,7 @@ from .until import UntilRequestTask
 from .date import DateTask
 from .async_group import AsyncRequestGroupTask
 from .timer import TimerTask
+from .request_wait import RequestWaitTask
 
 
 __all__ = [
@@ -101,4 +102,5 @@ __all__ = [
     'DateTask',
     'AsyncRequestGroupTask',
     'TimerTask',
+    'RequestWaitTask',
 ]

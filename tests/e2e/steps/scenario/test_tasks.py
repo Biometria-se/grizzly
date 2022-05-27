@@ -754,7 +754,6 @@ def test_e2e_step_task_timer_start_and_stop(behave_context_fixture: BehaveContex
 
     feature_file = behave_context_fixture.test_steps(
         scenario=[
-            'And wait time inbetween requests is random between "0.0" and "0.0" seconds',
             'Then print message "before-timer-1"',
             'Then start timer with name "timer-1"',
             'Then wait for "1.0" seconds',
@@ -773,3 +772,52 @@ def test_e2e_step_task_timer_start_and_stop(behave_context_fixture: BehaveContex
     result = ''.join(output)
 
     assert result.index('before-timer-1') < result.index('before-timer-2')
+
+
+def test_e2e_step_task_request_wait(behave_context_fixture: BehaveContextFixture) -> None:
+    def validator(context: Context) -> None:
+        from grizzly.tasks import RequestWaitTask
+        grizzly = cast(GrizzlyContext, context.grizzly)
+
+        grizzly.scenario.tasks.pop()  # remove dummy
+
+        task = grizzly.scenario.tasks.pop()
+
+        assert isinstance(task, RequestWaitTask), f'{type(task)} is not expected RequestWaitTask'
+        assert task.min_time == 1.4
+        assert task.max_time is None
+
+        task = grizzly.scenario.tasks.pop()
+
+        assert isinstance(task, RequestWaitTask), f'{type(task)} is not expected RequestWaitTask'
+        assert task.min_time == 15
+        assert task.max_time is None
+
+        task = grizzly.scenario.tasks.pop()
+
+        assert isinstance(task, RequestWaitTask), f'{type(task)} is not expected RequestWaitTask'
+        assert task.min_time == 1.4
+        assert task.max_time == 1.7
+
+        task = grizzly.scenario.tasks.pop()
+
+        assert isinstance(task, RequestWaitTask), f'{type(task)} is not expected RequestWaitTask'
+        assert task.min_time == 15
+        assert task.max_time == 18
+
+        raise SystemExit(0)
+
+    behave_context_fixture.add_validator(validator)
+
+    feature_file = behave_context_fixture.test_steps(
+        scenario=[
+            'Given wait "15..18" seconds between tasks',
+            'And wait "1.4..1.7" seconds between tasks',
+            'Given wait "15" seconds between tasks',
+            'And wait "1.4" seconds between tasks',
+        ]
+    )
+
+    rc, _ = behave_context_fixture.execute(feature_file)
+
+    assert rc == 0

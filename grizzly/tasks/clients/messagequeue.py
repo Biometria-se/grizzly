@@ -1,5 +1,5 @@
 # pylint: disable=line-too-long
-'''This task performs IBM MQM GET opertions to a specified queue or topic.
+'''This task performs IBM MQM get and put opertions to a specified queue or topic.
 
 This is useful if the scenario is another user type than `MessageQueueUser`, but the scenario still requires an action towards an MQ server.
 Use [transformer task](/grizzly/framework/usage/tasks/transformer/) to extract specific parts of the message.
@@ -35,6 +35,8 @@ All variables in the URL have support for [templating](/grizzly/framework/usage/
 Instances of this task is created with the step expression, if endpoint is defined with scheme `mq` or `mqs`:
 
 * [`step_task_client_get_endpoint`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_client_get_endpoint)
+
+* [`step_task_client_put_endpoint_file`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_client_put_endpoint_file)
 '''  # noqa: E501
 from typing import Optional, Dict, Any, List, cast
 from urllib.parse import urlparse, parse_qs, unquote

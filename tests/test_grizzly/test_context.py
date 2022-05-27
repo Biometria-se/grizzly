@@ -17,7 +17,6 @@ from grizzly.context import (
     GrizzlyContextSetup,
     GrizzlyContextScenario,
     GrizzlyContextScenarioValidation,
-    GrizzlyContextScenarioWait,
     GrizzlyContextSetupLocust,
     GrizzlyContextSetupLocustMessages,
     GrizzlyContextState,
@@ -314,7 +313,6 @@ class TestGrizzlyContextScenario:
         assert not hasattr(scenario, 'user_class_name')
         assert scenario.iterations == 1
         assert scenario.context == {}
-        assert isinstance(scenario.wait, GrizzlyContextScenarioWait)
         assert scenario.tasks == []
         assert isinstance(scenario.validation, GrizzlyContextScenarioValidation)
         assert not scenario.failure_exception
