@@ -17,10 +17,11 @@ from hashlib import sha1
 import gevent
 
 from locust.clients import ResponseContextManager
-from locust.contrib.fasthttp import FastResponse
+from locust.contrib.fasthttp import FastResponse, FastRequest
 from locust.env import Environment
 from locust.runners import Runner
 from geventhttpclient.header import Headers
+from geventhttpclient.response import HTTPSocketPoolResponse
 from _pytest.tmpdir import TempPathFactory
 from pytest_mock.plugin import MockerFixture
 from paramiko.transport import Transport
@@ -435,7 +436,7 @@ class ResponseContextManagerFixture:
         else:
             event = None
 
-        if cls_rcm == ResponseContextManager:
+        if cls_rcm is ResponseContextManager:
             response = Response()
             if response_headers is not None:
                 response.headers = CaseInsensitiveDict(**response_headers)
@@ -459,14 +460,13 @@ class ResponseContextManagerFixture:
             _build_request = self._build_request
             request_url = url
 
-            class FakeGhcResponse:
-                _headers_index: Headers
+            class FakeGhcResponse(HTTPSocketPoolResponse):
+                _headers_index: Optional[Headers]
                 _sent_request: str
+                _sock: Any
 
                 def __init__(self) -> None:
-                    self._headers_index = Headers()
-                    for key, value in (response_headers or {}).items():
-                        self._headers_index.add(key, value)
+                    self._headers_index = None
 
                     self._sent_request = _build_request(
                         request_method or '',
@@ -474,11 +474,20 @@ class ResponseContextManagerFixture:
                         body=jsondumps(request_body or ''),
                         headers=request_headers,
                     )
+                    self._sock = None
 
                 def get_code(self) -> int:
                     return status_code
 
-            response = FastResponse(FakeGhcResponse())
+            request = FastRequest(url, method=request_method, headers=Headers(), payload=request_body)
+            for key, value in (request_headers or {}).items():
+                request.headers.add(key, value)
+
+            response = FastResponse(FakeGhcResponse(), request)
+            response.headers = Headers()
+            for key, value in (response_headers or {}).items():
+                response.headers.add(key, value)
+
             if response_body is not None:
                 response._cached_content = jsondumps(response_body).encode('utf-8')
             else:
