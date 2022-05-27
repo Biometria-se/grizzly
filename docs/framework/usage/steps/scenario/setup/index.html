@@ -415,22 +415,50 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../../tasks/timer/" class="md-nav__link">
+        Timer
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tasks/request-wait/" class="md-nav__link">
+        Request Wait
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
     
     <li class="md-nav__item md-nav__item--nested">
       
       
-        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_3_1_1_8" type="checkbox" id="__nav_3_1_1_8" >
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_3_1_1_10" type="checkbox" id="__nav_3_1_1_10" >
       
       
       
       
-        <label class="md-nav__link" for="__nav_3_1_1_8">
+        <label class="md-nav__link" for="__nav_3_1_1_10">
           Clients
           <span class="md-nav__icon md-icon"></span>
         </label>
       
       <nav class="md-nav" aria-label="Clients" data-md-level="4">
-        <label class="md-nav__title" for="__nav_3_1_1_8">
+        <label class="md-nav__title" for="__nav_3_1_1_10">
           <span class="md-nav__icon md-icon"></span>
           Clients
         </label>
@@ -883,13 +911,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step_setup_wait_time" class="md-nav__link">
-    step_setup_wait_time
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#step_setup_variable_value" class="md-nav__link">
     step_setup_variable_value
   </a>
@@ -1259,13 +1280,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step_setup_wait_time" class="md-nav__link">
-    step_setup_wait_time
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#step_setup_variable_value" class="md-nav__link">
     step_setup_variable_value
   </a>
@@ -1375,24 +1389,6 @@ runtime for the scenario is reached.</p>
 <p><strong>Arguments</strong>:</p>
 <ul>
 <li><code>iterations</code> <em>int</em> - number of iterations of the scenario</li>
-</ul>
-<p><a id="grizzly.steps.scenario.setup.step_setup_wait_time"></a></p>
-<h4 id="step_setup_wait_time">step_setup_wait_time</h4>
-<div class="highlight"><pre><span></span><code><span class="nd">@given</span><span class="p">(</span>
-    <span class="sa">u</span><span class="s1">&#39;wait time inbetween requests is random between &quot;</span><span class="si">{minimum:f}</span><span class="s1">&quot; and &quot;</span><span class="si">{maximum:f}</span><span class="s1">&quot; seconds&#39;</span>
-<span class="p">)</span>
-<span class="k">def</span> <span class="nf">step_setup_wait_time</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">minimum</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
-                         <span class="n">maximum</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
-</code></pre></div>
-<p>Set how long (seconds) locust should wait between tasks.</p>
-<p>Default value is <code>1.0</code> seconds. Set <code>wait_min = wait_max</code> if the wait shouldn't be random in the
-specified interval.</p>
-<div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">wait time inbetween requests is random between &quot;</span><span class="s">0.3</span><span class="nf">&quot; and &quot;</span><span class="s">0.5</span><span class="nf">&quot; seconds</span>
-</code></pre></div>
-<p><strong>Arguments</strong>:</p>
-<ul>
-<li><code>wait_min</code> <em>float</em> - minimum wait time</li>
-<li><code>wait_max</code> <em>float</em> - maximum wait time</li>
 </ul>
 <p><a id="grizzly.steps.scenario.setup.step_setup_variable_value"></a></p>
 <h4 id="step_setup_variable_value">step_setup_variable_value</h4>

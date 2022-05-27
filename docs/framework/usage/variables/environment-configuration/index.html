@@ -415,22 +415,50 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../tasks/timer/" class="md-nav__link">
+        Timer
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tasks/request-wait/" class="md-nav__link">
+        Request Wait
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
     
     <li class="md-nav__item md-nav__item--nested">
       
       
-        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_3_1_1_8" type="checkbox" id="__nav_3_1_1_8" >
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_3_1_1_10" type="checkbox" id="__nav_3_1_1_10" >
       
       
       
       
-        <label class="md-nav__link" for="__nav_3_1_1_8">
+        <label class="md-nav__link" for="__nav_3_1_1_10">
           Clients
           <span class="md-nav__icon md-icon"></span>
         </label>
       
       <nav class="md-nav" aria-label="Clients" data-md-level="4">
-        <label class="md-nav__title" for="__nav_3_1_1_8">
+        <label class="md-nav__title" for="__nav_3_1_1_10">
           <span class="md-nav__icon md-icon"></span>
           Clients
         </label>
@@ -1228,7 +1256,7 @@
 <h1 id="environment-configuration">Environment configuration</h1>
 <p>It is possible to make the feature file environment agnostic by providing a <code>yaml</code> file containing a dictionary with a root node named <code>configuration</code>.
 The environment configuration file can also be used to store credentials and other sensitive information that should not be under version control.</p>
-<p>Internally <code>grizzly</code> will check if the environment variable <code>GRIZZLY_CONFIGURATION_FILE</code> is set and contains a valid environment configuration file. When using <code>grizzly-cli</code> you specify the file with <code>-c/--configuration</code> which then will be set as a value for <code>GRIZZLY_CONFIGURATION_FILE</code>.</p>
+<p>Internally <code>grizzly</code> will check if the environment variable <code>GRIZZLY_CONFIGURATION_FILE</code> is set and contains a valid environment configuration file. When using <code>grizzly-cli</code> you specify the file with <code>-e/--environment-file</code> which then will be set as a value for <code>GRIZZLY_CONFIGURATION_FILE</code>.</p>
 <h2 id="format">Format</h2>
 <p>An example environment configuration file:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">configuration</span><span class="p">:</span><span class="w"></span>

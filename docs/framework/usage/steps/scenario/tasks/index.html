@@ -415,22 +415,50 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="../../../tasks/timer/" class="md-nav__link">
+        Timer
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tasks/request-wait/" class="md-nav__link">
+        Request Wait
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
     
     <li class="md-nav__item md-nav__item--nested">
       
       
-        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_3_1_1_8" type="checkbox" id="__nav_3_1_1_8" >
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_3_1_1_10" type="checkbox" id="__nav_3_1_1_10" >
       
       
       
       
-        <label class="md-nav__link" for="__nav_3_1_1_8">
+        <label class="md-nav__link" for="__nav_3_1_1_10">
           Clients
           <span class="md-nav__icon md-icon"></span>
         </label>
       
       <nav class="md-nav" aria-label="Clients" data-md-level="4">
-        <label class="md-nav__title" for="__nav_3_1_1_8">
+        <label class="md-nav__title" for="__nav_3_1_1_10">
           <span class="md-nav__icon md-icon"></span>
           Clients
         </label>
@@ -980,6 +1008,34 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#step_task_timer_start" class="md-nav__link">
+    step_task_timer_start
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step_task_timer_stop" class="md-nav__link">
+    step_task_timer_stop
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step_task_request_wait_between" class="md-nav__link">
+    step_task_request_wait_between
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step_task_request_wait_constant" class="md-nav__link">
+    step_task_request_wait_constant
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1377,6 +1433,34 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#step_task_timer_start" class="md-nav__link">
+    step_task_timer_start
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step_task_timer_stop" class="md-nav__link">
+    step_task_timer_stop
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step_task_request_wait_between" class="md-nav__link">
+    step_task_request_wait_between
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step_task_request_wait_constant" class="md-nav__link">
+    step_task_request_wait_constant
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1411,6 +1495,15 @@
 <p>Creates a named request to an endpoint on <code>host</code> and repeat it until <code>condition</code> is true in the response.</p>
 <p><code>content_type</code> will be removed from the actual <code>endpoint</code> value.</p>
 <p><code>condition</code> is a JSON- or Xpath expression, that also has support for "grizzly style" arguments:</p>
+<p><strong>Endpoint Arguments</strong>:</p>
+<ul>
+<li>
+<p><code>retries</code> (int): maximum number of times to repeat the request if <code>condition</code> is not met (default <code>3</code>)</p>
+</li>
+<li>
+<p><code>wait</code> (float): number of seconds to wait between retries (default <code>1.0</code>)</p>
+</li>
+</ul>
 <div class="highlight"><pre><span></span><code><span class="k">Then </span><span class="nf">get request with name &quot;</span><span class="s">test-get</span><span class="nf">&quot; from endpoint &quot;</span><span class="s">/api/test | content_type=json</span><span class="nf">&quot; until &quot;</span><span class="s">$.`this`[?success==true]</span><span class="nf">&quot;</span>
 <span class="k">Then </span><span class="nf">receive request with name &quot;</span><span class="s">test-receive</span><span class="nf">&quot; from endpoint &quot;</span><span class="s">queue:receive-queue | content_type=xml</span><span class="nf">&quot; until &quot;</span><span class="s">/header/success[. == &#39;True&#39;]</span><span class="nf">&quot;</span>
 </code></pre></div>
@@ -1420,15 +1513,6 @@
 <li><code>name</code> <em>str</em> - name of the requests in logs, can contain variables</li>
 <li><code>direction</code> <em>RequestDirection</em> - one of <code>to</code> or <code>from</code> depending on the value of <code>method</code></li>
 <li><code>endpoint</code> <em>str</em> - URI relative to <code>host</code> in the scenario, can contain variables and in certain cases <code>user_class_name</code> specific parameters</li>
-</ul>
-<p>## Arguments:</p>
-<ul>
-<li>
-<p><code>retries</code> (int): maximum number of times to repeat the request if <code>condition</code> is not met (default <code>3</code>)</p>
-</li>
-<li>
-<p><code>wait</code> (float): number of seconds to wait between retries (default <code>1.0</code>)</p>
-</li>
 </ul>
 <p><a id="grizzly.steps.scenario.tasks.step_task_request_text_with_name_to_endpoint"></a></p>
 <h4 id="step_task_request_text_with_name_to_endpoint">step_task_request_text_with_name_to_endpoint</h4>
@@ -1644,8 +1728,8 @@ The message can be a jinja template, and any variables will be rendered at the t
 </ul>
 <p><a id="grizzly.steps.scenario.tasks.step_task_client_get_endpoint"></a></p>
 <h4 id="step_task_client_get_endpoint">step_task_client_get_endpoint</h4>
-<div class="highlight"><pre><span></span><code><span class="nd">@then</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;get &quot;</span><span class="si">{endpoint}</span><span class="s1">&quot; and save response in &quot;</span><span class="si">{variable}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
-<span class="k">def</span> <span class="nf">step_task_client_get_endpoint</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">endpoint</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+<div class="highlight"><pre><span></span><code><span class="nd">@then</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;get &quot;</span><span class="si">{endpoint}</span><span class="s1">&quot; with name &quot;</span><span class="si">{name}</span><span class="s1">&quot; and save response in &quot;</span><span class="si">{variable}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">step_task_client_get_endpoint</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">endpoint</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
                                   <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
 <p>Get information from another host or endpoint than the scenario is load testing and save the response in a variable.</p>
@@ -1653,19 +1737,21 @@ The message can be a jinja template, and any variables will be rendered at the t
 specified endpoint. If the endpoint is a variable, one have to manually specify the endpoint scheme even though the
 resolved variable contains the scheme. In this case the manually specified scheme will be removed to the endpoint actually
 used by the task.</p>
-<div class="highlight"><pre><span></span><code><span class="k">Then </span><span class="nf">get &quot;</span><span class="s">https://www.example.org/example.json</span><span class="nf">&quot; and save response in &quot;</span><span class="s">example_openapi</span><span class="nf">&quot;</span>
-<span class="k">Then </span><span class="nf">get &quot;</span><span class="s">http://{{ endpoint }}</span><span class="nf">&quot; and save response in &quot;</span><span class="s">endpoint_result</span><span class="nf">&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="k">Then </span><span class="nf">get &quot;</span><span class="s">https://www.example.org/example.json</span><span class="nf">&quot; with name &quot;</span><span class="s">example-1</span><span class="nf">&quot; and save response in &quot;</span><span class="s">example_openapi</span><span class="nf">&quot;</span>
+<span class="k">Then </span><span class="nf">get &quot;</span><span class="s">http://{{ endpoint }}</span><span class="nf">&quot; with name &quot;</span><span class="s">example-2</span><span class="nf">&quot; and save response in &quot;</span><span class="s">endpoint_result</span><span class="nf">&quot;</span>
 </code></pre></div>
 <p><strong>Arguments</strong>:</p>
 <ul>
 <li><code>endpoint</code> <em>str</em> - information about where to get information, see the specific getter task implementations for more information</li>
+<li><code>name</code> <em>str</em> - name of the request, used in request statistics</li>
 <li><code>variable</code> <em>str</em> - name of, initialized, variable where response will be saved in</li>
 </ul>
 <p><a id="grizzly.steps.scenario.tasks.step_task_client_put_endpoint_file_destination"></a></p>
 <h4 id="step_task_client_put_endpoint_file_destination">step_task_client_put_endpoint_file_destination</h4>
-<div class="highlight"><pre><span></span><code><span class="nd">@then</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;put &quot;</span><span class="si">{source}</span><span class="s1">&quot; to &quot;</span><span class="si">{endpoint}</span><span class="s1">&quot; as &quot;</span><span class="si">{destination}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="nd">@then</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;put &quot;</span><span class="si">{source}</span><span class="s1">&quot; to &quot;</span><span class="si">{endpoint}</span><span class="s1">&quot; with name &quot;</span><span class="si">{name}</span><span class="s1">&quot; as &quot;</span><span class="si">{destination}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">step_task_client_put_endpoint_file_destination</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span>
                                                    <span class="n">source</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">endpoint</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                                                   <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
                                                    <span class="n">destination</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
 <p>Put information to another host or endpoint than the scenario is load testing, source being a file.</p>
@@ -1673,31 +1759,33 @@ used by the task.</p>
 specified endpoint. If the endpoint is a variable, one have to manually specify the endpoint scheme even though the
 resolved variable contains the scheme. In this case the manually specified scheme will be removed to the endpoint actually
 used by the task.</p>
-<div class="highlight"><pre><span></span><code><span class="k">Then </span><span class="nf">put &quot;</span><span class="s">test-file.json</span><span class="nf">&quot; to &quot;</span><span class="s">bs://my-storage?AccountKey=aaaabbb=&amp;Container=my-container</span><span class="nf">&quot; as &quot;</span><span class="s">uploaded-test-file.json</span><span class="nf">&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="k">Then </span><span class="nf">put &quot;</span><span class="s">test-file.json</span><span class="nf">&quot; to &quot;</span><span class="s">bs://my-storage?AccountKey=aaaabbb=&amp;Container=my-container</span><span class="nf">&quot; with name &quot;</span><span class="s">upload-file</span><span class="nf">&quot; as &quot;</span><span class="s">uploaded-test-file.json</span><span class="nf">&quot;</span>
 </code></pre></div>
 <p><strong>Arguments</strong>:</p>
 <ul>
 <li><code>source</code> <em>str</em> - relative path to file in <code>feature/requests</code>, supports templating</li>
 <li><code>endpoint</code> <em>str</em> - information about where to get information, see the specific getter task implementations for more information</li>
+<li><code>name</code> <em>str</em> - name of the request, used in request statistics</li>
 <li><code>destination</code> <em>str</em> - name of source on the destination</li>
 </ul>
 <p><a id="grizzly.steps.scenario.tasks.step_task_client_put_endpoint_file"></a></p>
 <h4 id="step_task_client_put_endpoint_file">step_task_client_put_endpoint_file</h4>
-<div class="highlight"><pre><span></span><code><span class="nd">@then</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;put &quot;</span><span class="si">{source}</span><span class="s1">&quot; to &quot;</span><span class="si">{endpoint}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
+<div class="highlight"><pre><span></span><code><span class="nd">@then</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;put &quot;</span><span class="si">{source}</span><span class="s1">&quot; to &quot;</span><span class="si">{endpoint}</span><span class="s1">&quot; with name &quot;</span><span class="si">{name}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">step_task_client_put_endpoint_file</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">source</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
-                                       <span class="n">endpoint</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+                                       <span class="n">endpoint</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
 <p>Put information to another host or endpoint than the scenario is load testing, source being a file.</p>
 <p>Task implementations are found in <code>grizzly.task.clients</code> and each implementation is looked up through the scheme in the
 specified endpoint. If the endpoint is a variable, one have to manually specify the endpoint scheme even though the
 resolved variable contains the scheme. In this case the manually specified scheme will be removed to the endpoint actually
 used by the task.</p>
-<div class="highlight"><pre><span></span><code><span class="k">Then </span><span class="nf">put &quot;</span><span class="s">test-file.json</span><span class="nf">&quot; to &quot;</span><span class="s">bs://my-storage?AccountKey=aaaabbb=&amp;Container=my-container</span><span class="nf">&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="k">Then </span><span class="nf">put &quot;</span><span class="s">test-file.json</span><span class="nf">&quot; to &quot;</span><span class="s">bs://my-storage?AccountKey=aaaabbb=&amp;Container=my-container</span><span class="nf">&quot; with name &quot;</span><span class="s">upload-file</span><span class="nf">&quot;</span>
 </code></pre></div>
 <p><strong>Arguments</strong>:</p>
 <ul>
 <li><code>source</code> <em>str</em> - relative path to file in <code>feature/requests</code>, supports templating</li>
 <li><code>endpoint</code> <em>str</em> - information about where to get information, see the specific getter task implementations for more information</li>
+<li><code>name</code> <em>str</em> - name of the request, used in request statistics</li>
 </ul>
 <p><a id="grizzly.steps.scenario.tasks.step_task_date"></a></p>
 <h4 id="step_task_date">step_task_date</h4>
@@ -1706,6 +1794,19 @@ used by the task.</p>
 </code></pre></div>
 <p>Parses a datetime string and transforms it according to specified arguments.</p>
 <p>This step is useful when changes has to be made to a datetime representation during an iteration of a scenario.</p>
+<p><strong>Endpoint Arguments</strong>:</p>
+<p>At least one of the following optional arguments <strong>must</strong> be specified:</p>
+<ul>
+<li>
+<p><code>format</code> <em>str</em> - a python <a href="https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes"><code>strftime</code> format string</a>, this argument is required</p>
+</li>
+<li>
+<p><code>timezone</code> <em>str</em> (optional) - a valid <a href="https://en.wikipedia.org/wiki/List_of_tz_database_time_zones">timezone name</a></p>
+</li>
+<li>
+<p><code>offset</code> <em>str</em> (optional) - a time span string describing the offset, Y = years, M = months, D = days, h = hours, m = minutes, s = seconds, e.g. <code>1Y-2M10D</code></p>
+</li>
+</ul>
 <div class="highlight"><pre><span></span><code><span class="nf">...</span>
 <span class="k">And </span><span class="nf">value for variable &quot;</span><span class="s">date1</span><span class="nf">&quot; is &quot;</span><span class="s">none</span><span class="nf">&quot;</span>
 <span class="k">And </span><span class="nf">value for variable &quot;</span><span class="s">date2</span><span class="nf">&quot; is &quot;</span><span class="s">none</span><span class="nf">&quot;</span>
@@ -1720,19 +1821,6 @@ used by the task.</p>
 <ul>
 <li><code>value</code> <em>str</em> - datetime string and arguments</li>
 <li><code>variable</code> <em>str</em> - name of, initialized, variable where response will be saved in</li>
-</ul>
-<p>## Arguments</p>
-<p>At least one of the following optional arguments <strong>must</strong> be specified:</p>
-<ul>
-<li>
-<p><code>format</code> <em>str</em> - a python <a href="https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes"><code>strftime</code> format string</a>, this argument is required</p>
-</li>
-<li>
-<p><code>timezone</code> <em>str</em> (optional) - a valid <a href="https://en.wikipedia.org/wiki/List_of_tz_database_time_zones">timezone name</a></p>
-</li>
-<li>
-<p><code>offset</code> <em>str</em> (optional) - a time span string describing the offset, Y = years, M = months, D = days, h = hours, m = minutes, s = seconds, e.g. <code>1Y-2M10D</code></p>
-</li>
 </ul>
 <p><a id="grizzly.steps.scenario.tasks.step_task_async_group_start"></a></p>
 <h4 id="step_task_async_group_start">step_task_async_group_start</h4>
@@ -1774,6 +1862,63 @@ request group, until the group is closed.</p>
 
 <span class="k">Then </span><span class="nf">get request with name &quot;</span><span class="s">test-get-1</span><span class="nf">&quot; from endpoint &quot;</span><span class="s">/api/test</span><span class="nf">&quot;</span>
 <span class="k">And </span><span class="nf">close async request group</span>
+</code></pre></div>
+<p><a id="grizzly.steps.scenario.tasks.step_task_timer_start"></a></p>
+<h4 id="step_task_timer_start">step_task_timer_start</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@then</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;start timer with name &quot;</span><span class="si">{name}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">step_task_timer_start</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Start a timer to measure the "request time" for all tasks between the start and stop of the timer.</p>
+<div class="highlight"><pre><span></span><code><span class="k">Then </span><span class="nf">start timer with name &quot;</span><span class="s">parsing-xml</span><span class="nf">&quot;</span>
+<span class="nf">...</span>
+<span class="k">And </span><span class="nf">stop timer with name &quot;</span><span class="s">parsing-xml</span><span class="nf">&quot;</span>
+</code></pre></div>
+<p><a id="grizzly.steps.scenario.tasks.step_task_timer_stop"></a></p>
+<h4 id="step_task_timer_stop">step_task_timer_stop</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@then</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;stop timer with name &quot;</span><span class="si">{name}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">step_task_timer_stop</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Stop a timer to measure the "request time" for all tasks between the start and stop of the timer.</p>
+<div class="highlight"><pre><span></span><code><span class="k">Then </span><span class="nf">start timer with name &quot;</span><span class="s">parsing-xml</span><span class="nf">&quot;</span>
+<span class="nf">...</span>
+<span class="k">And </span><span class="nf">stop timer with name &quot;</span><span class="s">parsing-xml</span><span class="nf">&quot;</span>
+</code></pre></div>
+<p><a id="grizzly.steps.scenario.tasks.step_task_request_wait_between"></a></p>
+<h4 id="step_task_request_wait_between">step_task_request_wait_between</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@given</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;wait &quot;</span><span class="si">{min_time:g}</span><span class="s1">..</span><span class="si">{max_time:g}</span><span class="s1">&quot; seconds between tasks&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">step_task_request_wait_between</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">min_time</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
+                                   <span class="n">max_time</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Set number of, randomly, seconds the user will wait between executing tasks.</p>
+<div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">wait &quot;</span><span class="s">1.4..1.7</span><span class="nf">&quot; seconds between tasks</span>
+<span class="c"># wait between 1.4 and 1.7 seconds</span><span class="nf"></span>
+<span class="k">Then </span><span class="nf">get request with name &quot;</span><span class="s">test-get-1</span><span class="nf">&quot; from endpoint &quot;</span><span class="s">...</span><span class="nf">&quot;</span>
+<span class="c"># wait between 1.4 and 1.7 seconds</span><span class="nf"></span>
+<span class="k">Then </span><span class="nf">get request with name &quot;</span><span class="s">test-get-2</span><span class="nf">&quot; from endpoint &quot;</span><span class="s">...</span><span class="nf">&quot;</span>
+<span class="c"># wait between 1.4 and 1.7 seconds</span><span class="nf"></span>
+<span class="k">And </span><span class="nf">wait &quot;</span><span class="s">0.1</span><span class="nf">&quot; seconds between tasks</span>
+<span class="c"># wait 0.1 seconds</span><span class="nf"></span>
+<span class="k">Then </span><span class="nf">get request with name &quot;</span><span class="s">test-get-3</span><span class="nf">&quot; from endpoint &quot;</span><span class="s">...</span><span class="nf">&quot;</span>
+<span class="c"># wait 0.1 seconds</span><span class="nf"></span>
+<span class="nf">...</span>
+</code></pre></div>
+<p><a id="grizzly.steps.scenario.tasks.step_task_request_wait_constant"></a></p>
+<h4 id="step_task_request_wait_constant">step_task_request_wait_constant</h4>
+<div class="highlight"><pre><span></span><code><span class="nd">@given</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;wait &quot;</span><span class="si">{time:g}</span><span class="s1">&quot; seconds between tasks&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">step_task_request_wait_constant</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">time</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p>Set number of, constant, seconds the user will wait between executing tasks.</p>
+<div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">wait &quot;</span><span class="s">1.4</span><span class="nf">&quot; seconds between tasks</span>
+<span class="c"># wait 1.4 seconds</span><span class="nf"></span>
+<span class="k">Then </span><span class="nf">get request with name &quot;</span><span class="s">test-get-1</span><span class="nf">&quot; from endpoint &quot;</span><span class="s">...</span><span class="nf">&quot;</span>
+<span class="c"># wait 1.4 seconds</span><span class="nf"></span>
+<span class="k">Then </span><span class="nf">get request with name &quot;</span><span class="s">test-get-2</span><span class="nf">&quot; from endpoint &quot;</span><span class="s">...</span><span class="nf">&quot;</span>
+<span class="c"># wait 1.4 seconds</span><span class="nf"></span>
+<span class="k">And </span><span class="nf">wait &quot;</span><span class="s">0.1</span><span class="nf">&quot; seconds between tasks</span>
+<span class="c"># wait 0.1 seconds</span><span class="nf"></span>
+<span class="k">Then </span><span class="nf">get request with name &quot;</span><span class="s">test-get-3</span><span class="nf">&quot; from endpoint &quot;</span><span class="s">...</span><span class="nf">&quot;</span>
+<span class="c"># wait 0.1 seconds</span><span class="nf"></span>
+<span class="nf">...</span>
 </code></pre></div>
 
               

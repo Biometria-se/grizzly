@@ -416,6 +416,34 @@
               
   
   
+  
+    <li class="md-nav__item">
+      <a href="../../timer/" class="md-nav__link">
+        Timer
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../request-wait/" class="md-nav__link">
+        Request Wait
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
     
   
   
@@ -423,18 +451,18 @@
     <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
       
-        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_3_1_1_8" type="checkbox" id="__nav_3_1_1_8" checked>
+        <input class="md-nav__toggle md-toggle" data-md-toggle="__nav_3_1_1_10" type="checkbox" id="__nav_3_1_1_10" checked>
       
       
       
       
-        <label class="md-nav__link" for="__nav_3_1_1_8">
+        <label class="md-nav__link" for="__nav_3_1_1_10">
           Clients
           <span class="md-nav__icon md-icon"></span>
         </label>
       
       <nav class="md-nav" aria-label="Clients" data-md-level="4">
-        <label class="md-nav__title" for="__nav_3_1_1_8">
+        <label class="md-nav__title" for="__nav_3_1_1_10">
           <span class="md-nav__icon md-icon"></span>
           Clients
         </label>
@@ -1169,7 +1197,7 @@
 
 <p><a id="grizzly.tasks.clients.messagequeue"></a></p>
 <h1 id="grizzlytasksclientsmessagequeue">grizzly.tasks.clients.messagequeue</h1>
-<p>This task performs IBM MQM GET opertions to a specified queue or topic.</p>
+<p>This task performs IBM MQM get and put opertions to a specified queue or topic.</p>
 <p>This is useful if the scenario is another user type than <code>MessageQueueUser</code>, but the scenario still requires an action towards an MQ server.
 Use <a href="/grizzly/framework/usage/tasks/transformer/">transformer task</a> to extract specific parts of the message.</p>
 <p>Grizzly <em>must</em> have been installed with the extra <code>mq</code> package and native IBM MQ libraries must be installed for being able to use this variable:</p>
@@ -1196,7 +1224,12 @@ Use <a href="/grizzly/framework/usage/tasks/transformer/">transformer task</a> t
 </ul>
 <p>Instances of this task is created with the step expression, if endpoint is defined with scheme <code>mq</code> or <code>mqs</code>:</p>
 <ul>
-<li><a href="/grizzly/framework/usage/steps/scenario/tasks/#step_task_client_get_endpoint"><code>step_task_client_get_endpoint</code></a></li>
+<li>
+<p><a href="/grizzly/framework/usage/steps/scenario/tasks/#step_task_client_get_endpoint"><code>step_task_client_get_endpoint</code></a></p>
+</li>
+<li>
+<p><a href="/grizzly/framework/usage/steps/scenario/tasks/#step_task_client_put_endpoint_file"><code>step_task_client_put_endpoint_file</code></a></p>
+</li>
 </ul>
 
               
