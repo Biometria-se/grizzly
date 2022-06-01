@@ -85,7 +85,7 @@ They are useful when history of test runs is needed, or when wanting to correlat
 
 ### Load test users
 
-`locust` comes with a simple user for loading an HTTP(S) endpoint and due to the nature of how the integration between `behave` and `locust` works, it is not possible to use `locust` provided users, even for HTTP(S) targets.
+`locust` comes with a simple user for loading an HTTP(S) endpoint and due to the nature of how the integration between `behave` and `locust` works in `grizzly`, it is not possible to directly use `locust.user.users` provided users, even for HTTP(S) targets.
 
 * `RestApiUser`: send requests to REST API endpoinds, supports authentication with username+password or client secret
 * `ServiceBusUser`: send to and receive from Azure Service Bus queues and topics
@@ -106,10 +106,14 @@ pip3 install grizzly-loadtester
 pip3 install grizzly-loadtester-cli
 ```
 
-Do not forget to try the [example](https://biometria-se.github.io/grizzly/example/) which also serves as a boilerplate scenario project.
+Do not forget to try the [example](https://biometria-se.github.io/grizzly/example/) which also serves as a boilerplate scenario project, or create a new grizzly project with:
+
+```bash
+grizzly-cli init my-grizzly-project
+```
 
 ## Development
 
 The easiest way to start contributing to this project is to have [Visual Studio Code](https://code.visualstudio.com/) (with "Remote - Containers" extension) and [docker](https://www.docker.com/) installed. The project comes with a `devcontainer`, which encapsulates everything needed for a development environment.
 
-It is also possible to use a python virtual environment where `requirements.txt` and `requirements-dev.txt` is installed, and also preferbly the IBM MQ client dependencies and `requirements-extras.txt`.
+It is also possible to use a python virtual environment where `requirements-dev.txt` is installed.

@@ -1,9 +1,11 @@
 '''Send and receive messages on Azure Service Bus queues and topics.
 
-> **Note**: If `message.wait` is not set, `azure.servicebus` will wait until there is a message available, and hence block the scenario.
+!!! note
+    If `message.wait` is not set, `azure.servicebus` will wait until there is a message available, and hence block the scenario.
 
-> **Warning**: Do not use `expression` to filter messages unless you do not care about the messages that does not match the expression. If
-> you do care about them, you should setup a subscription to do the filtering in Azure.
+!!! attention
+    Do not use `expression` to filter messages unless you do not care about the messages that does not match the expression. If
+    you do care about them, you should setup a subscription to do the filtering in Azure.
 
 User is based on `azure.servicebus` for communicating with Azure Service Bus. But creating a connection and session towards a queue or a topic
 is a costly operation, and caching of the session was causing problems with `gevent` due to the sockets blocking and hence locust/grizzly was

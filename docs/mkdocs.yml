@@ -1,0 +1,18 @@
+nav:
+  - index.md
+  - example.md
+  - Framework:
+    - Usage:
+      - framework/usage/index.md
+      - Tasks:
+          - Clients:
+      - Variables:
+        - framework/usage/variables/environment-configuration.md
+        - Testdata:
+        - framework/usage/variables/templating.md
+      - Steps:
+        - Background:
+        - Scenario:
+      - Load Users:
+    - Changelog: framework/changelog.md
+    - Licenses: framework/licenses.md

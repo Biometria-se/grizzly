@@ -1,4 +1,6 @@
-# Templating
+---
+title: Templating
+---
 
 `grizzly` has support for templating in both step expression variables (most) and request payload, with the templating backend [Jinja2](https://jinja.palletsprojects.com/en/3.0.x/).
 

@@ -1,3 +1,6 @@
+'''Client tasks is functionality that is executed by locust and is registred to an URL scheme.
+These tasks is used to make a request to another host than the scenario is actually load testing.
+'''
 from abc import abstractmethod
 from typing import Dict, Generator, Type, List, Any, Optional, Callable
 from contextlib import contextmanager

@@ -193,7 +193,7 @@ def compile(target: Optional[str] = None) -> int:
         'requirements.txt': (),
         'requirements-ci.txt': ('dev', 'ci', ),
         'requirements-dev.txt': ('dev', 'mq', ),
-        'requirements-script.txt': (),
+        'requirements-docs.txt': (),
     }
 
     if target is None:

@@ -171,7 +171,8 @@ jobs:
     - name: build documentation
       id: build-docs
       run: |
-        python -m pip install -r requirements-script.txt
+        python -m pip install -r requirements-docs.txt
+        # @TODO: update with novella
         pydoc-markdown --build --site-dir "$PWD/build/html"
 
         # this is needed since pydoc-markdown does not include them

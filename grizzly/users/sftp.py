@@ -1,6 +1,7 @@
 '''Communicates with Secure File Transport Protocol.
 
-> **Warning**: Both local and remote files will be overwritten if they already exists. Downloaded files will be stored in `requests/download`.
+!!! attention
+    Both local and remote files will be overwritten if they already exists. Downloaded files will be stored in `requests/download`.
 
 ## Request methods
 
