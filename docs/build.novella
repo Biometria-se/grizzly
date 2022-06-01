@@ -78,7 +78,6 @@ action "mkdocs-update-config" {
         config_nav_steps_scenario['Scenario'] = nav_steps_scenario
 
         def config_nav_users = config['nav'][2]['Framework'][0]['Usage'][4]
-        print(config_nav_users)
         def users = Path.cwd() / '..' / 'grizzly' / 'users'
         def nav_users = []
         for user in users.iterdir():

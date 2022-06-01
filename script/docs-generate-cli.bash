@@ -2,40 +2,58 @@
 set -e
 
 main() {
+    local what="$1"
     local script_dir
     local workspace
-    local cwd="${1:-${PWD}}"
+    local cwd="${PWD}"
     script_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
     workspace=$(mktemp -d -t ws-XXXXXX)
 
     pushd "${workspace}" &> /dev/null
-    echo "-- creating virtualenv"
+    >&2 echo "-- creating virtualenv"
     python3 -m venv .venv &> /dev/null
 
-    echo "-- activating virtualenv"
+    >&2 echo "-- activating virtualenv"
     source .venv/bin/activate
-
-    echo "-- installing grizzly-cli"
+    >&2 echo "-- installing grizzly-cli"
     pip3 install grizzly-loadtester-cli[dev] &> /dev/null
 
-    echo "-- generating cli.md"
-    grizzly-cli --md-help > "${script_dir}/../docs/cli.md"
+    case "${what}" in
+        --usage)
 
-    echo "-- cloning repo"
-    git clone https://github.com/Biometria-se/grizzly-cli.git
+            >&2 echo "-- generating usage"
+            grizzly-cli --md-help
+            ;;
+        --licenses|--changelog)
+            >&2 echo "-- cloning repo"
+            git clone https://github.com/Biometria-se/grizzly-cli.git
 
-    # @TODO: maybe check which version of grizzly-loadtester-cli is installed, and checkout that tag
+            pushd "grizzly-cli/" &> /dev/null
 
-    echo "-- generating changelog/grizzly-cli"
-    pushd "grizzly-cli/" &> /dev/null
-    python3 "${cwd}/script/docs-generate-changelog.py" --from-directory "$PWD"
+            local version
+            version="$(grizzly-cli --version | awk '{print $NF}')"
+            >&2 echo "checking out tag v${version}"
+            git checkout "tags/v${version}" -b "v${version}"
 
-    echo "-- generating licenses/grizzly-loadtester-cli.md"
-    [[ -d "${cwd}/docs/licenses" ]] || mkdir -p "${cwd}/docs/licenses"
-    python3 script/docs-generate-licenses.py > "${cwd}/docs/licenses/grizzly-loadtester-cli.md"
-    popd &> /dev/null
+            case "${what}" in
+                --changelog)
+                    >&2 echo "-- generating changelog: $PWD, $cwd"
+                    python3 "${cwd}/script/docs-generate-changelog.py" --from-directory "$PWD"
+                    ;;
+                --licenses)
+                    >&2 echo "-- generating licenses"
+                    python3 script/docs-generate-licenses.py
+                    ;;
+            esac
+            popd &> /dev/null
+            ;;
+        *)
+            echo "unknown argument: ${what}"
+            return 1
+            ;;
+    esac
 
-    echo "-- cleaning up"
+    >&2 echo "-- cleaning up"
     deactivate || true
     popd &> /dev/null
     rm -rf "${workspace}" || true
