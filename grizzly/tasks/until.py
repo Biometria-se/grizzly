@@ -13,7 +13,7 @@ Arguments:
 
 Instances of this task is created with step expression:
 
-* [`step_task_request_text_with_name_to_endpoint_until`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_request_text_with_name_to_endpoint_until)
+* [`step_task_request_with_name_to_endpoint_until`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_request_with_name_to_endpoint_until)
 '''
 from typing import TYPE_CHECKING, Callable, Any, Type, List, Optional, cast
 from time import perf_counter
