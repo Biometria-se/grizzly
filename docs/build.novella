@@ -9,7 +9,20 @@ action "mkdocs-update-config" {
     update '$.theme.favicon' set: 'assets/favicon.ico'
     update '$.theme.palette' set: {'scheme': 'slate', 'primary': 'brown', 'accent': 'deep orange'}
     update_with config -> {
-        def config_nav_tasks = config['nav'][2]['Framework'][0]['Usage'][1]['Tasks']
+        def make_human_readable(input):
+            def words = []
+            for word in input.split('_'):
+                words.append(word.capitalize())
+
+            def output = ' '.join(words)
+
+            for word in ['http', 'sftp', 'api', 'csv']:
+                output = output.replace(word.capitalize(), word.upper())
+                output = output.replace(word, word.upper())
+
+            return output
+
+        def config_nav_tasks = config['nav'][2]['Framework'][0]['Usage'][0]['Tasks']
         def config_nav_tasks_clients = config_nav_tasks.pop()
         def tasks = Path.cwd() / '..' / 'grizzly' / 'tasks'
 
@@ -19,7 +32,7 @@ action "mkdocs-update-config" {
                 if task.stem == '__init__':
                     nav_tasks.insert(0, 'framework/usage/tasks/index.md')
                 else:
-                    nav_tasks.append('framework/usage/tasks/{}.md'.format(task.stem))
+                    nav_tasks.append({make_human_readable(task.stem): 'framework/usage/tasks/{}.md'.format(task.stem)})
         config_nav_tasks.extend(nav_tasks)
 
         def tasks_clients = tasks / 'clients'
@@ -29,11 +42,11 @@ action "mkdocs-update-config" {
                 if task_client.stem == '__init__':
                     nav_tasks_clients.insert(0, 'framework/usage/tasks/clients/index.md')
                 else:
-                    nav_tasks_clients.append('framework/usage/tasks/clients/{}.md'.format(task_client.stem))
+                    nav_tasks_clients.append({make_human_readable(task_client.stem): 'framework/usage/tasks/clients/{}.md'.format(task_client.stem)})
         config_nav_tasks_clients['Clients'] = nav_tasks_clients
         config_nav_tasks.append(config_nav_tasks_clients)
 
-        def config_nav_testdata = config['nav'][2]['Framework'][0]['Usage'][2]['Variables'][1]
+        def config_nav_testdata = config['nav'][2]['Framework'][0]['Usage'][1]['Variables'][1]
         def nav_testdata = []
         def variables = Path.cwd() / '..' / 'grizzly' / 'testdata' / 'variables'
         for variable in variables.iterdir():
@@ -41,8 +54,20 @@ action "mkdocs-update-config" {
                 if variable.stem == '__init__':
                     nav_testdata.insert(0, 'framework/usage/variables/testdata/index.md')
                 else:
-                    nav_testdata.append('framework/usage/variables/testdata/{}.md'.format(variable.stem))
+                    nav_testdata.append({make_human_readable(variable.stem): 'framework/usage/variables/testdata/{}.md'.format(variable.stem)})
         config_nav_testdata['Testdata'] = nav_testdata
+
+        def config_nav_users = config['nav'][2]['Framework'][0]['Usage'][2]
+        def users = Path.cwd() / '..' / 'grizzly' / 'users'
+        def nav_users = []
+        for user in users.iterdir():
+            if user.is_file() and (user.stem == '__init__' or not user.stem.startswith('_')):
+                if user.stem == '__init__':
+                    nav_users.insert(0, 'framework/usage/load-users/index.md')
+                else:
+                    nav_users.append({make_human_readable(user.stem): 'framework/usage/load-users/{}.md'.format(user.stem)})
+
+        config_nav_users['Load Users'] = nav_users
 
         def config_nav_steps = config['nav'][2]['Framework'][0]['Usage'][3]['Steps']
         def steps = Path.cwd() / '..' / 'grizzly' / 'steps'
@@ -51,7 +76,7 @@ action "mkdocs-update-config" {
                 if step.stem == '__init__':
                     config_nav_steps.insert(0, 'framework/usage/steps/index.md')
                 else:
-                    config_nav_steps.append('framework/usage/steps/{}.md'.format(step.stem))
+                    config_nav_steps.append({make_human_readable(step.stem): 'framework/usage/steps/{}.md'.format(step.stem)})
 
         def config_nav_steps_background = config_nav_steps[1]
         def steps_background = steps / 'background'
@@ -61,7 +86,7 @@ action "mkdocs-update-config" {
                 if step.stem == '__init__':
                     nav_steps_background.insert(0, 'framework/usage/steps/background/index.md')
                 else:
-                    nav_steps_background.append('framework/usage/steps/background/{}.md'.format(step.stem))
+                    nav_steps_background.append({make_human_readable(step.stem): 'framework/usage/steps/background/{}.md'.format(step.stem)})
 
         config_nav_steps_background['Background'] = nav_steps_background
 
@@ -73,21 +98,9 @@ action "mkdocs-update-config" {
                 if step.stem == '__init__':
                     nav_steps_scenario.insert(0, 'framework/usage/steps/scenario/index.md')
                 else:
-                    nav_steps_scenario.append('framework/usage/steps/scenario/{}.md'.format(step.stem))
+                    nav_steps_scenario.append({make_human_readable(step.stem): 'framework/usage/steps/scenario/{}.md'.format(step.stem)})
 
         config_nav_steps_scenario['Scenario'] = nav_steps_scenario
-
-        def config_nav_users = config['nav'][2]['Framework'][0]['Usage'][4]
-        def users = Path.cwd() / '..' / 'grizzly' / 'users'
-        def nav_users = []
-        for user in users.iterdir():
-            if user.is_file() and (user.stem == '__init__' or not user.stem.startswith('_')):
-                if user.stem == '__init__':
-                    nav_users.insert(0, 'framework/usage/load-users/index.md')
-                else:
-                    nav_users.append('framework/usage/load-users/{}.md'.format(user.stem))
-
-        config_nav_users['Load Users'] = nav_users
     }
 }
 

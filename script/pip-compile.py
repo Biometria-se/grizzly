@@ -9,6 +9,7 @@ from tempfile import NamedTemporaryFile
 from packaging import version as versioning
 from typing import Optional, Dict, Tuple, cast
 from configparser import ConfigParser
+from pathlib import Path
 
 from piptools.scripts.compile import cli as pip_compile
 from piptools.locations import CACHE_DIR
@@ -158,25 +159,34 @@ def run_container(python_version: str) -> Tuple[int, Optional[str]]:
         rc = 0
     except subprocess.CalledProcessError as e:
         rc = e.returncode
+        output = e.output.decode('utf-8')
 
     return rc, output
 
 
 def has_git_dependencies(where_am_i: str) -> bool:
-    setup_file = os.path.join(where_am_i, 'setup.cfg')
-    config = ConfigParser()
-    config.read(setup_file)
+    root = Path(where_am_i)
 
-    if 'options' in config:
-        if 'git+' in config['options'].get('install_requires'):
-            return True
+    if not root.is_file():
+        setup_file = os.path.join(where_am_i, 'setup.cfg')
+        config = ConfigParser()
+        config.read(setup_file)
 
-    if 'options.extras_require' in config:
-        options_extras_require = config['options.extras_require']
-
-        for option in options_extras_require:
-            if 'git+' in options_extras_require[option]:
+        if 'options' in config:
+            if 'git+' in config['options'].get('install_requires'):
                 return True
+
+        if 'options.extras_require' in config:
+            options_extras_require = config['options.extras_require']
+
+            for option in options_extras_require:
+                if 'git+' in options_extras_require[option]:
+                    return True
+    else:
+        content = root.read_text()
+
+        if 'git+' in content:
+            return True
 
     return False
 
@@ -210,6 +220,7 @@ def compile(target: Optional[str] = None) -> int:
         base, _ = os.path.splitext(output_file)
         if os.path.exists(f'{base}.in'):
             src_files = (f'{base}.in', )
+            generate_hashes = not has_git_dependencies(src_files[0])
         else:
             src_files = ('pyproject.toml', )
 
@@ -275,7 +286,7 @@ def main() -> int:
         if rc == 0:
             rc, output = run_container(python_version)
 
-            if rc != 0:
+            if rc != 0 and len(output) > 0:
                 print(output)
 
     return rc

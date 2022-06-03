@@ -1,5 +1,5 @@
 grizzly-loadtester-cli
-novella >0.0.1
+git+https://github.com/mgor/novella.git@bug/anchor_name_without_header#egg=novella
 pydoc-markdown[novella] >=4.6.1
 pytablewriter>=0.64.1
 pip-licenses>=3.5.3
