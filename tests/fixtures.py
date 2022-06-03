@@ -676,10 +676,48 @@ class BehaveContextFixture:
     def __enter__(self) -> 'BehaveContextFixture':
         test_context = self._tmp_path_factory.mktemp('test_context')
 
+        virtual_env_path = test_context / 'grizzly-venv'
+
+        # create virtualenv
+        rc, output = run_command(
+            ['python3', '-m', 'venv', virtual_env_path.name],
+            cwd=str(test_context),
+        )
+
+        try:
+            assert rc == 0
+        except AssertionError:
+            print(''.join(output))
+
+            raise
+
+        path = environ.get('PATH', '')
+
+        self._env.update({
+            'PATH': f'{str(virtual_env_path)}/bin:{path}',
+            'VIRTUAL_ENV': str(virtual_env_path),
+            'PYTHONPATH': environ.get('PYTHONPATH', '.'),
+        })
+
+        # install grizzly-cli
+        rc, output = run_command(
+            ['python3', '-m', 'pip', 'install', 'grizzly-loadtester-cli'],
+            cwd=str(test_context),
+            env=self._env,
+        )
+
+        try:
+            assert rc == 0
+        except AssertionError:
+            print(''.join(output))
+
+            raise
+
         # create grizzly project
         rc, output = run_command(
             ['grizzly-cli', 'init', '--yes', 'test-project'],
             cwd=str(test_context),
+            env=self._env,
         )
 
         try:
@@ -703,29 +741,6 @@ class BehaveContextFixture:
             fd.write('from grizzly.tasks import GrizzlyTask\n')
             fd.write('from grizzly.scenarios import GrizzlyScenario\n')
             fd.write('from grizzly.steps import *\n')
-
-        # create virtualenv
-        rc, output = run_command(
-            ['python3', '-m', 'venv', '.virtual-env'],
-            cwd=str(self._root),
-        )
-
-        try:
-            assert rc == 0
-        except AssertionError:
-            print(''.join(output))
-
-            raise
-
-        path = environ.get('PATH', '')
-
-        virtual_env_path = self._root / '.virtual-env'
-
-        self._env.update({
-            'PATH': f'{str(virtual_env_path)}/bin:{path}',
-            'VIRTUAL_ENV': str(virtual_env_path),
-            'PYTHONPATH': environ.get('PYTHONPATH', '.'),
-        })
 
         # install dependencies
         rc, output = run_command(

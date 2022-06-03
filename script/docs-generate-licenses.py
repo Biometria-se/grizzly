@@ -43,7 +43,7 @@ def generate_license_table() -> List[str]:
 
     for license in licenses:
         name = license['Name']
-        if name.startswith('grizzly-'):
+        if name.startswith('grizzly-') or name in ['pkg-resources']:
             continue
 
         if license['URL'] == 'UNKNOWN':

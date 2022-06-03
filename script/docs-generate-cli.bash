@@ -6,6 +6,8 @@ main() {
     local script_dir
     local workspace
     local cwd="${PWD}"
+    local rc=0
+
     script_dir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
     workspace=$(mktemp -d -t ws-XXXXXX)
 
@@ -16,40 +18,50 @@ main() {
     >&2 echo "-- activating virtualenv"
     source .venv/bin/activate
     >&2 echo "-- installing grizzly-cli"
-    pip3 install grizzly-loadtester-cli[dev] &> /dev/null
+    pip3 install --no-cache-dir grizzly-loadtester-cli[dev] &> /dev/null
+    rc=$(( rc + $? ))
 
     case "${what}" in
         --usage)
 
             >&2 echo "-- generating usage"
             grizzly-cli --md-help
+            rc=$(( rc + $? ))
             ;;
         --licenses|--changelog)
             >&2 echo "-- cloning repo"
             git clone https://github.com/Biometria-se/grizzly-cli.git
+            rc=$(( rc + $? ))
 
             pushd "grizzly-cli/" &> /dev/null
 
             local version
             version="$(grizzly-cli --version | awk '{print $NF}')"
+            rc=$(( rc + $? ))
+
             >&2 echo "checking out tag v${version}"
             git checkout "tags/v${version}" -b "v${version}"
+            rc=$(( rc + $? ))
 
             case "${what}" in
                 --changelog)
                     >&2 echo "-- generating changelog: $PWD, $cwd"
                     python3 "${cwd}/script/docs-generate-changelog.py" --from-directory "$PWD"
+                    rc=$(( rc + $? ))
                     ;;
                 --licenses)
                     >&2 echo "-- generating licenses"
                     python3 script/docs-generate-licenses.py
+                    rc=$(( rc + $? ))
                     ;;
             esac
             popd &> /dev/null
             ;;
         *)
-            echo "unknown argument: ${what}"
-            return 1
+            if [[ ! -z "${what}" ]]; then
+                echo "unknown argument: ${what}"
+                rc=1
+            fi
             ;;
     esac
 
@@ -58,7 +70,7 @@ main() {
     popd &> /dev/null
     rm -rf "${workspace}" || true
 
-    return 0
+    return $rc
 }
 
 main "$@"

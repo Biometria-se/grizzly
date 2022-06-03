@@ -173,6 +173,7 @@ jobs:
       run: |
         cd docs/
         python -m pip install -r requirements-docs.txt
+        git checkout "v${{ steps.version.outputs.version }}"
         novella --site-dir "$PWD/_build" --base-url grizzly/
 
     - name: deploy documentation

@@ -165,7 +165,7 @@ jobs:
       run: python -m pytest tests/e2e
 
   pre-documentation-scripts:
-    name: 'documentation / build script matrix'
+    name: 'documentation / script inventory'
     runs-on: 'ubuntu-latest'
 
     steps:
@@ -271,7 +271,8 @@ jobs:
     - name: build
       run: |
         cd docs/
-        novella --site-dir "$PWD/_build" --base-url grizzly/ 2>&1 | awk '/WARNING/ {print $0; exit 1} /ERROR/ {print $0; exit 1} {print $0}'
+        git checkout -b v0.0.0
+        novella --site-dir "$PWD/_build" --base-url grizzly/ 2>&1 | awk '/WARNING/ && !/Image file.*referenced in.*not found/ {print $0; exit 1} /ERROR/ {print $0; exit 1} {print $0}'
 
   release-quality:
     name: releasable
