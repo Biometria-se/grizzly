@@ -1,4 +1,6 @@
-'''This variable generates a specified number of unique strings, based on a string format pattern.
+'''
+@anchor pydoc:grizzly.testdata.variables.random_string Random String
+This variable generates a specified number of unique strings, based on a string format pattern.
 
 The list is pre-populated to ensure that each string is unique.
 

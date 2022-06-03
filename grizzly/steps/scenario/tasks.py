@@ -307,8 +307,6 @@ def step_task_print_message(context: Context, message: str) -> None:
 def step_task_transform(context: Context, content: str, content_type: TransformerContentType, expression: str, variable: str) -> None:
     '''Parse (part of) a JSON object or a XML document and extract a specific value from that and save into a variable.
 
-    This can be especially useful in combination with [`AtomicMessageQueue`](/grizzly/framework/usage/variables/testdata/messagequeue/) variable.
-
     ```gherkin
     And value for variable "document_id" is "None"
     And value for variable "document_title" is "None"
@@ -319,7 +317,7 @@ def step_task_transform(context: Context, content: str, content_type: Transforme
     ```
 
     Args:
-        contents (str): contents to parse, supports templating or a static string
+        contents (str): contents to parse, supports {@link framework.usage.variables.templating} or a static string
         content_type (TransformerContentType): MIME type of `contents`
         expression (str): JSON or XPath expression for specific value in `contents`
         variable (str): name of variable to save value to, must have been initialized
@@ -380,7 +378,7 @@ def step_task_client_put_endpoint_file_destination(context: Context, source: str
     ```
 
     Args:
-        source (str): relative path to file in `feature/requests`, supports templating
+        source (str): relative path to file in `feature/requests`, supports {@link framework.usage.variables.templating}
         endpoint (str): information about where to get information, see the specific getter task implementations for more information
         name (str): name of the request, used in request statistics
         destination (str): name of source on the destination
@@ -416,7 +414,7 @@ def step_task_client_put_endpoint_file(context: Context, source: str, endpoint: 
     ```
 
     Args:
-        source (str): relative path to file in `feature/requests`, supports templating
+        source (str): relative path to file in `feature/requests`, supports {@link framework.usage.variables.templating}
         endpoint (str): information about where to get information, see the specific getter task implementations for more information
         name (str): name of the request, used in request statistics
     '''

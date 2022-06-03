@@ -8,8 +8,8 @@
     you do care about them, you should setup a subscription to do the filtering in Azure.
 
 User is based on `azure.servicebus` for communicating with Azure Service Bus. But creating a connection and session towards a queue or a topic
-is a costly operation, and caching of the session was causing problems with `gevent` due to the sockets blocking and hence locust/grizzly was
-blocking when finished. To get around this, the user implementation communicates with a stand-alone process via zmq, which in turn communicates
+is a costly operation, and caching of the session was causing problems with `gevent` due to the sockets blocking and hence grizzly was
+blocking when finished. To get around this, the user implementation communicates with a stand-alone process via `zmq`, which in turn communicates
 with Azure Service Bus.
 
 `async-messaged` starts automagically when a scenario uses the `ServiceBusUser`.

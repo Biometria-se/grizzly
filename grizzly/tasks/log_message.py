@@ -1,7 +1,7 @@
 '''
 @anchor pydoc:grizzly.tasks.log_message Log Message
 This task calls the `grizzly` logger to print a log message at level `INFO`. It can be used to visualize values for
-templating variables.
+{@link framework.usage.variables.templating} variables.
 
 ## Step implementations
 

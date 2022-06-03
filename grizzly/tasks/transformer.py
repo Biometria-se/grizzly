@@ -1,5 +1,5 @@
 '''
-@anchor grizzly.tasks.transformer Transformer
+@anchor pydoc:grizzly.tasks.transformer Transformer
 This task transforms a variable value to a document of correct type, so an expression can be used to extract
 values from the document to be used in another variable.
 
@@ -19,7 +19,7 @@ then have the request type `TRNSF`.
 
 ## Arguments
 
-* `contents` _str_ - text to parse, supports templating or a static string
+* `contents` _str_ - text to parse, supports {@link framework.usage.variables.templating} or a static string
 
 * `content_type` _TransformerContentType_ - MIME type of `contents`, which transformer to use
 

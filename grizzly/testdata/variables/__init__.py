@@ -83,7 +83,6 @@ class AtomicVariable(Generic[T], AbstractAtomicClass):
 
                 return
 
-            self._semaphore = self._semaphore  # ugly hack to fool mypy?
             self._values = {variable: value}
             self._initialized = True
 

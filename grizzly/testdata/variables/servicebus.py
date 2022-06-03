@@ -1,7 +1,9 @@
 # pylint: disable=line-too-long
-'''Listens for messages on Azure Service Bus queue or topic.
+'''
+@anchor pydoc:grizzly.testdata.variables.servicebus Servicebus
+Listens for messages on Azure Service Bus queue or topic.
 
-Use [transformer task](/grizzly/framework/usage/tasks/transformer/) to extract specific parts of the message.
+Use {@pylink grizzly.tasks.transformer} task to extract specific parts of the message.
 
 ## Format
 
@@ -18,7 +20,7 @@ receiving messages. See example below.
 > **Warning**: Do not use `expression` to filter messages unless you do not care about the messages that does not match the expression. If
 > you do care about them, you should setup a subscription to do the filtering in Azure.
 
-Arguments support templating for their value, but not the complete endpoint value.
+Arguments support {@link framework.usage.variables.templating} for their value, but not the complete endpoint value.
 
 Examples:
 
@@ -43,7 +45,7 @@ queue:"{{ queue_name }}", expression="$.document[?(@.name=='TPM report')]"
 [Endpoint=]sb://<hostname>/;SharedAccessKeyName=<shared key name>;SharedAccessKey=<shared key>
 ```
 
-The complete `url` has templating support, but not parts of it.
+The complete `url` has {@link framework.usage.variables.templating} support, but not parts of it.
 
 ```plain
 # valid

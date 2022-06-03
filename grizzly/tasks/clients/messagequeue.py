@@ -2,7 +2,7 @@
 '''This task performs IBM MQM get and put opertions to a specified queue or topic.
 
 This is useful if the scenario is another user type than `MessageQueueUser`, but the scenario still requires an action towards an MQ server.
-Use [transformer task](/grizzly/framework/usage/tasks/transformer/) to extract specific parts of the message.
+Use {@pylink grizzly.tasks.transformer} task to extract specific parts of the message.
 
 Grizzly *must* have been installed with the extra `mq` package and native IBM MQ libraries must be installed for being able to use this variable:
 
@@ -36,7 +36,7 @@ pip3 install grizzly-loadtester[mq]
 mq[s]://<username>:<password>@]<hostname>[:<port>]/<endpoint>?QueueManager=<queue manager>&Channel=<channel>[&wait=<wait>][&heartbeat=<heartbeat>][&KeyFile=<key repo path>[&SslCipher=<ssl cipher>][&CertLabel=<certificate label>]]
 ```
 
-All variables in the URL have support for templating.
+All variables in the URL have support for {@link framework.usage.variables.templating}.
 
 * `mq[s]` _str_ - must be specified, `mqs` implies connecting with TLS, if `KeyFile` is not set in querystring, it will look for a key repository in `./<username>`
 

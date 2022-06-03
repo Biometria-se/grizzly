@@ -1,4 +1,6 @@
-'''This variable reads a CSV file and provides a new row from the CSV file each time it is accessed.
+'''
+@anchor pydoc:grizzly.testdata.variables.csv_row CSV Row
+This variable reads a CSV file and provides a new row from the CSV file each time it is accessed.
 
 The CSV files **must** have headers for each column, since these are used to reference the value.
 

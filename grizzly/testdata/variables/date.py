@@ -1,4 +1,6 @@
-'''This variable is used to format and use dates.
+'''
+@anchor pydoc:grizzly.testdata.variables.date Date
+This variable is used to format and use dates.
 
 ## Format
 

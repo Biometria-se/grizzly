@@ -34,7 +34,7 @@ bs[s]://<AccountName>?AccountKey=<AccountKey>&Container=<Container>
 
 * `Container` _str_ - name of the container to perform the request on
 
-All variables in the endpoint supports templating, but not the whole string.
+All variables in the endpoint supports {@link framework.usage.variables.templating}, but not the whole string.
 
 ### `destination`
 
