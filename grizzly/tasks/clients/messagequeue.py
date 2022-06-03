@@ -10,33 +10,59 @@ Grizzly *must* have been installed with the extra `mq` package and native IBM MQ
 pip3 install grizzly-loadtester[mq]
 ```
 
-Endpoint is specified in the format:
+## Step implementations
+
+* {@pylink grizzly.steps.scenario.tasks.step_task_client_get_endpoint}
+
+* {@pylink grizzly.steps.scenario.tasks.step_task_client_put_endpoint_file}
+
+## Arguments
+
+* `direction` _RequestDirection_ - if the request is upstream or downstream
+
+* `endpoint` _str_ - specifies details to be able to perform the request, e.g. account and container information
+
+* `name` _str_ - name used in `locust` statistics
+
+* `destination` _str_ (optional) - **not used by this client**
+
+* `source` _str_ (optional) - file path of local file that should be put on `endpoint`
+
+## Format
+
+### `endpoint`
 
 ```plain
 mq[s]://<username>:<password>@]<hostname>[:<port>]/<endpoint>?QueueManager=<queue manager>&Channel=<channel>[&wait=<wait>][&heartbeat=<heartbeat>][&KeyFile=<key repo path>[&SslCipher=<ssl cipher>][&CertLabel=<certificate label>]]
 ```
 
-All variables in the URL have support for [templating](/grizzly/framework/usage/variables/templating/).
+All variables in the URL have support for templating.
 
 * `mq[s]` _str_ - must be specified, `mqs` implies connecting with TLS, if `KeyFile` is not set in querystring, it will look for a key repository in `./<username>`
+
 * `username` _str_ (optional) - username to authenticate with, default `None`
+
 * `password` _str_ (optional) - password to authenticate with, default `None`
+
 * `hostname` _str_ - hostname of MQ server
+
 * `port` _int_ (optional) - port on MQ server, default `1414`
+
 * `endpoint` _str_ - prefixed with either `topic:` or `queue:` and then the name of the endpoint to perform operations on
+
 * `wait` _int_ (optional) - number of seconds to wait for an message, default is to wait infinite (0 seconds)
+
 * `heartbeat` _int_ (optional) - number of seconds between heartbeats, default is 300 seconds
+
 * `QueueManager` _str_ - name of queue manager
+
 * `Channel` _str_ - name of channel to connect to
+
 * `KeyFile` _str_ (optional) - path to key repository for certificates needed to connect over TLS
+
 * `SslCipher` _str_ (optional) - SSL cipher to use for connection, default `ECDHE_RSA_AES_256_GCM_SHA384`
+
 * `CertLabel` _str_ (optional) - label of certificate in key repository, default `username`
-
-Instances of this task is created with the step expression, if endpoint is defined with scheme `mq` or `mqs`:
-
-* [`step_task_client_get_endpoint`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_client_get_endpoint)
-
-* [`step_task_client_put_endpoint_file`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_client_put_endpoint_file)
 '''  # noqa: E501
 from typing import Optional, Dict, Any, List, cast
 from urllib.parse import urlparse, parse_qs, unquote

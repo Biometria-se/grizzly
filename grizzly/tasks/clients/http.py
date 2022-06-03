@@ -2,9 +2,19 @@
 
 This is useful if the scenario is using a non-HTTP user or a request to a URL other than the one under testing is needed, e.g. for testdata.
 
-Instances of this task is created with the step expression, if endpoint is defined with scheme `http` or `https`:
+Only supports `RequestDirection.FROM`.
 
-* [`step_task_client_get_endpoint`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_client_get_endpoint)
+## Step implementations
+
+* {@pylink grizzly.steps.scenario.tasks.step_task_client_get_endpoint}
+
+## Arguments
+
+* `direction` _RequestDirection_ - only `RequestDirection.FROM` is implemented
+
+* `endpoint` _str_ - URL to perform GET request from
+
+* `name` _str_ - name used in `locust` statistics
 '''
 from typing import Any
 
