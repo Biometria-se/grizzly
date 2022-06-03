@@ -1,9 +1,19 @@
-'''This task calls the `grizzly` logger to print a log message at level `INFO`. It can be used to visualize values for
+'''
+@anchor pydoc:grizzly.tasks.log_message Log Message
+This task calls the `grizzly` logger to print a log message at level `INFO`. It can be used to visualize values for
 templating variables.
 
-Instances of this task is created with the step expression:
+## Step implementations
 
-* [`step_task_print_message`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_print_message)
+* {@pylink grizzly.steps.scenario.tasks.step_task_print_message}
+
+## Statistics
+
+This task does not have any request statistics entries.
+
+## Arguments
+
+* `message` _str_ - message to log at `INFO` level, can be a template
 '''
 from typing import TYPE_CHECKING, Any, Callable, Optional
 

@@ -1,6 +1,7 @@
-'''Tasks are functionality that is executed by locust at run time as they are specified in the feature file.
-The most essential task i `RequestTask`, which all `grizzly.users` is using to make requests. All other tasks
-are helper tasks for things that needs to happen after or before a `RequestTask`.
+'''Tasks are functionality that is executed by `locust` at run time as they are specified in the feature file.
+The most essential task is `RequestTask`, which all `grizzly.users` is using to make requests to the endpoint that is being load tested.
+All other tasks are helper tasks for things that needs to happen after or before a `RequestTask`, stuff like extracting information from
+a previous response or fetching additional test data from a different endpoint ("`Clients`").
 '''
 from abc import ABC
 from typing import TYPE_CHECKING, Any, Callable, List, Type, Set, Optional

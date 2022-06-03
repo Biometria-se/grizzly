@@ -1,17 +1,33 @@
-'''This task calls the `request` method of a `grizzly.users` implementation.
+'''
+@anchor pydoc:grizzly.tasks.request Request
+This task calls the `request` method of a `grizzly.users` implementation.
 
 This is the most essential task in `grizzly`, it defines requests that the specified load user is going to execute
 against the target under test.
 
-Instances of this task is created with the step expressions:
+## Step implementations
 
-* [`step_task_request_text_with_name_to_endpoint`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_request_text_with_name_to_endpoint)
+* {@pylink grizzly.steps.scenario.tasks.step_task_request_text_with_name_endpoint}
 
-* [`step_task_request_file_with_name_endpoint`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_request_file_with_name_endpoint)
+* {@pylink grizzly.steps.scenario.tasks.step_task_request_file_with_name_endpoint}
 
-* [`step_task_request_file_with_name`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_request_file_with_name)
+* {@pylink grizzly.steps.scenario.tasks.step_task_request_file_with_name}
 
-* [`step_task_request_text_with_name`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_request_text_with_name)
+* {@pylink grizzly.steps.scenario.tasks.step_task_request_text_with_name}
+
+## Statistics
+
+Executions of this task will be visible in `locust` request statistics with request type `method`.
+
+## Arguments
+
+* `method` _RequestMethod_ - method used for the request, e.g. `GET` or `POST`, also includes the direction (to or from)
+
+* `name` _str_ - name of the request, used in `locust` statistics
+
+* `endpoint` _str_ - endpoint on the load testing target, have different meaning depending on the specified Load User
+
+* `source` _str_ (optional) - payload data sent to `endpoint`, can be a file path
 '''
 from typing import TYPE_CHECKING, List, Optional, Any, Callable
 

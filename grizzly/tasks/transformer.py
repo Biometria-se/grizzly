@@ -1,4 +1,6 @@
-'''This task transforms a variable value to a document of correct type, so an expression can be used to extract
+'''
+@anchor grizzly.tasks.transformer Transformer
+This task transforms a variable value to a document of correct type, so an expression can be used to extract
 values from the document to be used in another variable.
 
 This is especially useful when used in combination with other variables variables containing a lot of information,
@@ -6,7 +8,24 @@ where many parts of a message can be useful to re-use.
 
 Instances of this task is created with the step expression:
 
-* [`step_task_transform`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_transform)
+## Step implementations
+
+* {@pylink grizzly.steps.scenario.tasks.step_task_transform}
+
+## Statistics
+
+Executions of this task will **not** be visible in `locust` request statistics, *unless* something goes wrong. It will
+then have the request type `TRNSF`.
+
+## Arguments
+
+* `contents` _str_ - text to parse, supports templating or a static string
+
+* `content_type` _TransformerContentType_ - MIME type of `contents`, which transformer to use
+
+* `expression` _str_ - JSON- or XPath expression to extract specific values in `contents`
+
+* `variable` _str_ - name of variable to save value to, must have been intialized
 '''
 from time import perf_counter
 from typing import TYPE_CHECKING, List, Callable, Any, Type, Optional

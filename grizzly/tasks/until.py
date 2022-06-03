@@ -1,19 +1,42 @@
-'''This task calls the `request` method of a `grizzly.users` implementation, until condition matches the
+'''
+@anchor pydoc:grizzly.tasks.until Until
+This task calls the `request` method of a `grizzly.users` implementation, until condition matches the
 payload returned for the request.
 
-`condition` is a JSON- or Xpath expression, that also has support for "grizzly style" arguments:
+## Step implementations
 
-Arguments:
+* {@pylink grizzly.steps.scenario.tasks.step_task_request_with_name_endpoint_until}
 
-* `retries` (int): maximum number of times to repeat the request if `condition` is not met (default `3`)
+## Statistics
 
-* `wait` (float): number of seconds to wait between retries (default `1.0`)
+Executions of this task will be visible in `locust` request statistics with request type `UNTL` indicating how
+long time it took to finish the task. `name` will be suffixed with ` r=<retries>, w=<wait>, em=<expected_matches>`.
 
-* `expected_matches` (int): number of matches that the expression should match (default `1`)
+The request task that is being repeated until `condition` is true will have it's own entry in the statistics as an
+ordinary {@pylink grizzly.tasks.request} task.
 
-Instances of this task is created with step expression:
+## Arguments
 
-* [`step_task_request_with_name_to_endpoint_until`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_request_with_name_to_endpoint_until)
+* `request` _RequestTask_ - request that is going to be repeated
+
+* `condition` _str_ - condition expression that specifies how `request` should be repeated
+
+## Format
+
+### `condition`
+
+```plain
+<expression> [| [retries=<retries>][, wait=<wait>][, expected_matches=<expected_matches>]]
+```
+
+* `expression` _str_ - JSON- or Xpath expression
+
+* `retries` _int_ (optional) - maximum number of times to repeat the request if `condition` is not met (default `3`)
+
+* `wait` _float_ (optional) - number of seconds to wait between retries (default `1.0`)
+
+* `expected_matches` _int_ (optional): number of matches that the expression should match (default `1`)
+
 '''
 from typing import TYPE_CHECKING, Callable, Any, Type, List, Optional, cast
 from time import perf_counter

@@ -1,20 +1,28 @@
-'''This task runs all requests in the group asynchronously.
+'''
+@anchor pydoc:grizzly.tasks.async_group Async Group
+This task runs all requests in the group asynchronously.
 
-The name of all request added to the group will be prefixed with async group `<name>:`. Request type for this task is `ASYNC`.
-
-Arguments:
-
-* `name` (str): name of the group of asynchronously requests
-
-Instances of this task is created with step expressions:
-
-* [`step_task_async_group_start`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_async_group_start)
-
-* [`step_task_async_group_close`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_async_group_close)
-
-Requests are added to the group with the same step expressions as [`RequestTask`](/grizzly/framework/usage/tasks/request/).
+The name of requests added to the group will be prefixed with async group `<name>:`
 
 Enable `gevent` debugging for this task by running with argument `--verbose` and setting environment variable `GEVENT_MONITOR_THREAD_ENABLE`.
+
+## Step implementations
+
+* {@pylink grizzly.steps.scenario.tasks.step_task_async_group_start}
+
+* {@pylink grizzly.steps.scenario.tasks.step_task_async_group_close}
+
+Requests are added to the group with the same step implementations as {@pylink grizzly.tasks.request} task.
+
+## Statistics
+
+Executions of this task will be visible in `locust` request statistics with request type `ASYNC`. `name` will be suffixed with ` (<n>)`,
+where `<n>` is the number of requests in the group. Each request in the group will have it's own entry in the statistics as an ordinary
+{@pylink grizzly.tasks.request} task.
+
+## Arguments
+
+* `name` (str): name of the group of asynchronously requests
 '''
 import logging
 import inspect

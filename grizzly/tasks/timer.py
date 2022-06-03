@@ -1,12 +1,26 @@
-'''This task "wraps" a group of other tasks, that might not have any requests and hence no statistics, to measure
+'''
+@anchor pydoc:grizzly.tasks.timer
+This task "wraps" a group of other tasks, that might not have any requests and hence no statistics, to measure
 how long time they took. Request content length for this task in the scenario is number of tasks between starting and
 stopping the timer.
 
 Instances of this task is created with the step expressions:
 
-* [`step_task_timer_start`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_timer_start)
+## Step implementations
 
-* [`step_task_timer_stop`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_timer_stop)
+* {@pylink grizzly.steps.scenario.tasks.step_task_timer_start}
+
+* {@pylink grizzly.steps.scenario.tasks.step_task_timer_stop}
+
+## Statistics
+
+Executions of this task will be visible in `locust` statistics with request type `TIMR`. `name` will be prefixed with ` (<n>)`, where `<n>`
+indicates how many tasks was run between the start and stop of this timer. Response time is the total time it took for the `<n>` tasks to
+run.
+
+## Arguments
+
+* `name` _str_ - name of the timer
 '''
 from typing import TYPE_CHECKING, Any, Callable, Optional
 from hashlib import sha1

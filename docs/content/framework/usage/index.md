@@ -1,5 +1,0 @@
----
-title: Usage
----
-
-# Hello world

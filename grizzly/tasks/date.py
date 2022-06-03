@@ -1,14 +1,29 @@
 # pylint: disable=line-too-long
-'''This task parses a string representation of a date/time and allows transformation of it, such as specifying an offset or changing the format,
+'''
+@anchor pydoc:grizzly.tasks.date Date
+This task parses a string representation of a date/time and allows transformation of it, such as specifying an offset or changing the format,
 and saves the result as a date/time string in an variable.
 
-At least one arguments needs to specified.
 
-Instances of this task is created with the step expression:
+## Step implementations
 
-* [`step_task_date`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_date)
+* {@pylink grizzly.steps.scenario.tasks.step_task_date}
 
 ## Arguments
+
+* `variable` _str_ - name of, initialized, variable the parsed date should be saved in
+
+* `value` _str_ - value
+
+## Format
+
+### `value`
+
+```plain
+<date> [| format=<format>][, timezone=<timezone>][, offset=<offset>]
+```
+
+* `date` _str/datetime_ - string representation of a date and/or time or a `datetime` object, e.g. `datetime.now()`
 
 * `format` _str_ - a python [`strftime` format string](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes) or `ISO-8601:[DateTime|Time][:ms]`, this argument is required
 
