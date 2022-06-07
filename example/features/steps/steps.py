@@ -15,13 +15,13 @@ from steps.custom import Task  # pylint: disable=import-error
 def step_log_all_requests(context: Context) -> None:
     '''This step does the same as:
 
-    ```gherkin
+    ``` gherkin
     And set context variable "log_all_requests" to "True"
     ```
 
     Usage:
 
-    ```gherkin
+    ``` gherkin
     And log all requests
     ```
     '''

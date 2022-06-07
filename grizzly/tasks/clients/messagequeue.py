@@ -6,7 +6,7 @@ Use {@pylink grizzly.tasks.transformer} task to extract specific parts of the me
 
 Grizzly *must* have been installed with the extra `mq` package and native IBM MQ libraries must be installed for being able to use this variable:
 
-```plain
+``` plain
 pip3 install grizzly-loadtester[mq]
 ```
 
@@ -32,7 +32,7 @@ pip3 install grizzly-loadtester[mq]
 
 ### `endpoint`
 
-```plain
+``` plain
 mq[s]://<username>:<password>@]<hostname>[:<port>]/<endpoint>?QueueManager=<queue manager>&Channel=<channel>[&wait=<wait>][&heartbeat=<heartbeat>][&KeyFile=<key repo path>[&SslCipher=<ssl cipher>][&CertLabel=<certificate label>]]
 ```
 

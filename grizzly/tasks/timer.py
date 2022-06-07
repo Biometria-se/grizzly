@@ -1,10 +1,11 @@
 '''
-@anchor pydoc:grizzly.tasks.timer
+@anchor pydoc:grizzly.tasks.timer Timer
 This task "wraps" a group of other tasks, that might not have any requests and hence no statistics, to measure
 how long time they took. Request content length for this task in the scenario is number of tasks between starting and
 stopping the timer.
 
-Instances of this task is created with the step expressions:
+Odd executions of this task starts the timer by setting a timestamp for the task. Even executions of this task stops the timer
+and logs the "response time" in the `locust` statistics.
 
 ## Step implementations
 

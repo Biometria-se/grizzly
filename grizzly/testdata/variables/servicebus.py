@@ -10,21 +10,22 @@ Use {@pylink grizzly.tasks.transformer} task to extract specific parts of the me
 Initial value for a variable must have the prefix `queue:` or `topic:` followed by the name of the targeted
 type. When receiving messages from a topic, the argument `subscription:` is mandatory. The format of endpoint is:
 
-```plain
+``` plain
 [queue|topic]:<endpoint name>[, subscription:<subscription name>][, expression:<expression>]
 ```
 
 Where `<expression>` can be a XPath or jsonpath expression, depending on the specified content type. This argument is only allowed when
 receiving messages. See example below.
 
-> **Warning**: Do not use `expression` to filter messages unless you do not care about the messages that does not match the expression. If
-> you do care about them, you should setup a subscription to do the filtering in Azure.
+!!! attention
+    Do not use `expression` to filter messages unless you do not care about the messages that does not match the expression. If
+    you do care about them, you should setup a subscription to do the filtering in Azure.
 
 Arguments support {@link framework.usage.variables.templating} for their value, but not the complete endpoint value.
 
 Examples:
 
-```plain
+``` plain
 queue:test-queue
 topic:test-topic, subscription:test-subscription
 queue:"$conf::sb.endpoint.queue"
@@ -41,13 +42,13 @@ queue:"{{ queue_name }}", expression="$.document[?(@.name=='TPM report')]"
 
 ### URL format
 
-```plain
+``` plain
 [Endpoint=]sb://<hostname>/;SharedAccessKeyName=<shared key name>;SharedAccessKey=<shared key>
 ```
 
 The complete `url` has {@link framework.usage.variables.templating} support, but not parts of it.
 
-```plain
+``` plain
 # valid
 $conf::sb.url
 
@@ -57,7 +58,7 @@ Endpoint=sb://$conf::sb.hostname/;SharedAccessKeyName=$conf::sb.keyname;SharedAc
 
 ## Example
 
-```gherkin
+``` gherkin
 And value for variable "AtomicServiceBus.document_id" is "queue:documents-in | wait=120, url=$conf::sb.endpoint, repeat=True"
 ...
 Given a user of type "RestApi" load testing "http://example.com"
@@ -76,7 +77,7 @@ When specifying an expression, the messages on the endpoint is first peeked on. 
 If no matching messages was found when peeking, it is repeated again up until the specified `wait` seconds has elapsed. To use expression, a content type must
 be specified for the endpint, e.g. `application/xml`.
 
-```gherking
+``` gherkin
 And value for variable "AtomicServiceBus.tpm_document" is "queue:documents-in | wait=120, url=$conf::sb.endpoint, repeat=True, content_type=json, expression='$.document[?(@.name=='TPM Report')'"
 ```
 '''  # noqa: E501

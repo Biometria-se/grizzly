@@ -1,4 +1,7 @@
-'''This module contains step implementations that describes the actual load all scenarios in a feature will generate.'''
+'''
+@anchor pydoc:grizzly.steps.background.shapes Shapes
+This module contains step implementations that describes how the load for all scenarios in a feature will look like.
+'''
 from typing import Any, Dict, cast
 
 import parse
@@ -24,7 +27,7 @@ register_type(
 def step_shapes_user_count(context: Context, value: str, **kwargs: Dict[str, Any]) -> None:
     '''Set number of users that will generate load.
 
-    ```gherkin
+    ``` gherkin
     Given "5" users
     Given "1" user
     Given "{{ user_count }}"
@@ -53,7 +56,7 @@ def step_shapes_user_count(context: Context, value: str, **kwargs: Dict[str, Any
 def step_shapes_spawn_rate(context: Context, value: str, **kwargs: Dict[str, Any]) -> None:
     '''Set rate in which locust shall swarm new user instances.
 
-    ```gherkin
+    ``` gherkin
     And spawn rate is "5" users per second
     And spawn rate is "1" user per second
     And spawn rate is "0.1" users per second

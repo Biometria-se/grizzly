@@ -24,7 +24,7 @@ Only supports `RequestDirection.TO`.
 
 ### `endpoint`
 
-```plain
+``` plain
 bs[s]://<AccountName>?AccountKey=<AccountKey>&Container=<Container>
 ```
 

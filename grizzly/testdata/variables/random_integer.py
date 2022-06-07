@@ -12,12 +12,12 @@ This variable does not have any arguments.
 
 ## Example
 
-```gherkin
+``` gherkin
 And value for variable "AtomicRandomInteger.weight" is "10..30"
 ```
 
 This can then be used in a template:
-```json
+``` json
 {
     "weight_tons": {{ AtomicRandomInteger.weight }}
 }

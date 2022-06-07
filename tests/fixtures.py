@@ -837,7 +837,7 @@ class BehaveContextFixture:
         contents.append(f'  Scenario: {callee}')
         for step in scenario or []:
             contents.append(f'    {step}')
-        contents.append('    Then print message "dummy"\n')
+        contents.append('    Then log message "dummy"\n')
 
         return self.create_feature(
             '\n'.join(contents),

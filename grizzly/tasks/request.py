@@ -5,6 +5,9 @@ This task calls the `request` method of a `grizzly.users` implementation.
 This is the most essential task in `grizzly`, it defines requests that the specified load user is going to execute
 against the target under test.
 
+Optionally, the MIME type of the response can be set, this has to be done if any of the {@pylink grizzly.steps.scenario.response}
+steps is going to be used.
+
 ## Step implementations
 
 * {@pylink grizzly.steps.scenario.tasks.step_task_request_text_with_name_endpoint}
@@ -25,9 +28,34 @@ Executions of this task will be visible in `locust` request statistics with requ
 
 * `name` _str_ - name of the request, used in `locust` statistics
 
-* `endpoint` _str_ - endpoint on the load testing target, have different meaning depending on the specified Load User
+* `endpoint` _str_ - endpoint on the load testing target, have different meaning depending on the specified {@pylink grizzly.users}
 
 * `source` _str_ (optional) - payload data sent to `endpoint`, can be a file path
+
+## Format
+
+### `endpoint`
+
+All arguments will be removed from `endpoint` before creating the task instance.
+
+``` plain
+<endpoint> [| content_type=<content_type>]
+```
+
+* `endpoint` _str_ - endpoint in format that the specified {@pylink grizzly.users} understands
+
+* `content_type` _TransformerContentType_ (optional) - MIME type of response from `endpoint`
+
+Specifying MIME/content type as an argument to `endpoint` is the same as using {@pylink grizzly.steps.scenario.response.step_response_content_type}.
+
+``` gherkin
+Then put request "test/request.j2.json" with name "test-put" to endpoint "/api/test | content_type=json"
+
+# same as
+Then put request "test/request.j2.json" with name "test-put" to endpoint "/api/test"
+And set response content type to "application/json"
+```
+
 '''
 from typing import TYPE_CHECKING, List, Optional, Any, Callable
 

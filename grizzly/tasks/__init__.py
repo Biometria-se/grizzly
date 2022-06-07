@@ -1,7 +1,19 @@
-'''Tasks are functionality that is executed by `locust` at run time as they are specified in the feature file.
-The most essential task is `RequestTask`, which all `grizzly.users` is using to make requests to the endpoint that is being load tested.
-All other tasks are helper tasks for things that needs to happen after or before a `RequestTask`, stuff like extracting information from
-a previous response or fetching additional test data from a different endpoint ("`Clients`").
+'''
+@anchor pydoc:grizzly.tasks Tasks
+Tasks are functionality that is executed by `locust` at run time as they are specified in the feature file.
+
+The most essential task is {@pylink grizzly.tasks.request}, which all {@pylink grizzly.users} is using to make
+requests to the endpoint that is being load tested.
+
+All other tasks are helper tasks for things that needs to happen after or before a {@pylink grizzly.tasks.request}, stuff like extracting information from
+a previous response or fetching additional test data from a different endpoint ("{@link pydoc:grizzly.tasks.clients}").
+
+## Custom
+
+It is possible to implement custom tasks, the only requirement is that they inherit `grizzly.tasks.GrizzlyTask`. To get them to be executed by `grizzly`,
+a step implementation is also needed.
+
+There are examples of this in the {@link framework.example}.
 '''
 from abc import ABC
 from typing import TYPE_CHECKING, Any, Callable, List, Type, Set, Optional

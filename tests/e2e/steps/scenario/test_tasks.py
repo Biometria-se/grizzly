@@ -333,7 +333,7 @@ def test_e2e_step_task_wait_seconds(behave_context_fixture: BehaveContextFixture
     assert rc == 0
 
 
-def test_e2e_step_task_print_message(behave_context_fixture: BehaveContextFixture) -> None:
+def test_e2e_step_task_log_message(behave_context_fixture: BehaveContextFixture) -> None:
     def validate_task_wait(context: Context) -> None:
         from grizzly.tasks import LogMessage
         grizzly = cast(GrizzlyContext, context.grizzly)
@@ -359,8 +359,8 @@ def test_e2e_step_task_print_message(behave_context_fixture: BehaveContextFixtur
 
     feature_file = behave_context_fixture.test_steps(
         scenario=[
-            'Then print message "hello world!"',
-            'Then print message "foobar={{ foobar }}"',
+            'Then log message "hello world!"',
+            'Then log message "foobar={{ foobar }}"',
         ],
     )
 
@@ -754,10 +754,10 @@ def test_e2e_step_task_timer_start_and_stop(behave_context_fixture: BehaveContex
 
     feature_file = behave_context_fixture.test_steps(
         scenario=[
-            'Then print message "before-timer-1"',
+            'Then log message "before-timer-1"',
             'Then start timer with name "timer-1"',
             'Then wait for "1.0" seconds',
-            'Then print message "before-timer-2"',
+            'Then log message "before-timer-2"',
             'Then start timer with name "timer-2"',
             'Then wait for "3.0" seconds',
             'Then stop timer with name "timer-1"',

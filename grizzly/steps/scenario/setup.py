@@ -25,25 +25,19 @@ register_type(
 
 @given(u'set context variable "{variable}" to "{value}"')
 def step_setup_set_context_variable(context: Context, variable: str, value: str) -> None:
-    '''Set a variable in the scenario context.
+    '''Sets a variable in the scenario context.
 
-    Variable name can contain (one or more) dot (`.`) or slash (`/`) to indicate that the variable has a nested structure. E.g. `token.url`
-    and `token/url` results in:
+    Variable names can contain (one or more) dot (`.`) or slash (`/`) to indicate that the variable has a nested structure. E.g. `token.url`
+    and `token/url` results in `{'token': {'url': '<value'>}}`
 
-    ```json
-    {
-        'token': {
-            'url': '<value>'
-        }
-    }
-    ```
-
-    It is also possible to have spaces in a variable name, they will then be replaced with underscore (`_`), and name will be
+    It is also possible to have spaces in a variable names, they will then be replaced with underscore (`_`), and the name will be
     converted to lowercase.
 
-    E.g. `Client ID` results in `client_id`
+    E.g. `Client ID` results in `client_id`.
 
-    ```gherkin
+    Example:
+
+    ``` gherkin
     And set context variable "token.url" to "https://example.com/api/auth"
     And set context variable "token/client_id" to "aaaa-bbbb-cccc-dddd"
     And set context variable "token/client secret" to "aasdfasdfasdf=="
@@ -64,12 +58,14 @@ def step_setup_set_context_variable(context: Context, variable: str, value: str)
 
 @given(u'repeat for "{value}" {iteration_number:IterationGramaticalNumber}')
 def step_setup_iterations(context: Context, value: str, iteration_number: str) -> None:
-    '''Set how many iterations of the requests in the scenario should execute.
+    '''Sets how many iterations of the {@pylink grizzly.tasks} in the scenario should execute.
 
     Default value is `1`. A value of `0` means to run until all test data is consumed, or that the (optional) specified
     runtime for the scenario is reached.
 
-    ```gherkin
+    Example:
+
+    ``` gherkin
     And repeat for "10" iterations
     And repeat for "1" iteration
     And value for variable "leveranser" is "100"
@@ -100,31 +96,32 @@ def step_setup_iterations(context: Context, value: str, iteration_number: str) -
 
 @given(u'value for variable "{name}" is "{value}"')
 def step_setup_variable_value(context: Context, name: str, value: str) -> None:
-    '''Initialize a variable.
-
-    Use this step to initialize a variable that should have the same [start] value for every run of
+    '''Use this step to initialize a variable that should have the same [start] value for every run of
     the scenario.
 
-    Data type for the value of the variable is based on the type of variable. If the variable is an "`Atomic*`"-variable
-    then the value needs to match the format and type that the variable has implemented. If it is a non "`Atomic*`"-variable
+    Data type for the value of the variable is based on the type of variable. If the variable is an testdata {@pylink grizzly.testdata.variables}
+    then the value needs to match the format and type that the variable has implemented. If it is not a testdata variable
     `grizzly` will try to guess the data type. E.g.:
+
     * `"10"` becomes `int`
+
     * `"1.0"` becomes `float`
+
     * `"True"` becomes `bool`
+
     * everything else becomes `str`
 
-    ```gherkin
-    And value for variable "HelloWorld" is "default"
-    ```
-
-    It is possible to set the value of a variable based on another variable, which can be usable if you have a variable in
+    It is also possible to set the value of a variable based on another variable, which can be usable if you have a variable in
     multiple scenarios which all should have the same initial value.
 
-    ```gherkin
+    Example:
+
+    ``` gherkin
     Feature:
         Background:
             And ask for value of variable "messageID"
         Scenario:
+            And value for variable "HelloWorld" is "default"
             And value for variable "AtomicIntegerIncrementer.mid1" is "{{ messageID }}"
     ```
 
@@ -146,44 +143,17 @@ def step_setup_variable_value(context: Context, name: str, value: str) -> None:
 
 @given(u'set alias "{alias}" for variable "{variable}"')
 def step_setup_set_variable_alias(context: Context, alias: str, variable: str) -> None:
-    '''Create an alias for a variable that points to another structure in the context.
+    '''Creates an alias for a variable that points to another structure in the context.
 
     This is useful if you have test data that somehow should change the behavior for a
     user, e.g. username and password.
 
-    ```gherkin
+    Example:
+
+    ``` gherkin
     And value for variable "AtomicCsvRow.users" is "users.csv | repeat=True"
     And set alias "auth.user.username" for variable "AtomicCsvRow.users.username"
     And set alias "auth.user.password" for variable "AtomicCsvRow.users.password"
-    ```
-
-    Assumed that the file `users.csv` contains the columns `username` and `password`; without
-    the alias step it would look like the following structure in the context:
-
-    ```json
-    {
-        "variables": {
-            "AtomicCsvRow": {
-                "users": {
-                    "username": "username",
-                    "password": "password"
-                }
-            }
-        }
-    }
-    ```
-
-    With the alias step it will be transformed to this:
-
-    ```json
-    {
-        "auth": {
-            "user": {
-                "username": "username",
-                "password": "password"
-            }
-        }
-    }
     ```
 
     Variables in payload templates are not allowed to have an alias.
@@ -208,11 +178,13 @@ def step_setup_set_variable_alias(context: Context, alias: str, variable: str) -
 
 @given(u'log all requests')
 def step_setup_log_all_requests(context: Context) -> None:
-    '''Set if all requests should be logged to a file.
+    '''Sets if all requests should be logged to a file.
 
     By default only failed requests (and responses) will be logged.
 
-    ```gherkin
+    Example:
+
+    ``` gherkin
     And log all requests
     ```
     '''
@@ -226,7 +198,9 @@ def step_setup_stop_user_on_failure(context: Context) -> None:
 
     Default behavior is to continue the scenario if a request fails.
 
-    ```gherkin
+    Example:
+
+    ``` gherkin
     And stop user on failure
     ```
     '''
@@ -241,7 +215,9 @@ def step_setup_restart_scenario_on_failure(context: Context) -> None:
 
     Default behavior is to continue the scenario if a request fails.
 
-    ```gherkin
+    Example:
+
+    ``` gherkin
     And restart scenario on failure
     ```
     '''
@@ -254,9 +230,12 @@ def step_setup_restart_scenario_on_failure(context: Context) -> None:
 def step_setup_metadata(context: Context, key: str, value: str) -> None:
     '''Set a metadata (header) value to be used by the user when sending requests.
 
-    ```gherkin
+    Example:
+
+    ``` gherkin
     And metadata "Content-Type" is "application/xml"
     And metadata "Ocp-Apim-Subscription-Key" is "9asdf00asdf00adsf034"
+    ```
     '''
 
     grizzly = cast(GrizzlyContext, context.grizzly)

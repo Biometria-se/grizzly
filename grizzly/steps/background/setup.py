@@ -1,4 +1,6 @@
-'''This module contains step implementations that configures the load test scenario with parameters applicable for all scenarios.'''
+'''
+@anchor pydoc:grizzly.steps.background.setup Setup
+This module contains step implementations that configures the load test scenario with parameters applicable for all scenarios.'''
 import parse
 
 from urllib.parse import urlparse, parse_qs, urlunparse
@@ -34,19 +36,19 @@ def step_setup_save_statistics(context: Context, url: str) -> None:
 
     For InfluxDB the following format **must** be used:
 
-    ```plain
+    ``` plain
     influxdb://[<username>:<password>@]<hostname>[:<port>]/<database>?TargetEnviroment=<target environment>[&Testplan=<test plan>]
     [&TargetEnvironment=<target environment>][&ProfileName=<profile name>][&Description=<description>]
     ```
 
     For Azure Application Insights the following format **must** be used:
 
-    ```plain
+    ``` plain
     insights://?InstrumentationKey=<instrumentation key>&IngestionEndpoint=<ingestion endpoint>[&Testplan=<test plan>]
     insights://<ingestion endpoint>/?InstrumentationKey=<instrumentation key>[&Testplan=<test plan>]
     ```
 
-    ```gherkin
+    ``` gherkin
     And save statistics to "influxdb://grizzly:secret-password@influx.example.com/grizzly-statistics"
     And save statistics to "insights://?IngestionEndpoint=https://insights.example.com&Testplan=grizzly-statistics&InstrumentationKey=asdfasdfasdf="
     And save statistics to "insights://insights.example.com/?Testplan=grizzly-statistics&InstrumentationKey=asdfasdfasdf="
@@ -111,7 +113,7 @@ def step_setup_log_level(context: Context, log_level: str) -> None:
 
     Default value is `INFO`, by changing to `DEBUG` there is more information what `grizzly` is doing behind the curtains.
 
-    ```gherkin
+    ``` gherkin
     And log level is "DEBUG"
     ```
 
@@ -128,7 +130,7 @@ def step_setup_run_time(context: Context, timespan: str) -> None:
     '''Configures the time period a headless test should run for.
     If available test data is infinite, the test will run forever if this step is not used.
 
-    ```gherkin
+    ``` gherkin
     And run for maximum "1h"
     ```
 
@@ -151,7 +153,7 @@ def step_setup_set_global_context_variable(context: Context, variable: str, valu
 
     E.g. `token.url` and `token/URL` results in:
 
-    ```json
+    ``` json
     {
         'token': {
             'url': '<value>'
@@ -163,7 +165,7 @@ def step_setup_set_global_context_variable(context: Context, variable: str, valu
 
     E.g. `Client ID` results in `client_id`.
 
-    ```gherkin
+    ``` gherkin
     And set global context variable "token.url" to "http://example.com/api/auth"
     And set global context variable "token/client_id" to "aaaa-bbbb-cccc-dddd"
     And set global context variable "token/client secret" to "aasdfasdfasdf=="
@@ -176,7 +178,7 @@ def step_setup_set_global_context_variable(context: Context, variable: str, valu
     Data type of values will be guessed, if not explicitly specified by the type of variable used (`Atomic*`). E.g. the last two
     examples above will result in:
 
-    ```json
+    ``` json
     {
         'validate_certificates': False,
         'run_id': 13

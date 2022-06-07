@@ -19,7 +19,7 @@ def step_setup_variable_value_ask(context: Context, name: str) -> None:
 
     Use this step for variables that should have different initial values for each run of the feature.
 
-    ```gherkin
+    ``` gherkin
     And ask for value for variable "AtomicIntegerIncrementer.messageID"
     ```
 

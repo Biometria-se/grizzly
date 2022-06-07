@@ -25,7 +25,7 @@ ordinary {@pylink grizzly.tasks.request} task.
 
 ### `condition`
 
-```plain
+``` plain
 <expression> [| [retries=<retries>][, wait=<wait>][, expected_matches=<expected_matches>]]
 ```
 

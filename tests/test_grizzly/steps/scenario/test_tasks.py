@@ -218,11 +218,11 @@ def test_step_task_wait_seconds(behave_fixture: BehaveFixture) -> None:
     assert grizzly.scenario.tasks[-1].time == 1.337
 
 
-def test_step_task_print_message(behave_fixture: BehaveFixture) -> None:
+def test_step_task_log_message(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
 
-    step_task_print_message(behave, 'hello {{ world }}')
+    step_task_log_message(behave, 'hello {{ world }}')
 
     assert isinstance(grizzly.scenario.tasks[-1], LogMessage)
     assert grizzly.scenario.tasks[-1].message == 'hello {{ world }}'

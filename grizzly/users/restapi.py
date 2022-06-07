@@ -12,7 +12,7 @@ Supports the following request methods:
 
 Format of `host` is the following:
 
-```plain
+``` plain
 http[s]://<hostname>
 ```
 
@@ -20,14 +20,14 @@ http[s]://<hostname>
 
 Example on how to use it in a scenario:
 
-```gherkin
+``` gherkin
 Given a user of type "RestApi" load testing "https://api.example.com"
 Then post request "test/request.j2.json" to endpoint "/api/test"
 Then get request from endpoint "/api/test"
 ```
 
 To change how often the token should be refreshed, default is 3000 seconds:
-```gherkin
+``` gherkin
 And set context variable "auth.refresh_time" to "3500"
 ```
 
@@ -35,7 +35,7 @@ And set context variable "auth.refresh_time" to "3500"
 
 #### Client secret
 
-```gherkin
+``` gherkin
 Given a user of type "RestApi" load testing "https://api.example.com"
 And set context variable "auth.client.tenant" "<tenant name/guid>"
 And set context variable "auth.client.id" to "<client id>"
@@ -47,7 +47,7 @@ And set context variable "auth.client.resource" to "<resource url/guid>"
 
 `auth.user.redirect_uri` needs to correspond to the endpoint that the client secret is registrered for.
 
-```gherkin
+``` gherkin
 Given a user of type "RestApi" load testing "https://api.example.com"
 And set context variable "auth.client.id" to "<client id>"
 And set context variable "auth.user.username" to "alice@example.onmicrosoft.com"
