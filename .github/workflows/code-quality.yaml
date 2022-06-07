@@ -273,6 +273,12 @@ jobs:
         cd docs/
         git checkout -b v0.0.0
         novella --site-dir "$PWD/_build" --base-url grizzly/ 2>&1 | awk '/WARNING/ && !/Image file.*referenced in.*not found/ {print $0; exit 1} /ERROR/ {print $0; exit 1} {print $0}'
+        # check for un-rendered pydoc-markdown tags
+        cd "$PWD/_build"
+        find . -type f -name '*.html' | xargs -- grep -nHE '\{\@.*\}' | awk 'BEGIN{rc=0} !/^$/ {rc=1; print} END{exit rc}'
+
+        # check for @TODO annotations
+        find . -type f -name '*.html' | xargs -- grep -nHE '@TODO' | awk 'BEGIN{rc=0} !/^$/ {rc=1; print} END{exit rc}'
 
   release-quality:
     name: releasable

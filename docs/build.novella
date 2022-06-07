@@ -105,6 +105,14 @@ action "mkdocs-update-config" {
 }
 
 action "preprocess-markdown" {
+    update_with processor -> {
+        if hasattr(processor, '_renderer') and hasattr(processor._renderer, 'header_level_by_type'):
+            processor._renderer.header_level_by_type.update({
+                'Method': 2,
+                'Function': 2,
+            })
+    }
+
     use "pydoc"
 }
 
