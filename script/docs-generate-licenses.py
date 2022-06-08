@@ -6,7 +6,6 @@ from typing import List, Optional, Dict
 from os import path
 from json import loads as jsonloads
 from io import StringIO
-from pathlib import Path
 
 import requests
 
@@ -44,7 +43,7 @@ def generate_license_table() -> List[str]:
 
     for license in licenses:
         name = license['Name']
-        if name.startswith('grizzly-'):
+        if name.startswith('grizzly-') or name in ['pkg-resources']:
             continue
 
         if license['URL'] == 'UNKNOWN':
@@ -150,15 +149,9 @@ def main() -> int:
     license_table = generate_license_table()
     native_dependencies = generate_native_dependencies_section()
     contents[0] = f'#{contents[0]}'
-    license_contents = ['# Licenses\n', '\n'] + contents + ['\n', '## Third party licenses\n', '\n'] + license_table + ['\n'] + native_dependencies
+    license_contents = contents + ['\n', '## Third party licenses\n', '\n'] + license_table + ['\n'] + native_dependencies
 
-    licenses_dir = Path(REPO_ROOT) / 'docs' / 'licenses'
-
-    if not licenses_dir.exists():
-        licenses_dir.mkdir()
-
-    with open(licenses_dir / 'grizzly-loadtester.md', 'w') as fd:
-        fd.writelines(license_contents)
+    print(''.join(license_contents))
 
     return 0
 

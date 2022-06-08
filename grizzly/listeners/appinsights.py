@@ -5,7 +5,8 @@ https://github.com/SvenskaSpel/locust-plugins/blob/master/locust_plugins/appinsi
 Minor changes, mainly related to adding typing, and also how InstrumentationKey is handled.
 
 Example kusko question to get response time:
-```kusko
+
+``` kusko
 traces
 | extend response_time = todouble(customDimensions["response_time"]),
 response_length = toint(customDimensions["response_length"]),

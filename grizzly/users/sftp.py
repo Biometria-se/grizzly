@@ -1,6 +1,7 @@
 '''Communicates with Secure File Transport Protocol.
 
-> **Warning**: Both local and remote files will be overwritten if they already exists. Downloaded files will be stored in `requests/download`.
+!!! attention
+    Both local and remote files will be overwritten if they already exists. Downloaded files will be stored in `requests/download`.
 
 ## Request methods
 
@@ -13,7 +14,7 @@ Supports the following request methods:
 
 Format of `host` is the following:
 
-```plain
+``` plain
 sftp://<host>[:<port>]
 ```
 
@@ -21,7 +22,7 @@ sftp://<host>[:<port>]
 
 Example of how to use it in a scenario:
 
-```gherkin
+``` gherkin
 Given a user of type "Sftp" load testing "sftp://sftp.example.com"
 And set context variable "auth.username" to "bob"
 And set context variable "auth.password" to "great-scott-42-file-bar"

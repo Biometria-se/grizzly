@@ -1,8 +1,14 @@
-'''This task executes a `gevent.sleep` and is used to manually create delays between steps in a scenario.
+'''
+@anchor pydoc:grizzly.tasks.wait Wait
+This task executes a `gevent.sleep` and is used to manually create delays between steps in a scenario.
 
-Instances of this task is created with the step expression:
+## Step implementations
 
-* [`step_task_wait_seconds`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_wait_seconds)
+* {@pylink grizzly.steps.scenario.tasks.step_task_wait_seconds}
+
+## Arguments
+
+* `time` _float_ - fractions of seconds to excplicitly sleep in the scenario
 '''
 from typing import TYPE_CHECKING, Any, Callable, Optional
 

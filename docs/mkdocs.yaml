@@ -1,0 +1,21 @@
+nav:
+  - index.md
+  - example.md
+  - Framework:
+    - Usage:
+      - Tasks:
+          - Clients:
+      - Variables:
+        - framework/usage/variables/environment-configuration.md
+        - Testdata:
+        - framework/usage/variables/templating.md
+      - Load Users:
+      - Steps:
+        - Background:
+        - Scenario:
+    - Changelog: framework/changelog.md
+    - Licenses: framework/licenses.md
+  - Command Line Interface:
+    - Usage: command-line-interface/usage.md
+    - Changelog: command-line-interface/changelog.md
+    - Licenses: command-line-interface/licenses.md

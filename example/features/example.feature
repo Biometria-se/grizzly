@@ -34,5 +34,5 @@ Feature: grizzly example
 
     Then get request with name "2-get-author" from endpoint "{{ author_endpoint }}.json | content_type=json"
     When response payload "$.name" is not "{{ AtomicCsvRow.books.author }}" fail request
-    Then print message "AtomicCustomVariable.foobar='{{ steps.custom.AtomicCustomVariable.foobar }}'"
+    Then log message "AtomicCustomVariable.foobar='{{ steps.custom.AtomicCustomVariable.foobar }}'"
 

@@ -1,4 +1,7 @@
-'''This module contains step implementations that describes a user.'''
+'''
+@anchor pydoc:grizzly.steps.scenario.user User
+This module contains step implementations that describes a {@pylink grizzly.users}.
+'''
 from typing import cast
 
 from behave.runner import Context
@@ -10,10 +13,12 @@ from ...testdata.utils import resolve_variable
 
 @given(u'a user of type "{user_class_name}" with weight "{weight_value}" load testing "{host}"')
 def step_user_type_with_weight(context: Context, user_class_name: str, weight_value: str, host: str) -> None:
-    '''Set which type of user the scenario should use and which host is the target,
-    together with weight for the user (how much this user should spawn, relative to others).
+    '''Sets which type of {@pylink grizzly.users} the scenario should use and which `host` is the target,
+    together with `weight` of the user (how many instances of this user should spawn relative to others).
 
-    ```gherkin
+    Example:
+
+    ``` gherkin
     Given a user of type "RestApi" with weight "2" load testing "..."
     Given a user of type "MessageQueue" with weight "1" load testing "..."
     Given a user of type "ServiceBus" with weight "1" load testing "..."
@@ -21,9 +26,9 @@ def step_user_type_with_weight(context: Context, user_class_name: str, weight_va
     ```
 
     Args:
-        user_class_name (str): name of an implementation in `grizzly.users`, with or without `User`
-        weight_value (str): weight value for the user, default is '1' (see http://docs.locust.io/en/stable/writing-a-locustfile.html#weight-attribute)
-        host (str): an URL for the target host, format depends on which `user_class_name` (see `grizzly.users`)
+        user_class_name (str): name of an implementation of {@pylink grizzly.users}, with or without `User`-suffix
+        weight_value (str): weight value for the user, default is `1` (see [writing a locustfile](http://docs.locust.io/en/stable/writing-a-locustfile.html#weight-attribute))
+        host (str): an URL for the target host, format depends on which {@pylink grizzly.users} is specified
     '''
     if not user_class_name.endswith('User'):
         user_class_name = f'{user_class_name}User'
@@ -40,9 +45,11 @@ def step_user_type_with_weight(context: Context, user_class_name: str, weight_va
 
 @given(u'a user of type "{user_class_name}" load testing "{host}"')
 def step_user_type(context: Context, user_class_name: str, host: str) -> None:
-    '''Set which type of user the scenario should use and which host is the target.
+    '''Sets which type of {@pylink grizzly.users} the scenario should use and which `host` is the target.
 
-    ```gherkin
+    Example:
+
+    ``` gherkin
     Given a user of type "RestApi" load testing "http://api.example.com"
     Given a user of type "MessageQueue" load testing "mq://mqm:secret@mq.example.com/?QueueManager=QMGR01&Channel=Channel01"
     Given a user of type "ServiceBus" load testing "sb://sb.example.com/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789="
@@ -50,8 +57,8 @@ def step_user_type(context: Context, user_class_name: str, host: str) -> None:
     ```
 
     Args:
-        user_class_name (str): name of an implementation in `grizzly.users`, with or without `User`
-        host (str): an URL for the target host, format depends on which `user_class_name` (see `grizzly.users`)
+        user_class_name (str): name of an implementation of {@pylink grizzly.users}, with or without `User`-suffix
+        host (str): an URL for the target host, format depends on which {@pylink grizzly.users} is specified
     '''
     if not user_class_name.endswith('User'):
         user_class_name = f'{user_class_name}User'

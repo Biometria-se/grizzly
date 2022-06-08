@@ -5,7 +5,7 @@ set -e
 main() {
     local version="${1:-dev}"
     case "${version}" in
-        dev|prod|ci|script)
+        dev|prod|ci|docs)
             ;;
         *)
             >&2 echo "unknown version ${version}: choose one of prod, dev, ci or script"

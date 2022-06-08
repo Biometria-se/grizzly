@@ -4,11 +4,11 @@ from typing import Optional
 
 import yaml
 
-from ..fixtures import Webserver
+from ..fixtures import BehaveContextFixture, Webserver
 from ..helpers import run_command
 
 
-def test_e2e_example(webserver: Webserver) -> None:
+def test_e2e_example(webserver: Webserver, behave_context_fixture: BehaveContextFixture) -> None:
     cwd = getcwd()
 
     try:
@@ -30,7 +30,7 @@ def test_e2e_example(webserver: Webserver) -> None:
                 '--yes',
                 '-e', env_conf_file.name,
                 'features/example.feature'
-            ])
+            ], env=behave_context_fixture._env)
 
             result = ''.join(output)
 

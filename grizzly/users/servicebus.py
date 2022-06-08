@@ -1,13 +1,15 @@
 '''Send and receive messages on Azure Service Bus queues and topics.
 
-> **Note**: If `message.wait` is not set, `azure.servicebus` will wait until there is a message available, and hence block the scenario.
+!!! note
+    If `message.wait` is not set, `azure.servicebus` will wait until there is a message available, and hence block the scenario.
 
-> **Warning**: Do not use `expression` to filter messages unless you do not care about the messages that does not match the expression. If
-> you do care about them, you should setup a subscription to do the filtering in Azure.
+!!! attention
+    Do not use `expression` to filter messages unless you do not care about the messages that does not match the expression. If
+    you do care about them, you should setup a subscription to do the filtering in Azure.
 
 User is based on `azure.servicebus` for communicating with Azure Service Bus. But creating a connection and session towards a queue or a topic
-is a costly operation, and caching of the session was causing problems with `gevent` due to the sockets blocking and hence locust/grizzly was
-blocking when finished. To get around this, the user implementation communicates with a stand-alone process via zmq, which in turn communicates
+is a costly operation, and caching of the session was causing problems with `gevent` due to the sockets blocking and hence grizzly was
+blocking when finished. To get around this, the user implementation communicates with a stand-alone process via `zmq`, which in turn communicates
 with Azure Service Bus.
 
 `async-messaged` starts automagically when a scenario uses the `ServiceBusUser`.
@@ -23,14 +25,14 @@ Supports the following request methods:
 
 Format of `host` is the following:
 
-```plain
+``` plain
 [Endpoint=]sb://<hostname>/;SharedAccessKeyName=<shared key name>;SharedAccessKey=<shared key>
 ```
 
 `endpoint` in the request must have the prefix `queue:` or `topic:` followed by the name of the targeted
 type. When receiving messages from a topic, the argument `subscription:` is mandatory. The format of endpoint is:
 
-```plain
+``` plain
 [queue|topic]:<endpoint name>[, subscription:<subscription name>][, expression:<expression>]
 ```
 
@@ -41,7 +43,7 @@ receiving messages. See example below.
 
 Example of how to use it in a scenario:
 
-```gherkin
+``` gherkin
 Given a user of type "ServiceBus" load testing "sb://sb.example.com/;SharedAccessKeyName=authorization-key;SharedAccessKey=c2VjcmV0LXN0dWZm"
 And set context variable "message.wait" to "5"
 Then send request "queue-send" to endpoint "queue:shared-queue"
@@ -56,7 +58,7 @@ When specifying an expression, the messages on the endpoint is first peeked on. 
 endpoint. If no matching messages was found when peeking, it is repeated again after a slight delay, up until the specified `message.wait` seconds has
 elapsed. To use expressions, a content type must be specified for the request, e.g. `application/xml`.
 
-```gherkin
+``` gherkin
 Given a user of type "ServiceBus" load testing "sb://sb.example.com/;SharedAccessKeyName=authorization-key;SharedAccessKey=c2VjcmV0LXN0dWZm"
 And set context variable "message.wait" to "5"
 Then receive request "queue-recv" from endpoint "queue:shared-queue, expression:$.document[?(@.name=='TPM report')].id"

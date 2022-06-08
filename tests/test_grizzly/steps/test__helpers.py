@@ -15,7 +15,7 @@ from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 from grizzly.tasks.async_group import AsyncRequestGroupTask
 from grizzly.types import RequestMethod, ResponseTarget, ResponseAction
 from grizzly.tasks import RequestTask, WaitTask
-from grizzly.steps.helpers import (
+from grizzly.steps._helpers import (
     add_validation_handler,
     add_save_handler,
     add_request_task,

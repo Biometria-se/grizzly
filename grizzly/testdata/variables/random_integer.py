@@ -1,4 +1,6 @@
-'''This variable provides an random integer between specified interval.
+'''
+@anchor pydoc:grizzly.testdata.variables.random_integer Random Integer
+This variable provides an random integer between specified interval.
 
 ## Format
 
@@ -10,12 +12,12 @@ This variable does not have any arguments.
 
 ## Example
 
-```gherkin
+``` gherkin
 And value for variable "AtomicRandomInteger.weight" is "10..30"
 ```
 
 This can then be used in a template:
-```json
+``` json
 {
     "weight_tons": {{ AtomicRandomInteger.weight }}
 }

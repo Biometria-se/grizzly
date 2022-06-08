@@ -37,7 +37,7 @@ def before_scenario(
     Overloads before_scenario from grizzly, to set "stop_on_failure" for all scenarios.
     This would be the same as having the following step for all Scenario in a Feature:
 
-    ```gherking
+    ``` gherkin
     And stop on first on first failure
     ```
     '''

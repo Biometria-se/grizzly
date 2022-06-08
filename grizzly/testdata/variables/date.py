@@ -1,4 +1,6 @@
-'''This variable is used to format and use dates.
+'''
+@anchor pydoc:grizzly.testdata.variables.date Date
+This variable is used to format and use dates.
 
 ## Format
 
@@ -13,13 +15,13 @@ at the time of access.
 
 ## Example
 
-```gherkin
+``` gherkin
 And value for variable "AtomicDate.arrival" is "now | format='%Y-%m-%dT%H:%M:%S.000Z', timezone=UTC"
 ```
 
 This can then be used in a template:
 
-```json
+``` json
 {
     "arrival": "{{ AtomicDate.arrival }}",
     "location": "Port of Shanghai"

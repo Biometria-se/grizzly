@@ -21,3 +21,5 @@ coverage.xml
 docs/licenses/*
 docs/changelog/*
 docs/cli.md
+docs/_site
+docs/_build

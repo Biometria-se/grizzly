@@ -1,4 +1,6 @@
-# Environment configuration
+---
+title: Environment configuration
+---
 
 It is possible to make the feature file environment agnostic by providing a `yaml` file containing a dictionary with a root node named `configuration`.
 The environment configuration file can also be used to store credentials and other sensitive information that should not be under version control.

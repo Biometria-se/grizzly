@@ -1,4 +1,7 @@
-'''This module contains step implementations that handles request responses.'''
+'''
+@anchor pydoc:grizzly.steps.scenario.response Response
+This module contains step implementations that handles {@pylink grizzly.tasks.request} responses.
+'''
 import parse
 
 from typing import cast
@@ -9,7 +12,7 @@ from behave import register_type, when, then  # pylint: disable=no-name-in-modul
 from ...context import GrizzlyContext
 from ...tasks import RequestTask
 from ...types import ResponseTarget
-from ..helpers import add_save_handler, add_validation_handler, add_request_task_response_status_codes
+from .._helpers import add_save_handler, add_validation_handler, add_request_task_response_status_codes
 
 from grizzly_extras.transformer import TransformerContentType
 
@@ -44,9 +47,11 @@ def step_response_save_matches(context: Context, target: ResponseTarget, express
 
     With this step it is possible to change variable values and as such use values from a response later on in the load test.
 
-    This step will fail if the specified `expression` has no match or more than one match.
+    The {@pylink grizzly.tasks.request} task preceded by this step will fail if the specified `expression` has no or more than one match.
 
-    ```gherkin
+    Example:
+
+    ``` gherkin
     # only token is matched and saved in TOKEN, by using regexp match groups
     And value for variable "TOKEN" is "none"
     Then save response metadata "$.Authentication" that matches "Bearer (.*)$" in variabel "TOKEN"
@@ -81,13 +86,15 @@ def step_response_save_matches(context: Context, target: ResponseTarget, express
 def step_response_save(context: Context, target: ResponseTarget, expression: str, variable: str) -> None:
     '''Save metadata (header) or payload (body) value from a response in a variable.
 
-    This step is the same as `step_response_save_matches` if `match_with` is set to `.*`.
+    This step expression is the same as {@pylink grizzly.steps.scenario.response.step_response_save_matches} if `match_with` is set to `.*`.
 
     With this step it is possible to change variable values and as such use values from a response later on in the load test.
 
-    This step will fail if the specified `expression` has no match or more than one match.
+    The {@pylink grizzly.tasks.request} task preceded by this step will fail if the specified `expression` has no or more than one match.
 
-    ```gherkin
+    Example:
+
+    ``` gherkin
     Then save response metadata "$.Authentication" in variable "HEADER_AUTHENTICATION"
 
     Then save response payload "$.Result.ShipmentId" in variable "ShipmentId"
@@ -107,11 +114,9 @@ def step_response_save(context: Context, target: ResponseTarget, expression: str
 def step_response_validate(context: Context, target: ResponseTarget, expression: str, condition: bool, match_with: str) -> None:
     '''Fails the request based on the value of a response meta data (header) or payload (body).
 
-    How the step will fail is based on step `And ... on failure`. If this step is not present, the default behaviour
-    is to continue the scenario.
+    Example:
 
-
-    ```gherkin
+    ``` gherkin
     And restart scenario on failure
     When response metadata "$.['content-type']" is not ".*application/json.*" fail request
     When response metadata "$.['x-test-command']" is "abort" fail request
@@ -139,7 +144,9 @@ def step_response_allow_status_codes(context: Context, status_list: str) -> None
     By default `200` is the only allowed respoonse status code. By prefixing a code with minus (`-`),
     it will be removed from the list of allowed response status codes.
 
-    ```gherkin
+    Example:
+
+    ``` gherkin
     Then get request with name "test-get-1" from endpoint "/api/test"
     And allow response status "200,302"
 
@@ -174,7 +181,9 @@ def step_response_allow_status_codes_table(context: Context) -> None:
 
     The table **must** have the column header `status`.
 
-    ```gherkin
+    Example:
+
+    ``` gherkin
     Then get request with name "test-get-1" from endpoint "/api/test"
     Then get request with name "test-get-2" from endpoint "/api/test"
     And allow response status
@@ -218,7 +227,9 @@ def step_response_content_type(context: Context, content_type: TransformerConten
     This is applicable when there is a `step_response_validate` or `step_response_save` is included in
     the scenario, and is valid only for the latest defined request.
 
-    ```gherkin
+    Example:
+
+    ``` gherkin
     And set response content type to "json"
     And set response content type to "application/json"
     And set response content type to "xml"

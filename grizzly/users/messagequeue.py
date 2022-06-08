@@ -19,14 +19,14 @@ Supports the following request methods:
 
 Format of `host` is the following:
 
-```plain
+``` plain
 mq://<hostname>:<port>/?QueueManager=<queue manager name>&Channel=<channel name>
 ```
 
 `endpoint` in the request is the name of an MQ queue. This can also be combined with an expression, if
 a specific message is to be retrieved from the queue. The format of endpoint is:
 
-```plain
+``` plain
 queue:<queue_name>[, expression:<expression>]
 ```
 
@@ -36,7 +36,7 @@ Where `<expression>` can be a XPath or jsonpath expression, depending on the spe
 
 Example of how to use it in a scenario:
 
-```gherkin
+``` gherkin
 Given a user of type "MessageQueue" load testing "mq://mq.example.com/?QueueManager=QM01&Channel=SRVCONN01"
 Then put request "test/queue-message.j2.json" with name "queue-message" to endpoint "queue:INCOMING.MESSAGES"
 ```
@@ -48,7 +48,7 @@ set the time it should wait with `message.wait` (seconds) context variable.
 To keep the connection alive during longer waiting periods, a heartbeat interval can be configured using the
 `connection.heartbeat_interval` (seconds) context variable (default 300).
 
-```gherkin
+``` gherkin
 Given a user of type "MessageQueue" load testing "mq://mq.example.com/?QueueManager=QM01&Channel=SRVCONN01"
 And set context variable "message.wait" to "5"
 Then get request with name "get-queue-message" from endpoint "queue:INCOMING.MESSAGES"
@@ -63,7 +63,7 @@ later consumed from the queue. If no matching message was found during browsing,
 up until the specified `message.wait` seconds has elapsed. To use expressions, a content type must be specified for the get
 request, e.g. `application/xml`:
 
-```gherkin
+``` gherkin
 Given a user of type "MessageQueue" load testing "mq://mq.example.com/?QueueManager=QM01&Channel=SRVCONN01"
 And set context variable "message.wait" to "5"
 Then get request with name "get-specific-queue-message" from endpoint "queue:INCOMING.MESSAGES, expression: //document[@id='abc123']"
@@ -74,7 +74,7 @@ And set response content type to "application/xml"
 
 #### Username and password
 
-```gherkin
+``` gherkin
 Given a user of type "MessageQueue" load testing "mq://mqm:admin@mq.example.com/?QueueManager=QM01&Channel=SRVCONN01"
 And set context variable "auth.username" to "<username>"
 And set context variable "auth.password" to "<password>"
@@ -85,7 +85,7 @@ And set context variable "auth.password" to "<password>"
 A [key repository](https://www.ibm.com/docs/en/ibm-mq/7.5?topic=wstulws-setting-up-key-repository-unix-linux-windows-systems)
 (3 files; `.kdb`, `.rdb` and `.sth`) for the user is needed, and is specified with `auth.key_file` excluding the file extension.
 
-```gherkin
+``` gherkin
 Given a user of type "MessageQueue" load testing "mq://mqm:admin@mq.example.com/?QueueManager=QM01&Channel=SRVCONN01"
 And set context variable "auth.username" to "<username>"
 And set context variable "auth.password" to "<password>"

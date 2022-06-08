@@ -1,3 +1,20 @@
+'''
+@anchor pydoc:grizzly.tasks.clients Clients
+Client tasks is functionality that is executed by locust and is registred to an URL scheme.
+These tasks is used to make a request to another host than the scenario is actually load testing.
+
+## Statistics
+
+Executions of all client tasks will be visible with request type `CLNT`.
+
+## Arguments
+
+* `endpoint` _str_ - describes the request
+
+If `endpoint` is a template variable which includes the scheme, the scheme for the request must be specified so the
+correct `grizzly.tasks.client` implementation is used. The additional scheme will be removed when the request is
+performed.
+'''
 from abc import abstractmethod
 from typing import Dict, Generator, Type, List, Any, Optional, Callable
 from contextlib import contextmanager

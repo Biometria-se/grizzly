@@ -1,4 +1,6 @@
-'''This variable reads a CSV file and provides a new row from the CSV file each time it is accessed.
+'''
+@anchor pydoc:grizzly.testdata.variables.csv_row CSV Row
+This variable reads a CSV file and provides a new row from the CSV file each time it is accessed.
 
 The CSV files **must** have headers for each column, since these are used to reference the value.
 
@@ -15,14 +17,14 @@ Value is the path, relative to `requests/`, of an file ending with `.csv`.
 
 `requests/example.csv`:
 
-```plain
+``` plain
 username,password
 bob1,some-password
 alice1,some-other-password
 bob2,password
 ```
 
-```gherkin
+``` gherkin
 And value for variable "AtomicCsvRow.example" is "example.csv | random=False, repeat=True"
 Then post request with name "authenticate" to endpoint "/api/v1/authenticate"
   """
@@ -35,7 +37,7 @@ Then post request with name "authenticate" to endpoint "/api/v1/authenticate"
 
 First request the payload will be:
 
-```json
+``` json
 {
     "username": "bob1",
     "password": "some-password"
@@ -44,7 +46,7 @@ First request the payload will be:
 
 Second request:
 
-```json
+``` json
 {
     "username": "alice1",
     "password": "some-other-password"

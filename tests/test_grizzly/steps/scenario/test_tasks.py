@@ -52,28 +52,28 @@ def test_parse_direction() -> None:
         p.parse('value asdf world')
 
 
-def test_step_task_request_with_name_to_endpoint_until(behave_fixture: BehaveFixture) -> None:
+def test_step_task_request_with_name_endpoint_until(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
 
     assert len(grizzly.scenario.tasks) == 0
 
     with pytest.raises(AssertionError) as ae:
-        step_task_request_with_name_to_endpoint_until(behave, RequestMethod.POST, 'test', '/api/test', '$.`this`[?status="ready"]')
+        step_task_request_with_name_endpoint_until(behave, RequestMethod.POST, 'test', '/api/test', '$.`this`[?status="ready"]')
     assert 'this step is only valid for request methods with direction FROM' in str(ae)
 
     behave.text = 'foo bar'
     with pytest.raises(AssertionError) as ae:
-        step_task_request_with_name_to_endpoint_until(behave, RequestMethod.GET, 'test', '/api/test', '$.`this`[?status="ready"]')
+        step_task_request_with_name_endpoint_until(behave, RequestMethod.GET, 'test', '/api/test', '$.`this`[?status="ready"]')
     assert 'this step does not have support for step text' in str(ae)
 
     behave.text = None
 
     with pytest.raises(ValueError) as ve:
-        step_task_request_with_name_to_endpoint_until(behave, RequestMethod.GET, 'test', '/api/test', '$.`this`[?status="ready"]')
+        step_task_request_with_name_endpoint_until(behave, RequestMethod.GET, 'test', '/api/test', '$.`this`[?status="ready"]')
     assert 'content type must be specified for request' in str(ve)
 
-    step_task_request_with_name_to_endpoint_until(behave, RequestMethod.GET, 'test', '/api/test | content_type=json', '$.`this`[?status="ready"]')
+    step_task_request_with_name_endpoint_until(behave, RequestMethod.GET, 'test', '/api/test | content_type=json', '$.`this`[?status="ready"]')
 
     assert len(grizzly.scenario.tasks) == 1
 
@@ -83,7 +83,7 @@ def test_step_task_request_with_name_to_endpoint_until(behave_fixture: BehaveFix
     rows.append(Row(['endpoint'], ['bar']))
     behave.table = Table(['endpoint'], rows=rows)
 
-    step_task_request_with_name_to_endpoint_until(behave, RequestMethod.GET, 'test', '/api/{{ endpoint }} | content_type=json', '$.`this`[?status="{{ endpoint }}"]')
+    step_task_request_with_name_endpoint_until(behave, RequestMethod.GET, 'test', '/api/{{ endpoint }} | content_type=json', '$.`this`[?status="{{ endpoint }}"]')
 
     assert len(grizzly.scenario.tasks) == 4
     tasks = cast(List[UntilRequestTask], grizzly.scenario.tasks)
@@ -141,47 +141,47 @@ def test_step_task_request_file_with_name_wrong_direction(behave_fixture: Behave
 
 
 @pytest.mark.parametrize('method', RequestDirection.TO.methods)
-def test_step_task_request_text_with_name_to_endpoint_to(behave_fixture: BehaveFixture, method: RequestMethod) -> None:
+def test_step_task_request_text_with_name_endpoint_to(behave_fixture: BehaveFixture, method: RequestMethod) -> None:
     behave = behave_fixture.context
     behave.text = '{}'
 
-    step_task_request_text_with_name_to_endpoint(behave, method, 'test-name', RequestDirection.TO, '/api/test')
+    step_task_request_text_with_name_endpoint(behave, method, 'test-name', RequestDirection.TO, '/api/test')
 
     with pytest.raises(AssertionError) as ae:
-        step_task_request_text_with_name_to_endpoint(behave, method, 'test-name', RequestDirection.FROM, '/api/test')
+        step_task_request_text_with_name_endpoint(behave, method, 'test-name', RequestDirection.FROM, '/api/test')
     assert f'"from endpoint" is not allowed for {method.name}, use "to endpoint"' in str(ae)
 
 
 @pytest.mark.parametrize('method', RequestDirection.FROM.methods)
-def test_step_task_request_text_with_name_to_endpoint_from(behave_fixture: BehaveFixture, method: RequestMethod) -> None:
+def test_step_task_request_text_with_name_endpoint_from(behave_fixture: BehaveFixture, method: RequestMethod) -> None:
     behave = behave_fixture.context
     behave.text = '{}'
 
     with pytest.raises(AssertionError) as ae:
-        step_task_request_text_with_name_to_endpoint(behave, method, 'test-name', RequestDirection.TO, '/api/test')
+        step_task_request_text_with_name_endpoint(behave, method, 'test-name', RequestDirection.TO, '/api/test')
     assert f'step text is not allowed for {method.name}' in str(ae)
 
     with pytest.raises(AssertionError) as ae:
-        step_task_request_text_with_name_to_endpoint(behave, method, 'test-name', RequestDirection.FROM, '/api/test')
+        step_task_request_text_with_name_endpoint(behave, method, 'test-name', RequestDirection.FROM, '/api/test')
     assert f'step text is not allowed for {method.name}' in str(ae)
 
 
 @pytest.mark.parametrize('method', RequestDirection.FROM.methods)
-def test_step_task_request_text_with_name_to_endpoint_no_text(behave_fixture: BehaveFixture, method: RequestMethod) -> None:
+def test_step_task_request_text_with_name_endpoint_no_text(behave_fixture: BehaveFixture, method: RequestMethod) -> None:
     behave = behave_fixture.context
     behave.text = None
 
-    step_task_request_text_with_name_to_endpoint(behave, method, 'test-name', RequestDirection.FROM, '/api/test')
+    step_task_request_text_with_name_endpoint(behave, method, 'test-name', RequestDirection.FROM, '/api/test')
 
     with pytest.raises(AssertionError) as ae:
-        step_task_request_text_with_name_to_endpoint(behave, method, 'test-name', RequestDirection.TO, '/api/test')
+        step_task_request_text_with_name_endpoint(behave, method, 'test-name', RequestDirection.TO, '/api/test')
     assert f'"to endpoint" is not allowed for {method.name}, use "from endpoint"' in str(ae)
 
 
-def test_step_task_request_text_with_name_to_endpoint_no_direction(behave_fixture: BehaveFixture) -> None:
+def test_step_task_request_text_with_name_endpoint_no_direction(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     with pytest.raises(AssertionError) as ae:
-        step_task_request_text_with_name_to_endpoint(behave, 'GET', 'test-name', 'asdf', '/api/test')
+        step_task_request_text_with_name_endpoint(behave, 'GET', 'test-name', 'asdf', '/api/test')
     assert 'invalid direction specified in expression' in str(ae)
 
 
@@ -192,7 +192,7 @@ def test_step_task_request_text_with_name(behave_fixture: BehaveFixture) -> None
     with pytest.raises(ValueError):
         step_task_request_text_with_name(behave, RequestMethod.POST, 'test-name')
 
-    step_task_request_text_with_name_to_endpoint(behave, RequestMethod.POST, 'test-name', RequestDirection.TO, '/api/test')
+    step_task_request_text_with_name_endpoint(behave, RequestMethod.POST, 'test-name', RequestDirection.TO, '/api/test')
 
     behave.text = None
     with pytest.raises(ValueError):
@@ -218,11 +218,11 @@ def test_step_task_wait_seconds(behave_fixture: BehaveFixture) -> None:
     assert grizzly.scenario.tasks[-1].time == 1.337
 
 
-def test_step_task_print_message(behave_fixture: BehaveFixture) -> None:
+def test_step_task_log_message(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
 
-    step_task_print_message(behave, 'hello {{ world }}')
+    step_task_log_message(behave, 'hello {{ world }}')
 
     assert isinstance(grizzly.scenario.tasks[-1], LogMessage)
     assert grizzly.scenario.tasks[-1].message == 'hello {{ world }}'
@@ -524,7 +524,7 @@ def test_step_task_async_group_end(behave_fixture: BehaveFixture) -> None:
     assert str(ae.value) == 'there are no requests in async group "async-test-1"'
     assert grizzly.scenario.async_group is not None
 
-    step_task_request_text_with_name_to_endpoint(behave, RequestMethod.GET, 'test', direction=RequestDirection.FROM, endpoint='/api/test')
+    step_task_request_text_with_name_endpoint(behave, RequestMethod.GET, 'test', direction=RequestDirection.FROM, endpoint='/api/test')
     assert len(grizzly.scenario.tasks) == 0
 
     step_task_async_group_close(behave)

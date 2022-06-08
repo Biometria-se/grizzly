@@ -165,7 +165,7 @@ jobs:
       run: python -m pytest tests/e2e
 
   pre-documentation-scripts:
-    name: 'documentation / build script matrix'
+    name: 'documentation / script inventory'
     runs-on: 'ubuntu-latest'
 
     steps:
@@ -211,7 +211,7 @@ jobs:
       with:
         python-version: '3.x'
         cache: 'pip'
-        cache-dependency-path: '**/requirements-script.txt'
+        cache-dependency-path: '**/requirements-docs.txt'
 
     - name: setup python (without cache)
       if: ${{ env.ACT }}
@@ -224,7 +224,7 @@ jobs:
       id: pip
       run: |
         python -m pip install --upgrade pip-tools
-        python -m piptools sync requirements-script.txt --pip-args '--disable-pip-version-check --no-cache-dir --user --no-warn-script-location --no-deps'
+        python -m piptools sync requirements-docs.txt --pip-args '--disable-pip-version-check --no-cache-dir --user --no-warn-script-location --no-deps'
 
     - name: exists
       run: test -e ${{ matrix.script }}
@@ -253,8 +253,7 @@ jobs:
         python-version: '3.x'
         cache: 'pip'
         cache-dependency-path: |
-          **/requirements-ci.txt
-          **/requirements-script.txt
+          **/requirements-docs.txt
 
     - name: setup python (without cache)
       if: ${{ env.ACT }}
@@ -267,12 +266,19 @@ jobs:
       id: pip
       run: |
         python -m pip install --upgrade pip-tools
-        ./script/pip-sync.bash ci
-        python -m pip install -r requirements-script.txt
+        ./script/pip-sync.bash docs
 
     - name: build
       run: |
-        pydoc-markdown --build --site-dir "$PWD/build/html" 2>&1 | awk '/WARNING/ {print $0; exit 1} /ERROR/ {print $0; exit 1} {print $0}'
+        cd docs/
+        git checkout -b v0.0.0
+        novella --site-dir "$PWD/_build" --base-url grizzly/ 2>&1 | awk '/WARNING/ && !/Image file.*referenced in.*not found/ {print $0; exit 1} /ERROR/ {print $0; exit 1} {print $0}'
+        # check for un-rendered pydoc-markdown tags
+        cd "$PWD/_build"
+        find . -type f -name '*.html' | xargs -- grep -nHE '\{\@.*\}' | awk 'BEGIN{rc=0} !/^$/ {rc=1; print} END{exit rc}'
+
+        # check for @TODO annotations
+        find . -type f -name '*.html' | xargs -- grep -nHE '@TODO' | awk 'BEGIN{rc=0} !/^$/ {rc=1; print} END{exit rc}'
 
   release-quality:
     name: releasable

@@ -1,4 +1,6 @@
-'''This package contains steps that can be useful during development or troubleshooting of a
+'''
+@anchor pydoc:grizzly.steps.background.utils Utils
+This package contains steps that can be useful during development or troubleshooting of a
 feature file, but should not be included in a finished, testable, feature.
 '''
 
@@ -10,7 +12,7 @@ from behave import then  # pylint: disable=no-name-in-module
 def step_utils_fail(context: Context) -> None:
     '''Force a failed scenario. Can be useful when writing a new scenario.
 
-    ```gherkin
+    ``` gherkin
     Then fail
     ```
     '''

@@ -1,17 +1,61 @@
-'''This task calls the `request` method of a `grizzly.users` implementation.
+'''
+@anchor pydoc:grizzly.tasks.request Request
+This task calls the `request` method of a `grizzly.users` implementation.
 
 This is the most essential task in `grizzly`, it defines requests that the specified load user is going to execute
 against the target under test.
 
-Instances of this task is created with the step expressions:
+Optionally, the MIME type of the response can be set, this has to be done if any of the {@pylink grizzly.steps.scenario.response}
+steps is going to be used.
 
-* [`step_task_request_text_with_name_to_endpoint`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_request_text_with_name_to_endpoint)
+## Step implementations
 
-* [`step_task_request_file_with_name_endpoint`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_request_file_with_name_endpoint)
+* {@pylink grizzly.steps.scenario.tasks.step_task_request_text_with_name_endpoint}
 
-* [`step_task_request_file_with_name`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_request_file_with_name)
+* {@pylink grizzly.steps.scenario.tasks.step_task_request_file_with_name_endpoint}
 
-* [`step_task_request_text_with_name`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_request_text_with_name)
+* {@pylink grizzly.steps.scenario.tasks.step_task_request_file_with_name}
+
+* {@pylink grizzly.steps.scenario.tasks.step_task_request_text_with_name}
+
+## Statistics
+
+Executions of this task will be visible in `locust` request statistics with request type `method`.
+
+## Arguments
+
+* `method` _RequestMethod_ - method used for the request, e.g. `GET` or `POST`, also includes the direction (to or from)
+
+* `name` _str_ - name of the request, used in `locust` statistics
+
+* `endpoint` _str_ - endpoint on the load testing target, have different meaning depending on the specified {@pylink grizzly.users}
+
+* `source` _str_ (optional) - payload data sent to `endpoint`, can be a file path
+
+## Format
+
+### `endpoint`
+
+All arguments will be removed from `endpoint` before creating the task instance.
+
+``` plain
+<endpoint> [| content_type=<content_type>]
+```
+
+* `endpoint` _str_ - endpoint in format that the specified {@pylink grizzly.users} understands
+
+* `content_type` _TransformerContentType_ (optional) - MIME type of response from `endpoint`
+
+Specifying MIME/content type as an argument to `endpoint` is the same as using {@pylink grizzly.steps.scenario.response.step_response_content_type}.
+
+``` gherkin
+Then put request "test/request.j2.json" with name "test-put" to endpoint "/api/test | content_type=json"
+
+# same as
+Then put request "test/request.j2.json" with name "test-put" to endpoint "/api/test"
+And set response content type to "application/json"
+```
+
 '''
 from typing import TYPE_CHECKING, List, Optional, Any, Callable
 

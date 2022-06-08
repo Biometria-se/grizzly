@@ -2,28 +2,43 @@
 
 This is useful if the scenario is another user type than `BlobStorageUser`, but the scenario still requires an action towards a blob container.
 
-Endpoint is specified in the format:
+Only supports `RequestDirection.TO`.
 
-```plain
+## Step implementations
+
+* {@pylink grizzly.steps.scenario.tasks.step_task_client_put_endpoint_file_destination}
+
+## Arguments
+
+* `direction` _RequestDirection_ - if the request is upstream or downstream
+
+* `endpoint` _str_ - specifies details to be able to perform the request, e.g. account and container information
+
+* `name` _str_ - name used in `locust` statistics
+
+* `destination` _str_ (optional) - name of the file when uploaded, if not specified the basename of `source` will be used
+
+* `source` _str_ (optional) - file path of local file that should be saved in `Container`
+
+## Format
+
+### `endpoint`
+
+``` plain
 bs[s]://<AccountName>?AccountKey=<AccountKey>&Container=<Container>
 ```
 
-All variables in the endpoint supports templating, but not the whole string.
+* `AccountName` _str_ - name of storage account
 
-Content-Type of an uploaded file will automagically be guessed based on the [rendered] destination file extension.
+* `AccountKey` _str_ - secret key to be able to "connect" to the storage account
 
-Example:
+* `Container` _str_ - name of the container to perform the request on
 
-```plain
-bss://my-storage?AccountKey=aaaabbbb==&Container=my-container
-```
+All variables in the endpoint supports {@link framework.usage.variables.templating}, but not the whole string.
 
-This will be resolved to `DefaultEndpointsProtocol=https;AccountName=my-storage;AccountKey=aaaabbbb==;EndpointSuffix=core.windows.net`, and operations
-will be performed in container `my-container`.
+### `destination`
 
-Instances of this task is created with the step expression, if endpoint is defined with scheme `bs`:
-
-* [`step_task_client_put_endpoint_file_destination`](/grizzly/framework/usage/steps/scenario/tasks/#step_task_client_put_endpoint_file_destination)
+The MIME type of an uploaded file will automagically be guessed based on the [rendered] destination file extension.
 '''
 import logging
 

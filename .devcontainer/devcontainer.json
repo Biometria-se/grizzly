@@ -83,7 +83,7 @@
 	],
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
-	"postCreateCommand": "ssh-add -l && ${containerWorkspaceFolder}/script/pip-sync.bash dev && python3 -m pip install -r requirements-script.txt",
+	"postCreateCommand": "ssh-add -l && ${containerWorkspaceFolder}/script/pip-sync.bash dev && python3 -m pip install -r requirements-docs.txt",
 	// Comment out connect as root instead. More info: https://aka.ms/vscode-remote/containers/non-root.
 	"remoteUser": "vscode",
 	"features": {

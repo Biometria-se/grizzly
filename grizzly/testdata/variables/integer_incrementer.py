@@ -1,4 +1,6 @@
-'''This variable provides an unique integer each time it is accessed.
+'''
+@anchor pydoc:grizzly.testdata.variables.integer_incrementer Integer Incrementer
+This variable provides an unique integer each time it is accessed.
 
 Useful to generate unique ID for each request.
 
@@ -12,13 +14,13 @@ The first value of an integer that is going to be used.
 
 ## Example
 
-```gherkin
+``` gherkin
 And value for variable "AtomicIntegerIncrementer.unique_id" is "100 | step=10"
 ```
 
 This can then be used in a template:
 
-```json
+``` json
 {
     "id": {{ AtomicIntegerIncrementer.unique_id }}
 }

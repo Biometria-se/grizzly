@@ -25,7 +25,7 @@ from grizzly.types import ResponseTarget
 from grizzly.testdata import GrizzlyVariables
 from grizzly.testdata.utils import transform
 from grizzly.exceptions import ResponseHandlerError, RestartScenario
-from grizzly.steps.helpers import add_save_handler
+from grizzly.steps._helpers import add_save_handler
 from grizzly_extras.async_message import AsyncMessageResponse
 from grizzly_extras.transformer import TransformerContentType
 
