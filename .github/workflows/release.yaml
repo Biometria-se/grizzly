@@ -152,6 +152,7 @@ jobs:
         else
           echo "!! dry-run, does not upload package to pypi"
         fi
+        git restore -- setup.cfg
 
     - name: create and push release tag
       id: release-tag
@@ -171,9 +172,14 @@ jobs:
     - name: build documentation
       id: build-docs
       run: |
-        cd docs/
         python -m pip install -r requirements-docs.txt
-        git checkout "v${{ steps.version.outputs.version }}"
+        if [[ "${{ github.event.inputs.dry-run }}" != "true" ]]; then
+          git checkout "v${{ steps.version.outputs.version }}"
+        else
+          git checkout "$(git tag | tail -1)"
+        fi
+
+        cd docs/
         novella --site-dir "$PWD/_build" --base-url grizzly/
 
     - name: deploy documentation
