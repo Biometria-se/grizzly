@@ -666,7 +666,7 @@ def test_e2e_step_async_group(behave_context_fixture: BehaveContextFixture) -> N
 
         grizzly = cast(GrizzlyContext, context.grizzly)
 
-        assert grizzly.scenario.async_group is None
+        assert grizzly.scenario.tmp_tasks.async_group is None
 
         tasks = grizzly.scenario.tasks
         tasks.pop()

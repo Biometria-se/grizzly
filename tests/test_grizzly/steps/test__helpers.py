@@ -54,9 +54,9 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
     grizzly.scenario.context['host'] = 'http://test'
 
     if as_async:
-        grizzly.scenario.async_group = AsyncRequestGroupTask(name='async-test-1')
-        name_prefix = f'{grizzly.scenario.async_group.name}:'
-        tasks = cast(List[GrizzlyTask], grizzly.scenario.async_group.requests)
+        grizzly.scenario.tmp_tasks.async_group = AsyncRequestGroupTask(name='async-test-1')
+        name_prefix = f'{grizzly.scenario.tmp_tasks.async_group.name}:'
+        tasks = cast(List[GrizzlyTask], grizzly.scenario.tmp_tasks.async_group.requests)
     else:
         name_prefix = ''
         tasks = grizzly.scenario.tasks
@@ -263,8 +263,8 @@ def test_add_save_handler(behave_fixture: BehaveFixture, locust_fixture: LocustF
     grizzly = cast(GrizzlyContext, behave.grizzly)
 
     if as_async:
-        grizzly.scenario.async_group = AsyncRequestGroupTask(name='async-test-2')
-        tasks = cast(List[GrizzlyTask], grizzly.scenario.async_group.requests)
+        grizzly.scenario.tmp_tasks.async_group = AsyncRequestGroupTask(name='async-test-2')
+        tasks = cast(List[GrizzlyTask], grizzly.scenario.tmp_tasks.async_group.requests)
     else:
         tasks = grizzly.scenario.tasks
 
@@ -390,8 +390,8 @@ def test_add_validation_handler(behave_fixture: BehaveFixture, locust_fixture: L
     grizzly = cast(GrizzlyContext, behave.grizzly)
 
     if as_async:
-        grizzly.scenario.async_group = AsyncRequestGroupTask(name='test-async-3')
-        tasks = cast(List[GrizzlyTask], grizzly.scenario.async_group.requests)
+        grizzly.scenario.tmp_tasks.async_group = AsyncRequestGroupTask(name='test-async-3')
+        tasks = cast(List[GrizzlyTask], grizzly.scenario.tmp_tasks.async_group.requests)
     else:
         tasks = grizzly.scenario.tasks
     assert len(tasks) == 0

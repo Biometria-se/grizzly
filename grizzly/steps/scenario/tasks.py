@@ -53,7 +53,7 @@ def step_task_request_with_name_endpoint_until(context: Context, method: Request
 
     grizzly = cast(GrizzlyContext, context.grizzly)
 
-    assert grizzly.scenario.async_group is None, f'until tasks cannot be in an async request group, close group {grizzly.scenario.async_group.name} first'
+    assert grizzly.scenario.tmp_tasks.async_group is None, f'until tasks cannot be in an async request group, close group {grizzly.scenario.tmp_tasks.async_group.name} first'
 
     for request_task, substitues in request_tasks:
         condition_rendered = condition
@@ -505,9 +505,9 @@ def step_task_async_group_start(context: Context, name: str) -> None:
     '''
     grizzly = cast(GrizzlyContext, context.grizzly)
 
-    assert grizzly.scenario.async_group is None, f'async request group "{grizzly.scenario.async_group.name}" has not been closed'
+    assert grizzly.scenario.tmp_tasks.async_group is None, f'async request group "{grizzly.scenario.tmp_tasks.async_group.name}" has not been closed'
 
-    grizzly.scenario.async_group = AsyncRequestGroupTask(name=name)
+    grizzly.scenario.tmp_tasks.async_group = AsyncRequestGroupTask(name=name)
 
 
 @then(u'close async request group')
@@ -535,11 +535,11 @@ def step_task_async_group_close(context: Context) -> None:
     '''
     grizzly = cast(GrizzlyContext, context.grizzly)
 
-    assert grizzly.scenario.async_group is not None, 'no async request group is open'
-    assert len(grizzly.scenario.async_group.requests) > 0, f'there are no requests in async group "{grizzly.scenario.async_group.name}"'
+    assert grizzly.scenario.tmp_tasks.async_group is not None, 'no async request group is open'
+    assert len(grizzly.scenario.tmp_tasks.async_group.requests) > 0, f'there are no requests in async group "{grizzly.scenario.tmp_tasks.async_group.name}"'
 
-    grizzly.scenario.tasks.add(grizzly.scenario.async_group)
-    grizzly.scenario.async_group = None
+    grizzly.scenario.tasks.add(grizzly.scenario.tmp_tasks.async_group)
+    grizzly.scenario.tmp_tasks.async_group = None
 
 
 @then(u'start timer with name "{name}"')
@@ -559,11 +559,11 @@ def step_task_timer_start(context: Context, name: str) -> None:
     ```
     '''
     grizzly = cast(GrizzlyContext, context.grizzly)
-    assert name not in grizzly.scenario.timers, f'timer with name {name} has already been defined'
+    assert name not in grizzly.scenario.tmp_tasks.timers, f'timer with name {name} has already been defined'
 
     task = TimerTask(name=name)
 
-    grizzly.scenario.timers.update({
+    grizzly.scenario.tmp_tasks.timers.update({
         name: task,
     })
 
@@ -587,12 +587,12 @@ def step_task_timer_stop(context: Context, name: str) -> None:
     '''
     grizzly = cast(GrizzlyContext, context.grizzly)
 
-    task = grizzly.scenario.timers.get(name, None)
+    task = grizzly.scenario.tmp_tasks.timers.get(name, None)
 
     assert task is not None, f'timer with name {name} has not been defined'
 
     grizzly.scenario.tasks.add(task)
-    grizzly.scenario.timers.update({name: None})
+    grizzly.scenario.tmp_tasks.timers.update({name: None})
 
 
 @given(u'wait "{min_time:g}..{max_time:g}" seconds between tasks')

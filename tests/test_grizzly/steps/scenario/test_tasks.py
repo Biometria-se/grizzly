@@ -494,12 +494,12 @@ def test_step_task_async_group_start(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = behave_fixture.grizzly
 
-    assert getattr(grizzly.scenario, 'async_group', '') is None
+    assert getattr(grizzly.scenario.tmp_tasks, 'async_group', '') is None
 
     step_task_async_group_start(behave, 'async-test-1')
 
-    assert grizzly.scenario.async_group is not None
-    assert grizzly.scenario.async_group.name == 'async-test-1'
+    assert grizzly.scenario.tmp_tasks.async_group is not None
+    assert grizzly.scenario.tmp_tasks.async_group.name == 'async-test-1'
 
     with pytest.raises(AssertionError) as ae:
         step_task_async_group_start(behave, 'async-test-2')
@@ -511,7 +511,7 @@ def test_step_task_async_group_end(behave_fixture: BehaveFixture) -> None:
     grizzly = behave_fixture.grizzly
 
     assert len(grizzly.scenario.tasks) == 0
-    assert getattr(grizzly.scenario, 'async_group', '') is None
+    assert getattr(grizzly.scenario.tmp_tasks, 'async_group', '') is None
 
     with pytest.raises(AssertionError) as ae:
         step_task_async_group_close(behave)
@@ -522,7 +522,7 @@ def test_step_task_async_group_end(behave_fixture: BehaveFixture) -> None:
     with pytest.raises(AssertionError) as ae:
         step_task_async_group_close(behave)
     assert str(ae.value) == 'there are no requests in async group "async-test-1"'
-    assert grizzly.scenario.async_group is not None
+    assert grizzly.scenario.tmp_tasks.async_group is not None
 
     step_task_request_text_with_name_endpoint(behave, RequestMethod.GET, 'test', direction=RequestDirection.FROM, endpoint='/api/test')
     assert len(grizzly.scenario.tasks) == 0
@@ -530,14 +530,14 @@ def test_step_task_async_group_end(behave_fixture: BehaveFixture) -> None:
     step_task_async_group_close(behave)
 
     assert len(grizzly.scenario.tasks) == 1
-    assert grizzly.scenario.async_group is None
+    assert grizzly.scenario.tmp_tasks.async_group is None
 
 
 def test_step_task_timer_start_and_stop(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = behave_fixture.grizzly
 
-    assert grizzly.scenario.timers == {}
+    assert grizzly.scenario.tmp_tasks.timers == {}
 
     with pytest.raises(AssertionError) as ae:
         step_task_timer_stop(behave, 'test-timer-1')
@@ -545,7 +545,7 @@ def test_step_task_timer_start_and_stop(behave_fixture: BehaveFixture) -> None:
 
     step_task_timer_start(behave, 'test-timer-1')
 
-    timer = grizzly.scenario.timers.get('test-timer-1', None)
+    timer = grizzly.scenario.tmp_tasks.timers.get('test-timer-1', None)
     assert isinstance(timer, TimerTask)
     assert timer.name == 'test-timer-1'
     assert grizzly.scenario.tasks[-1] is timer
@@ -556,7 +556,7 @@ def test_step_task_timer_start_and_stop(behave_fixture: BehaveFixture) -> None:
 
     step_task_timer_stop(behave, 'test-timer-1')
 
-    assert grizzly.scenario.timers == {
+    assert grizzly.scenario.tmp_tasks.timers == {
         'test-timer-1': None,
     }
 
