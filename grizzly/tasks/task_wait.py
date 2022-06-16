@@ -1,10 +1,10 @@
 '''
-@anchor pydoc:grizzly.tasks.request_wait Request Wait
+@anchor pydoc:grizzly.tasks.task_wait Task Wait
 This task sets the wait time between tasks in a scenario.
 
 The default is to wait `0` seconds between each task.
 
-This is useful in a scenario with many requests that should have some wait time between them, but there are a group
+This is useful in a scenario with many tasks that should have some wait time between them, but there are a group
 of tasks (e.g. Transform, Date or Log Messages) that should execute as fast as possible.
 
 If `max_time` is not provided, the wait between tasks is constant `min_time`. If both are provided there will be a
@@ -12,9 +12,9 @@ random wait between (and including) `min_time` and `max_time` between tasks.
 
 ## Step implementations
 
-* {@pylink grizzly.steps.scenario.tasks.step_task_request_wait_constant}
+* {@pylink grizzly.steps.scenario.tasks.step_task_wait_constant}
 
-* {@pylink grizzly.steps.scenario.tasks.step_task_request_wait_between}
+* {@pylink grizzly.steps.scenario.tasks.step_task_wait_between}
 
 ## Statistics
 
@@ -37,7 +37,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from ..context import GrizzlyContextScenario
 
 
-class RequestWaitTask(GrizzlyTask):
+class TaskWaitTask(GrizzlyTask):
     min_time: float
     max_time: Optional[float]
 

@@ -776,32 +776,32 @@ def test_e2e_step_task_timer_start_and_stop(behave_context_fixture: BehaveContex
 
 def test_e2e_step_task_request_wait(behave_context_fixture: BehaveContextFixture) -> None:
     def validator(context: Context) -> None:
-        from grizzly.tasks import RequestWaitTask
+        from grizzly.tasks import TaskWaitTask
         grizzly = cast(GrizzlyContext, context.grizzly)
 
         grizzly.scenario.tasks.pop()  # remove dummy
 
         task = grizzly.scenario.tasks.pop()
 
-        assert isinstance(task, RequestWaitTask), f'{type(task)} is not expected RequestWaitTask'
+        assert isinstance(task, TaskWaitTask), f'{type(task)} is not expected TaskWaitTask'
         assert task.min_time == 1.4
         assert task.max_time is None
 
         task = grizzly.scenario.tasks.pop()
 
-        assert isinstance(task, RequestWaitTask), f'{type(task)} is not expected RequestWaitTask'
+        assert isinstance(task, TaskWaitTask), f'{type(task)} is not expected TaskWaitTask'
         assert task.min_time == 15
         assert task.max_time is None
 
         task = grizzly.scenario.tasks.pop()
 
-        assert isinstance(task, RequestWaitTask), f'{type(task)} is not expected RequestWaitTask'
+        assert isinstance(task, TaskWaitTask), f'{type(task)} is not expected TaskWaitTask'
         assert task.min_time == 1.4
         assert task.max_time == 1.7
 
         task = grizzly.scenario.tasks.pop()
 
-        assert isinstance(task, RequestWaitTask), f'{type(task)} is not expected RequestWaitTask'
+        assert isinstance(task, TaskWaitTask), f'{type(task)} is not expected TaskWaitTask'
         assert task.min_time == 15
         assert task.max_time == 18
 

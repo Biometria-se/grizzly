@@ -8,7 +8,7 @@ from json import dumps as jsondumps
 from behave.model import Table, Row
 from grizzly.context import GrizzlyContext
 from grizzly.types import RequestMethod, RequestDirection
-from grizzly.tasks import TransformerTask, LogMessage, WaitTask, TimerTask, RequestWaitTask
+from grizzly.tasks import TransformerTask, LogMessage, WaitTask, TimerTask, TaskWaitTask
 from grizzly.tasks.clients import HttpClientTask
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import  # noqa: F403
 
@@ -569,33 +569,33 @@ def test_step_task_request_wait_between(behave_fixture: BehaveFixture) -> None:
 
     assert len(grizzly.scenario.tasks) == 0
 
-    step_task_request_wait_between(behave, 1.4, 1.7)
+    step_task_wait_between(behave, 1.4, 1.7)
 
     assert len(grizzly.scenario.tasks) == 1
 
-    task = cast(RequestWaitTask, grizzly.scenario.tasks[-1])
+    task = cast(TaskWaitTask, grizzly.scenario.tasks[-1])
     assert task.min_time == 1.4
     assert task.max_time == 1.7
 
-    step_task_request_wait_between(behave, 30, 20)
+    step_task_wait_between(behave, 30, 20)
 
     assert len(grizzly.scenario.tasks) == 2
 
-    task = cast(RequestWaitTask, grizzly.scenario.tasks[-1])
+    task = cast(TaskWaitTask, grizzly.scenario.tasks[-1])
     assert task.min_time == 20
     assert task.max_time == 30
 
 
-def test_step_task_request_wait_constant(behave_fixture: BehaveFixture) -> None:
+def test_step_task_wait_constant(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = behave_fixture.grizzly
 
     assert len(grizzly.scenario.tasks) == 0
 
-    step_task_request_wait_constant(behave, 10)
+    step_task_wait_constant(behave, 10)
 
     assert len(grizzly.scenario.tasks) == 1
 
-    task = cast(RequestWaitTask, grizzly.scenario.tasks[-1])
+    task = cast(TaskWaitTask, grizzly.scenario.tasks[-1])
     assert task.min_time == 10
     assert task.max_time is None

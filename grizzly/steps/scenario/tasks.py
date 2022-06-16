@@ -7,7 +7,7 @@ from behave import register_type, then, given  # pylint: disable=no-name-in-modu
 from .._helpers import add_request_task, get_task_client, is_template
 from ...types import RequestDirection, RequestMethod
 from ...context import GrizzlyContext
-from ...tasks import LogMessage, WaitTask, TransformerTask, UntilRequestTask, DateTask, AsyncRequestGroupTask, TimerTask, RequestWaitTask
+from ...tasks import LogMessage, WaitTask, TransformerTask, UntilRequestTask, DateTask, AsyncRequestGroupTask, TimerTask, TaskWaitTask
 
 from grizzly_extras.transformer import TransformerContentType
 
@@ -596,12 +596,12 @@ def step_task_timer_stop(context: Context, name: str) -> None:
 
 
 @given(u'wait "{min_time:g}..{max_time:g}" seconds between tasks')
-def step_task_request_wait_between(context: Context, min_time: float, max_time: float) -> None:
+def step_task_wait_between(context: Context, min_time: float, max_time: float) -> None:
     '''
-    Creates an instance of the {@pylink grizzly.tasks.request_wait} task. Sets number of, randomly, seconds the {@pylink grizzly.users}
+    Creates an instance of the {@pylink grizzly.tasks.task_wait} task. Sets number of, randomly, seconds the {@pylink grizzly.users}
     will wait between executing each task.
 
-    See {@pylink grizzly.tasks.request_wait} task documentation for more information.
+    See {@pylink grizzly.tasks.task_wait} task documentation for more information.
 
     Example:
 
@@ -623,16 +623,16 @@ def step_task_request_wait_between(context: Context, min_time: float, max_time: 
     if min_time > max_time:
         min_time, max_time = max_time, min_time
 
-    grizzly.scenario.tasks.add(RequestWaitTask(min_time=min_time, max_time=max_time))
+    grizzly.scenario.tasks.add(TaskWaitTask(min_time=min_time, max_time=max_time))
 
 
 @given(u'wait "{time:g}" seconds between tasks')
-def step_task_request_wait_constant(context: Context, time: float) -> None:
+def step_task_wait_constant(context: Context, time: float) -> None:
     '''
-    Creates an instance of the {@pylink grizzly.tasks.request_wait} task. Sets number of, constant, seconds the {@pylink grizzly.users}
+    Creates an instance of the {@pylink grizzly.tasks.task_wait} task. Sets number of, constant, seconds the {@pylink grizzly.users}
     will wait between executing each task.
 
-    See {@pylink grizzly.tasks.request_wait} task documentation for more information.
+    See {@pylink grizzly.tasks.task_wait} task documentation for more information.
 
     Example:
 
@@ -651,4 +651,4 @@ def step_task_request_wait_constant(context: Context, time: float) -> None:
     ```
     '''
     grizzly = cast(GrizzlyContext, context.grizzly)
-    grizzly.scenario.tasks.add(RequestWaitTask(time))
+    grizzly.scenario.tasks.add(TaskWaitTask(time))
