@@ -27,7 +27,8 @@ from ...types import RequestType, RequestDirection
 from .. import GrizzlyTask, template
 
 
-@template('endpoint', 'destination', 'source', 'name')
+# see https://github.com/python/mypy/issues/5374
+@template('endpoint', 'destination', 'source', 'name')  # type: ignore
 class ClientTask(GrizzlyTask):
     _schemes: List[str]
     _short_name: str

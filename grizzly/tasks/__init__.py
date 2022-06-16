@@ -15,7 +15,7 @@ a step implementation is also needed.
 
 There are examples of this in the {@link framework.example}.
 '''
-from abc import ABC
+from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, Callable, List, Type, Set, Optional
 from os import environ
 from pathlib import Path
@@ -37,6 +37,7 @@ class GrizzlyTask(ABC):
         if scenario is not None:
             self.scenario = scenario
 
+    @abstractmethod
     def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
         raise NotImplementedError(f'{self.__class__.__name__} has not been implemented')
 
@@ -106,6 +107,7 @@ from .date import DateTask
 from .async_group import AsyncRequestGroupTask
 from .timer import TimerTask
 from .task_wait import TaskWaitTask
+from .conditional import ConditionalTask
 
 
 __all__ = [
@@ -120,4 +122,5 @@ __all__ = [
     'AsyncRequestGroupTask',
     'TimerTask',
     'TaskWaitTask',
+    'ConditionalTask',
 ]

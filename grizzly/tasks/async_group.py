@@ -1,4 +1,4 @@
-'''
+"""
 @anchor pydoc:grizzly.tasks.async_group Async Group
 This task runs all requests in the group asynchronously.
 
@@ -17,13 +17,13 @@ Requests are added to the group with the same step implementations as {@pylink g
 ## Statistics
 
 Executions of this task will be visible in `locust` request statistics with request type `ASYNC`. `name` will be suffixed with ` (<n>)`,
-where `<n>` is the number of requests in the group. Each request in the group will have it's own entry in the statistics as an ordinary
+where `<n>` is the number of requests in the group. Each request in the group will have its own entry in the statistics as an ordinary
 {@pylink grizzly.tasks.request} task.
 
 ## Arguments
 
 * `name` (str): name of the group of asynchronously requests
-'''
+"""
 import logging
 import inspect
 
