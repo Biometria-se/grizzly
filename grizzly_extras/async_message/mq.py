@@ -12,8 +12,9 @@ from . import (
     AsyncMessageError,
     AsyncMessageRequestHandler,
     AsyncMessageHandler,
-    register,
+    register
 )
+from .rfh2 import Rfh2Decoder, Rfh2Encoder
 
 try:
     import pymqi
@@ -103,6 +104,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
         )
 
         self.message_wait = context.get('message_wait', None) or 0
+        self.header_type = context.get('header_type', None)
 
         return {
             'message': 'connected',
@@ -122,6 +124,13 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
             gmo.Options |= pymqi.CMQC.MQGMO_BROWSE_FIRST
 
         return gmo
+
+    def _get_payload(self, message: bytes) -> str:
+        if Rfh2Decoder.is_rfh2(message):
+            rfh2_decoder = Rfh2Decoder(message)
+            return rfh2_decoder.get_payload().decode()
+        else:
+            return message.decode()
 
     def _find_message(self, queue_name: str, expression: str, content_type: TransformerContentType, message_wait: Optional[int]) -> Optional[bytearray]:
         start_time = time()
@@ -147,7 +156,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                     while True:
                         md = pymqi.MD()
                         message = browse_queue.get(None, md, gmo)
-                        payload = message.decode()
+                        payload = self._get_payload(message)
 
                         try:
                             payload = transform.transform(payload)
@@ -239,8 +248,16 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
 
                 if action == 'PUT':
                     payload = request.get('payload', None)
+                    if self.header_type:
+                        if self.header_type.lower() == 'rfh2':
+                            rfh2_encoder = Rfh2Encoder(payload=cast(str, payload).encode(), queue_name=queue_name)
+                            payload = rfh2_encoder.get_message()
+                        else:
+                            raise AsyncMessageError(f'Invalid header_type: {self.header_type}')
+
                     response_length = len(payload) if payload is not None else 0
                     queue.put(payload, md)
+
                 elif action == 'GET':
 
                     if msg_id_to_fetch is not None:
@@ -251,7 +268,8 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                         gmo = self._create_gmo(message_wait)
 
                     try:
-                        payload = queue.get(None, md, gmo).decode()
+                        message = queue.get(None, md, gmo)
+                        payload = self._get_payload(message)
                         response_length = len(payload) if payload is not None else 0
                         if retries > 0:
                             self.logger.warning(f'got message after {retries} retries')

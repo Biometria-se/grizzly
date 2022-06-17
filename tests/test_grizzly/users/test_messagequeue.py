@@ -163,6 +163,24 @@ class TestMessageQueueUser:
             user = MessageQueueUser(environment=locust_fixture.env)
             assert user.am_context.get('message_wait', None) == 5
             assert issubclass(user.__class__, (RequestLogger, ResponseHandler,))
+
+            MessageQueueUser._context['message']['header_type'] = 'RFH2'
+
+            user = MessageQueueUser(environment=locust_fixture.env)
+            assert user.am_context.get('header_type', None) == 'rfh2'
+            assert issubclass(user.__class__, (RequestLogger, ResponseHandler,))
+
+            MessageQueueUser._context['message']['header_type'] = 'None'
+
+            user = MessageQueueUser(environment=locust_fixture.env)
+            assert user.am_context.get('header_type', None) is None
+            assert issubclass(user.__class__, (RequestLogger, ResponseHandler,))
+
+            MessageQueueUser._context['message']['header_type'] = 'wrong'
+            with pytest.raises(ValueError) as e:
+                MessageQueueUser(environment=locust_fixture.env)
+            assert 'unsupported value for header_type: "wrong"' in str(e)
+
         finally:
             MessageQueueUser._context = {
                 'auth': {
