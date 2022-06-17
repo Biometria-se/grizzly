@@ -251,7 +251,7 @@ def step_task_request_text_with_name(context: Context, method: RequestMethod, na
 def step_task_wait_seconds(context: Context, wait_time: float) -> None:
     """
     Creates an instace of the {@pylink grizzly.tasks.wait} task. The scenario will wait the specified time (seconds) in
-    additional to the wait time specified by {@pylink grizzly.tasks.request_wait}.
+    additional to the wait time specified by {@pylink grizzly.tasks.task_wait}.
 
     See {@pylink grizzly.tasks.wait} task documentation for more information about the task.
 
@@ -691,7 +691,7 @@ def step_task_conditional_if(context: Context, condition: str, name: str) -> Non
 @then(u'if condition is false, execute these tasks')
 def step_task_conditional_else(context: Context) -> None:
     """
-    Changes the state of {@pylink grizzly.tasks.conditional} task instance created by {@pylink grizzly.steps.scenario.tasks.step_conditional_if}
+    Changes the state of {@pylink grizzly.tasks.conditional} task instance created by {@pylink grizzly.steps.scenario.tasks.step_task_conditional_if}
     so that any following tasks will be run when `condition` is false.
 
     See {@pylink grizzly.tasks.conditional} task documentation for more information.
@@ -717,7 +717,7 @@ def step_task_conditional_else(context: Context) -> None:
 @then(u'end condition')
 def step_task_conditional_end(context: Context) -> None:
     """
-    Closes the {@pylink grizzly.tasks.conditional} task instance created by {@pylink grizzly.steps.scenario.tasks.step_conditional_if}.
+    Closes the {@pylink grizzly.tasks.conditional} task instance created by {@pylink grizzly.steps.scenario.tasks.step_task_conditional_if}.
     This means that any following tasks specified will not be part of the conditional.
 
     See {@pylink grizzly.tasks.conditional} task documentation for more information.
