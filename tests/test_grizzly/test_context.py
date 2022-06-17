@@ -24,7 +24,7 @@ from grizzly.context import (
 )
 
 from grizzly.types import MessageDirection, RequestMethod
-from grizzly.tasks import LogMessage, RequestTask, WaitTask
+from grizzly.tasks import LogMessageTask, RequestTask, WaitTask
 
 
 from ..helpers import get_property_decorated_attributes
@@ -349,7 +349,7 @@ class TestGrizzlyContextScenario:
         scenario.tasks.add(wait_task)
         assert scenario.tasks == [request, second_request, wait_task]
 
-        log_task = LogMessage(message='hello general')
+        log_task = LogMessageTask(message='hello general')
         scenario.tasks.add(log_task)
         assert scenario.tasks == [request, second_request, wait_task, log_task]
 

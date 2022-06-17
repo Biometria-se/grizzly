@@ -25,7 +25,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 @template('message')
-class LogMessage(GrizzlyTask):
+class LogMessageTask(GrizzlyTask):
     message: str
 
     def __init__(self, message: str, scenario: Optional['GrizzlyContextScenario'] = None) -> None:

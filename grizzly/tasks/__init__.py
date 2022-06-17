@@ -110,7 +110,7 @@ class template:
 
 from .request import RequestTask, RequestTaskHandlers, RequestTaskResponse
 from .wait import WaitTask
-from .log_message import LogMessage
+from .log_message import LogMessageTask
 from .transformer import TransformerTask
 from .until import UntilRequestTask
 from .date import DateTask
@@ -124,7 +124,7 @@ __all__ = [
     'RequestTaskHandlers',
     'RequestTaskResponse',
     'RequestTask',
-    'LogMessage',
+    'LogMessageTask',
     'WaitTask',
     'TransformerTask',
     'UntilRequestTask',

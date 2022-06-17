@@ -10,7 +10,7 @@ from pytest_mock import MockerFixture
 from _pytest.logging import LogCaptureFixture
 from locust.exception import StopUser
 
-from grizzly.tasks import RequestTask, AsyncRequestGroupTask
+from grizzly.tasks import RequestTask, AsyncRequestGroupTask, LogMessageTask
 from grizzly.types import RequestMethod
 from grizzly.users import RestApiUser
 from grizzly.scenarios import IteratorScenario
@@ -37,6 +37,10 @@ class TestAsyncRequestGroup:
 
         assert len(requests) == 1
         assert requests[-1].name == 'test:test'
+
+        with pytest.raises(ValueError) as ve:
+            task_factory.add(LogMessageTask(message='hello world'))
+        assert str(ve.value) == 'AsyncRequestGroupTask only accepts RequestTask tasks, not LogMessageTask'
 
     @pytest.mark.parametrize('affix', [True, False])
     def test_get_templates(self, affix: bool) -> None:

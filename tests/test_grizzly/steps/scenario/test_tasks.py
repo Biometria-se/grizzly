@@ -8,7 +8,7 @@ from json import dumps as jsondumps
 from behave.model import Table, Row
 from grizzly.context import GrizzlyContext
 from grizzly.types import RequestMethod, RequestDirection
-from grizzly.tasks import TransformerTask, LogMessage, WaitTask, TimerTask, TaskWaitTask, ConditionalTask
+from grizzly.tasks import TransformerTask, LogMessageTask, WaitTask, TimerTask, TaskWaitTask, ConditionalTask
 from grizzly.tasks.clients import HttpClientTask
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import  # noqa: F403
 
@@ -224,7 +224,7 @@ def test_step_task_log_message(behave_fixture: BehaveFixture) -> None:
 
     step_task_log_message(behave, 'hello {{ world }}')
 
-    assert isinstance(grizzly.scenario.tasks[-1], LogMessage)
+    assert isinstance(grizzly.scenario.tasks[-1], LogMessageTask)
     assert grizzly.scenario.tasks[-1].message == 'hello {{ world }}'
 
 

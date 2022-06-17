@@ -55,7 +55,7 @@ class AsyncRequestGroupTask(GrizzlyTask, GrizzlyTaskWrapper):
 
     def add(self, task: GrizzlyTask) -> None:
         if not isinstance(task, RequestTask):
-            raise ValueError(f'{self.__class__.__name__} only accepts RequstTask tasks, not {task.__class__.__name__}')
+            raise ValueError(f'{self.__class__.__name__} only accepts RequestTask tasks, not {task.__class__.__name__}')
 
         task.name = f'{self.name}:{task.name}'
         self.requests.append(task)

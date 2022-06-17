@@ -18,7 +18,7 @@ from locust.exception import StopUser
 from grizzly.testdata.communication import TestdataConsumer, TestdataProducer
 from grizzly.testdata.utils import initialize_testdata, transform
 from grizzly.context import GrizzlyContext
-from grizzly.tasks import LogMessage
+from grizzly.tasks import LogMessageTask
 
 from ...fixtures import AtomicVariableCleanupFixture, BehaveFixture, GrizzlyFixture, NoopZmqFixture
 
@@ -98,7 +98,7 @@ class TestTestdataProducer:
             request.source = json.dumps(source)
 
             grizzly.scenario.tasks.add(request)
-            grizzly.scenario.tasks.add(LogMessage(message='hello {{ world }}'))
+            grizzly.scenario.tasks.add(LogMessageTask(message='hello {{ world }}'))
 
             testdata, external_dependencies = initialize_testdata(grizzly, grizzly.scenario.tasks)
 
@@ -224,7 +224,7 @@ class TestTestdataProducer:
             grizzly.scenario.user.class_name = 'TestUser'
             grizzly.scenario.context['host'] = 'http://test.nu'
             grizzly.scenario.tasks.add(request)
-            grizzly.scenario.tasks.add(LogMessage(message='are you {{ sure }}'))
+            grizzly.scenario.tasks.add(LogMessageTask(message='are you {{ sure }}'))
 
             testdata, external_dependencies = initialize_testdata(grizzly, grizzly.scenario.tasks)
 

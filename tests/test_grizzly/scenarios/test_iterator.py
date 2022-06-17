@@ -15,7 +15,7 @@ from locust.exception import StopUser, InterruptTaskSet, RescheduleTask, Resched
 from grizzly.scenarios.iterator import IteratorScenario
 from grizzly.testdata.communication import TestdataConsumer
 from grizzly.testdata.utils import transform
-from grizzly.tasks import WaitTask, LogMessage
+from grizzly.tasks import WaitTask, LogMessageTask
 from grizzly.exceptions import RestartScenario, StopScenario
 from grizzly.types import ScenarioState
 
@@ -65,7 +65,7 @@ class TestIterationScenario:
         assert callable(task_method)
         task_method(scenario)
 
-        IteratorScenario.populate(LogMessage(message='hello {{ world }}'))
+        IteratorScenario.populate(LogMessageTask(message='hello {{ world }}'))
         assert len(scenario.tasks) == 4
 
         logger_spy = mocker.spy(scenario.logger, 'info')

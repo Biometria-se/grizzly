@@ -12,7 +12,7 @@ from grizzly.tasks.conditional import ConditionalTask  # pylint: disable=no-name
 from .._helpers import add_request_task, get_task_client, is_template
 from ...types import RequestDirection, RequestMethod
 from ...context import GrizzlyContext
-from ...tasks import LogMessage, WaitTask, TransformerTask, UntilRequestTask, DateTask, AsyncRequestGroupTask, TimerTask, TaskWaitTask
+from ...tasks import LogMessageTask, WaitTask, TransformerTask, UntilRequestTask, DateTask, AsyncRequestGroupTask, TimerTask, TaskWaitTask
 
 from grizzly_extras.transformer import TransformerContentType
 
@@ -296,7 +296,7 @@ def step_task_log_message(context: Context, message: str) -> None:
     """
 
     grizzly = cast(GrizzlyContext, context.grizzly)
-    grizzly.scenario.tasks.add(LogMessage(message=message))
+    grizzly.scenario.tasks.add(LogMessageTask(message=message))
 
 
 @then(u'parse "{content}" as "{content_type:ContentType}" and save value of "{expression}" in variable "{variable}"')

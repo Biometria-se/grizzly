@@ -13,7 +13,7 @@ from locust.exception import StopUser
 from behave.model import Scenario
 
 from grizzly.context import GrizzlyContext
-from grizzly.tasks import LogMessage, DateTask, TransformerTask, UntilRequestTask, ConditionalTask
+from grizzly.tasks import LogMessageTask, DateTask, TransformerTask, UntilRequestTask, ConditionalTask
 from grizzly.testdata.utils import (
     initialize_testdata,
     create_context_variable,
@@ -59,7 +59,7 @@ def test_initialize_testdata_with_tasks(
         request.response.content_type = TransformerContentType.JSON
         scenario = request.scenario
         scenario.tasks.add(request)
-        scenario.tasks.add(LogMessage(message='{{ message }}'))
+        scenario.tasks.add(LogMessageTask(message='{{ message }}'))
         scenario.tasks.add(DateTask(variable='date_task', value='{{ date_task_date }} | timezone="{{ timezone }}", offset="-{{ days }}D"'))
         scenario.tasks.add(TransformerTask(
             grizzly,

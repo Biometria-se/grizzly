@@ -337,7 +337,7 @@ def test_e2e_step_task_wait_seconds(behave_context_fixture: BehaveContextFixture
 
 def test_e2e_step_task_log_message(behave_context_fixture: BehaveContextFixture) -> None:
     def validate_task_wait(context: Context) -> None:
-        from grizzly.tasks import LogMessage
+        from grizzly.tasks import LogMessageTask
         grizzly = cast(GrizzlyContext, context.grizzly)
 
         tasks = grizzly.scenario.tasks
@@ -346,12 +346,12 @@ def test_e2e_step_task_log_message(behave_context_fixture: BehaveContextFixture)
         assert len(tasks) == 2
 
         task = tasks[0]
-        assert isinstance(task, LogMessage)
+        assert isinstance(task, LogMessageTask)
         assert task.message == 'hello world!'
         assert len(task.get_templates()) == 0
 
         task = tasks[1]
-        assert isinstance(task, LogMessage)
+        assert isinstance(task, LogMessageTask)
         assert task.message == 'foobar={{ foobar }}'
         assert len(task.get_templates()) == 1
 
