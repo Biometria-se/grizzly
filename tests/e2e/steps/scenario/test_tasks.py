@@ -2,6 +2,8 @@ from json import dumps as jsondumps
 from typing import cast
 from textwrap import dedent
 
+import pytest
+
 from behave.runner import Context
 from behave.model import Feature
 from grizzly.context import GrizzlyContext
@@ -666,7 +668,7 @@ def test_e2e_step_async_group(behave_context_fixture: BehaveContextFixture) -> N
 
         grizzly = cast(GrizzlyContext, context.grizzly)
 
-        assert grizzly.scenario.tmp_tasks.async_group is None
+        assert grizzly.scenario.tasks.tmp.async_group is None
 
         tasks = grizzly.scenario.tasks
         tasks.pop()
@@ -775,7 +777,7 @@ def test_e2e_step_task_timer_start_and_stop(behave_context_fixture: BehaveContex
 
 
 def test_e2e_step_task_request_wait(behave_context_fixture: BehaveContextFixture) -> None:
-    def validator(context: Context) -> None:
+    def validate_request_wait(context: Context) -> None:
         from grizzly.tasks import TaskWaitTask
         grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -807,7 +809,7 @@ def test_e2e_step_task_request_wait(behave_context_fixture: BehaveContextFixture
 
         raise SystemExit(0)
 
-    behave_context_fixture.add_validator(validator)
+    behave_context_fixture.add_validator(validate_request_wait)
 
     feature_file = behave_context_fixture.test_steps(
         scenario=[
@@ -815,9 +817,55 @@ def test_e2e_step_task_request_wait(behave_context_fixture: BehaveContextFixture
             'And wait "1.4..1.7" seconds between tasks',
             'Given wait "15" seconds between tasks',
             'And wait "1.4" seconds between tasks',
-        ]
+        ],
     )
 
     rc, _ = behave_context_fixture.execute(feature_file)
 
     assert rc == 0
+
+
+@pytest.mark.parametrize('value', [1, 6], scope='function')
+def test_e2e_step_task_conditional(behave_context_fixture: BehaveContextFixture, value: int) -> None:
+    def validate_task_conditional(context: Context) -> None:
+        grizzly = cast(GrizzlyContext, context.grizzly)
+
+        grizzly.scenario.tasks.pop()  # remove dummy task
+
+        assert len(grizzly.scenario.tasks) == 1
+
+    def after_feature(context: Context, feature: Feature) -> None:
+        grizzly = cast(GrizzlyContext, context.grizzly)
+
+        stats = grizzly.state.locust.environment.stats
+
+        suffix = 'True' if int(grizzly.state.variables['value']) > 5 else 'False'
+
+        conditional = stats.get(f'001 conditional-1: {suffix} (1)', 'COND')
+
+        assert conditional.num_requests == 1, f'{conditional.num_requests} != 1'
+        assert conditional.total_content_length == 1, f'{conditional.total_content_length} != 1'
+
+    behave_context_fixture.add_validator(validate_task_conditional)
+    behave_context_fixture.add_after_feature(after_feature)
+
+    feature_file = behave_context_fixture.test_steps(
+        scenario=[
+            'And ask for value of variable "value"',
+            'When condition "{{ value | int > 5 }}" with name "conditional-1" is true, execute these tasks',
+            'Then log message "{{ value }} was greater than 5"',
+            'But if condition is false, execute these tasks',
+            'Then log message "{{ value }} was less than or equal to 5"',
+            'Then end condition',
+        ],
+    )
+
+    rc, output = behave_context_fixture.execute(feature_file, testdata={'value': str(value)})
+
+    assert rc == 0
+    result = ''.join(output)
+
+    if value > 5:
+        assert f'{value} was greater than 5' in result
+    else:
+        assert f'{value} was less than or equal to 5' in result

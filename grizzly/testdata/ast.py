@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Set, Optional, List, Dict
 
 import jinja2 as j2
 
-from jinja2.nodes import Getattr, Getitem, Name
+from jinja2.nodes import Getattr, Getitem, Name, Compare, Filter, Node
 
 from ..tasks import GrizzlyTask
 
@@ -57,6 +57,28 @@ def _parse_templates(templates: Dict['GrizzlyContextScenario', Set[str]]) -> Dic
 
         has_processed_orphan_templates = False
 
+        def _getattr(node: Node) -> Optional[List[str]]:
+            attributes: Optional[List[str]] = None
+
+            if isinstance(node, Getattr):
+                attributes = walk_attr(node)
+            elif isinstance(node, Getitem):
+                child_node = getattr(node, 'node')
+                child_node_name = getattr(child_node, 'name', None)
+                if child_node_name is not None:
+                    attributes = [child_node_name]
+            elif isinstance(node, Name):
+                attributes = [getattr(node, 'name')]
+            elif isinstance(node, Compare):
+                expr = getattr(node, 'expr')
+                if isinstance(expr, Filter):
+                    node = getattr(expr, 'node')
+                    attributes = _getattr(node)
+                else:
+                    raise ValueError(f'cannot find variable name in {parsed}')
+
+            return attributes
+
         # can raise TemplateError which should be handled else where
         for template in scenario_templates:
             j2env = j2.Environment(
@@ -75,17 +97,7 @@ def _parse_templates(templates: Dict['GrizzlyContextScenario', Set[str]]) -> Dic
 
                 for body in getattr(parsed, 'body', []):
                     for node in getattr(body, 'nodes', []):
-                        attributes: Optional[List[str]] = None
-
-                        if isinstance(node, Getattr):
-                            attributes = walk_attr(node)
-                        elif isinstance(node, Getitem):
-                            child_node = getattr(node, 'node')
-                            child_node_name = getattr(child_node, 'name', None)
-                            if child_node_name is not None:
-                                attributes = [child_node_name]
-                        elif isinstance(node, Name):
-                            attributes = [getattr(node, 'name')]
+                        attributes = _getattr(node)
 
                         if attributes is not None:
                             variables[scenario_name].add('.'.join(attributes))

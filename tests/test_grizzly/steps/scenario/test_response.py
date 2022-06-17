@@ -291,7 +291,8 @@ def test_step_response_allow_status_codes_table(behave_fixture: BehaveFixture) -
     assert 'data table does not have column "status"' in str(ae)
 
     request = RequestTask(RequestMethod.GET, name='no-code', endpoint='/api/test')
-    grizzly.scenario.tasks.add(request, pos=0)
+    request.scenario = grizzly.scenario
+    grizzly.scenario.tasks.insert(0, request)
 
     rows = []
     '''

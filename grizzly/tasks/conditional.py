@@ -7,13 +7,16 @@ This is useful when a set of tasks should be executed if `condition` is `True`, 
 All tasks created between {@pylink grizzly.steps.scenario.tasks.step_conditional_if} and {@pylink grizzly.steps.scenario.tasks.step_conditional_endif}
 will be wrapped in this instance and executed conditionally. If the task has its own `name` attribute, it will be prefixed with this tasks `name`.
 
+The {@pylink grizzly.steps.scenario.tasks.step_conditional_else} step expression is optional, if not used no additional tasks will be executed if
+`condition` is false.
+
 ## Step implementations
 
-* {@pylink grizzly.steps.scenario.tasks.step_conditional_if}
+* {@pylink grizzly.steps.scenario.tasks.step_task_conditional_if}
 
-* {@pylink grizzly.steps.scenario.tasks.step_conditional_else}
+* {@pylink grizzly.steps.scenario.tasks.step_task_conditional_else} (optional)
 
-* {@pylink grizzly.steps.scenario.tasks.step_conditional_endif}
+* {@pylink grizzly.steps.scenario.tasks.step_task_conditional_end}
 
 ## Statistics
 
@@ -39,11 +42,11 @@ if TYPE_CHECKING:  # pragma: no cover
     from ..scenarios import GrizzlyScenario
     from ..context import GrizzlyContextScenario
 
-from . import GrizzlyTask, template
+from . import GrizzlyTask, GrizzlyTaskWrapper, template
 
 
 @template('condition')
-class ConditionalTask(GrizzlyTask):
+class ConditionalTask(GrizzlyTask, GrizzlyTaskWrapper):
     tasks: Dict[bool, List[GrizzlyTask]]
 
     name: str
@@ -74,6 +77,12 @@ class ConditionalTask(GrizzlyTask):
                 self.tasks.update({self._pointer: []})
 
             self.tasks[self._pointer].append(task)
+
+    def peek(self) -> List[GrizzlyTask]:
+        if self._pointer is not None:
+            return self.tasks[self._pointer]
+
+        return []
 
     def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
         tasks: Dict[bool, List[Callable[['GrizzlyScenario'], Any]]] = {}

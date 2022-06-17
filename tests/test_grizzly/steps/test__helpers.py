@@ -26,7 +26,6 @@ from grizzly.steps._helpers import (
     is_template,
 )
 from grizzly.tasks.clients import ClientTask, client
-from grizzly.tasks import GrizzlyTask
 from grizzly.exceptions import ResponseHandlerError
 
 from grizzly_extras.transformer import TransformerContentType
@@ -54,12 +53,12 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
     grizzly.scenario.context['host'] = 'http://test'
 
     if as_async:
-        grizzly.scenario.tmp_tasks.async_group = AsyncRequestGroupTask(name='async-test-1')
-        name_prefix = f'{grizzly.scenario.tmp_tasks.async_group.name}:'
-        tasks = cast(List[GrizzlyTask], grizzly.scenario.tmp_tasks.async_group.requests)
+        grizzly.scenario.tasks.tmp.async_group = AsyncRequestGroupTask(name='async-test-1')
+        name_prefix = f'{grizzly.scenario.tasks.tmp.async_group.name}:'
     else:
         name_prefix = ''
-        tasks = grizzly.scenario.tasks
+
+    tasks = grizzly.scenario.tasks()
 
     tasks.clear()
 
@@ -263,10 +262,9 @@ def test_add_save_handler(behave_fixture: BehaveFixture, locust_fixture: LocustF
     grizzly = cast(GrizzlyContext, behave.grizzly)
 
     if as_async:
-        grizzly.scenario.tmp_tasks.async_group = AsyncRequestGroupTask(name='async-test-2')
-        tasks = cast(List[GrizzlyTask], grizzly.scenario.tmp_tasks.async_group.requests)
-    else:
-        tasks = grizzly.scenario.tasks
+        grizzly.scenario.tasks.tmp.async_group = AsyncRequestGroupTask(name='async-test-2')
+
+    tasks = grizzly.scenario.tasks()
 
     assert len(tasks) == 0
     assert len(user.context_variables) == 0
@@ -390,10 +388,9 @@ def test_add_validation_handler(behave_fixture: BehaveFixture, locust_fixture: L
     grizzly = cast(GrizzlyContext, behave.grizzly)
 
     if as_async:
-        grizzly.scenario.tmp_tasks.async_group = AsyncRequestGroupTask(name='test-async-3')
-        tasks = cast(List[GrizzlyTask], grizzly.scenario.tmp_tasks.async_group.requests)
-    else:
-        tasks = grizzly.scenario.tasks
+        grizzly.scenario.tasks.tmp.async_group = AsyncRequestGroupTask(name='test-async-3')
+
+    tasks = grizzly.scenario.tasks()
     assert len(tasks) == 0
 
     # not preceeded by a request source

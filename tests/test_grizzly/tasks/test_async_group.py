@@ -1,6 +1,7 @@
 import logging
 from os import environ
 from unittest.mock import MagicMock
+from typing import List, cast
 
 import pytest
 
@@ -29,12 +30,13 @@ class TestAsyncRequestGroup:
 
     def test_add(self) -> None:
         task_factory = AsyncRequestGroupTask(name='test')
-        assert len(task_factory.requests) == 0
+        requests = cast(List[RequestTask], task_factory.requests)
+        assert len(requests) == 0
 
         task_factory.add(RequestTask(RequestMethod.GET, name='test', endpoint='/api/test'))
 
-        assert len(task_factory.requests) == 1
-        assert task_factory.requests[-1].name == 'test:test'
+        assert len(requests) == 1
+        assert requests[-1].name == 'test:test'
 
     @pytest.mark.parametrize('affix', [True, False])
     def test_get_templates(self, affix: bool) -> None:
@@ -66,6 +68,7 @@ class TestAsyncRequestGroup:
         scenario_context.name = scenario_context.description = 'test scenario'
 
         task_factory = AsyncRequestGroupTask(name='test-async-group', scenario=scenario_context)
+        requests = cast(List[RequestTask], task_factory.requests)
         task = task_factory()
 
         with pytest.raises(NotImplementedError) as nie:
@@ -105,8 +108,8 @@ class TestAsyncRequestGroup:
         task_factory.add(RequestTask(RequestMethod.POST, name='test-post', endpoint='/api/post'))
         task_factory.add(RequestTask(RequestMethod.GET, name='test-get', endpoint='/api/get'))
 
-        assert len(task_factory.requests) == 2
-        assert task_factory.requests[-1].name == 'test-async-group:test-get'
+        assert len(requests) == 2
+        assert requests[-1].name == 'test-async-group:test-get'
 
         task(scenario)
 

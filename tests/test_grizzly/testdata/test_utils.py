@@ -13,7 +13,7 @@ from locust.exception import StopUser
 from behave.model import Scenario
 
 from grizzly.context import GrizzlyContext
-from grizzly.tasks import LogMessage, DateTask, TransformerTask, UntilRequestTask
+from grizzly.tasks import LogMessage, DateTask, TransformerTask, UntilRequestTask, ConditionalTask
 from grizzly.testdata.utils import (
     initialize_testdata,
     create_context_variable,
@@ -49,6 +49,7 @@ def test_initialize_testdata_with_tasks(
             'AtomicIntegerIncrementer.messageID': 1337,
             'AtomicDate.now': 'now',
             'transformer_task': 'none',
+            'AtomicIntegerIncrementer.value': 20,
         })
         grizzly.state.variables['AtomicIntegerIncrementer.messageID'] = 1337
         grizzly.state.variables['AtomicDate.now'] = 'now'
@@ -68,6 +69,8 @@ def test_initialize_testdata_with_tasks(
             content_type=TransformerContentType.JSON,
         ))
         scenario.tasks.add(UntilRequestTask(grizzly, request=request, condition='{{ condition }}'))
+        scenario.tasks.add(ConditionalTask(scenario=scenario, name='conditional-1', condition='{{ value | int > 5 }}'))
+        scenario.tasks.add(ConditionalTask(scenario=scenario, name='conditional-1', condition='{{ AtomicIntegerIncrementer.value | int > 5 }}'))
         scenario.orphan_templates.append('hello {{ orphan }} template')
         testdata, external_dependencies = initialize_testdata(grizzly, scenario.tasks)
 
@@ -76,7 +79,7 @@ def test_initialize_testdata_with_tasks(
         assert external_dependencies == set()
         assert scenario_name in testdata
         variables = testdata[scenario_name]
-        assert len(variables) == 12
+        assert len(variables) == 14
         assert sorted(variables.keys()) == sorted([
             'messageID',
             'AtomicIntegerIncrementer.messageID',
@@ -90,6 +93,8 @@ def test_initialize_testdata_with_tasks(
             'content',
             'condition',
             'orphan',
+            'value',
+            'AtomicIntegerIncrementer.value',
         ])
     finally:
         cleanup()

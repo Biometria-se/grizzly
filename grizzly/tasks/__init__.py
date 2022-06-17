@@ -84,6 +84,16 @@ class GrizzlyTask(ABC):
         return list(templates)
 
 
+class GrizzlyTaskWrapper(ABC):
+    @abstractmethod
+    def add(self, task: GrizzlyTask) -> None:
+        raise NotImplementedError(f'{self.__class__.__name__} has not implemented add')
+
+    @abstractmethod
+    def peek(self) -> List[GrizzlyTask]:
+        raise NotImplementedError(f'{self.__class__.__name__} has not implemented peek')
+
+
 class template:
     attributes: List[str]
 

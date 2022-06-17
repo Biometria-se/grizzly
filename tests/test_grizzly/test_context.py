@@ -316,10 +316,6 @@ class TestGrizzlyContextScenario:
         assert scenario.tasks == []
         assert isinstance(scenario.validation, GrizzlyContextScenarioValidation)
         assert not scenario.failure_exception
-        assert scenario.tmp_tasks.async_group is None
-        assert scenario.tmp_tasks.timers == {}
-        assert scenario.tmp_tasks.conditional is None
-        assert scenario.tmp_tasks.custom == {}
 
         scenario.name = 'Test'
         assert scenario.class_name == f'Test_{identifier}'
