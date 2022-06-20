@@ -4,6 +4,11 @@ import xml.etree.ElementTree as ET
 from struct import pack, unpack
 from typing import List, Optional
 
+try:
+    import pymqi
+except:
+    from grizzly_extras import dummy_pymqi as pymqi
+
 # Basic MQ RFH2 support with gzip compression
 # See https://www.ibm.com/docs/en/ibm-mq/9.1?topic=mqi-mqrfh2-rules-formatting-header-2
 
@@ -75,7 +80,15 @@ class Rfh2Decoder(object):
 
 
 class Rfh2Encoder(object):
-    def __init__(self, payload: bytes, queue_name: str = 'DUMMYQ', encoding: str = 'gzip', tstamp: Optional[str] = None) -> None:
+    @classmethod
+    def create_md(cls) -> pymqi.MD:
+        md = pymqi.MD()
+        md.Format = 'MQHRF2  '.encode()
+        md.CodedCharSetId = 1208
+        md.Encoding = 546
+        return md
+
+    def __init__(self, payload: bytes, queue_name: str, encoding: str = 'gzip', tstamp: Optional[str] = None) -> None:
         if encoding != 'gzip':
             raise NotImplementedError('Only gzip encoding is implemented')
         self.queue_name = queue_name

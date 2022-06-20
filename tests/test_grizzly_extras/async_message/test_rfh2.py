@@ -8,7 +8,7 @@ import pytest
 
 from pytest_mock.plugin import MockerFixture
 
-from grizzly_extras.async_message.rfh2 import Rfh2Decoder, Rfh2Encoder
+from grizzly_extras.async_message.mq.rfh2 import Rfh2Decoder, Rfh2Encoder
 
 rfh2_msg = b'RFH \x02\x00\x00\x00\xfc\x00\x00\x00"\x02\x00\x00\xb8\x04\x00\x00        \x00\x00\x00\x00\xb8\x04\x00\x00 \x00\x00\x00<mcd><Msd>jms_bytes</Msd></mcd> ' \
            b'P\x00\x00\x00<jms><Dst>queue:///TEST.QUEUE</Dst><Tms>1655406556138</Tms><Dlv>2</Dlv></jms>   \\\x00\x00\x00<usr><ContentEncoding>gzip</ContentEncoding>' \
@@ -113,11 +113,11 @@ class TestRfh2Decoder:
 class TestRfh2Encoder:
     def test___init__(self) -> None:
         # test normal flow
-        Rfh2Encoder('test payload'.encode())
+        Rfh2Encoder('test payload'.encode(), queue_name='DUMMYQ')
 
         # test invalid encoding
         with pytest.raises(NotImplementedError) as nie:
-            Rfh2Encoder('test payload'.encode(), encoding='wrong')
+            Rfh2Encoder('test payload'.encode(), queue_name='DUMMYQ', encoding='wrong')
         assert 'Only gzip encoding is implemented' in str(nie)
 
     def test__build_payload(self) -> None:

@@ -10,6 +10,7 @@ from pytest_mock.plugin import MockerFixture
 
 from grizzly_extras.async_message import AsyncMessageRequest, AsyncMessageError
 from grizzly_extras.async_message.mq import AsyncMessageQueueHandler
+from grizzly_extras.async_message.mq.rfh2 import Rfh2Encoder
 from grizzly_extras.transformer import transformer, TransformerContentType
 
 try:
@@ -331,7 +332,7 @@ class TestAsyncMessageQueueHandler:
 
         handler.header_type = 'rfh2'
         response = handler._request(request)
-        assert response.get('metadata', None) == pymqi.MD().get()
+        assert response.get('metadata', None) == Rfh2Encoder.create_md().get()
         assert response.get('response_length', 0) == 284
 
         handler.header_type = 'somethingWeird'
@@ -370,7 +371,7 @@ class TestAsyncMessageQueueHandler:
         handler.header_type = 'rfh2'
         response = handler._request(request)
         assert response.get('payload', None) == 'test payload'
-        assert response.get('metadata', None) == pymqi.MD().get()
+        assert response.get('metadata', None) == Rfh2Encoder.create_md().get()
         assert response.get('response_length', None) == len('test payload')
 
         assert create_gmo_spy.call_count == 2

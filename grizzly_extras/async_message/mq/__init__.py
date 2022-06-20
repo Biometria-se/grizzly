@@ -2,11 +2,11 @@ from typing import Optional, Generator, Dict, cast
 from time import monotonic as time, sleep
 from contextlib import contextmanager
 
-from ..transformer import transformer, TransformerError, TransformerContentType
-from ..arguments import parse_arguments, get_unsupported_arguments
+from ...transformer import transformer, TransformerError, TransformerContentType
+from ...arguments import parse_arguments, get_unsupported_arguments
 
 
-from . import (
+from .. import (
     AsyncMessageRequest,
     AsyncMessageResponse,
     AsyncMessageError,
@@ -36,6 +36,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
             pymqi.raise_for_error(self.__class__)
 
         super().__init__(worker)
+        self.header_type: Optional[str] = None
 
     @contextmanager
     def queue_context(self, endpoint: str, browsing: Optional[bool] = False) -> Generator[pymqi.Queue, None, None]:
@@ -132,6 +133,12 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
         else:
             return message.decode()
 
+    def _create_md(self) -> pymqi.MD:
+        if self.header_type and self.header_type == 'rfh2':
+            return Rfh2Encoder.create_md()
+        else:
+            return pymqi.MD()
+
     def _find_message(self, queue_name: str, expression: str, content_type: TransformerContentType, message_wait: Optional[int]) -> Optional[bytearray]:
         start_time = time()
 
@@ -154,7 +161,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                 try:
                     # Check all current messages
                     while True:
-                        md = pymqi.MD()
+                        md = self._create_md()
                         message = browse_queue.get(None, md, gmo)
                         payload = self._get_payload(message)
 
@@ -242,14 +249,14 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                     message_wait = max(message_wait - elapsed_time, 0)
                     self.logger.debug(f'_request: remaining message_wait after finding message: {message_wait}')
 
-            md = pymqi.MD()
+            md = self._create_md()
             with self.queue_context(endpoint=queue_name) as queue:
                 do_retry: bool = False
 
                 if action == 'PUT':
                     payload = request.get('payload', None)
                     if self.header_type:
-                        if self.header_type.lower() == 'rfh2':
+                        if self.header_type == 'rfh2':
                             rfh2_encoder = Rfh2Encoder(payload=cast(str, payload).encode(), queue_name=queue_name)
                             payload = rfh2_encoder.get_message()
                         else:
