@@ -672,9 +672,9 @@ def step_task_conditional_if(context: Context, condition: str, name: str) -> Non
     When condition "{{ value | int > 0 }}" with name "value-conditional" is true, execute these tasks
     Then get request with name "get-when-true" from endpoint "/api/true"
     Then parse date "2022-01-17 12:21:37 | timezone=UTC, format="%Y-%m-%dT%H:%M:%S.%f", offset=1D" and save in variable "date1"
-    But else execute these tasks
+    But if condition is false, execute these tasks
     Then get request with name "get-when-false" from endpoint "/api/false"
-    Then end conditional
+    Then end condition
     ```
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
@@ -702,9 +702,9 @@ def step_task_conditional_else(context: Context) -> None:
     When condition "{{ value | int > 0 }}" with name "value-conditional" is true, execute these tasks
     Then get request with name "get-when-true" from endpoint "/api/true"
     Then parse date "2022-01-17 12:21:37 | timezone=UTC, format="%Y-%m-%dT%H:%M:%S.%f", offset=1D" and save in variable "date1"
-    But else execute these tasks
+    But if condition is false, execute these tasks
     Then get request with name "get-when-false" from endpoint "/api/false"
-    Then end conditional
+    Then end condition
     ```
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
@@ -728,9 +728,9 @@ def step_task_conditional_end(context: Context) -> None:
     When condition "{{ value | int > 0 }}" with name "value-conditional" is true, execute these tasks
     Then get request with name "get-when-true" from endpoint "/api/true"
     Then parse date "2022-01-17 12:21:37 | timezone=UTC, format="%Y-%m-%dT%H:%M:%S.%f", offset=1D" and save in variable "date1"
-    But else execute these tasks
+    But if condition is false, execute these tasks
     Then get request with name "get-when-false" from endpoint "/api/false"
-    Then end conditional
+    Then end condition
     ```
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
