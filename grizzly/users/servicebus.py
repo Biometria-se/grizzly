@@ -233,6 +233,9 @@ class ServiceBusUser(ResponseHandler, RequestLogger, GrizzlyUser):
 
     @contextmanager
     def async_action(self, task: RequestTask, request: AsyncMessageRequest, name: str) -> Generator[Dict[str, Any], None, None]:
+        if not name.startswith(f'{self._scenario.identifier} '):
+            name = f'{self._scenario.identifier} {name}'
+
         if len(name) > 65:
             name = f'{name[:65]}...'
         request.update({'worker': self.worker_id})

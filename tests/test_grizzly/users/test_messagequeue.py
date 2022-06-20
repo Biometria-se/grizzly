@@ -185,6 +185,8 @@ class TestMessageQueueUser:
             mocked_zmq_connect,
         )
 
+        scenario = GrizzlyContextScenario(3)
+
         def mocked_request_fire(*args: Tuple[Any, ...], **_kwargs: Dict[str, Any]) -> None:
             # ehm, mypy thinks that _kwargs has type dict[str, Dict[str, Any]]
             kwargs = cast(Dict[str, Any], _kwargs)
@@ -192,7 +194,7 @@ class TestMessageQueueUser:
             # self.environment.events.request.fire
             if properties == ['request_type', 'name', 'response_time', 'response_length', 'context', 'exception']:
                 assert kwargs['request_type'] == 'CONN'
-                assert kwargs['name'] == user.am_context.get('connection', None)
+                assert kwargs['name'] == f'{scenario.identifier} {user.am_context.get("connection", None)}'
                 assert kwargs['response_time'] >= 0
                 assert kwargs['response_length'] == 0
                 assert isinstance(kwargs['exception'], ZMQError)
@@ -210,10 +212,10 @@ class TestMessageQueueUser:
         user = MessageQueueUser(locust_fixture.env)
 
         request = RequestTask(RequestMethod.PUT, name='test-put', endpoint='EXAMPLE.QUEUE')
-        scenario = GrizzlyContextScenario(3)
         scenario.name = 'test'
         scenario.failure_exception = StopUser
         scenario.tasks.add(request)
+        user._scenario = scenario
 
         with pytest.raises(StopUser):
             user.request(request)

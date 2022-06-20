@@ -226,6 +226,9 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
                 'metadata': None,
             }
 
+            if not name.startswith(f'{self._scenario.identifier} '):
+                name = f'{self._scenario.identifier} {name}'
+
             response: Optional[AsyncMessageResponse] = None
 
             start_time = time()
