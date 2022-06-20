@@ -66,6 +66,9 @@ class ConditionalTask(GrizzlyTask, GrizzlyTaskWrapper):
     def switch(self, pointer: Optional[bool]) -> None:
         self._pointer = pointer
 
+        if pointer is not None and pointer not in self.tasks:
+            self.tasks[pointer] = []
+
     def add(self, task: GrizzlyTask) -> None:
         task_name = getattr(task, 'name', None)
         if task_name is not None:

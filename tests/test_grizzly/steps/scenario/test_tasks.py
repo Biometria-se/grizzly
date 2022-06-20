@@ -612,7 +612,7 @@ def test_step_task_conditional_if(behave_fixture: BehaveFixture) -> None:
     assert grizzly.scenario.tasks.tmp.conditional is not None
     assert grizzly.scenario.tasks.tmp.conditional.name == 'conditional-1'
     assert grizzly.scenario.tasks.tmp.conditional._pointer
-    assert grizzly.scenario.tasks.tmp.conditional.tasks == {}
+    assert grizzly.scenario.tasks.tmp.conditional.tasks == {True: []}
 
     step_task_wait_constant(behave, 1.4)
     step_task_log_message(behave, 'hello world')
@@ -645,6 +645,8 @@ def test_step_task_conditional_else(behave_fixture: BehaveFixture) -> None:
     assert grizzly.scenario.tasks.tmp.conditional is not None
 
     step_task_conditional_else(behave)
+
+    assert grizzly.scenario.tasks.tmp.conditional.tasks.get(False, None) == []
 
     step_task_wait_constant(behave, 3.7)
     step_task_log_message(behave, 'foo bar')
