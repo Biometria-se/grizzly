@@ -32,7 +32,7 @@ from grizzly.locust import (
 )
 from grizzly.types import RequestDirection, RequestMethod, RequestType
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
-from grizzly.tasks import GrizzlyTask, LogMessage, RequestTask, WaitTask
+from grizzly.tasks import GrizzlyTask, LogMessageTask, RequestTask, WaitTask
 from grizzly.tasks.clients import MessageQueueClientTask
 from grizzly.users import RestApiUser, MessageQueueUser
 from grizzly.users.base import GrizzlyUser
@@ -180,7 +180,7 @@ def test_setup_locust_scenarios(behave_fixture: BehaveFixture, noop_zmq: NoopZmq
     task = RequestTask(RequestMethod.GET, 'test-1', '/api/v1/test/1')
     grizzly.scenario.tasks.add(task)
     grizzly.scenario.tasks.add(WaitTask(time=1.5))
-    grizzly.scenario.tasks.add(LogMessage(message='test message'))
+    grizzly.scenario.tasks.add(LogMessageTask(message='test message'))
 
     # incorrect user type
     grizzly.scenario.user.class_name = 'NonExistingUser'
@@ -254,7 +254,7 @@ def test_setup_locust_scenarios_user_distribution(behave_fixture: BehaveFixture,
         scenario = Scenario(filename=None, line=None, keyword='', name=f'Test-{(index + 1)}')
         grizzly.scenarios.create(scenario)
         grizzly.scenario.context['host'] = 'http://localhost:8003'
-        grizzly.scenario.tasks.add(LogMessage(message='foo bar'))
+        grizzly.scenario.tasks.add(LogMessageTask(message='foo bar'))
         grizzly.scenario.user.class_name = 'RestApiUser'
         grizzly.scenario.user.weight = distribution[index]
 

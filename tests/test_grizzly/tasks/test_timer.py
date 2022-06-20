@@ -2,7 +2,7 @@ from hashlib import sha1
 
 from pytest_mock import MockerFixture
 
-from grizzly.tasks import TimerTask, LogMessage
+from grizzly.tasks import TimerTask, LogMessageTask
 
 from ...fixtures import GrizzlyFixture
 
@@ -23,7 +23,7 @@ class TestTimerTask:
 
         scenario_context = grizzly_fixture.request_task.request.scenario
         request_fire_spy = mocker.spy(scenario.user.environment.events.request, 'fire')
-        dummy_task = LogMessage(message='dummy')()
+        dummy_task = LogMessageTask(message='dummy')()
 
         # flat
         mocker.patch('grizzly.tasks.timer.perf_counter', side_effect=[2.0, 12.0])

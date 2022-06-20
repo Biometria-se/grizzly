@@ -104,6 +104,7 @@ class RequestType(Enum, AdvancedEnum, metaclass=MixedEnumMeta, init='alias _weig
     RECEIVE = ('RECV', None,)
     CONNECT = ('CONN', None,)
     TIMER = ('TIMR', None,)
+    CONDITIONAL = ('COND', None,)
 
     def __call__(self) -> str:
         return str(self)

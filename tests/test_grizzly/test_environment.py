@@ -14,7 +14,7 @@ from grizzly.context import GrizzlyContext
 from grizzly.steps.setup import step_setup_variable_value_ask as step_both
 from grizzly.steps.background.setup import step_setup_save_statistics as step_background
 from grizzly.steps.scenario.setup import step_setup_iterations as step_scenario
-from grizzly.tasks import AsyncRequestGroupTask, TimerTask
+from grizzly.tasks import AsyncRequestGroupTask, TimerTask, ConditionalTask
 
 from ..fixtures import BehaveFixture
 
@@ -188,22 +188,33 @@ def test_after_scenario(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = behave_fixture.grizzly
 
-    grizzly.scenario.async_group = AsyncRequestGroupTask(name='test-async-1')
+    grizzly.scenario.tasks.tmp.async_group = AsyncRequestGroupTask(name='test-async-1')
 
     with pytest.raises(AssertionError) as ae:
         after_scenario(behave)
     assert str(ae.value) == 'async request group "test-async-1" has not been closed'
 
-    grizzly.scenario.async_group = None
+    grizzly.scenario.tasks.tmp.async_group = None
 
-    grizzly.scenario.timers['test-timer-1'] = TimerTask('test-timer-1')
-    grizzly.scenario.timers['test-timer-2'] = TimerTask('test-timer-2')
+    grizzly.scenario.tasks.tmp.timers['test-timer-1'] = TimerTask('test-timer-1')
+    grizzly.scenario.tasks.tmp.timers['test-timer-2'] = TimerTask('test-timer-2')
 
     with pytest.raises(AssertionError) as ae:
         after_scenario(behave)
     assert str(ae.value) == 'timers test-timer-1, test-timer-2 has not been closed'
 
-    grizzly.scenario.timers.clear()
+    grizzly.scenario.tasks.tmp.timers.clear()
+
+    grizzly.scenario.tasks.tmp.conditional = ConditionalTask(
+        name='test-conditional-1',
+        condition='{{ value | int > 0 }}',
+    )
+
+    with pytest.raises(AssertionError) as ae:
+        after_scenario(behave)
+    assert str(ae.value) == 'conditional "test-conditional-1" has not been closed'
+
+    grizzly.scenario.tasks.tmp.conditional = None
     grizzly.state.background_section_done = False
 
     assert not grizzly.state.background_section_done

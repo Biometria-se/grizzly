@@ -15,7 +15,7 @@ a step implementation is also needed.
 
 There are examples of this in the {@link framework.example}.
 '''
-from abc import ABC
+from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Any, Callable, List, Type, Set, Optional
 from os import environ
 from pathlib import Path
@@ -37,6 +37,7 @@ class GrizzlyTask(ABC):
         if scenario is not None:
             self.scenario = scenario
 
+    @abstractmethod
     def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
         raise NotImplementedError(f'{self.__class__.__name__} has not been implemented')
 
@@ -83,6 +84,16 @@ class GrizzlyTask(ABC):
         return list(templates)
 
 
+class GrizzlyTaskWrapper(ABC):
+    @abstractmethod
+    def add(self, task: GrizzlyTask) -> None:
+        raise NotImplementedError(f'{self.__class__.__name__} has not implemented add')
+
+    @abstractmethod
+    def peek(self) -> List[GrizzlyTask]:
+        raise NotImplementedError(f'{self.__class__.__name__} has not implemented peek')
+
+
 class template:
     attributes: List[str]
 
@@ -99,25 +110,27 @@ class template:
 
 from .request import RequestTask, RequestTaskHandlers, RequestTaskResponse
 from .wait import WaitTask
-from .log_message import LogMessage
+from .log_message import LogMessageTask
 from .transformer import TransformerTask
 from .until import UntilRequestTask
 from .date import DateTask
 from .async_group import AsyncRequestGroupTask
 from .timer import TimerTask
-from .request_wait import RequestWaitTask
+from .task_wait import TaskWaitTask
+from .conditional import ConditionalTask
 
 
 __all__ = [
     'RequestTaskHandlers',
     'RequestTaskResponse',
     'RequestTask',
-    'LogMessage',
+    'LogMessageTask',
     'WaitTask',
     'TransformerTask',
     'UntilRequestTask',
     'DateTask',
     'AsyncRequestGroupTask',
     'TimerTask',
-    'RequestWaitTask',
+    'TaskWaitTask',
+    'ConditionalTask',
 ]

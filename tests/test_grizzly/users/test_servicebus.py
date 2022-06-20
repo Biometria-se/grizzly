@@ -232,6 +232,7 @@ class TestServiceBusUser:
 
         scenario = GrizzlyContextScenario(1)
         scenario.name = 'test'
+        user._scenario = scenario
 
         # unsupported request method
         task = RequestTask(RequestMethod.PUT, name='test-send', endpoint='queue:test-queue')

@@ -1,4 +1,4 @@
-'''
+"""
 @anchor pydoc:grizzly.tasks.async_group Async Group
 This task runs all requests in the group asynchronously.
 
@@ -17,13 +17,13 @@ Requests are added to the group with the same step implementations as {@pylink g
 ## Statistics
 
 Executions of this task will be visible in `locust` request statistics with request type `ASYNC`. `name` will be suffixed with ` (<n>)`,
-where `<n>` is the number of requests in the group. Each request in the group will have it's own entry in the statistics as an ordinary
+where `<n>` is the number of requests in the group. Each request in the group will have its own entry in the statistics as an ordinary
 {@pylink grizzly.tasks.request} task.
 
 ## Arguments
 
 * `name` (str): name of the group of asynchronously requests
-'''
+"""
 import logging
 import inspect
 
@@ -34,7 +34,7 @@ import gevent
 from typing import TYPE_CHECKING, Any, Callable, List, Optional, Tuple
 from time import perf_counter as time_perf_counter
 
-from . import GrizzlyTask, RequestTask, template
+from . import GrizzlyTask, GrizzlyTaskWrapper, RequestTask, template
 from ..users.base import AsyncRequests
 from ..types import RequestType
 
@@ -44,8 +44,8 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 @template('name', 'requests')
-class AsyncRequestGroupTask(GrizzlyTask):
-    requests: List[RequestTask]
+class AsyncRequestGroupTask(GrizzlyTask, GrizzlyTaskWrapper):
+    requests: List[GrizzlyTask]
 
     def __init__(self, name: str, scenario: Optional['GrizzlyContextScenario'] = None) -> None:
         super().__init__(scenario)
@@ -53,9 +53,15 @@ class AsyncRequestGroupTask(GrizzlyTask):
         self.name = name
         self.requests = []
 
-    def add(self, request: RequestTask) -> None:
-        request.name = f'{self.name}:{request.name}'
-        self.requests.append(request)
+    def add(self, task: GrizzlyTask) -> None:
+        if not isinstance(task, RequestTask):
+            raise ValueError(f'{self.__class__.__name__} only accepts RequestTask tasks, not {task.__class__.__name__}')
+
+        task.name = f'{self.name}:{task.name}'
+        self.requests.append(task)
+
+    def peek(self) -> List[GrizzlyTask]:
+        return self.requests
 
     def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
         def task(parent: 'GrizzlyScenario') -> Any:

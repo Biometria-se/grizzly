@@ -1,13 +1,18 @@
-'''This module contains step implementations that creates requests executed by the specified {@pylink grizzly.users} in the scenario.'''
+"""
+This module contains step implementations that creates requests executed by the specified {@pylink grizzly.users}
+in the scenario.
+"""
 from typing import cast
 
 from behave.runner import Context
-from behave import register_type, then, given  # pylint: disable=no-name-in-module
+from behave import register_type, then, given, when  # pylint: disable=no-name-in-module
+
+from grizzly.tasks.conditional import ConditionalTask  # pylint: disable=no-name-in-module
 
 from .._helpers import add_request_task, get_task_client, is_template
 from ...types import RequestDirection, RequestMethod
 from ...context import GrizzlyContext
-from ...tasks import LogMessage, WaitTask, TransformerTask, UntilRequestTask, DateTask, AsyncRequestGroupTask, TimerTask, RequestWaitTask
+from ...tasks import LogMessageTask, WaitTask, TransformerTask, UntilRequestTask, DateTask, AsyncRequestGroupTask, TimerTask, TaskWaitTask
 
 from grizzly_extras.transformer import TransformerContentType
 
@@ -29,7 +34,7 @@ register_type(
 
 @then(u'{method:Method} request with name "{name}" from endpoint "{endpoint}" until "{condition}"')
 def step_task_request_with_name_endpoint_until(context: Context, method: RequestMethod, name: str, endpoint: str, condition: str) -> None:
-    '''
+    """
     Creates an instance of the {@pylink grizzly.tasks.until} task, see task documentation for more information.
 
     Example:
@@ -44,7 +49,7 @@ def step_task_request_with_name_endpoint_until(context: Context, method: Request
         name (str): name of the requests in logs, can contain variables
         direction (RequestDirection): one of `to` or `from` depending on the value of `method`
         endpoint (str): URI relative to `host` in the scenario, can contain variables and in certain cases `user_class_name` specific parameters
-    '''
+    """
 
     assert method.direction == RequestDirection.FROM, 'this step is only valid for request methods with direction FROM'
     assert context.text is None, 'this step does not have support for step text'
@@ -53,7 +58,7 @@ def step_task_request_with_name_endpoint_until(context: Context, method: Request
 
     grizzly = cast(GrizzlyContext, context.grizzly)
 
-    assert grizzly.scenario.async_group is None, f'until tasks cannot be in an async request group, close group {grizzly.scenario.async_group.name} first'
+    assert grizzly.scenario.tasks.tmp.async_group is None, f'until tasks cannot be in an async request group, close group {grizzly.scenario.tasks.tmp.async_group.name} first'
 
     for request_task, substitues in request_tasks:
         condition_rendered = condition
@@ -69,7 +74,7 @@ def step_task_request_with_name_endpoint_until(context: Context, method: Request
 
 @then(u'{method:Method} request with name "{name}" {direction:Direction} endpoint "{endpoint}"')
 def step_task_request_text_with_name_endpoint(context: Context, method: RequestMethod, name: str, direction: RequestDirection, endpoint: str) -> None:
-    '''
+    """
     Creates an instance of the {@pylink grizzly.tasks.request} task, where optional payload is defined directly in the feature file.
     See {@pylink grizzly.tasks.request} task documentation for more information about arguments.
 
@@ -81,25 +86,25 @@ def step_task_request_text_with_name_endpoint(context: Context, method: RequestM
 
     ``` gherkin
     Then post request with name "test-post" to endpoint "/api/test"
-        """
+        \"\"\"
         {
             "test": "hello world"
         }
-        """
+        \"\"\"
     Then put request with name "test-put" to endpoint "/api/test"
-        """
+        \"\"\"
         {
             "test": "hello world"
         }
-        """
+        \"\"\"
     Then get request with name "test-get" from endpoint "/api/test"
 
     Then send request with name "test-send" to endpoint "queue:receive-queue"
-        """
+        \"\"\"
         {
             "value": "do something"
         }
-        """
+        \"\"\"
     Then receive request with name "test-receive" from endpoint "queue:receive-queue"
     ```
 
@@ -108,7 +113,7 @@ def step_task_request_text_with_name_endpoint(context: Context, method: RequestM
         name (str): name of the requests in logs, can contain variables
         direction (RequestDirection): one of `to` or `from` depending on the value of `method`
         endpoint (str): URI relative to `host` in the scenario, can contain variables and in certain cases `user_class_name` specific parameters
-    '''
+    """
 
     assert isinstance(direction, RequestDirection), 'invalid direction specified in expression'
 
@@ -124,7 +129,7 @@ def step_task_request_text_with_name_endpoint(context: Context, method: RequestM
 
 @then(u'{method:Method} request "{source}" with name "{name}" to endpoint "{endpoint}"')
 def step_task_request_file_with_name_endpoint(context: Context, method: RequestMethod, source: str, name: str, endpoint: str) -> None:
-    '''
+    """
     Creates an instance of the {@pylink grizzly.tasks.request} task, where the payload is defined in a template file.
 
     See {@pylink grizzly.tasks.request} task documentation for more information about arguments.
@@ -142,7 +147,7 @@ def step_task_request_file_with_name_endpoint(context: Context, method: RequestM
         source (str): path to a template file relative to the directory `requests/`, which **must** exist in the directory the feature file is located
         name (str): name of the requests in logs, can contain variables
         endpoint (str): URI relative to `host` in the scenario, can contain variables and in certain cases `user_class_name` specific parameters
-    '''
+    """
     assert method.direction == RequestDirection.TO, f'{method.name} is not allowed'
     assert context.text is None, f'step text is not allowed for {method.name}'
     assert not is_template(source), 'source file cannot be a template'
@@ -151,7 +156,7 @@ def step_task_request_file_with_name_endpoint(context: Context, method: RequestM
 
 @then(u'{method:Method} request "{source}" with name "{name}"')
 def step_task_request_file_with_name(context: Context, method: RequestMethod, source: str, name: str) -> None:
-    '''
+    """
     Creates an instance of the {@pylink grizzly.tasks.request} task, with the same `endpoint` as the previous Request task, where the
     payload is defined in a template file.
 
@@ -172,7 +177,7 @@ def step_task_request_file_with_name(context: Context, method: RequestMethod, so
         method (RequestMethod): type of request
         source (str): path to a template file relative to the directory `requests/`, which **must** exist in the directory the feature file is located
         name (str): name of the requests in logs, can contain variables
-    '''
+    """
     assert method.direction == RequestDirection.TO, f'{method.name} is not allowed'
     assert context.text is None, f'step text is not allowed for {method.name}'
     assert not is_template(source), 'source file cannot be a template'
@@ -181,7 +186,7 @@ def step_task_request_file_with_name(context: Context, method: RequestMethod, so
 
 @then(u'{method:Method} request with name "{name}"')
 def step_task_request_text_with_name(context: Context, method: RequestMethod, name: str) -> None:
-    '''
+    """
     Creates an instance of the {@pylink grizzly.tasks.request} task, where optional payload is defined directly in the feature file.
 
     See {@pylink grizzly.tasks.request} task documentation for more information about arguments.
@@ -194,31 +199,31 @@ def step_task_request_text_with_name(context: Context, method: RequestMethod, na
     ``` gherkin
     # example-1
     Then post request with name "test-post-1" to endpoint "/api/test"
-        """
+        \"\"\"
         {
             "value": "hello world!"
         }
-        """
+        \"\"\"
     Then post request with name "test-post-2"
-        """
+        \"\"\"
         {
             "value": "i have good news!"
         }
-        """
+        \"\"\"
 
     # same as example-1
     Then post request with name "test-post-1" to endpoint "/api/test"
-        """
+        \"\"\"
         {
             "value": "hello world!"
         }
-        """
+        \"\"\"
     Then post request with name "test-post-2" to endpoint "/api/test"
-        """
+        \"\"\"
         {
             "value": "i have good news!"
         }
-        """
+        \"\"\"
 
     # example-2
     Then get request with name "test-get-1" from endpoint "/api/test"
@@ -232,7 +237,7 @@ def step_task_request_text_with_name(context: Context, method: RequestMethod, na
     Args:
         method (RequestMethod): type of request
         name (str): name of the requests in logs, can contain variables
-    '''
+    """
 
     if method.direction == RequestDirection.FROM:
         assert context.text is None, f'Step text is not allowed for {method.name}'
@@ -244,9 +249,9 @@ def step_task_request_text_with_name(context: Context, method: RequestMethod, na
 
 @then(u'wait for "{wait_time:f}" seconds')
 def step_task_wait_seconds(context: Context, wait_time: float) -> None:
-    '''
+    """
     Creates an instace of the {@pylink grizzly.tasks.wait} task. The scenario will wait the specified time (seconds) in
-    additional to the wait time specified by {@pylink grizzly.tasks.request_wait}.
+    additional to the wait time specified by {@pylink grizzly.tasks.task_wait}.
 
     See {@pylink grizzly.tasks.wait} task documentation for more information about the task.
 
@@ -263,7 +268,7 @@ def step_task_wait_seconds(context: Context, wait_time: float) -> None:
 
     Args:
         wait_time (float): wait time in seconds
-    '''
+    """
     grizzly = cast(GrizzlyContext, context.grizzly)
 
     assert wait_time > 0.0, 'wait time cannot be less than 0.0 seconds'
@@ -273,7 +278,7 @@ def step_task_wait_seconds(context: Context, wait_time: float) -> None:
 
 @then(u'log message "{message}"')
 def step_task_log_message(context: Context, message: str) -> None:
-    '''
+    """
     Creates an instance of the {@pylink grizzly.tasks.log_message} task. Prints a log message in the console, useful for troubleshooting values
     of variables or set markers in log files.
 
@@ -288,15 +293,15 @@ def step_task_log_message(context: Context, message: str) -> None:
 
     Args:
         message (str): message to print
-    '''
+    """
 
     grizzly = cast(GrizzlyContext, context.grizzly)
-    grizzly.scenario.tasks.add(LogMessage(message=message))
+    grizzly.scenario.tasks.add(LogMessageTask(message=message))
 
 
 @then(u'parse "{content}" as "{content_type:ContentType}" and save value of "{expression}" in variable "{variable}"')
 def step_task_transform(context: Context, content: str, content_type: TransformerContentType, expression: str, variable: str) -> None:
-    '''
+    """
     Creates an instance of the {@pylink grizzly.tasks.transformer} task. Transforms the specified `content` with `content_type` to an
     object that an transformer can extract information from with the specified `expression`.
 
@@ -318,7 +323,7 @@ def step_task_transform(context: Context, content: str, content_type: Transforme
         content_type (TransformerContentType): MIME type of `contents`
         expression (str): JSON or XPath expression for specific value in `contents`
         variable (str): name of variable to save value to, must have been initialized
-    '''
+    """
 
     grizzly = cast(GrizzlyContext, context.grizzly)
     grizzly.scenario.tasks.add(TransformerTask(
@@ -332,7 +337,7 @@ def step_task_transform(context: Context, content: str, content_type: Transforme
 
 @then(u'get "{endpoint}" with name "{name}" and save response in "{variable}"')
 def step_task_client_get_endpoint(context: Context, endpoint: str, name: str, variable: str) -> None:
-    '''
+    """
     Creates an instance of a {@pylink grizzly.tasks.clients} task, actual implementation of the task is determined
     based on the URL scheme specified in `endpoint`. Gets information from another host or endpoint than the scenario
     is load testing and saves the response in a variable.
@@ -350,7 +355,7 @@ def step_task_client_get_endpoint(context: Context, endpoint: str, name: str, va
         endpoint (str): information about where to get information, see the specific getter task implementations for more information
         name (str): name of the request, used in request statistics
         variable (str): name of, initialized, variable where response will be saved in
-    '''
+    """
     grizzly = cast(GrizzlyContext, context.grizzly)
 
     task_client = get_task_client(endpoint)
@@ -365,7 +370,7 @@ def step_task_client_get_endpoint(context: Context, endpoint: str, name: str, va
 
 @then(u'put "{source}" to "{endpoint}" with name "{name}" as "{destination}"')
 def step_task_client_put_endpoint_file_destination(context: Context, source: str, endpoint: str, name: str, destination: str) -> None:
-    '''
+    """
     Creates an instance of a {@pylink grizzly.tasks.clients} task, actual implementation of the task is determined
     based on the URL scheme specified in `endpoint`. Puts information, source being a file, to another host or endpoint than the scenario
     is load testing and saves the response in a variable
@@ -383,7 +388,7 @@ def step_task_client_put_endpoint_file_destination(context: Context, source: str
         endpoint (str): information about where to get information, see the specific getter task implementations for more information
         name (str): name of the request, used in request statistics
         destination (str): name of source on the destination
-    '''
+    """
     assert context.text is None, 'step text is not allowed for this step expression'
 
     grizzly = cast(GrizzlyContext, context.grizzly)
@@ -403,7 +408,7 @@ def step_task_client_put_endpoint_file_destination(context: Context, source: str
 
 @then(u'put "{source}" to "{endpoint}" with name "{name}"')
 def step_task_client_put_endpoint_file(context: Context, source: str, endpoint: str, name: str) -> None:
-    '''
+    """
     Creates an instance of a {@pylink grizzly.tasks.clients} task, actual implementation of the task is determined
     based on the URL scheme specified in `endpoint`. Puts information, source being a file, to another host or endpoint than the scenario
     is load testing and saves the response in a variable
@@ -420,7 +425,7 @@ def step_task_client_put_endpoint_file(context: Context, source: str, endpoint: 
         source (str): relative path to file in `feature/requests`, supports {@link framework.usage.variables.templating}
         endpoint (str): information about where to get information, see the specific getter task implementations for more information
         name (str): name of the request, used in request statistics
-    '''
+    """
     assert context.text is None, 'step text is not allowed for this step expression'
 
     grizzly = cast(GrizzlyContext, context.grizzly)
@@ -440,7 +445,7 @@ def step_task_client_put_endpoint_file(context: Context, source: str, endpoint: 
 
 @then(u'parse date "{value}" and save in variable "{variable}"')
 def step_task_date(context: Context, value: str, variable: str) -> None:
-    '''
+    """
     Creates an instance of the {@pylink grizzly.tasks.date} task. Parses a datetime string and transforms it according to specified
     arguments.
 
@@ -465,7 +470,7 @@ def step_task_date(context: Context, value: str, variable: str) -> None:
     Args:
         value (str): datetime string and arguments
         variable (str): name of, initialized, variable where response will be saved in
-    '''
+    """
     grizzly = cast(GrizzlyContext, context.grizzly)
     assert variable in grizzly.state.variables, f'variable {variable} has not been initialized'
 
@@ -477,7 +482,7 @@ def step_task_date(context: Context, value: str, variable: str) -> None:
 
 @given(u'an async request group with name "{name}"')
 def step_task_async_group_start(context: Context, name: str) -> None:
-    '''
+    """
     Creates an instance of the {@pylink grizzly.tasks.async_group} task. All {@pylink grizzly.tasks.request} tasks created after this step will be added to the
     request group, until the group is closed.
 
@@ -488,31 +493,28 @@ def step_task_async_group_start(context: Context, name: str) -> None:
     ``` gherkin
     Given an async request group with name "async-group-1"
     Then post request with name "test-post-2" to endpoint "/api/test"
-        """
+        \"\"\"
         {
             "value": "i have good news!"
         }
-        """
+        \"\"\"
 
     Then get request with name "test-get-1" from endpoint "/api/test"
     And close async request group
     ```
 
     In this example, the `put` and `get` requests will run asynchronously, and both requests will block following requests until both are finished.
-
-    Args:
-        name (str): name of the group, will be used in locust statistics
-    '''
+    """
     grizzly = cast(GrizzlyContext, context.grizzly)
 
-    assert grizzly.scenario.async_group is None, f'async request group "{grizzly.scenario.async_group.name}" has not been closed'
+    assert grizzly.scenario.tasks.tmp.async_group is None, f'async request group "{grizzly.scenario.tasks.tmp.async_group.name}" has not been closed'
 
-    grizzly.scenario.async_group = AsyncRequestGroupTask(name=name)
+    grizzly.scenario.tasks.tmp.async_group = AsyncRequestGroupTask(name=name)
 
 
 @then(u'close async request group')
 def step_task_async_group_close(context: Context) -> None:
-    '''
+    """
     Closes the instance created in {@pylink grizzly.steps.scenario.tasks.step_task_async_group_start}, and adds the {@pylink grizzly.tasks.async_group} task to the list of tasks
     that the scenario is going to execute.
 
@@ -523,28 +525,30 @@ def step_task_async_group_close(context: Context) -> None:
     ``` gherkin
     Given an async request group with name "async-group-1"
     Then post request with name "test-post-2" to endpoint "/api/test"
-        """
+        \"\"\"
         {
             "value": "i have good news!"
         }
-        """
+        \"\"\"
 
     Then get request with name "test-get-1" from endpoint "/api/test"
     And close async request group
     ```
-    '''
+    """
     grizzly = cast(GrizzlyContext, context.grizzly)
 
-    assert grizzly.scenario.async_group is not None, 'no async request group is open'
-    assert len(grizzly.scenario.async_group.requests) > 0, f'there are no requests in async group "{grizzly.scenario.async_group.name}"'
+    async_group = grizzly.scenario.tasks.tmp.async_group
 
-    grizzly.scenario.tasks.add(grizzly.scenario.async_group)
-    grizzly.scenario.async_group = None
+    assert async_group is not None, 'no async request group is open'
+    assert len(async_group.requests) > 0, f'there are no requests in async group "{async_group.name}"'
+
+    grizzly.scenario.tasks.tmp.async_group = None
+    grizzly.scenario.tasks.add(async_group)
 
 
 @then(u'start timer with name "{name}"')
 def step_task_timer_start(context: Context, name: str) -> None:
-    '''
+    """
     Creates an instance of the {@pylink grizzly.tasks.timer} task. Starts a timer to measure the "request time" for all tasks between
     the start and stop of the timer.
 
@@ -557,13 +561,13 @@ def step_task_timer_start(context: Context, name: str) -> None:
     ...
     And stop timer with name "parsing-xml"
     ```
-    '''
+    """
     grizzly = cast(GrizzlyContext, context.grizzly)
-    assert name not in grizzly.scenario.timers, f'timer with name {name} has already been defined'
+    assert name not in grizzly.scenario.tasks.tmp.timers, f'timer with name {name} has already been defined'
 
     task = TimerTask(name=name)
 
-    grizzly.scenario.timers.update({
+    grizzly.scenario.tasks.tmp.timers.update({
         name: task,
     })
 
@@ -572,7 +576,7 @@ def step_task_timer_start(context: Context, name: str) -> None:
 
 @then(u'stop timer with name "{name}"')
 def step_task_timer_stop(context: Context, name: str) -> None:
-    '''
+    """
     Adds the instance created by {@pylink grizzly.steps.scenario.tasks.step_task_timer_start} to the list of scenario tasks.
 
     See {@pylink grizzly.tasks.timer} task documentation for more information.
@@ -584,24 +588,24 @@ def step_task_timer_stop(context: Context, name: str) -> None:
     ...
     And stop timer with name "parsing-xml"
     ```
-    '''
+    """
     grizzly = cast(GrizzlyContext, context.grizzly)
 
-    task = grizzly.scenario.timers.get(name, None)
+    task = grizzly.scenario.tasks.tmp.timers.get(name, None)
 
     assert task is not None, f'timer with name {name} has not been defined'
 
     grizzly.scenario.tasks.add(task)
-    grizzly.scenario.timers.update({name: None})
+    grizzly.scenario.tasks.tmp.timers.update({name: None})
 
 
 @given(u'wait "{min_time:g}..{max_time:g}" seconds between tasks')
-def step_task_request_wait_between(context: Context, min_time: float, max_time: float) -> None:
-    '''
-    Creates an instance of the {@pylink grizzly.tasks.request_wait} task. Sets number of, randomly, seconds the {@pylink grizzly.users}
+def step_task_wait_between(context: Context, min_time: float, max_time: float) -> None:
+    """
+    Creates an instance of the {@pylink grizzly.tasks.task_wait} task. Sets number of, randomly, seconds the {@pylink grizzly.users}
     will wait between executing each task.
 
-    See {@pylink grizzly.tasks.request_wait} task documentation for more information.
+    See {@pylink grizzly.tasks.task_wait} task documentation for more information.
 
     Example:
 
@@ -618,21 +622,21 @@ def step_task_request_wait_between(context: Context, min_time: float, max_time: 
     # wait 0.1 seconds
     ...
     ```
-    '''
+    """
     grizzly = cast(GrizzlyContext, context.grizzly)
     if min_time > max_time:
         min_time, max_time = max_time, min_time
 
-    grizzly.scenario.tasks.add(RequestWaitTask(min_time=min_time, max_time=max_time))
+    grizzly.scenario.tasks.add(TaskWaitTask(min_time=min_time, max_time=max_time))
 
 
 @given(u'wait "{time:g}" seconds between tasks')
-def step_task_request_wait_constant(context: Context, time: float) -> None:
-    '''
-    Creates an instance of the {@pylink grizzly.tasks.request_wait} task. Sets number of, constant, seconds the {@pylink grizzly.users}
+def step_task_wait_constant(context: Context, time: float) -> None:
+    """
+    Creates an instance of the {@pylink grizzly.tasks.task_wait} task. Sets number of, constant, seconds the {@pylink grizzly.users}
     will wait between executing each task.
 
-    See {@pylink grizzly.tasks.request_wait} task documentation for more information.
+    See {@pylink grizzly.tasks.task_wait} task documentation for more information.
 
     Example:
 
@@ -649,6 +653,90 @@ def step_task_request_wait_constant(context: Context, time: float) -> None:
     # wait 0.1 seconds
     ...
     ```
-    '''
+    """
     grizzly = cast(GrizzlyContext, context.grizzly)
-    grizzly.scenario.tasks.add(RequestWaitTask(time))
+    grizzly.scenario.tasks.add(TaskWaitTask(time))
+
+
+@when(u'condition "{condition}" with name "{name}" is true, execute these tasks')
+def step_task_conditional_if(context: Context, condition: str, name: str) -> None:
+    """
+    Creates an instance of the {@pylink grizzly.tasks.conditional} task which executes different sets of task depending on `condition`.
+    Also sets the task in a state that any following tasks will be run when `condition` is true.
+
+    See {@pylink grizzly.tasks.conditional} task documentation for more information.
+
+    Example:
+
+    ``` gherkin
+    When condition "{{ value | int > 0 }}" with name "value-conditional" is true, execute these tasks
+    Then get request with name "get-when-true" from endpoint "/api/true"
+    Then parse date "2022-01-17 12:21:37 | timezone=UTC, format="%Y-%m-%dT%H:%M:%S.%f", offset=1D" and save in variable "date1"
+    But else execute these tasks
+    Then get request with name "get-when-false" from endpoint "/api/false"
+    Then end conditional
+    ```
+    """
+    grizzly = cast(GrizzlyContext, context.grizzly)
+
+    assert grizzly.scenario.tasks.tmp.conditional is None, f'cannot create a new conditional while "{grizzly.scenario.tasks.tmp.conditional.name}" is still open'
+
+    grizzly.scenario.tasks.tmp.conditional = ConditionalTask(
+        name=name,
+        condition=condition,
+    )
+    grizzly.scenario.tasks.tmp.conditional.switch(True)
+
+
+@then(u'if condition is false, execute these tasks')
+def step_task_conditional_else(context: Context) -> None:
+    """
+    Changes the state of {@pylink grizzly.tasks.conditional} task instance created by {@pylink grizzly.steps.scenario.tasks.step_task_conditional_if}
+    so that any following tasks will be run when `condition` is false.
+
+    See {@pylink grizzly.tasks.conditional} task documentation for more information.
+
+    Example:
+
+    ``` gherkin
+    When condition "{{ value | int > 0 }}" with name "value-conditional" is true, execute these tasks
+    Then get request with name "get-when-true" from endpoint "/api/true"
+    Then parse date "2022-01-17 12:21:37 | timezone=UTC, format="%Y-%m-%dT%H:%M:%S.%f", offset=1D" and save in variable "date1"
+    But else execute these tasks
+    Then get request with name "get-when-false" from endpoint "/api/false"
+    Then end conditional
+    ```
+    """
+    grizzly = cast(GrizzlyContext, context.grizzly)
+
+    assert grizzly.scenario.tasks.tmp.conditional is not None, 'there are no open conditional, you need to create one first'
+
+    grizzly.scenario.tasks.tmp.conditional.switch(False)
+
+
+@then(u'end condition')
+def step_task_conditional_end(context: Context) -> None:
+    """
+    Closes the {@pylink grizzly.tasks.conditional} task instance created by {@pylink grizzly.steps.scenario.tasks.step_task_conditional_if}.
+    This means that any following tasks specified will not be part of the conditional.
+
+    See {@pylink grizzly.tasks.conditional} task documentation for more information.
+
+    Example:
+
+    ``` gherkin
+    When condition "{{ value | int > 0 }}" with name "value-conditional" is true, execute these tasks
+    Then get request with name "get-when-true" from endpoint "/api/true"
+    Then parse date "2022-01-17 12:21:37 | timezone=UTC, format="%Y-%m-%dT%H:%M:%S.%f", offset=1D" and save in variable "date1"
+    But else execute these tasks
+    Then get request with name "get-when-false" from endpoint "/api/false"
+    Then end conditional
+    ```
+    """
+    grizzly = cast(GrizzlyContext, context.grizzly)
+
+    assert grizzly.scenario.tasks.tmp.conditional is not None, 'there are no open conditional, you need to create one before closing it'
+
+    conditional = grizzly.scenario.tasks.tmp.conditional
+    grizzly.scenario.tasks.tmp.conditional = None
+    grizzly.scenario.tasks.add(conditional)

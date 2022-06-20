@@ -13,7 +13,7 @@ from .types import MessageCallback, MessageDirection
 from .testdata import GrizzlyVariables
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .tasks import GrizzlyTask, AsyncRequestGroupTask, TimerTask
+    from .tasks import GrizzlyTask, AsyncRequestGroupTask, TimerTask, ConditionalTask
 
 
 logger = logging.getLogger(__name__)
@@ -134,25 +134,46 @@ class GrizzlyContextScenarioUser:
     weight: int = field(init=False, hash=True, default=1)
 
 
+@dataclass
+class GrizzlyContextTasksTmp:
+    async_group: Optional['AsyncRequestGroupTask'] = field(init=False, repr=False, hash=False, compare=False, default=None)
+    timers: Dict[str, Optional['TimerTask']] = field(init=False, repr=False, hash=False, compare=False, default_factory=dict)
+    conditional: Optional['ConditionalTask'] = field(init=False, repr=False, hash=False, compare=False, default=None)
+    custom: Dict[str, 'GrizzlyTask'] = field(init=False, repr=False, hash=False, compare=False, default_factory=dict)
+
+
 class GrizzlyContextTasks(List['GrizzlyTask']):
     scenario: 'GrizzlyContextScenario'
+    _tmp: GrizzlyContextTasksTmp
 
     def __init__(self, scenario: 'GrizzlyContextScenario', *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
         super().__init__(*args, **kwargs)
 
         self.scenario = scenario
+        self._tmp = GrizzlyContextTasksTmp()
+
+    @property
+    def tmp(self) -> GrizzlyContextTasksTmp:
+        return self._tmp
 
     def __call__(self) -> List['GrizzlyTask']:
-        return cast(List['GrizzlyTask'], self)
+        if self.tmp.async_group is not None:
+            return self.tmp.async_group.peek()
+        elif self.tmp.conditional is not None:
+            return self.tmp.conditional.peek()
+        else:
+            return cast(List['GrizzlyTask'], self)
 
-    def add(self, task: 'GrizzlyTask', pos: Optional[int] = None) -> None:
+    def add(self, task: 'GrizzlyTask') -> None:
         if not hasattr(task, 'scenario') or task.scenario is None or task.scenario is not self.scenario:
             task.scenario = self.scenario
 
-        if pos is None:
-            self.append(task)
+        if self.tmp.async_group is not None:
+            self.tmp.async_group.add(task)
+        elif self.tmp.conditional is not None:
+            self.tmp.conditional.add(task)
         else:
-            self.insert(pos, task)
+            self.append(task)
 
 
 @dataclass(unsafe_hash=True)
@@ -169,8 +190,6 @@ class GrizzlyContextScenario:
     validation: GrizzlyContextScenarioValidation = field(init=False, hash=False, compare=False, default_factory=GrizzlyContextScenarioValidation)
     failure_exception: Optional[Type[Exception]] = field(init=False, default=None)
     orphan_templates: List[str] = field(init=False, repr=False, hash=False, compare=False, default_factory=list)
-    async_group: Optional['AsyncRequestGroupTask'] = field(init=False, repr=False, hash=False, compare=False, default=None)
-    timers: Dict[str, Optional['TimerTask']] = field(init=False, repr=False, hash=False, compare=False, default_factory=dict)
 
     def __post_init__(self) -> None:
         self._tasks = GrizzlyContextTasks(self)

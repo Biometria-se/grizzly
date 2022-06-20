@@ -8,7 +8,7 @@ from json import dumps as jsondumps
 from behave.model import Table, Row
 from grizzly.context import GrizzlyContext
 from grizzly.types import RequestMethod, RequestDirection
-from grizzly.tasks import TransformerTask, LogMessage, WaitTask, TimerTask, RequestWaitTask
+from grizzly.tasks import TransformerTask, LogMessageTask, WaitTask, TimerTask, TaskWaitTask, ConditionalTask
 from grizzly.tasks.clients import HttpClientTask
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import  # noqa: F403
 
@@ -224,7 +224,7 @@ def test_step_task_log_message(behave_fixture: BehaveFixture) -> None:
 
     step_task_log_message(behave, 'hello {{ world }}')
 
-    assert isinstance(grizzly.scenario.tasks[-1], LogMessage)
+    assert isinstance(grizzly.scenario.tasks[-1], LogMessageTask)
     assert grizzly.scenario.tasks[-1].message == 'hello {{ world }}'
 
 
@@ -494,12 +494,12 @@ def test_step_task_async_group_start(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = behave_fixture.grizzly
 
-    assert getattr(grizzly.scenario, 'async_group', '') is None
+    assert getattr(grizzly.scenario.tasks.tmp, 'async_group', '') is None
 
     step_task_async_group_start(behave, 'async-test-1')
 
-    assert grizzly.scenario.async_group is not None
-    assert grizzly.scenario.async_group.name == 'async-test-1'
+    assert grizzly.scenario.tasks.tmp.async_group is not None
+    assert grizzly.scenario.tasks.tmp.async_group.name == 'async-test-1'
 
     with pytest.raises(AssertionError) as ae:
         step_task_async_group_start(behave, 'async-test-2')
@@ -511,7 +511,7 @@ def test_step_task_async_group_end(behave_fixture: BehaveFixture) -> None:
     grizzly = behave_fixture.grizzly
 
     assert len(grizzly.scenario.tasks) == 0
-    assert getattr(grizzly.scenario, 'async_group', '') is None
+    assert getattr(grizzly.scenario.tasks.tmp, 'async_group', '') is None
 
     with pytest.raises(AssertionError) as ae:
         step_task_async_group_close(behave)
@@ -522,7 +522,7 @@ def test_step_task_async_group_end(behave_fixture: BehaveFixture) -> None:
     with pytest.raises(AssertionError) as ae:
         step_task_async_group_close(behave)
     assert str(ae.value) == 'there are no requests in async group "async-test-1"'
-    assert grizzly.scenario.async_group is not None
+    assert grizzly.scenario.tasks.tmp.async_group is not None
 
     step_task_request_text_with_name_endpoint(behave, RequestMethod.GET, 'test', direction=RequestDirection.FROM, endpoint='/api/test')
     assert len(grizzly.scenario.tasks) == 0
@@ -530,14 +530,14 @@ def test_step_task_async_group_end(behave_fixture: BehaveFixture) -> None:
     step_task_async_group_close(behave)
 
     assert len(grizzly.scenario.tasks) == 1
-    assert grizzly.scenario.async_group is None
+    assert grizzly.scenario.tasks.tmp.async_group is None
 
 
 def test_step_task_timer_start_and_stop(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = behave_fixture.grizzly
 
-    assert grizzly.scenario.timers == {}
+    assert grizzly.scenario.tasks.tmp.timers == {}
 
     with pytest.raises(AssertionError) as ae:
         step_task_timer_stop(behave, 'test-timer-1')
@@ -545,7 +545,7 @@ def test_step_task_timer_start_and_stop(behave_fixture: BehaveFixture) -> None:
 
     step_task_timer_start(behave, 'test-timer-1')
 
-    timer = grizzly.scenario.timers.get('test-timer-1', None)
+    timer = grizzly.scenario.tasks.tmp.timers.get('test-timer-1', None)
     assert isinstance(timer, TimerTask)
     assert timer.name == 'test-timer-1'
     assert grizzly.scenario.tasks[-1] is timer
@@ -556,7 +556,7 @@ def test_step_task_timer_start_and_stop(behave_fixture: BehaveFixture) -> None:
 
     step_task_timer_stop(behave, 'test-timer-1')
 
-    assert grizzly.scenario.timers == {
+    assert grizzly.scenario.tasks.tmp.timers == {
         'test-timer-1': None,
     }
 
@@ -569,33 +569,113 @@ def test_step_task_request_wait_between(behave_fixture: BehaveFixture) -> None:
 
     assert len(grizzly.scenario.tasks) == 0
 
-    step_task_request_wait_between(behave, 1.4, 1.7)
+    step_task_wait_between(behave, 1.4, 1.7)
 
     assert len(grizzly.scenario.tasks) == 1
 
-    task = cast(RequestWaitTask, grizzly.scenario.tasks[-1])
+    task = cast(TaskWaitTask, grizzly.scenario.tasks[-1])
     assert task.min_time == 1.4
     assert task.max_time == 1.7
 
-    step_task_request_wait_between(behave, 30, 20)
+    step_task_wait_between(behave, 30, 20)
 
     assert len(grizzly.scenario.tasks) == 2
 
-    task = cast(RequestWaitTask, grizzly.scenario.tasks[-1])
+    task = cast(TaskWaitTask, grizzly.scenario.tasks[-1])
     assert task.min_time == 20
     assert task.max_time == 30
 
 
-def test_step_task_request_wait_constant(behave_fixture: BehaveFixture) -> None:
+def test_step_task_wait_constant(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = behave_fixture.grizzly
 
     assert len(grizzly.scenario.tasks) == 0
 
-    step_task_request_wait_constant(behave, 10)
+    step_task_wait_constant(behave, 10)
 
     assert len(grizzly.scenario.tasks) == 1
 
-    task = cast(RequestWaitTask, grizzly.scenario.tasks[-1])
+    task = cast(TaskWaitTask, grizzly.scenario.tasks[-1])
     assert task.min_time == 10
     assert task.max_time is None
+
+
+def test_step_task_conditional_if(behave_fixture: BehaveFixture) -> None:
+    behave = behave_fixture.context
+    grizzly = behave_fixture.grizzly
+
+    assert getattr(grizzly.scenario.tasks.tmp, 'conditional', '') is None
+
+    step_task_conditional_if(behave, '{{ value | int == 10 }}', 'conditional-1')
+
+    assert grizzly.scenario.tasks.tmp.conditional is not None
+    assert grizzly.scenario.tasks.tmp.conditional.name == 'conditional-1'
+    assert grizzly.scenario.tasks.tmp.conditional._pointer
+    assert grizzly.scenario.tasks.tmp.conditional.tasks == {}
+
+    step_task_wait_constant(behave, 1.4)
+    step_task_log_message(behave, 'hello world')
+    step_task_request_text_with_name_endpoint(behave, RequestMethod.GET, 'test-get', RequestDirection.FROM, '/api/test')
+    step_task_async_group_start(behave, 'async-group')
+    step_task_request_text_with_name_endpoint(behave, RequestMethod.GET, 'test-async-get-1', RequestDirection.FROM, '/api/test')
+    step_task_request_text_with_name_endpoint(behave, RequestMethod.GET, 'test-async-get-2', RequestDirection.FROM, '/api/test')
+    step_task_async_group_close(behave)
+
+    assert list(grizzly.scenario.tasks.tmp.conditional.tasks.keys()) == [True]
+    assert len(grizzly.scenario.tasks.tmp.conditional.tasks[True]) == 4
+
+    with pytest.raises(AssertionError) as ae:
+        step_task_conditional_if(behave, '{{ value | int == 20 }}', 'conditional-2')
+    assert str(ae.value) == 'cannot create a new conditional while "conditional-1" is still open'
+
+
+def test_step_task_conditional_else(behave_fixture: BehaveFixture) -> None:
+    behave = behave_fixture.context
+    grizzly = behave_fixture.grizzly
+
+    assert getattr(grizzly.scenario.tasks.tmp, 'conditional', '') is None
+
+    with pytest.raises(AssertionError) as ae:
+        step_task_conditional_else(behave)
+    assert str(ae.value) == 'there are no open conditional, you need to create one first'
+
+    test_step_task_conditional_if(behave_fixture)
+
+    assert grizzly.scenario.tasks.tmp.conditional is not None
+
+    step_task_conditional_else(behave)
+
+    step_task_wait_constant(behave, 3.7)
+    step_task_log_message(behave, 'foo bar')
+    step_task_request_text_with_name_endpoint(behave, RequestMethod.GET, 'test-async-get-3', RequestDirection.FROM, '/api/test')
+
+    assert list(grizzly.scenario.tasks.tmp.conditional.tasks.keys()) == [True, False]
+    assert len(grizzly.scenario.tasks.tmp.conditional.tasks[True]) == 4
+    assert len(grizzly.scenario.tasks.tmp.conditional.tasks[False]) == 3
+
+
+def test_step_task_conditional_end(behave_fixture: BehaveFixture) -> None:
+    behave = behave_fixture.context
+    grizzly = behave_fixture.grizzly
+
+    assert getattr(grizzly.scenario.tasks.tmp, 'conditional', '') is None
+
+    with pytest.raises(AssertionError) as ae:
+        step_task_conditional_end(behave)
+    assert str(ae.value) == 'there are no open conditional, you need to create one before closing it'
+
+    test_step_task_conditional_else(behave_fixture)
+
+    assert grizzly.scenario.tasks.tmp.conditional is not None
+
+    step_task_conditional_end(behave)
+
+    assert len(grizzly.scenario.tasks) == 1
+    conditional = cast(ConditionalTask, grizzly.scenario.tasks[-1])
+
+    assert conditional.name == 'conditional-1'
+    assert conditional.condition == '{{ value | int == 10 }}'
+    assert list(conditional.tasks.keys()) == [True, False]
+    assert len(conditional.tasks[True]) == 4
+    assert len(conditional.tasks[False]) == 3
