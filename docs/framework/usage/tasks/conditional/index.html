@@ -13,7 +13,7 @@
     
     
       
-        <title>until - Grizzly</title>
+        <title>conditional - Grizzly</title>
       
     
     
@@ -96,7 +96,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              until
+              conditional
             
           </span>
         </div>
@@ -401,34 +401,6 @@
               
   
   
-  
-    <li class="md-nav__item">
-      <a href="../conditional/" class="md-nav__link">
-        Conditional
-      </a>
-    </li>
-  
-
-            
-          
-            
-              
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../request/" class="md-nav__link">
-        Request
-      </a>
-    </li>
-  
-
-            
-          
-            
-              
-  
-  
     
   
   
@@ -439,12 +411,12 @@
       
       
         <label class="md-nav__link md-nav__link--active" for="__toc">
-          Until
+          Conditional
           <span class="md-nav__icon md-icon"></span>
         </label>
       
       <a href="./" class="md-nav__link md-nav__link--active">
-        Until
+        Conditional
       </a>
       
         
@@ -481,30 +453,38 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#format" class="md-nav__link">
-    Format
-  </a>
-  
-    <nav class="md-nav" aria-label="Format">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#condition" class="md-nav__link">
-    condition
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
     </ul>
   
 </nav>
       
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../request/" class="md-nav__link">
+        Request
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../until/" class="md-nav__link">
+        Until
+      </a>
     </li>
   
 
@@ -1514,26 +1494,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#format" class="md-nav__link">
-    Format
-  </a>
-  
-    <nav class="md-nav" aria-label="Format">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#condition" class="md-nav__link">
-    condition
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -1546,51 +1506,44 @@
             <article class="md-content__inner md-typeset">
               
                 
-  <a href="https://github.com/Biometria-se/grizzly/blob/None/docs/content/framework/usage/tasks/until.md" title="Edit this page" class="md-content__button md-icon">
+  <a href="https://github.com/Biometria-se/grizzly/blob/None/docs/content/framework/usage/tasks/conditional.md" title="Edit this page" class="md-content__button md-icon">
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20.71 7.04c.39-.39.39-1.04 0-1.41l-2.34-2.34c-.37-.39-1.02-.39-1.41 0l-1.84 1.83 3.75 3.75M3 17.25V21h3.75L17.81 9.93l-3.75-3.75L3 17.25Z"/></svg>
   </a>
 
 
 
-  <h1>Until</h1>
+  <h1>Conditional</h1>
 
-<p><a id="pydoc:grizzly.tasks.until"></a>
-This task calls the <code>request</code> method of a <code>grizzly.users</code> implementation, until condition matches the
-payload returned for the request.</p>
+<p><a id="pydoc:grizzly.tasks.conditional"></a>
+This task executes one or more other tasks based on <code>condition</code>.</p>
+<p>This is useful when a set of tasks should be executed if <code>condition</code> is <code>True</code>, and another set of tasks if <code>condition</code> is <code>False</code>.</p>
+<p>All tasks created between <a href="/grizzly/framework/usage/steps/scenario/tasks#pydoc:grizzly.steps.scenario.tasks.step_task_conditional_if">step_task_conditional_if</a> and <a href="/grizzly/framework/usage/steps/scenario/tasks#pydoc:grizzly.steps.scenario.tasks.step_task_conditional_end">step_task_conditional_end</a>
+will be wrapped in this instance and executed conditionally. If the task has its own <code>name</code> attribute, it will be prefixed with this tasks <code>name</code>.</p>
+<p>The <a href="/grizzly/framework/usage/steps/scenario/tasks#pydoc:grizzly.steps.scenario.tasks.step_task_conditional_else">step_task_conditional_else</a> step expression is optional, if not used no additional tasks will be executed if
+<code>condition</code> is false.</p>
 <h2 id="step-implementations">Step implementations</h2>
 <ul>
-<li><a href="/grizzly/framework/usage/steps/scenario/tasks#pydoc:grizzly.steps.scenario.tasks.step_task_request_with_name_endpoint_until">step_task_request_with_name_endpoint_until</a></li>
+<li>
+<p><a href="/grizzly/framework/usage/steps/scenario/tasks#pydoc:grizzly.steps.scenario.tasks.step_task_conditional_if">step_task_conditional_if</a></p>
+</li>
+<li>
+<p><a href="/grizzly/framework/usage/steps/scenario/tasks#pydoc:grizzly.steps.scenario.tasks.step_task_conditional_else">step_task_conditional_else</a> (optional)</p>
+</li>
+<li>
+<p><a href="/grizzly/framework/usage/steps/scenario/tasks#pydoc:grizzly.steps.scenario.tasks.step_task_conditional_end">step_task_conditional_end</a></p>
+</li>
 </ul>
 <h2 id="statistics">Statistics</h2>
-<p>Executions of this task will be visible in <code>locust</code> request statistics with request type <code>UNTL</code> indicating how
-long time it took to finish the task. <code>name</code> will be suffixed with <code>r=&lt;retries&gt;, w=&lt;wait&gt;, em=&lt;expected_matches&gt;</code>.</p>
-<p>The request task that is being repeated until <code>condition</code> is true will have it's own entry in the statistics as an
-ordinary <a href="/grizzly/framework/usage/tasks/request#pydoc:grizzly.tasks.request">Request</a> task.</p>
+<p>Executions of this task will be visible in <code>locust</code> request statistics with request type <code>COND</code>. <code>name</code> will suffixed with <code>&lt;condition&gt; (&lt;n&gt;)</code>,
+where <code>&lt;condition&gt;</code> is the runtime resolved condition and <code>&lt;n&gt;</code> is the number of tasks that is executed for the resolved condition. Each task in
+the set for <code>condition</code> will have its own entry in the statistics, see respective <a href="/grizzly/framework/usage/tasks#pydoc:grizzly.tasks">Tasks</a> documentation.</p>
 <h2 id="arguments">Arguments</h2>
 <ul>
 <li>
-<p><code>request</code> <em>RequestTask</em> - request that is going to be repeated</p>
+<p><code>name</code> (str): name of the conditional, used in <code>locust</code> statistics</p>
 </li>
 <li>
-<p><code>condition</code> <em>str</em> - condition expression that specifies how <code>request</code> should be repeated</p>
-</li>
-</ul>
-<h2 id="format">Format</h2>
-<h3 id="condition"><code>condition</code></h3>
-<div class="highlight"><pre><span></span><code>&lt;expression&gt; [| [retries=&lt;retries&gt;][, wait=&lt;wait&gt;][, expected_matches=&lt;expected_matches&gt;]]
-</code></pre></div>
-<ul>
-<li>
-<p><code>expression</code> <em>str</em> - JSON- or Xpath expression</p>
-</li>
-<li>
-<p><code>retries</code> <em>int</em> (optional) - maximum number of times to repeat the request if <code>condition</code> is not met (default <code>3</code>)</p>
-</li>
-<li>
-<p><code>wait</code> <em>float</em> (optional) - number of seconds to wait between retries (default <code>1.0</code>)</p>
-</li>
-<li>
-<p><code>expected_matches</code> <em>int</em> (optional): number of matches that the expression should match (default <code>1</code>)</p>
+<p><code>condition</code> (str): <a href="/grizzly/framework/usage/variables/templating#framework.usage.variables.templating">Templating</a> string that must render <code>True</code> or <code>False</code></p>
 </li>
 </ul>
 
@@ -1613,7 +1566,7 @@ ordinary <a href="/grizzly/framework/usage/tasks/request#pydoc:grizzly.tasks.req
     <nav class="md-footer__inner md-grid" aria-label="Footer" >
       
         
-        <a href="../request/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Request" rel="prev">
+        <a href="../timer/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Timer" rel="prev">
           <div class="md-footer__button md-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
           </div>
@@ -1622,20 +1575,20 @@ ordinary <a href="/grizzly/framework/usage/tasks/request#pydoc:grizzly.tasks.req
               <span class="md-footer__direction">
                 Previous
               </span>
-              Request
+              Timer
             </div>
           </div>
         </a>
       
       
         
-        <a href="../async_group/" class="md-footer__link md-footer__link--next" aria-label="Next: Async Group" rel="next">
+        <a href="../request/" class="md-footer__link md-footer__link--next" aria-label="Next: Request" rel="next">
           <div class="md-footer__title">
             <div class="md-ellipsis">
               <span class="md-footer__direction">
                 Next
               </span>
-              Async Group
+              Request
             </div>
           </div>
           <div class="md-footer__button md-icon">
