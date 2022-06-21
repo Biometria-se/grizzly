@@ -133,6 +133,7 @@ class TestMessageQueueClientTask:
                 'ssl_cipher': 'NUL',
                 'message_wait': 133,
                 'heartbeat_interval': 432,
+                'header_type': None,
             }
 
             task_factory.endpoint = 'https://mq.example.com'
@@ -179,6 +180,7 @@ class TestMessageQueueClientTask:
                 'ssl_cipher': None,
                 'message_wait': None,
                 'heartbeat_interval': None,
+                'header_type': None,
             }
 
             task_factory.endpoint = 'mq://mq.example.io/topic:INCOMING.MSG?QueueManager=QM01&Channel=TCP.IN&KeyFile=/tmp/mq_keys'
@@ -195,6 +197,7 @@ class TestMessageQueueClientTask:
                 'ssl_cipher': 'ECDHE_RSA_AES_256_GCM_SHA384',
                 'message_wait': None,
                 'heartbeat_interval': None,
+                'header_type': None,
             }
 
             task_factory.endpoint = 'mqs://mq_username:mq_password@mq.example.io/topic:INCOMING.MSG?QueueManager=QM01&Channel=TCP.IN'
@@ -211,6 +214,24 @@ class TestMessageQueueClientTask:
                 'ssl_cipher': 'ECDHE_RSA_AES_256_GCM_SHA384',
                 'message_wait': None,
                 'heartbeat_interval': None,
+                'header_type': None,
+            }
+
+            task_factory.endpoint = 'mqs://mq_username:mq_password@mq.example.io/topic:INCOMING.MSG?QueueManager=QM01&Channel=TCP.IN&HeaderType=RFH2'
+            task_factory.create_context()
+            assert task_factory.context == {
+                'url': task_factory.endpoint,
+                'connection': 'mq.example.io(1414)',
+                'queue_manager': 'QM01',
+                'channel': 'TCP.IN',
+                'username': 'mq_username',
+                'password': 'mq_password',
+                'key_file': 'mq_username',
+                'cert_label': 'mq_username',
+                'ssl_cipher': 'ECDHE_RSA_AES_256_GCM_SHA384',
+                'message_wait': None,
+                'heartbeat_interval': None,
+                'header_type': 'rfh2',
             }
 
             task_factory.endpoint = 'mqs://$conf::mq.username:$conf::mq.password@$conf::mq.host/$conf::mq.endpoint?QueueManager=$conf::mq.qm&Channel=$conf::mq.channel'
@@ -236,6 +257,7 @@ class TestMessageQueueClientTask:
                 'ssl_cipher': 'ECDHE_RSA_AES_256_GCM_SHA384',
                 'message_wait': None,
                 'heartbeat_interval': None,
+                'header_type': None,
             }
         finally:
             if zmq_context is not None:
@@ -302,6 +324,7 @@ class TestMessageQueueClientTask:
                     'ssl_cipher': 'ECDHE_RSA_AES_256_GCM_SHA384',
                     'message_wait': None,
                     'heartbeat_interval': None,
+                    'header_type': None,
                 },
             }
             assert recv_json_mock.call_count == 2
@@ -332,6 +355,40 @@ class TestMessageQueueClientTask:
             assert meta.get('response_length', None) == 0
             assert meta.get('action', None) == 'topic:INCOMING.MSG'
             assert task_factory._worker == 'aaaa-bbbb-cccc-dddd'
+
+            zmq_context.destroy()
+            meta = {}
+            message = {'success': True, 'message': 'hello there', 'worker': 'aaaa-bbbb-cccc-dddd'}
+            recv_json_mock.side_effect = [message]
+
+            task_factory = MessageQueueClientTask(
+                RequestDirection.FROM,
+                'mqs://mq_username:mq_password@mq.example.io/topic:INCOMING.MSG?QueueManager=QM01&Channel=TCP.IN&HeaderType=RFH2',
+            )
+            zmq_context = task_factory._zmq_context
+
+            task_factory.connect(meta)
+            assert send_json_mock.call_count == 4
+            assert recv_json_mock.call_count == 5
+            args, _ = send_json_mock.call_args_list[-1]
+            assert args[1] == {
+                'action': 'CONN',
+                'context': {
+                    'url': task_factory.endpoint,
+                    'connection': 'mq.example.io(1414)',
+                    'queue_manager': 'QM01',
+                    'channel': 'TCP.IN',
+                    'username': 'mq_username',
+                    'password': 'mq_password',
+                    'key_file': 'mq_username',
+                    'cert_label': 'mq_username',
+                    'ssl_cipher': 'ECDHE_RSA_AES_256_GCM_SHA384',
+                    'message_wait': None,
+                    'heartbeat_interval': None,
+                    'header_type': 'rfh2',
+                },
+            }
+
         finally:
             if zmq_context is not None:
                 zmq_context.destroy()

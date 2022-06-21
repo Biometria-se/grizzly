@@ -218,7 +218,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
         if header_type:
             header_type = header_type.lower()
             if header_type not in ['rfh2', 'none']:
-                raise ValueError(f'{self.__class__.__name__} unsupported value for header_type: "{message_context["header_type"]}", supported ones are "None" and "RFH2"')
+                raise ValueError(f'{self.__class__.__name__} unsupported value for header_type: "{header_type}", supported ones are "None" and "RFH2"')
             elif header_type == 'none':
                 header_type = None
         self.am_context.update({

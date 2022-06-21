@@ -24,6 +24,7 @@ content type, which needs to be specified as an argument (e.g. XPATH expressions
 * `url` _str_ - see format of url below.
 * `wait` _int_ - number of seconds to wait for a message on the queue
 * `heartbeat_interval` _int_ - number of seconds to use for the heartbeat interval (default 300)
+* `header_type` _str_ - header type, can be `RFH2` for sending gzip compressed messages using RFH2 header, default `None`
 
 ### URL format
 
@@ -83,7 +84,7 @@ from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageReques
 from grizzly_extras.arguments import split_value, parse_arguments
 from grizzly_extras.transformer import TransformerContentType
 
-from ...types import RequestType, bool_typed
+from ...types import RequestType, bool_typed, optional_str_lower_type
 from ..utils import resolve_variable
 from . import AtomicVariable
 
@@ -168,6 +169,7 @@ class AtomicMessageQueue(AtomicVariable[str]):
         'url': str,
         'wait': int,
         'heartbeat_interval': int,
+        'header_type': optional_str_lower_type,
     }
 
     def __init__(self, variable: str, value: str):
@@ -180,7 +182,7 @@ class AtomicMessageQueue(AtomicVariable[str]):
 
         safe_value = self.__class__.__base_type__(value)
 
-        settings = {'repeat': False, 'wait': None, 'heartbeat_interval': None, 'url': None, 'worker': None, 'context': None}
+        settings = {'repeat': False, 'wait': None, 'heartbeat_interval': None, 'url': None, 'worker': None, 'context': None, 'header_type': None}
 
         queue_name, queue_arguments = split_value(safe_value)
 
@@ -290,6 +292,7 @@ class AtomicMessageQueue(AtomicVariable[str]):
             'ssl_cipher': ssl_cipher,
             'message_wait': settings.get('wait', None),
             'heartbeat_interval': settings.get('heartbeat_interval', None),
+            'header_type': settings.get('header_type', None),
         }
 
     def create_client(self, variable: str, settings: Dict[str, Any]) -> zmq.Socket:

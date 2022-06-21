@@ -14,15 +14,18 @@ from .. import (
     AsyncMessageHandler,
     register
 )
-from .rfh2 import Rfh2Decoder, Rfh2Encoder
 
 try:
     import pymqi
 except:
     from grizzly_extras import dummy_pymqi as pymqi
 
+from .rfh2 import Rfh2Decoder, Rfh2Encoder
+
 __all__ = [
     'AsyncMessageQueueHandler',
+    'Rfh2Decoder',
+    'Rfh2Encoder',
 ]
 
 handlers: Dict[str, AsyncMessageRequestHandler] = {}

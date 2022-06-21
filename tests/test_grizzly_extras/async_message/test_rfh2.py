@@ -8,7 +8,7 @@ import pytest
 
 from pytest_mock.plugin import MockerFixture
 
-from grizzly_extras.async_message.mq.rfh2 import Rfh2Decoder, Rfh2Encoder
+from grizzly_extras.async_message.mq import Rfh2Decoder, Rfh2Encoder
 
 rfh2_msg = b'RFH \x02\x00\x00\x00\xfc\x00\x00\x00"\x02\x00\x00\xb8\x04\x00\x00        \x00\x00\x00\x00\xb8\x04\x00\x00 \x00\x00\x00<mcd><Msd>jms_bytes</Msd></mcd> ' \
            b'P\x00\x00\x00<jms><Dst>queue:///TEST.QUEUE</Dst><Tms>1655406556138</Tms><Dlv>2</Dlv></jms>   \\\x00\x00\x00<usr><ContentEncoding>gzip</ContentEncoding>' \
@@ -25,13 +25,6 @@ class TestRfh2Decoder:
         parse_header_spy = mocker.spy(Rfh2Decoder, '_parse_header')
         d = Rfh2Decoder(rfh2_msg)
         assert parse_header_spy.call_count == 1
-        assert d.struc_id == 'RFH '
-        assert d.version == 2
-        assert d.encoding == 546
-        assert d.charset == 1208
-        assert d.fmt == ' ' * 8
-        assert d.flags == 0
-        assert d.name_value_ccsid == 1208
         assert d.name_values == rfh2_msg[36:252]
         assert d.payload == rfh2_msg[252:]
 
@@ -153,14 +146,6 @@ class TestRfh2Encoder:
 
     def test__build_header(self) -> None:
         e = Rfh2Encoder('test payload'.encode(), queue_name='TEST.QUEUE', tstamp='1655406556138')
-        assert e.struc_id == 'RFH '
-        assert e.version == 2
-        assert e.struc_length == 252
-        assert e.encoding == 546
-        assert e.charset == 1208
-        assert e.fmt == ' ' * 8
-        assert e.flags == 0
-        assert e.name_value_ccsid == 1208
         assert e.header == rfh2_msg[0:36]
 
     def test_get_message(self) -> None:

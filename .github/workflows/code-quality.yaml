@@ -122,7 +122,7 @@ jobs:
 
     - name: coverage
       id: coverage
-      run: python -m coverage report --omit=**/*messagequeue*,**/*mq.py --fail-under=95
+      run: python -m coverage report --omit=**/*messagequeue*,**/mq/* --fail-under=95
 
   test-e2e:
     name: 'e2e tests'

@@ -187,3 +187,10 @@ def bool_typed(value: str) -> bool:
 
 def int_rounded_float_typed(value: str) -> int:
     return int(round(float(value)))
+
+
+def optional_str_lower_type(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+
+    return value.lower()
