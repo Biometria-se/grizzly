@@ -1545,6 +1545,7 @@ content type, which needs to be specified as an argument (e.g. XPATH expressions
 <li><code>url</code> <em>str</em> - see format of url below.</li>
 <li><code>wait</code> <em>int</em> - number of seconds to wait for a message on the queue</li>
 <li><code>heartbeat_interval</code> <em>int</em> - number of seconds to use for the heartbeat interval (default 300)</li>
+<li><code>header_type</code> <em>str</em> - header type, can be <code>RFH2</code> for sending gzip compressed messages using RFH2 header, default <code>None</code></li>
 </ul>
 <h3 id="url-format">URL format</h3>
 <div class="highlight"><pre><span></span><code>mq[s]://[&lt;username&gt;:&lt;password&gt;@]&lt;hostname&gt;[:&lt;port&gt;]/?QueueManager=&lt;queue manager&gt;&amp;Channel=&lt;channel&gt;[&amp;KeyFile=&lt;key repository path&gt;[&amp;SslCipher=&lt;ssl cipher&gt;][&amp;CertLabel=&lt;certificate label&gt;]]

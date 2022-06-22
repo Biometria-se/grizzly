@@ -1017,6 +1017,13 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#header-type" class="md-nav__link">
+    Header type
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1583,6 +1590,13 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#header-type" class="md-nav__link">
+    Header type
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -1671,6 +1685,16 @@ request, e.g. <code>application/xml</code>:</p>
 </code></pre></div>
 <p>Default SSL cipher is <code>ECDHE_RSA_AES_256_GCM_SHA384</code>, change it by setting <code>auth.ssl_cipher</code> context variable.</p>
 <p>Default certificate label is set to <code>auth.username</code>, change it by setting <code>auth.cert_label</code> context variable.</p>
+<h3 id="header-type">Header type</h3>
+<p>Basic support exist for <a href="https://www.ibm.com/docs/en/ibm-mq/7.5?topic=2-overview">RFH2</a>, and communicating with MQ using gzip
+compressed messages. When receiving messages, the RFH2 is automatically detected and (somewhat) supported. If RFH2 should be
+added when sending messages, with gzip compression, the context variable <code>message.header_type</code> should be set to <code>RFH2</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="k">Given </span><span class="nf">a user of type &quot;</span><span class="s">MessageQueue</span><span class="nf">&quot; load testing &quot;</span><span class="s">mq://mq.example.com/?QueueManager=QM01&amp;Channel=SRVCONN01</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">set context variable &quot;</span><span class="s">message.header_type</span><span class="nf">&quot; to &quot;</span><span class="s">rfh2</span><span class="nf">&quot;</span>
+<span class="k">Then </span><span class="nf">put request &quot;</span><span class="s">test/queue-message.j2.json</span><span class="nf">&quot; with name &quot;</span><span class="s">gzipped-message</span><span class="nf">&quot; to endpoint &quot;</span><span class="s">queue:GZIPPED.MESSAGES</span><span class="nf">&quot;</span>
+</code></pre></div>
+<p>Default header type is none, i.e. no header is added to the sent messages. To use no header, either set <code>message.header_type</code>
+to <code>None</code> or omit setting the context variable at all.</p>
 
               
             </article>

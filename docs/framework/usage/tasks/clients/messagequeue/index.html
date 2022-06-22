@@ -1577,7 +1577,7 @@ Use <a href="/grizzly/framework/usage/tasks/transformer#pydoc:grizzly.tasks.tran
 </ul>
 <h2 id="format">Format</h2>
 <h3 id="endpoint"><code>endpoint</code></h3>
-<div class="highlight"><pre><span></span><code>mq[s]://&lt;username&gt;:&lt;password&gt;@]&lt;hostname&gt;[:&lt;port&gt;]/&lt;endpoint&gt;?QueueManager=&lt;queue manager&gt;&amp;Channel=&lt;channel&gt;[&amp;wait=&lt;wait&gt;][&amp;heartbeat=&lt;heartbeat&gt;][&amp;KeyFile=&lt;key repo path&gt;[&amp;SslCipher=&lt;ssl cipher&gt;][&amp;CertLabel=&lt;certificate label&gt;]]
+<div class="highlight"><pre><span></span><code>mq[s]://&lt;username&gt;:&lt;password&gt;@]&lt;hostname&gt;[:&lt;port&gt;]/&lt;endpoint&gt;?QueueManager=&lt;queue manager&gt;&amp;Channel=&lt;channel&gt;[&amp;wait=&lt;wait&gt;][&amp;heartbeat=&lt;heartbeat&gt;][&amp;KeyFile=&lt;key repo path&gt;[&amp;SslCipher=&lt;ssl cipher&gt;][&amp;CertLabel=&lt;certificate label&gt;]][&amp;HeaderType=&lt;header type&gt;]
 </code></pre></div>
 <p>All variables in the URL have support for <a href="/grizzly/framework/usage/variables/templating#framework.usage.variables.templating">Templating</a>.</p>
 <ul>
@@ -1619,6 +1619,9 @@ Use <a href="/grizzly/framework/usage/tasks/transformer#pydoc:grizzly.tasks.tran
 </li>
 <li>
 <p><code>CertLabel</code> <em>str</em> (optional) - label of certificate in key repository, default <code>username</code></p>
+</li>
+<li>
+<p><code>HeaderType</code> <em>str</em> (optional) - header type, can be <code>RFH2</code> for sending gzip compressed messages using RFH2 header, default <code>None</code></p>
 </li>
 </ul>
 
