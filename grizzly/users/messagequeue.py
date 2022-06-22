@@ -214,13 +214,13 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
         auth_context = self._context.get('auth', {})
         username = auth_context.get('username', None)
         message_context = self._context.get('message', {})
-        header_type = message_context.get('header_type', None)
-        if header_type:
-            header_type = header_type.lower()
-            if header_type not in ['rfh2', 'none']:
-                raise ValueError(f'{self.__class__.__name__} unsupported value for header_type: "{header_type}", supported ones are "None" and "RFH2"')
-            elif header_type == 'none':
-                header_type = None
+        header_type = message_context.get('header_type', None) or 'none'
+        header_type = header_type.lower()
+        if header_type not in ['rfh2', 'none']:
+            raise ValueError(f'{self.__class__.__name__} unsupported value for header_type: "{header_type}", supported ones are "None" and "RFH2"')
+        elif header_type == 'none':
+            header_type = None
+
         self.am_context.update({
             'username': username,
             'password': auth_context.get('password', None),
