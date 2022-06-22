@@ -33,7 +33,7 @@ pip3 install grizzly-loadtester[mq]
 ### `endpoint`
 
 ``` plain
-mq[s]://<username>:<password>@]<hostname>[:<port>]/<endpoint>?QueueManager=<queue manager>&Channel=<channel>[&wait=<wait>][&heartbeat=<heartbeat>][&KeyFile=<key repo path>[&SslCipher=<ssl cipher>][&CertLabel=<certificate label>]]
+mq[s]://<username>:<password>@]<hostname>[:<port>]/<endpoint>?QueueManager=<queue manager>&Channel=<channel>[&wait=<wait>][&heartbeat=<heartbeat>][&KeyFile=<key repo path>[&SslCipher=<ssl cipher>][&CertLabel=<certificate label>]][&HeaderType=<header type>]
 ```
 
 All variables in the URL have support for {@link framework.usage.variables.templating}.
@@ -63,6 +63,8 @@ All variables in the URL have support for {@link framework.usage.variables.templ
 * `SslCipher` _str_ (optional) - SSL cipher to use for connection, default `ECDHE_RSA_AES_256_GCM_SHA384`
 
 * `CertLabel` _str_ (optional) - label of certificate in key repository, default `username`
+
+* `HeaderType` _str_ (optional) - header type, can be `RFH2` for sending gzip compressed messages using RFH2 header, default `None`
 '''  # noqa: E501
 from typing import Optional, Dict, Any, List, cast
 from urllib.parse import urlparse, parse_qs, unquote
@@ -195,6 +197,7 @@ class MessageQueueClientTask(ClientTask):
 
         message_wait = int(params['wait'][0]) if 'wait' in params else None
         heartbeat_interval = int(params['heartbeat'][0]) if 'heartbeat' in params else None
+        header_type = params['HeaderType'][0].lower() if 'HeaderType' in params else None
 
         endpoint_parts = [f'{parsed.scheme}://']
         endpoint_parts.append(parsed.netloc)
@@ -210,6 +213,8 @@ class MessageQueueClientTask(ClientTask):
             endpoint_parts.append(f'&CertLabel={cert_label}')
         if ssl_cipher is not None and ssl_cipher != 'ECDHE_RSA_AES_256_GCM_SHA384':
             endpoint_parts.append(f'&SslCipher={ssl_cipher}')
+        if header_type is not None:
+            endpoint_parts.append(f'&HeaderType={header_type}')
 
         self.endpoint = ''.join(endpoint_parts)
 
@@ -225,6 +230,7 @@ class MessageQueueClientTask(ClientTask):
             'ssl_cipher': ssl_cipher,
             'message_wait': message_wait,
             'heartbeat_interval': heartbeat_interval,
+            'header_type': header_type,
         })
 
     def create_client(self) -> zmq.Socket:

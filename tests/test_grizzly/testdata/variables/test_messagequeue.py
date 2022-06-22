@@ -124,6 +124,7 @@ class TestAtomicMessageQueue:
                 'url': 'mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN',
                 'context': None,
                 'worker': None,
+                'header_type': None,
             }
             assert v._endpoint_clients.get('test1', None) is not None
             assert isinstance(v._zmq_context, zmq.Context)
@@ -148,8 +149,24 @@ class TestAtomicMessageQueue:
                 'url': 'mq://mq.example.com?QueueManager=QM2&Channel=SRV.CONN',
                 'context': None,
                 'worker': None,
+                'header_type': None,
             }
             assert v._endpoint_clients.get('test2', None) is not None
+
+            u = AtomicMessageQueue(
+                'test3',
+                'queue:TEST3.QUEUE | url="mq://mq.example.com?QueueManager=QM3&Channel=SRV.CONN", header_type=RFH2',
+            )
+            assert u._settings.get('test3', None) == {
+                'repeat': False,
+                'wait': None,
+                'heartbeat_interval': None,
+                'url': 'mq://mq.example.com?QueueManager=QM3&Channel=SRV.CONN',
+                'context': None,
+                'worker': None,
+                'header_type': 'rfh2',
+            }
+
         finally:
             try:
                 AtomicMessageQueue.destroy()
@@ -190,6 +207,7 @@ class TestAtomicMessageQueue:
                 'ssl_cipher': None,
                 'message_wait': 13,
                 'heartbeat_interval': 200,
+                'header_type': None,
             }
 
             settings = {
@@ -250,6 +268,7 @@ class TestAtomicMessageQueue:
                 'ssl_cipher': 'ECDHE_RSA_AES_256_GCM_SHA384',
                 'message_wait': None,
                 'heartbeat_interval': None,
+                'header_type': None,
             }
 
             settings = {
@@ -272,7 +291,33 @@ class TestAtomicMessageQueue:
                 'ssl_cipher': 'rot13',
                 'message_wait': 18,
                 'heartbeat_interval': 201,
+                'header_type': None,
             }
+
+            settings = {
+                'url': 'mqs://mq_test:password@mq.example.com:1415?QueueManager=QM1&Channel=SRV.CONN&SslCipher=rot13&CertLabel=ibmmqmmq_test',
+                'wait': 18,
+                'heartbeat_interval': 201,
+                'header_type': 'rfh2',
+            }
+
+            context = variable.create_context(settings)
+
+            assert context == {
+                'url': settings['url'],
+                'connection': 'mq.example.com(1415)',
+                'queue_manager': 'QM1',
+                'channel': 'SRV.CONN',
+                'username': 'mq_test',
+                'password': 'password',
+                'key_file': 'mq_test',
+                'cert_label': 'ibmmqmmq_test',
+                'ssl_cipher': 'rot13',
+                'message_wait': 18,
+                'heartbeat_interval': 201,
+                'header_type': 'rfh2',
+            }
+
         finally:
             try:
                 AtomicMessageQueue.destroy()
@@ -294,6 +339,7 @@ class TestAtomicMessageQueue:
                 'heartbeat_interval': None,
                 'url': 'mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN',
                 'worker': None,
+                'header_type': None,
                 'context': {
                     'url': 'mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN',
                     'connection': 'mq.example.com(1414)',
@@ -306,6 +352,35 @@ class TestAtomicMessageQueue:
                     'ssl_cipher': None,
                     'message_wait': None,
                     'heartbeat_interval': None,
+                    'header_type': None,
+                }
+            }
+
+            u = AtomicMessageQueue(
+                'test2',
+                'queue:TEST.QUEUE | repeat=True, header_type="RFH2", url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"',
+            )
+            assert isinstance(u._endpoint_clients.get('test', None), zmq.Socket)
+            assert u._settings.get('test2', None) == {
+                'repeat': True,
+                'wait': None,
+                'heartbeat_interval': None,
+                'url': 'mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN',
+                'worker': None,
+                'header_type': 'rfh2',
+                'context': {
+                    'url': 'mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN',
+                    'connection': 'mq.example.com(1414)',
+                    'queue_manager': 'QM1',
+                    'channel': 'SRV.CONN',
+                    'username': None,
+                    'password': None,
+                    'key_file': None,
+                    'cert_label': None,
+                    'ssl_cipher': None,
+                    'message_wait': None,
+                    'heartbeat_interval': None,
+                    'header_type': 'rfh2',
                 }
             }
 
@@ -398,13 +473,13 @@ class TestAtomicMessageQueue:
                 v['test']
             assert 'AtomicMessageQueue.test: unknown error, no response' in str(re)
             assert gsleep_spy.call_count == 3
-            print(v._settings.get('test', None))
             assert v._settings.get('test', None) == {
                 'repeat': True,
                 'wait': None,
                 'heartbeat_interval': None,
                 'url': 'mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN',
                 'worker': '1337-aaaabbbb-beef',
+                'header_type': None,
                 'context': {
                     'url': 'mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN',
                     'connection': 'mq.example.com(1414)',
@@ -417,6 +492,7 @@ class TestAtomicMessageQueue:
                     'ssl_cipher': None,
                     'message_wait': None,
                     'heartbeat_interval': None,
+                    'header_type': None,
                 }
             }
 

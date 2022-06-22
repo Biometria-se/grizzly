@@ -95,6 +95,21 @@ And set context variable "auth.key_file" to "<path to key file, excl. file exten
 Default SSL cipher is `ECDHE_RSA_AES_256_GCM_SHA384`, change it by setting `auth.ssl_cipher` context variable.
 
 Default certificate label is set to `auth.username`, change it by setting `auth.cert_label` context variable.
+
+### Header type
+
+Basic support exist for [RFH2](https://www.ibm.com/docs/en/ibm-mq/7.5?topic=2-overview), and communicating with MQ using gzip
+compressed messages. When receiving messages, the RFH2 is automatically detected and (somewhat) supported. If RFH2 should be
+added when sending messages, with gzip compression, the context variable `message.header_type` should be set to `RFH2`:
+
+``` gherkin
+Given a user of type "MessageQueue" load testing "mq://mq.example.com/?QueueManager=QM01&Channel=SRVCONN01"
+And set context variable "message.header_type" to "rfh2"
+Then put request "test/queue-message.j2.json" with name "gzipped-message" to endpoint "queue:GZIPPED.MESSAGES"
+```
+
+Default header type is none, i.e. no header is added to the sent messages. To use no header, either set `message.header_type`
+to `None` or omit setting the context variable at all.
 '''
 import logging
 
@@ -140,6 +155,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
         },
         'message': {
             'wait': None,
+            'header_type': None,
         }
     }
 
@@ -197,14 +213,23 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
 
         auth_context = self._context.get('auth', {})
         username = auth_context.get('username', None)
+        message_context = self._context.get('message', {})
+        header_type = message_context.get('header_type', None) or 'none'
+        header_type = header_type.lower()
+        if header_type not in ['rfh2', 'none']:
+            raise ValueError(f'{self.__class__.__name__} unsupported value for header_type: "{header_type}", supported ones are "None" and "RFH2"')
+        elif header_type == 'none':
+            header_type = None
+
         self.am_context.update({
             'username': username,
             'password': auth_context.get('password', None),
             'key_file': auth_context.get('key_file', None),
             'cert_label': auth_context.get('cert_label', None) or username,
             'ssl_cipher': auth_context.get('ssl_cipher', None) or 'ECDHE_RSA_AES_256_GCM_SHA384',
-            'message_wait': self._context.get('message', {}).get('wait', None),
+            'message_wait': message_context.get('wait', None),
             'heartbeat_interval': self._context.get('connection', {}).get('heartbeat_interval', None),
+            'header_type': header_type,
         })
 
         self.worker_id = None

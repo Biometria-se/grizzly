@@ -2,17 +2,17 @@ from typing import Optional, Generator, Dict, cast
 from time import monotonic as time, sleep
 from contextlib import contextmanager
 
-from ..transformer import transformer, TransformerError, TransformerContentType
-from ..arguments import parse_arguments, get_unsupported_arguments
+from ...transformer import transformer, TransformerError, TransformerContentType
+from ...arguments import parse_arguments, get_unsupported_arguments
 
 
-from . import (
+from .. import (
     AsyncMessageRequest,
     AsyncMessageResponse,
     AsyncMessageError,
     AsyncMessageRequestHandler,
     AsyncMessageHandler,
-    register,
+    register
 )
 
 try:
@@ -20,8 +20,12 @@ try:
 except:
     from grizzly_extras import dummy_pymqi as pymqi
 
+from .rfh2 import Rfh2Decoder, Rfh2Encoder
+
 __all__ = [
     'AsyncMessageQueueHandler',
+    'Rfh2Decoder',
+    'Rfh2Encoder',
 ]
 
 handlers: Dict[str, AsyncMessageRequestHandler] = {}
@@ -35,6 +39,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
             pymqi.raise_for_error(self.__class__)
 
         super().__init__(worker)
+        self.header_type: Optional[str] = None
 
     @contextmanager
     def queue_context(self, endpoint: str, browsing: Optional[bool] = False) -> Generator[pymqi.Queue, None, None]:
@@ -103,6 +108,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
         )
 
         self.message_wait = context.get('message_wait', None) or 0
+        self.header_type = context.get('header_type', None)
 
         return {
             'message': 'connected',
@@ -122,6 +128,19 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
             gmo.Options |= pymqi.CMQC.MQGMO_BROWSE_FIRST
 
         return gmo
+
+    def _get_payload(self, message: bytes) -> str:
+        if Rfh2Decoder.is_rfh2(message):
+            rfh2_decoder = Rfh2Decoder(message)
+            return rfh2_decoder.get_payload().decode()
+        else:
+            return message.decode()
+
+    def _create_md(self) -> pymqi.MD:
+        if self.header_type and self.header_type == 'rfh2':
+            return Rfh2Encoder.create_md()
+        else:
+            return pymqi.MD()
 
     def _find_message(self, queue_name: str, expression: str, content_type: TransformerContentType, message_wait: Optional[int]) -> Optional[bytearray]:
         start_time = time()
@@ -145,9 +164,9 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                 try:
                     # Check all current messages
                     while True:
-                        md = pymqi.MD()
+                        md = self._create_md()
                         message = browse_queue.get(None, md, gmo)
-                        payload = message.decode()
+                        payload = self._get_payload(message)
 
                         try:
                             payload = transform.transform(payload)
@@ -233,14 +252,22 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                     message_wait = max(message_wait - elapsed_time, 0)
                     self.logger.debug(f'_request: remaining message_wait after finding message: {message_wait}')
 
-            md = pymqi.MD()
+            md = self._create_md()
             with self.queue_context(endpoint=queue_name) as queue:
                 do_retry: bool = False
 
                 if action == 'PUT':
                     payload = request.get('payload', None)
+                    if self.header_type:
+                        if self.header_type == 'rfh2':
+                            rfh2_encoder = Rfh2Encoder(payload=cast(str, payload).encode(), queue_name=queue_name)
+                            payload = rfh2_encoder.get_message()
+                        else:
+                            raise AsyncMessageError(f'Invalid header_type: {self.header_type}')
+
                     response_length = len(payload) if payload is not None else 0
                     queue.put(payload, md)
+
                 elif action == 'GET':
 
                     if msg_id_to_fetch is not None:
@@ -251,7 +278,8 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                         gmo = self._create_gmo(message_wait)
 
                     try:
-                        payload = queue.get(None, md, gmo).decode()
+                        message = queue.get(None, md, gmo)
+                        payload = self._get_payload(message)
                         response_length = len(payload) if payload is not None else 0
                         if retries > 0:
                             self.logger.warning(f'got message after {retries} retries')
