@@ -9,10 +9,12 @@ from abc import ABCMeta
 from typing import Optional, Any, Dict, Type, List, Callable
 from functools import wraps
 from json import loads as jsonloads, dumps as jsondumps, JSONEncoder
-from enum import Enum, auto
+from enum import auto
 
 from jsonpath_ng.ext import parse as jsonpath_parse
 from lxml import etree as XML
+
+from .types import PermutationEnum
 
 
 class TransformerError(Exception):
@@ -22,7 +24,7 @@ class TransformerError(Exception):
         self.message = message
 
 
-class TransformerContentType(Enum):
+class TransformerContentType(PermutationEnum, vector=None):
     UNDEFINED = 0
     JSON = auto()
     XML = auto()

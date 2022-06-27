@@ -195,6 +195,7 @@ def test_e2e_step_setup_message_type_callback(
         data = list(context.table)[0].as_dict()
 
         direction = MessageDirection.from_string(data['direction'])
+        assert direction.vector == (True, True,)
         message_type = data['message_type']
 
         from tests.helpers import message_callback

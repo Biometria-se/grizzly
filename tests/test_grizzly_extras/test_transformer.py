@@ -41,6 +41,7 @@ class Testtransformer:
             if content_type == TransformerContentType.UNDEFINED:
                 continue
 
+            assert content_type.vector is None
             t = transformer(content_type)
             assert t.content_type == content_type
             transformers.append(t)
