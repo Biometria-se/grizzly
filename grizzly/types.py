@@ -9,7 +9,7 @@ from locust.contrib.fasthttp import ResponseContextManager as FastResponseContex
 from locust.env import Environment
 from locust.rpc.protocol import Message
 from locust.runners import WorkerRunner, MasterRunner, LocalRunner
-from grizzly_extras.types import PermutationEnum
+from grizzly_extras.types import PermutationVectored
 
 __all__ = [
     'Message',
@@ -20,7 +20,9 @@ __all__ = [
 ]
 
 
-class MessageDirection(PermutationEnum, vector=(True, True,)):
+class MessageDirection(PermutationVectored, Enum):
+    __vector__ = (True, True,)
+
     CLIENT_SERVER = 0
     SERVER_CLIENT = 1
 
@@ -32,7 +34,9 @@ class MessageDirection(PermutationEnum, vector=(True, True,)):
             raise ValueError(f'"{value.upper()}" is not a valid value of {cls.__name__}') from e
 
 
-class ResponseTarget(PermutationEnum, vector=(False, True,)):
+class ResponseTarget(PermutationVectored, Enum):
+    __vector__ = (False, True,)
+
     METADATA = 0
     PAYLOAD = 1
 
@@ -48,7 +52,9 @@ class ScenarioState(Enum):
     STOPPING = 2
 
 
-class RequestDirection(PermutationEnum, vector=(False, True,)):
+class RequestDirection(PermutationVectored, Enum):
+    __vector__ = (False, True,)
+
     FROM = 'from'
     TO = 'to'
 
@@ -76,10 +82,6 @@ class MixedEnumMeta(AdvancedEnumType, EnumMeta):
 
 
 class RequestMethod(Enum, AdvancedEnum, metaclass=MixedEnumMeta, settings=NoAlias):
-    """
-    There is problem with metaclass arguments if there are multiple metaclasses... wasn't able to figure it out.
-    Ugly workaround, for now, is to define the vector classmethod here, and return a "static" value.
-    """
     SEND = RequestDirection.TO
     POST = RequestDirection.TO
     PUT = RequestDirection.TO
@@ -89,6 +91,10 @@ class RequestMethod(Enum, AdvancedEnum, metaclass=MixedEnumMeta, settings=NoAlia
     @classmethod
     @property
     def vector(cls) -> Optional[Tuple[bool, bool]]:
+        """
+        aenum.Enum has a definition of __getattr__ that makes it "impossible" to implement vector the same
+        was as for the enums that only inherits enum.Enum.
+        """
         return (False, True,)
 
     @classmethod
