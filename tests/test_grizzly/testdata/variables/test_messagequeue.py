@@ -429,10 +429,7 @@ class TestAtomicMessageQueue:
                 side_effect=[ZMQAgain(), response] * repeat
             )
 
-        gsleep_spy = mocker.patch(
-            'grizzly.testdata.variables.messagequeue.gsleep',
-            autospec=True,
-        )
+        gsleep_spy = noop_zmq.get_mock('gsleep')
 
         try:
             mock_response(None)
@@ -550,7 +547,8 @@ class TestAtomicMessageQueue:
             assert len(v._endpoint_messages['test']) == 1
             assert v._endpoint_messages['test'][0] == jsondumps({'test': {'result': 'hello world'}})
 
-            send_json_spy = mocker.spy(zmq.Socket, 'send_json')
+            send_json_spy = noop_zmq.get_mock('zmq.Socket.send_json')
+            send_json_spy.reset_mock()
             v._settings['test']['content_type'] = TransformerContentType.XML
             v['test']
             send_json_spy.assert_called_once()
