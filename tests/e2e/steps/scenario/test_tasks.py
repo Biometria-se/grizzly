@@ -448,7 +448,6 @@ def test_e2e_step_task_client_get_endpoint(behave_context_fixture: BehaveContext
         task = tasks[1]
         assert isinstance(task, HttpClientTask)
         assert task.direction == RequestDirection.FROM
-        assert task.direction.vector == (False, True,)
         assert task.endpoint == '{{ endpoint }}'
         assert task.name == 'http-get'
         assert task.variable == 'endpoint_result'

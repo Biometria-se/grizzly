@@ -37,11 +37,12 @@ class Testtransformer:
     def test___init__(self) -> None:
         transformers: List[transformer] = []
 
+        assert TransformerContentType.get_vector() is None
+
         for content_type in TransformerContentType:
             if content_type == TransformerContentType.UNDEFINED:
                 continue
 
-            assert content_type.vector is None
             t = transformer(content_type)
             assert t.content_type == content_type
             transformers.append(t)

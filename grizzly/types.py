@@ -88,8 +88,8 @@ class RequestMethod(Enum, AdvancedEnum, metaclass=MixedEnumMeta, settings=NoAlia
     RECEIVE = RequestDirection.FROM
     GET = RequestDirection.FROM
 
-    @property
-    def vector(self) -> Optional[Tuple[bool, bool]]:
+    @classmethod
+    def get_vector(cls) -> Tuple[bool, bool]:
         """
         aenum.Enum has a definition of __getattr__ that makes it "impossible" to implement vector the same
         was as for the enums that only inherits enum.Enum.

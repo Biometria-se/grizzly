@@ -30,10 +30,11 @@ def test_parse_method() -> None:
         ),
     )
 
+    assert RequestMethod.get_vector() == (False, True,)
+
     for method in RequestMethod:
         actual = p.parse(f'value {method.name.lower()} world')['method']
         assert actual == method
-        assert actual.vector == (False, True,)
 
     with pytest.raises(ValueError):
         p.parse('value asdf world')
@@ -47,10 +48,11 @@ def test_parse_direction() -> None:
         ),
     )
 
+    assert RequestDirection.get_vector() == (False, True,)
+
     for direction in RequestDirection:
         actual = p.parse(f'value {direction.name} world')['direction']
         assert actual == direction
-        assert actual.vector == (False, True,)
 
     with pytest.raises(ValueError):
         p.parse('value asdf world')
