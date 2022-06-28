@@ -271,6 +271,8 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
                         gsleep(0.1)
 
             except Exception as e:
+                import traceback
+                traceback.print_exc()
                 exception = e
             finally:
                 total_time = int((time() - start_time) * 1000)  # do not include event handling in request time

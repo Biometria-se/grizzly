@@ -364,20 +364,17 @@ class TestMessageQueueUser:
 
         test_payload = '<?xml encoding="utf-8"?>'
 
-        mocker.patch(
-            'grizzly.users.messagequeue.zmq.Socket.recv_json',
-            side_effect=[
-                response_connected,
-                {
-                    'success': True,
-                    'worker': '0000-1337',
-                    'response_length': 24,
-                    'response_time': -1337,  # fake so message queue daemon response time is a huge chunk
-                    'metadata': pymqi.MD().get(),
-                    'payload': test_payload,
-                }
-            ],
-        )
+        noop_zmq.get_mock('zmq.Socket.recv_json').side_effect = [
+            response_connected,
+            {
+                'success': True,
+                'worker': '0000-1337',
+                'response_length': 24,
+                'response_time': -1337,  # fake so message queue daemon response time is a huge chunk
+                'metadata': pymqi.MD().get(),
+                'payload': test_payload,
+            }
+        ]
 
         grizzly = GrizzlyContext()
         grizzly.scenarios.append(scenario)
@@ -443,30 +440,19 @@ class TestMessageQueueUser:
         request_event_spy.reset_mock()
         response_event_spy.reset_mock()
 
-        mocker.patch(
-            'grizzly.users.messagequeue.gsleep',
-            autospec=True,
-        )
+        noop_zmq.get_mock('zmq.Socket.disconnect').side_effect = [ZMQError] * 10
 
-        mocker.patch(
-            'grizzly.users.messagequeue.zmq.Socket.disconnect',
-            side_effect=[ZMQError] * 10,
-        )
-
-        mocker.patch(
-            'grizzly.users.messagequeue.zmq.Socket.recv_json',
-            side_effect=[
-                ZMQAgain,
-                {
-                    'success': True,
-                    'worker': '0000-1337',
-                    'response_length': 24,
-                    'response_time': 1337,
-                    'metadata': pymqi.MD().get(),
-                    'payload': test_payload,
-                }
-            ],
-        )
+        noop_zmq.get_mock('zmq.Socket.recv_json').side_effect = [
+            ZMQAgain,
+            {
+                'success': True,
+                'worker': '0000-1337',
+                'response_length': 24,
+                'response_time': 1337,
+                'metadata': pymqi.MD().get(),
+                'payload': test_payload,
+            },
+        ]
 
         request.response.content_type = TransformerContentType.JSON
 
@@ -493,20 +479,17 @@ class TestMessageQueueUser:
             "test": "payload_variable value"
         }'''
 
-        mocker.patch(
-            'grizzly.users.messagequeue.zmq.Socket.recv_json',
-            side_effect=[
-                ZMQAgain,
-                {
-                    'success': True,
-                    'worker': '0000-1337',
-                    'response_length': 24,
-                    'response_time': 1337,
-                    'metadata': pymqi.MD().get(),
-                    'payload': test_payload,
-                },
-            ],
-        )
+        noop_zmq.get_mock('zmq.Socket.recv_json').side_effect = [
+            ZMQAgain,
+            {
+                'success': True,
+                'worker': '0000-1337',
+                'response_length': 24,
+                'response_time': 1337,
+                'metadata': pymqi.MD().get(),
+                'payload': test_payload,
+            },
+        ]
 
         request.response.content_type = TransformerContentType.JSON
         user.request(request)
@@ -530,20 +513,17 @@ class TestMessageQueueUser:
 
         request.method = RequestMethod.POST
 
-        mocker.patch(
-            'grizzly.users.messagequeue.zmq.Socket.recv_json',
-            side_effect=[
-                {
-                    'success': False,
-                    'worker': '0000-1337',
-                    'response_length': 0,
-                    'response_time': 1337,
-                    'metadata': pymqi.MD().get(),
-                    'payload': test_payload,
-                    'message': 'no implementation for POST'
-                }
-            ],
-        )
+        noop_zmq.get_mock('zmq.Socket.recv_json').side_effect = [
+            {
+                'success': False,
+                'worker': '0000-1337',
+                'response_length': 0,
+                'response_time': 1337,
+                'metadata': pymqi.MD().get(),
+                'payload': test_payload,
+                'message': 'no implementation for POST'
+            },
+        ]
 
         user.request(request)
 
@@ -553,20 +533,17 @@ class TestMessageQueueUser:
         assert 'no implementation for POST' in str(kwargs['exception'])
         request_event_spy.reset_mock()
 
-        mocker.patch(
-            'grizzly.users.messagequeue.zmq.Socket.recv_json',
-            side_effect=[
-                {
-                    'success': False,
-                    'worker': '0000-1337',
-                    'response_length': 0,
-                    'response_time': 1337,
-                    'metadata': pymqi.MD().get(),
-                    'payload': test_payload,
-                    'message': 'no implementation for POST'
-                } for _ in range(3)
-            ],
-        )
+        noop_zmq.get_mock('zmq.Socket.recv_json').side_effect = [
+            {
+                'success': False,
+                'worker': '0000-1337',
+                'response_length': 0,
+                'response_time': 1337,
+                'metadata': pymqi.MD().get(),
+                'payload': test_payload,
+                'message': 'no implementation for POST'
+            } for _ in range(3)
+        ]
 
         scenario.failure_exception = None
         user.request(request)
@@ -607,16 +584,14 @@ class TestMessageQueueUser:
             }
         ]
 
-        send_json_spy = mocker.patch(
-            'grizzly.users.messagequeue.zmq.Socket.send_json',
-            autospec=True,
-        )
+        send_json_spy = noop_zmq.get_mock('zmq.Socket.send_json')
+        send_json_spy.side_effect = None
+        send_json_spy.return_value = None
+        send_json_spy.reset_mock()
 
         # Test with only queue name as endpoint
-        mocker.patch(
-            'grizzly.users.messagequeue.zmq.Socket.recv_json',
-            side_effect=the_side_effect * 6,
-        )
+        noop_zmq.get_mock('zmq.Socket.recv_json').side_effect = the_side_effect * 6
+
         request.method = RequestMethod.GET
         request.endpoint = 'queue:IFKTEST'
         user.request(request)

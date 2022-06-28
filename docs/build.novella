@@ -108,6 +108,7 @@ action "preprocess-markdown" {
     update_with processor -> {
         if hasattr(processor, '_renderer') and hasattr(processor._renderer, 'header_level_by_type'):
             processor._renderer.header_level_by_type.update({
+                'Class': 3,
                 'Method': 2,
                 'Function': 2,
             })
@@ -175,7 +176,7 @@ do
                 def file = directory / 'content' / 'framework' / 'usage' / 'steps' / (filename + '.md')
                 file.parent.mkdir(parents=True, exist_ok=True)
                 if step.stem == '__init__':
-                    file.write_text('---\ntitle: Steps\n---\n@pydoc grizzly.steps\n')
+                    file.write_text('---\ntitle: Steps\n---\n@pydoc grizzly.steps\n## Considerations\n@pydoc grizzly_extras.types.PermutationEnum\n')
                 else:
                     file.write_text('---\ntitle: {step}\n---\n@pydoc grizzly.steps.{step}\n'.format(step=filename))
 

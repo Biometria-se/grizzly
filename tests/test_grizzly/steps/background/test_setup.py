@@ -5,6 +5,7 @@ from typing import cast
 
 from urllib.parse import urlparse
 
+from parse import compile
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import  # noqa: F403
 from grizzly.context import GrizzlyContext
 from grizzly.exceptions import RestartScenario
@@ -12,6 +13,25 @@ from grizzly.types import MessageDirection
 from locust.exception import StopUser
 
 from ....fixtures import BehaveFixture
+
+
+def test_parse_message_direction() -> None:
+    p = compile(
+        'sending from {from:MessageDirection} to {to:MessageDirection}',
+        extra_types=dict(
+            MessageDirection=parse_message_direction,
+        )
+    )
+
+    assert MessageDirection.get_vector() == (True, True,)
+
+    result = p.parse('sending from server to client')
+    message_direction = MessageDirection.from_string(f'{result["from"]}_{result["to"]}')
+    assert message_direction == MessageDirection.SERVER_CLIENT
+
+    result = p.parse('sending from client to server')
+    message_direction = MessageDirection.from_string(f'{result["from"]}_{result["to"]}')
+    assert message_direction == MessageDirection.CLIENT_SERVER
 
 
 def test_step_setup_save_statistics(behave_fixture: BehaveFixture) -> None:

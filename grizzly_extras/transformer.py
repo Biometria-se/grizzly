@@ -9,10 +9,12 @@ from abc import ABCMeta
 from typing import Optional, Any, Dict, Type, List, Callable
 from functools import wraps
 from json import loads as jsonloads, dumps as jsondumps, JSONEncoder
-from enum import Enum, auto
+from enum import auto
 
 from jsonpath_ng.ext import parse as jsonpath_parse
 from lxml import etree as XML
+
+from .types import PermutationEnum
 
 
 class TransformerError(Exception):
@@ -22,7 +24,9 @@ class TransformerError(Exception):
         self.message = message
 
 
-class TransformerContentType(Enum):
+class TransformerContentType(PermutationEnum):
+    __vector__ = None
+
     UNDEFINED = 0
     JSON = auto()
     XML = auto()
@@ -30,11 +34,11 @@ class TransformerContentType(Enum):
 
     @classmethod
     def from_string(cls, value: str) -> 'TransformerContentType':
-        if value.strip() in ['application/json', 'json']:
+        if value.lower().strip() in ['application/json', 'json']:
             return TransformerContentType.JSON
-        elif value.strip() in ['application/xml', 'xml']:
+        elif value.lower().strip() in ['application/xml', 'xml']:
             return TransformerContentType.XML
-        elif value.strip() in ['text/plain', 'plain']:
+        elif value.lower().strip() in ['text/plain', 'plain']:
             return TransformerContentType.PLAIN
         else:
             raise ValueError(f'"{value}" is an unknown response content type')

@@ -1,7 +1,7 @@
-'''
+"""
 @anchor pydoc:grizzly.steps.scenario.response Response
 This module contains step implementations that handles {@pylink grizzly.tasks.request} responses.
-'''
+"""
 import parse
 
 from typing import cast
@@ -37,13 +37,13 @@ def parse_response_target(text: str) -> ResponseTarget:
 register_type(
     Condition=parse_condition,
     ResponseTarget=parse_response_target,
-    TransformerContentType=TransformerContentType.from_string,
+    ContentType=TransformerContentType.from_string,
 )
 
 
 @then(u'save response {target:ResponseTarget} "{expression}" that matches "{match_with}" in variable "{variable}"')
 def step_response_save_matches(context: Context, target: ResponseTarget, expression: str, match_with: str, variable: str) -> None:
-    '''Save specified parts of a response, either from meta data (header) or payload (body), in a variable.
+    """Save specified parts of a response, either from meta data (header) or payload (body), in a variable.
 
     With this step it is possible to change variable values and as such use values from a response later on in the load test.
 
@@ -78,13 +78,13 @@ def step_response_save_matches(context: Context, target: ResponseTarget, express
         expression (str): JSON path or XPath expression for finding the property
         match_with (str): static value or a regular expression
         variable (str): name of the already initialized variable to save the value in
-    '''
+    """
     add_save_handler(cast(GrizzlyContext, context.grizzly), target, expression, match_with, variable)
 
 
 @then(u'save response {target:ResponseTarget} "{expression}" in variable "{variable}"')
 def step_response_save(context: Context, target: ResponseTarget, expression: str, variable: str) -> None:
-    '''Save metadata (header) or payload (body) value from a response in a variable.
+    """Save metadata (header) or payload (body) value from a response in a variable.
 
     This step expression is the same as {@pylink grizzly.steps.scenario.response.step_response_save_matches} if `match_with` is set to `.*`.
 
@@ -106,13 +106,13 @@ def step_response_save(context: Context, target: ResponseTarget, expression: str
         target (enum): "metadata" or "payload", depending on which part of the response should be used
         expression (str): JSON path or XPath expression for finding the property
         variable (str): name of the already initialized variable to save the value in
-    '''
+    """
     add_save_handler(cast(GrizzlyContext, context.grizzly), target, expression, '.*', variable)
 
 
 @when(u'response {target:ResponseTarget} "{expression}" {condition:Condition} "{match_with}" fail request')
 def step_response_validate(context: Context, target: ResponseTarget, expression: str, condition: bool, match_with: str) -> None:
-    '''Fails the request based on the value of a response meta data (header) or payload (body).
+    """Fails the request based on the value of a response meta data (header) or payload (body).
 
     Example:
 
@@ -133,13 +133,13 @@ def step_response_validate(context: Context, target: ResponseTarget, expression:
         expression (str): JSON path or XPath expression for finding the property
         condition (enum): "is" or "is not" depending on negative or postive matching
         match_with (str): static value or a regular expression
-    '''
+    """
     add_validation_handler(cast(GrizzlyContext, context.grizzly), target, expression, match_with, condition)
 
 
 @then(u'allow response status codes "{status_list}"')
 def step_response_allow_status_codes(context: Context, status_list: str) -> None:
-    '''Set allowed response status codes for the latest defined request in the scenario.
+    """Set allowed response status codes for the latest defined request in the scenario.
 
     By default `200` is the only allowed respoonse status code. By prefixing a code with minus (`-`),
     it will be removed from the list of allowed response status codes.
@@ -156,7 +156,7 @@ def step_response_allow_status_codes(context: Context, status_list: str) -> None
 
     Args:
         status_list (str): comma separated list of integers
-    '''
+    """
     grizzly = cast(GrizzlyContext, context.grizzly)
     assert len(grizzly.scenario.tasks) > 0, 'there are no requests in the scenario'
 
@@ -169,7 +169,7 @@ def step_response_allow_status_codes(context: Context, status_list: str) -> None
 
 @then(u'allow response status codes')
 def step_response_allow_status_codes_table(context: Context) -> None:
-    '''Set allowed response status codes for the latest defined requests based on a data table.
+    """Set allowed response status codes for the latest defined requests based on a data table.
 
     Specifies a comma separeated list of allowed return codes for the latest requests in a data table.
 
@@ -194,7 +194,7 @@ def step_response_allow_status_codes_table(context: Context) -> None:
 
     Allowed response status codes for `test-get-1` is now `200` and `302`, and for `test-get-2` is
     now `200` and `404`.
-    '''
+    """
     assert context.table is not None, 'step data table is mandatory'
 
     grizzly = cast(GrizzlyContext, context.grizzly)
@@ -220,9 +220,9 @@ def step_response_allow_status_codes_table(context: Context) -> None:
             raise AssertionError('data table does not have column "status"')
 
 
-@then(u'set response content type to "{content_type:TransformerContentType}"')
+@then(u'set response content type to "{content_type:ContentType}"')
 def step_response_content_type(context: Context, content_type: TransformerContentType) -> None:
-    '''Set the content type of a response, instead of guessing it.
+    """Set the content type of a response, instead of guessing it.
 
     This is applicable when there is a `step_response_validate` or `step_response_save` is included in
     the scenario, and is valid only for the latest defined request.
@@ -240,7 +240,7 @@ def step_response_content_type(context: Context, content_type: TransformerConten
 
     Args:
         content_type (TransformerContentType): expected content type of response
-    '''
+    """
 
     assert content_type != TransformerContentType.UNDEFINED, 'It is not allowed to set UNDEFINED with this step'
 

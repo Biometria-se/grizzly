@@ -35,8 +35,11 @@ def test_parse_response_target() -> None:
             ResponseTarget=parse_response_target,
         ),
     )
-    assert p.parse('save response metadata')['target'] == ResponseTarget.METADATA
-    assert p.parse('save response payload')['target'] == ResponseTarget.PAYLOAD
+    assert ResponseTarget.get_vector() == (False, True,)
+    actual = p.parse('save response metadata')['target']
+    assert actual == ResponseTarget.METADATA
+    actual = p.parse('save response payload')['target']
+    assert actual == ResponseTarget.PAYLOAD
     assert p.parse('save response test') is None
 
     with pytest.raises(ValueError):
@@ -51,6 +54,8 @@ def test_parse_response_content_type() -> None:
         ),
     )
 
+    assert TransformerContentType.get_vector() is None
+
     tests = [
         (TransformerContentType.JSON, ['json', 'application/json']),
         (TransformerContentType.XML, ['xml', 'application/xml']),
@@ -59,7 +64,8 @@ def test_parse_response_content_type() -> None:
 
     for test_type, values in tests:
         for value in values:
-            assert p.parse(f'content type is "{value}"')['content_type'] == test_type
+            actual = p.parse(f'content type is "{value}"')['content_type']
+            assert actual == test_type
 
     with pytest.raises(ValueError) as e:
         p.parse('content type is "image/png"')

@@ -84,7 +84,7 @@ from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageReques
 from grizzly_extras.arguments import split_value, parse_arguments
 from grizzly_extras.transformer import TransformerContentType
 
-from ...types import RequestType, bool_typed, optional_str_lower_type
+from ...types import RequestType, bool_type, optional_str_lower_type
 from ..utils import resolve_variable
 from . import AtomicVariable
 
@@ -165,7 +165,7 @@ class AtomicMessageQueue(AtomicVariable[str]):
 
     arguments: Dict[str, Any] = {
         'content_type': TransformerContentType.from_string,
-        'repeat': bool_typed,
+        'repeat': bool_type,
         'url': str,
         'wait': int,
         'heartbeat_interval': int,

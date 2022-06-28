@@ -1,6 +1,6 @@
 import pytest
 
-from grizzly.types import RequestType, RequestDirection, RequestMethod, bool_typed, int_rounded_float_typed
+from grizzly.types import RequestType, RequestDirection, RequestMethod, bool_type, int_rounded_float_type, optional_str_lower_type
 
 
 class TestRequestDirection:
@@ -105,23 +105,29 @@ class TestRequestMethod:
 
 
 def test_bool_typed() -> None:
-    assert bool_typed('True')
-    assert not bool_typed('False')
+    assert bool_type('True')
+    assert not bool_type('False')
 
     with pytest.raises(ValueError):
-        bool_typed('asdf')
+        bool_type('asdf')
 
 
 def test_int_rounded_float_typed() -> None:
-    assert int_rounded_float_typed('1') == 1
-    assert int_rounded_float_typed('1.337') == 1
-    assert int_rounded_float_typed('1.51') == 2
+    assert int_rounded_float_type('1') == 1
+    assert int_rounded_float_type('1.337') == 1
+    assert int_rounded_float_type('1.51') == 2
 
     with pytest.raises(ValueError):
-        int_rounded_float_typed('asdf')
+        int_rounded_float_type('asdf')
 
     with pytest.raises(ValueError):
-        int_rounded_float_typed('0xbeef')
+        int_rounded_float_type('0xbeef')
 
     with pytest.raises(ValueError):
-        int_rounded_float_typed('1,5')
+        int_rounded_float_type('1,5')
+
+
+def test_optional_str_lower_type() -> None:
+    assert optional_str_lower_type(None) is None
+    assert optional_str_lower_type('asdf') == 'asdf'
+    assert optional_str_lower_type('ASDF') == 'asdf'
