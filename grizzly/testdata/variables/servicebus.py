@@ -95,7 +95,7 @@ from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageReques
 from grizzly_extras.arguments import split_value, parse_arguments, get_unsupported_arguments
 from grizzly_extras.transformer import TransformerContentType
 
-from ...types import RequestType, bool_typed
+from ...types import RequestType, bool_type
 from ...context import GrizzlyContext
 from ..utils import resolve_variable
 from . import AtomicVariable
@@ -237,7 +237,7 @@ class AtomicServiceBus(AtomicVariable[str]):
     _zmq_context: zmq.Context
 
     arguments: Dict[str, Any] = {
-        'repeat': bool_typed,
+        'repeat': bool_type,
         'url': atomicservicebus_url,
         'wait': int,
         'endpoint_name': atomicservicebus_endpoint,

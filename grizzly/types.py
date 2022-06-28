@@ -9,7 +9,7 @@ from locust.contrib.fasthttp import ResponseContextManager as FastResponseContex
 from locust.env import Environment
 from locust.rpc.protocol import Message
 from locust.runners import WorkerRunner, MasterRunner, LocalRunner
-from grizzly_extras.types import PermutationVectored
+from grizzly_extras.types import PermutationEnum
 
 __all__ = [
     'Message',
@@ -20,7 +20,7 @@ __all__ = [
 ]
 
 
-class MessageDirection(PermutationVectored, Enum):
+class MessageDirection(PermutationEnum):
     __vector__ = (True, True,)
 
     CLIENT_SERVER = 0
@@ -34,11 +34,18 @@ class MessageDirection(PermutationVectored, Enum):
             raise ValueError(f'"{value.upper()}" is not a valid value of {cls.__name__}') from e
 
 
-class ResponseTarget(PermutationVectored, Enum):
+class ResponseTarget(PermutationEnum):
     __vector__ = (False, True,)
 
     METADATA = 0
     PAYLOAD = 1
+
+    @classmethod
+    def from_string(cls, value: str) -> 'ResponseTarget':
+        try:
+            return cls[value.upper()]
+        except KeyError as e:
+            raise ValueError(f'"{value.upper()}" is not a valid value of {cls.__name__}') from e
 
 
 class ResponseAction(Enum):
@@ -52,7 +59,7 @@ class ScenarioState(Enum):
     STOPPING = 2
 
 
-class RequestDirection(PermutationVectored, Enum):
+class RequestDirection(PermutationEnum):
     __vector__ = (False, True,)
 
     FROM = 'from'
@@ -99,7 +106,7 @@ class RequestMethod(Enum, AdvancedEnum, metaclass=MixedEnumMeta, settings=NoAlia
     @classmethod
     def from_string(cls, value: str) -> 'RequestMethod':
         try:
-            return RequestMethod[value.upper()]
+            return cls[value.upper()]
         except KeyError as e:
             raise ValueError(f'"{value.upper()}" is not a valid value of {cls.__name__}') from e
 
@@ -193,14 +200,14 @@ T = TypeVar('T')
 U = TypeVar('U')
 
 
-def bool_typed(value: str) -> bool:
+def bool_type(value: str) -> bool:
     if value in ['True', 'False']:
         return value == 'True'
 
     raise ValueError(f'{value} is not a valid boolean')
 
 
-def int_rounded_float_typed(value: str) -> int:
+def int_rounded_float_type(value: str) -> int:
     return int(round(float(value)))
 
 

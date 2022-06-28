@@ -39,7 +39,7 @@ from string import ascii_letters
 
 from grizzly_extras.arguments import split_value, parse_arguments
 
-from ...types import bool_typed, int_rounded_float_typed
+from ...types import bool_type, int_rounded_float_type
 from . import AtomicVariable
 
 
@@ -78,7 +78,7 @@ class AtomicRandomString(AtomicVariable[str]):
     __initialized: bool = False
 
     _strings: Dict[str, List[str]]
-    arguments: Dict[str, Any] = {'upper': bool_typed, 'count': int_rounded_float_typed}
+    arguments: Dict[str, Any] = {'upper': bool_type, 'count': int_rounded_float_type}
 
     @staticmethod
     def get_generators(format: str) -> List[Callable[['AtomicRandomString'], str]]:

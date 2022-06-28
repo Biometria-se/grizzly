@@ -63,7 +63,7 @@ from random import randint
 
 from grizzly_extras.arguments import split_value, parse_arguments
 
-from ...types import bool_typed
+from ...types import bool_type
 from . import AtomicVariable
 
 
@@ -106,7 +106,7 @@ class AtomicCsvRow(AtomicVariable[Dict[str, Any]]):
     _rows: Dict[str, List[Dict[str, Any]]]
     _settings: Dict[str, Dict[str, Any]]
     context_root: str
-    arguments: Dict[str, Any] = {'repeat': bool_typed, 'random': bool_typed}
+    arguments: Dict[str, Any] = {'repeat': bool_type, 'random': bool_type}
 
     def __init__(self, variable: str, value: str) -> None:
         if variable.count('.') != 0:
