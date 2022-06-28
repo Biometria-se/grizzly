@@ -11,6 +11,21 @@ class PermutationEnum(Enum, metaclass=PermutationMeta):
     """
     Interface class for getting `__vector__` value from the class that inherits it.
 
+    It is also possible to set `__vector__` for custom parse types that are implemented with `@parse.with_pattern`, by adding the
+    `__vector__` definition in the parse functions documentation, such as:
+
+    ``` python
+    import parse
+
+    @parse.with_pattern(r'(hello|world)')
+    def parse_hello_world(text: str) -> str:
+        '''
+        __vector__ = (True, True,)
+        '''
+
+        return text.strip()
+    ```
+
     All objects used to represent possible values in step expressions and that has a registered custom `parse` type *should*
     inherit this class and set appropiate `__vector__` values and make an implementation of `from_string`. This is so
     [`grizzly-ls`](https://github.com/Biometria-se/grizzly-lsp) can make educated suggestions on possible step expressions.

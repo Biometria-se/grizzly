@@ -20,6 +20,9 @@ from ...testdata.utils import create_context_variable, resolve_variable
 
 @parse.with_pattern(r'(client|server)', regex_group_count=1)
 def parse_message_direction(text: str) -> str:
+    """
+    __vector__ = (True, True,)
+    """
     return text.strip()
 
 
