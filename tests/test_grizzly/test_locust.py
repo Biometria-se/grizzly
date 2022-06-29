@@ -1,5 +1,6 @@
 import logging
 import sys
+import re
 
 from os import environ
 from typing import cast, Tuple, Any, Dict, Type, List
@@ -20,6 +21,7 @@ from jinja2 import TemplateError
 
 from grizzly.locust import (
     greenlet_exception_logger,
+    grizzly_print_percentile_stats,
     grizzly_print_stats,
     on_master,
     on_worker,
@@ -868,7 +870,7 @@ def test_run_master(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
 
 def test_grizzly_print_stats(caplog: LogCaptureFixture, mocker: MockerFixture) -> None:
     # grizzly.locust.run calls locust.log.setup_logging, which messes with the loggers
-    test_stats_logger = logging.getLogger('test_stats_logger')
+    test_stats_logger = logging.getLogger('test_grizzly_print_stats')
     mocker.patch('grizzly.locust.stats_logger', test_stats_logger)
     mocker.patch('locust.stats.console_logger', test_stats_logger)
 
@@ -919,8 +921,6 @@ def test_grizzly_print_stats(caplog: LogCaptureFixture, mocker: MockerFixture) -
     locust_stats = caplog.messages
     caplog.clear()
 
-    import re
-
     for ident in range(1, scenario_count):
         index = (ident - 1) * ((len(request_types_sequence) * request_types_sequence_count) + 4) + 2
         assert re.match(fr'^SCEN\s+{ident:03}', grizzly_stats[index].strip())
@@ -937,3 +937,61 @@ def test_grizzly_print_stats(caplog: LogCaptureFixture, mocker: MockerFixture) -
 
     # grizzly style must be less than 15% slower...
     # assert grizzly_ratio - locust_ratio < 15.0
+
+
+def test_grizzly_print_percentile_stats(caplog: LogCaptureFixture, mocker: MockerFixture) -> None:
+    test_stats_logger = logging.getLogger('test_grizzly_print_percentile_stats')
+    mocker.patch('grizzly.locust.stats_logger', test_stats_logger)
+    mocker.patch('locust.stats.console_logger', test_stats_logger)
+
+    # create stats
+    stats = RequestStats()
+
+    request_types_sequence = ['GET', 'GET', 'POST', 'PUT', 'UNTL', 'ASYNC']
+    request_types_sequence_count = 5
+    scenario_count = 10
+
+    for ident in range(1, scenario_count):
+        for index, method in enumerate(request_types_sequence * request_types_sequence_count, 1):
+            name = f'{ident:03} {index:02}-{method.lower()}-test'
+
+            stats.log_request(
+                method,
+                name,
+                response_time=randint(200, 300),
+                content_length=(index * randint(10, 20)),
+            )
+
+        for method in ['SCEN', 'TSTD', 'VAR', 'CLTSK']:
+            stats.log_request(
+                method,
+                f'{ident:03} {method.lower()}-test',
+                response_time=randint(200, 300),
+                content_length=(2 * randint(10, 20)),
+            )
+
+    caplog.clear()
+
+    # print percentile stats, grizzly style
+    with caplog.at_level(logging.INFO):
+        grizzly_print_percentile_stats(stats, grizzly_style=True)
+
+    grizzly_stats = caplog.messages
+    caplog.clear()
+
+    # print percentile stats, locust style
+    with caplog.at_level(logging.INFO):
+        grizzly_print_percentile_stats(stats, grizzly_style=False)
+
+    locust_stats = caplog.messages
+    caplog.clear()
+
+    for ident in range(1, scenario_count):
+        index = (ident - 1) * ((len(request_types_sequence) * request_types_sequence_count) + 4) + 3
+        assert re.match(fr'^SCEN\s+{ident:03}', grizzly_stats[index].strip()), grizzly_stats[index].strip()
+        assert re.match(fr'^TSTD\s+{ident:03}', grizzly_stats[index + 1].strip())
+        assert re.match(fr'^GET\s+{ident:03} 01-get-test', grizzly_stats[index + 2].strip())
+        assert re.match(fr'^VAR\s+{ident:03} var-test', grizzly_stats[index + (len(request_types_sequence) * request_types_sequence_count) + 3].strip())
+
+    for stat in grizzly_stats:
+        assert stat in locust_stats
