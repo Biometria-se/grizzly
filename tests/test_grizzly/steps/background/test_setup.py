@@ -4,7 +4,6 @@ from os import environ
 from typing import cast
 
 from urllib.parse import urlparse
-from textwrap import dedent
 
 from parse import compile
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import  # noqa: F403
@@ -25,8 +24,7 @@ def test_parse_message_direction() -> None:
     )
 
     assert MessageDirection.get_vector() == (True, True,)
-
-    assert '__vector__ = (True, True,)' in dedent(parse_message_direction.__doc__).strip()
+    assert parse_message_direction.__vector__ == (True, True,)
 
     result = p.parse('sending from server to client')
     message_direction = MessageDirection.from_string(f'{result["from"]}_{result["to"]}')

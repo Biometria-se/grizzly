@@ -17,17 +17,9 @@ from ...tasks import LogMessageTask, WaitTask, TransformerTask, UntilRequestTask
 from grizzly_extras.transformer import TransformerContentType
 
 
-def parse_method(text: str) -> RequestMethod:
-    return RequestMethod.from_string(text.strip())
-
-
-def parse_direction(text: str) -> RequestDirection:
-    return RequestDirection.from_string(text.strip())
-
-
 register_type(
-    Direction=parse_direction,
-    Method=parse_method,
+    Direction=RequestDirection.from_string,
+    Method=RequestMethod.from_string,
     ContentType=TransformerContentType.from_string,
 )
 

@@ -26,7 +26,7 @@ def test_parse_method() -> None:
     p = compile(
         'value {method:Method} world',
         extra_types=dict(
-            Method=parse_method,
+            Method=RequestMethod.from_string,
         ),
     )
 
@@ -44,7 +44,7 @@ def test_parse_direction() -> None:
     p = compile(
         'value {direction:Direction} world',
         extra_types=dict(
-            Direction=parse_direction,
+            Direction=RequestDirection.from_string,
         ),
     )
 

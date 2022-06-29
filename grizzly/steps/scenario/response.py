@@ -9,34 +9,24 @@ from typing import cast
 from behave.runner import Context
 from behave import register_type, when, then  # pylint: disable=no-name-in-module
 
+from grizzly_extras.transformer import TransformerContentType
+from grizzly_extras.text import permutation
+
 from ...context import GrizzlyContext
 from ...tasks import RequestTask
 from ...types import ResponseTarget
 from .._helpers import add_save_handler, add_validation_handler, add_request_task_response_status_codes
 
-from grizzly_extras.transformer import TransformerContentType
-
 
 @parse.with_pattern(r'is( not)?', regex_group_count=1)
+@permutation(vector=(False, True,))
 def parse_condition(text: str) -> bool:
     return text is not None and text.strip() == 'is'
 
 
-@parse.with_pattern(r'(metadata|payload)')
-def parse_response_target(text: str) -> ResponseTarget:
-    text = text.strip()
-
-    if text == 'metadata':
-        return ResponseTarget.METADATA
-    elif text == 'payload':
-        return ResponseTarget.PAYLOAD
-    else:
-        raise ValueError(f'"{text}" is an unknown response target')
-
-
 register_type(
     Condition=parse_condition,
-    ResponseTarget=parse_response_target,
+    ResponseTarget=ResponseTarget.from_string,
     ContentType=TransformerContentType.from_string,
 )
 

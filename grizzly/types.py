@@ -9,7 +9,7 @@ from locust.contrib.fasthttp import ResponseContextManager as FastResponseContex
 from locust.env import Environment
 from locust.rpc.protocol import Message
 from locust.runners import WorkerRunner, MasterRunner, LocalRunner
-from grizzly_extras.types import PermutationEnum
+from grizzly_extras.text import PermutationEnum
 
 __all__ = [
     'Message',
@@ -29,7 +29,7 @@ class MessageDirection(PermutationEnum):
     @classmethod
     def from_string(cls, value: str) -> 'MessageDirection':
         try:
-            return cls[value.upper()]
+            return cls[value.strip().upper()]
         except KeyError as e:
             raise ValueError(f'"{value.upper()}" is not a valid value of {cls.__name__}') from e
 
@@ -43,7 +43,7 @@ class ResponseTarget(PermutationEnum):
     @classmethod
     def from_string(cls, value: str) -> 'ResponseTarget':
         try:
-            return cls[value.upper()]
+            return cls[value.strip().upper()]
         except KeyError as e:
             raise ValueError(f'"{value.upper()}" is not a valid value of {cls.__name__}') from e
 
@@ -68,7 +68,7 @@ class RequestDirection(PermutationEnum):
     @classmethod
     def from_string(cls, value: str) -> 'RequestDirection':
         try:
-            return cls[value.upper()]
+            return cls[value.strip().upper()]
         except KeyError as e:
             raise ValueError(f'"{value.upper()}" is not a valid value of {cls.__name__}') from e
 
@@ -106,7 +106,7 @@ class RequestMethod(Enum, AdvancedEnum, metaclass=MixedEnumMeta, settings=NoAlia
     @classmethod
     def from_string(cls, value: str) -> 'RequestMethod':
         try:
-            return cls[value.upper()]
+            return cls[value.strip().upper()]
         except KeyError as e:
             raise ValueError(f'"{value.upper()}" is not a valid value of {cls.__name__}') from e
 

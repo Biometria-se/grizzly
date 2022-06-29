@@ -1,6 +1,40 @@
 from abc import ABC, abstractmethod
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Callable, Any
 from enum import Enum, EnumMeta
+
+
+class permutation:
+    """
+    Decorator used to annotate `parse` methods that are not using {@pylink grizzly_extras.text.PermutationEnum} as a base.
+    This could be for example parse methods that uses regular expressions via `parse.with_pattern`.
+
+    ``` python
+    import parse
+
+    from behave import register_type
+    from grizzly_extras.text import permutation
+
+    @parse.with_pattern(r'(hello|world)')
+    @permutation(vector=(True, True,))
+    def parse_hello_world(text: str) -> str:
+        return text.strip()
+
+    register_type(
+        HelloWorldType=parse_hello_world,
+    )
+    ```
+
+    See {@pylink grizzly_extras.text.PermutationEnum.__vector__} for an explanation of possible values and their meaning.
+    """
+    vector: Optional[Tuple[bool, bool]]
+
+    def __init__(self, *, vector: Optional[Tuple[bool, bool]]) -> None:
+        self.vector = vector
+
+    def __call__(self, func: Callable[[str], Any]) -> Callable[[str], Any]:
+        setattr(func, '__vector__', self.vector)
+
+        return func
 
 
 class PermutationMeta(ABC, EnumMeta):
@@ -10,21 +44,6 @@ class PermutationMeta(ABC, EnumMeta):
 class PermutationEnum(Enum, metaclass=PermutationMeta):
     """
     Interface class for getting `__vector__` value from the class that inherits it.
-
-    It is also possible to set `__vector__` for custom parse types that are implemented with `@parse.with_pattern`, by adding the
-    `__vector__` definition in the parse functions documentation, such as:
-
-    ``` python
-    import parse
-
-    @parse.with_pattern(r'(hello|world)')
-    def parse_hello_world(text: str) -> str:
-        '''
-        __vector__ = (True, True,)
-        '''
-
-        return text.strip()
-    ```
 
     All objects used to represent possible values in step expressions and that has a registered custom `parse` type *should*
     inherit this class and set appropiate `__vector__` values and make an implementation of `from_string`. This is so
@@ -38,7 +57,7 @@ class PermutationEnum(Enum, metaclass=PermutationMeta):
     Consider the following `Enum`, being mapped to a custom `parse` type named `FruitType`:
 
     ``` python
-    from behave import register_type, then
+    from behave import register_type
 
 
     class Fruit(PermutationEnum):
@@ -79,7 +98,7 @@ class PermutationEnum(Enum, metaclass=PermutationMeta):
 
     When permutated, it will produce the number of step expressions as values in the enum.
 
-    ``` gherking
+    ``` gherkin
     Then I want to eat a {fruit:FruitType}  # -->
 
     Then I want to eat a banana

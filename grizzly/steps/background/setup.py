@@ -11,18 +11,17 @@ from inspect import signature
 from behave import register_type, given  # pylint: disable=no-name-in-module
 from behave.runner import Context
 
-from grizzly.types import MessageDirection, Environment, Message
+from grizzly_extras.text import permutation
 
+from ...types import MessageDirection, Environment, Message
 from ...context import GrizzlyContext
 from ...utils import merge_dicts
 from ...testdata.utils import create_context_variable, resolve_variable
 
 
 @parse.with_pattern(r'(client|server)', regex_group_count=1)
+@permutation(vector=(True, True,))
 def parse_message_direction(text: str) -> str:
-    """
-    __vector__ = (True, True,)
-    """
     return text.strip()
 
 
