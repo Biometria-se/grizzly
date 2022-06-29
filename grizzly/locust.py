@@ -2,7 +2,7 @@ import sys
 import logging
 import subprocess
 
-from typing import NoReturn, Optional, Callable, List, Tuple, Set, Dict, Type, Union, cast
+from typing import NoReturn, Optional, Callable, List, Tuple, Set, Dict, Type, cast
 from os import environ
 from signal import SIGTERM
 from socket import error as SocketError
@@ -489,7 +489,7 @@ def run(context: Context) -> int:
                     watch_running_users_greenlet.kill(block=False)
 
                 grizzly_print_stats(runner.stats, current=False)
-                print_percentile_stats(runner.stats)
+                grizzly_print_percentile_stats(runner.stats)
                 print_error_report(runner.stats)
                 print_scenario_summary(grizzly)
 
@@ -544,6 +544,30 @@ def run(context: Context) -> int:
         shutdown_external_processes(external_processes)
 
 
+def _grizzly_sort_stats(stats: RequestStats) -> List[Tuple[str, str, int]]:
+    locust_keys: List[Tuple[str, str]] = sorted(stats.entries.keys())
+
+    previous_ident: Optional[str] = None
+    scenario_keys: List[Tuple[str, str]] = []
+    scenario_sorted_keys: List[Tuple[str, str, int]] = []
+    for index, key in enumerate(locust_keys):
+        ident, _ = key[0].split(' ', 1)
+        is_last = index == len(locust_keys) - 1
+        if (previous_ident is not None and previous_ident != ident) or is_last:
+            if is_last:
+                scenario_keys.append(key[:2])
+
+            scenario_sorted_keys += sorted([
+                (name, method, RequestType.get_method_weight(method), ) for name, method in scenario_keys
+            ], key=itemgetter(2, 0))
+            scenario_keys.clear()
+
+        previous_ident = ident
+        scenario_keys.append(key[:2])
+
+    return scenario_sorted_keys
+
+
 def grizzly_stats_printer(stats: RequestStats) -> Callable[[], NoReturn]:
     def _grizzly_stats_printer() -> NoReturn:
         while True:
@@ -566,27 +590,7 @@ def grizzly_print_stats(stats: RequestStats, current: bool = True, grizzly_style
     separator = f'{"-" * STATS_TYPE_WIDTH}|{"-" * (name_column_width)}|{"-" * 7}|{"-" * 13}|{"-" * 7}|{"-" * 7}|{"-" * 7}|{"-" * 7}|{"-" * 8}|{"-" * 11}'
     stats_logger.info(separator)
 
-    keys: List[Union[Tuple[str, str], Tuple[str, str, int]]] = sorted(stats.entries.keys())
-
-    previous_ident: Optional[str] = None
-    scenario_keys: List[Tuple[str, str]] = []
-    scenario_sorted_keys: List[Tuple[str, str, int]] = []
-    for index, key in enumerate(keys):
-        ident, _ = key[0].split(' ', 1)
-        is_last = index == len(keys) - 1
-        if (previous_ident is not None and previous_ident != ident) or is_last:
-            if is_last:
-                scenario_keys.append(key[:2])
-
-            scenario_sorted_keys += sorted([
-                (name, method, RequestType.get_method_weight(method), ) for name, method in scenario_keys
-            ], key=itemgetter(2, 0))
-            scenario_keys.clear()
-
-        previous_ident = ident
-        scenario_keys.append(key[:2])
-
-    keys = cast(List[Union[Tuple[str, str], Tuple[str, str, int]]], scenario_sorted_keys)
+    keys = _grizzly_sort_stats(stats)
 
     for key in keys:
         r = stats.entries[key[:2]]
@@ -616,29 +620,7 @@ def grizzly_print_percentile_stats(stats: RequestStats, grizzly_style: bool = Tr
     )[:-1]
     stats_logger.info(separator)
 
-    keys: List[Union[Tuple[str, str], Tuple[str, str, int]]] = sorted(stats.entries.keys())
-
-    previous_ident: Optional[str] = None
-    scenario_keys: List[Tuple[str, str]] = []
-    scenario_sorted_keys: List[Tuple[str, str, int]] = []
-
-    for index, key in enumerate(keys):
-        ident, _ = key[0].split(' ', 1)
-        is_last = index == len(keys) - 1
-
-        if (previous_ident is not None and previous_ident != ident) or is_last:
-            if is_last:
-                scenario_keys.append(key[:2])
-
-            scenario_sorted_keys += sorted([
-                (name, method, RequestType.get_method_weight(method), ) for name, method in scenario_keys
-            ], key=itemgetter(2, 0))
-            scenario_keys.clear()
-
-        previous_ident = ident
-        scenario_keys.append(key[:2])
-
-    keys = cast(List[Union[Tuple[str, str], Tuple[str, str, int]]], scenario_sorted_keys)
+    keys = _grizzly_sort_stats(stats)
 
     for key in keys:
         r = stats.entries[key[:2]]
