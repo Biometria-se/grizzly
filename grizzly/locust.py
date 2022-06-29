@@ -21,10 +21,12 @@ from locust.stats import (
     CONSOLE_STATS_INTERVAL_SEC,
     STATS_NAME_WIDTH,
     STATS_TYPE_WIDTH,
+    PERCENTILES_TO_REPORT,
     print_error_report,
     print_percentile_stats,
     print_stats,
     stats_history,
+    get_readable_percentiles,
 )
 from locust.log import setup_logging
 from locust.util.timespan import parse_timespan
@@ -592,4 +594,58 @@ def grizzly_print_stats(stats: RequestStats, current: bool = True, grizzly_style
 
     stats_logger.info(separator)
     stats_logger.info(stats.total.to_string(current=current))
+    stats_logger.info('')
+
+
+def grizzly_print_percentile_stats(stats: RequestStats, grizzly_style: bool = True) -> None:
+    if not grizzly_style:
+        print_percentile_stats(stats)
+        return
+
+    stats_logger.info('Response time percentiles (approximated)')
+    headers = ('Type', 'Name') + tuple(get_readable_percentiles(PERCENTILES_TO_REPORT)) + ('# reqs',)
+    stats_logger.info(
+        (
+            f'%-{str(STATS_TYPE_WIDTH)}s %-{str(STATS_NAME_WIDTH)}s %8s '
+            f'{" ".join(["%6s"] * len(PERCENTILES_TO_REPORT))}'
+        )
+        % headers
+    )
+    separator = (
+        f'{"-" * STATS_TYPE_WIDTH}|{"-" * STATS_NAME_WIDTH}|{"-" * 8}|{("-" * 6 + "|") * len(PERCENTILES_TO_REPORT)}'
+    )[:-1]
+    stats_logger.info(separator)
+
+    keys: List[Union[Tuple[str, str], Tuple[str, str, int]]] = sorted(stats.entries.keys())
+
+    previous_ident: Optional[str] = None
+    scenario_keys: List[Tuple[str, str]] = []
+    scenario_sorted_keys: List[Tuple[str, str, int]] = []
+
+    for index, key in enumerate(keys):
+        ident, _ = key[0].split(' ', 1)
+        is_last = index == len(keys) - 1
+
+        if (previous_ident is not None and previous_ident != ident) or is_last:
+            if is_last:
+                scenario_keys.append(key[:2])
+
+            scenario_sorted_keys += sorted([
+                (name, method, RequestType.get_method_weight(method), ) for name, method in scenario_keys
+            ], key=itemgetter(2, 0))
+            scenario_keys.clear()
+
+        previous_ident = ident
+        scenario_keys.append(key[:2])
+
+    keys = cast(List[Union[Tuple[str, str], Tuple[str, str, int]]], scenario_sorted_keys)
+
+    for key in keys:
+        r = stats.entries[key[:2]]
+        if r.response_times:
+            stats_logger.info(r.percentile())
+    stats_logger.info(separator)
+
+    if stats.total.response_times:
+        stats_logger.info(stats.total.percentile())
     stats_logger.info('')
