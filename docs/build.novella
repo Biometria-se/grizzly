@@ -176,7 +176,7 @@ do
                 def file = directory / 'content' / 'framework' / 'usage' / 'steps' / (filename + '.md')
                 file.parent.mkdir(parents=True, exist_ok=True)
                 if step.stem == '__init__':
-                    file.write_text('---\ntitle: Steps\n---\n@pydoc grizzly.steps\n## Considerations\n@pydoc grizzly_extras.types.PermutationEnum\n')
+                    file.write_text('---\ntitle: Steps\n---\n@pydoc grizzly.steps\n## Considerations\nWhen writing step expressions, the following should be taken into consideration.\n@pydoc grizzly_extras.text.PermutationEnum\n@pydoc grizzly_extras.text.permutation\n')
                 else:
                     file.write_text('---\ntitle: {step}\n---\n@pydoc grizzly.steps.{step}\n'.format(step=filename))
 

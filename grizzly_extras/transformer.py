@@ -14,7 +14,7 @@ from enum import auto
 from jsonpath_ng.ext import parse as jsonpath_parse
 from lxml import etree as XML
 
-from .types import PermutationEnum
+from .text import PermutationEnum
 
 
 class TransformerError(Exception):

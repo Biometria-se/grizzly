@@ -7,6 +7,8 @@ from behave.runner import Context
 from behave import register_type, given  # pylint: disable=no-name-in-module
 from locust.exception import StopUser
 
+from grizzly_extras.text import permutation
+
 from ...context import GrizzlyContext
 from ...testdata.utils import create_context_variable, resolve_variable
 from ...utils import merge_dicts
@@ -14,6 +16,7 @@ from ...exceptions import RestartScenario
 
 
 @parse.with_pattern(r'(iteration[s]?)')
+@permutation(vector=(False, True,))
 def parse_iteration_gramatical_number(text: str) -> str:
     return text.strip()
 

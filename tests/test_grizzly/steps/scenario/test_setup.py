@@ -20,6 +20,8 @@ def test_parse_iteration_gramatical_number() -> None:
         extra_types=dict(IterationGramaticalNumber=parse_iteration_gramatical_number),
     )
 
+    assert parse_iteration_gramatical_number.__vector__ == (False, True,)
+
     assert p.parse('run for 1 iteration')['iteration_number'] == 'iteration'
     assert p.parse('run for 10 iterations')['iteration_number'] == 'iterations'
     assert p.parse('run for 4 laps') is None

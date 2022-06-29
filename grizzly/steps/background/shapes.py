@@ -8,12 +8,14 @@ import parse
 
 from behave.runner import Context
 from behave import register_type, given  # pylint: disable=no-name-in-module
+from grizzly_extras.text import permutation
 
 from ...context import GrizzlyContext
 from ...testdata.utils import resolve_variable
 
 
 @parse.with_pattern(r'(user[s]?)')
+@permutation(vector=(False, True,))
 def parse_user_gramatical_number(text: str) -> str:
     return text.strip()
 

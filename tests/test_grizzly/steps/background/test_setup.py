@@ -24,6 +24,7 @@ def test_parse_message_direction() -> None:
     )
 
     assert MessageDirection.get_vector() == (True, True,)
+    assert parse_message_direction.__vector__ == (True, True,)
 
     result = p.parse('sending from server to client')
     message_direction = MessageDirection.from_string(f'{result["from"]}_{result["to"]}')

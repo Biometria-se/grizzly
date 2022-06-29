@@ -15,13 +15,15 @@ from grizzly_extras.transformer import TransformerContentType
 from ....fixtures import GrizzlyFixture, BehaveFixture
 
 
-def test_parse_negative() -> None:
+def test_parse_condition() -> None:
     p = compile(
         'value {condition:Condition} world',
         extra_types=dict(
             Condition=parse_condition,
         ),
     )
+
+    assert parse_condition.__vector__ == (False, True,)
 
     assert p.parse('value is world')['condition']
     assert not p.parse('value is not world')['condition']
@@ -32,7 +34,7 @@ def test_parse_response_target() -> None:
     p = compile(
         'save response {target:ResponseTarget}',
         extra_types=dict(
-            ResponseTarget=parse_response_target,
+            ResponseTarget=ResponseTarget.from_string,
         ),
     )
     assert ResponseTarget.get_vector() == (False, True,)
@@ -40,10 +42,9 @@ def test_parse_response_target() -> None:
     assert actual == ResponseTarget.METADATA
     actual = p.parse('save response payload')['target']
     assert actual == ResponseTarget.PAYLOAD
-    assert p.parse('save response test') is None
 
     with pytest.raises(ValueError):
-        parse_response_target('asdf')
+        p.parse('save response test') is None
 
 
 def test_parse_response_content_type() -> None:
