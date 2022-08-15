@@ -25,7 +25,7 @@ class TransformerError(Exception):
 
 
 class TransformerContentType(PermutationEnum):
-    __vector__ = None
+    __vector__ = (False, True, )
 
     UNDEFINED = 0
     JSON = auto()

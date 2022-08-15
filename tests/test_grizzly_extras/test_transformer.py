@@ -37,7 +37,7 @@ class Testtransformer:
     def test___init__(self) -> None:
         transformers: List[transformer] = []
 
-        assert TransformerContentType.get_vector() is None
+        assert TransformerContentType.get_vector() == (False, True, )
 
         for content_type in TransformerContentType:
             if content_type == TransformerContentType.UNDEFINED:
