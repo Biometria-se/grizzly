@@ -2,6 +2,10 @@ from typing import Optional
 
 from locust.exception import StopUser
 
+__all__ = [
+    'StopUser',
+]
+
 
 class ResponseHandlerError(StopUser):
     message: Optional[str] = None

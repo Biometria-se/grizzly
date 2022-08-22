@@ -118,6 +118,7 @@ from .async_group import AsyncRequestGroupTask
 from .timer import TimerTask
 from .task_wait import TaskWaitTask
 from .conditional import ConditionalTask
+from .loop import LoopTask
 
 
 __all__ = [
@@ -133,4 +134,5 @@ __all__ = [
     'TimerTask',
     'TaskWaitTask',
     'ConditionalTask',
+    'LoopTask',
 ]

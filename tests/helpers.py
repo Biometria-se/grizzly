@@ -9,11 +9,13 @@ from types import MethodType, TracebackType
 from locust import task
 from locust.event import EventHook
 
+from grizzly.context import GrizzlyContextScenario
 from grizzly.users.base import GrizzlyUser
 from grizzly.types import GrizzlyResponse, RequestMethod, Message, Environment
 from grizzly.testdata.variables import AtomicVariable
-from grizzly.tasks import RequestTask
+from grizzly.tasks import RequestTask, GrizzlyTask
 from grizzly.scenarios import GrizzlyScenario
+from grizzly.utils import fastdeepcopy
 
 
 class AtomicCustomVariable(AtomicVariable[str]):
@@ -67,6 +69,36 @@ class TestScenario(GrizzlyScenario):
         self.user.request(
             RequestTask(RequestMethod.POST, name='test', endpoint='payload.j2.json')
         )
+
+
+class TestTask(GrizzlyTask):
+    __test__ = False
+
+    name: Optional[str]
+    call_count: int
+    task_call_count: int
+
+    def __init__(self, name: Optional[str] = None, scenario: Optional[GrizzlyContextScenario] = None) -> None:
+        super().__init__(scenario)
+        self.name = name
+        self.call_count = 0
+        self.task_call_count = 0
+
+    def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
+        self.call_count += 1
+
+        def task(parent: 'GrizzlyScenario') -> Any:
+            parent.user.environment.events.request.fire(
+                request_type='TSTSK',
+                name=f'TestTask: {self.name}',
+                response_time=13,
+                response_length=37,
+                context=fastdeepcopy(parent.user._context),
+                exception=None,
+            )
+            self.task_call_count += 1
+
+        return task
 
 
 class ResultSuccess(Exception):

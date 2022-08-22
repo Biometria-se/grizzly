@@ -27,8 +27,6 @@ from typing import TYPE_CHECKING, Any, Callable, Optional
 from hashlib import sha1
 from time import perf_counter
 
-
-from ..types import RequestType
 from . import GrizzlyTask
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -68,7 +66,7 @@ class TimerTask(GrizzlyTask):
                 response_length = (stop_task_index - start_task_index) + 1
 
                 parent.user.environment.events.request.fire(
-                    request_type=RequestType.TIMER(),
+                    request_type='TIMR',
                     name=name,
                     response_time=response_time,
                     response_length=response_length,
