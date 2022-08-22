@@ -40,7 +40,6 @@ if TYPE_CHECKING:  # pragma: no cover
     from ..context import GrizzlyContextScenario
 
 from . import GrizzlyTask, GrizzlyTaskWrapper, template
-from ..exceptions import RestartScenario, StopScenario, StopUser
 
 
 @template('condition')
@@ -119,9 +118,6 @@ class ConditionalTask(GrizzlyTask, GrizzlyTaskWrapper):
             except Exception as e:
                 exception = e
             finally:
-                if isinstance(exception, (RestartScenario, StopUser, StopScenario,)):
-                    raise exception
-
                 response_time = int((perf_counter() - start) * 1000)
 
                 parent.user.environment.events.request.fire(

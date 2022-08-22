@@ -184,14 +184,16 @@ def _add_response_handler(
     if '|' in expression:
         expression, expression_arguments = split_value(expression)
         arguments = parse_arguments(expression_arguments)
-        unsupported_arguments = get_unsupported_arguments(['expected_matches'], arguments)
+        unsupported_arguments = get_unsupported_arguments(['expected_matches', 'as_json'], arguments)
 
         if len(unsupported_arguments) > 0:
             raise ValueError(f'unsupported arguments {", ".join(unsupported_arguments)}')
 
         expected_matches = int(arguments.get('expected_matches', '1'))
+        as_json = True if arguments.get('as_json', 'False') == 'True' else False
     else:
         expected_matches = 1
+        as_json = False
 
     # latest request
     request = grizzly.scenario.tasks()[-1]
@@ -219,6 +221,7 @@ def _add_response_handler(
             expression=expression,
             match_with=match_with,
             expected_matches=expected_matches,
+            as_json=as_json,
         )
     elif action == ResponseAction.VALIDATE:
         if condition is None:
@@ -229,6 +232,7 @@ def _add_response_handler(
             expression=expression,
             match_with=match_with,
             expected_matches=expected_matches,
+            as_json=as_json,
         )
 
     if target == ResponseTarget.METADATA:

@@ -596,6 +596,61 @@ class TestSaveHandlerAction:
             300,
         ]
 
+        handler = SaveHandlerAction(
+            'test_list',
+            expression='$.test[?hello="world"].value',
+            match_with='.*',
+            expected_matches=-1,
+            as_json=True,
+        )
+
+        handler(
+            (
+                TransformerContentType.JSON,
+                {
+                    'test': [
+                        {
+                            'hello': 'world',
+                            'value': 'prop41',
+                        }
+                    ],
+                }
+            ),
+            user,
+            response_context_manager,
+        )
+
+        test_list = user.context_variables.get('test_list', None)
+        assert jsonloads(test_list) == [
+            'prop41',
+        ]
+
+        handler(
+            (
+                TransformerContentType.JSON,
+                {
+                    'test': [
+                        {
+                            'hello': 'world',
+                            'value': 'prop41',
+                        },
+                        {
+                            'hello': 'world',
+                            'value': 'prop42',
+                        },
+                    ],
+                }
+            ),
+            user,
+            response_context_manager,
+        )
+
+        test_list = user.context_variables.get('test_list', None)
+        assert jsonloads(test_list) == [
+            'prop41',
+            'prop42',
+        ]
+
 
 class TestResponseHandler:
     def test___init__(self, locust_fixture: LocustFixture) -> None:
