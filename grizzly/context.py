@@ -13,7 +13,7 @@ from .types import MessageCallback, MessageDirection
 from .testdata import GrizzlyVariables
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .tasks import GrizzlyTask, AsyncRequestGroupTask, TimerTask, ConditionalTask
+    from .tasks import GrizzlyTask, AsyncRequestGroupTask, TimerTask, ConditionalTask, LoopTask
 
 
 logger = logging.getLogger(__name__)
@@ -139,6 +139,7 @@ class GrizzlyContextTasksTmp:
     async_group: Optional['AsyncRequestGroupTask'] = field(init=False, repr=False, hash=False, compare=False, default=None)
     timers: Dict[str, Optional['TimerTask']] = field(init=False, repr=False, hash=False, compare=False, default_factory=dict)
     conditional: Optional['ConditionalTask'] = field(init=False, repr=False, hash=False, compare=False, default=None)
+    loop: Optional['LoopTask'] = field(init=False, repr=False, hash=False, compare=False, default=None)
     custom: Dict[str, 'GrizzlyTask'] = field(init=False, repr=False, hash=False, compare=False, default_factory=dict)
 
 
@@ -161,6 +162,8 @@ class GrizzlyContextTasks(List['GrizzlyTask']):
             return self.tmp.async_group.peek()
         elif self.tmp.conditional is not None:
             return self.tmp.conditional.peek()
+        elif self.tmp.loop is not None:
+            return self.tmp.loop.peek()
         else:
             return cast(List['GrizzlyTask'], self)
 
@@ -172,6 +175,8 @@ class GrizzlyContextTasks(List['GrizzlyTask']):
             self.tmp.async_group.add(task)
         elif self.tmp.conditional is not None:
             self.tmp.conditional.add(task)
+        elif self.tmp.loop is not None:
+            self.tmp.loop.add(task)
         else:
             self.append(task)
 

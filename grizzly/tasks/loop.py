@@ -1,26 +1,26 @@
 """
-@anchor pydoc:grizzly.taks.loop Loop
+@anchor pydoc:grizzly.tasks.loop Loop
 This task executes the wraped tasks for all values in provided list.
 
-All task created between {@pylink grizzly.steps.scenario.tasks.step_loop_start} and {@pylink grizzly.steps.scenario.tasks.step_loop_end}
-will be wrapped in this instance and executed for all values in the provided list (must be in json format).
+All task created between {@pylink grizzly.steps.scenario.tasks.step_task_loop_start} and {@pylink grizzly.steps.scenario.tasks.step_task_loop_end}
+will be wrapped in this instance and executed for all values in the provided list (must be in JSON format).
 
 ## Step implementations
 
-* {@pylink grizzly.steps.scenario.tasks.step_loop_start}
+* {@pylink grizzly.steps.scenario.tasks.step_task_loop_start}
 
-* {@pylink grizzly.steps.scenario.tasks.step_loop_end}
+* {@pylink grizzly.steps.scenario.tasks.step_task_loop_end}
 
 ## Statistics
 
-Executions of this task will be visible in `locust` request statistics with request type `LOOP` for each index in the list. `name` is suffixed with `[<n>}`, where `n`
-is the index value of the item in the loop. Each wrapped task will have its own entry in the statistics, see respective {@pylink grizzly.tasks} documentation.
+Executions of this task will be visible in `locust` request statistics with request type `LOOP` and `name` is suffixed with `(<n>)`, where `n`
+is the number of wrapped tasks. Each wrapped task will have its own entry in the statistics, see respective {@pylink grizzly.tasks} documentation.
 
 ## Arguments
 
 * `name` _str_: name of the for loop, used in `locust` statistics
 
-* `json_input` _str_: {@link framework.usage.variables.templating} string which must be valid json and render to a list/array of values
+* `values` _str_: {@link framework.usage.variables.templating} string which must be valid json and render to a list of values
 
 * `variable` _str_: name of variable that a value from `input_list` will be accessible in
 """
@@ -35,23 +35,22 @@ if TYPE_CHECKING:  # pragma: no cover
     from ..context import GrizzlyContextScenario, GrizzlyContext
 
 from . import GrizzlyTask, GrizzlyTaskWrapper, template
-from ..utils import fastdeepcopy
 from ..exceptions import RestartScenario, StopScenario, StopUser
 
 
-@template('json_input')
+@template('values')
 class LoopTask(GrizzlyTask, GrizzlyTaskWrapper):
     tasks: List[GrizzlyTask]
 
     name: str
-    json_input: str
+    values: str
     variable: str
 
-    def __init__(self, grizzly: 'GrizzlyContext', name: str, json_input: str, variable: str, scenario: Optional['GrizzlyContextScenario'] = None) -> None:
+    def __init__(self, grizzly: 'GrizzlyContext', name: str, values: str, variable: str, scenario: Optional['GrizzlyContextScenario'] = None) -> None:
         super().__init__(scenario)
 
         self.name = name
-        self.json_input = json_input
+        self.values = values
         self.variable = variable
 
         self.tasks = []
@@ -72,57 +71,52 @@ class LoopTask(GrizzlyTask, GrizzlyTaskWrapper):
         tasks = [task() for task in self.tasks]
 
         def task(parent: 'GrizzlyScenario') -> Any:
-            orig_value = parent.user._context['variables'][self.variable]
+            orig_value = parent.user._context['variables'].get(self.variable, None)
             start = perf_counter()
             exception: Optional[Exception] = None
             task_count = len(self.tasks)
+            response_length: int = 0
+
             try:
-                input_list = jsonloads(parent.render(self.json_input))
+                values = jsonloads(parent.render(self.values))
 
-                if not isinstance(input_list, list):
-                    raise RuntimeError(f'"{self.json_input}" is not a list')
+                if not isinstance(values, list):
+                    raise RuntimeError(f'"{self.values}" is not a list')
 
-                for index, value in enumerate(input_list):
-                    parent.user._context['variables'][self.variable] = value
+                response_length = len(values)
 
-                    try:
-                        for task in tasks:
-                            task(parent)
-                            gsleep(parent.user.wait_time())
-                    except Exception as e:
-                        exception = e
-                    finally:
-                        response_time = int((perf_counter() - start) * 1000)
+                for value in values:
+                    parent.user._context['variables'].update({self.variable: value})
 
-                        parent.user.environment.events.request.fire(
-                            request_type='LOOP',
-                            name=f'{self.scenario.identifier} {self.name}[{index}]',
-                            response_time=response_time,
-                            response_length=task_count,
-                            context=fastdeepcopy(parent.user._context),
-                            exception=exception,
-                        )
+                    for task in tasks:
+                        task(parent)
+                        gsleep(parent.user.wait_time())
 
-                        parent.user._context['variables'][self.variable] = orig_value
-
-                        if exception is not None and self.scenario.failure_exception is not None:
-                            raise self.scenario.failure_exception()
+                    parent.user._context['variables'].update({self.variable: orig_value})
             except Exception as e:
-                if isinstance(e, (RestartScenario, StopUser, StopScenario,)):
-                    raise
+                exception = e
+            finally:
+                if orig_value is None:
+                    try:
+                        del parent.user._context['variables'][self.variable]
+                    except:
+                        pass
+
+                if isinstance(exception, (RestartScenario, StopUser, StopScenario,)):
+                    raise exception
 
                 response_time = int((perf_counter() - start) * 1000)
 
                 parent.user.environment.events.request.fire(
                     request_type='LOOP',
-                    name=f'{self.scenario.identifier} {self.name}',
+                    name=f'{self.scenario.identifier} {self.name} ({task_count})',
                     response_time=response_time,
-                    response_length=task_count,
+                    response_length=response_length,
                     context=parent.user._context,
-                    exception=e,
+                    exception=exception,
                 )
 
-                if self.scenario.failure_exception is not None:
+                if exception is not None and self.scenario.failure_exception is not None:
                     raise self.scenario.failure_exception()
 
         return task

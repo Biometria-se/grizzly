@@ -34,21 +34,21 @@ class TestLoopTask:
         grizzly = grizzly_fixture.grizzly
 
         with pytest.raises(ValueError) as ve:
-            LoopTask(grizzly=grizzly, name='test', json_input='["hello", "world"]', variable='asdf')
+            LoopTask(grizzly=grizzly, name='test', values='["hello", "world"]', variable='asdf')
         assert str(ve.value) == 'LoopTask: asdf has not been initialized'
 
         grizzly.state.variables['asdf'] = 'none'
-        task_factory = LoopTask(grizzly=grizzly, name='test', json_input='["hello", "world"]', variable='asdf')
+        task_factory = LoopTask(grizzly=grizzly, name='test', values='["hello", "world"]', variable='asdf')
 
         assert task_factory.name == 'test'
-        assert task_factory.json_input == '["hello", "world"]'
+        assert task_factory.values == '["hello", "world"]'
         assert task_factory.variable == 'asdf'
 
     def test_add_and_peek(self, grizzly_fixture: GrizzlyFixture) -> None:
         grizzly = grizzly_fixture.grizzly
         grizzly.state.variables['foobar'] = 'none'
 
-        task_factory = LoopTask(grizzly=grizzly, name='test', json_input='["hello", "world"]', variable='foobar')
+        task_factory = LoopTask(grizzly=grizzly, name='test', values='["hello", "world"]', variable='foobar')
 
         assert len(task_factory.tasks) == 0
 
@@ -102,10 +102,10 @@ class TestLoopTask:
 
         assert total_task___call___count == len(task_factory.tasks)
 
-        # normal
+        # normal, static
         task(scenario)
 
-        assert request_spy.call_count == 8  # loop task + 3 tasks * 2 values
+        assert request_spy.call_count == 7  # loop task + 3 tasks * 2 values
 
         for i, (_, kwargs) in enumerate(request_spy.call_args_list[:3]):
             assert kwargs.get('request_type', None) == 'TSTSK'
@@ -115,16 +115,7 @@ class TestLoopTask:
             assert kwargs.get('exception', '') is None
             assert kwargs.get('context', None) == {'variables': {'foobar': 'hello'}}
 
-        _, kwargs = request_spy.call_args_list[3]
-
-        assert kwargs.get('request_type', None) == 'LOOP'
-        assert kwargs.get('name', None) == '003 test[0]'
-        assert kwargs.get('response_time', None) >= 0
-        assert kwargs.get('response_length', None) == 3
-        assert kwargs.get('exception', '') is None
-        assert kwargs.get('context', None) == {'variables': {'foobar': 'hello'}}
-
-        for i, (_, kwargs) in enumerate(request_spy.call_args_list[4:-1]):
+        for i, (_, kwargs) in enumerate(request_spy.call_args_list[3:-1]):
             assert kwargs.get('request_type', None) == 'TSTSK'
             assert kwargs.get('name', None) == f'TestTask: test:test-{i}'
             assert kwargs.get('response_time', None) == 13
@@ -135,16 +126,53 @@ class TestLoopTask:
         _, kwargs = request_spy.call_args_list[-1]
 
         assert kwargs.get('request_type', None) == 'LOOP'
-        assert kwargs.get('name', None) == '003 test[1]'
+        assert kwargs.get('name', None) == '003 test (3)'
         assert kwargs.get('response_time', None) >= 0
-        assert kwargs.get('response_length', None) == 3
+        assert kwargs.get('response_length', None) == 2
         assert kwargs.get('exception', '') is None
-        assert kwargs.get('context', None) == {'variables': {'foobar': 'world'}}
+        assert kwargs.get('context', None) == {'variables': {'foobar': 'none'}}
 
         request_spy.reset_mock()
 
+        # normal, variable input
+        grizzly.state.variables['json_input'] = 'none'
+        scenario.user._context['variables']['json_input'] = '["foo", "bar"]'
+        task_factory.values = '{{ json_input }}'
+        task(scenario)
+
+        assert request_spy.call_count == 7  # loop task + 3 tasks * 2 values
+
+        for i, (_, kwargs) in enumerate(request_spy.call_args_list[:3]):
+            assert kwargs.get('request_type', None) == 'TSTSK'
+            assert kwargs.get('name', None) == f'TestTask: test:test-{i}'
+            assert kwargs.get('response_time', None) == 13
+            assert kwargs.get('response_length', None) == 37
+            assert kwargs.get('exception', '') is None
+            assert kwargs.get('context', None) == {'variables': {'foobar': 'foo', 'json_input': '["foo", "bar"]'}}
+
+        for i, (_, kwargs) in enumerate(request_spy.call_args_list[3:-1]):
+            assert kwargs.get('request_type', None) == 'TSTSK'
+            assert kwargs.get('name', None) == f'TestTask: test:test-{i}'
+            assert kwargs.get('response_time', None) == 13
+            assert kwargs.get('response_length', None) == 37
+            assert kwargs.get('exception', '') is None
+            assert kwargs.get('context', None) == {'variables': {'foobar': 'bar', 'json_input': '["foo", "bar"]'}}
+
+        _, kwargs = request_spy.call_args_list[-1]
+
+        assert kwargs.get('request_type', None) == 'LOOP'
+        assert kwargs.get('name', None) == '003 test (3)'
+        assert kwargs.get('response_time', None) >= 0
+        assert kwargs.get('response_length', None) == 2
+        assert kwargs.get('exception', '') is None
+        assert kwargs.get('context', None) == {'variables': {'foobar': 'none', 'json_input': '["foo", "bar"]'}}
+
+        request_spy.reset_mock()
+        del grizzly.state.variables['json_input']
+        del scenario.user._context['variables']['json_input']
+
         # not a valid json input
-        task_factory.json_input = '"hello'
+        task_factory.values = '"hello'
         scenario_context.failure_exception = RestartScenario
 
         task = task_factory()
@@ -155,9 +183,9 @@ class TestLoopTask:
         assert request_spy.call_count == 1
         _, kwargs = request_spy.call_args_list[-1]
         assert kwargs.get('request_type', None) == 'LOOP'
-        assert kwargs.get('name', None) == '003 test'
+        assert kwargs.get('name', None) == '003 test (3)'
         assert kwargs.get('response_time', None) >= 0
-        assert kwargs.get('response_length', None) == 3
+        assert kwargs.get('response_length', None) == 0
         assert kwargs.get('context', None) == {'variables': {'foobar': 'none'}}
         exception = kwargs.get('exception', None)
         assert isinstance(exception, JSONDecodeError)
@@ -166,7 +194,7 @@ class TestLoopTask:
         request_spy.reset_mock()
 
         # valid json, but not a list
-        task_factory.json_input = '{"hello": "world"}'
+        task_factory.values = '{"hello": "world"}'
 
         task = task_factory()
 
@@ -176,9 +204,9 @@ class TestLoopTask:
         assert request_spy.call_count == 1
         _, kwargs = request_spy.call_args_list[-1]
         assert kwargs.get('request_type', None) == 'LOOP'
-        assert kwargs.get('name', None) == '003 test'
+        assert kwargs.get('name', None) == '003 test (3)'
         assert kwargs.get('response_time', None) >= 0
-        assert kwargs.get('response_length', None) == 3
+        assert kwargs.get('response_length', None) == 0
         assert kwargs.get('context', None) == {'variables': {'foobar': 'none'}}
         exception = kwargs.get('exception', None)
         assert str(exception) == '"{"hello": "world"}" is not a list'
@@ -187,7 +215,7 @@ class TestLoopTask:
 
         # error in wrapped task
         task_factory.tasks = []
-        task_factory.json_input = '["hello", "world"]'
+        task_factory.values = '["hello", "world"]'
 
         task_factory.add(TestTask(name='test-1'))
         task_factory.add(TestErrorTask(name='test-error-1'))
@@ -197,12 +225,12 @@ class TestLoopTask:
         with pytest.raises(RestartScenario):
             task(scenario)
 
-        assert request_spy.call_count == 5
+        assert request_spy.call_count == 4
 
         _, kwargs = request_spy.call_args_list[-1]
 
         assert kwargs.get('request_type', None) == 'LOOP'
-        assert kwargs.get('name', None) == '003 test[1]'
+        assert kwargs.get('name', None) == '003 test (2)'
         assert kwargs.get('response_time', None) >= 0
         assert kwargs.get('response_length', None) == 2
         assert kwargs.get('context', None) == {'variables': {'foobar': 'world'}}

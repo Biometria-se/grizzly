@@ -191,4 +191,4 @@ def parse_timespan(timespan: str) -> Dict[str, int]:
 
 
 def fastdeepcopy(input: Dict[str, Any]) -> Dict[str, Any]:
-    return dict(zip(input.keys(), map(dict.copy, input.values())))  # type: ignore
+    return dict(zip(input.keys(), map(dict.copy, input.values())))
