@@ -55,7 +55,7 @@ def test_parse_response_content_type() -> None:
         ),
     )
 
-    assert TransformerContentType.get_vector() is None
+    assert TransformerContentType.get_vector() == (False, True, )
 
     tests = [
         (TransformerContentType.JSON, ['json', 'application/json']),
