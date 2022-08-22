@@ -20,28 +20,27 @@ The {@pylink grizzly.steps.scenario.tasks.step_task_conditional_else} step expre
 
 ## Statistics
 
-Executions of this task will be visible in `locust` request statistics with request type `COND`. `name` will suffixed with `<condition> (<n>)`,
+Executions of this task will be visible in `locust` request statistics with request type `COND`. `name` is suffixed with `<condition> (<n>)`,
 where `<condition>` is the runtime resolved condition and `<n>` is the number of tasks that is executed for the resolved condition. Each task in
 the set for `condition` will have its own entry in the statistics, see respective {@pylink grizzly.tasks} documentation.
 
 ## Arguments
 
-* `name` (str): name of the conditional, used in `locust` statistics
+* `name` _str_: name of the conditional, used in `locust` statistics
 
-* `condition` (str): {@link framework.usage.variables.templating} string that must render `True` or `False`
+* `condition` _str_: {@link framework.usage.variables.templating} string that must render `True` or `False`
 """
 from typing import TYPE_CHECKING, Any, Callable, List, Optional, Dict
 from time import perf_counter
 
 from gevent import sleep as gsleep
 
-from ..types import RequestType
-
 if TYPE_CHECKING:  # pragma: no cover
     from ..scenarios import GrizzlyScenario
     from ..context import GrizzlyContextScenario
 
 from . import GrizzlyTask, GrizzlyTaskWrapper, template
+from ..exceptions import RestartScenario, StopScenario, StopUser
 
 
 @template('condition')
@@ -120,10 +119,13 @@ class ConditionalTask(GrizzlyTask, GrizzlyTaskWrapper):
             except Exception as e:
                 exception = e
             finally:
+                if isinstance(exception, (RestartScenario, StopUser, StopScenario,)):
+                    raise exception
+
                 response_time = int((perf_counter() - start) * 1000)
 
                 parent.user.environment.events.request.fire(
-                    request_type=RequestType.CONDITIONAL(),
+                    request_type='COND',
                     name=f'{self.scenario.identifier} {self.name}: {condition_rendered} ({task_count})',
                     response_time=response_time,
                     response_length=task_count,

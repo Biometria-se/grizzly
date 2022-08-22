@@ -1,44 +1,14 @@
-from typing import TYPE_CHECKING, Any, Callable, Optional, cast
+from typing import cast
 
 import pytest
 
 from pytest_mock import MockerFixture
-from grizzly.tasks import GrizzlyTask, ConditionalTask
+from grizzly.tasks import ConditionalTask
 from grizzly.context import GrizzlyContextScenario
 from grizzly.exceptions import RestartScenario
 
-if TYPE_CHECKING:
-    from grizzly.scenarios import GrizzlyScenario
-
 from ...fixtures import GrizzlyFixture
-
-
-class DummyTask(GrizzlyTask):
-    name: Optional[str]
-    call_count: int
-    task_call_count: int
-
-    def __init__(self, name: Optional[str] = None, scenario: Optional[GrizzlyContextScenario] = None) -> None:
-        super().__init__(scenario)
-        self.name = name
-        self.call_count = 0
-        self.task_call_count = 0
-
-    def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
-        self.call_count += 1
-
-        def task(parent: 'GrizzlyScenario') -> Any:
-            parent.user.environment.events.request.fire(
-                request_type='DMY',
-                name='DummyTask',
-                response_time=13,
-                response_length=37,
-                context=parent.user._context,
-                exception=None,
-            )
-            self.task_call_count += 1
-
-        return task
+from ...helpers import TestTask
 
 
 class TestConditionalTask:
@@ -71,28 +41,28 @@ class TestConditionalTask:
         assert task_factory._pointer is None
         assert task_factory.tasks == {}
 
-        dummy_task = DummyTask()
-        task_factory.add(dummy_task)
+        test_task = TestTask()
+        task_factory.add(test_task)
         assert task_factory.tasks == {}
 
         # add as True task
         task_factory.switch(True)
         for _ in range(0, 3):
-            task_factory.add(dummy_task)
-        assert task_factory.tasks == {True: [dummy_task] * 3}
+            task_factory.add(test_task)
+        assert task_factory.tasks == {True: [test_task] * 3}
 
         # add as False task
         task_factory.switch(False)
         for _ in range(0, 4):
-            task_factory.add(dummy_task)
-        assert task_factory.tasks == {True: [dummy_task] * 3, False: [dummy_task] * 4}
+            task_factory.add(test_task)
+        assert task_factory.tasks == {True: [test_task] * 3, False: [test_task] * 4}
 
         # task has name attribute, prefix it
-        task_factory.add(DummyTask(name='dummy task'))
-        dummy_task = cast(DummyTask, task_factory.tasks.get(False, [])[-1])
-        assert dummy_task.name == 'test:dummy task'
-        dummy_task = cast(DummyTask, task_factory.tasks.get(False, [])[-2])
-        assert dummy_task.name is None
+        task_factory.add(TestTask(name='dummy task'))
+        test_task = cast(TestTask, task_factory.tasks.get(False, [])[-1])
+        assert test_task.name == 'test:dummy task'
+        test_task = cast(TestTask, task_factory.tasks.get(False, [])[-2])
+        assert test_task.name is None
 
     def test___call__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         # pre: get context
@@ -110,18 +80,18 @@ class TestConditionalTask:
         # pre: add tasks
         task_factory.switch(True)
         for i in range(0, 3):
-            task_factory.add(DummyTask(name=f'dummy-true-{i}', scenario=scenario_context))
+            task_factory.add(TestTask(name=f'dummy-true-{i}', scenario=scenario_context))
 
         task_factory.switch(False)
         for i in range(0, 4):
-            task_factory.add(DummyTask(name=f'dummy-false-{i}', scenario=scenario_context))
+            task_factory.add(TestTask(name=f'dummy-false-{i}', scenario=scenario_context))
 
         # pre: get task implementation
         task = task_factory()
 
         total_task___call___count = 0
         for _task in task_factory.tasks.get(True, []) + task_factory.tasks.get(False, []):
-            _task = cast(DummyTask, _task)
+            _task = cast(TestTask, _task)
             total_task___call___count += _task.call_count
 
         assert total_task___call___count == len(task_factory.tasks.get(True, [])) + len(task_factory.tasks.get(False, []))
@@ -184,7 +154,7 @@ class TestConditionalTask:
         print(request_calls)
         assert len(request_calls) == 3  # DummyTask
         for _, kwargs in request_calls:
-            assert kwargs.get('request_type', None) == 'DMY'
+            assert kwargs.get('request_type', None) == 'TSTSK'
 
         # false condition
         scenario.user._context.update({'variables': {'value': 0}})
@@ -204,4 +174,4 @@ class TestConditionalTask:
         request_calls = request_spy.call_args_list[-5:-1]
         assert len(request_calls) == 4
         for _, kwargs in request_calls:
-            assert kwargs.get('request_type', None) == 'DMY'
+            assert kwargs.get('request_type', None) == 'TSTSK'

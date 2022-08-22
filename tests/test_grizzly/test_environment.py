@@ -14,7 +14,7 @@ from grizzly.context import GrizzlyContext
 from grizzly.steps.setup import step_setup_variable_value_ask as step_both
 from grizzly.steps.background.setup import step_setup_save_statistics as step_background
 from grizzly.steps.scenario.setup import step_setup_iterations as step_scenario
-from grizzly.tasks import AsyncRequestGroupTask, TimerTask, ConditionalTask
+from grizzly.tasks import AsyncRequestGroupTask, TimerTask, ConditionalTask, LoopTask
 
 from ..fixtures import BehaveFixture
 
@@ -215,6 +215,15 @@ def test_after_scenario(behave_fixture: BehaveFixture) -> None:
     assert str(ae.value) == 'conditional "test-conditional-1" has not been closed'
 
     grizzly.scenario.tasks.tmp.conditional = None
+    grizzly.state.background_section_done = False
+    grizzly.state.variables['foobar'] = 'none'
+    grizzly.scenario.tasks.tmp.loop = LoopTask(grizzly, name='test-loop', values='["hello", "world"]', variable='foobar')
+
+    with pytest.raises(AssertionError) as ae:
+        after_scenario(behave)
+    assert str(ae.value) == 'loop task "test-loop" has not been closed'
+
+    grizzly.scenario.tasks.tmp.loop = None
     grizzly.state.background_section_done = False
 
     assert not grizzly.state.background_section_done

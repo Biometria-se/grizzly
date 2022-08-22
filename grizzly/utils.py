@@ -188,3 +188,7 @@ def parse_timespan(timespan: str) -> Dict[str, int]:
         raise ValueError(f'invalid time span format: {timespan}')
 
     return parameters
+
+
+def fastdeepcopy(input: Dict[str, Any]) -> Dict[str, Any]:
+    return dict(zip(input.keys(), map(dict.copy, input.values())))

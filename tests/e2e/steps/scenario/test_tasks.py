@@ -869,3 +869,47 @@ def test_e2e_step_task_conditional(behave_context_fixture: BehaveContextFixture,
         assert f'{value} was greater than 5' in result
     else:
         assert f'{value} was less than or equal to 5' in result
+
+
+def test_e2e_step_task_loop(behave_context_fixture: BehaveContextFixture) -> None:
+    def validate_task_loop(context: Context) -> None:
+        grizzly = cast(GrizzlyContext, context.grizzly)
+
+        grizzly.scenario.tasks.pop()  # remove dummy task
+
+        assert len(grizzly.scenario.tasks) == 1
+
+    def after_feature(context: Context, feature: Feature) -> None:
+        grizzly = cast(GrizzlyContext, context.grizzly)
+
+        stats = grizzly.state.locust.environment.stats
+
+        print(stats)
+
+        loop = stats.get('001 loop-1 (1)', 'LOOP')
+
+        assert loop.num_requests == 1, f'{loop.num_requests} != 1'
+
+    behave_context_fixture.add_validator(validate_task_loop)
+    behave_context_fixture.add_after_feature(after_feature)
+
+    feature_file = behave_context_fixture.test_steps(
+        scenario=[
+            'And value for variable "loop_value" is "none"',
+            'And value for variable "loop_values" is "[\"foo\", \"bar\", \"hello\", \"world\"]"',
+            'Then loop "{{ loop_values }}" as variable "loop_value" with name "loop-1"',
+            'Then log message "loop_value={{ loop_value }}"',
+            'Then end loop',
+        ]
+    )
+
+    rc, output = behave_context_fixture.execute(feature_file)
+
+    assert rc == 0
+
+    result = ''.join(output)
+
+    assert 'loop_value=foo' in result
+    assert 'loop_value=bar' in result
+    assert 'loop_value=hello' in result
+    assert 'loop_value=world' in result
