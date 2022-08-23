@@ -15,8 +15,8 @@ a step implementation is also needed.
 
 There are examples of this in the {@link framework.example}.
 '''
-from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Callable, List, Type, Set, Optional
+from abc import ABC, ABCMeta, abstractmethod
+from typing import TYPE_CHECKING, Any, Callable, List, Type, Set, Optional, Union, Dict
 from os import environ
 from pathlib import Path
 
@@ -84,7 +84,10 @@ class GrizzlyTask(ABC):
         return list(templates)
 
 
-class GrizzlyTaskWrapper(ABC):
+class GrizzlyTaskWrapper(GrizzlyTask, metaclass=ABCMeta):
+    name: str
+    list: Union[List[GrizzlyTask], Dict[str, GrizzlyTask]]
+
     @abstractmethod
     def add(self, task: GrizzlyTask) -> None:
         raise NotImplementedError(f'{self.__class__.__name__} has not implemented add')

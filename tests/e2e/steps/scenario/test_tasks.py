@@ -683,9 +683,9 @@ def test_e2e_step_async_group(behave_context_fixture: BehaveContextFixture) -> N
             'async-group-{{ index }}:test-get-1',
         ]), str(task.get_templates())
         assert task.name == 'async-group-{{ index }}'
-        assert len(task.requests) == 2
+        assert len(task.tasks) == 2
 
-        request = task.requests[0]
+        request = task.tasks[0]
         assert isinstance(request, RequestTask)
         assert request.method == RequestMethod.POST
         assert request.name == 'async-group-{{ index }}:test-post-1'
@@ -695,7 +695,7 @@ def test_e2e_step_async_group(behave_context_fixture: BehaveContextFixture) -> N
         assert jsonloads(request.source) == {'value': 'i have good news!'}
         assert request.get_templates() == ['async-group-{{ index }}:test-post-1']
 
-        request = task.requests[1]
+        request = task.tasks[1]
         assert isinstance(request, RequestTask)
         assert request.method == RequestMethod.GET
         assert request.name == 'async-group-{{ index }}:test-get-1'

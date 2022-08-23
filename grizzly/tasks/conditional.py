@@ -43,7 +43,7 @@ from . import GrizzlyTask, GrizzlyTaskWrapper, template
 
 
 @template('condition')
-class ConditionalTask(GrizzlyTask, GrizzlyTaskWrapper):
+class ConditionalTask(GrizzlyTaskWrapper):
     tasks: Dict[bool, List[GrizzlyTask]]
 
     name: str

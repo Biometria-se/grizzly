@@ -38,7 +38,7 @@ from . import GrizzlyTask, GrizzlyTaskWrapper, template
 
 
 @template('values')
-class LoopTask(GrizzlyTask, GrizzlyTaskWrapper):
+class LoopTask(GrizzlyTaskWrapper):
     tasks: List[GrizzlyTask]
 
     name: str
