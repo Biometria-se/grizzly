@@ -20,15 +20,17 @@ from grizzly.context import (
     GrizzlyContextSetupLocust,
     GrizzlyContextSetupLocustMessages,
     GrizzlyContextState,
+    GrizzlyContextTasks,
+    GrizzlyContextTasksTmp,
     load_configuration_file,
 )
 
 from grizzly.types import MessageDirection, RequestMethod
-from grizzly.tasks import LogMessageTask, RequestTask, WaitTask
+from grizzly.tasks import LogMessageTask, RequestTask, WaitTask, AsyncRequestGroupTask, LoopTask, ConditionalTask
 
 
-from ..helpers import get_property_decorated_attributes
-from ..fixtures import BehaveFixture, RequestTaskFixture
+from ..helpers import TestTask, get_property_decorated_attributes
+from ..fixtures import BehaveFixture, GrizzlyFixture, RequestTaskFixture
 
 
 def test_load_configuration_file(tmp_path_factory: TempPathFactory) -> None:
@@ -391,3 +393,220 @@ class TestGrizzlyContextScenario:
         assert grizzly.scenarios.find_by_name('test3') is third_scenario
         assert grizzly.scenarios.find_by_class_name(first_scenario.class_name) is first_scenario
         assert grizzly.scenarios.find_by_class_name(third_scenario.class_name) is third_scenario
+
+
+class TestGrizzlyContextTasksTmp:
+    def test_async_group(self) -> None:
+        tmp = GrizzlyContextTasksTmp()
+
+        assert len(tmp.__stack__) == 0
+
+        async_group = AsyncRequestGroupTask(name='async-group-1')
+        tmp.async_group = async_group
+
+        assert len(tmp.__stack__) == 1
+        assert tmp.__stack__[-1] is async_group
+
+        with pytest.raises(AssertionError) as ae:
+            tmp.async_group = AsyncRequestGroupTask(name='async-group-2')
+        assert str(ae.value) == 'async_group is already in stack'
+
+        assert len(tmp.__stack__) == 1
+        assert tmp.__stack__[-1] is async_group
+
+        tmp.async_group = None
+
+        assert len(tmp.__stack__) == 0
+
+        with pytest.raises(AssertionError) as ae:
+            tmp.async_group = None
+        assert str(ae.value) == 'async_group is not in stack'
+
+        assert len(tmp.__stack__) == 0
+
+    def test_conditional(self) -> None:
+        tmp = GrizzlyContextTasksTmp()
+
+        assert len(tmp.__stack__) == 0
+
+        conditional = ConditionalTask('cond-1', '{{ value | int > 0 }}')
+        tmp.conditional = conditional
+
+        assert len(tmp.__stack__) == 1
+        assert tmp.__stack__[-1] is conditional
+
+        with pytest.raises(AssertionError) as ae:
+            tmp.conditional = ConditionalTask('cond-2', '{{ value | int > 10 }}')
+        assert str(ae.value) == 'conditional is already in stack'
+
+        assert len(tmp.__stack__) == 1
+        assert tmp.__stack__[-1] is conditional
+
+        tmp.conditional = None
+
+        assert len(tmp.__stack__) == 0
+
+        with pytest.raises(AssertionError) as ae:
+            tmp.conditional = None
+        assert str(ae.value) == 'conditional is not in stack'
+
+        assert len(tmp.__stack__) == 0
+
+    def test_loop(self, grizzly_fixture: GrizzlyFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
+        tmp = GrizzlyContextTasksTmp()
+
+        assert len(tmp.__stack__) == 0
+
+        grizzly.state.variables['loop_value'] = 'none'
+
+        loop = LoopTask(grizzly, 'loop-1', '["hello", "world"]', "loop_value")
+        tmp.loop = loop
+
+        assert len(tmp.__stack__) == 1
+        assert tmp.__stack__[-1] is loop
+
+        with pytest.raises(AssertionError) as ae:
+            tmp.loop = LoopTask(grizzly, 'loop-2', '["hello", "world"]', "loop_value")
+        assert str(ae.value) == 'loop is already in stack'
+
+        assert len(tmp.__stack__) == 1
+        assert tmp.__stack__[-1] is loop
+
+        tmp.loop = None
+
+        assert len(tmp.__stack__) == 0
+
+        with pytest.raises(AssertionError) as ae:
+            tmp.loop = None
+        assert str(ae.value) == 'loop is not in stack'
+
+        assert len(tmp.__stack__) == 0
+
+    def test___stack__(self, grizzly_fixture: GrizzlyFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
+        grizzly.state.variables['loop_value'] = 'none'
+
+        tmp = GrizzlyContextTasksTmp()
+
+        assert len(tmp.__stack__) == 0
+
+        conditional = ConditionalTask('cond-1', '{{ value | int > 0 }}')
+        tmp.conditional = conditional
+
+        assert len(tmp.__stack__) == 1
+        assert tmp.__stack__[-1] is conditional
+
+        loop = LoopTask(grizzly, 'loop-1', '["hello", "world"]', "loop_value")
+        tmp.loop = loop
+
+        assert len(tmp.__stack__) == 2
+        assert tmp.__stack__[-1] is loop
+
+        tmp.loop = None
+
+        assert len(tmp.__stack__) == 1
+        assert tmp.__stack__[-1] is conditional
+
+        tmp.loop = loop
+
+        assert len(tmp.__stack__) == 2
+        assert tmp.__stack__[-1] is loop
+
+        async_group = AsyncRequestGroupTask(name='async-group-1')
+        tmp.async_group = async_group
+
+        assert len(tmp.__stack__) == 3
+        assert tmp.__stack__[-1] is async_group
+
+        with pytest.raises(AssertionError) as ae:
+            tmp.loop = None
+        assert str(ae.value) == 'loop is not last in stack'
+
+        assert len(tmp.__stack__) == 3
+        assert tmp.__stack__[-1] is async_group
+
+        tmp.async_group = None
+
+        assert len(tmp.__stack__) == 2
+        assert tmp.__stack__[-1] is loop
+
+        with pytest.raises(AssertionError) as ae:
+            tmp.conditional = None
+        assert str(ae.value) == 'conditional is not last in stack'
+
+        tmp.loop = None
+
+        assert len(tmp.__stack__) == 1
+        assert tmp.__stack__[-1] is conditional
+
+        tmp.conditional = None
+        assert len(tmp.__stack__) == 0
+
+
+class TestGrizzlyContextTasks:
+    def test___init__(self) -> None:
+        scenario = GrizzlyContextScenario(2)
+        scenario.name = scenario.description = 'test scenario'
+
+        tasks = GrizzlyContextTasks(scenario)
+
+        assert tasks.scenario is scenario
+        assert isinstance(tasks._tmp, GrizzlyContextTasksTmp)
+        assert tasks.tmp is tasks._tmp
+
+    def test___call__(self, grizzly_fixture: GrizzlyFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
+        grizzly.state.variables['loop_value'] = 'none'
+
+        scenario = GrizzlyContextScenario(2)
+        scenario.name = scenario.description = 'test scenario'
+
+        tasks = GrizzlyContextTasks(scenario)
+
+        assert len(tasks()) == 0
+
+        tasks.add(TestTask(name='test-1'))
+        tasks.add(TestTask(name='test-2'))
+
+        assert len(tasks()) == 2
+        assert len(tasks.tmp.__stack__) == 0
+
+        tasks.tmp.conditional = ConditionalTask('cond-1', '{{ value | int > 0 }}')
+        tasks.tmp.conditional.switch(True)
+
+        assert len(tasks()) == 0
+        assert len(tasks.tmp.__stack__) == 1
+        assert tasks.tmp.__stack__[-1] is tasks.tmp.conditional
+
+        tasks.add(TestTask(name='test-3'))
+
+        assert len(tasks()) == 1
+
+        tasks.tmp.loop = LoopTask(grizzly, 'loop-1', '["hello", "world"]', "loop_value")
+
+        assert len(tasks()) == 0
+        assert len(tasks.tmp.__stack__) == 2
+        assert tasks.tmp.__stack__[-1] is tasks.tmp.loop
+        assert tasks.tmp.__stack__[-2] is tasks.tmp.conditional
+
+        tasks.add(TestTask(name='test-4'))
+
+        assert len(tasks()) == 1
+
+        loop = tasks.tmp.loop
+        tasks.tmp.loop = None
+
+        tasks.add(loop)
+
+        assert len(tasks()) == 2
+        assert len(tasks.tmp.__stack__) == 1
+        assert tasks.tmp.__stack__[-1] is tasks.tmp.conditional
+
+        conditional = tasks.tmp.conditional
+        tasks.tmp.conditional = None
+
+        tasks.add(conditional)
+
+        assert len(tasks()) == 3
+        assert len(tasks.tmp.__stack__) == 0

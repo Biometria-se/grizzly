@@ -542,7 +542,7 @@ def step_task_async_group_close(context: Context) -> None:
     async_group = grizzly.scenario.tasks.tmp.async_group
 
     assert async_group is not None, 'no async request group is open'
-    assert len(async_group.requests) > 0, f'there are no requests in async group "{async_group.name}"'
+    assert len(async_group.tasks) > 0, f'there are no requests in async group "{async_group.name}"'
 
     grizzly.scenario.tasks.tmp.async_group = None
     grizzly.scenario.tasks.add(async_group)

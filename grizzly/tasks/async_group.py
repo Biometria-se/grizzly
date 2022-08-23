@@ -43,25 +43,25 @@ if TYPE_CHECKING:  # pragma: no cover
     from ..scenarios import GrizzlyScenario
 
 
-@template('name', 'requests')
-class AsyncRequestGroupTask(GrizzlyTask, GrizzlyTaskWrapper):
-    requests: List[GrizzlyTask]
+@template('name', 'tasks')
+class AsyncRequestGroupTask(GrizzlyTaskWrapper):
+    tasks: List[GrizzlyTask]
 
     def __init__(self, name: str, scenario: Optional['GrizzlyContextScenario'] = None) -> None:
         super().__init__(scenario)
 
         self.name = name
-        self.requests = []
+        self.tasks = []
 
     def add(self, task: GrizzlyTask) -> None:
         if not isinstance(task, RequestTask):
             raise ValueError(f'{self.__class__.__name__} only accepts RequestTask tasks, not {task.__class__.__name__}')
 
         task.name = f'{self.name}:{task.name}'
-        self.requests.append(task)
+        self.tasks.append(task)
 
     def peek(self) -> List[GrizzlyTask]:
-        return self.requests
+        return self.tasks
 
     def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
         def task(parent: 'GrizzlyScenario') -> Any:
@@ -101,7 +101,7 @@ class AsyncRequestGroupTask(GrizzlyTask, GrizzlyTaskWrapper):
                     and environ.get('GEVENT_MONITOR_THREAD_ENABLE', None) is not None
                 )
 
-                for request in self.requests:
+                for request in self.tasks:
                     greenlet = gevent.spawn(parent.user.async_request, request)
                     if debug_enabled:
                         greenlet.settrace(trace_green)
@@ -126,7 +126,7 @@ class AsyncRequestGroupTask(GrizzlyTask, GrizzlyTaskWrapper):
 
                 parent.user.environment.events.request.fire(
                     request_type=RequestType.ASYNC_GROUP(),
-                    name=f'{self.scenario.identifier} {self.name} ({len(self.requests)})',
+                    name=f'{self.scenario.identifier} {self.name} ({len(self.tasks)})',
                     response_time=response_time,
                     response_length=response_length,
                     context=parent.user._context,

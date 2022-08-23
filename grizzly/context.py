@@ -1,6 +1,6 @@
 import logging
 
-from typing import TYPE_CHECKING, Optional, Dict, Any, Tuple, List, Type, cast
+from typing import TYPE_CHECKING, Callable, Optional, Dict, Any, Tuple, List, Type, cast
 from os import environ, path
 from dataclasses import dataclass, field
 
@@ -13,7 +13,7 @@ from .types import MessageCallback, MessageDirection
 from .testdata import GrizzlyVariables
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .tasks import GrizzlyTask, AsyncRequestGroupTask, TimerTask, ConditionalTask, LoopTask
+    from .tasks import GrizzlyTask, GrizzlyTaskWrapper, AsyncRequestGroupTask, TimerTask, ConditionalTask, LoopTask
 
 
 logger = logging.getLogger(__name__)
@@ -134,13 +134,75 @@ class GrizzlyContextScenarioUser:
     weight: int = field(init=False, hash=True, default=1)
 
 
-@dataclass
+StackedFuncType = Callable[['GrizzlyContextTasksTmp'], Optional['GrizzlyTaskWrapper']]
+
+
+def stackproperty(func: StackedFuncType) -> property:
+    def setter(self: 'GrizzlyContextTasksTmp', value: Optional['GrizzlyTaskWrapper']) -> None:
+        attr_name = f'_{func.__name__}'
+        instance = getattr(self, attr_name, None)
+
+        if value is None:
+            assert instance is not None, f'{func.__name__} is not in stack'
+            pointer = self.__stack__[-1]
+            assert isinstance(pointer, instance.__class__), f'{func.__name__} is not last in stack'
+            self.__stack__.pop()
+        elif value is not None:
+            assert instance is None, f'{func.__name__} is already in stack'
+            self.__stack__.append(value)
+
+        setattr(self, attr_name, value)
+
+    return property(func, setter)
+
+
 class GrizzlyContextTasksTmp:
-    async_group: Optional['AsyncRequestGroupTask'] = field(init=False, repr=False, hash=False, compare=False, default=None)
-    timers: Dict[str, Optional['TimerTask']] = field(init=False, repr=False, hash=False, compare=False, default_factory=dict)
-    conditional: Optional['ConditionalTask'] = field(init=False, repr=False, hash=False, compare=False, default=None)
-    loop: Optional['LoopTask'] = field(init=False, repr=False, hash=False, compare=False, default=None)
-    custom: Dict[str, 'GrizzlyTask'] = field(init=False, repr=False, hash=False, compare=False, default_factory=dict)
+    _async_group: Optional['AsyncRequestGroupTask']
+    _conditional: Optional['ConditionalTask']
+    _loop: Optional['LoopTask']
+
+    _timers: Dict[str, Optional['TimerTask']]
+    _custom: Dict[str, Optional['GrizzlyTaskWrapper']]
+
+    __stack__: List['GrizzlyTaskWrapper']
+
+    def __init__(self) -> None:
+        self.__stack__ = []
+
+        self._async_group = None
+        self._conditional = None
+        self._loop = None
+
+        self._timers = {}
+        self._custom = {}
+
+    @stackproperty
+    def async_group(self) -> Optional['AsyncRequestGroupTask']:
+        return self._async_group
+
+    @stackproperty
+    def conditional(self) -> Optional['ConditionalTask']:
+        return self._conditional
+
+    @stackproperty
+    def loop(self) -> Optional['LoopTask']:
+        return self._loop
+
+    @property
+    def custom(self) -> Dict[str, Optional['GrizzlyTaskWrapper']]:
+        return self._custom
+
+    @custom.setter
+    def custom(self, value: Dict[str, Optional['GrizzlyTaskWrapper']]) -> None:
+        self._custom = value
+
+    @property
+    def timers(self) -> Dict[str, Optional['TimerTask']]:
+        return self._timers
+
+    @timers.setter
+    def timers(self, value: Dict[str, Optional['TimerTask']]) -> None:
+        self._timers = value
 
 
 class GrizzlyContextTasks(List['GrizzlyTask']):
@@ -158,12 +220,8 @@ class GrizzlyContextTasks(List['GrizzlyTask']):
         return self._tmp
 
     def __call__(self) -> List['GrizzlyTask']:
-        if self.tmp.async_group is not None:
-            return self.tmp.async_group.peek()
-        elif self.tmp.conditional is not None:
-            return self.tmp.conditional.peek()
-        elif self.tmp.loop is not None:
-            return self.tmp.loop.peek()
+        if len(self.tmp.__stack__) > 0:
+            return self.tmp.__stack__[-1].peek()
         else:
             return cast(List['GrizzlyTask'], self)
 
@@ -171,12 +229,8 @@ class GrizzlyContextTasks(List['GrizzlyTask']):
         if not hasattr(task, 'scenario') or task.scenario is None or task.scenario is not self.scenario:
             task.scenario = self.scenario
 
-        if self.tmp.async_group is not None:
-            self.tmp.async_group.add(task)
-        elif self.tmp.conditional is not None:
-            self.tmp.conditional.add(task)
-        elif self.tmp.loop is not None:
-            self.tmp.loop.add(task)
+        if len(self.tmp.__stack__) > 0:
+            self.tmp.__stack__[-1].add(task)
         else:
             self.append(task)
 

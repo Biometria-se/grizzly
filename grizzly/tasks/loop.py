@@ -35,11 +35,10 @@ if TYPE_CHECKING:  # pragma: no cover
     from ..context import GrizzlyContextScenario, GrizzlyContext
 
 from . import GrizzlyTask, GrizzlyTaskWrapper, template
-from ..exceptions import RestartScenario, StopScenario, StopUser
 
 
 @template('values')
-class LoopTask(GrizzlyTask, GrizzlyTaskWrapper):
+class LoopTask(GrizzlyTaskWrapper):
     tasks: List[GrizzlyTask]
 
     name: str
@@ -101,9 +100,6 @@ class LoopTask(GrizzlyTask, GrizzlyTaskWrapper):
                         del parent.user._context['variables'][self.variable]
                     except:
                         pass
-
-                if isinstance(exception, (RestartScenario, StopUser, StopScenario,)):
-                    raise exception
 
                 response_time = int((perf_counter() - start) * 1000)
 

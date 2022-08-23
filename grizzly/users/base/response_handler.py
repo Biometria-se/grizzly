@@ -15,10 +15,11 @@ from grizzly_extras.transformer import transformer, TransformerError, PlainTrans
 
 
 class ResponseHandlerAction(ABC):
-    def __init__(self, /, expression: str, match_with: str, expected_matches: int = 1) -> None:
+    def __init__(self, /, expression: str, match_with: str, expected_matches: int = 1, as_json: bool = False) -> None:
         self.expression = expression
         self.match_with = match_with
         self.expected_matches = expected_matches
+        self.as_json = as_json
 
     @abstractmethod
     def __call__(
@@ -80,7 +81,10 @@ class ResponseHandlerAction(ABC):
 
         number_of_matches = len(matches)
 
-        if number_of_matches != self.expected_matches:
+        if self.expected_matches == -1 and number_of_matches < 1:
+            user.logger.error(f'"{interpolated_expression}": "{interpolated_match_with}" matched no values')
+            match = None
+        elif self.expected_matches > -1 and number_of_matches != self.expected_matches:
             if number_of_matches < self.expected_matches and not condition:
                 user.logger.error(f'"{interpolated_expression}": "{interpolated_match_with}" matched too few values: "{values}"')
             elif number_of_matches > self.expected_matches:
@@ -90,6 +94,9 @@ class ResponseHandlerAction(ABC):
         else:
             if number_of_matches == 1:
                 match = matches[0]
+
+                if self.as_json:
+                    match = jsondumps([match])
             else:
                 match = jsondumps(matches)
 
@@ -97,11 +104,12 @@ class ResponseHandlerAction(ABC):
 
 
 class ValidationHandlerAction(ResponseHandlerAction):
-    def __init__(self, condition: bool, /, expression: str, match_with: str, expected_matches: int = 1) -> None:
+    def __init__(self, condition: bool, /, expression: str, match_with: str, expected_matches: int = 1, as_json: bool = False) -> None:
         super().__init__(
             expression=expression,
             match_with=match_with,
             expected_matches=expected_matches,
+            as_json=as_json,
         )
 
         self.condition = condition
@@ -125,11 +133,12 @@ class ValidationHandlerAction(ResponseHandlerAction):
 
 
 class SaveHandlerAction(ResponseHandlerAction):
-    def __init__(self, variable: str, /, expression: str, match_with: str, expected_matches: int = 1) -> None:
+    def __init__(self, variable: str, /, expression: str, match_with: str, expected_matches: int = 1, as_json: bool = False) -> None:
         super().__init__(
             expression=expression,
             match_with=match_with,
             expected_matches=expected_matches,
+            as_json=as_json,
         )
 
         self.variable = variable
