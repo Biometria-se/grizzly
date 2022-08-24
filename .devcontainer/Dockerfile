@@ -6,7 +6,7 @@ FROM alpine:latest as dependencies
 
 USER root
 
-ENV MQ_VERSION="9.2.2.0"
+ENV MQ_VERSION="9.2.5.0"
 
 RUN mkdir /root/ibm && cd /root/ibm && \
     wget https://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/messaging/mqdev/redist/${MQ_VERSION}-IBM-MQC-Redist-LinuxX64.tar.gz -O - | tar xzf -
