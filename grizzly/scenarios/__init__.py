@@ -42,6 +42,7 @@ class GrizzlyScenario(SequentialTaskSet):
         return Template(input).render(**self.user._context['variables'], **variables)
 
     def on_start(self) -> None:
+        self.logger.debug('locust.environment.events.init on_start triggered')
         producer_address = environ.get('TESTDATA_PRODUCER_ADDRESS', None)
         if producer_address is not None:
             self.consumer = TestdataConsumer(
