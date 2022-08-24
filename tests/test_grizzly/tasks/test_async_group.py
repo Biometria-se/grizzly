@@ -24,13 +24,13 @@ class TestAsyncRequestGroup:
     def test__init__(self) -> None:
         task_factory = AsyncRequestGroupTask(name='test')
 
-        assert isinstance(task_factory.requests, list)
-        assert len(task_factory.requests) == 0
+        assert isinstance(task_factory.tasks, list)
+        assert len(task_factory.tasks) == 0
         assert task_factory.name == 'test'
 
     def test_add(self) -> None:
         task_factory = AsyncRequestGroupTask(name='test')
-        requests = cast(List[RequestTask], task_factory.requests)
+        requests = cast(List[RequestTask], task_factory.tasks)
         assert len(requests) == 0
 
         task_factory.add(RequestTask(RequestMethod.GET, name='test', endpoint='/api/test'))
@@ -45,7 +45,7 @@ class TestAsyncRequestGroup:
     @pytest.mark.parametrize('affix', [True, False])
     def test_get_templates(self, affix: bool) -> None:
         task_factory = AsyncRequestGroupTask(name='async-{{ name }}')
-        assert len(task_factory.requests) == 0
+        assert len(task_factory.tasks) == 0
 
         name_template = 'test-'
         if affix:
@@ -55,7 +55,7 @@ class TestAsyncRequestGroup:
         task_factory.add(RequestTask(RequestMethod.GET, name=f'{name_template}-2', endpoint='/api/test'))
         task_factory.add(RequestTask(RequestMethod.GET, name=f'{name_template}-3', endpoint='/api/test'))
 
-        assert len(task_factory.requests) == 3
+        assert len(task_factory.tasks) == 3
         assert sorted(task_factory.get_templates()) == sorted([
             'async-{{ name }}',
             f'async-{{{{ name }}}}:{name_template}-1',
@@ -72,7 +72,7 @@ class TestAsyncRequestGroup:
         scenario_context.name = scenario_context.description = 'test scenario'
 
         task_factory = AsyncRequestGroupTask(name='test-async-group', scenario=scenario_context)
-        requests = cast(List[RequestTask], task_factory.requests)
+        requests = cast(List[RequestTask], task_factory.tasks)
         task = task_factory()
 
         with pytest.raises(NotImplementedError) as nie:
@@ -117,16 +117,16 @@ class TestAsyncRequestGroup:
 
         task(scenario)
 
-        assert spawn_mock.call_count == len(task_factory.requests)
+        assert spawn_mock.call_count == len(task_factory.tasks)
         args, _ = spawn_mock.call_args_list[0]
-        assert args[1] is task_factory.requests[0]
+        assert args[1] is task_factory.tasks[0]
         args, _ = spawn_mock.call_args_list[1]
-        assert args[1] is task_factory.requests[1]
+        assert args[1] is task_factory.tasks[1]
         assert settrace_mock.call_count == 0
 
         assert joinall_mock.call_count == 2
         args, _ = joinall_mock.call_args_list[-1]
-        assert len(args[0]) == len(task_factory.requests)
+        assert len(args[0]) == len(task_factory.tasks)
 
         assert requests_event_mock.call_count == 2
         _, kwargs = requests_event_mock.call_args_list[-1]
@@ -195,7 +195,7 @@ class TestAsyncRequestGroup:
         task_factory.add(RequestTask(RequestMethod.GET, name='sleep-1', endpoint='/api/sleep/1', scenario=context_scenario))
         # task_factory.add(RequestTask(RequestMethod.POST, name='post-echo', endpoint='/api/echo', source='{"foo": "bar"}', scenario=context_scenario))
 
-        assert len(task_factory.requests) == 3
+        assert len(task_factory.tasks) == 3
 
         task = task_factory()
         caplog.handler.formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
