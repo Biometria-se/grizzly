@@ -1610,7 +1610,7 @@
 <span class="k">def</span> <span class="nf">step_setup_set_context_variable</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
                                     <span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
-<p><a href="https://github.com/Biometria-se/grizzly/blob/501b5960bb0a6a50fcfe381ede9b826f68cc4b0e/docs/../grizzly/steps/scenario/setup.py#L30">[view_source]</a></p>
+<p><a href="https://github.com/Biometria-se/grizzly/blob/eba5ba1dc38a384d41324468fae086a9d8930029/docs/../grizzly/steps/scenario/setup.py#L30">[view_source]</a></p>
 <p>Sets a variable in the scenario context.</p>
 <p>Variable names can contain (one or more) dot (<code>.</code>) or slash (<code>/</code>) to indicate that the variable has a nested structure. E.g. <code>token.url</code>
 and <code>token/url</code> results in <code>{'token': {'url': '&lt;value'&gt;}}</code></p>
@@ -1637,7 +1637,7 @@ converted to lowercase.</p>
 <span class="k">def</span> <span class="nf">step_setup_iterations</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
                           <span class="n">iteration_number</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
-<p><a href="https://github.com/Biometria-se/grizzly/blob/501b5960bb0a6a50fcfe381ede9b826f68cc4b0e/docs/../grizzly/steps/scenario/setup.py#L63">[view_source]</a></p>
+<p><a href="https://github.com/Biometria-se/grizzly/blob/eba5ba1dc38a384d41324468fae086a9d8930029/docs/../grizzly/steps/scenario/setup.py#L63">[view_source]</a></p>
 <p>Sets how many iterations of the <a href="/grizzly/framework/usage/tasks#pydoc:grizzly.tasks">Tasks</a> in the scenario should execute.</p>
 <p>Default value is <code>1</code>. A value of <code>0</code> means to run until all test data is consumed, or that the (optional) specified
 runtime for the scenario is reached.</p>
@@ -1657,7 +1657,7 @@ runtime for the scenario is reached.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@given</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;value for variable &quot;</span><span class="si">{name}</span><span class="s1">&quot; is &quot;</span><span class="si">{value}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">step_setup_variable_value</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
-<p><a href="https://github.com/Biometria-se/grizzly/blob/501b5960bb0a6a50fcfe381ede9b826f68cc4b0e/docs/../grizzly/steps/scenario/setup.py#L101">[view_source]</a></p>
+<p><a href="https://github.com/Biometria-se/grizzly/blob/eba5ba1dc38a384d41324468fae086a9d8930029/docs/../grizzly/steps/scenario/setup.py#L101">[view_source]</a></p>
 <p>Use this step to initialize a variable that should have the same [start] value for every run of
 the scenario.</p>
 <p>Data type for the value of the variable is based on the type of variable. If the variable is an testdata <a href="/grizzly/framework/usage/variables/testdata#pydoc:grizzly.testdata.variables">Variables</a>
@@ -1699,7 +1699,7 @@ multiple scenarios which all should have the same initial value.</p>
 <span class="k">def</span> <span class="nf">step_setup_set_variable_alias</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">alias</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
                                   <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
-<p><a href="https://github.com/Biometria-se/grizzly/blob/501b5960bb0a6a50fcfe381ede9b826f68cc4b0e/docs/../grizzly/steps/scenario/setup.py#L148">[view_source]</a></p>
+<p><a href="https://github.com/Biometria-se/grizzly/blob/eba5ba1dc38a384d41324468fae086a9d8930029/docs/../grizzly/steps/scenario/setup.py#L148">[view_source]</a></p>
 <p>Creates an alias for a variable that points to another structure in the context.</p>
 <p>This is useful if you have test data that somehow should change the behavior for a
 user, e.g. username and password.</p>
@@ -1720,7 +1720,7 @@ user, e.g. username and password.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@given</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;log all requests&#39;</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">step_setup_log_all_requests</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
-<p><a href="https://github.com/Biometria-se/grizzly/blob/501b5960bb0a6a50fcfe381ede9b826f68cc4b0e/docs/../grizzly/steps/scenario/setup.py#L183">[view_source]</a></p>
+<p><a href="https://github.com/Biometria-se/grizzly/blob/eba5ba1dc38a384d41324468fae086a9d8930029/docs/../grizzly/steps/scenario/setup.py#L183">[view_source]</a></p>
 <p>Sets if all requests should be logged to a file.</p>
 <p>By default only failed requests (and responses) will be logged.</p>
 <p><strong>Example</strong>:</p>
@@ -1732,7 +1732,7 @@ user, e.g. username and password.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@given</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;stop user on failure&#39;</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">step_setup_stop_user_on_failure</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
-<p><a href="https://github.com/Biometria-se/grizzly/blob/501b5960bb0a6a50fcfe381ede9b826f68cc4b0e/docs/../grizzly/steps/scenario/setup.py#L199">[view_source]</a></p>
+<p><a href="https://github.com/Biometria-se/grizzly/blob/eba5ba1dc38a384d41324468fae086a9d8930029/docs/../grizzly/steps/scenario/setup.py#L199">[view_source]</a></p>
 <p>Stop user if a request fails.</p>
 <p>Default behavior is to continue the scenario if a request fails.</p>
 <p><strong>Example</strong>:</p>
@@ -1744,7 +1744,7 @@ user, e.g. username and password.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@given</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;restart scenario on failure&#39;</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">step_setup_restart_scenario_on_failure</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
-<p><a href="https://github.com/Biometria-se/grizzly/blob/501b5960bb0a6a50fcfe381ede9b826f68cc4b0e/docs/../grizzly/steps/scenario/setup.py#L216">[view_source]</a></p>
+<p><a href="https://github.com/Biometria-se/grizzly/blob/eba5ba1dc38a384d41324468fae086a9d8930029/docs/../grizzly/steps/scenario/setup.py#L216">[view_source]</a></p>
 <p>Restart scenario, from first task, if a request fails.</p>
 <p>Default behavior is to continue the scenario if a request fails.</p>
 <p><strong>Example</strong>:</p>
@@ -1756,7 +1756,7 @@ user, e.g. username and password.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@given</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;metadata &quot;</span><span class="si">{key}</span><span class="s1">&quot; is &quot;</span><span class="si">{value}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">step_setup_metadata</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">key</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
-<p><a href="https://github.com/Biometria-se/grizzly/blob/501b5960bb0a6a50fcfe381ede9b826f68cc4b0e/docs/../grizzly/steps/scenario/setup.py#L233">[view_source]</a></p>
+<p><a href="https://github.com/Biometria-se/grizzly/blob/eba5ba1dc38a384d41324468fae086a9d8930029/docs/../grizzly/steps/scenario/setup.py#L233">[view_source]</a></p>
 <p>Set a metadata (header) value to be used by the user when sending requests.</p>
 <p><strong>Example</strong>:</p>
 <div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">metadata &quot;</span><span class="s">Content-Type</span><span class="nf">&quot; is &quot;</span><span class="s">application/xml</span><span class="nf">&quot;</span>
