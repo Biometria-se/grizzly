@@ -34,7 +34,6 @@ class IteratorScenario(GrizzlyScenario):
 
     def run(self) -> None:  # type: ignore
         try:
-            self.user.logger.debug('IteratorScenario.run() calling on_start()')
             self.on_start()
         except InterruptTaskSet as e:
             if e.reschedule:
@@ -80,6 +79,7 @@ class IteratorScenario(GrizzlyScenario):
                 else:
                     self.wait()
             except (StopScenario, StopUser, GreenletExit) as e:
+                self.logger.debug(f'{self.user._scenario_state=}, {e=}')
                 if self.user._scenario_state != ScenarioState.STOPPING:
                     # unexpected exit of scenario, log as error
                     if not isinstance(e, StopScenario):

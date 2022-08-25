@@ -47,7 +47,6 @@ def _init_testdata_producer(grizzly: GrizzlyContext, port: str, testdata: Testda
 
 def init(grizzly: GrizzlyContext, testdata: Optional[TestdataType] = None) -> Callable[[Runner, KwArg(Dict[str, Any])], None]:
     def ginit(runner: Runner, **kwargs: Dict[str, Any]) -> None:
-        logger.debug('locust.environment.events.init triggered')
         producer_port = environ.get('TESTDATA_PRODUCER_PORT', '5555')
         if not isinstance(runner, MasterRunner):
             if isinstance(runner, WorkerRunner):
