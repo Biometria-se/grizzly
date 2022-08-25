@@ -1,6 +1,6 @@
 from tempfile import NamedTemporaryFile
-from os import chdir, getcwd
 from typing import Optional
+from pathlib import Path
 
 import yaml
 
@@ -9,8 +9,6 @@ from ..helpers import run_command
 
 
 def test_e2e_example(webserver: Webserver, behave_context_fixture: BehaveContextFixture) -> None:
-    cwd = getcwd()
-
     try:
         result: Optional[str] = None
         with open('example/environments/example.yaml') as env_yaml_file:
@@ -19,8 +17,9 @@ def test_e2e_example(webserver: Webserver, behave_context_fixture: BehaveContext
             for name in ['dog', 'cat', 'book']:
                 env_conf['configuration']['facts'][name]['host'] = f'http://127.0.0.1:{webserver.port}'
 
-        with NamedTemporaryFile(delete=True, suffix='.yaml') as env_conf_file:
-            chdir('example/')
+        example_root = str(Path.cwd() / 'example')
+
+        with NamedTemporaryFile(delete=True, suffix='.yaml', dir=f'{example_root}/environments') as env_conf_file:
             env_conf_file.write(yaml.dump(env_conf, Dumper=yaml.Dumper).encode())
             env_conf_file.flush()
 
@@ -30,7 +29,7 @@ def test_e2e_example(webserver: Webserver, behave_context_fixture: BehaveContext
                 '--yes',
                 '-e', env_conf_file.name,
                 'features/example.feature'
-            ], env=behave_context_fixture._env)
+            ], env=behave_context_fixture._env, cwd=example_root)
 
             result = ''.join(output)
 
@@ -60,5 +59,3 @@ ident   iter  status   description
         if result is not None:
             print(result)
         raise
-    finally:
-        chdir(cwd)

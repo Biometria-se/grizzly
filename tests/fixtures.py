@@ -699,6 +699,11 @@ class BehaveContextFixture:
             'PYTHONPATH': environ.get('PYTHONPATH', '.'),
         })
 
+        for env_key in ['SSH_AUTH_SOCK', 'GRIZZLY_MOUNT_CONTEXT']:
+            env_value = environ.get(env_key, None)
+            if env_value is not None:
+                self._env.update({env_key: env_value})
+
         # install grizzly-cli
         rc, output = run_command(
             ['python3', '-m', 'pip', 'install', 'grizzly-loadtester-cli'],
