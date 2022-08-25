@@ -33,6 +33,7 @@ from locust.util.timespan import parse_timespan
 from locust import events
 from jinja2.exceptions import TemplateError
 
+from . import __version__, __locust_version__
 from .listeners import init, init_statistics_listener, quitting, validate_result, spawning_complete, locust_test_start, locust_test_stop
 from .testdata.utils import initialize_testdata
 from .types import RequestType, TestdataType
@@ -202,7 +203,7 @@ def setup_environment_listeners(context: Context, tasks: List[GrizzlyTask]) -> S
                 assert value is not None, f'variable {variable} has not been initialized'
     except TemplateError as e:
         logger.error(e, exc_info=True)
-        assert False, f'error parsing request payload: {e}'
+        raise AssertionError(f'error parsing request payload: {e}') from e
 
     if not on_worker(context):
         validate_results = False
@@ -372,6 +373,8 @@ def run(context: Context) -> int:
         variable_dependencies = setup_environment_listeners(context, tasks)
         external_dependencies.update(variable_dependencies)
 
+        environment.events.init.fire(environment=environment, runner=runner, web_ui=None)
+
         if not on_master(context) and len(external_dependencies) > 0:
             env = environ.copy()
             if grizzly.state.verbose:
@@ -386,7 +389,7 @@ def run(context: Context) -> int:
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                 )})
-                gevent.sleep(2)
+                # gevent.sleep(2)
 
         main_greenlet = runner.greenlet
 
@@ -400,8 +403,6 @@ def run(context: Context) -> int:
                 return 1
 
         stats_printer_greenlet: Optional[gevent.Greenlet] = None
-
-        environment.events.init.fire(environment=environment, runner=runner, web_ui=None)
 
         class LocustOption:
             headless: bool
@@ -437,7 +438,7 @@ def run(context: Context) -> int:
             )
 
         if not isinstance(runner, WorkerRunner):
-            logger.info('starting locust via grizzly')
+            logger.info(f'starting locust-{__locust_version__} via grizzly-{__version__}')
             runner.start(grizzly.setup.user_count, grizzly.setup.spawn_rate)
 
             stats_printer_greenlet = gevent.spawn(grizzly_stats_printer(environment.stats))

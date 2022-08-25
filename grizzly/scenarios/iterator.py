@@ -80,10 +80,11 @@ class IteratorScenario(GrizzlyScenario):
                     self.wait()
             except (StopScenario, StopUser, GreenletExit) as e:
                 if self.user._scenario_state != ScenarioState.STOPPING:
+                    self.logger.debug(f'{self.user._scenario_state=}, {self.user._state=}, {e=}')
                     # unexpected exit of scenario, log as error
-                    if not isinstance(e, StopScenario):
+                    if not isinstance(e, StopScenario) and self.user._state != LOCUST_STATE_STOPPING:
                         self.iterator_error()
-                    else:
+                    elif not isinstance(e, StopUser):
                         e = StopUser()
 
                     self.on_stop()
