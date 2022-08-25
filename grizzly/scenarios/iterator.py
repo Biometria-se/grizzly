@@ -34,6 +34,7 @@ class IteratorScenario(GrizzlyScenario):
 
     def run(self) -> None:  # type: ignore
         try:
+            self.user.logger.debug('IteratorScenario.run() calling on_start()')
             self.on_start()
         except InterruptTaskSet as e:
             if e.reschedule:
