@@ -389,9 +389,11 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
         assert len(environment.events.quitting._handlers) == 0
         assert external_dependencies == set()
 
+        environment.events.spawning_complete._handlers = []  # grizzly handler should only append
         grizzly.setup.statistics_url = 'influxdb://influx.example.com/testdb'
 
         external_dependencies = setup_environment_listeners(behave, [])
+
         assert len(environment.events.init._handlers) == 2
         assert len(environment.events.test_start._handlers) == 1
         assert len(environment.events.test_stop._handlers) == 1
@@ -400,6 +402,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
         assert external_dependencies == set()
         assert grizzly.state.locust.environment is environment
 
+        environment.events.spawning_complete._handlers = []
         grizzly.setup.statistics_url = None
         grizzly.state.variables['AtomicIntegerIncrementer.value'] = '1 | step=10'
 
@@ -419,6 +422,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
 
         AtomicIntegerIncrementer.destroy()
         grizzly.state.variables['test_id'] = 'test-1'
+        environment.events.spawning_complete._handlers = []
 
         external_dependencies = setup_environment_listeners(behave, tasks)
         assert len(environment.events.init._handlers) == 1
@@ -430,6 +434,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
 
         AtomicIntegerIncrementer.destroy()
         grizzly.setup.statistics_url = 'influxdb://influx.example.com/testdb'
+        environment.events.spawning_complete._handlers = []
 
         external_dependencies = setup_environment_listeners(behave, tasks)
         assert len(environment.events.init._handlers) == 2
@@ -455,6 +460,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
             task.endpoint = '/api/v1/{{ AtomicMessageQueue.test }}'
 
         grizzly.scenario.validation.fail_ratio = 0.1
+        environment.events.spawning_complete._handlers = []
 
         external_dependencies = setup_environment_listeners(behave, tasks)
         assert len(environment.events.init._handlers) == 2
@@ -474,6 +480,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
             pass
 
         grizzly.setup.statistics_url = None
+        environment.events.spawning_complete._handlers = []
 
         # problems initializing testdata
         def mocked_initialize_testdata(grizzly: GrizzlyContext, request_tasks: List[RequestTask]) -> Any:
