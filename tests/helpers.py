@@ -97,6 +97,7 @@ class TestTask(GrizzlyTask):
                 exception=None,
             )
             self.task_call_count += 1
+            parent.user.logger.debug(f'{self.name} executed')
 
         return task
 

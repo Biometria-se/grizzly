@@ -187,7 +187,6 @@ def setup_environment_listeners(context: Context, tasks: List[GrizzlyTask]) -> S
     environment.events.init._handlers = []
     environment.events.test_start._handlers = []
     environment.events.test_stop._handlers = []
-    environment.events.spawning_complete._handlers = []
     environment.events.quitting._handlers = []
 
     # add standard listeners

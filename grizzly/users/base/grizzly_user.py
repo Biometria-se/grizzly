@@ -51,8 +51,9 @@ class GrizzlyUser(User):
     @scenario_state.setter
     def scenario_state(self, value: ScenarioState) -> None:
         old_state = self._scenario_state
-        self._scenario_state = value
-        self.logger.debug(f'scenario state={old_state} -> {value}')
+        if old_state != value:
+            self._scenario_state = value
+            self.logger.debug(f'scenario state={old_state} -> {value}')
 
     def stop(self, force: bool = False) -> bool:
         if not force:
