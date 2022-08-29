@@ -15,6 +15,8 @@ If `endpoint` is a template variable which includes the scheme, the scheme for t
 correct `grizzly.tasks.client` implementation is used. The additional scheme will be removed when the request is
 performed.
 '''
+import logging
+
 from abc import abstractmethod
 from typing import Dict, Generator, Type, List, Any, Optional, Callable
 from contextlib import contextmanager
@@ -159,6 +161,8 @@ class client:
         return impl
 
 
+logger = logging.getLogger(__name__)
+
 from .http import HttpClientTask
 from .blobstorage import BlobStorageClientTask
 from .messagequeue import MessageQueueClientTask
@@ -168,4 +172,5 @@ __all__ = [
     'HttpClientTask',
     'BlobStorageClientTask',
     'MessageQueueClientTask',
+    'logger',
 ]

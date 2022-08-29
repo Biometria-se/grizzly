@@ -126,7 +126,7 @@ class TestdataProducer:
 
         self._stopping = False
 
-        self.logger.debug(f'servering:\n{self.testdata}')
+        self.logger.debug(f'serving:\n{self.testdata}')
 
     def reset(self) -> None:
         self.logger.debug('reseting')

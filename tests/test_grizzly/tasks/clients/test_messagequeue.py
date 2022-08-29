@@ -70,7 +70,7 @@ class TestMessageQueueClientTask:
             zmq_context = task_factory._zmq_context
 
             assert create_context_mocked.call_count == 1
-            assert create_client_mocked.call_count == 1
+            assert create_client_mocked.call_count == 0
 
             assert isinstance(task_factory._zmq_context, zmq.Context)
             assert task_factory._zmq_url == 'tcp://127.0.0.1:5554'
@@ -91,7 +91,7 @@ class TestMessageQueueClientTask:
             zmq_context = task_factory._zmq_context
 
             assert create_context_mocked.call_count == 2
-            assert create_client_mocked.call_count == 2
+            assert create_client_mocked.call_count == 0
 
             assert isinstance(task_factory._zmq_context, zmq.Context)
             assert task_factory._zmq_url == 'tcp://127.0.0.1:5554'
@@ -118,7 +118,7 @@ class TestMessageQueueClientTask:
             ))
             zmq_context = task_factory._zmq_context
 
-            assert create_client_mocked.call_count == 1
+            assert create_client_mocked.call_count == 0
 
             assert task_factory.endpoint_path == 'queue:INCOMING.MESSAGES'
             assert task_factory.context == {
@@ -266,6 +266,8 @@ class TestMessageQueueClientTask:
     def test_create_client(self, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.tasks.clients.messagequeue')
         connect_mock = noop_zmq.get_mock('zmq.Socket.connect')
+        setsockopt_mock = noop_zmq._mocker.patch('grizzly.tasks.clients.messagequeue.zmq.Socket.setsockopt', autospec=True)
+        close_mock = noop_zmq._mocker.patch('grizzly.tasks.clients.messagequeue.zmq.Socket.close')
 
         zmq_context: Optional[zmq.Context] = None
         try:
@@ -275,11 +277,20 @@ class TestMessageQueueClientTask:
             )
             zmq_context = task_factory._zmq_context
 
-            assert connect_mock.call_count == 1
-            args, _ = connect_mock.call_args_list[-1]
-            assert args[1] == task_factory._zmq_url
+            with task_factory.create_client() as client:
+                assert connect_mock.call_count == 1
+                args, _ = connect_mock.call_args_list[-1]
+                assert args[1] == task_factory._zmq_url
 
-            assert isinstance(task_factory._client, zmq.Socket)
+                assert isinstance(client, zmq.Socket)
+
+            assert setsockopt_mock.call_count == 1
+            args, _ = setsockopt_mock.call_args_list[-1]
+            assert len(args) == 2
+            assert args[0] == zmq.LINGER
+            assert args[1] == 0
+
+            assert close_mock.call_count == 1
         finally:
             if zmq_context is not None:
                 zmq_context.destroy()
@@ -300,66 +311,68 @@ class TestMessageQueueClientTask:
             )
             zmq_context = task_factory._zmq_context
 
-            meta: Dict[str, Any] = {}
-            with pytest.raises(RuntimeError) as re:
-                task_factory.connect(meta)
-            assert str(re.value) == 'no response when trying to connect'
-            assert meta.get('response_length', None) == 0
-            assert meta.get('action', None) == 'topic:INCOMING.MSG'
-            assert meta.get('direction', None) == '<->'
+            with task_factory.create_client() as client:
+                noop_zmq._mocker.patch('grizzly.tasks.clients.messagequeue.zmq.Socket.setsockopt', autospec=True)
+                meta: Dict[str, Any] = {}
+                with pytest.raises(RuntimeError) as re:
+                    task_factory.connect(client, meta)
+                assert str(re.value) == 'no response when trying to connect'
+                assert meta.get('response_length', None) == 0
+                assert meta.get('action', None) == 'topic:INCOMING.MSG'
+                assert meta.get('direction', None) == '<->'
 
-            assert send_json_mock.call_count == 1
-            args, _ = send_json_mock.call_args_list[-1]
-            assert args[1] == {
-                'action': 'CONN',
-                'context': {
-                    'url': task_factory.endpoint,
-                    'connection': 'mq.example.io(1414)',
-                    'queue_manager': 'QM01',
-                    'channel': 'TCP.IN',
-                    'username': 'mq_username',
-                    'password': 'mq_password',
-                    'key_file': 'mq_username',
-                    'cert_label': 'mq_username',
-                    'ssl_cipher': 'ECDHE_RSA_AES_256_GCM_SHA384',
-                    'message_wait': None,
-                    'heartbeat_interval': None,
-                    'header_type': None,
-                },
-            }
-            assert recv_json_mock.call_count == 2
-            _, kwargs = recv_json_mock.call_args_list[-1]
-            assert kwargs.get('flags', None) == zmq.NOBLOCK
+                assert send_json_mock.call_count == 1
+                args, _ = send_json_mock.call_args_list[-1]
+                assert args[1] == {
+                    'action': 'CONN',
+                    'context': {
+                        'url': task_factory.endpoint,
+                        'connection': 'mq.example.io(1414)',
+                        'queue_manager': 'QM01',
+                        'channel': 'TCP.IN',
+                        'username': 'mq_username',
+                        'password': 'mq_password',
+                        'key_file': 'mq_username',
+                        'cert_label': 'mq_username',
+                        'ssl_cipher': 'ECDHE_RSA_AES_256_GCM_SHA384',
+                        'message_wait': None,
+                        'heartbeat_interval': None,
+                        'header_type': None,
+                    },
+                }
+                assert recv_json_mock.call_count == 2
+                _, kwargs = recv_json_mock.call_args_list[-1]
+                assert kwargs.get('flags', None) == zmq.NOBLOCK
 
-            meta = {}
-            message = {'success': False, 'message': 'unknown error yo'}
-            recv_json_mock.side_effect = [message]
+                meta = {}
+                message = {'success': False, 'message': 'unknown error yo'}
+                recv_json_mock.side_effect = [message]
 
-            with pytest.raises(RuntimeError) as re:
-                task_factory.connect(meta)
-            assert str(re.value) == 'unknown error yo'
+                with pytest.raises(RuntimeError) as re:
+                    task_factory.connect(client, meta)
+                assert str(re.value) == 'unknown error yo'
 
-            assert send_json_mock.call_count == 2
-            assert recv_json_mock.call_count == 3
-            assert meta.get('response_length', None) == 0
-            assert meta.get('action', None) == 'topic:INCOMING.MSG'
+                assert send_json_mock.call_count == 2
+                assert recv_json_mock.call_count == 3
+                assert meta.get('response_length', None) == 0
+                assert meta.get('action', None) == 'topic:INCOMING.MSG'
 
-            meta = {}
-            message = {'success': True, 'message': 'hello there', 'worker': 'aaaa-bbbb-cccc-dddd'}
-            recv_json_mock.side_effect = [message]
+                meta = {}
+                message = {'success': True, 'message': 'hello there', 'worker': 'aaaa-bbbb-cccc-dddd'}
+                recv_json_mock.side_effect = [message]
 
-            task_factory.connect(meta)
+                task_factory.connect(client, meta)
 
-            assert send_json_mock.call_count == 3
-            assert recv_json_mock.call_count == 4
-            assert meta.get('response_length', None) == 0
-            assert meta.get('action', None) == 'topic:INCOMING.MSG'
-            assert task_factory._worker == 'aaaa-bbbb-cccc-dddd'
+                assert send_json_mock.call_count == 3
+                assert recv_json_mock.call_count == 4
+                assert meta.get('response_length', None) == 0
+                assert meta.get('action', None) == 'topic:INCOMING.MSG'
+                assert task_factory._worker == 'aaaa-bbbb-cccc-dddd'
 
-            zmq_context.destroy()
-            meta = {}
-            message = {'success': True, 'message': 'hello there', 'worker': 'aaaa-bbbb-cccc-dddd'}
-            recv_json_mock.side_effect = [message]
+                zmq_context.destroy()
+                meta = {}
+                message = {'success': True, 'message': 'hello there', 'worker': 'aaaa-bbbb-cccc-dddd'}
+                recv_json_mock.side_effect = [message]
 
             task_factory = MessageQueueClientTask(
                 RequestDirection.FROM,
@@ -367,27 +380,28 @@ class TestMessageQueueClientTask:
             )
             zmq_context = task_factory._zmq_context
 
-            task_factory.connect(meta)
-            assert send_json_mock.call_count == 4
-            assert recv_json_mock.call_count == 5
-            args, _ = send_json_mock.call_args_list[-1]
-            assert args[1] == {
-                'action': 'CONN',
-                'context': {
-                    'url': task_factory.endpoint,
-                    'connection': 'mq.example.io(1414)',
-                    'queue_manager': 'QM01',
-                    'channel': 'TCP.IN',
-                    'username': 'mq_username',
-                    'password': 'mq_password',
-                    'key_file': 'mq_username',
-                    'cert_label': 'mq_username',
-                    'ssl_cipher': 'ECDHE_RSA_AES_256_GCM_SHA384',
-                    'message_wait': None,
-                    'heartbeat_interval': None,
-                    'header_type': 'rfh2',
-                },
-            }
+            with task_factory.create_client() as client:
+                task_factory.connect(client, meta)
+                assert send_json_mock.call_count == 4
+                assert recv_json_mock.call_count == 5
+                args, _ = send_json_mock.call_args_list[-1]
+                assert args[1] == {
+                    'action': 'CONN',
+                    'context': {
+                        'url': task_factory.endpoint,
+                        'connection': 'mq.example.io(1414)',
+                        'queue_manager': 'QM01',
+                        'channel': 'TCP.IN',
+                        'username': 'mq_username',
+                        'password': 'mq_password',
+                        'key_file': 'mq_username',
+                        'cert_label': 'mq_username',
+                        'ssl_cipher': 'ECDHE_RSA_AES_256_GCM_SHA384',
+                        'message_wait': None,
+                        'heartbeat_interval': None,
+                        'header_type': 'rfh2',
+                    },
+                }
 
         finally:
             if zmq_context is not None:
