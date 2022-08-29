@@ -66,19 +66,20 @@ All variables in the URL have support for {@link framework.usage.variables.templ
 
 * `HeaderType` _str_ (optional) - header type, can be `RFH2` for sending gzip compressed messages using RFH2 header, default `None`
 '''  # noqa: E501
-from typing import Optional, Dict, Any, List, cast
+from contextlib import contextmanager
+from typing import Optional, Dict, Any, List, Generator, cast
 from urllib.parse import urlparse, parse_qs, unquote
 from pathlib import Path
 
 import zmq.green as zmq
 
-from zmq.error import Again as ZMQAgain
-from zmq.sugar.constants import NOBLOCK as ZMQ_NOBLOCK, REQ as ZMQ_REQ
+from zmq.error import Again as ZMQAgain, ZMQError
+from zmq.sugar.constants import NOBLOCK as ZMQ_NOBLOCK, REQ as ZMQ_REQ, LINGER as ZMQ_LINGER
 
 from gevent import sleep as gsleep
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageResponse, AsyncMessageRequest
 
-from . import client, ClientTask
+from . import client, ClientTask, logger
 from ...context import GrizzlyContextScenario
 from ...scenarios import GrizzlyScenario
 from ...types import RequestDirection, RequestType
@@ -97,7 +98,6 @@ class MessageQueueClientTask(ClientTask):
 
     _zmq_url = 'tcp://127.0.0.1:5554'
     _zmq_context: zmq.Context
-    _client: zmq.Socket
     _worker: Optional[str]
 
     endpoint_path: str
@@ -125,7 +125,6 @@ class MessageQueueClientTask(ClientTask):
         self.create_context()
 
         self._zmq_context = zmq.Context()
-        self._client = self.create_client()
         self._worker = None
 
     def create_context(self) -> None:
@@ -233,16 +232,27 @@ class MessageQueueClientTask(ClientTask):
             'header_type': header_type,
         })
 
-    def create_client(self) -> zmq.Socket:
-        zmq_client = cast(
-            zmq.Socket,
-            self._zmq_context.socket(ZMQ_REQ),
-        )
-        zmq_client.connect(self._zmq_url)
+    @contextmanager
+    def create_client(self) -> Generator[zmq.Socket, None, None]:
+        client: Optional[zmq.Socket] = None
 
-        return zmq_client
+        try:
+            client = cast(
+                zmq.Socket,
+                self._zmq_context.socket(ZMQ_REQ),
+            )
+            client.connect(self._zmq_url)
 
-    def connect(self, meta: Dict[str, Any]) -> None:
+            yield client
+        except ZMQError:
+            logger.error('zmq error', exc_info=True)
+            raise
+        finally:
+            if client is not None:
+                client.setsockopt(ZMQ_LINGER, 0)
+                client.close()
+
+    def connect(self, client: zmq.Socket, meta: Dict[str, Any]) -> None:
         request = {
             'action': RequestType.CONNECT(),
             'context': self.context,
@@ -250,13 +260,13 @@ class MessageQueueClientTask(ClientTask):
 
         meta.update({'action': self.endpoint_path, 'direction': '<->'})
 
-        self._client.send_json(request)
+        client.send_json(request)
 
         response = None
 
         while True:
             try:
-                response = self._client.recv_json(flags=ZMQ_NOBLOCK)
+                response = client.recv_json(flags=ZMQ_NOBLOCK)
                 break
             except ZMQAgain:
                 gsleep(0.1)
@@ -273,41 +283,42 @@ class MessageQueueClientTask(ClientTask):
         self._worker = response['worker']
 
     def request(self, parent: GrizzlyScenario, request: AsyncMessageRequest) -> AsyncMessageResponse:
-        if self._worker is None:
-            with self.action(parent, supress=True) as meta:
-                self.connect(meta)
+        with self.create_client() as client:
+            if self._worker is None:
+                with self.action(parent, supress=True) as meta:
+                    self.connect(client, meta)
 
-        with self.action(parent) as meta:
-            meta['action'] = self.endpoint_path
-            request['worker'] = self._worker
+            with self.action(parent) as meta:
+                meta['action'] = self.endpoint_path
+                request['worker'] = self._worker
 
-            self._client.send_json(request)
+                client.send_json(request)
 
-            response = None
+                response = None
 
-            while True:
-                try:
-                    response = cast(AsyncMessageResponse, self._client.recv_json(flags=ZMQ_NOBLOCK))
-                    break
-                except ZMQAgain:
-                    gsleep(0.1)
+                while True:
+                    try:
+                        response = cast(AsyncMessageResponse, client.recv_json(flags=ZMQ_NOBLOCK))
+                        break
+                    except ZMQAgain:
+                        gsleep(0.1)
 
-            response_length_source = (response or {}).get('payload', None) or ''
+                response_length_source = (response or {}).get('payload', None) or ''
 
-            meta.update({'response_length': len(response_length_source)})
+                meta.update({'response_length': len(response_length_source)})
 
-            if response is None:
-                raise RuntimeError('no response')
+                if response is None:
+                    raise RuntimeError('no response')
 
-            message = response.get('message', None)
-            if not response['success']:
-                raise RuntimeError(message)
+                message = response.get('message', None)
+                if not response['success']:
+                    raise RuntimeError(message)
 
-            payload = response.get('payload', None)
-            if payload is None or len(payload) < 1:
-                raise RuntimeError('response did not contain any payload')
+                payload = response.get('payload', None)
+                if payload is None or len(payload) < 1:
+                    raise RuntimeError('response did not contain any payload')
 
-            return response
+                return response
 
     def get(self, parent: GrizzlyScenario) -> Any:
         request: AsyncMessageRequest = {
