@@ -6,7 +6,7 @@ import pytest
 from behave.runner import Context
 from grizzly.context import GrizzlyContext
 
-from ....fixtures import BehaveContextFixture
+from ....fixtures import End2EndFixture
 
 
 @pytest.mark.parametrize('user_type,host', [
@@ -16,7 +16,7 @@ from ....fixtures import BehaveContextFixture
     ('BlobStorageUser', 'DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=examplestorage;AccountKey=xxxyyyyzzz==',),
     ('Sftp', 'sftp://ftp.example.com',),
 ])
-def test_e2e_step_user_type_with_weight(behave_context_fixture: BehaveContextFixture, user_type: str, host: str) -> None:
+def test_e2e_step_user_type_with_weight(e2e_fixture: End2EndFixture, user_type: str, host: str) -> None:
     def validate_user_type(context: Context) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
         data = list(context.table)[0].as_dict()
@@ -42,16 +42,16 @@ def test_e2e_step_user_type_with_weight(behave_context_fixture: BehaveContextFix
         'host': host,
     }]
 
-    behave_context_fixture.add_validator(validate_user_type, table=table)
+    e2e_fixture.add_validator(validate_user_type, table=table)
 
-    feature_file = behave_context_fixture.test_steps(
+    feature_file = e2e_fixture.test_steps(
         scenario=[
             f'Given a user of type "{user_type}" with weight "{weight}" load testing "{host}"',
         ],
         identifier=user_type,
     )
 
-    rc, _ = behave_context_fixture.execute(feature_file)
+    rc, _ = e2e_fixture.execute(feature_file)
 
     assert rc == 0
 
@@ -63,7 +63,7 @@ def test_e2e_step_user_type_with_weight(behave_context_fixture: BehaveContextFix
     ('BlobStorageUser', 'DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=examplestorage;AccountKey=xxxyyyyzzz==',),
     ('Sftp', 'sftp://ftp.example.com',),
 ])
-def test_e2e_step_user_type(behave_context_fixture: BehaveContextFixture, user_type: str, host: str) -> None:
+def test_e2e_step_user_type(e2e_fixture: End2EndFixture, user_type: str, host: str) -> None:
     def validate_user_type(context: Context) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
         data = list(context.table)[0].as_dict()
@@ -85,15 +85,15 @@ def test_e2e_step_user_type(behave_context_fixture: BehaveContextFixture, user_t
         'host': host,
     }]
 
-    behave_context_fixture.add_validator(validate_user_type, table=table)
+    e2e_fixture.add_validator(validate_user_type, table=table)
 
-    feature_file = behave_context_fixture.test_steps(
+    feature_file = e2e_fixture.test_steps(
         scenario=[
             f'Given a user of type "{user_type}" load testing "{host}"',
         ],
         identifier=user_type,
     )
 
-    rc, _ = behave_context_fixture.execute(feature_file)
+    rc, _ = e2e_fixture.execute(feature_file)
 
     assert rc == 0

@@ -3,10 +3,10 @@ from typing import cast
 from behave.runner import Context
 from grizzly.context import GrizzlyContext
 
-from ...fixtures import BehaveContextFixture
+from ...fixtures import End2EndFixture
 
 
-def test_e2e_step_setup_variable_value_ask(behave_context_fixture: BehaveContextFixture) -> None:
+def test_e2e_step_setup_variable_value_ask(e2e_fixture: End2EndFixture) -> None:
     def validate_variables(context: Context) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -15,9 +15,9 @@ def test_e2e_step_setup_variable_value_ask(behave_context_fixture: BehaveContext
 
         raise SystemExit(0)
 
-    behave_context_fixture.add_validator(validate_variables)
+    e2e_fixture.add_validator(validate_variables)
 
-    feature_file = behave_context_fixture.test_steps(
+    feature_file = e2e_fixture.test_steps(
         background=[
             'And ask for value of variable "background_variable"'
         ],
@@ -28,7 +28,7 @@ def test_e2e_step_setup_variable_value_ask(behave_context_fixture: BehaveContext
 
     assert feature_file == 'features/test_e2e_step_setup_variable_value_ask.feature'
 
-    rc, output = behave_context_fixture.execute(feature_file, testdata={
+    rc, output = e2e_fixture.execute(feature_file, testdata={
         'background_variable': 'foo-background-value',
         'scenario_variable': 'bar-scenario-value',
     })

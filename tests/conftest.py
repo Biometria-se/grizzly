@@ -1,15 +1,17 @@
 from typing import Generator, List
+from os import environ
 
 import pytest
 
 from _pytest.tmpdir import TempPathFactory
 from _pytest.config import Config
+from _pytest.fixtures import SubRequest
 
 from pytest_mock.plugin import MockerFixture
 
 from .fixtures import (
     AtomicVariableCleanupFixture,
-    BehaveContextFixture,
+    End2EndFixture,
     LocustFixture,
     NoopZmqFixture,
     ParamikoFixture,
@@ -20,8 +22,10 @@ from .fixtures import (
     Webserver,
 )
 
+E2E_RUN_DIST = environ.get('E2E_RUN_DIST', 'False').lower() == 'True'.lower()
 
-PYTEST_TIMEOUT = 120
+
+PYTEST_TIMEOUT = 300 if E2E_RUN_DIST else 120
 
 
 # if we're only running E2E tests, set global timeout
@@ -86,8 +90,8 @@ def _webserver() -> Generator[Webserver, None, None]:
 
 
 @pytest.mark.usefixtures('tmp_path_factory')
-def _behave_context_fixture(tmp_path_factory: TempPathFactory) -> Generator[BehaveContextFixture, None, None]:
-    with BehaveContextFixture(tmp_path_factory) as fixture:
+def _e2e_fixture(tmp_path_factory: TempPathFactory, request: SubRequest) -> Generator[End2EndFixture, None, None]:
+    with End2EndFixture(tmp_path_factory, distributed=request.param) as fixture:
         yield fixture
 
 
@@ -100,4 +104,4 @@ grizzly_fixture = pytest.fixture(scope='function')(_grizzly_fixture)
 noop_zmq = pytest.fixture()(_noop_zmq)
 response_context_manager_fixture = pytest.fixture()(_response_context_manager)
 webserver = pytest.fixture(scope='session')(_webserver)
-behave_context_fixture = pytest.fixture(scope='session')(_behave_context_fixture)
+e2e_fixture = pytest.fixture(scope='session', params=[False, True] if E2E_RUN_DIST else [False])(_e2e_fixture)

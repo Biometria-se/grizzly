@@ -1,14 +1,14 @@
-from ...fixtures import BehaveContextFixture
+from ...fixtures import End2EndFixture
 
 
-def test_e2e_step_utils_fail(behave_context_fixture: BehaveContextFixture) -> None:
-    feature_file = behave_context_fixture.test_steps(
+def test_e2e_step_utils_fail(e2e_fixture: End2EndFixture) -> None:
+    feature_file = e2e_fixture.test_steps(
         scenario=[
             'Then fail'
         ]
     )
 
-    rc, output = behave_context_fixture.execute(feature_file)
+    rc, output = e2e_fixture.execute(feature_file)
     result = ''.join(output)
 
     assert rc == 1

@@ -3,8 +3,9 @@ import subprocess
 import os
 import stat
 
-from typing import Any, Dict, Optional, Tuple, List, Set, Callable
+from typing import Any, Dict, Optional, Tuple, List, Set, Callable, Generator
 from types import MethodType, TracebackType
+from pathlib import Path
 
 from locust import task
 from locust.event import EventHook
@@ -221,3 +222,29 @@ def onerror(func: Callable, path: str, exc_info: TracebackType) -> None:
         func(path)
     else:
         raise  # pylint: disable=misplaced-bare-raise
+
+
+# prefix components:
+space = '    '
+branch = '│   '
+# pointers:
+tee = '├── '
+last = '└── '
+
+
+def tree(dir_path: Path, prefix: str = '', ignore: Optional[List[str]] = None) -> Generator[str, None, None]:
+    '''A recursive generator, given a directory Path object
+    will yield a visual tree structure line by line
+    with each line prefixed by the same characters
+    credit: https://stackoverflow.com/a/59109706
+    '''
+    contents = sorted(list(dir_path.iterdir()))
+    # contents each get pointers that are ├── with a final └── :
+    pointers = [tee] * (len(contents) - 1) + [last]
+    for pointer, sub_path in zip(pointers, contents):
+        if ignore is None or sub_path.name not in ignore:
+            yield prefix + pointer + sub_path.name
+            if sub_path.is_dir():  # extend the prefix and recurse:
+                extension = branch if pointer == tee else space
+                # i.e. space because last, └── , above so no more |
+                yield from tree(sub_path, prefix=prefix + extension, ignore=ignore)

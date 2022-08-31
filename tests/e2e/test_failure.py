@@ -5,10 +5,10 @@ from behave.runner import Context
 from behave.model import Feature
 from grizzly.context import GrizzlyContext
 
-from ..fixtures import BehaveContextFixture, Webserver
+from ..fixtures import End2EndFixture, Webserver
 
 
-def test_e2e_failure(behave_context_fixture: BehaveContextFixture, webserver: Webserver) -> None:
+def test_e2e_failure(e2e_fixture: End2EndFixture, webserver: Webserver) -> None:
     def after_feature(context: Context, feature: Feature) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -40,9 +40,9 @@ def test_e2e_failure(behave_context_fixture: BehaveContextFixture, webserver: We
             assert stat.num_failures == expected_num_failures, f'{stat.method}:{stat.name}.num_failures: {stat.num_failures} != {expected_num_failures}'
             assert stat.num_requests == expected_num_requests, f'{stat.method}:{stat.name}.num_requests: {stat.num_requests} != {expected_num_requests}'
 
-    behave_context_fixture.add_after_feature(after_feature)
+    e2e_fixture.add_after_feature(after_feature)
 
-    feature_file = behave_context_fixture.create_feature(dedent(f'''Feature: test failure
+    feature_file = e2e_fixture.create_feature(dedent(f'''Feature: test failure
     Background: common configuration
         Given "3" users
         And spawn rate is "3" user per second
@@ -74,6 +74,6 @@ def test_e2e_failure(behave_context_fixture: BehaveContextFixture, webserver: We
         Then get request with name "default-get3" from endpoint "/api/echo"
     '''))
 
-    rc, _ = behave_context_fixture.execute(feature_file)
+    rc, _ = e2e_fixture.execute(feature_file)
 
     assert rc == 0

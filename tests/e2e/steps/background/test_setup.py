@@ -7,7 +7,7 @@ import yaml
 from behave.runner import Context
 from grizzly.context import GrizzlyContext
 
-from ....fixtures import BehaveContextFixture
+from ....fixtures import End2EndFixture
 
 
 @pytest.mark.parametrize('url', [
@@ -15,7 +15,7 @@ from ....fixtures import BehaveContextFixture
     'insights://insights.example.com/?Testplan=grizzly-statistics&InstrumentationKey=asdfasdf=',
     'influxdb://$conf::statistics.username:$conf::statistics.password@influx.example.com/$conf::statistics.database',
 ])
-def test_e2e_step_setup_save_statistics(behave_context_fixture: BehaveContextFixture, url: str) -> None:
+def test_e2e_step_setup_save_statistics(e2e_fixture: End2EndFixture, url: str) -> None:
     env_conf: Dict[str, Any] = {
         'configuration': {
             'statistics': {
@@ -48,9 +48,9 @@ def test_e2e_step_setup_save_statistics(behave_context_fixture: BehaveContextFix
         }
     ]
 
-    behave_context_fixture.add_validator(validator, table=table)
+    e2e_fixture.add_validator(validator, table=table)
 
-    feature_file = behave_context_fixture.test_steps(
+    feature_file = e2e_fixture.test_steps(
         background=[
             f'And save statistics to "{url}"',
         ],
@@ -61,7 +61,7 @@ def test_e2e_step_setup_save_statistics(behave_context_fixture: BehaveContextFix
         env_conf_file.write(yaml.dump(env_conf, Dumper=yaml.Dumper).encode())
         env_conf_file.flush()
 
-        rc, _ = behave_context_fixture.execute(feature_file, env_conf_file=env_conf_file.name)
+        rc, _ = e2e_fixture.execute(feature_file, env_conf_file=env_conf_file.name)
 
         assert rc == 0
 
@@ -72,7 +72,7 @@ def test_e2e_step_setup_save_statistics(behave_context_fixture: BehaveContextFix
     'WARNING',
     'ERROR',
 ])
-def test_e2e_step_setup_log_level(behave_context_fixture: BehaveContextFixture, level: str) -> None:
+def test_e2e_step_setup_log_level(e2e_fixture: End2EndFixture, level: str) -> None:
     def validator(context: Context) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
         data = list(context.table)[0].as_dict()
@@ -87,16 +87,16 @@ def test_e2e_step_setup_log_level(behave_context_fixture: BehaveContextFixture, 
         'level': level,
     }]
 
-    behave_context_fixture.add_validator(validator, table=table)
+    e2e_fixture.add_validator(validator, table=table)
 
-    feature_file = behave_context_fixture.test_steps(
+    feature_file = e2e_fixture.test_steps(
         background=[
             f'And log level is "{level}"',
         ],
         identifier=level,
     )
 
-    rc, _ = behave_context_fixture.execute(feature_file)
+    rc, _ = e2e_fixture.execute(feature_file)
 
     assert rc == 0
 
@@ -107,7 +107,7 @@ def test_e2e_step_setup_log_level(behave_context_fixture: BehaveContextFixture, 
     '40m2s',
     'asdf',
 ])
-def test_e2e_step_setup_run_time(behave_context_fixture: BehaveContextFixture, timespan: str) -> None:
+def test_e2e_step_setup_run_time(e2e_fixture: End2EndFixture, timespan: str) -> None:
     def validator(context: Context) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
         data = list(context.table)[0].as_dict()
@@ -122,16 +122,16 @@ def test_e2e_step_setup_run_time(behave_context_fixture: BehaveContextFixture, t
         'timespan': timespan,
     }]
 
-    behave_context_fixture.add_validator(validator, table=table)
+    e2e_fixture.add_validator(validator, table=table)
 
-    feature_file = behave_context_fixture.test_steps(
+    feature_file = e2e_fixture.test_steps(
         background=[
             f'And run for maximum "{timespan}"'
         ],
         identifier=timespan,
     )
 
-    rc, _ = behave_context_fixture.execute(feature_file)
+    rc, _ = e2e_fixture.execute(feature_file)
 
     assert rc == 0
 
@@ -142,7 +142,7 @@ def test_e2e_step_setup_run_time(behave_context_fixture: BehaveContextFixture, t
     ('log_all_requests', 'True', '{"log_all_requests": true}',),
     ('run_id', '13', '{"run_id": 13}',),
 ])
-def test_e2e_step_setup_global_context_variable(behave_context_fixture: BehaveContextFixture, name: str, value: str, expected: str) -> None:
+def test_e2e_step_setup_global_context_variable(e2e_fixture: End2EndFixture, name: str, value: str, expected: str) -> None:
     def validator(context: Context) -> None:
         from json import loads as jsonloads
         grizzly = cast(GrizzlyContext, context.grizzly)
@@ -163,9 +163,9 @@ def test_e2e_step_setup_global_context_variable(behave_context_fixture: BehaveCo
         'expected': expected,
     }]
 
-    behave_context_fixture.add_validator(validator, table=table)
+    e2e_fixture.add_validator(validator, table=table)
 
-    feature_file = behave_context_fixture.test_steps(
+    feature_file = e2e_fixture.test_steps(
         background=[
             f'And set global context variable "{name}" to "{value}"',
             'And set global context variable "hello.world" to "foobar"',
@@ -174,7 +174,7 @@ def test_e2e_step_setup_global_context_variable(behave_context_fixture: BehaveCo
         identifier=name,
     )
 
-    rc, _ = behave_context_fixture.execute(feature_file)
+    rc, _ = e2e_fixture.execute(feature_file)
 
     assert rc == 0
 
@@ -184,7 +184,7 @@ def test_e2e_step_setup_global_context_variable(behave_context_fixture: BehaveCo
     ('client', 'server', 'client_to_server',),
 ])
 def test_e2e_step_setup_message_type_callback(
-    behave_context_fixture: BehaveContextFixture,
+    e2e_fixture: End2EndFixture,
     from_node: str,
     to_node: str,
     message_type: str,
@@ -214,15 +214,15 @@ def test_e2e_step_setup_message_type_callback(
         'message_type': message_type,
     }]
 
-    behave_context_fixture.add_validator(validator, table=table)
+    e2e_fixture.add_validator(validator, table=table)
 
-    feature_file = behave_context_fixture.test_steps(
+    feature_file = e2e_fixture.test_steps(
         background=[
             f'And add callback "tests.helpers.message_callback" for message type "{message_type}" from {from_node} to {to_node}',
         ],
         identifier=message_type,
     )
 
-    rc, _ = behave_context_fixture.execute(feature_file)
+    rc, _ = e2e_fixture.execute(feature_file)
 
     assert rc == 0
