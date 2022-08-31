@@ -611,7 +611,7 @@ class NoopZmqFixture:
 BehaveKeyword = Literal['Then', 'Given', 'And', 'When']
 
 
-class BehaveValidator:
+class End2EndValidator:
     name: str
     implementation: Any
     table: Optional[List[Dict[str, str]]]
@@ -640,18 +640,21 @@ class BehaveValidator:
     @property
     def impl(self) -> str:
         source_lines = inspect.getsource(self.implementation).split('\n')
-        source_lines[0] = source_lines[0].replace('def ', f'def {self.name}_')
+        source_lines[0] = dedent(source_lines[0].replace('def ', f'def {self.name}_'))
         source = '\n'.join(source_lines)
 
         return f'''@then(u'run validator {self.name}_{self.implementation.__name__}')
-{dedent(source)}
+def {self.name}_{self.implementation.__name__}_wrapper(context: Context) -> None:
+    {dedent(source)}
+    if on_local(context) or on_worker(context):
+        {self.name}_{self.implementation.__name__}(context)
 '''
 
 
 class End2EndFixture:
     _tmp_path_factory: TempPathFactory
     _env: Dict[str, str]
-    _validators: Dict[Optional[str], List[BehaveValidator]]
+    _validators: Dict[Optional[str], List[End2EndValidator]]
     _distributed: bool
 
     _after_features: Dict[str, Callable[[BehaveContext, Feature], None]]
@@ -659,10 +662,11 @@ class End2EndFixture:
     _root: Optional[Path]
 
     cwd: Path
+    test_tmp_dir: Path
 
     def __init__(self, tmp_path_factory: TempPathFactory, distributed: bool) -> None:
-        basetemp = (Path(__file__) / '..' / '..' / '.pytest-tmp').resolve()
-        tmp_path_factory._basetemp = basetemp
+        self.test_tmp_dir = (Path(__file__) / '..' / '..' / '.pytest-tmp').resolve()
+        tmp_path_factory._basetemp = self.test_tmp_dir
 
         self._tmp_path_factory = tmp_path_factory
         self.cwd = Path(getcwd())
@@ -727,8 +731,8 @@ class End2EndFixture:
 
         # install grizzly-cli
         rc, output = run_command(
-            # ['python3', '-m', 'pip', 'install', 'grizzly-loadtester-cli'],
-            ['python3', '-m', 'pip', 'install', 'git+https://github.com/mgor/grizzly-cli.git@feature/local_install_of_grizzly#egg=grizzly-loadtester-cli'],
+            ['python3', '-m', 'pip', 'install', 'grizzly-loadtester-cli'],
+            # ['python3', '-m', 'pip', 'install', 'git+https://github.com/mgor/grizzly-cli.git@feature/local_install_of_grizzly#egg=grizzly-loadtester-cli'],
             cwd=str(test_context),
             env=self._env,
         )
@@ -737,7 +741,6 @@ class End2EndFixture:
             assert rc == 0
         except AssertionError:
             print(''.join(output))
-
             raise
 
         # create grizzly project
@@ -764,6 +767,7 @@ class End2EndFixture:
             fd.write('from typing import cast, Callable, Any\n\n')
             fd.write('from behave import then\n')
             fd.write('from behave.runner import Context\n')
+            fd.write('from grizzly.locust import on_worker, on_local\n')
             fd.write('from grizzly.context import GrizzlyContext, GrizzlyContextScenario\n')
             fd.write('from grizzly.tasks import GrizzlyTask\n')
             fd.write('from grizzly.scenarios import GrizzlyScenario\n')
@@ -783,7 +787,6 @@ class End2EndFixture:
                     fd.write('grizzly-loadtester\n')
 
             command = ['grizzly-cli', 'dist', '--project-name', self._root.name, 'build', '--no-cache', '--local-install']
-            print(' '.join(command))
             rc, output = run_command(
                 command,
                 cwd=str(self.mode_root),
@@ -793,7 +796,6 @@ class End2EndFixture:
                 assert rc == 0
             except AssertionError:
                 print(''.join(output))
-
                 raise
         else:
             # install dependencies, in local venv
@@ -807,7 +809,6 @@ class End2EndFixture:
                 assert rc == 0
             except AssertionError:
                 print(''.join(output))
-
                 raise
 
         return self
@@ -819,6 +820,17 @@ class End2EndFixture:
         traceback: Optional[TracebackType],
     ) -> Literal[True]:
 
+        """
+        if self._distributed:
+            rc, output = run_command(
+                ['grizzly-cli', 'dist', '--project-name', self.root.name, 'clean'],
+                cwd=str(self.mode_root),
+                env=self._env,
+            )
+
+            if rc != 0:
+                print(''.join(output))
+
         if environ.get('KEEP_FILES', None) is None:
             try:
                 rmtree(self.root.parent, onerror=onerror)
@@ -826,6 +838,7 @@ class End2EndFixture:
                 pass
         else:
             print(self._root)
+        """
 
         return True
 
@@ -841,7 +854,7 @@ class End2EndFixture:
         if self._validators.get(scenario, None) is None:
             self._validators[scenario] = []
 
-        self._validators[scenario].append(BehaveValidator(callee, implementation, table))
+        self._validators[scenario].append(End2EndValidator(callee, implementation, table))
 
     def add_after_feature(self, implementation: Callable[[BehaveContext, Feature], None]) -> None:
         callee = inspect.stack()[1].function
@@ -1004,26 +1017,6 @@ class End2EndFixture:
             feature_file_root = str(self.root).replace(f'{root}/', '')
             feature_file = f'{feature_file_root}/{feature_file}'
 
-            command = [
-                'grizzly-cli',
-                'dist',
-                '--project-name', self.root.name,
-                '--validate-config',
-                'run',
-                feature_file,
-            ]
-
-            rc, output = run_command(
-                command,
-                cwd=str(self.mode_root),
-                env=self._env,
-            )
-
-            print(''.join(output))
-
-        print(f'{Path().cwd()}')
-        print(f'{feature_file=}')
-
         command = [
             'grizzly-cli',
             self.mode,
@@ -1043,18 +1036,17 @@ class End2EndFixture:
             for key, value in testdata.items():
                 command += ['-T', f'{key}={value}']
 
-        print(' '.join(command))
         rc, output = run_command(
             command,
             cwd=str(self.mode_root),
             env=self._env,
         )
-        print(''.join(output))
 
         if rc != 0:
+            print(''.join(output))
+
             for container in ['master', 'worker'] if self._distributed else []:
                 command = ['docker', 'container', 'logs', f'{self.root.name}-vscode_{container}_1']
-                print(' '.join(command))
                 _, output = run_command(
                     command,
                     cwd=str(self.mode_root),

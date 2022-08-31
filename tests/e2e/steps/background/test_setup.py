@@ -37,8 +37,6 @@ def test_e2e_step_setup_save_statistics(e2e_fixture: End2EndFixture, url: str) -
 
         assert grizzly.setup.statistics_url == test_url, f'{grizzly.setup.statistics_url} != {test_url}'
 
-        raise SystemExit(0)
-
     table: List[Dict[str, str]] = [
         {
             'url': url,
@@ -57,7 +55,7 @@ def test_e2e_step_setup_save_statistics(e2e_fixture: End2EndFixture, url: str) -
         identifier=url,
     )
 
-    with NamedTemporaryFile(delete=True, suffix='.yaml') as env_conf_file:
+    with NamedTemporaryFile(delete=True, suffix='.yaml', dir=e2e_fixture.test_tmp_dir) as env_conf_file:
         env_conf_file.write(yaml.dump(env_conf, Dumper=yaml.Dumper).encode())
         env_conf_file.flush()
 
@@ -81,8 +79,6 @@ def test_e2e_step_setup_log_level(e2e_fixture: End2EndFixture, level: str) -> No
 
         assert grizzly.setup.log_level == test_level, f'{grizzly.setup.log_level} != {test_level}'
 
-        raise SystemExit(0)
-
     table: List[Dict[str, str]] = [{
         'level': level,
     }]
@@ -105,7 +101,6 @@ def test_e2e_step_setup_log_level(e2e_fixture: End2EndFixture, level: str) -> No
     '10s',
     '1h2m',
     '40m2s',
-    'asdf',
 ])
 def test_e2e_step_setup_run_time(e2e_fixture: End2EndFixture, timespan: str) -> None:
     def validator(context: Context) -> None:
@@ -115,8 +110,6 @@ def test_e2e_step_setup_run_time(e2e_fixture: End2EndFixture, timespan: str) -> 
         timespan = data.pop('timespan')
 
         assert grizzly.setup.timespan == timespan, f'{grizzly.setup.timespan} != {timespan}'
-
-        raise SystemExit(0)
 
     table: List[Dict[str, str]] = [{
         'timespan': timespan,
@@ -157,8 +150,6 @@ def test_e2e_step_setup_global_context_variable(e2e_fixture: End2EndFixture, nam
 
         assert grizzly.setup.global_context == global_context
 
-        raise SystemExit(0)
-
     table: List[Dict[str, str]] = [{
         'expected': expected,
     }]
@@ -175,8 +166,6 @@ def test_e2e_step_setup_global_context_variable(e2e_fixture: End2EndFixture, nam
     )
 
     rc, _ = e2e_fixture.execute(feature_file)
-
-    assert rc == 0
 
 
 @pytest.mark.parametrize('from_node,to_node,message_type', [
@@ -206,8 +195,6 @@ def test_e2e_step_setup_message_type_callback(
         }
 
         grizzly.setup.locust.messages.clear()
-
-        raise SystemExit(0)
 
     table: List[Dict[str, str]] = [{
         'direction': f'{from_node}_{to_node}',

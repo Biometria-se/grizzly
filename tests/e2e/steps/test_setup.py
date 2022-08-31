@@ -13,8 +13,6 @@ def test_e2e_step_setup_variable_value_ask(e2e_fixture: End2EndFixture) -> None:
         assert grizzly.state.variables['background_variable'] == 'foo-background-value'
         assert grizzly.state.variables['scenario_variable'] == 'bar-scenario-value'
 
-        raise SystemExit(0)
-
     e2e_fixture.add_validator(validate_variables)
 
     feature_file = e2e_fixture.test_steps(

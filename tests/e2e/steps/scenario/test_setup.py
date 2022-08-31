@@ -38,8 +38,6 @@ def test_e2e_step_setup_set_context_variable(e2e_fixture: End2EndFixture, name: 
         assert actual == expected, f'{str(actual)} != {str(expected)}'
         assert grizzly.scenario.context.get('host', None) == 'http://localhost:1'  # added by fixture
 
-        raise SystemExit(0)
-
     table: List[Dict[str, str]] = [{
         'expected': expected,
     }]
@@ -71,8 +69,6 @@ def test_e2e_step_setup_iterations(e2e_fixture: End2EndFixture, iterations: str)
         iterations = int(data['iterations'].replace('{{ leveranser * 0.25 }}', '25'))
 
         assert grizzly.scenario.iterations == iterations, f'{grizzly.scenario.iterations} != {iterations}'
-
-        raise SystemExit(0)
 
     table: List[Dict[str, str]] = [{
         'iterations': iterations,
@@ -113,8 +109,6 @@ def test_e2e_step_variable_value(e2e_fixture: End2EndFixture) -> None:
         assert grizzly.state.variables.get('wildcard', None) == 'foobar'
         assert grizzly.state.variables.get('nested_value', None) == 'hello world!'
 
-        raise SystemExit(0)
-
     e2e_fixture.add_validator(validate_variable_value)
 
     feature_file = e2e_fixture.test_steps(
@@ -147,8 +141,6 @@ def test_e2e_step_set_variable_alias(e2e_fixture: End2EndFixture) -> None:
         variable = grizzly.state.variables.get('AtomicCsvRow.users', None)
         assert variable == 'users.csv | repeat=True', f'{variable} != users.csv | repeat=True'
 
-        raise SystemExit(0)
-
     e2e_fixture.add_validator(validate_variable_alias)
 
     feature_file = e2e_fixture.test_steps(
@@ -176,8 +168,6 @@ def test_e2e_step_setup_log_all_requests(e2e_fixture: End2EndFixture) -> None:
 
         assert grizzly.scenario.context.get('log_all_requests', False)
 
-        raise SystemExit(0)
-
     e2e_fixture.add_validator(validate_log_all_requests)
 
     feature_file = e2e_fixture.test_steps(
@@ -199,8 +189,6 @@ def test_e2e_step_setup_stop_user_on_failure(e2e_fixture: End2EndFixture) -> Non
         assert grizzly.scenario.failure_exception is not None
         assert isinstance(grizzly.scenario.failure_exception(), StopUser), 'failure exception is not StopUser'
 
-        raise SystemExit(0)
-
     e2e_fixture.add_validator(validate_stop_user_on_failure)
 
     feature_file = e2e_fixture.test_steps(
@@ -221,8 +209,6 @@ def test_e2e_step_setup_restart_scenario_on_failure(e2e_fixture: End2EndFixture)
 
         assert grizzly.scenario.failure_exception is not None
         assert isinstance(grizzly.scenario.failure_exception(), RestartScenario), 'failure exception is not RestartScenario'
-
-        raise SystemExit(0)
 
     e2e_fixture.add_validator(validate_restart_scenario_on_failure)
 
@@ -248,8 +234,6 @@ def test_e2e_setup_metadata(e2e_fixture: End2EndFixture) -> None:
             'Ocp-Apim-Subscription-Key': '9asdf00asdf00adsf034',
             'nested': 10,
         }, f'unexpected metadata: {str(metadata)}'
-
-        raise SystemExit(0)
 
     e2e_fixture.add_validator(validate_metadata)
 

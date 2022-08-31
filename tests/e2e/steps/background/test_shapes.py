@@ -20,8 +20,6 @@ def test_e2e_step_shapes_user_count(e2e_fixture: End2EndFixture, count: str) -> 
 
         assert grizzly.setup.user_count == user_count, f'{grizzly.setup.user_count} != {user_count}'
 
-        raise SystemExit(0)
-
     table: List[Dict[str, str]] = [
         {
             'user_count': str(count),
@@ -64,8 +62,6 @@ def test_e2e_step_shapes_spawn_rate(e2e_fixture: End2EndFixture, rate: str) -> N
         spawn_rate = float(data['spawn_rate'].replace('{{ spawn_rate }}', '0.01'))
 
         assert grizzly.setup.spawn_rate == spawn_rate, f'{grizzly.setup.spawn_rate} != {spawn_rate}'
-
-        raise SystemExit(0)
 
     table: List[Dict[str, str]] = [
         {

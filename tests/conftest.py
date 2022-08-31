@@ -22,10 +22,11 @@ from .fixtures import (
     Webserver,
 )
 
+E2E_RUN_MODE = environ.get('E2E_RUN_MODE', 'local')
 E2E_RUN_DIST = environ.get('E2E_RUN_DIST', 'False').lower() == 'True'.lower()
 
 
-PYTEST_TIMEOUT = 300 if E2E_RUN_DIST else 120
+PYTEST_TIMEOUT = 300 if E2E_RUN_DIST or E2E_RUN_MODE == 'dist' else 120
 
 
 # if we're only running E2E tests, set global timeout
@@ -91,7 +92,9 @@ def _webserver() -> Generator[Webserver, None, None]:
 
 @pytest.mark.usefixtures('tmp_path_factory')
 def _e2e_fixture(tmp_path_factory: TempPathFactory, request: SubRequest) -> Generator[End2EndFixture, None, None]:
-    with End2EndFixture(tmp_path_factory, distributed=request.param) as fixture:
+    distributed = request.param if hasattr(request, 'param') else E2E_RUN_MODE == 'dist'
+
+    with End2EndFixture(tmp_path_factory, distributed=distributed) as fixture:
         yield fixture
 
 
@@ -104,4 +107,4 @@ grizzly_fixture = pytest.fixture(scope='function')(_grizzly_fixture)
 noop_zmq = pytest.fixture()(_noop_zmq)
 response_context_manager_fixture = pytest.fixture()(_response_context_manager)
 webserver = pytest.fixture(scope='session')(_webserver)
-e2e_fixture = pytest.fixture(scope='session', params=[False, True] if E2E_RUN_DIST else [False])(_e2e_fixture)
+e2e_fixture = pytest.fixture(scope='session', params=[False, True] if E2E_RUN_DIST else None)(_e2e_fixture)

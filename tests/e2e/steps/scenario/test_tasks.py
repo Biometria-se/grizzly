@@ -75,8 +75,6 @@ def test_e2e_step_task_request_text_with_name_to_endpoint(e2e_fixture: End2EndFi
         assert request.source is None
         assert request.response.content_type == TransformerContentType.XML
 
-        raise SystemExit(0)
-
     e2e_fixture.add_validator(validate_requests)
 
     feature_file = e2e_fixture.test_steps(
@@ -161,8 +159,6 @@ def test_e2e_step_task_request_file_with_name_endpoint(e2e_fixture: End2EndFixtu
         assert request.response.content_type == TransformerContentType.UNDEFINED
         assert len(request.get_templates()) == 3
 
-        raise SystemExit(0)
-
     e2e_fixture.add_validator(validate_requests)
 
     request_files = e2e_fixture.root / 'features' / 'requests' / 'test'
@@ -211,8 +207,6 @@ def test_e2e_step_task_request_file_with_name(e2e_fixture: End2EndFixture) -> No
             assert jsonloads(request.source) == {'test': f'request-{{{{ post_{index} }}}}-{index}'}
             assert request.response.content_type == TransformerContentType.JSON
             assert len(request.get_templates()) == 1
-
-        raise SystemExit(0)
 
     e2e_fixture.add_validator(validate_requests)
 
@@ -271,8 +265,6 @@ def test_e2e_step_task_request_text_with_name(e2e_fixture: End2EndFixture) -> No
             assert request.response.content_type == TransformerContentType.XML
             assert len(request.get_templates()) == 0
 
-        raise SystemExit(0)
-
     e2e_fixture.add_validator(validate_requests)
 
     feature_file = e2e_fixture.test_steps(
@@ -319,8 +311,6 @@ def test_e2e_step_task_wait_seconds(e2e_fixture: End2EndFixture) -> None:
         assert isinstance(task, WaitTask)
         assert task.time == 0.123
 
-        raise SystemExit(0)
-
     e2e_fixture.add_validator(validate_task_wait)
 
     feature_file = e2e_fixture.test_steps(
@@ -355,12 +345,11 @@ def test_e2e_step_task_log_message(e2e_fixture: End2EndFixture) -> None:
         assert task.message == 'foobar={{ foobar }}'
         assert len(task.get_templates()) == 1
 
-        raise SystemExit(0)
-
     e2e_fixture.add_validator(validate_task_wait)
 
     feature_file = e2e_fixture.test_steps(
         scenario=[
+            'And value for variable "foobar" is "hello world!"',
             'Then log message "hello world!"',
             'Then log message "foobar={{ foobar }}"',
         ],
@@ -402,8 +391,6 @@ def test_e2e_step_task_transform(e2e_fixture: End2EndFixture) -> None:
         assert issubclass(task._transformer, JsonTransformer)
         assert task.get_templates() == ['{{ document }}']
         assert callable(task._parser)
-
-        raise SystemExit(0)
 
     e2e_fixture.add_validator(validate_transform)
 
@@ -455,8 +442,6 @@ def test_e2e_step_task_client_get_endpoint(e2e_fixture: End2EndFixture) -> None:
         assert task.destination is None
         assert task._short_name == 'Http'
         assert task.get_templates() == ['{{ endpoint }}']
-
-        raise SystemExit(0)
 
     e2e_fixture.add_validator(validate_client_task)
 
@@ -518,8 +503,6 @@ def test_e2e_step_task_client_put_endpoint_file_destination(e2e_fixture: End2End
         assert task.container == 'my-container'
         assert task.connection_string == 'DefaultEndpointsProtocol=https;AccountName=my-storage;AccountKey=aaaabbb=;EndpointSuffix=core.windows.net'
 
-        raise SystemExit(0)
-
     e2e_fixture.add_validator(validate_client_task)
 
     feature_file = e2e_fixture.test_steps(
@@ -577,8 +560,6 @@ def test_e2e_step_task_client_put_endpoint_file(e2e_fixture: End2EndFixture) -> 
         assert task.account_key == 'aaaabbb='
         assert task.container == 'my-container'
         assert task.connection_string == 'DefaultEndpointsProtocol=https;AccountName=my-storage;AccountKey=aaaabbb=;EndpointSuffix=core.windows.net'
-
-        raise SystemExit(0)
 
     e2e_fixture.add_validator(validate_client_task)
 
@@ -638,20 +619,20 @@ def test_e2e_step_task_date(e2e_fixture: End2EndFixture) -> None:
             '{{ timezone }}',
         ]), str(task.get_templates())
 
-        raise SystemExit(0)
-
     e2e_fixture.add_validator(validate_date_task)
+    print(e2e_fixture._validators[None][-1].impl)
 
     feature_file = e2e_fixture.test_steps(
         scenario=[
+            'And value for variable "timezone" is "UTC"',
             'And value for variable "date1" is "none"',
             'And value for variable "date2" is "none"',
             'And value for variable "date3" is "none"',
             'And value for variable "AtomicDate.test" is "now"',
-            'Then parse date "2022-01-17 12:21:37 | timezone=UTC, format="%Y-%m-%dT%H:%M:%S.%f", offset=1D" and save in variable "date1"',
+            'Then parse date "2022-01-17 12:21:37 | timezone=UTC, format=\'%Y-%m-%dT%H:%M:%S.%f\', offset=1D" and save in variable "date1"',
             'Then parse date "{{ AtomicDate.test }} | offset=-1D" and save in variable "date2"',
-            'Then parse date "{{ datetime.now() }} | offset=1Y, timezone=\"{{ timezone }}\"" and save in variable "date3"',
-        ]
+            'Then parse date "{{ datetime.now() }} | offset=1Y, timezone=\'{{ timezone }}\'" and save in variable "date3"',
+        ],
     )
 
     rc, _ = e2e_fixture.execute(feature_file)
@@ -712,12 +693,11 @@ def test_e2e_step_async_group(e2e_fixture: End2EndFixture) -> None:
         assert task.source is None
         assert task.template is None
 
-        raise SystemExit(0)
-
     e2e_fixture.add_validator(validate_async_group)
 
     feature_file = e2e_fixture.test_steps(
         scenario=[
+            'And value for variable "index" is "13"',
             'Given an async request group with name "async-group-{{ index }}"',
             dedent('''Then post request with name "test-post-1" to endpoint "/api/test"
                 """
@@ -807,8 +787,6 @@ def test_e2e_step_task_request_wait(e2e_fixture: End2EndFixture) -> None:
         assert task.min_time == 15
         assert task.max_time == 18
 
-        raise SystemExit(0)
-
     e2e_fixture.add_validator(validate_request_wait)
 
     feature_file = e2e_fixture.test_steps(
@@ -881,11 +859,7 @@ def test_e2e_step_task_loop(e2e_fixture: End2EndFixture) -> None:
 
     def after_feature(context: Context, feature: Feature) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
-
         stats = grizzly.state.locust.environment.stats
-
-        print(stats)
-
         loop = stats.get('001 loop-1 (1)', 'LOOP')
 
         assert loop.num_requests == 1, f'{loop.num_requests} != 1'

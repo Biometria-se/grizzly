@@ -40,8 +40,6 @@ def test_e2e_step_response_save_matches(e2e_fixture: End2EndFixture, target: Res
         assert handler.match_with == 'foo[bar]?', f'{handler.match_with} != foo[bar]?'
         assert handler.expected_matches == 10, f'{handler.expected_matches} != 10'
 
-        raise SystemExit(0)
-
     table: List[Dict[str, str]] = [{
         'target': target.name.lower(),
     }]
@@ -93,8 +91,6 @@ def test_e2e_step_response_save(e2e_fixture: End2EndFixture, target: ResponseTar
         assert handler.expression == '$.hello.world', f'{handler.expression} != $.hello.world'
         assert handler.match_with == '.*', f'{handler.match_with} != .*'
         assert handler.expected_matches == 1, f'{handler.expected_matches} != 1'
-
-        raise SystemExit(0)
 
     table: List[Dict[str, str]] = [{
         'target': target.name.lower(),
@@ -154,8 +150,6 @@ def test_e2e_step_response_validate(e2e_fixture: End2EndFixture, target: Respons
         assert handler.expression == '$.hello.world', f'{handler.expression} != $.hello.world'
         assert handler.match_with == 'foo[bar]?', f'{handler.match_with} != foo[bar]?'
         assert handler.expected_matches == 1, f'{handler.expected_matches} != 1'
-
-        raise SystemExit(0)
 
     table: List[Dict[str, str]] = [{
         'target': target.name.lower(),
@@ -240,8 +234,6 @@ def test_e2e_step_allow_status_codes_table(e2e_fixture: End2EndFixture) -> None:
         assert request.name == 'test-get-1', f'{request.name} != test-get-1'
         assert request.response.status_codes == [200, 302], f'{str(request.response.status_codes)} != [200, 302]'
 
-        raise SystemExit(0)
-
     e2e_fixture.add_validator(
         validator,
     )
@@ -279,8 +271,6 @@ def test_e2e_step_response_content_type(e2e_fixture: End2EndFixture, content_typ
         assert isinstance(request, RequestTask), f'{request.__class__.__name__} != RequestTask'
         assert request.name == 'test-get-1', f'{request.name} != test-get-1'
         assert request.response.content_type == TransformerContentType.from_string(data['content_type'])
-
-        raise SystemExit(0)
 
     table: List[Dict[str, str]] = [{
         'content_type': content_type,

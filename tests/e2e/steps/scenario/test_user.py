@@ -32,8 +32,6 @@ def test_e2e_step_user_type_with_weight(e2e_fixture: End2EndFixture, user_type: 
         assert grizzly.scenario.user.weight == expected_weight
         assert grizzly.scenario.context.get('host', None) == expected_host
 
-        raise SystemExit(0)
-
     weight = randint(1, 100)
 
     table: List[Dict[str, str]] = [{
@@ -77,8 +75,6 @@ def test_e2e_step_user_type(e2e_fixture: End2EndFixture, user_type: str, host: s
         assert grizzly.scenario.user.class_name == expected_user_type
         assert grizzly.scenario.user.weight == 1
         assert grizzly.scenario.context.get('host', None) == expected_host
-
-        raise SystemExit(0)
 
     table: List[Dict[str, str]] = [{
         'user_type': user_type,

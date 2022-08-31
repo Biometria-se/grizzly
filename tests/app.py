@@ -1,6 +1,6 @@
 import csv
 
-from typing import Dict
+from typing import Dict, Any
 from os import path
 from time import perf_counter
 
@@ -120,3 +120,8 @@ def app_until_attribute(attribute: str) -> FlaskResponse:
         app_request_count[x_grizzly_user] = 0
 
     return jsonify({attribute: status})
+
+
+@app.errorhandler(404)
+def catch_all(_: Any) -> FlaskResponse:
+    return jsonify({}, status=200)
