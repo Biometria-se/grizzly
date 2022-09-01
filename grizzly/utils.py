@@ -49,7 +49,7 @@ class catch:
         exception_type = self.exception_type
 
         @wraps(func)
-        def wrapper(context: Context, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Any:
+        def catch_wrapper(context: Context, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Any:
             try:
                 return func(context, *args, **kwargs)
             except exception_type as e:
@@ -64,7 +64,7 @@ class catch:
                 else:
                     raise e from e
 
-        return cast(WrappedFunc, wrapper)
+        return cast(WrappedFunc, catch_wrapper)
 
 
 @contextmanager

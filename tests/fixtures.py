@@ -14,8 +14,6 @@ from pathlib import Path
 from textwrap import dedent, indent
 from hashlib import sha1
 
-import gevent
-
 from locust.clients import ResponseContextManager
 from locust.contrib.fasthttp import FastResponse, FastRequest
 from locust.env import Environment
@@ -42,11 +40,12 @@ from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 
 from .helpers import TestUser, TestScenario, RequestSilentFailureEvent
 from .helpers import onerror, run_command
-from .app import app
+
 
 if TYPE_CHECKING:
     from grizzly.users.base import GrizzlyUser
     from grizzly.scenarios import GrizzlyScenario
+
 
 __all__ = [
     'AtomicVariableCleanupFixture',
@@ -513,48 +512,6 @@ class ResponseContextManagerFixture:
         return response_context_manager
 
 
-class Webserver:
-    _web_server: gevent.pywsgi.WSGIServer
-
-    def __init__(self) -> None:
-        self._web_server = gevent.pywsgi.WSGIServer(
-            ('127.0.0.1', 0),
-            app,
-            log=None,
-        )
-
-    @property
-    def port(self) -> int:
-        return cast(int, self._web_server.server_port)
-
-    def __enter__(self) -> 'Webserver':
-        gevent.spawn(lambda: self._web_server.serve_forever())
-        gevent.sleep(0.01)
-
-        return self
-
-    def __exit__(
-        self,
-        exc_type: Optional[Type[BaseException]],
-        exc: Optional[BaseException],
-        traceback: Optional[TracebackType],
-    ) -> Literal[True]:
-        self._web_server.stop_accepting()
-        self._web_server.stop()
-
-        try:
-            del environ['GRIZZLY_CONTEXT_ROOT']
-        except KeyError:
-            pass
-
-        try:
-            GrizzlyContext.destroy()
-        except:
-            pass
-
-        return True
-
-
 class NoopZmqFixture:
     _mocker: MockerFixture
 
@@ -661,11 +618,13 @@ class End2EndFixture:
 
     _root: Optional[Path]
 
+    _has_pymqi: Optional[bool]
+
     cwd: Path
     test_tmp_dir: Path
 
     def __init__(self, tmp_path_factory: TempPathFactory, distributed: bool) -> None:
-        self.test_tmp_dir = (Path(__file__) / '..' / '..' / '.pytest-tmp').resolve()
+        self.test_tmp_dir = (Path(__file__) / '..' / '..' / '.pytest_tmp').resolve()
         tmp_path_factory._basetemp = self.test_tmp_dir
 
         self._tmp_path_factory = tmp_path_factory
@@ -675,6 +634,7 @@ class End2EndFixture:
         self._root = None
         self._after_features = {}
         self._distributed = distributed
+        self._has_pymqi = None
 
     @property
     def mode_root(self) -> Path:
@@ -696,6 +656,14 @@ class End2EndFixture:
     @property
     def mode(self) -> str:
         return 'dist' if self._distributed else 'local'
+
+    def has_pymqi(self) -> bool:
+        if self._has_pymqi is None:
+            requirements_file = self.root / 'requirements.txt'
+
+            self._has_pymqi = '[mq]' in requirements_file.read_text()
+
+        return self._has_pymqi
 
     def __enter__(self) -> 'End2EndFixture':
         project_name = 'test-project'
@@ -732,7 +700,6 @@ class End2EndFixture:
         # install grizzly-cli
         rc, output = run_command(
             ['python3', '-m', 'pip', 'install', 'grizzly-loadtester-cli'],
-            # ['python3', '-m', 'pip', 'install', 'git+https://github.com/mgor/grizzly-cli.git@feature/local_install_of_grizzly#egg=grizzly-loadtester-cli'],
             cwd=str(test_context),
             env=self._env,
         )
@@ -762,16 +729,41 @@ class End2EndFixture:
 
         (self._root / 'features' / f'{project_name}.feature').unlink()
 
-        # create base steps.py
+        step_start_webserver = '''
+
+@then(u'start webserver on master port {{port:d}}')
+def step_start_webserver(context: Context, port: int) -> None:
+    from grizzly.locust import on_master
+    if not on_master(context):
+        return
+
+    from importlib.machinery import SourceFileLoader
+
+    w = SourceFileLoader(
+        'steps.webserver',
+        '{}/features/steps/webserver.py',
+    ).load_module('steps.webserver')
+
+    webserver = w.Webserver(port)
+    webserver.start()
+'''
+
+        # create base test-project ... steps.py
         with open(self._root / 'features' / 'steps' / 'steps.py', 'w') as fd:
+            fd.write('from importlib import import_module\n')
             fd.write('from typing import cast, Callable, Any\n\n')
             fd.write('from behave import then\n')
             fd.write('from behave.runner import Context\n')
-            fd.write('from grizzly.locust import on_worker, on_local\n')
+            fd.write('from grizzly.locust import on_master, on_worker, on_local\n')
             fd.write('from grizzly.context import GrizzlyContext, GrizzlyContextScenario\n')
             fd.write('from grizzly.tasks import GrizzlyTask\n')
             fd.write('from grizzly.scenarios import GrizzlyScenario\n')
             fd.write('from grizzly.steps import *\n')
+            fd.write(
+                step_start_webserver.format(
+                    str(self._root).replace(f'{Path.cwd()}', '/srv/grizzly'),
+                )
+            )
 
         if self._distributed:
             # copy examples
@@ -786,6 +778,19 @@ class End2EndFixture:
                     fd.flush()
                     fd.write('grizzly-loadtester\n')
 
+                with open(root / 'features' / 'steps' / 'steps.py', 'a') as fd:
+                    fd.write(
+                        step_start_webserver.format(
+                            str(root).replace(f'{Path.cwd()}', '/srv/grizzly'),
+                        )
+                    )
+
+                # create steps/webserver.py
+                webserver_source = self.test_tmp_dir.parent / 'tests' / 'webserver.py'
+                webserver_destination = root / 'features' / 'steps' / 'webserver.py'
+
+                webserver_destination.write_text(webserver_source.read_text())
+
             command = ['grizzly-cli', 'dist', '--project-name', self._root.name, 'build', '--no-cache', '--local-install']
             rc, output = run_command(
                 command,
@@ -799,9 +804,13 @@ class End2EndFixture:
                 raise
         else:
             # install dependencies, in local venv
+            grizzly_package = '.'
+            if self.has_pymqi():
+                grizzly_package = f'{grizzly_package}[mq]'
+
             rc, output = run_command(
-                ['python3', '-m', 'pip', 'install', '-r', 'requirements.txt'],
-                cwd=str(self._root),
+                ['python3', '-m', 'pip', 'install', grizzly_package],
+                cwd=str(self.test_tmp_dir.parent),
                 env=self._env,
             )
 
@@ -820,7 +829,7 @@ class End2EndFixture:
         traceback: Optional[TracebackType],
     ) -> Literal[True]:
 
-        """
+        '''
         if self._distributed:
             rc, output = run_command(
                 ['grizzly-cli', 'dist', '--project-name', self.root.name, 'clean'],
@@ -838,7 +847,7 @@ class End2EndFixture:
                 pass
         else:
             print(self._root)
-        """
+        '''
 
         return True
 

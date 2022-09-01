@@ -19,8 +19,8 @@ from .fixtures import (
     RequestTaskFixture,
     GrizzlyFixture,
     ResponseContextManagerFixture,
-    Webserver,
 )
+from .webserver import Webserver
 
 E2E_RUN_MODE = environ.get('E2E_RUN_MODE', 'local')
 E2E_RUN_DIST = environ.get('E2E_RUN_DIST', 'False').lower() == 'True'.lower()

@@ -16,7 +16,6 @@ coverage.xml
 .venv/
 **/tmp*
 *.log
-.pytest-tmp
 
 # automagically generated
 docs/licenses/*

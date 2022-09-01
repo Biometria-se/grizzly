@@ -1,16 +1,19 @@
 import csv
 
-from typing import Dict, Any
-from os import path
+from typing import Dict, Any, Optional, Type, Literal, cast
+from types import TracebackType
+from os import path, environ
 from time import perf_counter
 
 import gevent
+
+from gevent.pywsgi import WSGIServer
 
 from flask import Flask, request, jsonify, Response as FlaskResponse, Request as FlaskRequest
 from werkzeug.datastructures import Headers as FlaskHeaders
 
 
-app = Flask(__name__)
+app = Flask('webserver')
 root_dir = path.realpath(path.join(path.dirname(__file__), '..'))
 
 
@@ -125,3 +128,43 @@ def app_until_attribute(attribute: str) -> FlaskResponse:
 @app.errorhandler(404)
 def catch_all(_: Any) -> FlaskResponse:
     return jsonify({}, status=200)
+
+
+class Webserver:
+    _web_server: WSGIServer
+
+    def __init__(self, port: int = 0) -> None:
+        self._web_server = WSGIServer(
+            ('127.0.0.1', port),
+            app,
+            log=None,
+        )
+
+    @property
+    def port(self) -> int:
+        return cast(int, self._web_server.server_port)
+
+    def start(self) -> None:
+        gevent.spawn(lambda: self._web_server.serve_forever())
+        gevent.sleep(0.01)
+
+    def __enter__(self) -> 'Webserver':
+        self.start()
+
+        return self
+
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> Literal[True]:
+        self._web_server.stop_accepting()
+        self._web_server.stop()
+
+        try:
+            del environ['GRIZZLY_CONTEXT_ROOT']
+        except KeyError:
+            pass
+
+        return True

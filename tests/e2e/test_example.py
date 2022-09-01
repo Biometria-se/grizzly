@@ -4,24 +4,30 @@ from pathlib import Path
 
 import yaml
 
-from ..fixtures import End2EndFixture, Webserver
+from ..fixtures import End2EndFixture
+from ..webserver import Webserver
 from ..helpers import run_command
 
 
 def test_e2e_example(webserver: Webserver, e2e_fixture: End2EndFixture) -> None:
     try:
         result: Optional[str] = None
+        master_port = 11338
+
+        if e2e_fixture._distributed:
+            host = f'http://master:{master_port}'
+        else:
+            host = f'http://localhost:{webserver.port}'
+
         with open('example/environments/example.yaml') as env_yaml_file:
             env_conf = yaml.full_load(env_yaml_file)
 
             for name in ['dog', 'cat', 'book']:
-                # @TODO: host needs to be something else when running dist
-                env_conf['configuration']['facts'][name]['host'] = f'http://127.0.0.1:{webserver.port}'
+                env_conf['configuration']['facts'][name]['host'] = host
 
         if e2e_fixture._distributed:
             example_root = str((e2e_fixture.root / '..' / 'test-example').resolve())
             command = ['grizzly-cli', 'dist', '--project-name', 'test-example', 'build', '--no-cache', '--local-install']
-            print(' '.join(command))
             code, output = run_command(
                 command,
                 cwd=str(e2e_fixture.mode_root),
@@ -41,13 +47,29 @@ def test_e2e_example(webserver: Webserver, e2e_fixture: End2EndFixture) -> None:
             env_conf_file.write(yaml.dump(env_conf, Dumper=yaml.Dumper).encode())
             env_conf_file.flush()
 
+            feature_file = 'features/example.feature'
+
+            if e2e_fixture._distributed:
+                feature_file = f'{example_root}/features/example.feature'.replace(f'{Path.cwd()}/', '')
+
+                feature_file_contents = Path(feature_file).read_text().split('\n')
+
+                index = feature_file_contents.index('Scenario: dog facts api')
+                # should go last in "Background"-section
+                feature_file_contents.insert(index - 2, f'Then start webserver on master port "{master_port}"')
+
+                with open(feature_file, 'w') as fd:
+                    fd.truncate(0)
+                    fd.write('\n'.join(feature_file_contents))
+
             command = [
                 'grizzly-cli',
                 e2e_fixture.mode, 'run',
                 '--yes',
                 '-e', env_conf_file.name,
-                'features/example.feature'
+                feature_file,
             ]
+
             if e2e_fixture._distributed:
                 command = command[:2] + ['--project-name', 'test-example'] + command[2:]
 

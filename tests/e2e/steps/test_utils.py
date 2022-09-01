@@ -1,7 +1,12 @@
+import pytest
+
 from ...fixtures import End2EndFixture
 
 
 def test_e2e_step_utils_fail(e2e_fixture: End2EndFixture) -> None:
+    if e2e_fixture._distributed:
+        pytest.skip('this step executes before grizzly has started locust and cannot run distributed')
+
     feature_file = e2e_fixture.test_steps(
         scenario=[
             'Then fail'

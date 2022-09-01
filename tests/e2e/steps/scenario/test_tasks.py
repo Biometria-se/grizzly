@@ -170,6 +170,10 @@ def test_e2e_step_task_request_file_with_name_endpoint(e2e_fixture: End2EndFixtu
 
     feature_file = e2e_fixture.test_steps(
         scenario=[
+            'And value for variable "foo" is "bar"',
+            'And value for variable "bar" is "foo"',
+            'And value for variable "post" is "get"',
+            'And value for variable "foobar" is "barfoo"',
             'Then send request "test/request-send.j2.json" with name "test-send" to endpoint "queue:receive-queue | content_type=xml"',
             'Then post request "test/request-post.j2.json" with name "test-post" to endpoint "/api/test | content_type=json"',
             'Then put request "test/request-put.j2.json" with name "test-put-{{ foo }}" to endpoint "/api/{{ bar }}"',
@@ -218,6 +222,8 @@ def test_e2e_step_task_request_file_with_name(e2e_fixture: End2EndFixture) -> No
 
     feature_file = e2e_fixture.test_steps(
         scenario=[
+            'And value for variable "post_1" is "hello world"',
+            'And value for variable "post_2" is "foobar"',
             'Then post request "test/request-post-1.j2.json" with name "test-post-1" to endpoint "/api/test | content_type=json"',
             'Then post request "test/request-post-2.j2.json" with name "test-post-2"',
         ],
@@ -424,7 +430,7 @@ def test_e2e_step_task_client_get_endpoint(e2e_fixture: End2EndFixture) -> None:
         task = tasks[0]
         assert isinstance(task, HttpClientTask)
         assert task.direction == RequestDirection.FROM
-        assert task.endpoint == 'https://www.example.org/example.json'
+        assert task.endpoint == 'https://localhost/example.json'
         assert task.name == 'https-get'
         assert task.variable == 'example_openapi', f'{task.variable} != example_openapi'
         assert task.source is None
@@ -449,7 +455,8 @@ def test_e2e_step_task_client_get_endpoint(e2e_fixture: End2EndFixture) -> None:
         scenario=[
             'And value for variable "example_openapi" is "None"',
             'And value for variable "endpoint_result" is "None"',
-            'Then get "https://www.example.org/example.json" with name "https-get" and save response in "example_openapi"',
+            'And value for variable "endpoint" is "localhost:8080"',
+            'Then get "https://localhost/example.json" with name "https-get" and save response in "example_openapi"',
             'Then get "http://{{ endpoint }}" with name "http-get" and save response in "endpoint_result"',
         ]
     )
@@ -620,7 +627,6 @@ def test_e2e_step_task_date(e2e_fixture: End2EndFixture) -> None:
         ]), str(task.get_templates())
 
     e2e_fixture.add_validator(validate_date_task)
-    print(e2e_fixture._validators[None][-1].impl)
 
     feature_file = e2e_fixture.test_steps(
         scenario=[
@@ -763,29 +769,31 @@ def test_e2e_step_task_request_wait(e2e_fixture: End2EndFixture) -> None:
 
         grizzly.scenario.tasks.pop()  # remove dummy
 
-        task = grizzly.scenario.tasks.pop()
+        assert len(grizzly.scenario.tasks) == 4
 
-        assert isinstance(task, TaskWaitTask), f'{type(task)} is not expected TaskWaitTask'
-        assert task.min_time == 1.4
-        assert task.max_time is None
-
-        task = grizzly.scenario.tasks.pop()
+        task = grizzly.scenario.tasks[0]
 
         assert isinstance(task, TaskWaitTask), f'{type(task)} is not expected TaskWaitTask'
         assert task.min_time == 15
-        assert task.max_time is None
+        assert task.max_time == 18
 
-        task = grizzly.scenario.tasks.pop()
+        task = grizzly.scenario.tasks[1]
 
         assert isinstance(task, TaskWaitTask), f'{type(task)} is not expected TaskWaitTask'
         assert task.min_time == 1.4
         assert task.max_time == 1.7
 
-        task = grizzly.scenario.tasks.pop()
+        task = grizzly.scenario.tasks[2]
 
         assert isinstance(task, TaskWaitTask), f'{type(task)} is not expected TaskWaitTask'
         assert task.min_time == 15
-        assert task.max_time == 18
+        assert task.max_time is None
+
+        task = grizzly.scenario.tasks[3]
+
+        assert isinstance(task, TaskWaitTask), f'{type(task)} is not expected TaskWaitTask'
+        assert task.min_time == 1.4
+        assert task.max_time is None
 
     e2e_fixture.add_validator(validate_request_wait)
 

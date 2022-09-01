@@ -10,11 +10,11 @@ from ....fixtures import End2EndFixture
 
 
 @pytest.mark.parametrize('user_type,host', [
-    ('RestApi', 'https://api.example.com',),
-    ('MessageQueueUser', 'mq://mqm:secret@mq.example.com/?QueueManager=QMGR01&Channel=Channel01',),
-    ('ServiceBus', 'sb://sb.example.com/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=',),
-    ('BlobStorageUser', 'DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=examplestorage;AccountKey=xxxyyyyzzz==',),
-    ('Sftp', 'sftp://ftp.example.com',),
+    ('RestApi', 'https://localhost/api',),
+    ('MessageQueueUser', 'mq://mqm:secret@localhost/?QueueManager=QMGR01&Channel=Channel01',),
+    ('ServiceBus', 'sb://localhost/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=',),
+    ('BlobStorageUser', 'DefaultEndpointsProtocol=https;EndpointSuffix=localhost;AccountName=examplestorage;AccountKey=xxxyyyyzzz==',),
+    ('Sftp', 'sftp://localhost',),
 ])
 def test_e2e_step_user_type_with_weight(e2e_fixture: End2EndFixture, user_type: str, host: str) -> None:
     def validate_user_type(context: Context) -> None:
@@ -32,6 +32,9 @@ def test_e2e_step_user_type_with_weight(e2e_fixture: End2EndFixture, user_type: 
         assert grizzly.scenario.user.weight == expected_weight
         assert grizzly.scenario.context.get('host', None) == expected_host
 
+    if 'messagequeue' in user_type.lower() and not e2e_fixture.has_pymqi():
+        pytest.skip('pymqi not installed')
+
     weight = randint(1, 100)
 
     table: List[Dict[str, str]] = [{
@@ -45,6 +48,8 @@ def test_e2e_step_user_type_with_weight(e2e_fixture: End2EndFixture, user_type: 
     feature_file = e2e_fixture.test_steps(
         scenario=[
             f'Given a user of type "{user_type}" with weight "{weight}" load testing "{host}"',
+            'And set context variable "auth.username" to "grizzly"',
+            'And set context variable "auth.password" to "locust"',
         ],
         identifier=user_type,
     )
@@ -55,11 +60,11 @@ def test_e2e_step_user_type_with_weight(e2e_fixture: End2EndFixture, user_type: 
 
 
 @pytest.mark.parametrize('user_type,host', [
-    ('RestApi', 'https://api.example.com',),
-    ('MessageQueueUser', 'mq://mqm:secret@mq.example.com/?QueueManager=QMGR01&Channel=Channel01',),
-    ('ServiceBus', 'sb://sb.example.com/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=',),
-    ('BlobStorageUser', 'DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=examplestorage;AccountKey=xxxyyyyzzz==',),
-    ('Sftp', 'sftp://ftp.example.com',),
+    ('RestApi', 'https://localhost/api',),
+    ('MessageQueueUser', 'mq://mqm:secret@localhost/?QueueManager=QMGR01&Channel=Channel01',),
+    ('ServiceBus', 'sb://localhost/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=',),
+    ('BlobStorageUser', 'DefaultEndpointsProtocol=https;EndpointSuffix=localhost;AccountName=examplestorage;AccountKey=xxxyyyyzzz==',),
+    ('Sftp', 'sftp://localhost',),
 ])
 def test_e2e_step_user_type(e2e_fixture: End2EndFixture, user_type: str, host: str) -> None:
     def validate_user_type(context: Context) -> None:
@@ -76,6 +81,9 @@ def test_e2e_step_user_type(e2e_fixture: End2EndFixture, user_type: str, host: s
         assert grizzly.scenario.user.weight == 1
         assert grizzly.scenario.context.get('host', None) == expected_host
 
+    if 'messagequeue' in user_type.lower() and not e2e_fixture.has_pymqi():
+        pytest.skip('pymqi not installed')
+
     table: List[Dict[str, str]] = [{
         'user_type': user_type,
         'host': host,
@@ -86,6 +94,8 @@ def test_e2e_step_user_type(e2e_fixture: End2EndFixture, user_type: str, host: s
     feature_file = e2e_fixture.test_steps(
         scenario=[
             f'Given a user of type "{user_type}" load testing "{host}"',
+            'And set context variable "auth.username" to "grizzly"',
+            'And set context variable "auth.password" to "locust"',
         ],
         identifier=user_type,
     )
