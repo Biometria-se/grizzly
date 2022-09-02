@@ -131,7 +131,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        run_mode: ['local', 'dist']
+        run_mode: ['local']  # , 'dist']
 
     env:
       E2E_RUN_MODE: "${{ matrix.run_mode }}"
@@ -172,16 +172,6 @@ jobs:
       uses: KengoTODA/actions-setup-docker-compose@main
       with:
         version: '1.29.2'
-
-    - name: docker debug
-      if: matrix.run_mode == 'dist'
-      run: |
-        which docker || true
-        which docker-compose || true
-        which podman || true
-        which podman-compose || true
-        python -m pip install grizzly-loadtester-cli
-        grizzly-cli dist --project-name test-project build --no-cache --local-install
 
     - name: 'pytest (e2e ${{ matrix.run_mode }})'
       id: pytest-e2e
