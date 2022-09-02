@@ -7,12 +7,13 @@ from types import TracebackType
 from unittest.mock import MagicMock
 from urllib.parse import urlparse
 from mypy_extensions import VarArg, KwArg
-from os import chdir, environ, getcwd, path
+from os import environ, getcwd, path
 from shutil import rmtree, copytree
 from json import dumps as jsondumps
 from pathlib import Path
 from textwrap import dedent, indent
 from hashlib import sha1
+from getpass import getuser
 
 from locust.clients import ResponseContextManager
 from locust.contrib.fasthttp import FastResponse, FastRequest
@@ -731,7 +732,7 @@ class End2EndFixture:
 
         step_start_webserver = '''
 
-@then(u'start webserver on master port {{port:d}}')
+@then(u'start webserver on master port "{{port:d}}"')
 def step_start_webserver(context: Context, port: int) -> None:
     from grizzly.locust import on_master
     if not on_master(context):
@@ -759,11 +760,6 @@ def step_start_webserver(context: Context, port: int) -> None:
             fd.write('from grizzly.tasks import GrizzlyTask\n')
             fd.write('from grizzly.scenarios import GrizzlyScenario\n')
             fd.write('from grizzly.steps import *\n')
-            fd.write(
-                step_start_webserver.format(
-                    str(self._root).replace(f'{Path.cwd()}', '/srv/grizzly'),
-                )
-            )
 
         if self._distributed:
             # copy examples
@@ -829,25 +825,24 @@ def step_start_webserver(context: Context, port: int) -> None:
         traceback: Optional[TracebackType],
     ) -> Literal[True]:
 
-        '''
-        if self._distributed:
-            rc, output = run_command(
-                ['grizzly-cli', 'dist', '--project-name', self.root.name, 'clean'],
-                cwd=str(self.mode_root),
-                env=self._env,
-            )
+        if exc is None:
+            if self._distributed:
+                rc, output = run_command(
+                    ['grizzly-cli', 'dist', '--project-name', self.root.name, 'clean'],
+                    cwd=str(self.mode_root),
+                    env=self._env,
+                )
 
-            if rc != 0:
-                print(''.join(output))
+                if rc != 0:
+                    print(''.join(output))
 
-        if environ.get('KEEP_FILES', None) is None:
-            try:
-                rmtree(self.root.parent, onerror=onerror)
-            except AttributeError:
-                pass
-        else:
-            print(self._root)
-        '''
+            if environ.get('KEEP_FILES', None) is None:
+                try:
+                    rmtree(self.root.parent, onerror=onerror)
+                except AttributeError:
+                    pass
+            else:
+                print(self._root)
 
         return True
 
@@ -1019,8 +1014,6 @@ def step_start_webserver(context: Context, port: int) -> None:
         return feature_file_name
 
     def execute(self, feature_file: str, env_conf_file: Optional[str] = None, testdata: Optional[Dict[str, str]] = None) -> Tuple[int, List[str]]:
-        chdir(self.mode_root)
-
         if self._distributed:
             root = (Path(__file__) / '..' / '..').resolve()
             feature_file_root = str(self.root).replace(f'{root}/', '')
@@ -1055,7 +1048,7 @@ def step_start_webserver(context: Context, port: int) -> None:
             print(''.join(output))
 
             for container in ['master', 'worker'] if self._distributed else []:
-                command = ['docker', 'container', 'logs', f'{self.root.name}-vscode_{container}_1']
+                command = ['docker', 'container', 'logs', f'{self.root.name}-{getuser()}_{container}_1']
                 _, output = run_command(
                     command,
                     cwd=str(self.mode_root),
@@ -1063,7 +1056,5 @@ def step_start_webserver(context: Context, port: int) -> None:
                 )
 
                 print(''.join(output))
-
-        chdir(self.cwd)
 
         return rc, output

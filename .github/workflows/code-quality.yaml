@@ -166,7 +166,7 @@ jobs:
         python -m piptools sync requirements-ci.txt --pip-args '--disable-pip-version-check --no-cache-dir --user --no-warn-script-location --no-deps'
         python -m pip install .
 
-    - name: pytest (e2e)
+    - name: 'pytest (e2e ${{ matrix.run_mode }})'
       id: pytest-e2e
       run: python -m pytest tests/e2e
 

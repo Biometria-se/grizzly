@@ -167,6 +167,8 @@ def test_e2e_step_setup_global_context_variable(e2e_fixture: End2EndFixture, nam
 
     rc, _ = e2e_fixture.execute(feature_file)
 
+    assert rc == 0
+
 
 @pytest.mark.parametrize('from_node,to_node,message_type', [
     ('server', 'client', 'server_to_client',),
