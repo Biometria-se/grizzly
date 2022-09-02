@@ -166,6 +166,23 @@ jobs:
         python -m piptools sync requirements-ci.txt --pip-args '--disable-pip-version-check --no-cache-dir --user --no-warn-script-location --no-deps'
         python -m pip install .
 
+    - name: install docker-compose
+      id: install-docker-compose
+      if: matrix.run_mode == 'dist'
+      uses: KengoTODA/actions-setup-docker-compose@main
+      with:
+        version: '1.29.2'
+
+    - name: docker debug
+      if: matrix.run_mode == 'dist'
+      run: |
+        which docker || true
+        which docker-compose || true
+        which podman || true
+        which podman-compose || true
+        python -m pip install grizzly-loadtester-cli
+        grizzly-cli dist --project-name test-project build --no-cache --local-install
+
     - name: 'pytest (e2e ${{ matrix.run_mode }})'
       id: pytest-e2e
       run: python -m pytest tests/e2e
