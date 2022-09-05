@@ -7,14 +7,13 @@ from types import TracebackType
 from unittest.mock import MagicMock
 from urllib.parse import urlparse
 from mypy_extensions import VarArg, KwArg
-from os import chdir, environ, getcwd, path
-from shutil import rmtree
+from os import environ, getcwd, path
+from shutil import rmtree, copytree
 from json import dumps as jsondumps
 from pathlib import Path
 from textwrap import dedent, indent
 from hashlib import sha1
-
-import gevent
+from getpass import getuser
 
 from locust.clients import ResponseContextManager
 from locust.contrib.fasthttp import FastResponse, FastRequest
@@ -42,11 +41,12 @@ from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 
 from .helpers import TestUser, TestScenario, RequestSilentFailureEvent
 from .helpers import onerror, run_command
-from .app import app
+
 
 if TYPE_CHECKING:
     from grizzly.users.base import GrizzlyUser
     from grizzly.scenarios import GrizzlyScenario
+
 
 __all__ = [
     'AtomicVariableCleanupFixture',
@@ -513,48 +513,6 @@ class ResponseContextManagerFixture:
         return response_context_manager
 
 
-class Webserver:
-    _web_server: gevent.pywsgi.WSGIServer
-
-    def __init__(self) -> None:
-        self._web_server = gevent.pywsgi.WSGIServer(
-            ('127.0.0.1', 0),
-            app,
-            log=None,
-        )
-
-    @property
-    def port(self) -> int:
-        return cast(int, self._web_server.server_port)
-
-    def __enter__(self) -> 'Webserver':
-        gevent.spawn(lambda: self._web_server.serve_forever())
-        gevent.sleep(0.01)
-
-        return self
-
-    def __exit__(
-        self,
-        exc_type: Optional[Type[BaseException]],
-        exc: Optional[BaseException],
-        traceback: Optional[TracebackType],
-    ) -> Literal[True]:
-        self._web_server.stop_accepting()
-        self._web_server.stop()
-
-        try:
-            del environ['GRIZZLY_CONTEXT_ROOT']
-        except KeyError:
-            pass
-
-        try:
-            GrizzlyContext.destroy()
-        except:
-            pass
-
-        return True
-
-
 class NoopZmqFixture:
     _mocker: MockerFixture
 
@@ -611,7 +569,7 @@ class NoopZmqFixture:
 BehaveKeyword = Literal['Then', 'Given', 'And', 'When']
 
 
-class BehaveValidator:
+class End2EndValidator:
     name: str
     implementation: Any
     table: Optional[List[Dict[str, str]]]
@@ -640,31 +598,54 @@ class BehaveValidator:
     @property
     def impl(self) -> str:
         source_lines = inspect.getsource(self.implementation).split('\n')
-        source_lines[0] = source_lines[0].replace('def ', f'def {self.name}_')
+        source_lines[0] = dedent(source_lines[0].replace('def ', f'def {self.name}_'))
         source = '\n'.join(source_lines)
 
         return f'''@then(u'run validator {self.name}_{self.implementation.__name__}')
-{dedent(source)}
+def {self.name}_{self.implementation.__name__}_wrapper(context: Context) -> None:
+    {dedent(source)}
+    if on_local(context) or on_worker(context):
+        {self.name}_{self.implementation.__name__}(context)
 '''
 
 
-class BehaveContextFixture:
+class End2EndFixture:
     _tmp_path_factory: TempPathFactory
-    _cwd: str
     _env: Dict[str, str]
-    _validators: Dict[Optional[str], List[BehaveValidator]]
+    _validators: Dict[Optional[str], List[End2EndValidator]]
+    _distributed: bool
 
     _after_features: Dict[str, Callable[[BehaveContext, Feature], None]]
 
     _root: Optional[Path]
 
-    def __init__(self, tmp_path_factory: TempPathFactory) -> None:
+    _has_pymqi: Optional[bool]
+
+    cwd: Path
+    test_tmp_dir: Path
+
+    def __init__(self, tmp_path_factory: TempPathFactory, distributed: bool) -> None:
+        self.test_tmp_dir = (Path(__file__) / '..' / '..' / '.pytest_tmp').resolve()
+        tmp_path_factory._basetemp = self.test_tmp_dir
+
         self._tmp_path_factory = tmp_path_factory
-        self._cwd = getcwd()
+        self.cwd = Path(getcwd())
         self._env = {}
         self._validators = {}
         self._root = None
         self._after_features = {}
+        self._distributed = distributed
+        self._has_pymqi = None
+
+    @property
+    def mode_root(self) -> Path:
+        if self._root is None:
+            raise AttributeError('root is not set')
+
+        if self._distributed:
+            return self.cwd
+        else:
+            return self._root
 
     @property
     def root(self) -> Path:
@@ -673,7 +654,20 @@ class BehaveContextFixture:
 
         return self._root
 
-    def __enter__(self) -> 'BehaveContextFixture':
+    @property
+    def mode(self) -> str:
+        return 'dist' if self._distributed else 'local'
+
+    def has_pymqi(self) -> bool:
+        if self._has_pymqi is None:
+            requirements_file = self.root / 'requirements.txt'
+
+            self._has_pymqi = '[mq]' in requirements_file.read_text()
+
+        return self._has_pymqi
+
+    def __enter__(self) -> 'End2EndFixture':
+        project_name = 'test-project'
         test_context = self._tmp_path_factory.mktemp('test_context')
 
         virtual_env_path = test_context / 'grizzly-venv'
@@ -715,12 +709,11 @@ class BehaveContextFixture:
             assert rc == 0
         except AssertionError:
             print(''.join(output))
-
             raise
 
         # create grizzly project
         rc, output = run_command(
-            ['grizzly-cli', 'init', '--yes', 'test-project'],
+            ['grizzly-cli', 'init', '--yes', project_name],
             cwd=str(test_context),
             env=self._env,
         )
@@ -731,35 +724,97 @@ class BehaveContextFixture:
             print(''.join(output))
             raise
 
-        self._root = test_context / 'test-project'
+        self._root = test_context / project_name
 
         assert self._root.is_dir()
 
-        (self._root / 'features' / 'test-project.feature').unlink()
+        (self._root / 'features' / f'{project_name}.feature').unlink()
 
-        # create base steps.py
+        step_start_webserver = '''
+
+@then(u'start webserver on master port "{{port:d}}"')
+def step_start_webserver(context: Context, port: int) -> None:
+    from grizzly.locust import on_master
+    if not on_master(context):
+        return
+
+    from importlib.machinery import SourceFileLoader
+
+    w = SourceFileLoader(
+        'steps.webserver',
+        '{}/features/steps/webserver.py',
+    ).load_module('steps.webserver')
+
+    webserver = w.Webserver(port)
+    webserver.start()
+'''
+
+        # create base test-project ... steps.py
         with open(self._root / 'features' / 'steps' / 'steps.py', 'w') as fd:
+            fd.write('from importlib import import_module\n')
             fd.write('from typing import cast, Callable, Any\n\n')
             fd.write('from behave import then\n')
             fd.write('from behave.runner import Context\n')
+            fd.write('from grizzly.locust import on_master, on_worker, on_local\n')
             fd.write('from grizzly.context import GrizzlyContext, GrizzlyContextScenario\n')
             fd.write('from grizzly.tasks import GrizzlyTask\n')
             fd.write('from grizzly.scenarios import GrizzlyScenario\n')
             fd.write('from grizzly.steps import *\n')
 
-        # install dependencies
-        rc, output = run_command(
-            ['python3', '-m', 'pip', 'install', '-r', 'requirements.txt'],
-            cwd=str(self._root),
-            env=self._env,
-        )
+        if self._distributed:
+            # copy examples
+            source = (Path(__file__) / '..' / '..' / 'example').resolve()
+            destination = test_context / 'test-example'
+            copytree(source, destination)
 
-        try:
-            assert rc == 0
-        except AssertionError:
-            print(''.join(output))
+            # rewrite test requirements.txt to point to local code
+            for root in [self._root, destination]:
+                with open(f'{root}/requirements.txt', 'r+') as fd:
+                    fd.truncate(0)
+                    fd.flush()
+                    fd.write('grizzly-loadtester\n')
 
-            raise
+                with open(root / 'features' / 'steps' / 'steps.py', 'a') as fd:
+                    fd.write(
+                        step_start_webserver.format(
+                            str(root).replace(f'{Path.cwd()}', '/srv/grizzly'),
+                        )
+                    )
+
+                # create steps/webserver.py
+                webserver_source = self.test_tmp_dir.parent / 'tests' / 'webserver.py'
+                webserver_destination = root / 'features' / 'steps' / 'webserver.py'
+
+                webserver_destination.write_text(webserver_source.read_text())
+
+            command = ['grizzly-cli', 'dist', '--project-name', self._root.name, 'build', '--no-cache', '--local-install']
+            rc, output = run_command(
+                command,
+                cwd=str(self.mode_root),
+                env=self._env,
+            )
+            try:
+                assert rc == 0
+            except AssertionError:
+                print(''.join(output))
+                raise
+        else:
+            # install dependencies, in local venv
+            grizzly_package = '.'
+            if self.has_pymqi():
+                grizzly_package = f'{grizzly_package}[mq]'
+
+            rc, output = run_command(
+                ['python3', '-m', 'pip', 'install', grizzly_package],
+                cwd=str(self.test_tmp_dir.parent),
+                env=self._env,
+            )
+
+            try:
+                assert rc == 0
+            except AssertionError:
+                print(''.join(output))
+                raise
 
         return self
 
@@ -770,13 +825,24 @@ class BehaveContextFixture:
         traceback: Optional[TracebackType],
     ) -> Literal[True]:
 
-        if environ.get('KEEP_FILES', None) is None:
-            try:
-                rmtree(self.root.parent.parent, onerror=onerror)
-            except AttributeError:
-                pass
-        else:
-            print(self._root)
+        if exc is None:
+            if self._distributed:
+                rc, output = run_command(
+                    ['grizzly-cli', 'dist', '--project-name', self.root.name, 'clean'],
+                    cwd=str(self.mode_root),
+                    env=self._env,
+                )
+
+                if rc != 0:
+                    print(''.join(output))
+
+            if environ.get('KEEP_FILES', None) is None:
+                try:
+                    rmtree(self.root.parent, onerror=onerror)
+                except AttributeError:
+                    pass
+            else:
+                print(self._root)
 
         return True
 
@@ -792,7 +858,7 @@ class BehaveContextFixture:
         if self._validators.get(scenario, None) is None:
             self._validators[scenario] = []
 
-        self._validators[scenario].append(BehaveValidator(callee, implementation, table))
+        self._validators[scenario].append(End2EndValidator(callee, implementation, table))
 
     def add_after_feature(self, implementation: Callable[[BehaveContext, Feature], None]) -> None:
         callee = inspect.stack()[1].function
@@ -948,16 +1014,22 @@ class BehaveContextFixture:
         return feature_file_name
 
     def execute(self, feature_file: str, env_conf_file: Optional[str] = None, testdata: Optional[Dict[str, str]] = None) -> Tuple[int, List[str]]:
-        chdir(self.root)
+        if self._distributed:
+            root = (Path(__file__) / '..' / '..').resolve()
+            feature_file_root = str(self.root).replace(f'{root}/', '')
+            feature_file = f'{feature_file_root}/{feature_file}'
 
         command = [
             'grizzly-cli',
-            'local',
+            self.mode,
             'run',
             '--yes',
             '--verbose',
             feature_file,
         ]
+
+        if self._distributed:
+            command = command[:2] + ['--project-name', self.root.name] + command[2:]
 
         if env_conf_file is not None:
             command += ['-e', env_conf_file]
@@ -968,13 +1040,21 @@ class BehaveContextFixture:
 
         rc, output = run_command(
             command,
-            cwd=str(self.root),
+            cwd=str(self.mode_root),
             env=self._env,
         )
 
         if rc != 0:
             print(''.join(output))
 
-        chdir(self._cwd)
+            for container in ['master', 'worker'] if self._distributed else []:
+                command = ['docker', 'container', 'logs', f'{self.root.name}-{getuser()}_{container}_1']
+                _, output = run_command(
+                    command,
+                    cwd=str(self.mode_root),
+                    env=self._env,
+                )
+
+                print(''.join(output))
 
         return rc, output

@@ -5,13 +5,13 @@ import pytest
 from behave.runner import Context
 from grizzly.context import GrizzlyContext
 
-from ....fixtures import BehaveContextFixture
+from ....fixtures import End2EndFixture
 
 
 @pytest.mark.parametrize('count', [
     '5', '1', "{{ user_count }}",
 ])
-def test_e2e_step_shapes_user_count(behave_context_fixture: BehaveContextFixture, count: str) -> None:
+def test_e2e_step_shapes_user_count(e2e_fixture: End2EndFixture, count: str) -> None:
     def validator(context: Context) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
         data = list(context.table)[0].as_dict()
@@ -19,8 +19,6 @@ def test_e2e_step_shapes_user_count(behave_context_fixture: BehaveContextFixture
         user_count = int(data['user_count'].replace('{{ user_count }}', '10'))
 
         assert grizzly.setup.user_count == user_count, f'{grizzly.setup.user_count} != {user_count}'
-
-        raise SystemExit(0)
 
     table: List[Dict[str, str]] = [
         {
@@ -35,9 +33,9 @@ def test_e2e_step_shapes_user_count(behave_context_fixture: BehaveContextFixture
     except:
         pass
 
-    behave_context_fixture.add_validator(validator, table=table)
+    e2e_fixture.add_validator(validator, table=table)
 
-    feature_file = behave_context_fixture.test_steps(
+    feature_file = e2e_fixture.test_steps(
         background=[
             'Then ask for value of variable "user_count"',
             f'Given "{count}" user{suffix}',
@@ -48,7 +46,7 @@ def test_e2e_step_shapes_user_count(behave_context_fixture: BehaveContextFixture
         identifier=count,
     )
 
-    rc, _ = behave_context_fixture.execute(feature_file, testdata={'user_count': '10'})
+    rc, _ = e2e_fixture.execute(feature_file, testdata={'user_count': '10'})
 
     assert rc == 0
 
@@ -56,7 +54,7 @@ def test_e2e_step_shapes_user_count(behave_context_fixture: BehaveContextFixture
 @pytest.mark.parametrize('rate', [
     '1', '0.5', "{{ spawn_rate }}",
 ])
-def test_e2e_step_shapes_spawn_rate(behave_context_fixture: BehaveContextFixture, rate: str) -> None:
+def test_e2e_step_shapes_spawn_rate(e2e_fixture: End2EndFixture, rate: str) -> None:
     def validator(context: Context) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
         data = list(context.table)[0].as_dict()
@@ -65,17 +63,15 @@ def test_e2e_step_shapes_spawn_rate(behave_context_fixture: BehaveContextFixture
 
         assert grizzly.setup.spawn_rate == spawn_rate, f'{grizzly.setup.spawn_rate} != {spawn_rate}'
 
-        raise SystemExit(0)
-
     table: List[Dict[str, str]] = [
         {
             'spawn_rate': str(rate),
         }
     ]
 
-    behave_context_fixture.add_validator(validator, table=table)
+    e2e_fixture.add_validator(validator, table=table)
 
-    feature_file = behave_context_fixture.test_steps(
+    feature_file = e2e_fixture.test_steps(
         background=[
             'Then ask for value of variable "spawn_rate"',
             f'Given spawn rate is "{rate}" users per second',
@@ -83,6 +79,6 @@ def test_e2e_step_shapes_spawn_rate(behave_context_fixture: BehaveContextFixture
         identifier=rate,
     )
 
-    rc, _ = behave_context_fixture.execute(feature_file, testdata={'spawn_rate': '0.001'})
+    rc, _ = e2e_fixture.execute(feature_file, testdata={'spawn_rate': '0.001'})
 
     assert rc == 0

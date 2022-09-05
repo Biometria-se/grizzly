@@ -4,7 +4,7 @@ from typing import Any, Callable, Dict
 from grizzly.scenarios import GrizzlyScenario
 from grizzly.users import RestApiUser
 from grizzly.tasks import RequestTask, GrizzlyTask
-from grizzly.types import GrizzlyResponse, Message, Environment, MasterRunner, WorkerRunner, LocalRunner
+from grizzly.types import GrizzlyResponse, Message, Environment, WorkerRunner, LocalRunner
 from grizzly.testdata.variables import AtomicVariable
 
 
@@ -23,7 +23,7 @@ class Task(GrizzlyTask):
 
     def __call__(self) -> Callable[[GrizzlyScenario], Any]:
         def implementation(parent: GrizzlyScenario) -> Any:
-            if isinstance(parent.grizzly.state.locust, (MasterRunner, LocalRunner,)) and self.data.get('server', None) is not None:
+            if isinstance(parent.grizzly.state.locust, (LocalRunner,)) and self.data.get('server', None) is not None:
                 parent.logger.info('sending "server_client" from SERVER')
                 parent.grizzly.state.locust.send_message('server_client', self.data)
 

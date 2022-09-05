@@ -8,10 +8,10 @@ from behave.runner import Context
 from behave.model import Feature
 from grizzly.context import GrizzlyContext
 
-from ....fixtures import BehaveContextFixture
+from ....fixtures import End2EndFixture
 
 
-def test_e2e_step_task_request_text_with_name_to_endpoint(behave_context_fixture: BehaveContextFixture) -> None:
+def test_e2e_step_task_request_text_with_name_to_endpoint(e2e_fixture: End2EndFixture) -> None:
     def validate_requests(context: Context) -> None:
         from json import loads as jsonloads
         from grizzly.tasks import RequestTask
@@ -75,11 +75,9 @@ def test_e2e_step_task_request_text_with_name_to_endpoint(behave_context_fixture
         assert request.source is None
         assert request.response.content_type == TransformerContentType.XML
 
-        raise SystemExit(0)
+    e2e_fixture.add_validator(validate_requests)
 
-    behave_context_fixture.add_validator(validate_requests)
-
-    feature_file = behave_context_fixture.test_steps(
+    feature_file = e2e_fixture.test_steps(
         scenario=[
             dedent('''Then post request with name "test-post" to endpoint "/api/test"
                 """
@@ -107,12 +105,12 @@ def test_e2e_step_task_request_text_with_name_to_endpoint(behave_context_fixture
         ],
     )
 
-    rc, _ = behave_context_fixture.execute(feature_file)
+    rc, _ = e2e_fixture.execute(feature_file)
 
     assert rc == 0
 
 
-def test_e2e_step_task_request_file_with_name_endpoint(behave_context_fixture: BehaveContextFixture) -> None:
+def test_e2e_step_task_request_file_with_name_endpoint(e2e_fixture: End2EndFixture) -> None:
     def validate_requests(context: Context) -> None:
         from json import loads as jsonloads
         from grizzly.tasks import RequestTask
@@ -161,31 +159,33 @@ def test_e2e_step_task_request_file_with_name_endpoint(behave_context_fixture: B
         assert request.response.content_type == TransformerContentType.UNDEFINED
         assert len(request.get_templates()) == 3
 
-        raise SystemExit(0)
+    e2e_fixture.add_validator(validate_requests)
 
-    behave_context_fixture.add_validator(validate_requests)
-
-    request_files = behave_context_fixture.root / 'features' / 'requests' / 'test'
+    request_files = e2e_fixture.root / 'features' / 'requests' / 'test'
     request_files.mkdir(exist_ok=True)
 
     (request_files / 'request-send.j2.json').write_text(jsondumps({'test': 'request-send'}))
     (request_files / 'request-post.j2.json').write_text(jsondumps({'test': 'request-{{ post }}'}))
     (request_files / 'request-put.j2.json').write_text(jsondumps({'test': 'request-put-{{ foobar }}'}))
 
-    feature_file = behave_context_fixture.test_steps(
+    feature_file = e2e_fixture.test_steps(
         scenario=[
+            'And value for variable "foo" is "bar"',
+            'And value for variable "bar" is "foo"',
+            'And value for variable "post" is "get"',
+            'And value for variable "foobar" is "barfoo"',
             'Then send request "test/request-send.j2.json" with name "test-send" to endpoint "queue:receive-queue | content_type=xml"',
             'Then post request "test/request-post.j2.json" with name "test-post" to endpoint "/api/test | content_type=json"',
             'Then put request "test/request-put.j2.json" with name "test-put-{{ foo }}" to endpoint "/api/{{ bar }}"',
         ],
     )
 
-    rc, _ = behave_context_fixture.execute(feature_file)
+    rc, _ = e2e_fixture.execute(feature_file)
 
     assert rc == 0
 
 
-def test_e2e_step_task_request_file_with_name(behave_context_fixture: BehaveContextFixture) -> None:
+def test_e2e_step_task_request_file_with_name(e2e_fixture: End2EndFixture) -> None:
     def validate_requests(context: Context) -> None:
         from json import loads as jsonloads
         from grizzly.tasks import RequestTask
@@ -212,29 +212,29 @@ def test_e2e_step_task_request_file_with_name(behave_context_fixture: BehaveCont
             assert request.response.content_type == TransformerContentType.JSON
             assert len(request.get_templates()) == 1
 
-        raise SystemExit(0)
+    e2e_fixture.add_validator(validate_requests)
 
-    behave_context_fixture.add_validator(validate_requests)
-
-    request_files = behave_context_fixture.root / 'features' / 'requests' / 'test'
+    request_files = e2e_fixture.root / 'features' / 'requests' / 'test'
     request_files.mkdir(exist_ok=True)
 
     (request_files / 'request-post-1.j2.json').write_text(jsondumps({'test': 'request-{{ post_1 }}-1'}))
     (request_files / 'request-post-2.j2.json').write_text(jsondumps({'test': 'request-{{ post_2 }}-2'}))
 
-    feature_file = behave_context_fixture.test_steps(
+    feature_file = e2e_fixture.test_steps(
         scenario=[
+            'And value for variable "post_1" is "hello world"',
+            'And value for variable "post_2" is "foobar"',
             'Then post request "test/request-post-1.j2.json" with name "test-post-1" to endpoint "/api/test | content_type=json"',
             'Then post request "test/request-post-2.j2.json" with name "test-post-2"',
         ],
     )
 
-    rc, _ = behave_context_fixture.execute(feature_file)
+    rc, _ = e2e_fixture.execute(feature_file)
 
     assert rc == 0
 
 
-def test_e2e_step_task_request_text_with_name(behave_context_fixture: BehaveContextFixture) -> None:
+def test_e2e_step_task_request_text_with_name(e2e_fixture: End2EndFixture) -> None:
     def validate_requests(context: Context) -> None:
         from json import loads as jsonloads
         from grizzly.tasks import RequestTask
@@ -271,11 +271,9 @@ def test_e2e_step_task_request_text_with_name(behave_context_fixture: BehaveCont
             assert request.response.content_type == TransformerContentType.XML
             assert len(request.get_templates()) == 0
 
-        raise SystemExit(0)
+    e2e_fixture.add_validator(validate_requests)
 
-    behave_context_fixture.add_validator(validate_requests)
-
-    feature_file = behave_context_fixture.test_steps(
+    feature_file = e2e_fixture.test_steps(
         scenario=[
             dedent('''Then post request with name "test-post-1" to endpoint "/api/test | content_type=json"
                 """
@@ -296,12 +294,12 @@ def test_e2e_step_task_request_text_with_name(behave_context_fixture: BehaveCont
         ],
     )
 
-    rc, _ = behave_context_fixture.execute(feature_file)
+    rc, _ = e2e_fixture.execute(feature_file)
 
     assert rc == 0
 
 
-def test_e2e_step_task_wait_seconds(behave_context_fixture: BehaveContextFixture) -> None:
+def test_e2e_step_task_wait_seconds(e2e_fixture: End2EndFixture) -> None:
     def validate_task_wait(context: Context) -> None:
         from grizzly.tasks import WaitTask
         grizzly = cast(GrizzlyContext, context.grizzly)
@@ -319,23 +317,21 @@ def test_e2e_step_task_wait_seconds(behave_context_fixture: BehaveContextFixture
         assert isinstance(task, WaitTask)
         assert task.time == 0.123
 
-        raise SystemExit(0)
+    e2e_fixture.add_validator(validate_task_wait)
 
-    behave_context_fixture.add_validator(validate_task_wait)
-
-    feature_file = behave_context_fixture.test_steps(
+    feature_file = e2e_fixture.test_steps(
         scenario=[
             'Then wait for "13.37" seconds',
             'Then wait for "0.123" seconds',
         ],
     )
 
-    rc, _ = behave_context_fixture.execute(feature_file)
+    rc, _ = e2e_fixture.execute(feature_file)
 
     assert rc == 0
 
 
-def test_e2e_step_task_log_message(behave_context_fixture: BehaveContextFixture) -> None:
+def test_e2e_step_task_log_message(e2e_fixture: End2EndFixture) -> None:
     def validate_task_wait(context: Context) -> None:
         from grizzly.tasks import LogMessageTask
         grizzly = cast(GrizzlyContext, context.grizzly)
@@ -355,23 +351,22 @@ def test_e2e_step_task_log_message(behave_context_fixture: BehaveContextFixture)
         assert task.message == 'foobar={{ foobar }}'
         assert len(task.get_templates()) == 1
 
-        raise SystemExit(0)
+    e2e_fixture.add_validator(validate_task_wait)
 
-    behave_context_fixture.add_validator(validate_task_wait)
-
-    feature_file = behave_context_fixture.test_steps(
+    feature_file = e2e_fixture.test_steps(
         scenario=[
+            'And value for variable "foobar" is "hello world!"',
             'Then log message "hello world!"',
             'Then log message "foobar={{ foobar }}"',
         ],
     )
 
-    rc, _ = behave_context_fixture.execute(feature_file)
+    rc, _ = e2e_fixture.execute(feature_file)
 
     assert rc == 0
 
 
-def test_e2e_step_task_transform(behave_context_fixture: BehaveContextFixture) -> None:
+def test_e2e_step_task_transform(e2e_fixture: End2EndFixture) -> None:
     def validate_transform(context: Context) -> None:
         from grizzly.tasks import TransformerTask
         from grizzly_extras.transformer import TransformerContentType, JsonTransformer
@@ -403,11 +398,9 @@ def test_e2e_step_task_transform(behave_context_fixture: BehaveContextFixture) -
         assert task.get_templates() == ['{{ document }}']
         assert callable(task._parser)
 
-        raise SystemExit(0)
+    e2e_fixture.add_validator(validate_transform)
 
-    behave_context_fixture.add_validator(validate_transform)
-
-    feature_file = behave_context_fixture.test_steps(
+    feature_file = e2e_fixture.test_steps(
         scenario=[
             'And value for variable "document_id" is "None"',
             'And value for variable "document_title" is "None"',
@@ -417,12 +410,12 @@ def test_e2e_step_task_transform(behave_context_fixture: BehaveContextFixture) -
         ]
     )
 
-    rc, _ = behave_context_fixture.execute(feature_file)
+    rc, _ = e2e_fixture.execute(feature_file)
 
     assert rc == 0
 
 
-def test_e2e_step_task_client_get_endpoint(behave_context_fixture: BehaveContextFixture) -> None:
+def test_e2e_step_task_client_get_endpoint(e2e_fixture: End2EndFixture) -> None:
     def validate_client_task(context: Context) -> None:
         from grizzly.types import RequestDirection
         from grizzly.tasks.clients import HttpClientTask
@@ -437,7 +430,7 @@ def test_e2e_step_task_client_get_endpoint(behave_context_fixture: BehaveContext
         task = tasks[0]
         assert isinstance(task, HttpClientTask)
         assert task.direction == RequestDirection.FROM
-        assert task.endpoint == 'https://www.example.org/example.json'
+        assert task.endpoint == 'https://localhost/example.json'
         assert task.name == 'https-get'
         assert task.variable == 'example_openapi', f'{task.variable} != example_openapi'
         assert task.source is None
@@ -456,25 +449,24 @@ def test_e2e_step_task_client_get_endpoint(behave_context_fixture: BehaveContext
         assert task._short_name == 'Http'
         assert task.get_templates() == ['{{ endpoint }}']
 
-        raise SystemExit(0)
+    e2e_fixture.add_validator(validate_client_task)
 
-    behave_context_fixture.add_validator(validate_client_task)
-
-    feature_file = behave_context_fixture.test_steps(
+    feature_file = e2e_fixture.test_steps(
         scenario=[
             'And value for variable "example_openapi" is "None"',
             'And value for variable "endpoint_result" is "None"',
-            'Then get "https://www.example.org/example.json" with name "https-get" and save response in "example_openapi"',
+            'And value for variable "endpoint" is "localhost:8080"',
+            'Then get "https://localhost/example.json" with name "https-get" and save response in "example_openapi"',
             'Then get "http://{{ endpoint }}" with name "http-get" and save response in "endpoint_result"',
         ]
     )
 
-    rc, _ = behave_context_fixture.execute(feature_file)
+    rc, _ = e2e_fixture.execute(feature_file)
 
     assert rc == 0
 
 
-def test_e2e_step_task_client_put_endpoint_file_destination(behave_context_fixture: BehaveContextFixture) -> None:
+def test_e2e_step_task_client_put_endpoint_file_destination(e2e_fixture: End2EndFixture) -> None:
     def validate_client_task(context: Context) -> None:
         from grizzly.types import RequestDirection
         from grizzly.tasks.clients import BlobStorageClientTask
@@ -518,23 +510,21 @@ def test_e2e_step_task_client_put_endpoint_file_destination(behave_context_fixtu
         assert task.container == 'my-container'
         assert task.connection_string == 'DefaultEndpointsProtocol=https;AccountName=my-storage;AccountKey=aaaabbb=;EndpointSuffix=core.windows.net'
 
-        raise SystemExit(0)
+    e2e_fixture.add_validator(validate_client_task)
 
-    behave_context_fixture.add_validator(validate_client_task)
-
-    feature_file = behave_context_fixture.test_steps(
+    feature_file = e2e_fixture.test_steps(
         scenario=[
             'Then put "test-file.json" to "bs://my-unsecure-storage?AccountKey=aaaabbb=&Container=my-container" with name "bs-put" as "uploaded-test-file.json"',
             'Then put "test-files.json" to "bss://my-storage?AccountKey=aaaabbb=&Container=my-container" with name "bss-put" as "uploaded-test-files.json"',
         ]
     )
 
-    rc, _ = behave_context_fixture.execute(feature_file)
+    rc, _ = e2e_fixture.execute(feature_file)
 
     assert rc == 0
 
 
-def test_e2e_step_task_client_put_endpoint_file(behave_context_fixture: BehaveContextFixture) -> None:
+def test_e2e_step_task_client_put_endpoint_file(e2e_fixture: End2EndFixture) -> None:
     def validate_client_task(context: Context) -> None:
         from grizzly.types import RequestDirection
         from grizzly.tasks.clients import BlobStorageClientTask
@@ -578,23 +568,21 @@ def test_e2e_step_task_client_put_endpoint_file(behave_context_fixture: BehaveCo
         assert task.container == 'my-container'
         assert task.connection_string == 'DefaultEndpointsProtocol=https;AccountName=my-storage;AccountKey=aaaabbb=;EndpointSuffix=core.windows.net'
 
-        raise SystemExit(0)
+    e2e_fixture.add_validator(validate_client_task)
 
-    behave_context_fixture.add_validator(validate_client_task)
-
-    feature_file = behave_context_fixture.test_steps(
+    feature_file = e2e_fixture.test_steps(
         scenario=[
             'Then put "test-file.json" to "bs://my-unsecure-storage?AccountKey=aaaabbb=&Container=my-container" with name "bs-put"',
             'Then put "test-files.json" to "bss://my-storage?AccountKey=aaaabbb=&Container=my-container" with name "bss-put"',
         ]
     )
 
-    rc, _ = behave_context_fixture.execute(feature_file)
+    rc, _ = e2e_fixture.execute(feature_file)
 
     assert rc == 0
 
 
-def test_e2e_step_task_date(behave_context_fixture: BehaveContextFixture) -> None:
+def test_e2e_step_task_date(e2e_fixture: End2EndFixture) -> None:
     def validate_date_task(context: Context) -> None:
         from grizzly.tasks import DateTask
 
@@ -638,28 +626,27 @@ def test_e2e_step_task_date(behave_context_fixture: BehaveContextFixture) -> Non
             '{{ timezone }}',
         ]), str(task.get_templates())
 
-        raise SystemExit(0)
+    e2e_fixture.add_validator(validate_date_task)
 
-    behave_context_fixture.add_validator(validate_date_task)
-
-    feature_file = behave_context_fixture.test_steps(
+    feature_file = e2e_fixture.test_steps(
         scenario=[
+            'And value for variable "timezone" is "UTC"',
             'And value for variable "date1" is "none"',
             'And value for variable "date2" is "none"',
             'And value for variable "date3" is "none"',
             'And value for variable "AtomicDate.test" is "now"',
-            'Then parse date "2022-01-17 12:21:37 | timezone=UTC, format="%Y-%m-%dT%H:%M:%S.%f", offset=1D" and save in variable "date1"',
+            'Then parse date "2022-01-17 12:21:37 | timezone=UTC, format=\'%Y-%m-%dT%H:%M:%S.%f\', offset=1D" and save in variable "date1"',
             'Then parse date "{{ AtomicDate.test }} | offset=-1D" and save in variable "date2"',
-            'Then parse date "{{ datetime.now() }} | offset=1Y, timezone=\"{{ timezone }}\"" and save in variable "date3"',
-        ]
+            'Then parse date "{{ datetime.now() }} | offset=1Y, timezone=\'{{ timezone }}\'" and save in variable "date3"',
+        ],
     )
 
-    rc, _ = behave_context_fixture.execute(feature_file)
+    rc, _ = e2e_fixture.execute(feature_file)
 
     assert rc == 0
 
 
-def test_e2e_step_async_group(behave_context_fixture: BehaveContextFixture) -> None:
+def test_e2e_step_async_group(e2e_fixture: End2EndFixture) -> None:
     def validate_async_group(context: Context) -> None:
         from json import loads as jsonloads
         from grizzly.types import RequestMethod
@@ -712,12 +699,11 @@ def test_e2e_step_async_group(behave_context_fixture: BehaveContextFixture) -> N
         assert task.source is None
         assert task.template is None
 
-        raise SystemExit(0)
+    e2e_fixture.add_validator(validate_async_group)
 
-    behave_context_fixture.add_validator(validate_async_group)
-
-    feature_file = behave_context_fixture.test_steps(
+    feature_file = e2e_fixture.test_steps(
         scenario=[
+            'And value for variable "index" is "13"',
             'Given an async request group with name "async-group-{{ index }}"',
             dedent('''Then post request with name "test-post-1" to endpoint "/api/test"
                 """
@@ -732,12 +718,12 @@ def test_e2e_step_async_group(behave_context_fixture: BehaveContextFixture) -> N
         ]
     )
 
-    rc, _ = behave_context_fixture.execute(feature_file)
+    rc, _ = e2e_fixture.execute(feature_file)
 
     assert rc == 0
 
 
-def test_e2e_step_task_timer_start_and_stop(behave_context_fixture: BehaveContextFixture) -> None:
+def test_e2e_step_task_timer_start_and_stop(e2e_fixture: End2EndFixture) -> None:
     def after_feature(context: Context, feature: Feature) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -752,9 +738,9 @@ def test_e2e_step_task_timer_start_and_stop(behave_context_fixture: BehaveContex
         assert timer_2.num_requests == 1, f'{timer_2.num_requests=} != 1'
         assert timer_2.total_response_time > 2900 and timer_2.total_response_time < 3100, f'timer_2.total_response_time != 2900<{timer_2.total_response_time}<3100'
 
-    behave_context_fixture.add_after_feature(after_feature)
+    e2e_fixture.add_after_feature(after_feature)
 
-    feature_file = behave_context_fixture.test_steps(
+    feature_file = e2e_fixture.test_steps(
         scenario=[
             'Then log message "before-timer-1"',
             'Then start timer with name "timer-1"',
@@ -767,7 +753,7 @@ def test_e2e_step_task_timer_start_and_stop(behave_context_fixture: BehaveContex
         ],
     )
 
-    rc, output = behave_context_fixture.execute(feature_file)
+    rc, output = e2e_fixture.execute(feature_file)
 
     assert rc == 0
 
@@ -776,42 +762,42 @@ def test_e2e_step_task_timer_start_and_stop(behave_context_fixture: BehaveContex
     assert result.index('before-timer-1') < result.index('before-timer-2')
 
 
-def test_e2e_step_task_request_wait(behave_context_fixture: BehaveContextFixture) -> None:
+def test_e2e_step_task_request_wait(e2e_fixture: End2EndFixture) -> None:
     def validate_request_wait(context: Context) -> None:
         from grizzly.tasks import TaskWaitTask
         grizzly = cast(GrizzlyContext, context.grizzly)
 
         grizzly.scenario.tasks.pop()  # remove dummy
 
-        task = grizzly.scenario.tasks.pop()
+        assert len(grizzly.scenario.tasks) == 4
 
-        assert isinstance(task, TaskWaitTask), f'{type(task)} is not expected TaskWaitTask'
-        assert task.min_time == 1.4
-        assert task.max_time is None
-
-        task = grizzly.scenario.tasks.pop()
-
-        assert isinstance(task, TaskWaitTask), f'{type(task)} is not expected TaskWaitTask'
-        assert task.min_time == 15
-        assert task.max_time is None
-
-        task = grizzly.scenario.tasks.pop()
-
-        assert isinstance(task, TaskWaitTask), f'{type(task)} is not expected TaskWaitTask'
-        assert task.min_time == 1.4
-        assert task.max_time == 1.7
-
-        task = grizzly.scenario.tasks.pop()
+        task = grizzly.scenario.tasks[0]
 
         assert isinstance(task, TaskWaitTask), f'{type(task)} is not expected TaskWaitTask'
         assert task.min_time == 15
         assert task.max_time == 18
 
-        raise SystemExit(0)
+        task = grizzly.scenario.tasks[1]
 
-    behave_context_fixture.add_validator(validate_request_wait)
+        assert isinstance(task, TaskWaitTask), f'{type(task)} is not expected TaskWaitTask'
+        assert task.min_time == 1.4
+        assert task.max_time == 1.7
 
-    feature_file = behave_context_fixture.test_steps(
+        task = grizzly.scenario.tasks[2]
+
+        assert isinstance(task, TaskWaitTask), f'{type(task)} is not expected TaskWaitTask'
+        assert task.min_time == 15
+        assert task.max_time is None
+
+        task = grizzly.scenario.tasks[3]
+
+        assert isinstance(task, TaskWaitTask), f'{type(task)} is not expected TaskWaitTask'
+        assert task.min_time == 1.4
+        assert task.max_time is None
+
+    e2e_fixture.add_validator(validate_request_wait)
+
+    feature_file = e2e_fixture.test_steps(
         scenario=[
             'Given wait "15..18" seconds between tasks',
             'And wait "1.4..1.7" seconds between tasks',
@@ -820,13 +806,13 @@ def test_e2e_step_task_request_wait(behave_context_fixture: BehaveContextFixture
         ],
     )
 
-    rc, _ = behave_context_fixture.execute(feature_file)
+    rc, _ = e2e_fixture.execute(feature_file)
 
     assert rc == 0
 
 
 @pytest.mark.parametrize('value', [1, 6], scope='function')
-def test_e2e_step_task_conditional(behave_context_fixture: BehaveContextFixture, value: int) -> None:
+def test_e2e_step_task_conditional(e2e_fixture: End2EndFixture, value: int) -> None:
     def validate_task_conditional(context: Context) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -846,10 +832,10 @@ def test_e2e_step_task_conditional(behave_context_fixture: BehaveContextFixture,
         assert conditional.num_requests == 1, f'{conditional.num_requests} != 1'
         assert conditional.total_content_length == 1, f'{conditional.total_content_length} != 1'
 
-    behave_context_fixture.add_validator(validate_task_conditional)
-    behave_context_fixture.add_after_feature(after_feature)
+    e2e_fixture.add_validator(validate_task_conditional)
+    e2e_fixture.add_after_feature(after_feature)
 
-    feature_file = behave_context_fixture.test_steps(
+    feature_file = e2e_fixture.test_steps(
         scenario=[
             'And ask for value of variable "value"',
             'When condition "{{ value | int > 5 }}" with name "conditional-1" is true, execute these tasks',
@@ -860,7 +846,7 @@ def test_e2e_step_task_conditional(behave_context_fixture: BehaveContextFixture,
         ],
     )
 
-    rc, output = behave_context_fixture.execute(feature_file, testdata={'value': str(value)})
+    rc, output = e2e_fixture.execute(feature_file, testdata={'value': str(value)})
 
     assert rc == 0
     result = ''.join(output)
@@ -871,7 +857,7 @@ def test_e2e_step_task_conditional(behave_context_fixture: BehaveContextFixture,
         assert f'{value} was less than or equal to 5' in result
 
 
-def test_e2e_step_task_loop(behave_context_fixture: BehaveContextFixture) -> None:
+def test_e2e_step_task_loop(e2e_fixture: End2EndFixture) -> None:
     def validate_task_loop(context: Context) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -881,19 +867,15 @@ def test_e2e_step_task_loop(behave_context_fixture: BehaveContextFixture) -> Non
 
     def after_feature(context: Context, feature: Feature) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
-
         stats = grizzly.state.locust.environment.stats
-
-        print(stats)
-
         loop = stats.get('001 loop-1 (1)', 'LOOP')
 
         assert loop.num_requests == 1, f'{loop.num_requests} != 1'
 
-    behave_context_fixture.add_validator(validate_task_loop)
-    behave_context_fixture.add_after_feature(after_feature)
+    e2e_fixture.add_validator(validate_task_loop)
+    e2e_fixture.add_after_feature(after_feature)
 
-    feature_file = behave_context_fixture.test_steps(
+    feature_file = e2e_fixture.test_steps(
         scenario=[
             'And value for variable "loop_value" is "none"',
             'And value for variable "loop_values" is "[\"foo\", \"bar\", \"hello\", \"world\"]"',
@@ -903,7 +885,7 @@ def test_e2e_step_task_loop(behave_context_fixture: BehaveContextFixture) -> Non
         ]
     )
 
-    rc, output = behave_context_fixture.execute(feature_file)
+    rc, output = e2e_fixture.execute(feature_file)
 
     assert rc == 0
 

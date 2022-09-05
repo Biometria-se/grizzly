@@ -1,0 +1,58 @@
+name: code quality
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-e2e:
+    name: 'e2e tests ${{ matrix.run_mode }}'
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        run_mode: ['dist']
+
+    env:
+      E2E_RUN_MODE: "${{ matrix.run_mode }}"
+
+    steps:
+    - name: checkout
+      id: checkout
+      uses: actions/checkout@v2
+
+    - name: setup python (with cache)
+      if: ${{ !env.ACT }}
+      id: setup-python-with-cache
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+        cache: 'pip'
+        cache-dependency-path: '**/requirements-ci.txt'
+
+    - name: setup python (without cache)
+      if: ${{ env.ACT }}
+      id: setup-python-without-cache
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+
+    - name: install python dependencies
+      id: pip
+      run: |
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+        echo PYTHONPATH=$PWD >> $GITHUB_ENV
+        python -m pip install --upgrade pip-tools
+        python -m piptools sync requirements-ci.txt --pip-args '--disable-pip-version-check --no-cache-dir --user --no-warn-script-location --no-deps'
+        python -m pip install .
+
+    - name: install docker-compose
+      id: install-docker-compose
+      if: matrix.run_mode == 'dist'
+      uses: KengoTODA/actions-setup-docker-compose@main
+      with:
+        version: '1.29.2'
+
+    - name: 'pytest (e2e ${{ matrix.run_mode }})'
+      id: pytest-e2e
+      run: python -m pytest tests/e2e
