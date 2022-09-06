@@ -131,7 +131,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        run_mode: ['local']  # , 'dist']
+        run_mode: ['local', 'dist']
 
     env:
       E2E_RUN_MODE: "${{ matrix.run_mode }}"
@@ -173,8 +173,15 @@ jobs:
       with:
         version: '1.29.2'
 
+    - name: ssh agent
+      id: ssh-agent
+      run: |
+        ssh-agent -a /tmp/ssh_auth_sock
+
     - name: 'pytest (e2e ${{ matrix.run_mode }})'
       id: pytest-e2e
+      env:
+        SSH_AUTH_SOCK: /tmp/ssh_auth_sock
       run: python -m pytest tests/e2e
 
   pre-documentation-scripts:
