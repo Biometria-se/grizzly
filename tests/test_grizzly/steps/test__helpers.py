@@ -145,7 +145,7 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
 
         if not as_async:
             tasks.clear()
-            tasks.append(WaitTask(time=1.0))
+            tasks.append(WaitTask(time_expression='1.0'))
 
             with pytest.raises(ValueError) as e:
                 add_request_task(behave, method=RequestMethod.PUT, source='template.j2.json')
@@ -332,7 +332,7 @@ def test_add_save_handler(behave_fixture: BehaveFixture, locust_fixture: LocustF
     assert user.context_variables.get('test-variable-payload', 'payload') is None
 
     # previous non RequestTask task
-    tasks.append(WaitTask(time=1.0))
+    tasks.append(WaitTask(time_expression='1.0'))
 
     grizzly.state.variables['test'] = 'none'
     with pytest.raises(ValueError):

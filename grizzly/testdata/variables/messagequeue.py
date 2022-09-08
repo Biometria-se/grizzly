@@ -321,6 +321,7 @@ class AtomicMessageQueue(AtomicVariable[str]):
                         pass
 
             instance._zmq_context.destroy()
+            instance._zmq_context.term()
             del instance._zmq_context
         except:
             pass

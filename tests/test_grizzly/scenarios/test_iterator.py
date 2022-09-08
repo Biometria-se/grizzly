@@ -60,7 +60,7 @@ class TestIterationScenario:
                 )
 
             generate_mocked_wait(1.5)
-            IteratorScenario.populate(WaitTask(time=1.5))
+            IteratorScenario.populate(WaitTask(time_expression='1.5'))
             assert len(scenario.tasks) == 3
 
             task_method = scenario.tasks[-1]

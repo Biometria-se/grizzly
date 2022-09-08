@@ -181,7 +181,7 @@ def test_setup_locust_scenarios(behave_fixture: BehaveFixture, noop_zmq: NoopZmq
 
     task = RequestTask(RequestMethod.GET, 'test-1', '/api/v1/test/1')
     grizzly.scenario.tasks.add(task)
-    grizzly.scenario.tasks.add(WaitTask(time=1.5))
+    grizzly.scenario.tasks.add(WaitTask(time_expression='1.5'))
     grizzly.scenario.tasks.add(LogMessageTask(message='test message'))
 
     # incorrect user type
@@ -660,7 +660,7 @@ def test_run_worker(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
     grizzly.scenarios.create(behave_fixture.create_scenario('test-non-mq'))
     grizzly.scenario.user.class_name = 'RestApiUser'
     grizzly.scenario.context['host'] = 'https://test.example.org'
-    grizzly.scenario.tasks.add(WaitTask(time=1.5))
+    grizzly.scenario.tasks.add(WaitTask(time_expression='1.5'))
     task = RequestTask(RequestMethod.GET, 'test-1', '/api/v1/test/1')
     grizzly.scenario.tasks.add(task)
 
@@ -801,7 +801,7 @@ def test_run_master(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
     grizzly.scenarios.create(behave_fixture.create_scenario('test'))
     grizzly.scenario.user.class_name = 'RestApiUser'
     grizzly.scenario.context['host'] = 'https://test.example.org'
-    grizzly.scenario.tasks.add(WaitTask(time=1.5))
+    grizzly.scenario.tasks.add(WaitTask(time_expression='1.5'))
     task = RequestTask(RequestMethod.GET, 'test-1', '/api/v1/test/1')
     grizzly.scenario.tasks.add(task)
     grizzly.setup.spawn_rate = 1

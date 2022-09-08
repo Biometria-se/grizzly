@@ -215,13 +215,25 @@ def test_step_task_wait_seconds(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
 
-    with pytest.raises(AssertionError):
-        step_task_wait_seconds(behave, -1.0)
+    with pytest.raises(AssertionError) as ae:
+        step_task_wait_seconds(behave, '-1.0')
+    assert str(ae.value) == 'wait time cannot be less than 0.0 seconds'
 
-    step_task_wait_seconds(behave, 1.337)
+    with pytest.raises(AssertionError) as ae:
+        step_task_wait_seconds(behave, 'foobar')
+    assert str(ae.value) == '"foobar" is not a template nor a float'
+
+    step_task_wait_seconds(behave, '1.337')
 
     assert isinstance(grizzly.scenario.tasks[-1], WaitTask)
-    assert grizzly.scenario.tasks[-1].time == 1.337
+    assert grizzly.scenario.tasks[-1].time_expression == '1.337'
+
+    grizzly.state.variables['wait_time'] = '126'
+
+    step_task_wait_seconds(behave, '{{ wait_time }}')
+
+    assert isinstance(grizzly.scenario.tasks[-1], WaitTask)
+    assert grizzly.scenario.tasks[-1].time_expression == '{{ wait_time }}'
 
 
 def test_step_task_log_message(behave_fixture: BehaveFixture) -> None:
