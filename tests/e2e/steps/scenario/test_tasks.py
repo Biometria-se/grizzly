@@ -307,26 +307,32 @@ def test_e2e_step_task_wait_seconds(e2e_fixture: End2EndFixture) -> None:
         tasks = grizzly.scenario.tasks
         tasks.pop()
 
-        assert len(tasks) == 2
+        assert len(tasks) == 3
 
         task = tasks[0]
         assert isinstance(task, WaitTask)
-        assert task.time == 13.37
+        assert task.time_expression == '13.37'
 
         task = tasks[1]
         assert isinstance(task, WaitTask)
-        assert task.time == 0.123
+        assert task.time_expression == '0.123'
+
+        task = tasks[2]
+        assert isinstance(task, WaitTask)
+        assert task.time_expression == '{{ wait_time }}'
 
     e2e_fixture.add_validator(validate_task_wait)
 
     feature_file = e2e_fixture.test_steps(
         scenario=[
+            'And ask for value of variable "wait_time"',
             'Then wait for "13.37" seconds',
             'Then wait for "0.123" seconds',
+            'Then wait for "{{ wait_time }}" seconds',
         ],
     )
 
-    rc, _ = e2e_fixture.execute(feature_file)
+    rc, _ = e2e_fixture.execute(feature_file, testdata={'wait_time': '126'})
 
     assert rc == 0
 

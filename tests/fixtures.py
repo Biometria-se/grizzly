@@ -623,9 +623,11 @@ class End2EndFixture:
 
     cwd: Path
     test_tmp_dir: Path
+    _tmp_path_factory_basetemp: Optional[Path]
 
     def __init__(self, tmp_path_factory: TempPathFactory, distributed: bool) -> None:
         self.test_tmp_dir = (Path(__file__) / '..' / '..' / '.pytest_tmp').resolve()
+        self._tmp_path_factory_basetemp = tmp_path_factory._basetemp
         tmp_path_factory._basetemp = self.test_tmp_dir
 
         self._tmp_path_factory = tmp_path_factory
@@ -824,6 +826,8 @@ def step_start_webserver(context: Context, port: int) -> None:
         exc: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> Literal[True]:
+        # reset fixture basetemp
+        self._tmp_path_factory._basetemp = self._tmp_path_factory_basetemp
 
         if exc is None:
             if self._distributed:

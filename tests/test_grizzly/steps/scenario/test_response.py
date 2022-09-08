@@ -326,7 +326,7 @@ def test_step_response_content_type(behave_fixture: BehaveFixture) -> None:
         step_response_content_type(behave, TransformerContentType.JSON)
     assert 'There are no requests in the scenario' in str(ae)
 
-    grizzly.scenario.tasks.add(WaitTask(time=1.0))
+    grizzly.scenario.tasks.add(WaitTask(time_expression='1.0'))
 
     with pytest.raises(AssertionError) as ae:
         step_response_content_type(behave, TransformerContentType.JSON)

@@ -249,8 +249,8 @@ def step_task_request_text_with_name(context: Context, method: RequestMethod, na
     add_request_task(context, method=method, source=context.text, name=name)
 
 
-@then(u'wait for "{wait_time:f}" seconds')
-def step_task_wait_seconds(context: Context, wait_time: float) -> None:
+@then(u'wait for "{wait_time_expression}" seconds')
+def step_task_wait_seconds(context: Context, wait_time_expression: str) -> None:
     """
     Creates an instace of the {@pylink grizzly.tasks.wait} task. The scenario will wait the specified time (seconds) in
     additional to the wait time specified by {@pylink grizzly.tasks.task_wait}.
@@ -260,9 +260,12 @@ def step_task_wait_seconds(context: Context, wait_time: float) -> None:
     Example:
 
     ``` gherkin
+    And ask for value of variable "wait_time"
     And wait "1.5..2.5" seconds between tasks
     ...
     Then wait for "1.5" seconds
+    ...
+    Then wait for "{{ wait_time }}" seconds
     ```
 
     Above combinations of steps will result in a wait time between 3 and 4 seconds for the first {@pylink grizzly.tasks} that is defined after the
@@ -273,9 +276,13 @@ def step_task_wait_seconds(context: Context, wait_time: float) -> None:
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
 
-    assert wait_time > 0.0, 'wait time cannot be less than 0.0 seconds'
+    if not is_template(wait_time_expression):
+        try:
+            assert float(wait_time_expression) > 0.0, 'wait time cannot be less than 0.0 seconds'
+        except ValueError:
+            raise AssertionError(f'"{wait_time_expression}" is not a template nor a float')
 
-    grizzly.scenario.tasks.add(WaitTask(time=wait_time))
+    grizzly.scenario.tasks.add(WaitTask(time_expression=wait_time_expression))
 
 
 @then(u'log message "{message}"')

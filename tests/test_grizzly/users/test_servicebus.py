@@ -73,7 +73,7 @@ class TestServiceBusUser:
             scenario.name = 'test'
             scenario.user.class_name = 'ServiceBusUser'
 
-            scenario.tasks.add(WaitTask(time=1.54))
+            scenario.tasks.add(WaitTask(time_expression='1.54'))
             scenario.tasks.add(RequestTask(RequestMethod.SEND, name='test-send', endpoint='{{ endpoint }}'))
             scenario.tasks.add(RequestTask(RequestMethod.RECEIVE, name='test-receive', endpoint='queue:test-queue'))
             scenario.tasks.add(RequestTask(RequestMethod.SEND, name='test-send', endpoint='topic:test-topic'))

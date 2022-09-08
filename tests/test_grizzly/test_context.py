@@ -347,7 +347,7 @@ class TestGrizzlyContextScenario:
         assert scenario.tasks == [request, second_request]
         assert isinstance(scenario.tasks[-1], RequestTask) and scenario.tasks[-1].scenario is scenario
 
-        wait_task = WaitTask(time=1.337)
+        wait_task = WaitTask(time_expression='1.337')
         scenario.tasks.add(wait_task)
         assert scenario.tasks == [request, second_request, wait_task]
 

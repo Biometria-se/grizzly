@@ -51,6 +51,7 @@ class TestdataConsumer:
         except:
             self.logger.error('failed to stop', exc_info=True)
         finally:
+            self.context.term()
             self.stopped = True
             gsleep(0.1)
 
@@ -136,6 +137,7 @@ class TestdataProducer:
 
     def stop(self) -> None:
         self._stopping = True
+        self.logger.debug('stopping producer')
         try:
             self.context.destroy(linger=0)
         except:
@@ -143,6 +145,7 @@ class TestdataProducer:
         finally:
             # make sure that socket is properly released
             gsleep(0.1)
+            self.context.term()
 
     def run(self) -> None:
         self.logger.debug('start producing...')

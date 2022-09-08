@@ -26,7 +26,7 @@ E2E_RUN_MODE = environ.get('E2E_RUN_MODE', 'local')
 E2E_RUN_DIST = environ.get('E2E_RUN_DIST', 'False').lower() == 'True'.lower()
 
 
-PYTEST_TIMEOUT = 300 if E2E_RUN_DIST or E2E_RUN_MODE == 'dist' else 120
+PYTEST_TIMEOUT = 300 if E2E_RUN_DIST or E2E_RUN_MODE == 'dist' else 150
 
 
 # if we're only running E2E tests, set global timeout
