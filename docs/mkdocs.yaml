@@ -16,6 +16,8 @@ nav:
     - Changelog: framework/changelog.md
     - Licenses: framework/licenses.md
   - Command Line Interface:
-    - Usage: command-line-interface/usage.md
+    - Usage:
+      - command-line-interface/usage/index.md
+      - Metadata: command-line-interface/usage/metadata.md
     - Changelog: command-line-interface/changelog.md
     - Licenses: command-line-interface/licenses.md
