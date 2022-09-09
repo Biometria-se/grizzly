@@ -1,6 +1,17 @@
 """
 @anchor pydoc:grizzly.steps.scenario.response Response
 This module contains step implementations that handles {@pylink grizzly.tasks.request} responses.
+
+## Arguments
+
+### `expression`
+
+Valid for: {@pylink grizzly.steps.scenario.response.step_response_save_matches}, {@pylink grizzly.steps.scenario.response.step_response_save},
+{@pylink grizzly.steps.scenario.response.step_response_validate}
+
+* `expected_matches` _int_ (optional): number of expected matches that `expression` should get, a value of `-1` means `Any` number of matches (default: `1`)
+
+* `as_json` _bool_ (optional): always return matches as a JSON list, by default if there's a single match it will be returned as a string (default: `False`)
 """
 import parse
 
