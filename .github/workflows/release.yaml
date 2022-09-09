@@ -8,13 +8,19 @@ on:
         required: true
         default: '0.0.0'
       level:
-        description: 'Version level increment [major, minor, patch]'
+        type: choice
+        description: 'Version level increment'
+        options:
+          - patch
+          - minor
+          - major
         required: true
         default: 'patch'
       dry-run:
-        description: 'Dry-run [true, false]'
+        type: boolean
+        description: 'Dry-run (do not publish)'
         required: true
-        default: 'true'
+        default: true
 
 defaults:
   run:
@@ -32,16 +38,6 @@ jobs:
           exit 1
         fi
 
-        if [[ "${{ github.event.inputs.level }}" != "major" && "${{ github.event.inputs.level }}" != "minor" && "${{ github.event.inputs.level }}" != "patch" ]]; then
-          echo "level must be one of major, minor or patch, not \"${{ github.event.inputs.level }}\""
-          exit 1
-        fi
-
-        if [[ "${{ github.event.inputs.dry-run }}" != "true" && "${{ github.event.inputs.dry-run }}" != "false" ]]; then
-          echo "dry-run must be one of true or false, not \"${{ github.event.inputs.dry-run }}\""
-          exit 1
-        fi
-
     - name: setup environment
       run: |
         sudo ln -fs /usr/share/zoneinfo/Europe/Stockholm /etc/localtime
@@ -50,19 +46,19 @@ jobs:
 
     - name: checkout (deep)
       if: ${{ !env.ACT }}
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         fetch-depth: 0
         ref: main
 
     - name: checkout (shallow)
       if: ${{ env.ACT }}
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: setup python (with cache)
       if: ${{ !env.ACT }}
       id: setup-python-with-cache
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
       with:
         python-version: '3.x'
         cache: 'pip'
@@ -73,7 +69,7 @@ jobs:
     - name: setup python (without cache)
       if: ${{ env.ACT }}
       id: setup-python-without-cache
-      uses: actions/setup-python@v2
+      uses: actions/setup-python@v4
 
     - name: get last released version
       if: github.event.inputs.version == '0.0.0'
