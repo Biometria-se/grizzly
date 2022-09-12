@@ -880,7 +880,7 @@ class TestRestApiUser:
         assert kwargs.get('name', '').startswith(request.scenario.identifier)
         assert kwargs.get('catch_response', False)
         assert kwargs.get('url', None) == f'{user.host}{request.endpoint}'
-        assert kwargs.get('data', None) == request.source
+        assert kwargs.get('data', None) == bytes(request.source, 'UTF-8')
         assert 'headers' in kwargs
         assert 'Content-Type' in kwargs['headers']
         assert kwargs['headers']['Content-Type'] == 'application/xml'

@@ -101,9 +101,13 @@ class TestRequestTask:
 
     def test_arguments(self) -> None:
         task_factory = RequestTask(RequestMethod.GET, 'test-name', endpoint='/api/test | content_type="application/json", foo=bar')
-        assert task_factory.endpoint == '/api/test | foo=bar'
+        assert task_factory.endpoint == '/api/test'
         assert task_factory.response.content_type == TransformerContentType.JSON
+        assert task_factory.arguments is not None
+        assert 'foo' in task_factory.arguments
+        assert task_factory.arguments['foo'] == 'bar'
 
         task_factory = RequestTask(RequestMethod.GET, 'test-name', endpoint='/api/test | content_type="application/xml"')
         assert task_factory.endpoint == '/api/test'
+        assert task_factory.arguments == {}
         assert task_factory.response.content_type == TransformerContentType.XML

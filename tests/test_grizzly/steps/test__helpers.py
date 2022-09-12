@@ -200,17 +200,22 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
     task = tasks[-1]
     assert task.endpoint == 'hello world'
     assert task.response.content_type == TransformerContentType.JSON
+    assert task.arguments is not None
+    assert 'content_type' not in task.arguments
 
     assert add_request_task(behave, method=RequestMethod.GET, source=None, endpoint='hello world | expression=$.test.value, content_type=json', name='hello-world') == []
 
     task = tasks[-1]
-    assert task.endpoint == 'hello world | expression=$.test.value'
+    assert task.endpoint == 'hello world'
     assert task.response.content_type == TransformerContentType.JSON
+    assert task.arguments is not None
+    assert task.arguments['expression'] == '$.test.value'
+    assert 'content_type' not in task.arguments
 
     assert add_request_task(behave, method=RequestMethod.GET, source=None, endpoint=None, name='world-hello') == []
 
     task = tasks[-1]
-    assert task.endpoint == 'hello world | expression=$.test.value'
+    assert task.endpoint == 'hello world'
     assert task.response.content_type == TransformerContentType.JSON
 
     with pytest.raises(AssertionError) as ae:
