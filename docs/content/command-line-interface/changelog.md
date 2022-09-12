@@ -1,3 +1,3 @@
 # Changelog
 
-@shell cd .. && script/docs-generate-cli.bash --changelog
+@shell cd .. && script/docs-generate.bash cli --changelog
