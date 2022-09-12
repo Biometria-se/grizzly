@@ -71,6 +71,8 @@ from locust.env import Environment
 
 import requests
 
+from grizzly_extras.transformer import TransformerContentType
+
 from ..types import GrizzlyResponse, RequestType, WrappedFunc, GrizzlyResponseContextManager
 from ..utils import merge_dicts
 from ..types import RequestMethod
@@ -587,6 +589,11 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
         if request.method not in [RequestMethod.GET, RequestMethod.PUT, RequestMethod.POST]:
             raise NotImplementedError(f'{request.method.name} is not implemented for {self.__class__.__name__}')
 
+        if request.response.content_type == TransformerContentType.UNDEFINED:
+            request.response.content_type = TransformerContentType.JSON
+        elif request.response.content_type == TransformerContentType.XML:
+            self.headers['Content-Type'] = 'application/xml'
+
         request_name, endpoint, payload = self.render(request)
 
         parameters: Dict[str, Any] = {'headers': self.headers}
@@ -603,22 +610,25 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
         name = f'{request.scenario.identifier} {request_name}'
 
         if payload is not None:
-            try:
-                parameters['json'] = json.loads(payload)
-            except json.decoder.JSONDecodeError as exception:
-                # so that locust treats it as a failure
-                self.environment.events.request.fire(
-                    request_type=RequestType.from_method(request.method),
-                    name=name,
-                    response_time=0,
-                    response_length=0,
-                    context=self._context,
-                    exception=exception,
-                )
-                logger.error(f'{url}: failed to decode: {payload=}')
+            if request.response.content_type == TransformerContentType.JSON:
+                try:
+                    parameters['json'] = json.loads(payload)
+                except json.decoder.JSONDecodeError as exception:
+                    # so that locust treats it as a failure
+                    self.environment.events.request.fire(
+                        request_type=RequestType.from_method(request.method),
+                        name=name,
+                        response_time=0,
+                        response_length=0,
+                        context=self._context,
+                        exception=exception,
+                    )
+                    logger.error(f'{url}: failed to decode: {payload=}')
 
-                # this is a fundemental error, so we'll always stop the user
-                raise StopUser()
+                    # this is a fundemental error, so we'll always stop the user
+                    raise StopUser()
+            else:
+                parameters['data'] = payload
 
         with client.request(
             method=request.method.name,

@@ -441,7 +441,10 @@ class ResponseContextManagerFixture:
                 response.headers = CaseInsensitiveDict(**response_headers)
 
             if response_body is not None:
-                response._content = jsondumps(response_body).encode('utf-8')
+                if response.headers.get('Content-Type', None) in [None, 'application/json']:
+                    response._content = jsondumps(response_body).encode('utf-8')
+                else:
+                    response._content = response_body
             response.status_code = status_code
 
             response.request = PreparedRequest()
@@ -467,10 +470,18 @@ class ResponseContextManagerFixture:
                 def __init__(self) -> None:
                     self._headers_index = None
 
+                    body: Optional[Any] = None
+                    if request_headers is not None:
+                        headers = CaseInsensitiveDict(**request_headers)
+                    if request_headers is None or headers.get('Content-Type', None) in [None, 'application/json']:
+                        body = jsondumps(request_body or '')
+                    else:
+                        body = request_body
+
                     self._sent_request = _build_request(
                         request_method or '',
                         request_url or '',
-                        body=jsondumps(request_body or ''),
+                        body=body or '',
                         headers=request_headers,
                     )
                     self._sock = None
