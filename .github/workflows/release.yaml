@@ -70,6 +70,8 @@ jobs:
       if: ${{ env.ACT }}
       id: setup-python-without-cache
       uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
 
     - name: setup node
       id: setup-node
@@ -123,7 +125,7 @@ jobs:
     - name: install python dependencies
       id: install-python-deps
       run: |
-        pip install --upgrade pip-tools
+        python -m pip install --upgrade pip-tools
         ./script/pip-sync.bash ci
 
     - name: build and publish package
@@ -146,9 +148,9 @@ jobs:
 
         python -m build
         ls -l dist/grizzly?loadtester-${{ steps.version.outputs.version }}*
-        echo "$(twine --version)"
+        echo "$(python -m twine --version)"
         if [[ "${{ github.event.inputs.dry-run }}" != "true" ]]; then
-          twine upload dist/grizzly?loadtester-${{ steps.version.outputs.version }}*
+          python -m twine upload dist/grizzly?loadtester-${{ steps.version.outputs.version }}*
         else
           echo "!! dry-run, does not upload package to pypi"
         fi
@@ -174,18 +176,16 @@ jobs:
       run: |
         python -m pip install -r requirements-docs.txt
 
-        local tag
         if [[ "${{ github.event.inputs.dry-run }}" != "true" ]]; then
           tag="v${{ steps.version.outputs.version }}"
         else
           tag="$(git tag | tail -1)"
-          git checkout "$(git tag | tail -1)"
         fi
 
         git checkout -b "${tag}" "tags/${tag}"
 
         cd docs/
-        novella --site-dir "$PWD/_build" --base-url grizzly/
+        python -m novella --site-dir "$PWD/_build" --base-url grizzly/
 
     - name: deploy documentation
       id: deploy-docs
