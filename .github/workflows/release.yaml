@@ -173,11 +173,16 @@ jobs:
       id: build-docs
       run: |
         python -m pip install -r requirements-docs.txt
+
+        local tag
         if [[ "${{ github.event.inputs.dry-run }}" != "true" ]]; then
-          git checkout "v${{ steps.version.outputs.version }}"
+          tag="v${{ steps.version.outputs.version }}"
         else
+          tag="$(git tag | tail -1)"
           git checkout "$(git tag | tail -1)"
         fi
+
+        git checkout -b "${tag}" "tags/${tag}"
 
         cd docs/
         novella --site-dir "$PWD/_build" --base-url grizzly/
