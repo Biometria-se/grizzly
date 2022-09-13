@@ -85,6 +85,7 @@ class TestTestdataProducer:
             grizzly.state.variables['AtomicDate.utc'] = "now | format='%Y-%m-%dT%H:%M:%S.000Z', timezone=UTC"
             grizzly.state.variables['AtomicDate.now'] = 'now'
             grizzly.state.variables['tests.helpers.AtomicCustomVariable.foo'] = 'bar'
+            grizzly.state.variables['world'] = 'hello!'
             grizzly.scenario.iterations = 2
             grizzly.scenario.user.class_name = 'TestUser'
             grizzly.scenario.context['host'] = 'http://test.nu'
@@ -220,6 +221,7 @@ class TestTestdataProducer:
             grizzly.state.variables['AtomicIntegerIncrementer.messageID'] = 456
             grizzly.state.variables['AtomicDirectoryContents.file'] = 'adirectory'
             grizzly.state.variables['AtomicDate.now'] = 'now'
+            grizzly.state.variables['sure'] = 'no'
             grizzly.scenario.iterations = 0
             grizzly.scenario.user.class_name = 'TestUser'
             grizzly.scenario.context['host'] = 'http://test.nu'
