@@ -69,6 +69,9 @@ def _parse_templates(templates: Dict['GrizzlyContextScenario', Set[str]]) -> Dic
                     attributes = [child_node_name]
             elif isinstance(node, Name):
                 attributes = [getattr(node, 'name')]
+            elif isinstance(node, Filter):
+                child_node = getattr(node, 'node')
+                attributes = _getattr(child_node)
             elif isinstance(node, Compare):
                 expr = getattr(node, 'expr')
                 if isinstance(expr, Filter):
