@@ -1575,6 +1575,33 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#grizzly-cli-dist-clean" class="md-nav__link">
+    grizzly-cli dist clean
+  </a>
+  
+    <nav class="md-nav" aria-label="grizzly-cli dist clean">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#usage_6" class="md-nav__link">
+    Usage
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optional-arguments_5" class="md-nav__link">
+    Optional arguments
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#grizzly-cli-dist-run" class="md-nav__link">
     grizzly-cli dist run
   </a>
@@ -1583,7 +1610,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#usage_6" class="md-nav__link">
+  <a href="#usage_7" class="md-nav__link">
     Usage
   </a>
   
@@ -1597,7 +1624,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#optional-arguments_5" class="md-nav__link">
+  <a href="#optional-arguments_6" class="md-nav__link">
     Optional arguments
   </a>
   
@@ -1861,6 +1888,33 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#grizzly-cli-dist-clean" class="md-nav__link">
+    grizzly-cli dist clean
+  </a>
+  
+    <nav class="md-nav" aria-label="grizzly-cli dist clean">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#usage_6" class="md-nav__link">
+    Usage
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optional-arguments_5" class="md-nav__link">
+    Optional arguments
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#grizzly-cli-dist-run" class="md-nav__link">
     grizzly-cli dist run
   </a>
@@ -1869,7 +1923,7 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#usage_6" class="md-nav__link">
+  <a href="#usage_7" class="md-nav__link">
     Usage
   </a>
   
@@ -1883,7 +1937,7 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#optional-arguments_5" class="md-nav__link">
+  <a href="#optional-arguments_6" class="md-nav__link">
     Optional arguments
   </a>
   
@@ -1923,11 +1977,12 @@
 
 
 <h1 id="grizzly-cli"><code>grizzly-cli</code></h1>
-<p>The command line interface for grizzly, which makes it easer to start a test with all features of grizzly wrapped up nicely.</p>
-<p>Installing it is a matter of:</p>
+<p>the command line interface for grizzly, which makes it easer to start a test with all features of grizzly wrapped up
+nicely.</p>
+<p>installing it is a matter of:</p>
 <div class="highlight"><pre><span></span><code>pip install grizzly-loadtester-cli
 </code></pre></div>
-<p>Enable bash completion by adding the following to your shell profile:</p>
+<p>enable bash completion by adding the following to your shell profile:</p>
 <div class="highlight"><pre><span></span><code><span class="nb">eval</span> <span class="s2">&quot;</span><span class="k">$(</span>grizzly-cli --bash-completion<span class="k">)</span><span class="s2">&quot;</span>
 </code></pre></div>
 <h3 id="usage">Usage</h3>
@@ -1968,7 +2023,7 @@
 </tbody>
 </table>
 <h3 id="grizzly-cli-init"><code>grizzly-cli init</code></h3>
-<p>Create a skeleton project with required structure and files.</p>
+<p>create a skeleton project with required structure and files.</p>
 <h4 id="usage_1">Usage</h4>
 <div class="highlight"><pre><span></span><code>grizzly-cli init <span class="o">[</span>-h<span class="o">]</span> <span class="o">[</span>--grizzly-version GRIZZLY_VERSION<span class="o">]</span> <span class="o">[</span>--with-mq<span class="o">]</span> <span class="o">[</span>-y<span class="o">]</span>
                  project
@@ -2018,7 +2073,7 @@
 </tbody>
 </table>
 <h3 id="grizzly-cli-local"><code>grizzly-cli local</code></h3>
-<p>Commands for running grizzly in local mode.</p>
+<p>commands for running grizzly in local mode.</p>
 <h4 id="usage_2">Usage</h4>
 <div class="highlight"><pre><span></span><code>grizzly-cli <span class="nb">local</span> <span class="o">[</span>-h<span class="o">]</span> <span class="o">{</span>run<span class="o">}</span> ...
 </code></pre></div>
@@ -2040,7 +2095,7 @@
 </tbody>
 </table>
 <h4 id="grizzly-cli-local-run"><code>grizzly-cli local run</code></h4>
-<p>Execute load test scenarios specified in a feature file.</p>
+<p>execute load test scenarios specified in a feature file.</p>
 <h5 id="usage_3">Usage</h5>
 <div class="highlight"><pre><span></span><code>grizzly-cli <span class="nb">local</span> run <span class="o">[</span>-h<span class="o">]</span> <span class="o">[</span>--verbose<span class="o">]</span> <span class="o">[</span>-T TESTDATA_VARIABLE<span class="o">]</span> <span class="o">[</span>-y<span class="o">]</span>
                       <span class="o">[</span>-e ENVIRONMENT_FILE<span class="o">]</span>
@@ -2096,15 +2151,17 @@
 </tbody>
 </table>
 <h3 id="grizzly-cli-dist"><code>grizzly-cli dist</code></h3>
-<p>Commands for running grizzly i distributed mode.</p>
+<p>commands for running grizzly i distributed mode.</p>
 <h4 id="usage_4">Usage</h4>
 <div class="highlight"><pre><span></span><code>grizzly-cli dist <span class="o">[</span>-h<span class="o">]</span> <span class="o">[</span>--workers WORKERS<span class="o">]</span> <span class="o">[</span>--id ID<span class="o">]</span>
                  <span class="o">[</span>--limit-nofile LIMIT_NOFILE<span class="o">]</span>
                  <span class="o">[</span>--health-retries HEALTH_RETRIES<span class="o">]</span>
                  <span class="o">[</span>--health-timeout HEALTH_TIMEOUT<span class="o">]</span>
                  <span class="o">[</span>--health-interval HEALTH_INTERVAL<span class="o">]</span> <span class="o">[</span>--registry REGISTRY<span class="o">]</span>
-                 <span class="o">[</span>--tty<span class="o">]</span> <span class="o">[</span>--force-build <span class="p">|</span> --build <span class="p">|</span> --validate-config<span class="o">]</span>
-                 <span class="o">{</span>build,run<span class="o">}</span> ...
+                 <span class="o">[</span>--tty<span class="o">]</span> <span class="o">[</span>--wait-for-worker WAIT_FOR_WORKER<span class="o">]</span>
+                 <span class="o">[</span>--project-name PROJECT_NAME<span class="o">]</span>
+                 <span class="o">[</span>--force-build <span class="p">|</span> --build <span class="p">|</span> --validate-config<span class="o">]</span>
+                 <span class="o">{</span>build,clean,run<span class="o">}</span> ...
 </code></pre></div>
 <h4 id="positional-arguments_4">Positional arguments</h4>
 <table>
@@ -2174,6 +2231,16 @@
 <td>start containers with a TTY enabled</td>
 </tr>
 <tr>
+<td><code>--wait-for-worker</code></td>
+<td></td>
+<td>sets enviroment variable LOCUST_WAIT_FOR_WORKERS_REPORT_AFTER_RAMP_UP, which<br/>tells master to wait this amount of time for worker report</td>
+</tr>
+<tr>
+<td><code>--project-name</code></td>
+<td></td>
+<td>override project name, which otherwise would be the name of the directory where<br/>command is executed in</td>
+</tr>
+<tr>
 <td><code>--force-build</code></td>
 <td><code>False</code></td>
 <td>force rebuild the grizzly projects container image (no cache)</td>
@@ -2191,8 +2258,10 @@
 </tbody>
 </table>
 <h4 id="grizzly-cli-dist-build"><code>grizzly-cli dist build</code></h4>
-<p>Build grizzly compose project container image before running test. If worker nodes runs on different physical computers, it is mandatory to build the images before hand and push to a registry.</p>
-<p>If image includes IBM MQ native dependencies, the build time increases due to download times. It is possible to self-host the archive and override the download host with environment variable <code>IBM_MQ_LIB_HOST</code>.</p>
+<p>build grizzly compose project container image before running test. if worker nodes runs on different physical computers,
+it is mandatory to build the images before hand and push to a registry.</p>
+<p>if image includes IBM MQ native dependencies, the build time increases due to download times. it is possible to self-
+host the archive and override the download host with environment variable <code>IBM_MQ_LIB_HOST</code>.</p>
 <h5 id="usage_5">Usage</h5>
 <div class="highlight"><pre><span></span><code>grizzly-cli dist build <span class="o">[</span>-h<span class="o">]</span> <span class="o">[</span>--no-cache<span class="o">]</span> <span class="o">[</span>--registry REGISTRY<span class="o">]</span>
 </code></pre></div>
@@ -2218,9 +2287,36 @@
 </tr>
 </tbody>
 </table>
-<h4 id="grizzly-cli-dist-run"><code>grizzly-cli dist run</code></h4>
-<p>Execute load test scenarios specified in a feature file.</p>
+<h4 id="grizzly-cli-dist-clean"><code>grizzly-cli dist clean</code></h4>
+<p>clean all grizzly compose project resources; containers, images, networks and volumes</p>
 <h5 id="usage_6">Usage</h5>
+<div class="highlight"><pre><span></span><code>grizzly-cli dist clean <span class="o">[</span>-h<span class="o">]</span> <span class="o">[</span>--no-images<span class="o">]</span> <span class="o">[</span>--no-networks<span class="o">]</span>
+</code></pre></div>
+<h5 id="optional-arguments_5">Optional arguments</h5>
+<table>
+<thead>
+<tr>
+<th>argument</th>
+<th>default</th>
+<th>help</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>--no-images</code></td>
+<td><code>True</code></td>
+<td>do not remove images</td>
+</tr>
+<tr>
+<td><code>--no-networks</code></td>
+<td><code>True</code></td>
+<td>do not remove networks</td>
+</tr>
+</tbody>
+</table>
+<h4 id="grizzly-cli-dist-run"><code>grizzly-cli dist run</code></h4>
+<p>execute load test scenarios specified in a feature file.</p>
+<h5 id="usage_7">Usage</h5>
 <div class="highlight"><pre><span></span><code>grizzly-cli dist run <span class="o">[</span>-h<span class="o">]</span> <span class="o">[</span>--verbose<span class="o">]</span> <span class="o">[</span>-T TESTDATA_VARIABLE<span class="o">]</span> <span class="o">[</span>-y<span class="o">]</span>
                      <span class="o">[</span>-e ENVIRONMENT_FILE<span class="o">]</span>
                      file
@@ -2242,7 +2338,7 @@
 </tr>
 </tbody>
 </table>
-<h5 id="optional-arguments_5">Optional arguments</h5>
+<h5 id="optional-arguments_6">Optional arguments</h5>
 <table>
 <thead>
 <tr>
