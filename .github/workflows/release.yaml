@@ -71,6 +71,10 @@ jobs:
       id: setup-python-without-cache
       uses: actions/setup-python@v4
 
+    - name: setup node
+      id: setup-node
+      uses: actions/setup-node@v3
+
     - name: get last released version
       if: github.event.inputs.version == '0.0.0'
       id: last-version
@@ -190,4 +194,3 @@ jobs:
         # cname: <a better domain>
         allow_empty_commit: true
         commit_message: 'Documentation for release ${{ steps.version.outputs.version }}'
-
