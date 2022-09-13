@@ -30,6 +30,11 @@ COPY --from=dependencies /root/ibm/gskit8/lib64 /opt/mqm/gskit8/lib64/
 ENV LD_LIBRARY_PATH="/opt/mqm/lib64:${LD_LIBRARY_PATH}"
 # End Copy/setup IBM MQ stuff
 
+# [Option] Install Node.js
+ARG INSTALL_NODE="true"
+ARG NODE_VERSION="lts/*"
+RUN if [ "${INSTALL_NODE}" = "true" ]; then su vscode -c "umask 0002 && . /usr/local/share/nvm/nvm.sh && nvm install ${NODE_VERSION} 2>&1"; fi
+
 # run github workflows locally
 RUN curl https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash
 
@@ -37,5 +42,8 @@ RUN pip3 --disable-pip-version-check --no-cache-dir install pip-tools
 
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
      && apt-get -y install --no-install-recommends vim
+
+# [Optional] Uncomment this line to install global node packages.
+# RUN su vscode -c "source /usr/local/share/nvm/nvm.sh && npm install -g <packages>" 2>&1
 
 RUN rm -rf /etc/localtime || true

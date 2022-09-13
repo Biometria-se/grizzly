@@ -21,3 +21,11 @@ nav:
       - Metadata: command-line-interface/usage/metadata.md
     - Changelog: command-line-interface/changelog.md
     - Licenses: command-line-interface/licenses.md
+  - Editor support:
+    - editor-support/index.md
+    - Language server: editor-support/language-server.md
+    - Editors:
+      - editor-support/editors/index.md
+      - Visual Studio Code: editor-support/editors/vscode.md
+    - Changelog: editor-support/changelog.md
+    - Licenses: editor-support/licenses.md

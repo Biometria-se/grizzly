@@ -1,2 +1,2 @@
 @anchor command-line-interface.usage
-@shell cd .. && script/docs-generate-cli.bash --usage
+@shell cd .. && script/docs-generate.bash cli --usage

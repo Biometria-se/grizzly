@@ -2,7 +2,8 @@
 set -e
 
 main() {
-    local what="$1"
+    local target="${1:-cli}"
+    local what="$2"
     local script_dir
     local workspace
     local cwd="${PWD}"
@@ -17,30 +18,56 @@ main() {
 
     >&2 echo "-- activating virtualenv"
     source .venv/bin/activate
-    >&2 echo "-- installing grizzly-cli"
-    pip3 install --no-cache-dir grizzly-loadtester-cli[dev] &> /dev/null
-    rc=$(( rc + $? ))
+
+    local pypi_suffix
+
+    case "${target}" in
+        cli)
+            pypi_suffix="${target}"
+            ;;
+        lsp)
+            pypi_suffix="${target:0:2}"
+            ;;
+        *)
+            if [[ ! -z "${target}" ]]; then
+                echo "unknown argument: ${target}"
+                return 1
+            fi
+            ;;
+    esac
+
+    >&2 echo "-- installing grizzly-${pypi_suffix}"
+    python -m pip install --no-cache-dir grizzly-loadtester-${pypi_suffix}[dev] &> /dev/null
 
     case "${what}" in
         --usage)
-
+            if [[ "${target}" != "cli" ]]; then
+                >&2 echo "not valid for ${target}"
+                return 1
+            fi
             >&2 echo "-- generating usage"
-            grizzly-cli --md-help
+            grizzly-${target} --md-help
             rc=$(( rc + $? ))
             ;;
         --licenses|--changelog)
             >&2 echo "-- cloning repo"
-            git clone https://github.com/Biometria-se/grizzly-cli.git
+            git clone https://github.com/Biometria-se/grizzly-${target}.git
             rc=$(( rc + $? ))
 
-            pushd "grizzly-cli/" &> /dev/null
+            pushd "grizzly-${target}/" &> /dev/null
 
-            local version
-            version="$(grizzly-cli --version | awk '{print $NF}')"
-            rc=$(( rc + $? ))
+            local tag
+            if [[ "${target}" == "cli" ]]; then
+                local version
+                version="$(grizzly-${target} --version | awk '{print $NF}')"
+                rc=$(( rc + $? ))
+                tag="v${version}"
+            else
+                tag="$(git tag | grep -E '^v' | sort | tail -1)"
+            fi
 
-            >&2 echo "checking out tag v${version}"
-            git checkout "tags/v${version}" -b "v${version}"
+            >&2 echo "checking out tag ${tag}"
+            git checkout "tags/${tag}" -b "${tag}"
             rc=$(( rc + $? ))
 
             case "${what}" in
