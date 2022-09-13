@@ -40,6 +40,7 @@ def initialize_testdata(grizzly: 'GrizzlyContext', tasks: List[GrizzlyTask]) -> 
 
     declared_variables = set(grizzly.state.variables.keys())
 
+    # check except between declared variables and variables found in templates
     for variable in declared_variables:
         assert variable in found_variables, f'variable "{variable}" has been declared, but cannot be found in templates'
 

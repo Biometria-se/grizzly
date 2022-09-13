@@ -42,7 +42,7 @@ if TYPE_CHECKING:  # pragma: no cover
 from . import GrizzlyTask, GrizzlyTaskWrapper, template
 
 
-@template('condition')
+@template('condition', 'tasks')
 class ConditionalTask(GrizzlyTaskWrapper):
     tasks: Dict[bool, List[GrizzlyTask]]
 

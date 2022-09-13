@@ -37,7 +37,7 @@ if TYPE_CHECKING:  # pragma: no cover
 from . import GrizzlyTask, GrizzlyTaskWrapper, template
 
 
-@template('values')
+@template('values', 'tasks')
 class LoopTask(GrizzlyTaskWrapper):
     tasks: List[GrizzlyTask]
 

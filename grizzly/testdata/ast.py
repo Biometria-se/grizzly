@@ -55,8 +55,6 @@ def _parse_templates(templates: Dict['GrizzlyContextScenario', Set[str]]) -> Dic
         if scenario_name not in variables:
             variables[scenario_name] = set()
 
-        has_processed_orphan_templates = False
-
         def _getattr(node: Node) -> Optional[List[str]]:
             attributes: Optional[List[str]] = None
 
@@ -91,27 +89,22 @@ def _parse_templates(templates: Dict['GrizzlyContextScenario', Set[str]]) -> Dic
 
             return attributes
 
+        template_sources = list(scenario_templates) + scenario.orphan_templates
+
         # can raise TemplateError which should be handled else where
-        for template in scenario_templates:
+        for template in template_sources:
             j2env = j2.Environment(
                 autoescape=False,
                 loader=j2.FileSystemLoader('.'),
             )
 
-            sources: List[str] = [template]
+            parsed = j2env.parse(template)
 
-            if not has_processed_orphan_templates:
-                sources += scenario.orphan_templates
-                has_processed_orphan_templates = True
+            for body in getattr(parsed, 'body', []):
+                for node in getattr(body, 'nodes', []):
+                    attributes = _getattr(node)
 
-            for source in sources:
-                parsed = j2env.parse(source)
-
-                for body in getattr(parsed, 'body', []):
-                    for node in getattr(body, 'nodes', []):
-                        attributes = _getattr(node)
-
-                        if attributes is not None:
-                            variables[scenario_name].add('.'.join(attributes))
+                    if attributes is not None:
+                        variables[scenario_name].add('.'.join(attributes))
 
     return variables

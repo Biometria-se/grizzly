@@ -13,6 +13,7 @@ from ...context import GrizzlyContext
 from ...testdata.utils import create_context_variable, resolve_variable
 from ...utils import merge_dicts
 from ...exceptions import RestartScenario
+from .._helpers import is_template
 
 
 @parse.with_pattern(r'(iteration[s]?)')
@@ -80,10 +81,10 @@ def step_setup_iterations(context: Context, value: str, iteration_number: str) -
     '''
     grizzly = cast(GrizzlyContext, context.grizzly)
     should_resolve = '{{' in value and '}}' in value or value[0] == '$'
-    iterations = int(round(float(resolve_variable(grizzly, value)), 0))
+    iterations = max(int(round(float(resolve_variable(grizzly, value)), 0)), 1)
 
-    if should_resolve and iterations < 1:
-        iterations = 1
+    if is_template(value):
+        grizzly.scenario.orphan_templates.append(value)
 
     assert iterations >= 0, f'{value} resolved to {iterations} iterations, which is not valid'
 
@@ -140,6 +141,8 @@ def step_setup_variable_value(context: Context, name: str, value: str) -> None:
         # data type will be guessed when setting the variable
         resolved_value = resolve_variable(grizzly, value, guess_datatype=False)
         grizzly.state.variables[name] = resolved_value
+        if is_template(value):
+            grizzly.scenario.orphan_templates.append(value)
     except ValueError as e:
         assert 0, str(e)
 
