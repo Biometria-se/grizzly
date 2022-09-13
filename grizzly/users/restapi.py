@@ -594,6 +594,9 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
             request.response.content_type = TransformerContentType.JSON
         elif request.response.content_type == TransformerContentType.XML:
             self.headers['Content-Type'] = 'application/xml'
+        elif request.response.content_type == TransformerContentType.MULTIPART_FORM_DATA:
+            if 'Content-Type' in self.headers:
+                del self.headers['Content-Type']
 
         request_name, endpoint, payload = self.render(request)
 
