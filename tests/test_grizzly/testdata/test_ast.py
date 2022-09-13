@@ -20,6 +20,7 @@ def test__parse_template(request_task: RequestTaskFixture) -> None:
     source['result']['File'] = '{{ AtomicDirectoryContents.test }}'
     source['result']['TestSubString'] = '{{ a_sub_string[:3] }}'
     source['result']['TestString'] = '{{ a_string }}'
+    source['result']['FooBar'] = '{{ (AtomicIntegerIncrementer.file_number | int) }}'
 
     request.source = jsondumps(source)
     scenario = GrizzlyContextScenario(1)
@@ -31,7 +32,6 @@ def test__parse_template(request_task: RequestTaskFixture) -> None:
     variables = _parse_templates(templates)
 
     assert 'TestScenario_001' in variables
-    assert len(variables['TestScenario_001']) == 8
     assert 'messageID' in variables['TestScenario_001']
     assert 'AtomicIntegerIncrementer.messageID' in variables['TestScenario_001']
     assert 'AtomicDate.now' in variables['TestScenario_001']
@@ -40,6 +40,44 @@ def test__parse_template(request_task: RequestTaskFixture) -> None:
     assert 'AtomicDirectoryContents.test' in variables['TestScenario_001']
     assert 'a_sub_string' in variables['TestScenario_001']
     assert 'a_string' in variables['TestScenario_001']
+    assert 'AtomicIntegerIncrementer.file_number' in variables['TestScenario_001']
+    assert len(variables['TestScenario_001']) == 9
+
+
+def test__parse_template_nested_pipe(request_task: RequestTaskFixture) -> None:
+    request = request_task.request
+
+    assert request.source is not None
+
+    source = jsonloads(request.source)
+    source['result'] = {'FooBar': '{{ AtomicIntegerIncrementer.file_number | int }}'}
+
+    request.source = jsondumps(source)
+    scenario = GrizzlyContextScenario(1)
+    scenario.name = 'TestScenario'
+    scenario.tasks.add(request)
+
+    templates = {scenario: set(request.get_templates())}
+
+    variables = _parse_templates(templates)
+
+    assert 'TestScenario_001' in variables
+    assert 'AtomicIntegerIncrementer.file_number' in variables['TestScenario_001']
+    assert len(variables['TestScenario_001']) == 1
+
+    source['result'] = {'FooBar': '{{ (AtomicIntegerIncrementer.file_number | int) }}'}
+
+    request.source = jsondumps(source)
+    scenario.tasks.clear()
+    scenario.tasks.add(request)
+
+    templates = {scenario: set(request.get_templates())}
+
+    variables = _parse_templates(templates)
+
+    assert 'TestScenario_001' in variables
+    assert 'AtomicIntegerIncrementer.file_number' in variables['TestScenario_001']
+    assert len(variables['TestScenario_001']) == 1
 
 
 def test_get_template_variables() -> None:
