@@ -26,7 +26,7 @@ def test_e2e_step_response_save_matches(e2e_fixture: End2EndFixture, target: Res
         assert len(grizzly.scenario.orphan_templates) == 1, 'unexpected number of orphan templates'
         assert grizzly.scenario.orphan_templates[0] == '{{ expression }}', f'{grizzly.scenario.orphan_templates[0]} != {{ expression }}'
 
-        request = grizzly.scenario.tasks[-1]
+        request = grizzly.scenario.tasks[-2]
 
         assert isinstance(request, RequestTask), f'{request.__class__.__name__} != RequestTask'
 
@@ -52,8 +52,10 @@ def test_e2e_step_response_save_matches(e2e_fixture: End2EndFixture, target: Res
     feature_file = e2e_fixture.test_steps(
         scenario=[
             'And value for variable "tmp" is "none"',
+            'And value for variable "expression" is "$.hello.world"',
             f'Then get request with name "{target.name.lower()}-handler" from endpoint "/api/test | content_type=json"',
             f'Then save response {target.name.lower()} "{{{{ expression }}}} | expected_matches=10" that matches "foo[bar]?" in variable "tmp"',
+            'Then log message "tmp={{ tmp }}"',
         ],
         identifier=target.name,
     )
@@ -78,7 +80,7 @@ def test_e2e_step_response_save(e2e_fixture: End2EndFixture, target: ResponseTar
 
         assert len(grizzly.scenario.orphan_templates) == 0, 'unexpected number of orphan templates'
 
-        request = grizzly.scenario.tasks[-1]
+        request = grizzly.scenario.tasks[-2]
 
         assert isinstance(request, RequestTask), f'{request.__class__.__name__} != RequestTask'
 
@@ -106,6 +108,7 @@ def test_e2e_step_response_save(e2e_fixture: End2EndFixture, target: ResponseTar
             'And value for variable "foobar" is "none"',
             f'Then get request with name "{target.name.lower()}-handler" from endpoint "/api/test | content_type=json"',
             f'Then save response {target.name.lower()} "$.hello.world" in variable "foobar"',
+            'Then log message "foobar={{ foobar }}"',
         ],
         identifier=target.name,
     )

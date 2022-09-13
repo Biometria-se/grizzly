@@ -6,25 +6,18 @@ from getpass import getuser
 import yaml
 
 from ..fixtures import End2EndFixture
-from ..webserver import Webserver
 from ..helpers import run_command
 
 
-def test_e2e_example(webserver: Webserver, e2e_fixture: End2EndFixture) -> None:
+def test_e2e_example(e2e_fixture: End2EndFixture) -> None:
     try:
         result: Optional[str] = None
-        master_port = 11338
-
-        if e2e_fixture._distributed:
-            host = f'http://master:{master_port}'
-        else:
-            host = f'http://localhost:{webserver.port}'
 
         with open('example/environments/example.yaml') as env_yaml_file:
             env_conf = yaml.full_load(env_yaml_file)
 
             for name in ['dog', 'cat', 'book']:
-                env_conf['configuration']['facts'][name]['host'] = host
+                env_conf['configuration']['facts'][name]['host'] = f'http://{e2e_fixture.host}'
 
         if e2e_fixture._distributed:
             example_root = str((e2e_fixture.root / '..' / 'test-example').resolve())
@@ -49,7 +42,7 @@ def test_e2e_example(webserver: Webserver, e2e_fixture: End2EndFixture) -> None:
 
             index = feature_file_contents.index('  Scenario: dog facts api')
             # should go last in "Background"-section
-            feature_file_contents.insert(index - 1, f'    Then start webserver on master port "{master_port}"')
+            feature_file_contents.insert(index - 1, f'    Then start webserver on master port "{e2e_fixture.webserver.port}"')
 
             with open(feature_file, 'w') as fd:
                 fd.truncate(0)
@@ -60,7 +53,7 @@ def test_e2e_example(webserver: Webserver, e2e_fixture: End2EndFixture) -> None:
             example_root = exec_root = str(Path.cwd() / 'example')
             feature_file = 'features/example.feature'
 
-        with NamedTemporaryFile(delete=False, suffix='.yaml', dir=f'{example_root}/environments') as env_conf_file:
+        with NamedTemporaryFile(delete=True, suffix='.yaml', dir=f'{example_root}/environments') as env_conf_file:
             env_conf_file.write(yaml.dump(env_conf, Dumper=yaml.Dumper).encode())
             env_conf_file.flush()
 

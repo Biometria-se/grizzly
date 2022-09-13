@@ -35,6 +35,8 @@ def test_e2e_step_user_type_with_weight(e2e_fixture: End2EndFixture, user_type: 
     if 'messagequeue' in user_type.lower() and not e2e_fixture.has_pymqi():
         pytest.skip('pymqi not installed')
 
+    host = host.replace('localhost', e2e_fixture.host)
+
     weight = randint(1, 100)
 
     table: List[Dict[str, str]] = [{
@@ -83,6 +85,8 @@ def test_e2e_step_user_type(e2e_fixture: End2EndFixture, user_type: str, host: s
 
     if 'messagequeue' in user_type.lower() and not e2e_fixture.has_pymqi():
         pytest.skip('pymqi not installed')
+
+    host = host.replace('localhost', e2e_fixture.host)
 
     table: List[Dict[str, str]] = [{
         'user_type': user_type,

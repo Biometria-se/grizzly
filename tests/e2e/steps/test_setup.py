@@ -17,10 +17,11 @@ def test_e2e_step_setup_variable_value_ask(e2e_fixture: End2EndFixture) -> None:
 
     feature_file = e2e_fixture.test_steps(
         background=[
-            'And ask for value of variable "background_variable"'
+            'And ask for value of variable "background_variable"',
         ],
         scenario=[
-            'Then ask for value of variable "scenario_variable"'
+            'Then ask for value of variable "scenario_variable"',
+            'Then log message "{{ background_variable }}={{ scenario_variable }}"',
         ]
     )
 

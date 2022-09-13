@@ -185,14 +185,8 @@ def test_step_setup_iterations(behave_fixture: BehaveFixture) -> None:
     step_setup_iterations(behave, '10', 'iterations')
     assert grizzly.scenario.iterations == 10
 
-    with pytest.raises(AssertionError):
-        step_setup_iterations(behave, '10', 'iteration')
-
     step_setup_iterations(behave, '1', 'iteration')
     assert grizzly.scenario.iterations == 1
-
-    with pytest.raises(AssertionError):
-        step_setup_iterations(behave, '1', 'iterations')
 
     with pytest.raises(AssertionError):
         step_setup_iterations(behave, '{{ iterations }}', 'iteration')
@@ -203,12 +197,6 @@ def test_step_setup_iterations(behave_fixture: BehaveFixture) -> None:
 
     step_setup_iterations(behave, '{{ iterations * 0.25 }}', 'iteration')
     assert grizzly.scenario.iterations == 25
-
-    with pytest.raises(AssertionError):
-        step_setup_iterations(behave, '-1', 'iteration')
-
-    with pytest.raises(AssertionError):
-        step_setup_iterations(behave, '0', 'iteration')
 
     step_setup_iterations(behave, '0', 'iterations')
     assert grizzly.scenario.iterations == 0

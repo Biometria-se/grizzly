@@ -11,9 +11,9 @@ from ....fixtures import End2EndFixture
 
 
 @pytest.mark.parametrize('url', [
-    'influxdb://grizzly:password@influx.example.com/grizzly-statistics',
-    'insights://insights.example.com/?Testplan=grizzly-statistics&InstrumentationKey=asdfasdf=',
-    'influxdb://$conf::statistics.username:$conf::statistics.password@influx.example.com/$conf::statistics.database',
+    'influxdb://grizzly:password@localhost/grizzly-statistics',
+    'insights://localhost/?Testplan=grizzly-statistics&InstrumentationKey=asdfasdf=',
+    'influxdb://$conf::statistics.username:$conf::statistics.password@localhost/$conf::statistics.database',
 ])
 def test_e2e_step_setup_save_statistics(e2e_fixture: End2EndFixture, url: str) -> None:
     env_conf: Dict[str, Any] = {
@@ -25,6 +25,8 @@ def test_e2e_step_setup_save_statistics(e2e_fixture: End2EndFixture, url: str) -
             }
         }
     }
+
+    url = url.replace('localhost', e2e_fixture.host)
 
     def validator(context: Context) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
@@ -130,7 +132,7 @@ def test_e2e_step_setup_run_time(e2e_fixture: End2EndFixture, timespan: str) -> 
 
 
 @pytest.mark.parametrize('name,value,expected', [
-    ('token.url', 'http://example.com/api/auth', '{"token": {"url": "http://example.com/api/auth"}}',),
+    ('token.url', 'http://localhost/api/auth', '{"token": {"url": "http://localhost/api/auth"}}',),
     ('token/client id', 'aaaa-bbbb-cccc-dddd', '{"token": {"client_id": "aaaa-bbbb-cccc-dddd"}}',),
     ('log_all_requests', 'True', '{"log_all_requests": true}',),
     ('run_id', '13', '{"run_id": 13}',),
@@ -150,8 +152,10 @@ def test_e2e_step_setup_global_context_variable(e2e_fixture: End2EndFixture, nam
 
         assert grizzly.setup.global_context == global_context
 
+    value = value.replace('localhost', e2e_fixture.host)
+
     table: List[Dict[str, str]] = [{
-        'expected': expected,
+        'expected': expected.replace('localhost', e2e_fixture.host),
     }]
 
     e2e_fixture.add_validator(validator, table=table)
