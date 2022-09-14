@@ -22,7 +22,9 @@ def test_e2e_step_setup_set_context_variable(e2e_fixture: End2EndFixture, name: 
         data = list(context.table)[0].as_dict()
 
         expected = jsonloads(data['expected'])
+        e2e_fixture_host = data['e2e_fixture.host']
         expected['hello'] = {'world': 'foobar'}
+
         if 'token' not in expected:
             expected['token'] = {'client_secret': 'something'}
         else:
@@ -36,10 +38,11 @@ def test_e2e_step_setup_set_context_variable(e2e_fixture: End2EndFixture, name: 
             pass
 
         assert actual == expected, f'{str(actual)} != {str(expected)}'
-        assert grizzly.scenario.context.get('host', None) == 'http://localhost:1'  # added by fixture
+        assert grizzly.scenario.context.get('host', None) == f'http://{e2e_fixture_host}'  # added by fixture
 
     table: List[Dict[str, str]] = [{
         'expected': expected,
+        'e2e_fixture.host': e2e_fixture.host,
     }]
 
     e2e_fixture.add_validator(validate_context_variable, table=table)
@@ -88,7 +91,8 @@ def test_e2e_step_setup_iterations(e2e_fixture: End2EndFixture, iterations: str)
             'Then ask for value of variable "leveranser"',
         ],
         scenario=[
-            f'And repeat for "{iterations}" iteration{suffix}'
+            f'And repeat for "{iterations}" iteration{suffix}',
+            'Then log message "leveranser={{ leveranser }}"',
         ],
         identifier=iterations,
     )
@@ -119,6 +123,11 @@ def test_e2e_step_variable_value(e2e_fixture: End2EndFixture) -> None:
             'And value for variable "bool_value" is "True"',
             'And value for variable "wildcard" is "foobar"',
             'And value for variable "nested_value" is "{{ testdata_variable }}"',
+            (
+                'Then log message "testdata_variable={{ testdata_variable }}, int_value={{ int_value }}, '
+                'float_value={{ float_value }}, bool_value={{ bool_value }}, wildcard={{ wildcard }}, '
+                'nested_value={{ nested_value }}"'
+            ),
         ],
     )
 
@@ -148,6 +157,8 @@ def test_e2e_step_set_variable_alias(e2e_fixture: End2EndFixture) -> None:
             'And value for variable "AtomicCsvRow.users" is "users.csv | repeat=True"',
             'And set alias "auth.user.username" for variable "AtomicCsvRow.users.username"',
             'And set alias "auth.user.password" for variable "AtomicCsvRow.users.password"',
+            'Then log message "username={{ AtomicCsvRow.users.username }}"',
+            'Then log message "password={{ AtomicCsvRow.users.password }}"',
         ],
     )
 
@@ -243,6 +254,7 @@ def test_e2e_setup_metadata(e2e_fixture: End2EndFixture) -> None:
             'And metadata "Content-Type" is "application/xml"',
             'And metadata "Ocp-Apim-Subscription-Key" is "9asdf00asdf00adsf034"',
             'And metadata "nested" is "{{ nested_value }}"',
+            'Then log message "nested_value={{ nested_value }}"',
         ],
     )
 

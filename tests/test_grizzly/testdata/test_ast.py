@@ -79,6 +79,22 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture) -> None:
     assert 'AtomicIntegerIncrementer.file_number' in variables['TestScenario_001']
     assert len(variables['TestScenario_001']) == 1
 
+    request.source = "{{ '%08d' % key[:6] | int }}_{{ guid }}_{{ AtomicDate.date }}_{{ '%012d' % AtomicIntegerIncrementer.file_number }}"
+
+    scenario.tasks.clear()
+    scenario.tasks.add(request)
+
+    templates = {scenario: set(request.get_templates())}
+
+    variables = _parse_templates(templates)
+
+    assert 'TestScenario_001' in variables
+    assert 'key' in variables['TestScenario_001']
+    assert 'guid' in variables['TestScenario_001']
+    assert 'AtomicDate.date' in variables['TestScenario_001']
+    assert 'AtomicIntegerIncrementer.file_number' in variables['TestScenario_001']
+    assert len(variables['TestScenario_001']) == 4
+
 
 def test_get_template_variables() -> None:
     variables = get_template_variables([])

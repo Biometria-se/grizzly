@@ -418,9 +418,8 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
 
         with pytest.raises(AssertionError) as ae:
             setup_environment_listeners(behave, tasks)
-        assert 'variable test_id has not been initialized' in str(ae)
+        assert 'variable "test_id" has been found in templates, but has not been declared' in str(ae)
 
-        AtomicIntegerIncrementer.destroy()
         grizzly.state.variables['test_id'] = 'test-1'
         environment.events.spawning_complete._handlers = []
 

@@ -41,6 +41,7 @@ from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 
 from .helpers import TestUser, TestScenario, RequestSilentFailureEvent
 from .helpers import onerror, run_command
+from .webserver import Webserver
 
 
 if TYPE_CHECKING:
@@ -624,10 +625,12 @@ class End2EndFixture:
     cwd: Path
     test_tmp_dir: Path
     _tmp_path_factory_basetemp: Optional[Path]
+    webserver: Webserver
 
-    def __init__(self, tmp_path_factory: TempPathFactory, distributed: bool) -> None:
+    def __init__(self, tmp_path_factory: TempPathFactory, webserver: Webserver, distributed: bool) -> None:
         self.test_tmp_dir = (Path(__file__) / '..' / '..' / '.pytest_tmp').resolve()
         self._tmp_path_factory_basetemp = tmp_path_factory._basetemp
+        self.webserver = webserver
         tmp_path_factory._basetemp = self.test_tmp_dir
 
         self._tmp_path_factory = tmp_path_factory
@@ -659,6 +662,15 @@ class End2EndFixture:
     @property
     def mode(self) -> str:
         return 'dist' if self._distributed else 'local'
+
+    @property
+    def host(self) -> str:
+        if self._distributed:
+            hostname = 'master'
+        else:
+            hostname = 'localhost'
+
+        return f'{hostname}:{self.webserver.port}'
 
     def has_pymqi(self) -> bool:
         if self._has_pymqi is None:
@@ -898,10 +910,13 @@ def step_start_webserver(context: Context, port: int) -> None:
                 background.insert(1, 'And spawn rate is "1" user per second')
 
         if add_user_type_step:
-            scenario.insert(0, 'Given a user of type "RestApi" load testing "http://localhost:1"')
+            scenario.insert(0, f'Given a user of type "RestApi" load testing "http://{self.host}"')
 
         if add_spawn_rate_step and not add_user_count_step:
             background.append('And spawn rate is "1" user per second')
+
+        if self._distributed and not any([step.strip().startswith('Then start webserver on master port') for step in background]):
+            background.append(f'Then start webserver on master port "{self.webserver.port}"')
 
         contents.append('  Background: common configuration')
         for step in background:

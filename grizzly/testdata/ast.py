@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Set, Optional, List, Dict
 
 import jinja2 as j2
 
-from jinja2.nodes import Getattr, Getitem, Name, Compare, Filter, Node
+from jinja2.nodes import Getattr, Getitem, Name, Compare, Filter, Node, Mod
 
 from ..tasks import GrizzlyTask
 
@@ -55,8 +55,6 @@ def _parse_templates(templates: Dict['GrizzlyContextScenario', Set[str]]) -> Dic
         if scenario_name not in variables:
             variables[scenario_name] = set()
 
-        has_processed_orphan_templates = False
-
         def _getattr(node: Node) -> Optional[List[str]]:
             attributes: Optional[List[str]] = None
 
@@ -72,6 +70,15 @@ def _parse_templates(templates: Dict['GrizzlyContextScenario', Set[str]]) -> Dic
             elif isinstance(node, Filter):
                 child_node = getattr(node, 'node')
                 attributes = _getattr(child_node)
+            elif isinstance(node, Mod):
+                left_node = getattr(node, 'left')
+                attributes = _getattr(left_node) or []
+                right_node = getattr(node, 'right')
+                attributes += _getattr(right_node) or []
+
+                if len(attributes) < 1:
+                    attributes = None
+
             elif isinstance(node, Compare):
                 expr = getattr(node, 'expr')
                 if isinstance(expr, Filter):
@@ -82,27 +89,22 @@ def _parse_templates(templates: Dict['GrizzlyContextScenario', Set[str]]) -> Dic
 
             return attributes
 
+        template_sources = list(scenario_templates) + scenario.orphan_templates
+
         # can raise TemplateError which should be handled else where
-        for template in scenario_templates:
+        for template in template_sources:
             j2env = j2.Environment(
                 autoescape=False,
                 loader=j2.FileSystemLoader('.'),
             )
 
-            sources: List[str] = [template]
+            parsed = j2env.parse(template)
 
-            if not has_processed_orphan_templates:
-                sources += scenario.orphan_templates
-                has_processed_orphan_templates = True
+            for body in getattr(parsed, 'body', []):
+                for node in getattr(body, 'nodes', []):
+                    attributes = _getattr(node)
 
-            for source in sources:
-                parsed = j2env.parse(source)
-
-                for body in getattr(parsed, 'body', []):
-                    for node in getattr(body, 'nodes', []):
-                        attributes = _getattr(node)
-
-                        if attributes is not None:
-                            variables[scenario_name].add('.'.join(attributes))
+                    if attributes is not None:
+                        variables[scenario_name].add('.'.join(attributes))
 
     return variables

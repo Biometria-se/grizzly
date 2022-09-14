@@ -16,7 +16,7 @@ a step implementation is also needed.
 There are examples of this in the {@link framework.example}.
 '''
 from abc import ABC, ABCMeta, abstractmethod
-from typing import TYPE_CHECKING, Any, Callable, List, Type, Set, Optional, Union, Dict
+from typing import TYPE_CHECKING, Any, Callable, List, Type, Set, Optional
 from os import environ
 from pathlib import Path
 
@@ -86,7 +86,6 @@ class GrizzlyTask(ABC):
 
 class GrizzlyTaskWrapper(GrizzlyTask, metaclass=ABCMeta):
     name: str
-    list: Union[List[GrizzlyTask], Dict[str, GrizzlyTask]]
 
     @abstractmethod
     def add(self, task: GrizzlyTask) -> None:

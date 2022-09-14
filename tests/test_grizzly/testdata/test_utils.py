@@ -50,6 +50,17 @@ def test_initialize_testdata_with_tasks(
             'AtomicDate.now': 'now',
             'transformer_task': 'none',
             'AtomicIntegerIncrementer.value': 20,
+            'request_name': 'none',
+            'messageID': 2022,
+            'value': 'none',
+            'condition': False,
+            'timezone': 'GMT',
+            'content': 'none',
+            'days': 365,
+            'date_task_date': '2022-09-13 15:08:00',
+            'endpoint_part': '/api',
+            'message': 'hello world!',
+            'orphan': 'most likely',
         })
         grizzly.state.variables['AtomicIntegerIncrementer.messageID'] = 1337
         grizzly.state.variables['AtomicDate.now'] = 'now'
@@ -71,6 +82,7 @@ def test_initialize_testdata_with_tasks(
         scenario.tasks.add(UntilRequestTask(grizzly, request=request, condition='{{ condition }}'))
         scenario.tasks.add(ConditionalTask(scenario=scenario, name='conditional-1', condition='{{ value | int > 5 }}'))
         scenario.tasks.add(ConditionalTask(scenario=scenario, name='conditional-1', condition='{{ AtomicIntegerIncrementer.value | int > 5 }}'))
+        scenario.tasks.add(LogMessageTask(message='transformer_task={{ transformer_task }}'))
         scenario.orphan_templates.append('hello {{ orphan }} template')
         testdata, external_dependencies = initialize_testdata(grizzly, scenario.tasks)
 
@@ -79,22 +91,24 @@ def test_initialize_testdata_with_tasks(
         assert external_dependencies == set()
         assert scenario_name in testdata
         variables = testdata[scenario_name]
-        assert len(variables) == 14
+        assert len(variables) == 15
+        print(sorted(variables.keys()))
         assert sorted(variables.keys()) == sorted([
-            'messageID',
-            'AtomicIntegerIncrementer.messageID',
             'AtomicDate.now',
-            'request_name',
+            'AtomicIntegerIncrementer.messageID',
+            'AtomicIntegerIncrementer.value',
+            'condition',
+            'content',
+            'date_task_date',
+            'days',
             'endpoint_part',
             'message',
-            'date_task_date',
-            'timezone',
-            'days',
-            'content',
-            'condition',
+            'messageID',
             'orphan',
+            'request_name',
+            'transformer_task',
+            'timezone',
             'value',
-            'AtomicIntegerIncrementer.value',
         ])
     finally:
         cleanup()

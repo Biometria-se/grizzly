@@ -1,4 +1,4 @@
-from typing import cast, List, Dict
+from typing import cast, List, Dict, Optional
 
 import pytest
 
@@ -35,9 +35,15 @@ def test_e2e_step_shapes_user_count(e2e_fixture: End2EndFixture, count: str) -> 
 
     e2e_fixture.add_validator(validator, table=table)
 
+    background: List[str] = []
+    testdata: Optional[Dict[str, str]] = None
+
+    if '{{' in count and '}}' in count:
+        background.append('Then ask for value of variable "user_count"')
+        testdata = {'user_count': '10'}
+
     feature_file = e2e_fixture.test_steps(
-        background=[
-            'Then ask for value of variable "user_count"',
+        background=background + [
             f'Given "{count}" user{suffix}',
         ],
         scenario=[
@@ -46,7 +52,7 @@ def test_e2e_step_shapes_user_count(e2e_fixture: End2EndFixture, count: str) -> 
         identifier=count,
     )
 
-    rc, _ = e2e_fixture.execute(feature_file, testdata={'user_count': '10'})
+    rc, _ = e2e_fixture.execute(feature_file, testdata=testdata)
 
     assert rc == 0
 
@@ -71,14 +77,20 @@ def test_e2e_step_shapes_spawn_rate(e2e_fixture: End2EndFixture, rate: str) -> N
 
     e2e_fixture.add_validator(validator, table=table)
 
+    background: List[str] = []
+    testdata: Optional[Dict[str, str]] = None
+
+    if '{{' in rate and '}}' in rate:
+        background.append('Then ask for value of variable "spawn_rate"')
+        testdata = {'spawn_rate': '0.001'}
+
     feature_file = e2e_fixture.test_steps(
-        background=[
-            'Then ask for value of variable "spawn_rate"',
+        background=background + [
             f'Given spawn rate is "{rate}" users per second',
         ],
         identifier=rate,
     )
 
-    rc, _ = e2e_fixture.execute(feature_file, testdata={'spawn_rate': '0.001'})
+    rc, _ = e2e_fixture.execute(feature_file, testdata=testdata)
 
     assert rc == 0

@@ -1,5 +1,5 @@
 from json import dumps as jsondumps
-from typing import cast
+from typing import cast, List, Dict
 from textwrap import dedent
 
 import pytest
@@ -382,7 +382,7 @@ def test_e2e_step_task_transform(e2e_fixture: End2EndFixture) -> None:
         tasks = grizzly.scenario.tasks
         tasks.pop()
 
-        assert len(tasks) == 2
+        assert len(tasks) == 4
 
         task = tasks[0]
         assert isinstance(task, TransformerTask)
@@ -413,6 +413,8 @@ def test_e2e_step_task_transform(e2e_fixture: End2EndFixture) -> None:
             'And value for variable "document" is "{\"document\": {\"id\": \"DOCUMENT_8843-1\", \"title\": \"TPM Report 2021\"}}"',
             'Then parse "{{ document }}" as "json" and save value of "$.documents.id" in variable "document_id"',
             'Then parse "{{ document }}" as "json" and save value of "$.documents.title" in variable "document_title"',
+            'Then log message "document_id={{ document_id }}"',
+            'Then log message "document_title={{ document_title }}"',
         ]
     )
 
@@ -428,15 +430,18 @@ def test_e2e_step_task_client_get_endpoint(e2e_fixture: End2EndFixture) -> None:
 
         grizzly = cast(GrizzlyContext, context.grizzly)
 
+        data = list(context.table)[0].as_dict()
+        e2e_fixture_host = data['e2e_fixture.host']
+
         tasks = grizzly.scenario.tasks
         tasks.pop()
 
-        assert len(tasks) == 2
+        assert len(tasks) == 3
 
         task = tasks[0]
         assert isinstance(task, HttpClientTask)
         assert task.direction == RequestDirection.FROM
-        assert task.endpoint == 'https://localhost/example.json'
+        assert task.endpoint == f'https://{e2e_fixture_host}/example.json'
         assert task.name == 'https-get'
         assert task.variable == 'example_openapi', f'{task.variable} != example_openapi'
         assert task.source is None
@@ -455,15 +460,20 @@ def test_e2e_step_task_client_get_endpoint(e2e_fixture: End2EndFixture) -> None:
         assert task._short_name == 'Http'
         assert task.get_templates() == ['{{ endpoint }}']
 
-    e2e_fixture.add_validator(validate_client_task)
+    table: List[Dict[str, str]] = [{
+        'e2e_fixture.host': e2e_fixture.host,
+    }]
+
+    e2e_fixture.add_validator(validate_client_task, table=table)
 
     feature_file = e2e_fixture.test_steps(
         scenario=[
             'And value for variable "example_openapi" is "None"',
             'And value for variable "endpoint_result" is "None"',
-            'And value for variable "endpoint" is "localhost:8080"',
-            'Then get "https://localhost/example.json" with name "https-get" and save response in "example_openapi"',
+            f'And value for variable "endpoint" is "{e2e_fixture.host}"',
+            f'Then get "https://{e2e_fixture.host}/example.json" with name "https-get" and save response in "example_openapi"',
             'Then get "http://{{ endpoint }}" with name "http-get" and save response in "endpoint_result"',
+            'Then log message "example_openapi={{ example_openapi }}, endpoint_result={{ endpoint_result }}"',
         ]
     )
 
@@ -597,7 +607,7 @@ def test_e2e_step_task_date(e2e_fixture: End2EndFixture) -> None:
         tasks = grizzly.scenario.tasks
         tasks.pop()
 
-        assert len(tasks) == 3
+        assert len(tasks) == 4
 
         task = tasks[0]
         assert isinstance(task, DateTask)
@@ -644,6 +654,7 @@ def test_e2e_step_task_date(e2e_fixture: End2EndFixture) -> None:
             'Then parse date "2022-01-17 12:21:37 | timezone=UTC, format=\'%Y-%m-%dT%H:%M:%S.%f\', offset=1D" and save in variable "date1"',
             'Then parse date "{{ AtomicDate.test }} | offset=-1D" and save in variable "date2"',
             'Then parse date "{{ datetime.now() }} | offset=1Y, timezone=\'{{ timezone }}\'" and save in variable "date3"',
+            'Then log message "date1={{ date1 }}, date2={{ date2 }}, date3={{ date3 }}"',
         ],
     )
 

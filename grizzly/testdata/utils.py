@@ -1,3 +1,4 @@
+import itertools
 import logging
 
 from typing import TYPE_CHECKING, Optional, List, Dict, Any, Tuple, Set
@@ -26,6 +27,25 @@ logger = logging.getLogger(__name__)
 def initialize_testdata(grizzly: 'GrizzlyContext', tasks: List[GrizzlyTask]) -> Tuple[TestdataType, Set[str]]:
     testdata: TestdataType = {}
     template_variables = get_template_variables(tasks)
+
+    found_variables = set()
+    for variable in itertools.chain(*template_variables.values()):
+        module_name, variable_type, variable_name = GrizzlyVariables.get_variable_spec(variable)
+
+        if module_name is None and variable_type is None:
+            found_variables.add(variable_name)
+        else:
+            prefix = f'{module_name}.' if module_name != 'grizzly.testdata.variables' else ''
+            found_variables.add(f'{prefix}{variable_type}.{variable_name}')
+
+    declared_variables = set(grizzly.state.variables.keys())
+
+    # check except between declared variables and variables found in templates
+    for variable in declared_variables:
+        assert variable in found_variables, f'variable "{variable}" has been declared, but cannot be found in templates'
+
+    for variable in found_variables:
+        assert variable in declared_variables, f'variable "{variable}" has been found in templates, but has not been declared'
 
     initialized_datatypes: Dict[str, Any] = {}
     external_dependencies: Set[str] = set()

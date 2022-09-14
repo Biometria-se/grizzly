@@ -90,11 +90,11 @@ def _webserver() -> Generator[Webserver, None, None]:
         yield fixture
 
 
-@pytest.mark.usefixtures('tmp_path_factory')
-def _e2e_fixture(tmp_path_factory: TempPathFactory, request: SubRequest) -> Generator[End2EndFixture, None, None]:
+@pytest.mark.usefixtures('tmp_path_factory', 'webserver')
+def _e2e_fixture(tmp_path_factory: TempPathFactory, webserver: Webserver, request: SubRequest) -> Generator[End2EndFixture, None, None]:
     distributed = request.param if hasattr(request, 'param') else E2E_RUN_MODE == 'dist'
 
-    with End2EndFixture(tmp_path_factory, distributed=distributed) as fixture:
+    with End2EndFixture(tmp_path_factory, webserver, distributed=distributed) as fixture:
         yield fixture
 
 

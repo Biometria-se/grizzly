@@ -196,10 +196,6 @@ def setup_environment_listeners(context: Context, tasks: List[GrizzlyTask]) -> S
     # initialize testdata
     try:
         testdata, external_dependencies = initialize_testdata(grizzly, tasks)
-
-        for scenario_testdata in testdata.values():
-            for variable, value in scenario_testdata.items():
-                assert value is not None, f'variable {variable} has not been initialized'
     except TemplateError as e:
         logger.error(e, exc_info=True)
         raise AssertionError(f'error parsing request payload: {e}') from e
