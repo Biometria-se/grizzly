@@ -136,7 +136,7 @@ class RequestTask(GrizzlyTask):
 
         if '|' in self.endpoint:
             value, value_arguments = split_value(self.endpoint)
-            self.arguments = parse_arguments(value_arguments, unquote=False)
+            self.arguments = parse_arguments(value_arguments, unquote=True)
 
             if 'content_type' in self.arguments:
                 content_type = TransformerContentType.from_string(unquote(self.arguments['content_type']))
