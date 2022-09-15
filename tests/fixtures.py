@@ -617,6 +617,7 @@ class End2EndFixture:
     _distributed: bool
 
     _after_features: Dict[str, Callable[[BehaveContext, Feature], None]]
+    _before_features: Dict[str, Callable[[BehaveContext, Feature], None]]
 
     _root: Optional[Path]
 
@@ -639,6 +640,7 @@ class End2EndFixture:
         self._validators = {}
         self._root = None
         self._after_features = {}
+        self._before_features = {}
         self._distributed = distributed
         self._has_pymqi = None
 
@@ -880,6 +882,10 @@ def step_start_webserver(context: Context, port: int) -> None:
         callee = inspect.stack()[1].function
         self._after_features[callee] = implementation
 
+    def add_before_feature(self, implementation: Callable[[BehaveContext, Feature], None]) -> None:
+        callee = inspect.stack()[1].function
+        self._before_features[callee] = implementation
+
     def test_steps(self, /, scenario: Optional[List[str]] = None, background: Optional[List[str]] = None, identifier: Optional[str] = None) -> str:
         callee = inspect.stack()[1].function
         contents: List[str] = ['Feature:']
@@ -1011,7 +1017,24 @@ def step_start_webserver(context: Context, port: int) -> None:
             fd.write('from behave.runner import Context\n')
             fd.write('from behave.model import Feature\n')
             fd.write('from grizzly.context import GrizzlyContext\n')
-            fd.write('from grizzly.environment import before_feature, after_feature as grizzly_after_feature, before_scenario, after_scenario, before_step\n\n')
+            fd.write((
+                'from grizzly.environment import before_feature as grizzly_before_feature, '
+                'after_feature as grizzly_after_feature, before_scenario, after_scenario, before_step\n\n'
+            ))
+
+            fd.write('def before_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:\n')
+            if len(self._before_features) > 0:
+                for feature_name in self._before_features.keys():
+                    fd.write(f'    if feature.name == "{feature_name}":\n')
+                    fd.write(f'        {feature_name}_before_feature(context, feature)\n\n')
+            fd.write('    grizzly_before_feature(context, feature)\n\n')
+
+            for key, before_feature_impl in self._before_features.items():
+                source_lines = dedent(inspect.getsource(before_feature_impl)).split('\n')
+                source_lines[0] = re.sub(r'^def .*?\(', f'def {key}_before_feature(', source_lines[0])
+                source = '\n'.join(source_lines)
+
+                fd.write(source + '\n\n')
 
             fd.write('def after_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:\n')
             fd.write('    grizzly_after_feature(context, feature)\n\n')

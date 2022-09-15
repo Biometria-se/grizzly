@@ -162,8 +162,9 @@ class TestGrizzlyContextState:
             'background_section_done': (False, True),
             'variables': ({}, {'test': 'hello'}),
             'configuration': ({}, {'sut.host': 'http://example.com'}),
-            'alias': ({}, {'AtomicIntegerIncrementer.test', 'redovisning.iterations'}),
+            'alias': ({}, {'AtomicIntegerIncrementer.test': 'auth.randomseed'}),
             'verbose': (False, True),
+            'persistent': ({}, {'AtomicIntegerIncrementer.persist': '1 | step=10, persist=True'}),
         }
         actual_attributes = list(state.__dict__.keys())
         actual_attributes.sort()

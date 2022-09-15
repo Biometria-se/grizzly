@@ -2,6 +2,8 @@ from os import environ
 from typing import Any, Dict, Tuple, List, cast
 from time import perf_counter as time
 from datetime import datetime
+from pathlib import Path
+from json import loads as jsonloads
 
 import setproctitle as proc
 
@@ -32,6 +34,11 @@ def before_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], *
 
     grizzly = GrizzlyContext()
     grizzly.state.verbose = context.config.verbose
+
+    persistent_file = Path(context.config.base_dir) / 'persistent' / f'{Path(feature.filename).stem}.json'
+
+    if persistent_file.exists():
+        grizzly.state.persistent = jsonloads(persistent_file.read_text())
 
     context.grizzly = grizzly
     context.start = time()

@@ -18,6 +18,7 @@ from locust.exception import StopUser
 
 from grizzly.testdata.communication import TestdataConsumer, TestdataProducer
 from grizzly.testdata.utils import initialize_testdata, transform
+from grizzly.testdata.variables import AtomicIntegerIncrementer
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import LogMessageTask
 
@@ -78,7 +79,7 @@ class TestTestdataProducer:
             grizzly.state.variables['AtomicCsvRow.test'] = 'test.csv'
             grizzly.state.alias['AtomicCsvRow.test.header1'] = 'auth.user.username'
             grizzly.state.alias['AtomicCsvRow.test.header2'] = 'auth.user.password'
-            grizzly.state.variables['AtomicIntegerIncrementer.value'] = '1 | step=5, state=True'
+            grizzly.state.variables['AtomicIntegerIncrementer.value'] = '1 | step=5, persist=True'
             grizzly.state.variables['AtomicDate.utc'] = "now | format='%Y-%m-%dT%H:%M:%S.000Z', timezone=UTC"
             grizzly.state.variables['AtomicDate.now'] = 'now'
             grizzly.state.variables['tests.helpers.AtomicCustomVariable.foo'] = 'bar'
@@ -169,15 +170,13 @@ class TestTestdataProducer:
                 producer.stop()
                 assert producer.context._instance is None
 
-                state_file = Path(context_root).parent / 'features' / 'state' / 'test_run_with_behave.json'
-                assert state_file.exists()
+                persist_file = Path(context_root).parent / 'persistent' / 'test_run_with_behave.json'
+                assert persist_file.exists()
 
                 if success:
-                    actual_state = json.loads(state_file.read_text())
-                    assert actual_state == {
-                        'TestScenario_001': {
-                            'AtomicIntegerIncrementer.value': '11 | step=5, state=True',
-                        }
+                    actual_initial_values = json.loads(persist_file.read_text())
+                    assert actual_initial_values == {
+                        'AtomicIntegerIncrementer.value': '11 | step=5, persist=True',
                     }
 
             if context is not None:
@@ -199,6 +198,8 @@ class TestTestdataProducer:
             context_root = grizzly_fixture.request_task.context_root
             request = grizzly_fixture.request_task.request
             address = 'tcp://127.0.0.1:5555'
+            environ['GRIZZLY_FEATURE_FILE'] = 'features/test_run_with_variable_none.feature'
+            environ['GRIZZLY_CONTEXT'] = str(Path(context_root).parent)
 
             mkdir(path.join(context_root, 'adirectory'))
 
@@ -259,6 +260,9 @@ class TestTestdataProducer:
                 producer.stop()
                 assert producer.context._instance is None
 
+                persist_file = Path(context_root).parent / 'persistent' / 'test_run_with_none.json'
+                assert not persist_file.exists()
+
             if context is not None:
                 context.destroy()
 
@@ -285,12 +289,53 @@ class TestTestdataProducer:
         self, mocker: MockerFixture, cleanup: AtomicVariableCleanupFixture, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture, noop_zmq: NoopZmqFixture,
     ) -> None:
         noop_zmq('grizzly.testdata.communication')
-        mocker.patch('grizzly.testdata.communication.zmq.Context.destroy', side_effect=[RuntimeError('zmq.Context.destroy failed')])
+        mocker.patch('grizzly.testdata.communication.zmq.Context.destroy', side_effect=[RuntimeError('zmq.Context.destroy failed')] * 3)
+
+        context_root = Path(grizzly_fixture.request_task.context_root).parent
+
+        persistent_file = context_root / 'persistent' / 'test_run_with_variable_none.json'
+
+        environ['GRIZZLY_FEATURE_FILE'] = 'features/test_run_with_variable_none.feature'
+        environ['GRIZZLY_CONTEXT'] = str(context_root)
 
         try:
             with caplog.at_level(logging.DEBUG):
                 TestdataProducer(grizzly_fixture.grizzly, {}).stop()
             assert 'failed to stop' in caplog.messages[-1]
+            assert not persistent_file.exists()
+
+            i = AtomicIntegerIncrementer('foobar', '1 | step=1, persist=True')
+
+            i['foobar']
+            i['foobar']
+
+            with caplog.at_level(logging.DEBUG):
+                TestdataProducer(grizzly_fixture.grizzly, {'HelloWorld': {'AtomicIntegerIncrementer.foobar': i}}).stop()
+
+            assert caplog.messages[-1] == f'wrote variables next initial values for features/test_run_with_variable_none.feature to {persistent_file}'
+            assert caplog.messages[-2] == 'failed to stop'
+
+            assert persistent_file.exists()
+
+            actual_persist_values = json.loads(persistent_file.read_text())
+            assert actual_persist_values == {
+                'AtomicIntegerIncrementer.foobar': '3 | step=1, persist=True',
+            }
+
+            i['foobar']
+
+            with caplog.at_level(logging.DEBUG):
+                TestdataProducer(grizzly_fixture.grizzly, {'HelloWorld': {'AtomicIntegerIncrementer.foobar': i}}).stop()
+
+            assert caplog.messages[-1] == f'wrote variables next initial values for features/test_run_with_variable_none.feature to {persistent_file}'
+            assert caplog.messages[-2] == 'failed to stop'
+
+            assert persistent_file.exists()
+
+            actual_persist_values = json.loads(persistent_file.read_text())
+            assert actual_persist_values == {
+                'AtomicIntegerIncrementer.foobar': '5 | step=1, persist=True',
+            }
         finally:
             cleanup()
 

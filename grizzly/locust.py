@@ -465,6 +465,7 @@ def run(context: Context) -> int:
                         count = 0
 
                 logger.info(f'{runner.user_count=}, quit {runner.__class__.__name__}')
+                runner.environment.events.quitting.fire(environment=runner.environment, reverse=True)
                 if isinstance(runner, MasterRunner):
                     runner.send_message('grizzly_worker_quit', None)
 
@@ -516,6 +517,7 @@ def run(context: Context) -> int:
 
         def sig_term_handler() -> None:
             logger.info('got SIGTERM signal')
+            runner.environment.events.quitting.fire(environment=runner.environment, reverse=True)
             runner.quit()
 
         gevent.signal_handler(SIGTERM, sig_term_handler)

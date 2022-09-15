@@ -113,6 +113,7 @@ class GrizzlyContextState:
     alias: Dict[str, str] = field(init=False, default_factory=dict)
     verbose: bool = field(default=False)
     locust: Runner = field(init=False, repr=False)
+    persistent: Dict[str, str] = field(init=False, repr=False, default_factory=dict)
 
 
 @dataclass

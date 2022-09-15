@@ -114,14 +114,18 @@ def step_setup_variable_value(context: Context, name: str, value: str) -> None:
 
     Example:
 
-    ``` gherkin
+    ``` gherkin title="example.feature"
     Feature:
         Background:
             And ask for value of variable "messageID"
         Scenario:
             And value for variable "HelloWorld" is "default"
             And value for variable "AtomicIntegerIncrementer.mid1" is "{{ messageID }}"
+            And value for variable "AtomicIntegerIncrementer.persistent" is "1 | step=10, persist=True"
     ```
+
+    If the file `features/persistent/example.json` (name of feature file and `feature` extension replaced with `json`) exists, and contains an entry for
+    the variable, the initial value will be read from the file and override the value specified in the feature file.
 
     Args:
         name (str): variable name
@@ -133,12 +137,16 @@ def step_setup_variable_value(context: Context, name: str, value: str) -> None:
 
     try:
         # data type will be guessed when setting the variable
-        resolved_value = resolve_variable(grizzly, value, guess_datatype=False)
+        if name not in grizzly.state.persistent:
+            resolved_value = resolve_variable(grizzly, value, guess_datatype=False)
+            if is_template(value):
+                grizzly.scenario.orphan_templates.append(value)
+        else:
+            resolved_value = grizzly.state.persistent[name]
+
         grizzly.state.variables[name] = resolved_value
-        if is_template(value):
-            grizzly.scenario.orphan_templates.append(value)
     except ValueError as e:
-        assert 0, str(e)
+        raise AssertionError(str(e))
 
 
 @given(u'set alias "{alias}" for variable "{variable}"')

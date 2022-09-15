@@ -265,6 +265,10 @@ def test_step_setup_variable_value(behave_fixture: BehaveFixture) -> None:
     with pytest.raises(AssertionError):
         step_setup_variable_value(behave, 'incorrectly_quoted', '"error\'')
 
+    grizzly.state.persistent.update({'AtomicIntegerIncrementer.persistent': '10 | step=10, persist=True'})
+    step_setup_variable_value(behave, 'AtomicIntegerIncrementer.persistent', '1 | step=10, persist=True')
+    assert grizzly.state.variables['AtomicIntegerIncrementer.persistent'] == '10 | step=10, persist=True'
+
 
 def test_step_setup_set_variable_alias(behave_fixture: BehaveFixture, mocker: MockerFixture) -> None:
     behave = behave_fixture.context

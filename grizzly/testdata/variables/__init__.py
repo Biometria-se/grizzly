@@ -9,11 +9,11 @@ When initializing the variable, the full namespace has to be specified as `name`
 
 There are examples of this in the {@link framework.example}.
 '''
-from abc import ABCMeta, abstractmethod
-from typing import Generic, Optional, Callable, Set, Any, Tuple, Dict, TypeVar
+from typing import Generic, Optional, Callable, Set, Any, Tuple, Dict, TypeVar, Protocol, runtime_checkable
 
 from gevent.lock import Semaphore
 
+from ...types import bool_type
 from ...context import GrizzlyContext
 
 
@@ -24,9 +24,11 @@ class AbstractAtomicClass:
     pass
 
 
-class AtomicVariableSnapshot(Generic[T], metaclass=ABCMeta):
-    @abstractmethod
-    def get_snapshot(self, variable: str) -> str:
+@runtime_checkable
+class AtomicVariablePersist(Protocol):
+    arguments: Dict[str, Any] = {'persist': bool_type}
+
+    def generate_initial_value(self, variable: str) -> str:
         ...
 
 

@@ -52,6 +52,10 @@ def test_atomicintegerincrementer__base_type__() -> None:
         atomicintegerincrementer__base_type__('asdf')
     assert 'is not a valid initial value' in str(ve)
 
+    with pytest.raises(ValueError) as ve:
+        atomicintegerincrementer__base_type__('5 | step=2, persist=asdf')
+    assert str(ve.value) == 'asdf is not a valid boolean'
+
 
 class TestAtomicIntegerIncrementer:
     def test_increments_on_access(self, cleanup: AtomicVariableCleanupFixture) -> None:
@@ -60,7 +64,7 @@ class TestAtomicIntegerIncrementer:
             assert t['message_id'] == 1
             assert t['message_id'] == 2
 
-            t = AtomicIntegerIncrementer('test', '0 | step=10')
+            t = AtomicIntegerIncrementer('test', '0 | step=10, persist=True')
             assert len(t._steps.keys()) == 2
             assert 'message_id' in t._steps
             assert 'test' in t._steps
@@ -68,6 +72,12 @@ class TestAtomicIntegerIncrementer:
             assert t['test'] == 0
             assert t['test'] == 10
             assert t['test'] == 20
+
+            with pytest.raises(ValueError) as ve:
+                t.generate_initial_value('message_id')
+            assert str(ve.value) == 'AtomicIntegerIncrementer.message_id should not be persisted'
+
+            assert t.generate_initial_value('test') == '30 | step=10, persist=True'
         finally:
             cleanup()
 
@@ -115,12 +125,18 @@ class TestAtomicIntegerIncrementer:
 
     def test_increments_with_step(self, cleanup: AtomicVariableCleanupFixture) -> None:
         try:
-            t = AtomicIntegerIncrementer('message_id', '4 | step=10')
+            t = AtomicIntegerIncrementer('message_id', '4 | step=10, persist=True')
             t = AtomicIntegerIncrementer('test', '10 | step=20')
             assert t['message_id'] == 4
             assert t['message_id'] == 14
             assert t['test'] == 10
             assert t['test'] == 30
+
+            with pytest.raises(ValueError) as ve:
+                t.generate_initial_value('test')
+            assert str(ve.value) == 'AtomicIntegerIncrementer.test should not be persisted'
+
+            assert t.generate_initial_value('message_id') == '24 | step=10, persist=True'
 
             del t['message_id']
             del t['test']

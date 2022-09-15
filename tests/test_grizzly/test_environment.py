@@ -1,9 +1,12 @@
 from os import environ
 from typing import Any, Tuple, Dict, Optional, cast
 from time import monotonic as time_monotonic
+from json import dumps as jsondumps
+from shutil import rmtree
 
 import pytest
 
+from _pytest.tmpdir import TempPathFactory
 from pytest_mock import MockerFixture
 from behave.runner import Context, Runner
 from behave.configuration import Configuration
@@ -17,9 +20,12 @@ from grizzly.steps.scenario.setup import step_setup_iterations as step_scenario
 from grizzly.tasks import AsyncRequestGroupTask, TimerTask, ConditionalTask, LoopTask
 
 from ..fixtures import BehaveFixture
+from ..helpers import onerror
 
 
-def test_before_feature(behave_fixture: BehaveFixture) -> None:
+def test_before_feature(behave_fixture: BehaveFixture, tmp_path_factory: TempPathFactory) -> None:
+    context_root = tmp_path_factory.mktemp('test-context')
+
     behave = behave_fixture.context
     for key in ['GRIZZLY_CONTEXT_ROOT', 'GRIZZLY_FEATURE_FILE']:
         try:
@@ -28,13 +34,12 @@ def test_before_feature(behave_fixture: BehaveFixture) -> None:
             pass
 
     try:
-        base_dir = '.'
         context = Context(
             runner=Runner(
                 config=Configuration(
                     command_args=[],
                     load_config=False,
-                    base_dir=base_dir,
+                    base_dir=str(context_root),
                 )
             )
         )
@@ -47,24 +52,33 @@ def test_before_feature(behave_fixture: BehaveFixture) -> None:
         before_feature(context, feature)
 
         assert hasattr(context, 'grizzly')
-        assert context.grizzly.__class__.__name__ == 'GrizzlyContext'
-        assert environ.get('GRIZZLY_CONTEXT_ROOT', None) == base_dir
+        grizzly = cast(GrizzlyContext, context.grizzly)
+        assert environ.get('GRIZZLY_CONTEXT_ROOT', None) == str(context_root)
         assert environ.get('GRIZZLY_FEATURE_FILE', None) == 'test.feature'
+        assert grizzly.state.persistent == {}
 
-        context.grizzly = object()
+        context.grizzly = None
+
+        (context_root / 'persistent').mkdir(exist_ok=True, parents=True)
+        (context_root / 'persistent' / 'test.json').write_text(jsondumps({'foo': 'bar', 'hello': 'world'}, indent=2))
 
         before_feature(context, feature)
 
-        assert hasattr(context, 'grizzly')
-        assert context.grizzly.__class__.__name__ == 'GrizzlyContext'
-
         assert hasattr(context, 'started')
+        assert hasattr(context, 'grizzly')
+        grizzly = cast(GrizzlyContext, context.grizzly)
+        assert grizzly.state.persistent == {
+            'foo': 'bar',
+            'hello': 'world',
+        }
     finally:
         for key in ['GRIZZLY_CONTEXT_ROOT', 'GRIZZLY_FEATURE_FILE']:
             try:
                 del environ[key]
             except:
                 pass
+
+        rmtree(context_root, onerror=onerror)
 
 
 def test_after_feature(behave_fixture: BehaveFixture, mocker: MockerFixture) -> None:

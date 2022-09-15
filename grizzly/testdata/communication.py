@@ -17,7 +17,7 @@ from locust.env import Environment
 
 from ..types import TestdataType
 from .utils import transform
-from .variables import AtomicVariableSnapshot
+from .variables import AtomicVariablePersist
 from . import GrizzlyVariables
 
 
@@ -140,6 +140,39 @@ class TestdataProducer:
             for scenario_name in self.scenarios_iteration.keys():
                 self.scenarios_iteration[scenario_name] = 0
 
+    def persist_testdata(self) -> None:
+        try:
+            feature_file = environ.get('GRIZZLY_FEATURE_FILE', None)
+            context_root = environ.get('GRIZZLY_CONTEXT_ROOT', None)
+
+            assert feature_file is not None
+            assert context_root is not None
+
+            persist_root = Path(context_root) / 'persistent'
+            variable_state: Dict[str, str] = {}
+
+            for testdata in self.testdata.values():
+                for key, variable in testdata.items():
+                    try:
+                        if '.' in key and not variable == '__on_consumer__':
+                            _, _, variable_name = GrizzlyVariables.get_variable_spec(key)
+
+                            if not isinstance(variable, AtomicVariablePersist):
+                                continue
+
+                            variable_state.update({key: variable.generate_initial_value(variable_name)})
+                    except:
+                        continue
+
+            # only write file if we actually have something to write
+            if len(variable_state.keys()) > 0 and len(list(chain(*variable_state.values()))) > 0:
+                persist_root.mkdir(exist_ok=True, parents=True)
+                persist_file = persist_root / f'{Path(feature_file).stem}.json'
+                persist_file.write_text(jsondumps(variable_state, indent=2))
+                self.logger.info(f'wrote variables next initial values for {feature_file} to {persist_file}')
+        except:
+            self.logger.error('failed do persist variables next initial values', exc_info=True)
+
     def stop(self) -> None:
         self._stopping = True
         self.logger.debug('stopping producer')
@@ -152,41 +185,7 @@ class TestdataProducer:
             gsleep(0.1)
             self.context.term()
 
-        try:
-            feature_file = environ.get('GRIZZLY_FEATURE_FILE', None)
-            context_root = environ.get('GRIZZLY_CONTEXT_ROOT', None)
-
-            assert feature_file is not None
-            assert context_root is not None
-
-            state_root = Path(context_root) / 'features' / 'state'
-
-            variable_state: Dict[str, Dict[str, Any]] = {}
-
-            for name, testdata in self.testdata.items():
-                if name not in variable_state:
-                    variable_state[name] = {}
-
-                for key, variable in testdata.items():
-                    try:
-                        if '.' in key and not variable == '__on_consumer__':
-                            _, _, variable_name = GrizzlyVariables.get_variable_spec(key)
-
-                            if not isinstance(variable, AtomicVariableSnapshot):
-                                continue
-
-                            variable_state[name].update({key: variable.get_snapshot(variable_name)})
-                    except:
-                        continue
-
-            # only write file if we actually have something to write
-            if len(variable_state.keys()) > 0 and len(list(chain(*variable_state.values()))) > 0:
-                state_root.mkdir(exist_ok=True, parents=True)
-                state_file = state_root / f'{Path(feature_file).stem}.json'
-                state_file.write_text(jsondumps(variable_state, indent=2))
-                self.logger.info(f'wrote variable state for {feature_file} to {state_file}')
-        except:
-            self.logger.error('failed do dump variable state', exc_info=True)
+            self.persist_testdata()
 
     def run(self) -> None:
         self.logger.debug('start producing...')
