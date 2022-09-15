@@ -75,7 +75,7 @@
 	],
 	"containerEnv": {
 		"PYTHONPATH": "${containerWorkspaceFolder}",
-        "E2E_RUN_DIST": "True"
+        "E2E_RUN_MODE": "local"
 	},
 	"remoteEnv": {
 		"GRIZZLY_MOUNT_CONTEXT": "${localWorkspaceFolder}"

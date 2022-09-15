@@ -32,7 +32,8 @@ from typing import Union, Dict, Any, Type, Optional, cast
 
 from grizzly_extras.arguments import split_value, parse_arguments
 
-from . import AtomicVariable
+from ...types import bool_type
+from . import AtomicVariable, AtomicVariableSnapshot
 
 
 def atomicintegerincrementer__base_type__(value: Union[str, int]) -> str:
@@ -73,12 +74,12 @@ def atomicintegerincrementer__base_type__(value: Union[str, int]) -> str:
     return value
 
 
-class AtomicIntegerIncrementer(AtomicVariable[int]):
+class AtomicIntegerIncrementer(AtomicVariable[int], AtomicVariableSnapshot[int]):
     __base_type__ = atomicintegerincrementer__base_type__
 
     __initialized: bool = False
-    _steps: Dict[str, int]
-    arguments: Dict[str, Any] = {'step': int}
+    _steps: Dict[str, Any]
+    arguments: Dict[str, Any] = {'step': int, 'state': bool_type}
 
     def __init__(self, variable: str, value: Union[str, int]) -> None:
         safe_value = self.__class__.__base_type__(value)
@@ -88,21 +89,34 @@ class AtomicIntegerIncrementer(AtomicVariable[int]):
             initial_value = incrementer_value
             arguments = parse_arguments(incrementer_arguments)
             step = int(arguments['step'])
+            state = self.__class__.arguments['state'](arguments['state']) if 'state' in arguments else False
         else:
             initial_value = safe_value
             step = 1
+            state = False
 
         super().__init__(variable, int(initial_value))
 
         with self._semaphore:
             if self.__initialized:
                 if variable not in self._steps:
-                    self._steps[variable] = step
+                    self._steps[variable] = {'step': step, 'state': state}
 
                 return
 
-            self._steps = {variable: step}
+            self._steps = {variable: {'step': step, 'state': state}}
             self.__initialized = True
+
+    def get_snapshot(self, variable: str) -> str:
+        state = self._steps.get(variable, {}).get('state', False)
+
+        if not state:
+            raise ValueError(f'{self.__class__.__name__}.{variable} should not be snapshotted')
+
+        value = self.__getitem__(variable)
+        arguments = ', '.join([f'{key}={value}' for key, value in self._steps[variable].items()])
+
+        return f'{value} | {arguments}'
 
     @classmethod
     def clear(cls: Type['AtomicIntegerIncrementer']) -> None:
@@ -118,7 +132,7 @@ class AtomicIntegerIncrementer(AtomicVariable[int]):
             value = self._get_value(variable)
 
             if value is not None:
-                self._values[variable] = value + self._steps[variable]
+                self._values[variable] = value + self._steps[variable]['step']
 
             return value
 

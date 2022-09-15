@@ -9,6 +9,7 @@ When initializing the variable, the full namespace has to be specified as `name`
 
 There are examples of this in the {@link framework.example}.
 '''
+from abc import ABCMeta, abstractmethod
 from typing import Generic, Optional, Callable, Set, Any, Tuple, Dict, TypeVar
 
 from gevent.lock import Semaphore
@@ -21,6 +22,12 @@ T = TypeVar('T')
 
 class AbstractAtomicClass:
     pass
+
+
+class AtomicVariableSnapshot(Generic[T], metaclass=ABCMeta):
+    @abstractmethod
+    def get_snapshot(self, variable: str) -> str:
+        ...
 
 
 class AtomicVariable(Generic[T], AbstractAtomicClass):
@@ -150,7 +157,6 @@ from .date import AtomicDate
 from .directory_contents import AtomicDirectoryContents
 from .csv_row import AtomicCsvRow
 from .random_string import AtomicRandomString
-from .messagequeue import AtomicMessageQueue
 from .servicebus import AtomicServiceBus
 
 __all__ = [
@@ -160,7 +166,6 @@ __all__ = [
     'AtomicDirectoryContents',
     'AtomicCsvRow',
     'AtomicRandomString',
-    'AtomicMessageQueue',
     'AtomicServiceBus',
     'destroy_variables',
 ]

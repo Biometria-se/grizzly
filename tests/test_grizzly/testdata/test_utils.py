@@ -26,11 +26,6 @@ from grizzly_extras.transformer import TransformerContentType
 
 from ...fixtures import BehaveFixture, AtomicVariableCleanupFixture, GrizzlyFixture, RequestTaskFixture, NoopZmqFixture
 
-try:
-    import pymqi
-except:
-    from grizzly_extras import dummy_pymqi as pymqi
-
 
 def test_initialize_testdata_no_tasks(grizzly_fixture: GrizzlyFixture) -> None:
     testdata, external_dependencies = initialize_testdata(grizzly_fixture.grizzly, [])
@@ -115,7 +110,7 @@ def test_initialize_testdata_with_tasks(
 
 
 def test_initialize_testdata_with_payload_context(grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture, noop_zmq: NoopZmqFixture) -> None:
-    noop_zmq('grizzly.testdata.variables.messagequeue')
+    noop_zmq('grizzly.testdata.communication')
 
     try:
         grizzly = grizzly_fixture.grizzly
@@ -148,11 +143,6 @@ def test_initialize_testdata_with_payload_context(grizzly_fixture: GrizzlyFixtur
         grizzly.state.variables['AtomicCsvRow.test'] = 'test.csv'
         grizzly.state.variables['AtomicDirectoryContents.test'] = 'adirectory'
         grizzly.state.variables['AtomicDate.now'] = 'now'
-        if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
-            grizzly.state.variables['AtomicMessageQueue.document_id'] = (
-                'queue:TEST.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"'
-            )
-            source['result']['DocumentID'] = '{{ AtomicMessageQueue.document_id }}'
         grizzly.state.variables['AtomicServiceBus.event'] = (
             'topic:events, subscription:grizzly | url="Endpoint=sb://sb.example.com?SharedAccessKey=asdfasdfasdf=&SharedAccessKeyName=test"'
         )
@@ -192,8 +182,6 @@ def test_initialize_testdata_with_payload_context(grizzly_fixture: GrizzlyFixtur
         assert data['AtomicDirectoryContents.test']['test'] == f'adirectory{sep}file2.txt'
         assert data['AtomicDirectoryContents.test']['test'] is None
         assert data['AtomicServiceBus.event'] == '__on_consumer__'
-        if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
-            assert data['AtomicMessageQueue.document_id'] == '__on_consumer__'
     finally:
         cleanup()
 

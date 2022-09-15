@@ -39,8 +39,7 @@ from grizzly.tasks.clients import MessageQueueClientTask
 from grizzly.users import RestApiUser, MessageQueueUser
 from grizzly.users.base import GrizzlyUser
 from grizzly.scenarios import IteratorScenario
-from grizzly.testdata.variables import AtomicMessageQueue, AtomicIntegerIncrementer
-from grizzly_extras.async_message import AsyncMessageResponse
+from grizzly.testdata.variables import AtomicIntegerIncrementer
 
 try:
     import pymqi
@@ -366,17 +365,6 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
     )
     grizzly.state.locust.environment = environment
 
-    noop_zmq('grizzly.testdata.variables.messagequeue')
-
-    def mock_response(response: AsyncMessageResponse) -> None:
-        def mocked_response(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> AsyncMessageResponse:
-            return response
-
-        mocker.patch(
-            'grizzly.testdata.variables.messagequeue.zmq.Socket.recv_json',
-            mocked_response,
-        )
-
     try:
         # event listeners for worker node
         mock_on_worker(True)
@@ -445,19 +433,6 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
 
         AtomicIntegerIncrementer.destroy()
 
-        mock_response({
-            'success': True,
-            'worker': 'aaaa-bbbb-cccc',
-        })
-
-        if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
-            grizzly.state.variables.update({
-                'AtomicMessageQueue.test': (
-                    'TEST.QUEUE | url="mq://mq.example.com/?QueueManager=QM1&Channel=SRV.CONN", expression="$.result.value", content_type="application/json"'
-                ),
-            })
-            task.endpoint = '/api/v1/{{ AtomicMessageQueue.test }}'
-
         grizzly.scenario.validation.fail_ratio = 0.1
         environment.events.spawning_complete._handlers = []
 
@@ -467,16 +442,9 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
         assert len(environment.events.test_stop._handlers) == 1
         assert len(environment.events.spawning_complete._handlers) == 1
         assert len(environment.events.quitting._handlers) == 2
-        if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
-            assert external_dependencies == set(['async-messaged'])
-        else:
-            assert external_dependencies == set()
+        assert external_dependencies == set()
 
         AtomicIntegerIncrementer.destroy()
-        try:
-            AtomicMessageQueue.destroy()
-        except:
-            pass
 
         grizzly.setup.statistics_url = None
         environment.events.spawning_complete._handlers = []
@@ -496,7 +464,6 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
     finally:
         try:
             AtomicIntegerIncrementer.destroy()
-            AtomicMessageQueue.destroy()
         except:
             pass
 
@@ -614,8 +581,6 @@ def test_run_worker(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
         mocked_create_worker_runner,
     )
 
-    noop_zmq('grizzly.testdata.variables.messagequeue')
-
     for method in [
         'locust.runners.WorkerRunner.start_worker',
         'gevent.sleep',
@@ -625,17 +590,6 @@ def test_run_worker(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
             method,
             return_value=None,
         )
-
-    def mocked_response(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> AsyncMessageResponse:
-        return {
-            'success': True,
-            'worker': 'aaaa-bbbb-ccc',
-        }
-
-    mocker.patch(
-        'grizzly.testdata.variables.messagequeue.zmq.Socket.recv_json',
-        mocked_response,
-    )
 
     def mocked_popen___init__(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
         setattr(args[0], 'returncode', -15)
@@ -668,48 +622,7 @@ def test_run_worker(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
 
     assert messagequeue_process_spy.call_count == 0
 
-    if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
-        grizzly.scenarios.create(behave_fixture.create_scenario('test-mq'))
-        grizzly.scenario.user.class_name = 'MessageQueueUser'
-        grizzly.scenario.context['host'] = 'mq://mq.example.org?QueueManager=QM01&Channel=TEST.CONN'
-        grizzly.scenario.tasks.add(RequestTask(RequestMethod.PUT, 'test-2', 'TEST.QUEUE'))
-
-        with pytest.raises(AssertionError) as ae:
-            run(behave)
-        assert 'increase the number in step' in str(ae)
-
-        grizzly.setup.user_count = 2
-
-        assert run(behave) == 1
-        assert 'failed to connect to the locust master' in capsys.readouterr().err
-
-        assert messagequeue_process_spy.call_count == 0
-        messagequeue_process_spy.reset_mock()
-
-        # messagequeue-daemon should start on worker if a scenario has AtomicMessageQueue variable
-        grizzly._scenarios.pop()  # remove test-mq scenario
-
-        grizzly.state.variables.update({
-            'AtomicMessageQueue.test': 'TEST.QUEUE | url="mq://mq.example.com/?QueueManager=QM1&Channel=SRV.CONN", expression="$.result.value", content_type="application/json"',
-        })
-
-        task = cast(RequestTask, grizzly.scenario.tasks.pop())
-
-        task.endpoint = '/api/v1/{{ AtomicMessageQueue.test }}'
-
-        grizzly.scenario.tasks.add(task)
-
-        assert run(behave) == 1
-        assert 'failed to connect to the locust master' in capsys.readouterr().err
-        assert messagequeue_process_spy.call_count == 0
-        # assert messagequeue_process_spy.call_args_list[0][0][1][0] == 'async-messaged'
-
-        # @TODO: test coverage further down in run is needed!
-
-        try:
-            AtomicMessageQueue.destroy()
-        except:
-            pass
+    # @TODO: test coverage further down in run is needed!
 
 
 def test_run_master(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
@@ -732,8 +645,6 @@ def test_run_master(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
             mocked_on_master,
         )
 
-    noop_zmq('grizzly.testdata.variables.messagequeue')
-
     for method in [
         'locust.runners.MasterRunner.start',
         'locust.runners.MasterRunner.client_listener',
@@ -745,17 +656,6 @@ def test_run_master(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
             method,
             return_value=None,
         )
-
-    def mocked_response(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> AsyncMessageResponse:
-        return {
-            'success': True,
-            'worker': 'aaaa-bbbb-ccc',
-        }
-
-    mocker.patch(
-        'grizzly.testdata.variables.messagequeue.zmq.Socket.recv_json',
-        mocked_response,
-    )
 
     for printer in ['print_error_report', 'print_percentile_stats', 'grizzly_print_stats', 'grizzly_stats_printer', 'stats_history']:
         mocker.patch(
@@ -822,29 +722,6 @@ def test_run_master(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
     assert 'there are more workers (3) than users (2), which is not supported' in str(ae)
 
     assert messagequeue_process_spy.call_count == 0
-
-    # make sure messagequeue-daemon is started on master if variable AtomicMessageQueue is used
-    if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
-        task = cast(RequestTask, grizzly.scenario.tasks.pop())
-
-        grizzly.state.variables.update({
-            'AtomicMessageQueue.test': 'TEST.QUEUE | url="mq://mq.example.com/?QueueManager=QM1&Channel=SRV.CONN", expression="$.result.value", content_type="application/json"',
-        })
-
-        task.endpoint = '/api/v1/{{ AtomicMessageQueue.test }}'
-
-        grizzly.scenario.tasks.add(task)
-
-        with pytest.raises(AssertionError) as ae:
-            run(behave)
-        assert 'there are more workers (3) than users (2), which is not supported' in str(ae)
-
-        try:
-            AtomicMessageQueue.destroy()
-        except:
-            pass
-
-        assert messagequeue_process_spy.call_count == 0
 
     del behave.config.userdata['expected-workers']
 

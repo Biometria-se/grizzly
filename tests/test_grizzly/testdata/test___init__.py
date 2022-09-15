@@ -7,15 +7,10 @@ import pytest
 from _pytest.tmpdir import TempPathFactory
 
 from grizzly.testdata import GrizzlyVariables
-from grizzly.testdata.variables import AtomicCsvRow, AtomicIntegerIncrementer, AtomicMessageQueue, AtomicServiceBus
+from grizzly.testdata.variables import AtomicCsvRow, AtomicIntegerIncrementer, AtomicServiceBus
 from grizzly.context import GrizzlyContext
 
 from ...fixtures import AtomicVariableCleanupFixture, NoopZmqFixture
-
-try:
-    import pymqi
-except:
-    from grizzly_extras import dummy_pymqi as pymqi
 
 
 class TestGrizzlyVariables:
@@ -346,28 +341,6 @@ class TestGrizzlyVariables:
 
             _, external_dependencies = GrizzlyVariables.get_variable_value(grizzly, variable_name)
             assert value['foo'] == 'bar'
-        finally:
-            cleanup()
-
-    @pytest.mark.skipif(pymqi.__name__ == 'grizzly_extras.dummy_pymqi', reason='requires native grizzly-loadtester[mq]')
-    def test__get_variable_value_AtomicMessageQueue(self, noop_zmq: NoopZmqFixture, cleanup: AtomicVariableCleanupFixture) -> None:
-        noop_zmq('grizzly.testdata.variables.messagequeue')
-
-        try:
-            grizzly = GrizzlyContext()
-            variable_name = 'AtomicMessageQueue.test'
-            grizzly.state.variables[variable_name] = (
-                'queue:TEST.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"'
-            )
-            value, external_dependencies = GrizzlyVariables.get_variable_value(grizzly, variable_name)
-            assert external_dependencies == set(['async-messaged'])
-            assert not isinstance(value, AtomicMessageQueue)
-            assert value == '__on_consumer__'
-
-            # this fails because it shouldn't have been initiated here
-            with pytest.raises(ValueError) as ve:
-                AtomicMessageQueue.destroy()
-            assert "'AtomicMessageQueue' is not instantiated" in str(ve)
         finally:
             cleanup()
 

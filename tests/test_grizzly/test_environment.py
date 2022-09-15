@@ -19,11 +19,13 @@ from grizzly.tasks import AsyncRequestGroupTask, TimerTask, ConditionalTask, Loo
 from ..fixtures import BehaveFixture
 
 
-def test_before_feature() -> None:
-    try:
-        del environ['GRIZZLY_CONTEXT_ROOT']
-    except:
-        pass
+def test_before_feature(behave_fixture: BehaveFixture) -> None:
+    behave = behave_fixture.context
+    for key in ['GRIZZLY_CONTEXT_ROOT', 'GRIZZLY_FEATURE_FILE']:
+        try:
+            del environ[key]
+        except:
+            pass
 
     try:
         base_dir = '.'
@@ -36,29 +38,33 @@ def test_before_feature() -> None:
                 )
             )
         )
+        feature = Feature('test.feature', None, '', '', scenarios=[behave.scenario])
 
         assert not hasattr(context, 'grizzly')
-        assert environ.get('GRIZZLY_CONTEXT_ROOT', None) is None
+        assert environ.get('GRIZZLY_CONTEXT_ROOT', 'notset') == 'notset'
+        assert environ.get('GRIZZLY_FEATURE_FILE', 'notset') == 'notset'
 
-        before_feature(context)
+        before_feature(context, feature)
 
         assert hasattr(context, 'grizzly')
         assert context.grizzly.__class__.__name__ == 'GrizzlyContext'
         assert environ.get('GRIZZLY_CONTEXT_ROOT', None) == base_dir
+        assert environ.get('GRIZZLY_FEATURE_FILE', None) == 'test.feature'
 
         context.grizzly = object()
 
-        before_feature(context)
+        before_feature(context, feature)
 
         assert hasattr(context, 'grizzly')
         assert context.grizzly.__class__.__name__ == 'GrizzlyContext'
 
         assert hasattr(context, 'started')
     finally:
-        try:
-            del environ['GRIZZLY_CONTEXT_ROOT']
-        except:
-            pass
+        for key in ['GRIZZLY_CONTEXT_ROOT', 'GRIZZLY_FEATURE_FILE']:
+            try:
+                del environ[key]
+            except:
+                pass
 
 
 def test_after_feature(behave_fixture: BehaveFixture, mocker: MockerFixture) -> None:

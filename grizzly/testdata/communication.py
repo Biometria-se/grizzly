@@ -1,6 +1,10 @@
 import logging
 
 from typing import TYPE_CHECKING, Dict, Optional, Any, cast
+from os import environ
+from pathlib import Path
+from json import dumps as jsondumps
+from itertools import chain
 
 from zmq.sugar.constants import NOBLOCK as ZMQ_NOBLOCK, REQ as ZMQ_REQ, REP as ZMQ_REP
 from zmq.error import ZMQError, Again as ZMQAgain
@@ -13,6 +17,7 @@ from locust.env import Environment
 
 from ..types import TestdataType
 from .utils import transform
+from .variables import AtomicVariableSnapshot
 from . import GrizzlyVariables
 
 
@@ -146,6 +151,42 @@ class TestdataProducer:
             # make sure that socket is properly released
             gsleep(0.1)
             self.context.term()
+
+        try:
+            feature_file = environ.get('GRIZZLY_FEATURE_FILE', None)
+            context_root = environ.get('GRIZZLY_CONTEXT_ROOT', None)
+
+            assert feature_file is not None
+            assert context_root is not None
+
+            state_root = Path(context_root) / 'features' / 'state'
+
+            variable_state: Dict[str, Dict[str, Any]] = {}
+
+            for name, testdata in self.testdata.items():
+                if name not in variable_state:
+                    variable_state[name] = {}
+
+                for key, variable in testdata.items():
+                    try:
+                        if '.' in key and not variable == '__on_consumer__':
+                            _, _, variable_name = GrizzlyVariables.get_variable_spec(key)
+
+                            if not isinstance(variable, AtomicVariableSnapshot):
+                                continue
+
+                            variable_state[name].update({key: variable.get_snapshot(variable_name)})
+                    except:
+                        continue
+
+            # only write file if we actually have something to write
+            if len(variable_state.keys()) > 0 and len(list(chain(*variable_state.values()))) > 0:
+                state_root.mkdir(exist_ok=True, parents=True)
+                state_file = state_root / f'{Path(feature_file).stem}.json'
+                state_file.write_text(jsondumps(variable_state, indent=2))
+                self.logger.info(f'wrote variable state for {feature_file} to {state_file}')
+        except:
+            self.logger.error('failed do dump variable state', exc_info=True)
 
     def run(self) -> None:
         self.logger.debug('start producing...')

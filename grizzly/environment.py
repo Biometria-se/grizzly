@@ -16,11 +16,12 @@ from .utils import catch, fail_direct, in_correct_section
 from .types import RequestType
 
 
-def before_feature(context: Context, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+def before_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
     # identify as grizzly, instead of behave
     proc.setproctitle('grizzly')
 
     environ['GRIZZLY_CONTEXT_ROOT'] = context.config.base_dir
+    environ['GRIZZLY_FEATURE_FILE'] = feature.filename
 
     destroy_variables()
 
