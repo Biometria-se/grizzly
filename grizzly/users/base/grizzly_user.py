@@ -4,6 +4,7 @@ from os import environ, path
 from typing import TYPE_CHECKING, Any, Dict, Tuple, Optional, Set, cast
 from logging import Logger
 from abc import abstractmethod
+from json import dumps as jsondumps, loads as jsonloads
 
 from jinja2 import Template
 from locust.exception import StopUser
@@ -68,7 +69,7 @@ class GrizzlyUser(User):
     def request(self, request: RequestTask) -> GrizzlyResponse:
         raise NotImplementedError(f'{self.__class__.__name__} has not implemented request')
 
-    def render(self, request: RequestTask) -> Tuple[str, str, Optional[str]]:
+    def render(self, request: RequestTask) -> Tuple[str, str, Optional[str], Optional[Dict[str, str]]]:
         scenario_name = f'{request.scenario.identifier} {request.name}'
 
         try:
@@ -76,6 +77,7 @@ class GrizzlyUser(User):
             name = Template(request.name).render(**self.context_variables)
             scenario_name = f'{request.scenario.identifier} {name}'
             endpoint = Template(request.endpoint).render(**self.context_variables)
+            arguments: Optional[Dict[str, str]] = None
 
             if request.template is not None:
                 payload = request.template.render(**self.context_variables)
@@ -95,7 +97,12 @@ class GrizzlyUser(User):
                         if not endpoint.endswith(file_name):
                             endpoint = f'{endpoint}/{file_name}'
 
-            return name, endpoint, payload
+            if request.arguments is not None:
+                arguments_json = jsondumps(request.arguments)
+                rendered_json = Template(arguments_json).render(**self.context_variables)
+                arguments = jsonloads(rendered_json)
+
+            return name, endpoint, payload, arguments
         except Exception as exception:
             self.logger.error(f'{exception=}, {request.name=}, {request.endpoint=}, {self.context_variables=}', exc_info=True)
             self.environment.events.request.fire(

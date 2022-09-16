@@ -108,7 +108,7 @@ class RequestTaskResponse:
                 self.status_codes.pop(index)
 
 
-@template('name', 'endpoint', 'source')
+@template('name', 'endpoint', 'source', 'arguments')
 class RequestTask(GrizzlyTask):
     method: RequestMethod
     name: str

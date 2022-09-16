@@ -239,7 +239,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
             logging.getLogger(uamqp_logger_name).setLevel(logging.ERROR)
 
     def request(self, request: RequestTask) -> GrizzlyResponse:
-        request_name, endpoint, payload = self.render(request)
+        request_name, endpoint, payload, _ = self.render(request)
 
         @contextmanager
         def action_context(am_request: AsyncMessageRequest, name: str) -> Generator[Dict[str, Any], None, None]:

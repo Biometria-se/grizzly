@@ -70,7 +70,6 @@ from locust.exception import StopUser
 from locust.env import Environment
 
 import requests
-from grizzly_extras.arguments import parse_arguments, split_value, unquote
 
 from grizzly_extras.transformer import TransformerContentType
 
@@ -598,7 +597,7 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
             if 'Content-Type' in self.headers:
                 del self.headers['Content-Type']
 
-        request_name, endpoint, payload = self.render(request)
+        request_name, endpoint, payload, arguments = self.render(request)
 
         parameters: Dict[str, Any] = {'headers': self.headers}
 
@@ -632,11 +631,11 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
                     # this is a fundemental error, so we'll always stop the user
                     raise StopUser()
             elif request.response.content_type == TransformerContentType.MULTIPART_FORM_DATA:
-                if request.arguments is None or 'multipart_form_data_name' not in request.arguments or 'multipart_form_data_filename' not in request.arguments:
+                if arguments is None or 'multipart_form_data_name' not in arguments or 'multipart_form_data_filename' not in arguments:
                     logger.error(f'Content type multipart/form-data requires endpoint arguments multipart_form_data_name and multipart_form_data_filename: {request.endpoint}')
                     raise StopUser()
-                multipart_form_data_name = request.arguments['multipart_form_data_name']
-                multipart_form_data_filename = request.arguments['multipart_form_data_filename']
+                multipart_form_data_name = arguments['multipart_form_data_name']
+                multipart_form_data_filename = arguments['multipart_form_data_filename']
                 parameters['files'] = {multipart_form_data_name: (multipart_form_data_filename, payload)}
             else:
                 parameters['data'] = bytes(payload, 'UTF-8')
