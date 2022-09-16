@@ -1,8 +1,9 @@
 import json
 import logging
 
-from os import path, mkdir, sep
+from os import path, mkdir, sep, environ
 from typing import Dict, Optional, Any, cast
+from pathlib import Path
 
 import pytest
 
@@ -17,15 +18,11 @@ from locust.exception import StopUser
 
 from grizzly.testdata.communication import TestdataConsumer, TestdataProducer
 from grizzly.testdata.utils import initialize_testdata, transform
+from grizzly.testdata.variables import AtomicIntegerIncrementer
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import LogMessageTask
 
 from ...fixtures import AtomicVariableCleanupFixture, BehaveFixture, GrizzlyFixture, NoopZmqFixture
-
-try:
-    import pymqi
-except:
-    from grizzly_extras import dummy_pymqi as pymqi
 
 
 class TestTestdataProducer:
@@ -36,14 +33,15 @@ class TestTestdataProducer:
         cleanup: AtomicVariableCleanupFixture,
         mocker: MockerFixture,
     ) -> None:
-        mocker.patch(
-            'grizzly.testdata.variables.messagequeue.AtomicMessageQueue.create_client',
-            return_value=None,
-        )
         producer: Optional[TestdataProducer] = None
         context: Optional[zmq.Context] = None
         context_root = grizzly_fixture.request_task.context_root
         request = grizzly_fixture.request_task.request
+
+        success = False
+
+        environ['GRIZZLY_FEATURE_FILE'] = 'features/test_run_with_behave.feature'
+        environ['GRIZZLY_CONTEXT'] = str(Path(context_root).parent)
 
         try:
             _, _, scenario = grizzly_fixture()
@@ -81,7 +79,7 @@ class TestTestdataProducer:
             grizzly.state.variables['AtomicCsvRow.test'] = 'test.csv'
             grizzly.state.alias['AtomicCsvRow.test.header1'] = 'auth.user.username'
             grizzly.state.alias['AtomicCsvRow.test.header2'] = 'auth.user.password'
-            grizzly.state.variables['AtomicIntegerIncrementer.value'] = '1 | step=5'
+            grizzly.state.variables['AtomicIntegerIncrementer.value'] = '1 | step=5, persist=True'
             grizzly.state.variables['AtomicDate.utc'] = "now | format='%Y-%m-%dT%H:%M:%S.000Z', timezone=UTC"
             grizzly.state.variables['AtomicDate.now'] = 'now'
             grizzly.state.variables['tests.helpers.AtomicCustomVariable.foo'] = 'bar'
@@ -90,12 +88,6 @@ class TestTestdataProducer:
             grizzly.scenario.user.class_name = 'TestUser'
             grizzly.scenario.context['host'] = 'http://test.nu'
 
-            if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
-                source['result']['DocumentID'] = '{{ AtomicMessageQueue.document_id }}'
-                grizzly.state.variables['AtomicMessageQueue.document_id'] = (
-                    'queue:TEST.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"'
-                )
-
             request.source = json.dumps(source)
 
             grizzly.scenario.tasks.add(request)
@@ -103,12 +95,7 @@ class TestTestdataProducer:
 
             testdata, external_dependencies = initialize_testdata(grizzly, grizzly.scenario.tasks)
 
-            print(testdata)
-
-            if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
-                assert external_dependencies == set(['async-messaged'])
-            else:
-                assert external_dependencies == set()
+            assert external_dependencies == set()
 
             producer = TestdataProducer(
                 grizzly=grizzly,
@@ -160,8 +147,6 @@ class TestTestdataProducer:
                 data = message['data']
                 assert 'variables' in data
                 variables = data['variables']
-                if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
-                    assert variables['AtomicMessageQueue.document_id'] == '__on_consumer__'
                 assert 'AtomicIntegerIncrementer.messageID' in variables
                 assert 'AtomicDate.now' in variables
                 assert 'messageID' in variables
@@ -173,18 +158,26 @@ class TestTestdataProducer:
                 assert variables['AtomicIntegerIncrementer.value'] == 6
                 assert data['auth.user.username'] == 'value3'
                 assert data['auth.user.password'] == 'value4'
-                if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
-                    assert variables['AtomicMessageQueue.document_id'] == '__on_consumer__'
 
                 message = get_message_from_producer()
                 assert message['action'] == 'stop'
                 assert 'data' not in message
 
                 producer_thread.join(timeout=1)
+                success = True
         finally:
             if producer is not None:
                 producer.stop()
                 assert producer.context._instance is None
+
+                persist_file = Path(context_root).parent / 'persistent' / 'test_run_with_behave.json'
+                assert persist_file.exists()
+
+                if success:
+                    actual_initial_values = json.loads(persist_file.read_text())
+                    assert actual_initial_values == {
+                        'AtomicIntegerIncrementer.value': '11 | step=5, persist=True',
+                    }
 
             if context is not None:
                 context.destroy()
@@ -205,6 +198,8 @@ class TestTestdataProducer:
             context_root = grizzly_fixture.request_task.context_root
             request = grizzly_fixture.request_task.request
             address = 'tcp://127.0.0.1:5555'
+            environ['GRIZZLY_FEATURE_FILE'] = 'features/test_run_with_variable_none.feature'
+            environ['GRIZZLY_CONTEXT'] = str(Path(context_root).parent)
 
             mkdir(path.join(context_root, 'adirectory'))
 
@@ -265,6 +260,9 @@ class TestTestdataProducer:
                 producer.stop()
                 assert producer.context._instance is None
 
+                persist_file = Path(context_root).parent / 'persistent' / 'test_run_with_none.json'
+                assert not persist_file.exists()
+
             if context is not None:
                 context.destroy()
 
@@ -291,12 +289,53 @@ class TestTestdataProducer:
         self, mocker: MockerFixture, cleanup: AtomicVariableCleanupFixture, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture, noop_zmq: NoopZmqFixture,
     ) -> None:
         noop_zmq('grizzly.testdata.communication')
-        mocker.patch('grizzly.testdata.communication.zmq.Context.destroy', side_effect=[RuntimeError('zmq.Context.destroy failed')])
+        mocker.patch('grizzly.testdata.communication.zmq.Context.destroy', side_effect=[RuntimeError('zmq.Context.destroy failed')] * 3)
+
+        context_root = Path(grizzly_fixture.request_task.context_root).parent
+
+        persistent_file = context_root / 'persistent' / 'test_run_with_variable_none.json'
+
+        environ['GRIZZLY_FEATURE_FILE'] = 'features/test_run_with_variable_none.feature'
+        environ['GRIZZLY_CONTEXT'] = str(context_root)
 
         try:
             with caplog.at_level(logging.DEBUG):
                 TestdataProducer(grizzly_fixture.grizzly, {}).stop()
             assert 'failed to stop' in caplog.messages[-1]
+            assert not persistent_file.exists()
+
+            i = AtomicIntegerIncrementer('foobar', '1 | step=1, persist=True')
+
+            i['foobar']
+            i['foobar']
+
+            with caplog.at_level(logging.DEBUG):
+                TestdataProducer(grizzly_fixture.grizzly, {'HelloWorld': {'AtomicIntegerIncrementer.foobar': i}}).stop()
+
+            assert caplog.messages[-1] == f'wrote variables next initial values for features/test_run_with_variable_none.feature to {persistent_file}'
+            assert caplog.messages[-2] == 'failed to stop'
+
+            assert persistent_file.exists()
+
+            actual_persist_values = json.loads(persistent_file.read_text())
+            assert actual_persist_values == {
+                'AtomicIntegerIncrementer.foobar': '3 | step=1, persist=True',
+            }
+
+            i['foobar']
+
+            with caplog.at_level(logging.DEBUG):
+                TestdataProducer(grizzly_fixture.grizzly, {'HelloWorld': {'AtomicIntegerIncrementer.foobar': i}}).stop()
+
+            assert caplog.messages[-1] == f'wrote variables next initial values for features/test_run_with_variable_none.feature to {persistent_file}'
+            assert caplog.messages[-2] == 'failed to stop'
+
+            assert persistent_file.exists()
+
+            actual_persist_values = json.loads(persistent_file.read_text())
+            assert actual_persist_values == {
+                'AtomicIntegerIncrementer.foobar': '5 | step=1, persist=True',
+            }
         finally:
             cleanup()
 
@@ -352,7 +391,7 @@ class TestTestdataProducer:
 
 class TestTestdataConsumer:
     def test_request(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture, noop_zmq: NoopZmqFixture, caplog: LogCaptureFixture) -> None:
-        noop_zmq('grizzly.testdata.variables.messagequeue')
+        noop_zmq('grizzly.testdata.communication')
 
         def mock_recv_json(data: Dict[str, Any], action: Optional[str] = 'consume') -> None:
             mocker.patch(
@@ -454,32 +493,6 @@ class TestTestdataConsumer:
                     'test': None,
                 })
             }
-
-            if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
-                mock_recv_json({
-                    'variables': {
-                        'AtomicMessageQueue.document_id': '__on_consumer__',
-                        'AtomicIntegerIncrementer.messageID': 100,
-                        'test': None,
-                    }
-                })
-
-                grizzly.state.variables['AtomicMessageQueue.document_id'] = (
-                    'queue:TEST.QUEUE | url="mq://mq.example.com?QueueManager=QM1&Channel=SRV.CONN"'
-                )
-
-                assert consumer.request('test') == {
-                    'variables': transform(grizzly, {
-                        'AtomicMessageQueue.document_id': json.dumps({
-                            'document': {
-                                'id': 'DOCUMENT_1337-2',
-                                'name': 'Very important memo about the TPM report',
-                            },
-                        }),
-                        'AtomicIntegerIncrementer.messageID': 100,
-                        'test': None,
-                    })
-                }
         finally:
             consumer.stop()
             assert consumer.context._instance is None

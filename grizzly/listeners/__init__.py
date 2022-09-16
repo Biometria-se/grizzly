@@ -137,6 +137,7 @@ def spawning_complete(grizzly: GrizzlyContext) -> Callable[[KwArg(Dict[str, Any]
 
 
 def quitting(**_kwargs: Dict[str, Any]) -> None:
+    logger.debug('locust quitting')
     global producer_greenlet, producer
     if producer is not None:
         logger.debug('stopping producer')

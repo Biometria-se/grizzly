@@ -12,10 +12,13 @@ The first value of an integer that is going to be used.
 
 * `step` _int_, (optional) - how much the value should increment each time (default `1`)
 
+* `persist` _bool_, (optional) - if the initial value should be persist and loaded from file (default `False`)
+
 ## Example
 
-``` gherkin
+``` gherkin title="example.feature"
 And value for variable "AtomicIntegerIncrementer.unique_id" is "100 | step=10"
+And value for variable "AtomicIntegerIncrementer.persistent" is "10 | step=5, persist=True"
 ```
 
 This can then be used in a template:
@@ -26,13 +29,57 @@ This can then be used in a template:
 }
 ```
 
-First request `AtomicIntegerIncrementer.unique_id` will be `100`, second `110`, third `120` etc.
+Values of `AtomicIntegerIncrementer.unique_id`, per run and iteration:
+
+1. Run
+
+    1. `100`
+
+    2. `110`
+
+    3. `120`
+
+    4. ...
+
+2. Run
+
+    1. `100`
+
+    2. `110`
+
+    3. `120`
+
+    4. ...
+
+Values of `AtomicIntegerIncrementer.persistent`, per run and iteration:
+
+1. Run (`features/persistent/example.json` missing)
+
+    1. `5`
+
+    2. `15`
+
+    3. `20`
+
+    4. ...
+
+2. Run (`features/persistent/example.json` created by Run 1, due to `persistent=True`), initial
+value `35 | step=5, persist=True` will be read from the file and override what is written in `example.feature`
+
+    1. `25`
+
+    2. `30`
+
+    3. `35`
+
+    4. ...
 '''
 from typing import Union, Dict, Any, Type, Optional, cast
 
 from grizzly_extras.arguments import split_value, parse_arguments
 
-from . import AtomicVariable
+from ...types import bool_type
+from . import AtomicVariable, AtomicVariablePersist
 
 
 def atomicintegerincrementer__base_type__(value: Union[str, int]) -> str:
@@ -58,10 +105,7 @@ def atomicintegerincrementer__base_type__(value: Union[str, int]) -> str:
             if argument not in AtomicIntegerIncrementer.arguments:
                 raise ValueError(f'AtomicIntegerIncrementer: argument {argument} is not allowed')
 
-        try:
-            AtomicIntegerIncrementer.arguments['step'](arguments['step'])
-        except ValueError:
-            raise ValueError(f'AtomicIntegerIncrementer: "{value}" was not an int')
+            AtomicIntegerIncrementer.arguments[argument](arguments[argument])
 
         value = f'{initial_value} | {incrementer_arguments}'
     else:
@@ -73,12 +117,12 @@ def atomicintegerincrementer__base_type__(value: Union[str, int]) -> str:
     return value
 
 
-class AtomicIntegerIncrementer(AtomicVariable[int]):
+class AtomicIntegerIncrementer(AtomicVariable[int], AtomicVariablePersist):
     __base_type__ = atomicintegerincrementer__base_type__
 
     __initialized: bool = False
-    _steps: Dict[str, int]
-    arguments: Dict[str, Any] = {'step': int}
+    _steps: Dict[str, Any]
+    arguments: Dict[str, Any] = {'step': int, 'persist': bool_type}
 
     def __init__(self, variable: str, value: Union[str, int]) -> None:
         safe_value = self.__class__.__base_type__(value)
@@ -88,21 +132,34 @@ class AtomicIntegerIncrementer(AtomicVariable[int]):
             initial_value = incrementer_value
             arguments = parse_arguments(incrementer_arguments)
             step = int(arguments['step'])
+            state = self.__class__.arguments['persist'](arguments['persist']) if 'persist' in arguments else False
         else:
             initial_value = safe_value
             step = 1
+            state = False
 
         super().__init__(variable, int(initial_value))
 
         with self._semaphore:
             if self.__initialized:
                 if variable not in self._steps:
-                    self._steps[variable] = step
+                    self._steps[variable] = {'step': step, 'persist': state}
 
                 return
 
-            self._steps = {variable: step}
+            self._steps = {variable: {'step': step, 'persist': state}}
             self.__initialized = True
+
+    def generate_initial_value(self, variable: str) -> str:
+        persist = self._steps.get(variable, {}).get('persist', False)
+
+        if not persist:
+            raise ValueError(f'{self.__class__.__name__}.{variable} should not be persisted')
+
+        value = self.__getitem__(variable)
+        arguments = ', '.join([f'{key}={value}' for key, value in self._steps[variable].items()])
+
+        return f'{value} | {arguments}'
 
     @classmethod
     def clear(cls: Type['AtomicIntegerIncrementer']) -> None:
@@ -118,7 +175,7 @@ class AtomicIntegerIncrementer(AtomicVariable[int]):
             value = self._get_value(variable)
 
             if value is not None:
-                self._values[variable] = value + self._steps[variable]
+                self._values[variable] = value + self._steps[variable]['step']
 
             return value
 

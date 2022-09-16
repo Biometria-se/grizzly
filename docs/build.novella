@@ -123,6 +123,19 @@ do
         precedes "preprocess-markdown"
     }
     action: {
+        def make_human_readable(input):
+            def words = []
+            for word in input.split('_'):
+                words.append(word.capitalize())
+
+            def output = ' '.join(words)
+
+            for word in ['http', 'sftp', 'api', 'csv']:
+                output = output.replace(word.capitalize(), word.upper())
+                output = output.replace(word, word.upper())
+
+            return output
+
         def tasks = Path.cwd() / '..' / 'grizzly' / 'tasks'
         for task in tasks.iterdir():
             if task.is_file() and (task.stem == '__init__' or not task.stem.startswith('_')):
@@ -136,7 +149,7 @@ do
                 if task.stem == '__init__':
                     file.write_text('---\ntitle: Tasks\n---\n@pydoc grizzly.tasks\n')
                 else:
-                    file.write_text('---\ntitle: {task}\n---\n@pydoc grizzly.tasks.{task}\n'.format(task=task.stem))
+                    file.write_text('---\ntitle: {task_title}\n---\n@pydoc grizzly.tasks.{task}\n'.format(task=task.stem, task_title=make_human_readable(task.stem)))
 
         def tasks_clients = tasks / 'clients'
         for task_client in tasks_clients.iterdir():
@@ -150,7 +163,7 @@ do
                 if task_client.stem == '__init__':
                     file.write_text('---\ntitle: Clients\n---\n@pydoc grizzly.tasks.clients\n')
                 else:
-                    file.write_text('---\ntitle: {task}\n---\n@pydoc grizzly.tasks.clients.{task}\n'.format(task=task_client.stem))
+                    file.write_text('---\ntitle: {task_title}\n---\n@pydoc grizzly.tasks.clients.{task}\n'.format(task=task_client.stem, task_title=make_human_readable(task_client.stem)))
 
         def variables = Path.cwd() / '..' / 'grizzly' / 'testdata' / 'variables'
         for variable in variables.iterdir():
@@ -164,7 +177,7 @@ do
                 if variable.stem == '__init__':
                     file.write_text('---\ntitle: Testdata\n---\n@pydoc grizzly.testdata.variables\n')
                 else:
-                    file.write_text('---\ntitle: {variable}\n---\n@pydoc grizzly.testdata.variables.{variable}\n'.format(variable=filename))
+                    file.write_text('---\ntitle: {variable_title}\n---\n@pydoc grizzly.testdata.variables.{variable}\n'.format(variable=filename, variable_title=make_human_readable(filename)))
 
         def steps = Path.cwd() / '..' / 'grizzly' / 'steps'
         for step in steps.iterdir():
@@ -178,7 +191,7 @@ do
                 if step.stem == '__init__':
                     file.write_text('---\ntitle: Steps\n---\n@pydoc grizzly.steps\n## Considerations\nWhen writing step expressions, the following should be taken into consideration.\n@pydoc grizzly_extras.text.PermutationEnum\n@pydoc grizzly_extras.text.permutation\n')
                 else:
-                    file.write_text('---\ntitle: {step}\n---\n@pydoc grizzly.steps.{step}\n'.format(step=filename))
+                    file.write_text('---\ntitle: {step_title}\n---\n@pydoc grizzly.steps.{step}\n'.format(step=filename, step_title=make_human_readable(filename)))
 
         def steps_background = steps / 'background'
         for step in steps_background.iterdir():
@@ -192,7 +205,7 @@ do
                 if step.stem == '__init__':
                     file.write_text('---\ntitle: Background Steps\n---\n@pydoc grizzly.steps.background\n')
                 else:
-                    file.write_text('---\ntitle: {step}\n---\n@pydoc grizzly.steps.background.{step}\n'.format(step=filename))
+                    file.write_text('---\ntitle: {step_title}\n---\n@pydoc grizzly.steps.background.{step}\n'.format(step=filename, step_title=make_human_readable(filename)))
 
         def steps_scenario = steps / 'scenario'
         for step in steps_scenario.iterdir():
@@ -206,7 +219,7 @@ do
                 if step.stem == '__init__':
                     file.write_text('---\ntitle: Scenario Steps\n---\n@pydoc grizzly.steps.scenario\n')
                 else:
-                    file.write_text('---\ntitle: {step}\n---\n@pydoc grizzly.steps.scenario.{step}\n'.format(step=filename))
+                    file.write_text('---\ntitle: {step_title}\n---\n@pydoc grizzly.steps.scenario.{step}\n'.format(step=filename, step_title=make_human_readable(filename)))
 
         def users = Path.cwd() / '..' / 'grizzly' / 'users'
         for user in users.iterdir():
@@ -220,5 +233,5 @@ do
                 if user.stem == '__init__':
                     file.write_text('---\ntitle: Load Users\n---\n@pydoc grizzly.users\n')
                 else:
-                    file.write_text('---\ntitle: {user}\n---\n@pydoc grizzly.users.{user}\n'.format(user=filename))
+                    file.write_text('---\ntitle: {user_title}\n---\n@pydoc grizzly.users.{user}\n'.format(user=filename, user_title=make_human_readable(filename)))
     }

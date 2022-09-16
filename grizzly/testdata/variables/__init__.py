@@ -9,10 +9,11 @@ When initializing the variable, the full namespace has to be specified as `name`
 
 There are examples of this in the {@link framework.example}.
 '''
-from typing import Generic, Optional, Callable, Set, Any, Tuple, Dict, TypeVar
+from typing import Generic, Optional, Callable, Set, Any, Tuple, Dict, TypeVar, Protocol, runtime_checkable
 
 from gevent.lock import Semaphore
 
+from ...types import bool_type
 from ...context import GrizzlyContext
 
 
@@ -21,6 +22,14 @@ T = TypeVar('T')
 
 class AbstractAtomicClass:
     pass
+
+
+@runtime_checkable
+class AtomicVariablePersist(Protocol):
+    arguments: Dict[str, Any] = {'persist': bool_type}
+
+    def generate_initial_value(self, variable: str) -> str:
+        ...
 
 
 class AtomicVariable(Generic[T], AbstractAtomicClass):
@@ -150,7 +159,6 @@ from .date import AtomicDate
 from .directory_contents import AtomicDirectoryContents
 from .csv_row import AtomicCsvRow
 from .random_string import AtomicRandomString
-from .messagequeue import AtomicMessageQueue
 from .servicebus import AtomicServiceBus
 
 __all__ = [
@@ -160,7 +168,6 @@ __all__ = [
     'AtomicDirectoryContents',
     'AtomicCsvRow',
     'AtomicRandomString',
-    'AtomicMessageQueue',
     'AtomicServiceBus',
     'destroy_variables',
 ]

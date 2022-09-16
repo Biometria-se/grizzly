@@ -1,6 +1,10 @@
 import logging
 
 from typing import TYPE_CHECKING, Dict, Optional, Any, cast
+from os import environ
+from pathlib import Path
+from json import dumps as jsondumps
+from itertools import chain
 
 from zmq.sugar.constants import NOBLOCK as ZMQ_NOBLOCK, REQ as ZMQ_REQ, REP as ZMQ_REP
 from zmq.error import ZMQError, Again as ZMQAgain
@@ -13,6 +17,7 @@ from locust.env import Environment
 
 from ..types import TestdataType
 from .utils import transform
+from .variables import AtomicVariablePersist
 from . import GrizzlyVariables
 
 
@@ -135,6 +140,39 @@ class TestdataProducer:
             for scenario_name in self.scenarios_iteration.keys():
                 self.scenarios_iteration[scenario_name] = 0
 
+    def persist_testdata(self) -> None:
+        try:
+            feature_file = environ.get('GRIZZLY_FEATURE_FILE', None)
+            context_root = environ.get('GRIZZLY_CONTEXT_ROOT', None)
+
+            assert feature_file is not None
+            assert context_root is not None
+
+            persist_root = Path(context_root) / 'persistent'
+            variable_state: Dict[str, str] = {}
+
+            for testdata in self.testdata.values():
+                for key, variable in testdata.items():
+                    try:
+                        if '.' in key and not variable == '__on_consumer__':
+                            _, _, variable_name = GrizzlyVariables.get_variable_spec(key)
+
+                            if not isinstance(variable, AtomicVariablePersist):
+                                continue
+
+                            variable_state.update({key: variable.generate_initial_value(variable_name)})
+                    except:
+                        continue
+
+            # only write file if we actually have something to write
+            if len(variable_state.keys()) > 0 and len(list(chain(*variable_state.values()))) > 0:
+                persist_root.mkdir(exist_ok=True, parents=True)
+                persist_file = persist_root / f'{Path(feature_file).stem}.json'
+                persist_file.write_text(jsondumps(variable_state, indent=2))
+                self.logger.info(f'wrote variables next initial values for {feature_file} to {persist_file}')
+        except:
+            self.logger.error('failed do persist variables next initial values', exc_info=True)
+
     def stop(self) -> None:
         self._stopping = True
         self.logger.debug('stopping producer')
@@ -146,6 +184,8 @@ class TestdataProducer:
             # make sure that socket is properly released
             gsleep(0.1)
             self.context.term()
+
+            self.persist_testdata()
 
     def run(self) -> None:
         self.logger.debug('start producing...')

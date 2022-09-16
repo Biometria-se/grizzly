@@ -4,6 +4,7 @@ from typing import cast, List, Dict
 import pytest
 
 from behave.runner import Context
+from behave.model import Feature
 from grizzly.context import GrizzlyContext
 
 from ....fixtures import End2EndFixture
@@ -104,6 +105,9 @@ def test_e2e_step_setup_iterations(e2e_fixture: End2EndFixture, iterations: str)
 
 def test_e2e_step_variable_value(e2e_fixture: End2EndFixture) -> None:
     def validate_variable_value(context: Context) -> None:
+        from os import environ
+        from pathlib import Path
+
         grizzly = cast(GrizzlyContext, context.grizzly)
 
         assert grizzly.state.variables.get('testdata_variable', None) == 'hello world!'
@@ -112,8 +116,47 @@ def test_e2e_step_variable_value(e2e_fixture: End2EndFixture) -> None:
         assert grizzly.state.variables.get('bool_value', False)
         assert grizzly.state.variables.get('wildcard', None) == 'foobar'
         assert grizzly.state.variables.get('nested_value', None) == 'hello world!'
+        assert grizzly.state.variables.get('AtomicIntegerIncrementer.persistent', None) == '10 | step=13, persist=True'
+
+        feature_file = environ.get('GRIZZLY_FEATURE_FILE', None)
+        assert feature_file is not None, 'environment variable GRIZZLY_FEATURE_FILE was not set'
+        persist_file = Path(context.config.base_dir) / 'persistent' / f'{Path(feature_file).stem}.json'
+
+        assert persist_file.exists(), f'{persist_file} does not exist'
+
+        persist_file.unlink()
 
     e2e_fixture.add_validator(validate_variable_value)
+
+    def before_feature(context: Context, feature: Feature) -> None:
+        from pathlib import Path
+        from json import dumps as jsondumps
+
+        context_root = Path(context.config.base_dir)
+        persist_root = context_root / 'persistent'
+        persist_root.mkdir(exist_ok=True)
+        persist_file = persist_root / f'{Path(feature.filename).stem}.json'
+        persist_file.write_text(jsondumps({
+            'AtomicIntegerIncrementer.persistent': '10 | step=13, persist=True'
+        }))
+
+    e2e_fixture.add_before_feature(before_feature)
+
+    def after_feature(context: Context, feature: Feature) -> None:
+        from pathlib import Path
+        from json import loads as jsonloads
+
+        context_root = Path(context.config.base_dir)
+
+        persist_file = context_root / 'persistent' / f'{Path(feature.filename).stem}.json'
+
+        assert persist_file.exists(), f'{persist_file} does not exist'
+        contents = persist_file.read_text()
+        assert jsonloads(contents) == {
+            'AtomicIntegerIncrementer.persistent': '23 | step=13, persist=True',
+        }, f'"{contents}" is not expected value'
+
+    e2e_fixture.add_after_feature(after_feature)
 
     feature_file = e2e_fixture.test_steps(
         scenario=[
@@ -123,17 +166,22 @@ def test_e2e_step_variable_value(e2e_fixture: End2EndFixture) -> None:
             'And value for variable "bool_value" is "True"',
             'And value for variable "wildcard" is "foobar"',
             'And value for variable "nested_value" is "{{ testdata_variable }}"',
+            'And value for variable "AtomicIntegerIncrementer.persistent" is "1 | step=1, persist=True"',
             (
                 'Then log message "testdata_variable={{ testdata_variable }}, int_value={{ int_value }}, '
                 'float_value={{ float_value }}, bool_value={{ bool_value }}, wildcard={{ wildcard }}, '
                 'nested_value={{ nested_value }}"'
             ),
+            'Then log message "persistent={{ AtomicIntegerIncrementer.persistent }}"',
         ],
     )
 
-    rc, _ = e2e_fixture.execute(feature_file)
+    rc, output = e2e_fixture.execute(feature_file)
+
+    result = ''.join(output)
 
     assert rc == 0
+    assert 'persistent=10' in result
 
 
 def test_e2e_step_set_variable_alias(e2e_fixture: End2EndFixture) -> None:
