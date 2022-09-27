@@ -30,7 +30,7 @@ from .. import GrizzlyTask, template
 
 
 # see https://github.com/python/mypy/issues/5374
-@template('endpoint', 'destination', 'source', 'name')  # type: ignore
+@template('endpoint', 'destination', 'source', 'name')
 class ClientTask(GrizzlyTask):
     _schemes: List[str]
     _short_name: str

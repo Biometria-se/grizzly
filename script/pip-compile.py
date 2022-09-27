@@ -7,9 +7,10 @@ import re
 
 from tempfile import NamedTemporaryFile
 from packaging import version as versioning
-from typing import Optional, Dict, Tuple, cast
-from configparser import ConfigParser
+from typing import Optional, Dict, Tuple, List, cast
 from pathlib import Path
+
+import tomli
 
 from piptools.scripts.compile import cli as pip_compile
 from piptools.locations import CACHE_DIR
@@ -17,6 +18,8 @@ from click import Context as ClickContext, Command as ClickCommand
 from click.globals import push_context as click_push_context
 
 IMAGE_NAME = 'grizzly-pip-compile'
+
+PYPROJECT_PATH = Path(__file__).parent / '..' / 'pyproject.toml'
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -67,17 +70,16 @@ def getgid() -> int:
 
 
 def get_python_version() -> str:
-    config = ConfigParser()
-    setup_path = os.path.realpath(os.path.join(os.path.dirname(__file__), '..', 'setup.cfg'))
-    config.read(setup_path)
+    with open(PYPROJECT_PATH, 'rb') as fd:
+        config = tomli.load(fd)
 
-    if 'options' not in config:
-        raise AttributeError('setup.cfg is missing [options] section')
+    if 'project' not in config:
+        raise AttributeError('pyproject.toml is missing [project] section')
 
-    python_requires: Optional[str] = config['options'].get('python_requires', None)
+    python_requires: Optional[str] = config['project'].get('requires-python', None)
 
     if python_requires is None:
-        raise AttributeError('could not find python_requires in setup.cfg')
+        raise AttributeError('could not find requires-python in pyproject.toml')
 
     version = re.sub(r'[^0-9\.]', '', python_requires)
 
@@ -100,19 +102,19 @@ def get_python_version() -> str:
     return f'{parsed_version.major}.{version_minor}'
 
 
-def build_container_image(python_version: str) -> int:
+def build_container_image(python_version: str) -> Tuple[int, Dict[str, str]]:
     print(f'running pip-compile with python {python_version}', flush=True)
 
-    build_context = os.path.dirname(__file__)
+    build_context = Path(__file__).parent
 
-    with NamedTemporaryFile(delete=True, mode='w', dir=build_context) as fd:
+    with NamedTemporaryFile(prefix='Dockerfile.', delete=True, mode='w', dir=build_context) as fd:
         user_gid = getgid()
         user_uid = getuid()
         fd.write(f'''# this is need because pip-compile needs them (!!) when compiling requirements*.txt file, with pymqi included
 FROM alpine:latest as dependencies
 USER root
 RUN mkdir /root/ibm && cd /root/ibm && \
-    wget https://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/messaging/mqdev/redist/9.2.2.0-IBM-MQC-Redist-LinuxX64.tar.gz -O - | tar xzf -
+    wget https://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/messaging/mqdev/redist/9.2.5.0-IBM-MQC-Redist-LinuxX64.tar.gz -O - | tar xzf -
 
 FROM python:{python_version}-alpine
 RUN mkdir -p /opt/mqm/lib64 && mkdir /opt/mqm/lib && mkdir -p /opt/mqm/gskit8/lib64
@@ -137,72 +139,96 @@ CMD ["/pip-compile.py", "--compile"]
 
         fd.flush()
 
-        rc = subprocess.check_call([
-            'docker', 'image', 'build', '-t', f'{IMAGE_NAME}:{python_version}', build_context, '-q', '-f', fd.name,
-        ], shell=False, close_fds=True)
+        command = ['docker', 'image', 'build', '-t', f'{IMAGE_NAME}:{python_version}', str(build_context), '-q', '-f', fd.name]
 
-    return rc
+        return run_command(command)
 
 
-def run_container(python_version: str) -> Tuple[int, Optional[str]]:
-    output: Optional[str] = None
+def run_container(python_version: str) -> Tuple[int, Dict[str, str]]:
+    command = [
+        'docker',
+        'container',
+        'run',
+        '-v', f"{os.getenv('GRIZZLY_MOUNT_CONTEXT')}:/mnt",
+        '--name', IMAGE_NAME,
+        f'{IMAGE_NAME}:{python_version}',
+    ]
+
+    return run_command(command)
+
+
+def run_command(command: List[str]) -> Tuple[int, Dict[str, str]]:
+    output: Dict[str, str] = []
+    process = subprocess.Popen(
+        command,
+        shell=False,
+        close_fds=True,
+        stderr=subprocess.STDOUT,
+        stdout=subprocess.PIPE,
+    )
+
     try:
-        output = subprocess.check_output([
-            'docker',
-            'container',
-            'run',
-            '--rm',
-            '-v', f"{os.getenv('GRIZZLY_MOUNT_CONTEXT')}:/mnt",
-            '--name', IMAGE_NAME,
-            f'{IMAGE_NAME}:{python_version}',
-        ], shell=False, close_fds=True)
-        rc = 0
-    except subprocess.CalledProcessError as e:
-        rc = e.returncode
-        output = e.output.decode('utf-8')
+        while process.poll() is None:
+            stdout = process.stdout
 
-    return rc, output
+            if stdout is None:
+                break
+
+            buffer = stdout.readline()
+            if not buffer:
+                break
+
+            output.append(buffer.decode('utf-8'))
+
+        process.terminate()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        try:
+            process.kill()
+        except Exception:
+            pass
+
+    process.wait()
+
+    return process.returncode, output
 
 
-def has_git_dependencies(where_am_i: str) -> bool:
-    root = Path(where_am_i)
-
-    if not root.is_file():
-        setup_file = os.path.join(where_am_i, 'setup.cfg')
-        config = ConfigParser()
-        config.read(setup_file)
-
-        if 'options' in config:
-            if 'git+' in config['options'].get('install_requires'):
-                return True
-
-        if 'options.extras_require' in config:
-            options_extras_require = config['options.extras_require']
-
-            for option in options_extras_require:
-                if 'git+' in options_extras_require[option]:
-                    return True
+def has_git_dependencies(root_path: Path) -> bool:
+    if not root_path.is_file():
+        pyproject_file = root_path / 'pyproject.toml'
     else:
-        content = root.read_text()
+        pyproject_file = root_path
 
-        if 'git+' in content:
+    with open(pyproject_file, 'rb') as fd:
+        config = tomli.load(fd)
+
+    if 'project' in config:
+        if any([True if 'git+' in dependency else False for dependency in config['project']['dependencies']]):
             return True
+
+    if 'optional-dependencies' in config['project']:
+        options_extras = config['project']['optional-dependencies']
+
+        for dependencies in options_extras.values():
+            if any([True if 'git+' in dependency else False for dependency in dependencies]):
+                return True
 
     return False
 
 
 def compile(target: Optional[str] = None) -> int:
-    if os.path.exists('/mnt/setup.cfg'):
-        where_am_i = '/mnt'
+    if Path('/mnt/pyproject.toml').exists():
+        root_path = Path('/mnt')
     else:
-        where_am_i = os.path.realpath(os.path.join(os.path.dirname(__file__), '..'))
+        root_path = Path(__file__).parent / '..'
 
-    generate_hashes = not has_git_dependencies(where_am_i)
+    generate_hashes = not has_git_dependencies(root_path)
 
     targets_all: Dict[str, Tuple[str, ...]] = {
         'requirements.txt': (),
         'requirements-ci.txt': ('dev', 'ci', ),
-        'requirements-dev.txt': ('dev', 'mq', ),
+        'requirements-dev.txt': ('dev', 'mq', 'ci', ),
         'requirements-docs.txt': (),
     }
 
@@ -215,8 +241,11 @@ def compile(target: Optional[str] = None) -> int:
 
     os.environ['CUSTOM_COMPILE_COMMAND'] = 'script/pip-compile.py'
 
+    rc = 0
+
     for target, extras in targets.items():
-        output_file = os.path.join(where_am_i, target)
+        output_file = root_path / target
+
         base, _ = os.path.splitext(output_file)
         if os.path.exists(f'{base}.in'):
             src_files = (f'{base}.in', )
@@ -224,12 +253,12 @@ def compile(target: Optional[str] = None) -> int:
         else:
             src_files = ('pyproject.toml', )
 
-        with open(os.path.join(where_am_i, target), 'w+b') as fd:
+        with open(output_file, 'w+b') as fd:
             print(f'generating {target} from {src_files[0]}', flush=True)
             try:
                 pip_compile.callback(
-                    verbose=0,
-                    quiet=1,  # <!-- --quiet
+                    verbose=1,
+                    quiet=0,  # <!-- --quiet
                     dry_run=False,
                     pre=None,
                     rebuild=False,
@@ -264,11 +293,14 @@ def compile(target: Optional[str] = None) -> int:
                     ]),
                     emit_index_url=True,
                     emit_options=True,
+                    resolver_name='cli',
                 )
             except SystemExit as e:
-                return e.code
+                rc += e.code
+            finally:
+                continue
 
-    return 0
+    return rc
 
 
 def main() -> int:
@@ -281,13 +313,25 @@ def main() -> int:
         if python_version is None:
             python_version = get_python_version()
 
-        rc = build_container_image(python_version)
+        rc, output = build_container_image(python_version)
+
+        if rc != 0:
+            print(''.join(output))
 
         if rc == 0:
             rc, output = run_container(python_version)
 
             if rc != 0 and len(output) > 0:
-                print(output)
+                print(''.join(output))
+                rc, output = run_command([
+                    'docker', 'container', 'logs', 'grizzly-pip-compile',
+                ])
+
+                print(''.join(output))
+
+            rc, output = run_command([
+                'docker', 'container', 'rm', 'grizzly-pip-compile',
+            ])
 
     return rc
 

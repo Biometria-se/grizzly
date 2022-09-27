@@ -23,3 +23,5 @@ docs/changelog/*
 docs/cli.md
 docs/_site
 docs/_build
+
+grizzly/__version__.py

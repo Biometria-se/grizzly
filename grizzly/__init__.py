@@ -1,8 +1,11 @@
 from importlib.metadata import version, PackageNotFoundError
 
+from .__version__ import __version__
+
 try:
-    __version__ = version('grizzly-loadtester')
     __locust_version__ = version('locust')
 except PackageNotFoundError:
-    __version__ = __locust_version__ = '<unknown>'
+    __locust_version__ = '<unknown>'
     pass
+
+__all__ = ['__version__']
