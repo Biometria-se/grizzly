@@ -29,7 +29,7 @@ class ResponseEventSession(HttpSession):
         *args: Tuple[Any, ...],
         **kwargs: Dict[str, Any],
     ) -> None:
-        super().__init__(base_url, request_event, user, pool_manager, *args, **kwargs)
+        super().__init__(base_url, request_event, user, *args, pool_manager=pool_manager, **kwargs)
 
         self.event_hook = EventHook()
 

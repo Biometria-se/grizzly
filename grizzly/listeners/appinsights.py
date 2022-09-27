@@ -114,6 +114,7 @@ class ApplicationInsightsListener:
 
             if runner is None:
                 raise ValueError()
+
             try:
                 thread_count = str(runner.user_count)
             except Exception:

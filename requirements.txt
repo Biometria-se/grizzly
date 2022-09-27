@@ -31,9 +31,9 @@ azure-servicebus==7.8.0 \
     --hash=sha256:293bc95ce277a362942fd88f72eb3a9b4a92de10000775b3d2e3e00adb45aa59 \
     --hash=sha256:350cde6fed89df136f1d89a8b4906868bd037a60fcfe42f071c29ab5bb627979
     # via grizzly-loadtester (pyproject.toml)
-azure-storage-blob==12.11.0 \
-    --hash=sha256:49535b3190bb69d0d9ff7a383246b14da4d2b1bdff60cae5f9173920c67ca7ee \
-    --hash=sha256:f3dfa605aefb453e7489328b76811a937a411761d7a1613a58c3975c556ec778
+azure-storage-blob==12.13.1 \
+    --hash=sha256:726b86f733dc76218ce45b7a3254b61ba4f0cc3d68b7621be4985248c92ee483 \
+    --hash=sha256:899c4b8e2671812d2cf78f107556a27dbb128caaa2bb06094e72a3d5836740af
     # via grizzly-loadtester (pyproject.toml)
 backports-zoneinfo==0.2.1 ; python_version < "3.9" \
     --hash=sha256:17746bd546106fa389c51dbea67c8b7c8f0d14b5526a579ca6ccf5ed72c526cf \
@@ -496,9 +496,9 @@ jsonpath-ng==1.5.3 \
     --hash=sha256:a273b182a82c1256daab86a313b937059261b5c5f8c4fa3fc38b882b344dd567 \
     --hash=sha256:f75b95dbecb8a0f3b86fd2ead21c2b022c3f5770957492b9b6196ecccfeb10aa
     # via grizzly-loadtester (pyproject.toml)
-locust==2.9.0 \
-    --hash=sha256:62b69109337c3e6542e35c40ad08ba57d3690b0d1468121ba613b3cc01a6340a \
-    --hash=sha256:c2355852b9bccef4d1cc4e587e3448a8b81c9622626248a5809a77c672f59757
+locust==2.12.1 \
+    --hash=sha256:651ddd77fd8d1e5d529a755b3ad6dceacbcc1b519690edf88ef106f47f4b416f \
+    --hash=sha256:7b7cb1714c607fb2da03b7e2f7d3e5c3c085647ba08e64e9f9e9942d5304b9eb
     # via grizzly-loadtester (pyproject.toml)
 lxml==4.9.1 \
     --hash=sha256:04da965dfebb5dac2619cb90fcf93efdb35b3c6994fea58a157a834f2f94b318 \

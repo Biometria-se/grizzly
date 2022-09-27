@@ -9,7 +9,6 @@ import pytest
 
 from pytest_mock import MockerFixture
 from _pytest.logging import LogCaptureFixture
-from locust.runners import Runner
 from locust.exception import CatchResponseError
 from influxdb.client import InfluxDBClient
 from influxdb.exceptions import InfluxDBClientError
@@ -368,7 +367,7 @@ class TestInfluxDbListener:
             request_type: str, name: str, response_time: float, response_length: int, exception: Optional[Any] = None
         ) -> Callable[[logging.Handler, str], None]:
             result = 'Success' if exception is None else 'Failure'
-            expected_message = f'{result}: {request_type} {name} Response time: {int(round(response_time, 0))} Number of Threads: -1'
+            expected_message = f'{result}: {request_type} {name} Response time: {int(round(response_time, 0))} Number of Threads: 0'
 
             if exception is not None:
                 expected_message = f'{expected_message} Exception: {str(exception)}'
@@ -457,11 +456,12 @@ class TestInfluxDbListener:
         for key in expected_keys:
             assert key in runner_values
 
-        assert runner_values.get('thread_count', None) == -1
-        assert runner_values.get('target_user_count', None) == -1
+        assert runner_values.get('thread_count', None) == 0
+        assert runner_values.get('target_user_count', None) == 0
         assert runner_values.get('spawn_rate', None) == -1
 
-        locust_fixture.env.runner = Runner(locust_fixture.env)
+        locust_fixture.env.runner = None
+        locust_fixture.env.runner = locust_fixture.env.create_local_runner()
 
         runner_values = listener._safe_return_runner_values()
         assert runner_values.get('thread_count', None) == 0

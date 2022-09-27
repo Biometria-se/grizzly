@@ -1,16 +1,16 @@
 import logging
 
-from typing import Any, Dict, Tuple, Optional
+from typing import Any, Dict, Tuple, Optional, cast
 from os import environ
-from random import uniform
+from random import randint
 
 import pytest
 
 from _pytest.logging import LogCaptureFixture
 from pytest_mock import MockerFixture
 from locust.env import Environment
-from locust.runners import LocalRunner, MasterRunner, WorkerRunner
-from locust.stats import RequestStats
+from locust.runners import LocalRunner, MasterRunner, WorkerRunner, CustomMessageListener
+from locust.stats import RequestStats, StatsError
 from behave.model import Scenario, Status
 
 from grizzly.listeners import (
@@ -27,7 +27,7 @@ from grizzly.listeners import (
 from grizzly.context import GrizzlyContext, GrizzlyContextScenarioResponseTimePercentile
 from grizzly.types import MessageDirection, Message
 
-from ...fixtures import LocustFixture, GrizzlyFixture
+from ...fixtures import LocustFixture, GrizzlyFixture, NoopZmqFixture
 
 
 class Running(Exception):
@@ -45,7 +45,7 @@ def mocked_TestdataProducer___init__(self: Any, grizzly: Any, testdata: Any, add
 
 
 @pytest.fixture
-def listener_test_mocker(mocker: MockerFixture) -> None:
+def listener_test_mocker(mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
     mocker.patch(
         'grizzly.testdata.communication.TestdataProducer.run',
         mocked_TestdataProducer_run,
@@ -56,20 +56,9 @@ def listener_test_mocker(mocker: MockerFixture) -> None:
         mocked_TestdataProducer___init__,
     )
 
-    mocker.patch(
-        'zmq.sugar.socket.Socket.bind',
-        return_value=None,
-    )
+    noop_zmq('locust.rpc.zmqrpc')
 
-    mocker.patch(
-        'zmq.sugar.socket.Socket.connect',
-        return_value=None,
-    )
-
-    mocker.patch(
-        'zmq.sugar.socket.Socket.send',
-        return_value=None,
-    )
+    mocker.patch('locust.runners.Event.wait', return_value=True)
 
 
 def test__init_testdata_producer(listener_test_mocker: None, grizzly_fixture: GrizzlyFixture) -> None:
@@ -128,9 +117,9 @@ def test_init_master(listener_test_mocker: None, caplog: LogCaptureFixture, griz
 
         init_function(runner)
 
-        assert grizzly.state.locust.custom_messages == {
+        assert grizzly.state.locust.custom_messages == cast(Dict[str, CustomMessageListener], {
             'test_message': callback,
-        }
+        })
     finally:
         if runner is not None:
             runner.quit()
@@ -147,14 +136,15 @@ def test_init_worker(listener_test_mocker: None, grizzly_fixture: GrizzlyFixture
         assert callable(init_function)
 
         runner = WorkerRunner(grizzly_fixture.locust_env, 'localhost', 5555)
+
         grizzly.state.locust = runner
 
         init_function(runner)
 
         assert environ.get('TESTDATA_PRODUCER_ADDRESS', None) == 'tcp://localhost:5555'
-        assert runner.custom_messages == {
+        assert runner.custom_messages == cast(Dict[str, CustomMessageListener], {
             'grizzly_worker_quit': grizzly_worker_quit,
-        }
+        })
 
         def callback(environment: Environment, msg: Message, **kwargs: Dict[str, Any]) -> None:
             pass
@@ -167,10 +157,10 @@ def test_init_worker(listener_test_mocker: None, grizzly_fixture: GrizzlyFixture
 
         init_function(runner)
 
-        assert grizzly.state.locust.custom_messages == {
+        assert grizzly.state.locust.custom_messages == cast(Dict[str, CustomMessageListener], {
             'grizzly_worker_quit': grizzly_worker_quit,
             'test_message_ack': callback_ack,
-        }
+        })
     finally:
         if runner is not None:
             runner.quit()
@@ -214,10 +204,10 @@ def test_init_local(listener_test_mocker: None, grizzly_fixture: GrizzlyFixture)
 
         init_function(runner)
 
-        assert grizzly.state.locust.custom_messages == {
+        assert grizzly.state.locust.custom_messages == cast(Dict[str, CustomMessageListener], {
             'test_message': callback,
             'test_message_ack': callback_ack,
-        }
+        })
     finally:
         if runner is not None:
             runner.quit()
@@ -411,7 +401,7 @@ def test_validate_result(mocker: MockerFixture, listener_test_mocker: None, capl
         ('GET', '001 Read',),
     ]:
         for i in range(100):
-            environment.stats.log_request(method, name, uniform(10.1, 56.5), len(name))
+            environment.stats.log_request(method, name, randint(10, 57), len(name))
             if i % 5 == 0:
                 environment.stats.log_error(method, name, RuntimeError('Error'))
 
@@ -499,7 +489,7 @@ def test_grizzly_worker_quit_non_worker(locust_fixture: LocustFixture, caplog: L
     assert caplog.messages[1] == 'received grizzly_worker_quit message on a non WorkerRunner?!'
 
 
-def test_grizzly_worker_quit_worker(locust_fixture: LocustFixture, caplog: LogCaptureFixture, mocker: MockerFixture) -> None:
+def test_grizzly_worker_quit_worker(listener_test_mocker: None, locust_fixture: LocustFixture, caplog: LogCaptureFixture, mocker: MockerFixture) -> None:
     mocker.patch('locust.runners.rpc.Client.__init__', return_value=None)
     mocker.patch('locust.runners.rpc.BaseSocket.send', autospec=True)
     mocker.patch('locust.runners.WorkerRunner.heartbeat', autospec=True)
@@ -549,7 +539,7 @@ def test_grizzly_worker_quit_worker(locust_fixture: LocustFixture, caplog: LogCa
     caplog.clear()
 
     environment.process_exit_code = None
-    environment.runner.errors.update({'test': 1})
+    environment.runner.errors.update({'test': StatsError('GET', 'test', 'something', 1)})
 
     with caplog.at_level(logging.DEBUG):
         with pytest.raises(SystemExit) as se:

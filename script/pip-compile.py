@@ -249,7 +249,7 @@ def compile(target: Optional[str] = None) -> int:
         base, _ = os.path.splitext(output_file)
         if os.path.exists(f'{base}.in'):
             src_files = (f'{base}.in', )
-            generate_hashes = not has_git_dependencies(src_files[0])
+            generate_hashes = not has_git_dependencies(Path(src_files[0]))
         else:
             src_files = ('pyproject.toml', )
 
