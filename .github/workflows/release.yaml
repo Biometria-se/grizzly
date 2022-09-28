@@ -44,9 +44,6 @@ jobs:
       with:
         python-version: '3.x'
         cache: 'pip'
-        cache-dependency-path: |
-          **/requirements-ci.txt
-          **/requirements-script.txt
 
     - name: setup node
       id: setup-node
@@ -78,40 +75,39 @@ jobs:
 
     - name: install python dependencies
       id: install-python-deps
-      run: |
-        python -m pip install --upgrade pip-tools
-        ./script/pip-sync.bash ci
+      run: python -m pip install -e .[ci,docs]
 
     - name: build package
       id: build
       run: python -m build
 
+    - name: verify package
+      id: verify
+      working-directory: ./dist/
+      env:
+        VERSION: ${{ steps.next-version.outputs.new_version }}
+      run: |
+        set -e
+        ls -l grizzly?loadtester-${VERSION#v}*
+        test -f grizzly-loadtester-${VERSION#v}.tar.gz
+        test -f grizzly_loadtester-${VERSION#v}-py3-none-any.whl
+
     - name: publish package
       id: publish
+      if: ${{ github.event.inputs.publish == 'true' }}
       env:
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
         TWINE_NON_INTERACTIVE: true
         VERSION: ${{ steps.next-version.outputs.new_version }}
-      run: |
-        ls -l dist/grizzly?loadtester-${VERSION#v}*
-        if [[ "${{ github.event.inputs.publish }}" == "true" ]]; then
-          python -m twine upload dist/grizzly?loadtester-${VERSION#v}*
-        else
-          echo "!! publish package disabled"
-        fi
+      run: python -m twine upload dist/grizzly?loadtester-${VERSION#v}*
 
     - name: push release tag
       id: release-tag
       if: ${{ github.event.inputs.publish == 'true' }}
-      run: |
-        git push origin "${{ steps.next-version.outputs.new_version }}"
+      run: git push origin "${{ steps.next-version.outputs.new_version }}"
 
-    - name: build documentation
-      id: build-docs
-      run: |
-        python -m pip install -r requirements-docs.txt
-
+    - name: prepare "edit this page" links
         if [[ "${{ github.event.inputs.publish }}" == "true" ]]; then
           tag="${{ steps.next-version.outputs.new_version }}"
         else
@@ -120,8 +116,10 @@ jobs:
 
         git checkout -b "${tag}" "tags/${tag}"
 
-        cd docs/
-        python -m novella --site-dir "$PWD/_build" --base-url grizzly/
+    - name: build documentation
+      working-directory: ./docs/
+      id: build-docs
+      run: python -m novella --site-dir "./_build" --base-url grizzly/
 
     - name: deploy documentation
       id: deploy-docs
@@ -129,7 +127,7 @@ jobs:
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
         publish_branch: gh-pages
-        publish_dir: docs/_build
+        publish_dir: ./docs/_build
         destination_dir: docs/
         enable_jekyll: false
         # cname: <a better domain>

@@ -1,9 +1,5 @@
 from importlib.metadata import version, PackageNotFoundError
-
-try:
-    from .__version__ import __version__
-except ModuleNotFoundError:
-    __version__ = '<unknown>'
+from .__version__ import __version__
 
 try:
     __locust_version__ = version('locust')
