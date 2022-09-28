@@ -108,7 +108,7 @@ class RequestTaskResponse:
                 self.status_codes.pop(index)
 
 
-@template('name', 'endpoint', 'source', 'arguments')
+@template('name', 'endpoint', 'source', 'arguments', 'metadata')
 class RequestTask(GrizzlyTask):
     method: RequestMethod
     name: str
@@ -116,6 +116,7 @@ class RequestTask(GrizzlyTask):
     _template: Optional[Template]
     _source: Optional[str]
     arguments: Optional[Dict[str, str]]
+    metadata: Optional[Dict[str, str]]
 
     response: RequestTaskResponse
 
@@ -126,6 +127,7 @@ class RequestTask(GrizzlyTask):
         self.name = name
         self.endpoint = endpoint
         self.arguments = None
+        self.metadata = None
 
         self._template = None
         self._source = source
@@ -164,6 +166,12 @@ class RequestTask(GrizzlyTask):
             self._template = Template(self._source)
 
         return self._template
+
+    def add_metadata(self, key: str, value: str) -> None:
+        if self.metadata is None:
+            self.metadata = {key: value}
+        else:
+            self.metadata[key] = value
 
     def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
         def task(parent: 'GrizzlyScenario') -> Any:

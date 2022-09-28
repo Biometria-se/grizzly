@@ -111,3 +111,14 @@ class TestRequestTask:
         assert task_factory.endpoint == '/api/test'
         assert task_factory.arguments == {}
         assert task_factory.response.content_type == TransformerContentType.XML
+
+    def test_add_metadata(self) -> None:
+        task_factory = RequestTask(RequestMethod.GET, 'test-name', endpoint='/api/test | content_type="application/json", foo=bar')
+        assert getattr(task_factory, 'metadata', '') is None
+
+        task_factory.add_metadata('foo', 'bar')
+        task_factory.add_metadata('alice', 'bob')
+
+        assert task_factory.metadata is not None
+        assert task_factory.metadata['foo'] == 'bar'
+        assert task_factory.metadata['alice'] == 'bob'

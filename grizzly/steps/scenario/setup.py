@@ -1,5 +1,5 @@
 '''This module contains step implementations that setup the load test scenario with parameters that is going to be used in the scenario they are defined in.'''
-from typing import cast
+from typing import Optional, cast
 
 import parse
 
@@ -14,6 +14,8 @@ from ...testdata.utils import create_context_variable, resolve_variable
 from ...utils import merge_dicts
 from ...exceptions import RestartScenario
 from .._helpers import is_template
+from ...tasks import RequestTask, GrizzlyTask
+from .._helpers import add_request_task_metadata
 
 
 @parse.with_pattern(r'(iteration[s]?)')
@@ -249,7 +251,14 @@ def step_setup_metadata(context: Context, key: str, value: str) -> None:
     grizzly = cast(GrizzlyContext, context.grizzly)
     casted_value = resolve_variable(grizzly, value)
 
-    if grizzly.scenario.context.get('metadata', None) is None:
-        grizzly.scenario.context['metadata'] = {}
+    previous_task: Optional[GrizzlyTask] = None
+    if len(grizzly.scenario.tasks) > 0:
+        previous_task = grizzly.scenario.tasks[-1]
 
-    grizzly.scenario.context['metadata'].update({key: casted_value})
+    if isinstance(previous_task, RequestTask):
+        add_request_task_metadata(previous_task, key, value)
+    else:
+        if grizzly.scenario.context.get('metadata', None) is None:
+            grizzly.scenario.context['metadata'] = {}
+
+        grizzly.scenario.context['metadata'].update({key: casted_value})

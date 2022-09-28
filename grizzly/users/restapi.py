@@ -597,7 +597,10 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
             if 'Content-Type' in self.headers:
                 del self.headers['Content-Type']
 
-        request_name, endpoint, payload, arguments = self.render(request)
+        request_name, endpoint, payload, arguments, metadata = self.render(request)
+
+        if metadata is not None:
+            self.headers.update(metadata)
 
         parameters: Dict[str, Any] = {'headers': self.headers}
 

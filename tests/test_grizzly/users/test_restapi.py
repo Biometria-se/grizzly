@@ -885,6 +885,63 @@ class TestRestApiUser:
         assert 'Content-Type' in kwargs['headers']
         assert kwargs['headers']['Content-Type'] == 'application/xml'
 
+        # post multipart
+        user.host = 'http://localhost:1337'
+        request.method = RequestMethod.POST
+        request.endpoint = '/'
+        request.arguments = {'multipart_form_data_name': 'input_name', 'multipart_form_data_filename': 'filename'}
+        request.response.content_type = TransformerContentType.MULTIPART_FORM_DATA
+        request_mock = ClientRequestMock(status_code=200, user=user, request_func=request_func)
+        request.response.add_status_code(200)
+        request.source = '<?xml version="1.0"?><example></example'
+
+        with pytest.raises(ResultSuccess):
+            request_func(user, request)
+
+        assert request_mock.spy.call_count == 1
+        _, kwargs = request_mock.spy.call_args_list[-1]
+        assert kwargs.get('method', None) == request.method.name
+        assert kwargs.get('name', '').startswith(request.scenario.identifier)
+        assert kwargs.get('catch_response', False)
+        assert kwargs.get('url', None) == f'{user.host}{request.endpoint}'
+
+        # post multipart, missing required arguments
+        user.host = 'http://localhost:1337'
+        request.method = RequestMethod.POST
+        request.endpoint = '/'
+        request.arguments = None
+        request.response.content_type = TransformerContentType.MULTIPART_FORM_DATA
+        request_mock = ClientRequestMock(status_code=200, user=user, request_func=request_func)
+        request.response.add_status_code(200)
+        request.source = '<?xml version="1.0"?><example></example'
+
+        with pytest.raises(StopUser):
+            request_func(user, request)
+
+        # post with metadata
+        user.host = 'http://localhost:1337'
+        request.method = RequestMethod.POST
+        request.endpoint = '/'
+        request.arguments = None
+        request.metadata = {'my_header': 'value'}
+        request.response.content_type = TransformerContentType.JSON
+        request_mock = ClientRequestMock(status_code=200, user=user, request_func=request_func)
+        request.response.add_status_code(200)
+        request.source = '{"alice": 1}'
+
+        with pytest.raises(ResultSuccess):
+            request_func(user, request)
+
+        assert request_mock.spy.call_count == 1
+        _, kwargs = request_mock.spy.call_args_list[-1]
+        assert kwargs.get('method', None) == request.method.name
+        assert kwargs.get('name', '').startswith(request.scenario.identifier)
+        assert kwargs.get('catch_response', False)
+        assert kwargs.get('url', None) == f'{user.host}{request.endpoint}'
+        assert 'headers' in kwargs
+        assert 'my_header' in kwargs['headers']
+        assert kwargs['headers']['my_header'] == 'value'
+
     def test_add_context(self, restapi_user: RestApiScenarioFixture) -> None:
         user, _ = restapi_user
 

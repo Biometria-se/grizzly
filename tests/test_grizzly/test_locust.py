@@ -406,7 +406,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
 
         with pytest.raises(AssertionError) as ae:
             setup_environment_listeners(behave, tasks)
-        assert 'variable "test_id" has been found in templates, but has not been declared' in str(ae)
+        assert 'variables has been found in templates, but have not been declared: test_id' in str(ae)
 
         grizzly.state.variables['test_id'] = 'test-1'
         environment.events.spawning_complete._handlers = []

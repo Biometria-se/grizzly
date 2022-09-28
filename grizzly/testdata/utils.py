@@ -41,11 +41,17 @@ def initialize_testdata(grizzly: 'GrizzlyContext', tasks: List[GrizzlyTask]) -> 
     declared_variables = set(grizzly.state.variables.keys())
 
     # check except between declared variables and variables found in templates
+    missing_in_templates = []
     for variable in declared_variables:
-        assert variable in found_variables, f'variable "{variable}" has been declared, but cannot be found in templates'
+        if variable not in found_variables:
+            missing_in_templates.append(variable)
+    assert len(missing_in_templates) == 0, f'variables has been declared, but cannot be found in templates: {",".join(missing_in_templates)}'
 
+    missing_declarations = []
     for variable in found_variables:
-        assert variable in declared_variables, f'variable "{variable}" has been found in templates, but has not been declared'
+        if variable not in declared_variables:
+            missing_declarations.append(variable)
+    assert len(missing_declarations) == 0, f'variables has been found in templates, but have not been declared: {",".join(missing_declarations)}'
 
     initialized_datatypes: Dict[str, Any] = {}
     external_dependencies: Set[str] = set()

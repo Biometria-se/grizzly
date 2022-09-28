@@ -331,7 +331,7 @@ class ServiceBusUser(ResponseHandler, RequestLogger, GrizzlyUser):
                 raise task.scenario.failure_exception()
 
     def request(self, request: RequestTask) -> GrizzlyResponse:
-        request_name, endpoint, payload, _ = self.render(request)
+        request_name, endpoint, payload, _, _ = self.render(request)
 
         name = f'{request.scenario.identifier} {request_name}'
 

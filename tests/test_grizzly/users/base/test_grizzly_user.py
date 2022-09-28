@@ -48,21 +48,21 @@ class TestGrizzlyUser:
 
             user.add_context({'variables': {'name': 'bob'}})
 
-            assert user.render(request) == ('test', '/api/test', 'hello bob', None)
+            assert user.render(request) == ('test', '/api/test', 'hello bob', None, None)
 
             user.set_context_variable('name', 'alice')
 
-            assert user.render(request) == ('test', '/api/test', 'hello alice', None)
+            assert user.render(request) == ('test', '/api/test', 'hello alice', None, None)
 
             request.endpoint = '/api/test?data={{ querystring }}'
             user.set_context_variable('querystring', 'querystring_data')
-            assert user.render(request) == ('test', '/api/test?data=querystring_data', 'hello alice', None)
+            assert user.render(request) == ('test', '/api/test?data=querystring_data', 'hello alice', None, None)
 
             request.source = None
-            assert user.render(request) == ('test', '/api/test?data=querystring_data', None, None)
+            assert user.render(request) == ('test', '/api/test?data=querystring_data', None, None, None)
 
             request.name = '{{ name }}'
-            assert user.render(request) == ('alice', '/api/test?data=querystring_data', None, None)
+            assert user.render(request) == ('alice', '/api/test?data=querystring_data', None, None, None)
 
             request.name = '{{ name'
             with pytest.raises(StopUser):
@@ -72,7 +72,7 @@ class TestGrizzlyUser:
             request.name = '{{ name }}'
             request.source = '{{ blobfile }}'
             user.set_context_variable('blobfile', str(test_file))
-            assert user.render(request) == ('alice', '/api/test?data=querystring_data', 'this is a test alice', None)
+            assert user.render(request) == ('alice', '/api/test?data=querystring_data', 'this is a test alice', None, None)
 
             user_type = type(
                 'ContextVariablesUserFileRequest',
@@ -84,7 +84,7 @@ class TestGrizzlyUser:
 
             request.source = f'{str(test_file)}'
             request.endpoint = '/tmp'
-            _, endpoint, _, _ = user.render(request)
+            _, endpoint, _, _, _ = user.render(request)
             assert endpoint == '/tmp/blobfile.txt'
 
             request = RequestTask(RequestMethod.POST, name='test', endpoint='/api/test | my_argument="{{ argument_variable }}"')
@@ -92,7 +92,7 @@ class TestGrizzlyUser:
             user.set_context_variable('argument_variable', 'argument variable value')
             user.set_context_variable('name', 'donovan')
             request.source = 'hello {{ name }}'
-            assert user.render(request) == ('test', '/api/test', 'hello donovan', {'my_argument': 'argument variable value'})
+            assert user.render(request) == ('test', '/api/test', 'hello donovan', {'my_argument': 'argument variable value'}, None)
 
         finally:
             shutil.rmtree(test_file_context)
@@ -141,12 +141,13 @@ class TestGrizzlyUser:
                 }
             })
 
-            name, endpoint, payload, arguments = user.render(request)
+            name, endpoint, payload, arguments, metadata = user.render(request)
 
             assert name == 'test-name'
             assert endpoint == '/api/test/test-value'
             assert payload is not None
             assert arguments is None
+            assert metadata is None
 
             data = jsonloads(payload)
             assert data['MeasureResult']['ID'] == user.context_variables['messageID']

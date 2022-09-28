@@ -87,6 +87,10 @@ def add_request_task_response_status_codes(request: RequestTask, status_list: st
         request.response.add_status_code(int(status.strip()))
 
 
+def add_request_task_metadata(request: RequestTask, key: str, value: str) -> None:
+    request.add_metadata(key, value)
+
+
 def add_request_task(
     context: Context,
     method: RequestMethod,
