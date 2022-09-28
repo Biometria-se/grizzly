@@ -58,7 +58,12 @@ def listener_test_mocker(mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> Non
 
     noop_zmq('locust.rpc.zmqrpc')
 
-    mocker.patch('locust.runners.Event.wait', return_value=True)
+    mocker.patch('locust.runners.rpc.Client.__init__', return_value=None)
+    mocker.patch('locust.runners.rpc.BaseSocket.send', autospec=True)
+    mocker.patch('locust.runners.WorkerRunner.heartbeat', autospec=True)
+    mocker.patch('locust.runners.WorkerRunner.worker', autospec=True)
+    mocker.patch('locust.runners.WorkerRunner.connect_to_master', autospec=True)
+    mocker.patch('locust.runners.MasterRunner.client_listener', autospec=True)
 
 
 def test__init_testdata_producer(listener_test_mocker: None, grizzly_fixture: GrizzlyFixture) -> None:
@@ -490,11 +495,6 @@ def test_grizzly_worker_quit_non_worker(locust_fixture: LocustFixture, caplog: L
 
 
 def test_grizzly_worker_quit_worker(listener_test_mocker: None, locust_fixture: LocustFixture, caplog: LogCaptureFixture, mocker: MockerFixture) -> None:
-    mocker.patch('locust.runners.rpc.Client.__init__', return_value=None)
-    mocker.patch('locust.runners.rpc.BaseSocket.send', autospec=True)
-    mocker.patch('locust.runners.WorkerRunner.heartbeat', autospec=True)
-    mocker.patch('locust.runners.WorkerRunner.worker', autospec=True)
-
     environment = locust_fixture.env
     environment.runner = WorkerRunner(environment=environment, master_host='localhost', master_port=1337)
 
