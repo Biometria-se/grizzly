@@ -48,7 +48,7 @@ class TransformerTask(GrizzlyTask):
     content_type: TransformerContentType
 
     _transformer: Type[Transformer]
-    _parser: Callable[[Any, Any], List[str]]
+    _parser: Callable[[Any], List[str]]
 
     def __init__(
         self,

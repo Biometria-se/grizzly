@@ -17,27 +17,16 @@ jobs:
       id: checkout
       uses: actions/checkout@v3
 
-    - name: setup python (with cache)
-      if: ${{ !env.ACT }}
-      id: setup-python-with-cache
+    - name: setup python
+      id: setup-python
       uses: actions/setup-python@v4
       with:
         python-version: '3.x'
         cache: 'pip'
-        cache-dependency-path: '**/requirements-ci.txt'
-
-    - name: setup python (without cache)
-      if: ${{ env.ACT }}
-      id: setup-python-without-cache
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.x'
 
     - name: install python dependencies
       id: pip
-      run: |
-        python -m pip install --upgrade pip-tools
-        python -m piptools sync requirements-ci.txt --pip-args '--disable-pip-version-check --no-cache-dir --user --no-warn-script-location --no-deps'
+      run: python -m pip install -e .[dev]
 
     - name: run pylint
       id: pylint
@@ -77,44 +66,25 @@ jobs:
     steps:
     - name: timezone
       id: timezone
-      if: ${{ !env.ACT }}
       uses: szenius/set-timezone@v1.0
       with:
-        timezoneLinux: "Europe/Stockholm"
-        timezoneWindows: "W. Europe Standard Time"
-
-    - name: timezone (linux only)
-      id: timezone-linux
-      if: ${{ env.ACT }}
-      run: |
-        sudo ln -fs /usr/share/zoneinfo/Europe/Stockholm /etc/localtime
-        sudo ln -fs /usr/share/zoneinfo/Europe/Stockholm /etc/timezone
+        timezoneLinux: 'Europe/Stockholm'
+        timezoneWindows: 'W. Europe Standard Time'
 
     - name: checkout
       id: checkout
       uses: actions/checkout@v3
 
-    - name: setup python (with cache)
-      if: ${{ !env.ACT }}
-      id: setup-python-with-cache
+    - name: setup python
+      id: setup-python
       uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
         cache: 'pip'
-        cache-dependency-path: '**/requirements-ci.txt'
-
-    - name: setup python (without cache)
-      if: ${{ env.ACT }}
-      id: setup-python-without-cache
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
 
     - name: install python dependencies
       id: pip
-      run: |
-        python -m pip install --upgrade pip-tools
-        python -m piptools sync requirements-ci.txt --pip-args '--disable-pip-version-check --no-cache-dir --user --no-warn-script-location --no-deps'
+      run: python -m pip install -e .[dev]
 
     - name: pytest
       id: pytest
@@ -141,30 +111,22 @@ jobs:
       id: checkout
       uses: actions/checkout@v3
 
-    - name: setup python (with cache)
-      if: ${{ !env.ACT }}
-      id: setup-python-with-cache
+    - name: setup python
+      id: setup-python
       uses: actions/setup-python@v4
       with:
         python-version: '3.x'
         cache: 'pip'
-        cache-dependency-path: '**/requirements-ci.txt'
 
-    - name: setup python (without cache)
-      if: ${{ env.ACT }}
-      id: setup-python-without-cache
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.x'
-
-    - name: install python dependencies
-      id: pip
+    - name: setup environment
+      id: setup-environment
       run: |
         echo "$HOME/.local/bin" >> $GITHUB_PATH
         echo PYTHONPATH=$PWD >> $GITHUB_ENV
-        python -m pip install --upgrade pip-tools
-        python -m piptools sync requirements-ci.txt --pip-args '--disable-pip-version-check --no-cache-dir --user --no-warn-script-location --no-deps'
-        python -m pip install .
+
+    - name: install python dependencies
+      id: pip
+      run: python -m pip install -e .[dev]
 
     - name: install docker-compose
       id: install-docker-compose
@@ -214,37 +176,22 @@ jobs:
       fail-fast: false
       matrix:
         script: ${{ fromJson(needs.pre-documentation-scripts.outputs.matrix) }}
-#        script:
-#        - script/docs-generate-changelog.py
-#        - script/docs-generate-cli.bash
-#        - script/docs-generate-licenses.py
 
     steps:
     - name: checkout
       id: checkout
       uses: actions/checkout@v3
 
-    - name: setup python (with cache)
-      if: ${{ !env.ACT }}
-      id: setup-python-with-cache
+    - name: setup python
+      id: setup-python
       uses: actions/setup-python@v4
       with:
         python-version: '3.x'
         cache: 'pip'
-        cache-dependency-path: '**/requirements-docs.txt'
-
-    - name: setup python (without cache)
-      if: ${{ env.ACT }}
-      id: setup-python-without-cache
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.x'
 
     - name: install python dependencies
       id: pip
-      run: |
-        python -m pip install --upgrade pip-tools
-        python -m piptools sync requirements-docs.txt --pip-args '--disable-pip-version-check --no-cache-dir --user --no-warn-script-location --no-deps'
+      run: python -m pip install -e .[docs]
 
     - name: exists
       run: test -e ${{ matrix.script }}
@@ -265,22 +212,12 @@ jobs:
       id: checkout
       uses: actions/checkout@v3
 
-    - name: setup python (with cache)
-      if: ${{ !env.ACT }}
-      id: setup-python-with-cache
+    - name: setup python
+      id: setup-python
       uses: actions/setup-python@v4
       with:
         python-version: '3.x'
         cache: 'pip'
-        cache-dependency-path: |
-          **/requirements-docs.txt
-
-    - name: setup python (without cache)
-      if: ${{ env.ACT }}
-      id: setup-python-without-cache
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.x'
 
     - name: setup node
       id: setup-node
@@ -288,21 +225,21 @@ jobs:
 
     - name: install python dependencies
       id: pip
-      run: |
-        python -m pip install --upgrade pip-tools
-        ./script/pip-sync.bash docs
+      run: python -m pip install -e .[docs]
 
     - name: build
+      working-directory: ./docs/
       run: |
-        cd docs/
         git checkout -b v0.0.0
         novella --site-dir "$PWD/_build" --base-url grizzly/ 2>&1 | awk '/WARNING/ && !/Image file.*referenced in.*not found/ {print $0; exit 1} /ERROR/ {print $0; exit 1} {print $0}'
-        # check for un-rendered pydoc-markdown tags
-        cd "$PWD/_build"
-        find . -type f -name '*.html' | xargs -- grep -nHE '\{\@.*\}' | awk 'BEGIN{rc=0} !/^$/ {rc=1; print} END{exit rc}'
 
-        # check for @TODO annotations
-        find . -type f -name '*.html' | xargs -- grep -nHE '@TODO' | awk 'BEGIN{rc=0} !/^$/ {rc=1; print} END{exit rc}'
+    - name: check for unresolved pydoc-markdown tags
+      working-directory: ./docs/_build
+      run: find . -type f -name '*.html' | xargs -- grep -nHE '\{\@.*\}' | awk 'BEGIN{rc=0} !/^$/ {rc=1; print} END{exit rc}'
+
+    - name: check for @TODO annotations
+      working-directory: ./docs/_build
+      run: find . -type f -name '*.html' | xargs -- grep -nHE '@TODO' | awk 'BEGIN{rc=0} !/^$/ {rc=1; print} END{exit rc}'
 
   release-quality:
     name: releasable

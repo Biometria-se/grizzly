@@ -4,7 +4,6 @@ from typing import Callable, Dict, Any, Optional
 
 import pytest
 
-from locust.runners import Runner
 from locust.exception import CatchResponseError
 from opencensus.ext.azure.log_exporter import AzureLogHandler
 from pytest_mock import MockerFixture
@@ -164,11 +163,12 @@ class TestAppInsightsListener:
             for key in expected_keys:
                 assert key in runner_values
 
-            assert runner_values.get('thread_count', None) == ''
-            assert runner_values.get('target_user_count', None) == ''
+            assert runner_values.get('thread_count', None) == '0'
+            assert runner_values.get('target_user_count', None) == '0'
             assert runner_values.get('spawn_rate', None) == ''
 
-            locust_fixture.env.runner = Runner(locust_fixture.env)
+            locust_fixture.env.runner = None
+            locust_fixture.env.runner = locust_fixture.env.create_local_runner()
 
             runner_values = listener._safe_return_runner_values()
             assert runner_values.get('thread_count', None) == '0'

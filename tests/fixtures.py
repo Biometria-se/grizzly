@@ -92,9 +92,7 @@ class LocustFixture:
 
         environ['GRIZZLY_CONTEXT_ROOT'] = self._test_context_root
         self.env = Environment()
-        self.runner = Runner(
-            self.env,
-        )
+        self.runner = self.env.create_local_runner()
 
         return self
 
@@ -381,7 +379,7 @@ class GrizzlyFixture:
             user_type.tasks = []
             scenario = None
 
-        self.grizzly.state.locust = Runner(self.locust_env)
+        self.grizzly.state.locust = self.locust_env.create_local_runner()
 
         return self.locust_env, user, scenario
 
@@ -530,6 +528,7 @@ class NoopZmqFixture:
             'zmq.Socket.bind',
             'zmq.Socket.connect',
             'zmq.Socket.send_json',
+            'zmq.Socket.send',
             'zmq.Socket.recv_json',
             'zmq.Socket.recv_multipart',
             'zmq.Socket.send_multipart',
