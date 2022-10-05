@@ -4,7 +4,7 @@ from typing import Optional, cast
 import parse
 
 from behave.runner import Context
-from behave import register_type, given  # pylint: disable=no-name-in-module
+from behave import register_type, given, then  # pylint: disable=no-name-in-module
 from locust.exception import StopUser
 
 from grizzly_extras.text import permutation
@@ -236,6 +236,7 @@ def step_setup_restart_scenario_on_failure(context: Context) -> None:
     context.config.stop = False
 
 
+@then(u'metadata "{key}" is "{value}"')
 @given(u'metadata "{key}" is "{value}"')
 def step_setup_metadata(context: Context, key: str, value: str) -> None:
     '''Set a metadata (header) value to be used by the user when sending requests.
