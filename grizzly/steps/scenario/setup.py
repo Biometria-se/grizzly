@@ -247,6 +247,12 @@ def step_setup_metadata(context: Context, key: str, value: str) -> None:
     And metadata "Content-Type" is "application/xml"
     And metadata "Ocp-Apim-Subscription-Key" is "9asdf00asdf00adsf034"
     ```
+
+    Or, for use in one request only, specify metadata after the request:
+    ``` gherkin
+    Then post request ...
+    And metadata "aktorIdentitet" is "{{ aktorIdentitet }}"
+    ```
     '''
 
     grizzly = cast(GrizzlyContext, context.grizzly)

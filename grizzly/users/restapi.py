@@ -54,6 +54,20 @@ And set context variable "auth.user.username" to "alice@example.onmicrosoft.com"
 And set context variable "auth.user.password" to "HemL1gaArn3!"
 And set context variable "auth.user.redirect_uri" to "/app-registrered-redirect-uri"
 ```
+
+#### Multipart/form-data
+
+RestApi supports posting of multipart/form-data content-type, and in that case additional arguments needs to be passed with the request:
+
+* `multipart_form_data_name` _str_ - the name of the input form
+
+* `multipart_form_data_filename` _str_ - the filename
+
+E.g:
+
+``` gherkin
+Then post request "path/my_template.j2.xml" with name "FormPost" to endpoint "example.url.com | content_type=multipart/form-data, multipart_form_data_filename=my_filename, multipart_form_data_name=form_name"
+
 '''
 import json
 import re

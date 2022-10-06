@@ -110,6 +110,13 @@ Then put request "test/queue-message.j2.json" with name "gzipped-message" to end
 
 Default header type is none, i.e. no header is added to the sent messages. To use no header, either set `message.header_type`
 to `None` or omit setting the context variable at all.
+
+To set a user value in the RFH2 header of the message, set `metadata` after the request, e.g.:
+
+``` gherkin
+Then put request "test/queue-message.j2.json" with name "gzipped-message" to endpoint "queue:GZIPPED.MESSAGES"
+And metadata "filename" is "my_filename"
+```
 '''
 import logging
 
