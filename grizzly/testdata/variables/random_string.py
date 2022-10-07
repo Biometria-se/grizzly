@@ -6,10 +6,11 @@ The list is pre-populated to ensure that each string is unique.
 
 ## Format
 
-Initial value is a string pattern specified with `%s` and `%d`.
+Initial value is a string pattern specified with `%s` and `%d`, or `%g`.
 
 * `%s` represents **one** ASCII letter
 * `%d` represents **one** digit between `0` and `9`
+* `%g` represents one complete UUID, cannot be combined with other string patterns
 
 Parts of the string can be static, e.g. not random.
 
@@ -22,6 +23,7 @@ Parts of the string can be static, e.g. not random.
 
 ``` gherkin
 And value for variable "AtomicRandomString.registration_plate_number" is "%s%sZ%d%d0 | upper=True, count=100"
+And value for variable "AtomicRandomString.uuid" is "%g | count=100"
 ```
 
 This can then be used in a template:
@@ -36,6 +38,7 @@ This can then be used in a template:
 from typing import Dict, List, Any, Callable, Optional, Set, Type, cast
 from random import randint, choice
 from string import ascii_letters
+from uuid import uuid4
 
 from grizzly_extras.arguments import split_value, parse_arguments
 
@@ -69,6 +72,9 @@ def atomicrandomstring__base_type__(value: str) -> str:
 
     if len(generators) < 1:
         raise ValueError('AtomicRandomString: specified string pattern does not contain any generators')
+
+    if '%g' in string_pattern and string_pattern.count('%') != 1:
+        raise ValueError('AtomicRandomString: %g cannot be combined with other formats')
 
     return value
 
@@ -131,9 +137,14 @@ class AtomicRandomString(AtomicVariable[str]):
     def _generate_d(self) -> int:
         return randint(0, 9)
 
+    def _generate_g(self) -> str:
+        return str(uuid4())
+
     def _generate_strings(self, string_pattern: str, settings: Dict[str, Any]) -> List[str]:
         generated_strings: Set[str] = set()
         generators = self.__class__.get_generators(string_pattern)
+
+        string_pattern = string_pattern.replace('%g', '%s')
 
         for _ in range(0, settings['count']):
             generated_string: Optional[str] = None
