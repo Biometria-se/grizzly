@@ -1,3 +1,5 @@
+import re
+
 from typing import List, Set
 
 import pytest
@@ -98,6 +100,21 @@ class TestAtomicRandomString:
 
             assert len(t._strings['regnr']) == 10000
             assert sorted(t._strings['regnr']) == sorted(list(set(t._strings['regnr'])))
+
+            t = AtomicRandomString('uuid', '%g | count=3')
+
+            assert len(t._strings['uuid']) == 3
+            regex = re.compile(r'^[a-f0-9]{8}-?[a-f0-9]{4}-?4[a-f0-9]{3}-?[89ab][a-f0-9]{3}-?[a-f0-9]{12}\Z', re.I)
+            for _ in range(3):
+                uuid = t['uuid']
+                assert uuid is not None
+                assert regex.match(uuid)
+
+            assert t['uuid'] is None
+
+            with pytest.raises(ValueError) as ve:
+                AtomicRandomString('uuid4', '%s%g')
+            assert str(ve.value) == 'AtomicRandomString: %g cannot be combined with other formats'
         finally:
             cleanup()
 

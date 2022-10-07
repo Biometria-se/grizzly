@@ -145,6 +145,9 @@ def _objectify(testdata: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def create_context_variable(grizzly: 'GrizzlyContext', variable: str, value: str) -> Dict[str, Any]:
+    if '{{' in value and '}}' in value:
+        grizzly.scenario.orphan_templates.append(value)
+
     casted_value = resolve_variable(grizzly, value)
 
     variable = variable.lower().replace(' ', '_').replace('/', '.')

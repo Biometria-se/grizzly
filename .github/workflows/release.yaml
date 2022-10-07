@@ -108,6 +108,8 @@ jobs:
       run: git push origin "${{ steps.next-version.outputs.new_version }}"
 
     - name: prepare "edit this page" links
+      id: edit-this-page-links
+      run: |
         if [[ "${{ github.event.inputs.publish }}" == "true" ]]; then
           tag="${{ steps.next-version.outputs.new_version }}"
         else
