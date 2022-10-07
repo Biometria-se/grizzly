@@ -66,7 +66,8 @@ RestApi supports posting of multipart/form-data content-type, and in that case a
 E.g:
 
 ``` gherkin
-Then post request "path/my_template.j2.xml" with name "FormPost" to endpoint "example.url.com | content_type=multipart/form-data, multipart_form_data_filename=my_filename, multipart_form_data_name=form_name"
+Then post request "path/my_template.j2.xml" with name "FormPost" to endpoint "example.url.com |
+content_type=multipart/form-data, multipart_form_data_filename=my_filename, multipart_form_data_name=form_name"
 
 '''
 import json
@@ -647,13 +648,8 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
 
                     # this is a fundemental error, so we'll always stop the user
                     raise StopUser()
-            elif request.response.content_type == TransformerContentType.MULTIPART_FORM_DATA:
-                if arguments is None or 'multipart_form_data_name' not in arguments or 'multipart_form_data_filename' not in arguments:
-                    logger.error(f'Content type multipart/form-data requires endpoint arguments multipart_form_data_name and multipart_form_data_filename: {request.endpoint}')
-                    raise StopUser()
-                multipart_form_data_name = arguments['multipart_form_data_name']
-                multipart_form_data_filename = arguments['multipart_form_data_filename']
-                parameters['files'] = {multipart_form_data_name: (multipart_form_data_filename, payload)}
+            elif request.response.content_type == TransformerContentType.MULTIPART_FORM_DATA and arguments:
+                parameters['files'] = {arguments['multipart_form_data_name']: (arguments['multipart_form_data_filename'], payload)}
             else:
                 parameters['data'] = bytes(payload, 'UTF-8')
 

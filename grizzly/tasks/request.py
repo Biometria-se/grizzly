@@ -144,6 +144,10 @@ class RequestTask(GrizzlyTask):
                 content_type = TransformerContentType.from_string(unquote(self.arguments['content_type']))
                 del self.arguments['content_type']
 
+                if content_type == TransformerContentType.MULTIPART_FORM_DATA and \
+                   ('multipart_form_data_name' not in self.arguments or 'multipart_form_data_filename' not in self.arguments):
+                    raise ValueError(f'Content type multipart/form-data requires endpoint arguments multipart_form_data_name and multipart_form_data_filename: {self.endpoint}')
+
             self.endpoint = value
 
         self.response.content_type = content_type

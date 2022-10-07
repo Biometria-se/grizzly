@@ -123,10 +123,7 @@ class Rfh2Encoder():
             tstamp = str(round(time.time() * 1000))
         else:
             tstamp = self.tstamp
-        metadata_headers = ''
-        if self.metadata:
-            for key, value in self.metadata.items():
-                metadata_headers += f'<{key}>{value}</{key}>'
+        metadata_headers = ''.join([f'<{key}>{value}</{key}>' for key, value in (self.metadata or {}).items()])
         name_values_txt = [
             "<mcd><Msd>jms_bytes</Msd></mcd>",
             f"<jms><Dst>queue:///{self.queue_name}</Dst><Tms>{tstamp}</Tms><Dlv>2</Dlv></jms>",

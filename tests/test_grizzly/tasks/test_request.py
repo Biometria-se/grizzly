@@ -1,3 +1,5 @@
+import pytest
+
 from typing import Any, Tuple, Optional
 
 from pytest_mock import MockerFixture
@@ -111,6 +113,17 @@ class TestRequestTask:
         assert task_factory.endpoint == '/api/test'
         assert task_factory.arguments == {}
         assert task_factory.response.content_type == TransformerContentType.XML
+
+        # test missing required arguments for multipart/form-data
+        with pytest.raises(ValueError):
+            RequestTask(RequestMethod.POST, 'test-name', endpoint='/api/test | content_type="multipart/form-data"')
+
+        # test required arguments for multipart/form-data
+        task_factory = RequestTask(RequestMethod.POST, 'test-name',
+                                   endpoint='/api/test | content_type="multipart/form-data", multipart_form_data_filename="foo", multipart_form_data_name="bar"')
+        assert task_factory.endpoint == '/api/test'
+        assert task_factory.arguments == {'multipart_form_data_filename': 'foo', 'multipart_form_data_name': 'bar'}
+        assert task_factory.response.content_type == TransformerContentType.MULTIPART_FORM_DATA
 
     def test_add_metadata(self) -> None:
         task_factory = RequestTask(RequestMethod.GET, 'test-name', endpoint='/api/test | content_type="application/json", foo=bar')

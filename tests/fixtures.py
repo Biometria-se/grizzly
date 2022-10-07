@@ -471,9 +471,7 @@ class ResponseContextManagerFixture:
                     self._headers_index = None
 
                     body: Optional[Any] = None
-                    if request_headers is not None:
-                        headers = CaseInsensitiveDict(**request_headers)
-                    if request_headers is None or headers.get('Content-Type', None) in [None, 'application/json']:
+                    if request_headers is not None and CaseInsensitiveDict(**request_headers).get('Content-Type', None) in [None, 'application/json']:
                         body = jsondumps(request_body or '')
                     else:
                         body = request_body
