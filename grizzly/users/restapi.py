@@ -1,3 +1,4 @@
+# pylint: disable=line-too-long
 '''Communicates with HTTP and HTTPS, with built-in support for Azure authenticated endpoints.
 
 ## Request methods
@@ -66,10 +67,9 @@ RestApi supports posting of multipart/form-data content-type, and in that case a
 E.g:
 
 ``` gherkin
-Then post request "path/my_template.j2.xml" with name "FormPost" to endpoint "example.url.com |
-content_type=multipart/form-data, multipart_form_data_filename=my_filename, multipart_form_data_name=form_name"
-
-'''
+Then post request "path/my_template.j2.xml" with name "FormPost" to endpoint "example.url.com | content_type=multipart/form-data, multipart_form_data_filename=my_filename, multipart_form_data_name=form_name"
+```
+'''  # noqa: E501
 import json
 import re
 
