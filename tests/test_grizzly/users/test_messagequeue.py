@@ -713,7 +713,7 @@ class TestMessageQueueUser:
 
         user.add_context(remote_variables)
 
-        _, _, payload = user.render(request)
+        _, _, payload, _, _ = user.render(request)
 
         assert payload is not None
 

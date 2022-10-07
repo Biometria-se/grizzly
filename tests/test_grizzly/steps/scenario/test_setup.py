@@ -339,3 +339,12 @@ def test_step_setup_metadata(behave_fixture: BehaveFixture) -> None:
         'Content-Type': 'application/xml',
         'Ocp-Apim-Subscription-Key': 'deadbeefb00f',
     }
+
+    grizzly.scenario.context['metadata'] = None
+    request = RequestTask(RequestMethod.POST, endpoint='/api/test', name='request_task')
+    grizzly.scenario.tasks.add(request)
+    step_setup_metadata(behave, 'new_header', 'new_value')
+
+    assert grizzly.scenario.context.get('metadata', None) is None
+    assert request.metadata is not None
+    assert request.metadata.get('new_header') == 'new_value'

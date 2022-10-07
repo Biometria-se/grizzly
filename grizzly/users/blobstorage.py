@@ -78,7 +78,7 @@ class BlobStorageUser(GrizzlyUser):
         self._context = merge_dicts(super().context(), self.__class__._context)
 
     def request(self, request: RequestTask) -> GrizzlyResponse:
-        request_name, endpoint, payload = self.render(request)
+        request_name, endpoint, payload, _, _ = self.render(request)
 
         name = f'{request.scenario.identifier} {request_name}'
 

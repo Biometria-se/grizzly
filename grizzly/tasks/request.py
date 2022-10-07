@@ -57,7 +57,7 @@ And set response content type to "application/json"
 ```
 
 '''
-from typing import TYPE_CHECKING, List, Optional, Any, Callable
+from typing import TYPE_CHECKING, Dict, List, Optional, Any, Callable
 
 from jinja2.environment import Template
 from grizzly_extras.transformer import TransformerContentType
@@ -108,13 +108,15 @@ class RequestTaskResponse:
                 self.status_codes.pop(index)
 
 
-@template('name', 'endpoint', 'source')
+@template('name', 'endpoint', 'source', 'arguments', 'metadata')
 class RequestTask(GrizzlyTask):
     method: RequestMethod
     name: str
     endpoint: str
     _template: Optional[Template]
     _source: Optional[str]
+    arguments: Optional[Dict[str, str]]
+    metadata: Optional[Dict[str, str]]
 
     response: RequestTaskResponse
 
@@ -124,6 +126,8 @@ class RequestTask(GrizzlyTask):
         self.method = method
         self.name = name
         self.endpoint = endpoint
+        self.arguments = None
+        self.metadata = None
 
         self._template = None
         self._source = source
@@ -134,17 +138,17 @@ class RequestTask(GrizzlyTask):
 
         if '|' in self.endpoint:
             value, value_arguments = split_value(self.endpoint)
-            arguments = parse_arguments(value_arguments, unquote=False)
+            self.arguments = parse_arguments(value_arguments, unquote=True)
 
-            if 'content_type' in arguments:
-                content_type = TransformerContentType.from_string(unquote(arguments['content_type']))
-                del arguments['content_type']
+            if 'content_type' in self.arguments:
+                content_type = TransformerContentType.from_string(unquote(self.arguments['content_type']))
+                del self.arguments['content_type']
 
-            value_arguments = ', '.join([f'{key}={value}' for key, value in arguments.items()])
-            if len(value_arguments) > 0:
-                self.endpoint = f'{value} | {value_arguments}'
-            else:
-                self.endpoint = value
+                if content_type == TransformerContentType.MULTIPART_FORM_DATA and \
+                   ('multipart_form_data_name' not in self.arguments or 'multipart_form_data_filename' not in self.arguments):
+                    raise ValueError(f'Content type multipart/form-data requires endpoint arguments multipart_form_data_name and multipart_form_data_filename: {self.endpoint}')
+
+            self.endpoint = value
 
         self.response.content_type = content_type
 
@@ -166,6 +170,12 @@ class RequestTask(GrizzlyTask):
             self._template = Template(self._source)
 
         return self._template
+
+    def add_metadata(self, key: str, value: str) -> None:
+        if self.metadata is None:
+            self.metadata = {key: value}
+        else:
+            self.metadata[key] = value
 
     def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
         def task(parent: 'GrizzlyScenario') -> Any:

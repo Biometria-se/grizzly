@@ -234,6 +234,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
             raise AsyncMessageError(f'argument expression is not allowed for action {action}')
 
         message_wait = request.get('context', {}).get('message_wait', None) or self.message_wait
+        metadata = request.get('context', {}).get('metadata', None)
 
         retries: int = 0
         while True:
@@ -258,12 +259,11 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
 
                 if action == 'PUT':
                     payload = request.get('payload', None)
-                    if self.header_type:
-                        if self.header_type == 'rfh2':
-                            rfh2_encoder = Rfh2Encoder(payload=cast(str, payload).encode(), queue_name=queue_name)
-                            payload = rfh2_encoder.get_message()
-                        else:
-                            raise AsyncMessageError(f'Invalid header_type: {self.header_type}')
+                    if self.header_type and self.header_type == 'rfh2':
+                        rfh2_encoder = Rfh2Encoder(payload=cast(str, payload).encode(), queue_name=queue_name, metadata=metadata)
+                        payload = rfh2_encoder.get_message()
+                    else:
+                        raise AsyncMessageError(f'Invalid header_type: {self.header_type}')
 
                     response_length = len(payload) if payload is not None else 0
                     queue.put(payload, md)

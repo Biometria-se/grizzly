@@ -13,6 +13,11 @@ from grizzly_extras.async_message.mq import Rfh2Decoder, Rfh2Encoder
 rfh2_msg = b'RFH \x02\x00\x00\x00\xfc\x00\x00\x00"\x02\x00\x00\xb8\x04\x00\x00        \x00\x00\x00\x00\xb8\x04\x00\x00 \x00\x00\x00<mcd><Msd>jms_bytes</Msd></mcd> ' \
            b'P\x00\x00\x00<jms><Dst>queue:///TEST.QUEUE</Dst><Tms>1655406556138</Tms><Dlv>2</Dlv></jms>   \\\x00\x00\x00<usr><ContentEncoding>gzip</ContentEncoding>' \
            b'<ContentLength dt=\'i8\'>32</ContentLength></usr> \x1f\x8b\x08\x00\xdc\x7f\xabb\x02\xff+I-.Q(H\xac\xcc\xc9OL\x01\x00\xe1=\x1d\xeb\x0c\x00\x00\x00'
+# with header
+rfh2_msg2 = b'RFH \x02\x00\x00\x00\x1c\x01\x00\x00"\x02\x00\x00\xb8\x04\x00\x00        \x00\x00\x00\x00\xb8\x04\x00\x00 \x00\x00\x00<mcd><Msd>jms_bytes</Msd></mcd> ' \
+            b'P\x00\x00\x00<jms><Dst>queue:///OTHERQUEUE</Dst><Tms>1234567890123</Tms><Dlv>2</Dlv></jms>   |\x00\x00\x00<usr><some_name>some_value</some_name>' \
+            b'<ContentEncoding>gzip</ContentEncoding><ContentLength dt=\'i8\'>32</ContentLength></usr>' \
+            b'\x1f\x8b\x08\x00\xbb54c\x02\xff+I-.Q(H\xac\xcc\xc9OL\x01\x00\xe1=\x1d\xeb\x0c\x00\x00\x00'
 
 
 class TestRfh2Decoder:
@@ -115,8 +120,6 @@ class TestRfh2Encoder:
 
     def test__build_payload(self) -> None:
         e = Rfh2Encoder('test payload'.encode(), queue_name='TEST.QUEUE', tstamp='1655406556138')
-        print(e.payload)
-        print(rfh2_msg[252:])
         # gzip seem to vary, just compare the first bytes
         assert e.payload[0:4] == rfh2_msg[252:256]
 
@@ -143,6 +146,10 @@ class TestRfh2Encoder:
         generated_datetime = datetime.fromtimestamp(int(generated_tstamp) / 1000)
         assert generated_datetime >= datetime_before
         assert generated_datetime - timedelta(hours=1) < datetime_before
+
+        # test metadata/headers
+        e = Rfh2Encoder('test payload'.encode(), queue_name='OTHERQUEUE', tstamp='1234567890123', metadata={'some_name': 'some_value'})
+        assert e.name_values == rfh2_msg2[36:284]
 
     def test__build_header(self) -> None:
         e = Rfh2Encoder('test payload'.encode(), queue_name='TEST.QUEUE', tstamp='1655406556138')
