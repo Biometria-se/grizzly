@@ -91,7 +91,13 @@ class TestLoopTask:
         task_factory = LoopTask(grizzly, 'test', '["hello", "world"]', 'foobar', scenario_context)
 
         for i in range(0, 3):
-            task_factory.add(TestTask(name=f'test-{i}', scenario=scenario_context))
+            task_factory.add(TestTask(name=f'{{{{ foobar }}}}-test-{i}', scenario=scenario_context))
+
+        assert sorted(task_factory.get_templates()) == sorted([
+            'test:{{ foobar }}-test-0',
+            'test:{{ foobar }}-test-1',
+            'test:{{ foobar }}-test-2',
+        ])
 
         task = task_factory()
         total_task___call___count = 0
@@ -109,7 +115,7 @@ class TestLoopTask:
 
         for i, (_, kwargs) in enumerate(request_spy.call_args_list[:3]):
             assert kwargs.get('request_type', None) == 'TSTSK'
-            assert kwargs.get('name', None) == f'TestTask: test:test-{i}'
+            assert kwargs.get('name', None) == f'TestTask: test:{{{{ foobar }}}}-test-{i}'
             assert kwargs.get('response_time', None) == 13
             assert kwargs.get('response_length', None) == 37
             assert kwargs.get('exception', '') is None
@@ -117,7 +123,7 @@ class TestLoopTask:
 
         for i, (_, kwargs) in enumerate(request_spy.call_args_list[3:-1]):
             assert kwargs.get('request_type', None) == 'TSTSK'
-            assert kwargs.get('name', None) == f'TestTask: test:test-{i}'
+            assert kwargs.get('name', None) == f'TestTask: test:{{{{ foobar }}}}-test-{i}'
             assert kwargs.get('response_time', None) == 13
             assert kwargs.get('response_length', None) == 37
             assert kwargs.get('exception', '') is None
@@ -144,7 +150,7 @@ class TestLoopTask:
 
         for i, (_, kwargs) in enumerate(request_spy.call_args_list[:3]):
             assert kwargs.get('request_type', None) == 'TSTSK'
-            assert kwargs.get('name', None) == f'TestTask: test:test-{i}'
+            assert kwargs.get('name', None) == f'TestTask: test:{{{{ foobar }}}}-test-{i}'
             assert kwargs.get('response_time', None) == 13
             assert kwargs.get('response_length', None) == 37
             assert kwargs.get('exception', '') is None
@@ -152,7 +158,7 @@ class TestLoopTask:
 
         for i, (_, kwargs) in enumerate(request_spy.call_args_list[3:-1]):
             assert kwargs.get('request_type', None) == 'TSTSK'
-            assert kwargs.get('name', None) == f'TestTask: test:test-{i}'
+            assert kwargs.get('name', None) == f'TestTask: test:{{{{ foobar }}}}-test-{i}'
             assert kwargs.get('response_time', None) == 13
             assert kwargs.get('response_length', None) == 37
             assert kwargs.get('exception', '') is None

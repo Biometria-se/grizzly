@@ -14,7 +14,7 @@ from grizzly.context import GrizzlyContextScenario
 from grizzly.users.base import GrizzlyUser
 from grizzly.types import GrizzlyResponse, RequestMethod, Message, Environment
 from grizzly.testdata.variables import AtomicVariable
-from grizzly.tasks import RequestTask, GrizzlyTask
+from grizzly.tasks import RequestTask, GrizzlyTask, template
 from grizzly.scenarios import GrizzlyScenario
 from grizzly.utils import fastdeepcopy
 
@@ -72,6 +72,7 @@ class TestScenario(GrizzlyScenario):
         )
 
 
+@template('name')
 class TestTask(GrizzlyTask):
     __test__ = False
 
