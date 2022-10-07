@@ -1,3 +1,4 @@
+# pylint: disable=line-too-long
 '''Communicates with HTTP and HTTPS, with built-in support for Azure authenticated endpoints.
 
 ## Request methods
@@ -54,7 +55,21 @@ And set context variable "auth.user.username" to "alice@example.onmicrosoft.com"
 And set context variable "auth.user.password" to "HemL1gaArn3!"
 And set context variable "auth.user.redirect_uri" to "/app-registrered-redirect-uri"
 ```
-'''
+
+#### Multipart/form-data
+
+RestApi supports posting of multipart/form-data content-type, and in that case additional arguments needs to be passed with the request:
+
+* `multipart_form_data_name` _str_ - the name of the input form
+
+* `multipart_form_data_filename` _str_ - the filename
+
+E.g:
+
+``` gherkin
+Then post request "path/my_template.j2.xml" with name "FormPost" to endpoint "example.url.com | content_type=multipart/form-data, multipart_form_data_filename=my_filename, multipart_form_data_name=form_name"
+```
+'''  # noqa: E501
 import json
 import re
 
@@ -70,6 +85,8 @@ from locust.exception import StopUser
 from locust.env import Environment
 
 import requests
+
+from grizzly_extras.transformer import TransformerContentType
 
 from ..types import GrizzlyResponse, RequestType, WrappedFunc, GrizzlyResponseContextManager
 from ..utils import merge_dicts
@@ -587,7 +604,18 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
         if request.method not in [RequestMethod.GET, RequestMethod.PUT, RequestMethod.POST]:
             raise NotImplementedError(f'{request.method.name} is not implemented for {self.__class__.__name__}')
 
-        request_name, endpoint, payload = self.render(request)
+        if request.response.content_type == TransformerContentType.UNDEFINED:
+            request.response.content_type = TransformerContentType.JSON
+        elif request.response.content_type == TransformerContentType.XML:
+            self.headers['Content-Type'] = 'application/xml'
+        elif request.response.content_type == TransformerContentType.MULTIPART_FORM_DATA:
+            if 'Content-Type' in self.headers:
+                del self.headers['Content-Type']
+
+        request_name, endpoint, payload, arguments, metadata = self.render(request)
+
+        if metadata is not None:
+            self.headers.update(metadata)
 
         parameters: Dict[str, Any] = {'headers': self.headers}
 
@@ -603,22 +631,27 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
         name = f'{request.scenario.identifier} {request_name}'
 
         if payload is not None:
-            try:
-                parameters['json'] = json.loads(payload)
-            except json.decoder.JSONDecodeError as exception:
-                # so that locust treats it as a failure
-                self.environment.events.request.fire(
-                    request_type=RequestType.from_method(request.method),
-                    name=name,
-                    response_time=0,
-                    response_length=0,
-                    context=self._context,
-                    exception=exception,
-                )
-                logger.error(f'{url}: failed to decode: {payload=}')
+            if request.response.content_type == TransformerContentType.JSON:
+                try:
+                    parameters['json'] = json.loads(payload)
+                except json.decoder.JSONDecodeError as exception:
+                    # so that locust treats it as a failure
+                    self.environment.events.request.fire(
+                        request_type=RequestType.from_method(request.method),
+                        name=name,
+                        response_time=0,
+                        response_length=0,
+                        context=self._context,
+                        exception=exception,
+                    )
+                    logger.error(f'{url}: failed to decode: {payload=}')
 
-                # this is a fundemental error, so we'll always stop the user
-                raise StopUser()
+                    # this is a fundemental error, so we'll always stop the user
+                    raise StopUser()
+            elif request.response.content_type == TransformerContentType.MULTIPART_FORM_DATA and arguments:
+                parameters['files'] = {arguments['multipart_form_data_name']: (arguments['multipart_form_data_filename'], payload)}
+            else:
+                parameters['data'] = bytes(payload, 'UTF-8')
 
         with client.request(
             method=request.method.name,

@@ -110,6 +110,13 @@ Then put request "test/queue-message.j2.json" with name "gzipped-message" to end
 
 Default header type is none, i.e. no header is added to the sent messages. To use no header, either set `message.header_type`
 to `None` or omit setting the context variable at all.
+
+To set a user value in the RFH2 header of the message, set `metadata` after the request, e.g.:
+
+``` gherkin
+Then put request "test/queue-message.j2.json" with name "gzipped-message" to endpoint "queue:GZIPPED.MESSAGES"
+And metadata "filename" is "my_filename"
+```
 '''
 import logging
 
@@ -239,7 +246,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
             logging.getLogger(uamqp_logger_name).setLevel(logging.ERROR)
 
     def request(self, request: RequestTask) -> GrizzlyResponse:
-        request_name, endpoint, payload = self.render(request)
+        request_name, endpoint, payload, _, metadata = self.render(request)
 
         @contextmanager
         def action_context(am_request: AsyncMessageRequest, name: str) -> Generator[Dict[str, Any], None, None]:
@@ -357,6 +364,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
             'worker': self.worker_id,
             'context': {
                 'endpoint': endpoint,
+                'metadata': metadata
             },
             'payload': payload,
         }

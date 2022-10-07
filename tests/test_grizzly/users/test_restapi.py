@@ -26,6 +26,7 @@ from grizzly.context import GrizzlyContextScenario, GrizzlyContext
 from grizzly.tasks import RequestTask
 from grizzly.testdata.utils import transform
 from grizzly.exceptions import RestartScenario
+from grizzly_extras.transformer import TransformerContentType
 
 from ...fixtures import GrizzlyFixture, ResponseContextManagerFixture
 from ...helpers import RequestSilentFailureEvent, RequestEvent, ResultSuccess
@@ -860,6 +861,73 @@ class TestRestApiUser:
             request_func(user, request)
 
         assert request_mock.spy.call_count == 2
+
+        # post XML
+        user.host = 'http://localhost:1337'
+        request.method = RequestMethod.POST
+        request.endpoint = '/'
+        request.response.content_type = TransformerContentType.XML
+        request_mock = ClientRequestMock(status_code=200, user=user, request_func=request_func)
+        request.response.add_status_code(200)
+        request.source = '<?xml version="1.0"?><example></example'
+
+        with pytest.raises(ResultSuccess):
+            request_func(user, request)
+
+        assert request_mock.spy.call_count == 1
+        _, kwargs = request_mock.spy.call_args_list[-1]
+        assert kwargs.get('method', None) == request.method.name
+        assert kwargs.get('name', '').startswith(request.scenario.identifier)
+        assert kwargs.get('catch_response', False)
+        assert kwargs.get('url', None) == f'{user.host}{request.endpoint}'
+        assert kwargs.get('data', None) == bytes(request.source, 'UTF-8')
+        assert 'headers' in kwargs
+        assert 'Content-Type' in kwargs['headers']
+        assert kwargs['headers']['Content-Type'] == 'application/xml'
+
+        # post multipart
+        user.host = 'http://localhost:1337'
+        request.method = RequestMethod.POST
+        request.endpoint = '/'
+        request.arguments = {'multipart_form_data_name': 'input_name', 'multipart_form_data_filename': 'filename'}
+        request.response.content_type = TransformerContentType.MULTIPART_FORM_DATA
+        request_mock = ClientRequestMock(status_code=200, user=user, request_func=request_func)
+        request.response.add_status_code(200)
+        request.source = '<?xml version="1.0"?><example></example'
+
+        with pytest.raises(ResultSuccess):
+            request_func(user, request)
+
+        assert request_mock.spy.call_count == 1
+        _, kwargs = request_mock.spy.call_args_list[-1]
+        assert kwargs.get('method', None) == request.method.name
+        assert kwargs.get('name', '').startswith(request.scenario.identifier)
+        assert kwargs.get('catch_response', False)
+        assert kwargs.get('url', None) == f'{user.host}{request.endpoint}'
+
+        # post with metadata
+        user.host = 'http://localhost:1337'
+        request.method = RequestMethod.POST
+        request.endpoint = '/'
+        request.arguments = None
+        request.metadata = {'my_header': 'value'}
+        request.response.content_type = TransformerContentType.JSON
+        request_mock = ClientRequestMock(status_code=200, user=user, request_func=request_func)
+        request.response.add_status_code(200)
+        request.source = '{"alice": 1}'
+
+        with pytest.raises(ResultSuccess):
+            request_func(user, request)
+
+        assert request_mock.spy.call_count == 1
+        _, kwargs = request_mock.spy.call_args_list[-1]
+        assert kwargs.get('method', None) == request.method.name
+        assert kwargs.get('name', '').startswith(request.scenario.identifier)
+        assert kwargs.get('catch_response', False)
+        assert kwargs.get('url', None) == f'{user.host}{request.endpoint}'
+        assert 'headers' in kwargs
+        assert 'my_header' in kwargs['headers']
+        assert kwargs['headers']['my_header'] == 'value'
 
     def test_add_context(self, restapi_user: RestApiScenarioFixture) -> None:
         user, _ = restapi_user

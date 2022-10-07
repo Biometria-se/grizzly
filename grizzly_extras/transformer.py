@@ -31,6 +31,7 @@ class TransformerContentType(PermutationEnum):
     JSON = auto()
     XML = auto()
     PLAIN = auto()
+    MULTIPART_FORM_DATA = auto()
 
     @classmethod
     def from_string(cls, value: str) -> 'TransformerContentType':
@@ -40,6 +41,8 @@ class TransformerContentType(PermutationEnum):
             return TransformerContentType.XML
         elif value.lower().strip() in ['text/plain', 'plain']:
             return TransformerContentType.PLAIN
+        elif value.lower().strip() == 'multipart/form-data':
+            return TransformerContentType.MULTIPART_FORM_DATA
         else:
             raise ValueError(f'"{value}" is an unknown response content type')
 

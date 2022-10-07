@@ -1,3 +1,5 @@
+import pytest
+
 from typing import Any, Tuple, Optional
 
 from pytest_mock import MockerFixture
@@ -101,9 +103,35 @@ class TestRequestTask:
 
     def test_arguments(self) -> None:
         task_factory = RequestTask(RequestMethod.GET, 'test-name', endpoint='/api/test | content_type="application/json", foo=bar')
-        assert task_factory.endpoint == '/api/test | foo=bar'
+        assert task_factory.endpoint == '/api/test'
         assert task_factory.response.content_type == TransformerContentType.JSON
+        assert task_factory.arguments is not None
+        assert 'foo' in task_factory.arguments
+        assert task_factory.arguments['foo'] == 'bar'
 
         task_factory = RequestTask(RequestMethod.GET, 'test-name', endpoint='/api/test | content_type="application/xml"')
         assert task_factory.endpoint == '/api/test'
+        assert task_factory.arguments == {}
         assert task_factory.response.content_type == TransformerContentType.XML
+
+        # test missing required arguments for multipart/form-data
+        with pytest.raises(ValueError):
+            RequestTask(RequestMethod.POST, 'test-name', endpoint='/api/test | content_type="multipart/form-data"')
+
+        # test required arguments for multipart/form-data
+        task_factory = RequestTask(RequestMethod.POST, 'test-name',
+                                   endpoint='/api/test | content_type="multipart/form-data", multipart_form_data_filename="foo", multipart_form_data_name="bar"')
+        assert task_factory.endpoint == '/api/test'
+        assert task_factory.arguments == {'multipart_form_data_filename': 'foo', 'multipart_form_data_name': 'bar'}
+        assert task_factory.response.content_type == TransformerContentType.MULTIPART_FORM_DATA
+
+    def test_add_metadata(self) -> None:
+        task_factory = RequestTask(RequestMethod.GET, 'test-name', endpoint='/api/test | content_type="application/json", foo=bar')
+        assert getattr(task_factory, 'metadata', '') is None
+
+        task_factory.add_metadata('foo', 'bar')
+        task_factory.add_metadata('alice', 'bob')
+
+        assert task_factory.metadata is not None
+        assert task_factory.metadata['foo'] == 'bar'
+        assert task_factory.metadata['alice'] == 'bob'

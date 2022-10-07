@@ -2,7 +2,7 @@ import gzip
 import time
 import xml.etree.ElementTree as ET
 from struct import pack, unpack
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 try:
     import pymqi
@@ -99,12 +99,13 @@ class Rfh2Encoder():
         md.Encoding = Rfh2Encoder.ENCODING
         return md
 
-    def __init__(self, payload: bytes, queue_name: str, encoding: str = 'gzip', tstamp: Optional[str] = None) -> None:
+    def __init__(self, payload: bytes, queue_name: str, encoding: str = 'gzip', tstamp: Optional[str] = None, metadata: Optional[Dict[str, str]] = None) -> None:
         if encoding != 'gzip':
             raise NotImplementedError('Only gzip encoding is implemented')
         self.queue_name = queue_name
         self.content_encoding = encoding
         self.tstamp = tstamp
+        self.metadata = metadata
         self.message = bytearray()
 
         self._build_payload(payload)
@@ -122,10 +123,11 @@ class Rfh2Encoder():
             tstamp = str(round(time.time() * 1000))
         else:
             tstamp = self.tstamp
+        metadata_headers = ''.join([f'<{key}>{value}</{key}>' for key, value in (self.metadata or {}).items()])
         name_values_txt = [
             "<mcd><Msd>jms_bytes</Msd></mcd>",
             f"<jms><Dst>queue:///{self.queue_name}</Dst><Tms>{tstamp}</Tms><Dlv>2</Dlv></jms>",
-            f"<usr><ContentEncoding>{self.content_encoding}</ContentEncoding><ContentLength dt='i8'>{content_length}</ContentLength></usr>",
+            f"<usr>{metadata_headers}<ContentEncoding>{self.content_encoding}</ContentEncoding><ContentLength dt='i8'>{content_length}</ContentLength></usr>",
         ]
         for value in name_values_txt:
             value_len = len(value)
