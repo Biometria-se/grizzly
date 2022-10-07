@@ -45,15 +45,8 @@ class GrizzlyTask(ABC):
         def is_template(value: str) -> bool:
             return '{{' in value and '}}' in value
 
-        # tasks with no @template decorator
-        if not hasattr(self, '__template_attributes__'):
-            return []
-
-        templates: Set[str] = set()
-        for attribute in self.__template_attributes__:
-            value = getattr(self, attribute, None)
-            if value is None:
-                continue
+        def _get_value_templates(value: Any) -> Set[str]:
+            templates: Set[str] = set()
 
             if isinstance(value, str):
                 try:
@@ -70,16 +63,30 @@ class GrizzlyTask(ABC):
                 for list_value in value:
                     if isinstance(list_value, GrizzlyTask):
                         templates.update(list_value.get_templates())
-                    elif is_template(list_value):
-                        templates.add(list_value)
+                    else:
+                        templates.update(_get_value_templates(list_value))
             elif isinstance(value, dict):
                 for dict_value in value.values():
                     if isinstance(dict_value, GrizzlyTask):
                         templates.update(dict_value.get_templates())
-                    elif is_template(dict_value):
-                        templates.add(dict_value)
+                    else:
+                        templates.update(_get_value_templates(dict_value))
             elif isinstance(value, GrizzlyTask):
                 templates.update(value.get_templates())
+
+            return templates
+
+        # tasks with no @template decorator
+        if not hasattr(self, '__template_attributes__'):
+            return []
+
+        templates: Set[str] = set()
+        for attribute in self.__template_attributes__:
+            value = getattr(self, attribute, None)
+            if value is None:
+                continue
+
+            templates.update(_get_value_templates(value))
 
         return list(templates)
 
