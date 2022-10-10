@@ -7,8 +7,9 @@ from pytest_mock import MockerFixture
 
 from locust.exception import StopUser
 from grizzly.exceptions import RestartScenario
-from grizzly.types import RequestMethod
-from grizzly.tasks import UntilRequestTask, RequestTask
+from grizzly.types import RequestDirection, RequestMethod
+from grizzly.tasks import GrizzlyMetaRequestTask, UntilRequestTask, RequestTask
+from grizzly.tasks.clients import HttpClientTask
 from grizzly_extras.transformer import TransformerContentType, TransformerError, transformer
 
 from ...fixtures import GrizzlyFixture
@@ -25,7 +26,7 @@ class TestUntilRequestTask:
             UntilRequestTask(grizzly, request, '$.`this`[?status="ready"]')
         assert 'content type must be specified for request' in str(ve)
 
-        request.response.content_type = TransformerContentType.JSON
+        request.response.content_type = request.content_type = TransformerContentType.JSON
 
         with pytest.raises(ValueError) as ve:
             UntilRequestTask(grizzly, request, '$.`this`[?status="ready"] | foo=bar, bar=foo')
@@ -51,13 +52,15 @@ class TestUntilRequestTask:
             UntilRequestTask(grizzly, request, '$.`this`[?status="ready"] | wait=0.1, retries=0')
         assert 'retries argument cannot be less than 1' in str(ve)
 
-    def test___call__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+    @pytest.mark.parametrize('meta_request_task', [
+        RequestTask(RequestMethod.GET, name='test-request', endpoint='/api/test | content_type=json'),
+        HttpClientTask(RequestDirection.FROM, 'https://example.io/test | content_type=json', 'test-request'),
+    ])
+    def test___call__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, meta_request_task: GrizzlyMetaRequestTask) -> None:
         _, _, scenario = grizzly_fixture()
         assert scenario is not None
-        request = grizzly_fixture.request_task.request
-        request.response.content_type = TransformerContentType.JSON
-        request.method = RequestMethod.GET
-        request.name = 'test-request'
+
+        meta_request_task.scenario = grizzly_fixture.request_task.request.scenario
 
         grizzly = grizzly_fixture.grizzly
 
@@ -69,8 +72,8 @@ class TestUntilRequestTask:
             })
 
         request_spy = mocker.patch.object(
-            scenario.user,
-            'request',
+            meta_request_task,
+            'execute',
             side_effect=[
                 (None, create_response('working')),
                 (None, create_response('working')),
@@ -102,7 +105,7 @@ class TestUntilRequestTask:
 
         gsleep_spy = mocker.patch('grizzly.tasks.until.gsleep', autospec=True)
 
-        task_factory = UntilRequestTask(grizzly, request, '/status[text()="ready"]')
+        task_factory = UntilRequestTask(grizzly, meta_request_task, '/status[text()="ready"]', scenario=meta_request_task.scenario)
         task = task_factory()
 
         with pytest.raises(RuntimeError) as re:
@@ -112,7 +115,7 @@ class TestUntilRequestTask:
         jsontransformer_orig = transformer.available[TransformerContentType.JSON]
         del transformer.available[TransformerContentType.JSON]
 
-        task_factory = UntilRequestTask(grizzly, request, '$.`this`[?status="ready"] | wait=100, retries=10')
+        task_factory = UntilRequestTask(grizzly, meta_request_task, '$.`this`[?status="ready"] | wait=100, retries=10', scenario=meta_request_task.scenario)
 
         with pytest.raises(TypeError) as te:
             task_factory()
@@ -120,7 +123,7 @@ class TestUntilRequestTask:
 
         transformer.available[TransformerContentType.JSON] = jsontransformer_orig
 
-        task_factory = UntilRequestTask(grizzly, request, "$.`this`[?status='ready'] | wait=100, retries=10")
+        task_factory = UntilRequestTask(grizzly, meta_request_task, "$.`this`[?status='ready'] | wait=100, retries=10", scenario=meta_request_task.scenario)
         task = task_factory()
 
         task(scenario)
@@ -138,7 +141,7 @@ class TestUntilRequestTask:
         _, kwargs = fire_spy.call_args_list[-1]
 
         assert kwargs.get('request_type', None) == 'UNTL'
-        assert kwargs.get('name', None) == f'{request.scenario.identifier} test-request, w=100.0s, r=10, em=1'
+        assert kwargs.get('name', None) == f'{task_factory.scenario.identifier} test-request, w=100.0s, r=10, em=1'
         assert kwargs.get('response_time', None) == 153500
         assert kwargs.get('response_length', None) == 103
         assert kwargs.get('context', None) == {'variables': {}}
@@ -147,7 +150,7 @@ class TestUntilRequestTask:
         # -->
         scenario.grizzly.state.variables['wait'] = 100.0
         scenario.grizzly.state.variables['retries'] = 10
-        task_factory = UntilRequestTask(grizzly, request, "$.`this`[?status='ready'] | wait='{{ wait }}', retries='{{ retries }}'")
+        task_factory = UntilRequestTask(grizzly, meta_request_task, "$.`this`[?status='ready'] | wait='{{ wait }}', retries='{{ retries }}'", scenario=meta_request_task.scenario)
         task = task_factory()
 
         task(scenario)
@@ -165,7 +168,7 @@ class TestUntilRequestTask:
         _, kwargs = fire_spy.call_args_list[-1]
 
         assert kwargs.get('request_type', None) == 'UNTL'
-        assert kwargs.get('name', None) == f'{request.scenario.identifier} test-request, w=100.0s, r=10, em=1'
+        assert kwargs.get('name', None) == f'{task_factory.scenario.identifier} test-request, w=100.0s, r=10, em=1'
         assert kwargs.get('response_time', None) == 12250
         assert kwargs.get('response_length', None) == 33
         assert kwargs.get('context', None) == {'variables': {}}
@@ -173,16 +176,16 @@ class TestUntilRequestTask:
         # <--
 
         request_spy = mocker.patch.object(
-            scenario.user,
-            'request',
+            meta_request_task,
+            'execute',
             side_effect=[
                 (None, create_response('working')),
                 (None, create_response('working')),
             ],
         )
 
-        request.scenario.failure_exception = StopUser
-        task_factory = UntilRequestTask(grizzly, request, '$.`this`[?status="ready"] | wait=10, retries=2')
+        meta_request_task.scenario.failure_exception = StopUser
+        task_factory = UntilRequestTask(grizzly, meta_request_task, '$.`this`[?status="ready"] | wait=10, retries=2', scenario=meta_request_task.scenario)
         task = task_factory()
 
         with pytest.raises(StopUser):
@@ -192,7 +195,7 @@ class TestUntilRequestTask:
         _, kwargs = fire_spy.call_args_list[-1]
 
         assert kwargs.get('request_type', None) == 'UNTL'
-        assert kwargs.get('name', None) == f'{request.scenario.identifier} test-request, w=10.0s, r=2, em=1'
+        assert kwargs.get('name', None) == f'{task_factory.scenario.identifier} test-request, w=10.0s, r=2, em=1'
         assert kwargs.get('response_time', None) == 12250
         assert kwargs.get('response_length', None) == 70
         assert kwargs.get('context', None) == {'variables': {}}
@@ -202,8 +205,8 @@ class TestUntilRequestTask:
         assert str(exception) == 'found 0 matching values for $.`this`[?status="ready"] in payload after 2 retries and 12250 milliseconds'
 
         request_spy = mocker.patch.object(
-            scenario.user,
-            'request',
+            meta_request_task,
+            'execute',
             side_effect=[
                 RuntimeError('foo bar'),
                 (None, create_response('working')),
@@ -211,7 +214,7 @@ class TestUntilRequestTask:
             ],
         )
 
-        request.scenario.failure_exception = RestartScenario
+        meta_request_task.scenario.failure_exception = RestartScenario
         with pytest.raises(RestartScenario):
             task(scenario)
 
@@ -219,7 +222,7 @@ class TestUntilRequestTask:
         _, kwargs = fire_spy.call_args_list[-1]
 
         assert kwargs.get('request_type', None) == 'UNTL'
-        assert kwargs.get('name', None) == f'{request.scenario.identifier} test-request, w=10.0s, r=2, em=1'
+        assert kwargs.get('name', None) == f'{task_factory.scenario.identifier} test-request, w=10.0s, r=2, em=1'
         assert kwargs.get('response_time', None) == 1500
         assert kwargs.get('response_length', None) == 35
         assert kwargs.get('context', None) == {'variables': {}}
@@ -229,8 +232,8 @@ class TestUntilRequestTask:
         assert str(exception) == 'foo bar'
 
         request_spy = mocker.patch.object(
-            scenario.user,
-            'request',
+            meta_request_task,
+            'execute',
             side_effect=[
                 (None, create_response('working')),
                 RuntimeError('foo bar'),
@@ -239,7 +242,7 @@ class TestUntilRequestTask:
             ],
         )
 
-        task_factory = UntilRequestTask(grizzly, request, '$.`this`[?status="ready"] | wait=4, retries=4')
+        task_factory = UntilRequestTask(grizzly, meta_request_task, '$.`this`[?status="ready"] | wait=4, retries=4', scenario=meta_request_task.scenario)
         task = task_factory()
 
         task(scenario)
@@ -248,15 +251,15 @@ class TestUntilRequestTask:
         _, kwargs = fire_spy.call_args_list[-1]
 
         assert kwargs.get('request_type', None) == 'UNTL'
-        assert kwargs.get('name', None) == f'{request.scenario.identifier} test-request, w=4.0s, r=4, em=1'
+        assert kwargs.get('name', None) == f'{task_factory.scenario.identifier} test-request, w=4.0s, r=4, em=1'
         assert kwargs.get('response_time', None) == 800
         assert kwargs.get('response_length', None) == 103
         assert kwargs.get('context', None) == {'variables': {}}
         assert kwargs.get('exception', '') is None
 
         request_spy = mocker.patch.object(
-            scenario.user,
-            'request',
+            meta_request_task,
+            'execute',
             return_value=(None, jsondumps({
                 'list': [{
                     'count': 18,
@@ -280,7 +283,7 @@ class TestUntilRequestTask:
             }), ),
         )
 
-        task_factory = UntilRequestTask(grizzly, request, '$.list[?(@.count > 19)] | wait=4, expected_matches=3, retries=4')
+        task_factory = UntilRequestTask(grizzly, meta_request_task, '$.list[?(@.count > 19)] | wait=4, expected_matches=3, retries=4', scenario=meta_request_task.scenario)
         assert task_factory.expected_matches == 3
         assert task_factory.wait == 4
         assert task_factory.retries == 4
@@ -292,13 +295,13 @@ class TestUntilRequestTask:
         _, kwargs = fire_spy.call_args_list[-1]
 
         assert kwargs.get('request_type', None) == 'UNTL'
-        assert kwargs.get('name', None) == f'{request.scenario.identifier} test-request, w=4.0s, r=4, em=3'
+        assert kwargs.get('name', None) == f'{task_factory.scenario.identifier} test-request, w=4.0s, r=4, em=3'
         assert kwargs.get('response_time', None) == 800
         assert kwargs.get('response_length', None) == 213
         assert kwargs.get('context', None) == {'variables': {}}
         assert kwargs.get('exception', '') is None
 
-        task_factory = UntilRequestTask(grizzly, request, '$.list[?(@.count > 19)] | wait=4, expected_matches=4, retries=4')
+        task_factory = UntilRequestTask(grizzly, meta_request_task, '$.list[?(@.count > 19)] | wait=4, expected_matches=4, retries=4', scenario=meta_request_task.scenario)
         assert task_factory.expected_matches == 4
         assert task_factory.wait == 4
         assert task_factory.retries == 4
@@ -311,7 +314,7 @@ class TestUntilRequestTask:
         _, kwargs = fire_spy.call_args_list[-1]
 
         assert kwargs.get('request_type', None) == 'UNTL'
-        assert kwargs.get('name', None) == f'{request.scenario.identifier} test-request, w=4.0s, r=4, em=4'
+        assert kwargs.get('name', None) == f'{task_factory.scenario.identifier} test-request, w=4.0s, r=4, em=4'
         assert kwargs.get('response_time', None) == 555
         assert kwargs.get('response_length', None) == 852
         assert kwargs.get('context', None) == {'variables': {}}
@@ -319,7 +322,7 @@ class TestUntilRequestTask:
         assert isinstance(exception, RuntimeError)
         assert str(exception) == 'found 3 matching values for $.list[?(@.count > 19)] in payload after 4 retries and 555 milliseconds'
 
-        task_factory = UntilRequestTask(grizzly, request, '$.list[?(@.count == 18)] | wait=4, expected_matches=2, retries=4')
+        task_factory = UntilRequestTask(grizzly, meta_request_task, '$.list[?(@.count == 18)] | wait=4, expected_matches=2, retries=4', scenario=meta_request_task.scenario)
         assert task_factory.expected_matches == 2
         assert task_factory.wait == 4
         assert task_factory.retries == 4
@@ -331,16 +334,16 @@ class TestUntilRequestTask:
         _, kwargs = fire_spy.call_args_list[-1]
 
         assert kwargs.get('request_type', None) == 'UNTL'
-        assert kwargs.get('name', None) == f'{request.scenario.identifier} test-request, w=4.0s, r=4, em=2'
+        assert kwargs.get('name', None) == f'{task_factory.scenario.identifier} test-request, w=4.0s, r=4, em=2'
         assert kwargs.get('response_time', None) == 666
         assert kwargs.get('response_length', None) == 213
         assert kwargs.get('context', None) == {'variables': {}}
         assert kwargs.get('exception', '') is None
 
-        task_factory = UntilRequestTask(grizzly, request, '$.list[?(@.count == 18)] | wait=4, expected_matches=1, retries=1')
+        task_factory = UntilRequestTask(grizzly, meta_request_task, '$.list[?(@.count == 18)] | wait=4, expected_matches=1, retries=1', scenario=meta_request_task.scenario)
         task = task_factory()
         request_spy.return_value = ({}, None,)
-        request.scenario.failure_exception = None
+        meta_request_task.scenario.failure_exception = None
 
         task(scenario)
 
@@ -348,7 +351,7 @@ class TestUntilRequestTask:
         _, kwargs = fire_spy.call_args_list[-1]
 
         assert kwargs.get('request_type', None) == 'UNTL'
-        assert kwargs.get('name', None) == f'{request.scenario.identifier} test-request, w=4.0s, r=1, em=1'
+        assert kwargs.get('name', None) == f'{task_factory.scenario.identifier} test-request, w=4.0s, r=1, em=1'
         assert kwargs.get('response_time', None) == 666
         assert kwargs.get('response_length', None) == 0
         assert kwargs.get('context', None) == {'variables': {}}
@@ -363,7 +366,7 @@ class TestUntilRequestTask:
         _, kwargs = fire_spy.call_args_list[-1]
 
         assert kwargs.get('request_type', None) == 'UNTL'
-        assert kwargs.get('name', None) == f'{request.scenario.identifier} test-request, w=4.0s, r=1, em=1'
+        assert kwargs.get('name', None) == f'{task_factory.scenario.identifier} test-request, w=4.0s, r=1, em=1'
         assert kwargs.get('response_time', None) == 111
         assert kwargs.get('response_length', None) == 0
         assert kwargs.get('context', None) == {'variables': {}}

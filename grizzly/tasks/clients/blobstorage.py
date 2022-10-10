@@ -42,7 +42,7 @@ The MIME type of an uploaded file will automagically be guessed based on the [re
 '''
 import logging
 
-from typing import Any, Optional, cast
+from typing import Optional, cast
 from urllib.parse import urlparse, parse_qs
 from pathlib import Path
 from mimetypes import guess_type as mimetype_guess
@@ -53,7 +53,7 @@ from azure.storage.blob import BlobServiceClient, ContentSettings
 from . import client, ClientTask
 from ...scenarios import GrizzlyScenario
 from ...context import GrizzlyContextScenario
-from ...types import RequestDirection
+from ...types import RequestDirection, GrizzlyResponse
 from ...testdata.utils import resolve_variable
 
 # disable verbose INFO logging
@@ -108,10 +108,10 @@ class BlobStorageClientTask(ClientTask):
     def connection_string(self) -> str:
         return f'DefaultEndpointsProtocol={self._endpoints_protocol};AccountName={self.account_name};AccountKey={self.account_key};EndpointSuffix=core.windows.net'
 
-    def get(self, parent: GrizzlyScenario) -> Any:
+    def get(self, parent: GrizzlyScenario) -> GrizzlyResponse:
         return super().get(parent)
 
-    def put(self, parent: GrizzlyScenario) -> Any:
+    def put(self, parent: GrizzlyScenario) -> GrizzlyResponse:
         source = parent.render(cast(str, self.source))
 
         if self.destination is not None:
@@ -137,3 +137,5 @@ class BlobStorageClientTask(ClientTask):
             with self.service_client.get_blob_client(container=self.container, blob=destination) as blob_client:
                 blob_client.upload_blob(source, content_settings=content_settings)
                 meta['response_length'] = len(source)
+
+        return None, None

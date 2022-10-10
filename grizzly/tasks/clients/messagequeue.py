@@ -82,7 +82,7 @@ from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRespon
 from . import client, ClientTask, logger
 from ...context import GrizzlyContextScenario
 from ...scenarios import GrizzlyScenario
-from ...types import RequestDirection, RequestType
+from ...types import GrizzlyResponse, RequestDirection, RequestType
 from ...testdata.utils import resolve_variable
 
 
@@ -320,7 +320,7 @@ class MessageQueueClientTask(ClientTask):
 
                 return response
 
-    def get(self, parent: GrizzlyScenario) -> Any:
+    def get(self, parent: GrizzlyScenario) -> GrizzlyResponse:
         request: AsyncMessageRequest = {
             'action': 'GET',
             'worker': None,
@@ -332,10 +332,14 @@ class MessageQueueClientTask(ClientTask):
         }
         response = self.request(parent, request)
 
-        if response is not None:
+        if response is not None and self.variable is not None:
             parent.user._context['variables'][self.variable] = response['payload']
 
-    def put(self, parent: GrizzlyScenario) -> Any:
+        response = response or {}
+
+        return response.get('metadata', None), response.get('payload', None)
+
+    def put(self, parent: GrizzlyScenario) -> GrizzlyResponse:
         source = parent.render(cast(str, self.source))
         source_file = Path(self._context_root) / 'requests' / source
 
@@ -352,4 +356,6 @@ class MessageQueueClientTask(ClientTask):
 
         }
 
-        self.request(parent, request)
+        response = self.request(parent, request)
+
+        return response.get('metadata', None), response.get('payload', None)

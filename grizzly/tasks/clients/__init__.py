@@ -21,18 +21,21 @@ from abc import abstractmethod
 from typing import Dict, Generator, Type, List, Any, Optional, Callable, cast
 from contextlib import contextmanager
 from time import perf_counter as time
-from urllib.parse import urlparse
+from urllib.parse import urlparse, unquote
+
+from grizzly_extras.transformer import TransformerContentType
+from grizzly_extras.arguments import split_value, parse_arguments
 
 from ...context import GrizzlyContext, GrizzlyContextScenario
 from ...scenarios import GrizzlyScenario
-from ...types import RequestType, RequestDirection
+from ...types import RequestType, RequestDirection, GrizzlyResponse
 from ...testdata.utils import resolve_variable
-from .. import GrizzlyTask, template
+from .. import GrizzlyMetaRequestTask, template
 
 
 # see https://github.com/python/mypy/issues/5374
 @template('endpoint', 'destination', 'source', 'name')
-class ClientTask(GrizzlyTask):
+class ClientTask(GrizzlyMetaRequestTask):
     _schemes: List[str]
     _short_name: str
     _direction_arrow: Dict[RequestDirection, str] = {
@@ -75,6 +78,19 @@ class ClientTask(GrizzlyTask):
         if parsed.scheme not in self._schemes:
             raise AttributeError(f'{self.__class__.__name__}: "{parsed.scheme}" is not supported, must be one of {", ".join(self._schemes)}')
 
+        content_type: TransformerContentType = TransformerContentType.UNDEFINED
+
+        if '|' in endpoint:
+            value, value_arguments = split_value(endpoint)
+            arguments = parse_arguments(value_arguments, unquote=True)
+
+            if 'content_type' in arguments:
+                content_type = TransformerContentType.from_string(unquote(arguments['content_type']))
+                del arguments['content_type']
+
+            endpoint = value
+
+        self.content_type = content_type
         self.direction = direction
         self.endpoint = endpoint
         self.name = name
@@ -96,18 +112,21 @@ class ClientTask(GrizzlyTask):
 
         self._short_name = self.__class__.__name__.replace('ClientTask', '')
 
-    def __call__(self) -> Callable[[GrizzlyScenario], Any]:
+    def __call__(self) -> Callable[[GrizzlyScenario], GrizzlyResponse]:
         if self.direction == RequestDirection.FROM:
             return self.get
         else:
             return self.put
 
+    def execute(self, parent: GrizzlyScenario) -> GrizzlyResponse:
+        return self.get(parent)
+
     @abstractmethod
-    def get(self, parent: GrizzlyScenario) -> Any:
+    def get(self, parent: GrizzlyScenario) -> GrizzlyResponse:
         raise NotImplementedError(f'{self.__class__.__name__} has not implemented GET')
 
     @abstractmethod
-    def put(self, parent: GrizzlyScenario) -> Any:
+    def put(self, parent: GrizzlyScenario) -> GrizzlyResponse:
         raise NotImplementedError(f'{self.__class__.__name__} has not implemented PUT')
 
     @contextmanager

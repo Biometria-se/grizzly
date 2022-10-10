@@ -16,24 +16,26 @@ Only supports `RequestDirection.FROM`.
 
 * `name` _str_ - name used in `locust` statistics
 '''
-from typing import Any
-
 from . import client, ClientTask
 from ...scenarios import GrizzlyScenario
+from ...types import GrizzlyResponse
 
 import requests
 
 
 @client('http', 'https')
 class HttpClientTask(ClientTask):
-    def get(self, parent: GrizzlyScenario) -> Any:
+    def get(self, parent: GrizzlyScenario) -> GrizzlyResponse:
         with self.action(parent) as meta:
             url = parent.render(self.endpoint)
 
             response = requests.get(url)
             value = response.text
-            parent.user._context['variables'][self.variable] = value
+            if self.variable is not None:
+                parent.user._context['variables'][self.variable] = value
             meta['response_length'] = len(value)
 
-    def put(self, parent: GrizzlyScenario) -> Any:
+            return dict(response.headers), value
+
+    def put(self, parent: GrizzlyScenario) -> GrizzlyResponse:
         return super().put(parent)

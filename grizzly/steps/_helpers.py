@@ -25,17 +25,29 @@ logger = logging.getLogger(__name__)
 
 
 def create_request_task(
-    context: Context, method: RequestMethod, source: Optional[str], endpoint: str, name: Optional[str] = None, substitutes: Optional[Dict[str, str]] = None,
+    context: Context,
+    method: RequestMethod,
+    source: Optional[str],
+    endpoint: str,
+    name: Optional[str] = None,
+    substitutes: Optional[Dict[str, str]] = None,
+    content_type: Optional[TransformerContentType] = None,
 ) -> RequestTask:
     grizzly = cast(GrizzlyContext, context.grizzly)
-    request = _create_request_task(context.config.base_dir, method, source, endpoint, name, substitutes=substitutes)
+    request = _create_request_task(context.config.base_dir, method, source, endpoint, name, substitutes=substitutes, content_type=content_type)
     request.scenario = grizzly.scenario
 
     return request
 
 
 def _create_request_task(
-    base_dir: str, method: RequestMethod, source: Optional[str], endpoint: str, name: Optional[str] = None, substitutes: Optional[Dict[str, str]] = None,
+    base_dir: str,
+    method: RequestMethod,
+    source: Optional[str],
+    endpoint: str,
+    name: Optional[str] = None,
+    substitutes: Optional[Dict[str, str]] = None,
+    content_type: Optional[TransformerContentType] = None,
 ) -> RequestTask:
     path = os.path.join(base_dir, 'requests')
     j2env = j2.Environment(

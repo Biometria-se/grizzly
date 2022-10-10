@@ -377,6 +377,30 @@ def step_task_client_get_endpoint(context: Context, endpoint: str, name: str, va
     ))
 
 
+@then(u'get "{endpoint}" with name "{name}" until "{expression}"')
+def step_task_client_get_endpoint_until(context: Context, endpoint: str, name: str, expression: str) -> None:
+    """
+    Creates an instance of a {@pylink grizzly.tasks.clients} task, actual implementation of the task is determined
+    based on the URL scheme specified in `endpoint`. Gets information, repeated from another host or endpoint than the scenario
+    is load testing until the response matches `expression`.
+
+    See {@pylink grizzly.tasks.clients} task documentation for more information about client tasks.
+
+    Example:
+
+    ``` gherkin
+    Then get "https://www.example.org/example.json" with name "example-1" until "$.response[status='Success']
+    Then get "http://{{ endpoint }}" with name "example-2" until "//*[@status='Success']"
+    ```
+
+    Args:
+        endpoint (str): information about where to get information, see the specific getter task implementations for more information
+        name (str): name of the request, used in request statistics
+        expression (str): JSON or XPath expression for specific value in response payload
+    """
+    pass
+
+
 @then(u'put "{source}" to "{endpoint}" with name "{name}" as "{destination}"')
 def step_task_client_put_endpoint_file_destination(context: Context, source: str, endpoint: str, name: str, destination: str) -> None:
     """

@@ -74,9 +74,11 @@ def test_initialize_testdata_with_tasks(
             content='hello this is the {{ content }}!',
             content_type=TransformerContentType.JSON,
         ))
+        assert scenario.tasks.scenario is scenario
+        request.content_type = TransformerContentType.JSON
         scenario.tasks.add(UntilRequestTask(grizzly, request=request, condition='{{ condition }}'))
-        scenario.tasks.add(ConditionalTask(scenario=scenario, name='conditional-1', condition='{{ value | int > 5 }}'))
-        scenario.tasks.add(ConditionalTask(scenario=scenario, name='conditional-1', condition='{{ AtomicIntegerIncrementer.value | int > 5 }}'))
+        scenario.tasks.add(ConditionalTask(name='conditional-1', condition='{{ value | int > 5 }}'))
+        scenario.tasks.add(ConditionalTask(name='conditional-1', condition='{{ AtomicIntegerIncrementer.value | int > 5 }}'))
         scenario.tasks.add(LogMessageTask(message='transformer_task={{ transformer_task }}'))
         scenario.orphan_templates.append('hello {{ orphan }} template')
         testdata, external_dependencies = initialize_testdata(grizzly, scenario.tasks)
