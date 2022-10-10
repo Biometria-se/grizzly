@@ -18,7 +18,7 @@ performed.
 import logging
 
 from abc import abstractmethod
-from typing import Dict, Generator, Type, List, Any, Optional, Callable
+from typing import Dict, Generator, Type, List, Any, Optional, Callable, cast
 from contextlib import contextmanager
 from time import perf_counter as time
 from urllib.parse import urlparse
@@ -26,6 +26,7 @@ from urllib.parse import urlparse
 from ...context import GrizzlyContext, GrizzlyContextScenario
 from ...scenarios import GrizzlyScenario
 from ...types import RequestType, RequestDirection
+from ...testdata.utils import resolve_variable
 from .. import GrizzlyTask, template
 
 
@@ -60,14 +61,19 @@ class ClientTask(GrizzlyTask):
     ) -> None:
         super().__init__(scenario)
 
-        parsed = urlparse(endpoint)
+        self.grizzly = GrizzlyContext()
+
+        endpoint = cast(str, resolve_variable(self.grizzly, endpoint, only_grizzly=True))
+        try:
+            parsed = urlparse(endpoint)
+            if endpoint.index('://') != endpoint.rindex('://') or ('{{' in endpoint and '}}' in endpoint):
+                index = len(parsed.scheme) + 3
+                endpoint = endpoint[index:]
+        except ValueError:
+            pass
 
         if parsed.scheme not in self._schemes:
             raise AttributeError(f'{self.__class__.__name__}: "{parsed.scheme}" is not supported, must be one of {", ".join(self._schemes)}')
-
-        if '{{' in endpoint and '}}' in endpoint:
-            index = len(parsed.scheme) + 3
-            endpoint = endpoint[index:]
 
         self.direction = direction
         self.endpoint = endpoint
@@ -81,8 +87,6 @@ class ClientTask(GrizzlyTask):
 
         if self.source is not None and self.direction != RequestDirection.TO:
             raise AttributeError(f'{self.__class__.__name__}: source argument is not applicable for direction {self.direction.name}')
-
-        self.grizzly = GrizzlyContext()
 
         if self.variable is not None and self.variable not in self.grizzly.state.variables:
             raise ValueError(f'{self.__class__.__name__}: variable {self.variable} has not been initialized')

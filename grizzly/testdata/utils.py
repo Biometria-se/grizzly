@@ -1,5 +1,6 @@
 import itertools
 import logging
+import re
 
 from typing import TYPE_CHECKING, Optional, List, Dict, Any, Tuple, Set
 from collections import namedtuple
@@ -155,7 +156,7 @@ def create_context_variable(grizzly: 'GrizzlyContext', variable: str, value: str
     return transform(grizzly, {variable: casted_value}, objectify=False)
 
 
-def resolve_variable(grizzly: 'GrizzlyContext', value: str, guess_datatype: Optional[bool] = True) -> GrizzlyVariableType:
+def resolve_variable(grizzly: 'GrizzlyContext', value: str, guess_datatype: Optional[bool] = True, only_grizzly: bool = False) -> GrizzlyVariableType:
     if len(value) < 1:
         return value
 
@@ -165,7 +166,7 @@ def resolve_variable(grizzly: 'GrizzlyContext', value: str, guess_datatype: Opti
         value = value[1:-1]
 
     resolved_variable: GrizzlyVariableType
-    if '{{' in value and '}}' in value:
+    if '{{' in value and '}}' in value and not only_grizzly:
         template = Template(value)
         j2env = Environment(autoescape=False)
         template_parsed = j2env.parse(value)
@@ -175,18 +176,34 @@ def resolve_variable(grizzly: 'GrizzlyContext', value: str, guess_datatype: Opti
             assert template_variable in grizzly.state.variables, f'value contained variable "{template_variable}" which has not been set'
 
         resolved_variable = template.render(**grizzly.state.variables)
-    elif len(value) > 4 and value[0] == '$' and value[1] != '.':  # $. is jsonpath expression...
-        if value[:5] == '$conf':
-            variable = value[7:]
-            assert variable in grizzly.state.configuration, f'configuration variable "{variable}" is not set'
-            resolved_variable = grizzly.state.configuration[variable]
-        elif value[:4] == '$env':
-            variable = value[6:]
-            env_value = environ.get(variable, None)
-            assert env_value is not None, f'environment variable "{variable}" is not set'
-            resolved_variable = env_value
-        else:
-            raise ValueError(f'{value.split("::", 1)[0]} is not implemented')
+    elif '$conf' in value or '$env' in value:
+        regex = r"\$(conf|env)::([^\$]+)\$"
+
+        matches = re.finditer(regex, value, re.MULTILINE)
+
+        if matches:
+            resolved_variable = value
+
+        for match in matches:
+            match_type = match.group(1)
+            variable_name = match.group(2)
+
+            if match_type == 'conf':
+                assert variable_name in grizzly.state.configuration, f'configuration variable "{variable_name}" is not set'
+                variable_value = grizzly.state.configuration[variable_name]
+            elif match_type == 'env':
+                assert variable_name in environ, f'environment variable "{variable_name}" is not set'
+                variable_value = environ.get(variable_name, None)
+
+            if not isinstance(variable_value, str):
+                variable_value = str(variable_value)
+
+            value = value.replace(f'${match_type}::{variable_name}$', variable_value)
+
+        resolved_variable = value
+
+        if len(value) > 4 and value[0] == '$' and value[1] != '.':  # $. is jsonpath expression...
+            raise ValueError(f'"{value}" is not a correctly specified templating variable, variables must match "$(conf|env)::<variable name>$"')
     else:
         resolved_variable = value
 

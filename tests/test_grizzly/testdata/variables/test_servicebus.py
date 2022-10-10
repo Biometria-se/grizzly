@@ -71,7 +71,7 @@ def test_atomicservicebus_url() -> None:
         atomicservicebus_url(url)
     assert 'AtomicServiceBus: SharedAccessKeyName must be in the query string' in str(ve)
 
-    url = '$conf::sb.url'
+    url = '$conf::sb.url$'
     with pytest.raises(ValueError) as ve:
         atomicservicebus_url(url)
     assert 'AtomicServiceBus: configuration variable "sb.url" is not set' in str(ve)
@@ -132,12 +132,12 @@ def test_atomicservicebus_endpoint() -> None:
         atomicservicebus_endpoint(endpoint)
     assert 'AtomicServiceBus: value contained variable "queue_name" which has not been set' in str(ve)
 
-    endpoint = 'queue:"$conf::sb.endpoint.queue"'
+    endpoint = 'queue:"$conf::sb.endpoint.queue$"'
     with pytest.raises(ValueError) as ve:
         atomicservicebus_endpoint(endpoint)
     assert 'AtomicServiceBus: configuration variable "sb.endpoint.queue" is not set' in str(ve)
 
-    endpoint = 'topic:documents-in, subscription:"$conf::sb.endpoint.subscription"'
+    endpoint = 'topic:documents-in, subscription:"$conf::sb.endpoint.subscription$"'
     with pytest.raises(ValueError) as ve:
         atomicservicebus_endpoint(endpoint)
     assert 'AtomicServiceBus: configuration variable "sb.endpoint.subscription" is not set' in str(ve)
@@ -154,17 +154,17 @@ def test_atomicservicebus_endpoint() -> None:
         grizzly.state.variables['queue_name'] = 'test-queue'
         assert atomicservicebus_endpoint(endpoint) == 'queue:test-queue'
 
-        endpoint = 'queue:"$conf::sb.endpoint.queue"'
+        endpoint = 'queue:"$conf::sb.endpoint.queue$"'
         grizzly.state.configuration['sb.endpoint.queue'] = 'test-queue'
         assert atomicservicebus_endpoint(endpoint) == 'queue:test-queue'
 
         grizzly.state.configuration['sb.endpoint.subscription'] = 'test-subscription'
         grizzly.state.configuration['sb.endpoint.topic'] = 'test-topic'
 
-        endpoint = 'topic:"$conf::sb.endpoint.topic",subscription:"$conf::sb.endpoint.subscription"'
+        endpoint = 'topic:"$conf::sb.endpoint.topic$",subscription:"$conf::sb.endpoint.subscription$"'
         assert atomicservicebus_endpoint(endpoint) == 'topic:test-topic, subscription:test-subscription'
 
-        endpoint = 'topic:"$conf::sb.endpoint.topic",subscription:"$conf::sb.endpoint.subscription",expression:"{{ queue_name }}"'
+        endpoint = 'topic:"$conf::sb.endpoint.topic$",subscription:"$conf::sb.endpoint.subscription$",expression:"{{ queue_name }}"'
         assert atomicservicebus_endpoint(endpoint) == 'topic:test-topic, subscription:test-subscription, expression:test-queue'
 
     finally:
@@ -173,7 +173,7 @@ def test_atomicservicebus_endpoint() -> None:
         except:
             pass
 
-    endpoint = 'queue:"$env::QUEUE_NAME"'
+    endpoint = 'queue:"$env::QUEUE_NAME$"'
     with pytest.raises(ValueError) as ve:
         atomicservicebus_endpoint(endpoint)
     assert 'AtomicServiceBus: environment variable "QUEUE_NAME" is not set' in str(ve)

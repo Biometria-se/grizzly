@@ -104,8 +104,8 @@ def add_request_task(
     table: List[Optional[Row]]
     content_type: Optional[TransformerContentType] = None
 
-    if endpoint is not None and endpoint[:4] in ['$env', '$con']:
-        endpoint = cast(str, resolve_variable(grizzly, endpoint, guess_datatype=False))
+    if endpoint is not None and ('$env::' in endpoint or '$conf::' in endpoint):
+        endpoint = cast(str, resolve_variable(grizzly, endpoint, guess_datatype=False, only_grizzly=True))
 
     if context.table is not None:
         table = context.table

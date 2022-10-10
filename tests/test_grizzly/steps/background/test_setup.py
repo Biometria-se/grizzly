@@ -48,10 +48,10 @@ def test_step_setup_save_statistics(behave_fixture: BehaveFixture) -> None:
 
     try:
         with pytest.raises(AssertionError):
-            step_impl(behave, 'influxdb://test:8000/$env::DATABASE')
+            step_impl(behave, 'influxdb://test:8000/$env::DATABASE$')
 
         environ['DATABASE'] = 'test_db'
-        step_impl(behave, 'influxdb://test:8000/$env::DATABASE')
+        step_impl(behave, 'influxdb://test:8000/$env::DATABASE$')
         assert grizzly.setup.statistics_url == 'influxdb://test:8000/test_db'
     finally:
         try:
@@ -64,13 +64,13 @@ def test_step_setup_save_statistics(behave_fixture: BehaveFixture) -> None:
 
     try:
         with pytest.raises(AssertionError):
-            step_impl(behave, 'insights://?IngestionEndpoint=$env::TEST_VARIABLE&Testplan=test&InstrumentationKey=aaaabbbb=')
+            step_impl(behave, 'insights://?IngestionEndpoint=$env::TEST_VARIABLE$&Testplan=test&InstrumentationKey=aaaabbbb=')
         environ['TEST_VARIABLE'] = 'HelloWorld'
 
-        step_impl(behave, 'insights://username:password@?IngestionEndpoint=$env::TEST_VARIABLE&Testplan=test&InstrumentationKey=aaaabbbb=')
+        step_impl(behave, 'insights://username:password@?IngestionEndpoint=$env::TEST_VARIABLE$&Testplan=test&InstrumentationKey=aaaabbbb=')
         assert grizzly.setup.statistics_url == 'insights://username:password@?IngestionEndpoint=HelloWorld&Testplan=test&InstrumentationKey=aaaabbbb='
 
-        step_impl(behave, 'insights://username:password@insights.example.com?IngestionEndpoint=$env::TEST_VARIABLE&Testplan=test&InstrumentationKey=aaaabbbb=')
+        step_impl(behave, 'insights://username:password@insights.example.com?IngestionEndpoint=$env::TEST_VARIABLE$&Testplan=test&InstrumentationKey=aaaabbbb=')
         assert grizzly.setup.statistics_url == 'insights://username:password@insights.example.com?IngestionEndpoint=HelloWorld&Testplan=test&InstrumentationKey=aaaabbbb='
     finally:
         try:
@@ -96,9 +96,9 @@ def test_step_setup_save_statistics(behave_fixture: BehaveFixture) -> None:
     step_impl(
         behave,
         (
-            'insights://$conf::statistics.username:$conf::statistics.password@?'
-            'IngestionEndpoint=$conf::statistics.url&Testplan=$conf::statistics.testplan&'
-            'InstrumentationKey=$conf::statistics.instrumentationkey'
+            'insights://$conf::statistics.username$:$conf::statistics.password$@?'
+            'IngestionEndpoint=$conf::statistics.url$&Testplan=$conf::statistics.testplan$&'
+            'InstrumentationKey=$conf::statistics.instrumentationkey$'
         ),
     )
     grizzly.setup.statistics_url == 'insights://username:password@?IngestionEndpoint=insights.example.com&Testplan=test&InstrumentationKey=aaaabbbb='

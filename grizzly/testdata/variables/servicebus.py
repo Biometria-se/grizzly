@@ -28,8 +28,8 @@ Examples:
 ``` plain
 queue:test-queue
 topic:test-topic, subscription:test-subscription
-queue:"$conf::sb.endpoint.queue"
-topic:"$conf::sb.endpoint.topic", subscription:"$conf::sb.endpoint.subscription"
+queue:"$conf::sb.endpoint.queue$"
+topic:"$conf::sb.endpoint.topic$", subscription:"$conf::sb.endpoint.subscription$"
 queue:"{{ queue_name }}", expression="$.document[?(@.name=='TPM report')]"
 ```
 
@@ -53,13 +53,13 @@ The complete `url` has {@link framework.usage.variables.templating} support, but
 $conf::sb.url
 
 # not valid
-Endpoint=sb://$conf::sb.hostname/;SharedAccessKeyName=$conf::sb.keyname;SharedAccessKey=$conf::sb.key
+Endpoint=sb://$conf::sb.hostname/;SharedAccessKeyName=$conf::sb.keyname;SharedAccessKey=$conf::sb.key$
 ```
 
 ## Example
 
 ``` gherkin
-And value for variable "AtomicServiceBus.document_id" is "queue:documents-in | wait=120, url=$conf::sb.endpoint, repeat=True"
+And value for variable "AtomicServiceBus.document_id" is "queue:documents-in | wait=120, url=$conf::sb.endpoint$, repeat=True"
 ...
 Given a user of type "RestApi" load testing "http://example.com"
 ...
@@ -78,7 +78,7 @@ If no matching messages was found when peeking, it is repeated again up until th
 be specified for the endpint, e.g. `application/xml`.
 
 ``` gherkin
-And value for variable "AtomicServiceBus.tpm_document" is "queue:documents-in | wait=120, url=$conf::sb.endpoint, repeat=True, content_type=json, expression='$.document[?(@.name=='TPM Report')'"
+And value for variable "AtomicServiceBus.tpm_document" is "queue:documents-in | wait=120, url=$conf::sb.endpoint$, repeat=True, content_type=json, expression='$.document[?(@.name=='TPM Report')'"
 ```
 '''  # noqa: E501
 import logging

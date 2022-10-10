@@ -136,6 +136,17 @@ class TestHttpClientTask:
         assert kwargs.get('context', None) is scenario.user._context
         assert isinstance(kwargs.get('exception', None), RuntimeError)
 
+        grizzly.state.configuration['test.host'] = 'https://example.org'
+
+        task_factory = HttpClientTask(RequestDirection.FROM, 'https://$conf::test.host$/api/test', 'http-env-get', variable='test')
+        task = task_factory()
+
+        task(scenario)
+
+        assert requests_get_spy.call_count == 6
+        args, _ = requests_get_spy.call_args_list[-1]
+        assert args[0] == 'https://example.org/api/test'
+
     def test_put(self, grizzly_fixture: GrizzlyFixture) -> None:
         task_factory = HttpClientTask(RequestDirection.TO, 'http://put.example.org', source='')
         task = task_factory()

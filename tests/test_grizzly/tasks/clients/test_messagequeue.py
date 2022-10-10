@@ -234,7 +234,7 @@ class TestMessageQueueClientTask:
                 'header_type': 'rfh2',
             }
 
-            task_factory.endpoint = 'mqs://$conf::mq.username:$conf::mq.password@$conf::mq.host/$conf::mq.endpoint?QueueManager=$conf::mq.qm&Channel=$conf::mq.channel'
+            task_factory.endpoint = 'mqs://$conf::mq.username$:$conf::mq.password$@$conf::mq.host$/$conf::mq.endpoint$?QueueManager=$conf::mq.qm$&Channel=$conf::mq.channel$'
             task_factory.grizzly.state.configuration = {
                 'mq.username': 'mq_conf_username',
                 'mq.password': 'mq_conf_password',

@@ -3,8 +3,8 @@
 This module contains step implementations that configures the load test scenario with parameters applicable for all scenarios.'''
 import parse
 
-from urllib.parse import urlparse, parse_qs, urlunparse
-from typing import cast, List
+from urllib.parse import urlparse
+from typing import cast
 from importlib import import_module
 from inspect import signature
 
@@ -54,57 +54,17 @@ def step_setup_save_statistics(context: Context, url: str) -> None:
     And save statistics to "influxdb://grizzly:secret-password@influx.example.com/grizzly-statistics"
     And save statistics to "insights://?IngestionEndpoint=https://insights.example.com&Testplan=grizzly-statistics&InstrumentationKey=asdfasdfasdf="
     And save statistics to "insights://insights.example.com/?Testplan=grizzly-statistics&InstrumentationKey=asdfasdfasdf="
-    And save statistics to "influxdb://$conf::statistics.username:$conf::statistics.password@influx.example.com/$conf::statistics.database"
+    And save statistics to "influxdb://$conf::statistics.username$:$conf::statistics.password$@influx.example.com/$conf::statistics.database$"
     ```
 
     Args:
         url (str): URL for statistics endpoint
     '''
+    grizzly = cast(GrizzlyContext, context.grizzly)
+    url = cast(str, resolve_variable(grizzly, url))
     parsed = urlparse(url)
 
     assert parsed.scheme in ['influxdb', 'insights'], f'"{parsed.scheme}" is not a supported scheme'
-
-    grizzly = cast(GrizzlyContext, context.grizzly)
-
-    paths: List[str] = []
-
-    for path in parsed.path.split('/'):
-        resolved = cast(str, resolve_variable(grizzly, path))
-        paths.append(resolved)
-
-    parsed = parsed._replace(path='/'.join(paths))
-
-    variables = parse_qs(parsed.query)
-
-    parameters: List[str] = []
-
-    for variable in variables:
-        resolved = cast(str, resolve_variable(grizzly, variables[variable][0]))
-        parameters.append(f'{variable}={resolved}')
-
-    parsed = parsed._replace(query='&'.join(parameters))
-
-    # bug in urlunparse, // is not added if netloc is empty
-    if len(parsed.netloc) == 0:
-        host = ' '
-    elif '@' in parsed.netloc:
-        credentials, host = parsed.netloc.split('@')
-        host = cast(str, resolve_variable(grizzly, host))
-        credentials = credentials.replace('::', '%%')
-        username, password = credentials.split(':', 1)
-        username = cast(str, resolve_variable(grizzly, username.replace('%%', '::')))
-        password = cast(str, resolve_variable(grizzly, password.replace('%%', '::')))
-        host = f'{username}:{password}@{host}'
-    else:
-        host = cast(str, resolve_variable(grizzly, parsed.netloc))
-
-    parsed = parsed._replace(netloc=host)
-
-    url = urlunparse(parsed)
-
-    # normalize bug fix above
-    if ':// ' in url:
-        url = url.replace(':// ', '://')
 
     grizzly.setup.statistics_url = url
 

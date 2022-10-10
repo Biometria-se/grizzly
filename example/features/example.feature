@@ -5,7 +5,7 @@ Feature: grizzly example
     And add callback "steps.custom.callback_client_server" for message type "client_server" from client to server
 
   Scenario: dog facts api
-    Given a user of type "RestApi" load testing "$conf::facts.dog.host"
+    Given a user of type "RestApi" load testing "$conf::facts.dog.host$"
     And repeat for "2" iterations
     And value for variable "AtomicRandomInteger.dog_facts_count" is "1..5"
     # custom step
@@ -14,14 +14,14 @@ Feature: grizzly example
     And send message "{'server': 'client'}"
 
   Scenario: cat facts api
-    Given a user of type "steps.custom.User" load testing "$conf::facts.cat.host"
+    Given a user of type "steps.custom.User" load testing "$conf::facts.cat.host$"
     And repeat for "1" iteration
     And value for variable "AtomicRandomInteger.cat_facts_count" is "1..5"
     Then get request with name "get-cat-facts" from endpoint "/facts?limit={{ AtomicRandomInteger.cat_facts_count }}"
     And send message "{'client': 'server'}"
 
   Scenario: book api
-    Given a user of type "RestApi" load testing "$conf::facts.book.host"
+    Given a user of type "RestApi" load testing "$conf::facts.book.host$"
     And repeat for "1" iteration
     And value for variable "AtomicCsvRow.books" is "books/books.csv | random=True"
     And value for variable "steps.custom.AtomicCustomVariable.foobar" is "foobar"

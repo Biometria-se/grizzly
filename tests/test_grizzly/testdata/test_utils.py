@@ -214,49 +214,56 @@ def test_create_context_variable() -> None:
             }
         }
 
+        with pytest.raises(AssertionError) as ae:
+            create_context_variable(grizzly, 'test.value', '$env::HELLO_WORLD$')
+        assert str(ae.value) == 'environment variable "HELLO_WORLD" is not set'
+
         with pytest.raises(AssertionError):
-            create_context_variable(grizzly, 'test.value', '$env::HELLO_WORLD')
+            create_context_variable(grizzly, 'test.value', '$env::HELLO_WORLD$')
 
         environ['HELLO_WORLD'] = 'environment variable value'
-        assert create_context_variable(grizzly, 'test.value', '$env::HELLO_WORLD') == {
+        assert create_context_variable(grizzly, 'test.value', '$env::HELLO_WORLD$') == {
             'test': {
                 'value': 'environment variable value',
             }
         }
 
         environ['HELLO_WORLD'] = 'true'
-        assert create_context_variable(grizzly, 'test.value', '$env::HELLO_WORLD') == {
+        assert create_context_variable(grizzly, 'test.value', '$env::HELLO_WORLD$') == {
             'test': {
                 'value': True,
             }
         }
 
         environ['HELLO_WORLD'] = '1337'
-        assert create_context_variable(grizzly, 'test.value', '$env::HELLO_WORLD') == {
+        assert create_context_variable(grizzly, 'test.value', '$env::HELLO_WORLD$') == {
             'test': {
                 'value': 1337,
             }
         }
 
         with pytest.raises(AssertionError):
-            create_context_variable(grizzly, 'test.value', '$conf::test.auth.user.username')
+            create_context_variable(grizzly, 'test.value', '$conf::test.auth.user.username$')
 
         grizzly.state.configuration['test.auth.user.username'] = 'username'
-        assert create_context_variable(grizzly, 'test.value', '$conf::test.auth.user.username') == {
+        assert create_context_variable(grizzly, 'test.value', '$conf::test.auth.user.username$') == {
             'test': {
                 'value': 'username',
             }
         }
 
         grizzly.state.configuration['test.auth.refresh_time'] = 3000
-        assert create_context_variable(grizzly, 'test.value', '$conf::test.auth.refresh_time') == {
+        assert create_context_variable(grizzly, 'test.value', '$conf::test.auth.refresh_time$') == {
             'test': {
                 'value': 3000,
             }
         }
     finally:
         GrizzlyContext.destroy()
-        del environ['HELLO_WORLD']
+        try:
+            del environ['HELLO_WORLD']
+        except KeyError:
+            pass
 
 
 def test_resolve_variable() -> None:
@@ -294,35 +301,49 @@ def test_resolve_variable() -> None:
 
         assert resolve_variable(grizzly, '{{ (number * 0.25 * 0.2) | int }}') == 5
 
-        try:
-            with pytest.raises(AssertionError):
-                resolve_variable(grizzly, '$env::HELLO_WORLD')
+        with pytest.raises(ValueError) as ve:
+            resolve_variable(grizzly, '$env::HELLO_WORLD')
+        assert str(ve.value) == '"$env::HELLO_WORLD" is not a correctly specified templating variable, variables must match "$(conf|env)::<variable name>$"'
 
-            environ['HELLO_WORLD'] = 'first environment variable!'
+        with pytest.raises(AssertionError) as ae:
+            resolve_variable(grizzly, '$env::HELLO_WORLD$')
+        assert str(ae.value) == 'environment variable "HELLO_WORLD" is not set'
 
-            assert resolve_variable(grizzly, '$env::HELLO_WORLD') == 'first environment variable!'
+        environ['HELLO_WORLD'] = 'first environment variable!'
 
-            environ['HELLO_WORLD'] = 'first "environment" variable!'
-            assert resolve_variable(grizzly, '$env::HELLO_WORLD') == 'first "environment" variable!'
-        finally:
-            del environ['HELLO_WORLD']
+        assert resolve_variable(grizzly, '$env::HELLO_WORLD$') == 'first environment variable!'
 
-        with pytest.raises(AssertionError):
+        environ['HELLO_WORLD'] = 'first "environment" variable!'
+        assert resolve_variable(grizzly, '$env::HELLO_WORLD$') == 'first "environment" variable!'
+
+        with pytest.raises(ValueError) as ve:
             resolve_variable(grizzly, '$conf::sut.host')
+        assert str(ve.value) == '"$conf::sut.host" is not a correctly specified templating variable, variables must match "$(conf|env)::<variable name>$"'
+
+        with pytest.raises(AssertionError) as ae:
+            resolve_variable(grizzly, '$conf::sut.host$')
+        assert str(ae.value) == 'configuration variable "sut.host" is not set'
 
         grizzly.state.configuration['sut.host'] = 'http://host.docker.internal:8003'
+        grizzly.state.configuration['sut.path'] = '/hello/world'
 
-        assert resolve_variable(grizzly, '$conf::sut.host')
+        assert resolve_variable(grizzly, '$conf::sut.host$') == 'http://host.docker.internal:8003'
+        assert resolve_variable(grizzly, '$conf::sut.host$$conf::sut.path$') == 'http://host.docker.internal:8003/hello/world'
 
         grizzly.state.configuration['sut.greeting'] = 'hello "{{ test }}"!'
-        assert resolve_variable(grizzly, '$conf::sut.greeting') == 'hello "{{ test }}"!'
+        assert resolve_variable(grizzly, '$conf::sut.greeting$') == 'hello "{{ test }}"!'
 
-        with pytest.raises(ValueError):
-            resolve_variable(grizzly, '$test::hello')
+        assert resolve_variable(grizzly, '$test::hello$') == '$test::hello$'
 
         assert resolve_variable(grizzly, '') == ''
+
+        assert resolve_variable(grizzly, '$conf::sut.host$ blah $env::HELLO_WORLD$ blah') == 'http://host.docker.internal:8003 blah first "environment" variable! blah'
     finally:
         GrizzlyContext.destroy()
+        try:
+            del environ['HELLO_WORLD']
+        except KeyError:
+            pass
 
 
 def test__objectify() -> None:

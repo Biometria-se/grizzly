@@ -13,7 +13,7 @@ from ....fixtures import End2EndFixture
 @pytest.mark.parametrize('url', [
     'influxdb://grizzly:password@localhost/grizzly-statistics',
     'insights://localhost/?Testplan=grizzly-statistics&InstrumentationKey=asdfasdf=',
-    'influxdb://$conf::statistics.username:$conf::statistics.password@localhost/$conf::statistics.database',
+    'influxdb://$conf::statistics.username$:$conf::statistics.password$@localhost/$conf::statistics.database$',
 ])
 def test_e2e_step_setup_save_statistics(e2e_fixture: End2EndFixture, url: str) -> None:
     env_conf: Dict[str, Any] = {
@@ -35,7 +35,7 @@ def test_e2e_step_setup_save_statistics(e2e_fixture: End2EndFixture, url: str) -
         test_url = data.pop('url')
 
         for key, value in data.items():
-            test_url = test_url.replace(f'$conf::{key}', value)
+            test_url = test_url.replace(f'$conf::{key}$', value)
 
         assert grizzly.setup.statistics_url == test_url, f'{grizzly.setup.statistics_url} != {test_url}'
 

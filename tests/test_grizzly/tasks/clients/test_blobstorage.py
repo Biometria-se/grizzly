@@ -132,7 +132,7 @@ class TestBlobStorageClientTask:
             with pytest.raises(ValueError) as ve:
                 BlobStorageClientTask(
                     RequestDirection.TO,
-                    'bss://$conf::storage.account?AccountKey=$conf::storage.account_key&Container=$conf::storage.container',
+                    'bss://$conf::storage.account$?AccountKey=$conf::storage.account_key$&Container=$conf::storage.container$',
                     source=None,
                     destination='destination.txt',
                 )
@@ -140,7 +140,7 @@ class TestBlobStorageClientTask:
 
             task_factory = BlobStorageClientTask(
                 RequestDirection.TO,
-                'bss://$conf::storage.account?AccountKey=$conf::storage.account_key&Container=$conf::storage.container',
+                'bss://$conf::storage.account$?AccountKey=$conf::storage.account_key$&Container=$conf::storage.container$',
                 source='source.json',
                 destination='destination.txt',
             )
@@ -181,7 +181,7 @@ class TestBlobStorageClientTask:
 
             task_factory = BlobStorageClientTask(
                 RequestDirection.TO,
-                'bss://$conf::storage.account?AccountKey=$conf::storage.account_key&Container=$conf::storage.container',
+                'bss://$conf::storage.account$?AccountKey=$conf::storage.account_key$&Container=$conf::storage.container$',
                 'test-bss-request',
                 source='{{ source }}',
                 destination='{{ destination }}',

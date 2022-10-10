@@ -1,10 +1,12 @@
 ---
 title: Templating
 ---
-@anchor framework.usage.variables.templating
+@anchor framework.usage.variables.templating Templating
 # Templating
 
-`grizzly` has support for templating in both step expression variables (most) and request payload, with the templating backend [Jinja2](https://jinja.palletsprojects.com/en/3.0.x/).
+`grizzly` has support for templating in both step expression variables (most) and request payload, with the templating backend [Jinja2](https://jinja.palletsprojects.com/en/3.0.x/),
+and also `grizzly` specific templating variables from environment variables or environment configuration files. The later is resolved **before** a test is started, while the former
+is resolved during run time. See {@link framework.usage.variables.environment_configuration} on how to use `$conf::`-variables.
 
 ## Request payload
 
@@ -127,10 +129,10 @@ The third post request:
 Most step expressions also support templating for their variables, for example:
 
 ```gherkin
-And set context variable "auth.user.username" to "$conf::backend.auth.user.username"
+And set context variable "auth.user.username" to "$conf::backend.auth.user.username$"
 And set context variable "auth.refresh_time" to "{{ AtomicIntegerIncrementer.refresh_time }}"
 And repeat for "{{ iterations * 0.25 }}"
-And save statistics to "influxdb://$conf::statistics.username:$conf::statistics.password@{{ influxdb_host }}/$conf::statistics.database"
+And save statistics to "influxdb://$conf::statistics.username$:$conf::statistics.password$@{{ influxdb_host }}/$conf::statistics.database$"
 And ask for value of variable "initial_id"
 And value for variable "AtomicIntegerIncrementer.id1" is "{{ initial_id }}"
 And value for variable "AtomicIntegerIncrementer.id2" is "{{ initial_id }}"
