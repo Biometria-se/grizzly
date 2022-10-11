@@ -19,7 +19,7 @@ ordinary {@pylink grizzly.tasks.request} or {@pylink grizzly.tasks.clients} task
 
 ## Arguments
 
-* `request` _{@pylink grizzly.tasks.requests} / {@pylink grizzly.tasks.clients}_ - request that is going to be repeated
+* `request` _{@pylink grizzly.tasks.request} / {@pylink grizzly.tasks.clients}_ - request that is going to be repeated
 
 * `condition` _str_ - condition expression that specifies how `request` should be repeated
 
