@@ -42,8 +42,8 @@ The MIME type of an uploaded file will automagically be guessed based on the [re
 '''
 import logging
 
-from typing import Optional, cast
-from urllib.parse import urlparse, parse_qs
+from typing import Optional, List, cast
+from urllib.parse import urlparse, parse_qs, quote
 from pathlib import Path
 from mimetypes import guess_type as mimetype_guess
 
@@ -54,7 +54,6 @@ from . import client, ClientTask
 from ...scenarios import GrizzlyScenario
 from ...context import GrizzlyContextScenario
 from ...types import RequestDirection, GrizzlyResponse
-from ...testdata.utils import resolve_variable
 
 # disable verbose INFO logging
 azure_logger = logging.getLogger('azure.core.pipeline.policies.http_logging_policy')
@@ -85,12 +84,20 @@ class BlobStorageClientTask(ClientTask):
 
         parsed = urlparse(self.endpoint)
 
-        self._endpoints_protocol = 'http' if parsed.scheme == 'bs' else 'https'
+        self._endpoints_protocol = 'http' if self._scheme == 'bs' else 'https'
 
         if parsed.netloc is None or len(parsed.netloc) < 1:
             raise ValueError(f'{self.__class__.__name__}: could not find account name in {self.endpoint}')
 
-        parameters = parse_qs(parsed.query)
+        # See urllib/parse.py:771-774, explicit + characters are replaced with white space,
+        # AccountKey could contain explicit + characters, so we must quote them first.
+        parsed_query: List[str] = []
+        if len(parsed.query) > 0:
+            for parameter in parsed.query.split('&'):
+                key, value = parameter.split('=', 1)
+                parsed_query.append(f'{quote(key)}={quote(value)}')
+
+        parameters = parse_qs('&'.join(parsed_query))
 
         if 'AccountKey' not in parameters:
             raise ValueError(f'{self.__class__.__name__}: could not find AccountKey in {self.endpoint}')
@@ -98,9 +105,9 @@ class BlobStorageClientTask(ClientTask):
         if 'Container' not in parameters:
             raise ValueError(f'{self.__class__.__name__}: could not find Container in {self.endpoint}')
 
-        self.account_name = cast(str, resolve_variable(self.grizzly, parsed.netloc, guess_datatype=False))
-        self.account_key = cast(str, resolve_variable(self.grizzly, parameters['AccountKey'][0], guess_datatype=False))
-        self.container = cast(str, resolve_variable(self.grizzly, parameters['Container'][0], guess_datatype=False))
+        self.account_name = parsed.netloc
+        self.account_key = parameters['AccountKey'][0]
+        self.container = parameters['Container'][0]
 
         self.service_client = BlobServiceClient.from_connection_string(conn_str=self.connection_string)
 

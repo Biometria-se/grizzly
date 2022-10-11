@@ -31,6 +31,7 @@ import requests
 @client('http', 'https')
 class HttpClientTask(ClientTask):
     arguments: Dict[str, Any]
+    headers: Dict[str, str]
 
     def __init__(
         self,
@@ -59,15 +60,18 @@ class HttpClientTask(ClientTask):
         super().__init__(direction, endpoint, name, variable=variable, source=source, destination=destination, scenario=scenario)
 
         self.arguments = {}
+        self.headers = {
+            'x-grizzly-user': f'{self.__class__.__name__}::{id(self)}'
+        }
 
-        if self._schema == 'https':
+        if self._scheme == 'https':
             self.arguments = {'verify': verify}
 
     def get(self, parent: GrizzlyScenario) -> GrizzlyResponse:
         with self.action(parent) as meta:
             url = parent.render(self.endpoint)
 
-            response = requests.get(url, **self.arguments)
+            response = requests.get(url, headers=self.headers, **self.arguments)
             value = response.text
             if self.variable is not None:
                 parent.user._context['variables'][self.variable] = value

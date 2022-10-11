@@ -125,7 +125,7 @@ class TestBlobStorageClientTask:
             })
             grizzly.state.configuration.update({
                 'storage.account': 'my-storage',
-                'storage.account_key': 'aaaabbb=',
+                'storage.account_key': 'aaaa+bbb/64=',
                 'storage.container': 'my-container',
             })
 
@@ -145,8 +145,9 @@ class TestBlobStorageClientTask:
                 destination='destination.txt',
             )
             assert task_factory.account_name == 'my-storage'
-            assert task_factory.account_key == 'aaaabbb='
+            assert task_factory.account_key == 'aaaa+bbb/64='
             assert task_factory.container == 'my-container'
+            assert task_factory.connection_string == 'DefaultEndpointsProtocol=https;AccountName=my-storage;AccountKey=aaaa+bbb/64=;EndpointSuffix=core.windows.net'
 
             task = task_factory()
 

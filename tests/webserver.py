@@ -1,5 +1,6 @@
 import csv
 import logging
+import json
 
 from typing import Dict, Any, Optional, Type, Literal, cast
 from types import TracebackType
@@ -142,6 +143,8 @@ def app_until_attribute(attribute: str) -> FlaskResponse:
 
     if as_array is not None:
         json_result = [json_result]
+
+    logger.debug(f'sending {json.dumps(json_result)} to {x_grizzly_user}')
 
     return jsonify(json_result)
 

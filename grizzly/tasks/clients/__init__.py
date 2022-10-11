@@ -37,7 +37,7 @@ from .. import GrizzlyMetaRequestTask, template
 @template('endpoint', 'destination', 'source', 'name')
 class ClientTask(GrizzlyMetaRequestTask):
     _schemes: List[str]
-    _schema: str
+    _scheme: str
     _short_name: str
     _direction_arrow: Dict[RequestDirection, str] = {
         RequestDirection.FROM: '<-',
@@ -79,7 +79,7 @@ class ClientTask(GrizzlyMetaRequestTask):
         if parsed.scheme not in self._schemes:
             raise AttributeError(f'{self.__class__.__name__}: "{parsed.scheme}" is not supported, must be one of {", ".join(self._schemes)}')
 
-        self._schema = parsed.scheme
+        self._scheme = parsed.scheme
 
         content_type: TransformerContentType = TransformerContentType.UNDEFINED
 

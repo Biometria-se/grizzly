@@ -178,7 +178,7 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
         self.headers = {
             'Authorization': None,
             'Content-Type': 'application/json',
-            'x-grizzly-user': f'{self.__class__.__name__}',
+            'x-grizzly-user': self.__class__.__name__,
         }
 
         self.session_started = None
