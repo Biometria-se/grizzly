@@ -7,6 +7,7 @@ from pytest_mock import MockerFixture
 from locust.exception import StopUser
 from requests import Response
 
+from grizzly_extras.transformer import TransformerContentType
 from grizzly.context import GrizzlyContext
 from grizzly.tasks.clients import HttpClientTask
 from grizzly.exceptions import RestartScenario
@@ -50,6 +51,7 @@ class TestHttpClientTask:
         request_fire_spy = mocker.spy(scenario.user.environment.events.request, 'fire')
 
         task_factory = HttpClientTask(RequestDirection.FROM, 'http://example.org', variable='test')
+        assert task_factory.arguments == {}
 
         task = task_factory()
 
@@ -61,8 +63,9 @@ class TestHttpClientTask:
 
         assert scenario.user._context['variables'].get('test', '') == jsondumps({'hello': 'world'})
         assert requests_get_spy.call_count == 1
-        args, _ = requests_get_spy.call_args_list[-1]
+        args, kwargs = requests_get_spy.call_args_list[-1]
         assert args[0] == 'http://example.org'
+        assert len(kwargs) == 0
 
         assert request_fire_spy.call_count == 1
         _, kwargs = request_fire_spy.call_args_list[-1]
@@ -79,8 +82,9 @@ class TestHttpClientTask:
 
         assert scenario.user._context['variables'].get('test', '') is None  # not set
         assert requests_get_spy.call_count == 2
-        args, _ = requests_get_spy.call_args_list[-1]
+        args, kwargs = requests_get_spy.call_args_list[-1]
         assert args[0] == 'http://example.org'
+        assert len(kwargs) == 0
 
         assert request_fire_spy.call_count == 2
         _, kwargs = request_fire_spy.call_args_list[-1]
@@ -103,8 +107,9 @@ class TestHttpClientTask:
 
         assert scenario.user._context['variables'].get('test', '') is None  # not set
         assert requests_get_spy.call_count == 4
-        args, _ = requests_get_spy.call_args_list[-1]
+        args, kwargs = requests_get_spy.call_args_list[-1]
         assert args[0] == 'http://example.org'
+        assert len(kwargs) == 0
 
         assert request_fire_spy.call_count == 4
         _, kwargs = request_fire_spy.call_args_list[-1]
@@ -119,13 +124,16 @@ class TestHttpClientTask:
 
         task_factory = HttpClientTask(RequestDirection.FROM, 'http://example.org', 'http-get', variable='test')
         task = task_factory()
+        assert task_factory.arguments == {}
+        assert task_factory.content_type == TransformerContentType.UNDEFINED
 
         task(scenario)
 
         assert scenario.user._context['variables'].get('test', '') is None  # not set
         assert requests_get_spy.call_count == 5
-        args, _ = requests_get_spy.call_args_list[-1]
+        args, kwargs = requests_get_spy.call_args_list[-1]
         assert args[0] == 'http://example.org'
+        assert len(kwargs) == 0
 
         assert request_fire_spy.call_count == 5
         _, kwargs = request_fire_spy.call_args_list[-1]
@@ -139,13 +147,43 @@ class TestHttpClientTask:
         grizzly.state.configuration['test.host'] = 'https://example.org'
 
         task_factory = HttpClientTask(RequestDirection.FROM, 'https://$conf::test.host$/api/test', 'http-env-get', variable='test')
+        assert task_factory.arguments == {'verify': True}
+        assert task_factory.content_type == TransformerContentType.UNDEFINED
         task = task_factory()
 
         task(scenario)
 
         assert requests_get_spy.call_count == 6
-        args, _ = requests_get_spy.call_args_list[-1]
+        args, kwargs = requests_get_spy.call_args_list[-1]
         assert args[0] == 'https://example.org/api/test'
+        assert len(kwargs) == 1
+        assert kwargs.get('verify', None)
+
+        task_factory = HttpClientTask(RequestDirection.FROM, 'https://$conf::test.host$/api/test | verify=False, content_type=json', 'http-env-get', variable='test')
+        task = task_factory()
+        assert task_factory.arguments == {'verify': False}
+        assert task_factory.content_type == TransformerContentType.JSON
+
+        task(scenario)
+
+        assert requests_get_spy.call_count == 7
+        args, kwargs = requests_get_spy.call_args_list[-1]
+        assert args[0] == 'https://example.org/api/test'
+        assert len(kwargs) == 1
+        assert not kwargs.get('verify', None)
+
+        task_factory = HttpClientTask(RequestDirection.FROM, 'https://$conf::test.host$/api/test | verify=True, content_type=json', 'http-env-get', variable='test')
+        task = task_factory()
+        assert task_factory.arguments == {'verify': True}
+        assert task_factory.content_type == TransformerContentType.JSON
+
+        task(scenario)
+
+        assert requests_get_spy.call_count == 8
+        args, kwargs = requests_get_spy.call_args_list[-1]
+        assert args[0] == 'https://example.org/api/test'
+        assert len(kwargs) == 1
+        assert kwargs.get('verify', None)
 
     def test_put(self, grizzly_fixture: GrizzlyFixture) -> None:
         task_factory = HttpClientTask(RequestDirection.TO, 'http://put.example.org', source='')

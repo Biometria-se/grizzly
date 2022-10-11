@@ -153,6 +153,7 @@ def catch_all(_: Any) -> FlaskResponse:
 
 class Webserver:
     _web_server: WSGIServer
+    _greenlet: gevent.Greenlet
 
     def __init__(self, port: int = 0) -> None:
         self._web_server = WSGIServer(
@@ -167,7 +168,7 @@ class Webserver:
         return cast(int, self._web_server.server_port)
 
     def start(self) -> None:
-        gevent.spawn(lambda: self._web_server.serve_forever())
+        self._greenlet = gevent.spawn(lambda: self._web_server.serve_forever())
         gevent.sleep(0.01)
         logger.debug(f'started webserver on port {self.port}')
 
@@ -188,3 +189,8 @@ class Webserver:
         logger.debug(f'stopped webserver on port {self.port}')
 
         return True
+
+
+if __name__ == '__main__':
+    with Webserver(port=8080) as webserver:
+        gevent.joinall([webserver._greenlet])

@@ -497,7 +497,7 @@ def test_e2e_step_task_client_get_endpoint_until(e2e_fixture: End2EndFixture) ->
         e2e_fixture_host = data['e2e_fixture.host']
 
         tasks = grizzly.scenario.tasks
-        tasks.pop()
+        tasks.pop()  # remove dummy task added by `test_steps`
 
         assert len(tasks) == 3
 
@@ -508,9 +508,10 @@ def test_e2e_step_task_client_get_endpoint_until(e2e_fixture: End2EndFixture) ->
         assert parent_task.expected_matches == 1
         task = parent_task.request
         assert isinstance(task, HttpClientTask)
+        assert task.arguments == {}
         assert task.content_type == TransformerContentType.JSON
         assert task.direction == RequestDirection.FROM
-        assert task.endpoint == f'https://{e2e_fixture_host}/example.json'
+        assert task.endpoint == f'http://{e2e_fixture_host}/api/until/id?nth=2&wrong=bar&right=foo&as_array=True', f'{task.name=}, {task.endpoint=}'
         assert task.name == 'https-get'
         assert task.variable is None
         assert task.source is None
@@ -521,30 +522,32 @@ def test_e2e_step_task_client_get_endpoint_until(e2e_fixture: End2EndFixture) ->
         parent_task = tasks[1]
         assert isinstance(parent_task, UntilRequestTask)
         assert parent_task.retries == 3
-        assert parent_task.wait == 120.0
+        assert parent_task.wait == 2.0
         assert parent_task.expected_matches == 1
         task = parent_task.request
         assert isinstance(task, HttpClientTask)
+        assert task.arguments == {}
         assert task.content_type == TransformerContentType.JSON
         assert task.direction == RequestDirection.FROM
-        assert task.endpoint == '{{ endpoint }}'
+        assert task.endpoint == '{{ endpoint }}/api/until/success?nth=2&wrong=false&right=true&as_array=True', f'{task.name=}, {task.endpoint=}'
         assert task.name == 'http-get'
         assert task.variable is None
         assert task.source is None
         assert task.destination is None
         assert task._short_name == 'Http'
-        assert task.get_templates() == ['{{ endpoint }}']
+        assert task.get_templates() == ['{{ endpoint }}/api/until/success?nth=2&wrong=false&right=true&as_array=True'], f'{task.name=}, {task.get_templates()=}'
 
         parent_task = tasks[2]
         assert isinstance(parent_task, UntilRequestTask)
-        assert parent_task.retries == 10
-        assert parent_task.wait == 2.0
-        assert parent_task.expected_matches == 3
+        assert parent_task.retries == 4
+        assert parent_task.wait == 1.0
+        assert parent_task.expected_matches == 1
         task = parent_task.request
         assert isinstance(task, HttpClientTask)
+        assert task.arguments == {'verify': False}
         assert task.content_type == TransformerContentType.JSON
         assert task.direction == RequestDirection.FROM
-        assert task.endpoint == 'https://api.example.io/api/test'
+        assert task.endpoint == f'http://{e2e_fixture_host}/api/until/hello?nth=2&wrong=foobar&right=world&as_array=True', f'{task.name=}, {task.endpoint=}'
         assert task.name == 'https-env-get'
         assert task.variable is None
         assert task.source is None
@@ -560,12 +563,18 @@ def test_e2e_step_task_client_get_endpoint_until(e2e_fixture: End2EndFixture) ->
 
     feature_file = e2e_fixture.test_steps(
         scenario=[
-            f'And value for variable "endpoint" is "{e2e_fixture.host}"',
-            f'Then get "https://{e2e_fixture.host}/example.json | content_type=json" with name "https-get" until "$.`this`[?id="foo"]"',
-            'Then get "http://{{ endpoint }} | content_type=json" with name "http-get" until "$.`this`[?success=true] | wait=120.0"',
+            f'And value for variable "endpoint" is "http://{e2e_fixture.host}"',
             (
-                'Then get "https://$conf::test.host$/api/test | content_type=json" with name "https-env-get" until '
-                '"$.`this`[?hello="world"] | retries=10, wait=2.0, expected_matches=3"'
+                f'Then get "http://{e2e_fixture.host}/api/until/id?nth=2&wrong=bar&right=foo&as_array=True | '
+                'content_type=json" with name "https-get" until "$.`this`[?id="foo"]"'
+            ),
+            (
+                'Then get "http://{{ endpoint }}/api/until/success?nth=2&wrong=false&right=true&as_array=True | '
+                'content_type=json" with name "http-get" until "$.`this`[?success="true"] | wait=2.0"'
+            ),
+            (
+                'Then get "https://$conf::test.host$/api/until/hello?nth=2&wrong=foobar&right=world&as_array=True | content_type=json, verify=False" with name "https-env-get" '
+                'until "$.`this`[?hello=\"world\"] | retries=4, expected_matches=1"'
             ),
         ]
     )
@@ -574,7 +583,7 @@ def test_e2e_step_task_client_get_endpoint_until(e2e_fixture: End2EndFixture) ->
         env_conf: Dict[str, Dict[str, Dict[str, str]]] = {
             'configuration': {
                 'test': {
-                    'host': 'https://api.example.io',
+                    'host': f'http://{e2e_fixture.host}',
                 }
             }
         }
@@ -583,7 +592,7 @@ def test_e2e_step_task_client_get_endpoint_until(e2e_fixture: End2EndFixture) ->
 
         rc, _ = e2e_fixture.execute(feature_file, env_conf_file=env_conf_file.name)
 
-    assert rc == 0
+        assert rc == 0
 
 
 def test_e2e_step_task_client_put_endpoint_file_destination(e2e_fixture: End2EndFixture) -> None:

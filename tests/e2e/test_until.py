@@ -61,13 +61,13 @@ def test_e2e_until(e2e_fixture: End2EndFixture) -> None:
         Given a user of type "RestApi" load testing "http://{e2e_fixture.host}"
         And repeat for "1" iteration
         And stop user on failure
-        Then get request with name "request-task" from endpoint "/api/until/hello?nth=2&wrong=foobar&right=world&as_array=true | content_type=json" until "$.`this`[?hello="world"] | retries=2, expected_matches=1"
+        Then get request with name "request-task" from endpoint "/api/until/bar?nth=2&wrong=foobar&right=world&as_array=true | content_type=json" until "$.`this`[?bar="world"] | retries=2, expected_matches=1"
 
     Scenario: HttpClientTask
         Given a user of type "RestApi" load testing "http://{e2e_fixture.host}"
         And repeat for "1" iteration
-        And restart scenario on failure
-        Then get "http://$conf::test.host$/api/until/hello?nth=2&wrong=foobar&right=world&as_array=true | content_type=json" with name "http-client-task" until "$.`this`[?hello="world"] | retries=3, expected_matches=1"
+        And stop user on failure
+        Then get "http://$conf::test.host$/api/until/foo?nth=2&wrong=foobar&right=world&as_array=true | content_type=json" with name "http-client-task" until "$.`this`[?foo="world"] | retries=3, expected_matches=1"
     '''))  # noqa: E501
 
     with NamedTemporaryFile(delete=True, suffix='.yaml', dir=e2e_fixture.test_tmp_dir) as env_conf_file:
