@@ -129,6 +129,7 @@ def app_until_attribute(attribute: str) -> FlaskResponse:
     nth = int(args['nth'])
     wrong = args.get('wrong')
     right = args.get('right')
+    as_array = args.get('as_array', None)
 
     if app_request_count[x_grizzly_user] < nth - 1:
         status = wrong
@@ -137,7 +138,12 @@ def app_until_attribute(attribute: str) -> FlaskResponse:
         status = right
         app_request_count[x_grizzly_user] = 0
 
-    return jsonify({attribute: status})
+    json_result: Any = {attribute: status}
+
+    if as_array is not None:
+        json_result = [json_result]
+
+    return jsonify(json_result)
 
 
 @app.errorhandler(404)
