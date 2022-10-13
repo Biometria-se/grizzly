@@ -75,7 +75,9 @@ jobs:
 
     - name: install python dependencies
       id: install-python-deps
-      run: python -m pip install -e .[ci,docs]
+      run: |
+        python -m pip install -e .[ci]
+        python -m pip install -r requirements-docs.txt
 
     - name: build package
       id: build

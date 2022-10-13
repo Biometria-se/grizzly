@@ -193,7 +193,7 @@ jobs:
 
     - name: install python dependencies
       id: pip
-      run: python -m pip install -e .[docs]
+      run: python -m pip install -r requirements-docs.txt
 
     - name: exists
       run: test -e ${{ matrix.script }}
@@ -227,7 +227,7 @@ jobs:
 
     - name: install python dependencies
       id: pip
-      run: python -m pip install -e .[docs]
+      run: python -m pip install -r requirements-docs.txt
 
     - name: build
       working-directory: ./docs/
