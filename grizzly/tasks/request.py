@@ -63,9 +63,8 @@ from jinja2.environment import Template
 from grizzly_extras.transformer import TransformerContentType
 from grizzly_extras.arguments import parse_arguments, split_value, unquote
 
-from ..types import RequestMethod
-# need to rename to avoid unused-import collision due to RequestTask.template ?!
-from . import GrizzlyTask, template  # pylint: disable=unused-import
+from ..types import GrizzlyResponse, RequestMethod
+from . import GrizzlyMetaRequestTask, template  # pylint: disable=unused-import
 
 if TYPE_CHECKING:  # pragma: no cover
     from ..context import GrizzlyContextScenario
@@ -90,7 +89,7 @@ class RequestTaskHandlers:
 
 class RequestTaskResponse:
     status_codes: List[int]
-    content_type: TransformerContentType
+    content_type: TransformerContentType  # @TODO remove this one!
     handlers: RequestTaskHandlers
 
     def __init__(self) -> None:
@@ -109,7 +108,7 @@ class RequestTaskResponse:
 
 
 @template('name', 'endpoint', 'source', 'arguments', 'metadata')
-class RequestTask(GrizzlyTask):
+class RequestTask(GrizzlyMetaRequestTask):
     method: RequestMethod
     name: str
     endpoint: str
@@ -151,6 +150,7 @@ class RequestTask(GrizzlyTask):
             self.endpoint = value
 
         self.response.content_type = content_type
+        self.content_type = content_type
 
     @property
     def source(self) -> Optional[str]:
@@ -182,3 +182,6 @@ class RequestTask(GrizzlyTask):
             return parent.user.request(self)
 
         return task
+
+    def execute(self, parent: 'GrizzlyScenario') -> GrizzlyResponse:
+        return parent.user.request(self)

@@ -7,17 +7,19 @@ payload returned for the request.
 
 * {@pylink grizzly.steps.scenario.tasks.step_task_request_with_name_endpoint_until}
 
+* {@pylink grizzly.steps.scenario.tasks.step_task_client_get_endpoint_until}
+
 ## Statistics
 
 Executions of this task will be visible in `locust` request statistics with request type `UNTL` indicating how
 long time it took to finish the task. `name` will be suffixed with ` r=<retries>, w=<wait>, em=<expected_matches>`.
 
 The request task that is being repeated until `condition` is true will have it's own entry in the statistics as an
-ordinary {@pylink grizzly.tasks.request} task.
+ordinary {@pylink grizzly.tasks.request} or {@pylink grizzly.tasks.clients} task.
 
 ## Arguments
 
-* `request` _RequestTask_ - request that is going to be repeated
+* `request` _{@pylink grizzly.tasks.request} / {@pylink grizzly.tasks.clients}_ - request that is going to be repeated
 
 * `condition` _str_ - condition expression that specifies how `request` should be repeated
 
@@ -47,8 +49,7 @@ from grizzly_extras.transformer import Transformer, TransformerContentType, Tran
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments, split_value
 
 from ..types import RequestType
-from .request import RequestTask
-from . import GrizzlyTask, template
+from . import GrizzlyTask, GrizzlyMetaRequestTask, template
 
 if TYPE_CHECKING:  # pragma: no cover
     from ..context import GrizzlyContextScenario, GrizzlyContext
@@ -57,7 +58,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 @template('condition', 'request')
 class UntilRequestTask(GrizzlyTask):
-    request: RequestTask
+    request: GrizzlyMetaRequestTask
     condition: str
 
     transform: Optional[Type[Transformer]]
@@ -67,7 +68,7 @@ class UntilRequestTask(GrizzlyTask):
     wait: float
     expected_matches: int
 
-    def __init__(self, grizzly: 'GrizzlyContext', request: RequestTask, condition: str, scenario: Optional['GrizzlyContextScenario'] = None) -> None:
+    def __init__(self, grizzly: 'GrizzlyContext', request: GrizzlyMetaRequestTask, condition: str, scenario: Optional['GrizzlyContextScenario'] = None) -> None:
         super().__init__(scenario)
 
         self.request = request
@@ -76,10 +77,10 @@ class UntilRequestTask(GrizzlyTask):
         self.wait = 1.0
         self.expected_matches = 1
 
-        if self.request.response.content_type == TransformerContentType.UNDEFINED:
+        if self.request.content_type == TransformerContentType.UNDEFINED:
             raise ValueError('content type must be specified for request')
 
-        self.transform = transformer.available.get(self.request.response.content_type, None)
+        self.transform = transformer.available.get(self.request.content_type, None)
 
         if '|' in self.condition:
             self.condition, until_arguments = split_value(self.condition)
@@ -106,16 +107,16 @@ class UntilRequestTask(GrizzlyTask):
 
     def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
         if self.transform is None:
-            raise TypeError(f'could not find a transformer for {self.request.response.content_type.name}')
+            raise TypeError(f'could not find a transformer for {self.request.content_type.name}')
 
         transform = cast(Transformer, self.transform)
 
         def task(parent: 'GrizzlyScenario') -> Any:
-            task_name = f'{self.request.scenario.identifier} {self.request.name}, w={self.wait}s, r={self.retries}, em={self.expected_matches}'
+            task_name = f'{self.scenario.identifier} {self.request.name}, w={self.wait}s, r={self.retries}, em={self.expected_matches}'
             condition_rendered = parent.render(self.condition)
 
             if not transform.validate(condition_rendered):
-                raise RuntimeError(f'{condition_rendered} is not a valid expression for {self.request.response.content_type.name}')
+                raise RuntimeError(f'{condition_rendered} is not a valid expression for {self.request.content_type.name}')
 
             parser = transform.parser(condition_rendered)
             number_of_matches = 0
@@ -132,7 +133,7 @@ class UntilRequestTask(GrizzlyTask):
                     try:
                         gsleep(self.wait)
 
-                        _, payload = parent.user.request(self.request)
+                        _, payload = self.request.execute(parent)
 
                         if payload is not None:
                             transformed = transform.transform(payload)
@@ -177,7 +178,7 @@ class UntilRequestTask(GrizzlyTask):
                     exception=exception,
                 )
 
-                if exception is not None and self.request.scenario.failure_exception is not None:
-                    raise self.request.scenario.failure_exception()
+                if exception is not None and self.scenario.failure_exception is not None:
+                    raise self.scenario.failure_exception()
 
         return task

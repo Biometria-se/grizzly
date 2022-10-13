@@ -30,14 +30,14 @@ def test_step_user_type(behave_fixture: BehaveFixture) -> None:
     with pytest.raises(AssertionError):
         step_user_type(behave, 'RestApi', '{{ host }}')
 
-    grizzly.state.variables['host'] = 'http://test.ru:1337'
+    grizzly.state.variables['host'] = 'http://example.io:1337'
     step_user_type(behave, 'RestApi', '{{ host }}')
 
-    assert grizzly.scenario.context['host'] == 'http://test.ru:1337'
+    assert grizzly.scenario.context['host'] == 'http://example.io:1337'
 
     try:
         environ['TARGET_HOST'] = 'http://host.docker.internal'
-        step_user_type(behave, 'RestApi', '$env::TARGET_HOST')
+        step_user_type(behave, 'RestApi', '$env::TARGET_HOST$')
         assert grizzly.scenario.context['host'] == 'http://host.docker.internal'
     finally:
         try:
@@ -45,9 +45,9 @@ def test_step_user_type(behave_fixture: BehaveFixture) -> None:
         except KeyError:
             pass
 
-    grizzly.state.configuration['target.host'] = 'http://conf.host.nu'
-    step_user_type(behave, 'RestApi', '$conf::target.host')
-    assert grizzly.scenario.context['host'] == 'http://conf.host.nu'
+    grizzly.state.configuration['target.host'] = 'http://conf.example.io'
+    step_user_type(behave, 'RestApi', '$conf::target.host$')
+    assert grizzly.scenario.context['host'] == 'http://conf.example.io'
 
 
 def test_step_user_type_with_weight(behave_fixture: BehaveFixture) -> None:

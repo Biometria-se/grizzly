@@ -51,6 +51,7 @@ def step_task_request_with_name_endpoint_until(context: Context, method: Request
         name (str): name of the requests in logs, can contain variables
         direction (RequestDirection): one of `to` or `from` depending on the value of `method`
         endpoint (str): URI relative to `host` in the scenario, can contain variables and in certain cases `user_class_name` specific parameters
+        condition (str): JSON or XPath expression for specific value in response payload
     """
 
     assert method.direction == RequestDirection.FROM, 'this step is only valid for request methods with direction FROM'
@@ -367,13 +368,48 @@ def step_task_client_get_endpoint(context: Context, endpoint: str, name: str, va
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
 
-    task_client = get_task_client(endpoint)
-
-    grizzly.scenario.tasks.add(task_client(
+    grizzly.scenario.tasks.add(get_task_client(endpoint)(
         RequestDirection.FROM,
         endpoint,
         name,
         variable=variable,
+    ))
+
+
+@then(u'get "{endpoint}" with name "{name}" until "{condition}"')
+def step_task_client_get_endpoint_until(context: Context, endpoint: str, name: str, condition: str) -> None:
+    """
+    Creates an instance of a {@pylink grizzly.tasks.clients} task, actual implementation of the task is determined
+    based on the URL scheme specified in `endpoint`. Gets information, repeated from another host or endpoint than the scenario
+    is load testing until the response matches `expression`.
+
+    See {@pylink grizzly.tasks.clients} task documentation for more information about client tasks.
+
+    Example:
+
+    ``` gherkin
+    Then get "https://www.example.org/example.json" with name "example-1" until "$.response[status='Success']
+    Then get "http://{{ endpoint }}" with name "example-2" until "//*[@status='Success']"
+    ```
+
+    Args:
+        endpoint (str): information about where to get information, see the specific getter task implementations for more information
+        name (str): name of the request, used in request statistics
+        condition (str): JSON or XPath expression for specific value in response payload
+    """
+    grizzly = cast(GrizzlyContext, context.grizzly)
+
+    client_request = get_task_client(endpoint)(
+        RequestDirection.FROM,
+        endpoint,
+        name,
+        scenario=grizzly.scenario,
+    )
+
+    grizzly.scenario.tasks.add(UntilRequestTask(
+        grizzly,
+        request=client_request,
+        condition=condition,
     ))
 
 
@@ -399,14 +435,11 @@ def step_task_client_put_endpoint_file_destination(context: Context, source: str
         destination (str): name of source on the destination
     """
     assert context.text is None, 'step text is not allowed for this step expression'
+    assert not is_template(source), 'source file cannot be a template'
 
     grizzly = cast(GrizzlyContext, context.grizzly)
 
-    task_client = get_task_client(endpoint)
-
-    assert not is_template(source), 'source file cannot be a template'
-
-    grizzly.scenario.tasks.add(task_client(
+    grizzly.scenario.tasks.add(get_task_client(endpoint)(
         RequestDirection.TO,
         endpoint,
         name,
@@ -436,14 +469,11 @@ def step_task_client_put_endpoint_file(context: Context, source: str, endpoint: 
         name (str): name of the request, used in request statistics
     """
     assert context.text is None, 'step text is not allowed for this step expression'
+    assert not is_template(source), 'source file cannot be a template'
 
     grizzly = cast(GrizzlyContext, context.grizzly)
 
-    task_client = get_task_client(endpoint)
-
-    assert not is_template(source), 'source file cannot be a template'
-
-    grizzly.scenario.tasks.add(task_client(
+    grizzly.scenario.tasks.add(get_task_client(endpoint)(
         RequestDirection.TO,
         endpoint,
         name,

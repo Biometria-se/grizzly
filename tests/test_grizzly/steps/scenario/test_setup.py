@@ -212,7 +212,7 @@ def test_step_setup_iterations(behave_fixture: BehaveFixture) -> None:
     try:
         environ['ITERATIONS'] = '1337'
 
-        step_setup_iterations(behave, '$env::ITERATIONS', 'iteration')
+        step_setup_iterations(behave, '$env::ITERATIONS$', 'iteration')
         assert grizzly.scenario.iterations == 1337
     finally:
         try:
@@ -221,7 +221,7 @@ def test_step_setup_iterations(behave_fixture: BehaveFixture) -> None:
             pass
 
     grizzly.state.configuration['test.iterations'] = 13
-    step_setup_iterations(behave, '$conf::test.iterations', 'iterations')
+    step_setup_iterations(behave, '$conf::test.iterations$', 'iterations')
     assert grizzly.scenario.iterations == 13
 
 

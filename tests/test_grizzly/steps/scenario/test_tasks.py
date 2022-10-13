@@ -1,4 +1,4 @@
-from typing import cast
+from typing import List, cast
 
 import pytest
 
@@ -409,6 +409,49 @@ def test_step_task_client_get_endpoint(behave_fixture: BehaveFixture) -> None:
 
     task = grizzly.scenario.tasks[-1]
     assert task.endpoint == '{{ endpoint_url }}'
+
+
+def test_step_task_client_get_endpoint_until(behave_fixture: BehaveFixture) -> None:
+    behave = behave_fixture.context
+    grizzly = cast(GrizzlyContext, behave.grizzly)
+
+    with pytest.raises(AssertionError) as ae:
+        step_task_client_get_endpoint_until(behave, 'api.example.io/api/test', 'step-name', '$.`this`[?status=true]')
+    assert str(ae.value) == 'could not find scheme in "api.example.io/api/test"'
+
+    with pytest.raises(AssertionError) as ae:
+        step_task_client_get_endpoint_until(behave, 'foo://api.example.io/api/test', 'step-name', '$.`this`[?status=true]')
+    assert str(ae.value) == 'no client task registered for foo'
+
+    with pytest.raises(ValueError) as ve:
+        step_task_client_get_endpoint_until(behave, 'https://api.example.io/api/test', 'step-name', '$.`this`[?status=true]')
+    assert str(ve.value) == 'content type must be specified for request'
+
+    with pytest.raises(ValueError) as ve:
+        step_task_client_get_endpoint_until(behave, 'https://api.example.io/api/test | content_type=json', 'step-name', '$.`this`[?success=true] | foo=bar, bar=foo')
+    assert str(ve.value) == 'unsupported arguments foo, bar'
+
+    step_task_client_get_endpoint_until(behave, 'https://api.example.io/api/test | content_type=json', 'step-name', '$.`this`[?success=true]')
+
+    assert len(grizzly.scenario.tasks) == 1
+    task = grizzly.scenario.tasks[-1]
+    assert isinstance(task, UntilRequestTask)
+    assert task.scenario is task.request.scenario
+    assert isinstance(task.request, HttpClientTask)
+    assert task.request.content_type == TransformerContentType.JSON
+    assert task.request.endpoint == 'https://api.example.io/api/test'
+
+    grizzly.state.configuration['test.host'] = 'https://api.example.com'
+
+    step_task_client_get_endpoint_until(behave, 'https://$conf::test.host$/api/test | content_type=json', 'step-name', '$.`this`[success=false]')
+
+    assert len(grizzly.scenario.tasks) == 2
+    task = grizzly.scenario.tasks[-1]
+    assert isinstance(task, UntilRequestTask)
+    assert task.scenario is task.request.scenario
+    assert isinstance(task.request, HttpClientTask)
+    assert task.request.content_type == TransformerContentType.JSON
+    assert task.request.endpoint == 'https://api.example.com/api/test'
 
 
 def test_step_task_date(behave_fixture: BehaveFixture) -> None:

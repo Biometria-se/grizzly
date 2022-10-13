@@ -20,13 +20,16 @@ from typing import TYPE_CHECKING, Any, Callable, List, Type, Set, Optional
 from os import environ
 from pathlib import Path
 
+from grizzly_extras.transformer import TransformerContentType
+
 if TYPE_CHECKING:  # pragma: no cover
     from ..scenarios import GrizzlyScenario
     from ..context import GrizzlyContextScenario
+    from ..types import GrizzlyResponse
 
 
 class GrizzlyTask(ABC):
-    __template_attributes__: List[str]
+    __template_attributes__: List[str] = []
 
     _context_root: str
 
@@ -76,10 +79,6 @@ class GrizzlyTask(ABC):
 
             return templates
 
-        # tasks with no @template decorator
-        if not hasattr(self, '__template_attributes__'):
-            return []
-
         templates: Set[str] = set()
         for attribute in self.__template_attributes__:
             value = getattr(self, attribute, None)
@@ -89,6 +88,15 @@ class GrizzlyTask(ABC):
             templates.update(_get_value_templates(value))
 
         return list(templates)
+
+
+class GrizzlyMetaRequestTask(GrizzlyTask, metaclass=ABCMeta):
+    content_type: TransformerContentType
+    name: Optional[str]
+    endpoint: str
+
+    def execute(self, parent: 'GrizzlyScenario') -> 'GrizzlyResponse':
+        raise NotImplementedError(f'{self.__class__.name} has not implemented "execute"')
 
 
 class GrizzlyTaskWrapper(GrizzlyTask, metaclass=ABCMeta):

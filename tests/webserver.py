@@ -1,5 +1,6 @@
 import csv
 import logging
+import json
 
 from typing import Dict, Any, Optional, Type, Literal, cast
 from types import TracebackType
@@ -129,6 +130,7 @@ def app_until_attribute(attribute: str) -> FlaskResponse:
     nth = int(args['nth'])
     wrong = args.get('wrong')
     right = args.get('right')
+    as_array = args.get('as_array', None)
 
     if app_request_count[x_grizzly_user] < nth - 1:
         status = wrong
@@ -137,7 +139,14 @@ def app_until_attribute(attribute: str) -> FlaskResponse:
         status = right
         app_request_count[x_grizzly_user] = 0
 
-    return jsonify({attribute: status})
+    json_result: Any = {attribute: status}
+
+    if as_array is not None:
+        json_result = [json_result]
+
+    logger.debug(f'sending {json.dumps(json_result)} to {x_grizzly_user}')
+
+    return jsonify(json_result)
 
 
 @app.errorhandler(404)
@@ -147,6 +156,7 @@ def catch_all(_: Any) -> FlaskResponse:
 
 class Webserver:
     _web_server: WSGIServer
+    _greenlet: gevent.Greenlet
 
     def __init__(self, port: int = 0) -> None:
         self._web_server = WSGIServer(
@@ -161,7 +171,7 @@ class Webserver:
         return cast(int, self._web_server.server_port)
 
     def start(self) -> None:
-        gevent.spawn(lambda: self._web_server.serve_forever())
+        self._greenlet = gevent.spawn(lambda: self._web_server.serve_forever())
         gevent.sleep(0.01)
         logger.debug(f'started webserver on port {self.port}')
 
@@ -182,3 +192,8 @@ class Webserver:
         logger.debug(f'stopped webserver on port {self.port}')
 
         return True
+
+
+if __name__ == '__main__':
+    with Webserver(port=8080) as webserver:
+        gevent.joinall([webserver._greenlet])

@@ -219,11 +219,11 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
     assert task.response.content_type == TransformerContentType.JSON
 
     with pytest.raises(AssertionError) as ae:
-        add_request_task(behave, method=RequestMethod.GET, source=None, endpoint='$conf::test.endpoint', name='foo-bar')
+        add_request_task(behave, method=RequestMethod.GET, source=None, endpoint='$conf::test.endpoint$', name='foo-bar')
     assert 'configuration variable "test.endpoint" is not set' in str(ae)
 
     grizzly.state.configuration['test.endpoint'] = '/foo/bar'
-    add_request_task(behave, method=RequestMethod.GET, source=None, endpoint='$conf::test.endpoint', name='foo-bar')
+    add_request_task(behave, method=RequestMethod.GET, source=None, endpoint='$conf::test.endpoint$', name='foo-bar')
 
     task = tasks[-1]
     assert task.endpoint == '/foo/bar'
