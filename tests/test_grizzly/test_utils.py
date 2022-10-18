@@ -1,7 +1,15 @@
+import logging
+
 from typing import Optional, Type, cast
 from types import FunctionType
+from datetime import datetime, timedelta, timezone
+from os import utime
 
 import pytest
+
+from _pytest.tmpdir import TempPathFactory
+from _pytest.logging import LogCaptureFixture
+from pytest_mock import MockerFixture
 
 from locust import TaskSet
 from behave.runner import Context
@@ -16,6 +24,7 @@ from grizzly.utils import (
     fail_direct,
     in_correct_section,
     parse_timespan,
+    check_mq_client_logs,
 )
 from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
@@ -464,3 +473,184 @@ def test_parse_timespan() -> None:
         'minutes': 5,
         'seconds': -6,
     }
+
+
+def test_check_mq_client_logs(behave_fixture: BehaveFixture, tmp_path_factory: TempPathFactory, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
+    context = behave_fixture.context
+    test_context = tmp_path_factory.mktemp('test_context')
+
+    amq_error_dir = test_context / 'IBM' / 'MQ' / 'data' / 'errors'
+    amq_error_dir.mkdir(parents=True, exist_ok=True)
+
+    test_logger = logging.getLogger('test_grizzly_print_stats')
+
+    mocker.patch('grizzly.utils.Path.expanduser', return_value=amq_error_dir)
+    mocker.patch('grizzly.locust.stats_logger', test_logger)
+
+    # context.started not set
+    with caplog.at_level(logging.INFO):
+        check_mq_client_logs(context)
+
+    assert len(caplog.messages) == 0
+
+    # no error files
+    context.started = datetime.now().astimezone()
+    with caplog.at_level(logging.INFO):
+        check_mq_client_logs(context)
+
+    assert len(caplog.messages) == 0
+
+    # one AMQERR*.LOG file, previous run
+    amqerr_log_file_1 = amq_error_dir / 'AMQERR01.LOG'
+    amqerr_log_file_1.write_text('''10/13/22 06:13:07 - Process(6437.52) User(mqm) Program(amqrmppa)
+                    Host(mq.example.io) Installation(Installation1)
+                    VRMF(9.2.1.0) QMgr(QM1)
+                    Time(2022-10-13T06:13:07.215Z)
+                    CommentInsert1(CLIENT.CONN)
+                    CommentInsert2(1111)
+                    CommentInsert3(1.2.3.4)
+
+AMQ9999E: Channel 'CLIENT.CONN' to host '1.2.3.4' ended abnormally.
+
+EXPLANATION:
+----- amqccisa.c : 10957 ------------------------------------------------------
+''')
+
+    with caplog.at_level(logging.INFO):
+        check_mq_client_logs(context)
+
+    assert len(caplog.messages) == 0
+
+    entry_date_1 = (datetime.now() + timedelta(hours=1)).astimezone(tz=timezone.utc)
+
+    # one AMQERR*.LOG file, one entry
+    with amqerr_log_file_1.open('a') as fd:
+        fd.write(f'''{entry_date_1.strftime('%m/%d/%y %H:%M:%S')} - Process(6437.52) User(mqm) Program(amqrmppa)
+                    Host(mq.example.io) Installation(Installation1)
+                    VRMF(9.2.1.0) QMgr(QM1)
+                    Time({entry_date_1.strftime('%Y-%m-%dT%H:%M:%S.000Z')})
+                    CommentInsert1(CLIENT.CONN)
+                    CommentInsert2(1111)
+                    CommentInsert3(1.2.3.4)
+
+AMQ9999E: Channel 'CLIENT.CONN' to host '1.2.3.4' ended abnormally.
+
+EXPLANATION:
+----- amqccisa.c : 10957 ------------------------------------------------------
+''')
+
+    with caplog.at_level(logging.INFO):
+        check_mq_client_logs(context)
+
+    assert len(caplog.messages) == 6
+
+    assert caplog.messages[0] == 'AMQ error log entries:'
+    assert caplog.messages[1].strip() == 'Timestamp (UTC)      Message'
+    assert caplog.messages[3].strip() == f"{entry_date_1.strftime('%Y-%m-%d %H:%M:%S')}  AMQ9999E: Channel 'CLIENT.CONN' to host '1.2.3.4' ended abnormally."
+    assert (
+        caplog.messages[2]
+        == caplog.messages[4]
+        == (
+            '--------------------|-----------------------------------------------------------------'
+            '----------------------------------------------------------------------------'
+        )
+    )
+    assert caplog.messages[5] == ''
+
+    caplog.clear()
+
+    # two AMQERR files, one with no data, one FDC file, old
+    old_date = entry_date_1 - timedelta(hours=2)
+
+    amqerr_log_file_2 = amq_error_dir / 'AMQERR99.LOG'
+    amqerr_log_file_2.touch()
+
+    amqerr_fdc_file_1 = amq_error_dir / 'AMQ6150.0.FDC'
+    amqerr_fdc_file_1.touch()
+    utime(amqerr_fdc_file_1, (old_date.timestamp(), old_date.timestamp()))
+
+    with caplog.at_level(logging.INFO):
+        check_mq_client_logs(context)
+
+    assert len(caplog.messages) == 6
+
+    assert caplog.messages[0] == 'AMQ error log entries:'
+    assert caplog.messages[1].strip() == 'Timestamp (UTC)      Message'
+    assert caplog.messages[3].strip() == f"{entry_date_1.strftime('%Y-%m-%d %H:%M:%S')}  AMQ9999E: Channel 'CLIENT.CONN' to host '1.2.3.4' ended abnormally."
+    assert (
+        caplog.messages[2]
+        == caplog.messages[4]
+        == (
+            '--------------------|-----------------------------------------------------------------'
+            '----------------------------------------------------------------------------'
+        )
+    )
+    assert caplog.messages[5] == ''
+
+    caplog.clear()
+
+    # two AMQERR files, both with valid data. three FDC files, one old
+    entry_date_2 = entry_date_1 + timedelta(minutes=23)
+    amqerr_log_file_2.write_text(f'''{entry_date_2.strftime('%m/%d/%y %H:%M:%S')} - Process(6437.52) User(mqm) Program(amqrmppa)
+                    Host(mq.example.io) Installation(Installation1)
+                    VRMF(9.2.1.0) QMgr(QM1)
+                    Time({entry_date_2.strftime('%Y-%m-%dT%H:%M:%S.000Z')})
+                    CommentInsert1(CLIENT.CONN)
+                    CommentInsert2(1111)
+                    CommentInsert3(1.2.3.4)
+
+AMQ1234E: dude, what did you do?!
+
+EXPLANATION:
+----- amqccisa.c : 10957 ------------------------------------------------------
+''')
+    amqerr_fdc_file_2 = amq_error_dir / 'AMQ1234.1.FDC'
+    amqerr_fdc_file_2.touch()
+    utime(amqerr_fdc_file_2, (entry_date_2.timestamp(), entry_date_2.timestamp(),))
+
+    amqerr_fdc_file_3 = amq_error_dir / 'AMQ4321.9.FDC'
+    amqerr_fdc_file_3.touch()
+    entry_date_3 = entry_date_2 + timedelta(minutes=73)
+    utime(amqerr_fdc_file_3, (entry_date_3.timestamp(), entry_date_3.timestamp(),))
+
+    with caplog.at_level(logging.INFO):
+        check_mq_client_logs(context)
+
+    print('\n'.join(caplog.messages))
+
+    assert len(caplog.messages) == 14
+
+    assert caplog.messages.index('AMQ error log entries:') == 0
+    assert caplog.messages.index('AMQ FDC files:') == 7
+
+    amqerr_log_entries = caplog.messages[0:6]
+    print(amqerr_log_entries)
+    assert len(amqerr_log_entries) == 6
+
+    assert amqerr_log_entries[1].strip() == 'Timestamp (UTC)      Message'
+    assert (
+        amqerr_log_entries[2]
+        == amqerr_log_entries[5]
+        == (
+            '--------------------|-----------------------------------------------------------------'
+            '----------------------------------------------------------------------------'
+        )
+    )
+    assert amqerr_log_entries[3].strip() == f"{entry_date_1.strftime('%Y-%m-%d %H:%M:%S')}  AMQ9999E: Channel 'CLIENT.CONN' to host '1.2.3.4' ended abnormally."
+    assert amqerr_log_entries[4].strip() == f'{entry_date_2.strftime("%Y-%m-%d %H:%M:%S")}  AMQ1234E: dude, what did you do?!'
+
+    amqerr_fdc_files = caplog.messages[7:-1]
+    assert len(amqerr_fdc_files) == 6
+
+    assert amqerr_fdc_files[1].strip() == 'Timestamp (UTC)      File'
+    assert (
+        amqerr_fdc_files[2]
+        == amqerr_fdc_files[5]
+        == (
+            '--------------------|-----------------------------------------------------------------'
+            '----------------------------------------------------------------------------'
+        )
+    )
+
+    assert amqerr_fdc_files[3].strip() == f'{entry_date_2.strftime("%Y-%m-%d %H:%M:%S")}  {amqerr_fdc_file_2}'
+    assert amqerr_fdc_files[4].strip() == f'{entry_date_3.strftime("%Y-%m-%d %H:%M:%S")}  {amqerr_fdc_file_3}'

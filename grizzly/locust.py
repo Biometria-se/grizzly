@@ -43,7 +43,9 @@ from .users.base import GrizzlyUser
 
 from .utils import create_scenario_class_type, create_user_class_type
 
-__all__: List[str] = []
+__all__: List[str] = [
+    'stats_logger',
+]
 
 
 unhandled_greenlet_exception = False

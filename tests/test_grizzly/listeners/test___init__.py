@@ -1,6 +1,6 @@
 import logging
 
-from typing import Any, Dict, Tuple, Optional, cast
+from typing import Any, Dict, Tuple, Optional, Callable, cast
 from os import environ
 from random import randint
 
@@ -9,7 +9,7 @@ import pytest
 from _pytest.logging import LogCaptureFixture
 from pytest_mock import MockerFixture
 from locust.env import Environment
-from locust.runners import LocalRunner, MasterRunner, WorkerRunner, CustomMessageListener
+from locust.runners import LocalRunner, MasterRunner, WorkerRunner
 from locust.stats import RequestStats, StatsError
 from behave.model import Scenario, Status
 
@@ -122,7 +122,7 @@ def test_init_master(listener_test_mocker: None, caplog: LogCaptureFixture, griz
 
         init_function(runner)
 
-        assert grizzly.state.locust.custom_messages == cast(Dict[str, CustomMessageListener], {
+        assert grizzly.state.locust.custom_messages == cast(Dict[str, Callable], {
             'test_message': callback,
         })
     finally:
@@ -147,7 +147,7 @@ def test_init_worker(listener_test_mocker: None, grizzly_fixture: GrizzlyFixture
         init_function(runner)
 
         assert environ.get('TESTDATA_PRODUCER_ADDRESS', None) == 'tcp://localhost:5555'
-        assert runner.custom_messages == cast(Dict[str, CustomMessageListener], {
+        assert runner.custom_messages == cast(Dict[str, Callable], {
             'grizzly_worker_quit': grizzly_worker_quit,
         })
 
@@ -162,7 +162,7 @@ def test_init_worker(listener_test_mocker: None, grizzly_fixture: GrizzlyFixture
 
         init_function(runner)
 
-        assert grizzly.state.locust.custom_messages == cast(Dict[str, CustomMessageListener], {
+        assert grizzly.state.locust.custom_messages == cast(Dict[str, Callable], {
             'grizzly_worker_quit': grizzly_worker_quit,
             'test_message_ack': callback_ack,
         })
@@ -209,7 +209,7 @@ def test_init_local(listener_test_mocker: None, grizzly_fixture: GrizzlyFixture)
 
         init_function(runner)
 
-        assert grizzly.state.locust.custom_messages == cast(Dict[str, CustomMessageListener], {
+        assert grizzly.state.locust.custom_messages == cast(Dict[str, Callable], {
             'test_message': callback,
             'test_message_ack': callback_ack,
         })

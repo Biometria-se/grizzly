@@ -234,8 +234,6 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
 
         action = request['action']
 
-        self.logger.info(f'executing {action} on {queue_name}')  # tmp
-
         if action != 'GET' and expression is not None:
             raise AsyncMessageError(f'argument expression is not allowed for action {action}')
 

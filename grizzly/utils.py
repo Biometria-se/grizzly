@@ -8,9 +8,13 @@ from functools import wraps
 from contextlib import contextmanager
 from collections.abc import Mapping
 from copy import deepcopy
+from pathlib import Path
+from datetime import datetime, timezone
 
+from dateutil.parser import parse as dateparser, ParserError
 from behave.runner import Context
 from behave.model import Scenario, Status
+from locust.stats import STATS_NAME_WIDTH
 
 from .types import WrappedFunc, T
 
@@ -192,3 +196,92 @@ def parse_timespan(timespan: str) -> Dict[str, int]:
 
 def fastdeepcopy(input: Dict[str, Any]) -> Dict[str, Any]:
     return dict(zip(input.keys(), map(dict.copy, input.values())))
+
+
+def check_mq_client_logs(context: Context) -> None:
+    """
+    ```bash
+    $ pwd && ls -1
+    /home/vscode/IBM/MQ/data/errors
+    AMQ6150.0.FDC
+    AMQERR01.LOG
+    ```
+    """
+    def print_table(subject: str, header: str, data: List[Tuple[datetime, str]]) -> None:
+        if len(data) < 1:
+            return
+
+        from .locust import stats_logger
+
+        data = sorted(data, key=lambda k: k[0])
+
+        stats_logger.info(f'{subject}:')
+        stats_logger.info('%-20s %-100s' % ('Timestamp (UTC)', header))
+        separator = f'{"-" * 20}|{"-" * ((80 + STATS_NAME_WIDTH) - 19)}'
+        stats_logger.info(separator)
+
+        for timestamp, info in data:
+            stats_logger.info('%-20s %-100s' % (timestamp.strftime('%Y-%m-%d %H:%M:%S'), info,))
+        stats_logger.info(separator)
+        stats_logger.info('')
+
+    if not hasattr(context, 'started'):
+        return
+
+    started = cast(datetime, context.started).astimezone(tz=timezone.utc)
+
+    amqerr_log_entries: List[Tuple[datetime, str]] = []
+    amqerr_fdc_files: List[Tuple[datetime, str]] = []
+
+    log_directory = Path('~/IBM/MQ/data/errors').expanduser()
+
+    # check errors files
+    if not log_directory.exists():
+        return
+
+    for amqerr_log_file in log_directory.glob('AMQERR*.LOG'):
+        with open(amqerr_log_file, 'r') as fd:
+            line: Optional[str] = None
+
+            for line in fd:
+                while line and not re.match(r'^\s+Time\(', line):
+                    try:
+                        line = next(fd)
+                    except StopIteration:
+                        line = None
+                        break
+
+                if not line:
+                    break
+
+                try:
+                    time_start = line.index('Time(') + 5
+                    time_end = line.index(')')
+                    time_str = line[time_start:time_end]
+                    time_date = dateparser(time_str)
+
+                    if time_date < started:
+                        continue
+                except ParserError:
+                    logger.error(f'{time_str} is not a valid date', exc_info=context.config.verbose)
+                    continue
+                except ValueError as ve:
+                    logger.error(f'{time_str}: {str(ve)}', exc_info=context.config.verbose)
+                    continue
+
+                while not line.startswith('AMQ'):
+                    line = next(fd)
+
+                amqerr_log_entries.append((time_date, line.strip(),))
+
+    for amqerr_fdc_file in log_directory.glob('AMQ*.FDC'):
+        modification_date = datetime.fromtimestamp(amqerr_fdc_file.stat().st_mtime).astimezone(tz=timezone.utc)
+
+        if modification_date < started:
+            continue
+
+        amqerr_fdc_files.append((modification_date, str(amqerr_fdc_file),))
+
+    # present entries created during run
+    print_table('AMQ error log entries', 'Message', amqerr_log_entries)
+    print_table('AMQ FDC files', 'File', amqerr_fdc_files)
