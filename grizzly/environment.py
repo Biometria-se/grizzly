@@ -86,6 +86,13 @@ def after_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], **
         if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
             check_mq_client_logs(context)
 
+    # show start and stop date time
+    stopped = datetime.now().astimezone()
+
+    print('')
+    print(f'Started: {context.started}')
+    print(f'Stopped: {stopped}')
+
     # the features duration is the sum of all scenarios duration, which is the sum of all steps duration
     try:
         duration = int(time() - context.start)

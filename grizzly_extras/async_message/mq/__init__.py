@@ -55,10 +55,8 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
             queue = pymqi.Queue(self.qmgr, endpoint)
 
         try:
-            self.logger.info(f'created queue context {endpoint}')  # tmp
             yield queue
         finally:
-            self.logger.info(f'closing {endpoint}')  # tmp
             queue.close()
 
     @register(handlers, 'CONN')
@@ -112,7 +110,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
         self.message_wait = context.get('message_wait', None) or 0
         self.header_type = context.get('header_type', None)
 
-        self.logger.info(f'connected to {connection}')  # tmp
+        self.logger.info(f'connected to {connection}')
 
         return {
             'message': 'connected',
@@ -261,7 +259,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
             with self.queue_context(endpoint=queue_name) as queue:
                 do_retry: bool = False
 
-                self.logger.info(f'executing {action} on {queue_name}')  # tmp
+                self.logger.info(f'executing {action} on {queue_name}')
                 start = time()
                 if action == 'PUT':
                     payload = request.get('payload', None)
@@ -307,7 +305,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                     sleep(retries * retries * 0.5)
                 else:
                     delta = (time() - start) * 1000
-                    self.logger.info(f'{action} on {queue_name} took {delta} ms, {response_length=}, {retries=}')  # tmp
+                    self.logger.info(f'{action} on {queue_name} took {delta} ms, {response_length=}, {retries=}')
                     return {
                         'payload': payload,
                         'metadata': md.get(),

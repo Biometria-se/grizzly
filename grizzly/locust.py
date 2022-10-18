@@ -6,7 +6,6 @@ from typing import NoReturn, Optional, Callable, List, Tuple, Set, Dict, Type, c
 from os import environ
 from signal import SIGTERM
 from socket import error as SocketError
-from datetime import datetime
 from math import ceil
 from operator import itemgetter
 
@@ -491,13 +490,6 @@ def run(context: Context) -> int:
                 grizzly_print_percentile_stats(runner.stats)
                 print_error_report(runner.stats)
                 print_scenario_summary(grizzly)
-
-                # show start and stop date time
-                stopped = datetime.now()
-
-                print('')
-                print(f'Started: {context.started}')
-                print(f'Stopped: {stopped}')
 
             def spawning_complete() -> bool:
                 if isinstance(runner, MasterRunner):
