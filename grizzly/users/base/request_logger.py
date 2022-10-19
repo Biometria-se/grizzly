@@ -4,12 +4,13 @@ import unicodedata
 import re
 import traceback
 
-from typing import Dict, Any, Tuple, Optional, cast
+from typing import Dict, Any, Tuple, Optional, Union, cast
 from datetime import datetime, timedelta
 from urllib.parse import urlparse, urlunparse
 
 from locust.env import Environment
 from jinja2 import Template
+from requests import Response as RequestResponse
 
 from ...tasks import RequestTask
 from ...types import GrizzlyResponse, HandlerContextType, RequestDirection, GrizzlyResponseContextManager
@@ -61,12 +62,14 @@ class RequestLogger(ResponseEvent, GrizzlyUser):
 
         self._context = merge_dicts(super().context(), RequestLogger._context)
 
-    def _normalize(self, value: str) -> str:
+    @classmethod
+    def normalize(cls, value: str) -> str:
         value = unicodedata.normalize('NFKD', str(value)).encode('ascii', 'ignore').decode('ascii')
         value = re.sub(r'[^\w\s-]', '', value)
 
         return re.sub(r'[-\s]+', '-', value).strip('-_')
 
+    @classmethod
     def _remove_secrets_attribute(self, contents: Optional[Any]) -> Optional[Any]:
         if not isinstance(contents, dict):
             return contents
@@ -77,7 +80,8 @@ class RequestLogger(ResponseEvent, GrizzlyUser):
 
         return contents
 
-    def _get_http_user_data(self, response: GrizzlyResponseContextManager, user: GrizzlyUser) -> Dict[str, Dict[str, Any]]:
+    @classmethod
+    def get_http_user_data(cls, response: Union[GrizzlyResponseContextManager, RequestResponse]) -> Dict[str, Dict[str, Any]]:
         request_headers: Optional[Dict[str, Any]] = None
         request_body: Optional[str] = None
 
@@ -87,7 +91,7 @@ class RequestLogger(ResponseEvent, GrizzlyUser):
         if response.text is not None:
             try:
                 response_body = json.dumps(
-                    self._remove_secrets_attribute(
+                    cls._remove_secrets_attribute(
                         json.loads(response.text),
                     ),
                     indent=2,
@@ -114,7 +118,7 @@ class RequestLogger(ResponseEvent, GrizzlyUser):
             if request_body is not None:
                 try:
                     request_body = json.dumps(
-                        self._remove_secrets_attribute(
+                        cls._remove_secrets_attribute(
                             json.loads(request_body)
                         ),
                         indent=2,
@@ -123,8 +127,9 @@ class RequestLogger(ResponseEvent, GrizzlyUser):
                     request_body = str(request_body)
 
         response_time: Optional[str]
-        if hasattr(response, 'request_meta') and response.request_meta is not None:
-            response_time = response.request_meta.get('response_time', None)
+        if hasattr(response, 'request_meta'):
+            request_meta = getattr(response, 'request_meta', {})
+            response_time = request_meta.get('response_time', None)
         else:
             response_time = None
 
@@ -187,7 +192,7 @@ class RequestLogger(ResponseEvent, GrizzlyUser):
         }
 
         if isinstance(context, getattr(GrizzlyResponseContextManager, '__args__')):
-            variables.update(self._get_http_user_data(context, user))
+            variables.update(self.get_http_user_data(context))
         else:
             parsed = urlparse(user.host or '')
             sep = ''
@@ -255,7 +260,7 @@ class RequestLogger(ResponseEvent, GrizzlyUser):
             if variables[v]['time'] is None:
                 variables[v]['time'] = f'{log_date}*'
 
-        name = self._normalize(name)
+        name = self.normalize(name)
 
         log_name = f'{name}.{log_date.strftime("%Y%m%dT%H%M%S%f")}.log'
         contents = Template(LOG_FILE_TEMPLATE).render(**variables)

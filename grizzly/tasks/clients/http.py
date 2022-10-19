@@ -17,12 +17,16 @@ Only supports `RequestDirection.FROM`.
 * `name` _str_ - name used in `locust` statistics
 '''
 from typing import Optional, Dict, Any
+from datetime import datetime
+from json import dump as jsondump
+from os import path, environ
 
 from grizzly_extras.arguments import split_value, parse_arguments
 
 from . import client, ClientTask
 from ...scenarios import GrizzlyScenario
 from ...types import GrizzlyResponse, RequestDirection, bool_type
+from ...users.base import RequestLogger
 from ...context import GrizzlyContextScenario
 
 import requests
@@ -67,6 +71,8 @@ class HttpClientTask(ClientTask):
         if self._scheme == 'https':
             self.arguments = {'verify': verify}
 
+        self.log_dir = path.join(environ.get('GRIZZLY_CONTEXT_ROOT', '.'), 'logs')
+
     def get(self, parent: GrizzlyScenario) -> GrizzlyResponse:
         with self.action(parent) as meta:
             url = parent.render(self.endpoint)
@@ -76,6 +82,15 @@ class HttpClientTask(ClientTask):
             if self.variable is not None:
                 parent.user._context['variables'][self.variable] = value
             meta['response_length'] = len(value)
+
+            if response.status_code != 200 or self.scenario.context.get('log_all_requests', False):
+                request_log = RequestLogger.get_http_user_data(response)
+                name = RequestLogger.normalize(self.name or 'UNKNOWN')
+                log_date = datetime.now()
+                log_name = f'{name}.{log_date.strftime("%Y%m%dT%H%M%S%f")}.log'
+
+                with open(path.join(self.log_dir, log_name), 'w') as fd:
+                    jsondump(request_log, fd, indent=2)
 
             return dict(response.headers), value
 
