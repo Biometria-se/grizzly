@@ -141,8 +141,16 @@ class BlobStorageClientTask(ClientTask):
 
             source = parent.render(source_file.read_text())
 
+            meta.update({'request': {
+                'url': f'{destination}@{self.container}',
+                'payload': source,
+                'metadata': None,
+            }})
+
             with self.service_client.get_blob_client(container=self.container, blob=destination) as blob_client:
                 blob_client.upload_blob(source, content_settings=content_settings)
                 meta['response_length'] = len(source)
+
+            meta.update({'response': {}})
 
         return None, None
