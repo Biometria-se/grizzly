@@ -160,7 +160,7 @@ jobs:
     - name: create script matrix
       id: create-script-matrix
       run: |
-        echo "::set-output name=matrix::$(ls -1 script/docs-* | awk 'BEGIN {printf "["} {printf "\""$0"\", "} END {print "]"}' | sed -r 's|", \]$|"\]|')"
+        echo "matrix=$(ls -1 script/docs-* | awk 'BEGIN {printf "["} {printf "\""$0"\", "} END {print "]"}' | sed -r 's|", \]$|"\]|')" >> $GITHUB_OUTPUT
 
     - name: validate script matrix
       run: |
