@@ -60,6 +60,7 @@ class TestHttpClientTask:
 
         assert scenario.user._context['variables'].get('test', None) is None
 
+        print('1. check')
         response.status_code = 400
 
         task(scenario)
@@ -95,6 +96,8 @@ class TestHttpClientTask:
         scenario.user._context['variables']['test'] = None
         response.status_code = 200
 
+        print('\n2. check')
+
         task(scenario)
 
         assert scenario.user._context['variables'].get('test', '') is None  # not set
@@ -116,11 +119,13 @@ class TestHttpClientTask:
 
         scenario.user._scenario.failure_exception = StopUser
 
+        print('\n3. check')
         with pytest.raises(StopUser):
             task(scenario)
 
         scenario.user._scenario.failure_exception = RestartScenario
 
+        print('\n4. check')
         with pytest.raises(RestartScenario):
             task(scenario)
 
@@ -148,6 +153,7 @@ class TestHttpClientTask:
         assert task_factory.arguments == {}
         assert task_factory.content_type == TransformerContentType.UNDEFINED
 
+        print('\n5. check')
         task(scenario)
 
         assert scenario.user._context['variables'].get('test', '') is None  # not set
@@ -174,6 +180,7 @@ class TestHttpClientTask:
         assert task_factory.content_type == TransformerContentType.UNDEFINED
         task = task_factory()
 
+        print('\n6. check')
         task(scenario)
 
         assert requests_get_spy.call_count == 6
@@ -190,6 +197,7 @@ class TestHttpClientTask:
         assert task_factory.content_type == TransformerContentType.JSON
         assert len(list(task_factory.log_dir.rglob('**/*'))) == 5
 
+        print('\n7. check')
         task(scenario)
 
         assert requests_get_spy.call_count == 7
@@ -208,6 +216,7 @@ class TestHttpClientTask:
 
         scenario.user._scenario.context['log_all_requests'] = True
 
+        print('\n8. check')
         task(scenario)
 
         assert requests_get_spy.call_count == 8
