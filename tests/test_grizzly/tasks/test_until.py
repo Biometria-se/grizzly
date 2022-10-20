@@ -1,4 +1,4 @@
-from typing import Tuple, List
+from typing import Tuple, List, Any, Dict, Type
 from json import dumps as jsondumps
 
 import pytest
@@ -52,13 +52,22 @@ class TestUntilRequestTask:
             UntilRequestTask(grizzly, request, '$.`this`[?status="ready"] | wait=0.1, retries=0')
         assert 'retries argument cannot be less than 1' in str(ve)
 
-    @pytest.mark.parametrize('meta_request_task', [
-        RequestTask(RequestMethod.GET, name='test-request', endpoint='/api/test | content_type=json'),
-        HttpClientTask(RequestDirection.FROM, 'https://example.io/test | content_type=json', 'test-request'),
+    @pytest.mark.parametrize('meta_request_task_type, meta_args, meta_kwargs', [
+        (RequestTask, (RequestMethod.GET,), {'name': 'test-request', 'endpoint': '/api/test | content_type=json'}),
+        (HttpClientTask, (RequestDirection.FROM, 'https://example.io/test | content_type=json', 'test-request',), {}),
     ])
-    def test___call__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, meta_request_task: GrizzlyMetaRequestTask) -> None:
+    def test___call__(
+        self,
+        grizzly_fixture: GrizzlyFixture,
+        mocker: MockerFixture,
+        meta_request_task_type: Type[GrizzlyMetaRequestTask],
+        meta_args: Tuple[Any, ...],
+        meta_kwargs: Dict[str, Any],
+    ) -> None:
         _, _, scenario = grizzly_fixture()
         assert scenario is not None
+
+        meta_request_task = meta_request_task_type(*meta_args, **meta_kwargs)
 
         meta_request_task.scenario = grizzly_fixture.request_task.request.scenario
 

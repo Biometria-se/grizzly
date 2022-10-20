@@ -16,12 +16,17 @@ correct `grizzly.tasks.client` implementation is used. The additional scheme wil
 performed.
 '''
 import logging
+import traceback
 
 from abc import abstractmethod
 from typing import Dict, Generator, Type, List, Any, Optional, Callable, cast
 from contextlib import contextmanager
 from time import perf_counter as time
 from urllib.parse import urlparse, unquote
+from pathlib import Path
+from os import environ
+from json import dumps as jsondumps
+from datetime import datetime
 
 from grizzly_extras.transformer import TransformerContentType
 from grizzly_extras.arguments import split_value, parse_arguments
@@ -30,6 +35,7 @@ from ...context import GrizzlyContext, GrizzlyContextScenario
 from ...scenarios import GrizzlyScenario
 from ...types import RequestType, RequestDirection, GrizzlyResponse
 from ...testdata.utils import resolve_variable
+from ...users.base import RequestLogger
 from .. import GrizzlyMetaRequestTask, template
 
 
@@ -51,6 +57,8 @@ class ClientTask(GrizzlyMetaRequestTask):
     variable: Optional[str]
     source: Optional[str]
     destination: Optional[str]
+
+    log_dir: Path
 
     def __init__(
         self,
@@ -115,6 +123,11 @@ class ClientTask(GrizzlyMetaRequestTask):
 
         self._short_name = self.__class__.__name__.replace('ClientTask', '')
 
+        context_root = environ.get('GRIZZLY_CONTEXT_ROOT', None)
+        assert context_root is not None, 'environment variable GRIZZLY_CONTEXT_ROOT is not set!'
+        self.log_dir = Path(context_root) / 'logs'
+        self.log_dir.mkdir(parents=True, exist_ok=True)
+
     def __call__(self) -> Callable[[GrizzlyScenario], GrizzlyResponse]:
         if self.direction == RequestDirection.FROM:
             return self.get
@@ -164,6 +177,28 @@ class ClientTask(GrizzlyMetaRequestTask):
                     context=parent.user._context,
                     exception=exception,
                 )
+
+            if exception is not None or parent.user._scenario.context.get('log_all_requests', False) or meta.get('response', {}).get('status', 200) != 200:
+                log_name = RequestLogger.normalize(name)
+                log_date = datetime.now()
+                log_file = self.log_dir / f'{log_name}.{log_date.strftime("%Y%m%dT%H%M%S%f")}.log'
+
+                meta.get('request', {}).update({'time': response_time})
+
+                request_log: Dict[str, Any] = {
+                    'stacktrace': None,
+                    'response': meta.get('response', None),
+                    'request': meta.get('request', None),
+                }
+
+                if exception is not None:
+                    request_log.update({'stacktrace': traceback.format_exception(
+                        type(exception),
+                        value=exception,
+                        tb=exception.__traceback__,
+                    )})
+
+                log_file.write_text(jsondumps(request_log, indent=2))
 
         if exception is not None and parent.user._scenario.failure_exception is not None:
             raise parent.user._scenario.failure_exception()

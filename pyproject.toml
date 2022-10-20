@@ -147,7 +147,7 @@ generated-members = ["REQ", "LINGER", "REP", "ROUTER", "NOBLOCK", "IDENTITY"]
 [tool.flake8]
 max-line-length = 180
 ignore = ["E722", "W503", "E402", "F405", "F403"]
-exclude = [".git", "__pycache__", "docs", "build", "dist"]
+exclude = [".git", "__pycache__", "docs", "build", "dist", ".pytest_tmp"]
 
 [tool.mypy]
 # https://github.com/python/mypy/issues/5870
@@ -258,8 +258,6 @@ addopts = [
     "--no-cov-on-fail"
 ]
 timeout = 10
-#filterwarnings = [
-#    "ignore:Trying to detect encoding from a tiny portion of.*:UserWarning",
-#    "ignore:currentThread\(\) is deprecated.*:DeprecationWarning",
-#    "ignore:setDaemon\(\) is deprecated.*:DeprecationWarning"
-#]
+filterwarnings = [
+    "ignore:setDaemon\\(\\) is deprecated.*:DeprecationWarning"
+]

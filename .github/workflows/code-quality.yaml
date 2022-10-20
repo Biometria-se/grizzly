@@ -249,6 +249,7 @@ jobs:
     if: always()
     needs:
     - linting
+    - test-and-coverage
     - test-e2e
     - documentation-build
 

@@ -71,11 +71,24 @@ class HttpClientTask(ClientTask):
         with self.action(parent) as meta:
             url = parent.render(self.endpoint)
 
+            meta.update({'request': {
+                'url': url,
+                'metadata': self.headers,
+                'payload': None,
+            }})
+
             response = requests.get(url, headers=self.headers, **self.arguments)
             value = response.text
             if self.variable is not None:
                 parent.user._context['variables'][self.variable] = value
             meta['response_length'] = len(value)
+
+            meta.update({'response': {
+                'url': response.url,
+                'metadata': dict(response.headers),
+                'payload': value,
+                'status': response.status_code,
+            }})
 
             return dict(response.headers), value
 

@@ -3,6 +3,7 @@ from typing import Any, Tuple, Dict, Optional, cast
 from time import monotonic as time_monotonic
 from json import dumps as jsondumps
 from shutil import rmtree
+from datetime import datetime
 
 import pytest
 
@@ -85,6 +86,7 @@ def test_after_feature(behave_fixture: BehaveFixture, mocker: MockerFixture) -> 
     behave = behave_fixture.context
     feature = Feature(None, None, '', '', scenarios=[behave.scenario])
     behave.scenario.steps = [Step(None, None, '', '', '')]
+    behave.started = datetime.now().astimezone()
 
     class LocustRunning(Exception):
         pass

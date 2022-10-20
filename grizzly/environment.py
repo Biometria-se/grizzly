@@ -14,8 +14,13 @@ from behave.model_core import Status
 from .context import GrizzlyContext
 from .testdata.variables import destroy_variables
 from .locust import run as locustrun
-from .utils import catch, fail_direct, in_correct_section
+from .utils import catch, check_mq_client_logs, fail_direct, in_correct_section
 from .types import RequestType
+
+try:
+    import pymqi  # pylint: disable=unused-import
+except ModuleNotFoundError:
+    from grizzly_extras import dummy_pymqi as pymqi
 
 
 def before_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
@@ -42,7 +47,7 @@ def before_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], *
 
     context.grizzly = grizzly
     context.start = time()
-    context.started = datetime.now()
+    context.started = datetime.now().astimezone()
 
 
 @catch(KeyboardInterrupt)
@@ -77,6 +82,16 @@ def after_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], **
                     rindex -= 1
                     behave_step = cast(Step, behave_scenario.steps[rindex])
                     behave_step.status = Status.failed
+
+        if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
+            check_mq_client_logs(context)
+
+    # show start and stop date time
+    stopped = datetime.now().astimezone()
+
+    print('')
+    print(f'Started: {context.started}')
+    print(f'Stopped: {stopped}')
 
     # the features duration is the sum of all scenarios duration, which is the sum of all steps duration
     try:

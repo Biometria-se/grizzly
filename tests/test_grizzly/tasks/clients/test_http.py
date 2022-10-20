@@ -1,5 +1,5 @@
 from typing import cast
-from json import dumps as jsondumps
+from json import dumps as jsondumps, loads as jsonloads
 
 import pytest
 
@@ -36,10 +36,11 @@ class TestHttpClientTask:
         response = Response()
         response.url = 'http://example.org'
         response._content = jsondumps({'hello': 'world'}).encode()
+        response.status_code = 200
 
         requests_get_spy = mocker.patch(
             'grizzly.tasks.clients.http.requests.get',
-            side_effect=[response, RuntimeError, RuntimeError, RuntimeError, RuntimeError]
+            side_effect=[response, RuntimeError, RuntimeError, RuntimeError, RuntimeError, response, response, response, response]
         )
 
         grizzly.state.variables.update({'test': 'none'})
@@ -59,6 +60,9 @@ class TestHttpClientTask:
 
         assert scenario.user._context['variables'].get('test', None) is None
 
+        task_factory.name = 'test-1'
+        response.status_code = 400
+
         task(scenario)
 
         assert scenario.user._context['variables'].get('test', '') == jsondumps({'hello': 'world'})
@@ -71,13 +75,27 @@ class TestHttpClientTask:
         assert request_fire_spy.call_count == 1
         _, kwargs = request_fire_spy.call_args_list[-1]
         assert kwargs.get('request_type', None) == 'CLTSK'
-        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} Http<-test'
+        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} test-1'
         assert kwargs.get('response_time', None) >= 0.0
         assert kwargs.get('response_length') == len(jsondumps({'hello': 'world'}))
         assert kwargs.get('context', None) is scenario.user._context
         assert kwargs.get('exception', '') is None
+        request_logs = list(task_factory.log_dir.rglob('**/*'))
+        assert len(request_logs) == 1
+        request_log = request_logs[-1]
+        log_entry = jsonloads(request_log.read_text())
+        assert log_entry.get('request', {}).get('time', None) >= 0.0
+        assert log_entry.get('request', {}).get('url', None) == 'http://example.org'
+        assert log_entry.get('request', {}).get('metadata', None) is not None
+        assert log_entry.get('request', {}).get('payload', '') is None
+        assert log_entry.get('response', {}).get('url', None) == 'http://example.org'
+        assert log_entry.get('response', {}).get('metadata', None) == {}
+        assert log_entry.get('response', {}).get('payload', None) is not None
+        assert log_entry.get('response', {}).get('status', None) == 400
 
         scenario.user._context['variables']['test'] = None
+        response.status_code = 200
+        task_factory.name = 'test-2'
 
         task(scenario)
 
@@ -91,18 +109,21 @@ class TestHttpClientTask:
         assert request_fire_spy.call_count == 2
         _, kwargs = request_fire_spy.call_args_list[-1]
         assert kwargs.get('request_type', None) == 'CLTSK'
-        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} Http<-test'
+        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} test-2'
         assert kwargs.get('response_time', None) >= 0.0
         assert kwargs.get('response_length') == 0
         assert kwargs.get('context', None) is scenario.user._context
         assert isinstance(kwargs.get('exception', None), RuntimeError)
+        assert len(list(task_factory.log_dir.rglob('**/*'))) == 2
 
         scenario.user._scenario.failure_exception = StopUser
+        task_factory.name = 'test-3'
 
         with pytest.raises(StopUser):
             task(scenario)
 
         scenario.user._scenario.failure_exception = RestartScenario
+        task_factory.name = 'test-4'
 
         with pytest.raises(RestartScenario):
             task(scenario)
@@ -117,11 +138,12 @@ class TestHttpClientTask:
         assert request_fire_spy.call_count == 4
         _, kwargs = request_fire_spy.call_args_list[-1]
         assert kwargs.get('request_type', None) == 'CLTSK'
-        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} Http<-test'
+        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} test-4'
         assert kwargs.get('response_time', None) >= 0.0
         assert kwargs.get('response_length') == 0
         assert kwargs.get('context', None) is scenario.user._context
         assert isinstance(kwargs.get('exception', None), RuntimeError)
+        assert len(list(task_factory.log_dir.rglob('**/*'))) == 4
 
         scenario.user._scenario.failure_exception = None
 
@@ -147,6 +169,7 @@ class TestHttpClientTask:
         assert kwargs.get('response_length') == 0
         assert kwargs.get('context', None) is scenario.user._context
         assert isinstance(kwargs.get('exception', None), RuntimeError)
+        assert len(list(task_factory.log_dir.rglob('**/*'))) == 5
 
         grizzly.state.configuration['test.host'] = 'https://example.org'
 
@@ -163,11 +186,13 @@ class TestHttpClientTask:
         assert len(kwargs) == 2
         assert kwargs.get('verify', None)
         assert kwargs.get('headers', {}).get('x-grizzly-user', None).startswith('HttpClientTask::')
+        assert len(list(task_factory.log_dir.rglob('**/*'))) == 5
 
-        task_factory = HttpClientTask(RequestDirection.FROM, 'https://$conf::test.host$/api/test | verify=False, content_type=json', 'http-env-get', variable='test')
+        task_factory = HttpClientTask(RequestDirection.FROM, 'https://$conf::test.host$/api/test | verify=False, content_type=json', 'http-env-get-1', variable='test')
         task = task_factory()
         assert task_factory.arguments == {'verify': False}
         assert task_factory.content_type == TransformerContentType.JSON
+        assert len(list(task_factory.log_dir.rglob('**/*'))) == 5
 
         task(scenario)
 
@@ -177,11 +202,15 @@ class TestHttpClientTask:
         assert len(kwargs) == 2
         assert not kwargs.get('verify', None)
         assert kwargs.get('headers', {}).get('x-grizzly-user', None).startswith('HttpClientTask::')
+        assert request_fire_spy.call_count == 7
+        assert len(list(task_factory.log_dir.rglob('**/*'))) == 5
 
-        task_factory = HttpClientTask(RequestDirection.FROM, 'https://$conf::test.host$/api/test | verify=True, content_type=json', 'http-env-get', variable='test')
+        task_factory = HttpClientTask(RequestDirection.FROM, 'https://$conf::test.host$/api/test | verify=True, content_type=json', 'http-env-get-2', variable='test')
         task = task_factory()
         assert task_factory.arguments == {'verify': True}
         assert task_factory.content_type == TransformerContentType.JSON
+
+        scenario.user._scenario.context['log_all_requests'] = True
 
         task(scenario)
 
@@ -191,6 +220,9 @@ class TestHttpClientTask:
         assert len(kwargs) == 2
         assert kwargs.get('verify', None)
         assert kwargs.get('headers', {}).get('x-grizzly-user', None).startswith('HttpClientTask::')
+        assert request_fire_spy.call_count == 8
+        args, kwargs = request_fire_spy.call_args_list[-1]
+        assert len(list(task_factory.log_dir.rglob('**/*'))) == 6
 
     def test_put(self, grizzly_fixture: GrizzlyFixture) -> None:
         task_factory = HttpClientTask(RequestDirection.TO, 'http://put.example.org', source='')
