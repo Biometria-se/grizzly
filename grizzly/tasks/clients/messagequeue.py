@@ -292,6 +292,8 @@ class MessageQueueClientTask(ClientTask):
                 meta['action'] = self.endpoint_path
                 request['worker'] = self._worker
 
+                meta.update({'request': request.copy()})
+
                 client.send_json(request)
 
                 response = None
@@ -305,7 +307,10 @@ class MessageQueueClientTask(ClientTask):
 
                 response_length_source = (response or {}).get('payload', None) or ''
 
-                meta.update({'response_length': len(response_length_source)})
+                meta.update({
+                    'response_length': len(response_length_source),
+                    'response': response,
+                })
 
                 if response is None:
                     raise RuntimeError('no response')

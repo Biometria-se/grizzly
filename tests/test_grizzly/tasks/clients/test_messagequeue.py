@@ -58,7 +58,7 @@ class TestMessageQueueClientTaskNoPymqi:
 
 @pytest.mark.skipif(pymqi.__name__ == 'grizzly_extras.dummy_pymqi', reason='needs native IBM MQ libraries')
 class TestMessageQueueClientTask:
-    def test___init__(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
+    def test___init__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.tasks.clients.messagequeue')
 
         create_client_mocked = mocker.patch('grizzly.tasks.clients.messagequeue.MessageQueueClientTask.create_client', return_value=None)
@@ -106,7 +106,7 @@ class TestMessageQueueClientTask:
             if zmq_context is not None:
                 zmq_context.destroy()
 
-    def test_create_context(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
+    def test_create_context(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.tasks.clients.messagequeue')
         create_client_mocked = mocker.patch('grizzly.tasks.clients.messagequeue.MessageQueueClientTask.create_client', return_value=None)
 
@@ -263,7 +263,7 @@ class TestMessageQueueClientTask:
             if zmq_context is not None:
                 zmq_context.destroy()
 
-    def test_create_client(self, noop_zmq: NoopZmqFixture) -> None:
+    def test_create_client(self, grizzly_fixture: GrizzlyFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.tasks.clients.messagequeue')
         connect_mock = noop_zmq.get_mock('zmq.Socket.connect')
         setsockopt_mock = noop_zmq._mocker.patch('grizzly.tasks.clients.messagequeue.zmq.Socket.setsockopt', autospec=True)
@@ -295,7 +295,7 @@ class TestMessageQueueClientTask:
             if zmq_context is not None:
                 zmq_context.destroy()
 
-    def test_connect(self, noop_zmq: NoopZmqFixture) -> None:
+    def test_connect(self, grizzly_fixture: GrizzlyFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.tasks.clients.messagequeue')
 
         recv_json_mock = noop_zmq.get_mock('recv_json')
@@ -443,6 +443,7 @@ class TestMessageQueueClientTask:
             assert task_factory._worker == 'dddd-eeee-ffff-9999'
             assert send_json_mock.call_count == 2
             args, _ = send_json_mock.call_args_list[-1]
+            print(args)
             assert args[1] == {
                 'action': 'GET',
                 'worker': 'dddd-eeee-ffff-9999',

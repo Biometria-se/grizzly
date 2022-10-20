@@ -17,7 +17,7 @@ from ....fixtures import BehaveFixture, GrizzlyFixture
 
 
 class TestBlobStorageClientTask:
-    def test___init__(self) -> None:
+    def test___init__(self, grizzly_fixture: GrizzlyFixture) -> None:
         with pytest.raises(AttributeError) as ae:
             BlobStorageClientTask(
                 RequestDirection.TO,
@@ -93,7 +93,7 @@ class TestBlobStorageClientTask:
         assert task.container == 'my-container'
         assert task.connection_string == 'DefaultEndpointsProtocol=https;AccountName=my-storage;AccountKey=aaaabbb=;EndpointSuffix=core.windows.net'
 
-    def test_get(self, behave_fixture: BehaveFixture, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+    def test_get(self, behave_fixture: BehaveFixture, grizzly_fixture: GrizzlyFixture) -> None:
         behave = behave_fixture.context
         grizzly = cast(GrizzlyContext, behave.grizzly)
         grizzly.state.variables['test'] = 'none'
