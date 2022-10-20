@@ -178,38 +178,27 @@ class ClientTask(GrizzlyMetaRequestTask):
                     exception=exception,
                 )
 
-            log_all_requests = parent.user._scenario.context.get('log_all_requests', False)
-            response_status = meta.get('response', {}).get('status', 200)
-            print(f'{exception=}, {log_all_requests=}, {response_status=}')
             if exception is not None or parent.user._scenario.context.get('log_all_requests', False) or meta.get('response', {}).get('status', 200) != 200:
-                try:
-                    log_name = RequestLogger.normalize(name)
-                    print(f'{name=}, {log_name=}')
-                    log_date = datetime.now()
-                    print(f'{log_date=}')
-                    log_file = self.log_dir / f'{log_name}.{log_date.strftime("%Y%m%dT%H%M%S%f")}.log'
-                    print(f'{log_file=}')
+                log_name = RequestLogger.normalize(name)
+                log_date = datetime.now()
+                log_file = self.log_dir / f'{log_name}.{log_date.strftime("%Y%m%dT%H%M%S%f")}.log'
 
-                    meta.get('request', {}).update({'time': response_time})
+                meta.get('request', {}).update({'time': response_time})
 
-                    request_log: Dict[str, Any] = {
-                        'stacktrace': None,
-                        'response': meta.get('response', None),
-                        'request': meta.get('request', None),
-                    }
+                request_log: Dict[str, Any] = {
+                    'stacktrace': None,
+                    'response': meta.get('response', None),
+                    'request': meta.get('request', None),
+                }
 
-                    if exception is not None:
-                        request_log.update({'stacktrace': traceback.format_exception(
-                            type(exception),
-                            value=exception,
-                            tb=exception.__traceback__,
-                        )})
+                if exception is not None:
+                    request_log.update({'stacktrace': traceback.format_exception(
+                        type(exception),
+                        value=exception,
+                        tb=exception.__traceback__,
+                    )})
 
-                    log_file.write_text(jsondumps(request_log, indent=2))
-                    print(f'wrote {str(log_file)}')
-                except:
-                    traceback.print_exc()
-                    raise
+                log_file.write_text(jsondumps(request_log, indent=2))
 
         if exception is not None and parent.user._scenario.failure_exception is not None:
             raise parent.user._scenario.failure_exception()

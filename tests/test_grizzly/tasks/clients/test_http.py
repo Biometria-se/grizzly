@@ -60,7 +60,7 @@ class TestHttpClientTask:
 
         assert scenario.user._context['variables'].get('test', None) is None
 
-        print('1. check')
+        task_factory.name = 'test-1'
         response.status_code = 400
 
         task(scenario)
@@ -75,7 +75,7 @@ class TestHttpClientTask:
         assert request_fire_spy.call_count == 1
         _, kwargs = request_fire_spy.call_args_list[-1]
         assert kwargs.get('request_type', None) == 'CLTSK'
-        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} Http<-test'
+        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} test-1'
         assert kwargs.get('response_time', None) >= 0.0
         assert kwargs.get('response_length') == len(jsondumps({'hello': 'world'}))
         assert kwargs.get('context', None) is scenario.user._context
@@ -95,8 +95,7 @@ class TestHttpClientTask:
 
         scenario.user._context['variables']['test'] = None
         response.status_code = 200
-
-        print('\n2. check')
+        task_factory.name = 'test-2'
 
         task(scenario)
 
@@ -110,7 +109,7 @@ class TestHttpClientTask:
         assert request_fire_spy.call_count == 2
         _, kwargs = request_fire_spy.call_args_list[-1]
         assert kwargs.get('request_type', None) == 'CLTSK'
-        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} Http<-test'
+        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} test-2'
         assert kwargs.get('response_time', None) >= 0.0
         assert kwargs.get('response_length') == 0
         assert kwargs.get('context', None) is scenario.user._context
@@ -118,14 +117,14 @@ class TestHttpClientTask:
         assert len(list(task_factory.log_dir.rglob('**/*'))) == 2
 
         scenario.user._scenario.failure_exception = StopUser
+        task_factory.name = 'test-3'
 
-        print('\n3. check')
         with pytest.raises(StopUser):
             task(scenario)
 
         scenario.user._scenario.failure_exception = RestartScenario
+        task_factory.name = 'test-4'
 
-        print('\n4. check')
         with pytest.raises(RestartScenario):
             task(scenario)
 
@@ -139,7 +138,7 @@ class TestHttpClientTask:
         assert request_fire_spy.call_count == 4
         _, kwargs = request_fire_spy.call_args_list[-1]
         assert kwargs.get('request_type', None) == 'CLTSK'
-        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} Http<-test'
+        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} test-4'
         assert kwargs.get('response_time', None) >= 0.0
         assert kwargs.get('response_length') == 0
         assert kwargs.get('context', None) is scenario.user._context
@@ -153,7 +152,6 @@ class TestHttpClientTask:
         assert task_factory.arguments == {}
         assert task_factory.content_type == TransformerContentType.UNDEFINED
 
-        print('\n5. check')
         task(scenario)
 
         assert scenario.user._context['variables'].get('test', '') is None  # not set
@@ -180,7 +178,6 @@ class TestHttpClientTask:
         assert task_factory.content_type == TransformerContentType.UNDEFINED
         task = task_factory()
 
-        print('\n6. check')
         task(scenario)
 
         assert requests_get_spy.call_count == 6
@@ -191,13 +188,12 @@ class TestHttpClientTask:
         assert kwargs.get('headers', {}).get('x-grizzly-user', None).startswith('HttpClientTask::')
         assert len(list(task_factory.log_dir.rglob('**/*'))) == 5
 
-        task_factory = HttpClientTask(RequestDirection.FROM, 'https://$conf::test.host$/api/test | verify=False, content_type=json', 'http-env-get', variable='test')
+        task_factory = HttpClientTask(RequestDirection.FROM, 'https://$conf::test.host$/api/test | verify=False, content_type=json', 'http-env-get-1', variable='test')
         task = task_factory()
         assert task_factory.arguments == {'verify': False}
         assert task_factory.content_type == TransformerContentType.JSON
         assert len(list(task_factory.log_dir.rglob('**/*'))) == 5
 
-        print('\n7. check')
         task(scenario)
 
         assert requests_get_spy.call_count == 7
@@ -209,14 +205,13 @@ class TestHttpClientTask:
         assert request_fire_spy.call_count == 7
         assert len(list(task_factory.log_dir.rglob('**/*'))) == 5
 
-        task_factory = HttpClientTask(RequestDirection.FROM, 'https://$conf::test.host$/api/test | verify=True, content_type=json', 'http-env-get', variable='test')
+        task_factory = HttpClientTask(RequestDirection.FROM, 'https://$conf::test.host$/api/test | verify=True, content_type=json', 'http-env-get-2', variable='test')
         task = task_factory()
         assert task_factory.arguments == {'verify': True}
         assert task_factory.content_type == TransformerContentType.JSON
 
         scenario.user._scenario.context['log_all_requests'] = True
 
-        print('\n8. check')
         task(scenario)
 
         assert requests_get_spy.call_count == 8
