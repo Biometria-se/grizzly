@@ -31,7 +31,7 @@ class DummyTask(GrizzlyTask):
         }
 
     def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
-        return super().__call__()
+        raise NotImplementedError(f'{self.__class__.__name__} has not been implemented')
 
 
 class TestGrizzlyTask:
