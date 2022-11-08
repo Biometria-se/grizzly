@@ -11,7 +11,6 @@ Feature: grizzly example
     # custom step
     And also log successful requests
     Then get request with name "get-dog-facts" from endpoint "/api/v1/resources/dogs?number={{ AtomicRandomInteger.dog_facts_count }}"
-    And send message "{'server': 'client'}"
 
   Scenario: cat facts api
     Given a user of type "steps.custom.User" load testing "$conf::facts.cat.host$"
