@@ -24,7 +24,7 @@ logging.getLogger().setLevel(logging.CRITICAL)
 
 class DummyGrizzlyUser(GrizzlyUser):
     def request(self, request: RequestTask) -> GrizzlyResponse:
-        return super().request(request)
+        raise NotImplementedError(f'{self.__class__.__name__} has not implemented request')
 
 
 class TestGrizzlyUser:

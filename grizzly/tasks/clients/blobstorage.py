@@ -116,7 +116,7 @@ class BlobStorageClientTask(ClientTask):
         return f'DefaultEndpointsProtocol={self._endpoints_protocol};AccountName={self.account_name};AccountKey={self.account_key};EndpointSuffix=core.windows.net'
 
     def get(self, parent: GrizzlyScenario) -> GrizzlyResponse:
-        return super().get(parent)
+        raise NotImplementedError(f'{self.__class__.__name__} has not implemented GET')
 
     def put(self, parent: GrizzlyScenario) -> GrizzlyResponse:
         source = parent.render(cast(str, self.source))

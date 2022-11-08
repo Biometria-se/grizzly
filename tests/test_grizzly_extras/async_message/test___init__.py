@@ -37,7 +37,7 @@ class TestAsyncMessageHandler:
     def test_handle(self, mocker: MockerFixture) -> None:
         class AsyncMessageTest(AsyncMessageHandler):
             def a_handler(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
-                pass
+                return {}
 
             def get_handler(self, action: str) -> Optional[AsyncMessageRequestHandler]:
                 if action == 'NONE':
@@ -83,10 +83,10 @@ class TestAsyncMessageHandler:
 
 def test_register() -> None:
     def handler_a(i: AsyncMessageHandler, request: AsyncMessageRequest) -> AsyncMessageResponse:
-        pass
+        return {}
 
     def handler_b(i: AsyncMessageHandler, request: AsyncMessageRequest) -> AsyncMessageResponse:
-        pass
+        return {}
 
     try:
         from grizzly_extras.async_message.mq import handlers

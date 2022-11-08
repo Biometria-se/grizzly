@@ -59,11 +59,11 @@ class Testtransformer:
         class DummyTransformer(Transformer):
             @classmethod
             def transform(cls, raw: str) -> Any:
-                pass
+                return None
 
             @classmethod
             def validate(cls, expression: str) -> bool:
-                pass
+                return True
 
         transform_spy = mocker.spy(DummyTransformer, 'transform')
         transform_spy.side_effect = [None, None, None, (TransformerContentType.JSON, {'test': 'value'}), (TransformerContentType.UNDEFINED, {'test': 'value'})]
