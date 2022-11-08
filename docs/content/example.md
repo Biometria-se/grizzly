@@ -182,3 +182,13 @@ And in distributed mode (requires `docker` and `docker-compose` in `PATH`):
     ```powershell
     grizzly-cli run -e .\environments\example.yaml dist .\features\example.feature
     ```
+
+## Develop
+
+If you have [Visual Studio Code](https://code.visualstudio.com/download) installed, you can also install the grizzly extension to make your life easier when developing scenarios!
+
+```bash
+pip3 install grizzly-loadtester-ls
+code --install-extension biometria-se.grizzly-loadtester-vscode
+```
+
