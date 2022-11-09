@@ -98,7 +98,7 @@ def test_e2e_example(e2e_fixture: End2EndFixture) -> None:
             assert '1 feature passed, 0 failed, 0 skipped' in result
             assert '3 scenarios passed, 0 failed, 0 skipped' in result
             # Then start webserver... added when running distributed
-            step_count = 27 if e2e_fixture._distributed else 26
+            step_count = 26 if e2e_fixture._distributed else 25
             assert f'{step_count} steps passed, 0 failed, 0 skipped, 0 undefined' in result
 
             assert 'ident   iter  status   description' in result
@@ -108,11 +108,6 @@ def test_e2e_example(e2e_fixture: End2EndFixture) -> None:
             assert '------|-----|--------|---------------|' in result
 
             assert 'executing custom.User.request for get-cat-facts and /facts?limit=' in result
-
-            # no tests are executing on master node when running distributed
-            if not e2e_fixture._distributed:
-                assert 'sending "server_client" from SERVER' in result
-                assert "received from SERVER" in result
 
             assert 'sending "client_server" from CLIENT' in result
             assert "received from CLIENT" in result

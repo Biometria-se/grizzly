@@ -160,13 +160,13 @@ To run the example, in local mode:
 === "Bash"
 
     ```bash
-    grizzly-cli run -e environments/example.yaml local features/example.feature
+    grizzly-cli local run -e environments/example.yaml features/example.feature
     ```
 
 === "PowerShell"
 
     ```powershell
-    grizzly-cli run -e .\environments\example.yaml local .\features\example.feature
+    grizzly-cli local run -e .\environments\example.yaml .\features\example.feature
     ```
 
 And in distributed mode (requires `docker` and `docker-compose` in `PATH`):
@@ -174,13 +174,13 @@ And in distributed mode (requires `docker` and `docker-compose` in `PATH`):
 === "Bash"
 
     ```bash
-    grizzly-cli run -e environments/example.yaml dist features/example.feature
+    grizzly-cli dist run -e environments/example.yaml features/example.feature
     ```
 
 === "PowerShell"
 
     ```powershell
-    grizzly-cli run -e .\environments\example.yaml dist .\features\example.feature
+    grizzly-cli dist run -e .\environments\example.yaml .\features\example.feature
     ```
 
 ## Develop

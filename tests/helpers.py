@@ -31,7 +31,7 @@ def message_callback(environment: Environment, msg: Message) -> None:
 
 
 def message_callback_incorrect_sig(msg: Message, environment: Environment) -> Message:
-    pass
+    return Message('test', None, None)
 
 
 class RequestCalled(Exception):

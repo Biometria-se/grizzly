@@ -160,3 +160,17 @@ class TestRfh2Encoder:
         msg = e.get_message()
         # check up until gzip compression data
         assert msg[0:252] == rfh2_msg[0:252]
+
+    def test_encode_decode(self) -> None:
+        src_payload = 'test payload'
+        e = Rfh2Encoder(src_payload.encode(), queue_name='TEST.QUEUE', tstamp='1655406556138')
+        msg = e.get_message()
+        d = Rfh2Decoder(msg)
+        assert d.get_payload().decode() == src_payload
+
+    def test_encode_decode_metadata(self) -> None:
+        src_payload = 'test payload'
+        e = Rfh2Encoder(src_payload.encode(), queue_name='TEST.QUEUE', tstamp='1655406556138', metadata={'some_key': 'some_value'})
+        msg = e.get_message()
+        d = Rfh2Decoder(msg)
+        assert d.get_payload().decode() == src_payload

@@ -8,7 +8,7 @@ from grizzly.context import GrizzlyContext
 from grizzly.utils import merge_dicts
 from grizzly.testdata.utils import create_context_variable
 
-from steps.custom import Task  # pylint: disable=import-error
+from custom import Task  # pylint: disable=import-error
 
 
 @given(u'also log successful requests')

@@ -93,4 +93,4 @@ class HttpClientTask(ClientTask):
             return dict(response.headers), value
 
     def put(self, parent: GrizzlyScenario) -> GrizzlyResponse:
-        return super().put(parent)
+        raise NotImplementedError(f'{self.__class__.__name__} has not implemented PUT')
