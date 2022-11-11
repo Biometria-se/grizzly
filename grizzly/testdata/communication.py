@@ -23,19 +23,20 @@ from . import GrizzlyVariables
 
 if TYPE_CHECKING:
     from ..context import GrizzlyContext
+    from ..scenarios import GrizzlyScenario
 
 
 class TestdataConsumer:
     # need so pytest doesn't raise PytestCollectionWarning
     __test__: bool = False
 
-    grizzly: 'GrizzlyContext'
+    scenario: 'GrizzlyScenario'
     logger: logging.Logger
     identifier: str
     stopped: bool
 
-    def __init__(self, grizzly: 'GrizzlyContext', identifier: str, address: str = 'tcp://127.0.0.1:5555') -> None:
-        self.grizzly = grizzly
+    def __init__(self, scenario: 'GrizzlyScenario', identifier: str, address: str = 'tcp://127.0.0.1:5555') -> None:
+        self.scenario = scenario
         self.identifier = identifier
         self.logger = logging.getLogger(f'{__name__}/{self.identifier}')
 
@@ -92,10 +93,10 @@ class TestdataConsumer:
 
         variables: Optional[Dict[str, Any]] = None
         if 'variables' in data:
-            variables = transform(self.grizzly, data['variables'], objectify=True)
+            variables = transform(self.scenario.grizzly, data['variables'], objectify=True, scenario=self.scenario.user._scenario)
             del data['variables']
 
-        data = transform(self.grizzly, data, objectify=False)
+        data = transform(self.scenario.grizzly, data, objectify=False, scenario=self.scenario.user._scenario)
 
         if variables is not None:
             data['variables'] = variables

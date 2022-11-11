@@ -19,7 +19,7 @@ from . import GrizzlyVariables
 
 
 if TYPE_CHECKING:
-    from ..context import GrizzlyContext
+    from ..context import GrizzlyContext, GrizzlyContextScenario
 
 
 logger = logging.getLogger(__name__)
@@ -78,7 +78,7 @@ def initialize_testdata(grizzly: 'GrizzlyContext', tasks: List[GrizzlyTask]) -> 
     return testdata, external_dependencies
 
 
-def transform(grizzly: 'GrizzlyContext', data: Dict[str, Any], objectify: Optional[bool] = True) -> Dict[str, Any]:
+def transform(grizzly: 'GrizzlyContext', data: Dict[str, Any], objectify: Optional[bool] = True, scenario: Optional['GrizzlyContextScenario'] = None) -> Dict[str, Any]:
     testdata: Dict[str, Any] = {}
 
     for key, value in data.items():
@@ -100,17 +100,21 @@ def transform(grizzly: 'GrizzlyContext', data: Dict[str, Any], objectify: Option
                         logger.error(str(e), exc_info=grizzly.state.verbose)
                     finally:
                         response_time = int((time() - start_time) * 1000)
-                        grizzly.state.locust.environment.events.request.fire(
-                            request_type=RequestType.VARIABLE(),
-                            name=key,
-                            response_time=response_time,
-                            response_length=0,
-                            context=None,
-                            exception=exception,
-                        )
+                        if scenario is not None:
+                            grizzly.state.locust.environment.events.request.fire(
+                                request_type=RequestType.VARIABLE(),
+                                name=f'{scenario.identifier} {key}',
+                                response_time=response_time,
+                                response_length=0,
+                                context=None,
+                                exception=exception,
+                            )
 
                     if exception is not None:
-                        raise StopUser()
+                        if scenario is None:
+                            raise StopUser()
+                        elif scenario.failure_exception is not None:
+                            raise scenario.failure_exception
 
             paths: List[str] = key.split('.')
             variable = paths.pop(0)
