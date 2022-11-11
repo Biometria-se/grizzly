@@ -24,7 +24,6 @@ from ...helpers import RequestCalled, TestTask
 
 
 if TYPE_CHECKING:
-    from grizzly.context import GrizzlyContext
     from grizzly.scenarios import GrizzlyScenario
 
 
@@ -94,7 +93,7 @@ class TestIterationScenario:
         try:
             _, _, scenario = grizzly_fixture(scenario_type=IteratorScenario)
 
-            def TestdataConsumer__init__(self: 'TestdataConsumer', grizzly: 'GrizzlyContext', address: str, identifier: str) -> None:
+            def TestdataConsumer__init__(self: 'TestdataConsumer', scenario: 'GrizzlyScenario', address: str, identifier: str) -> None:
                 pass
 
             mocker.patch(
@@ -134,7 +133,7 @@ class TestIterationScenario:
 
         assert isinstance(scenario, IteratorScenario)
 
-        scenario.consumer = TestdataConsumer(grizzly, identifier='test')
+        scenario.consumer = TestdataConsumer(scenario, identifier='test')
 
         def mock_request(data: Optional[Dict[str, Any]]) -> None:
             def request(self: 'TestdataConsumer', scenario: str) -> Optional[Dict[str, Any]]:

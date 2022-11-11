@@ -417,9 +417,11 @@ class TestTestdataConsumer:
                 ]
             )
 
+        _, _, scenario = grizzly_fixture()
+        assert scenario is not None
         grizzly = grizzly_fixture.grizzly
 
-        consumer = TestdataConsumer(grizzly, identifier='test')
+        consumer = TestdataConsumer(scenario, identifier='test')
 
         try:
             # this will no longer throw StopUser, but rather go into an infinite loop
@@ -505,8 +507,12 @@ class TestTestdataConsumer:
             side_effect=[RuntimeError('zmq.Context.destroy failed')],
         )
 
+        _, _, scenario = grizzly_fixture()
+
+        assert scenario is not None
+
         with caplog.at_level(logging.DEBUG):
-            TestdataConsumer(grizzly_fixture.grizzly, identifier='test').stop()
+            TestdataConsumer(scenario, identifier='test').stop()
         assert caplog.messages[-1] == 'failed to stop'
 
     def test_request_exception(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture) -> None:
@@ -522,8 +528,12 @@ class TestTestdataConsumer:
             side_effect=[ZMQAgain]
         )
 
+        _, _, scenario = grizzly_fixture()
+
+        assert scenario is not None
+
         with pytest.raises(ZMQAgain):
-            TestdataConsumer(grizzly_fixture.grizzly, identifier='test').request('test')
+            TestdataConsumer(scenario, identifier='test').request('test')
 
         assert gsleep_mock.call_count == 1
         args, _ = gsleep_mock.call_args_list[-1]
