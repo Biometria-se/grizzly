@@ -95,6 +95,27 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture) -> None:
     assert 'AtomicIntegerIncrementer.file_number' in variables['TestScenario_001']
     assert len(variables['TestScenario_001']) == 4
 
+    source = {
+        'result': {
+            'FooBar_1': '{{ (value1 * 0.25) | round | int }}',
+            'FooBar_2': '{{ (((value2 * 0.25) | round) + 1) | int }}',
+            'FooBar_3': '{{ ((value3 - 2) | int) + 1 }}',
+            'FooBar_4': '{{ (4 * value40) + (5 - value41) }}',
+            'FooBar_5': '{{ Atomic.test1 + Atomic.test2 + Atomic.test3 }}',
+        }
+    }
+
+    request.source = jsondumps(source)
+    scenario.tasks.clear()
+    scenario.tasks.add(request)
+    templates = {scenario: set(request.get_templates())}
+
+    variables = _parse_templates(templates)
+
+    print(variables)
+
+    assert variables == {'TestScenario_001': {'value1', 'value2', 'value3', 'value40', 'value41', 'Atomic.test1', 'Atomic.test2', 'Atomic.test3'}}
+
 
 def test_get_template_variables() -> None:
     variables = get_template_variables([])

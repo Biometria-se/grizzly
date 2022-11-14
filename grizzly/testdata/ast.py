@@ -1,10 +1,10 @@
 import logging
 
-from typing import TYPE_CHECKING, Set, Optional, List, Dict
+from typing import TYPE_CHECKING, Set, Optional, List, Dict, Generator
 
 import jinja2 as j2
 
-from jinja2.nodes import Getattr, Getitem, Name, Compare, Filter, Node, Mod
+from jinja2.nodes import Getattr, Getitem, Name, Compare, Filter, Node, Mod, Add, Mul, Sub
 
 from ..tasks import GrizzlyTask
 
@@ -55,7 +55,7 @@ def _parse_templates(templates: Dict['GrizzlyContextScenario', Set[str]]) -> Dic
         if scenario_name not in variables:
             variables[scenario_name] = set()
 
-        def _getattr(node: Node) -> Optional[List[str]]:
+        def _getattr(node: Node) -> Generator[List[str], None, None]:
             attributes: Optional[List[str]] = None
 
             if isinstance(node, Getattr):
@@ -69,25 +69,22 @@ def _parse_templates(templates: Dict['GrizzlyContextScenario', Set[str]]) -> Dic
                 attributes = [getattr(node, 'name')]
             elif isinstance(node, Filter):
                 child_node = getattr(node, 'node')
-                attributes = _getattr(child_node)
-            elif isinstance(node, Mod):
+                yield from _getattr(child_node)
+            elif isinstance(node, (Mod, Add, Mul, Sub)):
                 left_node = getattr(node, 'left')
-                attributes = _getattr(left_node) or []
+                yield from _getattr(left_node)
                 right_node = getattr(node, 'right')
-                attributes += _getattr(right_node) or []
-
-                if len(attributes) < 1:
-                    attributes = None
-
+                yield from _getattr(right_node)
             elif isinstance(node, Compare):
                 expr = getattr(node, 'expr')
                 if isinstance(expr, Filter):
                     node = getattr(expr, 'node')
-                    attributes = _getattr(node)
+                    yield from _getattr(node)
                 else:
                     raise ValueError(f'cannot find variable name in {parsed}')
 
-            return attributes
+            if attributes is not None:
+                yield attributes
 
         template_sources = list(scenario_templates) + scenario.orphan_templates
 
@@ -102,9 +99,7 @@ def _parse_templates(templates: Dict['GrizzlyContextScenario', Set[str]]) -> Dic
 
             for body in getattr(parsed, 'body', []):
                 for node in getattr(body, 'nodes', []):
-                    attributes = _getattr(node)
-
-                    if attributes is not None:
+                    for attributes in _getattr(node):
                         variables[scenario_name].add('.'.join(attributes))
 
     return variables
