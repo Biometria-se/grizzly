@@ -513,8 +513,10 @@ def test_grizzly_worker_quit_worker(listener_test_mocker: None, locust_fixture: 
             grizzly_worker_quit(environment, message)
         assert se.value.code == 0
 
-    assert len(caplog.messages) == 1
-    assert caplog.messages[0] == 'received message grizzly_worker_quit'
+    log_messages = list(filter(lambda m: 'CPU usage' not in m, caplog.messages))
+
+    assert len(log_messages) == 1
+    assert log_messages[0] == 'received message grizzly_worker_quit'
     caplog.clear()
 
     runner_stop_mock.assert_called_once()
@@ -534,8 +536,10 @@ def test_grizzly_worker_quit_worker(listener_test_mocker: None, locust_fixture: 
             grizzly_worker_quit(environment, message)
         assert se.value.code == 1337
 
-    assert len(caplog.messages) == 1
-    assert caplog.messages[0] == 'received message grizzly_worker_quit'
+    log_messages = list(filter(lambda m: 'CPU usage' not in m, caplog.messages))
+
+    assert len(log_messages) == 1
+    assert log_messages[0] == 'received message grizzly_worker_quit'
     caplog.clear()
 
     environment.process_exit_code = None
@@ -546,6 +550,8 @@ def test_grizzly_worker_quit_worker(listener_test_mocker: None, locust_fixture: 
             grizzly_worker_quit(environment, message)
         assert se.value.code == 3
 
-    assert len(caplog.messages) == 1
-    assert caplog.messages[0] == 'received message grizzly_worker_quit'
+    log_messages = list(filter(lambda m: 'CPU usage' not in m, caplog.messages))
+
+    assert len(log_messages) == 1
+    assert log_messages[0] == 'received message grizzly_worker_quit'
     caplog.clear()
