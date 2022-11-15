@@ -533,7 +533,7 @@ class TestAtomicServiceBus:
             )
             with pytest.raises(RuntimeError) as re:
                 v['test1']
-            assert 'AtomicServiceBus.test1: unknown error, no response' in str(re)
+            assert str(re.value) == 'AtomicServiceBus.test1: unknown error, no response'
 
             AtomicServiceBus.destroy()
 
@@ -551,18 +551,18 @@ class TestAtomicServiceBus:
             )
             with pytest.raises(RuntimeError) as re:
                 v['test1']
-            assert 'AtomicServiceBus.test1: testing testing' in str(re)
+            assert str(re.value) == 'AtomicServiceBus.test1: testing testing'
 
             v._settings['test1']['worker'] = '1337-aaaabbbb-beef'
 
             mock_response({
                 'success': False,
-                'message': 'no message on topic:documents-in, subscription:application-x',
+                'message': 'no messages on topic:documents-in, subscription:application-x',
             }, 6)
 
             with pytest.raises(RuntimeError) as re:
                 v['test1']
-            assert 'AtomicServiceBus.test1: no message on topic:documents-in, subscription:application-x' in str(re)
+            assert str(re.value) == 'AtomicServiceBus.test1: no messages on topic:documents-in, subscription:application-x'
 
             v._endpoint_messages['test1'] += ['hello world', 'world hello']
 
@@ -576,7 +576,7 @@ class TestAtomicServiceBus:
             v._settings['test1']['repeat'] = False
             with pytest.raises(RuntimeError) as re:
                 v['test1']
-            assert 'AtomicServiceBus.test1: no message on topic:documents-in, subscription:application-x' in str(re)
+            assert str(re.value) == 'AtomicServiceBus.test1: no messages on topic:documents-in, subscription:application-x'
 
             mock_response({
                 'success': True,
@@ -585,7 +585,7 @@ class TestAtomicServiceBus:
 
             with pytest.raises(RuntimeError) as re:
                 v['test1']
-            assert 'AtomicServiceBus.test1: payload in response was None' in str(re)
+            assert str(re.value) == 'AtomicServiceBus.test1: payload in response was None'
 
             mock_response({
                 'success': True,
