@@ -432,7 +432,7 @@ class AtomicServiceBus(AtomicVariable[str]):
             message = response.get('message', None)
 
             if not response['success']:
-                if message is not None and f'no message on {endpoint}' in message and settings.get('repeat', False) and len(self._endpoint_messages[variable]) > 0:
+                if message is not None and f'no messages on {endpoint}' in message and settings.get('repeat', False) and len(self._endpoint_messages[variable]) > 0:
                     payload = self._endpoint_messages[variable].pop(0)
                     self._endpoint_messages[variable].append(payload)
 

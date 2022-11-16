@@ -270,6 +270,7 @@ class TestAsyncServiceBusHandler:
         handler = AsyncServiceBusHandler(worker='asdf-asdf-asdf')
         sender_instance_mock = mocker.patch.object(handler, 'get_sender_instance')
         receiver_instance_mock = mocker.patch.object(handler, 'get_receiver_instance')
+        mocker.patch('grizzly_extras.async_message.sb.perf_counter', side_effect=[0, 11, 0, 11, 0, 11, 0, 11, 0, 11])
 
         request: AsyncMessageRequest = {
             'action': 'SEND',
@@ -368,7 +369,7 @@ class TestAsyncServiceBusHandler:
 
         with pytest.raises(AsyncMessageError) as ame:
             handlers[request['action']](handler, request)
-        assert 'no messages on topic:test-topic, subscription:test-subscription' in str(ame)
+        assert str(ame.value) == 'no messages on topic:test-topic, subscription:test-subscription within 10 seconds'
         assert receiver_instance_mock.return_value.__iter__.call_count == 1
         assert receiver_instance_mock.return_value.complete_message.call_count == 0
 
@@ -515,8 +516,8 @@ class TestAsyncServiceBusHandler:
         ]
 
         mocker.patch(
-            'grizzly_extras.async_message.sb.time',
-            side_effect=[0.0, 0.1, 11.0],
+            'grizzly_extras.async_message.sb.perf_counter',
+            side_effect=[0.0, 5.0, 0.1, 0.5, 0, 11.0],
         )
 
         with pytest.raises(AsyncMessageError) as ame:

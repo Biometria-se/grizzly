@@ -560,12 +560,12 @@ def test_transform(behave_fixture: BehaveFixture, noop_zmq: NoopZmqFixture, clea
             }
         })
 
-        # AtomicMessageQueue.document_id should repeat old values when there is no
+        # AtomicServiceBus.document_id should repeat old values when there is no
         # new message on queue since repeat=True
         mock_response({
             'success': False,
             'worker': '1337-aaaabbbb-beef',
-            'message': 'no message on queue:messages',
+            'message': 'no messages on queue:messages',
         })
 
         obj = transform(grizzly, {
