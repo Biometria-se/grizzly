@@ -1,6 +1,6 @@
 from os import environ
 from typing import Any, Tuple, Dict, Optional, cast
-from time import monotonic as time_monotonic
+from time import perf_counter
 from json import dumps as jsondumps
 from shutil import rmtree
 from datetime import datetime
@@ -8,6 +8,7 @@ from datetime import datetime
 import pytest
 
 from _pytest.tmpdir import TempPathFactory
+from _pytest.capture import CaptureFixture
 from pytest_mock import MockerFixture
 from behave.runner import Context, Runner
 from behave.configuration import Configuration
@@ -82,7 +83,7 @@ def test_before_feature(behave_fixture: BehaveFixture, tmp_path_factory: TempPat
         rmtree(context_root, onerror=onerror)
 
 
-def test_after_feature(behave_fixture: BehaveFixture, mocker: MockerFixture) -> None:
+def test_after_feature(behave_fixture: BehaveFixture, mocker: MockerFixture, capsys: CaptureFixture) -> None:
     behave = behave_fixture.context
     feature = Feature(None, None, '', '', scenarios=[behave.scenario])
     behave.scenario.steps = [Step(None, None, '', '', '')]
@@ -91,12 +92,9 @@ def test_after_feature(behave_fixture: BehaveFixture, mocker: MockerFixture) -> 
     class LocustRunning(Exception):
         pass
 
-    def locustrun_running(context: Context) -> None:
-        raise LocustRunning()
-
     mocker.patch(
         'grizzly.environment.locustrun',
-        locustrun_running,
+        side_effect=[LocustRunning]
     )
 
     # do not start locust if feature failed
@@ -110,26 +108,39 @@ def test_after_feature(behave_fixture: BehaveFixture, mocker: MockerFixture) -> 
     with pytest.raises(LocustRunning):
         after_feature(behave, feature)
 
-    def locustrun_return_not_0(context: Context) -> int:
-        return 1
-
     mocker.patch(
         'grizzly.environment.locustrun',
-        locustrun_return_not_0,
+        side_effect=[1, 123]
     )
 
     assert feature.status == Status.passed
 
+    capsys.readouterr()
+
     after_feature(behave, feature)
+
+    capture = capsys.readouterr()
 
     assert feature.status == Status.failed
-
     assert feature.duration == 0.0
-    behave.start = time_monotonic() - 1.0
+    assert capture.err == ''
+
+    behave.start = perf_counter() - 1.0
+    feature.set_status(Status.passed)
 
     after_feature(behave, feature)
 
+    capture = capsys.readouterr()
+
     assert feature.duration > 0.0
+    assert capture.err == ''
+
+    # feature is failed, will never start locust
+    after_feature(behave, feature)
+
+    capture = capsys.readouterr()
+
+    assert capture.err == ''
 
 
 def test_before_scenario(behave_fixture: BehaveFixture, mocker: MockerFixture) -> None:

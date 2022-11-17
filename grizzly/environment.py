@@ -85,6 +85,8 @@ def after_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], **
 
         if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
             check_mq_client_logs(context)
+    else:
+        return_code = 1
 
     # show start and stop date time
     stopped = datetime.now().astimezone()

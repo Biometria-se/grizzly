@@ -5,7 +5,7 @@ import re
 from os import environ
 from typing import cast, Tuple, Any, Dict, Type, List
 from random import randint
-# from time import perf_counter
+from socket import error as socket_error
 
 import pytest
 import gevent
@@ -556,29 +556,19 @@ def test_run_worker(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
     behave = behave_fixture.context
 
     def mock_on_node(master: bool, worker: bool) -> None:
-        def mocked_on_worker(context: Context) -> bool:
-            return worker
-
         mocker.patch(
             'grizzly.locust.on_worker',
-            mocked_on_worker,
+            return_value=worker,
         )
-
-        def mocked_on_master(context: Context) -> bool:
-            return master
 
         mocker.patch(
             'grizzly.locust.on_master',
-            mocked_on_master,
+            return_value=master,
         )
-
-    def mocked_create_worker_runner(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Any:
-        from socket import error
-        raise error()
 
     mocker.patch(
         'grizzly.locust.Environment.create_worker_runner',
-        mocked_create_worker_runner,
+        side_effect=[socket_error()]
     )
 
     for method in [
@@ -618,7 +608,10 @@ def test_run_worker(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
     grizzly.scenario.tasks.add(task)
 
     assert run(behave) == 1
-    assert 'failed to connect to the locust master' in capsys.readouterr().err
+    capture = capsys.readouterr()
+
+    assert 'failed to connect to the locust master' in capture.err
+    assert 'grizzly.returncode=1' not in capture.out
 
     assert messagequeue_process_spy.call_count == 0
 
@@ -629,20 +622,14 @@ def test_run_master(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
     behave = behave_fixture.context
 
     def mock_on_node(master: bool, worker: bool) -> None:
-        def mocked_on_worker(context: Context) -> bool:
-            return worker
-
         mocker.patch(
             'grizzly.locust.on_worker',
-            mocked_on_worker,
+            return_value=worker,
         )
-
-        def mocked_on_master(context: Context) -> bool:
-            return master
 
         mocker.patch(
             'grizzly.locust.on_master',
-            mocked_on_master,
+            return_value=master,
         )
 
     for method in [
@@ -681,20 +668,29 @@ def test_run_master(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
     }
 
     assert run(behave) == 254
-    assert 'cannot be both master and worker' in capsys.readouterr().err
 
-    behave.config.userdata = {}
+    capture = capsys.readouterr()
+    assert 'cannot be both master and worker' in capture.err
+    assert 'grizzly.returncode=254' in capture.out
+
+    behave.config.userdata = {'master': 'true'}
 
     grizzly = cast(GrizzlyContext, behave.grizzly)
 
     grizzly.setup.spawn_rate = None
     assert run(behave) == 254
-    assert 'spawn rate is not set' in capsys.readouterr().err
+
+    capture = capsys.readouterr()
+    assert 'spawn rate is not set' in capture.err
+    assert 'grizzly.returncode=254' in capture.out
 
     grizzly.setup.spawn_rate = 1
 
     assert run(behave) == 254
-    assert 'step \'Given "user_count" users\' is not in the feature file' in capsys.readouterr().err
+
+    capture = capsys.readouterr()
+    assert 'step \'Given "user_count" users\' is not in the feature file' in capture.err
+    assert 'grizzly.returncode=254' in capture.out
 
     grizzly.setup.user_count = 2
     grizzly.scenarios.create(behave_fixture.create_scenario('test'))
@@ -719,7 +715,7 @@ def test_run_master(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
 
     with pytest.raises(AssertionError) as ae:
         run(behave)
-    assert 'there are more workers (3) than users (2), which is not supported' in str(ae)
+    assert str(ae.value) == 'there are more workers (3) than users (2), which is not supported'
 
     assert messagequeue_process_spy.call_count == 0
 
