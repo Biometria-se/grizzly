@@ -8,6 +8,7 @@ from signal import SIGTERM
 from socket import error as SocketError
 from math import ceil
 from operator import itemgetter
+from functools import wraps
 
 import gevent
 
@@ -288,6 +289,20 @@ def print_scenario_summary(grizzly: GrizzlyContext) -> None:
     print(separator)
 
 
+def verbose_returncode(func: Callable[[Context], int]) -> Callable[[Context], int]:
+    @wraps(func)
+    def wrapper(context: Context) -> int:
+        returncode = func(context)
+
+        if on_master(context):
+            print(f'grizzly.returncode={returncode}')
+
+        return returncode
+
+    return wrapper
+
+
+@verbose_returncode
 def run(context: Context) -> int:
     def shutdown_external_processes(processes: Dict[str, subprocess.Popen]) -> None:
         if len(processes) > 0:
