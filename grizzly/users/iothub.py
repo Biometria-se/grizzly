@@ -15,7 +15,7 @@ Format of `host` is the following:
 HostName=<hostname>;DeviceId=<device key>;SharedAccessKey=<access key>
 ```
 
-`endpoint` in the request can be any value, it is not used.
+`endpoint` in the request is the desired filename for the uploaded file.
 
 ## Examples
 
@@ -23,10 +23,9 @@ Example of how to use it in a scenario:
 
 ``` gherkin
 Given a user of type "IoTHub" load testing "HostName=my_iot_host_name;DeviceId=my_device;SharedAccessKey=xxxyyyyzzz=="
-Then send request "test/blob.file" to endpoint "."
+Then send request "test/blob.file" to endpoint "uploaded_blob_filename"
 ```
 '''
-import os
 
 from typing import Dict, Any, Tuple, Optional
 from urllib.parse import urlparse, parse_qs
@@ -76,7 +75,7 @@ class IotHubUser(GrizzlyUser):
         self._context = merge_dicts(super().context(), self.__class__._context)
 
     def request(self, request: RequestTask) -> GrizzlyResponse:
-        request_name, _, payload, _, _ = self.render(request)
+        request_name, endpoint, payload, _, _ = self.render(request)
 
         name = f'{request.scenario.identifier} {request_name}'
 
@@ -85,7 +84,7 @@ class IotHubUser(GrizzlyUser):
         response_length = 0
 
         try:
-            filename = os.path.basename(request_name)
+            filename = endpoint
 
             storage_info = self.client.get_storage_info_for_blob(filename)
 
