@@ -36,6 +36,7 @@ from azure.storage.blob import BlobClient
 from locust.exception import StopUser
 from locust.env import Environment
 
+from . import logger
 from .base import GrizzlyUser
 from ..types import RequestMethod, GrizzlyResponse, RequestType
 from ..tasks import RequestTask
@@ -98,7 +99,12 @@ class IotHubUser(GrizzlyUser):
             with BlobClient.from_blob_url(sas_url) as blob_client:
                 if request.method in [RequestMethod.SEND, RequestMethod.PUT]:
                     blob_client.upload_blob(payload)
+                    logger.debug(f'Uploaded blob to IoT hub, filename: {filename}, correlationId: {storage_info["correlationId"]}')
                     response_length = len(payload or '')
+
+                    self.client.notify_blob_upload_status(
+                        storage_info['correlationId'], True, 200, f'OK: {filename}'
+                    )
                 else:
                     raise NotImplementedError(f'{self.__class__.__name__} has not implemented {request.method.name}')
         except Exception as e:

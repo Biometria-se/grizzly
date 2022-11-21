@@ -35,7 +35,8 @@ class MockedIotHubDeviceClient(IoTHubDeviceClient):
             'hostName': 'some_host',
             'containerName': 'some_container',
             'blobName': 'some_blob',
-            'sasToken': 'some_sas_token'
+            'sasToken': 'some_sas_token',
+            'correlationId': 'correlation_id'
         }
 
 
@@ -113,6 +114,7 @@ class TestIotHubUser:
         request.endpoint = 'not_relevant'
 
         upload_blob = mocker.patch('azure.storage.blob._blob_client.BlobClient.upload_blob', autospec=True)
+        notify_blob_upload_status = mocker.patch('azure.iot.device.IoTHubDeviceClient.notify_blob_upload_status', autospec=True)
 
         expected_payload = {
             'result': {
@@ -141,6 +143,13 @@ class TestIotHubUser:
         assert json_payload['result']['id'] == 'ID-31337'
         assert blob_client.container_name == 'some_container'
         assert blob_client.blob_name == 'some_blobsome_sas_token'
+
+        assert notify_blob_upload_status.call_count == 1
+        args, _ = notify_blob_upload_status.call_args_list[-1]
+        assert len(args) == 5
+        assert args[1] == 'correlation_id'
+        assert args[2] is True
+        assert args[3] == 200
 
         request = cast(RequestTask, scenario.tasks[-1])
 
