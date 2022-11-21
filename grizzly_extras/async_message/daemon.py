@@ -22,7 +22,7 @@ from grizzly_extras.transformer import JsonBytesEncoder
 
 def router() -> None:
     logger = ThreadLogger('router')
-    proc.setproctitle('grizzly')
+    proc.setproctitle('async-messaged')
     logger.debug('starting')
 
     context = zmq.Context(1)

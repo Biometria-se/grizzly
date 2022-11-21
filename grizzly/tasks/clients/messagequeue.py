@@ -70,6 +70,7 @@ from contextlib import contextmanager
 from typing import Optional, Dict, Any, List, Generator, cast
 from urllib.parse import urlparse, parse_qs, unquote
 from pathlib import Path
+from platform import node as hostname
 
 import zmq.green as zmq
 
@@ -287,6 +288,7 @@ class MessageQueueClientTask(ClientTask):
             if self._worker is None:
                 with self.action(parent, supress=True) as meta:
                     self.connect(client, meta)
+                    parent.logger.debug(f'connected to worker {self._worker} at {hostname()}')
 
             with self.action(parent) as meta:
                 meta['action'] = self.endpoint_path
@@ -298,12 +300,15 @@ class MessageQueueClientTask(ClientTask):
 
                 response = None
 
+                parent.logger.debug(f'waiting for response from {self._worker} at {hostname()}')
                 while True:
                     try:
                         response = cast(AsyncMessageResponse, client.recv_json(flags=ZMQ_NOBLOCK))
                         break
                     except ZMQAgain:
                         gsleep(0.1)
+
+                parent.logger.debug(f'got response from {self._worker} at {hostname()}')
 
                 response_length_source = (response or {}).get('payload', None) or ''
 
