@@ -35,7 +35,6 @@ class IteratorScenario(GrizzlyScenario):
         self.task_count = len(self.tasks)
         self.stats = self.user.environment.stats.get(self.user._scenario.locust_name, RequestType.SCENARIO())
         self.behave_steps = self.user._scenario.tasks.behave_steps.copy()
-        self.user._scenario.tasks.behave_steps.clear()
 
     def run(self) -> None:  # type: ignore
         try:

@@ -74,7 +74,7 @@ class TestMessageQueueClientTask:
 
             assert isinstance(task_factory._zmq_context, zmq.Context)
             assert task_factory._zmq_url == 'tcp://127.0.0.1:5554'
-            assert task_factory._worker is None
+            assert task_factory._worker == {}
             assert task_factory.endpoint == 'mqs://localhost:1'
             assert task_factory.name is None
             assert task_factory.variable is None
@@ -95,7 +95,7 @@ class TestMessageQueueClientTask:
 
             assert isinstance(task_factory._zmq_context, zmq.Context)
             assert task_factory._zmq_url == 'tcp://127.0.0.1:5554'
-            assert task_factory._worker is None
+            assert task_factory._worker == {}
             assert task_factory.endpoint == 'mqs://localhost:1'
             assert task_factory.name == 'messagequeue-request'
             assert task_factory.variable is None
@@ -315,7 +315,7 @@ class TestMessageQueueClientTask:
                 noop_zmq._mocker.patch('grizzly.tasks.clients.messagequeue.zmq.Socket.setsockopt', autospec=True)
                 meta: Dict[str, Any] = {}
                 with pytest.raises(RuntimeError) as re:
-                    task_factory.connect(client, meta)
+                    task_factory.connect(111111, client, meta)
                 assert str(re.value) == 'no response when trying to connect'
                 assert meta.get('response_length', None) == 0
                 assert meta.get('action', None) == 'topic:INCOMING.MSG'
@@ -349,7 +349,7 @@ class TestMessageQueueClientTask:
                 recv_json_mock.side_effect = [message]
 
                 with pytest.raises(RuntimeError) as re:
-                    task_factory.connect(client, meta)
+                    task_factory.connect(222222, client, meta)
                 assert str(re.value) == 'unknown error yo'
 
                 assert send_json_mock.call_count == 2
@@ -361,13 +361,13 @@ class TestMessageQueueClientTask:
                 message = {'success': True, 'message': 'hello there', 'worker': 'aaaa-bbbb-cccc-dddd'}
                 recv_json_mock.side_effect = [message]
 
-                task_factory.connect(client, meta)
+                task_factory.connect(333333, client, meta)
 
                 assert send_json_mock.call_count == 3
                 assert recv_json_mock.call_count == 4
                 assert meta.get('response_length', None) == 0
                 assert meta.get('action', None) == 'topic:INCOMING.MSG'
-                assert task_factory._worker == 'aaaa-bbbb-cccc-dddd'
+                assert task_factory._worker.get(333333, None) == 'aaaa-bbbb-cccc-dddd'
 
                 zmq_context.destroy()
                 meta = {}
@@ -381,7 +381,7 @@ class TestMessageQueueClientTask:
             zmq_context = task_factory._zmq_context
 
             with task_factory.create_client() as client:
-                task_factory.connect(client, meta)
+                task_factory.connect(444444, client, meta)
                 assert send_json_mock.call_count == 4
                 assert recv_json_mock.call_count == 5
                 args, _ = send_json_mock.call_args_list[-1]
@@ -440,7 +440,7 @@ class TestMessageQueueClientTask:
             task(scenario)
 
             assert scenario.user._context['variables'].get('mq-client-var', None) is None
-            assert task_factory._worker == 'dddd-eeee-ffff-9999'
+            assert task_factory._worker.get(id(scenario), None) == 'dddd-eeee-ffff-9999'
             assert send_json_mock.call_count == 2
             args, _ = send_json_mock.call_args_list[-1]
             print(args)
@@ -574,7 +574,7 @@ class TestMessageQueueClientTask:
 
             task(scenario)
 
-            assert task_factory._worker == 'dddd-eeee-ffff-9999'
+            assert task_factory._worker.get(id(scenario), None) == 'dddd-eeee-ffff-9999'
 
             assert recv_json_mock.call_count == 2
             assert send_json_mock.call_count == 2

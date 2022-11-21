@@ -99,7 +99,7 @@ class MessageQueueClientTask(ClientTask):
 
     _zmq_url = 'tcp://127.0.0.1:5554'
     _zmq_context: zmq.Context
-    _worker: Optional[str]
+    _worker: Dict[int, str]
 
     endpoint_path: str
     context: AsyncMessageContext
@@ -126,7 +126,7 @@ class MessageQueueClientTask(ClientTask):
         self.create_context()
 
         self._zmq_context = zmq.Context()
-        self._worker = None
+        self._worker = {}
 
     def create_context(self) -> None:
         parsed = urlparse(self.endpoint)
@@ -253,7 +253,7 @@ class MessageQueueClientTask(ClientTask):
                 client.setsockopt(ZMQ_LINGER, 0)
                 client.close()
 
-    def connect(self, client: zmq.Socket, meta: Dict[str, Any]) -> None:
+    def connect(self, client_id: int, client: zmq.Socket, meta: Dict[str, Any]) -> None:
         request = {
             'action': RequestType.CONNECT(),
             'context': self.context,
@@ -281,18 +281,24 @@ class MessageQueueClientTask(ClientTask):
         if not response['success']:
             raise RuntimeError(message)
 
-        self._worker = response['worker']
+        self._worker.update({client_id: response['worker']})
 
     def request(self, parent: GrizzlyScenario, request: AsyncMessageRequest) -> AsyncMessageResponse:
         with self.create_client() as client:
-            if self._worker is None:
+            client_id = id(parent)
+            worker = self._worker.get(client_id, None)
+            if worker is None:
                 with self.action(parent, supress=True) as meta:
-                    self.connect(client, meta)
-                    parent.logger.debug(f'connected to worker {self._worker} at {hostname()}')
+                    self.connect(client_id, client, meta)
+                    worker = self._worker.get(client_id, None)
+                    parent.logger.debug(f'connected to worker {worker} at {hostname()}')
+
+            if worker is None:
+                raise RuntimeError(f'{parent.__class__.__name__}/{client_id} was unable to get an worker assigned')
 
             with self.action(parent) as meta:
                 meta['action'] = self.endpoint_path
-                request['worker'] = self._worker
+                request['worker'] = worker
 
                 meta.update({'request': request.copy()})
 
@@ -300,7 +306,7 @@ class MessageQueueClientTask(ClientTask):
 
                 response = None
 
-                parent.logger.debug(f'waiting for response from {self._worker} at {hostname()}')
+                parent.logger.debug(f'waiting for response from {worker} at {hostname()}')
                 while True:
                     try:
                         response = cast(AsyncMessageResponse, client.recv_json(flags=ZMQ_NOBLOCK))
@@ -308,7 +314,7 @@ class MessageQueueClientTask(ClientTask):
                     except ZMQAgain:
                         gsleep(0.1)
 
-                parent.logger.debug(f'got response from {self._worker} at {hostname()}')
+                parent.logger.debug(f'got response from {worker} at {hostname()}')
 
                 response_length_source = (response or {}).get('payload', None) or ''
 
