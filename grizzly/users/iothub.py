@@ -121,6 +121,7 @@ class IotHubUser(GrizzlyUser):
             )
 
             if exception is not None:
+                logger.error(f'Failed to upload file "{filename}" to IoT hub', exc_info=exception)
                 if isinstance(exception, NotImplementedError):
                     raise StopUser()
                 elif request.scenario.failure_exception is not None:
