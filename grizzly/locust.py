@@ -306,6 +306,9 @@ def verbose_returncode(func: Callable[[Context], int]) -> Callable[[Context], in
 def run(context: Context) -> int:
     def shutdown_external_processes(processes: Dict[str, subprocess.Popen]) -> None:
         if len(processes) > 0:
+            if watch_running_external_processes_greenlet is not None:
+                watch_running_external_processes_greenlet.kill(block=False)
+
             for dependency, process in processes.items():
                 logger.info(f'stopping {dependency}')
                 process.terminate()
@@ -385,6 +388,7 @@ def run(context: Context) -> int:
         external_dependencies.update(variable_dependencies)
 
         environment.events.init.fire(environment=environment, runner=runner, web_ui=None)
+        watch_running_external_processes_greenlet: Optional[gevent.Greenlet] = None
 
         if not on_master(context) and len(external_dependencies) > 0:
             env = environ.copy()
@@ -401,6 +405,32 @@ def run(context: Context) -> int:
                     stderr=subprocess.DEVNULL,
                 )})
                 # gevent.sleep(2)
+
+            def start_watching_external_processes(processes: Dict[str, subprocess.Popen]) -> Callable[[], None]:
+                logger.info('making sure external processes are alive every 10 seconds')
+
+                def watch_running_external_processes() -> None:
+                    while runner.user_count > 0:
+                        _processes = processes.copy()
+                        for dependency, process in _processes.items():
+                            if process.poll() is not None:
+                                logger.error(f'{dependency} is not running, restarting')
+                                processes.update({dependency: subprocess.Popen(
+                                    [dependency],
+                                    env=env,
+                                    shell=False,
+                                    stdout=subprocess.DEVNULL,
+                                    stderr=subprocess.DEVNULL,
+                                )})
+
+                        gevent.sleep(10.0)
+
+                    logger.info('stop watching external processes')
+
+                return watch_running_external_processes
+
+            watch_running_external_processes_greenlet = gevent.spawn_later(10, start_watching_external_processes(external_processes))
+            watch_running_external_processes_greenlet.link_exception(greenlet_exception_handler)
 
         main_greenlet = runner.greenlet
 
