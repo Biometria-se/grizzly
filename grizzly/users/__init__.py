@@ -30,5 +30,5 @@ __all__ = [
     'ServiceBusUser',
     'SftpUser',
     'BlobStorageUser',
-    'IotHubUser'
+    'IotHubUser',
 ]

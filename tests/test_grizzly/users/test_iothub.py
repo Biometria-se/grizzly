@@ -72,25 +72,21 @@ class TestIotHubUser:
         user, _, environment = iot_hub_scenario
         assert issubclass(user.__class__, GrizzlyUser)
 
-        print('1')
         IotHubUser.host = 'PostName=my_iot_host_name;DeviceId=my_device;SharedAccessKey=xxxyyyyzzz=='
         with pytest.raises(ValueError) as e:
             user = IotHubUser(environment)
         assert 'host needs to start with "HostName="' in str(e)
 
-        print('2')
         IotHubUser.host = 'HostName=my_iot_host_name'
         with pytest.raises(ValueError) as e:
             user = IotHubUser(environment)
         assert 'needs DeviceId and SharedAccessKey in the query string' in str(e)
 
-        print('3')
         IotHubUser.host = 'HostName=my_iot_host_name;SharedAccessKey=xxxyyyyzzz=='
         with pytest.raises(ValueError) as e:
             user = IotHubUser(environment)
         assert 'needs DeviceId in the query string' in str(e)
 
-        print('4')
         IotHubUser.host = 'HostName=my_iot_host_name;DeviceId=my_device'
         with pytest.raises(ValueError) as e:
             user = IotHubUser(environment)
@@ -133,7 +129,7 @@ class TestIotHubUser:
         assert upload_blob.call_count == 1
         args, _ = upload_blob.call_args_list[-1]
         assert len(args) == 2
-        assert args[1] == json.dumps(expected_payload, indent=4)
+        assert json.loads(args[1]) == expected_payload
 
         blob_client = cast(BlobClient, args[0])
 
