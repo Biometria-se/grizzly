@@ -425,7 +425,7 @@ def run(context: Context) -> int:
 
                         gevent.sleep(10.0)
 
-                    logger.info('stopp watching external processes')
+                    logger.info('stop watching external processes')
 
                 return watch_running_external_processes
 
