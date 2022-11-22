@@ -23,6 +23,9 @@ except ModuleNotFoundError:
     from grizzly_extras import dummy_pymqi as pymqi
 
 
+last_task_count: Dict[str, int] = {}
+
+
 def before_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
     # identify as grizzly, instead of behave
     proc.setproctitle('grizzly')
@@ -134,6 +137,9 @@ def before_scenario(context: Context, scenario: Scenario, *args: Tuple[Any, ...]
 
     grizzly.scenarios.create(scenario)
 
+    if grizzly.scenario.identifier not in last_task_count:
+        last_task_count[grizzly.scenario.identifier] = 0
+
 
 def after_scenario(context: Context, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
     grizzly = cast(GrizzlyContext, context.grizzly)
@@ -161,4 +167,12 @@ def before_step(context: Context, step: Step, *args: Tuple[Any, ...], **kwargs: 
 def after_step(context: Context, step: Step, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
     # grizzly does not have any functionality that should run after every step, but added for
     # clarity of what can be overloaded
-    return
+    grizzly = cast(GrizzlyContext, context.grizzly)
+
+    if len(grizzly.scenario.tasks._tmp.__stack__) == 0:
+        task_index = len(grizzly.scenario.tasks)
+
+        if task_index > last_task_count[grizzly.scenario.identifier]:
+            last_task_count[grizzly.scenario.identifier] = task_index
+            # GrizzlyIterator offset by one, since it has an interal task
+            grizzly.scenario.tasks.behave_steps.update({task_index + 1: f'{step.keyword} {step.name}'})

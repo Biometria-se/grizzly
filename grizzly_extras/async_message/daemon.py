@@ -22,7 +22,7 @@ from grizzly_extras.transformer import JsonBytesEncoder
 
 def router() -> None:
     logger = ThreadLogger('router')
-    proc.setproctitle('grizzly')
+    proc.setproctitle('async-messaged')
     logger.debug('starting')
 
     context = zmq.Context(1)
@@ -47,6 +47,7 @@ def router() -> None:
     spawn_worker()
 
     while True:
+        logger.debug("i'm alive!")
         socks = dict(poller.poll())
 
         if socks.get(backend) == zmq.POLLIN:
@@ -97,6 +98,7 @@ def worker(context: zmq.Context, identity: str) -> None:
     integration: Optional[AsyncMessageHandler] = None
 
     while True:
+        logger.debug("i'm alive!")
         request_proto = worker.recv_multipart()
         if not request_proto:
             logger.error('empty msg')

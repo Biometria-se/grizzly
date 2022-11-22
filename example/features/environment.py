@@ -11,6 +11,7 @@ from grizzly.environment import (  # noqa: F401
     before_scenario as grizzly_before_scenario,
     after_scenario,
     before_step,
+    after_step,
 )
 from grizzly.context import GrizzlyContext
 from locust.exception import StopUser
