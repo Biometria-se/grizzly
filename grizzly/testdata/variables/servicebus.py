@@ -85,6 +85,7 @@ import logging
 
 from typing import Dict, Any, List, Type, Optional, cast
 from urllib.parse import urlparse, parse_qs
+from platform import node as hostname
 
 from zmq.sugar.constants import NOBLOCK as ZMQ_NOBLOCK, REQ as ZMQ_REQ
 from zmq.error import Again as ZMQAgain, ZMQError
@@ -244,11 +245,9 @@ class AtomicServiceBus(AtomicVariable[str]):
         'content_type': TransformerContentType.from_string,
     }
 
-    def __init__(self, variable: str, value: str) -> None:
-        # silence uamqp loggers
-        for uamqp_logger_name in ['uamqp', 'uamqp.c_uamqp']:
-            logging.getLogger(uamqp_logger_name).setLevel(logging.ERROR)
+    logger: logging.Logger
 
+    def __init__(self, variable: str, value: str) -> None:
         safe_value = self.__class__.__base_type__(value)
 
         settings = {'repeat': False, 'wait': None, 'url': None, 'worker': None, 'context': None, 'endpoint_name': None, 'content_type': None}
@@ -282,6 +281,11 @@ class AtomicServiceBus(AtomicVariable[str]):
 
                 return
 
+            # silence uamqp loggers
+            for uamqp_logger_name in ['uamqp', 'uamqp.c_uamqp']:
+                logging.getLogger(uamqp_logger_name).setLevel(logging.ERROR)
+
+            self.logger = logging.getLogger(self.__class__.__name__)
             self._endpoint_messages = {variable: []}
             self._settings = {variable: settings}
             self._zmq_context = zmq.Context()
@@ -365,6 +369,7 @@ class AtomicServiceBus(AtomicVariable[str]):
             raise RuntimeError(f'{self.__class__.__name__}.{variable}: {message}')
 
         self._settings[variable]['worker'] = response['worker']
+        self.logger.debug(f'conntected to worker {response["worker"]} at {hostname()}')
 
     @classmethod
     def destroy(cls: Type['AtomicServiceBus']) -> None:
@@ -418,12 +423,14 @@ class AtomicServiceBus(AtomicVariable[str]):
 
             client.send_json(request)
 
+            self.logger.debug(f'waiting for answer from {settings["worker"]} at {hostname()}')
             while True:
                 try:
                     response = cast(AsyncMessageResponse, client.recv_json(flags=ZMQ_NOBLOCK))
                     break
                 except ZMQAgain:
                     gsleep(0.1)
+            self.logger.debug(f'got response from {settings["worker"]} at {hostname()}')
 
             if response is None:
                 raise RuntimeError(f'{self.__class__.__name__}.{variable}: unknown error, no response')

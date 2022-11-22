@@ -249,7 +249,7 @@ module = "geventhttpclient.*"
 ignore_missing_imports = true
 
 [tool.coverage.run]
-omit = ["tests/*", "setup.py", ".pytest_tmp"]
+omit = ["tests/*", "setup.py", ".pytest_tmp/*"]
 
 [tool.pytest.ini_options]
 addopts = [

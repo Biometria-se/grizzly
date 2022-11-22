@@ -209,12 +209,14 @@ class GrizzlyContextTasksTmp:
 class GrizzlyContextTasks(List['GrizzlyTask']):
     scenario: 'GrizzlyContextScenario'
     _tmp: GrizzlyContextTasksTmp
+    behave_steps: Dict[int, str]
 
     def __init__(self, scenario: 'GrizzlyContextScenario', *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
         super().__init__(*args, **kwargs)
 
         self.scenario = scenario
         self._tmp = GrizzlyContextTasksTmp()
+        self.behave_steps = {}
 
     @property
     def tmp(self) -> GrizzlyContextTasksTmp:

@@ -1,6 +1,6 @@
 import traceback
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Dict
 from time import perf_counter
 from json import dumps as jsondumps
 
@@ -24,6 +24,7 @@ class IteratorScenario(GrizzlyScenario):
     start: Optional[float]
     task_count: int
     stats: StatsEntry
+    behave_steps: Dict[int, str]
 
     current_task_index: int = 0
 
@@ -33,6 +34,7 @@ class IteratorScenario(GrizzlyScenario):
         self.start = None
         self.task_count = len(self.tasks)
         self.stats = self.user.environment.stats.get(self.user._scenario.locust_name, RequestType.SCENARIO())
+        self.behave_steps = self.user._scenario.tasks.behave_steps.copy()
 
     def run(self) -> None:  # type: ignore
         try:
@@ -53,7 +55,9 @@ class IteratorScenario(GrizzlyScenario):
                 try:
                     if self.user._state == LOCUST_STATE_STOPPING:
                         raise StopUser()
-                    self.logger.debug(f'executing task {self.current_task_index+1} of {self.task_count}')
+
+                    step = self.behave_steps.get(self.current_task_index + 1, 'unknown')
+                    self.logger.debug(f'executing task {self.current_task_index+1} of {self.task_count}: {step}')
                     self.execute_next_task()
                 except RescheduleTaskImmediately:
                     pass

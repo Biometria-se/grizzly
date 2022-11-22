@@ -454,14 +454,17 @@ class TestIterationScenario:
             for i in range(1, 6):
                 name = f'test-task-{i}'
                 user.logger.debug(f'populating with {name}')
+                user._scenario.tasks.behave_steps.update({i + 1: name})
                 IteratorScenario.populate(TestTask(name=name))
 
             IteratorScenario.populate(TestErrorTask(name='test-error-task-1'))
             user.logger.debug('populating with test-error-task-1')
+            user._scenario.tasks.behave_steps.update({7: 'test-error-task-1'})
 
             for i in range(6, 11):
                 name = f'test-task-{i}'
                 user.logger.debug(f'populating with {name}')
+                user._scenario.tasks.behave_steps.update({i + 2: name})
                 IteratorScenario.populate(TestTask(name=name))
 
             scenario = IteratorScenario(user)
@@ -489,49 +492,49 @@ class TestIterationScenario:
                     scenario.run()
 
             expected_messages = [
-                'executing task 1 of 12',  # IteratorScenario.iterator()
-                'executing task 2 of 12',
+                'executing task 1 of 12: unknown',  # IteratorScenario.iterator()
+                'executing task 2 of 12: test-task-1',
                 'test-task-1 executed',
-                'executing task 3 of 12',
+                'executing task 3 of 12: test-task-2',
                 'test-task-2 executed',
-                'executing task 4 of 12',
+                'executing task 4 of 12: test-task-3',
                 'test-task-3 executed',
-                'executing task 5 of 12',
+                'executing task 5 of 12: test-task-4',
                 'test-task-4 executed',
-                'executing task 6 of 12',
+                'executing task 6 of 12: test-task-5',
                 'test-task-5 executed',
-                'executing task 7 of 12',
+                'executing task 7 of 12: test-error-task-1',
                 'test-error-task-1 executed',
                 'restarting scenario at task 7 of 12',
-                'executing task 1 of 12',  # IteratorScenario.iterator()
-                'executing task 2 of 12',
+                'executing task 1 of 12: unknown',  # IteratorScenario.iterator()
+                'executing task 2 of 12: test-task-1',
                 'test-task-1 executed',
-                'executing task 3 of 12',
+                'executing task 3 of 12: test-task-2',
                 'test-task-2 executed',
-                'executing task 4 of 12',
+                'executing task 4 of 12: test-task-3',
                 'test-task-3 executed',
-                'executing task 5 of 12',
+                'executing task 5 of 12: test-task-4',
                 'test-task-4 executed',
-                'executing task 6 of 12',
+                'executing task 6 of 12: test-task-5',
                 'test-task-5 executed',
-                'executing task 7 of 12',
+                'executing task 7 of 12: test-error-task-1',
                 'test-error-task-1 executed',
                 'stop scenarios before stopping user',
                 'scenario state=ScenarioState.RUNNING -> ScenarioState.STOPPING',
                 'not finished with scenario, currently at task 7 of 12, let me be!',
-                'executing task 8 of 12',
+                'executing task 8 of 12: test-task-6',
                 'test-task-6 executed',
                 'not finished with scenario, currently at task 8 of 12, let me be!',
-                'executing task 9 of 12',
+                'executing task 9 of 12: test-task-7',
                 'test-task-7 executed',
                 'not finished with scenario, currently at task 9 of 12, let me be!',
-                'executing task 10 of 12',
+                'executing task 10 of 12: test-task-8',
                 'test-task-8 executed',
                 'not finished with scenario, currently at task 10 of 12, let me be!',
-                'executing task 11 of 12',
+                'executing task 11 of 12: test-task-9',
                 'test-task-9 executed',
                 'not finished with scenario, currently at task 11 of 12, let me be!',
-                'executing task 12 of 12',
+                'executing task 12 of 12: test-task-10',
                 'test-task-10 executed',
                 "okay, I'm done with my running tasks now",
                 'scenario state=ScenarioState.STOPPING -> ScenarioState.STOPPED',
