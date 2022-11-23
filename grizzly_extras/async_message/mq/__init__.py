@@ -282,7 +282,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                         gmo = self._create_gmo(message_wait)
 
                     try:
-                        message = queue.get(None, md, gmo)
+                        message = queue.get(16384, md, gmo)  # @TODO: max message size should maybe be configurable?
                         payload = self._get_payload(message)
                         response_length = len(payload) if payload is not None else 0
                         if retries > 0:
@@ -292,7 +292,8 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                             # Message disappeared, retry
                             do_retry = True
                         elif e.reason == pymqi.CMQC.MQRC_TRUNCATED_MSG_FAILED:
-                            self.logger.warning(f'got MQRC_TRUNCATED_MSG_FAILED while getting message, {retries=}')
+                            original_length = getattr(e, 'original_length', None)
+                            self.logger.warning(f'got MQRC_TRUNCATED_MSG_FAILED while getting message, {retries=}, {original_length=}')
                             # Concurrency issue, retry
                             do_retry = True
                         else:
