@@ -20,6 +20,10 @@ action "mkdocs-update-config" {
                 output = output.replace(word.capitalize(), word.upper())
                 output = output.replace(word, word.upper())
 
+            def to_replace = dict(Iot='IoT', hub='Hub')
+            for value, replace_value in to_replace.items():
+                output = output.replace(value, replace_value)
+
             return output
 
         def config_nav_tasks = config['nav'][2]['Framework'][0]['Usage'][0]['Tasks']

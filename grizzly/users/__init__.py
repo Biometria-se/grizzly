@@ -22,6 +22,7 @@ from .messagequeue import MessageQueueUser
 from .servicebus import ServiceBusUser
 from .sftp import SftpUser
 from .blobstorage import BlobStorageUser
+from .iothub import IotHubUser
 
 __all__ = [
     'RestApiUser',
@@ -29,4 +30,5 @@ __all__ = [
     'ServiceBusUser',
     'SftpUser',
     'BlobStorageUser',
+    'IotHubUser',
 ]
