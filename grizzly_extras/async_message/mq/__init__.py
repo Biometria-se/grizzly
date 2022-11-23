@@ -239,7 +239,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
         metadata = request.get('context', {}).get('metadata', None)
 
         retries: int = 0
-        while True:
+        while retries < 5:
             msg_id_to_fetch: Optional[bytearray] = None
             if action == 'GET' and expression is not None:
                 content_type = self._get_content_type(request)
@@ -292,7 +292,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                             # Message disappeared, retry
                             do_retry = True
                         elif e.reason == pymqi.CMQC.MQRC_TRUNCATED_MSG_FAILED:
-                            self.logger.warning('got MQRC_TRUNCATED_MSG_FAILED while getting message')
+                            self.logger.warning(f'got MQRC_TRUNCATED_MSG_FAILED while getting message, {retries=}')
                             # Concurrency issue, retry
                             do_retry = True
                         else:
@@ -311,6 +311,8 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                         'metadata': md.get(),
                         'response_length': response_length,
                     }
+
+        raise AsyncMessageError(f'failed after {retries+1} retries')
 
     @register(handlers, 'PUT', 'SEND')
     def put(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
