@@ -2,9 +2,9 @@ import logging
 
 from typing import TYPE_CHECKING, Set, Optional, List, Dict, Generator
 
-import jinja2 as j2
+from jinja2 import Environment as Jinja2Environment, FileSystemLoader as Jinja2FileSystemLoader
 
-from jinja2.nodes import Getattr, Getitem, Name, Compare, Filter, Node, Mod, Add, Mul, Sub
+from jinja2 import nodes as j2
 
 from ..tasks import GrizzlyTask
 
@@ -28,14 +28,14 @@ def get_template_variables(tasks: List[GrizzlyTask]) -> Dict[str, Set[str]]:
     return _parse_templates(templates)
 
 
-def walk_attr(node: Getattr) -> List[str]:
-    def _walk_attr(parent: Getattr) -> List[str]:
+def walk_attr(node: j2.Getattr) -> List[str]:
+    def _walk_attr(parent: j2.Getattr) -> List[str]:
         attributes: List[str] = [getattr(parent, 'attr')]
         child = getattr(parent, 'node')
 
-        if isinstance(child, Getattr):
+        if isinstance(child, j2.Getattr):
             attributes += _walk_attr(child)
-        elif isinstance(child, Name):
+        elif isinstance(child, j2.Name):
             attributes.append(getattr(child, 'name'))
 
         return attributes
@@ -55,33 +55,62 @@ def _parse_templates(templates: Dict['GrizzlyContextScenario', Set[str]]) -> Dic
         if scenario_name not in variables:
             variables[scenario_name] = set()
 
-        def _getattr(node: Node) -> Generator[List[str], None, None]:
+        def _getattr(node: j2.Node) -> Generator[List[str], None, None]:
             attributes: Optional[List[str]] = None
 
-            if isinstance(node, Getattr):
+            if isinstance(node, j2.Getattr):
                 attributes = walk_attr(node)
-            elif isinstance(node, Getitem):
+            elif isinstance(node, j2.Getitem):
                 child_node = getattr(node, 'node')
                 child_node_name = getattr(child_node, 'name', None)
                 if child_node_name is not None:
                     attributes = [child_node_name]
-            elif isinstance(node, Name):
+            elif isinstance(node, j2.Name):
                 attributes = [getattr(node, 'name')]
-            elif isinstance(node, Filter):
+            elif isinstance(node, (j2.Filter, j2.UnaryExpr,)):
                 child_node = getattr(node, 'node')
                 yield from _getattr(child_node)
-            elif isinstance(node, (Mod, Add, Mul, Sub)):
+            elif isinstance(node, j2.BinExpr):
                 left_node = getattr(node, 'left')
                 yield from _getattr(left_node)
                 right_node = getattr(node, 'right')
                 yield from _getattr(right_node)
-            elif isinstance(node, Compare):
+            elif isinstance(node, j2.CondExpr):
+                test_node = getattr(node, 'test')
+                yield from _getattr(test_node)
+
+                expr_node = getattr(node, 'expr1')
+                yield from _getattr(expr_node)
+
+                expr_node = getattr(node, 'expr2')
+                if expr_node is not None:
+                    yield from _getattr(expr_node)
+            elif isinstance(node, j2.Compare):
                 expr = getattr(node, 'expr')
-                if isinstance(expr, Filter):
-                    node = getattr(expr, 'node')
+                yield from _getattr(expr)
+
+                ops = getattr(node, 'ops', [])
+                for op in ops:
+                    yield from _getattr(op)
+            elif isinstance(node, j2.Operand):
+                expr = getattr(node, 'expr')
+
+                yield from _getattr(expr)
+            elif isinstance(node, j2.Concat):
+                nodes = getattr(node, 'nodes')
+
+                for node in nodes:
                     yield from _getattr(node)
-                else:
-                    raise ValueError(f'cannot find variable name in {parsed}')
+            elif isinstance(node, j2.Test):
+                child_node = getattr(node, 'node')
+                yield from _getattr(child_node)
+
+                args = getattr(node, 'args')
+                for arg in args:
+                    yield from _getattr(arg)
+            elif isinstance(node, j2.List):
+                for item in getattr(node, 'items', []):
+                    yield from _getattr(item)
 
             if attributes is not None:
                 yield attributes
@@ -90,9 +119,9 @@ def _parse_templates(templates: Dict['GrizzlyContextScenario', Set[str]]) -> Dic
 
         # can raise TemplateError which should be handled else where
         for template in template_sources:
-            j2env = j2.Environment(
+            j2env = Jinja2Environment(
                 autoescape=False,
-                loader=j2.FileSystemLoader('.'),
+                loader=Jinja2FileSystemLoader('.'),
             )
 
             parsed = j2env.parse(template)
