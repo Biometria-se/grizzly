@@ -128,6 +128,8 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
 
         if browsing:
             gmo.Options |= pymqi.CMQC.MQGMO_BROWSE_FIRST
+        else:
+            gmo.Options |= pymqi.CMQC.MQGMO_SYNCPOINT
 
         return gmo
 
@@ -286,11 +288,16 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                         gmo = self._create_gmo(message_wait)
 
                     try:
-                        message = queue.get(max_message_size, md, gmo)
-                        payload = self._get_payload(message)
-                        response_length = len(payload) if payload is not None else 0
-                        if retries > 0:
-                            self.logger.warning(f'got message after {retries} retries')
+                        try:
+                            message = queue.get(max_message_size, md, gmo)
+                            payload = self._get_payload(message)
+                            response_length = len(payload) if payload is not None else 0
+                            if retries > 0:
+                                self.logger.warning(f'got message after {retries} retries')
+                            self.qmgr.commit()
+                        except:
+                            self.qmgr.backout()
+                            raise
                     except pymqi.MQMIError as e:
                         if msg_id_to_fetch is not None and e.comp == pymqi.CMQC.MQCC_FAILED and e.reason == pymqi.CMQC.MQRC_NO_MSG_AVAILABLE:
                             # Message disappeared, retry
