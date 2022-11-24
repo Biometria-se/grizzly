@@ -589,8 +589,7 @@ class TestMessageQueueUser:
         send_json_spy.return_value = None
         send_json_spy.reset_mock()
 
-        # Test with only queue name as endpoint
-        noop_zmq.get_mock('zmq.Socket.recv_json').side_effect = the_side_effect * 6
+        noop_zmq.get_mock('zmq.Socket.recv_json').side_effect = the_side_effect * 7
 
         request.method = RequestMethod.GET
         request.endpoint = 'queue:IFKTEST'
@@ -604,7 +603,7 @@ class TestMessageQueueUser:
         request.endpoint = 'queue:IFKTEST'
         user.request(request)
         assert send_json_spy.call_count == 2
-        args, _ = send_json_spy.call_args_list[1]
+        args, _ = send_json_spy.call_args_list[-1]
         ctx = args[1]['context']
         assert ctx['endpoint'] == request.endpoint
 
@@ -612,7 +611,7 @@ class TestMessageQueueUser:
         request.endpoint = 'queue:IFKTEST2, expression:/class/student[marks>85]'
         user.request(request)
         assert send_json_spy.call_count == 3
-        args, _ = send_json_spy.call_args_list[2]
+        args, _ = send_json_spy.call_args_list[-1]
         ctx = args[1]['context']
         assert ctx['endpoint'] == request.endpoint
 
@@ -620,15 +619,22 @@ class TestMessageQueueUser:
         request.endpoint = 'queue: IFKTEST2  , expression: /class/student[marks>85]'
         user.request(request)
         assert send_json_spy.call_count == 4
-        args, _ = send_json_spy.call_args_list[3]
+        args, _ = send_json_spy.call_args_list[-1]
         ctx = args[1]['context']
         assert ctx['endpoint'] == request.endpoint
 
         # Test specifying queue without prefix, with expression
-        request.endpoint = 'queue:IFKTEST3, expression:/class/student[marks<55]'
+        request.endpoint = 'queue:IFKTEST3, expression:/class/student[marks<55], max_message_size:13337'
         user.request(request)
         assert send_json_spy.call_count == 5
-        args, _ = send_json_spy.call_args_list[4]
+        args, _ = send_json_spy.call_args_list[-1]
+        ctx = args[1]['context']
+        assert ctx['endpoint'] == request.endpoint
+
+        request.endpoint = 'queue:IFKTEST3, max_message_size:444'
+        user.request(request)
+        assert send_json_spy.call_count == 6
+        args, _ = send_json_spy.call_args_list[-1]
         ctx = args[1]['context']
         assert ctx['endpoint'] == request.endpoint
 
@@ -644,9 +650,9 @@ class TestMessageQueueUser:
         with pytest.raises(StopUser):
             user.request(request)
 
-        assert response_event_spy.call_count == 7
-        assert send_json_spy.call_count == 5
-        _, kwargs = response_event_spy.call_args_list[6]
+        assert response_event_spy.call_count == 8
+        assert send_json_spy.call_count == 6
+        _, kwargs = response_event_spy.call_args_list[-1]
         exception = kwargs.get('exception', None)
         assert isinstance(exception, RuntimeError)
         assert str(exception) == 'argument "expression" is not allowed when sending to an endpoint'
@@ -658,9 +664,9 @@ class TestMessageQueueUser:
         with pytest.raises(StopUser):
             user.request(request)
 
-        assert response_event_spy.call_count == 8
-        assert send_json_spy.call_count == 5
-        _, kwargs = response_event_spy.call_args_list[7]
+        assert response_event_spy.call_count == 9
+        assert send_json_spy.call_count == 6
+        _, kwargs = response_event_spy.call_args_list[-1]
         exception = kwargs.get('exception', None)
         assert isinstance(exception, RuntimeError)
         assert str(exception) == 'invalid value for argument "queue"'

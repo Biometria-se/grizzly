@@ -27,10 +27,13 @@ mq://<hostname>:<port>/?QueueManager=<queue manager name>&Channel=<channel name>
 a specific message is to be retrieved from the queue. The format of endpoint is:
 
 ``` plain
-queue:<queue_name>[, expression:<expression>]
+queue:<queue_name>[, expression:<expression>][, max_message_size:<max_message_size>]
 ```
 
 Where `<expression>` can be a XPath or jsonpath expression, depending on the specified content type. See example below.
+Where `<max_message_size>` is the maximum number of bytes a message can be for being able to accept it. If not set, the client will
+reject the message with `MQRC_TRUNCATED_MSG_FAILED`, adjust the message buffer and try again. If set, and the message is bigger than
+the specified size, the message will be rejected by the client and will eventually fail.
 
 ## Examples
 
@@ -158,12 +161,12 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
             'password': None,
             'key_file': None,
             'cert_label': None,
-            'ssl_cipher': None
+            'ssl_cipher': None,
         },
         'message': {
             'wait': None,
             'header_type': None,
-        }
+        },
     }
 
     __dependencies__ = set(['async-messaged'])
@@ -278,9 +281,9 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
                         gsleep(0.1)
 
             except Exception as e:
+                exception = e
                 import traceback
                 traceback.print_exc()
-                exception = e
             finally:
                 total_time = int((time() - start_time) * 1000)  # do not include event handling in request time
 
@@ -364,7 +367,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
             'worker': self.worker_id,
             'context': {
                 'endpoint': endpoint,
-                'metadata': metadata
+                'metadata': metadata,
             },
             'payload': payload,
         }
@@ -382,7 +385,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
             if 'queue' not in arguments:
                 raise RuntimeError('queue name must be prefixed with queue:')
 
-            unsupported_arguments = get_unsupported_arguments(['queue', 'expression'], arguments)
+            unsupported_arguments = get_unsupported_arguments(['queue', 'expression', 'max_message_size'], arguments)
             if len(unsupported_arguments) > 0:
                 raise RuntimeError(f'arguments {", ".join(unsupported_arguments)} is not supported')
 

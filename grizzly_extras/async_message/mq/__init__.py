@@ -221,7 +221,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
 
         try:
             arguments = parse_arguments(endpoint, separator=':')
-            unsupported_arguments = get_unsupported_arguments(['queue', 'expression'], arguments)
+            unsupported_arguments = get_unsupported_arguments(['queue', 'expression', 'max_message_size'], arguments)
             if len(unsupported_arguments) > 0:
                 raise ValueError(f'arguments {", ".join(unsupported_arguments)} is not supported')
         except ValueError as e:
@@ -229,6 +229,10 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
 
         queue_name = arguments.get('queue', None)
         expression = arguments.get('expression', None)
+        max_message_size: Optional[int] = int(arguments.get('max_message_size', '0'))
+
+        if not max_message_size:
+            max_message_size = None
 
         action = request['action']
 
@@ -282,7 +286,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                         gmo = self._create_gmo(message_wait)
 
                     try:
-                        message = queue.get(16384, md, gmo)  # @TODO: max message size should maybe be configurable?
+                        message = queue.get(max_message_size, md, gmo)
                         payload = self._get_payload(message)
                         response_length = len(payload) if payload is not None else 0
                         if retries > 0:
@@ -294,8 +298,11 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                         elif e.reason == pymqi.CMQC.MQRC_TRUNCATED_MSG_FAILED:
                             original_length = getattr(e, 'original_length', None)
                             self.logger.warning(f'got MQRC_TRUNCATED_MSG_FAILED while getting message, {retries=}, {original_length=}')
-                            # Concurrency issue, retry
-                            do_retry = True
+                            if max_message_size is None:
+                                # Concurrency issue, retry
+                                do_retry = True
+                            else:
+                                raise AsyncMessageError(f'message with size {original_length} bytes does not fit in message buffer of {max_message_size} bytes')
                         else:
                             # Some other error condition.
                             self.logger.error(str(e), exc_info=True)
