@@ -1,7 +1,7 @@
 import subprocess
 import sys
 
-from typing import Any, List, Optional, Tuple, Dict, cast
+from typing import Any, List, Tuple, Dict, cast
 from os import environ
 
 import pytest
@@ -258,25 +258,11 @@ class TestAsyncMessageQueueHandler:
         assert isinstance(gmo, pymqi.GMO)
 
     def test__request(self, mocker: MockerFixture) -> None:
-        def mocked_pymqi_close(p: pymqi.Queue, options: Optional[Any] = None) -> None:
-            pass
-
         def mocked_pymqi_put(p: pymqi.Queue, payload: Any, md: pymqi.MD) -> None:
             assert payload == 'test payload'
 
         def mocked_pymqi_put_rfh2(p: pymqi.Queue, payload: Any, md: pymqi.MD) -> None:
             assert len(payload) == 284
-
-        def mocked_pymqi_get(p: pymqi.Queue, *args: Tuple[Any, ...]) -> bytes:
-            return b'test payload'
-
-        def mocked_pymqi_get_rfh2(p: pymqi.Queue, *args: Tuple[Any, ...]) -> bytes:
-            return b'RFH \x02\x00\x00\x00\xfc\x00\x00\x00"\x02\x00\x00\xb8\x04\x00\x00        \x00\x00\x00\x00\xb8\x04\x00\x00 \x00\x00\x00<mcd><Msd>jms_bytes</Msd></mcd> ' \
-                   b'P\x00\x00\x00<jms><Dst>queue:///TEST.QUEUE</Dst><Tms>1655406556138</Tms><Dlv>2</Dlv></jms>   \\\x00\x00\x00<usr><ContentEncoding>gzip</ContentEncoding>' \
-                   b'<ContentLength dt=\'i8\'>32</ContentLength></usr> \x1f\x8b\x08\x00\xdc\x7f\xabb\x02\xff+I-.Q(H\xac\xcc\xc9OL\x01\x00\xe1=\x1d\xeb\x0c\x00\x00\x00'
-
-        def mocked_pymqi_get_that_raises(p: pymqi.Queue, *args: Tuple[Any, ...]) -> bytes:
-            raise pymqi.MQMIError(pymqi.CMQC.MQCC_FAILED, pymqi.CMQC.MQRC_UNEXPECTED_ERROR)
 
         mocker.patch.object(
             pymqi.Queue,
@@ -284,19 +270,21 @@ class TestAsyncMessageQueueHandler:
             mocked_pymqi_put,
         )
 
-        mocker.patch.object(
+        mocked_pymqi_get = mocker.patch.object(
             pymqi.Queue,
             'get',
-            mocked_pymqi_get,
+            return_value=b'test payload',
         )
 
         mocker.patch.object(
             pymqi.Queue,
             'close',
-            mocked_pymqi_close,
+            return_value=None,
         )
 
         handler = AsyncMessageQueueHandler(worker='asdf-asdf-asdf')
+
+        handler_queue_context = mocker.spy(handler, 'queue_context')
 
         request: AsyncMessageRequest = {}
 
@@ -305,6 +293,11 @@ class TestAsyncMessageQueueHandler:
         assert 'not connected' in str(mqe)
 
         handler.qmgr = pymqi.QueueManager(None)
+
+        mocker.patch.object(handler.qmgr, 'backout', return_value=None)
+        mocked_qmgr_backout = mocker.spy(handler.qmgr, 'backout')
+        mocker.patch.object(handler.qmgr, 'commit', return_value=None)
+        mocked_qmgr_commit = mocker.spy(handler.qmgr, 'commit')
 
         with pytest.raises(AsyncMessageError) as mqe:
             handler._request(request)
@@ -324,6 +317,10 @@ class TestAsyncMessageQueueHandler:
         assert response.get('metadata', None) == pymqi.MD().get()
         assert response.get('response_length', 0) == len('test payload')
 
+        assert handler_queue_context.call_count == 1
+        _, kwargs = handler_queue_context.call_args_list[-1]
+        assert kwargs.get('endpoint', None) == 'TEST.QUEUE'
+
         mocker.patch.object(
             pymqi.Queue,
             'put',
@@ -332,13 +329,26 @@ class TestAsyncMessageQueueHandler:
 
         handler.header_type = 'rfh2'
         response = handler._request(request)
+
+        assert mocked_qmgr_commit.call_count == 0
+        assert mocked_qmgr_backout.call_count == 0
         assert response.get('metadata', None) == Rfh2Encoder.create_md().get()
         assert response.get('response_length', 0) == 284
+
+        assert handler_queue_context.call_count == 2
+        _, kwargs = handler_queue_context.call_args_list[-1]
+        assert kwargs.get('endpoint', None) == 'TEST.QUEUE'
 
         handler.header_type = 'somethingWeird'
         with pytest.raises(AsyncMessageError) as mqe:
             handler._request(request)
         assert 'Invalid header_type: somethingWeird' in str(mqe)
+
+        assert mocked_qmgr_commit.call_count == 0
+        assert mocked_qmgr_backout.call_count == 0
+        assert handler_queue_context.call_count == 3
+        _, kwargs = handler_queue_context.call_args_list[-1]
+        assert kwargs.get('endpoint', None) == 'TEST.QUEUE'
 
         handler.message_wait = 0
 
@@ -354,25 +364,55 @@ class TestAsyncMessageQueueHandler:
 
         handler.header_type = None
         response = handler._request(request)
+        assert mocked_qmgr_commit.call_count == 1
+        assert mocked_qmgr_backout.call_count == 0
         assert response.get('payload', None) == 'test payload'
         assert response.get('metadata', None) == pymqi.MD().get()
         assert response.get('response_length', None) == len('test payload')
+
+        assert handler_queue_context.call_count == 4
+        _, kwargs = handler_queue_context.call_args_list[-1]
+        assert kwargs.get('endpoint', None) == 'TEST.QUEUE'
+
+        assert mocked_pymqi_get.call_count == 1
+        args, _ = mocked_pymqi_get.call_args_list[-1]
+        assert args[0] is None  # max_message_size
+        assert isinstance(args[1], pymqi.MD)
+        assert isinstance(args[2], pymqi.GMO)
 
         assert create_gmo_spy.call_count == 1
         args, _ = create_gmo_spy.call_args_list[0]
         assert args[0] == 10
 
-        mocker.patch.object(
+        mocked_pymqi_get = mocker.patch.object(
             pymqi.Queue,
             'get',
-            mocked_pymqi_get_rfh2,
+            return_value=(
+                b'RFH \x02\x00\x00\x00\xfc\x00\x00\x00"\x02\x00\x00\xb8\x04\x00\x00        \x00\x00\x00\x00\xb8\x04\x00\x00 \x00\x00\x00<mcd><Msd>jms_bytes</Msd></mcd> '
+                b'P\x00\x00\x00<jms><Dst>queue:///TEST.QUEUE</Dst><Tms>1655406556138</Tms><Dlv>2</Dlv></jms>   \\\x00\x00\x00<usr><ContentEncoding>gzip</ContentEncoding>'
+                b'<ContentLength dt=\'i8\'>32</ContentLength></usr> \x1f\x8b\x08\x00\xdc\x7f\xabb\x02\xff+I-.Q(H\xac\xcc\xc9OL\x01\x00\xe1=\x1d\xeb\x0c\x00\x00\x00'
+            )
         )
+
+        request['context'].update({'endpoint': 'queue:TEST.QUEUE, max_message_size:13337'})
 
         handler.header_type = 'rfh2'
         response = handler._request(request)
+        assert mocked_qmgr_commit.call_count == 2
+        assert mocked_qmgr_backout.call_count == 0
         assert response.get('payload', None) == 'test payload'
         assert response.get('metadata', None) == Rfh2Encoder.create_md().get()
         assert response.get('response_length', None) == len('test payload')
+
+        assert handler_queue_context.call_count == 5
+        _, kwargs = handler_queue_context.call_args_list[-1]
+        assert kwargs.get('endpoint', None) == 'TEST.QUEUE'
+
+        assert mocked_pymqi_get.call_count == 1
+        args, _ = mocked_pymqi_get.call_args_list[-1]
+        assert args[0] == 13337  # max_message_size
+        assert isinstance(args[1], pymqi.MD)
+        assert isinstance(args[2], pymqi.GMO)
 
         assert create_gmo_spy.call_count == 2
         args, _ = create_gmo_spy.call_args_list[0]
@@ -383,6 +423,12 @@ class TestAsyncMessageQueueHandler:
         handler.message_wait = 13
 
         response = handler._request(request)
+        assert mocked_qmgr_commit.call_count == 3
+        assert mocked_qmgr_backout.call_count == 0
+        assert handler_queue_context.call_count == 6
+        _, kwargs = handler_queue_context.call_args_list[-1]
+        assert kwargs.get('endpoint', None) == 'TEST.QUEUE'
+
         assert create_gmo_spy.call_count == 3
         args, _ = create_gmo_spy.call_args_list[2]
         assert args[0] == 13
@@ -390,10 +436,13 @@ class TestAsyncMessageQueueHandler:
         mocker.patch.object(
             pymqi.Queue,
             'get',
-            mocked_pymqi_get_that_raises,
+            side_effect=[pymqi.MQMIError(pymqi.CMQC.MQCC_FAILED, pymqi.CMQC.MQRC_UNEXPECTED_ERROR)],
         )
         with pytest.raises(AsyncMessageError) as mqe:
             response = handler._request(request)
+
+        assert mocked_qmgr_commit.call_count == 3
+        assert mocked_qmgr_backout.call_count == 1
 
     def test__request_with_expressions(self, mocker: MockerFixture) -> None:
         # Mocked representation of an pymqi Queue message
@@ -478,7 +527,12 @@ class TestAsyncMessageQueueHandler:
 
         handler = AsyncMessageQueueHandler(worker='asdf-asdf-asdf')
 
-        handler.qmgr = object()
+        handler.qmgr = pymqi.QueueManager(None)
+
+        mocker.patch.object(handler.qmgr, 'backout', return_value=None)
+        mocked_qmgr_backout = mocker.spy(handler.qmgr, 'backout')
+        mocker.patch.object(handler.qmgr, 'commit', return_value=None)
+        mocked_qmgr_commit = mocker.spy(handler.qmgr, 'commit')
 
         request: AsyncMessageRequest = {
             'action': 'GET',
@@ -505,18 +559,24 @@ class TestAsyncMessageQueueHandler:
         response = handlers[request['action']](handler, request)
         assert response['payload'] == queue_messages['id1'].payload
         assert response['response_length'] == len(queue_messages['id1'].payload)
+        assert mocked_qmgr_backout.call_count == 0
+        assert mocked_qmgr_commit.call_count == 1
 
         # Match second message
         request['context']['endpoint'] = "queue:theendpoint, expression: //singer[@id='9']"
         response = handlers[request['action']](handler, request)
         assert response['payload'] == queue_messages['id2'].payload
         assert response['response_length'] == len(queue_messages['id2'].payload)
+        assert mocked_qmgr_backout.call_count == 0
+        assert mocked_qmgr_commit.call_count == 2
 
         # Match no message = timeout
         request['context']['endpoint'] = "queue:theendpoint, expression: //singer[@id='NOTEXIST']"
         with pytest.raises(AsyncMessageError) as mqe:
             response = handlers[request['action']](handler, request)
         assert 'timeout while waiting for matching message' in str(mqe)
+        assert mocked_qmgr_backout.call_count == 0
+        assert mocked_qmgr_commit.call_count == 2
 
         # Match no message, and no wait time = exception
         tmp_wait = request['context']['message_wait']
@@ -525,6 +585,8 @@ class TestAsyncMessageQueueHandler:
         with pytest.raises(AsyncMessageError) as mqe:
             response = handlers[request['action']](handler, request)
         assert 'no matching message found' in str(mqe)
+        assert mocked_qmgr_backout.call_count == 0
+        assert mocked_qmgr_commit.call_count == 2
         request['context']['message_wait'] = tmp_wait
 
         # Invalid XML
@@ -534,6 +596,8 @@ class TestAsyncMessageQueueHandler:
         with pytest.raises(AsyncMessageError) as mqe:
             response = handlers[request['action']](handler, request)
         assert 'failed to transform input as XML' in str(mqe)
+        assert mocked_qmgr_backout.call_count == 0
+        assert mocked_qmgr_commit.call_count == 2
         queue_messages['id1'].payload = tmp_xml
 
         # Queue.get returning unexpected error
@@ -541,6 +605,8 @@ class TestAsyncMessageQueueHandler:
         with pytest.raises(AsyncMessageError) as mqe:
             response = handlers[request['action']](handler, request)
         assert 'MQI Error. Comp: 2, Reason 2393: FAILED: MQRC_SSL_INITIALIZATION_ERROR' in str(mqe)
+        assert mocked_qmgr_backout.call_count == 0
+        assert mocked_qmgr_commit.call_count == 2
 
         # Match second message, but fail with MQRC_TRUNCATED_MSG_FAILED at first attempt (yields retry)
         DummyQueue.error_list.append((pymqi.CMQC.MQCC_WARNING, pymqi.CMQC.MQRC_TRUNCATED_MSG_FAILED))
@@ -549,6 +615,8 @@ class TestAsyncMessageQueueHandler:
         assert response['payload'] == queue_messages['id2'].payload
         assert response['response_length'] == len(queue_messages['id2'].payload)
         assert len(DummyQueue.error_list) == 0
+        assert mocked_qmgr_backout.call_count == 0
+        assert mocked_qmgr_commit.call_count == 3
 
         # Match second message, but fail with MQRC_TRUNCATED_MSG_FAILED when trying to fetch it by id (yields retry)
         # No error for _find_message get #1
@@ -561,6 +629,8 @@ class TestAsyncMessageQueueHandler:
         response = handlers[request['action']](handler, request)
         assert response['payload'] == queue_messages['id2'].payload
         assert response['response_length'] == len(queue_messages['id2'].payload)
+        assert mocked_qmgr_backout.call_count == 1
+        assert mocked_qmgr_commit.call_count == 4
 
         # Match second message, but fail with MQRC_NO_MSG_AVAILABLE when trying to fetch it by id (yields retry)
         # No error for _find_message get #1
@@ -573,6 +643,8 @@ class TestAsyncMessageQueueHandler:
         response = handlers[request['action']](handler, request)
         assert response['payload'] == queue_messages['id2'].payload
         assert response['response_length'] == len(queue_messages['id2'].payload)
+        assert mocked_qmgr_backout.call_count == 2
+        assert mocked_qmgr_commit.call_count == 5
 
         # Match second message, but fail with unexpected error when trying to fetch it by id (throws error)
         # No error for _find_message get #1
@@ -585,6 +657,8 @@ class TestAsyncMessageQueueHandler:
         with pytest.raises(AsyncMessageError) as mqe:
             response = handlers[request['action']](handler, request)
         assert 'MQI Error. Comp: 2, Reason 2195: FAILED: MQRC_UNEXPECTED_ERROR' in str(mqe)
+        assert mocked_qmgr_backout.call_count == 3
+        assert mocked_qmgr_commit.call_count == 5
 
         # Test Json
 

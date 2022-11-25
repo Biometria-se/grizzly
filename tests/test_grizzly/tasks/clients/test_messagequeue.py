@@ -443,7 +443,6 @@ class TestMessageQueueClientTask:
             assert task_factory._worker.get(id(scenario), None) == 'dddd-eeee-ffff-9999'
             assert send_json_mock.call_count == 2
             args, _ = send_json_mock.call_args_list[-1]
-            print(args)
             assert args[1] == {
                 'action': 'GET',
                 'worker': 'dddd-eeee-ffff-9999',
@@ -468,10 +467,24 @@ class TestMessageQueueClientTask:
             messages = [{'success': False, 'message': 'memory corruption'}]
             recv_json_mock.side_effect = messages
 
+            task_factory.endpoint = 'mqs://mq_username:mq_password@mq.example.io/topic:INCOMING.MSG?QueueManager=QM01&Channel=TCP.IN&MaxMessageSize=13337'
+            task_factory.create_context()
+
+            task = task_factory()
+
             task(scenario)
 
             assert scenario.user._context['variables'].get('mq-client-var', None) is None
             assert send_json_mock.call_count == 3
+            args, _ = send_json_mock.call_args_list[-1]
+            assert args[1] == {
+                'action': 'GET',
+                'worker': 'dddd-eeee-ffff-9999',
+                'context': {
+                    'endpoint': 'topic:INCOMING.MSG, max_message_size:13337',
+                },
+                'payload': None,
+            }
             assert recv_json_mock.call_count == 4
 
             assert fire_spy.call_count == 2

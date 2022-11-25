@@ -128,6 +128,8 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
 
         if browsing:
             gmo.Options |= pymqi.CMQC.MQGMO_BROWSE_FIRST
+        else:
+            gmo.Options |= pymqi.CMQC.MQGMO_SYNCPOINT
 
         return gmo
 
@@ -221,7 +223,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
 
         try:
             arguments = parse_arguments(endpoint, separator=':')
-            unsupported_arguments = get_unsupported_arguments(['queue', 'expression'], arguments)
+            unsupported_arguments = get_unsupported_arguments(['queue', 'expression', 'max_message_size'], arguments)
             if len(unsupported_arguments) > 0:
                 raise ValueError(f'arguments {", ".join(unsupported_arguments)} is not supported')
         except ValueError as e:
@@ -229,6 +231,10 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
 
         queue_name = arguments.get('queue', None)
         expression = arguments.get('expression', None)
+        max_message_size: Optional[int] = int(arguments.get('max_message_size', '0'))
+
+        if not max_message_size:
+            max_message_size = None
 
         action = request['action']
 
@@ -239,7 +245,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
         metadata = request.get('context', {}).get('metadata', None)
 
         retries: int = 0
-        while True:
+        while retries < 5:
             msg_id_to_fetch: Optional[bytearray] = None
             if action == 'GET' and expression is not None:
                 content_type = self._get_content_type(request)
@@ -282,19 +288,28 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                         gmo = self._create_gmo(message_wait)
 
                     try:
-                        message = queue.get(None, md, gmo)
-                        payload = self._get_payload(message)
-                        response_length = len(payload) if payload is not None else 0
-                        if retries > 0:
-                            self.logger.warning(f'got message after {retries} retries')
+                        try:
+                            message = queue.get(max_message_size, md, gmo)
+                            payload = self._get_payload(message)
+                            response_length = len(payload) if payload is not None else 0
+                            if retries > 0:
+                                self.logger.warning(f'got message after {retries} retries')
+                            self.qmgr.commit()
+                        except:
+                            self.qmgr.backout()
+                            raise
                     except pymqi.MQMIError as e:
                         if msg_id_to_fetch is not None and e.comp == pymqi.CMQC.MQCC_FAILED and e.reason == pymqi.CMQC.MQRC_NO_MSG_AVAILABLE:
                             # Message disappeared, retry
                             do_retry = True
                         elif e.reason == pymqi.CMQC.MQRC_TRUNCATED_MSG_FAILED:
-                            self.logger.warning('got MQRC_TRUNCATED_MSG_FAILED while getting message')
-                            # Concurrency issue, retry
-                            do_retry = True
+                            original_length = getattr(e, 'original_length', None)
+                            self.logger.warning(f'got MQRC_TRUNCATED_MSG_FAILED while getting message, {retries=}, {original_length=}')
+                            if max_message_size is None:
+                                # Concurrency issue, retry
+                                do_retry = True
+                            else:
+                                raise AsyncMessageError(f'message with size {original_length} bytes does not fit in message buffer of {max_message_size} bytes')
                         else:
                             # Some other error condition.
                             self.logger.error(str(e), exc_info=True)
@@ -311,6 +326,8 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                         'metadata': md.get(),
                         'response_length': response_length,
                     }
+
+        raise AsyncMessageError(f'failed after {retries+1} retries')
 
     @register(handlers, 'PUT', 'SEND')
     def put(self, request: AsyncMessageRequest) -> AsyncMessageResponse:

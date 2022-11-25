@@ -33,7 +33,7 @@ pip3 install grizzly-loadtester[mq]
 ### `endpoint`
 
 ``` plain
-mq[s]://<username>:<password>@]<hostname>[:<port>]/<endpoint>?QueueManager=<queue manager>&Channel=<channel>[&wait=<wait>][&heartbeat=<heartbeat>][&KeyFile=<key repo path>[&SslCipher=<ssl cipher>][&CertLabel=<certificate label>]][&HeaderType=<header type>]
+mq[s]://<username>:<password>@]<hostname>[:<port>]/<endpoint>?QueueManager=<queue manager>&Channel=<channel>[&wait=<wait>][&heartbeat=<heartbeat>][&KeyFile=<key repo path>[&SslCipher=<ssl cipher>][&CertLabel=<certificate label>]][&HeaderType=<header type>][&MaxMessageSize=<number of bytes>]
 ```
 
 All variables in the URL have support for {@link framework.usage.variables.templating}.
@@ -65,9 +65,11 @@ All variables in the URL have support for {@link framework.usage.variables.templ
 * `CertLabel` _str_ (optional) - label of certificate in key repository, default `username`
 
 * `HeaderType` _str_ (optional) - header type, can be `RFH2` for sending gzip compressed messages using RFH2 header, default `None`
+
+* `MaxMessageSize` _int_ (optional) - maximum number of bytes a message can be for the client to accept it, default is `None` which implies that the client will throw `MQRC_TRUNCATED_MSG_FAILED`, adjust buffer and try again.
 '''  # noqa: E501
 from contextlib import contextmanager
-from typing import Optional, Dict, Any, List, Generator, cast
+from typing import Optional, Dict, Any, Generator, List, cast
 from urllib.parse import urlparse, parse_qs, unquote
 from pathlib import Path
 from platform import node as hostname
@@ -103,6 +105,7 @@ class MessageQueueClientTask(ClientTask):
 
     endpoint_path: str
     context: AsyncMessageContext
+    max_message_size: Optional[int]
 
     def __init__(
         self,
@@ -127,9 +130,11 @@ class MessageQueueClientTask(ClientTask):
 
         self._zmq_context = zmq.Context()
         self._worker = {}
+        self.max_message_size = None
 
     def create_context(self) -> None:
-        parsed = urlparse(self.endpoint)
+        endpoint = cast(str, resolve_variable(self.grizzly, self.endpoint, guess_datatype=False))
+        parsed = urlparse(endpoint)
 
         if (parsed.scheme or 'none') not in ['mq', 'mqs']:
             raise ValueError(f'{self.__class__.__name__}: "{parsed.scheme}" is not a supported scheme for endpoint')
@@ -143,30 +148,8 @@ class MessageQueueClientTask(ClientTask):
         if len(parsed.query or '') < 1:
             raise ValueError(f'{self.__class__.__name__}: QueueManager and Channel must be specified in the query string of "{self.endpoint}"')
 
-        paths: List[str] = []
-
-        for path in parsed.path.split('/'):
-            resolved = cast(str, resolve_variable(self.grizzly, path))
-            paths.append(resolved)
-
-        parsed = parsed._replace(path='/'.join(paths))
-
         username: Optional[str] = parsed.username
         password: Optional[str] = parsed.password
-
-        if '@' in parsed.netloc:
-            credentials, host = parsed.netloc.split('@')
-            host = cast(str, resolve_variable(self.grizzly, host))
-            credentials = credentials.replace('::', '%%')
-            username, password = credentials.split(':', 1)
-            username = cast(str, resolve_variable(self.grizzly, username.replace('%%', '::')))
-            password = cast(str, resolve_variable(self.grizzly, password.replace('%%', '::')))
-            parsed = parsed._replace(netloc=f'{username}:{password}@{host}')
-            username = parsed.username
-            password = parsed.password
-        else:
-            parsed = parsed._replace(netloc=cast(str, resolve_variable(self.grizzly, parsed.netloc)))
-
         port = parsed.port or 1414
 
         params = parse_qs(parsed.query)
@@ -198,6 +181,7 @@ class MessageQueueClientTask(ClientTask):
         message_wait = int(params['wait'][0]) if 'wait' in params else None
         heartbeat_interval = int(params['heartbeat'][0]) if 'heartbeat' in params else None
         header_type = params['HeaderType'][0].lower() if 'HeaderType' in params else None
+        self.max_message_size = int(params['MaxMessageSize'][0]) if 'MaxMessageSize' in params else None
 
         endpoint_parts = [f'{parsed.scheme}://']
         endpoint_parts.append(parsed.netloc)
@@ -337,11 +321,15 @@ class MessageQueueClientTask(ClientTask):
                 return response
 
     def get(self, parent: GrizzlyScenario) -> GrizzlyResponse:
+        endpoint: List[str] = [self.endpoint_path]
+        if self.max_message_size is not None:
+            endpoint.append(f'max_message_size:{self.max_message_size}')
+
         request: AsyncMessageRequest = {
             'action': 'GET',
             'worker': None,
             'context': {
-                'endpoint': self.endpoint_path,
+                'endpoint': ', '.join(endpoint),
             },
             'payload': None,
 

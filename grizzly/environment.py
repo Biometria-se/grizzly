@@ -13,7 +13,7 @@ from behave.model_core import Status
 
 from .context import GrizzlyContext
 from .testdata.variables import destroy_variables
-from .locust import run as locustrun
+from .locust import run as locustrun, on_worker
 from .utils import catch, check_mq_client_logs, fail_direct, in_correct_section
 from .types import RequestType
 
@@ -86,7 +86,7 @@ def after_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], **
                     behave_step = cast(Step, behave_scenario.steps[rindex])
                     behave_step.status = Status.failed
 
-        if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
+        if pymqi.__name__ != 'grizzly_extras.dummy_pymqi' and not on_worker(context):
             check_mq_client_logs(context)
     else:
         return_code = 1
