@@ -89,24 +89,32 @@ class IotHubUser(GrizzlyUser):
 
             storage_info = self.client.get_storage_info_for_blob(filename)
 
-            sas_url = 'https://{}/{}/{}{}'.format(
-                storage_info['hostName'],
-                storage_info['containerName'],
-                storage_info['blobName'],
-                storage_info['sasToken']
-            )
+            if request.method not in [RequestMethod.SEND, RequestMethod.PUT]:
+                raise NotImplementedError(f'{self.__class__.__name__} has not implemented {request.method.name}')
 
-            with BlobClient.from_blob_url(sas_url) as blob_client:
-                if request.method in [RequestMethod.SEND, RequestMethod.PUT]:
+            try:
+                sas_url = 'https://{}/{}/{}{}'.format(
+                    storage_info['hostName'],
+                    storage_info['containerName'],
+                    storage_info['blobName'],
+                    storage_info['sasToken']
+                )
+
+                with BlobClient.from_blob_url(sas_url) as blob_client:
                     blob_client.upload_blob(payload)
                     logger.debug(f'Uploaded blob to IoT hub, filename: {filename}, correlationId: {storage_info["correlationId"]}')
-                    response_length = len(payload or '')
 
-                    self.client.notify_blob_upload_status(
-                        storage_info['correlationId'], True, 200, f'OK: {filename}'
-                    )
-                else:
-                    raise NotImplementedError(f'{self.__class__.__name__} has not implemented {request.method.name}')
+                self.client.notify_blob_upload_status(
+                    storage_info['correlationId'], True, 200, f'OK: {filename}'
+                )
+                response_length = len(payload or '')
+
+            except Exception as ex:
+                self.client.notify_blob_upload_status(
+                    storage_info['correlationId'], False, 500, f'Failed: {filename}'
+                )
+                raise ex
+
         except Exception as e:
             exception = e
         finally:
