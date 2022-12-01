@@ -124,23 +124,23 @@ class AtomicIntegerIncrementer(AtomicVariable[int], AtomicVariablePersist):
     _steps: Dict[str, Any]
     arguments: Dict[str, Any] = {'step': int, 'persist': bool_type}
 
-    def __init__(self, variable: str, value: Union[str, int]) -> None:
-        safe_value = self.__class__.__base_type__(value)
+    def __init__(self, variable: str, value: Union[str, int], outer_lock: bool = False) -> None:
+        with self.semaphore(outer_lock):
+            safe_value = self.__class__.__base_type__(value)
 
-        if '|' in safe_value:
-            incrementer_value, incrementer_arguments = split_value(safe_value)
-            initial_value = incrementer_value
-            arguments = parse_arguments(incrementer_arguments)
-            step = int(arguments['step'])
-            state = self.__class__.arguments['persist'](arguments['persist']) if 'persist' in arguments else False
-        else:
-            initial_value = safe_value
-            step = 1
-            state = False
+            if '|' in safe_value:
+                incrementer_value, incrementer_arguments = split_value(safe_value)
+                initial_value = incrementer_value
+                arguments = parse_arguments(incrementer_arguments)
+                step = int(arguments['step'])
+                state = self.__class__.arguments['persist'](arguments['persist']) if 'persist' in arguments else False
+            else:
+                initial_value = safe_value
+                step = 1
+                state = False
 
-        super().__init__(variable, int(initial_value))
+            super().__init__(variable, int(initial_value), outer_lock=True)
 
-        with self._semaphore:
             if self.__initialized:
                 if variable not in self._steps:
                     self._steps[variable] = {'step': step, 'persist': state}
@@ -171,7 +171,7 @@ class AtomicIntegerIncrementer(AtomicVariable[int], AtomicVariablePersist):
             del instance._steps[variable]
 
     def __getitem__(self, variable: str) -> Optional[int]:
-        with self._semaphore:
+        with self.semaphore():
             value = self._get_value(variable)
 
             if value is not None:
@@ -184,10 +184,10 @@ class AtomicIntegerIncrementer(AtomicVariable[int], AtomicVariablePersist):
         pass
 
     def __delitem__(self, variable: str) -> None:
-        with self._semaphore:
+        with self.semaphore():
             try:
                 del self._steps[variable]
             except KeyError:
                 pass
 
-        super().__delitem__(variable)
+            super().__delitem__(variable)

@@ -101,45 +101,46 @@ class AtomicDate(AtomicVariable[Union[str, datetime]]):
         self,
         variable: str,
         value: str,
+        outer_lock: bool = False
     ) -> None:
-        initial_value: str
-        timezone: Optional[ZoneInfo] = None
-        date_format = '%Y-%m-%d %H:%M:%S'
-        offset: Optional[Dict[str, int]] = None
+        with self.semaphore(outer_lock):
+            initial_value: str
+            timezone: Optional[ZoneInfo] = None
+            date_format = '%Y-%m-%d %H:%M:%S'
+            offset: Optional[Dict[str, int]] = None
 
-        safe_value = self.__class__.__base_type__(value)
+            safe_value = self.__class__.__base_type__(value)
 
-        if safe_value is not None and '|' in safe_value:
-            initial_value, date_arguments = split_value(safe_value)
-            arguments = parse_arguments(date_arguments)
+            if safe_value is not None and '|' in safe_value:
+                initial_value, date_arguments = split_value(safe_value)
+                arguments = parse_arguments(date_arguments)
 
-            if 'format' in arguments:
-                date_format = arguments['format']
+                if 'format' in arguments:
+                    date_format = arguments['format']
 
-            if 'timezone' in arguments:
-                timezone = ZoneInfo(arguments['timezone'])
+                if 'timezone' in arguments:
+                    timezone = ZoneInfo(arguments['timezone'])
 
-            if 'offset' in arguments:
-                offset = parse_timespan(arguments['offset'])
-        else:
-            initial_value = safe_value
+                if 'offset' in arguments:
+                    offset = parse_timespan(arguments['offset'])
+            else:
+                initial_value = safe_value
 
-        settings = {
-            'format': date_format,
-            'timezone': timezone,
-            'offset': offset,
-        }
+            settings = {
+                'format': date_format,
+                'timezone': timezone,
+                'offset': offset,
+            }
 
-        date_value: Union[str, datetime]
+            date_value: Union[str, datetime]
 
-        if initial_value is None or len(initial_value) < 1 or initial_value == 'now':
-            date_value = 'now'
-        else:
-            date_value = dateparse(initial_value)
+            if initial_value is None or len(initial_value) < 1 or initial_value == 'now':
+                date_value = 'now'
+            else:
+                date_value = dateparse(initial_value)
 
-        super().__init__(variable, date_value)
+            super().__init__(variable, date_value, outer_lock=True)
 
-        with self._semaphore:
             if self.__initialized:
                 self._settings[variable] = settings
 
@@ -158,7 +159,7 @@ class AtomicDate(AtomicVariable[Union[str, datetime]]):
             del instance._settings[variable]
 
     def __getitem__(self, variable: str) -> Optional[str]:
-        with self._semaphore:
+        with self.semaphore():
             value = self._get_value(variable)
 
             date_value: datetime
@@ -184,10 +185,10 @@ class AtomicDate(AtomicVariable[Union[str, datetime]]):
         pass
 
     def __delitem__(self, variable: str) -> None:
-        with self._semaphore:
+        with self.semaphore():
             try:
                 del self._settings[variable]
             except KeyError:
                 pass
 
-        super().__delitem__(variable)
+            super().__delitem__(variable)

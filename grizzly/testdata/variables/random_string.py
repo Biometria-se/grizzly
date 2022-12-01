@@ -100,28 +100,28 @@ class AtomicRandomString(AtomicVariable[str]):
 
         return formats
 
-    def __init__(self, variable: str, value: str) -> None:
-        safe_value = self.__class__.__base_type__(value)
+    def __init__(self, variable: str, value: str, outer_lock: bool = False) -> None:
+        with self.semaphore(outer_lock):
+            safe_value = self.__class__.__base_type__(value)
 
-        settings = {'upper': False, 'count': 1}
+            settings = {'upper': False, 'count': 1}
 
-        if '|' in safe_value:
-            string_pattern, string_arguments = split_value(safe_value)
+            if '|' in safe_value:
+                string_pattern, string_arguments = split_value(safe_value)
 
-            arguments = parse_arguments(string_arguments)
+                arguments = parse_arguments(string_arguments)
 
-            for argument, caster in self.__class__.arguments.items():
-                if argument in arguments:
-                    settings[argument] = caster(arguments[argument])
+                for argument, caster in self.__class__.arguments.items():
+                    if argument in arguments:
+                        settings[argument] = caster(arguments[argument])
 
-            if settings['count'] < 1:
-                settings['count'] = 1
-        else:
-            string_pattern = value
+                if settings['count'] < 1:
+                    settings['count'] = 1
+            else:
+                string_pattern = value
 
-        super().__init__(variable, string_pattern)
+            super().__init__(variable, string_pattern, outer_lock=True)
 
-        with self._semaphore:
             if self.__initialized:
                 if variable not in self._strings:
                     self._strings[variable] = self._generate_strings(string_pattern, settings)
@@ -175,7 +175,7 @@ class AtomicRandomString(AtomicVariable[str]):
             del instance._strings[variable]
 
     def __getitem__(self, variable: str) -> Optional[str]:
-        with self._semaphore:
+        with self.semaphore():
             self._get_value(variable)
 
             try:
@@ -187,10 +187,10 @@ class AtomicRandomString(AtomicVariable[str]):
         pass
 
     def __delitem__(self, variable: str) -> None:
-        with self._semaphore:
+        with self.semaphore():
             try:
                 del self._strings[variable]
             except KeyError:
                 pass
 
-        super().__delitem__(variable)
+            super().__delitem__(variable)

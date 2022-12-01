@@ -108,27 +108,27 @@ class AtomicCsvRow(AtomicVariable[Dict[str, Any]]):
     context_root: str
     arguments: Dict[str, Any] = {'repeat': bool_type, 'random': bool_type}
 
-    def __init__(self, variable: str, value: str) -> None:
-        if variable.count('.') != 0:
-            raise ValueError(f'{self.__class__.__name__}.{variable} is not a valid CSV source name, must be: {self.__class__.__name__}.<name>')
+    def __init__(self, variable: str, value: str, outer_lock: bool = False) -> None:
+        with self.semaphore(outer_lock):
+            if variable.count('.') != 0:
+                raise ValueError(f'{self.__class__.__name__}.{variable} is not a valid CSV source name, must be: {self.__class__.__name__}.<name>')
 
-        safe_value = self.__class__.__base_type__(value)
+            safe_value = self.__class__.__base_type__(value)
 
-        settings = {'repeat': False, 'random': False}
+            settings = {'repeat': False, 'random': False}
 
-        if '|' in safe_value:
-            csv_file, csv_arguments = split_value(safe_value)
-            arguments = parse_arguments(csv_arguments)
+            if '|' in safe_value:
+                csv_file, csv_arguments = split_value(safe_value)
+                arguments = parse_arguments(csv_arguments)
 
-            for argument, caster in self.__class__.arguments.items():
-                if argument in arguments:
-                    settings[argument] = caster(arguments[argument])
-        else:
-            csv_file = safe_value.strip()
+                for argument, caster in self.__class__.arguments.items():
+                    if argument in arguments:
+                        settings[argument] = caster(arguments[argument])
+            else:
+                csv_file = safe_value.strip()
 
-        super().__init__(variable, {})
+            super().__init__(variable, {}, outer_lock=True)
 
-        with self._semaphore:
             if self.__initialized:
                 if variable not in self._rows:
                     self._rows[variable] = self._create_row_queue(csv_file)
@@ -164,41 +164,42 @@ class AtomicCsvRow(AtomicVariable[Dict[str, Any]]):
             del instance._settings[variable]
 
     def __getitem__(self, variable: str) -> Optional[Dict[str, Any]]:
-        column: Optional[str] = None
+        with self.semaphore():
+            column: Optional[str] = None
 
-        if '.' in variable:
-            [variable, column] = variable.rsplit('.', 1)
+            if '.' in variable:
+                [variable, column] = variable.rsplit('.', 1)
 
-        try:
-            settings = self._settings[variable]
+            try:
+                settings = self._settings[variable]
 
-            if settings['random'] is True:
-                roof = len(self._rows[variable]) - 1
-                index = randint(0, roof)
-            else:
-                index = 0
+                if settings['random'] is True:
+                    roof = len(self._rows[variable]) - 1
+                    index = randint(0, roof)
+                else:
+                    index = 0
 
-            row = self._rows[variable].pop(index)
+                row = self._rows[variable].pop(index)
 
-            if settings['repeat'] is True:
-                self._rows[variable].append(row)
-        except (IndexError, ValueError):
-            return None
+                if settings['repeat'] is True:
+                    self._rows[variable].append(row)
+            except (IndexError, ValueError):
+                return None
 
-        if column is not None:
-            if column not in row:
-                self._rows[variable].insert(0, row)
-                raise ValueError(f'{self.__class__.__name__}.{variable}: {column} does not exists')
-            value = row[column]
-            row = {column: value}
+            if column is not None:
+                if column not in row:
+                    self._rows[variable].insert(0, row)
+                    raise ValueError(f'{self.__class__.__name__}.{variable}: {column} does not exists')
+                value = row[column]
+                row = {column: value}
 
-        return row
+            return row
 
     def __setitem__(self, variable: str, value: Optional[Dict[str, Any]]) -> None:
         pass
 
     def __delitem__(self, variable: str) -> None:
-        with self._semaphore:
+        with self.semaphore():
             if '.' in variable:
                 [variable, _] = variable.rsplit('.', 1)
 
@@ -212,4 +213,4 @@ class AtomicCsvRow(AtomicVariable[Dict[str, Any]]):
             except KeyError:
                 pass
 
-        super().__delitem__(variable)
+            super().__delitem__(variable)
