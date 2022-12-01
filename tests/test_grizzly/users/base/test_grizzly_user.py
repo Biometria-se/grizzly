@@ -23,6 +23,8 @@ logging.getLogger().setLevel(logging.CRITICAL)
 
 
 class DummyGrizzlyUser(GrizzlyUser):
+    host: str = 'http://example.com'
+
     def request(self, request: RequestTask) -> GrizzlyResponse:
         raise NotImplementedError(f'{self.__class__.__name__} has not implemented request')
 
@@ -77,7 +79,9 @@ class TestGrizzlyUser:
             user_type = type(
                 'ContextVariablesUserFileRequest',
                 (GrizzlyUser, FileRequests, ),
-                {},
+                {
+                    'host': 'http://example.io',
+                },
             )
             user = user_type(locust_fixture)
             assert issubclass(user.__class__, (FileRequests,))

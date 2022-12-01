@@ -41,7 +41,7 @@ class TestResponseEvent:
         class Called(Exception):
             pass
 
-        ResponseEvent.host = 'http://example.com'
+        ResponseEvent.host = TestUser.host = 'http://example.com'
         user = ResponseEvent(locust_fixture.env)
 
         def handler(name: str, request: Optional[RequestTask], context: Union[ResponseContextManager, Tuple[Dict[str, Any], str]], user: User) -> None:

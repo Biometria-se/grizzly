@@ -40,6 +40,7 @@ class TestResponseHandlerAction:
 
     def test___(self, locust_fixture: LocustFixture) -> None:
         assert issubclass(ResponseHandlerAction, ABC)
+        TestUser.host = 'http://example.net'
         user = TestUser(locust_fixture.env)
         handler = TestResponseHandlerAction.Dummy('$.', '.*')
         assert handler.expression == '$.'
@@ -51,6 +52,7 @@ class TestResponseHandlerAction:
         assert str(nie.value) == 'Dummy has not implemented __call__'
 
     def test_get_matches(self, locust_fixture: LocustFixture) -> None:
+        TestUser.host = 'http://example.net'
         user = TestUser(locust_fixture.env)
         handler = TestResponseHandlerAction.Dummy('//hello/world', '.*')
 
@@ -94,6 +96,7 @@ class TestValidationHandlerAction:
     def test___call___true(self, locust_fixture: LocustFixture) -> None:
         scenario = GrizzlyContextScenario(index=1)
         scenario.name = 'test-scenario'
+        TestUser.host = 'http://example.net'
         user = TestUser(locust_fixture.env)
         user._scenario = scenario
 
@@ -256,6 +259,7 @@ class TestValidationHandlerAction:
     def test___call___false(self, locust_fixture: LocustFixture) -> None:
         scenario = GrizzlyContextScenario(index=1)
         scenario.name = 'test-scenario'
+        TestUser.host = 'http://example.io'
         user = TestUser(locust_fixture.env)
         user._scenario = scenario
         response = Response()
@@ -427,6 +431,7 @@ class TestSaveHandlerAction:
         assert handler.expected_matches == 1
 
     def test___call__(self, locust_fixture: LocustFixture) -> None:
+        TestUser.host = 'http://example.com'
         user = TestUser(locust_fixture.env)
         response = Response()
         response._content = '{}'.encode('utf-8')
@@ -677,7 +682,7 @@ class TestResponseHandler:
         assert len(user.response_event._handlers) == 1
 
     def test_response_handler_response_context(self, mocker: MockerFixture, locust_fixture: LocustFixture) -> None:
-        ResponseHandler.host = 'http://example.com'
+        ResponseHandler.host = TestUser.host = 'http://example.com'
         user = ResponseHandler(locust_fixture.env)
         test_user = TestUser(locust_fixture.env)
 
@@ -771,7 +776,7 @@ class TestResponseHandler:
         assert 'failed to transform' in str(response_context_manager._manual_result)
 
     def test_response_handler_custom_response(self, mocker: MockerFixture, locust_fixture: LocustFixture) -> None:
-        ResponseHandler.host = 'http://example.com'
+        ResponseHandler.host = TestUser.host = 'http://example.com'
         user = ResponseHandler(locust_fixture.env)
         test_user = TestUser(locust_fixture.env)
 
