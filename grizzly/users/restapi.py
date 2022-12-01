@@ -151,7 +151,7 @@ class refresh_token:
 class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, AsyncRequests):
     session_started: Optional[float]
     headers: Dict[str, Optional[str]]
-    host: str
+
     _context: Dict[str, Any] = {
         'verify_certificates': True,
         'auth': {

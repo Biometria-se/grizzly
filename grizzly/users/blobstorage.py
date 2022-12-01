@@ -45,15 +45,14 @@ from ..utils import merge_dicts
 
 class BlobStorageUser(GrizzlyUser):
     client: BlobServiceClient
-    host: str
     _context: Dict[str, Any] = {}
 
     def __init__(self, environment: Environment, *args: Tuple[Any], **kwargs: Dict[str, Any]) -> None:
         super().__init__(environment, *args, **kwargs)
 
-        conn_str = self.host
+        conn_str: str = self.host
         if conn_str.startswith('DefaultEndpointsProtocol='):
-            conn_str = conn_str[25:]
+            conn_str = conn_str[25:]  # pylint: disable=unsubscriptable-object
 
         # Replace semicolon separators between parameters to ? and & and massage it to make it "urlparse-compliant"
         # for validation

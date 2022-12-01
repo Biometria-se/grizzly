@@ -247,28 +247,28 @@ class AtomicServiceBus(AtomicVariable[str]):
 
     logger: logging.Logger
 
-    def __init__(self, variable: str, value: str) -> None:
-        safe_value = self.__class__.__base_type__(value)
+    def __init__(self, variable: str, value: str, outer_lock: bool = False) -> None:
+        with self.semaphore(outer_lock):
+            safe_value = self.__class__.__base_type__(value)
 
-        settings = {'repeat': False, 'wait': None, 'url': None, 'worker': None, 'context': None, 'endpoint_name': None, 'content_type': None}
+            settings = {'repeat': False, 'wait': None, 'url': None, 'worker': None, 'context': None, 'endpoint_name': None, 'content_type': None}
 
-        endpoint_name, endpoint_arguments = split_value(safe_value)
+            endpoint_name, endpoint_arguments = split_value(safe_value)
 
-        arguments = parse_arguments(endpoint_arguments)
-        endpoint_parameters = parse_arguments(endpoint_name, ':')
+            arguments = parse_arguments(endpoint_arguments)
+            endpoint_parameters = parse_arguments(endpoint_name, ':')
 
-        for argument, caster in self.__class__.arguments.items():
-            if argument in arguments:
-                settings[argument] = caster(arguments[argument])
+            for argument, caster in self.__class__.arguments.items():
+                if argument in arguments:
+                    settings[argument] = caster(arguments[argument])
 
-        if 'expression' in endpoint_parameters and 'content_type' not in arguments:
-            raise ValueError(f'{self.__class__.__name__}.{variable}: argument "content_type" is mandatory when "expression" is used in endpoint')
+            if 'expression' in endpoint_parameters and 'content_type' not in arguments:
+                raise ValueError(f'{self.__class__.__name__}.{variable}: argument "content_type" is mandatory when "expression" is used in endpoint')
 
-        settings['endpoint_name'] = self.arguments['endpoint_name'](endpoint_name)
+            settings['endpoint_name'] = self.arguments['endpoint_name'](endpoint_name)
 
-        super().__init__(variable, endpoint_name)
+            super().__init__(variable, endpoint_name, outer_lock=True)
 
-        with self._semaphore:
             if self.__initialized:
                 if variable not in self._endpoint_messages:
                     self._endpoint_messages[variable] = []
@@ -405,7 +405,7 @@ class AtomicServiceBus(AtomicVariable[str]):
             instance.__delitem__(variable)
 
     def __getitem__(self, variable: str) -> Optional[str]:
-        with self._semaphore:
+        with self.semaphore():
             endpoint = cast(str, self._get_value(variable))
             settings = self._settings[variable]
 
@@ -460,7 +460,7 @@ class AtomicServiceBus(AtomicVariable[str]):
         pass
 
     def __delitem__(self, variable: str) -> None:
-        with self._semaphore:
+        with self.semaphore():
             try:
                 del self._settings[variable]
                 del self._endpoint_messages[variable]
@@ -474,4 +474,4 @@ class AtomicServiceBus(AtomicVariable[str]):
             except (KeyError, AttributeError, ):
                 pass
 
-        super().__delitem__(variable)
+            super().__delitem__(variable)

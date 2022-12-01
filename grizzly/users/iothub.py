@@ -45,7 +45,6 @@ from ..utils import merge_dicts
 
 class IotHubUser(GrizzlyUser):
     client: IoTHubDeviceClient
-    host: str
     _context: Dict[str, Any] = {}
 
     def __init__(self, environment: Environment, *args: Tuple[Any], **kwargs: Dict[str, Any]) -> None:

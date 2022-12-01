@@ -36,6 +36,7 @@ class GrizzlyUser(User):
     logger: Logger
 
     weight: int = 1
+    host: str
 
     def __init__(self, environment: Environment, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
         super().__init__(environment, *args, **kwargs)
@@ -44,6 +45,8 @@ class GrizzlyUser(User):
         self._context = merge_dicts({}, GrizzlyUser._context)
         self.logger = logging.getLogger(f'{self.__class__.__name__}/{id(self)}')
         self._scenario_state = None
+
+        assert self.host is not None, f'{self.__class__.__name__} must have host set'
 
     @property
     def scenario_state(self) -> Optional[ScenarioState]:

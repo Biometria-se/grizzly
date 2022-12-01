@@ -86,25 +86,26 @@ class AtomicDirectoryContents(AtomicVariable[str]):
         self,
         variable: str,
         value: str,
+        outer_lock: bool = False
     ):
-        safe_value = self.__class__.__base_type__(value)
+        with self.semaphore(outer_lock):
+            safe_value = self.__class__.__base_type__(value)
 
-        settings = {'repeat': False, 'random': False}
+            settings = {'repeat': False, 'random': False}
 
-        if '|' in safe_value:
-            directory, directory_arguments = split_value(safe_value)
+            if '|' in safe_value:
+                directory, directory_arguments = split_value(safe_value)
 
-            arguments = parse_arguments(directory_arguments)
+                arguments = parse_arguments(directory_arguments)
 
-            for argument, caster in self.__class__.arguments.items():
-                if argument in arguments:
-                    settings[argument] = caster(arguments[argument])
-        else:
-            directory = safe_value
+                for argument, caster in self.__class__.arguments.items():
+                    if argument in arguments:
+                        settings[argument] = caster(arguments[argument])
+            else:
+                directory = safe_value
 
-        super().__init__(variable, directory)
+            super().__init__(variable, directory, outer_lock=True)
 
-        with self._semaphore:
             if self.__initialized:
                 if variable not in self._files:
                     self._files[variable] = self._create_file_queue(directory)
@@ -142,7 +143,7 @@ class AtomicDirectoryContents(AtomicVariable[str]):
         return queue
 
     def __getitem__(self, variable: str) -> Optional[str]:
-        with self._semaphore:
+        with self.semaphore():
             self._get_value(variable)
 
             try:
@@ -168,7 +169,7 @@ class AtomicDirectoryContents(AtomicVariable[str]):
         pass
 
     def __delitem__(self, variable: str) -> None:
-        with self._semaphore:
+        with self.semaphore():
             try:
                 del self._files[variable]
             except KeyError:
@@ -179,4 +180,4 @@ class AtomicDirectoryContents(AtomicVariable[str]):
             except KeyError:
                 pass
 
-        super().__delitem__(variable)
+            super().__delitem__(variable)

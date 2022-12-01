@@ -11,7 +11,7 @@ There are examples of this in the {@link framework.example}.
 '''
 from typing import Generic, Optional, Callable, Set, Any, Tuple, Dict, TypeVar, Protocol, runtime_checkable
 
-from gevent.lock import Semaphore
+from gevent.lock import Semaphore, DummySemaphore
 
 from ...types import bool_type
 from ...context import GrizzlyContext
@@ -41,7 +41,7 @@ class AtomicVariable(Generic[T], AbstractAtomicClass):
 
     _initialized: bool
     _values: Dict[str, Optional[T]]
-    _semaphore: Semaphore
+    _semaphore: Semaphore = Semaphore()
 
     arguments: Dict[str, Any]
     grizzly: GrizzlyContext
@@ -53,7 +53,6 @@ class AtomicVariable(Generic[T], AbstractAtomicClass):
 
         if cls.__instance is None:
             cls.__instance = super().__new__(cls)
-            cls.__instance._semaphore = Semaphore()
             cls.__instance._initialized = False
             cls.__instance.grizzly = GrizzlyContext()
             globals()[cls.__name__] = cls  # load it, globally, needed for custom variables mostly
@@ -85,13 +84,14 @@ class AtomicVariable(Generic[T], AbstractAtomicClass):
 
     @classmethod
     def obtain(cls, variable: str, value: Optional[T] = None) -> 'AtomicVariable[T]':
-        if cls.__instance is not None and variable in cls.__instance._values:
-            return cls.__instance.get()
+        with cls.semaphore():
+            if cls.__instance is not None and variable in cls.__instance._values:
+                return cls.__instance.get()
 
-        return cls(variable, value)
+            return cls(variable, value, outer_lock=True)
 
-    def __init__(self, variable: str, value: Optional[T] = None) -> None:
-        with self._semaphore:
+    def __init__(self, variable: str, value: Optional[T] = None, outer_lock: bool = False) -> None:
+        with self.semaphore(outer_lock):
             if self._initialized:
                 if variable not in self._values:
                     self._values[variable] = value
@@ -105,12 +105,16 @@ class AtomicVariable(Generic[T], AbstractAtomicClass):
             self._values = {variable: value}
             self._initialized = True
 
+    @classmethod
+    def semaphore(cls, outer: bool = False) -> Semaphore:
+        return cls._semaphore if not outer else DummySemaphore()
+
     def __getitem__(self, variable: str) -> Optional[T]:
-        with self._semaphore:
+        with self.semaphore():
             return self._get_value(variable)
 
     def __setitem__(self, variable: str, value: Optional[T]) -> None:
-        with self._semaphore:
+        with self.semaphore():
             if variable not in self._values:
                 raise AttributeError(
                     f"'{self.__class__.__name__}' object has no attribute '{variable}'"
@@ -119,11 +123,10 @@ class AtomicVariable(Generic[T], AbstractAtomicClass):
             self._values[variable] = value
 
     def __delitem__(self, variable: str) -> None:
-        with self._semaphore:
-            try:
-                del self._values[variable]
-            except KeyError:
-                pass
+        try:
+            del self._values[variable]
+        except KeyError:
+            pass
 
     def _get_value(self, variable: str) -> Optional[T]:
         try:

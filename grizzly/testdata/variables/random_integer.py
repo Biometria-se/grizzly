@@ -56,13 +56,13 @@ class AtomicRandomInteger(AtomicVariable[int]):
     __initialized: bool = False
     _max: Dict[str, int]
 
-    def __init__(self, variable: str, value: str) -> None:
-        safe_value = self.__class__.__base_type__(value)
-        minimum, maximum = [int(v) for v in safe_value.split('..', 1)]
+    def __init__(self, variable: str, value: str, outer_lock: bool = False) -> None:
+        with self.semaphore(outer_lock):
+            safe_value = self.__class__.__base_type__(value)
+            minimum, maximum = [int(v) for v in safe_value.split('..', 1)]
 
-        super().__init__(variable, minimum)
+            super().__init__(variable, minimum, outer_lock=True)
 
-        with self._semaphore:
             if self.__initialized:
                 if variable not in self._max:
                     self._max[variable] = maximum
@@ -82,7 +82,7 @@ class AtomicRandomInteger(AtomicVariable[int]):
             del instance._max[variable]
 
     def __getitem__(self, variable: str) -> int:
-        with self._semaphore:
+        with self.semaphore():
             minimum = cast(int, self._get_value(variable))
             maximum = self._max[variable]
 
@@ -92,10 +92,10 @@ class AtomicRandomInteger(AtomicVariable[int]):
         pass
 
     def __delitem__(self, variable: str) -> None:
-        with self._semaphore:
+        with self.semaphore():
             try:
                 del self._max[variable]
             except KeyError:
                 pass
 
-        super().__delitem__(variable)
+            super().__delitem__(variable)

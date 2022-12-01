@@ -107,8 +107,6 @@ class ServiceBusUser(ResponseHandler, RequestLogger, GrizzlyUser):
     zmq_url = 'tcp://127.0.0.1:5554'
     hellos: Set[str]
 
-    host: str
-
     def __init__(self, environment: Environment, *args: Tuple[Any], **kwargs: Dict[str, Any]) -> None:
         super().__init__(environment, *args, **kwargs)
 

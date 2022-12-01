@@ -310,6 +310,9 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                                 do_retry = True
                             else:
                                 raise AsyncMessageError(f'message with size {original_length} bytes does not fit in message buffer of {max_message_size} bytes')
+                        elif e.reason == pymqi.CMQC.MQRC_BACKED_OUT:
+                            self.logger.warning(f'got MQRC_BACKED_OUT while getting message, {retries=}')
+                            do_retry = True
                         else:
                             # Some other error condition.
                             self.logger.error(str(e), exc_info=True)
