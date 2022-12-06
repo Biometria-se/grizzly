@@ -23,9 +23,10 @@ from behave import register_type, when, then  # pylint: disable=no-name-in-modul
 from grizzly_extras.transformer import TransformerContentType
 from grizzly_extras.text import permutation
 
+from grizzly.types import ResponseTarget
+
 from ...context import GrizzlyContext
 from ...tasks import RequestTask
-from ...types import ResponseTarget
 from .._helpers import add_save_handler, add_validation_handler, add_request_task_response_status_codes
 
 

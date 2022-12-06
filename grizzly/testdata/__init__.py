@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING, Type, Any, Optional, Callable, List, Tuple, Set, cast
 from importlib import import_module
 
-from ..types import GrizzlyVariableType
+from grizzly.types import GrizzlyVariableType
 
 
 if TYPE_CHECKING:

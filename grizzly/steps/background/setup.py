@@ -13,7 +13,8 @@ from behave.runner import Context
 
 from grizzly_extras.text import permutation
 
-from ...types import MessageDirection, Environment, Message
+from grizzly.types import MessageDirection, Environment, Message
+
 from ...context import GrizzlyContext
 from ...utils import merge_dicts
 from ...testdata.utils import create_context_variable, resolve_variable

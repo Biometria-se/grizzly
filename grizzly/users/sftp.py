@@ -38,10 +38,11 @@ from os import path, environ, mkdir
 from locust.exception import StopUser
 from locust.env import Environment
 
+from grizzly.types import RequestMethod, GrizzlyResponse, RequestType
+
 from .base import GrizzlyUser, FileRequests, ResponseHandler, RequestLogger
 from ..utils import merge_dicts
 from ..clients import SftpClientSession
-from ..types import RequestMethod, GrizzlyResponse, RequestType
 from ..tasks import RequestTask
 
 

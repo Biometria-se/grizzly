@@ -63,7 +63,8 @@ from jinja2.environment import Template
 from grizzly_extras.transformer import TransformerContentType
 from grizzly_extras.arguments import parse_arguments, split_value, unquote
 
-from ..types import GrizzlyResponse, RequestMethod
+from grizzly.types import GrizzlyResponse, RequestMethod
+
 from . import GrizzlyMetaRequestTask, template  # pylint: disable=unused-import
 
 if TYPE_CHECKING:  # pragma: no cover

@@ -19,8 +19,9 @@ from locust.stats import (
 )
 from behave.model import Status
 
+from grizzly.types import MessageDirection, RequestType, TestdataType
+
 from ..context import GrizzlyContext
-from ..types import MessageDirection, RequestType, TestdataType
 from ..testdata.communication import TestdataProducer
 
 producer: Optional[TestdataProducer] = None

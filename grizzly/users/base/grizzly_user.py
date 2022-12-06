@@ -12,7 +12,8 @@ from locust.user.users import User
 from locust.user.task import LOCUST_STATE_RUNNING
 from locust.env import Environment
 
-from ...types import GrizzlyResponse, RequestType, ScenarioState
+from grizzly.types import GrizzlyResponse, RequestType, ScenarioState
+
 from ...tasks import RequestTask
 from ...utils import merge_dicts
 from . import FileRequests

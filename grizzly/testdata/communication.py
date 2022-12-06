@@ -15,7 +15,8 @@ from gevent.lock import Semaphore
 from locust.exception import StopUser
 from locust.env import Environment
 
-from ..types import TestdataType
+from grizzly.types import TestdataType
+
 from .utils import transform
 from .variables import AtomicVariablePersist
 from . import GrizzlyVariables

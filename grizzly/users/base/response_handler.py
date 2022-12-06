@@ -5,8 +5,9 @@ from json import dumps as jsondumps
 import jinja2 as j2
 from locust.env import Environment
 
+from grizzly.types import HandlerContextType, GrizzlyResponseContextManager, GrizzlyResponse
+
 from ...tasks import RequestTask
-from ...types import HandlerContextType, GrizzlyResponseContextManager, GrizzlyResponse
 from ...exceptions import ResponseHandlerError, TransformerLocustError
 from .grizzly_user import GrizzlyUser
 from .response_event import ResponseEvent

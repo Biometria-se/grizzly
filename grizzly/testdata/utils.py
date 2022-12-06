@@ -11,10 +11,11 @@ from jinja2 import Template, Environment
 from jinja2.meta import find_undeclared_variables
 from locust.exception import StopUser
 
+from grizzly.types import RequestType, TestdataType, GrizzlyVariableType
+from grizzly.testdata.ast import get_template_variables
+
 from ..tasks import GrizzlyTask
-from ..types import RequestType, TestdataType, GrizzlyVariableType
 from ..utils import merge_dicts
-from .ast import get_template_variables
 from . import GrizzlyVariables
 
 

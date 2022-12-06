@@ -42,7 +42,8 @@ from uuid import uuid4
 
 from grizzly_extras.arguments import split_value, parse_arguments
 
-from ...types import bool_type, int_rounded_float_type
+from grizzly.types import bool_type, int_rounded_float_type
+
 from . import AtomicVariable
 
 

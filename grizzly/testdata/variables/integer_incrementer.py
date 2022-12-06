@@ -78,7 +78,8 @@ from typing import Union, Dict, Any, Type, Optional, cast
 
 from grizzly_extras.arguments import split_value, parse_arguments
 
-from ...types import bool_type
+from grizzly.types import bool_type
+
 from . import AtomicVariable, AtomicVariablePersist
 
 
