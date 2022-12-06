@@ -16,18 +16,7 @@ from behave.runner import Context
 from behave.model import Status
 from locust.runners import MasterRunner, WorkerRunner, Runner
 from locust.env import Environment
-from locust.stats import (
-    RequestStats,
-    CONSOLE_STATS_INTERVAL_SEC,
-    STATS_NAME_WIDTH,
-    STATS_TYPE_WIDTH,
-    PERCENTILES_TO_REPORT,
-    print_error_report,
-    print_percentile_stats,
-    print_stats,
-    stats_history,
-    get_readable_percentiles,
-)
+from locust import stats as lstats
 from locust.log import setup_logging
 from locust.util.timespan import parse_timespan
 from locust import events
@@ -322,6 +311,10 @@ def run(context: Context) -> int:
 
     log_level = 'DEBUG' if context.config.verbose else grizzly.setup.log_level
 
+    csv_prefix: Optional[str] = context.config.userdata.get('csv-prefix', None)
+    csv_interval: int = int(context.config.userdata.get('csv-interval', '1'))
+    csv_flush_interval: int = int(context.config.userdata.get('csv-flush-iterval', '10'))
+
     # And locust log level is
     setup_logging(log_level, None)
 
@@ -497,7 +490,15 @@ def run(context: Context) -> int:
             logger.info(f'run time limit set to {run_time} seconds')
             spawn_run_time_limit_greenlet()
 
-        gevent.spawn(stats_history, environment.runner)
+        gevent.spawn(lstats.stats_history, environment.runner)
+
+        if csv_prefix is not None:
+            lstats.CSV_STATS_INTERVAL_SEC = csv_interval
+            lstats.CSV_STATS_FLUSH_INTERVAL_SEC = csv_flush_interval
+            stats_csv_writer = lstats.StatsCSVFileWriter(
+                environment, lstats.PERCENTILES_TO_REPORT, csv_prefix, True
+            )
+            gevent.spawn(stats_csv_writer.stats_writer).link_exception(greenlet_exception_handler)
 
         if not isinstance(runner, WorkerRunner):
             watch_running_users_greenlet: Optional[gevent.Greenlet] = None
@@ -534,7 +535,7 @@ def run(context: Context) -> int:
 
                 grizzly_print_stats(runner.stats, current=False)
                 grizzly_print_percentile_stats(runner.stats)
-                print_error_report(runner.stats)
+                lstats.print_error_report(runner.stats)
                 print_scenario_summary(grizzly)
 
             def spawning_complete() -> bool:
@@ -582,7 +583,7 @@ def run(context: Context) -> int:
         shutdown_external_processes(external_processes)
 
 
-def _grizzly_sort_stats(stats: RequestStats) -> List[Tuple[str, str, int]]:
+def _grizzly_sort_stats(stats: lstats.RequestStats) -> List[Tuple[str, str, int]]:
     locust_keys: List[Tuple[str, str]] = sorted(stats.entries.keys())
 
     previous_ident: Optional[str] = None
@@ -606,26 +607,26 @@ def _grizzly_sort_stats(stats: RequestStats) -> List[Tuple[str, str, int]]:
     return scenario_sorted_keys
 
 
-def grizzly_stats_printer(stats: RequestStats) -> Callable[[], NoReturn]:
+def grizzly_stats_printer(stats: lstats.RequestStats) -> Callable[[], NoReturn]:
     def _grizzly_stats_printer() -> NoReturn:
         while True:
             grizzly_print_stats(stats)
-            gevent.sleep(CONSOLE_STATS_INTERVAL_SEC)
+            gevent.sleep(lstats.CONSOLE_STATS_INTERVAL_SEC)
 
     return _grizzly_stats_printer
 
 
-def grizzly_print_stats(stats: RequestStats, current: bool = True, grizzly_style: bool = True) -> None:
+def grizzly_print_stats(stats: lstats.RequestStats, current: bool = True, grizzly_style: bool = True) -> None:
     if not grizzly_style:
-        print_stats(stats, current=current)
+        lstats.print_stats(stats, current=current)
         return
 
-    name_column_width = (STATS_NAME_WIDTH - STATS_TYPE_WIDTH) + 4  # saved characters by compacting other columns
+    name_column_width = (lstats.STATS_NAME_WIDTH - lstats.STATS_TYPE_WIDTH) + 4  # saved characters by compacting other columns
     stats_logger.info(
-        ("%-" + str(STATS_TYPE_WIDTH) + "s %-" + str(name_column_width) + "s %7s %12s |%7s %7s %7s%7s | %7s %11s")
+        ("%-" + str(lstats.STATS_TYPE_WIDTH) + "s %-" + str(name_column_width) + "s %7s %12s |%7s %7s %7s%7s | %7s %11s")
         % ("Type", "Name", "# reqs", "# fails", "Avg", "Min", "Max", "Med", "req/s", "failures/s")
     )
-    separator = f'{"-" * STATS_TYPE_WIDTH}|{"-" * (name_column_width)}|{"-" * 7}|{"-" * 13}|{"-" * 7}|{"-" * 7}|{"-" * 7}|{"-" * 7}|{"-" * 8}|{"-" * 11}'
+    separator = f'{"-" * lstats.STATS_TYPE_WIDTH}|{"-" * (name_column_width)}|{"-" * 7}|{"-" * 13}|{"-" * 7}|{"-" * 7}|{"-" * 7}|{"-" * 7}|{"-" * 8}|{"-" * 11}'
     stats_logger.info(separator)
 
     keys = _grizzly_sort_stats(stats)
@@ -639,22 +640,22 @@ def grizzly_print_stats(stats: RequestStats, current: bool = True, grizzly_style
     stats_logger.info('')
 
 
-def grizzly_print_percentile_stats(stats: RequestStats, grizzly_style: bool = True) -> None:
+def grizzly_print_percentile_stats(stats: lstats.RequestStats, grizzly_style: bool = True) -> None:
     if not grizzly_style:
-        print_percentile_stats(stats)
+        lstats.print_percentile_stats(stats)
         return
 
     stats_logger.info('Response time percentiles (approximated)')
-    headers = ('Type', 'Name') + tuple(get_readable_percentiles(PERCENTILES_TO_REPORT)) + ('# reqs',)
+    headers = ('Type', 'Name') + tuple(lstats.get_readable_percentiles(lstats.PERCENTILES_TO_REPORT)) + ('# reqs',)
     stats_logger.info(
         (
-            f'%-{str(STATS_TYPE_WIDTH)}s %-{str(STATS_NAME_WIDTH)}s %8s '
-            f'{" ".join(["%6s"] * len(PERCENTILES_TO_REPORT))}'
+            f'%-{str(lstats.STATS_TYPE_WIDTH)}s %-{str(lstats.STATS_NAME_WIDTH)}s %8s '
+            f'{" ".join(["%6s"] * len(lstats.PERCENTILES_TO_REPORT))}'
         )
         % headers
     )
     separator = (
-        f'{"-" * STATS_TYPE_WIDTH}|{"-" * STATS_NAME_WIDTH}|{"-" * 8}|{("-" * 6 + "|") * len(PERCENTILES_TO_REPORT)}'
+        f'{"-" * lstats.STATS_TYPE_WIDTH}|{"-" * lstats.STATS_NAME_WIDTH}|{"-" * 8}|{("-" * 6 + "|") * len(lstats.PERCENTILES_TO_REPORT)}'
     )[:-1]
     stats_logger.info(separator)
 

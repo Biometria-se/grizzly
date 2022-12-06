@@ -477,7 +477,6 @@ def test_print_scenario_summary(behave_fixture: BehaveFixture, capsys: CaptureFi
     print_scenario_summary(grizzly)
 
     summary = capsys.readouterr().out
-    print(summary)
     assert '''Scenario
 ident   iter  status      description
 ------|-----|-----------|-------------|
@@ -499,7 +498,6 @@ ident   iter  status      description
     print_scenario_summary(grizzly)
 
     summary = capsys.readouterr().out
-    print(summary)
     assert '''Scenario
 ident   iter  status   description
 ------|-----|--------|-----------------------------|
@@ -519,8 +517,6 @@ ident   iter  status   description
     print_scenario_summary(grizzly)
 
     summary = capsys.readouterr().out
-    print(summary)
-
     assert '''Scenario
 ident      iter  status   description
 ------|--------|--------|-----------------------------|
@@ -538,8 +534,6 @@ ident      iter  status   description
     print_scenario_summary(grizzly)
 
     summary = capsys.readouterr().out
-    print(summary)
-
     assert '''Scenario
 ident      iter  status      description
 ------|--------|-----------|-----------------------------|
@@ -644,7 +638,7 @@ def test_run_master(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
             return_value=None,
         )
 
-    for printer in ['print_error_report', 'print_percentile_stats', 'grizzly_print_stats', 'grizzly_stats_printer', 'stats_history']:
+    for printer in ['lstats.print_error_report', 'lstats.print_percentile_stats', 'grizzly_print_stats', 'grizzly_stats_printer', 'lstats.stats_history']:
         mocker.patch(
             f'grizzly.locust.{printer}',
             return_value=None,
@@ -789,7 +783,6 @@ def test_grizzly_print_stats(caplog: LogCaptureFixture, mocker: MockerFixture) -
 
     grizzly_stats = caplog.messages
     caplog.clear()
-    print(grizzly_stats[0:5])
 
     # print stats, locust style
     with caplog.at_level(logging.INFO):
