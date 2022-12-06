@@ -138,7 +138,8 @@ from gevent import sleep as gsleep
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse, AsyncMessageError
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
 
-from ..types import GrizzlyResponse, RequestDirection, RequestType
+from grizzly.types import GrizzlyResponse, RequestDirection, RequestType
+
 from ..tasks import RequestTask
 from ..utils import merge_dicts
 from .base import GrizzlyUser, ResponseHandler, RequestLogger

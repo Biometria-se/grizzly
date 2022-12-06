@@ -16,7 +16,7 @@ from behave.runner import Context
 from behave.model import Scenario, Status
 from locust.stats import STATS_NAME_WIDTH
 
-from .types import WrappedFunc, T
+from grizzly.types import WrappedFunc, T
 
 if TYPE_CHECKING:  # pragma: no cover
     from .context import GrizzlyContextScenario

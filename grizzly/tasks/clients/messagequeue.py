@@ -82,10 +82,11 @@ from zmq.sugar.constants import NOBLOCK as ZMQ_NOBLOCK, REQ as ZMQ_REQ, LINGER a
 from gevent import sleep as gsleep
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageResponse, AsyncMessageRequest
 
+from grizzly.types import GrizzlyResponse, RequestDirection, RequestType
+
 from . import client, ClientTask, logger
 from ...context import GrizzlyContextScenario
 from ...scenarios import GrizzlyScenario
-from ...types import GrizzlyResponse, RequestDirection, RequestType
 from ...testdata.utils import resolve_variable
 
 

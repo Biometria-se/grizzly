@@ -96,7 +96,8 @@ from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageReques
 from grizzly_extras.arguments import split_value, parse_arguments, get_unsupported_arguments
 from grizzly_extras.transformer import TransformerContentType
 
-from ...types import RequestType, bool_type
+from grizzly.types import RequestType, bool_type
+
 from ...context import GrizzlyContext
 from ..utils import resolve_variable
 from . import AtomicVariable

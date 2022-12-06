@@ -9,7 +9,8 @@ import yaml
 from behave.model import Scenario
 from locust.runners import Runner
 
-from .types import MessageCallback, MessageDirection
+from grizzly.types import MessageCallback, MessageDirection
+
 from .testdata import GrizzlyVariables
 
 if TYPE_CHECKING:  # pragma: no cover

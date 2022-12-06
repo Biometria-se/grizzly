@@ -88,9 +88,9 @@ import requests
 
 from grizzly_extras.transformer import TransformerContentType
 
-from ..types import GrizzlyResponse, RequestType, WrappedFunc, GrizzlyResponseContextManager
+from grizzly.types import GrizzlyResponse, RequestType, RequestMethod, WrappedFunc, GrizzlyResponseContextManager
+
 from ..utils import merge_dicts
-from ..types import RequestMethod
 from ..tasks import RequestTask
 from ..clients import ResponseEventSession
 from .base import RequestLogger, ResponseHandler, GrizzlyUser, HttpRequests, AsyncRequests

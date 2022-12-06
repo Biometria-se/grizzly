@@ -33,10 +33,11 @@ from locust.util.timespan import parse_timespan
 from locust import events
 from jinja2.exceptions import TemplateError
 
+from grizzly.types import RequestType, TestdataType
+
 from . import __version__, __locust_version__
 from .listeners import init, init_statistics_listener, quitting, validate_result, spawning_complete, locust_test_start, locust_test_stop
 from .testdata.utils import initialize_testdata
-from .types import RequestType, TestdataType
 from .context import GrizzlyContext
 from .tasks import GrizzlyTask
 from .users.base import GrizzlyUser

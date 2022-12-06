@@ -13,7 +13,8 @@ from typing import Generic, Optional, Callable, Set, Any, Tuple, Dict, TypeVar, 
 
 from gevent.lock import Semaphore, DummySemaphore
 
-from ...types import bool_type
+from grizzly.types import bool_type
+
 from ...context import GrizzlyContext
 
 

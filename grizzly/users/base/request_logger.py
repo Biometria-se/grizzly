@@ -12,8 +12,9 @@ from locust.env import Environment
 from jinja2 import Template
 from requests import Response as RequestResponse
 
+from grizzly.types import GrizzlyResponse, HandlerContextType, RequestDirection, GrizzlyResponseContextManager
+
 from ...tasks import RequestTask
-from ...types import GrizzlyResponse, HandlerContextType, RequestDirection, GrizzlyResponseContextManager
 from ...utils import merge_dicts
 from .response_event import ResponseEvent
 from .grizzly_user import GrizzlyUser

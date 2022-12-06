@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 
 
 if TYPE_CHECKING:
-    from ...types import GrizzlyResponse
+    from grizzly.types import GrizzlyResponse
     from ...tasks import RequestTask
 
 

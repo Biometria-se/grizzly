@@ -20,9 +20,10 @@ from typing import Optional, Dict, Any
 
 from grizzly_extras.arguments import split_value, parse_arguments
 
+from grizzly.types import GrizzlyResponse, RequestDirection, bool_type
+
 from . import client, ClientTask
 from ...scenarios import GrizzlyScenario
-from ...types import GrizzlyResponse, RequestDirection, bool_type
 from ...context import GrizzlyContextScenario
 
 import requests

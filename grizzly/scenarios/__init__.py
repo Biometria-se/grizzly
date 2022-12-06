@@ -7,10 +7,11 @@ from locust.exception import StopUser
 from locust.user.sequential_taskset import SequentialTaskSet
 from jinja2 import Template
 
+from grizzly.types import ScenarioState
+
 from ..context import GrizzlyContext
 from ..testdata.communication import TestdataConsumer
 from ..tasks import GrizzlyTask
-from ..types import ScenarioState
 
 if TYPE_CHECKING:
     from ..users.base import GrizzlyUser

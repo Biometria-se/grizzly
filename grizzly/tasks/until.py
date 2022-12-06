@@ -48,7 +48,8 @@ from gevent import sleep as gsleep
 from grizzly_extras.transformer import Transformer, TransformerContentType, TransformerError, transformer
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments, split_value
 
-from ..types import RequestType
+from grizzly.types import RequestType
+
 from . import GrizzlyTask, GrizzlyMetaRequestTask, template
 
 if TYPE_CHECKING:  # pragma: no cover

@@ -11,11 +11,12 @@ from behave.runner import Context
 from behave.model import Feature, Step, Scenario
 from behave.model_core import Status
 
+from grizzly.types import RequestType
+
 from .context import GrizzlyContext
 from .testdata.variables import destroy_variables
 from .locust import run as locustrun, on_worker
 from .utils import catch, check_mq_client_logs, fail_direct, in_correct_section
-from .types import RequestType
 
 try:
     import pymqi  # pylint: disable=unused-import

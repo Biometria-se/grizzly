@@ -14,8 +14,9 @@ from behave.model import Row
 from grizzly_extras.transformer import TransformerContentType
 from grizzly_extras.arguments import split_value, parse_arguments, get_unsupported_arguments
 
+from grizzly.types import RequestMethod, ResponseTarget, ResponseAction
+
 from ..context import GrizzlyContext
-from ..types import RequestMethod, ResponseTarget, ResponseAction
 from ..tasks import RequestTask
 from ..tasks.clients import client, ClientTask
 from ..testdata.utils import resolve_variable

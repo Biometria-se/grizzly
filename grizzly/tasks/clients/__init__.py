@@ -31,9 +31,10 @@ from datetime import datetime
 from grizzly_extras.transformer import TransformerContentType
 from grizzly_extras.arguments import split_value, parse_arguments
 
+from grizzly.types import RequestType, RequestDirection, GrizzlyResponse
+
 from ...context import GrizzlyContext, GrizzlyContextScenario
 from ...scenarios import GrizzlyScenario
-from ...types import RequestType, RequestDirection, GrizzlyResponse
 from ...testdata.utils import resolve_variable
 from ...users.base import RequestLogger
 from .. import GrizzlyMetaRequestTask, template

@@ -7,10 +7,9 @@ from typing import cast
 from behave.runner import Context
 from behave import register_type, then, given, when  # pylint: disable=no-name-in-module
 
-from grizzly.tasks.conditional import ConditionalTask  # pylint: disable=no-name-in-module
+from grizzly.types import RequestDirection, RequestMethod
 
 from .._helpers import add_request_task, get_task_client, is_template
-from ...types import RequestDirection, RequestMethod
 from ...context import GrizzlyContext
 from ...tasks import (
     LogMessageTask,
@@ -22,6 +21,7 @@ from ...tasks import (
     TimerTask,
     TaskWaitTask,
     LoopTask,
+    ConditionalTask,
 )
 
 from grizzly_extras.transformer import TransformerContentType

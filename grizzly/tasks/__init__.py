@@ -23,9 +23,9 @@ from pathlib import Path
 from grizzly_extras.transformer import TransformerContentType
 
 if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.types import GrizzlyResponse
     from ..scenarios import GrizzlyScenario
     from ..context import GrizzlyContextScenario
-    from ..types import GrizzlyResponse
 
 
 class GrizzlyTask(ABC):

@@ -37,8 +37,9 @@ from azure.storage.blob import BlobServiceClient
 from locust.exception import StopUser
 from locust.env import Environment
 
+from grizzly.types import RequestMethod, GrizzlyResponse, RequestType
+
 from .base import GrizzlyUser
-from ..types import RequestMethod, GrizzlyResponse, RequestType
 from ..tasks import RequestTask
 from ..utils import merge_dicts
 

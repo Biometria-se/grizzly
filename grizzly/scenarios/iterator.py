@@ -10,7 +10,8 @@ from locust.exception import StopUser, InterruptTaskSet, RescheduleTaskImmediate
 from locust.stats import StatsEntry
 from gevent.exceptions import GreenletExit
 
-from ..types import RequestType, ScenarioState
+from grizzly.types import RequestType, ScenarioState
+
 from ..exceptions import RestartScenario, StopScenario
 from . import GrizzlyScenario
 
