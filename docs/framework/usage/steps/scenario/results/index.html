@@ -1740,7 +1740,7 @@
                 
                   
 
-  <a href="https://github.com/Biometria-se/grizzly/blob/v2.5.4/docs/content/framework/usage/steps/scenario/results.md" title="Edit this page" class="md-content__button md-icon">
+  <a href="https://github.com/Biometria-se/grizzly/blob/v2.5.5/docs/content/framework/usage/steps/scenario/results.md" title="Edit this page" class="md-content__button md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20.71 7.04c.39-.39.39-1.04 0-1.41l-2.34-2.34c-.37-.39-1.02-.39-1.41 0l-1.84 1.83 3.75 3.75M3 17.25V21h3.75L17.81 9.93l-3.75-3.75L3 17.25Z"/></svg>
   </a>
@@ -1757,7 +1757,7 @@ locust statistics like response time and failures.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@when</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;fail ratio is greater than &quot;</span><span class="si">{fail_ratio:d}</span><span class="s1">&quot;</span><span class="si">% f</span><span class="s1">ail scenario&#39;</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">step_results_fail_ratio</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">fail_ratio</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
-<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.5.4/docs/../grizzly/steps/scenario/results.py#L15">[view_source]</a></p>
+<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.5.5/docs/../grizzly/steps/scenario/results.py#L15">[view_source]</a></p>
 <p>Sets how many percentages of requests that are allowed to fail before the whole scenario will be set as failed.</p>
 <p>This step cannot be used in combination with:</p>
 <ul>
@@ -1785,7 +1785,7 @@ locust statistics like response time and failures.</p>
 <span class="k">def</span> <span class="nf">step_results_avg_response_time</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span>
                                    <span class="n">avg_response_time</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
-<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.5.4/docs/../grizzly/steps/scenario/results.py#L41">[view_source]</a></p>
+<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.5.5/docs/../grizzly/steps/scenario/results.py#L41">[view_source]</a></p>
 <p>Sets the average response time (milliseconds) that all requests in a scenario must be below
 for it to pass.</p>
 <p>Default behavior is not to validate the result for a scenario based on average response time.</p>
@@ -1805,7 +1805,7 @@ for it to pass.</p>
 <span class="k">def</span> <span class="nf">step_results_response_time_percentile</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">percentile</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
                                           <span class="n">response_time</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
-<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.5.4/docs/../grizzly/steps/scenario/results.py#L61">[view_source]</a></p>
+<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.5.5/docs/../grizzly/steps/scenario/results.py#L61">[view_source]</a></p>
 <p>Sets the response time that a specified percentile of the requests needs to be below for the scenario to pass.</p>
 <p>Default behavior is not to validate the result for a scenario based on percetile response times.</p>
 <p><strong>Example</strong>:</p>
