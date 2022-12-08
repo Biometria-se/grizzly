@@ -5,7 +5,7 @@ This package contains special variables that can be used in a feature file and i
 ## Custom
 
 It is possible to implement custom testdata variables, the only requirement is that they inherit `grizzly.testdata.variables.AtomicVariable`.
-When initializing the variable, the full namespace has to be specified as `name` in the scenario {@pylink grizzly.steps.scenario.setup.step_setup_variable_value} step.
+When initializing the variable, the full namespace has to be specified as `name` in the scenario {@pylink grizzly.steps.setup.step_setup_variable_value} step.
 
 There are examples of this in the {@link framework.example}.
 '''

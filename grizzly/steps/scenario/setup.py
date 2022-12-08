@@ -93,63 +93,6 @@ def step_setup_iterations(context: Context, value: str, iteration_number: str) -
     grizzly.scenario.iterations = iterations
 
 
-@given(u'value for variable "{name}" is "{value}"')
-def step_setup_variable_value(context: Context, name: str, value: str) -> None:
-    '''Use this step to initialize a variable that should have the same [start] value for every run of
-    the scenario.
-
-    Data type for the value of the variable is based on the type of variable. If the variable is an testdata {@pylink grizzly.testdata.variables}
-    then the value needs to match the format and type that the variable has implemented. If it is not a testdata variable
-    `grizzly` will try to guess the data type. E.g.:
-
-    * `"10"` becomes `int`
-
-    * `"1.0"` becomes `float`
-
-    * `"True"` becomes `bool`
-
-    * everything else becomes `str`
-
-    It is also possible to set the value of a variable based on another variable, which can be usable if you have a variable in
-    multiple scenarios which all should have the same initial value.
-
-    Example:
-
-    ``` gherkin title="example.feature"
-    Feature:
-        Background:
-            And ask for value of variable "messageID"
-        Scenario:
-            And value for variable "HelloWorld" is "default"
-            And value for variable "AtomicIntegerIncrementer.mid1" is "{{ messageID }}"
-            And value for variable "AtomicIntegerIncrementer.persistent" is "1 | step=10, persist=True"
-    ```
-
-    If the file `features/persistent/example.json` (name of feature file and `feature` extension replaced with `json`) exists, and contains an entry for
-    the variable, the initial value will be read from the file and override the value specified in the feature file.
-
-    Args:
-        name (str): variable name
-        value (Any): initial value
-    '''
-    grizzly = cast(GrizzlyContext, context.grizzly)
-
-    assert name not in grizzly.state.variables, f'variable "{name}" has already been set'
-
-    try:
-        # data type will be guessed when setting the variable
-        if name not in grizzly.state.persistent:
-            resolved_value = resolve_variable(grizzly, value, guess_datatype=False)
-            if is_template(value):
-                grizzly.scenario.orphan_templates.append(value)
-        else:
-            resolved_value = grizzly.state.persistent[name]
-
-        grizzly.state.variables[name] = resolved_value
-    except ValueError as e:
-        raise AssertionError(str(e))
-
-
 @given(u'set alias "{alias}" for variable "{variable}"')
 def step_setup_set_variable_alias(context: Context, alias: str, variable: str) -> None:
     '''Creates an alias for a variable that points to another structure in the context.
