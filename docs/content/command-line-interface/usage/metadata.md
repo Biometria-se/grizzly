@@ -4,13 +4,18 @@ title: Metadata
 @anchor command-line-interface.usage.metadata
 # Metadata
 
-It is possible to inject `grizzly-cli` arguments via comments anywhere in a feature file (recommended to add them at the top though).
+It is possible to add metadata in feature files that `grizzly-cli` will use. Metadata comments can be added anywhere in the feature file, but
+it is recommended to add them in the top for readability.
+
+## Arguments
+
+Inject `grizzly-cli` arguments via metadata comments.
 When executing a feature file, `grizzly-cli` will add the specified arguments automagically, if they match the command being executed.
 
 This makes it possible to add arguments needed for a specific feature file to be documented in the feature file itself, and one does not
 have to remember all combinations in memory.
 
-## Format
+### Format
 
 ``` gherkin
 # grizzly-cli <[sub]parser> <argument>
@@ -19,7 +24,7 @@ have to remember all combinations in memory.
 No validation is done that an argument actually exists in the subparser, other than that `grizzly-cli` will fail with an argument error.
 Which is solved by checking {@link command-line-interface.usage} usage and correct the metadata comments.
 
-## Examples
+### Examples
 
 E.g., the `run` subparser is used by both `dist` and `local`, so when specifying an metadata comment for `run` arguments it should be:
 
@@ -63,3 +68,35 @@ When executed with `grizzly-cli local run example-dist.feature`, the output will
 ```
 
 And the command that is actually executed is `grizzly local run example-dist.feature --verbose`.
+
+## Notices
+
+It is possible to tell `grizzly-cli` show confirmation notices with metadata in a a feature file.
+
+This is useful to remind the user about manual steps och checks that should be done before running the feature.
+
+### Format
+
+``` gherkin
+# grizzly-cli:notice <message>
+```
+
+Everything after `# grizzly-cli:notice ` (notice the space) will be displayed in the confirmation prompt.
+
+### Examples
+
+``` gherkin title="example.feature"
+# grizzly-cli:notice have you piped the fork in a loop?
+Feature: Example Feature
+  Scenario: Example Scenario
+    ...
+```
+
+Running `example.feature` will in additional to the normal `grizzly-cli` input/output also trigger the following prompt:
+
+``` plain
+have you piped the fork in a loop? [y/n]
+```
+
+If `run` argument `-y/--yes` is provided, it will only print the message and not ask for confirmation.
+

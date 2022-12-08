@@ -92,6 +92,7 @@ They are useful when history of test runs is needed, or when wanting to correlat
 * `MessageQueueUser`: send and receive from IBM MQ queues
 * `SftpUser`: send and receive files from an SFTP-server
 * `BlobStorageUser`: send files to Azure Blob Storage<sup>2</sup>
+* `IotHubUser`: send/put files to Azure IoT Hub
 
 <sup>2</sup> A pull request for functionality in the other direction is appreciated!
 

@@ -22,7 +22,7 @@ HostName=<hostname>;DeviceId=<device key>;SharedAccessKey=<access key>
 Example of how to use it in a scenario:
 
 ``` gherkin
-Given a user of type "IoTHub" load testing "HostName=my_iot_host_name;DeviceId=my_device;SharedAccessKey=xxxyyyyzzz=="
+Given a user of type "IotHub" load testing "HostName=my_iot_host_name;DeviceId=my_device;SharedAccessKey=xxxyyyyzzz=="
 Then send request "test/blob.file" to endpoint "uploaded_blob_filename"
 ```
 '''
