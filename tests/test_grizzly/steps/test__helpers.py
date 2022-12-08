@@ -253,6 +253,7 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
 
 @pytest.mark.parametrize('as_async', [False, True])
 def test_add_save_handler(behave_fixture: BehaveFixture, locust_fixture: LocustFixture, as_async: bool) -> None:
+    TestUser.host = 'https://example.io'
     user = TestUser(locust_fixture.env)
     scenario = GrizzlyContextScenario(index=2)
     scenario.name = 'test scenario'
@@ -390,6 +391,7 @@ def test_add_save_handler(behave_fixture: BehaveFixture, locust_fixture: LocustF
 
 @pytest.mark.parametrize('as_async', [False, True])
 def test_add_validation_handler(behave_fixture: BehaveFixture, locust_fixture: LocustFixture, as_async: bool) -> None:
+    TestUser.host = 'http://example.io'
     user = TestUser(locust_fixture.env)
     scenario = GrizzlyContextScenario(index=1)
     scenario.name = 'test scenario'
