@@ -885,6 +885,8 @@
         
           
         
+          
+        
       
       
         
@@ -971,6 +973,20 @@
     <li class="md-nav__item">
       <a href="../../../load-users/restapi/" class="md-nav__link">
         RestAPI
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../load-users/dummy/" class="md-nav__link">
+        Dummy
       </a>
     </li>
   
@@ -1754,7 +1770,7 @@
                 
                   
 
-  <a href="https://github.com/Biometria-se/grizzly/blob/v2.5.5/docs/content/framework/usage/steps/background/setup.md" title="Edit this page" class="md-content__button md-icon">
+  <a href="https://github.com/Biometria-se/grizzly/blob/v2.5.6/docs/content/framework/usage/steps/background/setup.md" title="Edit this page" class="md-content__button md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20.71 7.04c.39-.39.39-1.04 0-1.41l-2.34-2.34c-.37-.39-1.02-.39-1.41 0l-1.84 1.83 3.75 3.75M3 17.25V21h3.75L17.81 9.93l-3.75-3.75L3 17.25Z"/></svg>
   </a>
@@ -1770,7 +1786,7 @@ This module contains step implementations that configures the load test scenario
 <div class="highlight"><pre><span></span><code><span class="nd">@given</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;save statistics to &quot;</span><span class="si">{url}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">step_setup_save_statistics</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">url</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
-<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.5.5/docs/../grizzly/steps/background/setup.py#L35">[view_source]</a></p>
+<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.5.6/docs/../grizzly/steps/background/setup.py#L35">[view_source]</a></p>
 <p>Sets an URL where locust statistics should be sent.</p>
 <p>It has support for InfluxDB and Azure Application Insights endpoints.</p>
 <p>For InfluxDB the following format <strong>must</strong> be used:</p>
@@ -1796,7 +1812,7 @@ insights://&lt;ingestion endpoint&gt;/?InstrumentationKey=&lt;instrumentation ke
 <div class="highlight"><pre><span></span><code><span class="nd">@given</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;log level is &quot;</span><span class="si">{log_level}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">step_setup_log_level</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">log_level</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
-<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.5.5/docs/../grizzly/steps/background/setup.py#L74">[view_source]</a></p>
+<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.5.6/docs/../grizzly/steps/background/setup.py#L74">[view_source]</a></p>
 <p>Configure log level for <code>grizzly</code>.</p>
 <p>Default value is <code>INFO</code>, by changing to <code>DEBUG</code> there is more information what <code>grizzly</code> is doing behind the curtains.</p>
 <div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">log level is &quot;</span><span class="s">DEBUG</span><span class="nf">&quot;</span>
@@ -1811,7 +1827,7 @@ insights://&lt;ingestion endpoint&gt;/?InstrumentationKey=&lt;instrumentation ke
 <div class="highlight"><pre><span></span><code><span class="nd">@given</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;run for maximum &quot;</span><span class="si">{timespan}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">step_setup_run_time</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">timespan</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
-<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.5.5/docs/../grizzly/steps/background/setup.py#L92">[view_source]</a></p>
+<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.5.6/docs/../grizzly/steps/background/setup.py#L92">[view_source]</a></p>
 <p>Configures the time period a headless test should run for.
 If available test data is infinite, the test will run forever if this step is not used.</p>
 <div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">run for maximum &quot;</span><span class="s">1h</span><span class="nf">&quot;</span>
@@ -1827,7 +1843,7 @@ If available test data is infinite, the test will run forever if this step is no
 <span class="k">def</span> <span class="nf">step_setup_set_global_context_variable</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
                                            <span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
-<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.5.5/docs/../grizzly/steps/background/setup.py#L108">[view_source]</a></p>
+<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.5.6/docs/../grizzly/steps/background/setup.py#L108">[view_source]</a></p>
 <p>Create a global variable in the context. Depending on which type of user a scenario is configured for, different variables
 are available. Check <code>grizzly.users</code> documentation for which context variables are available for each user.</p>
 <p>This step can be used if the feature file has multiple scenarios and all of them have the same context variables.</p>

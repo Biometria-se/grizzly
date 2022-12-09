@@ -885,6 +885,8 @@
         
           
         
+          
+        
       
       
         
@@ -971,6 +973,20 @@
     <li class="md-nav__item">
       <a href="../../load-users/restapi/" class="md-nav__link">
         RestAPI
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../load-users/dummy/" class="md-nav__link">
+        Dummy
       </a>
     </li>
   
@@ -1292,6 +1308,13 @@
         <li class="md-nav__item">
   <a href="#step_setup_variable_value_ask" class="md-nav__link">
     step_setup_variable_value_ask
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step_setup_variable_value" class="md-nav__link">
+    step_setup_variable_value
   </a>
   
 </li>
@@ -1696,6 +1719,13 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#step_setup_variable_value" class="md-nav__link">
+    step_setup_variable_value
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -1710,7 +1740,7 @@
                 
                   
 
-  <a href="https://github.com/Biometria-se/grizzly/blob/v2.5.5/docs/content/framework/usage/steps/setup.md" title="Edit this page" class="md-content__button md-icon">
+  <a href="https://github.com/Biometria-se/grizzly/blob/v2.5.6/docs/content/framework/usage/steps/setup.md" title="Edit this page" class="md-content__button md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20.71 7.04c.39-.39.39-1.04 0-1.41l-2.34-2.34c-.37-.39-1.02-.39-1.41 0l-1.84 1.83 3.75 3.75M3 17.25V21h3.75L17.81 9.93l-3.75-3.75L3 17.25Z"/></svg>
   </a>
@@ -1725,7 +1755,7 @@
 <span class="nd">@given</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;ask for value of variable &quot;</span><span class="si">{name}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">step_setup_variable_value_ask</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
-<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.5.5/docs/../grizzly/steps/setup.py#L12">[view_source]</a></p>
+<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.5.6/docs/../grizzly/steps/setup.py#L14">[view_source]</a></p>
 <p>This step is used to indicate for <code>grizzly-cli</code> that it should ask for an initial value for the variable.
 It will then inject the value into the locust runtime environment, and in this step read it and insert it
 into the locust context which grizzly will use to setup locust.</p>
@@ -1737,6 +1767,50 @@ into the locust context which grizzly will use to setup locust.</p>
 <p><strong>Arguments</strong>:</p>
 <ul>
 <li><code>name</code> <em>str</em> - variable name used in templates</li>
+</ul>
+<p><a id="grizzly.steps.setup.step_setup_variable_value"></a></p>
+<p><a id="pydoc:grizzly.steps.setup.step_setup_variable_value"></a></p>
+<h2 id="step_setup_variable_value">step_setup_variable_value</h2>
+<div class="highlight"><pre><span></span><code><span class="nd">@given</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;value for variable &quot;</span><span class="si">{name}</span><span class="s1">&quot; is &quot;</span><span class="si">{value}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">step_setup_variable_value</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
+</code></pre></div>
+<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.5.6/docs/../grizzly/steps/setup.py#L44">[view_source]</a></p>
+<p>Use this step to initialize a variable that should have the same [start] value for every run of
+the scenario.</p>
+<p>Data type for the value of the variable is based on the type of variable. If the variable is an testdata <a href="/grizzly/framework/usage/variables/testdata#pydoc:grizzly.testdata.variables">Variables</a>
+then the value needs to match the format and type that the variable has implemented. If it is not a testdata variable
+<code>grizzly</code> will try to guess the data type. E.g.:</p>
+<ul>
+<li>
+<p><code>"10"</code> becomes <code>int</code></p>
+</li>
+<li>
+<p><code>"1.0"</code> becomes <code>float</code></p>
+</li>
+<li>
+<p><code>"True"</code> becomes <code>bool</code></p>
+</li>
+<li>
+<p>everything else becomes <code>str</code></p>
+</li>
+</ul>
+<p>It is also possible to set the value of a variable based on another variable, which can be usable if you have a variable in
+multiple scenarios which all should have the same initial value.</p>
+<p><strong>Example</strong>:</p>
+<div class="highlight"><span class="filename">example.feature</span><pre><span></span><code><span class="k">Feature:</span><span class="nf"></span>
+<span class="nf">    </span><span class="k">Background:</span><span class="nf"></span>
+<span class="k">        And </span><span class="nf">ask for value of variable &quot;</span><span class="s">messageID</span><span class="nf">&quot;</span>
+<span class="nf">        </span><span class="k">And </span><span class="nf">value for variable &quot;</span><span class="s">HelloWorld</span><span class="nf">&quot; is &quot;</span><span class="s">default</span><span class="nf">&quot;</span>
+<span class="nf">    </span><span class="k">Scenario:</span><span class="nf"></span>
+<span class="k">        And </span><span class="nf">value for variable &quot;</span><span class="s">AtomicIntegerIncrementer.mid1</span><span class="nf">&quot; is &quot;</span><span class="s">{{ messageID }}</span><span class="nf">&quot;</span>
+<span class="nf">        </span><span class="k">And </span><span class="nf">value for variable &quot;</span><span class="s">AtomicIntegerIncrementer.persistent</span><span class="nf">&quot; is &quot;</span><span class="s">1 | step=10, persist=True</span><span class="nf">&quot;</span>
+</code></pre></div>
+<p>If the file <code>features/persistent/example.json</code> (name of feature file and <code>feature</code> extension replaced with <code>json</code>) exists, and contains an entry for
+  the variable, the initial value will be read from the file and override the value specified in the feature file.</p>
+<p><strong>Arguments</strong>:</p>
+<ul>
+<li><code>name</code> <em>str</em> - variable name</li>
+<li><code>value</code> <em>Any</em> - initial value</li>
 </ul>
 
 

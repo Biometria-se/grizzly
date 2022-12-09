@@ -13,7 +13,7 @@
     
     
       
-        <title>Index - Grizzly</title>
+        <title>Usage - Grizzly</title>
       
     
     
@@ -98,7 +98,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Index
+              Usage
             
           </span>
         </div>
@@ -881,6 +881,8 @@
         
           
         
+          
+        
       
       
         
@@ -967,6 +969,20 @@
     <li class="md-nav__item">
       <a href="../../framework/usage/load-users/restapi/" class="md-nav__link">
         RestAPI
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../framework/usage/load-users/dummy/" class="md-nav__link">
+        Dummy
       </a>
     </li>
   
@@ -1910,7 +1926,7 @@
                 
                   
 
-  <a href="https://github.com/Biometria-se/grizzly/blob/v2.5.5/docs/content/command-line-interface/usage/index.md" title="Edit this page" class="md-content__button md-icon">
+  <a href="https://github.com/Biometria-se/grizzly/blob/v2.5.6/docs/content/command-line-interface/usage/index.md" title="Edit this page" class="md-content__button md-icon">
     
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20.71 7.04c.39-.39.39-1.04 0-1.41l-2.34-2.34c-.37-.39-1.02-.39-1.41 0l-1.84 1.83 3.75 3.75M3 17.25V21h3.75L17.81 9.93l-3.75-3.75L3 17.25Z"/></svg>
   </a>
@@ -2039,7 +2055,9 @@ nicely.</p>
 <p>execute load test scenarios specified in a feature file.</p>
 <h5 id="usage_3">Usage</h5>
 <div class="highlight"><pre><span></span><code>grizzly-cli <span class="nb">local</span> run <span class="o">[</span>-h<span class="o">]</span> <span class="o">[</span>--verbose<span class="o">]</span> <span class="o">[</span>-T TESTDATA_VARIABLE<span class="o">]</span> <span class="o">[</span>-y<span class="o">]</span>
-                      <span class="o">[</span>-e ENVIRONMENT_FILE<span class="o">]</span>
+                      <span class="o">[</span>-e ENVIRONMENT_FILE<span class="o">]</span> <span class="o">[</span>--csv-prefix <span class="o">[</span>CSV_PREFIX<span class="o">]]</span>
+                      <span class="o">[</span>--csv-interval CSV_INTERVAL<span class="o">]</span>
+                      <span class="o">[</span>--csv-flush-interval CSV_FLUSH_INTERVAL<span class="o">]</span>
                       file <span class="o">[</span>file ...<span class="o">]</span>
 </code></pre></div>
 <h5 id="positional-arguments_3">Positional arguments</h5>
@@ -2088,6 +2106,21 @@ nicely.</p>
 <td><code>-e, --environment-file</code></td>
 <td></td>
 <td>configuration file with <a href="/grizzly/usage/variables/environment-configuration/">environment specific<br/>information</a></td>
+</tr>
+<tr>
+<td><code>--csv-prefix</code></td>
+<td></td>
+<td>write log statistics to CSV files with specified prefix, if no value is<br/>specified the description of the gherkin Feature tag will be used, suffixed with<br/>timestamp</td>
+</tr>
+<tr>
+<td><code>--csv-interval</code></td>
+<td></td>
+<td>interval that statistics is collected for CSV files, can only be used in<br/>combination with <code>--csv-prefix</code></td>
+</tr>
+<tr>
+<td><code>--csv-flush-interval</code></td>
+<td></td>
+<td>interval that CSV statistics is flushed to disk, can only be used in combination<br/>with <code>--csv-prefix</code></td>
 </tr>
 </tbody>
 </table>
@@ -2259,7 +2292,9 @@ host the archive and override the download host with environment variable <code>
 <p>execute load test scenarios specified in a feature file.</p>
 <h5 id="usage_7">Usage</h5>
 <div class="highlight"><pre><span></span><code>grizzly-cli dist run <span class="o">[</span>-h<span class="o">]</span> <span class="o">[</span>--verbose<span class="o">]</span> <span class="o">[</span>-T TESTDATA_VARIABLE<span class="o">]</span> <span class="o">[</span>-y<span class="o">]</span>
-                     <span class="o">[</span>-e ENVIRONMENT_FILE<span class="o">]</span>
+                     <span class="o">[</span>-e ENVIRONMENT_FILE<span class="o">]</span> <span class="o">[</span>--csv-prefix <span class="o">[</span>CSV_PREFIX<span class="o">]]</span>
+                     <span class="o">[</span>--csv-interval CSV_INTERVAL<span class="o">]</span>
+                     <span class="o">[</span>--csv-flush-interval CSV_FLUSH_INTERVAL<span class="o">]</span>
                      file <span class="o">[</span>file ...<span class="o">]</span>
 </code></pre></div>
 <h5 id="positional-arguments_5">Positional arguments</h5>
@@ -2308,6 +2343,21 @@ host the archive and override the download host with environment variable <code>
 <td><code>-e, --environment-file</code></td>
 <td></td>
 <td>configuration file with <a href="/grizzly/usage/variables/environment-configuration/">environment specific<br/>information</a></td>
+</tr>
+<tr>
+<td><code>--csv-prefix</code></td>
+<td></td>
+<td>write log statistics to CSV files with specified prefix, if no value is<br/>specified the description of the gherkin Feature tag will be used, suffixed with<br/>timestamp</td>
+</tr>
+<tr>
+<td><code>--csv-interval</code></td>
+<td></td>
+<td>interval that statistics is collected for CSV files, can only be used in<br/>combination with <code>--csv-prefix</code></td>
+</tr>
+<tr>
+<td><code>--csv-flush-interval</code></td>
+<td></td>
+<td>interval that CSV statistics is flushed to disk, can only be used in combination<br/>with <code>--csv-prefix</code></td>
 </tr>
 </tbody>
 </table>
