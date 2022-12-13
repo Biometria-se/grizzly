@@ -1,20 +1,19 @@
 import logging
 import os
-import socket
 import json
 
 from types import TracebackType
-from typing import Any, Dict, List, Optional, Type, Union, Literal, cast
+from typing import Any, Dict, List, Optional, Type, Literal, TypedDict, cast
 from datetime import datetime, timezone, timedelta
 from urllib.parse import urlparse, parse_qs, unquote
+from platform import node as get_hostname
 
 import gevent
 
-from locust.env import Environment
 from influxdb import InfluxDBClient
 from influxdb.exceptions import InfluxDBClientError
+from locust.env import Environment
 from locust.exception import CatchResponseError
-from locust.runners import MasterRunner
 
 
 logger = logging.getLogger(__name__)
@@ -22,6 +21,13 @@ logger = logging.getLogger(__name__)
 
 class InfluxDbError(Exception):
     pass
+
+
+class InfluxDbPoint(TypedDict):
+    measurement: str
+    tags: Dict[str, Any]
+    time: str
+    fields: Dict[str, Any]
 
 
 class InfluxDb:
@@ -81,7 +87,7 @@ class InfluxDb:
 
         return cast(List[Dict[str, Any]], result.raw['series'])
 
-    def write(self, values: List[Dict[str, Any]]) -> None:
+    def write(self, values: List[InfluxDbPoint]) -> None:
         try:
             self.client.write_points(values)
             logger.debug((
@@ -129,14 +135,15 @@ class InfluxDbListener:
         # self._env = env.parsed_options.target_env
         self._target_environment = unquote(params['TargetEnvironment'][0]) if 'TargetEnvironment' in params else None
         self.environment = environment
-        self._hostname = socket.gethostname()
+        self._hostname = get_hostname()
         self._username = os.getenv('USER', 'unknown')
-        self._events: List[Dict[str, Any]] = []
+        self._events: List[InfluxDbPoint] = []
         self._finished = False
         self._profile_name = params['ProfileName'][0] if 'ProfileName' in params else ''
         self._description = params['Description'][0] if 'Description' in params else ''
 
-        self._background = gevent.spawn(self.run)
+        gevent.spawn(self.run_events)
+        gevent.spawn(self.run_user_count)
         self.connection = self.create_client().connect()
         self.logger = logging.getLogger(__name__)
         self.environment.events.request.add_listener(self.request)
@@ -150,7 +157,43 @@ class InfluxDbListener:
             password=self.influx_password,
         )
 
-    def run(self) -> None:
+    @property
+    def finished(self) -> bool:
+        return self._finished
+
+    def run_user_count(self) -> None:
+        runner = self.environment.runner
+
+        assert runner is not None, 'no runner is set'
+
+        while True:
+            points: List[Any] = []
+            timestamp = datetime.now(timezone.utc).isoformat()
+
+            for user_class_name, user_count in runner.user_classes_count.items():
+                point: InfluxDbPoint = {
+                    'measurement': 'user_count',
+                    'tags': {
+                        'testplan': self._testplan,
+                        'hostname': self._hostname,
+                        'user_class': user_class_name,
+                    },
+                    'time': timestamp,
+                    'fields': {
+                        'user_count': user_count,
+                    }
+                }
+                points.append(point)
+
+            if len(points) > 0:
+                self.connection.write(points)
+
+            if not self.finished:
+                gevent.sleep(5.0)
+            else:
+                break
+
+    def run_events(self) -> None:
         while True:
             if self._events:
                 # Buffer samples, so that a locust greenlet will write to the new list
@@ -161,7 +204,7 @@ class InfluxDbListener:
                     self.connection.write(events_buffer)
                 except Exception as e:
                     self.logger.error(str(e))
-            elif self._finished:
+            elif self.finished:
                 break
             gevent.sleep(0.5)
 
@@ -191,6 +234,7 @@ class InfluxDbListener:
             'method': request_type,
             'result': result,
             'testplan': self._testplan,
+            'hostname': get_hostname(),
         }
 
         for key in os.environ.keys():
@@ -202,7 +246,7 @@ class InfluxDbListener:
 
         timestamp = datetime.now(timezone.utc) - timedelta(milliseconds=metrics['response_time'])
 
-        event = {
+        event: InfluxDbPoint = {
             'measurement': 'request',
             'tags': tags,
             'time': timestamp.isoformat(),
@@ -230,7 +274,7 @@ class InfluxDbListener:
 
             metrics = self._create_metrics(response_time, response_length)
 
-            message_to_log = f'{result}: {request_type} {name} Response time: {response_time} Number of Threads: {metrics["thread_count"]}'
+            message_to_log = f'{result}: {request_type} {name} Response time: {response_time}'
 
             if exception is not None:
                 message_to_log = f'{message_to_log} Exception: {str(exception)}'
@@ -241,51 +285,14 @@ class InfluxDbListener:
             logger_method(message_to_log)
             self._log_request(request_type, name, result, metrics, exception)
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             self.logger.error(f'failed to write metric for "{request_type} {name}": {str(e)}')
 
     def _create_metrics(self, response_time: int, response_length: int) -> Dict[str, Any]:
-        metrics = self._safe_return_runner_values()
+        metrics: Dict[str, Any] = {}
 
         metrics['response_time'] = response_time
         metrics['response_length'] = response_length if response_length >= 0 else None
 
         return metrics
-
-    def _safe_return_runner_values(self) -> Dict[str, Any]:
-        runner_values: Dict[str, Union[int, float]] = {
-            'thread_count': -1,
-            'target_user_count': -1,
-            'spawn_rate': -1,
-        }
-
-        try:
-            runner = self.environment.runner
-
-            if runner is None:
-                raise ValueError()
-
-            try:
-                thread_count = int(runner.user_count)
-            except Exception:
-                thread_count = -1
-
-            runner_values['thread_count'] = thread_count
-
-            try:
-                target_user_count = int(runner.target_user_count)
-            except Exception:
-                target_user_count = -1
-
-            runner_values['target_user_count'] = target_user_count
-
-            try:
-                if isinstance(runner, MasterRunner):
-                    spawn_rate = float(runner.spawn_rate)
-                else:
-                    spawn_rate = -1
-            except Exception:
-                spawn_rate = -1
-
-            runner_values['spawn_rate'] = spawn_rate
-        finally:
-            return runner_values
