@@ -231,7 +231,12 @@ def test_init_statistics_listener(mocker: MockerFixture, locust_fixture: LocustF
     )
 
     mocker.patch(
-        'grizzly.listeners.influxdb.InfluxDbListener.run',
+        'grizzly.listeners.influxdb.InfluxDbListener.run_events',
+        return_value=None,
+    )
+
+    mocker.patch(
+        'grizzly.listeners.influxdb.InfluxDbListener.run_user_count',
         return_value=None,
     )
 
