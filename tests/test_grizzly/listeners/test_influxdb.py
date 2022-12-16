@@ -5,6 +5,7 @@ import logging
 from typing import Callable, Any, Dict, Optional, Tuple, List
 from json import dumps as jsondumps
 from platform import node as get_hostname
+from datetime import datetime, timezone
 
 import pytest
 
@@ -16,7 +17,7 @@ from influxdb.exceptions import InfluxDBClientError
 
 from grizzly.listeners.influxdb import InfluxDbError, InfluxDbListener, InfluxDb
 
-from ...fixtures import LocustFixture
+from ...fixtures import LocustFixture, GrizzlyFixture
 
 
 @pytest.fixture
@@ -324,17 +325,26 @@ class TestInfluxDbListener:
         assert len(listener._events) == 0
 
     @pytest.mark.usefixtures('patch_influxdblistener')
-    def test__log_request(self, locust_fixture: LocustFixture, patch_influxdblistener: Callable[[], None]) -> None:
+    def test__log_request(self, grizzly_fixture: GrizzlyFixture, patch_influxdblistener: Callable[[], None], mocker: MockerFixture) -> None:
         patch_influxdblistener()
+        grizzly_fixture()
+
+        expected_datetime = datetime(2022, 12, 16, 10, 28, 0, 123456, timezone.utc)
+
+        datetime_mock = mocker.patch(
+            'grizzly.listeners.influxdb.datetime',
+            side_effect=lambda *args, **kwargs: datetime(*args, **kwargs)
+        )
+        datetime_mock.now.return_value = expected_datetime
 
         listener = InfluxDbListener(
-            locust_fixture.env,
+            grizzly_fixture.locust_env,
             'https://influx.test.com:1337/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
         )
 
         assert len(listener._events) == 0
 
-        listener._log_request('GET', '/api/v1/test', 'Success', {'response_time': 133.7}, None)
+        listener._log_request('GET', 'Request: /api/v1/test', 'Success', {'response_time': 133.7}, None)
 
         assert len(listener._events) == 1
 
@@ -350,7 +360,7 @@ class TestInfluxDbListener:
 
         assert event.get('measurement', None) == 'request'
         assert event.get('tags', None) == {
-            'name': '/api/v1/test',
+            'name': 'Request: /api/v1/test',
             'method': 'GET',
             'result': 'Success',
             'testplan': 'unittest-plan',
@@ -359,6 +369,8 @@ class TestInfluxDbListener:
         assert event.get('fields', None) == {
             'exception': None,
             'response_time': 133.7,
+            'request_started': '2022-12-16T10:27:59.989756+00:00',
+            'request_finished': '2022-12-16T10:28:00.123456+00:00',
         }
 
         try:
@@ -385,21 +397,24 @@ class TestInfluxDbListener:
             ]
 
             for exception, expected in exceptions:
-                listener._log_request('POST', '/api/v2/test', 'Failure', {'response_time': 111.1}, exception)
+                listener._log_request('POST', '001 Request: /api/v2/test', 'Failure', {'response_time': 111.1}, exception)
                 event = listener._events[-1]
 
                 assert event.get('tags', None) == {
-                    'name': '/api/v2/test',
+                    'name': '001 Request: /api/v2/test',
                     'method': 'POST',
                     'result': 'Failure',
                     'testplan': 'unittest-plan',
                     'hostname': get_hostname(),
+                    'scenario': '001 test-scenario',
                     'TEST1': 'unittest-1',
                     'TEST2': 'unittest-2',
                 }
                 assert event.get('fields', None) == {
                     'exception': expected,
                     'response_time': 111.1,
+                    'request_started': '2022-12-16T10:28:00.012356+00:00',
+                    'request_finished': '2022-12-16T10:28:00.123456+00:00',
                 }
             assert len(listener._events) == 4
         finally:

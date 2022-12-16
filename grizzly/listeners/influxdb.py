@@ -15,6 +15,8 @@ from influxdb.exceptions import InfluxDBClientError
 from locust.env import Environment
 from locust.exception import CatchResponseError
 
+from ..context import GrizzlyContext
+
 
 logger = logging.getLogger(__name__)
 
@@ -145,6 +147,7 @@ class InfluxDbListener:
         gevent.spawn(self.run_events)
         gevent.spawn(self.run_user_count)
         self.connection = self.create_client().connect()
+        self.grizzly = GrizzlyContext()
         self.logger = logging.getLogger(__name__)
         self.environment.events.request.add_listener(self.request)
 
@@ -234,8 +237,16 @@ class InfluxDbListener:
             'method': request_type,
             'result': result,
             'testplan': self._testplan,
-            'hostname': get_hostname(),
+            'hostname': self._hostname,
         }
+
+        try:
+            scenario_identifier, _ = name.split(' ', 1)
+            scenario_index = int(scenario_identifier) - 1
+            current_scenario = self.grizzly.scenarios[scenario_index]
+            tags.update({'scenario': current_scenario.locust_name})
+        except ValueError:
+            pass
 
         for key in os.environ.keys():
             if not key.startswith('TESTDATA_VARIABLE_'):
@@ -244,7 +255,13 @@ class InfluxDbListener:
             variable = key.replace('TESTDATA_VARIABLE_', '')
             tags[variable] = os.environ[key]
 
-        timestamp = datetime.now(timezone.utc) - timedelta(milliseconds=metrics['response_time'])
+        timestamp_finished = datetime.now(timezone.utc)
+        timestamp_started = timestamp = timestamp_finished - timedelta(milliseconds=metrics['response_time'])
+
+        metrics.update({
+            'request_started': timestamp_started.isoformat(),
+            'request_finished': timestamp_finished.isoformat(),
+        })
 
         event: InfluxDbPoint = {
             'measurement': 'request',
