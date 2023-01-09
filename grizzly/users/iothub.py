@@ -89,6 +89,9 @@ class IotHubUser(GrizzlyUser):
 
             storage_info = self.client.get_storage_info_for_blob(filename)
 
+            if request.method not in [RequestMethod.SEND, RequestMethod.PUT]:
+                raise NotImplementedError(f'{self.__class__.__name__} has not implemented {request.method.name}')
+
             sas_url = 'https://{}/{}/{}{}'.format(
                 storage_info['hostName'],
                 storage_info['containerName'],
@@ -97,18 +100,21 @@ class IotHubUser(GrizzlyUser):
             )
 
             with BlobClient.from_blob_url(sas_url) as blob_client:
-                if request.method in [RequestMethod.SEND, RequestMethod.PUT]:
-                    blob_client.upload_blob(payload)
-                    logger.debug(f'Uploaded blob to IoT hub, filename: {filename}, correlationId: {storage_info["correlationId"]}')
-                    response_length = len(payload or '')
+                blob_client.upload_blob(payload)
+                logger.debug(f'Uploaded blob to IoT hub, filename: {filename}, correlationId: {storage_info["correlationId"]}')
 
-                    self.client.notify_blob_upload_status(
-                        storage_info['correlationId'], True, 200, f'OK: {filename}'
-                    )
-                else:
-                    raise NotImplementedError(f'{self.__class__.__name__} has not implemented {request.method.name}')
+            self.client.notify_blob_upload_status(
+                storage_info['correlationId'], True, 200, f'OK: {filename}'
+            )
+            response_length = len(payload or '')
+
         except Exception as e:
+            if not isinstance(e, NotImplementedError):
+                self.client.notify_blob_upload_status(
+                    storage_info['correlationId'], False, 500, f'Failed: {filename}'
+                )
             exception = e
+
         finally:
             total_time = int((time() - start_time) * 1000)
             self.environment.events.request.fire(
