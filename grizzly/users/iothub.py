@@ -92,31 +92,29 @@ class IotHubUser(GrizzlyUser):
             if request.method not in [RequestMethod.SEND, RequestMethod.PUT]:
                 raise NotImplementedError(f'{self.__class__.__name__} has not implemented {request.method.name}')
 
-            try:
-                sas_url = 'https://{}/{}/{}{}'.format(
-                    storage_info['hostName'],
-                    storage_info['containerName'],
-                    storage_info['blobName'],
-                    storage_info['sasToken']
-                )
+            sas_url = 'https://{}/{}/{}{}'.format(
+                storage_info['hostName'],
+                storage_info['containerName'],
+                storage_info['blobName'],
+                storage_info['sasToken']
+            )
 
-                with BlobClient.from_blob_url(sas_url) as blob_client:
-                    blob_client.upload_blob(payload)
-                    logger.debug(f'Uploaded blob to IoT hub, filename: {filename}, correlationId: {storage_info["correlationId"]}')
+            with BlobClient.from_blob_url(sas_url) as blob_client:
+                blob_client.upload_blob(payload)
+                logger.debug(f'Uploaded blob to IoT hub, filename: {filename}, correlationId: {storage_info["correlationId"]}')
 
-                self.client.notify_blob_upload_status(
-                    storage_info['correlationId'], True, 200, f'OK: {filename}'
-                )
-                response_length = len(payload or '')
+            self.client.notify_blob_upload_status(
+                storage_info['correlationId'], True, 200, f'OK: {filename}'
+            )
+            response_length = len(payload or '')
 
-            except Exception as ex:
+        except Exception as e:
+            if not isinstance(e, NotImplementedError):
                 self.client.notify_blob_upload_status(
                     storage_info['correlationId'], False, 500, f'Failed: {filename}'
                 )
-                raise ex
-
-        except Exception as e:
             exception = e
+
         finally:
             total_time = int((time() - start_time) * 1000)
             self.environment.events.request.fire(

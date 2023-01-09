@@ -123,7 +123,6 @@ class TestIotHubUser:
             }
         }
 
-        print("STEFAN1")
         metadata, payload = user.request(request)
 
         assert payload is not None
@@ -196,4 +195,3 @@ class TestIotHubUser:
         assert args[1] == 'correlation_id'
         assert args[2] is False
         assert args[3] == 500
-
