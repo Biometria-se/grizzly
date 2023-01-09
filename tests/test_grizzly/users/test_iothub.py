@@ -182,8 +182,16 @@ class TestIotHubUser:
             user.request(request)
 
         upload_blob = mocker.patch('azure.storage.blob._blob_client.BlobClient.upload_blob', side_effect=[RuntimeError('failed to upload blob')])
+        notify_blob_upload_status.reset_mock()
 
         request.method = RequestMethod.SEND
 
         with pytest.raises(RestartScenario):
             user.request(request)
+
+        assert notify_blob_upload_status.call_count == 1
+        args, _ = notify_blob_upload_status.call_args_list[-1]
+        assert len(args) == 5
+        assert args[1] == 'correlation_id'
+        assert args[2] is False
+        assert args[3] == 500
