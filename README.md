@@ -5,14 +5,14 @@ Framework:
 ![PyPI - License](https://img.shields.io/pypi/l/grizzly-loadtester?style=for-the-badge)
 ![PyPI](https://img.shields.io/pypi/v/grizzly-loadtester?style=for-the-badge)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/grizzly-loadtester?style=for-the-badge)
-![GitHub Workflow Status](https://img.shields.io/github/workflow/status/biometria-se/grizzly/code%20quality?style=for-the-badge)
+![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/biometria-se/grizzly/code-quality.yaml?branch=main&style=for-the-badge)
 
 Command Line Interface:
 
 ![PyPI - License](https://img.shields.io/pypi/l/grizzly-loadtester-cli?style=for-the-badge)
 ![PyPI](https://img.shields.io/pypi/v/grizzly-loadtester-cli?style=for-the-badge)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/grizzly-loadtester-cli?style=for-the-badge)
-![GitHub Workflow Status](https://img.shields.io/github/workflow/status/biometria-se/grizzly-cli/code%20quality?style=for-the-badge)
+![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/biometria-se/grizzly-cli/code-quality.yaml?branch=main&style=for-the-badge)
 
 ![grizzly logo](https://raw.githubusercontent.com/Biometria-se/grizzly/main/docs/content/assets/logo/grizzly_grasshopper_brown_256px.png)
 
