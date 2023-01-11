@@ -186,7 +186,7 @@ class TestAtomicServiceBus:
     def test___init__(self, mocker: MockerFixture) -> None:
         mocker.patch(
             'grizzly.testdata.variables.servicebus.AtomicServiceBus.create_client',
-            side_effect=[{'client': True}] * 2,
+            return_value={'client': True},
         )
 
         try:
@@ -206,6 +206,7 @@ class TestAtomicServiceBus:
                 'context': None,
                 'worker': None,
                 'content_type': None,
+                'consume': False,
             }
             assert v._endpoint_clients.get('test1', None) is not None
             assert v._zmq_context.__class__.__name__ == '_Context'
@@ -213,7 +214,11 @@ class TestAtomicServiceBus:
 
             t = AtomicServiceBus(
                 'test2',
-                'topic:documents-in, subscription:application-x | url="sb://sb.example.org/;SharedAccessKeyName=name;SharedAccessKey=key", wait=15, content_type=json',
+                (
+                    'topic:documents-in, subscription:application-x | '
+                    'url="sb://sb.example.org/;SharedAccessKeyName=name;SharedAccessKey=key", '
+                    'wait=15, content_type=json, consume=True'
+                ),
             )
 
             assert v is t
@@ -232,6 +237,7 @@ class TestAtomicServiceBus:
                 'context': None,
                 'worker': None,
                 'content_type': TransformerContentType.JSON,
+                'consume': True,
             }
             assert v._endpoint_clients.get('test2', None) is not None
 
@@ -244,6 +250,33 @@ class TestAtomicServiceBus:
                     ),
                 )
             assert 'AtomicServiceBus.test3: argument "content_type" is mandatory when "expression" is used in endpoint' in str(ve)
+
+            t = AtomicServiceBus(
+                'test4',
+                (
+                    'topic:documents-in, subscription:application-x, expression:"$.document[name = "tpm report"]" | '
+                    'url="sb://sb.example.org/;SharedAccessKeyName=name;SharedAccessKey=key", wait=15, content_type=json, consume=False'
+                ),
+            )
+            assert t is v
+            assert len(t._values.keys()) == 3
+            assert len(t._endpoint_messages.keys()) == 3
+            assert len(t._settings.keys()) == 3
+            assert len(t._endpoint_clients.keys()) == 3
+            assert 'test4' in t._values
+            assert t._values.get('test4', None) == 'topic:documents-in, subscription:application-x, expression:"$.document[name = "tpm report"]"'
+            assert t._endpoint_messages.get('test4', None) == []
+            assert t._settings.get('test4', None) == {
+                'repeat': False,
+                'wait': 15,
+                'endpoint_name': 'topic:documents-in, subscription:application-x, expression:"$.document[name = "tpm report"]"',
+                'url': 'sb://sb.example.org/;SharedAccessKeyName=name;SharedAccessKey=key',
+                'context': None,
+                'worker': None,
+                'content_type': TransformerContentType.JSON,
+                'consume': False,
+            }
+            assert t._endpoint_clients.get('test4', None) is not None
 
         finally:
             try:
@@ -265,6 +298,7 @@ class TestAtomicServiceBus:
                 'endpoint': 'queue:documents-in',
                 'connection': 'receiver',
                 'message_wait': None,
+                'consume': False,
             }
 
             settings = {
@@ -272,6 +306,7 @@ class TestAtomicServiceBus:
                 'endpoint_name': 'topic:documents-in, subscription:application-x',
                 'wait': 120,
                 'content_type': TransformerContentType.JSON,
+                'consume': True,
             }
 
             context = AtomicServiceBus.create_context(settings)
@@ -281,6 +316,7 @@ class TestAtomicServiceBus:
                 'connection': 'receiver',
                 'message_wait': 120,
                 'content_type': 'json',
+                'consume': True,
             }
         finally:
             try:
@@ -315,11 +351,13 @@ class TestAtomicServiceBus:
                 'url': 'sb://sb.example.org/;SharedAccessKeyName=name;SharedAccessKey=key',
                 'endpoint_name': 'topic:documents-in, subscription:application-x',
                 'content_type': None,
+                'consume': False,
                 'context': {
                     'url': 'sb://sb.example.org/;SharedAccessKeyName=name;SharedAccessKey=key',
                     'endpoint': 'topic:documents-in, subscription:application-x',
                     'connection': 'receiver',
                     'message_wait': 15,
+                    'consume': False,
                 },
             }
             assert say_hello_spy.call_count == 1
@@ -334,7 +372,7 @@ class TestAtomicServiceBus:
                 'test-variable',
                 (
                     'queue:documents-in, expression:"$.document[?(@.name=="TPM Report")]"  | url="Endpoint=sb://sb.example.org/;SharedAccessKeyName=name;SharedAccessKey=key", '
-                    'wait=15, content_type=json'
+                    'wait=15, content_type=json, consume=True'
                 ),
             )
             endpoint_client = v._endpoint_clients.get('test-variable', None)
@@ -347,6 +385,7 @@ class TestAtomicServiceBus:
                 'worker': None,
                 'url': 'Endpoint=sb://sb.example.org/;SharedAccessKeyName=name;SharedAccessKey=key',
                 'content_type': TransformerContentType.JSON,
+                'consume': True,
                 'endpoint_name': 'queue:documents-in, expression:"$.document[?(@.name=="TPM Report")]"',
                 'context': {
                     'url': 'sb://sb.example.org/;SharedAccessKeyName=name;SharedAccessKey=key',
@@ -354,6 +393,7 @@ class TestAtomicServiceBus:
                     'connection': 'receiver',
                     'message_wait': 15,
                     'content_type': 'json',
+                    'consume': True,
                 },
             }
             assert say_hello_spy.call_count == 2
@@ -484,8 +524,8 @@ class TestAtomicServiceBus:
             v = AtomicServiceBus(
                 'test2',
                 (
-                    'queue:documents-in | url="sb://sb.example.org/;SharedAccessKeyName=name;SharedAccessKey=key", '
-                    'wait=15, repeat=True'
+                    'queue:documents-in, expression:$.hello.world | url="sb://sb.example.org/;SharedAccessKeyName=name;SharedAccessKey=key", '
+                    'wait=15, repeat=True, content_type=json'
                 ),
             )
 

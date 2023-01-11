@@ -18,10 +18,9 @@ Where `<expression>` can be a XPath or jsonpath expression, depending on the spe
 receiving messages. See example below.
 
 !!! attention
+
     Do not use `expression` to filter messages unless you do not care about the messages that does not match the expression. If
     you do care about them, you should setup a subscription to do the filtering in Azure.
-
-Arguments support {@link framework.usage.variables.templating} for their value, but not the complete endpoint value.
 
 Examples:
 
@@ -30,7 +29,7 @@ queue:test-queue
 topic:test-topic, subscription:test-subscription
 queue:"$conf::sb.endpoint.queue$"
 topic:"$conf::sb.endpoint.topic$", subscription:"$conf::sb.endpoint.subscription$"
-queue:"{{ queue_name }}", expression="$.document[?(@.name=='TPM report')]"
+queue:"{{ queue_name }}", expression:"$.document[?(@.name=='TPM report')]"
 ```
 
 ## Arguments
@@ -39,21 +38,12 @@ queue:"{{ queue_name }}", expression="$.document[?(@.name=='TPM report')]"
 * `url` _str_ - see format of url below.
 * `wait` _int_ - number of seconds to wait for a message on the queue
 * `content_type` _str_ (optional) - specify the MIME type of the message received on the queue, only mandatory when `expression` is specified in endpoint
+* `consume` _bool_ (optional) - if `False` (default) messages not matching `expression` will be put back on endpoint, if `True` messages will be ignored and removed
 
 ### URL format
 
 ``` plain
 [Endpoint=]sb://<hostname>/;SharedAccessKeyName=<shared key name>;SharedAccessKey=<shared key>
-```
-
-The complete `url` has {@link framework.usage.variables.templating} support, but not parts of it.
-
-``` plain
-# valid
-$conf::sb.url
-
-# not valid
-Endpoint=sb://$conf::sb.hostname/;SharedAccessKeyName=$conf::sb.keyname;SharedAccessKey=$conf::sb.key$
 ```
 
 ## Example
@@ -78,7 +68,13 @@ If no matching messages was found when peeking, it is repeated again up until th
 be specified for the endpint, e.g. `application/xml`.
 
 ``` gherkin
-And value for variable "AtomicServiceBus.tpm_document" is "queue:documents-in | wait=120, url=$conf::sb.endpoint$, repeat=True, content_type=json, expression='$.document[?(@.name=='TPM Report')'"
+And value for variable "AtomicServiceBus.tpm_document" is "queue:documents-in, expression:'$.document[?(@.name=="TPM Report")' | wait=120, url=$conf::sb.endpoint$, repeat=True, content_type=json"
+```
+
+If the message does not match `expression`, it will be put back on the queue. With argument `consume`, the messages will be completed but just ignored (e.g. removed from queue).
+
+``` gherkin
+And value for variable "AtomicServiceBus.tpm_document" is "queue:documents-in, expression:'$.document[?(@.name=="TPM Report")' | wait=120, url=$conf::sb.endpoint$, repeat=True, content_type=json, consume=True"
 ```
 '''  # noqa: E501
 import logging
@@ -216,6 +212,8 @@ def atomicservicebus_endpoint(endpoint: str) -> str:
     if expression is not None:
         try:
             resolved_expression = cast(str, resolve_variable(grizzly, expression, guess_datatype=False))
+            # if expression[0] in ['"', "'"] and expression[0] == expression[-1] and resolved_expression[0] != expression[0]:
+            #    resolved_expression = f'{expression[0]}{resolved_expression}{expression[0]}'
         except Exception as e:
             raise ValueError(f'AtomicServiceBus: {str(e)}') from e
 
@@ -244,6 +242,7 @@ class AtomicServiceBus(AtomicVariable[str]):
         'wait': int,
         'endpoint_name': atomicservicebus_endpoint,
         'content_type': TransformerContentType.from_string,
+        'consume': bool_type,
     }
 
     logger: logging.Logger
@@ -252,7 +251,7 @@ class AtomicServiceBus(AtomicVariable[str]):
         with self.semaphore(outer_lock):
             safe_value = self.__class__.__base_type__(value)
 
-            settings = {'repeat': False, 'wait': None, 'url': None, 'worker': None, 'context': None, 'endpoint_name': None, 'content_type': None}
+            settings = {'repeat': False, 'wait': None, 'url': None, 'worker': None, 'context': None, 'endpoint_name': None, 'content_type': None, 'consume': False}
 
             endpoint_name, endpoint_arguments = split_value(safe_value)
 
@@ -305,6 +304,7 @@ class AtomicServiceBus(AtomicVariable[str]):
             'connection': 'receiver',
             'endpoint': settings['endpoint_name'],
             'message_wait': settings.get('wait', None),
+            'consume': settings.get('consume', False),
         }
 
         content_type = settings.get('content_type', None)

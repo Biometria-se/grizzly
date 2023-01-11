@@ -87,6 +87,7 @@ class AsyncMessageContext(TypedDict, total=False):
     heartbeat_interval: Optional[int]
     header_type: Optional[str]
     metadata: Optional[Dict[str, str]]
+    consume: bool
 
 
 class AsyncMessageRequest(TypedDict, total=False):
