@@ -1763,7 +1763,6 @@ receiving messages. See example below.</p>
 </div>
 <p>Do not use <code>expression</code> to filter messages unless you do not care about the messages that does not match the expression. If
 you do care about them, you should setup a subscription to do the filtering in Azure.</p>
-<p>Arguments support <a href="/grizzly/framework/usage/variables/templating#framework.usage.variables.templating">Templating</a> for their value, but not the complete endpoint value.</p>
 <div class="highlight"><pre><span></span><code>[queue|topic]:&lt;endpoint name&gt;[, subscription:&lt;subscription name&gt;][, expression:&lt;expression&gt;]
 </code></pre></div>
 <p><strong>Examples</strong>:</p>
@@ -1771,7 +1770,7 @@ you do care about them, you should setup a subscription to do the filtering in A
 topic:test-topic, subscription:test-subscription
 queue:&quot;$conf::sb.endpoint.queue$&quot;
 topic:&quot;$conf::sb.endpoint.topic$&quot;, subscription:&quot;$conf::sb.endpoint.subscription$&quot;
-queue:&quot;{{ queue_name }}&quot;, expression=&quot;$.document[?(@.name==&#39;TPM report&#39;)]&quot;
+queue:&quot;{{ queue_name }}&quot;, expression:&quot;$.document[?(@.name==&#39;TPM report&#39;)]&quot;
 </code></pre></div>
 <p>## Arguments</p>
 <ul>
@@ -1779,16 +1778,10 @@ queue:&quot;{{ queue_name }}&quot;, expression=&quot;$.document[?(@.name==&#39;T
 <li><code>url</code> <em>str</em> - see format of url below.</li>
 <li><code>wait</code> <em>int</em> - number of seconds to wait for a message on the queue</li>
 <li><code>content_type</code> <em>str</em> (optional) - specify the MIME type of the message received on the queue, only mandatory when <code>expression</code> is specified in endpoint</li>
+<li><code>consume</code> <em>bool</em> (optional) - if <code>False</code> (default) messages not matching <code>expression</code> will be put back on endpoint, if <code>True</code> messages will be ignored and removed</li>
 </ul>
 <p>### URL format</p>
 <div class="highlight"><pre><span></span><code>[Endpoint=]sb://&lt;hostname&gt;/;SharedAccessKeyName=&lt;shared key name&gt;;SharedAccessKey=&lt;shared key&gt;
-</code></pre></div>
-<p>The complete <code>url</code> has <a href="/grizzly/framework/usage/variables/templating#framework.usage.variables.templating">Templating</a> support, but not parts of it.</p>
-<div class="highlight"><pre><span></span><code># valid
-$conf::sb.url
-
-# not valid
-Endpoint=sb://$conf::sb.hostname/;SharedAccessKeyName=$conf::sb.keyname;SharedAccessKey=$conf::sb.key$
 </code></pre></div>
 <p>## Example</p>
 <div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">value for variable &quot;</span><span class="s">AtomicServiceBus.document_id</span><span class="nf">&quot; is &quot;</span><span class="s">queue:documents-in | wait=120, url=$conf::sb.endpoint$, repeat=True</span><span class="nf">&quot;</span>
@@ -1804,7 +1797,10 @@ Endpoint=sb://$conf::sb.hostname/;SharedAccessKeyName=$conf::sb.keyname;SharedAc
 <p>When specifying an expression, the messages on the endpoint is first peeked on. If any message matches the expression, it is later consumed from the endpoint.
   If no matching messages was found when peeking, it is repeated again up until the specified <code>wait</code> seconds has elapsed. To use expression, a content type must
   be specified for the endpint, e.g. <code>application/xml</code>.</p>
-<div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">value for variable &quot;</span><span class="s">AtomicServiceBus.tpm_document</span><span class="nf">&quot; is &quot;</span><span class="s">queue:documents-in | wait=120, url=$conf::sb.endpoint$, repeat=True, content_type=json, expression=&#39;$.document[?(@.name==&#39;TPM Report&#39;)&#39;</span><span class="nf">&quot;</span>
+<div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">value for variable &quot;</span><span class="s">AtomicServiceBus.tpm_document</span><span class="nf">&quot; is &quot;</span><span class="s">queue:documents-in, expression:&#39;$.document[?(@.name==</span><span class="nf">&quot;TPM Report&quot;</span><span class="s">)&#39; | wait=120, url=$conf::sb.endpoint$, repeat=True, content_type=json</span><span class="nf">&quot;</span>
+</code></pre></div>
+<p>If the message does not match <code>expression</code>, it will be put back on the queue. With argument <code>consume</code>, the messages will be completed but just ignored (e.g. removed from queue).</p>
+<div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">value for variable &quot;</span><span class="s">AtomicServiceBus.tpm_document</span><span class="nf">&quot; is &quot;</span><span class="s">queue:documents-in, expression:&#39;$.document[?(@.name==</span><span class="nf">&quot;TPM Report&quot;</span><span class="s">)&#39; | wait=120, url=$conf::sb.endpoint$, repeat=True, content_type=json, consume=True</span><span class="nf">&quot;</span>
 </code></pre></div>
 
 

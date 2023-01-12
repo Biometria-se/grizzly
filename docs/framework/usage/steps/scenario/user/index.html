@@ -1775,7 +1775,7 @@ This module contains step implementations that describes a <a href="/grizzly/fra
 <span class="k">def</span> <span class="nf">step_user_type_with_weight</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">user_class_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
                                <span class="n">weight_value</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">host</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
-<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.5.8/docs/../grizzly/steps/scenario/user.py#L15">[view_source]</a></p>
+<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.5.9/docs/../grizzly/steps/scenario/user.py#L15">[view_source]</a></p>
 <p>Sets which type of <a href="/grizzly/framework/usage/load-users#pydoc:grizzly.users">Load User</a> the scenario should use and which <code>host</code> is the target,
 together with <code>weight</code> of the user (how many instances of this user should spawn relative to others).</p>
 <p><strong>Example</strong>:</p>
@@ -1796,7 +1796,7 @@ together with <code>weight</code> of the user (how many instances of this user s
 <div class="highlight"><pre><span></span><code><span class="nd">@given</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;a user of type &quot;</span><span class="si">{user_class_name}</span><span class="s1">&quot; load testing &quot;</span><span class="si">{host}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">step_user_type</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">user_class_name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">host</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
-<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.5.8/docs/../grizzly/steps/scenario/user.py#L47">[view_source]</a></p>
+<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.5.9/docs/../grizzly/steps/scenario/user.py#L47">[view_source]</a></p>
 <p>Sets which type of <a href="/grizzly/framework/usage/load-users#pydoc:grizzly.users">Load User</a> the scenario should use and which <code>host</code> is the target.</p>
 <p><strong>Example</strong>:</p>
 <div class="highlight"><pre><span></span><code><span class="k">Given </span><span class="nf">a user of type &quot;</span><span class="s">RestApi</span><span class="nf">&quot; load testing &quot;</span><span class="s">http://api.example.com</span><span class="nf">&quot;</span>
