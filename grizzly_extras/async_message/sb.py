@@ -248,6 +248,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             # clean up stale instance
             if instance is not None:
                 try:
+                    self.logger.info(f'cleaning up stale {instance_type} instance for {endpoint}')
                     instance.__exit__()
                 except:
                     pass
@@ -276,6 +277,8 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
         cache_endpoint = ', '.join([f'{key}:{value}' for key, value in endpoint_arguments.items()])
 
+        self.logger.info(f'handling request towards {cache_endpoint}')
+
         message: Optional[ServiceBusMessage] = None
         metadata: Optional[Dict[str, Any]] = None
         payload = request.get('payload', None)
@@ -294,6 +297,12 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             if payload is None:
                 raise AsyncMessageError('no payload')
             sender = self._sender_cache[cache_endpoint]
+
+            if sender._shutdown.is_set():
+                self.logger.error(f'sender for {cache_endpoint} is shutdowing down, re-initialize')
+                self._hello(request, force=True)
+                sender = self._sender_cache[cache_endpoint]
+
             message = ServiceBusMessage(payload)
 
             try:
@@ -307,6 +316,11 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             receiver = self._receiver_cache[cache_endpoint]
             message_wait = int(request_arguments.get('message_wait', str(context.get('message_wait', 0))))
             consume = context.get('consume', False)
+
+            if receiver._shutdown.is_set():
+                self.logger.error(f'receiver for {cache_endpoint} is shutdowing down, re-initialize')
+                self._hello(request, force=True)
+                receiver = self._receiver_cache[cache_endpoint]
 
             wait_start = perf_counter()
 
