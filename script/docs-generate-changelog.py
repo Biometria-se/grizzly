@@ -5,6 +5,7 @@ import subprocess
 import argparse
 
 from os import path, getcwd
+from distutils.version import StrictVersion
 
 
 def _parse_arguments() -> argparse.Namespace:
@@ -35,11 +36,12 @@ def main() -> int:
         cwd=args.from_directory,
     ).decode('utf-8').strip()
 
-    tags = output.split('\n')
-    tags.sort(reverse=True)
+    tags = [v[1:] for v in output.split('\n')]
+    tags.sort(reverse=True, key=StrictVersion)
 
     for index, previous_tag in enumerate(tags[1:], start=1):
-        current_tag = tags[index - 1]
+        previous_tag = f'v{previous_tag}'
+        current_tag = f'v{tags[index - 1]}'
         print(f'{github_project_name}: generating changelog for {current_tag} <- {previous_tag}', file=sys.stderr)
 
         output = subprocess.check_output([
