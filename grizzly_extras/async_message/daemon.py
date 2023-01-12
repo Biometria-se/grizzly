@@ -131,6 +131,8 @@ def router() -> None:
     except:
         logger.error('failed to destroy zmq context', exc_info=True)
 
+    logger.info('stopped')
+
 
 def worker(context: zmq.Context, identity: str) -> None:
     logger = ThreadLogger(f'worker::{identity}')

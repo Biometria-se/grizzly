@@ -224,8 +224,15 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         endpoint = context['endpoint']
         instance_type = context['connection']
         message_wait = context.get('message_wait', None)
-
         arguments = self.get_endpoint_arguments(instance_type, endpoint)
+        endpoint_arguments = parse_arguments(endpoint, ':')
+        try:
+            del endpoint_arguments['expression']
+        except:
+            pass
+
+        cache_endpoint = ', '.join([f'{key}:{value}' for key, value in endpoint_arguments.items()])
+
         if message_wait is not None and instance_type == 'receiver':
             arguments['wait'] = str(message_wait)
 
@@ -242,18 +249,20 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         else:
             raise AsyncMessageError(f'"{instance_type}" is not a valid value for context.connection')
 
-        if endpoint not in cache or force:
-            self._arguments.update({f'{instance_type}={endpoint}': arguments})
-            instance = cache.get(endpoint, None)
+        if cache_endpoint not in cache or force:
+            self._arguments.update({f'{instance_type}={cache_endpoint}': arguments})
+            instance = cache.get(cache_endpoint, None)
             # clean up stale instance
             if instance is not None:
                 try:
-                    self.logger.info(f'cleaning up stale {instance_type} instance for {endpoint}')
+                    self.logger.info(f'cleaning up stale {instance_type} instance for {cache_endpoint}')
                     instance.__exit__()
                 except:
                     pass
 
-            cache.update({endpoint: get_instance(self.client, arguments).__enter__()})
+            cache.update({cache_endpoint: get_instance(self.client, arguments).__enter__()})
+
+            self.logger.debug(f'cached {instance_type} instance for {cache_endpoint}')
 
         return {
             'message': 'there general kenobi',
@@ -298,11 +307,6 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                 raise AsyncMessageError('no payload')
             sender = self._sender_cache[cache_endpoint]
 
-            if sender._shutdown.is_set():
-                self.logger.error(f'sender for {cache_endpoint} is shutdowing down, re-initialize')
-                self._hello(request, force=True)
-                sender = self._sender_cache[cache_endpoint]
-
             message = ServiceBusMessage(payload)
 
             try:
@@ -316,11 +320,6 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             receiver = self._receiver_cache[cache_endpoint]
             message_wait = int(request_arguments.get('message_wait', str(context.get('message_wait', 0))))
             consume = context.get('consume', False)
-
-            if receiver._shutdown.is_set():
-                self.logger.error(f'receiver for {cache_endpoint} is shutdowing down, re-initialize')
-                self._hello(request, force=True)
-                receiver = self._receiver_cache[cache_endpoint]
 
             wait_start = perf_counter()
 
@@ -401,7 +400,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                     else:
                         # ugly brute-force way of handling no messages on service bus
                         if retry < 3:
-                            self.logger.debug(f'receiver returned no message without trying, brute-force retry #{retry}')
+                            self.logger.warning(f'receiver for {cache_endpoint} returned no message without trying, brute-force retry #{retry}')
                             # <!-- useful debugging information, actual message count on message entity
                             if self.logger._logger.level == logging.DEBUG and self.mgmt_client is not None:
                                 if 'topic' in endpoint_arguments:
