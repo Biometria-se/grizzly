@@ -49,6 +49,23 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         self._receiver_cache = {}
         self._arguments = {}
 
+    def close(self) -> None:
+        for key, sender in self._sender_cache.items():
+            self.logger.debug(f'closing sender {key}')
+            sender.close()
+
+        for key, receiver in self._receiver_cache.items():
+            self.logger.debug(f'closing receiver {key}')
+            receiver.close()
+
+        if self.client is not None:
+            self.logger.debug('closing client')
+            self.client.close()
+
+        if self.mgmt_client is not None:
+            self.logger.debug('closing management client')
+            self.mgmt_client.close()
+
     @classmethod
     def get_sender_instance(cls, client: ServiceBusClient, arguments: Dict[str, str]) -> ServiceBusSender:
         endpoint_type = arguments['endpoint_type']

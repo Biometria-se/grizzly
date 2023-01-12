@@ -47,7 +47,7 @@ def test_no_pymqi_dependencies() -> None:
 
 @pytest.mark.skipif(pymqi.__name__ == 'grizzly_extras.dummy_pymqi', reason='needs native IBM MQ libraries')
 class TestAsyncMessageQueueHandler:
-    def test___init__(self, mocker: MockerFixture) -> None:
+    def test___init__(self) -> None:
         handler = AsyncMessageQueueHandler(worker='asdf-asdf-asdf')
         assert handler.worker == 'asdf-asdf-asdf'
 
@@ -63,6 +63,20 @@ class TestAsyncMessageQueueHandler:
         finally:
             delattr(pymqi, 'raise_for_error')
             pymqi.__name__ = tmp
+
+    def test_close(self, mocker: MockerFixture) -> None:
+        handler = AsyncMessageQueueHandler(worker='asdf-asdf-asdf')
+        handler.qmgr = pymqi.QueueManager(None)
+
+        pymqi_qmgr_disconnect_spy = mocker.patch.object(
+            handler.qmgr,
+            'disconnect',
+            return_value=None,
+        )
+
+        handler.close()
+
+        assert pymqi_qmgr_disconnect_spy.call_count == 1
 
     def test_queue_context(self, mocker: MockerFixture) -> None:
         handler = AsyncMessageQueueHandler(worker='asdf-asdf-asdf')

@@ -2,9 +2,10 @@ import sys
 import logging
 import subprocess
 
-from typing import NoReturn, Optional, Callable, List, Tuple, Set, Dict, Type, cast
+from typing import NoReturn, Optional, Callable, List, Tuple, Set, Dict, Type, Union, cast
+from types import FrameType
 from os import environ
-from signal import SIGTERM
+from signal import SIGTERM, SIGINT, signal, Signals
 from socket import error as SocketError
 from math import ceil
 from operator import itemgetter
@@ -294,18 +295,21 @@ def verbose_returncode(func: Callable[[Context], int]) -> Callable[[Context], in
 
 @verbose_returncode
 def run(context: Context) -> int:
-    def shutdown_external_processes(processes: Dict[str, subprocess.Popen]) -> None:
-        if len(processes) > 0:
-            if watch_running_external_processes_greenlet is not None:
-                watch_running_external_processes_greenlet.kill(block=False)
+    def shutdown_external_processes(processes: Dict[str, subprocess.Popen]) -> Callable[[Union[int, Signals], Optional[FrameType]], None]:
+        def wrapper(signum: int, frame: Optional[FrameType] = None) -> None:
+            if len(processes) > 0:
+                if watch_running_external_processes_greenlet is not None:
+                    watch_running_external_processes_greenlet.kill(block=False)
 
-            for dependency, process in processes.items():
-                logger.info(f'stopping {dependency}')
-                process.terminate()
-                process.wait()
-                logger.debug(f'{process.returncode=}')
+                for dependency, process in processes.items():
+                    logger.info(f'stopping {dependency}')
+                    process.terminate()
+                    process.wait()
+                    logger.debug(f'{process.returncode=}')
 
-            processes.clear()
+                processes.clear()
+
+        return wrapper
 
     grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -556,12 +560,14 @@ def run(context: Context) -> int:
             # stop when user_count reaches 0
             main_greenlet = watch_running_users_greenlet
 
-        def sig_term_handler() -> None:
-            logger.info('got SIGTERM signal')
+        def sig_handler() -> None:
+            logger.info('handling signal')
             runner.environment.events.quitting.fire(environment=runner.environment, reverse=True)
             runner.quit()
 
-        gevent.signal_handler(SIGTERM, sig_term_handler)
+        gevent.signal_handler(SIGTERM, sig_handler)
+        gevent.signal_handler(SIGINT, sig_handler)
+        signal(SIGINT, shutdown_external_processes(external_processes))
 
         try:
             main_greenlet.join()
@@ -580,7 +586,7 @@ def run(context: Context) -> int:
 
             return code
     finally:
-        shutdown_external_processes(external_processes)
+        shutdown_external_processes(external_processes)(SIGTERM, None)
 
 
 def _grizzly_sort_stats(stats: lstats.RequestStats) -> List[Tuple[str, str, int]]:

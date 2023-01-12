@@ -1,8 +1,11 @@
-from typing import List, Optional, cast
+from typing import List, Optional, Union, cast
+from types import FrameType
 from uuid import uuid4
 from json import loads as jsonloads, dumps as jsondumps
 from threading import Thread
 from urllib.parse import urlparse
+from signal import signal, SIGTERM, SIGINT, Signals
+from time import sleep
 
 import setproctitle as proc
 
@@ -20,6 +23,19 @@ from . import (
 from grizzly_extras.transformer import JsonBytesEncoder
 
 
+run: bool = True
+
+
+def signal_handler(signum: Union[int, Signals], frame: Optional[FrameType]) -> None:
+    global run
+    if run:
+        run = False
+
+
+signal(SIGTERM, signal_handler)
+signal(SIGINT, signal_handler)
+
+
 def router() -> None:
     logger = ThreadLogger('router')
     proc.setproctitle('grizzly-async-messaged')  # set appl name on ibm mq
@@ -35,10 +51,14 @@ def router() -> None:
     poller.register(frontend, zmq.POLLIN)
     poller.register(backend, zmq.POLLIN)
 
+    worker_threads: List[Thread] = []
+
     def spawn_worker() -> None:
         identity = str(uuid4())
 
         thread = Thread(target=worker, args=(context, identity, ))
+        thread.daemon = True
+        worker_threads.append(thread)
         thread.start()
         logger.info(f'spawned worker {identity} ({thread.ident})')
 
@@ -46,12 +66,22 @@ def router() -> None:
 
     spawn_worker()
 
-    while True:
+    while run:
+        socks = dict(poller.poll(timeout=1000))
+
+        if not socks:
+            continue
+
         logger.debug("i'm alive!")
-        socks = dict(poller.poll())
 
         if socks.get(backend) == zmq.POLLIN:
-            backend_response = backend.recv_multipart()
+            logger.debug('polling backend')
+            try:
+                backend_response = backend.recv_multipart(flags=zmq.NOBLOCK)
+            except zmq.Again:
+                sleep(0.1)
+                continue
+
             if not backend_response:
                 continue
 
@@ -64,7 +94,12 @@ def router() -> None:
                 workers_available.append(worker_id)
 
         if socks.get(frontend) == zmq.POLLIN:
-            msg = frontend.recv_multipart()
+            logger.debug('polling frontend')
+            try:
+                msg = frontend.recv_multipart(flags=zmq.NOBLOCK)
+            except zmq.Again:
+                sleep(0.1)
+                continue
 
             request_id = msg[0]
             payload = jsonloads(msg[-1].decode())
@@ -86,6 +121,16 @@ def router() -> None:
             backend_request = [worker_id, SPLITTER_FRAME, request_id, SPLITTER_FRAME, request]
             backend.send_multipart(backend_request)
 
+    logger.info('stopping')
+    for worker_thread in worker_threads:
+        logger.debug(f'waiting for {worker_thread.ident}')
+        worker_thread.join()
+
+    try:
+        context.destroy()
+    except:
+        logger.error('failed to destroy zmq context', exc_info=True)
+
 
 def worker(context: zmq.Context, identity: str) -> None:
     logger = ThreadLogger(f'worker::{identity}')
@@ -97,9 +142,15 @@ def worker(context: zmq.Context, identity: str) -> None:
 
     integration: Optional[AsyncMessageHandler] = None
 
-    while True:
-        logger.debug("i'm alive!")
-        request_proto = worker.recv_multipart()
+    while run:
+        try:
+            request_proto = worker.recv_multipart(flags=zmq.NOBLOCK)
+        except zmq.Again:
+            sleep(0.1)
+            continue
+
+        logger.debug(f"i'm alive! {run=}")
+
         if not request_proto:
             logger.error('empty msg')
             continue
@@ -150,6 +201,21 @@ def worker(context: zmq.Context, identity: str) -> None:
         ]
 
         worker.send_multipart(response_proto)
+
+    logger.debug(f"i'm going to die! {run=}")
+    logger.info('stopping')
+    if integration is not None:
+        logger.debug(f'closing {integration.__class__.__name__}')
+        try:
+            integration.close()
+        except:
+            logger.error('failed to close integration', exc_info=True)
+
+    try:
+        worker.close()
+    except:
+        logger.error('failed to close worker', exc_info=True)
+    logger.debug('stopped')
 
 
 def main() -> int:

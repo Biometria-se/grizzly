@@ -12,12 +12,34 @@ from grizzly_extras.async_message.sb import AsyncServiceBusHandler
 
 
 class TestAsyncServiceBusHandler:
-    def test___init__(self, mocker: MockerFixture) -> None:
+    def test___init__(self) -> None:
         handler = AsyncServiceBusHandler('asdf-asdf-asdf')
         assert handler.worker == 'asdf-asdf-asdf'
         assert handler.message_wait is None
         assert handler._sender_cache == {}
         assert handler._receiver_cache == {}
+
+    def test_close(self, mocker: MockerFixture) -> None:
+        handler = AsyncServiceBusHandler('asdf-asdf-asdf')
+
+        receiver = mocker.MagicMock()
+        receiver.return_value.close = mocker.MagicMock()
+        sender = mocker.MagicMock()
+        sender.return_value.close = mocker.MagicMock()
+        client = mocker.MagicMock()
+        mgmt_client = mocker.MagicMock()
+
+        handler._sender_cache.update({'foo-sender': sender})
+        handler._receiver_cache.update({'bar-receiver': receiver})
+        handler.client = client
+        handler.mgmt_client = mgmt_client
+
+        handler.close()
+
+        assert client.close.call_count == 1
+        assert mgmt_client.close.call_count == 1
+        assert sender.close.call_count == 1
+        assert receiver.close.call_count == 1
 
     def test_from_message(self) -> None:
         assert AsyncServiceBusHandler.from_message(None) == (None, None,)

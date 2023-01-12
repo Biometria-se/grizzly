@@ -41,6 +41,11 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
         super().__init__(worker)
         self.header_type: Optional[str] = None
 
+    def close(self) -> None:
+        if self.qmgr is not None:
+            self.logger.debug('closing queue manager connection')
+            self.qmgr.disconnect()
+
     @contextmanager
     def queue_context(self, endpoint: str, browsing: Optional[bool] = False) -> Generator[pymqi.Queue, None, None]:
         queue: Optional[pymqi.Queue] = None

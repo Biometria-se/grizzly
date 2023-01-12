@@ -27,6 +27,9 @@ class TestAsyncMessageHandler:
             def get_handler(self, action: str) -> Optional[AsyncMessageRequestHandler]:
                 return super().get_handler(action)
 
+            def close(self) -> None:
+                pass
+
         handler = AsyncMessageTest('ID-12345')
 
         assert handler.worker == 'ID-12345'
@@ -44,6 +47,9 @@ class TestAsyncMessageHandler:
                     return None
                 else:
                     return cast(AsyncMessageRequestHandler, self.a_handler)
+
+            def close(self) -> None:
+                pass
 
         handler = AsyncMessageTest(worker='asdf-asdf-asdf')
 
