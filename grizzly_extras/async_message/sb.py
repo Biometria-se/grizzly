@@ -289,6 +289,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
             receiver = self._receiver_cache[cache_endpoint]
             message_wait = int(request_arguments.get('message_wait', str(context.get('message_wait', 0))))
+            consume = context.get('consume', False)
 
             wait_start = perf_counter()
 
@@ -339,9 +340,14 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                         finally:
                             if had_error:
                                 if message is not None:
-                                    self.logger.debug(f'abandoning message id: {message.message_id}, {message._raw_amqp_message.header.delivery_count}')
-                                    receiver.abandon_message(message)
-                                    message = None
+                                    if not consume:
+                                        self.logger.debug(f'abandoning message id: {message.message_id}, {message._raw_amqp_message.header.delivery_count}')
+                                        receiver.abandon_message(message)
+                                        message = None
+                                    else:
+                                        self.logger.debug(f'consuming and ignoring message id: {message.message_id}')
+                                        receiver.complete_message(message)  # remove message from endpoint, but ignore contents
+                                        payload = metadata = None
 
                                 if message_wait > 0 and (perf_counter() - wait_start) >= message_wait:
                                     raise StopIteration()

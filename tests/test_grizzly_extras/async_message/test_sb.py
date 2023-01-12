@@ -87,6 +87,13 @@ class TestAsyncServiceBusHandler:
             'subscription': 'test',
         }
 
+        assert AsyncServiceBusHandler.get_endpoint_arguments('receiver', 'topic:incoming, subscription:all, expression:"$.hello.world"') == {
+            'endpoint': 'incoming',
+            'endpoint_type': 'topic',
+            'subscription': 'all',
+            'expression': '$.hello.world',
+        }
+
     def test_get_sender_instance(self, mocker: MockerFixture) -> None:
         url = 'Endpoint=sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789='
         client = ServiceBusClient.from_connection_string(
@@ -151,7 +158,9 @@ class TestAsyncServiceBusHandler:
         assert kwargs.get('topic_name', None) == 'test-topic'
         assert kwargs.get('subscription_name', None) == 'test-subscription'
 
-        receiver = handler.get_receiver_instance(client, dict({'wait': '100'}, **handler.get_endpoint_arguments('receiver', 'topic:test-topic, subscription:test-subscription')))
+        receiver = handler.get_receiver_instance(client, dict({'wait': '100'}, **handler.get_endpoint_arguments(
+            'receiver', 'topic:test-topic, subscription:test-subscription, expression:$.foo.bar',
+        )))
         assert topic_spy.call_count == 2
         assert queue_spy.call_count == 2
         _, kwargs = topic_spy.call_args_list[-1]
@@ -427,6 +436,7 @@ class TestAsyncServiceBusHandler:
             })
 
             handler._arguments[key]['content_type'] = cast(str, request['context']['content_type'])
+            handler._arguments[key]['consume'] = f'{request["context"].get("consume", False)}'
             handler._receiver_cache[cache_endpoint] = receiver_instance_mock.return_value
 
         setup_handler(handler, request)
@@ -525,6 +535,28 @@ class TestAsyncServiceBusHandler:
         assert 'no messages on queue:test-queue, expression:"$.`this`[?(@.name="test")]"' in str(ame)
 
         assert receiver_instance_mock.return_value.abandon_message.call_count == 5
+
+        mocker.patch(
+            'grizzly_extras.async_message.sb.perf_counter',
+            return_value=0.0,
+        )
+
+        request['context'].update({'consume': True})
+
+        setup_handler(handler, request)
+        receiver_instance_mock.reset_mock()
+
+        receiver_instance_mock.return_value.__iter__.side_effect = [
+            iter([message1, message2]),
+        ]
+
+        response = handlers[request['action']](handler, request)
+
+        assert receiver_instance_mock.return_value.__iter__.call_count == 1
+        assert receiver_instance_mock.return_value.complete_message.call_count == 2
+        assert receiver_instance_mock.return_value.abandon_message.call_count == 0
+
+        assert response.get('payload', None) == jsondumps({'document': {'name': 'test', 'id': 13}})
 
     def test_get_handler(self) -> None:
         handler = AsyncServiceBusHandler(worker='asdf-asdf-asdf')
