@@ -117,14 +117,14 @@ class ApplicationInsightsListener:
 
             try:
                 thread_count = str(runner.user_count)
-            except Exception:
+            except Exception:  # pragma: no cover
                 thread_count = ''
 
             runner_values['thread_count'] = thread_count
 
             try:
                 target_user_count = str(runner.target_user_count)
-            except Exception:
+            except Exception:  # pragma: no cover
                 target_user_count = ''
 
             runner_values['target_user_count'] = target_user_count
@@ -134,7 +134,7 @@ class ApplicationInsightsListener:
                     spawn_rate = str(runner.spawn_rate)
                 else:
                     spawn_rate = ''
-            except Exception:
+            except Exception:  # pragma: no cover
                 spawn_rate = ''
 
             runner_values['spawn_rate'] = spawn_rate

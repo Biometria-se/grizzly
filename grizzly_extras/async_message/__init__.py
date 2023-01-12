@@ -129,6 +129,10 @@ class AsyncMessageHandler(ABC):
     def get_handler(self, action: str) -> Optional['AsyncMessageRequestHandler']:
         raise NotImplementedError(f'{self.__class__.__name__}: get_handler is not implemented')
 
+    @abstractmethod
+    def close(self) -> None:
+        raise NotImplementedError(f'{self.__class__.__name__}: close is not implemented')
+
     def handle(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
         action = request['action']
         request_handler = self.get_handler(action)

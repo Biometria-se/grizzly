@@ -174,5 +174,13 @@ class TestAppInsightsListener:
             assert runner_values.get('thread_count', None) == '0'
             assert runner_values.get('target_user_count', None) == '0'
             assert runner_values.get('spawn_rate', None) == ''
+
+            listener.environment.runner = locust_fixture.env.runner = None
+
+            assert listener._safe_return_runner_values() == {
+                'thread_count': '',
+                'target_user_count': '',
+                'spawn_rate': '',
+            }
         finally:
             locust_fixture.env.events.request._handlers.pop()

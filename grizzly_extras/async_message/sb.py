@@ -49,6 +49,23 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         self._receiver_cache = {}
         self._arguments = {}
 
+    def close(self) -> None:
+        for key, sender in self._sender_cache.items():
+            self.logger.debug(f'closing sender {key}')
+            sender.close()
+
+        for key, receiver in self._receiver_cache.items():
+            self.logger.debug(f'closing receiver {key}')
+            receiver.close()
+
+        if self.client is not None:
+            self.logger.debug('closing client')
+            self.client.close()
+
+        if self.mgmt_client is not None:
+            self.logger.debug('closing management client')
+            self.mgmt_client.close()
+
     @classmethod
     def get_sender_instance(cls, client: ServiceBusClient, arguments: Dict[str, str]) -> ServiceBusSender:
         endpoint_type = arguments['endpoint_type']
@@ -207,8 +224,15 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         endpoint = context['endpoint']
         instance_type = context['connection']
         message_wait = context.get('message_wait', None)
-
         arguments = self.get_endpoint_arguments(instance_type, endpoint)
+        endpoint_arguments = parse_arguments(endpoint, ':')
+        try:
+            del endpoint_arguments['expression']
+        except:
+            pass
+
+        cache_endpoint = ', '.join([f'{key}:{value}' for key, value in endpoint_arguments.items()])
+
         if message_wait is not None and instance_type == 'receiver':
             arguments['wait'] = str(message_wait)
 
@@ -225,17 +249,20 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         else:
             raise AsyncMessageError(f'"{instance_type}" is not a valid value for context.connection')
 
-        if endpoint not in cache or force:
-            self._arguments.update({f'{instance_type}={endpoint}': arguments})
-            instance = cache.get(endpoint, None)
+        if cache_endpoint not in cache or force:
+            self._arguments.update({f'{instance_type}={cache_endpoint}': arguments})
+            instance = cache.get(cache_endpoint, None)
             # clean up stale instance
             if instance is not None:
                 try:
+                    self.logger.info(f'cleaning up stale {instance_type} instance for {cache_endpoint}')
                     instance.__exit__()
                 except:
                     pass
 
-            cache.update({endpoint: get_instance(self.client, arguments).__enter__()})
+            cache.update({cache_endpoint: get_instance(self.client, arguments).__enter__()})
+
+            self.logger.debug(f'cached {instance_type} instance for {cache_endpoint}')
 
         return {
             'message': 'there general kenobi',
@@ -259,6 +286,8 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
         cache_endpoint = ', '.join([f'{key}:{value}' for key, value in endpoint_arguments.items()])
 
+        self.logger.info(f'handling request towards {cache_endpoint}')
+
         message: Optional[ServiceBusMessage] = None
         metadata: Optional[Dict[str, Any]] = None
         payload = request.get('payload', None)
@@ -277,6 +306,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             if payload is None:
                 raise AsyncMessageError('no payload')
             sender = self._sender_cache[cache_endpoint]
+
             message = ServiceBusMessage(payload)
 
             try:
@@ -370,7 +400,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                     else:
                         # ugly brute-force way of handling no messages on service bus
                         if retry < 3:
-                            self.logger.debug(f'receiver returned no message without trying, brute-force retry #{retry}')
+                            self.logger.warning(f'receiver for {cache_endpoint} returned no message without trying, brute-force retry #{retry}')
                             # <!-- useful debugging information, actual message count on message entity
                             if self.logger._logger.level == logging.DEBUG and self.mgmt_client is not None:
                                 if 'topic' in endpoint_arguments:
