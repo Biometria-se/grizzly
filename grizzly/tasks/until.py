@@ -173,7 +173,7 @@ class UntilRequestTask(GrizzlyTask):
                     ))
                     try:
                         payload_formatted = json.dumps(json.loads(payload or ''), indent=2)
-                    except Exception:
+                    except Exception:  # pragma: no cover
                         payload_formatted = payload or ''
                     parent.logger.error(
                         f'{task_name}: endpoint={endpoint_rendered}, {number_of_matches=}, condition={condition_rendered}, {retry=}, {response_time=} payload=\n{payload_formatted}'

@@ -1,5 +1,7 @@
-from typing import List, cast
+from typing import List, Any, Dict, Tuple, cast
 from json import dumps as jsondumps
+from signal import SIGINT
+from importlib import reload
 
 import pytest
 import zmq
@@ -8,26 +10,35 @@ from _pytest.capture import CaptureFixture
 from pytest_mock.plugin import MockerFixture
 
 from grizzly_extras.async_message import AsyncMessageRequest, AsyncMessageResponse
-from grizzly_extras.async_message.daemon import router, worker, main
+from grizzly_extras.async_message.daemon import router, worker, main, signal_handler
 
 from ...fixtures import NoopZmqFixture
+
+
+def test_signal_handler() -> None:
+    import grizzly_extras.async_message.daemon as daemon
+
+    assert getattr(daemon, 'run')
+
+    signal_handler(SIGINT, None)
+
+    assert not getattr(daemon, 'run')
+
+    reload(daemon)
 
 
 @pytest.mark.parametrize('scheme,implementation', [
     ('mq', 'AsyncMessageQueueHandler',),
     ('sb', 'AsyncServiceBusHandler',),
 ])
-def test_worker(mocker: MockerFixture, noop_zmq: NoopZmqFixture, scheme: str, implementation: str) -> None:
+def test_worker(mocker: MockerFixture, noop_zmq: NoopZmqFixture, capsys: CaptureFixture, scheme: str, implementation: str) -> None:
     prefix = 'grizzly_extras.async_message.daemon'
 
     noop_zmq(prefix)
 
-    class BreakLoop(Exception):
-        pass
-
     spy = mocker.patch(
         f'{prefix}.zmq.sugar.socket.Socket.send_multipart',
-        side_effect=[BreakLoop] * 10,
+        return_value=StopIteration,
     )
 
     def mock_recv_multipart(message: AsyncMessageRequest) -> None:
@@ -42,6 +53,7 @@ def test_worker(mocker: MockerFixture, noop_zmq: NoopZmqFixture, scheme: str, im
         mocker.patch(
             f'{prefix}.zmq.sugar.socket.Socket.recv_multipart',
             side_effect=[
+                zmq.Again,
                 None,
                 build_zmq_message({'worker': 'ID-54321'}),
                 build_zmq_message(message),
@@ -58,7 +70,7 @@ def test_worker(mocker: MockerFixture, noop_zmq: NoopZmqFixture, scheme: str, im
 
     zmq_context = zmq.Context()
     try:
-        with pytest.raises(BreakLoop):
+        with pytest.raises(StopIteration):
             worker(zmq_context, 'ID-12345')
 
         assert spy.call_count == 1
@@ -74,7 +86,7 @@ def test_worker(mocker: MockerFixture, noop_zmq: NoopZmqFixture, scheme: str, im
 
         mock_recv_multipart({'worker': 'ID-12345', 'context': {'url': 'http://www.example.com'}})
 
-        with pytest.raises(BreakLoop):
+        with pytest.raises(StopIteration):
             worker(zmq_context, 'ID-12345')
 
         assert spy.call_count == 2
@@ -90,7 +102,7 @@ def test_worker(mocker: MockerFixture, noop_zmq: NoopZmqFixture, scheme: str, im
 
         integration_spy = mocker.patch(
             f'grizzly_extras.async_message.{scheme}.{implementation}.__init__',
-            side_effect=[None],
+            return_value=None,
         )
 
         mock_recv_multipart({'worker': 'ID-12345', 'context': {'url': f'{scheme}://example.com'}})
@@ -104,7 +116,7 @@ def test_worker(mocker: MockerFixture, noop_zmq: NoopZmqFixture, scheme: str, im
             'response_time': 439,
         })
 
-        with pytest.raises(BreakLoop):
+        with pytest.raises(StopIteration):
             worker(zmq_context, 'ID-12345')
 
         assert integration_spy.call_count == 1
@@ -124,6 +136,43 @@ def test_worker(mocker: MockerFixture, noop_zmq: NoopZmqFixture, scheme: str, im
             },
             'response_time': 439,
         }).encode()
+
+        import grizzly_extras.async_message.daemon as daemon
+
+        def hack(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+            daemon.run = False
+
+        mocker.patch(
+            f'{prefix}.zmq.sugar.socket.Socket.send_multipart',
+            hack,
+        )
+        mock_recv_multipart({'worker': 'F00B4R', 'context': {'url': f'{scheme}://example.com'}})
+        mock_handle_response({
+            'worker': 'F00B4R',
+            'success': True,
+            'payload': 'foo bar',
+            'metadata': {
+                'some': 'metadata',
+            },
+            'response_time': 1337,
+        })
+        capsys.readouterr()
+
+        integration_close_spy = mocker.patch(
+            f'grizzly_extras.async_message.{scheme}.{implementation}.close',
+            return_value=None,
+        )
+
+        worker(zmq_context, 'F00B4R')
+
+        reload(daemon)
+
+        assert integration_close_spy.call_count == 1
+
+        capture = capsys.readouterr()
+
+        assert capture.out == ''
+        assert 'worker::F00B4R: stopping' in capture.err
     finally:
         zmq_context.destroy()
 

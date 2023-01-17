@@ -183,6 +183,7 @@ def worker(context: zmq.Context, identity: str) -> None:
                     integration = AsyncServiceBusHandler(identity)
                 else:
                     raise RuntimeError(f'integration for {str(parsed.scheme)}:// is not implemented')
+
             except Exception as e:
                 response = {
                     'worker': identity,
@@ -210,12 +211,12 @@ def worker(context: zmq.Context, identity: str) -> None:
         logger.debug(f'closing {integration.__class__.__name__}')
         try:
             integration.close()
-        except:
+        except:  # pragma: no cover
             logger.error('failed to close integration', exc_info=True)
 
     try:
         worker.close()
-    except:
+    except:  # pragma: no cover
         logger.error('failed to close worker', exc_info=True)
     logger.debug('stopped')
 
