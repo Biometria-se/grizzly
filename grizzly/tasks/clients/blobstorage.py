@@ -25,7 +25,7 @@ Only supports `RequestDirection.TO`.
 ### `endpoint`
 
 ``` plain
-bs[s]://<AccountName>?AccountKey=<AccountKey>&Container=<Container>
+bs[s]://<AccountName>?AccountKey=<AccountKey>&Container=<Container>[&Overwrite=<bool>]
 ```
 
 * `AccountName` _str_ - name of storage account
@@ -34,7 +34,7 @@ bs[s]://<AccountName>?AccountKey=<AccountKey>&Container=<Container>
 
 * `Container` _str_ - name of the container to perform the request on
 
-All variables in the endpoint supports {@link framework.usage.variables.templating}, but not the whole string.
+* `Overwrite` _bool_ - if files should be overwritten if they already exists in `Container` (default: `False`)
 
 ### `destination`
 
@@ -54,6 +54,7 @@ from grizzly.types import RequestDirection, GrizzlyResponse
 from . import client, ClientTask
 from ...scenarios import GrizzlyScenario
 from ...context import GrizzlyContextScenario
+from ...types import bool_type
 
 # disable verbose INFO logging
 azure_logger = logging.getLogger('azure.core.pipeline.policies.http_logging_policy')
@@ -66,6 +67,7 @@ class BlobStorageClientTask(ClientTask):
     account_key: str
     container: str
     service_client: BlobServiceClient
+    overwrite: bool
 
     _endpoints_protocol: str
 
@@ -108,6 +110,10 @@ class BlobStorageClientTask(ClientTask):
         self.account_name = parsed.netloc
         self.account_key = parameters['AccountKey'][0]
         self.container = parameters['Container'][0]
+        if 'Overwrite' in parameters:
+            self.overwrite = bool_type(parameters['Overwrite'][0])
+        else:
+            self.overwrite = False
 
         self.service_client = BlobServiceClient.from_connection_string(conn_str=self.connection_string)
 
@@ -148,7 +154,7 @@ class BlobStorageClientTask(ClientTask):
             }})
 
             with self.service_client.get_blob_client(container=self.container, blob=destination) as blob_client:
-                blob_client.upload_blob(source, content_settings=content_settings)
+                blob_client.upload_blob(source, content_settings=content_settings, overwrite=self.overwrite)
                 meta['response_length'] = len(source)
 
             meta.update({'response': {}})
