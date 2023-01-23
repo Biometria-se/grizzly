@@ -73,16 +73,17 @@ class TestBlobStorageClientTask:
         assert task.account_key == 'aaaabbb='
         assert task.container == 'my-container'
         assert task.connection_string == 'DefaultEndpointsProtocol=http;AccountName=my-storage;AccountKey=aaaabbb=;EndpointSuffix=core.windows.net'
+        assert not task.overwrite
 
         task = BlobStorageClientTask(
             RequestDirection.TO,
-            'bss://my-storage?AccountKey=aaaabbb=&Container=my-container',
+            'bss://my-storage?AccountKey=aaaabbb=&Container=my-container&Overwrite=True',
             'upload-empty-file',
             source='',
         )
 
         assert isinstance(task.service_client, BlobServiceClient)
-        assert task.endpoint == 'bss://my-storage?AccountKey=aaaabbb=&Container=my-container'
+        assert task.endpoint == 'bss://my-storage?AccountKey=aaaabbb=&Container=my-container&Overwrite=True'
         assert task.name == 'upload-empty-file'
         assert task.source == ''
         assert task.variable is None
@@ -92,6 +93,16 @@ class TestBlobStorageClientTask:
         assert task.account_key == 'aaaabbb='
         assert task.container == 'my-container'
         assert task.connection_string == 'DefaultEndpointsProtocol=https;AccountName=my-storage;AccountKey=aaaabbb=;EndpointSuffix=core.windows.net'
+        assert task.overwrite
+
+        with pytest.raises(ValueError) as ve:
+            BlobStorageClientTask(
+                RequestDirection.TO,
+                'bss://my-storage?AccountKey=aaaabbb=&Container=my-container&Overwrite=asdf',
+                'upload-empty-file',
+                source='',
+            )
+        assert str(ve.value) == 'asdf is not a valid boolean'
 
     def test_get(self, behave_fixture: BehaveFixture, grizzly_fixture: GrizzlyFixture) -> None:
         behave = behave_fixture.context
@@ -196,11 +207,12 @@ class TestBlobStorageClientTask:
 
             args, kwargs = upload_blob_mock.call_args_list[-1]
             assert len(args) == 2
-            assert len(kwargs.keys()) == 1
+            assert len(kwargs.keys()) == 2
             assert isinstance(args[0], BlobClient)
             assert args[1] == 'this is my hello world test!'
             assert args[0].container_name == 'my-container'
             assert args[0].blob_name == 'destination.json'
+            assert not kwargs.get('overwrite', True)
             content_settings = kwargs.get('content_settings', None)
             assert isinstance(content_settings, ContentSettings)
             assert content_settings.content_type == 'application/json'
@@ -215,17 +227,20 @@ class TestBlobStorageClientTask:
             assert kwargs.get('exception', '') is None
 
             task_factory.destination = None
+            task_factory.overwrite = True
 
             task(scenario)
 
             assert upload_blob_mock.call_count == 2
 
-            args, _ = upload_blob_mock.call_args_list[-1]
+            args, kwargs = upload_blob_mock.call_args_list[-1]
             assert len(args) == 2
+            assert len(kwargs) == 2
             assert isinstance(args[0], BlobClient)
             assert args[1] == 'this is my hello world test!'
             assert args[0].container_name == 'my-container'
             assert args[0].blob_name == 'source.json'
+            assert kwargs.get('overwrite', False)
 
             assert request_fire_spy.call_count == 3
             _, kwargs = request_fire_spy.call_args_list[-1]

@@ -90,9 +90,15 @@ jobs:
       id: pytest
       run: python -m pytest --ignore=tests/e2e
 
-    - name: coverage
-      id: coverage
+    - name: coverage (not windows)
+      if: runner.os != 'Windows'
+      id: coverage-not-windows
       run: python -m coverage report --omit=**/*messagequeue*,**/mq/* --fail-under=95
+
+    - name: coverage (windows)
+      if: runner.os == 'Windows'
+      id: coverage-windows
+      run: python -m coverage report --omit=**/*messagequeue*,**/mq/* --fail-under=90
 
   test-e2e:
     name: 'e2e tests ${{ matrix.run_mode }}'

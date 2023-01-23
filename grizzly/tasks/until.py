@@ -40,6 +40,8 @@ ordinary {@pylink grizzly.tasks.request} or {@pylink grizzly.tasks.clients} task
 * `expected_matches` _int_ (optional): number of matches that the expression should match (default `1`)
 
 '''
+import json
+
 from typing import TYPE_CHECKING, Callable, Any, Type, List, Optional, cast
 from time import perf_counter
 
@@ -115,6 +117,7 @@ class UntilRequestTask(GrizzlyTask):
         def task(parent: 'GrizzlyScenario') -> Any:
             task_name = f'{self.scenario.identifier} {self.request.name}, w={self.wait}s, r={self.retries}, em={self.expected_matches}'
             condition_rendered = parent.render(self.condition)
+            endpoint_rendered = parent.render(self.request.endpoint)
 
             if not transform.validate(condition_rendered):
                 raise RuntimeError(f'{condition_rendered} is not a valid expression for {self.request.content_type.name}')
@@ -146,7 +149,7 @@ class UntilRequestTask(GrizzlyTask):
                         parent.logger.debug(f'{payload=}, condition={condition_rendered}, {matches=}')
                         number_of_matches = len(matches)
                     except Exception as e:
-                        parent.logger.error(f'{task_name}: loop retry={retry}', exc_info=True)
+                        parent.logger.error(f'{task_name}: retry={retry}, endpoint={endpoint_rendered}, exception={str(e)}')
                         if exception is None:
                             exception = e
                         number_of_matches = 0
@@ -156,7 +159,7 @@ class UntilRequestTask(GrizzlyTask):
                         else:
                             retry += 1
             except Exception as e:
-                parent.logger.error(f'{task_name}: done retry={retry}', exc_info=True)
+                parent.logger.error(f'{task_name}: error retry={retry}', exc_info=True)
                 if exception is None:
                     exception = e
             finally:
@@ -166,9 +169,15 @@ class UntilRequestTask(GrizzlyTask):
                     exception = None
                 elif exception is None and number_of_matches != self.expected_matches:
                     exception = RuntimeError((
-                        f'found {number_of_matches} matching values for {condition_rendered} in payload '
-                        f'after {retry} retries and {response_time} milliseconds'
+                        f'found {number_of_matches} matching values for {condition_rendered} in payload'
                     ))
+                    try:
+                        payload_formatted = json.dumps(json.loads(payload or ''), indent=2)
+                    except Exception:  # pragma: no cover
+                        payload_formatted = payload or ''
+                    parent.logger.error(
+                        f'{task_name}: endpoint={endpoint_rendered}, {number_of_matches=}, condition={condition_rendered}, {retry=}, {response_time=} payload=\n{payload_formatted}'
+                    )
 
                 parent.user.environment.events.request.fire(
                     request_type=RequestType.UNTIL(),
