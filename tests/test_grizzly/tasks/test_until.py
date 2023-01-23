@@ -1,9 +1,11 @@
 from typing import Tuple, List, Any, Dict, Type
 from json import dumps as jsondumps
+from logging import ERROR
 
 import pytest
 
 from pytest_mock import MockerFixture
+from _pytest.logging import LogCaptureFixture
 
 from locust.exception import StopUser
 from grizzly.exceptions import RestartScenario
@@ -60,6 +62,7 @@ class TestUntilRequestTask:
         self,
         grizzly_fixture: GrizzlyFixture,
         mocker: MockerFixture,
+        caplog: LogCaptureFixture,
         meta_request_task_type: Type[GrizzlyMetaRequestTask],
         meta_args: Tuple[Any, ...],
         meta_kwargs: Dict[str, Any],
@@ -135,8 +138,10 @@ class TestUntilRequestTask:
         task_factory = UntilRequestTask(grizzly, meta_request_task, "$.`this`[?status='ready'] | wait=100, retries=10", scenario=meta_request_task.scenario)
         task = task_factory()
 
-        task(scenario)
+        with caplog.at_level(ERROR):
+            task(scenario)
 
+        assert len(caplog.messages) == 0
         assert time_spy.call_count == 2
         assert request_spy.call_count == 3
         assert gsleep_spy.call_count == 3
@@ -162,8 +167,10 @@ class TestUntilRequestTask:
         task_factory = UntilRequestTask(grizzly, meta_request_task, "$.`this`[?status='ready'] | wait='{{ wait }}', retries='{{ retries }}'", scenario=meta_request_task.scenario)
         task = task_factory()
 
-        task(scenario)
+        with caplog.at_level(ERROR):
+            task(scenario)
 
+        assert len(caplog.messages) == 0
         assert time_spy.call_count == 4
         assert request_spy.call_count == 4
         assert gsleep_spy.call_count == 4
@@ -198,7 +205,8 @@ class TestUntilRequestTask:
         task = task_factory()
 
         with pytest.raises(StopUser):
-            task(scenario)
+            with caplog.at_level(ERROR):
+                task(scenario)
 
         assert fire_spy.call_count == 3
         _, kwargs = fire_spy.call_args_list[-1]
@@ -211,7 +219,15 @@ class TestUntilRequestTask:
         exception = kwargs.get('exception', None)
         assert exception is not None
         assert isinstance(exception, RuntimeError)
-        assert str(exception) == 'found 0 matching values for $.`this`[?status="ready"] in payload after 2 retries and 12250 milliseconds'
+        assert str(exception) == 'found 0 matching values for $.`this`[?status="ready"] in payload'
+
+        assert len(caplog.messages) == 1
+        assert caplog.messages[-1] == (
+            f'{task_factory.scenario.identifier} test-request, w=10.0s, r=2, em=1: endpoint={meta_request_task.endpoint}, number_of_matches=0, '
+            f'condition=$.`this`[?status="ready"], retry=2, response_time=12250 payload=\n{jsondumps({"response": {"status": "working"}}, indent=2)}'
+        )
+
+        caplog.clear()
 
         request_spy = mocker.patch.object(
             meta_request_task,
@@ -225,7 +241,8 @@ class TestUntilRequestTask:
 
         meta_request_task.scenario.failure_exception = RestartScenario
         with pytest.raises(RestartScenario):
-            task(scenario)
+            with caplog.at_level(ERROR):
+                task(scenario)
 
         assert fire_spy.call_count == 4
         _, kwargs = fire_spy.call_args_list[-1]
@@ -239,6 +256,13 @@ class TestUntilRequestTask:
         assert exception is not None
         assert isinstance(exception, RuntimeError)
         assert str(exception) == 'foo bar'
+
+        assert len(caplog.messages) == 1
+        assert caplog.messages[-1] == (
+            f'{task_factory.scenario.identifier} test-request, w=10.0s, r=2, em=1: retry=0, endpoint={meta_request_task.endpoint}, exception=foo bar'
+        )
+
+        caplog.clear()
 
         request_spy = mocker.patch.object(
             meta_request_task,
@@ -254,7 +278,15 @@ class TestUntilRequestTask:
         task_factory = UntilRequestTask(grizzly, meta_request_task, '$.`this`[?status="ready"] | wait=4, retries=4', scenario=meta_request_task.scenario)
         task = task_factory()
 
-        task(scenario)
+        with caplog.at_level(ERROR):
+            task(scenario)
+
+        assert len(caplog.messages) == 1
+        assert caplog.messages[-1] == (
+            f'{task_factory.scenario.identifier} test-request, w=4.0s, r=4, em=1: retry=1, endpoint={meta_request_task.endpoint}, exception=foo bar'
+        )
+
+        caplog.clear()
 
         assert fire_spy.call_count == 5
         _, kwargs = fire_spy.call_args_list[-1]
@@ -266,30 +298,32 @@ class TestUntilRequestTask:
         assert kwargs.get('context', None) == {'variables': {}}
         assert kwargs.get('exception', '') is None
 
+        return_value_object = {
+            'list': [{
+                'count': 18,
+                'value': 'first',
+            }, {
+                'count': 18,
+                'value': 'wildcard',
+            }, {
+                'count': 19,
+                'value': 'second',
+            }, {
+                'count': 20,
+                'value': 'third',
+            }, {
+                'count': 21,
+                'value': 'fourth'
+            }, {
+                'count': 22,
+                'value': 'fifth',
+            }],
+        }
+
         request_spy = mocker.patch.object(
             meta_request_task,
             'execute',
-            return_value=(None, jsondumps({
-                'list': [{
-                    'count': 18,
-                    'value': 'first',
-                }, {
-                    'count': 18,
-                    'value': 'wildcard',
-                }, {
-                    'count': 19,
-                    'value': 'second',
-                }, {
-                    'count': 20,
-                    'value': 'third',
-                }, {
-                    'count': 21,
-                    'value': 'fourth'
-                }, {
-                    'count': 22,
-                    'value': 'fifth',
-                }]
-            }), ),
+            return_value=(None, jsondumps(return_value_object), ),
         )
 
         task_factory = UntilRequestTask(grizzly, meta_request_task, '$.list[?(@.count > 19)] | wait=4, expected_matches=3, retries=4', scenario=meta_request_task.scenario)
@@ -298,8 +332,11 @@ class TestUntilRequestTask:
         assert task_factory.retries == 4
 
         task = task_factory()
-        task(scenario)
 
+        with caplog.at_level(ERROR):
+            task(scenario)
+
+        assert len(caplog.messages) == 0
         assert fire_spy.call_count == 6
         _, kwargs = fire_spy.call_args_list[-1]
 
@@ -317,7 +354,16 @@ class TestUntilRequestTask:
 
         task = task_factory()
         with pytest.raises(RestartScenario):
-            task(scenario)
+            with caplog.at_level(ERROR):
+                task(scenario)
+
+        assert len(caplog.messages) == 1
+        assert caplog.messages[-1] == (
+            f'{task_factory.scenario.identifier} test-request, w=4.0s, r=4, em=4: endpoint={meta_request_task.endpoint}, number_of_matches=3, '
+            f'condition=$.list[?(@.count > 19)], retry=4, response_time=555 payload=\n{jsondumps(return_value_object, indent=2)}'
+        )
+
+        caplog.clear()
 
         assert fire_spy.call_count == 7
         _, kwargs = fire_spy.call_args_list[-1]
@@ -329,7 +375,7 @@ class TestUntilRequestTask:
         assert kwargs.get('context', None) == {'variables': {}}
         exception = kwargs.get('exception', None)
         assert isinstance(exception, RuntimeError)
-        assert str(exception) == 'found 3 matching values for $.list[?(@.count > 19)] in payload after 4 retries and 555 milliseconds'
+        assert str(exception) == 'found 3 matching values for $.list[?(@.count > 19)] in payload'
 
         task_factory = UntilRequestTask(grizzly, meta_request_task, '$.list[?(@.count == 18)] | wait=4, expected_matches=2, retries=4', scenario=meta_request_task.scenario)
         assert task_factory.expected_matches == 2

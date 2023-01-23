@@ -335,7 +335,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                         'response_length': response_length,
                     }
 
-        raise AsyncMessageError(f'failed after {retries+1} retries')
+        raise AsyncMessageError(f'failed after {retries} retries')
 
     @register(handlers, 'PUT', 'SEND')
     def put(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
