@@ -560,13 +560,21 @@ def run(context: Context) -> int:
             # stop when user_count reaches 0
             main_greenlet = watch_running_users_greenlet
 
-        def sig_handler() -> None:
-            logger.info('handling signal')
-            runner.environment.events.quitting.fire(environment=runner.environment, reverse=True)
-            runner.quit()
+        def sig_handler(signum: int) -> Callable[[], None]:
+            try:
+                signame = Signals(signum).name
+            except ValueError:
+                signame = 'UNKNOWN'
 
-        gevent.signal_handler(SIGTERM, sig_handler)
-        gevent.signal_handler(SIGINT, sig_handler)
+            def wrapper() -> None:
+                logger.info(f'handling signal {signame} ({signum})')
+                runner.environment.events.quitting.fire(environment=runner.environment, reverse=True)
+                runner.quit()
+
+            return wrapper
+
+        gevent.signal_handler(SIGTERM, sig_handler(SIGTERM))
+        gevent.signal_handler(SIGINT, sig_handler(SIGINT))
         signal(SIGINT, shutdown_external_processes(external_processes))
 
         try:

@@ -56,6 +56,8 @@ def before_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], *
 
 @catch(KeyboardInterrupt)
 def after_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+    return_code: int
+
     # all scenarios has been processed, let's run locust
     if feature.status == Status.passed:
         return_code = locustrun(context)
@@ -63,49 +65,51 @@ def after_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], **
         if return_code != 0:
             feature.set_status(Status.failed)
 
-        grizzly = cast(GrizzlyContext, context.grizzly)
-        stats = grizzly.state.locust.environment.stats
+        if not on_worker(context):
+            grizzly = cast(GrizzlyContext, context.grizzly)
+            stats = grizzly.state.locust.environment.stats
 
-        for behave_scenario in cast(List[Scenario], feature.scenarios):
-            grizzly_scenario = grizzly.scenarios.find_by_description(behave_scenario.name)
-            if grizzly_scenario is None:
-                continue
-
-            scenario_stat = stats.get(grizzly_scenario.locust_name, RequestType.SCENARIO())
-
-            if scenario_stat.num_failures > 0 or scenario_stat.num_requests != grizzly_scenario.iterations:
-                behave_scenario.set_status(Status.failed)
-
-            rindex = -1
-
-            for stat in stats.entries.values():
-                if stat.method == RequestType.SCENARIO() or not stat.name.startswith(f'{grizzly_scenario.identifier} '):
+            for behave_scenario in cast(List[Scenario], feature.scenarios):
+                grizzly_scenario = grizzly.scenarios.find_by_description(behave_scenario.name)
+                if grizzly_scenario is None:
                     continue
 
-                if stat.num_failures > 0:
-                    rindex -= 1
-                    behave_step = cast(Step, behave_scenario.steps[rindex])
-                    behave_step.status = Status.failed
+                scenario_stat = stats.get(grizzly_scenario.locust_name, RequestType.SCENARIO())
 
-        if pymqi.__name__ != 'grizzly_extras.dummy_pymqi' and not on_worker(context):
-            check_mq_client_logs(context)
+                if scenario_stat.num_failures > 0 or scenario_stat.num_requests != grizzly_scenario.iterations:
+                    behave_scenario.set_status(Status.failed)
+
+                rindex = -1
+
+                for stat in stats.entries.values():
+                    if stat.method == RequestType.SCENARIO() or not stat.name.startswith(f'{grizzly_scenario.identifier} '):
+                        continue
+
+                    if stat.num_failures > 0:
+                        rindex -= 1
+                        behave_step = cast(Step, behave_scenario.steps[rindex])
+                        behave_step.status = Status.failed
+
+            if pymqi.__name__ != 'grizzly_extras.dummy_pymqi' and not on_worker(context):
+                check_mq_client_logs(context)
     else:
         return_code = 1
 
-    # show start and stop date time
-    stopped = datetime.now().astimezone()
+    if not on_worker(context):
+        # show start and stop date time
+        stopped = datetime.now().astimezone()
 
-    print('')
-    print(f'Started: {context.started}')
-    print(f'Stopped: {stopped}')
+        print('')
+        print(f'Started: {context.started}')
+        print(f'Stopped: {stopped}')
 
-    # the features duration is the sum of all scenarios duration, which is the sum of all steps duration
-    try:
-        duration = int(time() - context.start)
+        # the features duration is the sum of all scenarios duration, which is the sum of all steps duration
+        try:
+            duration = int(time() - context.start)
 
-        feature.scenarios[-1].steps[-1].duration = duration
-    except Exception:
-        pass
+            feature.scenarios[-1].steps[-1].duration = duration
+        except Exception:
+            pass
 
 
 def before_scenario(context: Context, scenario: Scenario, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
