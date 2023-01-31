@@ -8,13 +8,13 @@ from ...fixtures import GrizzlyFixture
 
 
 class TestTimerTask:
-    def test___init__(self) -> None:
+    def test___init__(self, mocker: MockerFixture) -> None:
+        sha1_patch = mocker.patch('grizzly.tasks.timer.sha1', return_value=mocker.MagicMock())
+        sha1_patch.return_value.hexdigest.return_value = 'aaaabbbbccccdddd'
         task_factory = TimerTask(name='test-timer-1')
 
-        expected_variable_prefix = sha1('timer-test-timer-1'.encode('utf-8')).hexdigest()[:8]
-
         assert task_factory.name == 'test-timer-1'
-        assert task_factory.variable == f'{expected_variable_prefix}::test-timer-1'
+        assert task_factory.variable == 'aaaabbbb::test-timer-1'
 
     def test__call__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         _, _, scenario = grizzly_fixture()
