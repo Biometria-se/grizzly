@@ -2,6 +2,8 @@ import logging
 
 from os import environ
 from typing import TYPE_CHECKING, Dict, Any, Optional, List, Callable
+from types import FunctionType
+from importlib import reload
 
 import pytest
 
@@ -12,7 +14,7 @@ from locust.user.task import LOCUST_STATE_STOPPING, LOCUST_STATE_RUNNING
 from locust.user.sequential_taskset import SequentialTaskSet
 from locust.exception import StopUser, InterruptTaskSet, RescheduleTask, RescheduleTaskImmediately
 
-from grizzly.scenarios.iterator import IteratorScenario
+from grizzly.scenarios import iterator
 from grizzly.testdata.communication import TestdataConsumer
 from grizzly.testdata.utils import transform
 from grizzly.tasks import WaitTask, LogMessageTask
@@ -29,20 +31,23 @@ if TYPE_CHECKING:
 
 class TestIterationScenario:
     def test_initialize(self, grizzly_fixture: GrizzlyFixture) -> None:
-        _, _, scenario = grizzly_fixture(scenario_type=IteratorScenario)
-        assert isinstance(scenario, IteratorScenario)
+        reload(iterator)
+        _, _, scenario = grizzly_fixture(scenario_type=iterator.IteratorScenario)
+        assert isinstance(scenario, iterator.IteratorScenario)
         assert issubclass(scenario.__class__, SequentialTaskSet)
+        assert scenario.pace_time is None
 
     def test_populate(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
-        _, user, scenario = grizzly_fixture(scenario_type=IteratorScenario)
+        reload(iterator)
+        _, user, scenario = grizzly_fixture(scenario_type=iterator.IteratorScenario)
         request = grizzly_fixture.request_task.request
         request.endpoint = '/api/v1/test'
         try:
-            IteratorScenario.populate(request)
-            assert isinstance(scenario, IteratorScenario)
-            assert len(scenario.tasks) == 2
+            iterator.IteratorScenario.populate(request)
+            assert isinstance(scenario, iterator.IteratorScenario)
+            assert len(scenario.tasks) == 3
 
-            task_method = scenario.tasks[-1]
+            task_method = scenario.tasks[-2]
 
             assert callable(task_method)
             with pytest.raises(RequestCalled) as e:
@@ -59,19 +64,19 @@ class TestIterationScenario:
                 )
 
             generate_mocked_wait(1.5)
-            IteratorScenario.populate(WaitTask(time_expression='1.5'))
-            assert len(scenario.tasks) == 3
+            iterator.IteratorScenario.populate(WaitTask(time_expression='1.5'))
+            assert len(scenario.tasks) == 4
 
-            task_method = scenario.tasks[-1]
+            task_method = scenario.tasks[-2]
             assert callable(task_method)
             task_method(scenario)
 
-            IteratorScenario.populate(LogMessageTask(message='hello {{ world }}'))
-            assert len(scenario.tasks) == 4
+            iterator.IteratorScenario.populate(LogMessageTask(message='hello {{ world }}'))
+            assert len(scenario.tasks) == 5
 
             logger_spy = mocker.spy(scenario.logger, 'info')
 
-            task_method = scenario.tasks[-1]
+            task_method = scenario.tasks[-2]
             assert callable(task_method)
             task_method(scenario)
 
@@ -86,12 +91,22 @@ class TestIterationScenario:
             assert logger_spy.call_count == 2
             args, _ = logger_spy.call_args_list[1]
             assert args[0] == 'hello world!'
+
+            first_task = scenario.tasks[0]
+            assert isinstance(first_task, FunctionType)
+            assert first_task.__name__ == 'iterator'
+
+            last_task = scenario.tasks[-1]
+            assert isinstance(last_task, FunctionType)
+            assert last_task.__name__ == 'pace'
         finally:
-            IteratorScenario.tasks = IteratorScenario.tasks[:1]
+            reload(iterator)
 
     def test_on_event_handlers(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+        reload(iterator)
+
         try:
-            _, _, scenario = grizzly_fixture(scenario_type=IteratorScenario)
+            _, _, scenario = grizzly_fixture(scenario_type=iterator.IteratorScenario)
 
             def TestdataConsumer__init__(self: 'TestdataConsumer', scenario: 'GrizzlyScenario', address: str, identifier: str) -> None:
                 pass
@@ -127,11 +142,12 @@ class TestIterationScenario:
                 pass
 
     def test_iterator(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
-        _, user, scenario = grizzly_fixture(scenario_type=IteratorScenario)
+        reload(iterator)
+        _, user, scenario = grizzly_fixture(scenario_type=iterator.IteratorScenario)
 
         grizzly = grizzly_fixture.grizzly
 
-        assert isinstance(scenario, IteratorScenario)
+        assert isinstance(scenario, iterator.IteratorScenario)
 
         scenario.consumer = TestdataConsumer(scenario, identifier='test')
 
@@ -180,9 +196,177 @@ class TestIterationScenario:
         assert user.context_variables['AtomicCsvRow'].test.header1 == 'value1'
         assert user.context_variables['AtomicCsvRow'].test.header2 == 'value2'
 
+    def test_pace(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+        reload(iterator)
+        _, _, scenario = grizzly_fixture(scenario_type=iterator.IteratorScenario)
+
+        assert isinstance(scenario, iterator.IteratorScenario)
+
+        perf_counter_spy = mocker.patch('grizzly.scenarios.iterator.perf_counter', return_value=1000)
+        request_spy = mocker.spy(scenario.user.environment.events.request, 'fire')
+        gsleep_spy = mocker.patch('grizzly.scenarios.iterator.gsleep', return_value=None)
+
+        # return directly, we don't have a pace
+        assert getattr(scenario, 'pace_time', '') is None
+
+        scenario.pace()
+
+        assert perf_counter_spy.call_count == 0
+        assert request_spy.call_count == 0
+        assert gsleep_spy.call_count == 0
+
+        perf_counter_spy.reset_mock()
+        request_spy.reset_mock()
+        gsleep_spy.reset_mock()
+
+        # invalid float for pace_time
+        scenario.pace_time = 'asdf'
+        with pytest.raises(StopUser):
+            scenario.pace()
+
+        assert perf_counter_spy.call_count == 2
+        assert request_spy.call_count == 1
+        assert gsleep_spy.call_count == 0
+        _, kwargs = request_spy.call_args_list[-1]
+        assert kwargs.get('request_type', None) == 'PACE'
+        assert kwargs.get('name', None) == scenario.user._scenario.locust_name
+        assert kwargs.get('response_time', None) == 0
+        assert kwargs.get('response_length', None) == 0
+        exception = kwargs.get('exception', None)
+        assert isinstance(exception, ValueError)
+        assert str(exception) == 'asdf does not render to a number'
+
+        perf_counter_spy.reset_mock()
+        request_spy.reset_mock()
+        gsleep_spy.reset_mock()
+
+        # iteration time < specified pace
+        scenario.start = 12.26
+        scenario.pace_time = '3000'
+        perf_counter_spy = mocker.patch('grizzly.scenarios.iterator.perf_counter', side_effect=[13.37, 14.48])
+
+        scenario.pace()
+
+        assert perf_counter_spy.call_count == 2
+        assert request_spy.call_count == 1
+        assert gsleep_spy.call_count == 1
+
+        _, kwargs = request_spy.call_args_list[-1]
+        assert kwargs.get('request_type', None) == 'PACE'
+        assert kwargs.get('name', None) == scenario.user._scenario.locust_name
+        assert kwargs.get('response_time', None) == 1110
+        assert kwargs.get('response_length', None) == 1
+        assert kwargs.get('exception', RuntimeError) is None
+
+        args, _ = gsleep_spy.call_args_list[-1]
+        assert len(args) == 1
+        assert args[0] == (3000 / 1000) - (13.37 - 12.26)
+
+        perf_counter_spy.reset_mock()
+        request_spy.reset_mock()
+        gsleep_spy.reset_mock()
+
+        # iteration time > specified pace
+        scenario.pace_time = '500'
+        perf_counter_spy = mocker.patch('grizzly.scenarios.iterator.perf_counter', side_effect=[13.37, 14.48])
+
+        scenario.pace()
+
+        assert perf_counter_spy.call_count == 2
+        assert request_spy.call_count == 1
+        assert gsleep_spy.call_count == 0
+
+        _, kwargs = request_spy.call_args_list[-1]
+        assert kwargs.get('request_type', None) == 'PACE'
+        assert kwargs.get('name', None) == scenario.user._scenario.locust_name
+        assert kwargs.get('response_time', None) == 1110
+        assert kwargs.get('response_length', None) == 0
+        exception = kwargs.get('exception', None)
+        assert isinstance(exception, RuntimeError)
+        assert str(exception) == 'pace falling behind'
+
+        perf_counter_spy.reset_mock()
+        request_spy.reset_mock()
+        gsleep_spy.reset_mock()
+
+        # templating, no value
+        scenario.pace_time = '{{ foobar }}'
+        perf_counter_spy = mocker.patch('grizzly.scenarios.iterator.perf_counter', side_effect=[13.37, 14.48])
+
+        with pytest.raises(StopUser):
+            scenario.pace()
+
+        assert perf_counter_spy.call_count == 2
+        assert request_spy.call_count == 1
+        assert gsleep_spy.call_count == 0
+        _, kwargs = request_spy.call_args_list[-1]
+        assert kwargs.get('request_type', None) == 'PACE'
+        assert kwargs.get('name', None) == scenario.user._scenario.locust_name
+        assert kwargs.get('response_time', None) == 1110
+        assert kwargs.get('response_length', None) == 0
+        exception = kwargs.get('exception', None)
+        assert isinstance(exception, ValueError)
+        assert str(exception) == '{{ foobar }} does not render to a number'
+
+        perf_counter_spy.reset_mock()
+        request_spy.reset_mock()
+        gsleep_spy.reset_mock()
+
+        # iteration time < specified pace, variable
+        scenario.user._context['variables'].update({'pace': '3000'})
+        scenario.start = 12.26
+        scenario.pace_time = '{{ pace }}'
+        perf_counter_spy = mocker.patch('grizzly.scenarios.iterator.perf_counter', side_effect=[13.37, 14.48])
+
+        scenario.pace()
+
+        assert perf_counter_spy.call_count == 2
+        assert request_spy.call_count == 1
+        assert gsleep_spy.call_count == 1
+
+        _, kwargs = request_spy.call_args_list[-1]
+        assert kwargs.get('request_type', None) == 'PACE'
+        assert kwargs.get('name', None) == scenario.user._scenario.locust_name
+        assert kwargs.get('response_time', None) == 1110
+        assert kwargs.get('response_length', None) == 1
+        assert kwargs.get('exception', RuntimeError) is None
+
+        args, _ = gsleep_spy.call_args_list[-1]
+        assert len(args) == 1
+        assert args[0] == (3000 / 1000) - (13.37 - 12.26)
+
+        perf_counter_spy.reset_mock()
+        request_spy.reset_mock()
+        gsleep_spy.reset_mock()
+
+        # iteration time > specified pace, templating
+        scenario.user._context['variables'].update({'pace': '500'})
+        scenario.pace_time = '{{ pace }}'
+        perf_counter_spy = mocker.patch('grizzly.scenarios.iterator.perf_counter', side_effect=[13.37, 14.48])
+
+        scenario.pace()
+
+        assert perf_counter_spy.call_count == 2
+        assert request_spy.call_count == 1
+        assert gsleep_spy.call_count == 0
+
+        _, kwargs = request_spy.call_args_list[-1]
+        assert kwargs.get('request_type', None) == 'PACE'
+        assert kwargs.get('name', None) == scenario.user._scenario.locust_name
+        assert kwargs.get('response_time', None) == 1110
+        assert kwargs.get('response_length', None) == 0
+        exception = kwargs.get('exception', None)
+        assert isinstance(exception, RuntimeError)
+        assert str(exception) == 'pace falling behind'
+
+        perf_counter_spy.reset_mock()
+        request_spy.reset_mock()
+        gsleep_spy.reset_mock()
+
     def test_iteration_stop(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
-        _, _, scenario = grizzly_fixture(scenario_type=IteratorScenario)
-        assert isinstance(scenario, IteratorScenario)
+        reload(iterator)
+        _, _, scenario = grizzly_fixture(scenario_type=iterator.IteratorScenario)
+        assert isinstance(scenario, iterator.IteratorScenario)
 
         stats_log_mock = mocker.patch.object(scenario.stats, 'log', return_value=None)
         stats_log_error_mock = mocker.patch.object(scenario.stats, 'log_error', return_value=None)
@@ -223,9 +407,10 @@ class TestIterationScenario:
         assert stats_log_error_mock.call_count == 1
 
     def test_wait(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
-        _, _, scenario = grizzly_fixture(scenario_type=IteratorScenario)
+        reload(iterator)
+        _, _, scenario = grizzly_fixture(scenario_type=iterator.IteratorScenario)
 
-        assert isinstance(scenario, IteratorScenario)
+        assert isinstance(scenario, iterator.IteratorScenario)
 
         wait_mocked = mocker.patch('grizzly.scenarios.iterator.GrizzlyScenario.wait', return_value=None)
         sleep_mocked = mocker.patch.object(scenario, '_sleep', return_value=None)
@@ -268,9 +453,10 @@ class TestIterationScenario:
         assert len(caplog.messages) == 0
 
     def test_run(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
-        _, user, scenario = grizzly_fixture(scenario_type=IteratorScenario)
+        reload(iterator)
+        _, user, scenario = grizzly_fixture(scenario_type=iterator.IteratorScenario)
 
-        assert isinstance(scenario, IteratorScenario)
+        assert isinstance(scenario, iterator.IteratorScenario)
 
         side_effects: List[Optional[InterruptTaskSet]] = [
             InterruptTaskSet(reschedule=False),
@@ -435,6 +621,8 @@ class TestIterationScenario:
         assert 'Traceback (most recent call last):' in caplog.text
 
     def test_run_tasks(self, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture, mocker: MockerFixture) -> None:
+        reload(iterator)
+
         class TestErrorTask(TestTask):
             def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
                 def task(parent: 'GrizzlyScenario') -> Any:
@@ -455,9 +643,9 @@ class TestIterationScenario:
                 name = f'test-task-{i}'
                 user.logger.debug(f'populating with {name}')
                 user._scenario.tasks.behave_steps.update({i + 1: name})
-                IteratorScenario.populate(TestTask(name=name))
+                iterator.IteratorScenario.populate(TestTask(name=name))
 
-            IteratorScenario.populate(TestErrorTask(name='test-error-task-1'))
+            iterator.IteratorScenario.populate(TestErrorTask(name='test-error-task-1'))
             user.logger.debug('populating with test-error-task-1')
             user._scenario.tasks.behave_steps.update({7: 'test-error-task-1'})
 
@@ -465,12 +653,12 @@ class TestIterationScenario:
                 name = f'test-task-{i}'
                 user.logger.debug(f'populating with {name}')
                 user._scenario.tasks.behave_steps.update({i + 2: name})
-                IteratorScenario.populate(TestTask(name=name))
+                iterator.IteratorScenario.populate(TestTask(name=name))
 
-            scenario = IteratorScenario(user)
+            scenario = iterator.IteratorScenario(user)
 
-            assert scenario.task_count == 12
-            assert len(scenario.tasks) == 12
+            assert scenario.task_count == 13
+            assert len(scenario.tasks) == 13
 
             mocker.patch('grizzly.scenarios.TestdataConsumer.__init__', return_value=None)
             mocker.patch('grizzly.scenarios.TestdataConsumer.stop', return_value=None)
@@ -492,50 +680,52 @@ class TestIterationScenario:
                     scenario.run()
 
             expected_messages = [
-                'executing task 1 of 12: unknown',  # IteratorScenario.iterator()
-                'executing task 2 of 12: test-task-1',
+                'executing task 1 of 13: iterator',  # IteratorScenario.iterator()
+                'executing task 2 of 13: test-task-1',
                 'test-task-1 executed',
-                'executing task 3 of 12: test-task-2',
+                'executing task 3 of 13: test-task-2',
                 'test-task-2 executed',
-                'executing task 4 of 12: test-task-3',
+                'executing task 4 of 13: test-task-3',
                 'test-task-3 executed',
-                'executing task 5 of 12: test-task-4',
+                'executing task 5 of 13: test-task-4',
                 'test-task-4 executed',
-                'executing task 6 of 12: test-task-5',
+                'executing task 6 of 13: test-task-5',
                 'test-task-5 executed',
-                'executing task 7 of 12: test-error-task-1',
+                'executing task 7 of 13: test-error-task-1',
                 'test-error-task-1 executed',
-                'restarting scenario at task 7 of 12',
-                'executing task 1 of 12: unknown',  # IteratorScenario.iterator()
-                'executing task 2 of 12: test-task-1',
+                'restarting scenario at task 7 of 13',
+                'executing task 1 of 13: iterator',  # IteratorScenario.iterator()
+                'executing task 2 of 13: test-task-1',
                 'test-task-1 executed',
-                'executing task 3 of 12: test-task-2',
+                'executing task 3 of 13: test-task-2',
                 'test-task-2 executed',
-                'executing task 4 of 12: test-task-3',
+                'executing task 4 of 13: test-task-3',
                 'test-task-3 executed',
-                'executing task 5 of 12: test-task-4',
+                'executing task 5 of 13: test-task-4',
                 'test-task-4 executed',
-                'executing task 6 of 12: test-task-5',
+                'executing task 6 of 13: test-task-5',
                 'test-task-5 executed',
-                'executing task 7 of 12: test-error-task-1',
+                'executing task 7 of 13: test-error-task-1',
                 'test-error-task-1 executed',
                 'stop scenarios before stopping user',
                 'scenario state=ScenarioState.RUNNING -> ScenarioState.STOPPING',
-                'not finished with scenario, currently at task 7 of 12, let me be!',
-                'executing task 8 of 12: test-task-6',
+                'not finished with scenario, currently at task 7 of 13, let me be!',
+                'executing task 8 of 13: test-task-6',
                 'test-task-6 executed',
-                'not finished with scenario, currently at task 8 of 12, let me be!',
-                'executing task 9 of 12: test-task-7',
+                'not finished with scenario, currently at task 8 of 13, let me be!',
+                'executing task 9 of 13: test-task-7',
                 'test-task-7 executed',
-                'not finished with scenario, currently at task 9 of 12, let me be!',
-                'executing task 10 of 12: test-task-8',
+                'not finished with scenario, currently at task 9 of 13, let me be!',
+                'executing task 10 of 13: test-task-8',
                 'test-task-8 executed',
-                'not finished with scenario, currently at task 10 of 12, let me be!',
-                'executing task 11 of 12: test-task-9',
+                'not finished with scenario, currently at task 10 of 13, let me be!',
+                'executing task 11 of 13: test-task-9',
                 'test-task-9 executed',
-                'not finished with scenario, currently at task 11 of 12, let me be!',
-                'executing task 12 of 12: test-task-10',
+                'not finished with scenario, currently at task 11 of 13, let me be!',
+                'executing task 12 of 13: test-task-10',
                 'test-task-10 executed',
+                'not finished with scenario, currently at task 12 of 13, let me be!',
+                'executing task 13 of 13: pace',
                 "okay, I'm done with my running tasks now",
                 'scenario state=ScenarioState.STOPPING -> ScenarioState.STOPPED',
                 "self.user._scenario_state=<ScenarioState.STOPPED: 1>, self.user._state='stopping', e=StopUser()",
@@ -551,4 +741,5 @@ class TestIterationScenario:
                 del environ['TESTDATA_PRODUCER_ADDRESS']
             except:
                 pass
-            IteratorScenario.tasks = IteratorScenario.tasks[:1]
+
+            reload(iterator)

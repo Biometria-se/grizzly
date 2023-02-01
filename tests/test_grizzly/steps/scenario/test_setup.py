@@ -225,6 +225,27 @@ def test_step_setup_iterations(behave_fixture: BehaveFixture) -> None:
     assert grizzly.scenario.iterations == 13
 
 
+def test_step_setup_pace(behave_fixture: BehaveFixture) -> None:
+    behave = behave_fixture.context
+    grizzly = cast(GrizzlyContext, behave.grizzly)
+
+    assert getattr(grizzly.scenario, 'pace', '') is None
+
+    step_setup_pace(behave, '2000')
+
+    assert len(grizzly.scenario.orphan_templates) == 0
+    assert grizzly.scenario.pace == '2000'
+
+    with pytest.raises(AssertionError) as ae:
+        step_setup_pace(behave, 'asdf')
+    assert str(ae.value) == '"asdf" is neither a template or a number'
+
+    step_setup_pace(behave, '{{ pace }}')
+
+    assert grizzly.scenario.orphan_templates == ['{{ pace }}']
+    assert grizzly.scenario.pace == '{{ pace }}'
+
+
 def test_step_setup_set_variable_alias(behave_fixture: BehaveFixture, mocker: MockerFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)

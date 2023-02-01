@@ -34,7 +34,12 @@ class GrizzlyScenario(SequentialTaskSet):
 
     @classmethod
     def populate(cls, task_factory: GrizzlyTask) -> None:
-        cls.tasks.append(task_factory())
+        task = task_factory()
+
+        if callable(getattr(cls, 'pace', None)):
+            cls.tasks.insert(-1, task)
+        else:
+            cls.tasks.append(task)
 
     def render(self, input: str, variables: Optional[Dict[str, Any]] = None) -> str:
         if variables is None:

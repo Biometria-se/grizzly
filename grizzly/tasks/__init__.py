@@ -136,7 +136,6 @@ from .timer import TimerTask
 from .task_wait import TaskWaitTask
 from .conditional import ConditionalTask
 from .loop import LoopTask
-from .pacemaker import PacemakerTask
 
 
 __all__ = [
@@ -153,5 +152,4 @@ __all__ = [
     'TaskWaitTask',
     'ConditionalTask',
     'LoopTask',
-    'PacemakerTask'
 ]

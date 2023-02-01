@@ -9,6 +9,7 @@ from locust.user.task import LOCUST_STATE_STOPPING, LOCUST_STATE_RUNNING
 from locust.exception import StopUser, InterruptTaskSet, RescheduleTaskImmediately, RescheduleTask
 from locust.stats import StatsEntry
 from gevent.exceptions import GreenletExit
+from gevent import sleep as gsleep
 
 from grizzly.types import RequestType, ScenarioState
 
@@ -26,6 +27,7 @@ class IteratorScenario(GrizzlyScenario):
     task_count: int
     stats: StatsEntry
     behave_steps: Dict[int, str]
+    pace_time: Optional[str] = None  # class variable injected by `grizzly.utils.create_scenario_class_type`
 
     current_task_index: int = 0
 
@@ -57,7 +59,10 @@ class IteratorScenario(GrizzlyScenario):
                     if self.user._state == LOCUST_STATE_STOPPING:
                         raise StopUser()
 
-                    step = self.behave_steps.get(self.current_task_index + 1, 'unknown')
+                    try:
+                        step = self.behave_steps.get(self.current_task_index + 1, self._task_queue[0].__name__)
+                    except Exception:
+                        step = 'unknown'
                     self.logger.debug(f'executing task {self.current_task_index+1} of {self.task_count}: {step}')
                     self.execute_next_task()
                 except RescheduleTaskImmediately:
@@ -117,7 +122,6 @@ class IteratorScenario(GrizzlyScenario):
     def iteration_stop(self, has_error: bool = False) -> None:
         if self.start is not None:
             response_time = int((perf_counter() - self.start) * 1000)
-
             response_length = (self.current_task_index % self.task_count) + 1
 
             self.stats.log(response_time, response_length)
@@ -154,8 +158,6 @@ class IteratorScenario(GrizzlyScenario):
 
         # scenario timer
         self.start = perf_counter()
-        # fetching testdata timer
-        start = perf_counter()
 
         remote_context = self.consumer.request(self.__class__.__name__)
 
@@ -163,7 +165,7 @@ class IteratorScenario(GrizzlyScenario):
             self.logger.debug('no iteration data available, stop scenario')
             raise StopScenario()
 
-        response_time = int((perf_counter() - start) * 1000)
+        response_time = int((perf_counter() - self.start) * 1000)
 
         self.user.environment.events.request.fire(
             request_type=RequestType.TESTDATA(),
@@ -175,3 +177,51 @@ class IteratorScenario(GrizzlyScenario):
         )
 
         self.user.add_context(remote_context)
+
+    # user tasks will be injected between these two
+
+    @task
+    def pace(self) -> None:
+        """
+        This is a task that must be the last one, if self.pace_time is set. This is ensured by `grizzly.scenarios.GrizzlyScenario.populate`
+        """
+        if self.pace_time is None:
+            return
+
+        exception: Optional[Exception] = None
+        response_length: int = 0
+
+        try:
+            start = perf_counter()
+            try:
+                value = float(self.render(self.pace_time))
+            except ValueError as ve:
+                raise ValueError(f'{self.pace_time} does not render to a number') from ve
+
+            if self.start is not None:
+                pace_correction = (start - self.start)
+
+                if (pace_correction * 1000) < value:
+                    self.logger.debug(f'keeping pace by sleeping {pace_correction * 1000} milliseconds')
+                    gsleep((value / 1000) - pace_correction)
+                    response_length = 1
+                else:
+                    self.logger.error(f'pace falling behind, currently at {abs((pace_correction * 1000))} milliseconds')
+                    raise RuntimeError('pace falling behind')
+        except Exception as e:
+            exception = e
+        finally:
+            done = perf_counter()
+            response_time = int((done - start) * 1000)
+
+            self.user.environment.events.request.fire(
+                request_type=RequestType.PACE(),
+                name=self.user._scenario.locust_name,
+                response_time=response_time,
+                response_length=response_length,
+                context=self.user._context,
+                exception=exception,
+            )
+
+            if exception is not None and isinstance(exception, ValueError):
+                raise StopUser()

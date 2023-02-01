@@ -148,6 +148,7 @@ def create_scenario_class_type(base_type: str, scenario: 'GrizzlyContextScenario
 
     return type(task_class_name, (base_task_class_type, ), {
         '__module__': base_task_class_type.__module__,
+        'pace_time': scenario.pace,
         'tasks': [],
     })
 

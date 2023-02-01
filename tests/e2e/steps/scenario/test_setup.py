@@ -103,6 +103,37 @@ def test_e2e_step_setup_iterations(e2e_fixture: End2EndFixture, iterations: str)
     assert rc == 0
 
 
+@pytest.mark.parametrize('pace', ['2000', '{{ pace }}'])
+def test_e2e_step_setup_pace(e2e_fixture: End2EndFixture, pace: str) -> None:
+    def validate_iterations(context: Context) -> None:
+        grizzly = cast(GrizzlyContext, context.grizzly)
+        data = list(context.table)[0].as_dict()
+        pace = data['pace']
+
+        assert grizzly.scenario.pace == pace, f'{grizzly.scenario.pace} != {pace}'
+
+    table: List[Dict[str, str]] = [{
+        'pace': pace,
+    }]
+
+    e2e_fixture.add_validator(validate_iterations, table=table)
+
+    feature_file = e2e_fixture.test_steps(
+        background=[
+            'Then ask for value of variable "pace"',
+        ],
+        scenario=[
+            f'And set iteration time to "{pace}" milliseconds',
+            'Then log message "pace={{ pace }}"',
+        ],
+        identifier=pace,
+    )
+
+    rc, _ = e2e_fixture.execute(feature_file, testdata={'pace': pace})
+
+    assert rc == 0
+
+
 def test_e2e_step_variable_value(e2e_fixture: End2EndFixture) -> None:
     def validate_variable_value(context: Context) -> None:
         from os import environ
