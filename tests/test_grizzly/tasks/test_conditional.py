@@ -1,11 +1,13 @@
-from typing import cast
+from typing import Callable, Any, cast
 
 import pytest
 
 from pytest_mock import MockerFixture
+from _pytest.logging import LogCaptureFixture
 from grizzly.tasks import ConditionalTask
+from grizzly.scenarios import GrizzlyScenario
 from grizzly.context import GrizzlyContextScenario
-from grizzly.exceptions import RestartScenario
+from grizzly.exceptions import RestartScenario, StopUser
 
 from ...fixtures import GrizzlyFixture
 from ...helpers import TestTask
@@ -64,9 +66,39 @@ class TestConditionalTask:
         test_task = cast(TestTask, task_factory.tasks.get(False, [])[-2])
         assert test_task.name is None
 
-    def test___call__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+    def test___call__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
         # pre: get context
         _, _, scenario = grizzly_fixture()
+
+        class TestRestartScenarioTask(TestTask):
+            def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
+                def task(parent: 'GrizzlyScenario') -> Any:
+                    parent.user.environment.events.request.fire(
+                        request_type='TSTSK',
+                        name=f'TestTask: {self.name}',
+                        response_time=13,
+                        response_length=37,
+                        context={},
+                        exception=RuntimeError('error'),
+                    )
+                    raise RestartScenario()
+
+                return task
+
+        class TestStopUserTask(TestTask):
+            def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
+                def task(parent: 'GrizzlyScenario') -> Any:
+                    parent.user.environment.events.request.fire(
+                        request_type='TSTSK',
+                        name=f'TestTask: {self.name}',
+                        response_time=13,
+                        response_length=37,
+                        context={},
+                        exception=RuntimeError('error'),
+                    )
+                    raise StopUser()
+
+                return task
 
         assert scenario is not None
 
@@ -151,8 +183,8 @@ class TestConditionalTask:
         assert kwargs.get('exception', RuntimeError()) is None
 
         request_calls = request_spy.call_args_list[2:-1]
-        print(request_calls)
         assert len(request_calls) == 3  # DummyTask
+
         for _, kwargs in request_calls:
             assert kwargs.get('request_type', None) == 'TSTSK'
 
@@ -175,3 +207,26 @@ class TestConditionalTask:
         assert len(request_calls) == 4
         for _, kwargs in request_calls:
             assert kwargs.get('request_type', None) == 'TSTSK'
+
+        task_factory.add(TestRestartScenarioTask(name=f'restart-scenario-false-{i}', scenario=scenario_context))
+        task_factory.switch(True)
+        task_factory.add(TestStopUserTask(name=f'stop-user-true-{i}', scenario=scenario_context))
+
+        scenario._user.environment.stats.clear_all()
+
+        task = task_factory()
+
+        # false condition
+        task(scenario)
+
+        assert len(scenario._user.environment.stats.serialize_errors().keys()) == 1
+
+        scenario._user.environment.stats.clear_all()
+
+        # true condition
+        task_factory.condition = '{{ value | int > 0 }}'
+        scenario.user._context.update({'variables': {'value': 1}})
+
+        task(scenario)
+
+        assert len(scenario._user.environment.stats.serialize_errors().keys()) == 1
