@@ -246,6 +246,7 @@ class GrizzlyContextScenario:
     user: GrizzlyContextScenarioUser = field(init=False, hash=False, compare=False, default_factory=GrizzlyContextScenarioUser)
     index: int = field(init=True)
     iterations: int = field(init=False, repr=False, hash=False, compare=False, default=1)
+    pace: Optional[str] = field(init=False, repr=False, hash=False, compare=False, default=None)
 
     behave: Scenario = field(init=False, repr=False, hash=False, compare=False)
     context: Dict[str, Any] = field(init=False, repr=False, hash=False, compare=False, default_factory=dict)

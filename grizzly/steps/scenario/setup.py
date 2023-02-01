@@ -93,6 +93,36 @@ def step_setup_iterations(context: Context, value: str, iteration_number: str) -
     grizzly.scenario.iterations = iterations
 
 
+@given(u'set iteration time to "{pace_time}" milliseconds')
+def step_setup_pace(context: Context, pace_time: str) -> None:
+    """
+    Sets to minimum time one iterations of the {@pylink grizzly.tasks} in the scenario should take.
+    E.g. if `pace` is set to `2000` ms and the time since it last ran was `300` ms, this task will
+    sleep for `1700` ms. If the time of all tasks is greater than the specified time, there will be
+    an error, but the scenario will continue.
+
+    This is useful to be able to control the intensity towards the loadtesting target.
+
+    Example:
+
+    ``` gherkin
+    Then set iteration time to "2000" milliseconds
+    Then set iteration time to "{{ pace }}" milliseconds
+    ```
+    """
+    grizzly = cast(GrizzlyContext, context.grizzly)
+
+    if not is_template(pace_time):
+        try:
+            float(pace_time)
+        except ValueError:
+            raise AssertionError(f'"{pace_time}" is neither a template or a number')
+    else:
+        grizzly.scenario.orphan_templates.append(pace_time)
+
+    grizzly.scenario.pace = pace_time
+
+
 @given(u'set alias "{alias}" for variable "{variable}"')
 def step_setup_set_variable_alias(context: Context, alias: str, variable: str) -> None:
     '''Creates an alias for a variable that points to another structure in the context.

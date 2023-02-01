@@ -317,6 +317,7 @@ class TestGrizzlyContextScenario:
         assert scenario.iterations == 1
         assert scenario.context == {}
         assert scenario.tasks == []
+        assert getattr(scenario, 'pace', '') is None
         assert isinstance(scenario.validation, GrizzlyContextScenarioValidation)
         assert not scenario.failure_exception
 

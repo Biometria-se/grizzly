@@ -114,20 +114,23 @@ def test_e2e_example(e2e_fixture: End2EndFixture) -> None:
             assert "AtomicCustomVariable.foobar='foobar'" in result
 
             # check debugging and that task index -> step expression is correct
-            assert 'executing task 1 of 2: unknown' in result
+            assert 'executing task 1 of 3: iterator' in result
             assert (
-                'executing task 2 of 2: Then get request with name "get-dog-facts" from endpoint '
+                'executing task 2 of 3: Then get request with name "get-dog-facts" from endpoint '
                 '"/api/v1/resources/dogs?number={{ AtomicRandomInteger.dog_facts_count }}'
             ) in result
+            assert 'executing task 3 of 3: pace' in result
 
-            assert 'executing task 1 of 3: unknown' in result
-            assert 'executing task 2 of 3: Then get request with name "get-cat-facts" from endpoint "/facts?limit={{ AtomicRandomInteger.cat_facts_count }}"' in result
-            assert 'executing task 3 of 3: And send message "{\'client\': \'server\'}"' in result
+            assert 'executing task 1 of 4: iterator' in result
+            assert 'executing task 2 of 4: Then get request with name "get-cat-facts" from endpoint "/facts?limit={{ AtomicRandomInteger.cat_facts_count }}"' in result
+            assert 'executing task 3 of 4: And send message "{\'client\': \'server\'}"' in result
+            assert 'executing task 4 of 4: pace' in result
 
-            assert 'executing task 1 of 4: unknown' in result
-            assert 'executing task 2 of 4: Then get request with name "1-get-book" from endpoint "/books/{{ AtomicCsvRow.books.book }}.json | content_type=json"' in result
-            assert 'executing task 3 of 4: Then get request with name "2-get-author" from endpoint "{{ author_endpoint }}.json | content_type=json"' in result
-            assert 'executing task 4 of 4: Then log message "AtomicCustomVariable.foobar=\'{{ steps.custom.AtomicCustomVariable.foobar }}\'"' in result
+            assert 'executing task 1 of 5: iterator' in result
+            assert 'executing task 2 of 5: Then get request with name "1-get-book" from endpoint "/books/{{ AtomicCsvRow.books.book }}.json | content_type=json"' in result
+            assert 'executing task 3 of 5: Then get request with name "2-get-author" from endpoint "{{ author_endpoint }}.json | content_type=json"' in result
+            assert 'executing task 4 of 5: Then log message "AtomicCustomVariable.foobar=\'{{ steps.custom.AtomicCustomVariable.foobar }}\'"' in result
+            assert 'executing task 5 of 5: pace' in result
     except:
         if result is not None:
             print(result)

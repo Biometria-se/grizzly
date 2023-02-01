@@ -4,6 +4,7 @@ import re
 
 from os import environ
 from typing import cast, Tuple, Any, Dict, Type, List
+from types import FunctionType
 from random import randint
 from socket import error as socket_error
 
@@ -206,7 +207,11 @@ def test_setup_locust_scenarios(behave_fixture: BehaveFixture, noop_zmq: NoopZmq
     user_tasks = user_class.tasks[-1]
     assert issubclass(type(user_tasks), SequentialTaskSetMeta)
     user_tasks = cast(IteratorScenario, user_tasks)
-    assert len(user_tasks.tasks) == 3 + 1  # IteratorScenario has an internal task other than what we've added
+    assert len(user_tasks.tasks) == 3 + 2  # IteratorScenario has two internal task other than what we've added
+    assert isinstance(user_tasks.tasks[0], FunctionType)
+    assert user_tasks.tasks[0].__name__ == 'iterator'
+    assert isinstance(user_tasks.tasks[-1], FunctionType)
+    assert user_tasks.tasks[-1].__name__ == 'pace'
 
     if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
         grizzly.scenario.user.class_name = 'MessageQueueUser'
@@ -226,7 +231,7 @@ def test_setup_locust_scenarios(behave_fixture: BehaveFixture, noop_zmq: NoopZmq
         user_tasks = user_class.tasks[-1]
         assert issubclass(type(user_tasks), SequentialTaskSetMeta)
         user_tasks = cast(IteratorScenario, user_tasks)
-        assert len(user_tasks.tasks) == 3 + 1  # IteratorScenario has an internal task other than what we've added
+        assert len(user_tasks.tasks) == 3 + 2  # IteratorScenario has two internal task other than what we've added
 
         grizzly.scenario.user.class_name = 'RestApiUser'
         grizzly.scenario.context['host'] = 'https://api.example.io'

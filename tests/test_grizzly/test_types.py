@@ -70,6 +70,7 @@ class TestRequestType:
         assert RequestType.get_method_weight('GET') == RequestType.get_method_weight('POST')
         assert RequestType.get_method_weight('SCEN') == 0
         assert RequestType.get_method_weight('TSTD') == 1
+        assert RequestType.get_method_weight('PACE') == 2
 
         for request_type in RequestType:
             if request_type.weight < 10:

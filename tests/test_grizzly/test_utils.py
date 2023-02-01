@@ -422,14 +422,26 @@ def test_create_scenario_class_type() -> None:
     assert issubclass(task_class_type_1, (IteratorScenario, TaskSet))
     assert task_class_type_1.__name__ == 'IteratorScenario_001'
     assert task_class_type_1.__module__ == 'grizzly.scenarios.iterator'
-    task_class_type_1.populate(RequestTask(RequestMethod.POST, name='test-request', endpoint='/api/test'))
+    assert getattr(task_class_type_1, 'pace_time', '') is None
+    last_task_1 = task_class_type_1.tasks[-1]
+    assert isinstance(last_task_1, FunctionType)
+    task_class_type_1.populate(RequestTask(RequestMethod.POST, name='test-request-1', endpoint='/api/test'))
+    assert task_class_type_1.tasks[-1] is last_task_1
+    assert last_task_1.__name__ == 'pace'
 
     scenario = GrizzlyContextScenario(2)
     scenario.name = 'TestTestTest'
+    scenario.pace = '2000'
     task_class_type_2 = create_scenario_class_type('IteratorScenario', scenario)
     assert issubclass(task_class_type_2, (IteratorScenario, TaskSet))
     assert task_class_type_2.__name__ == 'IteratorScenario_002'
     assert task_class_type_2.__module__ == 'grizzly.scenarios.iterator'
+    assert getattr(task_class_type_2, 'pace_time', '') == '2000'
+    last_task_2 = task_class_type_2.tasks[-1]
+    assert isinstance(last_task_2, FunctionType)
+    task_class_type_2.populate(RequestTask(RequestMethod.POST, name='test-request-2', endpoint='/api/test'))
+    assert task_class_type_2.tasks[-1] is last_task_2
+    assert last_task_2.__name__ == 'pace'
 
     assert task_class_type_1.tasks != task_class_type_2.tasks
 
