@@ -273,7 +273,7 @@ class MessageQueueClientTask(ClientTask):
             client_id = id(parent)
             worker = self._worker.get(client_id, None)
             if worker is None:
-                with self.action(parent, supress=True) as meta:
+                with self.action(parent, suppress=True) as meta:
                     self.connect(client_id, client, meta)
                     worker = self._worker.get(client_id, None)
                     parent.logger.debug(f'connected to worker {worker} at {hostname()}')

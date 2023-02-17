@@ -18,11 +18,11 @@ Only supports `RequestDirection.FROM`.
 '''
 from typing import Optional, Dict, Any
 
+from locust.exception import CatchResponseError
 from grizzly_extras.arguments import split_value, parse_arguments
 
-from grizzly.types import GrizzlyResponse, RequestDirection, bool_type
-
 from . import client, ClientTask
+from ...types import GrizzlyResponse, RequestDirection, bool_type
 from ...scenarios import GrizzlyScenario
 from ...context import GrizzlyContextScenario
 
@@ -84,12 +84,20 @@ class HttpClientTask(ClientTask):
                 parent.user._context['variables'][self.variable] = value
             meta['response_length'] = len(value)
 
-            meta.update({'response': {
-                'url': response.url,
-                'metadata': dict(response.headers),
-                'payload': value,
-                'status': response.status_code,
-            }})
+            exception: Optional[Exception] = None
+
+            if response.status_code != 200:
+                exception = CatchResponseError(f'{response.status_code} not in [200]: {value}')
+
+            meta.update({
+                'response': {
+                    'url': response.url,
+                    'metadata': dict(response.headers),
+                    'payload': value,
+                    'status': response.status_code,
+                },
+                'exception': exception,
+            })
 
             return dict(response.headers), value
 

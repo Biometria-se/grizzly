@@ -4,7 +4,7 @@ from json import dumps as jsondumps, loads as jsonloads
 import pytest
 
 from pytest_mock import MockerFixture
-from locust.exception import StopUser
+from locust.exception import StopUser, CatchResponseError
 from requests import Response
 
 from grizzly_extras.transformer import TransformerContentType
@@ -79,7 +79,10 @@ class TestHttpClientTask:
         assert kwargs.get('response_time', None) >= 0.0
         assert kwargs.get('response_length') == len(jsondumps({'hello': 'world'}))
         assert kwargs.get('context', None) is scenario.user._context
-        assert kwargs.get('exception', '') is None
+        exception = kwargs.get('exception', None)
+        assert isinstance(exception, CatchResponseError)
+        assert str(exception) == '400 not in [200]: {"hello": "world"}'
+
         request_logs = list(task_factory.log_dir.rglob('**/*'))
         assert len(request_logs) == 1
         request_log = request_logs[-1]

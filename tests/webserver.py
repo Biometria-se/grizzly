@@ -135,9 +135,11 @@ def app_until_attribute(attribute: str) -> FlaskResponse:
     if app_request_count[x_grizzly_user] < nth - 1:
         status = wrong
         app_request_count[x_grizzly_user] += 1
+        status_code = 400
     else:
         status = right
         app_request_count[x_grizzly_user] = 0
+        status_code = 200
 
     json_result: Any = {attribute: status}
 
@@ -146,7 +148,10 @@ def app_until_attribute(attribute: str) -> FlaskResponse:
 
     logger.debug(f'sending {json.dumps(json_result)} to {x_grizzly_user}')
 
-    return jsonify(json_result)
+    response = jsonify(json_result)
+    response.status_code = status_code
+
+    return response
 
 
 @app.errorhandler(404)
