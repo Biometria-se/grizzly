@@ -17,10 +17,10 @@ from behave.runner import Context
 from behave.model import Status
 from locust.runners import MasterRunner, WorkerRunner, Runner
 from locust.env import Environment
-from locust import stats as lstats
+from locust import stats as lstats, events
 from locust.log import setup_logging
 from locust.util.timespan import parse_timespan
-from locust import events
+from locust.user.users import User
 from jinja2.exceptions import TemplateError
 
 from grizzly.types import RequestType, TestdataType
@@ -30,7 +30,6 @@ from .listeners import init, init_statistics_listener, quitting, validate_result
 from .testdata.utils import initialize_testdata
 from .context import GrizzlyContext
 from .tasks import GrizzlyTask
-from .users.base import GrizzlyUser
 
 from .utils import create_scenario_class_type, create_user_class_type
 
@@ -80,8 +79,8 @@ def on_local(context: Context) -> bool:
     return value
 
 
-def setup_locust_scenarios(grizzly: GrizzlyContext) -> Tuple[List[Type[GrizzlyUser]], List[GrizzlyTask], Set[str]]:
-    user_classes: List[Type[GrizzlyUser]] = []
+def setup_locust_scenarios(grizzly: GrizzlyContext) -> Tuple[List[Type[User]], List[GrizzlyTask], Set[str]]:
+    user_classes: List[Type[User]] = []
     tasks: List[GrizzlyTask] = []
 
     scenarios = grizzly.scenarios()

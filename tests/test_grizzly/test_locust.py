@@ -18,6 +18,7 @@ from behave.runner import Context
 from behave.model import Scenario
 from locust.env import Environment
 from locust.stats import RequestStats
+from locust.user.users import User
 from jinja2 import TemplateError
 
 from grizzly.locust import (
@@ -38,7 +39,6 @@ from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 from grizzly.tasks import GrizzlyTask, LogMessageTask, RequestTask, WaitTask
 from grizzly.tasks.clients import MessageQueueClientTask
 from grizzly.users import RestApiUser, MessageQueueUser
-from grizzly.users.base import GrizzlyUser
 from grizzly.scenarios import IteratorScenario
 from grizzly.testdata.variables import AtomicIntegerIncrementer
 
@@ -362,7 +362,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
         )
 
     grizzly = cast(GrizzlyContext, behave.grizzly)
-    user_classes: List[Type[GrizzlyUser]] = []
+    user_classes: List[Type[User]] = []
     environment = Environment(
         user_classes=user_classes,
         shape_class=None,

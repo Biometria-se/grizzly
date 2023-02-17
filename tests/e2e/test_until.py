@@ -24,13 +24,15 @@ def test_e2e_until(e2e_fixture: End2EndFixture) -> None:
         expectations = [
             ('001 RequestTask', 'SCEN', 0, 1,),
             ('001 RequestTask', 'TSTD', 0, 1,),
-            ('001 request-task', 'GET', 0, 2,),
+            ('001 request-task', 'GET', 1, 2,),
             ('001 request-task, w=1.0s, r=2, em=1', 'UNTL', 0, 1,),
             ('002 HttpClientTask', 'SCEN', 0, 1,),
             ('002 HttpClientTask', 'TSTD', 0, 1,),
             ('002 http-client-task, w=1.0s, r=3, em=1', 'UNTL', 0, 1,),
-            ('002 http-client-task', 'CLTSK', 0, 2,),
+            ('002 http-client-task', 'CLTSK', 1, 2,),
         ]
+
+        assert stats.errors == {}, f'expected 0 logged errors, got {len(stats.errors)}'
 
         for name, method, expected_num_failures, expected_num_requests in expectations:
             stat = stats.get(name, method)

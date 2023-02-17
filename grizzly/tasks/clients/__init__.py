@@ -147,7 +147,7 @@ class ClientTask(GrizzlyMetaRequestTask):
         raise NotImplementedError(f'{self.__class__.__name__} has not implemented PUT')
 
     @contextmanager
-    def action(self, parent: GrizzlyScenario, action: Optional[str] = None, supress: bool = False) -> Generator[Dict[str, Any], None, None]:
+    def action(self, parent: GrizzlyScenario, action: Optional[str] = None, suppress: bool = False) -> Generator[Dict[str, Any], None, None]:
         exception: Optional[Exception] = None
         response_length = 0
         start_time = time()
@@ -169,7 +169,10 @@ class ClientTask(GrizzlyMetaRequestTask):
             response_time = int((time() - start_time) * 1000)
             response_length = meta.get('response_length', None) or 0
 
-            if not supress or exception is not None:
+            if exception is None:
+                exception = meta.get('exception', None)
+
+            if not suppress or exception is not None:
                 parent.user.environment.events.request.fire(
                     request_type=RequestType.CLIENT_TASK(),
                     name=name,
@@ -179,7 +182,7 @@ class ClientTask(GrizzlyMetaRequestTask):
                     exception=exception,
                 )
 
-            if exception is not None or parent.user._scenario.context.get('log_all_requests', False) or meta.get('response', {}).get('status', 200) != 200:
+            if exception is not None or parent.user._scenario.context.get('log_all_requests', False):
                 log_name = RequestLogger.normalize(name)
                 log_date = datetime.now()
                 log_file = self.log_dir / f'{log_name}.{log_date.strftime("%Y%m%dT%H%M%S%f")}.log'

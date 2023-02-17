@@ -12,9 +12,102 @@ from grizzly.exceptions import RestartScenario
 from grizzly.types import RequestDirection, RequestMethod
 from grizzly.tasks import GrizzlyMetaRequestTask, UntilRequestTask, RequestTask
 from grizzly.tasks.clients import HttpClientTask
+from grizzly.tasks.until import suppress, no_error_handler
 from grizzly_extras.transformer import TransformerContentType, TransformerError, transformer
 
 from ...fixtures import GrizzlyFixture
+
+
+def test_no_error_handler(mocker: MockerFixture, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture) -> None:
+    grizzly_fixture()
+
+    env = grizzly_fixture.locust_env
+
+    assert len(env.events.request._handlers) == 1
+
+    handler = no_error_handler(env)
+
+    log_request_spy = mocker.spy(env.stats, 'log_request')
+    total_log_error_spy = mocker.spy(env.stats.total, 'log_error')
+    request_stats_spy = mocker.patch.object(env.stats, 'get', return_value=mocker.MagicMock())
+
+    with caplog.at_level(ERROR):
+        handler('TEST', 'test-event-1', 1337, 337, None)
+
+    assert len(caplog.messages) == 0
+    assert total_log_error_spy.call_count == 0
+    assert request_stats_spy.call_count == 1
+    assert request_stats_spy.return_value.log_error.call_count == 0
+    assert log_request_spy.call_count == 1
+
+    args, kwargs = log_request_spy.call_args_list[-1]
+    assert kwargs == {}
+    assert len(args) == 4
+    assert args[0] == 'TEST'
+    assert args[1] == 'test-event-1'
+    assert args[2] == 1337
+    assert args[3] == 337
+
+    args, kwargs = request_stats_spy.call_args_list[-1]
+    assert kwargs == {}
+    assert len(args) == 2
+    assert args[0] == 'test-event-1'
+    assert args[1] == 'TEST'
+
+    with caplog.at_level(ERROR):
+        handler('TEST', 'test-event-2', 1337, 337, RuntimeError('foo'))
+
+    assert len(caplog.messages) == 1
+    assert total_log_error_spy.call_count == 1
+    assert request_stats_spy.call_count == 3
+    assert request_stats_spy.return_value.log_error.call_count == 1
+    assert log_request_spy.call_count == 2
+
+    assert caplog.messages[0] == "TEST test-event-2: response_time=1337, response_length=337, exception=RuntimeError('foo')"
+
+    args, kwargs = total_log_error_spy.call_args_list[-1]
+    assert kwargs == {}
+    assert len(args) == 1
+    assert args[0] is None
+
+    args, kwargs = request_stats_spy.return_value.log_error.call_args_list[-1]
+    assert kwargs == {}
+    assert len(args) == 1
+    assert args[0] is None
+
+    args, kwargs = log_request_spy.call_args_list[-1]
+    assert kwargs == {}
+    assert len(args) == 4
+    assert args[0] == 'TEST'
+    assert args[1] == 'test-event-2'
+    assert args[2] == 1337
+    assert args[3] == 337
+
+
+def test_supress(grizzly_fixture: GrizzlyFixture) -> None:
+    grizzly_fixture()
+
+    env = grizzly_fixture.locust_env
+
+    original_handlers = env.events.request._handlers.copy()
+
+    assert len(env.events.request._handlers) == 1
+
+    with suppress(env):
+        assert env.events.request._handlers != original_handlers
+        assert len(env.events.request._handlers) == 1
+        assert env.events.request._handlers[0].__name__ == 'no_error_handler_wrapper'
+
+    assert env.events.request._handlers == original_handlers
+
+    with pytest.raises(RuntimeError):
+        with suppress(env):
+            assert env.events.request._handlers != original_handlers
+            assert len(env.events.request._handlers) == 1
+            assert env.events.request._handlers[0].__name__ == 'no_error_handler_wrapper'
+            raise RuntimeError()
+
+    assert env.events.request._handlers == original_handlers
 
 
 class TestUntilRequestTask:
