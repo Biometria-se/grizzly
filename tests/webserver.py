@@ -60,6 +60,11 @@ def app_get_book(book: str) -> FlaskResponse:
                     ]
                 })
 
+    response = jsonify({'success': False})
+    response.status_code = 500
+
+    return response
+
 
 @app.route('/author/<author_key>.json')
 def app_get_author(author_key: str) -> FlaskResponse:
