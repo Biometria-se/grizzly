@@ -88,7 +88,6 @@ def setup_locust_scenarios(grizzly: GrizzlyContext) -> Tuple[List[Type[User]], L
     assert len(scenarios) > 0, 'no scenarios in feature'
 
     external_dependencies: Set[str] = set()
-    dummy_environment = Environment()
     distribution: Dict[str, int] = {}
 
     total_weight = sum([scenario.user.weight for scenario in scenarios])
@@ -124,9 +123,6 @@ def setup_locust_scenarios(grizzly: GrizzlyContext) -> Tuple[List[Type[User]], L
         user_class_type = create_user_class_type(scenario, grizzly.setup.global_context, fixed_count=fixed_count)
         user_class_type.host = scenario.context['host']
 
-        # fail early if there is a problem with creating an instance of the user class
-        user_class_type(dummy_environment)
-
         external_dependencies.update(user_class_type.__dependencies__)
 
         # @TODO: how do we specify other type of grizzly.scenarios?
@@ -152,7 +148,7 @@ def setup_locust_scenarios(grizzly: GrizzlyContext) -> Tuple[List[Type[User]], L
 
 
 def setup_resource_limits(context: Context) -> None:
-    if sys.platform != 'win32' and on_master(context):
+    if sys.platform != 'win32' and not on_master(context):
         try:
             import resource
             minimum_open_file_limit = 10000
