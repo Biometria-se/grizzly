@@ -14,7 +14,7 @@ from behave.runner import Context, Runner
 from behave.configuration import Configuration
 from behave.model import Feature, Step, Status
 
-from grizzly.environment import before_feature, after_feature, before_scenario, after_scenario, before_step, after_step
+from grizzly.behave import before_feature, after_feature, before_scenario, after_scenario, before_step, after_step
 from grizzly.context import GrizzlyContext
 from grizzly.steps.setup import step_setup_variable_value_ask as step_both
 from grizzly.steps.background.setup import step_setup_save_statistics as step_background
@@ -93,7 +93,7 @@ def test_after_feature(behave_fixture: BehaveFixture, mocker: MockerFixture, cap
         pass
 
     mocker.patch(
-        'grizzly.environment.locustrun',
+        'grizzly.behave.locustrun',
         side_effect=[LocustRunning]
     )
 
@@ -109,7 +109,7 @@ def test_after_feature(behave_fixture: BehaveFixture, mocker: MockerFixture, cap
         after_feature(behave, feature)
 
     mocker.patch(
-        'grizzly.environment.locustrun',
+        'grizzly.behave.locustrun',
         side_effect=[1, 123]
     )
 

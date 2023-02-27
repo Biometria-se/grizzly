@@ -5,7 +5,7 @@ from behave.runner import Context
 from behave.model import Scenario
 
 # pylint: disable=unused-import
-from grizzly.environment import (  # noqa: F401
+from grizzly.behave import (  # noqa: F401
     before_feature,
     after_feature,
     before_scenario as grizzly_before_scenario,
@@ -14,7 +14,7 @@ from grizzly.environment import (  # noqa: F401
     after_step,
 )
 from grizzly.context import GrizzlyContext
-from locust.exception import StopUser
+from grizzly.exceptions import StopUser
 
 
 def before_scenario(

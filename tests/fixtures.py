@@ -1026,7 +1026,7 @@ def step_start_webserver(context: Context, port: int) -> None:
             fd.write('from behave.model import Feature\n')
             fd.write('from grizzly.context import GrizzlyContext\n')
             fd.write((
-                'from grizzly.environment import before_feature as grizzly_before_feature, '
+                'from grizzly.behave import before_feature as grizzly_before_feature, '
                 'after_feature as grizzly_after_feature, before_scenario, after_scenario, before_step\n\n'
             ))
 
