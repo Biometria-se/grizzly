@@ -7,6 +7,7 @@ from typing import cast, Tuple, Any, Dict, Type, List
 from types import FunctionType
 from random import randint
 from socket import error as socket_error
+from unittest.mock import MagicMock
 
 import pytest
 import gevent
@@ -291,60 +292,81 @@ def test_setup_resource_limits(behave_fixture: BehaveFixture, mocker: MockerFixt
             name
         )
 
-    def mock_getrlimit(limit: int) -> None:
-        def mocked_getrlimit(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Tuple[int, int]:
-            return limit, 0
-
-        mocker.patch(
+    def mock_getrlimit(limit: int) -> MagicMock:
+        return mocker.patch(
             'resource.getrlimit',
-            mocked_getrlimit,
+            return_value=(limit, limit,),
         )
 
-    def mock_setrlimit(exception_type: Type[Exception]) -> None:
-        def mocked_setrlimit(_resource: int, limits: Tuple[int, int]) -> Any:
-            if sys.platform != 'win32':
-                assert _resource == resource.RLIMIT_NOFILE
-                assert limits == (10000, resource.RLIM_INFINITY, )
+    getrlimit_mock = mock_getrlimit(1024)
 
-            raise exception_type()
+    setrlimit_mock = mocker.patch(
+        'resource.setrlimit',
+        return_value=None,
+    )
 
-        mocker.patch(
-            'resource.setrlimit',
-            mocked_setrlimit,
-        )
-
+    # win32
     mock_on_master(False)
     mock_sys_platform('win32')
     setup_resource_limits(behave)
+    assert setrlimit_mock.call_count == 0
+    assert getrlimit_mock.call_count == 0
 
+    mock_on_master(True)
+    mock_sys_platform('win32')
+    setup_resource_limits(behave)
+    assert setrlimit_mock.call_count == 0
+    assert getrlimit_mock.call_count == 0
+
+    # linux
+    mock_on_master(True)
     mock_sys_platform('linux')
     setup_resource_limits(behave)
+    assert setrlimit_mock.call_count == 0
+    assert getrlimit_mock.call_count == 0
 
     # make sure setrlimit is called
-    mock_on_master(True)
-    mock_getrlimit(1024)
-    mock_setrlimit(RuntimeError)
-    with pytest.raises(RuntimeError):
-        setup_resource_limits(behave)
+    mock_on_master(False)
+    getrlimit_mock = mock_getrlimit(1024)
+    setup_resource_limits(behave)
+    assert setrlimit_mock.call_count == 1
+    assert getrlimit_mock.call_count == 1
+    args, kwargs = setrlimit_mock.call_args_list[-1]
+    assert kwargs == {}
+    assert len(args) == 2
+    assert args[0] == resource.RLIMIT_NOFILE
+    limit_min, limit_max = args[1]
+    assert limit_min == 10000
+    assert limit_max == resource.RLIM_INFINITY
 
     # failed to set resource limits
-    mock_setrlimit(OSError)
+    setrlimit_mock = mocker.patch(
+        'resource.setrlimit',
+        side_effect=[OSError],
+    )
+
     with caplog.at_level(logging.WARNING):
         setup_resource_limits(behave)
     assert "and the OS didn't allow locust to increase it by itself" in caplog.text
+    assert setrlimit_mock.call_count == 1
+    assert getrlimit_mock.call_count == 2
     caplog.clear()
 
-    mock_setrlimit(ValueError)
+    setrlimit_mock = mocker.patch(
+        'resource.setrlimit',
+        side_effect=[ValueError],
+    )
     with caplog.at_level(logging.WARNING):
         setup_resource_limits(behave)
     assert "and the OS didn't allow locust to increase it by itself" in caplog.text
+    assert setrlimit_mock.call_count == 1
+    assert getrlimit_mock.call_count == 3
     caplog.clear()
 
-    mock_getrlimit(10001)
-    try:
-        setup_resource_limits(behave)
-    except RuntimeError:
-        pytest.fail('setrlimit was unexpectedly called')
+    getrlimit_mock = mock_getrlimit(10001)
+    setup_resource_limits(behave)
+    assert setrlimit_mock.call_count == 1
+    assert getrlimit_mock.call_count == 1
 
 
 def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
