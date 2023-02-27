@@ -16,6 +16,9 @@ RUN mkdir /root/ibm && cd /root/ibm && \
 
 FROM mcr.microsoft.com/vscode/devcontainers/python:0-${VARIANT}
 
+RUN rm  -rf /etc/apt/sources.list.d/yarn.list || true && \
+    apt-get update
+
 # Copy/setup IBM MQ stuff
 RUN mkdir -p /opt/mqm/lib64 && mkdir /opt/mqm/lib && mkdir -p /opt/mqm/gskit8/lib64
 

@@ -5,7 +5,7 @@ import subprocess
 import argparse
 
 from os import path, getcwd
-from distutils.version import StrictVersion
+from packaging.version import Version
 
 
 def _parse_arguments() -> argparse.Namespace:
@@ -36,8 +36,9 @@ def main() -> int:
         cwd=args.from_directory,
     ).decode('utf-8').strip()
 
-    tags = [v[1:] for v in output.split('\n')]
-    tags.sort(reverse=True, key=StrictVersion)
+    tags = [v[1:] for v in output.split('\n') if v.startswith('v')]
+    if len(tags) > 0:
+        tags.sort(reverse=True, key=Version)
 
     for index, previous_tag in enumerate(tags[1:], start=1):
         previous_tag = f'v{previous_tag}'
