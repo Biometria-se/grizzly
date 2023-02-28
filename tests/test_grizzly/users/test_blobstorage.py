@@ -50,9 +50,31 @@ def blob_storage_scenario(grizzly_fixture: GrizzlyFixture) -> BlobStorageScenari
 
 class TestBlobStorageUser:
     @pytest.mark.usefixtures('blob_storage_scenario')
+    def test_on_start(self, mocker: MockerFixture, blob_storage_scenario: BlobStorageScenarioFixture) -> None:
+        user, _, _ = blob_storage_scenario
+
+        assert not hasattr(user, 'client')
+
+        user.on_start()
+
+        assert hasattr(user, 'client')
+        assert user.client.account_name == 'my-storage'
+
+    @pytest.mark.usefixtures('blob_storage_scenario')
+    def test_on_stop(self, mocker: MockerFixture, blob_storage_scenario: BlobStorageScenarioFixture) -> None:
+        user, _, _ = blob_storage_scenario
+        user.on_start()
+
+        on_stop_spy = mocker.spy(user.client, 'close')
+
+        user.on_stop()
+
+        assert on_stop_spy.call_count == 1
+
+    @pytest.mark.usefixtures('blob_storage_scenario')
     def test_create(self, blob_storage_scenario: BlobStorageScenarioFixture) -> None:
         user, _, environment = blob_storage_scenario
-        assert user.client.account_name == 'my-storage'
+        user.on_start()
         assert issubclass(user.__class__, GrizzlyUser)
 
         BlobStorageUser.host = 'DefaultEndpointsProtocol=http;EndpointSuffix=core.windows.net;AccountName=my-storage;AccountKey=xxxyyyyzzz=='
@@ -77,7 +99,8 @@ class TestBlobStorageUser:
 
     @pytest.mark.usefixtures('blob_storage_scenario')
     def test_send(self, blob_storage_scenario: BlobStorageScenarioFixture, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
-        [user, scenario, _] = blob_storage_scenario
+        user, scenario, _ = blob_storage_scenario
+        user.on_start()
 
         grizzly = grizzly_fixture.grizzly
 

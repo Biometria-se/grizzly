@@ -71,9 +71,15 @@ class IotHubUser(GrizzlyUser):
         if 'SharedAccessKey' not in params:
             raise ValueError(f'{self.__class__.__name__} needs SharedAccessKey in the query string')
 
+        self._context = merge_dicts(super().context(), self.__class__._context)
+
+    def on_start(self) -> None:
+        super().on_start()
         self.client = IoTHubDeviceClient.create_from_connection_string(self.host)
 
-        self._context = merge_dicts(super().context(), self.__class__._context)
+    def on_stop(self) -> None:
+        self.client.disconnect()
+        super().on_stop()
 
     def request(self, request: RequestTask) -> GrizzlyResponse:
         request_name, endpoint, payload, _, _ = self.render(request)

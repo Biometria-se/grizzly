@@ -100,7 +100,7 @@ def test_register() -> None:
         actual = list(handlers.keys())
         actual.sort()
 
-        expected = ['CONN', 'RECEIVE', 'SEND', 'PUT', 'GET']
+        expected = ['CONN', 'RECEIVE', 'SEND', 'PUT', 'GET', 'DISC']
         expected.sort()
 
         assert actual == expected

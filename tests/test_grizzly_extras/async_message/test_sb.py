@@ -41,6 +41,76 @@ class TestAsyncServiceBusHandler:
         assert sender.close.call_count == 1
         assert receiver.close.call_count == 1
 
+    def test_disconnect(self, mocker: MockerFixture) -> None:
+        from grizzly_extras.async_message.sb import handlers
+
+        handler = AsyncServiceBusHandler(worker='asdf-asdf-asdf')
+        request: AsyncMessageRequest = {
+            'action': 'DISCONNECT',
+        }
+
+        with pytest.raises(AsyncMessageError) as ame:
+            handlers[request['action']](handler, request)
+        assert 'no context in request' in str(ame)
+
+        request = {
+            'action': 'DISCONNECT',
+            'context': {
+                'message_wait': 10,
+                'url': 'sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=',
+                'endpoint': 'queue:test-queue',
+                'connection': 'asdf',
+            },
+        }
+
+        with pytest.raises(AsyncMessageError) as ame:
+            handlers[request['action']](handler, request)
+        assert '"asdf" is not a valid value for context.connection' in str(ame)
+
+        assert handler._sender_cache == {}
+        assert handler._receiver_cache == {}
+
+        # successful disconnect, sender
+        sender_instance = mocker.MagicMock()
+
+        handler._sender_cache.update({'queue:test-queue': sender_instance})
+
+        request['context']['connection'] = 'sender'
+
+        assert handlers[request['action']](handler, request) == {
+            'message': 'thanks for all the fish',
+        }
+
+        assert handler._sender_cache == {}
+        assert sender_instance.__exit__.call_count == 1
+
+        # successful disconnect, receiver
+        receiver_instance = mocker.MagicMock()
+        handler._receiver_cache.update({'queue:test-queue': receiver_instance})
+
+        request['context']['connection'] = 'receiver'
+
+        assert handlers[request['action']](handler, request) == {
+            'message': 'thanks for all the fish',
+        }
+
+        assert handler._receiver_cache == {}
+        assert receiver_instance.__exit__.call_count == 1
+
+        # error disconnecting
+        receiver_instance = mocker.MagicMock()
+        receiver_instance.__exit__.side_effect = [RuntimeError]
+        handler._receiver_cache.update({'queue:test-queue': receiver_instance})
+
+        request['context']['connection'] = 'receiver'
+
+        assert handlers[request['action']](handler, request) == {
+            'message': 'thanks for all the fish',
+        }
+
+        assert handler._receiver_cache == {}
+        assert receiver_instance.__exit__.call_count == 1
+
     def test_from_message(self) -> None:
         assert AsyncServiceBusHandler.from_message(None) == (None, None,)
 

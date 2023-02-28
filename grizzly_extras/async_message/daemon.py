@@ -197,6 +197,10 @@ def worker(context: zmq.Context, identity: str) -> None:
             response = integration.handle(request)
             logger.debug('got response from handler')
 
+            if request.get('action', None) in ['DISCONNECT', 'DISC']:
+                integration.close()
+                integration = None
+
         response_proto = [
             request_proto[0],
             SPLITTER_FRAME,
