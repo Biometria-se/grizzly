@@ -27,6 +27,47 @@ if TYPE_CHECKING:  # pragma: no cover
     from ..scenarios import GrizzlyScenario
     from ..context import GrizzlyContextScenario
 
+GrizzlyTaskType = Callable[['GrizzlyScenario'], Any]
+GrizzlyTaskOnType = Optional[Callable[[], None]]
+
+
+class OnGrizzlyTask:
+    def __init__(self, holder: 'grizzlytask') -> None:
+        self._holder = holder
+
+    def start(self) -> None:
+        if self._holder._on_start is not None:
+            self._holder._on_start()
+
+    def stop(self) -> None:
+        if self._holder._on_stop is not None:
+            self._holder._on_stop()
+
+
+class grizzlytask:
+    def __init__(self, task: GrizzlyTaskType, on_start: GrizzlyTaskOnType = None, on_stop: GrizzlyTaskOnType = None, doc: Optional[str] = None) -> None:
+        self._task = task
+        self._on_start = on_start
+        self._on_stop = on_stop
+
+        if doc is None and task is not None:
+            self.__doc__ = doc
+
+        self._on = OnGrizzlyTask(self)
+
+    @property
+    def on(self) -> OnGrizzlyTask:
+        return self._on
+
+    def __call__(self, parent: 'GrizzlyScenario') -> Any:
+        return self._task(parent)
+
+    def on_start(self, on_start: GrizzlyTaskOnType) -> None:
+        self._on_start = on_start
+
+    def on_stop(self, on_stop: GrizzlyTaskOnType) -> None:
+        self._on_stop = on_stop
+
 
 class GrizzlyTask(ABC):
     __template_attributes__: List[str] = []
