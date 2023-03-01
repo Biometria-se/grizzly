@@ -126,6 +126,7 @@ class RequestType(Enum, AdvancedEnum, metaclass=MixedEnumMeta, init='alias _weig
     HELLO = ('HELO', None,)
     RECEIVE = ('RECV', None,)
     CONNECT = ('CONN', None,)
+    DISCONNECT = ('DISC', None,)
 
     def __call__(self) -> str:
         return str(self)

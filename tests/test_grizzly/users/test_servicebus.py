@@ -22,46 +22,19 @@ from ...fixtures import LocustFixture, NoopZmqFixture
 
 
 class TestServiceBusUser:
-    def test_create(self, locust_fixture: LocustFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
+    def test_on_start(self, locust_fixture: LocustFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.users.servicebus')
-
         try:
-            zmq_client_connect_spy = mocker.patch('grizzly.users.servicebus.zmq.Socket.connect', side_effect=[None] * 10)
-            say_hello_spy = mocker.patch('grizzly.users.servicebus.ServiceBusUser.say_hello', side_effect=[None] * 10)
-
-            ServiceBusUser.host = 'Endpoint=mq://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=secret='
-            with pytest.raises(ValueError) as e:
-                user = ServiceBusUser(environment=locust_fixture.env)
-            assert 'ServiceBusUser: "mq" is not a supported scheme' in str(e)
-
-            assert zmq_client_connect_spy.call_count == 0
-
-            ServiceBusUser.host = 'Endpoint=sb://sb.example.org'
-            with pytest.raises(ValueError) as e:
-                user = ServiceBusUser(environment=locust_fixture.env)
-            assert 'ServiceBusUser: SharedAccessKeyName and SharedAccessKey must be in the query string' in str(e)
-
-            assert zmq_client_connect_spy.call_count == 0
-
-            ServiceBusUser.host = 'Endpoint=sb://sb.example.org/;SharedAccessKey=secret='
-            with pytest.raises(ValueError) as e:
-                user = ServiceBusUser(environment=locust_fixture.env)
-            assert 'ServiceBusUser: SharedAccessKeyName must be in the query string' in str(e)
-
-            assert zmq_client_connect_spy.call_count == 0
-
-            ServiceBusUser.host = 'Endpoint=sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey'
-            with pytest.raises(ValueError) as e:
-                user = ServiceBusUser(environment=locust_fixture.env)
-            assert 'ServiceBusUser: SharedAccessKey must be in the query string' in str(e)
-
-            assert zmq_client_connect_spy.call_count == 0
+            zmq_client_connect_spy = mocker.patch('grizzly.users.servicebus.zmq.Socket.connect', return_value=None)
+            say_hello_spy = mocker.patch('grizzly.users.servicebus.ServiceBusUser.say_hello', return_value=None)
 
             ServiceBusUser.host = 'Endpoint=sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789='
             user = ServiceBusUser(environment=locust_fixture.env)
             assert issubclass(user.__class__, GrizzlyUser)
             assert issubclass(user.__class__, ResponseHandler)
             assert issubclass(user.__class__, RequestLogger)
+
+            user.on_start()
 
             assert zmq_client_connect_spy.call_count == 1
             args, _ = zmq_client_connect_spy.call_args_list[0]
@@ -81,12 +54,146 @@ class TestServiceBusUser:
             ServiceBusUser.host = 'Endpoint=sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789='
             ServiceBusUser._scenario = scenario
             user = ServiceBusUser(environment=locust_fixture.env)
+            user.on_start()
             assert say_hello_spy.call_count == 3
 
             for index, (args, _) in enumerate(say_hello_spy.call_args_list):
                 assert args[0] is scenario.tasks[index + 1]
                 assert args[1] == cast(RequestTask, scenario.tasks[index + 1]).endpoint
+        finally:
+            setattr(ServiceBusUser, '_scenario', None)
+            ServiceBusUser._context = {
+                'message': {
+                    'wait': None,
+                }
+            }
 
+    def test_on_stop(self, locust_fixture: LocustFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
+        noop_zmq('grizzly.users.servicebus')
+        try:
+            zmq_client_disconnect_spy = mocker.patch('grizzly.users.servicebus.zmq.Socket.disconnect', return_value=None)
+            disconnect_spy = mocker.patch('grizzly.users.servicebus.ServiceBusUser.disconnect', return_value=None)
+            mocker.patch('grizzly.users.servicebus.ServiceBusUser.say_hello', return_value=None)
+
+            ServiceBusUser.host = 'Endpoint=sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789='
+            user = ServiceBusUser(environment=locust_fixture.env)
+            assert issubclass(user.__class__, GrizzlyUser)
+            assert issubclass(user.__class__, ResponseHandler)
+            assert issubclass(user.__class__, RequestLogger)
+
+            user.on_start()
+
+            user.on_stop()
+
+            assert zmq_client_disconnect_spy.call_count == 1
+            args, _ = zmq_client_disconnect_spy.call_args_list[0]
+            assert args[0] == ServiceBusUser.zmq_url
+            assert user.zmq_client.type == ZMQ_REQ
+            assert disconnect_spy.call_count == 0
+
+            scenario = GrizzlyContextScenario(2)
+            scenario.name = 'test'
+            scenario.user.class_name = 'ServiceBusUser'
+
+            scenario.tasks.add(WaitTask(time_expression='1.54'))
+            scenario.tasks.add(RequestTask(RequestMethod.SEND, name='test-send', endpoint='{{ endpoint }}'))
+            scenario.tasks.add(RequestTask(RequestMethod.RECEIVE, name='test-receive', endpoint='queue:test-queue'))
+            scenario.tasks.add(RequestTask(RequestMethod.SEND, name='test-send', endpoint='topic:test-topic'))
+
+            ServiceBusUser.host = 'Endpoint=sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789='
+            ServiceBusUser._scenario = scenario
+            user = ServiceBusUser(environment=locust_fixture.env)
+            user.on_start()
+            user.on_stop()
+            assert disconnect_spy.call_count == 3
+
+            for index, (args, _) in enumerate(disconnect_spy.call_args_list):
+                assert args[0] is scenario.tasks[index + 1]
+                assert args[1] == cast(RequestTask, scenario.tasks[index + 1]).endpoint
+        finally:
+            setattr(ServiceBusUser, '_scenario', None)
+            ServiceBusUser._context = {
+                'message': {
+                    'wait': None,
+                }
+            }
+
+    def test_create(self, locust_fixture: LocustFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
+        noop_zmq('grizzly.users.servicebus')
+
+        try:
+            ServiceBusUser.host = 'Endpoint=mq://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=secret='
+            with pytest.raises(ValueError) as e:
+                ServiceBusUser(environment=locust_fixture.env)
+            assert 'ServiceBusUser: "mq" is not a supported scheme' in str(e)
+
+            ServiceBusUser.host = 'Endpoint=sb://sb.example.org'
+            with pytest.raises(ValueError) as e:
+                ServiceBusUser(environment=locust_fixture.env)
+            assert 'ServiceBusUser: SharedAccessKeyName and SharedAccessKey must be in the query string' in str(e)
+
+            ServiceBusUser.host = 'Endpoint=sb://sb.example.org/;SharedAccessKey=secret='
+            with pytest.raises(ValueError) as e:
+                ServiceBusUser(environment=locust_fixture.env)
+            assert 'ServiceBusUser: SharedAccessKeyName must be in the query string' in str(e)
+
+            ServiceBusUser.host = 'Endpoint=sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey'
+            with pytest.raises(ValueError) as e:
+                ServiceBusUser(environment=locust_fixture.env)
+            assert 'ServiceBusUser: SharedAccessKey must be in the query string' in str(e)
+        finally:
+            setattr(ServiceBusUser, '_scenario', None)
+            ServiceBusUser._context = {
+                'message': {
+                    'wait': None,
+                }
+            }
+
+    def test_disconnect(self, locust_fixture: LocustFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
+        noop_zmq('grizzly.users.servicebus')
+        try:
+            ServiceBusUser.host = 'Endpoint=sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789='
+            user = ServiceBusUser(environment=locust_fixture.env)
+            async_action_spy = mocker.patch.object(user, 'async_action')
+
+            task = RequestTask(RequestMethod.SEND, name='test-send', endpoint='queue:test-queue')
+            scenario = GrizzlyContextScenario(1)
+            scenario.name = 'test'
+            scenario.tasks.add(task)
+
+            user.disconnect(task, task.endpoint)
+
+            assert async_action_spy.call_count == 0
+
+            user.hellos = set(['sender=queue:test-queue'])
+            user.disconnect(task, task.endpoint)
+
+            assert async_action_spy.call_count == 1
+            args, kwargs = async_action_spy.call_args_list[0]
+
+            assert len(args) == 3
+            assert len(kwargs) == 0
+            assert args[1] == {
+                'worker': None,
+                'action': 'DISCONNECT',
+                'context': {
+                    'endpoint': 'queue:test-queue',
+                    'url': user.am_context['url'],
+                    'message_wait': None,
+                }
+            }
+            assert args[2] == 'sender=queue:test-queue'
+
+            assert async_action_spy.return_value.__enter__.call_count == 1
+            assert async_action_spy.return_value.__enter__.return_value.update.call_count == 1
+            args, kwargs = async_action_spy.return_value.__enter__.return_value.update.call_args_list[-1]
+
+            assert kwargs == {}
+            assert len(args) == 1
+            assert args[0].get('meta', False)
+            assert args[0].get('failure_exception', StopUser) is None
+
+            assert user.hellos == set()
         finally:
             setattr(ServiceBusUser, '_scenario', None)
             ServiceBusUser._context = {
@@ -101,6 +208,7 @@ class TestServiceBusUser:
         ServiceBusUser.host = 'Endpoint=sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789='
 
         user = ServiceBusUser(environment=locust_fixture.env)
+        user.on_start()
         assert user.hellos == set()
 
         async_action_spy = mocker.patch('grizzly.users.servicebus.ServiceBusUser.async_action', autospec=True)
@@ -112,8 +220,9 @@ class TestServiceBusUser:
         scenario.name = 'test'
         scenario.tasks.add(task)
 
-        with caplog.at_level(logging.WARNING):
-            user.say_hello(task, task.endpoint)
+        with caplog.at_level(logging.ERROR):
+            with pytest.raises(StopUser):
+                user.say_hello(task, task.endpoint)
         assert 'ServiceBusUser: cannot say hello for test-send when endpoint is a template' in caplog.text
         assert user.hellos == set(['sender=queue:test-queue'])
         assert async_action_spy.call_count == 0
@@ -143,6 +252,14 @@ class TestServiceBusUser:
             }
         }
         assert args[3] == 'sender=topic:test-topic'
+        assert async_action_spy.return_value.__enter__.call_count == 1
+        assert async_action_spy.return_value.__enter__.return_value.update.call_count == 1
+        args, kwargs = async_action_spy.return_value.__enter__.return_value.update.call_args_list[-1]
+
+        assert kwargs == {}
+        assert len(args) == 1
+        assert args[0].get('meta', False)
+        assert args[0].get('failure_exception', StopUser) is None
 
         task = RequestTask(RequestMethod.RECEIVE, name='test-recv', endpoint='topic:test-topic, subscription:test-subscription')
         scenario.tasks.add(task)
@@ -210,6 +327,7 @@ class TestServiceBusUser:
         ServiceBusUser.host = 'sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789='
 
         user = ServiceBusUser(environment=locust_fixture.env)
+        user.on_start()
         user.worker_id = 'asdf-asdf-asdf'
 
         send_json_spy = noop_zmq.get_mock('send_json')

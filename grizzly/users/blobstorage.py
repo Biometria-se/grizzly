@@ -74,8 +74,15 @@ class BlobStorageUser(GrizzlyUser):
         if 'AccountKey' not in params:
             raise ValueError(f'{self.__class__.__name__} needs AccountKey in the query string')
 
-        self.client = BlobServiceClient.from_connection_string(conn_str=self.host)
         self._context = merge_dicts(super().context(), self.__class__._context)
+
+    def on_start(self) -> None:
+        super().on_start()
+        self.client = BlobServiceClient.from_connection_string(conn_str=self.host)
+
+    def on_stop(self) -> None:
+        self.client.close()
+        super().on_stop()
 
     def request(self, request: RequestTask) -> GrizzlyResponse:
         request_name, endpoint, payload, _, _ = self.render(request)

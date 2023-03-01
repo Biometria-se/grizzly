@@ -37,6 +37,7 @@ from os import path, environ, mkdir
 
 from locust.exception import StopUser
 from locust.env import Environment
+from paramiko import SFTPClient
 
 from grizzly.types import RequestMethod, GrizzlyResponse, RequestType
 
@@ -61,6 +62,7 @@ class SftpUser(ResponseHandler, RequestLogger, GrizzlyUser, FileRequests):
     _payload_root: str
 
     sftp_client: SftpClientSession
+    session: SFTPClient
 
     def __init__(self, environment: Environment, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
         super().__init__(environment, *args, **kwargs)
@@ -102,8 +104,15 @@ class SftpUser(ResponseHandler, RequestLogger, GrizzlyUser, FileRequests):
 
         if password is None and key_file is None:
             raise ValueError(f'{self.__class__.__name__}: "auth.password" or "auth.key" context variable must be set')
-
         self.sftp_client = SftpClientSession(host, port)
+
+    def on_start(self) -> None:
+        super().on_start()
+        self.session = self.sftp_client.session(**self._context['auth']).__enter__()
+
+    def on_stop(self) -> None:
+        self.session.__exit__(None, None, None)
+        super().on_stop()
 
     def request(self, request: RequestTask) -> GrizzlyResponse:
         request_name, endpoint, payload, _, _ = self.render(request)
@@ -120,19 +129,18 @@ class SftpUser(ResponseHandler, RequestLogger, GrizzlyUser, FileRequests):
                 nonlocal response_length
                 response_length = transferred
 
-            with self.sftp_client.session(**self._context['auth']) as session:
-                if request.method == RequestMethod.PUT:
-                    if payload is None:
-                        raise ValueError(f'{self.__class__.__name__}: request "{name}" does not have a payload, incorrect method specified')
+            if request.method == RequestMethod.PUT:
+                if payload is None:
+                    raise ValueError(f'{self.__class__.__name__}: request "{name}" does not have a payload, incorrect method specified')
 
-                    payload = path.realpath(path.join(self._payload_root, payload))
-                    session.put(payload, endpoint, get_response_length)
-                elif request.method == RequestMethod.GET:
-                    file_name = path.basename(endpoint)
-                    # @TODO: if endpoint is a directory, should we download all files in there?
-                    session.get(endpoint, path.join(self._download_root, file_name), get_response_length)
-                else:
-                    raise NotImplementedError(f'{self.__class__.__name__} has not implemented {request.method.name}')
+                payload = path.realpath(path.join(self._payload_root, payload))
+                self.session.put(payload, endpoint, get_response_length)
+            elif request.method == RequestMethod.GET:
+                file_name = path.basename(endpoint)
+                # @TODO: if endpoint is a directory, should we download all files in there?
+                self.session.get(endpoint, path.join(self._download_root, file_name), get_response_length)
+            else:
+                raise NotImplementedError(f'{self.__class__.__name__} has not implemented {request.method.name}')
         except Exception as e:
             exception = e
         finally:

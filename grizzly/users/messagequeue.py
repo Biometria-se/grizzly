@@ -249,119 +249,143 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
         for uamqp_logger_name in ['uamqp', 'uamqp.c_uamqp']:
             logging.getLogger(uamqp_logger_name).setLevel(logging.ERROR)
 
+    def on_start(self) -> None:
+        self.logger.debug('on_start called')
+        super().on_start()
+
+        with self.action_context(None, {
+            'action': RequestType.CONNECT(),
+            'context': self.am_context
+        }, self.am_context['connection']) as action:
+            action.update({
+                'meta': True,
+                'failure_exception': StopUser,
+            })
+            self.zmq_client = self.zmq_context.socket(ZMQ_REQ)
+            self.zmq_client.connect(self.zmq_url)
+
+    def on_stop(self) -> None:
+        self.logger.debug(f'on_stop called, {self.worker_id=}')
+        if self.worker_id is None:
+            return
+
+        with self.action_context(None, {
+            'action': RequestType.DISCONNECT(),
+            'worker': self.worker_id,
+            'context': self.am_context
+        }, self.am_context['connection']) as action:
+            action.update({
+                'meta': True,
+                'failure_exception': None,
+            })
+
+        try:
+            self.zmq_client.disconnect(self.zmq_url)
+        except:
+            pass
+
+        self.worker_id = None
+
+        import json
+
+        self.logger.debug(f'metadata=\n{json.dumps(action.get("metadata", {}), indent=2)}\npayload=\n{json.dumps(action.get("payload", {}), indent=2)}')
+
+        super().on_stop()
+
+    @contextmanager
+    def action_context(self, request: Optional[RequestTask], am_request: AsyncMessageRequest, name: str) -> Generator[Dict[str, Any], None, None]:
+        exception: Optional[Exception] = None
+        action: Dict[str, Any] = {
+            'failure_exception': None,
+            'meta': False,
+            'payload': None,
+            'metadata': None,
+        }
+
+        if not name.startswith(f'{self._scenario.identifier} '):
+            name = f'{self._scenario.identifier} {name}'
+
+        response: Optional[AsyncMessageResponse] = None
+
+        start_time = time()
+        try:
+            yield action
+
+            self.zmq_client.send_json(am_request)
+
+            # do not block all other "threads", just it self
+            while True:
+                try:
+                    response = cast(AsyncMessageResponse, self.zmq_client.recv_json(flags=ZMQ_NOBLOCK))
+                    break
+                except ZMQAgain:
+                    gsleep(0.1)
+
+        except Exception as e:
+            exception = e
+            self.logger.error(str(e), exc_info=True)
+        finally:
+            total_time = int((time() - start_time) * 1000)  # do not include event handling in request time
+
+            if response is not None:
+                if self.worker_id is None:
+                    self.worker_id = response['worker']
+                else:
+                    assert self.worker_id == response['worker'], f'worker changed from {self.worker_id} to {response["worker"]}'
+
+                mq_response_time = response.get('response_time', 0)
+
+                delta = total_time - mq_response_time
+                if delta > 100:  # @TODO: what is a suitable value?
+                    logger.warning(f'{self.__class__.__name__}: communicating with async-messaged took {delta} ms')
+
+                if not response['success'] and exception is None:
+                    exception = AsyncMessageError(response['message'])
+            else:
+                response = {}
+
+            action['metadata'] = response.get('metadata', None)
+            action['payload'] = response.get('payload', None)
+
+            try:
+                if not action.get('meta', False):
+                    self.response_event.fire(
+                        name=name,
+                        request=request,
+                        context=(
+                            response.get('metadata', None),
+                            response.get('payload', None),
+                        ),
+                        user=self,
+                        exception=exception,
+                    )
+            except Exception as e:
+                if exception is None:
+                    exception = e
+            finally:
+                self.environment.events.request.fire(
+                    request_type=RequestType.from_string(am_request['action']),
+                    name=name,
+                    response_time=total_time,
+                    response_length=response.get('response_length', None) or 0,
+                    context=self._context,
+                    exception=exception,
+                )
+
+            failure_exception = action.get('failure_exception', None)
+
+            action = {
+                'payload': action['payload'],
+                'metadata': action['metadata'],
+            }
+
+            if exception is not None and failure_exception is not None:
+                raise failure_exception()
+
     def request(self, request: RequestTask) -> GrizzlyResponse:
         request_name, endpoint, payload, _, metadata = self.render(request)
 
-        @contextmanager
-        def action_context(am_request: AsyncMessageRequest, name: str) -> Generator[Dict[str, Any], None, None]:
-            exception: Optional[Exception] = None
-            action: Dict[str, Any] = {
-                'failure_exception': None,
-                'meta': False,
-                'payload': None,
-                'metadata': None,
-            }
-
-            if not name.startswith(f'{self._scenario.identifier} '):
-                name = f'{self._scenario.identifier} {name}'
-
-            response: Optional[AsyncMessageResponse] = None
-
-            start_time = time()
-            try:
-                yield action
-
-                self.zmq_client.send_json(am_request)
-
-                # do not block all other "threads", just it self
-                while True:
-                    try:
-                        response = cast(AsyncMessageResponse, self.zmq_client.recv_json(flags=ZMQ_NOBLOCK))
-                        break
-                    except ZMQAgain:
-                        gsleep(0.1)
-
-            except Exception as e:
-                exception = e
-                import traceback
-                traceback.print_exc()
-            finally:
-                total_time = int((time() - start_time) * 1000)  # do not include event handling in request time
-
-                if response is not None:
-                    if self.worker_id is None:
-                        self.worker_id = response['worker']
-                    else:
-                        assert self.worker_id == response['worker'], f'worker changed from {self.worker_id} to {response["worker"]}'
-
-                    mq_response_time = response.get('response_time', 0)
-
-                    delta = total_time - mq_response_time
-                    if delta > 100:  # @TODO: what is a suitable value?
-                        logger.warning(f'{self.__class__.__name__}: communicating with async-messaged took {delta} ms')
-
-                    if not response['success'] and exception is None:
-                        exception = AsyncMessageError(response['message'])
-                else:
-                    response = {}
-
-                action['metadata'] = response.get('metadata', None)
-                action['payload'] = response.get('payload', None)
-
-                try:
-                    if not action.get('meta', False):
-                        self.response_event.fire(
-                            name=name,
-                            request=request,
-                            context=(
-                                response.get('metadata', None),
-                                response.get('payload', None),
-                            ),
-                            user=self,
-                            exception=exception,
-                        )
-                except Exception as e:
-                    if exception is None:
-                        exception = e
-                finally:
-                    self.environment.events.request.fire(
-                        request_type=RequestType.from_string(am_request['action']),
-                        name=name,
-                        response_time=total_time,
-                        response_length=response.get('response_length', None) or 0,
-                        context=self._context,
-                        exception=exception,
-                    )
-
-                failure_exception = action.get('failure_exception', None)
-
-                action = {
-                    'payload': action['payload'],
-                    'metadata': action['metadata'],
-                }
-
-                if exception is not None and failure_exception is not None:
-                    try:
-                        self.zmq_client.disconnect(self.zmq_url)
-                    except:
-                        pass
-
-                    raise failure_exception()
-
         name = f'{request.scenario.identifier} {request_name}'
-
-        # connect to queue manager at first request
-        if self.worker_id is None:
-            with action_context({
-                'action': RequestType.CONNECT(),
-                'context': self.am_context
-            }, self.am_context['connection']) as action:
-                action.update({
-                    'meta': True,
-                    'failure_exception': request.scenario.failure_exception,
-                })
-                self.zmq_client = self.zmq_context.socket(ZMQ_REQ)
-                self.zmq_client.connect(self.zmq_url)
 
         am_request: AsyncMessageRequest = {
             'action': request.method.name,
@@ -375,13 +399,11 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
 
         am_request['context']['content_type'] = request.response.content_type.name.lower()
 
-        with action_context(am_request, name) as action:
+        with self.action_context(request, am_request, name) as action:
             action['failure_exception'] = StopUser
+
             # Parse the endpoint to validate queue name / expression parts
-            try:
-                arguments = parse_arguments(endpoint, ':')
-            except ValueError as e:
-                raise RuntimeError(str(e)) from e
+            arguments = parse_arguments(endpoint, ':')
 
             if 'queue' not in arguments:
                 raise RuntimeError('queue name must be prefixed with queue:')

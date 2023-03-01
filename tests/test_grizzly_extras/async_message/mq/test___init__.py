@@ -78,6 +78,27 @@ class TestAsyncMessageQueueHandler:
 
         assert pymqi_qmgr_disconnect_spy.call_count == 1
 
+    def test_disconnect(self, mocker: MockerFixture) -> None:
+        from grizzly_extras.async_message.mq import handlers
+        handler = AsyncMessageQueueHandler(worker='asdf-asdf-asdf')
+        handler.qmgr = pymqi.QueueManager(None)
+
+        pymqi_qmgr_disconnect_spy = mocker.patch.object(
+            handler.qmgr,
+            'disconnect',
+            return_value=None,
+        )
+
+        request: AsyncMessageRequest = {
+            'action': 'DISC',
+        }
+
+        assert handlers[request['action']](handler, request) == {
+            'message': 'disconnected'
+        }
+
+        assert pymqi_qmgr_disconnect_spy.call_count == 1
+
     def test_queue_context(self, mocker: MockerFixture) -> None:
         handler = AsyncMessageQueueHandler(worker='asdf-asdf-asdf')
         handler.qmgr = pymqi.QueueManager(None)

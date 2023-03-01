@@ -196,6 +196,8 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
             self.headers.update(headers)
 
     def on_start(self) -> None:
+        super().on_start()
+
         self.session_started = time()
 
     def get_token(self, auth_method: AuthMethod) -> None:

@@ -68,9 +68,31 @@ def iot_hub_scenario(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> 
 
 class TestIotHubUser:
     @pytest.mark.usefixtures('iot_hub_scenario')
+    def test_on_start(self, iot_hub_scenario: IoTHubScenarioFixture) -> None:
+        user, _, _ = iot_hub_scenario
+
+        assert not hasattr(user, 'client')
+
+        user.on_start()
+
+        assert hasattr(user, 'client')
+
+    @pytest.mark.usefixtures('iot_hub_scenario')
+    def test_on_stop(self, mocker: MockerFixture, iot_hub_scenario: IoTHubScenarioFixture) -> None:
+        user, _, _ = iot_hub_scenario
+        user.on_start()
+
+        on_stop_spy = mocker.patch.object(user.client, 'disconnect', return_value=None)
+
+        user.on_stop()
+
+        assert on_stop_spy.call_count == 1
+
+    @pytest.mark.usefixtures('iot_hub_scenario')
     def test_create(self, iot_hub_scenario: IoTHubScenarioFixture) -> None:
         user, _, environment = iot_hub_scenario
         assert issubclass(user.__class__, GrizzlyUser)
+        user.on_start()
 
         IotHubUser.host = 'PostName=my_iot_host_name;DeviceId=my_device;SharedAccessKey=xxxyyyyzzz=='
         with pytest.raises(ValueError) as e:
@@ -95,6 +117,7 @@ class TestIotHubUser:
     @pytest.mark.usefixtures('iot_hub_scenario')
     def test_send(self, iot_hub_scenario: IoTHubScenarioFixture, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
         [user, scenario, _] = iot_hub_scenario
+        user.on_start()
 
         grizzly = grizzly_fixture.grizzly
 

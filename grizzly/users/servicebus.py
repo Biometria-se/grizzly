@@ -150,6 +150,10 @@ class ServiceBusUser(ResponseHandler, RequestLogger, GrizzlyUser):
 
         self.hellos = set()
         self.worker_id = None
+
+    def on_start(self) -> None:
+        super().on_start()
+
         self.zmq_client = self.zmq_context.socket(ZMQ_REQ)
         self.zmq_client.connect(self.zmq_url)
 
@@ -161,10 +165,23 @@ class ServiceBusUser(ResponseHandler, RequestLogger, GrizzlyUser):
                 endpoint = task.endpoint
                 self.say_hello(task, endpoint)
 
-    def say_hello(self, task: RequestTask, endpoint: str) -> None:
+    def on_stop(self) -> None:
+        if getattr(self, '_scenario', None) is not None:
+            for task in self._scenario.tasks:
+                if not isinstance(task, RequestTask):
+                    continue
+
+                endpoint = task.endpoint
+                self.disconnect(task, endpoint)
+
+        self.zmq_client.disconnect(self.zmq_url)
+
+        super().on_stop()
+
+    def get_description(self, task: RequestTask, endpoint: str) -> str:
         if ('{{' in endpoint and '}}' in endpoint) or '$conf' in endpoint or '$env' in endpoint:
-            logger.warning(f'{self.__class__.__name__}: cannot say hello for {task.name} when endpoint is a template')
-            return
+            logger.error(f'{self.__class__.__name__}: cannot say hello for {task.name} when endpoint is a template')
+            raise StopUser()
 
         connection = 'sender' if task.method.direction == RequestDirection.TO else 'receiver'
 
@@ -181,10 +198,44 @@ class ServiceBusUser(ResponseHandler, RequestLogger, GrizzlyUser):
 
         cache_endpoint = ', '.join([f'{key}:{value}' for key, value in endpoint_arguments.items()])
 
-        description = f'{connection}={cache_endpoint}'
+        return f'{connection}={cache_endpoint}'
+
+    def disconnect(self, task: RequestTask, endpoint: str) -> None:
+        description = self.get_description(task, endpoint)
+
+        if description not in self.hellos:
+            return
+
+        _, cache_endpoint = description.split('=', 1)
+
+        context = cast(AsyncMessageContext, dict(self.am_context))
+        context.update({
+            'endpoint': cache_endpoint,
+        })
+
+        request: AsyncMessageRequest = {
+            'worker': self.worker_id,
+            'action': RequestType.DISCONNECT.name,
+            'context': context,
+        }
+
+        with self.async_action(task, request, description) as metadata:
+            metadata.update({
+                'meta': True,
+                'failure_exception': None,
+            })
+
+        self.hellos.remove(description)
+
+    def say_hello(self, task: RequestTask, endpoint: str) -> None:
+        description = self.get_description(task, endpoint)
 
         if description in self.hellos:
             return
+
+        _, cache_endpoint = description.split('=', 1)
+
+        arguments = parse_arguments(endpoint, ':')
 
         context = cast(AsyncMessageContext, dict(self.am_context))
         context.update({
@@ -200,7 +251,7 @@ class ServiceBusUser(ResponseHandler, RequestLogger, GrizzlyUser):
         with self.async_action(task, request, description) as metadata:
             metadata.update({
                 'meta': True,
-                'failure_exception': StopUser,
+                'failure_exception': None,
             })
 
             if 'queue' not in arguments and 'topic' not in arguments:

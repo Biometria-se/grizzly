@@ -189,6 +189,54 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
     def hello(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
         return self._hello(request, force=False)
 
+    @register(handlers, 'DISCONNECT')
+    def disconnect(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
+        context = request.get('context', None)
+        if context is None:
+            raise AsyncMessageError('no context in request')
+
+        endpoint = context['endpoint']
+        instance_type = context['connection']
+        message_wait = context.get('message_wait', None)
+        arguments = self.get_endpoint_arguments(instance_type, endpoint)
+        endpoint_arguments = parse_arguments(endpoint, ':')
+        try:
+            del endpoint_arguments['expression']
+        except:
+            pass
+
+        cache_endpoint = ', '.join([f'{key}:{value}' for key, value in endpoint_arguments.items()])
+
+        if message_wait is not None and instance_type == 'receiver':
+            arguments['wait'] = str(message_wait)
+
+        cache: GenericCache
+
+        if instance_type == 'sender':
+            cache = cast(GenericCache, self._sender_cache)
+        elif instance_type == 'receiver':
+            cache = cast(GenericCache, self._receiver_cache)
+        else:
+            raise AsyncMessageError(f'"{instance_type}" is not a valid value for context.connection')
+
+        if cache_endpoint in cache:
+            instance = cache.get(cache_endpoint, None)
+            if instance is not None:
+                try:
+                    self.logger.info(f'disconnecting {instance_type} instance for {cache_endpoint}')
+                    instance.__exit__()
+                except:
+                    pass
+
+            try:
+                del cache[cache_endpoint]
+            except:  # pragma: no cover
+                pass
+
+        return {
+            'message': 'thanks for all the fish',
+        }
+
     def _hello(self, request: AsyncMessageRequest, force: bool) -> AsyncMessageResponse:
         context = request.get('context', None)
         if context is None:

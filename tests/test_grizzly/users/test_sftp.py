@@ -74,6 +74,52 @@ class TestSftpUser:
             shutil.rmtree(test_context_root)
             del environ['GRIZZLY_CONTEXT_ROOT']
 
+    def test_on_start(self, locust_fixture: LocustFixture, paramiko_fixture: ParamikoFixture, mocker: MockerFixture) -> None:
+        paramiko_fixture()
+        SftpUser.host = 'sftp://example.org'
+        SftpUser._context['auth'] = {
+            'username': 'test',
+            'password': 'hemligaarne',
+            'key_file': None,
+        }
+        user = SftpUser(locust_fixture.env)
+
+        session_spy = mocker.patch.object(user.sftp_client, 'session', return_value=mocker.MagicMock())
+
+        assert not hasattr(user, 'session')
+
+        user.on_start()
+
+        assert hasattr(user, 'session')
+        assert session_spy.call_count == 1
+        args, kwargs = session_spy.call_args_list[-1]
+        assert len(args) == 0
+        assert kwargs == user._context['auth']
+
+        assert session_spy.return_value.__enter__.call_count == 1
+
+    def test_on_stop(self, locust_fixture: LocustFixture, paramiko_fixture: ParamikoFixture, mocker: MockerFixture) -> None:
+        paramiko_fixture()
+        SftpUser.host = 'sftp://example.org'
+        SftpUser._context['auth'] = {
+            'username': 'test',
+            'password': 'hemligaarne',
+            'key_file': None,
+        }
+        user = SftpUser(locust_fixture.env)
+        setattr(user, 'session', None)
+        session_spy = mocker.patch.object(user, 'session', return_value=mocker.MagicMock())
+
+        user.on_stop()
+
+        assert session_spy.call_count == 0
+
+        assert session_spy.__exit__.call_count == 1
+        args, kwargs = session_spy.__exit__.call_args_list[-1]
+        assert kwargs == {}
+        assert len(args) == 3
+        assert args == (None, None, None,)
+
     def test_request(self, locust_fixture: LocustFixture, paramiko_fixture: ParamikoFixture, tmp_path_factory: TempPathFactory, mocker: MockerFixture) -> None:
         paramiko_fixture()
 
@@ -91,7 +137,9 @@ class TestSftpUser:
             }
             user = SftpUser(locust_fixture.env)
 
-            mocker.patch('grizzly.users.sftp.time', side_effect=[0.0] * 100)
+            user.on_start()
+
+            mocker.patch('grizzly.users.sftp.time', return_value=0.0)
 
             request = RequestTask(RequestMethod.SEND, name='test', endpoint='/tmp')
             request.source = 'test/file.txt'
