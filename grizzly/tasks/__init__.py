@@ -69,40 +69,39 @@ GrizzlyTaskOnType = Optional[Callable[[], None]]
 class grizzlytask:
     __name__ = 'grizzlytask'
 
+    _on_start: Optional['OnGrizzlyTask'] = None
+    _on_stop: Optional['OnGrizzlyTask'] = None
+
     class OnGrizzlyTask:
-        def __init__(self, holder: 'grizzlytask') -> None:
-            self._holder = holder
+        _on_func: Optional[GrizzlyTaskOnType] = None
 
-        def start(self) -> None:
-            if self._holder._on_start is not None:
-                self._holder._on_start()
+        def __init__(self, on_func: GrizzlyTaskOnType) -> None:
+            self._on_func = on_func
 
-        def stop(self) -> None:
-            if self._holder._on_stop is not None:
-                self._holder._on_stop()
+        def __call__(self) -> None:
+            if self._on_func is not None:
+                self._on_func()
 
-    def __init__(self, task: GrizzlyTaskType, on_start: GrizzlyTaskOnType = None, on_stop: GrizzlyTaskOnType = None, doc: Optional[str] = None) -> None:
+    def __init__(self, task: GrizzlyTaskType, doc: Optional[str] = None) -> None:
         self._task = task
-        self._on_start = on_start
-        self._on_stop = on_stop
 
         if doc is None and task is not None:
             self.__doc__ = doc
 
-        self._on = self.OnGrizzlyTask(self)
-
-    @property
-    def on(self) -> OnGrizzlyTask:
-        return self._on
-
     def __call__(self, parent: 'GrizzlyScenario') -> Any:
         return self._task(parent)
 
-    def on_start(self, on_start: GrizzlyTaskOnType) -> None:
-        self._on_start = on_start
+    def on_start(self, on_start: GrizzlyTaskOnType = None) -> None:
+        if self._on_start is None:
+            self._on_start = self.OnGrizzlyTask(on_start)
+        else:
+            self._on_start()
 
-    def on_stop(self, on_stop: GrizzlyTaskOnType) -> None:
-        self._on_stop = on_stop
+    def on_stop(self, on_stop: GrizzlyTaskOnType = None) -> None:
+        if self._on_stop is None:
+            self._on_stop = self.OnGrizzlyTask(on_stop)
+        else:
+            self._on_stop()
 
 
 class GrizzlyTask(ABC):

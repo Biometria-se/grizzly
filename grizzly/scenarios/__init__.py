@@ -62,12 +62,12 @@ class GrizzlyScenario(SequentialTaskSet):
 
         for task in self.tasks:
             if isinstance(task, grizzlytask):
-                task.on.start()
+                task.on_start()
 
     def on_stop(self) -> None:
         for task in self.tasks:
             if isinstance(task, grizzlytask):
-                task.on.stop()
+                task.on_stop()
 
         self.consumer.stop()
         self.user.scenario_state = ScenarioState.STOPPED
