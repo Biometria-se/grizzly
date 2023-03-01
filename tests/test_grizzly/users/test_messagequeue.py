@@ -96,6 +96,83 @@ class TestMessageQueueUser:
         'channel': '',
     }
 
+    def test_on_start(self, locust_fixture: LocustFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
+        noop_zmq('grizzly.users.messagequeue')
+
+        MessageQueueUser.host = 'mq://mq.example.com:1337/?QueueManager=QMGR01&Channel=Kanal1'
+        user = MessageQueueUser(locust_fixture.env)
+
+        assert not hasattr(user, 'zmq_client')
+
+        action_spy = mocker.patch.object(user, 'action_context', return_value=mocker.MagicMock())
+
+        user.on_start()
+
+        assert action_spy.call_count == 1
+        args, kwargs = action_spy.call_args_list[-1]
+
+        assert kwargs == {}
+        assert len(args) == 3
+        assert args[0] is None
+        assert args[1].get('action', None) == 'CONN'
+        assert args[1].get('context', None) == user.am_context
+        assert args[2] == user.am_context['connection']
+
+        assert action_spy.return_value.__enter__.call_count == 1
+        assert action_spy.return_value.__enter__.return_value.update.call_count == 1
+        args, kwargs = action_spy.return_value.__enter__.return_value.update.call_args_list[-1]
+
+        assert kwargs == {}
+        assert len(args) == 1
+        assert args[0].get('meta', False)
+        assert args[0].get('failure_exception', None) is StopUser
+
+        connect_mock = noop_zmq.get_mock('zmq.Socket.connect')
+        assert connect_mock.call_count == 1
+        args, kwargs = connect_mock.call_args_list[-1]
+        assert kwargs == {}
+        assert len(args) == 2
+        assert args[1] == user.zmq_url
+
+    def test_on_stop(self, locust_fixture: LocustFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
+        noop_zmq('grizzly.users.messagequeue')
+
+        MessageQueueUser.host = 'mq://mq.example.com:1337/?QueueManager=QMGR01&Channel=Kanal1'
+        user = MessageQueueUser(locust_fixture.env)
+        action_spy = mocker.patch.object(user, 'action_context', return_value=mocker.MagicMock())
+
+        user.on_start()
+
+        action_spy.reset_mock()
+
+        user.on_stop()
+
+        assert action_spy.call_count == 1
+        args, kwargs = action_spy.call_args_list[-1]
+
+        assert kwargs == {}
+        assert len(args) == 3
+        assert args[0] is None
+        assert args[1].get('action', None) == 'DISC'
+        assert args[1].get('context', None) == user.am_context
+        assert args[2] == user.am_context['connection']
+
+        assert action_spy.return_value.__enter__.call_count == 1
+        assert action_spy.return_value.__enter__.return_value.update.call_count == 1
+        args, kwargs = action_spy.return_value.__enter__.return_value.update.call_args_list[-1]
+
+        assert kwargs == {}
+        assert len(args) == 1
+        assert args[0].get('meta', False)
+        assert args[0].get('failure_exception', StopUser) is None
+
+        disconnect_mock = noop_zmq.get_mock('zmq.Socket.disconnect')
+        assert disconnect_mock.call_count == 1
+        args, kwargs = disconnect_mock.call_args_list[-1]
+        assert kwargs == {}
+        assert len(args) == 1
+        assert args[0] == user.zmq_url
+
     def test_create(self, locust_fixture: LocustFixture) -> None:
         try:
             MessageQueueUser.host = 'http://mq.example.com:1337'
@@ -192,7 +269,7 @@ class TestMessageQueueUser:
                 }
             }
 
-    def test_request__action_conn_error(self, locust_fixture: LocustFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
+    def test_on_start__action_conn_error(self, locust_fixture: LocustFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         def mocked_zmq_connect(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Any:
             raise ZMQError(msg='error connecting')
 
@@ -236,11 +313,7 @@ class TestMessageQueueUser:
         user._scenario = scenario
 
         with pytest.raises(StopUser):
-            user.request(request)
-
-        scenario.failure_exception = RestartScenario
-        with pytest.raises(RestartScenario):
-            user.request(request)
+            user.on_start()
 
     @pytest.mark.skip(reason='needs real credentials and host etc.')
     def test_get_tls_real(self, locust_fixture: LocustFixture) -> None:
@@ -414,6 +487,7 @@ class TestMessageQueueUser:
         scenario.tasks.add(request)
 
         user.add_context(remote_variables)
+        user.on_start()
 
         metadata, payload = user.request(request)
 
@@ -457,7 +531,6 @@ class TestMessageQueueUser:
         request.response.content_type = TransformerContentType.JSON
 
         add_save_handler(grizzly, ResponseTarget.PAYLOAD, '$.test', '.*', 'payload_variable')
-
         user.request(request)
 
         assert user.context_variables['payload_variable'] == ''
@@ -524,7 +597,6 @@ class TestMessageQueueUser:
                 'message': 'no implementation for POST'
             },
         ]
-
         user.request(request)
 
         assert request_event_spy.call_count == 1
@@ -737,6 +809,8 @@ class TestMessageQueueUser:
                 }
             ],
         )
+
+        user.on_start()
 
         user.request(request)
 

@@ -220,8 +220,6 @@ class ParamikoFixture:
             _get,
         )
 
-        print('patched paramiko')
-
 
 class BehaveFixture:
     _locust_fixture: LocustFixture

@@ -45,6 +45,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
         if self.qmgr is not None:
             self.logger.debug('closing queue manager connection')
             self.qmgr.disconnect()
+            self.qmgr = None
 
     @contextmanager
     def queue_context(self, endpoint: str, browsing: Optional[bool] = False) -> Generator[pymqi.Queue, None, None]:
@@ -63,6 +64,14 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
             yield queue
         finally:
             queue.close()
+
+    @register(handlers, 'DISC')
+    def disconnect(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
+        self.close()
+
+        return {
+            'message': 'disconnected',
+        }
 
     @register(handlers, 'CONN')
     def connect(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
