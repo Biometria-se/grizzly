@@ -2,8 +2,9 @@ import inspect
 import subprocess
 import os
 import stat
+import re
 
-from typing import Any, Dict, Optional, Tuple, List, Set, Callable, Generator
+from typing import Any, Dict, Optional, Tuple, List, Set, Callable, Generator, Union, Pattern
 from types import MethodType, TracebackType
 from pathlib import Path
 
@@ -14,7 +15,7 @@ from grizzly.context import GrizzlyContextScenario
 from grizzly.users.base import GrizzlyUser
 from grizzly.types import GrizzlyResponse, RequestMethod, Message, Environment
 from grizzly.testdata.variables import AtomicVariable
-from grizzly.tasks import RequestTask, GrizzlyTask, template
+from grizzly.tasks import RequestTask, GrizzlyTask, template, grizzlytask
 from grizzly.scenarios import GrizzlyScenario
 from grizzly.utils import fastdeepcopy
 
@@ -86,9 +87,10 @@ class TestTask(GrizzlyTask):
         self.call_count = 0
         self.task_call_count = 0
 
-    def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
+    def __call__(self) -> grizzlytask:
         self.call_count += 1
 
+        @grizzlytask
         def task(parent: 'GrizzlyScenario') -> Any:
             parent.user.environment.events.request.fire(
                 request_type='TSTSK',
@@ -249,3 +251,27 @@ def tree(dir_path: Path, prefix: str = '', ignore: Optional[List[str]] = None) -
                 extension = branch if pointer == tee else space
                 # i.e. space because last, └── , above so no more |
                 yield from tree(sub_path, prefix=prefix + extension, ignore=ignore)
+
+
+class regex:
+    _regex: Pattern[str]
+
+    @staticmethod
+    def valid(value: str) -> bool:
+        return len(value) > 1 and value[0] == '^' and value[-1] == '$'
+
+    @staticmethod
+    def possible(value: str) -> Union['regex', 'str']:
+        if regex.valid(value):
+            return regex(value)
+        else:
+            return value
+
+    def __init__(self, pattern: str, flags: int = 0) -> None:
+        self._regex = re.compile(pattern, flags)
+
+    def __eq__(self, actual: object) -> bool:
+        return isinstance(actual, str) and bool(self._regex.match(actual))
+
+    def __repr__(self) -> str:
+        return self._regex.pattern

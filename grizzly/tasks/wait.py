@@ -10,12 +10,12 @@ This task executes a `gevent.sleep` and is used to manually create delays betwee
 
 * `time_expression` _str_ - float as string or a {@pydocfractions of seconds to excplicitly sleep in the scenario
 '''
-from typing import TYPE_CHECKING, Any, Callable, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from gevent import sleep as gsleep
 
 from ..exceptions import StopUser
-from . import GrizzlyTask, template
+from . import GrizzlyTask, template, grizzlytask
 
 if TYPE_CHECKING:  # pragma: no cover
     from ..context import GrizzlyContextScenario
@@ -31,7 +31,8 @@ class WaitTask(GrizzlyTask):
 
         self.time_expression = time_expression
 
-    def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
+    def __call__(self) -> grizzlytask:
+        @grizzlytask
         def task(parent: 'GrizzlyScenario') -> Any:
             try:
                 time_rendered = parent.render(self.time_expression)

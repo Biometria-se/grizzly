@@ -39,7 +39,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from ..scenarios import GrizzlyScenario
     from ..context import GrizzlyContextScenario
 
-from . import GrizzlyTask, GrizzlyTaskWrapper, template
+from . import GrizzlyTask, GrizzlyTaskWrapper, template, grizzlytask
 from ..exceptions import StopUser, RestartScenario
 
 
@@ -85,12 +85,13 @@ class ConditionalTask(GrizzlyTaskWrapper):
 
         return []
 
-    def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
+    def __call__(self) -> grizzlytask:
         tasks: Dict[bool, List[Callable[['GrizzlyScenario'], Any]]] = {}
 
         for pointer, pointer_tasks in self.tasks.items():
             tasks.update({pointer: list(map(lambda t: t(), pointer_tasks))})
 
+        @grizzlytask
         def task(parent: 'GrizzlyScenario') -> Any:
             condition_rendered = parent.render(self.condition)
             exception: Optional[Exception] = None

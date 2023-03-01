@@ -1,9 +1,11 @@
+import logging
+
 from json import loads as jsonloads
-from typing import Any, Callable, Dict
+from typing import Any, Dict
 
 from grizzly.scenarios import GrizzlyScenario
 from grizzly.users import RestApiUser
-from grizzly.tasks import RequestTask, GrizzlyTask
+from grizzly.tasks import RequestTask, GrizzlyTask, grizzlytask
 from grizzly.types import GrizzlyResponse, Message, Environment, WorkerRunner, LocalRunner
 from grizzly.testdata.variables import AtomicVariable
 
@@ -17,19 +19,29 @@ class User(RestApiUser):
 
 class Task(GrizzlyTask):
     data: Dict[str, str]
+    logger = logging.getLogger(__name__)
 
     def __init__(self, data: str) -> None:
         self.data = jsonloads(data.replace("'", '"'))
 
-    def __call__(self) -> Callable[[GrizzlyScenario], Any]:
+    def __call__(self) -> grizzlytask:
+        @grizzlytask
         def implementation(parent: GrizzlyScenario) -> Any:
             if isinstance(parent.grizzly.state.locust, (LocalRunner,)) and self.data.get('server', None) is not None:
-                parent.logger.info('sending "server_client" from SERVER')
+                self.logger.info('sending "server_client" from SERVER')
                 parent.grizzly.state.locust.send_message('server_client', self.data)
 
             if isinstance(parent.grizzly.state.locust, (WorkerRunner, LocalRunner,)) and self.data.get('client', None) is not None:
-                parent.logger.info('sending "client_server" from CLIENT')
+                self.logger.info('sending "client_server" from CLIENT')
                 parent.grizzly.state.locust.send_message('client_server', self.data)
+
+        @implementation.on_start
+        def on_start() -> None:
+            self.logger.info(f'{self.__class__.__name__} on_start called before test')
+
+        @implementation.on_stop
+        def on_stop() -> None:
+            self.logger.info(f'{self.__class__.__name__} on_stop called after test')
 
         return implementation
 

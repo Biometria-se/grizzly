@@ -19,7 +19,7 @@ import logging
 import traceback
 
 from abc import abstractmethod
-from typing import Dict, Generator, Type, List, Any, Optional, Callable, cast
+from typing import Dict, Generator, Type, List, Any, Optional, cast, final
 from contextlib import contextmanager
 from time import perf_counter as time
 from urllib.parse import urlparse, unquote
@@ -37,7 +37,7 @@ from ...context import GrizzlyContext, GrizzlyContextScenario
 from ...scenarios import GrizzlyScenario
 from ...testdata.utils import resolve_variable
 from ...users.base import RequestLogger
-from .. import GrizzlyMetaRequestTask, template
+from .. import GrizzlyMetaRequestTask, template, grizzlytask
 
 
 # see https://github.com/python/mypy/issues/5374
@@ -129,11 +129,30 @@ class ClientTask(GrizzlyMetaRequestTask):
         self.log_dir = Path(context_root) / 'logs'
         self.log_dir.mkdir(parents=True, exist_ok=True)
 
-    def __call__(self) -> Callable[[GrizzlyScenario], GrizzlyResponse]:
-        if self.direction == RequestDirection.FROM:
-            return self.get
-        else:
-            return self.put
+    def on_start(self) -> None:
+        pass
+
+    def on_stop(self) -> None:
+        pass
+
+    @final
+    def __call__(self) -> grizzlytask:
+        @grizzlytask
+        def task(parent: 'GrizzlyScenario') -> GrizzlyResponse:
+            if self.direction == RequestDirection.FROM:
+                return self.get(parent)
+            else:
+                return self.put(parent)
+
+        @task.on_start
+        def on_start() -> None:
+            return self.on_start()
+
+        @task.on_stop
+        def on_stop() -> None:
+            return self.on_stop()
+
+        return task
 
     def execute(self, parent: GrizzlyScenario) -> GrizzlyResponse:
         return self.get(parent)

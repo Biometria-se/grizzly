@@ -1,10 +1,10 @@
-from typing import Callable, Any, cast
+from typing import Any, cast
 
 import pytest
 
 from pytest_mock import MockerFixture
 from _pytest.logging import LogCaptureFixture
-from grizzly.tasks import ConditionalTask
+from grizzly.tasks import ConditionalTask, grizzlytask
 from grizzly.scenarios import GrizzlyScenario
 from grizzly.context import GrizzlyContextScenario
 from grizzly.exceptions import RestartScenario, StopUser
@@ -71,7 +71,8 @@ class TestConditionalTask:
         _, _, scenario = grizzly_fixture()
 
         class TestRestartScenarioTask(TestTask):
-            def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
+            def __call__(self) -> grizzlytask:
+                @grizzlytask
                 def task(parent: 'GrizzlyScenario') -> Any:
                     parent.user.environment.events.request.fire(
                         request_type='TSTSK',
@@ -86,7 +87,8 @@ class TestConditionalTask:
                 return task
 
         class TestStopUserTask(TestTask):
-            def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
+            def __call__(self) -> grizzlytask:
+                @grizzlytask
                 def task(parent: 'GrizzlyScenario') -> Any:
                     parent.user.environment.events.request.fire(
                         request_type='TSTSK',

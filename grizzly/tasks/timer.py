@@ -23,11 +23,11 @@ run.
 
 * `name` _str_ - name of the timer
 '''
-from typing import TYPE_CHECKING, Any, Callable, Optional
+from typing import TYPE_CHECKING, Any, Optional
 from hashlib import sha1
 from time import perf_counter
 
-from . import GrizzlyTask
+from . import GrizzlyTask, grizzlytask
 
 if TYPE_CHECKING:  # pragma: no cover
     from ..scenarios import GrizzlyScenario
@@ -46,9 +46,10 @@ class TimerTask(GrizzlyTask):
         self.name = name
         self.variable = f'{name_hash}::{name}'
 
-    def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
+    def __call__(self) -> grizzlytask:
         name = f'{self.scenario.identifier} {self.name}'
 
+        @grizzlytask
         def task(parent: 'GrizzlyScenario') -> Any:
             variable = parent.user._context['variables'].get(self.variable, None)
 

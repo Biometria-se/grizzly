@@ -15,9 +15,9 @@ This task does not have any request statistics entries.
 
 * `message` _str_ - message to log at `INFO` level, can be a template
 '''
-from typing import TYPE_CHECKING, Any, Callable, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
-from . import GrizzlyTask, template
+from . import GrizzlyTask, template, grizzlytask
 
 if TYPE_CHECKING:  # pragma: no cover
     from ..context import GrizzlyContextScenario
@@ -33,7 +33,8 @@ class LogMessageTask(GrizzlyTask):
 
         self.message = message
 
-    def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
+    def __call__(self) -> grizzlytask:
+        @grizzlytask
         def task(parent: 'GrizzlyScenario') -> Any:
             message = parent.render(self.message)
             parent.logger.info(message)
