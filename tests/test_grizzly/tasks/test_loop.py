@@ -1,11 +1,11 @@
-from typing import TYPE_CHECKING, Callable, Any, cast
+from typing import TYPE_CHECKING, Any, cast
 from json import JSONDecodeError
 
 import pytest
 
 from pytest_mock import MockerFixture
 
-from grizzly.tasks import LoopTask, GrizzlyTask
+from grizzly.tasks import LoopTask, GrizzlyTask, grizzlytask
 from grizzly.context import GrizzlyContextScenario
 from grizzly.exceptions import RestartScenario
 
@@ -17,9 +17,10 @@ if TYPE_CHECKING:
 
 
 class TestErrorTask(TestTask):
-    def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
+    def __call__(self) -> grizzlytask:
         super_task = super().__call__()
 
+        @grizzlytask
         def task(parent: 'GrizzlyScenario') -> Any:
             if self.task_call_count > 0:
                 raise ValueError('error')

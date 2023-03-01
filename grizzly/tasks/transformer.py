@@ -33,7 +33,7 @@ from typing import TYPE_CHECKING, List, Callable, Any, Type, Optional
 from grizzly_extras.transformer import Transformer, transformer, TransformerContentType, TransformerError
 
 from ..exceptions import TransformerLocustError
-from . import GrizzlyTask, template
+from . import GrizzlyTask, template, grizzlytask
 
 if TYPE_CHECKING:  # pragma: no cover
     from ..context import GrizzlyContextScenario, GrizzlyContext
@@ -81,7 +81,8 @@ class TransformerTask(GrizzlyTask):
 
         setattr(self, '_parser', self._transformer.parser(self.expression))
 
-    def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
+    def __call__(self) -> grizzlytask:
+        @grizzlytask
         def task(parent: 'GrizzlyScenario') -> Any:
             start = perf_counter()
             response_length = 0

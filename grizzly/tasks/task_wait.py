@@ -26,11 +26,11 @@ This task does not have any request statistics entries.
 
 * `max_time` _float_ (optional) - maximum time to wait
 '''
-from typing import TYPE_CHECKING, Optional, Callable, Any
+from typing import TYPE_CHECKING, Optional, Any
 
 from locust import between, constant
 
-from . import GrizzlyTask
+from . import GrizzlyTask, grizzlytask
 
 if TYPE_CHECKING:  # pragma: no cover
     from ..scenarios import GrizzlyScenario
@@ -47,7 +47,8 @@ class TaskWaitTask(GrizzlyTask):
         self.min_time = min_time
         self.max_time = max_time
 
-    def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
+    def __call__(self) -> grizzlytask:
+        @grizzlytask
         def task(parent: 'GrizzlyScenario') -> Any:
             if self.max_time is None:
                 wait_time = constant(self.min_time)

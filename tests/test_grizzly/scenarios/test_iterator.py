@@ -1,7 +1,7 @@
 import logging
 
 from os import environ
-from typing import TYPE_CHECKING, Dict, Any, Optional, List, Callable
+from typing import TYPE_CHECKING, Dict, Any, Optional, List
 from types import FunctionType
 from importlib import reload
 
@@ -17,12 +17,12 @@ from locust.exception import StopUser, InterruptTaskSet, RescheduleTask, Resched
 from grizzly.scenarios import iterator
 from grizzly.testdata.communication import TestdataConsumer
 from grizzly.testdata.utils import transform
-from grizzly.tasks import WaitTask, LogMessageTask
+from grizzly.tasks import WaitTask, LogMessageTask, grizzlytask
 from grizzly.exceptions import RestartScenario, StopScenario
 from grizzly.types import ScenarioState
 
 from ...fixtures import GrizzlyFixture
-from ...helpers import RequestCalled, TestTask
+from ...helpers import RequestCalled, TestTask, regex
 
 
 if TYPE_CHECKING:
@@ -624,7 +624,8 @@ class TestIterationScenario:
         reload(iterator)
 
         class TestErrorTask(TestTask):
-            def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
+            def __call__(self) -> grizzlytask:
+                @grizzlytask
                 def task(parent: 'GrizzlyScenario') -> Any:
                     parent.user.logger.debug(f'{self.name} executed')
 
@@ -636,6 +637,8 @@ class TestIterationScenario:
                 return task
 
         _, user, _ = grizzly_fixture()
+
+        mocker.patch('grizzly.scenarios.iterator.gsleep', return_value=None)
 
         # add tasks to IteratorScenario.tasks
         try:
@@ -656,6 +659,7 @@ class TestIterationScenario:
                 iterator.IteratorScenario.populate(TestTask(name=name))
 
             scenario = iterator.IteratorScenario(user)
+            scenario.pace_time = '10000'
 
             assert scenario.task_count == 13
             assert len(scenario.tasks) == 13
@@ -726,6 +730,7 @@ class TestIterationScenario:
                 'test-task-10 executed',
                 'not finished with scenario, currently at task 12 of 13, let me be!',
                 'executing task 13 of 13: pace',
+                r'^keeping pace by sleeping [0-9\.]+ milliseconds$',
                 "okay, I'm done with my running tasks now",
                 'scenario state=ScenarioState.STOPPING -> ScenarioState.STOPPED',
                 "self.user._scenario_state=<ScenarioState.STOPPED: 1>, self.user._state='stopping', e=StopUser()",
@@ -733,7 +738,8 @@ class TestIterationScenario:
 
             assert len(caplog.messages) == len(expected_messages)
 
-            for actual, expected in zip(caplog.messages, expected_messages):
+            for actual, _expected in zip(caplog.messages, expected_messages):
+                expected = regex.possible(_expected)
                 assert actual == expected
 
         finally:
@@ -742,4 +748,111 @@ class TestIterationScenario:
             except:
                 pass
 
+            reload(iterator)
+
+    def test_on_start(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+        reload(iterator)
+
+        _, user, _ = grizzly_fixture()
+
+        class TestOnStartTask(TestTask):
+            def __call__(self) -> grizzlytask:
+                @grizzlytask
+                def task(parent: 'GrizzlyScenario') -> Any:
+                    pass
+
+                @task.on_start
+                def on_start() -> None:
+                    pass
+
+                return task
+
+        iterator.IteratorScenario.populate(TestOnStartTask(name='test-on-task-1'))
+        iterator.IteratorScenario.populate(TestOnStartTask(name='test-on-task-2'))
+
+        try:
+            scenario = iterator.IteratorScenario(user)
+
+            testdata_consumer_mock = mocker.patch('grizzly.scenarios.TestdataConsumer.__init__', return_value=None)
+
+            task_1 = scenario.tasks[-3]
+            task_2 = scenario.tasks[-2]
+
+            assert isinstance(task_1, grizzlytask)
+            assert isinstance(task_2, grizzlytask)
+            assert task_1 is not task_2
+            assert task_1._on_stop is None
+            assert task_2._on_stop is None
+
+            task_1_on_start_spy = mocker.spy(task_1, '_on_start')
+            task_2_on_start_spy = mocker.spy(task_2, '_on_start')
+
+            with pytest.raises(StopUser):
+                scenario.on_start()
+
+            assert testdata_consumer_mock.call_count == 0
+            assert task_1_on_start_spy.call_count == 0
+            assert task_2_on_start_spy.call_count == 0
+            assert scenario.user._scenario_state == ScenarioState.STOPPED
+
+            environ['TESTDATA_PRODUCER_ADDRESS'] = 'tcp://localhost:5555'
+
+            scenario.on_start()
+
+            assert scenario.user._scenario_state == ScenarioState.RUNNING
+            assert testdata_consumer_mock.call_count == 1
+            assert task_1_on_start_spy.call_count == 1
+            assert task_2_on_start_spy.call_count == 1
+        finally:
+            try:
+                del environ['TESTDATA_PRODUCER_ADDRESS']
+            except:
+                pass
+
+            reload(iterator)
+
+    def test_on_stop(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+        reload(iterator)
+
+        _, user, _ = grizzly_fixture()
+
+        class TestOnStopTask(TestTask):
+            def __call__(self) -> grizzlytask:
+                @grizzlytask
+                def task(parent: 'GrizzlyScenario') -> Any:
+                    pass
+
+                @task.on_stop
+                def on_stop() -> None:
+                    pass
+
+                return task
+
+        iterator.IteratorScenario.populate(TestOnStopTask(name='test-on-task-1'))
+        iterator.IteratorScenario.populate(TestOnStopTask(name='test-on-task-2'))
+
+        try:
+            scenario = iterator.IteratorScenario(user)
+
+            testdata_consumer_mock = mocker.MagicMock()
+            scenario.consumer = testdata_consumer_mock
+
+            task_1 = scenario.tasks[-3]
+            task_2 = scenario.tasks[-2]
+
+            assert isinstance(task_1, grizzlytask)
+            assert isinstance(task_2, grizzlytask)
+            assert task_1 is not task_2
+
+            task_1_on_stop_spy = mocker.spy(task_1, '_on_stop')
+            task_2_on_stop_spy = mocker.spy(task_2, '_on_stop')
+            scenario.user.scenario_state = ScenarioState.RUNNING
+
+            scenario.on_stop()
+
+            assert scenario.user._scenario_state == ScenarioState.STOPPED
+            assert testdata_consumer_mock.stop.call_count == 1
+            assert task_1_on_stop_spy.call_count == 1
+            assert task_2_on_stop_spy.call_count == 1
+        finally:
             reload(iterator)

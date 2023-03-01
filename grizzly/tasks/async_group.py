@@ -31,12 +31,12 @@ from os import environ
 
 import gevent
 
-from typing import TYPE_CHECKING, Any, Callable, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, List, Optional, Tuple
 from time import perf_counter as time_perf_counter
 
 from grizzly.types import RequestType
 
-from . import GrizzlyTask, GrizzlyTaskWrapper, RequestTask, template
+from . import GrizzlyTask, GrizzlyTaskWrapper, RequestTask, template, grizzlytask
 from ..users.base import AsyncRequests
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -64,7 +64,8 @@ class AsyncRequestGroupTask(GrizzlyTaskWrapper):
     def peek(self) -> List[GrizzlyTask]:
         return self.tasks
 
-    def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
+    def __call__(self) -> grizzlytask:
+        @grizzlytask
         def task(parent: 'GrizzlyScenario') -> Any:
             if not isinstance(parent.user, AsyncRequests):
                 raise NotImplementedError(f'{parent.user.__class__.__name__} does not inherit AsyncRequests')

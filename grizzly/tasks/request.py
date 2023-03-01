@@ -57,7 +57,7 @@ And set response content type to "application/json"
 ```
 
 '''
-from typing import TYPE_CHECKING, Dict, List, Optional, Any, Callable
+from typing import TYPE_CHECKING, Dict, List, Optional, Any
 
 from jinja2.environment import Template
 from grizzly_extras.transformer import TransformerContentType
@@ -65,7 +65,7 @@ from grizzly_extras.arguments import parse_arguments, split_value, unquote
 
 from grizzly.types import GrizzlyResponse, RequestMethod
 
-from . import GrizzlyMetaRequestTask, template  # pylint: disable=unused-import
+from . import GrizzlyMetaRequestTask, template, grizzlytask  # pylint: disable=unused-import
 
 if TYPE_CHECKING:  # pragma: no cover
     from ..context import GrizzlyContextScenario
@@ -178,7 +178,8 @@ class RequestTask(GrizzlyMetaRequestTask):
         else:
             self.metadata[key] = value
 
-    def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
+    def __call__(self) -> grizzlytask:
+        @grizzlytask
         def task(parent: 'GrizzlyScenario') -> Any:
             return parent.user.request(self)
 

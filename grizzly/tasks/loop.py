@@ -24,7 +24,7 @@ is the number of wrapped tasks. Each wrapped task will have its own entry in the
 
 * `variable` _str_: name of variable that a value from `input_list` will be accessible in
 """
-from typing import TYPE_CHECKING, Any, Callable, List, Optional
+from typing import TYPE_CHECKING, Any, List, Optional
 from time import perf_counter
 from json import loads as jsonloads
 
@@ -34,7 +34,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from ..scenarios import GrizzlyScenario
     from ..context import GrizzlyContextScenario, GrizzlyContext
 
-from . import GrizzlyTask, GrizzlyTaskWrapper, template
+from . import GrizzlyTask, GrizzlyTaskWrapper, template, grizzlytask
 
 
 @template('values', 'tasks')
@@ -66,9 +66,10 @@ class LoopTask(GrizzlyTaskWrapper):
     def peek(self) -> List[GrizzlyTask]:
         return self.tasks
 
-    def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
+    def __call__(self) -> grizzlytask:
         tasks = [task() for task in self.tasks]
 
+        @grizzlytask
         def task(parent: 'GrizzlyScenario') -> Any:
             orig_value = parent.user._context['variables'].get(self.variable, None)
             start = perf_counter()

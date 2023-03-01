@@ -11,9 +11,9 @@ from grizzly.types import ScenarioState
 
 from ..context import GrizzlyContext
 from ..testdata.communication import TestdataConsumer
-from ..tasks import GrizzlyTask
+from ..tasks import GrizzlyTask, grizzlytask
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from ..users.base import GrizzlyUser
 
 
@@ -38,7 +38,7 @@ class GrizzlyScenario(SequentialTaskSet):
 
         if callable(getattr(cls, 'pace', None)):
             cls.tasks.insert(-1, task)
-        else:
+        else:  # pragma: no cover
             cls.tasks.append(task)
 
     def render(self, input: str, variables: Optional[Dict[str, Any]] = None) -> str:
@@ -60,7 +60,15 @@ class GrizzlyScenario(SequentialTaskSet):
             self.logger.error('no address to testdata producer specified')
             raise StopUser()
 
+        for task in self.tasks:
+            if isinstance(task, grizzlytask):
+                task.on.start()
+
     def on_stop(self) -> None:
+        for task in self.tasks:
+            if isinstance(task, grizzlytask):
+                task.on.stop()
+
         self.consumer.stop()
         self.user.scenario_state = ScenarioState.STOPPED
 

@@ -54,7 +54,7 @@ from grizzly_extras.transformer import Transformer, TransformerContentType, Tran
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments, split_value
 
 from ..types import RequestType
-from . import GrizzlyTask, GrizzlyMetaRequestTask, template
+from . import GrizzlyTask, GrizzlyMetaRequestTask, template, grizzlytask
 
 if TYPE_CHECKING:  # pragma: no cover
     from ..context import GrizzlyContextScenario, GrizzlyContext
@@ -136,12 +136,13 @@ class UntilRequestTask(GrizzlyTask):
             if self.wait < 0.1:
                 raise ValueError('wait argument cannot be less than 0.1 seconds')
 
-    def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
+    def __call__(self) -> grizzlytask:
         if self.transform is None:
             raise TypeError(f'could not find a transformer for {self.request.content_type.name}')
 
         transform = cast(Transformer, self.transform)
 
+        @grizzlytask
         def task(parent: 'GrizzlyScenario') -> Any:
             task_name = f'{self.scenario.identifier} {self.request.name}, w={self.wait}s, r={self.retries}, em={self.expected_matches}'
             condition_rendered = parent.render(self.condition)

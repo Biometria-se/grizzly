@@ -32,7 +32,7 @@ and saves the result as a date/time string in an variable.
 * `offset` _str_ (optional) - a time span string describing the offset, Y = years, M = months, D = days, h = hours, m = minutes, s = seconds, e.g. `1Y-2M10D`
 '''  # noqa: E501
 # pylint: enable=line-too-long
-from typing import TYPE_CHECKING, Callable, Dict, Any, Optional, cast
+from typing import TYPE_CHECKING, Dict, Any, Optional, cast
 from datetime import datetime
 
 try:
@@ -47,7 +47,7 @@ from dateutil.relativedelta import relativedelta
 from grizzly_extras.arguments import get_unsupported_arguments, split_value, parse_arguments
 
 from ..utils import parse_timespan
-from . import GrizzlyTask, template
+from . import GrizzlyTask, template, grizzlytask
 
 if TYPE_CHECKING:  # pragma: no cover
     from ..context import GrizzlyContextScenario
@@ -77,7 +77,8 @@ class DateTask(GrizzlyTask):
         else:
             raise ValueError('no arguments specified')
 
-    def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
+    def __call__(self) -> grizzlytask:
+        @grizzlytask
         def task(parent: 'GrizzlyScenario') -> Any:
             value_rendered = parent.render(self.value, dict(datetime=datetime))
 

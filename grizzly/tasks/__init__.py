@@ -13,6 +13,41 @@ a previous response or fetching additional test data from a different endpoint (
 It is possible to implement custom tasks, the only requirement is that they inherit `grizzly.tasks.GrizzlyTask`. To get them to be executed by `grizzly`,
 a step implementation is also needed.
 
+Boilerplate example of a custom task:
+
+```python
+from typing import Any, cast
+
+from grizzly.context import GrizzlyContext
+from grizzly.tasks import GrizzlyTask, grizzlytask
+from grizzly.scenarios import GrizzlyScenario
+from behave import then
+from behave.runner import Context
+
+
+class TestTask(GrizzlyTask):
+    def __call__(self) -> grizzlytask:
+        @grizzlytask
+        def task(parent: GrizzlyScenario) -> Any:
+            print(f'{self.__class__.__name__}::task called')
+
+        @task.on_start
+        def on_start() -> None:
+            print(f'{self.__class__.__name__}::on_start called')
+
+        @task.on_stop
+        def on_stop() -> None:
+            print(f'{self.__class__.__name__}::on_stop called')
+
+        return task
+
+
+@then(u'run `TestTask`')
+def step_run_testtask(context: Context) -> None:
+    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly.scenario.tasks.add(TestTask())
+```
+
 There are examples of this in the {@link framework.example}.
 '''
 from abc import ABC, ABCMeta, abstractmethod
@@ -31,20 +66,21 @@ GrizzlyTaskType = Callable[['GrizzlyScenario'], Any]
 GrizzlyTaskOnType = Optional[Callable[[], None]]
 
 
-class OnGrizzlyTask:
-    def __init__(self, holder: 'grizzlytask') -> None:
-        self._holder = holder
-
-    def start(self) -> None:
-        if self._holder._on_start is not None:
-            self._holder._on_start()
-
-    def stop(self) -> None:
-        if self._holder._on_stop is not None:
-            self._holder._on_stop()
-
-
 class grizzlytask:
+    __name__ = 'grizzlytask'
+
+    class OnGrizzlyTask:
+        def __init__(self, holder: 'grizzlytask') -> None:
+            self._holder = holder
+
+        def start(self) -> None:
+            if self._holder._on_start is not None:
+                self._holder._on_start()
+
+        def stop(self) -> None:
+            if self._holder._on_stop is not None:
+                self._holder._on_stop()
+
     def __init__(self, task: GrizzlyTaskType, on_start: GrizzlyTaskOnType = None, on_stop: GrizzlyTaskOnType = None, doc: Optional[str] = None) -> None:
         self._task = task
         self._on_start = on_start
@@ -53,7 +89,7 @@ class grizzlytask:
         if doc is None and task is not None:
             self.__doc__ = doc
 
-        self._on = OnGrizzlyTask(self)
+        self._on = self.OnGrizzlyTask(self)
 
     @property
     def on(self) -> OnGrizzlyTask:
@@ -75,6 +111,7 @@ class GrizzlyTask(ABC):
     _context_root: str
 
     scenario: 'GrizzlyContextScenario'
+    step: str
 
     def __init__(self, scenario: Optional['GrizzlyContextScenario'] = None) -> None:
         self._context_root = environ.get('GRIZZLY_CONTEXT_ROOT', '.')
@@ -82,7 +119,7 @@ class GrizzlyTask(ABC):
             self.scenario = scenario
 
     @abstractmethod
-    def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
+    def __call__(self) -> grizzlytask:
         raise NotImplementedError(f'{self.__class__.__name__} has not been implemented')
 
     def get_templates(self) -> List[str]:

@@ -1,18 +1,23 @@
 from os import environ
-from typing import TYPE_CHECKING, Callable, Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 import pytest
 
 from pytest_mock import MockerFixture
 
-from grizzly.tasks import GrizzlyTask, LoopTask, ConditionalTask, RequestTask, AsyncRequestGroupTask, template
+from grizzly.tasks import (
+    GrizzlyTask,
+    LoopTask,
+    ConditionalTask,
+    RequestTask,
+    AsyncRequestGroupTask,
+    template,
+    grizzlytask,
+)
 from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContextScenario
 
 from ...fixtures import GrizzlyFixture
-
-if TYPE_CHECKING:
-    from grizzly.scenarios import GrizzlyScenario
 
 
 @template('string_template', 'list_template', 'dict_template')
@@ -30,13 +35,12 @@ class DummyTask(GrizzlyTask):
             'dict_template_2': '{{ dict_template_2 }}',
         }
 
-    def __call__(self) -> Callable[['GrizzlyScenario'], Any]:
+    def __call__(self) -> grizzlytask:
         raise NotImplementedError(f'{self.__class__.__name__} has not been implemented')
 
 
 class TestGrizzlyTask:
     def test___init__(self) -> None:
-
         try:
             del environ['GRIZZLY_CONTEXT_ROOT']
         except KeyError:
