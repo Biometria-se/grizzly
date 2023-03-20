@@ -222,22 +222,22 @@ def test_e2e_step_set_variable_alias(e2e_fixture: End2EndFixture) -> None:
         alias = grizzly.state.alias
 
         assert len(alias) == 2, 'unexpected number of aliases'
-        alias_username = alias.get('AtomicCsvRow.users.username', None)
+        alias_username = alias.get('AtomicCsvReader.users.username', None)
         assert alias_username == 'auth.user.username', f'{alias_username} != auth.user.username'
-        alias_password = alias.get('AtomicCsvRow.users.password', None)
+        alias_password = alias.get('AtomicCsvReader.users.password', None)
         assert alias_password == 'auth.user.password', f'{alias_password} != auth.user.password'
-        variable = grizzly.state.variables.get('AtomicCsvRow.users', None)
+        variable = grizzly.state.variables.get('AtomicCsvReader.users', None)
         assert variable == 'users.csv | repeat=True', f'{variable} != users.csv | repeat=True'
 
     e2e_fixture.add_validator(validate_variable_alias)
 
     feature_file = e2e_fixture.test_steps(
         scenario=[
-            'And value for variable "AtomicCsvRow.users" is "users.csv | repeat=True"',
-            'And set alias "auth.user.username" for variable "AtomicCsvRow.users.username"',
-            'And set alias "auth.user.password" for variable "AtomicCsvRow.users.password"',
-            'Then log message "username={{ AtomicCsvRow.users.username }}"',
-            'Then log message "password={{ AtomicCsvRow.users.password }}"',
+            'And value for variable "AtomicCsvReader.users" is "users.csv | repeat=True"',
+            'And set alias "auth.user.username" for variable "AtomicCsvReader.users.username"',
+            'And set alias "auth.user.password" for variable "AtomicCsvReader.users.password"',
+            'Then log message "username={{ AtomicCsvReader.users.username }}"',
+            'Then log message "password={{ AtomicCsvReader.users.password }}"',
         ],
     )
 

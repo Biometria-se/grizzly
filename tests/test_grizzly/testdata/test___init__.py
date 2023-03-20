@@ -7,7 +7,7 @@ import pytest
 from _pytest.tmpdir import TempPathFactory
 
 from grizzly.testdata import GrizzlyVariables
-from grizzly.testdata.variables import AtomicCsvRow, AtomicIntegerIncrementer, AtomicServiceBus
+from grizzly.testdata.variables import AtomicCsvReader, AtomicIntegerIncrementer, AtomicServiceBus
 from grizzly.context import GrizzlyContext
 
 from ...fixtures import AtomicVariableCleanupFixture, NoopZmqFixture
@@ -185,7 +185,7 @@ class TestGrizzlyVariables:
             rmtree(test_context_root)
             cleanup()
 
-    def test_AtomicCsvRow(self, cleanup: AtomicVariableCleanupFixture, tmp_path_factory: TempPathFactory) -> None:
+    def test_AtomicCsvReader(self, cleanup: AtomicVariableCleanupFixture, tmp_path_factory: TempPathFactory) -> None:
         test_context = tmp_path_factory.mktemp('test_context') / 'requests'
         test_context.mkdir()
         test_context_root = path.dirname(test_context)
@@ -200,18 +200,18 @@ class TestGrizzlyVariables:
             t = GrizzlyVariables()
 
             with pytest.raises(ValueError):
-                t['AtomicCsvRow.test'] = 'doesnotexist.csv'
+                t['AtomicCsvReader.test'] = 'doesnotexist.csv'
 
-            t['AtomicCsvRow.test'] = 'test.csv'
-
-            with pytest.raises(ValueError):
-                t['AtomicCsvRow.test2'] = 'test.csv | repeat=asdf'
+            t['AtomicCsvReader.test'] = 'test.csv'
 
             with pytest.raises(ValueError):
-                t['AtomicCsvRow.test2'] = 'test.csv | repeat=True, suffix=True'
+                t['AtomicCsvReader.test2'] = 'test.csv | repeat=asdf'
 
-            t['AtomicCsvRow.test2'] = 'test.csv|repeat=True'
-            assert t['AtomicCsvRow.test2'] == 'test.csv | repeat=True'
+            with pytest.raises(ValueError):
+                t['AtomicCsvReader.test2'] = 'test.csv | repeat=True, suffix=True'
+
+            t['AtomicCsvReader.test2'] = 'test.csv|repeat=True'
+            assert t['AtomicCsvReader.test2'] == 'test.csv | repeat=True'
         finally:
             try:
                 del environ['GRIZZLY_CONTEXT_ROOT']
@@ -277,7 +277,7 @@ class TestGrizzlyVariables:
     @pytest.mark.parametrize('input,expected', [
         ('variable', (None, None, 'variable',),),
         ('AtomicIntegerIncrementer.foo', ('grizzly.testdata.variables', 'AtomicIntegerIncrementer', 'foo',),),
-        ('AtomicCsvRow.users.username', ('grizzly.testdata.variables', 'AtomicCsvRow', 'users',),),
+        ('AtomicCsvReader.users.username', ('grizzly.testdata.variables', 'AtomicCsvReader', 'users',),),
         ('tests.helpers.AtomicCustomVariable.hello', ('tests.helpers', 'AtomicCustomVariable', 'hello',),),
         ('tests.helpers.AtomicCustomVariable.foo.bar', ('tests.helpers', 'AtomicCustomVariable', 'foo',),),
         ('a.custom.struct', (None, None, 'a.custom.struct',),),
@@ -364,7 +364,7 @@ class TestGrizzlyVariables:
         finally:
             cleanup()
 
-    def test__get_variable_value_AtomicCsvRow(self, cleanup: AtomicVariableCleanupFixture, tmp_path_factory: TempPathFactory) -> None:
+    def test__get_variable_value_AtomicCsvReader(self, cleanup: AtomicVariableCleanupFixture, tmp_path_factory: TempPathFactory) -> None:
         test_context = tmp_path_factory.mktemp('test_context') / 'requests'
         test_context.mkdir()
         test_context_root = path.dirname(test_context)
@@ -377,11 +377,11 @@ class TestGrizzlyVariables:
             fd.flush()
         try:
             grizzly = GrizzlyContext()
-            variable_name = 'AtomicCsvRow.test'
-            grizzly.state.variables['AtomicCsvRow.test'] = 'test.csv'
+            variable_name = 'AtomicCsvReader.test'
+            grizzly.state.variables['AtomicCsvReader.test'] = 'test.csv'
             value, external_dependencies = GrizzlyVariables.get_variable_value(grizzly, variable_name)
 
-            assert isinstance(value, AtomicCsvRow)
+            assert isinstance(value, AtomicCsvReader)
             assert external_dependencies == set()
             assert 'test' in value._values
             assert 'test' in value._rows

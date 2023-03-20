@@ -64,8 +64,8 @@ class TestTestdataProducer:
 
             source = json.loads(request.source)
             source['result']['File'] = '{{ AtomicDirectoryContents.test }}'
-            source['result']['CsvRowValue1'] = '{{ AtomicCsvRow.test.header1 }}'
-            source['result']['CsvRowValue2'] = '{{ AtomicCsvRow.test.header2 }}'
+            source['result']['CsvRowValue1'] = '{{ AtomicCsvReader.test.header1 }}'
+            source['result']['CsvRowValue2'] = '{{ AtomicCsvReader.test.header2 }}'
             source['result']['IntWithStep'] = '{{ AtomicIntegerIncrementer.value }}'
             source['result']['UtcDate'] = '{{ AtomicDate.utc }}'
             source['result']['CustomVariable'] = '{{ tests.helpers.AtomicCustomVariable.foo }}'
@@ -76,9 +76,9 @@ class TestTestdataProducer:
             grizzly.state.variables['messageID'] = 123
             grizzly.state.variables['AtomicIntegerIncrementer.messageID'] = 456
             grizzly.state.variables['AtomicDirectoryContents.test'] = 'adirectory'
-            grizzly.state.variables['AtomicCsvRow.test'] = 'test.csv'
-            grizzly.state.alias['AtomicCsvRow.test.header1'] = 'auth.user.username'
-            grizzly.state.alias['AtomicCsvRow.test.header2'] = 'auth.user.password'
+            grizzly.state.variables['AtomicCsvReader.test'] = 'test.csv'
+            grizzly.state.alias['AtomicCsvReader.test.header1'] = 'auth.user.username'
+            grizzly.state.alias['AtomicCsvReader.test.header2'] = 'auth.user.password'
             grizzly.state.variables['AtomicIntegerIncrementer.value'] = '1 | step=5, persist=True'
             grizzly.state.variables['AtomicDate.utc'] = "now | format='%Y-%m-%dT%H:%M:%S.000Z', timezone=UTC"
             grizzly.state.variables['AtomicDate.now'] = 'now'
@@ -133,8 +133,8 @@ class TestTestdataProducer:
                 assert variables['AtomicIntegerIncrementer.messageID'] == 456
                 assert variables['messageID'] == 123
                 assert variables['AtomicDirectoryContents.test'] == f'adirectory{sep}file1.txt'
-                assert 'AtomicCsvRow.test.header1' not in variables
-                assert 'AtomicCsvRow.test.header2' not in variables
+                assert 'AtomicCsvReader.test.header1' not in variables
+                assert 'AtomicCsvReader.test.header2' not in variables
                 assert variables['AtomicIntegerIncrementer.value'] == 1
                 utc_date = variables['AtomicDate.utc']
                 assert 'T' in utc_date and utc_date.endswith('Z')
@@ -153,8 +153,8 @@ class TestTestdataProducer:
                 assert variables['AtomicIntegerIncrementer.messageID'] == 457
                 assert variables['messageID'] == 123
                 assert variables['AtomicDirectoryContents.test'] == f'adirectory{sep}file2.txt'
-                assert 'AtomicCsvRow.test.header1' not in variables
-                assert 'AtomicCsvRow.test.header2' not in variables
+                assert 'AtomicCsvReader.test.header1' not in variables
+                assert 'AtomicCsvReader.test.header2' not in variables
                 assert variables['AtomicIntegerIncrementer.value'] == 6
                 assert data['auth.user.username'] == 'value3'
                 assert data['auth.user.password'] == 'value4'

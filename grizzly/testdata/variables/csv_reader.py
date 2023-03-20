@@ -1,5 +1,5 @@
 '''
-@anchor pydoc:grizzly.testdata.variables.csv_row CSV Row
+@anchor pydoc:grizzly.testdata.variables.csv_reader CSV Reader
 This variable reads a CSV file and provides a new row from the CSV file each time it is accessed.
 
 The CSV files **must** have headers for each column, since these are used to reference the value.
@@ -25,12 +25,12 @@ bob2,password
 ```
 
 ``` gherkin
-And value for variable "AtomicCsvRow.example" is "example.csv | random=False, repeat=True"
+And value for variable "AtomicCsvReader.example" is "example.csv | random=False, repeat=True"
 Then post request with name "authenticate" to endpoint "/api/v1/authenticate"
   """
   {
-      "username": "{{ AtomicCsvRow.example.username }}",
-      "password": "{{ AtomicCsvRow.example.password }}"
+      "username": "{{ AtomicCsvReader.example.username }}",
+      "password": "{{ AtomicCsvReader.example.password }}"
   }
   """
 ```
@@ -68,7 +68,7 @@ from grizzly.types import bool_type
 from . import AtomicVariable
 
 
-def atomiccsvrow__base_type__(value: str) -> str:
+def atomiccsvreader__base_type__(value: str) -> str:
     grizzly_context_requests = os.path.join(os.environ.get('GRIZZLY_CONTEXT_ROOT', ''), 'requests')
 
     if '|' in value:
@@ -77,13 +77,13 @@ def atomiccsvrow__base_type__(value: str) -> str:
         try:
             arguments = parse_arguments(csv_arguments)
         except ValueError as e:
-            raise ValueError(f'AtomicCsvRow: {str(e)}') from e
+            raise ValueError(f'AtomicCsvReader: {str(e)}') from e
 
         for argument, value in arguments.items():
-            if argument not in AtomicCsvRow.arguments:
-                raise ValueError(f'AtomicCsvRow: argument {argument} is not allowed')
+            if argument not in AtomicCsvReader.arguments:
+                raise ValueError(f'AtomicCsvReader: argument {argument} is not allowed')
             else:
-                AtomicCsvRow.arguments[argument](value)
+                AtomicCsvReader.arguments[argument](value)
 
         value = f'{csv_file} | {csv_arguments}'
     else:
@@ -92,16 +92,16 @@ def atomiccsvrow__base_type__(value: str) -> str:
     path = os.path.join(grizzly_context_requests, csv_file)
 
     if not path.endswith('.csv'):
-        raise ValueError(f'AtomicCsvRow: {csv_file} must be a CSV file with file extension .csv')
+        raise ValueError(f'AtomicCsvReader: {csv_file} must be a CSV file with file extension .csv')
 
     if not os.path.isfile(path):
-        raise ValueError(f'AtomicCsvRow: {csv_file} is not a file in {grizzly_context_requests}')
+        raise ValueError(f'AtomicCsvReader: {csv_file} is not a file in {grizzly_context_requests}')
 
     return value
 
 
-class AtomicCsvRow(AtomicVariable[Dict[str, Any]]):
-    __base_type__ = atomiccsvrow__base_type__
+class AtomicCsvReader(AtomicVariable[Dict[str, Any]]):
+    __base_type__ = atomiccsvreader__base_type__
     __initialized: bool = False
 
     _rows: Dict[str, List[Dict[str, Any]]]
@@ -154,10 +154,10 @@ class AtomicCsvRow(AtomicVariable[Dict[str, Any]]):
         return queue
 
     @classmethod
-    def clear(cls: Type['AtomicCsvRow']) -> None:
+    def clear(cls: Type['AtomicCsvReader']) -> None:
         super().clear()
 
-        instance = cast(AtomicCsvRow, cls.get())
+        instance = cast(AtomicCsvReader, cls.get())
         variables = list(instance._rows.keys())
 
         for variable in variables:

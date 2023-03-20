@@ -161,7 +161,7 @@ from .random_integer import AtomicRandomInteger
 from .integer_incrementer import AtomicIntegerIncrementer
 from .date import AtomicDate
 from .directory_contents import AtomicDirectoryContents
-from .csv_row import AtomicCsvRow
+from .csv_reader import AtomicCsvReader
 from .random_string import AtomicRandomString
 from .servicebus import AtomicServiceBus
 
@@ -170,7 +170,7 @@ __all__ = [
     'AtomicIntegerIncrementer',
     'AtomicDate',
     'AtomicDirectoryContents',
-    'AtomicCsvRow',
+    'AtomicCsvReader',
     'AtomicRandomString',
     'AtomicServiceBus',
     'destroy_variables',

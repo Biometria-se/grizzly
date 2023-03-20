@@ -165,7 +165,7 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
             ['bob', 'morning', '{{ AtomicRandomString.object }} is garbage'],
             ['alice', 'noon', 'i like {{ fruit }}'],
             ['chad', 'evening', 'have you tried {{ AtomicDate.action }} it off and on again?'],
-            ['dave', 'night', 'yabba {{ AtomicCsvRow.response.word }} doo'],
+            ['dave', 'night', 'yabba {{ AtomicCsvReader.response.word }} doo'],
         ]
 
         rows = []

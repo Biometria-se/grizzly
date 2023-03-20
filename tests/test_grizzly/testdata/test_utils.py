@@ -134,15 +134,15 @@ def test_initialize_testdata_with_payload_context(grizzly_fixture: GrizzlyFixtur
 
         assert request.source is not None
         source = jsonloads(request.source)
-        source['result']['CsvRowValue1'] = '{{ AtomicCsvRow.test.header1 }}'
-        source['result']['CsvRowValue2'] = '{{ AtomicCsvRow.test.header2 }}'
+        source['result']['CsvRowValue1'] = '{{ AtomicCsvReader.test.header1 }}'
+        source['result']['CsvRowValue2'] = '{{ AtomicCsvReader.test.header2 }}'
         source['result']['File'] = '{{ AtomicDirectoryContents.test }}'
 
         behave_scenario = Scenario(filename=None, line=None, keyword='', name=scenario.__class__.__name__)
         grizzly.scenarios.create(behave_scenario)
         grizzly.state.variables['messageID'] = 123
         grizzly.state.variables['AtomicIntegerIncrementer.messageID'] = 456
-        grizzly.state.variables['AtomicCsvRow.test'] = 'test.csv'
+        grizzly.state.variables['AtomicCsvReader.test'] = 'test.csv'
         grizzly.state.variables['AtomicDirectoryContents.test'] = 'adirectory'
         grizzly.state.variables['AtomicDate.now'] = 'now'
         grizzly.state.variables['AtomicServiceBus.event'] = (
@@ -173,12 +173,12 @@ def test_initialize_testdata_with_payload_context(grizzly_fixture: GrizzlyFixtur
         assert data['AtomicIntegerIncrementer.messageID']['messageID'] == 458
         assert data['AtomicIntegerIncrementer.messageID']['messageID'] == 459
 
-        assert data['AtomicCsvRow.test.header1']['test'] == {'header1': 'value1', 'header2': 'value2'}
-        assert data['AtomicCsvRow.test.header2']['test']['header2'] == 'value4'
+        assert data['AtomicCsvReader.test.header1']['test'] == {'header1': 'value1', 'header2': 'value2'}
+        assert data['AtomicCsvReader.test.header2']['test']['header2'] == 'value4'
         with pytest.raises(TypeError):
-            assert data['AtomicCsvRow.test.header1']['test']['header1'] is None
-        assert data['AtomicCsvRow.test.header2']['test'] is None
-        assert data['AtomicCsvRow.test.header1']['test'] is None
+            assert data['AtomicCsvReader.test.header1']['test']['header1'] is None
+        assert data['AtomicCsvReader.test.header2']['test'] is None
+        assert data['AtomicCsvReader.test.header1']['test'] is None
 
         assert data['AtomicDirectoryContents.test']['test'] == f'adirectory{sep}file1.txt'
         assert data['AtomicDirectoryContents.test']['test'] == f'adirectory{sep}file2.txt'
@@ -354,7 +354,7 @@ def test__objectify() -> None:
             'test': 1337,
         },
         'test': 1338,
-        'AtomicCsvRow': {
+        'AtomicCsvReader': {
             'input': {
                 'test1': 'hello',
                 'test2': 'world!',
@@ -387,10 +387,10 @@ def test__objectify() -> None:
     assert isinstance(obj['test'], int)
     assert obj['test'] == 1338
     assert (
-        obj['AtomicCsvRow'].__module__ == 'grizzly.testdata.utils'
-        and obj['AtomicCsvRow'].__class__.__name__ == 'Testdata'
+        obj['AtomicCsvReader'].__module__ == 'grizzly.testdata.utils'
+        and obj['AtomicCsvReader'].__class__.__name__ == 'Testdata'
     )
-    atomiccsvrow_input = getattr(obj['AtomicCsvRow'], 'input', None)
+    atomiccsvrow_input = getattr(obj['AtomicCsvReader'], 'input', None)
     assert atomiccsvrow_input is not None
     assert (
         atomiccsvrow_input.__module__ == 'grizzly.testdata.utils'
@@ -471,8 +471,8 @@ def test_transform(behave_fixture: BehaveFixture, noop_zmq: NoopZmqFixture, clea
         data: Dict[str, Any] = {
             'AtomicIntegerIncrementer.test': 1337,
             'test': 1338,
-            'AtomicCsvRow.input.test1': 'hello',
-            'AtomicCsvRow.input.test2': 'world!',
+            'AtomicCsvReader.input.test1': 'hello',
+            'AtomicCsvReader.input.test2': 'world!',
             'Test.test1.test2.test3': 'value',
             'Test.test1.test2.test4': 'value',
             'Test.test2.test3': 'value',
@@ -517,15 +517,15 @@ def test_transform(behave_fixture: BehaveFixture, noop_zmq: NoopZmqFixture, clea
         assert isinstance(obj['test'], int)
         assert obj['test'] == 1338
         assert (
-            obj['AtomicCsvRow'].__module__ == 'grizzly.testdata.utils'
-            and obj['AtomicCsvRow'].__class__.__name__ == 'Testdata'
+            obj['AtomicCsvReader'].__module__ == 'grizzly.testdata.utils'
+            and obj['AtomicCsvReader'].__class__.__name__ == 'Testdata'
         )
         assert (
-            obj['AtomicCsvRow'].input.__module__ == 'grizzly.testdata.utils'
-            and obj['AtomicCsvRow'].input.__class__.__name__ == 'Testdata'
+            obj['AtomicCsvReader'].input.__module__ == 'grizzly.testdata.utils'
+            and obj['AtomicCsvReader'].input.__class__.__name__ == 'Testdata'
         )
-        assert getattr(obj['AtomicCsvRow'].input, 'test1', None) == 'hello'
-        assert getattr(obj['AtomicCsvRow'].input, 'test2', None) == 'world!'
+        assert getattr(obj['AtomicCsvReader'].input, 'test1', None) == 'hello'
+        assert getattr(obj['AtomicCsvReader'].input, 'test2', None) == 'world!'
         assert (
             obj['Test'].__module__ == 'grizzly.testdata.utils'
             and obj['Test'].__class__.__name__ == 'Testdata'

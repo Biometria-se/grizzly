@@ -147,6 +147,12 @@ class TestMessageQueueUser:
 
         user.on_stop()
 
+        action_spy.assert_not_called()
+
+        user.worker_id = 'foobar'
+
+        user.on_stop()
+
         assert action_spy.call_count == 1
         args, kwargs = action_spy.call_args_list[-1]
 
@@ -740,7 +746,7 @@ class TestMessageQueueUser:
         assert send_json_spy.call_count == 6
         _, kwargs = response_event_spy.call_args_list[-1]
         exception = kwargs.get('exception', None)
-        assert isinstance(exception, RuntimeError)
+        assert isinstance(exception, ValueError)
         assert str(exception) == 'invalid value for argument "queue"'
 
         send_json_spy.reset_mock()

@@ -127,7 +127,7 @@ def test_e2e_example(e2e_fixture: End2EndFixture) -> None:
             assert 'executing task 4 of 4: pace' in result
 
             assert 'executing task 1 of 5: iterator' in result
-            assert 'executing task 2 of 5: Then get request with name "1-get-book" from endpoint "/books/{{ AtomicCsvRow.books.book }}.json | content_type=json"' in result
+            assert 'executing task 2 of 5: Then get request with name "1-get-book" from endpoint "/books/{{ AtomicCsvReader.books.book }}.json | content_type=json"' in result
             assert 'executing task 3 of 5: Then get request with name "2-get-author" from endpoint "{{ author_endpoint }}.json | content_type=json"' in result
             assert 'executing task 4 of 5: Then log message "AtomicCustomVariable.foobar=\'{{ steps.custom.AtomicCustomVariable.foobar }}\'"' in result
             assert 'executing task 5 of 5: pace' in result

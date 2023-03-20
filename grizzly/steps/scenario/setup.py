@@ -133,9 +133,9 @@ def step_setup_set_variable_alias(context: Context, alias: str, variable: str) -
     Example:
 
     ``` gherkin
-    And value for variable "AtomicCsvRow.users" is "users.csv | repeat=True"
-    And set alias "auth.user.username" for variable "AtomicCsvRow.users.username"
-    And set alias "auth.user.password" for variable "AtomicCsvRow.users.password"
+    And value for variable "AtomicCsvReader.users" is "users.csv | repeat=True"
+    And set alias "auth.user.username" for variable "AtomicCsvReader.users.username"
+    And set alias "auth.user.password" for variable "AtomicCsvReader.users.password"
     ```
 
     Variables in payload templates are not allowed to have an alias.

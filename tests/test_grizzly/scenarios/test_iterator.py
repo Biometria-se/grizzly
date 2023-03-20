@@ -183,7 +183,7 @@ class TestIterationScenario:
         mock_request({
             'variables': {
                 'AtomicIntegerIncrementer.messageID': 1337,
-                'AtomicCsvRow.test': {
+                'AtomicCsvReader.test': {
                     'header1': 'value1',
                     'header2': 'value2',
                 },
@@ -193,8 +193,8 @@ class TestIterationScenario:
         scenario.iterator()
 
         assert user.context_variables['AtomicIntegerIncrementer'].messageID == 1337
-        assert user.context_variables['AtomicCsvRow'].test.header1 == 'value1'
-        assert user.context_variables['AtomicCsvRow'].test.header2 == 'value2'
+        assert user.context_variables['AtomicCsvReader'].test.header1 == 'value1'
+        assert user.context_variables['AtomicCsvReader'].test.header2 == 'value2'
 
     def test_pace(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         reload(iterator)

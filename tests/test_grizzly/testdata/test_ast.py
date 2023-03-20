@@ -15,8 +15,8 @@ def test__parse_template(request_task: RequestTaskFixture) -> None:
     assert request.source is not None
 
     source = jsonloads(request.source)
-    source['result']['CsvRowValue1'] = '{{ AtomicCsvRow.test.header1 }}'
-    source['result']['CsvRowValue2'] = '{{ AtomicCsvRow.test.header2 }}'
+    source['result']['CsvRowValue1'] = '{{ AtomicCsvReader.test.header1 }}'
+    source['result']['CsvRowValue2'] = '{{ AtomicCsvReader.test.header2 }}'
     source['result']['File'] = '{{ AtomicDirectoryContents.test }}'
     source['result']['TestSubString'] = '{{ a_sub_string[:3] }}'
     source['result']['TestString'] = '{{ a_string }}'
@@ -36,8 +36,8 @@ def test__parse_template(request_task: RequestTaskFixture) -> None:
             'messageID',
             'AtomicIntegerIncrementer.messageID',
             'AtomicDate.now',
-            'AtomicCsvRow.test.header1',
-            'AtomicCsvRow.test.header2',
+            'AtomicCsvReader.test.header1',
+            'AtomicCsvReader.test.header2',
             'AtomicDirectoryContents.test',
             'a_sub_string',
             'a_string',

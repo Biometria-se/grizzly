@@ -22,16 +22,16 @@ Feature: grizzly example
   Scenario: book api
     Given a user of type "RestApi" load testing "$conf::facts.book.host$"
     And repeat for "1" iteration
-    And value for variable "AtomicCsvRow.books" is "books/books.csv | random=True"
+    And value for variable "AtomicCsvReader.books" is "books/books.csv | random=True"
     And value for variable "steps.custom.AtomicCustomVariable.foobar" is "foobar"
     And value for variable "author_endpoint" is "none"
 
-    Then get request with name "1-get-book" from endpoint "/books/{{ AtomicCsvRow.books.book }}.json | content_type=json"
-    When response payload "$.number_of_pages" is not "{{ AtomicCsvRow.books.pages }}" fail request
-    When response payload "$.isbn_10[0]" is not "{{ AtomicCsvRow.books.isbn_10 }}" fail request
+    Then get request with name "1-get-book" from endpoint "/books/{{ AtomicCsvReader.books.book }}.json | content_type=json"
+    When response payload "$.number_of_pages" is not "{{ AtomicCsvReader.books.pages }}" fail request
+    When response payload "$.isbn_10[0]" is not "{{ AtomicCsvReader.books.isbn_10 }}" fail request
     Then save response payload "$.authors[0].key" in variable "author_endpoint"
 
     Then get request with name "2-get-author" from endpoint "{{ author_endpoint }}.json | content_type=json"
-    When response payload "$.name" is not "{{ AtomicCsvRow.books.author }}" fail request
+    When response payload "$.name" is not "{{ AtomicCsvReader.books.author }}" fail request
     Then log message "AtomicCustomVariable.foobar='{{ steps.custom.AtomicCustomVariable.foobar }}'"
 

@@ -272,13 +272,13 @@ def test_step_setup_set_variable_alias(behave_fixture: BehaveFixture, mocker: Mo
     )
 
     with pytest.raises(AssertionError):
-        step_setup_set_variable_alias(behave, 'auth.user.username', 'AtomicCsvRow.users.username')
+        step_setup_set_variable_alias(behave, 'auth.user.username', 'AtomicCsvReader.users.username')
 
-    step_setup_variable_value(behave, 'AtomicCsvRow.users', 'users.csv')
-    step_setup_set_variable_alias(behave, 'auth.user.username', 'AtomicCsvRow.users.username')
+    step_setup_variable_value(behave, 'AtomicCsvReader.users', 'users.csv')
+    step_setup_set_variable_alias(behave, 'auth.user.username', 'AtomicCsvReader.users.username')
 
     with pytest.raises(AssertionError):
-        step_setup_set_variable_alias(behave, 'auth.user.username', 'AtomicCsvRow.users.username')
+        step_setup_set_variable_alias(behave, 'auth.user.username', 'AtomicCsvReader.users.username')
 
 
 def test_step_setup_log_all_requests(behave_fixture: BehaveFixture) -> None:

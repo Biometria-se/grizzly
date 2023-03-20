@@ -5,13 +5,13 @@ import pytest
 
 from _pytest.tmpdir import TempPathFactory
 
-from grizzly.testdata.variables import AtomicCsvRow
-from grizzly.testdata.variables.csv_row import atomiccsvrow__base_type__
+from grizzly.testdata.variables import AtomicCsvReader
+from grizzly.testdata.variables.csv_reader import atomiccsvreader__base_type__
 
 from ....fixtures import AtomicVariableCleanupFixture
 
 
-def test_atomiccsvrow__base_type__(tmp_path_factory: TempPathFactory) -> None:
+def test_atomiccsvreader__base_type__(tmp_path_factory: TempPathFactory) -> None:
     test_context = tmp_path_factory.mktemp('test_context') / 'requests'
     test_context.mkdir()
     test_context_root = os.path.dirname(str(test_context))
@@ -19,29 +19,29 @@ def test_atomiccsvrow__base_type__(tmp_path_factory: TempPathFactory) -> None:
     try:
         os.environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
         with pytest.raises(ValueError) as ve:
-            atomiccsvrow__base_type__('file1.txt')
+            atomiccsvreader__base_type__('file1.txt')
         assert 'must be a CSV file with file extension .csv' in str(ve)
 
         os.mkdir(os.path.join(str(test_context), 'a-directory.csv'))
 
         with pytest.raises(ValueError) as ve:
-            atomiccsvrow__base_type__('a-directory.csv')
+            atomiccsvreader__base_type__('a-directory.csv')
         assert 'is not a file in' in str(ve)
 
         with pytest.raises(ValueError) as ve:
-            atomiccsvrow__base_type__('file1.csv')
+            atomiccsvreader__base_type__('file1.csv')
         assert 'is not a file in' in str(ve)
 
         test_file = test_context / 'file1.csv'
         test_file.write_text('\n')
 
-        assert atomiccsvrow__base_type__('file1.csv') == 'file1.csv'
+        assert atomiccsvreader__base_type__('file1.csv') == 'file1.csv'
 
         with pytest.raises(ValueError) as ve:
-            atomiccsvrow__base_type__('file1.csv | arg1=test')
+            atomiccsvreader__base_type__('file1.csv | arg1=test')
         assert 'is not allowed' in str(ve)
 
-        assert atomiccsvrow__base_type__('file1.csv|random=True') == 'file1.csv | random=True'
+        assert atomiccsvreader__base_type__('file1.csv|random=True') == 'file1.csv | random=True'
     finally:
         shutil.rmtree(test_context_root)
 
@@ -51,7 +51,7 @@ def test_atomiccsvrow__base_type__(tmp_path_factory: TempPathFactory) -> None:
             pass
 
 
-class TestAtomicCsvRow:
+class TestAtomicCsvReader:
     def test(self, cleanup: AtomicVariableCleanupFixture, tmp_path_factory: TempPathFactory) -> None:
         test_context = tmp_path_factory.mktemp('test_context') / 'requests'
         test_context.mkdir()
@@ -78,7 +78,7 @@ class TestAtomicCsvRow:
                 fd.flush()
 
         try:
-            instance = AtomicCsvRow('test1', '1.csv')
+            instance = AtomicCsvReader('test1', '1.csv')
             assert len(instance._rows['test1']) == 1
 
             csvrow = instance['test1']
@@ -91,7 +91,7 @@ class TestAtomicCsvRow:
             csvrow = instance['test1']
             assert csvrow is None
 
-            instance = AtomicCsvRow('test2', '2.csv')
+            instance = AtomicCsvReader('test2', '2.csv')
             assert len(instance._rows['test2']) == 2
 
             csvrow = instance['test2.header22']
@@ -110,7 +110,7 @@ class TestAtomicCsvRow:
             csvrow = instance['test2']
             assert csvrow is None
 
-            instance = AtomicCsvRow('test3', '3.csv')
+            instance = AtomicCsvReader('test3', '3.csv')
             assert len(instance._rows['test3']) == 3
 
             with pytest.raises(ValueError):
@@ -124,7 +124,7 @@ class TestAtomicCsvRow:
             instance['test4'] = {'test': 'value'}
             assert 'test4' not in instance._rows
 
-            instance = AtomicCsvRow('test5', '3.csv')
+            instance = AtomicCsvReader('test5', '3.csv')
             assert 'test5' in instance._rows
 
             del instance['test5']
@@ -133,7 +133,7 @@ class TestAtomicCsvRow:
             del instance['test5']
             del instance['test5.header13']
 
-            instance = AtomicCsvRow('infinite', '3.csv | repeat=True')
+            instance = AtomicCsvReader('infinite', '3.csv | repeat=True')
             assert instance['infinite'] == {'header13': 'value113', 'header23': 'value213', 'header33': 'value313'}
             assert instance['infinite'] == {'header13': 'value123', 'header23': 'value223', 'header33': 'value323'}
             assert instance['infinite'] == {'header13': 'value133', 'header23': 'value233', 'header33': 'value333'}
@@ -144,7 +144,7 @@ class TestAtomicCsvRow:
             assert instance['infinite'] == {'header13': 'value123', 'header23': 'value223', 'header33': 'value323'}
             assert instance['infinite'] == {'header13': 'value133', 'header23': 'value233', 'header33': 'value333'}
 
-            instance = AtomicCsvRow('random', '3.csv | random=True')
+            instance = AtomicCsvReader('random', '3.csv | random=True')
             assert instance['random'] in [
                 {'header13': 'value113', 'header23': 'value213', 'header33': 'value313'},
                 {'header13': 'value123', 'header23': 'value223', 'header33': 'value323'},
@@ -162,7 +162,7 @@ class TestAtomicCsvRow:
             ]
             assert instance.__getitem__('random') is None
 
-            instance = AtomicCsvRow('randomrepeat', '3.csv | random=True, repeat=True')
+            instance = AtomicCsvReader('randomrepeat', '3.csv | random=True, repeat=True')
             assert instance['randomrepeat'] in [
                 {'header13': 'value113', 'header23': 'value213', 'header33': 'value313'},
                 {'header13': 'value123', 'header23': 'value223', 'header33': 'value323'},
@@ -232,29 +232,29 @@ class TestAtomicCsvRow:
 
         try:
             try:
-                AtomicCsvRow.destroy()
+                AtomicCsvReader.destroy()
             except Exception:
                 pass
 
             with pytest.raises(ValueError):
-                AtomicCsvRow.destroy()
+                AtomicCsvReader.destroy()
 
             with pytest.raises(ValueError):
-                AtomicCsvRow.clear()
+                AtomicCsvReader.clear()
 
-            instance = AtomicCsvRow('test', 'test.csv')
+            instance = AtomicCsvReader('test', 'test.csv')
 
             assert instance['test'] == {'header1': 'value1'}
 
             assert len(instance._values.keys()) == 1
             assert len(instance._rows.keys()) == 1
 
-            AtomicCsvRow.clear()
+            AtomicCsvReader.clear()
 
             assert len(instance._values.keys()) == 0
             assert len(instance._rows.keys()) == 0
 
-            AtomicCsvRow.destroy()
+            AtomicCsvReader.destroy()
         finally:
             shutil.rmtree(test_context_root)
 
@@ -268,7 +268,7 @@ class TestAtomicCsvRow:
     def test___init___error(self, cleanup: AtomicVariableCleanupFixture) -> None:
         try:
             with pytest.raises(ValueError) as ve:
-                AtomicCsvRow('test.test', 'file1.csv')
+                AtomicCsvReader('test.test', 'file1.csv')
             assert 'is not a valid CSV source name, must be' in str(ve)
         finally:
             cleanup()

@@ -286,10 +286,6 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
 
         self.worker_id = None
 
-        import json
-
-        self.logger.debug(f'metadata=\n{json.dumps(action.get("metadata", {}), indent=2)}\npayload=\n{json.dumps(action.get("payload", {}), indent=2)}')
-
         super().on_stop()
 
     @contextmanager
