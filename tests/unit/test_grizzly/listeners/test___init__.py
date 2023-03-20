@@ -250,24 +250,18 @@ def test_init_statistics_listener(mocker: MockerFixture, locust_fixture: LocustF
 
         environment = locust_fixture.env
 
-        environment.events.request_success._handlers = []
-        environment.events.request_failure._handlers = []
         environment.events.quitting._handlers = []
         environment.events.spawning_complete._handlers = []
 
         # not a valid scheme
         grizzly.setup.statistics_url = 'http://localhost'
         init_statistics_listener(grizzly.setup.statistics_url)(environment)
-        assert len(environment.events.request_success._handlers) == 0
-        assert len(environment.events.request_failure._handlers) == 0
         assert len(environment.events.request._handlers) == 1
         assert len(environment.events.quitting._handlers) == 0
         assert len(environment.events.spawning_complete._handlers) == 0
 
         grizzly.setup.statistics_url = 'influxdb://test/database?Testplan=test'
         init_statistics_listener(grizzly.setup.statistics_url)(environment)
-        assert len(environment.events.request_success._handlers) == 0
-        assert len(environment.events.request_failure._handlers) == 0
         assert len(environment.events.request._handlers) == 2
         assert len(environment.events.quitting._handlers) == 0
         assert len(environment.events.spawning_complete._handlers) == 0
@@ -278,8 +272,6 @@ def test_init_statistics_listener(mocker: MockerFixture, locust_fixture: LocustF
 
         grizzly.setup.statistics_url = 'insights://insights.example.se/?InstrumentationKey=b9601868-cbf8-43ea-afaf-0a2b820ae1c5'
         init_statistics_listener(grizzly.setup.statistics_url)(environment)
-        assert len(environment.events.request_success._handlers) == 0
-        assert len(environment.events.request_failure._handlers) == 0
         assert len(environment.events.request._handlers) == 3
         assert len(environment.events.quitting._handlers) == 0
         assert len(environment.events.spawning_complete._handlers) == 0
