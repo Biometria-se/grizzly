@@ -93,9 +93,8 @@ from grizzly_extras.arguments import split_value, parse_arguments, get_unsupport
 from grizzly_extras.transformer import TransformerContentType
 
 from grizzly.types import RequestType, bool_type
-
-from ...context import GrizzlyContext
-from ..utils import resolve_variable
+from grizzly.context import GrizzlyContext
+from grizzly.testdata.utils import resolve_variable
 from . import AtomicVariable
 
 

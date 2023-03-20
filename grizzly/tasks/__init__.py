@@ -21,8 +21,7 @@ from typing import Any, cast
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import GrizzlyTask, grizzlytask
 from grizzly.scenarios import GrizzlyScenario
-from behave import then
-from behave.runner import Context
+from grizzly.types.behave import Context, then
 
 
 class TestTask(GrizzlyTask):
@@ -59,8 +58,8 @@ from grizzly_extras.transformer import TransformerContentType
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.types import GrizzlyResponse
-    from ..scenarios import GrizzlyScenario
-    from ..context import GrizzlyContextScenario
+    from grizzly.scenarios import GrizzlyScenario
+    from grizzly.context import GrizzlyContextScenario
 
 GrizzlyTaskType = Callable[['GrizzlyScenario'], Any]
 GrizzlyTaskOnType = Optional[Callable[[], None]]

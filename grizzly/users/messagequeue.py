@@ -132,16 +132,15 @@ from zmq.sugar.constants import NOBLOCK as ZMQ_NOBLOCK, REQ as ZMQ_REQ
 from zmq.error import Again as ZMQAgain
 import zmq.green as zmq
 
-from locust.exception import StopUser
-from locust.env import Environment
 from gevent import sleep as gsleep
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse, AsyncMessageError
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
 
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestType
+from grizzly.types.locust import Environment, StopUser
+from grizzly.tasks import RequestTask
+from grizzly.utils import merge_dicts
 
-from ..tasks import RequestTask
-from ..utils import merge_dicts
 from .base import GrizzlyUser, ResponseHandler, RequestLogger
 from . import logger
 
@@ -285,10 +284,6 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
             pass
 
         self.worker_id = None
-
-        import json
-
-        self.logger.debug(f'metadata=\n{json.dumps(action.get("metadata", {}), indent=2)}\npayload=\n{json.dumps(action.get("payload", {}), indent=2)}')
 
         super().on_stop()
 

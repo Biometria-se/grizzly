@@ -5,7 +5,7 @@ from grizzly.types import GrizzlyVariableType
 
 
 if TYPE_CHECKING:
-    from ..context import GrizzlyContext
+    from grizzly.context import GrizzlyContext
     from .variables import AtomicVariable
 
 

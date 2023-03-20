@@ -6,10 +6,9 @@ from dataclasses import dataclass, field
 
 import yaml
 
-from behave.model import Scenario
-from locust.runners import Runner
-
 from grizzly.types import MessageCallback, MessageDirection
+from grizzly.types.locust import Runner
+from grizzly.types.behave import Scenario
 
 from .testdata import GrizzlyVariables
 

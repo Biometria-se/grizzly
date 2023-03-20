@@ -6,11 +6,10 @@ from textwrap import dedent
 import pytest
 import yaml
 
-from behave.runner import Context
-from behave.model import Feature
 from grizzly.context import GrizzlyContext
+from grizzly.types.behave import Context, Feature
 
-from ....fixtures import End2EndFixture
+from tests.fixtures import End2EndFixture
 
 
 def test_e2e_step_task_request_text_with_name_to_endpoint(e2e_fixture: End2EndFixture) -> None:

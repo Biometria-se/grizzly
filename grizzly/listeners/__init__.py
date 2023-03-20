@@ -7,22 +7,18 @@ from mypy_extensions import KwArg, VarArg
 
 import gevent
 
-from locust.env import Environment
-from locust.runners import MasterRunner, WorkerRunner
-from locust.runners import Runner
-from locust.rpc.protocol import Message
 from locust.stats import RequestStats, StatsEntry
 from locust.stats import (
     print_error_report,
     print_percentile_stats,
     print_stats,
 )
-from behave.model import Status
 
 from grizzly.types import MessageDirection, RequestType, TestdataType
-
-from ..context import GrizzlyContext
-from ..testdata.communication import TestdataProducer
+from grizzly.types.behave import Status
+from grizzly.types.locust import Environment, MasterRunner, WorkerRunner, Runner, Message
+from grizzly.context import GrizzlyContext
+from grizzly.testdata.communication import TestdataProducer
 
 producer: Optional[TestdataProducer] = None
 

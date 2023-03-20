@@ -81,18 +81,17 @@ from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
 
 from locust.contrib.fasthttp import FastHttpSession
-from locust.exception import StopUser
-from locust.env import Environment
 
 import requests
 
 from grizzly_extras.transformer import TransformerContentType
 
 from grizzly.types import GrizzlyResponse, RequestType, RequestMethod, WrappedFunc, GrizzlyResponseContextManager
+from grizzly.types.locust import Environment, StopUser
+from grizzly.utils import merge_dicts
+from grizzly.tasks import RequestTask
+from grizzly.clients import ResponseEventSession
 
-from ..utils import merge_dicts
-from ..tasks import RequestTask
-from ..clients import ResponseEventSession
 from .base import RequestLogger, ResponseHandler, GrizzlyUser, HttpRequests, AsyncRequests
 from . import logger
 

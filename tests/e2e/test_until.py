@@ -4,11 +4,10 @@ from tempfile import NamedTemporaryFile
 
 import yaml
 
-from behave.runner import Context
-from behave.model import Feature
+from grizzly.types.behave import Context, Feature
 from grizzly.context import GrizzlyContext
 
-from ..fixtures import End2EndFixture
+from tests.fixtures import End2EndFixture
 
 
 def test_e2e_until(e2e_fixture: End2EndFixture) -> None:

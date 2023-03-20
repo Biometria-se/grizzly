@@ -8,18 +8,17 @@ from typing import Dict, Any, Tuple, Optional, Union, cast
 from datetime import datetime, timedelta
 from urllib.parse import urlparse, urlunparse
 
-from locust.env import Environment
 from jinja2 import Template
 from requests import Response as RequestResponse
+from grizzly_extras.transformer import JsonBytesEncoder
 
 from grizzly.types import GrizzlyResponse, HandlerContextType, RequestDirection, GrizzlyResponseContextManager
+from grizzly.types.locust import Environment
+from grizzly.tasks import RequestTask
+from grizzly.utils import merge_dicts
 
-from ...tasks import RequestTask
-from ...utils import merge_dicts
 from .response_event import ResponseEvent
 from .grizzly_user import GrizzlyUser
-
-from grizzly_extras.transformer import JsonBytesEncoder
 
 
 LOG_FILE_TEMPLATE = '''

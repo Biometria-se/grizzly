@@ -35,13 +35,13 @@ from typing import TYPE_CHECKING, Any, List, Optional, Tuple
 from time import perf_counter as time_perf_counter
 
 from grizzly.types import RequestType
+from grizzly.users.base import AsyncRequests
 
 from . import GrizzlyTask, GrizzlyTaskWrapper, RequestTask, template, grizzlytask
-from ..users.base import AsyncRequests
 
 if TYPE_CHECKING:  # pragma: no cover
-    from ..context import GrizzlyContextScenario
-    from ..scenarios import GrizzlyScenario
+    from grizzly.context import GrizzlyContextScenario
+    from grizzly.scenarios import GrizzlyScenario
 
 
 @template('name', 'tasks')

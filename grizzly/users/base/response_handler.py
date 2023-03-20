@@ -3,16 +3,16 @@ from abc import ABC, abstractmethod
 from json import dumps as jsondumps
 
 import jinja2 as j2
-from locust.env import Environment
-
-from grizzly.types import HandlerContextType, GrizzlyResponseContextManager, GrizzlyResponse
-
-from ...tasks import RequestTask
-from ...exceptions import ResponseHandlerError, TransformerLocustError
-from .grizzly_user import GrizzlyUser
-from .response_event import ResponseEvent
 
 from grizzly_extras.transformer import transformer, TransformerError, PlainTransformer, TransformerContentType
+
+from grizzly.types import HandlerContextType, GrizzlyResponseContextManager, GrizzlyResponse
+from grizzly.types.locust import Environment
+from grizzly.tasks import RequestTask
+from grizzly.exceptions import ResponseHandlerError, TransformerLocustError
+
+from .grizzly_user import GrizzlyUser
+from .response_event import ResponseEvent
 
 
 class ResponseHandlerAction(ABC):

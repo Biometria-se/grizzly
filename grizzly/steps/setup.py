@@ -1,11 +1,10 @@
 from typing import cast
 from os import environ
 
-from behave import given, then  # pylint: disable=no-name-in-module
-from behave.runner import Context
+from grizzly.types.behave import Context, given, then
+from grizzly.context import GrizzlyContext
+from grizzly.testdata.utils import resolve_variable
 
-from ..context import GrizzlyContext
-from ..testdata.utils import resolve_variable
 from ._helpers import is_template
 
 

@@ -33,15 +33,14 @@ from time import perf_counter as time
 
 from azure.iot.device import IoTHubDeviceClient
 from azure.storage.blob import BlobClient
-from locust.exception import StopUser
-from locust.env import Environment
 
 from grizzly.types import RequestMethod, GrizzlyResponse, RequestType
+from grizzly.types.locust import Environment, StopUser
+from grizzly.tasks import RequestTask
+from grizzly.utils import merge_dicts
 
-from . import logger
 from .base import GrizzlyUser
-from ..tasks import RequestTask
-from ..utils import merge_dicts
+from . import logger
 
 
 class IotHubUser(GrizzlyUser):

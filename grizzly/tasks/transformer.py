@@ -32,12 +32,13 @@ from typing import TYPE_CHECKING, List, Callable, Any, Type, Optional
 
 from grizzly_extras.transformer import Transformer, transformer, TransformerContentType, TransformerError
 
-from ..exceptions import TransformerLocustError
+from grizzly.exceptions import TransformerLocustError
+
 from . import GrizzlyTask, template, grizzlytask
 
 if TYPE_CHECKING:  # pragma: no cover
-    from ..context import GrizzlyContextScenario, GrizzlyContext
-    from ..scenarios import GrizzlyScenario
+    from grizzly.context import GrizzlyContextScenario, GrizzlyContext
+    from grizzly.scenarios import GrizzlyScenario
 
 
 @template('content')

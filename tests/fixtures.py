@@ -17,8 +17,6 @@ from getpass import getuser
 
 from locust.clients import ResponseContextManager
 from locust.contrib.fasthttp import FastResponse, FastRequest
-from locust.env import Environment
-from locust.runners import Runner
 from geventhttpclient.header import Headers
 from geventhttpclient.response import HTTPSocketPoolResponse
 from _pytest.tmpdir import TempPathFactory
@@ -27,17 +25,18 @@ from paramiko.transport import Transport
 from paramiko.channel import Channel
 from paramiko.sftp import BaseSFTP
 from paramiko.sftp_client import SFTPClient
-from behave.runner import Context as BehaveContext, Runner as BehaveRunner
-from behave.model import Scenario, Step, Background, Feature
 from behave.configuration import Configuration
 from behave.step_registry import registry as step_registry
+from behave.model import Background
+from behave.runner import Runner as BehaveRunner
 from requests.models import CaseInsensitiveDict, Response, PreparedRequest
 
 from grizzly.types import GrizzlyResponseContextManager, RequestMethod
+from grizzly.types.behave import Context as BehaveContext, Scenario, Step, Feature
 from grizzly.tasks import RequestTask
 from grizzly.testdata.variables import destroy_variables
-
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
+from grizzly.types.locust import Environment, Runner
 
 from .helpers import TestUser, TestScenario, RequestSilentFailureEvent
 from .helpers import onerror, run_command
@@ -775,8 +774,7 @@ def step_start_webserver(context: Context, port: int) -> None:
         with open(self._root / 'features' / 'steps' / 'steps.py', 'w') as fd:
             fd.write('from importlib import import_module\n')
             fd.write('from typing import cast, Callable, Any\n\n')
-            fd.write('from behave import then\n')
-            fd.write('from behave.runner import Context\n')
+            fd.write('from grizzly.types.behave import Context, then\n')
             fd.write('from grizzly.locust import on_master, on_worker, on_local\n')
             fd.write('from grizzly.context import GrizzlyContext, GrizzlyContextScenario\n')
             fd.write('from grizzly.tasks import GrizzlyTask\n')
@@ -1020,8 +1018,7 @@ def step_start_webserver(context: Context, port: int) -> None:
         # add after_feature hook, always write all of 'em
         with open(environment_file, 'w') as fd:
             fd.write('from typing import Any, Tuple, Dict, cast\n\n')
-            fd.write('from behave.runner import Context\n')
-            fd.write('from behave.model import Feature\n')
+            fd.write('from grizzly.types.behave import Context, Feature\n')
             fd.write('from grizzly.context import GrizzlyContext\n')
             fd.write((
                 'from grizzly.behave import before_feature as grizzly_before_feature, '

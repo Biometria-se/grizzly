@@ -8,16 +8,14 @@ from typing import cast
 from importlib import import_module
 from inspect import signature
 
-from behave import register_type, given  # pylint: disable=no-name-in-module
-from behave.runner import Context
-
 from grizzly_extras.text import permutation
 
-from grizzly.types import MessageDirection, Environment, Message
-
-from ...context import GrizzlyContext
-from ...utils import merge_dicts
-from ...testdata.utils import create_context_variable, resolve_variable
+from grizzly.types.locust import Environment, Message
+from grizzly.types.behave import Context, given, register_type
+from grizzly.types import MessageDirection
+from grizzly.context import GrizzlyContext
+from grizzly.utils import merge_dicts
+from grizzly.testdata.utils import create_context_variable, resolve_variable
 
 
 @parse.with_pattern(r'(client|server)', regex_group_count=1)

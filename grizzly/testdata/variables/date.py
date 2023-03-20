@@ -42,7 +42,7 @@ except ImportError:
 
 from grizzly_extras.arguments import split_value, parse_arguments
 
-from ...utils import parse_timespan
+from grizzly.utils import parse_timespan
 from . import AtomicVariable
 
 

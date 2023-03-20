@@ -18,15 +18,16 @@ Only supports `RequestDirection.FROM`.
 '''
 from typing import Optional, Dict, Any
 
+import requests
+
 from locust.exception import CatchResponseError
 from grizzly_extras.arguments import split_value, parse_arguments
 
-from . import client, ClientTask
-from ...types import GrizzlyResponse, RequestDirection, bool_type
-from ...scenarios import GrizzlyScenario
-from ...context import GrizzlyContextScenario
+from grizzly.types import GrizzlyResponse, RequestDirection, bool_type
+from grizzly.scenarios import GrizzlyScenario
+from grizzly.context import GrizzlyContextScenario
 
-import requests
+from . import client, ClientTask
 
 
 @client('http', 'https')

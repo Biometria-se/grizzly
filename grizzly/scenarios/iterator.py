@@ -6,18 +6,19 @@ from json import dumps as jsondumps
 
 from locust import task
 from locust.user.task import LOCUST_STATE_STOPPING, LOCUST_STATE_RUNNING
-from locust.exception import StopUser, InterruptTaskSet, RescheduleTaskImmediately, RescheduleTask
+from locust.exception import InterruptTaskSet, RescheduleTaskImmediately, RescheduleTask
 from locust.stats import StatsEntry
 from gevent.exceptions import GreenletExit
 from gevent import sleep as gsleep
 
 from grizzly.types import RequestType, ScenarioState
+from grizzly.types.locust import StopUser
+from grizzly.exceptions import RestartScenario, StopScenario
 
-from ..exceptions import RestartScenario, StopScenario
 from . import GrizzlyScenario
 
 if TYPE_CHECKING:
-    from ..users.base import GrizzlyUser
+    from grizzly.users.base import GrizzlyUser
 
 
 class IteratorScenario(GrizzlyScenario):

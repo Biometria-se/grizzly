@@ -67,7 +67,8 @@
                 "stevejpurves.cucumber",
                 "silverbulleters.gherkin-autocomplete",
                 "matangover.mypy",
-                "redhat.vscode-yaml"
+                "redhat.vscode-yaml",
+                "ms-vscode.live-server"
             ]
         }
     },

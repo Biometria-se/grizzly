@@ -20,8 +20,8 @@ from typing import TYPE_CHECKING, Any, Optional
 from . import GrizzlyTask, template, grizzlytask
 
 if TYPE_CHECKING:  # pragma: no cover
-    from ..context import GrizzlyContextScenario
-    from ..scenarios import GrizzlyScenario
+    from grizzly.context import GrizzlyContextScenario
+    from grizzly.scenarios import GrizzlyScenario
 
 
 @template('message')

@@ -12,10 +12,9 @@ import gevent
 
 from influxdb import InfluxDBClient
 from influxdb.exceptions import InfluxDBClientError
-from locust.env import Environment
-from locust.exception import CatchResponseError
 
-from ..context import GrizzlyContext
+from grizzly.context import GrizzlyContext
+from grizzly.types.locust import Environment, CatchResponseError
 
 
 logger = logging.getLogger(__name__)

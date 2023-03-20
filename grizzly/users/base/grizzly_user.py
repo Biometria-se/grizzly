@@ -7,20 +7,19 @@ from abc import abstractmethod
 from json import dumps as jsondumps, loads as jsonloads
 
 from jinja2 import Template
-from locust.exception import StopUser
 from locust.user.users import User
 from locust.user.task import LOCUST_STATE_RUNNING
-from locust.env import Environment
 
 from grizzly.types import GrizzlyResponse, RequestType, ScenarioState
+from grizzly.types.locust import Environment, StopUser
+from grizzly.tasks import RequestTask
+from grizzly.utils import merge_dicts
 
-from ...tasks import RequestTask
-from ...utils import merge_dicts
 from . import FileRequests
 
 
 if TYPE_CHECKING:
-    from ...context import GrizzlyContextScenario
+    from grizzly.context import GrizzlyContextScenario
 
 
 class GrizzlyUser(User):

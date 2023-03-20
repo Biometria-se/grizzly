@@ -1,9 +1,9 @@
 from typing import cast
 
-from behave.runner import Context
+from grizzly.types.behave import Context
 from grizzly.context import GrizzlyContext
 
-from ....fixtures import End2EndFixture
+from tests.fixtures import End2EndFixture
 
 
 def test_e2e_step_results_fail_ratio(e2e_fixture: End2EndFixture) -> None:

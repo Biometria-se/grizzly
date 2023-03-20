@@ -3,18 +3,16 @@ from typing import Optional, cast
 
 import parse
 
-from behave.runner import Context
-from behave import register_type, given, then  # pylint: disable=no-name-in-module
-from locust.exception import StopUser
-
 from grizzly_extras.text import permutation
 
-from ...context import GrizzlyContext
-from ...testdata.utils import create_context_variable, resolve_variable
-from ...utils import merge_dicts
-from ...exceptions import RestartScenario
-from .._helpers import is_template
-from ...tasks import RequestTask, GrizzlyTask
+from grizzly.types.locust import StopUser
+from grizzly.types.behave import Context, given, then, register_type
+from grizzly.context import GrizzlyContext
+from grizzly.testdata.utils import create_context_variable, resolve_variable
+from grizzly.utils import merge_dicts
+from grizzly.exceptions import RestartScenario
+from grizzly.tasks import RequestTask, GrizzlyTask
+from grizzly.steps._helpers import is_template
 
 
 @parse.with_pattern(r'(iteration[s]?)')
@@ -133,9 +131,9 @@ def step_setup_set_variable_alias(context: Context, alias: str, variable: str) -
     Example:
 
     ``` gherkin
-    And value for variable "AtomicCsvRow.users" is "users.csv | repeat=True"
-    And set alias "auth.user.username" for variable "AtomicCsvRow.users.username"
-    And set alias "auth.user.password" for variable "AtomicCsvRow.users.password"
+    And value for variable "AtomicCsvReader.users" is "users.csv | repeat=True"
+    And set alias "auth.user.username" for variable "AtomicCsvReader.users.username"
+    And set alias "auth.user.password" for variable "AtomicCsvReader.users.password"
     ```
 
     Variables in payload templates are not allowed to have an alias.

@@ -1,7 +1,7 @@
 import re
 import pytest
 
-from ...fixtures import End2EndFixture
+from tests.fixtures import End2EndFixture
 
 
 def test_e2e_step_utils_fail(e2e_fixture: End2EndFixture) -> None:

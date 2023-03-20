@@ -12,10 +12,9 @@ import zmq.green as zmq
 
 from gevent import sleep as gsleep
 from gevent.lock import Semaphore
-from locust.exception import StopUser
-from locust.env import Environment
 
 from grizzly.types import TestdataType
+from grizzly.types.locust import Environment, StopUser
 
 from .utils import transform
 from .variables import AtomicVariablePersist
@@ -23,8 +22,8 @@ from . import GrizzlyVariables
 
 
 if TYPE_CHECKING:
-    from ..context import GrizzlyContext
-    from ..scenarios import GrizzlyScenario
+    from grizzly.context import GrizzlyContext
+    from grizzly.scenarios import GrizzlyScenario
 
 
 class TestdataConsumer:

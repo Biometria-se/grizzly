@@ -83,11 +83,11 @@ from gevent import sleep as gsleep
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageResponse, AsyncMessageRequest
 
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestType
+from grizzly.context import GrizzlyContextScenario
+from grizzly.scenarios import GrizzlyScenario
+from grizzly.testdata.utils import resolve_variable
 
 from . import client, ClientTask, logger
-from ...context import GrizzlyContextScenario
-from ...scenarios import GrizzlyScenario
-from ...testdata.utils import resolve_variable
 
 
 try:

@@ -8,19 +8,16 @@ from urllib.parse import urlparse
 
 import jinja2 as j2
 
-from behave.runner import Context
-from behave.model import Row
-
 from grizzly_extras.transformer import TransformerContentType
 from grizzly_extras.arguments import split_value, parse_arguments, get_unsupported_arguments
 
 from grizzly.types import RequestMethod, ResponseTarget, ResponseAction
-
-from ..context import GrizzlyContext
-from ..tasks import RequestTask
-from ..tasks.clients import client, ClientTask
-from ..testdata.utils import resolve_variable
-from ..users.base.response_handler import ResponseHandlerAction, ValidationHandlerAction, SaveHandlerAction
+from grizzly.types.behave import Context, Row
+from grizzly.context import GrizzlyContext
+from grizzly.tasks import RequestTask
+from grizzly.tasks.clients import client, ClientTask
+from grizzly.testdata.utils import resolve_variable
+from grizzly.users.base.response_handler import ResponseHandlerAction, ValidationHandlerAction, SaveHandlerAction
 
 logger = logging.getLogger(__name__)
 

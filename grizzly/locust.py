@@ -13,10 +13,6 @@ from functools import wraps
 
 import gevent
 
-from behave.runner import Context
-from behave.model import Status
-from locust.runners import MasterRunner, WorkerRunner, Runner
-from locust.env import Environment
 from locust import stats as lstats, events
 from locust.log import setup_logging
 from locust.util.timespan import parse_timespan
@@ -24,16 +20,17 @@ from locust.user.users import User
 from jinja2.exceptions import TemplateError
 
 from grizzly.types import RequestType, TestdataType
+from grizzly.types.behave import Context, Status
 
 from . import __version__, __locust_version__
 from .listeners import init, init_statistics_listener, quitting, validate_result, spawning_complete, locust_test_start, locust_test_stop
 from .testdata.utils import initialize_testdata
 from .context import GrizzlyContext
 from .tasks import GrizzlyTask
-
 from .utils import create_scenario_class_type, create_user_class_type
+from .types.locust import Environment, MasterRunner, WorkerRunner, Runner
 
-__all__: List[str] = [
+__all__ = [
     'stats_logger',
 ]
 

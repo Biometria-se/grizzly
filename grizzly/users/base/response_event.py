@@ -1,11 +1,11 @@
 from typing import Any, Dict, Tuple
 from locust.event import EventHook
 
-from locust.exception import LocustError
 from locust.user.users import User
-from locust.env import Environment
 
-from ...clients import ResponseEventSession
+from grizzly.types.locust import Environment, LocustError
+from grizzly.clients import ResponseEventSession
+
 from . import HttpRequests
 
 

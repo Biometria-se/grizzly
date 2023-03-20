@@ -13,7 +13,7 @@ readme = "README.md"
 license = {text = 'MIT'}
 requires-python = ">=3.8"
 dependencies = [
-    "locust >=2.14.0,<2.15",
+    "locust >=2.15.0,<2.16",
     "aenum >3.1.8",
     "azure-core >=1.24.0,<2.0.0",
     "azure-servicebus >=7.6.0,<8.0.0",

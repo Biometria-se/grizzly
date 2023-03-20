@@ -24,8 +24,8 @@ from typing import Dict, Any, Optional
 from urllib.parse import parse_qs, urlparse
 
 from opencensus.ext.azure.log_exporter import AzureLogHandler
-from locust.env import Environment
-from locust.runners import MasterRunner
+
+from grizzly.types.locust import Environment, MasterRunner
 
 stdlogger = logging.getLogger(__name__)
 

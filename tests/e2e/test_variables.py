@@ -1,6 +1,6 @@
 from textwrap import dedent
 
-from ..fixtures import End2EndFixture
+from tests.fixtures import End2EndFixture
 
 
 def test_e2e_variables(e2e_fixture: End2EndFixture) -> None:
