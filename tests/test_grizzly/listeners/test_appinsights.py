@@ -4,7 +4,6 @@ from typing import Callable, Dict, Any, Optional
 
 import pytest
 
-from locust.exception import CatchResponseError
 from opencensus.ext.azure.log_exporter import AzureLogHandler
 from pytest_mock import MockerFixture
 from _pytest.logging import LogCaptureFixture
@@ -12,6 +11,7 @@ from _pytest.logging import LogCaptureFixture
 from ...fixtures import LocustFixture
 
 from grizzly.listeners.appinsights import ApplicationInsightsListener
+from grizzly.types.locust import CatchResponseError
 
 
 @pytest.fixture

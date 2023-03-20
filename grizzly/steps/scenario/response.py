@@ -17,13 +17,11 @@ import parse
 
 from typing import cast
 
-from behave.runner import Context
-from behave import register_type, when, then  # pylint: disable=no-name-in-module
-
 from grizzly_extras.transformer import TransformerContentType
 from grizzly_extras.text import permutation
 
 from grizzly.types import ResponseTarget
+from grizzly.types.behave import Context, when, then, register_type
 
 from ...context import GrizzlyContext
 from ...tasks import RequestTask

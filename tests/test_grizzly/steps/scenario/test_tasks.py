@@ -5,9 +5,9 @@ import pytest
 from parse import compile
 from json import dumps as jsondumps
 
-from behave.model import Table, Row
 from grizzly.context import GrizzlyContext
 from grizzly.types import RequestMethod, RequestDirection
+from grizzly.types.behave import Table, Row
 from grizzly.tasks import TransformerTask, LogMessageTask, WaitTask, TimerTask, TaskWaitTask, ConditionalTask
 from grizzly.tasks.clients import HttpClientTask
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import  # noqa: F403

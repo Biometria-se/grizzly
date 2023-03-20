@@ -5,8 +5,7 @@ locust statistics like response time and failures.
 '''
 from typing import cast
 
-from behave.runner import Context
-from behave import when  # pylint: disable=no-name-in-module
+from grizzly.types.behave import Context, when
 
 from ...context import GrizzlyContext, GrizzlyContextScenarioResponseTimePercentile
 

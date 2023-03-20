@@ -4,9 +4,7 @@ This module contains step implementations that describes a {@pylink grizzly.user
 """
 from typing import cast
 
-from behave.runner import Context
-from behave import given  # pylint: disable=no-name-in-module
-
+from grizzly.types.behave import Context, given
 from ...context import GrizzlyContext
 from ...testdata.utils import resolve_variable
 

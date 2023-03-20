@@ -8,12 +8,10 @@ from typing import cast
 from importlib import import_module
 from inspect import signature
 
-from behave import register_type, given  # pylint: disable=no-name-in-module
-from behave.runner import Context
-
 from grizzly_extras.text import permutation
 
 from grizzly.types.locust import Environment, Message
+from grizzly.types.behave import Context, given, register_type
 from grizzly.types import MessageDirection
 
 from ...context import GrizzlyContext

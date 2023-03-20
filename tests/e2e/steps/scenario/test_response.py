@@ -3,7 +3,7 @@ from itertools import product
 
 import pytest
 
-from behave.runner import Context
+from grizzly.types.behave import Context
 from grizzly.context import GrizzlyContext
 from grizzly.types import ResponseTarget
 

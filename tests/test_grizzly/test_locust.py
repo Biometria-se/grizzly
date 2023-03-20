@@ -15,8 +15,6 @@ import gevent
 from _pytest.logging import LogCaptureFixture
 from _pytest.capture import CaptureFixture
 from pytest_mock import MockerFixture
-from behave.runner import Context
-from behave.model import Scenario
 from locust.stats import RequestStats
 from locust.user.users import User
 from jinja2 import TemplateError
@@ -36,6 +34,7 @@ from grizzly.locust import (
 )
 from grizzly.types import RequestDirection, RequestMethod, RequestType
 from grizzly.types.locust import Environment
+from grizzly.types.behave import Context, Scenario
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 from grizzly.tasks import GrizzlyTask, LogMessageTask, RequestTask, WaitTask
 from grizzly.tasks.clients import MessageQueueClientTask

@@ -11,11 +11,11 @@ import pytest
 
 from pytest_mock import MockerFixture
 from _pytest.logging import LogCaptureFixture
-from locust.exception import CatchResponseError
 from influxdb.client import InfluxDBClient
 from influxdb.exceptions import InfluxDBClientError
 
 from grizzly.listeners.influxdb import InfluxDbError, InfluxDbListener, InfluxDb
+from grizzly.types.locust import CatchResponseError
 
 from ...fixtures import LocustFixture, GrizzlyFixture
 

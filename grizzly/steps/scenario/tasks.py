@@ -4,10 +4,8 @@ in the scenario.
 """
 from typing import cast
 
-from behave.runner import Context
-from behave import register_type, then, given, when  # pylint: disable=no-name-in-module
-
 from grizzly.types import RequestDirection, RequestMethod
+from grizzly.types.behave import Context, register_type, then, given, when
 
 from .._helpers import add_request_task, get_task_client, is_template
 from ...context import GrizzlyContext

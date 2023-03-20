@@ -13,8 +13,6 @@ from functools import wraps
 
 import gevent
 
-from behave.runner import Context
-from behave.model import Status
 from locust import stats as lstats, events
 from locust.log import setup_logging
 from locust.util.timespan import parse_timespan
@@ -22,6 +20,7 @@ from locust.user.users import User
 from jinja2.exceptions import TemplateError
 
 from grizzly.types import RequestType, TestdataType
+from grizzly.types.behave import Context, Status
 
 from . import __version__, __locust_version__
 from .listeners import init, init_statistics_listener, quitting, validate_result, spawning_complete, locust_test_start, locust_test_stop

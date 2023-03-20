@@ -12,9 +12,6 @@ from _pytest.logging import LogCaptureFixture
 from pytest_mock import MockerFixture
 
 from locust import TaskSet
-from behave.runner import Context
-from behave.model import Scenario
-from behave.model_core import Status
 
 from grizzly.utils import ModuleLoader
 from grizzly.utils import (
@@ -27,6 +24,7 @@ from grizzly.utils import (
     check_mq_client_logs,
 )
 from grizzly.types import RequestMethod
+from grizzly.types.behave import Context, Scenario, Status
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 from grizzly.tasks import RequestTask
 from grizzly.users import RestApiUser

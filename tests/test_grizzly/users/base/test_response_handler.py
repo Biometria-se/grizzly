@@ -9,7 +9,6 @@ from pytest_mock import MockerFixture
 
 from locust.event import EventHook
 from locust.clients import ResponseContextManager
-from locust.exception import LocustError, CatchResponseError, StopUser
 from requests.models import Response
 
 from grizzly.clients import ResponseEventSession
@@ -18,11 +17,12 @@ from grizzly.users.base import HttpRequests, ResponseEvent
 from grizzly.users.base.response_handler import ResponseHandler, ValidationHandlerAction, SaveHandlerAction, ResponseHandlerAction
 from grizzly.exceptions import ResponseHandlerError, RestartScenario
 from grizzly.types import RequestMethod
+from grizzly.types.locust import LocustError, CatchResponseError, StopUser
 from grizzly.tasks import RequestTask
 from grizzly_extras.transformer import TransformerContentType
 
-from ....fixtures import LocustFixture
-from ....helpers import TestUser
+from tests.fixtures import LocustFixture
+from tests.helpers import TestUser
 
 if TYPE_CHECKING:
     from grizzly.users.base import GrizzlyUser

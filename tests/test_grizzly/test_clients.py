@@ -10,18 +10,18 @@ from pytest_mock import MockerFixture
 from requests.models import Response
 from locust.clients import ResponseContextManager
 from locust.event import EventHook
-from locust.exception import StopUser
 from paramiko.transport import Transport
 from paramiko.sftp_client import SFTPClient
 
 from grizzly.clients import ResponseEventSession, SftpClientSession
 from grizzly.types import RequestMethod
+from grizzly.types.locust import StopUser
 from grizzly.context import GrizzlyContextScenario
 from grizzly.tasks import RequestTask
 from grizzly.users.base import GrizzlyUser
 
-from ..fixtures import ParamikoFixture
-from ..helpers import RequestEvent
+from tests.fixtures import ParamikoFixture
+from tests.helpers import RequestEvent
 
 
 class TestResponseEventSession:

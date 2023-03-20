@@ -7,15 +7,15 @@ import pytest
 from pytest_mock import MockerFixture
 from _pytest.logging import LogCaptureFixture
 
-from locust.exception import StopUser
 from grizzly.exceptions import RestartScenario
 from grizzly.types import RequestDirection, RequestMethod
+from grizzly.types.locust import StopUser
 from grizzly.tasks import GrizzlyMetaRequestTask, UntilRequestTask, RequestTask
 from grizzly.tasks.clients import HttpClientTask
 from grizzly.tasks.until import suppress, no_error_handler
 from grizzly_extras.transformer import TransformerContentType, TransformerError, transformer
 
-from ...fixtures import GrizzlyFixture
+from tests.fixtures import GrizzlyFixture
 
 
 def test_no_error_handler(mocker: MockerFixture, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture) -> None:

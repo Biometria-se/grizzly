@@ -1,8 +1,7 @@
 from textwrap import dedent
 from os import path
 
-from behave.runner import Context
-from behave.model import Feature
+from grizzly.types.behave import Context, Feature
 
 from ..fixtures import End2EndFixture
 

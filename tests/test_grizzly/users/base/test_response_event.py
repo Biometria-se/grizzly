@@ -2,7 +2,6 @@ import pytest
 
 from typing import Optional, Union, Tuple, Dict, Any
 
-from locust.exception import LocustError
 from locust.clients import ResponseContextManager
 from locust.user.users import User
 from requests.models import Response
@@ -10,6 +9,7 @@ from requests.models import Response
 from grizzly.clients import ResponseEventSession
 from grizzly.users.base import ResponseEvent, HttpRequests
 from grizzly.types import RequestMethod
+from grizzly.types.locust import LocustError
 from grizzly.tasks import RequestTask
 
 from ....fixtures import LocustFixture

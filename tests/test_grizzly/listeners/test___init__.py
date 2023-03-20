@@ -9,8 +9,8 @@ import pytest
 from _pytest.logging import LogCaptureFixture
 from pytest_mock import MockerFixture
 from locust.stats import RequestStats, StatsError
-from behave.model import Scenario, Status
 
+from grizzly.types.behave import Scenario, Status
 from grizzly.types.locust import Environment, LocalRunner, MasterRunner, WorkerRunner, Message
 from grizzly.listeners import (
     _init_testdata_producer,

@@ -1,10 +1,10 @@
 import textwrap
 
 from typing import cast, List, Dict
+
 import pytest
 
-from behave.runner import Context
-from behave.model import Feature
+from grizzly.types.behave import Context, Feature
 from grizzly.context import GrizzlyContext
 
 from ....fixtures import End2EndFixture
@@ -273,7 +273,7 @@ def test_e2e_step_setup_log_all_requests(e2e_fixture: End2EndFixture) -> None:
 
 def test_e2e_step_setup_stop_user_on_failure(e2e_fixture: End2EndFixture) -> None:
     def validate_stop_user_on_failure(context: Context) -> None:
-        from locust.exception import StopUser
+        from grizzly.types.locust import StopUser
         grizzly = cast(GrizzlyContext, context.grizzly)
 
         assert grizzly.scenario.failure_exception is not None

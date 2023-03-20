@@ -6,7 +6,6 @@ from enum import Enum
 from urllib.parse import urlparse
 
 from locust.clients import ResponseContextManager
-from locust.exception import StopUser
 from locust.contrib.fasthttp import FastHttpSession, ResponseContextManager as FastResponseContextManager, insecure_ssl_context_factory
 
 import pytest
@@ -22,14 +21,15 @@ from grizzly.users.restapi import AuthMethod, RestApiUser, refresh_token
 from grizzly.users.base import AsyncRequests, RequestLogger, ResponseHandler, GrizzlyUser
 from grizzly.clients import ResponseEventSession
 from grizzly.types import GrizzlyResponse, RequestMethod, GrizzlyResponseContextManager
+from grizzly.types.locust import StopUser
 from grizzly.context import GrizzlyContextScenario, GrizzlyContext
 from grizzly.tasks import RequestTask
 from grizzly.testdata.utils import transform
 from grizzly.exceptions import RestartScenario
 from grizzly_extras.transformer import TransformerContentType
 
-from ...fixtures import GrizzlyFixture, ResponseContextManagerFixture
-from ...helpers import RequestSilentFailureEvent, RequestEvent, ResultSuccess
+from tests.fixtures import GrizzlyFixture, ResponseContextManagerFixture
+from tests.helpers import RequestSilentFailureEvent, RequestEvent, ResultSuccess
 
 
 RestApiScenarioFixture = Tuple[RestApiUser, GrizzlyContextScenario]

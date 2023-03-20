@@ -4,8 +4,7 @@ This package contains steps that can be useful during development or troubleshoo
 feature file, but should not be included in a finished, testable, feature.
 '''
 
-from behave.runner import Context
-from behave import then  # pylint: disable=no-name-in-module
+from grizzly.types.behave import Context, then
 
 
 @then(u'fail')

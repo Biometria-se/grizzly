@@ -4,7 +4,6 @@ from json import dumps as jsondumps, loads as jsonloads
 import pytest
 
 from pytest_mock import MockerFixture
-from locust.exception import StopUser, CatchResponseError
 from requests import Response
 
 from grizzly_extras.transformer import TransformerContentType
@@ -12,8 +11,9 @@ from grizzly.context import GrizzlyContext
 from grizzly.tasks.clients import HttpClientTask
 from grizzly.exceptions import RestartScenario
 from grizzly.types import RequestDirection
+from grizzly.types.locust import StopUser, CatchResponseError
 
-from ....fixtures import GrizzlyFixture
+from tests.fixtures import GrizzlyFixture
 
 
 class TestHttpClientTask:

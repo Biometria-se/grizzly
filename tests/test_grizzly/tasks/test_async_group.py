@@ -8,16 +8,16 @@ import pytest
 from gevent import Greenlet
 from pytest_mock import MockerFixture
 from _pytest.logging import LogCaptureFixture
-from locust.exception import StopUser
 
 from grizzly.tasks import RequestTask, AsyncRequestGroupTask, LogMessageTask
 from grizzly.types import RequestMethod
+from grizzly.types.locust import StopUser
 from grizzly.users import RestApiUser
 from grizzly.scenarios import IteratorScenario
 from grizzly.context import GrizzlyContextScenario
 from grizzly.exceptions import RestartScenario
 
-from ...fixtures import GrizzlyFixture
+from tests.fixtures import GrizzlyFixture
 
 
 class TestAsyncRequestGroup:

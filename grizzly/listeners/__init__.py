@@ -13,9 +13,9 @@ from locust.stats import (
     print_percentile_stats,
     print_stats,
 )
-from behave.model import Status
 
 from grizzly.types import MessageDirection, RequestType, TestdataType
+from grizzly.types.behave import Status
 
 from ..context import GrizzlyContext
 from ..testdata.communication import TestdataProducer

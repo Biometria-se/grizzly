@@ -9,14 +9,14 @@ import pytest
 from _pytest.tmpdir import TempPathFactory
 from _pytest.logging import LogCaptureFixture
 from pytest_mock import MockerFixture
-from locust.exception import StopUser
 
 from grizzly.users.base import GrizzlyUser, FileRequests
 from grizzly.types import GrizzlyResponse, RequestMethod, ScenarioState
+from grizzly.types.locust import StopUser
 from grizzly.context import GrizzlyContextScenario
 from grizzly.tasks import RequestTask
 
-from ....fixtures import LocustFixture
+from tests.fixtures import LocustFixture
 
 
 logging.getLogger().setLevel(logging.CRITICAL)

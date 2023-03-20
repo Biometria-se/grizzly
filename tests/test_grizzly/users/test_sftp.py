@@ -6,11 +6,11 @@ import pytest
 
 from _pytest.tmpdir import TempPathFactory
 from pytest_mock import MockerFixture
-from locust.exception import StopUser
 
 from grizzly.users.sftp import SftpUser
 from grizzly.clients import SftpClientSession
 from grizzly.types import RequestMethod
+from grizzly.types.locust import StopUser
 from grizzly.context import GrizzlyContextScenario
 from grizzly.tasks import RequestTask
 from grizzly.exceptions import RestartScenario

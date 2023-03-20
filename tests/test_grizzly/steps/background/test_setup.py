@@ -10,9 +10,9 @@ from grizzly.steps import *  # pylint: disable=unused-wildcard-import  # noqa: F
 from grizzly.context import GrizzlyContext
 from grizzly.exceptions import RestartScenario
 from grizzly.types import MessageDirection
-from locust.exception import StopUser
+from grizzly.types.locust import StopUser
 
-from ....fixtures import BehaveFixture
+from tests.fixtures import BehaveFixture
 
 
 def test_parse_message_direction() -> None:

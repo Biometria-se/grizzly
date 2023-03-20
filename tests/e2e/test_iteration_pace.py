@@ -4,9 +4,8 @@ from tempfile import NamedTemporaryFile
 
 import yaml
 
-from behave.runner import Context
-from behave.model import Feature
 from grizzly.context import GrizzlyContext
+from grizzly.types.behave import Context, Feature
 
 from ..fixtures import End2EndFixture
 

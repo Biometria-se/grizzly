@@ -7,11 +7,8 @@ from json import loads as jsonloads
 
 import setproctitle as proc
 
-from behave.runner import Context
-from behave.model import Feature, Step, Scenario
-from behave.model_core import Status
-
 from grizzly.types import RequestType
+from grizzly.types.behave import Context, Feature, Step, Scenario, Status
 
 from .context import GrizzlyContext
 from .testdata.variables import destroy_variables

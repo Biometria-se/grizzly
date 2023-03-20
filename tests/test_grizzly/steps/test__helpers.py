@@ -6,7 +6,6 @@ from typing import List, cast
 
 import pytest
 
-from behave.model import Table, Row
 from _pytest.tmpdir import TempPathFactory
 from locust.clients import ResponseContextManager
 from requests.models import Response
@@ -14,6 +13,7 @@ from requests.models import Response
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 from grizzly.tasks.async_group import AsyncRequestGroupTask
 from grizzly.types import RequestMethod, ResponseTarget, ResponseAction
+from grizzly.types.behave import Table, Row
 from grizzly.tasks import RequestTask, WaitTask
 from grizzly.steps._helpers import (
     add_validation_handler,

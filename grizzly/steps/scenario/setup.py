@@ -3,11 +3,10 @@ from typing import Optional, cast
 
 import parse
 
-from behave.runner import Context
-from behave import register_type, given, then  # pylint: disable=no-name-in-module
-from locust.exception import StopUser
-
 from grizzly_extras.text import permutation
+
+from grizzly.types.locust import StopUser
+from grizzly.types.behave import Context, given, then, register_type
 
 from ...context import GrizzlyContext
 from ...testdata.utils import create_context_variable, resolve_variable

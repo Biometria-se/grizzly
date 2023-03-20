@@ -7,8 +7,8 @@ import pytest
 
 from _pytest.tmpdir import TempPathFactory
 from jinja2.environment import Template
-from behave.model import Scenario
 
+from grizzly.types.behave import Scenario
 from grizzly.types.locust import Environment, Message
 from grizzly.context import (
     GrizzlyContext,

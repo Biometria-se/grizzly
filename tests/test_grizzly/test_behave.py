@@ -10,10 +10,10 @@ import pytest
 from _pytest.tmpdir import TempPathFactory
 from _pytest.capture import CaptureFixture
 from pytest_mock import MockerFixture
-from behave.runner import Context, Runner
+from behave.runner import Runner
 from behave.configuration import Configuration
-from behave.model import Feature, Step, Status
 
+from grizzly.types.behave import Context, Feature, Step, Status
 from grizzly.behave import before_feature, after_feature, before_scenario, after_scenario, before_step, after_step
 from grizzly.context import GrizzlyContext
 from grizzly.steps.setup import step_setup_variable_value_ask as step_both

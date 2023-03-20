@@ -2,7 +2,7 @@ from typing import cast, List, Dict, Optional
 
 import pytest
 
-from behave.runner import Context
+from grizzly.types.behave import Context
 from grizzly.context import GrizzlyContext
 
 from ....fixtures import End2EndFixture

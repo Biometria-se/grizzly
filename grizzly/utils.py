@@ -12,11 +12,10 @@ from pathlib import Path
 from datetime import datetime, timezone
 
 from dateutil.parser import parse as dateparser, ParserError
-from behave.runner import Context
-from behave.model import Scenario, Status
 from locust.stats import STATS_NAME_WIDTH
 
 from grizzly.types import WrappedFunc, T
+from grizzly.types.behave import Context, Scenario, Status
 
 if TYPE_CHECKING:  # pragma: no cover
     from .context import GrizzlyContextScenario

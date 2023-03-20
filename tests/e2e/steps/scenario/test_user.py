@@ -3,8 +3,8 @@ from random import randint
 
 import pytest
 
-from behave.runner import Context
 from grizzly.context import GrizzlyContext
+from grizzly.types.behave import Context
 
 from ....fixtures import End2EndFixture
 

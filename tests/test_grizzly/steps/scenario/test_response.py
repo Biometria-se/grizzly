@@ -3,10 +3,10 @@ from typing import List, cast
 import pytest
 
 from parse import compile
-from behave.model import Table, Row
 
 from grizzly.context import GrizzlyContext
 from grizzly.types import RequestMethod, ResponseTarget
+from grizzly.types.behave import Table, Row
 from grizzly.tasks import RequestTask, WaitTask
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import  # noqa: F403
 

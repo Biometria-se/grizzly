@@ -9,9 +9,9 @@ import zmq
 
 from pytest_mock import MockerFixture
 from _pytest.logging import LogCaptureFixture
-from locust.exception import StopUser
-from behave.model import Scenario
 
+from grizzly.types.locust import StopUser
+from grizzly.types.behave import Scenario
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import LogMessageTask, DateTask, TransformerTask, UntilRequestTask, ConditionalTask
 from grizzly.testdata.utils import (

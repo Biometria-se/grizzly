@@ -14,8 +14,8 @@ from _pytest.logging import LogCaptureFixture
 from pytest_mock import MockerFixture
 from zmq.sugar.constants import REQ as ZMQ_REQ
 from zmq.error import ZMQError, Again as ZMQAgain
-from locust.exception import StopUser
 
+from grizzly.types.locust import StopUser
 from grizzly.testdata.communication import TestdataConsumer, TestdataProducer
 from grizzly.testdata.utils import initialize_testdata, transform
 from grizzly.testdata.variables import AtomicIntegerIncrementer

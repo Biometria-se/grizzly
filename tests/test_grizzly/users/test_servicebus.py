@@ -6,19 +6,19 @@ import pytest
 
 from pytest_mock import MockerFixture
 from _pytest.logging import LogCaptureFixture
-from locust.exception import StopUser
 from zmq.sugar.constants import REQ as ZMQ_REQ
 from zmq.error import Again as ZMQAgain
 
 from grizzly.users.base import GrizzlyUser, RequestLogger, ResponseHandler
 from grizzly.users.servicebus import ServiceBusUser
 from grizzly.types import RequestMethod
+from grizzly.types.locust import StopUser
 from grizzly.tasks import RequestTask, WaitTask
 from grizzly.context import GrizzlyContextScenario
 from grizzly_extras.async_message import AsyncMessageResponse, AsyncMessageError
 from grizzly_extras.transformer import TransformerContentType
 
-from ...fixtures import LocustFixture, NoopZmqFixture
+from tests.fixtures import LocustFixture, NoopZmqFixture
 
 
 class TestServiceBusUser:

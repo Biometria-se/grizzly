@@ -21,8 +21,7 @@ from typing import Any, cast
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import GrizzlyTask, grizzlytask
 from grizzly.scenarios import GrizzlyScenario
-from behave import then
-from behave.runner import Context
+from grizzly.types.behave import Context, then
 
 
 class TestTask(GrizzlyTask):

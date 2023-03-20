@@ -4,7 +4,7 @@ from typing import cast, Dict, Any, List
 import pytest
 import yaml
 
-from behave.runner import Context
+from grizzly.types.behave import Context
 from grizzly.context import GrizzlyContext
 
 from ....fixtures import End2EndFixture

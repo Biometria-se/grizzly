@@ -8,13 +8,11 @@ from urllib.parse import urlparse
 
 import jinja2 as j2
 
-from behave.runner import Context
-from behave.model import Row
-
 from grizzly_extras.transformer import TransformerContentType
 from grizzly_extras.arguments import split_value, parse_arguments, get_unsupported_arguments
 
 from grizzly.types import RequestMethod, ResponseTarget, ResponseAction
+from grizzly.types.behave import Context, Row
 
 from ..context import GrizzlyContext
 from ..tasks import RequestTask
