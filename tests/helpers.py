@@ -13,7 +13,8 @@ from locust.event import EventHook
 
 from grizzly.context import GrizzlyContextScenario
 from grizzly.users.base import GrizzlyUser
-from grizzly.types import GrizzlyResponse, RequestMethod, Message, Environment
+from grizzly.types.locust import Message, Environment
+from grizzly.types import GrizzlyResponse, RequestMethod
 from grizzly.testdata.variables import AtomicVariable
 from grizzly.tasks import RequestTask, GrizzlyTask, template, grizzlytask
 from grizzly.scenarios import GrizzlyScenario

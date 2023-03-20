@@ -7,10 +7,6 @@ from mypy_extensions import KwArg, VarArg
 
 import gevent
 
-from locust.env import Environment
-from locust.runners import MasterRunner, WorkerRunner
-from locust.runners import Runner
-from locust.rpc.protocol import Message
 from locust.stats import RequestStats, StatsEntry
 from locust.stats import (
     print_error_report,
@@ -23,6 +19,7 @@ from grizzly.types import MessageDirection, RequestType, TestdataType
 
 from ..context import GrizzlyContext
 from ..testdata.communication import TestdataProducer
+from ..types.locust import Environment, MasterRunner, WorkerRunner, Runner, Message
 
 producer: Optional[TestdataProducer] = None
 

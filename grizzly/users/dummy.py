@@ -16,12 +16,11 @@ Given a user of type "Dummy" load testing "/dev/null"
 '''
 from typing import Any, Dict, Tuple
 
-from locust.env import Environment
-
 from grizzly.types import GrizzlyResponse
 
 from .base import GrizzlyUser
 from ..tasks import RequestTask
+from ..types.locust import Environment
 
 
 class DummyUser(GrizzlyUser):

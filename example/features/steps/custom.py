@@ -6,7 +6,8 @@ from typing import Any, Dict
 from grizzly.scenarios import GrizzlyScenario
 from grizzly.users import RestApiUser
 from grizzly.tasks import RequestTask, GrizzlyTask, grizzlytask
-from grizzly.types import GrizzlyResponse, Message, Environment, WorkerRunner, LocalRunner
+from grizzly.types import GrizzlyResponse
+from grizzly.types.locust import Message, Environment, WorkerRunner, LocalRunner
 from grizzly.testdata.variables import AtomicVariable
 
 

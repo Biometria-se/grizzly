@@ -8,11 +8,10 @@ import pytest
 
 from _pytest.logging import LogCaptureFixture
 from pytest_mock import MockerFixture
-from locust.env import Environment
-from locust.runners import LocalRunner, MasterRunner, WorkerRunner
 from locust.stats import RequestStats, StatsError
 from behave.model import Scenario, Status
 
+from grizzly.types.locust import Environment, LocalRunner, MasterRunner, WorkerRunner, Message
 from grizzly.listeners import (
     _init_testdata_producer,
     grizzly_worker_quit,
@@ -25,7 +24,7 @@ from grizzly.listeners import (
     validate_result,
 )
 from grizzly.context import GrizzlyContext, GrizzlyContextScenarioResponseTimePercentile
-from grizzly.types import MessageDirection, Message
+from grizzly.types import MessageDirection
 
 from ...fixtures import LocustFixture, GrizzlyFixture, NoopZmqFixture
 

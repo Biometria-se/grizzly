@@ -3,13 +3,12 @@ from typing import Any, Tuple, cast
 
 import pytest
 
-from locust.env import Environment
-from locust.exception import StopUser
 from azure.storage.blob._blob_client import BlobClient
 from azure.iot.device import IoTHubDeviceClient
 
 from pytest_mock import MockerFixture
 
+from grizzly.types.locust import Environment, StopUser
 from grizzly.users.iothub import IotHubUser
 from grizzly.users.base.grizzly_user import GrizzlyUser
 from grizzly.types import RequestMethod

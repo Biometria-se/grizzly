@@ -8,12 +8,11 @@ from typing import Dict, Any, Tuple, Optional, Union, cast
 from datetime import datetime, timedelta
 from urllib.parse import urlparse, urlunparse
 
-from locust.env import Environment
 from jinja2 import Template
 from requests import Response as RequestResponse
 
-from grizzly.types import GrizzlyResponse, HandlerContextType, RequestDirection, GrizzlyResponseContextManager
-
+from ...types import GrizzlyResponse, HandlerContextType, RequestDirection, GrizzlyResponseContextManager
+from ...types.locust import Environment
 from ...tasks import RequestTask
 from ...utils import merge_dicts
 from .response_event import ResponseEvent

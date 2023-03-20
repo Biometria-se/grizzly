@@ -8,9 +8,8 @@ import pytest
 from _pytest.tmpdir import TempPathFactory
 from jinja2.environment import Template
 from behave.model import Scenario
-from locust.env import Environment
-from locust.rpc.protocol import Message
 
+from grizzly.types.locust import Environment, Message
 from grizzly.context import (
     GrizzlyContext,
     GrizzlyContextScenarios,

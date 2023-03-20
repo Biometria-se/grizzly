@@ -49,10 +49,10 @@ from contextlib import contextmanager
 
 from jinja2 import Template
 from gevent import sleep as gsleep
-from locust.env import Environment
 from grizzly_extras.transformer import Transformer, TransformerContentType, TransformerError, transformer
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments, split_value
 
+from ..types.locust import Environment
 from ..types import RequestType
 from . import GrizzlyTask, GrizzlyMetaRequestTask, template, grizzlytask
 

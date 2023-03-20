@@ -78,14 +78,13 @@ from zmq.error import Again as ZMQAgain
 from zmq.sugar.constants import NOBLOCK as ZMQ_NOBLOCK, REQ as ZMQ_REQ
 import zmq.green as zmq
 
-from locust.exception import StopUser
-from locust.env import Environment
 from gevent import sleep as gsleep
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageResponse, AsyncMessageRequest, AsyncMessageError
 from grizzly_extras.arguments import parse_arguments, get_unsupported_arguments
 
 from grizzly.types import RequestMethod, RequestDirection, GrizzlyResponse, RequestType
 
+from ..types.locust import StopUser, Environment
 from ..tasks import RequestTask
 from ..utils import merge_dicts
 from .base import GrizzlyUser, ResponseHandler, RequestLogger

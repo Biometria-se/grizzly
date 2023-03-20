@@ -1,10 +1,9 @@
 from typing import Any, Dict, Tuple
 from locust.event import EventHook
 
-from locust.exception import LocustError
 from locust.user.users import User
-from locust.env import Environment
 
+from ...types.locust import Environment, LocustError
 from ...clients import ResponseEventSession
 from . import HttpRequests
 

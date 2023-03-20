@@ -14,6 +14,7 @@ from typing import Generic, Optional, Callable, Set, Any, Tuple, Dict, TypeVar, 
 from gevent.lock import Semaphore, DummySemaphore
 
 from grizzly.types import bool_type
+from grizzly.types.locust import Environment, Message
 
 from ...context import GrizzlyContext
 
@@ -36,6 +37,7 @@ class AtomicVariablePersist(Protocol):
 class AtomicVariable(Generic[T], AbstractAtomicClass):
     __base_type__: Optional[Callable] = None
     __dependencies__: Set[str] = set()
+    __message_listeners__: Dict[str, Callable[[Environment, Message], None]] = {}
     __on_consumer__ = False
 
     __instance: Optional['AtomicVariable'] = None
@@ -162,6 +164,7 @@ from .integer_incrementer import AtomicIntegerIncrementer
 from .date import AtomicDate
 from .directory_contents import AtomicDirectoryContents
 from .csv_reader import AtomicCsvReader
+from .csv_writer import AtomicCsvWriter
 from .random_string import AtomicRandomString
 from .servicebus import AtomicServiceBus
 
@@ -171,6 +174,7 @@ __all__ = [
     'AtomicDate',
     'AtomicDirectoryContents',
     'AtomicCsvReader',
+    'AtomicCsvWriter',
     'AtomicRandomString',
     'AtomicServiceBus',
     'destroy_variables',

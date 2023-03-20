@@ -3,10 +3,10 @@ from abc import ABC, abstractmethod
 from json import dumps as jsondumps
 
 import jinja2 as j2
-from locust.env import Environment
 
 from grizzly.types import HandlerContextType, GrizzlyResponseContextManager, GrizzlyResponse
 
+from ...types.locust import Environment
 from ...tasks import RequestTask
 from ...exceptions import ResponseHandlerError, TransformerLocustError
 from .grizzly_user import GrizzlyUser

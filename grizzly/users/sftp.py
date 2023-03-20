@@ -35,8 +35,6 @@ from urllib.parse import urlparse
 from time import perf_counter as time
 from os import path, environ, mkdir
 
-from locust.exception import StopUser
-from locust.env import Environment
 from paramiko import SFTPClient
 
 from grizzly.types import RequestMethod, GrizzlyResponse, RequestType
@@ -45,6 +43,7 @@ from .base import GrizzlyUser, FileRequests, ResponseHandler, RequestLogger
 from ..utils import merge_dicts
 from ..clients import SftpClientSession
 from ..tasks import RequestTask
+from ..types.locust import Environment, StopUser
 
 
 class SftpUser(ResponseHandler, RequestLogger, GrizzlyUser, FileRequests):

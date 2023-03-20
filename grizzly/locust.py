@@ -15,8 +15,6 @@ import gevent
 
 from behave.runner import Context
 from behave.model import Status
-from locust.runners import MasterRunner, WorkerRunner, Runner
-from locust.env import Environment
 from locust import stats as lstats, events
 from locust.log import setup_logging
 from locust.util.timespan import parse_timespan
@@ -30,10 +28,10 @@ from .listeners import init, init_statistics_listener, quitting, validate_result
 from .testdata.utils import initialize_testdata
 from .context import GrizzlyContext
 from .tasks import GrizzlyTask
-
 from .utils import create_scenario_class_type, create_user_class_type
+from .types.locust import Environment, MasterRunner, WorkerRunner, Runner
 
-__all__: List[str] = [
+__all__ = [
     'stats_logger',
 ]
 

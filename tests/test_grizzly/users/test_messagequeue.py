@@ -13,15 +13,13 @@ from zmq.error import ZMQError, Again as ZMQAgain
 import pytest
 
 from pytest_mock import MockerFixture
-from locust.env import Environment
-from locust.exception import StopUser
 
 from grizzly.users.messagequeue import MessageQueueUser
 from grizzly.users.base import RequestLogger, ResponseHandler
-from grizzly.types import RequestMethod
+from grizzly.types import RequestMethod, ResponseTarget
+from grizzly.types.locust import Environment, StopUser
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 from grizzly.tasks import RequestTask
-from grizzly.types import ResponseTarget
 from grizzly.testdata import GrizzlyVariables
 from grizzly.testdata.utils import transform
 from grizzly.exceptions import ResponseHandlerError, RestartScenario
@@ -69,7 +67,7 @@ class TestMessageQueueUserNoPymqi:
             [
                 sys.executable,
                 '-c',
-                'import grizzly.users.messagequeue as mq; from locust.env import Environment; print(f"{mq.pymqi.__name__=}"); mq.MessageQueueUser(Environment())'
+                'import grizzly.users.messagequeue as mq; from grizzly.locust import Environment; print(f"{mq.pymqi.__name__=}"); mq.MessageQueueUser(Environment())'
             ],
             env=env,
             stdout=subprocess.PIPE,

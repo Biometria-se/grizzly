@@ -12,11 +12,10 @@ import zmq.green as zmq
 
 from gevent import sleep as gsleep
 from gevent.lock import Semaphore
-from locust.exception import StopUser
-from locust.env import Environment
 
 from grizzly.types import TestdataType
 
+from ..types.locust import Environment, StopUser
 from .utils import transform
 from .variables import AtomicVariablePersist
 from . import GrizzlyVariables

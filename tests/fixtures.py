@@ -17,8 +17,6 @@ from getpass import getuser
 
 from locust.clients import ResponseContextManager
 from locust.contrib.fasthttp import FastResponse, FastRequest
-from locust.env import Environment
-from locust.runners import Runner
 from geventhttpclient.header import Headers
 from geventhttpclient.response import HTTPSocketPoolResponse
 from _pytest.tmpdir import TempPathFactory
@@ -36,8 +34,8 @@ from requests.models import CaseInsensitiveDict, Response, PreparedRequest
 from grizzly.types import GrizzlyResponseContextManager, RequestMethod
 from grizzly.tasks import RequestTask
 from grizzly.testdata.variables import destroy_variables
-
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
+from grizzly.types.locust import Environment, Runner
 
 from .helpers import TestUser, TestScenario, RequestSilentFailureEvent
 from .helpers import onerror, run_command

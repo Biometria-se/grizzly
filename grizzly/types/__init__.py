@@ -6,18 +6,10 @@ from aenum import Enum as AdvancedEnum, NoAlias, EnumType as AdvancedEnumType
 
 from locust.clients import ResponseContextManager as RequestsResponseContextManager
 from locust.contrib.fasthttp import ResponseContextManager as FastResponseContextManager
-from locust.env import Environment
 from locust.rpc.protocol import Message
-from locust.runners import WorkerRunner, MasterRunner, LocalRunner
 from grizzly_extras.text import PermutationEnum
 
-__all__ = [
-    'Message',
-    'Environment',
-    'WorkerRunner',
-    'MasterRunner',
-    'LocalRunner',
-]
+from .locust import Environment
 
 
 class MessageDirection(PermutationEnum):
