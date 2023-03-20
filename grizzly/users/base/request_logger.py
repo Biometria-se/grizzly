@@ -10,15 +10,15 @@ from urllib.parse import urlparse, urlunparse
 
 from jinja2 import Template
 from requests import Response as RequestResponse
+from grizzly_extras.transformer import JsonBytesEncoder
 
-from ...types import GrizzlyResponse, HandlerContextType, RequestDirection, GrizzlyResponseContextManager
-from ...types.locust import Environment
-from ...tasks import RequestTask
-from ...utils import merge_dicts
+from grizzly.types import GrizzlyResponse, HandlerContextType, RequestDirection, GrizzlyResponseContextManager
+from grizzly.types.locust import Environment
+from grizzly.tasks import RequestTask
+from grizzly.utils import merge_dicts
+
 from .response_event import ResponseEvent
 from .grizzly_user import GrizzlyUser
-
-from grizzly_extras.transformer import JsonBytesEncoder
 
 
 LOG_FILE_TEMPLATE = '''

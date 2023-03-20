@@ -4,7 +4,7 @@ from _pytest.logging import LogCaptureFixture
 
 from grizzly.tasks import LogMessageTask
 
-from ...fixtures import GrizzlyFixture
+from tests.fixtures import GrizzlyFixture
 
 
 class TestLogMessageTask:

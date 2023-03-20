@@ -5,7 +5,7 @@ import pytest
 from grizzly.types.behave import Context
 from grizzly.context import GrizzlyContext
 
-from ....fixtures import End2EndFixture
+from tests.fixtures import End2EndFixture
 
 
 @pytest.mark.parametrize('count', [

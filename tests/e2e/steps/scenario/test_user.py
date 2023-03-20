@@ -6,7 +6,7 @@ import pytest
 from grizzly.context import GrizzlyContext
 from grizzly.types.behave import Context
 
-from ....fixtures import End2EndFixture
+from tests.fixtures import End2EndFixture
 
 
 @pytest.mark.parametrize('user_type,host', [

@@ -28,8 +28,8 @@ from grizzly.types import MessageDirection, RequestMethod
 from grizzly.tasks import LogMessageTask, RequestTask, WaitTask, AsyncRequestGroupTask, LoopTask, ConditionalTask
 
 
-from ..helpers import TestTask, get_property_decorated_attributes
-from ..fixtures import BehaveFixture, GrizzlyFixture, RequestTaskFixture
+from tests.helpers import TestTask, get_property_decorated_attributes
+from tests.fixtures import BehaveFixture, GrizzlyFixture, RequestTaskFixture
 
 
 def test_load_configuration_file(tmp_path_factory: TempPathFactory) -> None:

@@ -8,7 +8,7 @@ from _pytest.tmpdir import TempPathFactory
 from grizzly.testdata.variables import AtomicDirectoryContents
 from grizzly.testdata.variables.directory_contents import atomicdirectorycontents__base_type__
 
-from ....fixtures import AtomicVariableCleanupFixture
+from tests.fixtures import AtomicVariableCleanupFixture
 
 
 def test_atomicdirectorycontents__base_type__(tmp_path_factory: TempPathFactory) -> None:

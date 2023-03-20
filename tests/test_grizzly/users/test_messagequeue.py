@@ -27,7 +27,7 @@ from grizzly.steps._helpers import add_save_handler
 from grizzly_extras.async_message import AsyncMessageResponse
 from grizzly_extras.transformer import TransformerContentType
 
-from ...fixtures import GrizzlyFixture, LocustFixture, NoopZmqFixture
+from tests.fixtures import GrizzlyFixture, LocustFixture, NoopZmqFixture
 
 MqScenarioFixture = Tuple[MessageQueueUser, GrizzlyContextScenario, Environment]
 

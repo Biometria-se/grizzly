@@ -2,8 +2,8 @@ import pytest
 
 from grizzly.testdata.variables import AtomicVariable, AtomicIntegerIncrementer, AtomicRandomString, destroy_variables
 
-from ....fixtures import AtomicVariableCleanupFixture
-from ....helpers import AtomicCustomVariable
+from tests.fixtures import AtomicVariableCleanupFixture
+from tests.helpers import AtomicCustomVariable
 
 
 def test_destroy_variables(cleanup: AtomicVariableCleanupFixture) -> None:

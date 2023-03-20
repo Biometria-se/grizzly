@@ -3,7 +3,7 @@ from grizzly.users import DummyUser
 from grizzly.tasks import RequestTask
 from grizzly.types import RequestMethod
 
-from ...fixtures import GrizzlyFixture
+from tests.fixtures import GrizzlyFixture
 
 
 class TestDummyUser:

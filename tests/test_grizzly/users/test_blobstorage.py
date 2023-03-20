@@ -18,7 +18,7 @@ from grizzly.tasks import RequestTask
 from grizzly.testdata.utils import transform
 from grizzly.exceptions import RestartScenario
 
-from ...fixtures import GrizzlyFixture
+from tests.fixtures import GrizzlyFixture
 
 
 CONNECTION_STRING = 'DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=my-storage;AccountKey=xxxyyyyzzz=='

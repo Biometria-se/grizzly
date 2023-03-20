@@ -18,7 +18,7 @@ from grizzly_extras.async_message import (
     register,
 )
 
-from ...helpers import onerror
+from tests.helpers import onerror
 
 
 class TestAsyncMessageHandler:

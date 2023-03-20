@@ -17,7 +17,7 @@ from grizzly.tasks import (
 from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContextScenario
 
-from ...fixtures import GrizzlyFixture
+from tests.fixtures import GrizzlyFixture
 
 
 @template('string_template', 'list_template', 'dict_template')

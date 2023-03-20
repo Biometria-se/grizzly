@@ -32,12 +32,11 @@ from grizzly_extras.transformer import TransformerContentType
 from grizzly_extras.arguments import split_value, parse_arguments
 
 from grizzly.types import RequestType, RequestDirection, GrizzlyResponse
-
-from ...context import GrizzlyContext, GrizzlyContextScenario
-from ...scenarios import GrizzlyScenario
-from ...testdata.utils import resolve_variable
-from ...users.base import RequestLogger
-from .. import GrizzlyMetaRequestTask, template, grizzlytask
+from grizzly.context import GrizzlyContext, GrizzlyContextScenario
+from grizzly.scenarios import GrizzlyScenario
+from grizzly.testdata.utils import resolve_variable
+from grizzly.users.base import RequestLogger
+from grizzly.tasks import GrizzlyMetaRequestTask, template, grizzlytask
 
 
 # see https://github.com/python/mypy/issues/5374

@@ -26,7 +26,7 @@ from grizzly.listeners import (
 from grizzly.context import GrizzlyContext, GrizzlyContextScenarioResponseTimePercentile
 from grizzly.types import MessageDirection
 
-from ...fixtures import LocustFixture, GrizzlyFixture, NoopZmqFixture
+from tests.fixtures import LocustFixture, GrizzlyFixture, NoopZmqFixture
 
 
 class Running(Exception):

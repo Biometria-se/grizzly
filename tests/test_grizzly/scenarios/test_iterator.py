@@ -21,8 +21,8 @@ from grizzly.tasks import WaitTask, LogMessageTask, grizzlytask
 from grizzly.exceptions import RestartScenario, StopScenario
 from grizzly.types import ScenarioState
 
-from ...fixtures import GrizzlyFixture
-from ...helpers import RequestCalled, TestTask, regex
+from tests.fixtures import GrizzlyFixture
+from tests.helpers import RequestCalled, TestTask, regex
 
 
 if TYPE_CHECKING:

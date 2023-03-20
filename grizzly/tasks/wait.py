@@ -14,12 +14,13 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from gevent import sleep as gsleep
 
-from ..exceptions import StopUser
+from grizzly.exceptions import StopUser
+
 from . import GrizzlyTask, template, grizzlytask
 
 if TYPE_CHECKING:  # pragma: no cover
-    from ..context import GrizzlyContextScenario
-    from ..scenarios import GrizzlyScenario
+    from grizzly.context import GrizzlyContextScenario
+    from grizzly.scenarios import GrizzlyScenario
 
 
 @template('time_expression')

@@ -8,13 +8,12 @@ from locust.user.sequential_taskset import SequentialTaskSet
 from jinja2 import Template
 
 from grizzly.types import ScenarioState
-
-from ..context import GrizzlyContext
-from ..testdata.communication import TestdataConsumer
-from ..tasks import GrizzlyTask, grizzlytask
+from grizzly.context import GrizzlyContext
+from grizzly.testdata.communication import TestdataConsumer
+from grizzly.tasks import GrizzlyTask, grizzlytask
 
 if TYPE_CHECKING:  # pragma: no cover
-    from ..users.base import GrizzlyUser
+    from grizzly.users.base import GrizzlyUser
 
 
 class GrizzlyScenario(SequentialTaskSet):

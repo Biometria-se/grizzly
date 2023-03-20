@@ -21,7 +21,7 @@ try:
 except:
     from grizzly_extras import dummy_pymqi as pymqi
 
-from ....fixtures import GrizzlyFixture, NoopZmqFixture
+from tests.fixtures import GrizzlyFixture, NoopZmqFixture
 
 
 class TestMessageQueueClientTaskNoPymqi:

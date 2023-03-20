@@ -30,11 +30,11 @@ from json import loads as jsonloads
 
 from gevent import sleep as gsleep
 
-if TYPE_CHECKING:  # pragma: no cover
-    from ..scenarios import GrizzlyScenario
-    from ..context import GrizzlyContextScenario, GrizzlyContext
-
 from . import GrizzlyTask, GrizzlyTaskWrapper, template, grizzlytask
+
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.scenarios import GrizzlyScenario
+    from grizzly.context import GrizzlyContextScenario, GrizzlyContext
 
 
 @template('values', 'tasks')

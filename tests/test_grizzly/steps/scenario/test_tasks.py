@@ -19,7 +19,7 @@ try:
 except:
     from grizzly_extras import dummy_pymqi as pymqi
 
-from ....fixtures import BehaveFixture
+from tests.fixtures import BehaveFixture
 
 
 def test_parse_method() -> None:

@@ -47,7 +47,7 @@ try:
 except:
     from grizzly_extras import dummy_pymqi as pymqi
 
-from ..fixtures import BehaveFixture, NoopZmqFixture
+from tests.fixtures import BehaveFixture, NoopZmqFixture
 
 
 def test_greenlet_exception_logger(caplog: LogCaptureFixture) -> None:

@@ -13,10 +13,9 @@ from grizzly_extras.text import permutation
 from grizzly.types.locust import Environment, Message
 from grizzly.types.behave import Context, given, register_type
 from grizzly.types import MessageDirection
-
-from ...context import GrizzlyContext
-from ...utils import merge_dicts
-from ...testdata.utils import create_context_variable, resolve_variable
+from grizzly.context import GrizzlyContext
+from grizzly.utils import merge_dicts
+from grizzly.testdata.utils import create_context_variable, resolve_variable
 
 
 @parse.with_pattern(r'(client|server)', regex_group_count=1)

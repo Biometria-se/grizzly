@@ -10,7 +10,7 @@ from dateutil.relativedelta import relativedelta
 from grizzly.testdata.variables import AtomicDate
 from grizzly.testdata.variables.date import atomicdate__base_type__
 
-from ....fixtures import AtomicVariableCleanupFixture
+from tests.fixtures import AtomicVariableCleanupFixture
 
 
 def test_atomicdate__base_type__() -> None:

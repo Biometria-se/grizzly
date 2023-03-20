@@ -49,12 +49,11 @@ from mimetypes import guess_type as mimetype_guess
 
 from azure.storage.blob import BlobServiceClient, ContentSettings
 
-from grizzly.types import RequestDirection, GrizzlyResponse
+from grizzly.types import RequestDirection, GrizzlyResponse, bool_type
+from grizzly.scenarios import GrizzlyScenario
+from grizzly.context import GrizzlyContextScenario
 
 from . import client, ClientTask
-from ...scenarios import GrizzlyScenario
-from ...context import GrizzlyContextScenario
-from ...types import bool_type
 
 # disable verbose INFO logging
 azure_logger = logging.getLogger('azure.core.pipeline.policies.http_logging_policy')

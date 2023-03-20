@@ -35,12 +35,13 @@ from time import perf_counter
 
 from gevent import sleep as gsleep
 
-if TYPE_CHECKING:  # pragma: no cover
-    from ..scenarios import GrizzlyScenario
-    from ..context import GrizzlyContextScenario
+from grizzly.exceptions import StopUser, RestartScenario
 
 from . import GrizzlyTask, GrizzlyTaskWrapper, template, grizzlytask
-from ..exceptions import StopUser, RestartScenario
+
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.scenarios import GrizzlyScenario
+    from grizzly.context import GrizzlyContextScenario
 
 
 @template('condition', 'tasks', 'name')

@@ -3,14 +3,13 @@ import logging
 from typing import TYPE_CHECKING, Set, Optional, List, Dict, Generator
 
 from jinja2 import Environment as Jinja2Environment, FileSystemLoader as Jinja2FileSystemLoader
-
 from jinja2 import nodes as j2
 
-from ..tasks import GrizzlyTask
+from grizzly.tasks import GrizzlyTask
 
 
 if TYPE_CHECKING:
-    from ..context import GrizzlyContextScenario
+    from grizzly.context import GrizzlyContextScenario
 
 logger = logging.getLogger(__name__)
 

@@ -12,7 +12,7 @@ from grizzly.context import GrizzlyContext
 from grizzly_extras.async_message import AsyncMessageResponse
 from grizzly_extras.transformer import TransformerContentType
 
-from ....fixtures import NoopZmqFixture
+from tests.fixtures import NoopZmqFixture
 
 
 def test_atomicservicebus__base_type() -> None:

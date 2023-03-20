@@ -22,10 +22,9 @@ from grizzly_extras.text import permutation
 
 from grizzly.types import ResponseTarget
 from grizzly.types.behave import Context, when, then, register_type
-
-from ...context import GrizzlyContext
-from ...tasks import RequestTask
-from .._helpers import add_save_handler, add_validation_handler, add_request_task_response_status_codes
+from grizzly.context import GrizzlyContext
+from grizzly.tasks import RequestTask
+from grizzly.steps._helpers import add_save_handler, add_validation_handler, add_request_task_response_status_codes
 
 
 @parse.with_pattern(r'is( not)?', regex_group_count=1)

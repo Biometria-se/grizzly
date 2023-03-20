@@ -6,7 +6,7 @@ from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContextScenario
 from grizzly.tasks import RequestTask, LogMessageTask
 
-from ...fixtures import RequestTaskFixture
+from tests.fixtures import RequestTaskFixture
 
 
 def test__parse_template(request_task: RequestTaskFixture) -> None:

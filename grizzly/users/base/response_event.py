@@ -3,8 +3,9 @@ from locust.event import EventHook
 
 from locust.user.users import User
 
-from ...types.locust import Environment, LocustError
-from ...clients import ResponseEventSession
+from grizzly.types.locust import Environment, LocustError
+from grizzly.clients import ResponseEventSession
+
 from . import HttpRequests
 
 

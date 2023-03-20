@@ -2,8 +2,9 @@ from typing import cast
 from os import environ
 
 from grizzly.types.behave import Context, given, then
-from ..context import GrizzlyContext
-from ..testdata.utils import resolve_variable
+from grizzly.context import GrizzlyContext
+from grizzly.testdata.utils import resolve_variable
+
 from ._helpers import is_template
 
 

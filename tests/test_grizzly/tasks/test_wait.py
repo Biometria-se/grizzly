@@ -5,7 +5,7 @@ from pytest_mock import MockerFixture
 from grizzly.tasks import WaitTask
 from grizzly.exceptions import StopUser
 
-from ...fixtures import GrizzlyFixture
+from tests.fixtures import GrizzlyFixture
 
 
 class TestWaitTask:

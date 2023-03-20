@@ -5,8 +5,8 @@ from getpass import getuser
 
 import yaml
 
-from ..fixtures import End2EndFixture
-from ..helpers import run_command
+from tests.fixtures import End2EndFixture
+from tests.helpers import run_command
 
 
 def test_e2e_example(e2e_fixture: End2EndFixture) -> None:

@@ -6,10 +6,9 @@ from typing import cast
 
 from grizzly.types import RequestDirection, RequestMethod
 from grizzly.types.behave import Context, register_type, then, given, when
-
-from .._helpers import add_request_task, get_task_client, is_template
-from ...context import GrizzlyContext
-from ...tasks import (
+from grizzly.steps._helpers import add_request_task, get_task_client, is_template
+from grizzly.context import GrizzlyContext
+from grizzly.tasks import (
     LogMessageTask,
     WaitTask,
     TransformerTask,

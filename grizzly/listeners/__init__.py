@@ -16,10 +16,9 @@ from locust.stats import (
 
 from grizzly.types import MessageDirection, RequestType, TestdataType
 from grizzly.types.behave import Status
-
-from ..context import GrizzlyContext
-from ..testdata.communication import TestdataProducer
-from ..types.locust import Environment, MasterRunner, WorkerRunner, Runner, Message
+from grizzly.types.locust import Environment, MasterRunner, WorkerRunner, Runner, Message
+from grizzly.context import GrizzlyContext
+from grizzly.testdata.communication import TestdataProducer
 
 producer: Optional[TestdataProducer] = None
 

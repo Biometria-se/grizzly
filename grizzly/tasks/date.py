@@ -46,12 +46,13 @@ from dateutil.relativedelta import relativedelta
 
 from grizzly_extras.arguments import get_unsupported_arguments, split_value, parse_arguments
 
-from ..utils import parse_timespan
+from grizzly.utils import parse_timespan
+
 from . import GrizzlyTask, template, grizzlytask
 
 if TYPE_CHECKING:  # pragma: no cover
-    from ..context import GrizzlyContextScenario
-    from ..scenarios import GrizzlyScenario
+    from grizzly.context import GrizzlyContextScenario
+    from grizzly.scenarios import GrizzlyScenario
 
 
 @template('value', 'arguments')

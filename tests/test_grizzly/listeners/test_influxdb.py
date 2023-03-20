@@ -17,7 +17,7 @@ from influxdb.exceptions import InfluxDBClientError
 from grizzly.listeners.influxdb import InfluxDbError, InfluxDbListener, InfluxDb
 from grizzly.types.locust import CatchResponseError
 
-from ...fixtures import LocustFixture, GrizzlyFixture
+from tests.fixtures import LocustFixture, GrizzlyFixture
 
 
 @pytest.fixture

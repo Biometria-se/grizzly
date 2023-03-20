@@ -52,13 +52,14 @@ from gevent import sleep as gsleep
 from grizzly_extras.transformer import Transformer, TransformerContentType, TransformerError, transformer
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments, split_value
 
-from ..types.locust import Environment
-from ..types import RequestType
+from grizzly.types.locust import Environment
+from grizzly.types import RequestType
+
 from . import GrizzlyTask, GrizzlyMetaRequestTask, template, grizzlytask
 
 if TYPE_CHECKING:  # pragma: no cover
-    from ..context import GrizzlyContextScenario, GrizzlyContext
-    from ..scenarios import GrizzlyScenario
+    from grizzly.context import GrizzlyContextScenario, GrizzlyContext
+    from grizzly.scenarios import GrizzlyScenario
 
 
 logger = logging.getLogger(__name__)

@@ -17,7 +17,7 @@ from grizzly.tasks import (
 )
 from grizzly.types import RequestMethod
 
-from ...fixtures import GrizzlyFixture
+from tests.fixtures import GrizzlyFixture
 
 
 class TestRequestTaskHandlers:

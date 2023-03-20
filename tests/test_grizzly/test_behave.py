@@ -21,8 +21,8 @@ from grizzly.steps.background.setup import step_setup_save_statistics as step_ba
 from grizzly.steps.scenario.setup import step_setup_iterations as step_scenario
 from grizzly.tasks import AsyncRequestGroupTask, TimerTask, ConditionalTask, LoopTask
 
-from ..fixtures import BehaveFixture
-from ..helpers import onerror
+from tests.fixtures import BehaveFixture
+from tests.helpers import onerror
 
 
 def test_before_feature(behave_fixture: BehaveFixture, tmp_path_factory: TempPathFactory) -> None:

@@ -12,8 +12,8 @@ from grizzly.types import RequestMethod
 from grizzly.types.locust import LocustError
 from grizzly.tasks import RequestTask
 
-from ....fixtures import LocustFixture
-from ....helpers import TestUser
+from tests.fixtures import LocustFixture
+from tests.helpers import TestUser
 
 
 class TestResponseEvent:

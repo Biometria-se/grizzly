@@ -12,7 +12,7 @@ from pytest_mock.plugin import MockerFixture
 from grizzly_extras.async_message import AsyncMessageRequest, AsyncMessageResponse
 from grizzly_extras.async_message.daemon import router, worker, main, signal_handler
 
-from ...fixtures import NoopZmqFixture
+from tests.fixtures import NoopZmqFixture
 
 
 def test_signal_handler() -> None:

@@ -10,8 +10,7 @@ from azure.servicebus.amqp import AmqpMessageBodyType
 from azure.servicebus.amqp._amqp_message import DictMixin
 
 from grizzly_extras.transformer import TransformerError, transformer, TransformerContentType
-
-from ..arguments import parse_arguments, get_unsupported_arguments
+from grizzly_extras.arguments import parse_arguments, get_unsupported_arguments
 
 from . import (
     AsyncMessageHandler,

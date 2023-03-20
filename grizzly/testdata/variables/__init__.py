@@ -16,7 +16,7 @@ from gevent.lock import Semaphore, DummySemaphore
 from grizzly.types import bool_type
 from grizzly.types.locust import Environment, Message
 
-from ...context import GrizzlyContext
+from grizzly.context import GrizzlyContext
 
 
 T = TypeVar('T')

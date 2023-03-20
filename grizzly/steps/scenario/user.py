@@ -5,8 +5,8 @@ This module contains step implementations that describes a {@pylink grizzly.user
 from typing import cast
 
 from grizzly.types.behave import Context, given
-from ...context import GrizzlyContext
-from ...testdata.utils import resolve_variable
+from grizzly.context import GrizzlyContext
+from grizzly.testdata.utils import resolve_variable
 
 
 @given(u'a user of type "{user_class_name}" with weight "{weight_value}" load testing "{host}"')

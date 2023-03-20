@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from grizzly.types import GrizzlyResponse
-    from ...tasks import RequestTask
+    from grizzly.tasks import RequestTask
 
 
 class FileRequests:

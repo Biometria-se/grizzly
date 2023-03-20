@@ -14,7 +14,7 @@ from grizzly.users.base import RequestLogger, HttpRequests
 from grizzly.types import RequestMethod, GrizzlyResponseContextManager
 from grizzly.tasks import RequestTask
 
-from ....fixtures import LocustFixture, ResponseContextManagerFixture
+from tests.fixtures import LocustFixture, ResponseContextManagerFixture
 
 
 @pytest.mark.usefixtures('locust_fixture')

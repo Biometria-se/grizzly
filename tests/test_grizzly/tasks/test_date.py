@@ -9,7 +9,7 @@ from dateutil.parser import parse as dateparser
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import DateTask
 
-from ...fixtures import GrizzlyFixture
+from tests.fixtures import GrizzlyFixture
 
 
 class TestDateTask:

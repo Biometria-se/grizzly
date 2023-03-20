@@ -87,11 +87,11 @@ import requests
 from grizzly_extras.transformer import TransformerContentType
 
 from grizzly.types import GrizzlyResponse, RequestType, RequestMethod, WrappedFunc, GrizzlyResponseContextManager
+from grizzly.types.locust import Environment, StopUser
+from grizzly.utils import merge_dicts
+from grizzly.tasks import RequestTask
+from grizzly.clients import ResponseEventSession
 
-from ..types.locust import Environment, StopUser
-from ..utils import merge_dicts
-from ..tasks import RequestTask
-from ..clients import ResponseEventSession
 from .base import RequestLogger, ResponseHandler, GrizzlyUser, HttpRequests, AsyncRequests
 from . import logger
 

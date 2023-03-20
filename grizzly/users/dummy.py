@@ -17,10 +17,10 @@ Given a user of type "Dummy" load testing "/dev/null"
 from typing import Any, Dict, Tuple
 
 from grizzly.types import GrizzlyResponse
+from grizzly.types.locust import Environment
+from grizzly.tasks import RequestTask
 
 from .base import GrizzlyUser
-from ..tasks import RequestTask
-from ..types.locust import Environment
 
 
 class DummyUser(GrizzlyUser):

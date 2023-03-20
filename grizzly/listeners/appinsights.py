@@ -25,7 +25,7 @@ from urllib.parse import parse_qs, urlparse
 
 from opencensus.ext.azure.log_exporter import AzureLogHandler
 
-from ..types.locust import Environment, MasterRunner
+from grizzly.types.locust import Environment, MasterRunner
 
 stdlogger = logging.getLogger(__name__)
 

@@ -34,12 +34,13 @@ from urllib.parse import urlparse, parse_qs
 from time import perf_counter as time
 
 from azure.storage.blob import BlobServiceClient
+
 from grizzly.types import RequestMethod, GrizzlyResponse, RequestType
+from grizzly.types.locust import Environment, StopUser
+from grizzly.tasks import RequestTask
+from grizzly.utils import merge_dicts
 
 from .base import GrizzlyUser
-from ..tasks import RequestTask
-from ..utils import merge_dicts
-from ..types.locust import Environment, StopUser
 
 
 class BlobStorageUser(GrizzlyUser):

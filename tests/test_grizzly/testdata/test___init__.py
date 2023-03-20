@@ -10,7 +10,7 @@ from grizzly.testdata import GrizzlyVariables
 from grizzly.testdata.variables import AtomicCsvReader, AtomicIntegerIncrementer, AtomicServiceBus
 from grizzly.context import GrizzlyContext
 
-from ...fixtures import AtomicVariableCleanupFixture, NoopZmqFixture
+from tests.fixtures import AtomicVariableCleanupFixture, NoopZmqFixture
 
 
 class TestGrizzlyVariables:

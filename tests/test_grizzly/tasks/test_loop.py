@@ -9,8 +9,8 @@ from grizzly.tasks import LoopTask, GrizzlyTask, grizzlytask
 from grizzly.context import GrizzlyContextScenario
 from grizzly.exceptions import RestartScenario
 
-from ...fixtures import GrizzlyFixture
-from ...helpers import TestTask
+from tests.fixtures import GrizzlyFixture
+from tests.helpers import TestTask
 
 if TYPE_CHECKING:
     from grizzly.scenarios import GrizzlyScenario

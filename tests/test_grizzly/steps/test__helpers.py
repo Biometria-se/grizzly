@@ -30,8 +30,8 @@ from grizzly.exceptions import ResponseHandlerError
 
 from grizzly_extras.transformer import TransformerContentType
 
-from ...helpers import TestUser
-from ...fixtures import BehaveFixture, GrizzlyFixture, LocustFixture
+from tests.helpers import TestUser
+from tests.fixtures import BehaveFixture, GrizzlyFixture, LocustFixture
 
 
 def test_add_request_task_response_status_codes() -> None:

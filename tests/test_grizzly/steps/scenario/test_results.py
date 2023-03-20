@@ -3,7 +3,7 @@ from typing import cast
 from grizzly.context import GrizzlyContext
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import  # noqa: F403
 
-from ....fixtures import BehaveFixture
+from tests.fixtures import BehaveFixture
 
 
 def test_step_results_fail_ratio(behave_fixture: BehaveFixture) -> None:

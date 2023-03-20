@@ -9,8 +9,8 @@ from grizzly.scenarios import GrizzlyScenario
 from grizzly.context import GrizzlyContextScenario
 from grizzly.exceptions import RestartScenario, StopUser
 
-from ...fixtures import GrizzlyFixture
-from ...helpers import TestTask
+from tests.fixtures import GrizzlyFixture
+from tests.helpers import TestTask
 
 
 class TestConditionalTask:

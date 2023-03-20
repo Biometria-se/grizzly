@@ -7,7 +7,7 @@ from grizzly.types.behave import Context
 from grizzly.context import GrizzlyContext
 from grizzly.types import ResponseTarget
 
-from ....fixtures import End2EndFixture
+from tests.fixtures import End2EndFixture
 
 
 @pytest.mark.parametrize('target', [target for target in ResponseTarget])

@@ -7,13 +7,12 @@ from grizzly_extras.text import permutation
 
 from grizzly.types.locust import StopUser
 from grizzly.types.behave import Context, given, then, register_type
-
-from ...context import GrizzlyContext
-from ...testdata.utils import create_context_variable, resolve_variable
-from ...utils import merge_dicts
-from ...exceptions import RestartScenario
-from .._helpers import is_template
-from ...tasks import RequestTask, GrizzlyTask
+from grizzly.context import GrizzlyContext
+from grizzly.testdata.utils import create_context_variable, resolve_variable
+from grizzly.utils import merge_dicts
+from grizzly.exceptions import RestartScenario
+from grizzly.tasks import RequestTask, GrizzlyTask
+from grizzly.steps._helpers import is_template
 
 
 @parse.with_pattern(r'(iteration[s]?)')

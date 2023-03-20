@@ -11,7 +11,7 @@ from gevent.greenlet import Greenlet
 from grizzly.testdata.variables.integer_incrementer import atomicintegerincrementer__base_type__
 from grizzly.testdata.variables import AtomicIntegerIncrementer
 
-from ....fixtures import AtomicVariableCleanupFixture
+from tests.fixtures import AtomicVariableCleanupFixture
 
 
 def test_atomicintegerincrementer__base_type__() -> None:

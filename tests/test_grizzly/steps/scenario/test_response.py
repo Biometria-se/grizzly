@@ -12,7 +12,7 @@ from grizzly.steps import *  # pylint: disable=unused-wildcard-import  # noqa: F
 
 from grizzly_extras.transformer import TransformerContentType
 
-from ....fixtures import GrizzlyFixture, BehaveFixture
+from tests.fixtures import GrizzlyFixture, BehaveFixture
 
 
 def test_parse_condition() -> None:

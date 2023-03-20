@@ -38,12 +38,12 @@ from os import path, environ, mkdir
 from paramiko import SFTPClient
 
 from grizzly.types import RequestMethod, GrizzlyResponse, RequestType
+from grizzly.types.locust import Environment, StopUser
+from grizzly.utils import merge_dicts
+from grizzly.clients import SftpClientSession
+from grizzly.tasks import RequestTask
 
 from .base import GrizzlyUser, FileRequests, ResponseHandler, RequestLogger
-from ..utils import merge_dicts
-from ..clients import SftpClientSession
-from ..tasks import RequestTask
-from ..types.locust import Environment, StopUser
 
 
 class SftpUser(ResponseHandler, RequestLogger, GrizzlyUser, FileRequests):

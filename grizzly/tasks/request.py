@@ -68,9 +68,9 @@ from grizzly.types import GrizzlyResponse, RequestMethod
 from . import GrizzlyMetaRequestTask, template, grizzlytask  # pylint: disable=unused-import
 
 if TYPE_CHECKING:  # pragma: no cover
-    from ..context import GrizzlyContextScenario
-    from ..scenarios import GrizzlyScenario
-    from ..users.base.response_handler import ResponseHandlerAction
+    from grizzly.context import GrizzlyContextScenario
+    from grizzly.scenarios import GrizzlyScenario
+    from grizzly.users.base.response_handler import ResponseHandlerAction
 
 
 class RequestTaskHandlers:

@@ -4,7 +4,7 @@ from pytest_mock import MockerFixture
 
 from grizzly.tasks import TimerTask, LogMessageTask
 
-from ...fixtures import GrizzlyFixture
+from tests.fixtures import GrizzlyFixture
 
 
 class TestTimerTask:

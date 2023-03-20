@@ -83,10 +83,10 @@ from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRespon
 from grizzly_extras.arguments import parse_arguments, get_unsupported_arguments
 
 from grizzly.types import RequestMethod, RequestDirection, GrizzlyResponse, RequestType
+from grizzly.types.locust import StopUser, Environment
+from grizzly.tasks import RequestTask
+from grizzly.utils import merge_dicts
 
-from ..types.locust import StopUser, Environment
-from ..tasks import RequestTask
-from ..utils import merge_dicts
 from .base import GrizzlyUser, ResponseHandler, RequestLogger
 from . import logger
 

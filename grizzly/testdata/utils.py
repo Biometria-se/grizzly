@@ -13,14 +13,14 @@ from locust.exception import StopUser
 
 from grizzly.types import RequestType, TestdataType, GrizzlyVariableType
 from grizzly.testdata.ast import get_template_variables
+from grizzly.tasks import GrizzlyTask
+from grizzly.utils import merge_dicts
 
-from ..tasks import GrizzlyTask
-from ..utils import merge_dicts
 from . import GrizzlyVariables
 
 
 if TYPE_CHECKING:
-    from ..context import GrizzlyContext, GrizzlyContextScenario
+    from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 
 
 logger = logging.getLogger(__name__)

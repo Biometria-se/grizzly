@@ -2,7 +2,7 @@ import pytest
 
 from grizzly.steps.utils import step_utils_fail
 
-from ...fixtures import BehaveFixture
+from tests.fixtures import BehaveFixture
 
 
 def test_step_utils_fail(behave_fixture: BehaveFixture) -> None:

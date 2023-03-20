@@ -22,7 +22,7 @@ from grizzly.testdata.variables import AtomicIntegerIncrementer
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import LogMessageTask
 
-from ...fixtures import AtomicVariableCleanupFixture, BehaveFixture, GrizzlyFixture, NoopZmqFixture
+from tests.fixtures import AtomicVariableCleanupFixture, BehaveFixture, GrizzlyFixture, NoopZmqFixture
 
 
 class TestTestdataProducer:

@@ -30,8 +30,8 @@ from time import perf_counter
 from . import GrizzlyTask, grizzlytask
 
 if TYPE_CHECKING:  # pragma: no cover
-    from ..scenarios import GrizzlyScenario
-    from ..context import GrizzlyContextScenario
+    from grizzly.scenarios import GrizzlyScenario
+    from grizzly.context import GrizzlyContextScenario
 
 
 class TimerTask(GrizzlyTask):

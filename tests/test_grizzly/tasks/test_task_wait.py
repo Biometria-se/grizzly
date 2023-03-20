@@ -3,7 +3,7 @@ import pytest
 from locust.exception import MissingWaitTimeError
 from grizzly.tasks import TaskWaitTask
 
-from ...fixtures import GrizzlyFixture
+from tests.fixtures import GrizzlyFixture
 
 
 class TestTaskWaitTask:
