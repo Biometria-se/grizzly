@@ -114,7 +114,9 @@ class TestAtomicIntegerIncrementer:
     def test_no_redefine_value(self, cleanup: AtomicVariableCleanupFixture) -> None:
         try:
             t = AtomicIntegerIncrementer('message_id', 3)
-            t['message_id'] = 1
+            with pytest.raises(NotImplementedError) as nie:
+                t['message_id'] = 1
+            assert str(nie.value) == 'AtomicIntegerIncrementer has not implemented "__setitem__"'
 
             assert t['message_id'] == 3
 

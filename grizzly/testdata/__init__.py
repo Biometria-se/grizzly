@@ -1,7 +1,8 @@
-from typing import TYPE_CHECKING, Type, Any, Optional, Callable, List, Tuple, Set, cast
+from typing import TYPE_CHECKING, Type, Any, Optional, Callable, List, Tuple, Set, Dict, cast
 from importlib import import_module
 
 from grizzly.types import GrizzlyVariableType
+from grizzly.types.locust import MessageHandler
 
 
 if TYPE_CHECKING:
@@ -25,46 +26,57 @@ class GrizzlyVariables(dict):
         return cast(Type['AtomicVariable'], variable)
 
     @classmethod
-    def get_variable_spec(cls, name: str) -> Tuple[Optional[str], Optional[str], str]:
+    def get_variable_spec(cls, name: str) -> Tuple[Optional[str], Optional[str], str, Optional[str]]:
         dot_count = name.count('.')
 
         if dot_count == 0 or 'Atomic' not in name:
-            return None, None, name
-        else:
-            namespace: List[str] = []
-            module_name: Optional[str] = None
-            variable_type: Optional[str] = None
-            variable_name: Optional[str] = None
+            return None, None, name, None
 
-            for part in name.split('.'):
-                if part.startswith('Atomic'):
-                    variable_type = part
-                    continue
+        namespace: List[str] = []
+        module_name: Optional[str] = None
+        variable_type: Optional[str] = None
+        variable_name: Optional[str] = None
+        sub_variable_names: List[str] = []
 
-                if variable_type is None:
-                    namespace.append(part)
-                    continue
-                else:
-                    variable_name = part
-                    break
+        for part in name.split('.'):
+            if part.startswith('Atomic'):
+                variable_type = part
+                continue
 
-            if len(namespace) == 0:
-                module_name = 'grizzly.testdata.variables'
+            if variable_type is None:
+                namespace.append(part)
+                continue
+            elif variable_name is None:
+                variable_name = part
+                continue
             else:
-                module_name = '.'.join(namespace)
+                sub_variable_names.append(part)
 
-            return module_name, variable_type, cast(str, variable_name)
+        if len(namespace) == 0:
+            module_name = 'grizzly.testdata.variables'
+        else:
+            module_name = '.'.join(namespace)
+
+        sub_variable_name = '.'.join(sub_variable_names) if len(sub_variable_names) > 0 else None
+
+        return module_name, variable_type, cast(str, variable_name), sub_variable_name
 
     @classmethod
-    def get_variable_value(cls, grizzly: 'GrizzlyContext', name: str) -> Tuple[Any, Set[str]]:
+    def initialize_variable(cls, grizzly: 'GrizzlyContext', name: str) -> Tuple[Any, Set[str], Dict[str, MessageHandler]]:
         external_dependencies: Set[str] = set()
+        message_handler: Dict[str, MessageHandler] = {}
 
         default_value = grizzly.state.variables.get(name, None)
-        module_name, variable_type, variable_name = cls.get_variable_spec(name)
+        if default_value is None:
+            raise ValueError(f'variable "{name}" has not been declared')
+
+        module_name, variable_type, variable_name, _ = cls.get_variable_spec(name)
 
         if module_name is not None and variable_type is not None:
             variable = cls.load_variable(module_name, variable_type)
             external_dependencies = variable.__dependencies__
+            message_handler = variable.__message_handlers__
+
             if getattr(variable, '__on_consumer__', False):
                 value = cast(Any, '__on_consumer__')
             else:
@@ -75,7 +87,7 @@ class GrizzlyVariables(dict):
         else:
             value = default_value
 
-        return value, external_dependencies
+        return value, external_dependencies, message_handler
 
     @classmethod
     def guess_datatype(cls, value: Any) -> GrizzlyVariableType:
@@ -114,7 +126,7 @@ class GrizzlyVariables(dict):
     def __setitem__(self, key: str, value: GrizzlyVariableType) -> None:
         caster: Optional[Callable] = None
 
-        module_name, variable_type, _ = self.get_variable_spec(key)
+        module_name, variable_type, _, _ = self.get_variable_spec(key)
         if module_name is not None and variable_type is not None:
             try:
                 variable = self.load_variable(module_name, variable_type)

@@ -130,7 +130,7 @@ def test_atomicservicebus_endpoint() -> None:
     endpoint = 'queue:"{{ queue_name }}"'
     with pytest.raises(ValueError) as ve:
         atomicservicebus_endpoint(endpoint)
-    assert 'AtomicServiceBus: value contained variable "queue_name" which has not been set' in str(ve)
+    assert 'AtomicServiceBus: value contained variable "queue_name" which has not been declared' in str(ve)
 
     endpoint = 'queue:"$conf::sb.endpoint.queue$"'
     with pytest.raises(ValueError) as ve:
@@ -145,7 +145,7 @@ def test_atomicservicebus_endpoint() -> None:
     endpoint = 'topic:documents-in, subscription:application-x, expression:"{{ expression }}"'
     with pytest.raises(ValueError) as ve:
         atomicservicebus_endpoint(endpoint)
-    assert 'AtomicServiceBus: value contained variable "expression" which has not been set' in str(ve)
+    assert 'AtomicServiceBus: value contained variable "expression" which has not been declared' in str(ve)
 
     try:
         grizzly = GrizzlyContext()
@@ -683,7 +683,9 @@ class TestAtomicServiceBus:
                 ),
             )
             assert v['test'] == 'topic:documents-in, subscription:application-x'
-            v['test'] = 'we <3 azure service bus'
+            with pytest.raises(NotImplementedError) as nie:
+                v['test'] = 'we <3 azure service bus'
+            assert str(nie.value) == 'AtomicServiceBus has not implemented "__setitem__"'
             assert v['test'] == 'topic:documents-in, subscription:application-x'
         finally:
             try:

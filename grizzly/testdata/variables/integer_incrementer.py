@@ -180,10 +180,6 @@ class AtomicIntegerIncrementer(AtomicVariable[int], AtomicVariablePersist):
 
             return value
 
-    # not possible to override already set value
-    def __setitem__(self, variable: str, value: Optional[int]) -> None:
-        pass
-
     def __delitem__(self, variable: str) -> None:
         with self.semaphore():
             try:

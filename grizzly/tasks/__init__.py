@@ -212,6 +212,7 @@ from .timer import TimerTask
 from .task_wait import TaskWaitTask
 from .conditional import ConditionalTask
 from .loop import LoopTask
+from .set_variable import SetVariableTask
 
 
 __all__ = [
@@ -228,4 +229,5 @@ __all__ = [
     'TaskWaitTask',
     'ConditionalTask',
     'LoopTask',
+    'SetVariableTask',
 ]

@@ -275,124 +275,140 @@ class TestGrizzlyVariables:
             cleanup()
 
     @pytest.mark.parametrize('input,expected', [
-        ('variable', (None, None, 'variable',),),
-        ('AtomicIntegerIncrementer.foo', ('grizzly.testdata.variables', 'AtomicIntegerIncrementer', 'foo',),),
-        ('AtomicCsvReader.users.username', ('grizzly.testdata.variables', 'AtomicCsvReader', 'users',),),
-        ('tests.helpers.AtomicCustomVariable.hello', ('tests.helpers', 'AtomicCustomVariable', 'hello',),),
-        ('tests.helpers.AtomicCustomVariable.foo.bar', ('tests.helpers', 'AtomicCustomVariable', 'foo',),),
-        ('a.custom.struct', (None, None, 'a.custom.struct',),),
+        ('variable', (None, None, 'variable', None,),),
+        ('AtomicIntegerIncrementer.foo', ('grizzly.testdata.variables', 'AtomicIntegerIncrementer', 'foo', None,),),
+        ('AtomicCsvReader.users.username', ('grizzly.testdata.variables', 'AtomicCsvReader', 'users', 'username',),),
+        ('tests.helpers.AtomicCustomVariable.hello', ('tests.helpers', 'AtomicCustomVariable', 'hello', None,),),
+        ('tests.helpers.AtomicCustomVariable.foo.bar', ('tests.helpers', 'AtomicCustomVariable', 'foo', 'bar',),),
+        ('a.custom.struct', (None, None, 'a.custom.struct', None,),),
     ])
-    def test_get_variable_spec(self, input: str, expected: Tuple[Optional[str], Optional[str], str]) -> None:
+    def test_get_variable_spec(self, input: str, expected: Tuple[Optional[str], Optional[str], str, Optional[str]]) -> None:
         assert GrizzlyVariables.get_variable_spec(input) == expected
 
-    def test__get_variable_value_static(self, cleanup: AtomicVariableCleanupFixture) -> None:
-        try:
-            grizzly = GrizzlyContext()
-            variable_name = 'test'
-
-            grizzly.state.variables[variable_name] = 1337
-            value, _ = GrizzlyVariables.get_variable_value(grizzly, variable_name)
-            assert value == 1337
-
-            grizzly.state.variables[variable_name] = '1337'
-            value, _ = GrizzlyVariables.get_variable_value(grizzly, variable_name)
-            assert value == 1337
-
-            grizzly.state.variables[variable_name] = "'1337'"
-            value, _ = GrizzlyVariables.get_variable_value(grizzly, variable_name)
-            assert value == '1337'
-        finally:
-            cleanup()
-
-    def test__get_variable_value_AtomicIntegerIncrementer(self, cleanup: AtomicVariableCleanupFixture) -> None:
-        try:
-            grizzly = GrizzlyContext()
-
-            variable_name = 'AtomicIntegerIncrementer.test'
-            grizzly.state.variables[variable_name] = 1337
-            value, external_dependencies = GrizzlyVariables.get_variable_value(grizzly, variable_name)
-            assert external_dependencies == set()
-            assert value['test'] == 1337
-            assert value['test'] == 1338
-            AtomicIntegerIncrementer.destroy()
-
-            grizzly.state.variables[variable_name] = '1337'
-            value, external_dependencies = GrizzlyVariables.get_variable_value(grizzly, variable_name)
-            assert external_dependencies == set()
-            assert value['test'] == 1337
-            assert value['test'] == 1338
-            AtomicIntegerIncrementer.destroy()
-        finally:
-            cleanup()
-
-    def test__get_variable_value_custom_variable(self, cleanup: AtomicVariableCleanupFixture) -> None:
-        try:
-            grizzly = GrizzlyContext()
-
-            variable_name = 'tests.helpers.AtomicCustomVariable.hello'
-            grizzly.state.variables[variable_name] = 'world'
-
-            value, external_dependencies = GrizzlyVariables.get_variable_value(grizzly, variable_name)
-            assert external_dependencies == set()
-            assert value['hello'] == 'world'
-
-            variable_name = 'tests.helpers.AtomicCustomVariable.foo'
-            grizzly.state.variables[variable_name] = 'bar'
-
-            _, external_dependencies = GrizzlyVariables.get_variable_value(grizzly, variable_name)
-            assert value['foo'] == 'bar'
-        finally:
-            cleanup()
-
-    def test__get_variable_value_AtomicServiceBus(self, noop_zmq: NoopZmqFixture, cleanup: AtomicVariableCleanupFixture) -> None:
-        noop_zmq('grizzly.testdata.variables.servicebus')
-
-        try:
-            grizzly = GrizzlyContext()
-            variable_name = 'AtomicServiceBus.test'
-            grizzly.state.variables[variable_name] = (
-                'queue:documents-in | url="sb://sb.example.com/;SharedAccessKeyName=name;SharedAccessKey=key"'
-            )
-            value, external_dependencies = GrizzlyVariables.get_variable_value(grizzly, variable_name)
-            assert external_dependencies == set(['async-messaged'])
-            assert not isinstance(value, AtomicServiceBus)
-            assert value == '__on_consumer__'
-
-            with pytest.raises(ValueError) as ve:
-                AtomicServiceBus.destroy()
-            assert "'AtomicServiceBus' is not instantiated" in str(ve)
-        finally:
-            cleanup()
-
-    def test__get_variable_value_AtomicCsvReader(self, cleanup: AtomicVariableCleanupFixture, tmp_path_factory: TempPathFactory) -> None:
-        test_context = tmp_path_factory.mktemp('test_context') / 'requests'
-        test_context.mkdir()
-        test_context_root = path.dirname(test_context)
-        environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
-
-        with open(path.join(test_context, 'test.csv'), 'w') as fd:
-            fd.write('header1,header2\n')
-            fd.write('value1,value2\n')
-            fd.write('value3,value4\n')
-            fd.flush()
-        try:
-            grizzly = GrizzlyContext()
-            variable_name = 'AtomicCsvReader.test'
-            grizzly.state.variables['AtomicCsvReader.test'] = 'test.csv'
-            value, external_dependencies = GrizzlyVariables.get_variable_value(grizzly, variable_name)
-
-            assert isinstance(value, AtomicCsvReader)
-            assert external_dependencies == set()
-            assert 'test' in value._values
-            assert 'test' in value._rows
-            assert value['test'] == {'header1': 'value1', 'header2': 'value2'}
-            assert value['test'] == {'header1': 'value3', 'header2': 'value4'}
-            assert value['test'] is None
-        finally:
+    class Test_initialize_variable:
+        def test_static(self, cleanup: AtomicVariableCleanupFixture) -> None:
             try:
-                del environ['GRIZZLY_CONTEXT_ROOT']
-            except:
-                pass
+                grizzly = GrizzlyContext()
+                variable_name = 'test'
 
-            rmtree(test_context_root)
-            cleanup()
+                with pytest.raises(ValueError) as ve:
+                    GrizzlyVariables.initialize_variable(grizzly, variable_name)
+                assert str(ve.value) == f'variable "{variable_name}" has not been declared'
+
+                grizzly.state.variables[variable_name] = 1337
+                value, _, _ = GrizzlyVariables.initialize_variable(grizzly, variable_name)
+                assert value == 1337
+
+                grizzly.state.variables[variable_name] = '1337'
+                value, _, _ = GrizzlyVariables.initialize_variable(grizzly, variable_name)
+                assert value == 1337
+
+                grizzly.state.variables[variable_name] = "'1337'"
+                value, _, _ = GrizzlyVariables.initialize_variable(grizzly, variable_name)
+                assert value == '1337'
+            finally:
+                cleanup()
+
+        def test_AtomicIntegerIncrementer(self, cleanup: AtomicVariableCleanupFixture) -> None:
+            try:
+                grizzly = GrizzlyContext()
+
+                variable_name = 'AtomicIntegerIncrementer.test'
+                with pytest.raises(ValueError) as ve:
+                    GrizzlyVariables.initialize_variable(grizzly, variable_name)
+                assert str(ve.value) == f'variable "{variable_name}" has not been declared'
+
+                grizzly.state.variables[variable_name] = 1337
+                value, external_dependencies, message_handlers = GrizzlyVariables.initialize_variable(grizzly, variable_name)
+                assert external_dependencies == set()
+                assert message_handlers == {}
+                assert value['test'] == 1337
+                assert value['test'] == 1338
+                AtomicIntegerIncrementer.destroy()
+
+                grizzly.state.variables[variable_name] = '1337'
+                value, external_dependencies, message_handlers = GrizzlyVariables.initialize_variable(grizzly, variable_name)
+                assert external_dependencies == set()
+                assert message_handlers == {}
+                assert value['test'] == 1337
+                assert value['test'] == 1338
+                AtomicIntegerIncrementer.destroy()
+            finally:
+                cleanup()
+
+        def test_custom_variable(self, cleanup: AtomicVariableCleanupFixture) -> None:
+            try:
+                grizzly = GrizzlyContext()
+
+                variable_name = 'tests.helpers.AtomicCustomVariable.hello'
+                grizzly.state.variables[variable_name] = 'world'
+
+                value, external_dependencies, message_handlers = GrizzlyVariables.initialize_variable(grizzly, variable_name)
+                assert external_dependencies == set()
+                assert message_handlers == {}
+                assert value['hello'] == 'world'
+
+                variable_name = 'tests.helpers.AtomicCustomVariable.foo'
+                grizzly.state.variables[variable_name] = 'bar'
+
+                _, external_dependencies, message_handlers = GrizzlyVariables.initialize_variable(grizzly, variable_name)
+                assert value['foo'] == 'bar'
+                assert external_dependencies == set()
+                assert message_handlers == {}
+            finally:
+                cleanup()
+
+        def test_AtomicServiceBus(self, noop_zmq: NoopZmqFixture, cleanup: AtomicVariableCleanupFixture) -> None:
+            noop_zmq('grizzly.testdata.variables.servicebus')
+
+            try:
+                grizzly = GrizzlyContext()
+                variable_name = 'AtomicServiceBus.test'
+                grizzly.state.variables[variable_name] = (
+                    'queue:documents-in | url="sb://sb.example.com/;SharedAccessKeyName=name;SharedAccessKey=key"'
+                )
+                value, external_dependencies, message_handlers = GrizzlyVariables.initialize_variable(grizzly, variable_name)
+                assert external_dependencies == set(['async-messaged'])
+                assert message_handlers == {}
+                assert not isinstance(value, AtomicServiceBus)
+                assert value == '__on_consumer__'
+
+                with pytest.raises(ValueError) as ve:
+                    AtomicServiceBus.destroy()
+                assert "AtomicServiceBus is not instantiated" in str(ve)
+            finally:
+                cleanup()
+
+        def test_AtomicCsvReader(self, cleanup: AtomicVariableCleanupFixture, tmp_path_factory: TempPathFactory) -> None:
+            test_context = tmp_path_factory.mktemp('test_context') / 'requests'
+            test_context.mkdir()
+            test_context_root = path.dirname(test_context)
+            environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
+
+            with open(path.join(test_context, 'test.csv'), 'w') as fd:
+                fd.write('header1,header2\n')
+                fd.write('value1,value2\n')
+                fd.write('value3,value4\n')
+                fd.flush()
+            try:
+                grizzly = GrizzlyContext()
+                variable_name = 'AtomicCsvReader.test'
+                grizzly.state.variables['AtomicCsvReader.test'] = 'test.csv'
+                value, external_dependencies, message_handlers = GrizzlyVariables.initialize_variable(grizzly, variable_name)
+
+                assert isinstance(value, AtomicCsvReader)
+                assert external_dependencies == set()
+                assert message_handlers == {}
+                assert 'test' in value._values
+                assert 'test' in value._rows
+                assert value['test'] == {'header1': 'value1', 'header2': 'value2'}
+                assert value['test'] == {'header1': 'value3', 'header2': 'value4'}
+                assert value['test'] is None
+            finally:
+                try:
+                    del environ['GRIZZLY_CONTEXT_ROOT']
+                except:
+                    pass
+
+                rmtree(test_context_root)
+                cleanup()

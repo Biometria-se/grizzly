@@ -25,7 +25,7 @@ This can then be used in a template:
 
 `AtomicRandomInteger.weight` will then be anything between, and including, `10` and `30`.
 '''
-from typing import Type, Dict, Optional, cast
+from typing import Type, Dict, cast
 from random import randint
 
 from . import AtomicVariable
@@ -87,9 +87,6 @@ class AtomicRandomInteger(AtomicVariable[int]):
             maximum = self._max[variable]
 
             return randint(minimum, maximum)
-
-    def __setitem__(self, variable: str, value: Optional[int]) -> None:
-        pass
 
     def __delitem__(self, variable: str) -> None:
         with self.semaphore():

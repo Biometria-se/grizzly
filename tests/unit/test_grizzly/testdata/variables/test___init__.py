@@ -73,15 +73,16 @@ class TestAtomicVariable:
 
             with pytest.raises(AttributeError) as ae:
                 t['foo']
-            assert "'AtomicCustomVariable' object has no attribute 'foo'" == str(ae.value)
+            assert 'AtomicCustomVariable object has no attribute "foo"' == str(ae.value)
 
             assert t['hello'] == 'value'
 
-            with pytest.raises(AttributeError) as ae:
+            with pytest.raises(NotImplementedError) as nie:
                 t['foo'] = 'bar'
-            assert "'AtomicCustomVariable' object has no attribute 'foo'" == str(ae.value)
+            assert str(nie.value) == 'AtomicCustomVariable has not implemented "__setitem__"'
 
-            t['hello'] = 'bar'
-            assert t['hello'] == 'bar'
+            with pytest.raises(NotImplementedError) as nie:
+                t['hello'] = 'bar'
+            assert str(nie.value) == 'AtomicCustomVariable has not implemented "__setitem__"'
         finally:
             cleanup()

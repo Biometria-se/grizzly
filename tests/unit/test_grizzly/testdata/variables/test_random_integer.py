@@ -76,10 +76,11 @@ class TestAtomicRandomInteger:
             v = instance['random']
             assert v >= 1337 and v <= 31337
             assert len(instance._max) == 1
-            instance['value'] = 20
 
+            with pytest.raises(NotImplementedError) as nie:
+                instance['value'] = 20
+            assert str(nie.value) == 'AtomicRandomInteger has not implemented "__setitem__"'
             assert len(instance._max) == 1
-            instance['random'] = 25
 
             v = instance['random']
             assert v >= 1337 and v <= 31337

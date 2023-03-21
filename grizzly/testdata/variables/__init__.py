@@ -9,12 +9,13 @@ When initializing the variable, the full namespace has to be specified as `name`
 
 There are examples of this in the {@link framework.example}.
 '''
+from abc import abstractmethod
 from typing import Generic, Optional, Callable, Set, Any, Tuple, Dict, TypeVar, Protocol, runtime_checkable
 
 from gevent.lock import Semaphore, DummySemaphore
 
 from grizzly.types import bool_type
-from grizzly.types.locust import Environment, Message
+from grizzly.types.locust import MessageHandler
 
 from grizzly.context import GrizzlyContext
 
@@ -34,10 +35,18 @@ class AtomicVariablePersist(Protocol):
         ...
 
 
+class AtomicVariableSettable:
+    __settable__ = True
+
+    @abstractmethod
+    def __setitem__(self, key: str, value: Any) -> None:
+        ...
+
+
 class AtomicVariable(Generic[T], AbstractAtomicClass):
     __base_type__: Optional[Callable] = None
     __dependencies__: Set[str] = set()
-    __message_listeners__: Dict[str, Callable[[Environment, Message], None]] = {}
+    __message_handlers__: Dict[str, MessageHandler] = {}
     __on_consumer__ = False
 
     __instance: Optional['AtomicVariable'] = None
@@ -65,21 +74,21 @@ class AtomicVariable(Generic[T], AbstractAtomicClass):
     @classmethod
     def get(cls) -> 'AtomicVariable[T]':
         if cls.__instance is None:
-            raise ValueError(f"'{cls.__name__}' is not instantiated")
+            raise ValueError(f'{cls.__name__} is not instantiated')
 
         return cls.__instance
 
     @classmethod
     def destroy(cls) -> None:
         if cls.__instance is None:
-            raise ValueError(f"'{cls.__name__}' is not instantiated")
+            raise ValueError(f'{cls.__name__} is not instantiated')
 
         del cls.__instance
 
     @classmethod
     def clear(cls) -> None:
         if cls.__instance is None:
-            raise ValueError(f"'{cls.__name__}' is not instantiated")
+            raise ValueError(f'{cls.__name__} is not instantiated')
 
         variables = list(cls.__instance._values.keys())
         for variable in variables:
@@ -100,7 +109,7 @@ class AtomicVariable(Generic[T], AbstractAtomicClass):
                     self._values[variable] = value
                 else:
                     raise AttributeError(
-                        f"'{self.__class__.__name__}' object already has attribute '{variable}'"
+                        f'{self.__class__.__name__} object already has attribute "{variable}"'
                     )
 
                 return
@@ -117,13 +126,7 @@ class AtomicVariable(Generic[T], AbstractAtomicClass):
             return self._get_value(variable)
 
     def __setitem__(self, variable: str, value: Optional[T]) -> None:
-        with self.semaphore():
-            if variable not in self._values:
-                raise AttributeError(
-                    f"'{self.__class__.__name__}' object has no attribute '{variable}'"
-                )
-
-            self._values[variable] = value
+        raise NotImplementedError(f'{self.__class__.__name__} has not implemented "__setitem__"')
 
     def __delitem__(self, variable: str) -> None:
         try:
@@ -136,7 +139,7 @@ class AtomicVariable(Generic[T], AbstractAtomicClass):
             return self._values[variable]
         except KeyError as e:
             raise AttributeError(
-                f"'{self.__class__.__name__}' object has no attribute '{variable}'"
+                f'{self.__class__.__name__} object has no attribute "{variable}"'
             ) from e
 
 
@@ -164,6 +167,7 @@ from .integer_incrementer import AtomicIntegerIncrementer
 from .date import AtomicDate
 from .directory_contents import AtomicDirectoryContents
 from .csv_reader import AtomicCsvReader
+from .csv_writer import AtomicCsvWriter
 from .random_string import AtomicRandomString
 from .servicebus import AtomicServiceBus
 
@@ -173,6 +177,7 @@ __all__ = [
     'AtomicDate',
     'AtomicDirectoryContents',
     'AtomicCsvReader',
+    'AtomicCsvWriter',
     'AtomicRandomString',
     'AtomicServiceBus',
     'destroy_variables',

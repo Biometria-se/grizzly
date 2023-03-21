@@ -16,7 +16,7 @@ from locust.stats import (
 
 from grizzly.types import MessageDirection, RequestType, TestdataType
 from grizzly.types.behave import Status
-from grizzly.types.locust import Environment, MasterRunner, WorkerRunner, Runner, Message
+from grizzly.types.locust import Environment, MasterRunner, WorkerRunner, LocustRunner, Message
 from grizzly.context import GrizzlyContext
 from grizzly.testdata.communication import TestdataProducer
 
@@ -42,8 +42,8 @@ def _init_testdata_producer(grizzly: GrizzlyContext, port: str, testdata: Testda
     return gtestdata_producer
 
 
-def init(grizzly: GrizzlyContext, testdata: Optional[TestdataType] = None) -> Callable[[Runner, KwArg(Dict[str, Any])], None]:
-    def ginit(runner: Runner, **kwargs: Dict[str, Any]) -> None:
+def init(grizzly: GrizzlyContext, testdata: Optional[TestdataType] = None) -> Callable[[LocustRunner, KwArg(Dict[str, Any])], None]:
+    def ginit(runner: LocustRunner, **kwargs: Dict[str, Any]) -> None:
         producer_port = environ.get('TESTDATA_PRODUCER_PORT', '5555')
         if not isinstance(runner, MasterRunner):
             if isinstance(runner, WorkerRunner):
@@ -79,7 +79,7 @@ def init(grizzly: GrizzlyContext, testdata: Optional[TestdataType] = None) -> Ca
             for message_type, callback in grizzly.setup.locust.messages.get(MessageDirection.CLIENT_SERVER, {}).items():
                 runner.register_message(message_type, callback)
 
-    return cast(Callable[[Runner, KwArg(Dict[str, Any])], None], ginit)
+    return cast(Callable[[LocustRunner, KwArg(Dict[str, Any])], None], ginit)
 
 
 def init_statistics_listener(url: str) -> Callable[[Environment, VarArg(Tuple[Any, ...]), KwArg(Dict[str, Any])], None]:

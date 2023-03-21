@@ -36,7 +36,7 @@ from grizzly.types.behave import Context as BehaveContext, Scenario, Step, Featu
 from grizzly.tasks import RequestTask
 from grizzly.testdata.variables import destroy_variables
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
-from grizzly.types.locust import Environment, Runner
+from grizzly.types.locust import Environment, LocustRunner
 
 from .helpers import TestUser, TestScenario, RequestSilentFailureEvent
 from .helpers import onerror, run_command
@@ -56,6 +56,7 @@ __all__ = [
     'RequestTaskFixture',
     'GrizzlyFixture',
     'NoopZmqFixture',
+    'MockerFixture',
 ]
 
 
@@ -79,7 +80,7 @@ class LocustFixture:
     _tmp_path_factory: TempPathFactory
 
     env: Environment
-    runner: Runner
+    runner: LocustRunner
 
     def __init__(self, tmp_path_factory: TempPathFactory) -> None:
         self._tmp_path_factory = tmp_path_factory
@@ -288,14 +289,15 @@ class RequestTaskFixture:
     context_root: str
     relative_path: str
     request: RequestTask
+    test_context: Path
 
     def __init__(self, tmp_path_factory: TempPathFactory) -> None:
         self._tmp_path_factory = tmp_path_factory
 
     def __enter__(self) -> 'RequestTaskFixture':
-        test_context = self._tmp_path_factory.mktemp('example_payload') / 'requests'
-        test_context.mkdir()
-        request_file = test_context / 'payload.j2.json'
+        self.test_context = self._tmp_path_factory.mktemp('example_payload') / 'requests'
+        self.test_context.mkdir()
+        request_file = self.test_context / 'payload.j2.json'
         request_file.touch()
         request_file.write_text(REQUEST_TASK_TEMPLATE_CONTENTS)
         request_path = path.dirname(str(request_file))
@@ -336,6 +338,10 @@ class GrizzlyFixture:
     def __init__(self, request_task: RequestTaskFixture, behave_fixture: BehaveFixture) -> None:
         self.request_task = request_task
         self.behave = behave_fixture.context
+
+    @property
+    def test_context(self) -> Path:
+        return self.request_task.test_context
 
     def __enter__(self) -> 'GrizzlyFixture':
         environ['GRIZZLY_CONTEXT_ROOT'] = path.abspath(path.join(self.request_task.context_root, '..'))
