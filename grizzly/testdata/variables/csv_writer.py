@@ -85,7 +85,7 @@ def atomiccsvwriter_message_handler(environment: Environment, msg: Message, **kw
 
         exists = output_path.exists()
 
-        with open(output_path, 'a+') as csv_file:
+        with open(output_path, 'a+', newline='') as csv_file:
             writer = DictWriter(csv_file, fieldnames=headers)
             if not exists:
                 writer.writeheader()
