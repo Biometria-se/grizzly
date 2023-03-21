@@ -14,6 +14,7 @@ from grizzly.types.locust import StopUser
 from grizzly.types.behave import Scenario
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import LogMessageTask, DateTask, TransformerTask, UntilRequestTask, ConditionalTask
+from grizzly.testdata.variables.csv_writer import atomiccsvwriter_message_handler
 from grizzly.testdata.utils import (
     initialize_testdata,
     create_context_variable,
@@ -28,9 +29,10 @@ from tests.fixtures import BehaveFixture, AtomicVariableCleanupFixture, GrizzlyF
 
 
 def test_initialize_testdata_no_tasks(grizzly_fixture: GrizzlyFixture) -> None:
-    testdata, external_dependencies = initialize_testdata(grizzly_fixture.grizzly, [])
+    testdata, external_dependencies, message_handlers = initialize_testdata(grizzly_fixture.grizzly, [])
     assert testdata == {}
     assert external_dependencies == set()
+    assert message_handlers == {}
 
 
 def test_initialize_testdata_with_tasks(
@@ -81,11 +83,12 @@ def test_initialize_testdata_with_tasks(
         scenario.tasks.add(ConditionalTask(name='conditional-1', condition='{{ AtomicIntegerIncrementer.value | int > 5 }}'))
         scenario.tasks.add(LogMessageTask(message='transformer_task={{ transformer_task }}'))
         scenario.orphan_templates.append('hello {{ orphan }} template')
-        testdata, external_dependencies = initialize_testdata(grizzly, scenario.tasks)
+        testdata, external_dependencies, message_handlers = initialize_testdata(grizzly, scenario.tasks)
 
         scenario_name = scenario.class_name
 
         assert external_dependencies == set()
+        assert message_handlers == {}
         assert scenario_name in testdata
         variables = testdata[scenario_name]
         assert len(variables) == 15
@@ -143,6 +146,7 @@ def test_initialize_testdata_with_payload_context(grizzly_fixture: GrizzlyFixtur
         grizzly.state.variables['messageID'] = 123
         grizzly.state.variables['AtomicIntegerIncrementer.messageID'] = 456
         grizzly.state.variables['AtomicCsvReader.test'] = 'test.csv'
+        grizzly.state.variables['AtomicCsvWriter.output'] = 'output.csv | headers="foo,bar"'
         grizzly.state.variables['AtomicDirectoryContents.test'] = 'adirectory'
         grizzly.state.variables['AtomicDate.now'] = 'now'
         grizzly.state.variables['AtomicServiceBus.event'] = (
@@ -153,16 +157,20 @@ def test_initialize_testdata_with_payload_context(grizzly_fixture: GrizzlyFixtur
         grizzly.scenario.context['host'] = 'http://test.nu'
         grizzly.scenario.iterations = 2
 
+        # hackish, to get around them not being used in any template when doing it barebone.
+        grizzly.scenario.orphan_templates.append('{{ AtomicCsvWriter.output.foo }}')
+
         request.source = jsondumps(source)
 
         grizzly.scenario.tasks.add(request)
 
-        testdata, external_dependencies = initialize_testdata(grizzly, grizzly.scenario.tasks)
+        testdata, external_dependencies, message_handlers = initialize_testdata(grizzly, grizzly.scenario.tasks)
 
         scenario_name = grizzly.scenario.class_name
 
         assert scenario_name in testdata
         assert external_dependencies == set(['async-messaged'])
+        assert message_handlers == {'atomiccsvwriter': atomiccsvwriter_message_handler}
 
         data = testdata[scenario_name]
 

@@ -51,7 +51,7 @@ def test_step_shapes_user_count(behave_fixture: BehaveFixture) -> None:
 
     with pytest.raises(AssertionError) as ae:
         step_impl(behave, '{{ user_count }}', grammar='user')
-    assert 'value contained variable "user_count" which has not been set' in str(ae)
+    assert str(ae.value) == 'value contained variable "user_count" which has not been declared'
 
     grizzly.state.variables['user_count'] = 5
     step_impl(behave, '{{ user_count }}', grammar='user')
@@ -92,7 +92,7 @@ def test_step_shapes_spawn_rate(behave_fixture: BehaveFixture) -> None:
 
     with pytest.raises(AssertionError) as ae:
         step_impl(behave, '{{ spawn_rate }}', grammar='users')
-    assert 'value contained variable "spawn_rate" which has not been set' in str(ae)
+    assert str(ae.value) == 'value contained variable "spawn_rate" which has not been declared'
 
     grizzly.setup.spawn_rate = None
     grizzly.state.variables['spawn_rate'] = 1

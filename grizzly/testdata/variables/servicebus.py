@@ -456,9 +456,6 @@ class AtomicServiceBus(AtomicVariable[str]):
 
             return payload
 
-    def __setitem__(self, variable: str, value: Optional[str]) -> None:
-        pass
-
     def __delitem__(self, variable: str) -> None:
         with self.semaphore():
             try:

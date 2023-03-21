@@ -180,10 +180,6 @@ class AtomicDate(AtomicVariable[Union[str, datetime]]):
                 self._settings[variable]['timezone'],
             ).strftime(self._settings[variable]['format'])
 
-    # not possible to override already set value
-    def __setitem__(self, variable: str, value: Optional[Union[str, datetime]]) -> None:
-        pass
-
     def __delitem__(self, variable: str) -> None:
         with self.semaphore():
             try:

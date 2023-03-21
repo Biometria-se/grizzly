@@ -184,9 +184,6 @@ class AtomicRandomString(AtomicVariable[str]):
             except (IndexError, ValueError):
                 return None
 
-    def __setitem__(self, variable: str, value: Optional[str]) -> None:
-        pass
-
     def __delitem__(self, variable: str) -> None:
         with self.semaphore():
             try:

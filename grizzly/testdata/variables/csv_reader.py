@@ -196,9 +196,6 @@ class AtomicCsvReader(AtomicVariable[Dict[str, Any]]):
 
             return row
 
-    def __setitem__(self, variable: str, value: Optional[Dict[str, Any]]) -> None:
-        pass
-
     def __delitem__(self, variable: str) -> None:
         with self.semaphore():
             if '.' in variable:

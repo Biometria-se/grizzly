@@ -1,13 +1,13 @@
 import logging
 
-from typing import TYPE_CHECKING, Callable, Optional, Dict, Any, Tuple, List, Type, cast
+from typing import TYPE_CHECKING, Callable, Optional, Dict, Any, Tuple, List, Type, Union, cast
 from os import environ, path
 from dataclasses import dataclass, field
 
 import yaml
 
 from grizzly.types import MessageCallback, MessageDirection
-from grizzly.types.locust import Runner
+from grizzly.types.locust import MasterRunner, WorkerRunner, LocalRunner
 from grizzly.types.behave import Scenario
 
 from .testdata import GrizzlyVariables
@@ -112,7 +112,7 @@ class GrizzlyContextState:
     configuration: Dict[str, Any] = field(init=False, default_factory=load_configuration_file)
     alias: Dict[str, str] = field(init=False, default_factory=dict)
     verbose: bool = field(default=False)
-    locust: Runner = field(init=False, repr=False)
+    locust: Union[MasterRunner, WorkerRunner, LocalRunner] = field(init=False, repr=False)
     persistent: Dict[str, str] = field(init=False, repr=False, default_factory=dict)
 
 

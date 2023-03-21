@@ -83,7 +83,9 @@ class TestAtomicRandomString:
 
             assert t.__getitem__('regnr') is None
 
-            t['regnr'] = 'ABC123'
+            with pytest.raises(NotImplementedError) as nie:
+                t['regnr'] = 'ABC123'
+            assert str(nie.value) == 'AtomicRandomString has not implemented "__setitem__"'
             assert t['regnr'] is None
 
             assert len(t._strings) == 4

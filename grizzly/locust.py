@@ -19,16 +19,15 @@ from locust.util.timespan import parse_timespan
 from locust.user.users import User
 from jinja2.exceptions import TemplateError
 
-from grizzly.types import RequestType, TestdataType
-from grizzly.types.behave import Context, Status
-
 from . import __version__, __locust_version__
 from .listeners import init, init_statistics_listener, quitting, validate_result, spawning_complete, locust_test_start, locust_test_stop
 from .testdata.utils import initialize_testdata
 from .context import GrizzlyContext
 from .tasks import GrizzlyTask
 from .utils import create_scenario_class_type, create_user_class_type
-from .types.locust import Environment, MasterRunner, WorkerRunner, Runner
+from .types import RequestType, TestdataType
+from .types.locust import Environment, LocustRunner, MasterRunner, WorkerRunner, MessageHandler
+from .types.behave import Context, Status
 
 __all__ = [
     'stats_logger',
@@ -163,7 +162,7 @@ def setup_resource_limits(context: Context) -> None:
             )
 
 
-def setup_environment_listeners(context: Context, tasks: List[GrizzlyTask]) -> Set[str]:
+def setup_environment_listeners(context: Context, tasks: List[GrizzlyTask]) -> Tuple[Set[str], Dict[str, MessageHandler]]:
     grizzly = cast(GrizzlyContext, context.grizzly)
 
     environment = grizzly.state.locust.environment
@@ -177,10 +176,11 @@ def setup_environment_listeners(context: Context, tasks: List[GrizzlyTask]) -> S
     # add standard listeners
     testdata: Optional[TestdataType] = None
     external_dependencies: Set[str] = set()
+    message_handlers: Dict[str, MessageHandler] = {}
 
     # initialize testdata
     try:
-        testdata, external_dependencies = initialize_testdata(grizzly, tasks)
+        testdata, external_dependencies, message_handlers = initialize_testdata(grizzly, tasks)
     except TemplateError as e:
         logger.error(e, exc_info=True)
         raise AssertionError(f'error parsing request payload: {e}') from e
@@ -212,7 +212,7 @@ def setup_environment_listeners(context: Context, tasks: List[GrizzlyTask]) -> S
     if grizzly.setup.statistics_url is not None:
         environment.events.init.add_listener(init_statistics_listener(grizzly.setup.statistics_url))
 
-    return external_dependencies
+    return external_dependencies, message_handlers
 
 
 def print_scenario_summary(grizzly: GrizzlyContext) -> None:
@@ -346,7 +346,7 @@ def run(context: Context) -> int:
             stop_timeout=300,  # only wait at most?
         )
 
-        runner: Runner
+        runner: LocustRunner
 
         if on_master(context):
             host = '0.0.0.0'
@@ -374,7 +374,7 @@ def run(context: Context) -> int:
 
         grizzly.state.locust = runner
 
-        variable_dependencies = setup_environment_listeners(context, tasks)
+        variable_dependencies, message_handlers = setup_environment_listeners(context, tasks)
         external_dependencies.update(variable_dependencies)
 
         environment.events.init.fire(environment=environment, runner=runner, web_ui=None)
@@ -421,6 +421,11 @@ def run(context: Context) -> int:
 
             watch_running_external_processes_greenlet = gevent.spawn_later(10, start_watching_external_processes(external_processes))
             watch_running_external_processes_greenlet.link_exception(greenlet_exception_handler)
+
+        if not on_worker(context) and len(message_handlers) > 0:
+            for message_type, callback in message_handlers.items():
+                grizzly.state.locust.register_message(message_type, callback)
+                logger.info(f'registered callback for message type "{message_type}"')
 
         main_greenlet = runner.greenlet
 

@@ -1,6 +1,6 @@
 import pytest
 
-from grizzly.types import RequestType, RequestDirection, RequestMethod, bool_type, int_rounded_float_type, optional_str_lower_type
+from grizzly.types import RequestType, RequestDirection, RequestMethod, bool_type, int_rounded_float_type, optional_str_lower_type, list_type
 
 
 class TestRequestDirection:
@@ -132,3 +132,8 @@ def test_optional_str_lower_type() -> None:
     assert optional_str_lower_type(None) is None
     assert optional_str_lower_type('asdf') == 'asdf'
     assert optional_str_lower_type('ASDF') == 'asdf'
+
+
+def test_list_type() -> None:
+    assert list_type('foobar') == ['foobar']
+    assert list_type('foo,bar') == ['foo', 'bar']

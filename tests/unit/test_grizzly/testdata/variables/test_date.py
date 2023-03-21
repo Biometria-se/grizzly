@@ -81,7 +81,9 @@ class TestAtomicDate:
 
             t = AtomicDate('actual', 'now')
 
-            t['actual'] = None
+            with pytest.raises(NotImplementedError) as nie:
+                t['actual'] = None
+            assert str(nie.value) == 'AtomicDate has not implemented "__setitem__"'
 
             assert t['actual'] != expected.strftime('%Y-%m-%d %H:%M:%S.%f')
 

@@ -9,9 +9,9 @@ from time import perf_counter as time
 
 from jinja2 import Template, Environment
 from jinja2.meta import find_undeclared_variables
-from locust.exception import StopUser
 
 from grizzly.types import RequestType, TestdataType, GrizzlyVariableType
+from grizzly.types.locust import StopUser, MessageHandler
 from grizzly.testdata.ast import get_template_variables
 from grizzly.tasks import GrizzlyTask
 from grizzly.utils import merge_dicts
@@ -26,13 +26,13 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def initialize_testdata(grizzly: 'GrizzlyContext', tasks: List[GrizzlyTask]) -> Tuple[TestdataType, Set[str]]:
+def initialize_testdata(grizzly: 'GrizzlyContext', tasks: List[GrizzlyTask]) -> Tuple[TestdataType, Set[str], Dict[str, MessageHandler]]:
     testdata: TestdataType = {}
     template_variables = get_template_variables(tasks)
 
     found_variables = set()
     for variable in itertools.chain(*template_variables.values()):
-        module_name, variable_type, variable_name = GrizzlyVariables.get_variable_spec(variable)
+        module_name, variable_type, variable_name, _ = GrizzlyVariables.get_variable_spec(variable)
 
         if module_name is None and variable_type is None:
             found_variables.add(variable_name)
@@ -57,12 +57,13 @@ def initialize_testdata(grizzly: 'GrizzlyContext', tasks: List[GrizzlyTask]) -> 
 
     initialized_datatypes: Dict[str, Any] = {}
     external_dependencies: Set[str] = set()
+    message_handlers: Dict[str, MessageHandler] = {}
 
     for scenario, variables in template_variables.items():
         testdata[scenario] = {}
 
         for variable in variables:
-            module_name, variable_type, variable_name = GrizzlyVariables.get_variable_spec(variable)
+            module_name, variable_type, variable_name, _ = GrizzlyVariables.get_variable_spec(variable)
             if module_name is not None and variable_type is not None:
                 variable_datatype = f'{variable_type}.{variable_name}'
                 if module_name != 'grizzly.testdata.variables':
@@ -71,19 +72,20 @@ def initialize_testdata(grizzly: 'GrizzlyContext', tasks: List[GrizzlyTask]) -> 
                 variable_datatype = variable_name
 
             if variable_datatype not in initialized_datatypes:
-                initialized_datatypes[variable_datatype], dependencies = GrizzlyVariables.get_variable_value(grizzly, variable_datatype)
+                initialized_datatypes[variable_datatype], dependencies, message_handler = GrizzlyVariables.initialize_variable(grizzly, variable_datatype)
                 external_dependencies.update(dependencies)
+                message_handlers.update(message_handler)
 
             testdata[scenario][variable] = initialized_datatypes[variable_datatype]
 
-    return testdata, external_dependencies
+    return testdata, external_dependencies, message_handlers
 
 
 def transform(grizzly: 'GrizzlyContext', data: Dict[str, Any], objectify: Optional[bool] = True, scenario: Optional['GrizzlyContextScenario'] = None) -> Dict[str, Any]:
     testdata: Dict[str, Any] = {}
 
     for key, value in data.items():
-        module_name, variable_type, variable_name = GrizzlyVariables.get_variable_spec(key)
+        module_name, variable_type, variable_name, _ = GrizzlyVariables.get_variable_spec(key)
 
         if '.' in key:
             if module_name is not None and variable_type is not None:
@@ -178,7 +180,7 @@ def resolve_variable(grizzly: 'GrizzlyContext', value: str, guess_datatype: Opti
         template_variables = find_undeclared_variables(template_parsed)
 
         for template_variable in template_variables:
-            assert template_variable in grizzly.state.variables, f'value contained variable "{template_variable}" which has not been set'
+            assert template_variable in grizzly.state.variables, f'value contained variable "{template_variable}" which has not been declared'
 
         resolved_variable = template.render(**grizzly.state.variables)
     elif '$conf' in value or '$env' in value:

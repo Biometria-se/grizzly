@@ -121,7 +121,9 @@ class TestAtomicCsvReader:
             assert instance['test3'] == {'header13': 'value133', 'header23': 'value233', 'header33': 'value333'}
             assert instance.__getitem__('test3') is None
 
-            instance['test4'] = {'test': 'value'}
+            with pytest.raises(NotImplementedError) as nie:
+                instance['test4'] = {'test': 'value'}
+            assert str(nie.value) == 'AtomicCsvReader has not implemented "__setitem__"'
             assert 'test4' not in instance._rows
 
             instance = AtomicCsvReader('test5', '3.csv')

@@ -5,8 +5,9 @@ import pytest
 
 from grizzly.context import GrizzlyContext
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import  # noqa: F403
+from grizzly.tasks import SetVariableTask
 
-from tests.fixtures import BehaveFixture
+from tests.fixtures import BehaveFixture, MockerFixture
 
 
 def test_step_setup_variable_value_ask(behave_fixture: BehaveFixture) -> None:
@@ -43,7 +44,7 @@ def test_step_setup_variable_value_ask(behave_fixture: BehaveFixture) -> None:
                 del environ[key]
 
 
-def test_step_setup_variable_value(behave_fixture: BehaveFixture) -> None:
+def test_step_setup_variable_value(behave_fixture: BehaveFixture, mocker: MockerFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
 
@@ -69,11 +70,9 @@ def test_step_setup_variable_value(behave_fixture: BehaveFixture) -> None:
     step_setup_variable_value(behave, 'AtomicDate.test', '2021-04-13')
     assert grizzly.state.variables['AtomicDate.test'] == '2021-04-13'
 
-    with pytest.raises(AssertionError):
-        step_setup_variable_value(behave, 'AtomicIntegerIncrementer.test', '1 | step=10')
-
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError) as ae:
         step_setup_variable_value(behave, 'dynamic_variable_value', '{{ value }}')
+    assert str(ae.value) == 'value contained variable "value" which has not been declared'
 
     grizzly.state.variables['value'] = 'hello world!'
     step_setup_variable_value(behave, 'dynamic_variable_value', '{{ value }}')
@@ -86,3 +85,38 @@ def test_step_setup_variable_value(behave_fixture: BehaveFixture) -> None:
     grizzly.state.persistent.update({'AtomicIntegerIncrementer.persistent': '10 | step=10, persist=True'})
     step_setup_variable_value(behave, 'AtomicIntegerIncrementer.persistent', '1 | step=10, persist=True')
     assert grizzly.state.variables['AtomicIntegerIncrementer.persistent'] == '10 | step=10, persist=True'
+
+    step_setup_variable_value(behave, 'AtomicCsvWriter.output', 'output.csv | headers="foo,bar"')
+    assert grizzly.state.variables['AtomicCsvWriter.output'] == 'output.csv | headers="foo,bar"'
+    assert len(grizzly.scenario.tasks) == 0
+
+    grizzly.state.variables.update({'foo_value': 'foobar'})
+
+    step_setup_variable_value(behave, 'AtomicCsvWriter.output.foo', '{{ foo_value }}')
+    assert len(grizzly.scenario.tasks) == 1
+    task = grizzly.scenario.tasks[0]
+    assert isinstance(task, SetVariableTask)
+    assert task.variable == 'AtomicCsvWriter.output.foo'
+    assert task.value == '{{ foo_value }}'
+
+    grizzly.state.variables.update({'bar_value': 'foobaz'})
+
+    step_setup_variable_value(behave, 'AtomicCsvWriter.output.bar', '{{ bar_value }}')
+    assert len(grizzly.scenario.tasks) == 2
+    task = grizzly.scenario.tasks[1]
+    assert isinstance(task, SetVariableTask)
+    assert task.variable == 'AtomicCsvWriter.output.bar'
+    assert task.value == '{{ bar_value }}'
+
+    with pytest.raises(AssertionError) as ae:
+        step_setup_variable_value(behave, 'custom.variable.AtomicFooBar.value.foo', 'hello')
+    assert str(ae.value) == "No module named 'custom'"
+
+    assert len(grizzly.scenario.tasks) == 2
+
+    set_variable_task_mock = mocker.patch('grizzly.tasks.set_variable.SetVariableTask.__init__', return_value=None)
+    grizzly.state.variables.update({'custom.variable.AtomicFooBar.value': 'hello'})
+
+    step_setup_variable_value(behave, 'custom.variable.AtomicFooBar.value.foo', 'hello')
+
+    set_variable_task_mock.assert_called_once_with('custom.variable.AtomicFooBar.value.foo', 'hello')

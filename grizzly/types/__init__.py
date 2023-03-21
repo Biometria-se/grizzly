@@ -199,6 +199,10 @@ def bool_type(value: str) -> bool:
     raise ValueError(f'{value} is not a valid boolean')
 
 
+def list_type(value: str) -> List[str]:
+    return [v.strip() for v in value.split(',')]
+
+
 def int_rounded_float_type(value: str) -> int:
     return int(round(float(value)))
 

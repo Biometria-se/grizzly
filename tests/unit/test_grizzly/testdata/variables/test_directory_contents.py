@@ -66,7 +66,9 @@ class TestAtomicDirectoryContents:
         try:
             instance = AtomicDirectoryContents('blobfiles', '1-test/')
 
-            instance['blobfiles'] = None
+            with pytest.raises(NotImplementedError) as nie:
+                instance['blobfiles'] = None
+            assert str(nie.value) == 'AtomicDirectoryContents has not implemented "__setitem__"'
 
             assert instance['blobfiles'] == f'1-test{os.sep}1-test.json'
             assert instance['blobfiles'] == f'1-test{os.sep}2-test.json'

@@ -156,7 +156,7 @@ class TestdataProducer:
                 for key, variable in testdata.items():
                     try:
                         if '.' in key and not variable == '__on_consumer__':
-                            _, _, variable_name = GrizzlyVariables.get_variable_spec(key)
+                            _, _, variable_name, _ = GrizzlyVariables.get_variable_spec(key)
 
                             if not isinstance(variable, AtomicVariablePersist):
                                 continue
@@ -222,7 +222,7 @@ class TestdataProducer:
 
                                         for key, variable in testdata.items():
                                             if '.' in key and not variable == '__on_consumer__':
-                                                module_name, variable_type, variable_name = GrizzlyVariables.get_variable_spec(key)
+                                                module_name, variable_type, variable_name, _ = GrizzlyVariables.get_variable_spec(key)
                                                 _, data_attribute = key.rsplit('.', 1)
 
                                                 if variable_name != data_attribute:
@@ -231,7 +231,10 @@ class TestdataProducer:
                                                         testdata_type = f'{module_name}.{testdata_type}'
 
                                                     if testdata_type not in loaded_variable_datatypes:
-                                                        loaded_variable_datatypes[testdata_type] = variable[variable_name]
+                                                        try:
+                                                            loaded_variable_datatypes[testdata_type] = variable[variable_name]
+                                                        except NotImplementedError:
+                                                            continue
 
                                                     value = loaded_variable_datatypes[testdata_type][data_attribute]
                                                 else:
