@@ -117,6 +117,7 @@ class MessageQueueClientTask(ClientTask):
         variable: Optional[str] = None,
         source: Optional[str] = None,
         destination: Optional[str] = None,
+        text: Optional[str] = None,
         scenario: Optional[GrizzlyContextScenario] = None,
     ) -> None:
         if pymqi.__name__ == 'grizzly_extras.dummy_pymqi':
@@ -125,7 +126,16 @@ class MessageQueueClientTask(ClientTask):
         if destination is not None:
             raise ValueError(f'{self.__class__.__name__}: destination is not allowed')
 
-        super().__init__(direction, endpoint, name, variable=variable, destination=destination, source=source, scenario=scenario)
+        super().__init__(
+            direction,
+            endpoint,
+            name,
+            variable=variable,
+            destination=destination,
+            source=source,
+            scenario=scenario,
+            text=text,
+        )
 
         self.create_context()
 

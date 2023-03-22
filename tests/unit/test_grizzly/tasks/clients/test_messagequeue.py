@@ -102,6 +102,10 @@ class TestMessageQueueClientTask:
             assert task_factory.destination is None
             assert task_factory.source is None
             assert not hasattr(task_factory, 'scenario')
+
+            with pytest.raises(NotImplementedError) as nie:
+                MessageQueueClientTask(RequestDirection.FROM, 'mqs://localhost:1', 'messagequeue-request', text='foobar')
+            assert str(nie.value) == 'MessageQueueClientTask has not implemented support for step text'
         finally:
             if zmq_context is not None:
                 zmq_context.destroy()

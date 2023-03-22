@@ -79,9 +79,19 @@ class BlobStorageClientTask(ClientTask):
         variable: Optional[str] = None,
         source: Optional[str] = None,
         destination: Optional[str] = None,
+        text: Optional[str] = None,
         scenario: Optional[GrizzlyContextScenario] = None,
     ) -> None:
-        super().__init__(direction, endpoint, name, variable=variable, destination=destination, source=source, scenario=scenario)
+        super().__init__(
+            direction,
+            endpoint,
+            name,
+            variable=variable,
+            destination=destination,
+            source=source,
+            scenario=scenario,
+            text=text,
+        )
 
         parsed = urlparse(self.endpoint)
 

@@ -44,6 +44,7 @@ class HttpClientTask(ClientTask):
         variable: Optional[str] = None,
         source: Optional[str] = None,
         destination: Optional[str] = None,
+        text: Optional[str] = None,
         scenario: Optional[GrizzlyContextScenario] = None,
     ) -> None:
         verify = True
@@ -59,7 +60,16 @@ class HttpClientTask(ClientTask):
             if len(arguments) > 0:
                 endpoint = f'{endpoint} | {", ".join([f"{key}={value}" for key, value in arguments.items()])}'
 
-        super().__init__(direction, endpoint, name, variable=variable, source=source, destination=destination, scenario=scenario)
+        super().__init__(
+            direction,
+            endpoint,
+            name,
+            variable=variable,
+            source=source,
+            destination=destination,
+            scenario=scenario,
+            text=text,
+        )
 
         self.arguments = {}
         self.headers = {

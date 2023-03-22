@@ -57,6 +57,7 @@ class ClientTask(GrizzlyMetaRequestTask):
     variable: Optional[str]
     source: Optional[str]
     destination: Optional[str]
+    _text: Optional[str]
 
     log_dir: Path
 
@@ -69,11 +70,15 @@ class ClientTask(GrizzlyMetaRequestTask):
         variable: Optional[str] = None,
         source: Optional[str] = None,
         destination: Optional[str] = None,
+        text: Optional[str] = None,
         scenario: Optional[GrizzlyContextScenario] = None,
     ) -> None:
         super().__init__(scenario)
 
         self.grizzly = GrizzlyContext()
+
+        if text is not None:
+            self.text = text
 
         endpoint = cast(str, resolve_variable(self.grizzly, endpoint, only_grizzly=True))
         try:
@@ -133,6 +138,16 @@ class ClientTask(GrizzlyMetaRequestTask):
 
     def on_stop(self) -> None:
         pass
+
+    # SOW: see https://github.com/python/mypy/issues/5936#issuecomment-1429175144
+    def text_fget(self) -> Optional[str]:
+        return self._text
+
+    def text_fset(self, value: str) -> None:
+        raise NotImplementedError(f'{self.__class__.__name__} has not implemented support for step text')
+
+    text = property(text_fget, text_fset)
+    # EOW
 
     @final
     def __call__(self) -> grizzlytask:

@@ -104,6 +104,16 @@ class TestBlobStorageClientTask:
             )
         assert str(ve.value) == 'asdf is not a valid boolean'
 
+        with pytest.raises(NotImplementedError) as nie:
+            BlobStorageClientTask(
+                RequestDirection.TO,
+                'bss://my-storage?AccountKey=aaaabbb=&Container=my-container&Overwrite=True',
+                'upload-empty-file',
+                source='',
+                text='foobar',
+            )
+        assert str(nie.value) == 'BlobStorageClientTask has not implemented support for step text'
+
     def test_get(self, behave_fixture: BehaveFixture, grizzly_fixture: GrizzlyFixture) -> None:
         behave = behave_fixture.context
         grizzly = cast(GrizzlyContext, behave.grizzly)

@@ -227,6 +227,10 @@ class TestHttpClientTask:
         args, kwargs = request_fire_spy.call_args_list[-1]
         assert len(list(task_factory.log_dir.rglob('**/*'))) == 6
 
+        with pytest.raises(NotImplementedError) as nie:
+            HttpClientTask(RequestDirection.FROM, 'https://$conf::test.host$/api/test | verify=True, content_type=json', 'http-env-get-2', variable='test', text='foobar')
+        assert str(nie.value) == 'HttpClientTask has not implemented support for step text'
+
     def test_put(self, grizzly_fixture: GrizzlyFixture) -> None:
         task_factory = HttpClientTask(RequestDirection.TO, 'http://put.example.org', source='')
         task = task_factory()
