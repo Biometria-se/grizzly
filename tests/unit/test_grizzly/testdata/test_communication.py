@@ -366,9 +366,10 @@ class TestTestdataProducer:
             assert caplog.messages[-3] == "producing {'action': 'stop'} for consumer test-consumer"
             assert 'test data error, stop consumer test-consumer' in caplog.messages[-4]
             assert send_json_mock.call_count == 1
-            args, _ = send_json_mock.call_args_list[-1]
+            args, kwargs = send_json_mock.call_args_list[-1]
             # send_json was autospec'ed, meaning args[0] == self
-            assert args[1].get('action', None) == 'stop'
+            assert args[0].get('action', None) == 'stop'
+            assert kwargs == {}
         finally:
             cleanup()
 

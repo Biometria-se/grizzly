@@ -129,8 +129,7 @@ class TestMessageQueueUser:
         assert connect_mock.call_count == 1
         args, kwargs = connect_mock.call_args_list[-1]
         assert kwargs == {}
-        assert len(args) == 2
-        assert args[1] == user.zmq_url
+        assert args == (user.zmq_url,)
 
     def test_on_stop(self, locust_fixture: LocustFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.users.messagequeue')
@@ -671,47 +670,59 @@ class TestMessageQueueUser:
         request.endpoint = 'queue:IFKTEST'
         user.request(request)
         assert send_json_spy.call_count == 1
-        args, _ = send_json_spy.call_args_list[0]
-        ctx: Dict[str, str] = args[1]['context']
+        args, kwargs = send_json_spy.call_args_list[0]
+        assert len(args) == 1
+        assert kwargs == {}
+        ctx: Dict[str, str] = args[0]['context']
         assert ctx['endpoint'] == request.endpoint
 
         # Test with specifying queue: prefix as endpoint
         request.endpoint = 'queue:IFKTEST'
         user.request(request)
         assert send_json_spy.call_count == 2
-        args, _ = send_json_spy.call_args_list[-1]
-        ctx = args[1]['context']
+        args, kwargs = send_json_spy.call_args_list[-1]
+        assert len(args) == 1
+        assert kwargs == {}
+        ctx = args[0]['context']
         assert ctx['endpoint'] == request.endpoint
 
         # Test specifying queue: prefix with expression
         request.endpoint = 'queue:IFKTEST2, expression:/class/student[marks>85]'
         user.request(request)
         assert send_json_spy.call_count == 3
-        args, _ = send_json_spy.call_args_list[-1]
-        ctx = args[1]['context']
+        args, kwargs = send_json_spy.call_args_list[-1]
+        assert len(args) == 1
+        assert kwargs == {}
+        ctx = args[0]['context']
         assert ctx['endpoint'] == request.endpoint
 
         # Test specifying queue: prefix with expression, and spacing
         request.endpoint = 'queue: IFKTEST2  , expression: /class/student[marks>85]'
         user.request(request)
         assert send_json_spy.call_count == 4
-        args, _ = send_json_spy.call_args_list[-1]
-        ctx = args[1]['context']
+        args, kwargs = send_json_spy.call_args_list[-1]
+        assert len(args) == 1
+        assert kwargs == {}
+        ctx = args[0]['context']
         assert ctx['endpoint'] == request.endpoint
 
         # Test specifying queue without prefix, with expression
         request.endpoint = 'queue:IFKTEST3, expression:/class/student[marks<55], max_message_size:13337'
         user.request(request)
         assert send_json_spy.call_count == 5
-        args, _ = send_json_spy.call_args_list[-1]
-        ctx = args[1]['context']
+        args, kwargs = send_json_spy.call_args_list[-1]
+        assert len(args) == 1
+        assert kwargs == {}
+        ctx = args[0]['context']
         assert ctx['endpoint'] == request.endpoint
 
         request.endpoint = 'queue:IFKTEST3, max_message_size:444'
         user.request(request)
         assert send_json_spy.call_count == 6
-        args, _ = send_json_spy.call_args_list[-1]
-        ctx = args[1]['context']
+        args, kwargs = send_json_spy.call_args_list[-1]
+        assert len(args) == 1
+        assert kwargs == {}
+        ctx = args[0]['context']
         assert ctx['endpoint'] == request.endpoint
 
         # Test error when missing expression: prefix

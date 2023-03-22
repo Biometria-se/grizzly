@@ -270,8 +270,8 @@ class TestMessageQueueClientTask:
     def test_create_client(self, grizzly_fixture: GrizzlyFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.tasks.clients.messagequeue')
         connect_mock = noop_zmq.get_mock('zmq.Socket.connect')
-        setsockopt_mock = noop_zmq._mocker.patch('grizzly.tasks.clients.messagequeue.zmq.Socket.setsockopt', autospec=True)
-        close_mock = noop_zmq._mocker.patch('grizzly.tasks.clients.messagequeue.zmq.Socket.close')
+        setsockopt_mock = noop_zmq.get_mock('zmq.Socket.setsockopt')
+        close_mock = noop_zmq.get_mock('zmq.Socket.close')
 
         zmq_context: Optional[zmq.Context] = None
         try:
@@ -283,8 +283,9 @@ class TestMessageQueueClientTask:
 
             with task_factory.create_client() as client:
                 assert connect_mock.call_count == 1
-                args, _ = connect_mock.call_args_list[-1]
-                assert args[1] == task_factory._zmq_url
+                args, kwargs = connect_mock.call_args_list[-1]
+                assert args == (task_factory._zmq_url,)
+                assert kwargs == {}
 
                 assert isinstance(client, zmq.Socket)
 
@@ -316,7 +317,6 @@ class TestMessageQueueClientTask:
             zmq_context = task_factory._zmq_context
 
             with task_factory.create_client() as client:
-                noop_zmq._mocker.patch('grizzly.tasks.clients.messagequeue.zmq.Socket.setsockopt', autospec=True)
                 meta: Dict[str, Any] = {}
                 with pytest.raises(RuntimeError) as re:
                     task_factory.connect(111111, client, meta)
@@ -326,8 +326,8 @@ class TestMessageQueueClientTask:
                 assert meta.get('direction', None) == '<->'
 
                 assert send_json_mock.call_count == 1
-                args, _ = send_json_mock.call_args_list[-1]
-                assert args[1] == {
+                args, kwargs = send_json_mock.call_args_list[-1]
+                assert args == ({
                     'action': 'CONN',
                     'context': {
                         'url': task_factory.endpoint,
@@ -343,7 +343,8 @@ class TestMessageQueueClientTask:
                         'heartbeat_interval': None,
                         'header_type': None,
                     },
-                }
+                },)
+                assert kwargs == {}
                 assert recv_json_mock.call_count == 2
                 _, kwargs = recv_json_mock.call_args_list[-1]
                 assert kwargs.get('flags', None) == zmq.NOBLOCK
@@ -388,8 +389,8 @@ class TestMessageQueueClientTask:
                 task_factory.connect(444444, client, meta)
                 assert send_json_mock.call_count == 4
                 assert recv_json_mock.call_count == 5
-                args, _ = send_json_mock.call_args_list[-1]
-                assert args[1] == {
+                args, kwargs = send_json_mock.call_args_list[-1]
+                assert args == ({
                     'action': 'CONN',
                     'context': {
                         'url': task_factory.endpoint,
@@ -405,7 +406,8 @@ class TestMessageQueueClientTask:
                         'heartbeat_interval': None,
                         'header_type': 'rfh2',
                     },
-                }
+                },)
+                assert kwargs == {}
 
         finally:
             if zmq_context is not None:
@@ -446,15 +448,16 @@ class TestMessageQueueClientTask:
             assert scenario.user._context['variables'].get('mq-client-var', None) is None
             assert task_factory._worker.get(id(scenario), None) == 'dddd-eeee-ffff-9999'
             assert send_json_mock.call_count == 2
-            args, _ = send_json_mock.call_args_list[-1]
-            assert args[1] == {
+            args, kwargs = send_json_mock.call_args_list[-1]
+            assert args == ({
                 'action': 'GET',
                 'worker': 'dddd-eeee-ffff-9999',
                 'context': {
                     'endpoint': 'topic:INCOMING.MSG',
                 },
                 'payload': None,
-            }
+            },)
+            assert kwargs == {}
             assert recv_json_mock.call_count == 3
 
             assert fire_spy.call_count == 1
@@ -480,15 +483,16 @@ class TestMessageQueueClientTask:
 
             assert scenario.user._context['variables'].get('mq-client-var', None) is None
             assert send_json_mock.call_count == 3
-            args, _ = send_json_mock.call_args_list[-1]
-            assert args[1] == {
+            args, kwargs = send_json_mock.call_args_list[-1]
+            assert args == ({
                 'action': 'GET',
                 'worker': 'dddd-eeee-ffff-9999',
                 'context': {
                     'endpoint': 'topic:INCOMING.MSG, max_message_size:13337',
                 },
                 'payload': None,
-            }
+            },)
+            assert kwargs == {}
             assert recv_json_mock.call_count == 4
 
             assert fire_spy.call_count == 2
@@ -595,15 +599,16 @@ class TestMessageQueueClientTask:
 
             assert recv_json_mock.call_count == 2
             assert send_json_mock.call_count == 2
-            args, _ = send_json_mock.call_args_list[-1]
-            assert args[1] == {
+            args, kwargs = send_json_mock.call_args_list[-1]
+            assert args == ({
                 'action': 'PUT',
                 'worker': 'dddd-eeee-ffff-9999',
                 'context': {
                     'endpoint': 'queue:INCOMING.MSG',
                 },
                 'payload': source,
-            }
+            },)
+            assert kwargs == {}
 
             assert fire_spy.call_count == 1
             _, kwargs = fire_spy.call_args_list[-1]
@@ -627,15 +632,16 @@ class TestMessageQueueClientTask:
 
             assert recv_json_mock.call_count == 3
             assert send_json_mock.call_count == 3
-            args, _ = send_json_mock.call_args_list[-1]
-            assert args[1] == {
+            args, kwargs = send_json_mock.call_args_list[-1]
+            assert args == ({
                 'action': 'PUT',
                 'worker': 'dddd-eeee-ffff-9999',
                 'context': {
                     'endpoint': 'queue:INCOMING.MSG',
                 },
                 'payload': source_file.read_text(),
-            }
+            },)
+            assert kwargs == {}
 
             assert fire_spy.call_count == 2
             _, kwargs = fire_spy.call_args_list[-1]

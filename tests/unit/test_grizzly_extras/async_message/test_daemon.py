@@ -215,11 +215,11 @@ def test_router(mocker: MockerFixture, capsys: CaptureFixture, noop_zmq: NoopZmq
 
         assert poller_register_mock.call_count == 2
         args, _ = poller_register_mock.call_args_list[0]
-        assert len(args) == 3
+        assert len(args) == 2
         assert args[-1] == zmq.POLLIN
 
         args, _ = poller_register_mock.call_args_list[1]
-        assert len(args) == 3
+        assert len(args) == 2
         assert args[-1] == zmq.POLLIN
 
         assert len(thread_mock.mock_calls) == 3

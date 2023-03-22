@@ -457,17 +457,19 @@ class TestAtomicServiceBus:
                 v.say_hello(client, 'test2')
             assert 'AtomicServiceBus.test2: no response when trying to connect' in str(re)
             assert gsleep_spy.call_count == 1
-            args, _ = gsleep_spy.call_args_list[0]
-            assert args[0] == 0.1
+            args, kwargs = gsleep_spy.call_args_list[0]
+            assert args == (0.1,)
+            assert kwargs == {}
             assert send_json_spy.call_count == 1
-            args, _ = send_json_spy.call_args_list[0]
-            assert args[1] == {
+            args, kwargs = send_json_spy.call_args_list[0]
+            assert args == ({
                 'worker': None,
                 'action': 'HELLO',
                 'context': {
                     'endpoint': 'topic:test-topic',
                 },
-            }
+            },)
+            assert kwargs == {}
             assert v._settings['test2'].get('worker', '') is None
 
             mock_response(client, {

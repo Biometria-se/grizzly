@@ -416,8 +416,9 @@ class TestServiceBusUser:
         exception = kwargs.get('exception', None)
         assert 'unknown error' in str(exception)
 
-        args, _ = send_json_spy.call_args_list[0]
-        assert args[1] == {
+        args, kwargs = send_json_spy.call_args_list[0]
+        assert kwargs == {}
+        assert args == ({
             'worker': 'asdf-asdf-asdf',
             'action': 'SEND',
             'payload': 'hello',
@@ -428,7 +429,7 @@ class TestServiceBusUser:
                 'url': 'sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=',
                 'message_wait': None,
             }
-        }
+        },)
 
         # successful request
         task.method = RequestMethod.RECEIVE
@@ -469,8 +470,9 @@ class TestServiceBusUser:
         assert kwargs.get('context', None) == user._context
         assert kwargs.get('exception', '') is None
 
-        args, _ = send_json_spy.call_args_list[1]
-        assert args[1] == {
+        args, kwargs = send_json_spy.call_args_list[1]
+        assert kwargs == {}
+        assert args == ({
             'worker': 'asdf-asdf-asdf',
             'action': 'RECEIVE',
             'payload': None,
@@ -481,7 +483,7 @@ class TestServiceBusUser:
                 'url': 'sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=',
                 'message_wait': None,
             }
-        }
+        },)
 
         task.method = RequestMethod.RECEIVE
         task.source = None
@@ -523,8 +525,9 @@ class TestServiceBusUser:
         assert kwargs.get('context', None) == user._context
         assert kwargs.get('exception', '') is None
 
-        args, _ = send_json_spy.call_args_list[2]
-        assert args[1] == {
+        args, kwargs = send_json_spy.call_args_list[2]
+        assert kwargs == {}
+        assert args == ({
             'worker': 'asdf-asdf-asdf',
             'action': 'RECEIVE',
             'payload': None,
@@ -535,4 +538,4 @@ class TestServiceBusUser:
                 'message_wait': None,
                 'content_type': 'json',
             }
-        }
+        },)
