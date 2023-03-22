@@ -22,6 +22,7 @@ from grizzly.utils import (
     in_correct_section,
     parse_timespan,
     check_mq_client_logs,
+    async_message_request,
 )
 from grizzly.types import RequestMethod
 from grizzly.types.behave import Context, Scenario, Status
@@ -664,3 +665,7 @@ EXPLANATION:
 
     assert amqerr_fdc_files[3].strip() == f'{entry_date_2.strftime("%Y-%m-%d %H:%M:%S")}  {amqerr_fdc_file_2}'
     assert amqerr_fdc_files[4].strip() == f'{entry_date_3.strftime("%Y-%m-%d %H:%M:%S")}  {amqerr_fdc_file_3}'
+
+
+def test_async_message_request(mocker: MockerFixture) -> None:
+    assert 0

@@ -79,6 +79,8 @@ class ClientTask(GrizzlyMetaRequestTask):
 
         if text is not None:
             self.text = text
+        else:
+            self._text = None
 
         endpoint = cast(str, resolve_variable(self.grizzly, endpoint, only_grizzly=True))
         try:
@@ -264,11 +266,13 @@ logger = logging.getLogger(__name__)
 from .http import HttpClientTask
 from .blobstorage import BlobStorageClientTask
 from .messagequeue import MessageQueueClientTask
+from .servicebus import ServiceBusClientTask
 
 
 __all__ = [
     'HttpClientTask',
     'BlobStorageClientTask',
     'MessageQueueClientTask',
+    'ServiceBusClientTask',
     'logger',
 ]

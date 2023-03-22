@@ -539,12 +539,14 @@ class NoopZmqFixture:
             'zmq.Context.__del__',
             'zmq.Socket.bind',
             'zmq.Socket.connect',
+            'zmq.Socket.close',
             'zmq.Socket.send_json',
             'zmq.Socket.send',
             'zmq.Socket.recv_json',
             'zmq.Socket.recv_multipart',
             'zmq.Socket.send_multipart',
             'zmq.Socket.disconnect',
+            'zmq.Socket.setsockopt',
             'zmq.Socket.send_string',
             'zmq.Poller.poll',
             'zmq.Poller.register',
@@ -555,7 +557,7 @@ class NoopZmqFixture:
             try:
                 self._mocks.update({target: self._mocker.patch(
                     f'{prefix}.{target}',
-                    autospec=True,
+                    return_value=None,
                 )})
             except AttributeError as e:
                 if 'gsleep' in str(e):

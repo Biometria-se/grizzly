@@ -369,7 +369,7 @@ class AtomicServiceBus(AtomicVariable[str]):
             raise RuntimeError(f'{self.__class__.__name__}.{variable}: {message}')
 
         self._settings[variable]['worker'] = response['worker']
-        self.logger.debug(f'conntected to worker {response["worker"]} at {hostname()}')
+        self.logger.debug(f'connected to worker {response["worker"]} at {hostname()}')
 
     @classmethod
     def destroy(cls: Type['AtomicServiceBus']) -> None:
