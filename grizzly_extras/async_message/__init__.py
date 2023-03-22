@@ -2,7 +2,7 @@ import logging
 import sys
 
 from abc import ABC, abstractmethod
-from typing import Optional, Dict, Any, TypedDict, Callable, List, cast
+from typing import Optional, Dict, Any, TypedDict, Callable, List, cast, final
 from os import environ, path
 from platform import node as hostname
 from json import dumps as jsondumps
@@ -133,6 +133,7 @@ class AsyncMessageHandler(ABC):
     def close(self) -> None:
         raise NotImplementedError(f'{self.__class__.__name__}: close is not implemented')
 
+    @final
     def handle(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
         action = request['action']
         request_handler = self.get_handler(action)

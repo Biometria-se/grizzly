@@ -5,9 +5,10 @@ from time import perf_counter, sleep
 from mypy_extensions import VarArg, KwArg
 
 from azure.servicebus import ServiceBusClient, ServiceBusMessage, TransportType, ServiceBusSender, ServiceBusReceiver, ServiceBusReceivedMessage
-from azure.servicebus.management import ServiceBusAdministrationClient
+from azure.servicebus.management import ServiceBusAdministrationClient, TopicProperties, SqlRuleFilter
 from azure.servicebus.amqp import AmqpMessageBodyType
 from azure.servicebus.amqp._amqp_message import DictMixin
+from azure.core.exceptions import ResourceNotFoundError, ResourceExistsError
 
 from grizzly_extras.transformer import TransformerError, transformer, TransformerContentType
 from grizzly_extras.arguments import parse_arguments, get_unsupported_arguments
@@ -236,17 +237,141 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             'message': 'thanks for all the fish',
         }
 
+    @register(handlers, 'SUBSCRIBE')
+    def subscribe(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
+        context = request.get('context', None)
+        if context is None:
+            raise AsyncMessageError('no context in request')
+
+        endpoint = context['endpoint']
+        instance_type = context['connection']
+        arguments = self.get_endpoint_arguments(instance_type, endpoint)
+
+        if arguments.get('endpoint_type', None) != 'topic':
+            raise AsyncMessageError('subscriptions is only allowed on topics')
+
+        topic_name = arguments['endpoint']
+        subscription_name = arguments['subscription']
+        rule_name = 'grizzly'
+        rule_text = request.get('payload', None)
+
+        if rule_text is None:
+            raise AsyncMessageError('no rule text in request')
+
+        if self.mgmt_client is None:
+            url = context['url']
+            if not url.startswith('Endpoint='):
+                url = f'Endpoint={url}'
+
+            self.mgmt_client = ServiceBusAdministrationClient.from_connection_string(conn_str=url)
+
+        topic: Optional[TopicProperties] = None
+
+        try:
+            topic = self.mgmt_client.get_topic(topic_name=topic_name)
+        except ResourceNotFoundError:
+            topic = None
+
+        if topic is None:
+            raise AsyncMessageError(f'topic "{topic_name}" does not exist')
+
+        try:
+            self.mgmt_client.get_subscription(topic_name=topic_name, subscription_name=subscription_name)
+        except ResourceNotFoundError:
+            self.mgmt_client.create_subscription(topic_name=topic_name, subscription_name=subscription_name)
+
+        try:
+            self.mgmt_client.delete_rule(
+                topic_name=topic_name,
+                subscription_name=subscription_name,
+                rule_name='$Default',
+            )
+        except ResourceNotFoundError:
+            pass
+
+        try:
+            rule = self.mgmt_client.create_rule(
+                topic_name=topic_name,
+                subscription_name=subscription_name,
+                rule_name=rule_name,
+            )
+        except ResourceExistsError:
+            rule = self.mgmt_client.get_rule(
+                topic_name=topic_name,
+                subscription_name=subscription_name,
+                rule_name=rule_name,
+            )
+
+        rule.action = None
+        rule.filter = SqlRuleFilter(rule_text)
+
+        self.mgmt_client.update_rule(
+            topic_name=topic_name,
+            subscription_name=subscription_name,
+            rule=rule,
+        )
+
+        return {
+            'message': f'created subscription {subscription_name} on topic {topic_name}'
+        }
+
+    @register(handlers, 'UNSUBSCRIBE')
+    def unsubscribe(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
+        context = request.get('context', None)
+        if context is None:
+            raise AsyncMessageError('no context in request')
+
+        endpoint = context['endpoint']
+        instance_type = context['connection']
+        arguments = self.get_endpoint_arguments(instance_type, endpoint)
+
+        if arguments['endpoint_type'] != 'topic':
+            raise AsyncMessageError('subscriptions is only allowed on topics')
+
+        topic_name = arguments['endpoint']
+        subscription_name = arguments['subscription']
+
+        if self.mgmt_client is None:
+            url = context['url']
+            if not url.startswith('Endpoint='):
+                url = f'Endpoint={url}'
+
+            self.mgmt_client = ServiceBusAdministrationClient.from_connection_string(conn_str=url)
+
+        topic: Optional[TopicProperties] = None
+
+        try:
+            topic = self.mgmt_client.get_topic(topic_name=topic_name)
+        except ResourceNotFoundError:
+            topic = None
+
+        if topic is None:
+            raise AsyncMessageError(f'topic "{topic_name}" does not exist')
+
+        try:
+            self.mgmt_client.get_subscription(topic_name=topic_name, subscription_name=subscription_name)
+        except ResourceNotFoundError:
+            raise AsyncMessageError(f'subscription "{subscription_name}" does not exist on topic "{topic_name}"')
+
+        self.mgmt_client.delete_subscription(
+            topic_name=topic_name,
+            subscription_name=subscription_name,
+        )
+
+        return {
+            'message': f'removed subscription {subscription_name} on topic {topic_name}'
+        }
+
     def _hello(self, request: AsyncMessageRequest, force: bool) -> AsyncMessageResponse:
         context = request.get('context', None)
         if context is None:
             raise AsyncMessageError('no context in request')
 
         url = context['url']
+        if not url.startswith('Endpoint='):
+            url = f'Endpoint={url}'
 
         if self.client is None or force:
-            if not url.startswith('Endpoint='):
-                url = f'Endpoint={url}'
-
             if self.client is not None:
                 try:
                     self.client.close()
