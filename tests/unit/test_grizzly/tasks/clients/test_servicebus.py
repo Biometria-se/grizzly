@@ -1,6 +1,6 @@
 import pytest
 
-from zmq.sugar.constants import REQ as ZMQ_REQ, LINGER as ZMQ_LINGER
+from zmq.sugar.constants import LINGER as ZMQ_LINGER
 from grizzly.tasks.clients import ServiceBusClientTask
 from grizzly.types import RequestDirection
 
@@ -99,16 +99,14 @@ class TestServiceBusClientTask:
         task = ServiceBusClientTask(RequestDirection.FROM, 'sb://my-sbns.servicebus.windows.net/;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=', 'test')
 
         # already connected
-        setattr(task, 'client', True)
+        setattr(task, '_client', True)
 
         task.connect()
 
         zmq_connect_mock.assert_not_called()
 
-        setattr(task, 'client', None)
-
         # successfully connected
-        setattr(task, 'client', None)
+        setattr(task, '_client', None)
         async_message_request_mock.return_value = {'success': True, 'worker': 'foo-bar-baz-foo'}
 
         task.connect()
@@ -122,32 +120,35 @@ class TestServiceBusClientTask:
             'context': task.context,
         })
 
-    def test_disconnect(self, grizzly_fixture: GrizzlyFixture, noop_zmq: NoopZmqFixture, mocker: MockerFixture) -> None:
-        noop_zmq('grizzly.tasks.clients.servicebus')
+    def test_disconnect(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+        client_mock = mocker.MagicMock()
 
-        zmq_close_mock = noop_zmq.get_mock('zmq.Socket.close')
-        zmq_setsockopt_mock = noop_zmq.get_mock('zmq.Socket.setsockopt')
         async_message_request_mock = mocker.patch('grizzly.tasks.clients.servicebus.async_message_request')
 
         task = ServiceBusClientTask(RequestDirection.FROM, 'sb://my-sbns.servicebus.windows.net/;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=', 'test')
 
         # not connected
-        task.disconnect()
+        with pytest.raises(ConnectionError) as ce:
+            task.disconnect()
+        assert str(ce.value) == 'not connected'
 
-        zmq_close_mock.assert_not_called()
+        client_mock.close.assert_not_called()
 
         # connected
-        task.client = task._zmq_context.socket(ZMQ_REQ)
+        task._client = client_mock
         task.worker_id = 'foo-bar-baz-foo'
+
+        print(task._client)
 
         task.disconnect()
 
-        async_message_request_mock.assert_called_once_with(task.client, {
+        async_message_request_mock.assert_called_once_with(client_mock, {
             'worker': 'foo-bar-baz-foo',
             'action': 'DISCONNECT',
             'context': task.context,
         })
-        zmq_setsockopt_mock.assert_called_once_with(ZMQ_LINGER, 0)
-        zmq_close_mock.assert_called_once_with()
+        client_mock.setsockopt.assert_called_once_with(ZMQ_LINGER, 0)
+        client_mock.close.assert_called_once_with()
 
-        assert task.worker_id is None
+        assert getattr(task, 'worker_id', True) is None
+        assert task._client is None

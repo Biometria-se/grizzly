@@ -10,12 +10,9 @@ import pytest
 from _pytest.tmpdir import TempPathFactory
 from _pytest.logging import LogCaptureFixture
 from pytest_mock import MockerFixture
-from zmq.sugar.constants import NOBLOCK as ZMQ_NOBLOCK
-from zmq.error import Again as ZMQAgain
 
 from locust import TaskSet
 
-from grizzly_extras.async_message import AsyncMessageRequest
 from grizzly.utils import ModuleLoader
 from grizzly.utils import (
     catch,
@@ -25,7 +22,6 @@ from grizzly.utils import (
     in_correct_section,
     parse_timespan,
     check_mq_client_logs,
-    async_message_request,
 )
 from grizzly.types import RequestMethod
 from grizzly.types.behave import Context, Scenario, Status
@@ -668,49 +664,3 @@ EXPLANATION:
 
     assert amqerr_fdc_files[3].strip() == f'{entry_date_2.strftime("%Y-%m-%d %H:%M:%S")}  {amqerr_fdc_file_2}'
     assert amqerr_fdc_files[4].strip() == f'{entry_date_3.strftime("%Y-%m-%d %H:%M:%S")}  {amqerr_fdc_file_3}'
-
-
-def test_async_message_request(mocker: MockerFixture) -> None:
-    client_mock = mocker.MagicMock()
-    gsleep_mock = mocker.patch('grizzly.utils.gsleep', return_value=None)
-
-    # no valid response
-    client_mock.recv_json.side_effect = [ZMQAgain, None]
-
-    request: AsyncMessageRequest = {
-        'worker': None,
-        'action': 'HELLO',
-    }
-
-    with pytest.raises(RuntimeError) as re:
-        async_message_request(client_mock, request)
-    assert str(re.value) == 'no response'
-
-    gsleep_mock.assert_called_once_with(0.1)
-    client_mock.send_json.assert_called_once_with(request)
-
-    assert client_mock.recv_json.call_count == 2
-    for i in range(2):
-        args, kwargs = client_mock.recv_json.call_args_list[i]
-        assert args == ()
-        assert kwargs == {'flags': ZMQ_NOBLOCK}
-
-    gsleep_mock.reset_mock()
-    client_mock.reset_mock()
-
-    # unsuccessful response
-    client_mock.recv_json.side_effect = None
-    client_mock.recv_json.return_value = {'success': False, 'message': 'error! error! error!'}
-
-    with pytest.raises(RuntimeError) as re:
-        async_message_request(client_mock, request)
-    assert str(re.value) == 'error! error! error!'
-
-    gsleep_mock.assert_not_called()
-    client_mock.send_json.assert_called_once_with(request)
-    client_mock.recv_json.assert_called_once_with(flags=ZMQ_NOBLOCK)
-
-    # valid response
-    client_mock.recv_json.return_value = {'success': True, 'worker': 'foo-bar-baz-foo', 'payload': 'yes'}
-
-    assert async_message_request(client_mock, request) == {'success': True, 'worker': 'foo-bar-baz-foo', 'payload': 'yes'}

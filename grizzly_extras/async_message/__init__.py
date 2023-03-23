@@ -10,7 +10,12 @@ from time import monotonic as time
 from io import StringIO
 from threading import Lock
 from datetime import datetime
+from time import sleep
 
+import zmq.green as zmq
+
+from zmq.error import Again as ZMQAgain
+from zmq.sugar.constants import NOBLOCK as ZMQ_NOBLOCK
 from grizzly_extras.transformer import JsonBytesEncoder
 
 __all__: List[str] = []
@@ -190,3 +195,24 @@ def register(handlers: Dict[str, AsyncMessageRequestHandler], action: str, *acti
         return func
 
     return decorator
+
+
+def async_message_request(client: zmq.Socket, request: AsyncMessageRequest) -> AsyncMessageResponse:
+    client.send_json(request)
+
+    while True:
+        try:
+            response = cast(AsyncMessageResponse, client.recv_json(flags=ZMQ_NOBLOCK))
+            break
+        except ZMQAgain:
+            sleep(0.1)
+
+    if response is None:
+        raise RuntimeError('no response')
+
+    message = response.get('message', None)
+
+    if not response['success']:
+        raise RuntimeError(message)
+
+    return response

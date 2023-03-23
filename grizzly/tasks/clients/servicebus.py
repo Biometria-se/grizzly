@@ -13,13 +13,12 @@ import zmq.green as zmq
 
 from zmq.sugar.constants import REQ as ZMQ_REQ, LINGER as ZMQ_LINGER
 
-from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest
+from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, async_message_request
 from grizzly_extras.transformer import TransformerContentType
 
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestType
 from grizzly.context import GrizzlyContextScenario
 from grizzly.scenarios import GrizzlyScenario
-from grizzly.utils import async_message_request
 
 from . import client, ClientTask, logger  # pylint: disable=unused-import
 
@@ -31,7 +30,7 @@ class ServiceBusClientTask(ClientTask):
     _zmq_url = 'tcp://127.0.0.1:5554'
     _zmq_context: zmq.Context
 
-    client: Optional[zmq.Socket] = None
+    _client: Optional[zmq.Socket] = None
     worker_id: Optional[str]
     context: AsyncMessageContext
 
@@ -92,15 +91,22 @@ class ServiceBusClientTask(ClientTask):
         if content_type is not None:
             self.context.update({'content_type': content_type})
 
-    @ClientTask.text.setter
+    @property
+    def client(self) -> zmq.Socket:
+        if self._client is None:
+            raise ConnectionError('not connected')
+
+        return self._client
+
+    @ClientTask.text.setter  # type: ignore
     def text(self, value: str) -> None:
         self._text = value
 
     def connect(self) -> None:
-        if self.client is not None:
+        if self._client is not None:
             return
 
-        self.client = cast(zmq.Socket, self._zmq_context.socket(ZMQ_REQ))
+        self._client = cast(zmq.Socket, self._zmq_context.socket(ZMQ_REQ))
         self.client.connect(self._zmq_url)
 
         request: AsyncMessageRequest = {
@@ -116,9 +122,6 @@ class ServiceBusClientTask(ClientTask):
         logger.debug(f'connected to worker {self.worker_id} at {hostname()}')
 
     def disconnect(self) -> None:
-        if self.client is None:
-            return
-
         request: AsyncMessageRequest = {
             'worker': self.worker_id,
             'action': RequestType.DISCONNECT.name,
@@ -130,20 +133,39 @@ class ServiceBusClientTask(ClientTask):
         self.worker_id = None
         self.client.setsockopt(ZMQ_LINGER, 0)
         self.client.close()
+        self._client = None
+
+    def subscribe(self) -> None:
+        request: AsyncMessageRequest = {
+            'worker': self.worker_id,
+            'action': RequestType.SUBSCRIBE.name,
+            'context': self.context,
+            'payload': self.text,
+        }
+
+        response = async_message_request(self.client, request)
+        logger.info(response['message'])
+
+    def unsubscribe(self) -> None:
+        request: AsyncMessageRequest = {
+            'worker': self.worker_id,
+            'action': RequestType.UNSUBSCRIBE.name,
+            'context': self.context,
+        }
+
+        response = async_message_request(self.client, request)
+        logger.info(response['message'])
 
     def on_start(self) -> None:
         self.connect()
 
-        if self._text is None:
-            return
-
-        # @TODO: create subscription
+        if self.text is not None:
+            self.subscribe()
 
     def on_stop(self) -> None:
-        if self._text is not None:
-            return
+        if self.text is not None:
+            self.unsubscribe()
 
-        # @TODO: remove subscription
         self.disconnect()
 
     def get(self, parent: GrizzlyScenario) -> GrizzlyResponse:

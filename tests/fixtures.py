@@ -557,7 +557,6 @@ class NoopZmqFixture:
             try:
                 self._mocks.update({target: self._mocker.patch(
                     f'{prefix}.{target}',
-                    return_value=None,
                 )})
             except AttributeError as e:
                 if 'gsleep' in str(e):

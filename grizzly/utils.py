@@ -14,13 +14,6 @@ from datetime import datetime, timezone
 from dateutil.parser import parse as dateparser, ParserError
 from locust.stats import STATS_NAME_WIDTH
 
-import zmq.green as zmq
-
-from gevent import sleep as gsleep
-from zmq.error import Again as ZMQAgain
-from zmq.sugar.constants import NOBLOCK as ZMQ_NOBLOCK
-from grizzly_extras.async_message import AsyncMessageRequest, AsyncMessageResponse
-
 from grizzly.types import WrappedFunc, T
 from grizzly.types.behave import Context, Scenario, Status
 
@@ -292,24 +285,3 @@ def check_mq_client_logs(context: Context) -> None:
     # present entries created during run
     print_table('AMQ error log entries', 'Message', amqerr_log_entries)
     print_table('AMQ FDC files', 'File', amqerr_fdc_files)
-
-
-def async_message_request(client: zmq.Socket, request: AsyncMessageRequest) -> AsyncMessageResponse:
-    client.send_json(request)
-
-    while True:
-        try:
-            response = cast(AsyncMessageResponse, client.recv_json(flags=ZMQ_NOBLOCK))
-            break
-        except ZMQAgain:
-            gsleep(0.1)
-
-    if response is None:
-        raise RuntimeError('no response')
-
-    message = response.get('message', None)
-
-    if not response['success']:
-        raise RuntimeError(message)
-
-    return response
