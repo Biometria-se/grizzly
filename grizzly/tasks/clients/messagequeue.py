@@ -292,10 +292,7 @@ class MessageQueueClientTask(ClientTask):
                 raise RuntimeError(f'{parent.__class__.__name__}/{client_id} was unable to get an worker assigned')
 
             with self.action(parent) as meta:
-                meta['action'] = self.endpoint_path
                 request['worker'] = worker
-
-                meta.update({'request': request.copy()})
 
                 client.send_json(request)
 
@@ -311,9 +308,11 @@ class MessageQueueClientTask(ClientTask):
 
                 parent.logger.debug(f'got response from {worker} at {hostname()}')
 
-                response_length_source = (response or {}).get('payload', None) or ''
+                response_length_source = ((response or {}).get('payload', None) or '').encode('utf-8')
 
                 meta.update({
+                    'action': self.endpoint_path,
+                    'request': request.copy(),
                     'response_length': len(response_length_source),
                     'response': response,
                 })
@@ -343,7 +342,6 @@ class MessageQueueClientTask(ClientTask):
                 'endpoint': ', '.join(endpoint),
             },
             'payload': None,
-
         }
         response = self.request(parent, request)
 
@@ -368,7 +366,6 @@ class MessageQueueClientTask(ClientTask):
                 'endpoint': self.endpoint_path,
             },
             'payload': source,
-
         }
 
         response = self.request(parent, request)

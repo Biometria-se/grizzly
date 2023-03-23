@@ -93,7 +93,7 @@ class HttpClientTask(ClientTask):
             value = response.text
             if self.variable is not None:
                 parent.user._context['variables'][self.variable] = value
-            meta['response_length'] = len(value)
+            meta['response_length'] = len(value.encode('utf-8'))
 
             exception: Optional[Exception] = None
 
