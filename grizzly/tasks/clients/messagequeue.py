@@ -36,7 +36,7 @@ pip3 install grizzly-loadtester[mq]
 mq[s]://<username>:<password>@]<hostname>[:<port>]/<endpoint>?QueueManager=<queue manager>&Channel=<channel>[&wait=<wait>][&heartbeat=<heartbeat>][&KeyFile=<key repo path>[&SslCipher=<ssl cipher>][&CertLabel=<certificate label>]][&HeaderType=<header type>][&MaxMessageSize=<number of bytes>]
 ```
 
-All variables in the URL have support for {@link framework.usage.variables.templating}.
+All variables in the endpoint have support for {@link framework.usage.variables.templating}.
 
 * `mq[s]` _str_ - must be specified, `mqs` implies connecting with TLS, if `KeyFile` is not set in querystring, it will look for a key repository in `./<username>`
 

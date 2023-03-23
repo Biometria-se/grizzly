@@ -1,19 +1,73 @@
+# pylint: disable=line-too-long
 """This task performs Azure SerciceBus operations to a specified endpoint.
 
 
 ## Step implementations
 
 * {@pylink grizzly.steps.scenario.tasks.step_task_client_get_endpoint}
-"""
+
+* {@pylink grizzly.steps.scenario.tasks.step_task_client_put_endpoint_file}
+
+## Arguments
+
+* `direction` _RequestDirection_ - if the request is upstream or downstream
+
+* `endpoint` _str_ - specifies details to be able to perform the request, e.g. Service Bus resource, queue, topic, subscription etc.
+
+* `name` _str_ - name used in `locust` statistics
+
+* `destination` _str_ (optional) - **not used by this client**
+
+* `source` _str_ (optional) - file path of local file that should be put on `endpoint`
+
+## Format
+
+### `endpoint`
+
+Value of this is basically the "Connection String" from Azure (without `Endpoint=` prefix), with some additional information.
+
+``` plain
+sb://<sbns resource name>.servicebus.windows.net/[queue:<queue name>|topic:<topic name>[/subscription:<subscription name>]];SharedAccessKeyName=<policy name>;SharedAccessKey=<access key>[#[Consume=<consume>][&][MessageWait=<wait>]]
+```
+
+All variables in the endpoint have support for {@link framework.usage.variables.templating}.
+
+Network location:
+
+* `sbns resource name` _str_ - must be specfied, Azure Service Bus Namespace name
+
+Path:
+
+* `queue name` _str_ - name of queue, prefixed with `queue:` of an existing queue (mutual exclusive<sup>1</sup>)
+
+* `topic name` _str_ - name of topic, prefixed with `topic:` of an existing topic (mutual exclusive<sup>1</sup>)
+
+* `subscription name` _str_ - name of an subscription on `topic name`, either an existing, or one to be created (if step text containing SQL Filter rule is specified)
+
+<sup>1</sup> Either specify `queue:` or `topic`, not both
+
+Query:
+
+* <policy name> _str_ - name of the Service Bus policy to be used
+
+* <access key> _str_ - secret access key for specified `policy name`
+
+Fragment:
+
+* `consume` _bool_ - if messages should be consumed (removed from endpoint), or only peeked at (left on endpoint) (default: `True`)
+
+* `wait` _int_ - how many seconds to wait for a message to arrive on the endpoint (default: `∞`)
+"""  # noqa: E501
 from typing import Optional, cast
 from urllib.parse import urlparse, parse_qs
 from platform import node as hostname
+from pathlib import Path
 
 import zmq.green as zmq
 
 from zmq.sugar.constants import REQ as ZMQ_REQ, LINGER as ZMQ_LINGER
 
-from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, async_message_request
+from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse, async_message_request
 from grizzly_extras.transformer import TransformerContentType
 
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestType
@@ -125,7 +179,9 @@ class ServiceBusClientTask(ClientTask):
         request: AsyncMessageRequest = {
             'worker': self.worker_id,
             'action': RequestType.DISCONNECT.name,
-            'context': self.context,
+            'context': {
+                'endpoint': self.context['endpoint'],
+            },
         }
 
         async_message_request(self.client, request)
@@ -139,7 +195,9 @@ class ServiceBusClientTask(ClientTask):
         request: AsyncMessageRequest = {
             'worker': self.worker_id,
             'action': RequestType.SUBSCRIBE.name,
-            'context': self.context,
+            'context': {
+                'endpoint': self.context['endpoint'],
+            },
             'payload': self.text,
         }
 
@@ -150,7 +208,9 @@ class ServiceBusClientTask(ClientTask):
         request: AsyncMessageRequest = {
             'worker': self.worker_id,
             'action': RequestType.UNSUBSCRIBE.name,
-            'context': self.context,
+            'context': {
+                'endpoint': self.context['endpoint'],
+            },
         }
 
         response = async_message_request(self.client, request)
@@ -168,8 +228,62 @@ class ServiceBusClientTask(ClientTask):
 
         self.disconnect()
 
+    def request(self, parent: GrizzlyScenario, request: AsyncMessageRequest) -> AsyncMessageResponse:
+        response = None
+
+        with self.action(parent) as meta:
+            response = async_message_request(self.client, request)
+
+            response_length_source = ((response or {}).get('payload', None) or '').encode('utf-8')
+
+            meta.update({
+                'action': self.context['endpoint'],
+                'request': request.copy(),
+                'response_length': len(response_length_source),
+                'response': response,
+            })
+
+        return response or {}
+
     def get(self, parent: GrizzlyScenario) -> GrizzlyResponse:
-        return None, None
+        request: AsyncMessageRequest = {
+            'action': 'GET',
+            'worker': self.worker_id,
+            'context': {
+                'endpoint': self.context['endpoint'],
+            },
+            'payload': None,
+        }
+
+        response = self.request(parent, request)
+
+        metadata = response.get('metadata', None)
+        payload = response.get('payload', None)
+
+        if payload is not None and self.variable is not None:
+            parent.user._context['variables'][self.variable] = payload
+
+        return metadata, payload
 
     def put(self, parent: GrizzlyScenario) -> GrizzlyResponse:
-        return None, None
+        source = parent.render(cast(str, self.source))
+        source_file = Path(self._context_root) / 'requests' / source
+
+        if source_file.exists():
+            source = parent.render(source_file.read_text())
+
+        request: AsyncMessageRequest = {
+            'action': 'PUT',
+            'worker': self.worker_id,
+            'context': {
+                'endpoint': self.context['endpoint'],
+            },
+            'payload': source,
+        }
+
+        response = self.request(parent, request)
+
+        metadata = response.get('metadata', None)
+        payload = response.get('payload', None)
+
+        return metadata, payload
