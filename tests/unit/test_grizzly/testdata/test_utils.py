@@ -1,16 +1,12 @@
-import logging
-
 from os import path, environ, mkdir, sep
-from typing import Dict, Any, Optional, cast
+from typing import Dict, Any, cast
 from json import dumps as jsondumps, loads as jsonloads
 
 import pytest
-import zmq
 
 from pytest_mock import MockerFixture
 from _pytest.logging import LogCaptureFixture
 
-from grizzly.types.locust import StopUser
 from grizzly.types.behave import Scenario
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import LogMessageTask, DateTask, TransformerTask, UntilRequestTask, ConditionalTask
@@ -22,7 +18,6 @@ from grizzly.testdata.utils import (
     _objectify,
     transform,
 )
-from grizzly_extras.async_message import AsyncMessageResponse
 from grizzly_extras.transformer import TransformerContentType
 
 from tests.fixtures import BehaveFixture, AtomicVariableCleanupFixture, GrizzlyFixture, RequestTaskFixture, NoopZmqFixture
@@ -149,10 +144,6 @@ def test_initialize_testdata_with_payload_context(grizzly_fixture: GrizzlyFixtur
         grizzly.state.variables['AtomicCsvWriter.output'] = 'output.csv | headers="foo,bar"'
         grizzly.state.variables['AtomicDirectoryContents.test'] = 'adirectory'
         grizzly.state.variables['AtomicDate.now'] = 'now'
-        grizzly.state.variables['AtomicServiceBus.event'] = (
-            'topic:events, subscription:grizzly | url="Endpoint=sb://sb.example.com?SharedAccessKey=asdfasdfasdf=&SharedAccessKeyName=test"'
-        )
-        source['result']['Event'] = '{{ AtomicServiceBus.event }}'
         grizzly.scenario.user.class_name = 'TestUser'
         grizzly.scenario.context['host'] = 'http://test.nu'
         grizzly.scenario.iterations = 2
@@ -169,7 +160,7 @@ def test_initialize_testdata_with_payload_context(grizzly_fixture: GrizzlyFixtur
         scenario_name = grizzly.scenario.class_name
 
         assert scenario_name in testdata
-        assert external_dependencies == set(['async-messaged'])
+        assert external_dependencies == set()
         assert message_handlers == {'atomiccsvwriter': atomiccsvwriter_message_handler}
 
         data = testdata[scenario_name]
@@ -191,7 +182,6 @@ def test_initialize_testdata_with_payload_context(grizzly_fixture: GrizzlyFixtur
         assert data['AtomicDirectoryContents.test']['test'] == f'adirectory{sep}file1.txt'
         assert data['AtomicDirectoryContents.test']['test'] == f'adirectory{sep}file2.txt'
         assert data['AtomicDirectoryContents.test']['test'] is None
-        assert data['AtomicServiceBus.event'] == '__on_consumer__'
     finally:
         cleanup()
 
@@ -467,13 +457,7 @@ def test_transform_no_objectify(grizzly_fixture: GrizzlyFixture) -> None:
 
 def test_transform(behave_fixture: BehaveFixture, noop_zmq: NoopZmqFixture, cleanup: AtomicVariableCleanupFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
     behave = behave_fixture.context
-    noop_zmq('grizzly.testdata.variables.servicebus')
 
-    def mock_response(response: Optional[AsyncMessageResponse], repeat: int = 1) -> None:
-        mocker.patch(
-            'grizzly.testdata.variables.servicebus.zmq.Socket.recv_json',
-            side_effect=[zmq.Again(), response] * repeat
-        )
     try:
         grizzly = cast(GrizzlyContext, behave.grizzly)
         data: Dict[str, Any] = {
@@ -484,36 +468,9 @@ def test_transform(behave_fixture: BehaveFixture, noop_zmq: NoopZmqFixture, clea
             'Test.test1.test2.test3': 'value',
             'Test.test1.test2.test4': 'value',
             'Test.test2.test3': 'value',
-            'AtomicServiceBus.document_id': '__on_consumer__',
             'tests.helpers.AtomicCustomVariable.hello': 'world',
             'tests.helpers.AtomicCustomVariable.foo': 'bar',
         }
-        grizzly.state.variables['AtomicServiceBus.document_id'] = (
-            'queue:messages | url="Endpoint=sb://sb.example.com?SharedAccessKey=asdfasdfasdf=&SharedAccessKeyName=test", repeat=True'
-        )
-
-        mock_response({
-            'success': True,
-            'worker': '1337-aaaabbbb-beef',
-        }, 2)
-
-        with caplog.at_level(logging.ERROR):
-            with pytest.raises(StopUser):
-                transform(grizzly, data)
-        assert 'AtomicServiceBus.document_id: payload in response was None' in caplog.text
-        caplog.clear()
-
-        mock_response({
-            'success': True,
-            'worker': '1337-aaaabbbb-beef',
-            'payload': jsondumps({
-                'document': {
-                    'id': 'DOCUMENT_1337-1',
-                    'name': 'Boring presentation',
-                    'author': 'Drew Ackerman',
-                }
-            }),
-        })
 
         obj = transform(grizzly, data)
 
@@ -559,34 +516,6 @@ def test_transform(behave_fixture: BehaveFixture, noop_zmq: NoopZmqFixture, clea
         assert custom_variable is not None
         assert getattr(custom_variable, 'hello', None) == 'world'
         assert getattr(custom_variable, 'foo', None) == 'bar'
-
-        assert getattr(obj['AtomicServiceBus'], 'document_id', None) == jsondumps({
-            'document': {
-                'id': 'DOCUMENT_1337-1',
-                'name': 'Boring presentation',
-                'author': 'Drew Ackerman',
-            }
-        })
-
-        # AtomicServiceBus.document_id should repeat old values when there is no
-        # new message on queue since repeat=True
-        mock_response({
-            'success': False,
-            'worker': '1337-aaaabbbb-beef',
-            'message': 'no messages on queue:messages',
-        })
-
-        obj = transform(grizzly, {
-            'AtomicServiceBus.document_id': '__on_consumer__',
-        })
-
-        assert getattr(obj['AtomicServiceBus'], 'document_id', None) == jsondumps({
-            'document': {
-                'id': 'DOCUMENT_1337-1',
-                'name': 'Boring presentation',
-                'author': 'Drew Ackerman',
-            }
-        })
 
         caplog.clear()
     finally:

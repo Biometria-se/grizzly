@@ -48,9 +48,9 @@ Path:
 
 Query:
 
-* <policy name> _str_ - name of the Service Bus policy to be used
+* `<policy name>` _str_ - name of the Service Bus policy to be used
 
-* <access key> _str_ - secret access key for specified `policy name`
+* `<access key>` _str_ - secret access key for specified `policy name`
 
 Fragment:
 
@@ -97,6 +97,7 @@ class ServiceBusClientTask(ClientTask):
         variable: Optional[str] = None,
         source: Optional[str] = None,
         destination: Optional[str] = None,
+        text: Optional[str] = None,
         scenario: Optional[GrizzlyContextScenario] = None,
     ) -> None:
         url = endpoint.replace(';', '?', 1).replace(';', '&')
@@ -105,7 +106,7 @@ class ServiceBusClientTask(ClientTask):
 
         endpoint_url = f'{parsed.scheme}://{parsed.netloc}/;{parsed.query.replace("&", ";")}'
 
-        super().__init__(direction, endpoint_url, name, variable=variable, destination=destination, source=source, scenario=scenario)
+        super().__init__(direction, endpoint_url, name, variable=variable, destination=destination, source=source, text=text, scenario=scenario)
 
         parameters = parse_qs(parsed.fragment)
 

@@ -25,6 +25,25 @@ class TestServiceBusClientTask:
             'consume': False,
         }
         assert task.worker_id is None
+        assert task.text is None
+
+        task = ServiceBusClientTask(
+            RequestDirection.FROM,
+            'sb://my-sbns.servicebus.windows.net/queue:my-queue;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=',
+            'test',
+            text='foobar',
+        )
+
+        assert task.endpoint == 'sb://my-sbns.servicebus.windows.net/;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324='
+        assert task.context == {
+            'url': task.endpoint,
+            'connection': 'receiver',
+            'endpoint': 'queue:my-queue',
+            'message_wait': None,
+            'consume': False,
+        }
+        assert task.worker_id is None
+        assert task.text == 'foobar'
 
         task = ServiceBusClientTask(
             RequestDirection.TO,
