@@ -67,16 +67,19 @@ import zmq.green as zmq
 
 from zmq.sugar.constants import REQ as ZMQ_REQ, LINGER as ZMQ_LINGER
 
-from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse, async_message_request
+from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
 from grizzly_extras.transformer import TransformerContentType
 
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestType
 from grizzly.context import GrizzlyContextScenario
 from grizzly.scenarios import GrizzlyScenario
+from grizzly.tasks import template
+from grizzly.utils import async_message_request_wrapper
 
 from . import client, ClientTask, logger  # pylint: disable=unused-import
 
 
+@template('context')
 @client('sb')
 class ServiceBusClientTask(ClientTask):
     __dependencies__ = set(['async-messaged'])
@@ -87,6 +90,7 @@ class ServiceBusClientTask(ClientTask):
     _client: Optional[zmq.Socket] = None
     worker_id: Optional[str]
     context: AsyncMessageContext
+    _parent: Optional[GrizzlyScenario]
 
     def __init__(
         self,
@@ -100,13 +104,13 @@ class ServiceBusClientTask(ClientTask):
         text: Optional[str] = None,
         scenario: Optional[GrizzlyContextScenario] = None,
     ) -> None:
-        url = endpoint.replace(';', '?', 1).replace(';', '&')
+        super().__init__(direction, endpoint, name, variable=variable, destination=destination, source=source, text=text, scenario=scenario)
+
+        url = self.endpoint.replace(';', '?', 1).replace(';', '&')
 
         parsed = urlparse(url)
 
-        endpoint_url = f'{parsed.scheme}://{parsed.netloc}/;{parsed.query.replace("&", ";")}'
-
-        super().__init__(direction, endpoint_url, name, variable=variable, destination=destination, source=source, text=text, scenario=scenario)
+        self.endpoint = f'{parsed.scheme}://{parsed.netloc}/;{parsed.query.replace("&", ";")}'
 
         parameters = parse_qs(parsed.fragment)
 
@@ -131,12 +135,13 @@ class ServiceBusClientTask(ClientTask):
 
         context_endpoint = parsed.path[1:].replace('/', ', ')
         self._zmq_context = zmq.Context()
+        self._parent = None
         self.worker_id = None
 
         connection = 'receiver' if direction == RequestDirection.FROM else 'sender'
 
         self.context = {
-            'url': endpoint_url,
+            'url': self.endpoint,
             'connection': connection,
             'endpoint': context_endpoint,
             'message_wait': message_wait,
@@ -145,6 +150,20 @@ class ServiceBusClientTask(ClientTask):
 
         if content_type is not None:
             self.context.update({'content_type': content_type})
+
+    @property
+    def parent(self) -> GrizzlyScenario:
+        if self._parent is None:
+            raise AttributeError('no parent set')
+
+        return self._parent
+
+    @parent.setter
+    def parent(self, value: GrizzlyScenario) -> None:
+        if self._parent is not None and value is not self._parent:
+            raise AttributeError('parent already set, why are a different parent being set?')
+
+        self._parent = value
 
     @property
     def client(self) -> zmq.Socket:
@@ -170,7 +189,7 @@ class ServiceBusClientTask(ClientTask):
             'context': self.context,
         }
 
-        response = async_message_request(self.client, request)
+        response = async_message_request_wrapper(self.parent, self.client, request)
 
         self.worker_id = response['worker']
 
@@ -185,7 +204,7 @@ class ServiceBusClientTask(ClientTask):
             },
         }
 
-        async_message_request(self.client, request)
+        async_message_request_wrapper(self.parent, self.client, request)
 
         self.worker_id = None
         self.client.setsockopt(ZMQ_LINGER, 0)
@@ -202,7 +221,7 @@ class ServiceBusClientTask(ClientTask):
             'payload': self.text,
         }
 
-        response = async_message_request(self.client, request)
+        response = async_message_request_wrapper(self.parent, self.client, request)
         logger.info(response['message'])
 
     def unsubscribe(self) -> None:
@@ -214,16 +233,20 @@ class ServiceBusClientTask(ClientTask):
             },
         }
 
-        response = async_message_request(self.client, request)
+        response = async_message_request_wrapper(self.parent, self.client, request)
         logger.info(response['message'])
 
-    def on_start(self) -> None:
+    def on_start(self, parent: GrizzlyScenario) -> None:
+        self.parent = parent
+
         self.connect()
 
         if self.text is not None:
             self.subscribe()
 
-    def on_stop(self) -> None:
+    def on_stop(self, parent: GrizzlyScenario) -> None:
+        self.parent = parent
+
         if self.text is not None:
             self.unsubscribe()
 
@@ -233,7 +256,7 @@ class ServiceBusClientTask(ClientTask):
         response = None
 
         with self.action(parent) as meta:
-            response = async_message_request(self.client, request)
+            response = async_message_request_wrapper(parent, self.client, request)
 
             response_length_source = ((response or {}).get('payload', None) or '').encode('utf-8')
 

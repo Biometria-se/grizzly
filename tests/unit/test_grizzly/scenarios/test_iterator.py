@@ -803,7 +803,7 @@ class TestIterationScenario:
                     pass
 
                 @task.on_start
-                def on_start() -> None:
+                def on_start(parent: 'GrizzlyScenario') -> None:
                     pass
 
                 return task
@@ -844,8 +844,8 @@ class TestIterationScenario:
 
             assert scenario.user._scenario_state == ScenarioState.RUNNING
             testdata_consumer_mock.assert_called_once()
-            task_1_on_start_spy.assert_called_once_with()
-            task_2_on_start_spy.assert_called_once_with()
+            task_1_on_start_spy.assert_called_once_with(scenario)
+            task_2_on_start_spy.assert_called_once_with(scenario)
             prefetch_mock.assert_called_once_with()
         finally:
             try:
@@ -867,7 +867,7 @@ class TestIterationScenario:
                     pass
 
                 @task.on_stop
-                def on_stop() -> None:
+                def on_stop(parent: 'GrizzlyScenario') -> None:
                     pass
 
                 return task
@@ -896,7 +896,7 @@ class TestIterationScenario:
 
             assert scenario.user._scenario_state == ScenarioState.STOPPED
             assert testdata_consumer_mock.stop.call_count == 1
-            assert task_1_on_stop_spy.call_count == 1
-            assert task_2_on_stop_spy.call_count == 1
+            task_1_on_stop_spy.assert_called_once_with(scenario)
+            task_2_on_stop_spy.assert_called_once_with(scenario)
         finally:
             reload(iterator)

@@ -85,9 +85,11 @@ class ClientTask(GrizzlyMetaRequestTask):
         endpoint = cast(str, resolve_variable(self.grizzly, endpoint, only_grizzly=True))
         try:
             parsed = urlparse(endpoint)
-            if endpoint.index('://') != endpoint.rindex('://') or ('{{' in endpoint and '}}' in endpoint):
-                index = len(parsed.scheme) + 3
-                endpoint = endpoint[index:]
+            proto_sep = endpoint.index('://') + 3
+            # if `proto_sep` is followed by the start of a jinja template, we should remove the specified protocol, since it will
+            # be part of the rendered template
+            if proto_sep != endpoint.rindex('://') + 3 or (endpoint[proto_sep:proto_sep + 2] == '{{' and '}}' in endpoint):
+                endpoint = endpoint[proto_sep:]
         except ValueError:
             pass
 
@@ -135,10 +137,10 @@ class ClientTask(GrizzlyMetaRequestTask):
         self.log_dir = Path(context_root) / 'logs'
         self.log_dir.mkdir(parents=True, exist_ok=True)
 
-    def on_start(self) -> None:
+    def on_start(self, parent: GrizzlyScenario) -> None:
         pass
 
-    def on_stop(self) -> None:
+    def on_stop(self, parent: GrizzlyScenario) -> None:
         pass
 
     # SOW: see https://github.com/python/mypy/issues/5936#issuecomment-1429175144
@@ -161,12 +163,12 @@ class ClientTask(GrizzlyMetaRequestTask):
                 return self.put(parent)
 
         @task.on_start
-        def on_start() -> None:
-            return self.on_start()
+        def on_start(parent: GrizzlyScenario) -> None:
+            return self.on_start(parent)
 
         @task.on_stop
-        def on_stop() -> None:
-            return self.on_stop()
+        def on_stop(parent: GrizzlyScenario) -> None:
+            return self.on_stop(parent)
 
         return task
 

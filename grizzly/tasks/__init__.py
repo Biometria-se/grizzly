@@ -49,8 +49,9 @@ def step_run_testtask(context: Context) -> None:
 
 There are examples of this in the {@link framework.example}.
 '''
+from __future__ import annotations
 from abc import ABC, ABCMeta, abstractmethod
-from typing import TYPE_CHECKING, Any, Callable, List, Type, Set, Optional
+from typing import TYPE_CHECKING, Any, Callable, List, Type, Set, Optional, Union, overload, cast
 from os import environ
 from pathlib import Path
 
@@ -62,7 +63,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContextScenario
 
 GrizzlyTaskType = Callable[['GrizzlyScenario'], Any]
-GrizzlyTaskOnType = Optional[Callable[[], None]]
+GrizzlyTaskOnType = Optional[Callable[['GrizzlyScenario'], None]]
 
 
 class grizzlytask:
@@ -77,9 +78,9 @@ class grizzlytask:
         def __init__(self, on_func: GrizzlyTaskOnType) -> None:
             self._on_func = on_func
 
-        def __call__(self) -> None:
+        def __call__(self, parent: GrizzlyScenario) -> None:
             if self._on_func is not None:
-                self._on_func()
+                self._on_func(parent)
 
     def __init__(self, task: GrizzlyTaskType, doc: Optional[str] = None) -> None:
         self._task = task
@@ -87,20 +88,52 @@ class grizzlytask:
         if doc is None and task is not None:
             self.__doc__ = doc
 
-    def __call__(self, parent: 'GrizzlyScenario') -> Any:
+    def __call__(self, parent: GrizzlyScenario) -> Any:
         return self._task(parent)
 
-    def on_start(self, on_start: GrizzlyTaskOnType = None) -> None:
-        if self._on_start is None:
-            self._on_start = self.OnGrizzlyTask(on_start)
-        else:
-            self._on_start()
+    def _is_parent(self, arg: Any) -> bool:
+        """
+        ugly workaround since it is not possible to properly import GrizzlyScenario
+        and use `isinstance`, due to cyclic imports...
+        """
+        is_parent: bool
 
-    def on_stop(self, on_stop: GrizzlyTaskOnType = None) -> None:
-        if self._on_stop is None:
-            self._on_stop = self.OnGrizzlyTask(on_stop)
-        else:
-            self._on_stop()
+        try:
+            is_parent = arg.__class__.__base__.__name__ == 'GrizzlyScenario'
+        except:
+            is_parent = False
+
+        return is_parent
+
+    @overload
+    def on_start(self, parent: GrizzlyScenario, /) -> None:
+        ...
+
+    @overload
+    def on_start(self, on_start: GrizzlyTaskOnType, /) -> None:
+        ...
+
+    def on_start(self, arg: Union[GrizzlyTaskOnType, GrizzlyScenario], /) -> None:
+        is_parent = self._is_parent(arg)
+        if is_parent and self._on_start is not None:
+            self._on_start(cast('GrizzlyScenario', arg))
+        elif not is_parent and self._on_start is None:
+            self._on_start = self.OnGrizzlyTask(cast(GrizzlyTaskOnType, arg))
+
+    @overload
+    def on_stop(self, parent: GrizzlyScenario, /) -> None:
+        ...
+
+    @overload
+    def on_stop(self, on_start: GrizzlyTaskOnType, /) -> None:
+        ...
+
+    def on_stop(self, arg: Union[GrizzlyTaskOnType, GrizzlyScenario], /) -> None:
+        is_parent = self._is_parent(arg)
+        if is_parent and self._on_stop is not None:
+            self._on_stop(cast('GrizzlyScenario', arg))
+        elif not is_parent and self._on_stop is None:
+            self._on_stop = self.OnGrizzlyTask(cast(GrizzlyTaskOnType, arg))
 
 
 class GrizzlyTask(ABC):

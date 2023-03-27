@@ -1,3 +1,4 @@
+from __future__ import annotations
 import logging
 import re
 
@@ -10,14 +11,17 @@ from collections.abc import Mapping
 from copy import deepcopy
 from pathlib import Path
 from datetime import datetime, timezone
+from json import dumps as jsondumps, loads as jsonloads
 
 from dateutil.parser import parse as dateparser, ParserError
 from locust.stats import STATS_NAME_WIDTH
 
 from grizzly.types import WrappedFunc, T
 from grizzly.types.behave import Context, Scenario, Status
+from grizzly_extras.async_message import AsyncMessageRequest, AsyncMessageResponse, async_message_request
 
 if TYPE_CHECKING:  # pragma: no cover
+    import zmq.green as zmq
     from .context import GrizzlyContextScenario
     from .scenarios import GrizzlyScenario
     from .users.base import GrizzlyUser
@@ -285,3 +289,10 @@ def check_mq_client_logs(context: Context) -> None:
     # present entries created during run
     print_table('AMQ error log entries', 'Message', amqerr_log_entries)
     print_table('AMQ FDC files', 'File', amqerr_fdc_files)
+
+
+def async_message_request_wrapper(parent: GrizzlyScenario, client: zmq.Socket, request: AsyncMessageRequest) -> AsyncMessageResponse:
+    request_json = jsondumps(request)
+    request = jsonloads(parent.render(request_json))
+
+    return async_message_request(client, request)
