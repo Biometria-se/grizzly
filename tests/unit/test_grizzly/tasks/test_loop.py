@@ -44,6 +44,7 @@ class TestLoopTask:
         assert task_factory.name == 'test'
         assert task_factory.values == '["hello", "world"]'
         assert task_factory.variable == 'asdf'
+        assert task_factory.__template_attributes__ == {'values', 'tasks'}
 
     def test_add_and_peek(self, grizzly_fixture: GrizzlyFixture) -> None:
         grizzly = grizzly_fixture.grizzly

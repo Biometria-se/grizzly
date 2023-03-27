@@ -75,6 +75,7 @@ class TestRequestTask:
         assert task_factory.name == 'test-name'
         assert task_factory.endpoint == '/api/test'
         assert task_factory.response.content_type == TransformerContentType.UNDEFINED
+        assert task_factory.__template_attributes__ == {'name', 'endpoint', 'source', 'arguments', 'metadata'}
 
         assert not hasattr(task_factory, 'scenario')
 

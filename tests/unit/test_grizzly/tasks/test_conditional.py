@@ -21,6 +21,7 @@ class TestConditionalTask:
         assert task_factory.name == 'test'
         assert task_factory.condition == '{{ value | int > 0 }}'
         assert task_factory._pointer is None
+        assert task_factory.__template_attributes__ == {'condition', 'tasks', 'name'}
 
     def test_switch(self) -> None:
         task_factory = ConditionalTask(name='test', condition='{{ value | int > 0 }}')

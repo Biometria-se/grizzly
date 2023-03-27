@@ -137,7 +137,7 @@ class grizzlytask:
 
 
 class GrizzlyTask(ABC):
-    __template_attributes__: List[str] = []
+    __template_attributes__: Set[str] = set()
 
     _context_root: str
 
@@ -229,7 +229,15 @@ class template:
             self.attributes += list(additional_attributes)
 
     def __call__(self, cls: Type[GrizzlyTask]) -> Type[GrizzlyTask]:
-        cls.__template_attributes__ = self.attributes
+        # this class should have it's own instance of this set, not shared with all
+        # other tasks that inherits GrizzlyTask
+        if len(cls.__template_attributes__) < 1:
+            cls.__template_attributes__ = set(self.attributes)
+        else:
+            # this class already has an instance, but it might inherited by another class, that has some extra
+            # attributes that could be a template, but that class should have its own instance
+            original_attributes = cls.__template_attributes__.copy()
+            cls.__template_attributes__ = original_attributes.union(self.attributes)
 
         return cls
 

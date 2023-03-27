@@ -56,6 +56,8 @@ class TestTransformerTask:
             scenario=scenario_context,
         )
 
+        assert task_factory.__template_attributes__ == {'content'}
+
         task = task_factory()
 
         assert callable(task)

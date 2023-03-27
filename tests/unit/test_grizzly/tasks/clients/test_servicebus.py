@@ -46,10 +46,12 @@ class TestServiceBusClientTask:
         assert task.text is None
         assert task.source == 'hello world!'
         assert task.worker_id is None
+        assert task.__template_attributes__ == {'endpoint', 'destination', 'source', 'name', 'variable_template', 'context'}
         assert task.get_templates() == []
 
         grizzly = grizzly_fixture.grizzly
         grizzly.state.configuration.update({'sbns.host': 'sb.windows.net', 'sbns.key.name': 'KeyName', 'sbns.key.secret': 'SeCrEtKeY=='})
+        grizzly.state.variables.update({'foobar': 'none'})
 
         task = ServiceBusClientTask(
             RequestDirection.FROM,
@@ -59,6 +61,7 @@ class TestServiceBusClientTask:
             ),
             'test',
             text='foobar',
+            variable='foobar',
         )
 
         assert task.endpoint == 'sb://sb.windows.net/;SharedAccessKeyName=KeyName;SharedAccessKey=SeCrEtKeY=='
@@ -70,9 +73,10 @@ class TestServiceBusClientTask:
             'message_wait': 300,
         }
         assert task.text == 'foobar'
+        assert task.variable == 'foobar'
         assert task.source is None
         assert task.worker_id is None
-        assert task.get_templates() == ['topic:my-topic, subscription:my-subscription-{{ id }}']
+        assert sorted(task.get_templates()) == sorted(['topic:my-topic, subscription:my-subscription-{{ id }}', '{{ foobar }}'])
 
         task = ServiceBusClientTask(
             RequestDirection.FROM, (

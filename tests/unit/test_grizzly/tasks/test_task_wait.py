@@ -12,6 +12,7 @@ class TestTaskWaitTask:
 
         assert task_factory.min_time == 1.0
         assert task_factory.max_time is None
+        assert task_factory.__template_attributes__ == set()
 
         task_factory = TaskWaitTask(2.0, 13.0)
         assert task_factory.min_time == 2.0

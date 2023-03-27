@@ -11,6 +11,7 @@ class TestLogMessageTask:
     def test(self, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture) -> None:
         task_factory = LogMessageTask(message='hello world!')
         assert task_factory.message == 'hello world!'
+        assert task_factory.__template_attributes__ == {'message'}
 
         task = task_factory()
 

@@ -74,6 +74,7 @@ class TestBlobStorageClientTask:
         assert task.container == 'my-container'
         assert task.connection_string == 'DefaultEndpointsProtocol=http;AccountName=my-storage;AccountKey=aaaabbb=;EndpointSuffix=core.windows.net'
         assert not task.overwrite
+        assert task.__template_attributes__ == {'endpoint', 'destination', 'source', 'name', 'variable_template'}
 
         task = BlobStorageClientTask(
             RequestDirection.TO,

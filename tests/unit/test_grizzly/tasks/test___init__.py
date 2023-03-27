@@ -49,6 +49,7 @@ class TestGrizzlyTask:
         task = DummyTask()
 
         assert task._context_root == '.'
+        assert task.__template_attributes__ == {'string_template', 'list_template', 'dict_template'}
 
         try:
             environ['GRIZZLY_CONTEXT_ROOT'] = 'foo bar!'

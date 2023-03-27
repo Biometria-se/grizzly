@@ -53,6 +53,7 @@ class TestHttpClientTask:
 
         task_factory = HttpClientTask(RequestDirection.FROM, 'http://example.org', variable='test')
         assert task_factory.arguments == {}
+        assert task_factory.__template_attributes__ == {'endpoint', 'destination', 'source', 'name', 'variable_template'}
 
         task = task_factory()
 

@@ -81,6 +81,7 @@ class TestMessageQueueClientTask:
             assert task_factory.destination is None
             assert task_factory.source is None
             assert not hasattr(task_factory, 'scenario')
+            assert task_factory.__template_attributes__ == {'endpoint', 'destination', 'source', 'name', 'variable_template'}
         finally:
             if zmq_context is not None:
                 zmq_context.destroy()

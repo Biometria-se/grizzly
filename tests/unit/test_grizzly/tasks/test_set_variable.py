@@ -18,6 +18,7 @@ class TestSetVariableTask:
             assert task_factory.value == '{{ hello }}'
             assert task_factory._variable_instance is None
             assert task_factory._variable_key == task_factory.variable
+            assert task_factory.__template_attributes__ == {'variable_template', 'value'}
             assert sorted(task_factory.get_templates()) == sorted(['{{ foobar }}', '{{ hello }}'])
 
             # Atomic variable, not settable
