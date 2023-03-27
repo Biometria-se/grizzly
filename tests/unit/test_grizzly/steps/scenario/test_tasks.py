@@ -409,6 +409,7 @@ def test_step_task_client_get_endpoint(behave_fixture: BehaveFixture) -> None:
 
     task = grizzly.scenario.tasks[-1]
     assert task.endpoint == '{{ endpoint_url }}'
+    assert sorted(task.get_templates()) == sorted(['{{ endpoint_url }}', '{{ test }}'])
 
     behave.text = '1=1'
     with pytest.raises(NotImplementedError) as nie:

@@ -40,7 +40,7 @@ from grizzly.tasks import GrizzlyMetaRequestTask, template, grizzlytask
 
 
 # see https://github.com/python/mypy/issues/5374
-@template('endpoint', 'destination', 'source', 'name')
+@template('endpoint', 'destination', 'source', 'name', 'template_variable')
 class ClientTask(GrizzlyMetaRequestTask):
     _schemes: List[str]
     _scheme: str
@@ -152,6 +152,13 @@ class ClientTask(GrizzlyMetaRequestTask):
 
     text = property(text_fget, text_fset)
     # EOW
+
+    @property
+    def template_variable(self) -> Optional[str]:
+        if self.variable is None or ('{{' in self.variable and '}}' in self.variable):
+            return self.variable
+
+        return f'{{{{ {self.variable} }}}}'
 
     @final
     def __call__(self) -> grizzlytask:
