@@ -126,6 +126,8 @@ class TestIterationScenario:
 
             assert scenario is not None
 
+            mocker.patch.object(scenario, 'prefetch', return_value=None)
+
             with pytest.raises(StopUser):
                 scenario.on_start()
 
@@ -141,6 +143,18 @@ class TestIterationScenario:
             except KeyError:
                 pass
 
+    def test_prefetch(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+        reload(iterator)
+        _, _, scenario = grizzly_fixture(scenario_type=iterator.IteratorScenario)
+
+        assert isinstance(scenario, iterator.IteratorScenario)
+
+        iterator_mock = mocker.patch.object(scenario, 'iterator', return_value=None)
+
+        scenario.prefetch()
+
+        iterator_mock.assert_called_once_with(prefetch=True)
+
     def test_iterator(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         reload(iterator)
         _, user, scenario = grizzly_fixture(scenario_type=iterator.IteratorScenario)
@@ -148,6 +162,7 @@ class TestIterationScenario:
         grizzly = grizzly_fixture.grizzly
 
         assert isinstance(scenario, iterator.IteratorScenario)
+        assert not getattr(scenario, '_prefetch', True)
 
         scenario.consumer = TestdataConsumer(scenario, identifier='test')
 
@@ -190,11 +205,36 @@ class TestIterationScenario:
             },
         })
 
+        scenario.iterator(prefetch=True)
+
+        assert user.context_variables['AtomicIntegerIncrementer'].messageID == 1337
+        assert user.context_variables['AtomicCsvReader'].test.header1 == 'value1'
+        assert user.context_variables['AtomicCsvReader'].test.header2 == 'value2'
+        assert getattr(scenario, '_prefetch', False)
+
+        mock_request({
+            'variables': {
+                'AtomicIntegerIncrementer.messageID': 1338,
+                'AtomicCsvReader.test': {
+                    'header1': 'value3',
+                    'header2': 'value4',
+                },
+            },
+        })
+
         scenario.iterator()
 
         assert user.context_variables['AtomicIntegerIncrementer'].messageID == 1337
         assert user.context_variables['AtomicCsvReader'].test.header1 == 'value1'
         assert user.context_variables['AtomicCsvReader'].test.header2 == 'value2'
+        assert not getattr(scenario, '_prefetch', True)
+
+        scenario.iterator()
+
+        assert user.context_variables['AtomicIntegerIncrementer'].messageID == 1338
+        assert user.context_variables['AtomicCsvReader'].test.header1 == 'value3'
+        assert user.context_variables['AtomicCsvReader'].test.header2 == 'value4'
+        assert not getattr(scenario, '_prefetch', True)
 
     def test_pace(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         reload(iterator)
@@ -660,6 +700,7 @@ class TestIterationScenario:
 
             scenario = iterator.IteratorScenario(user)
             scenario.pace_time = '10000'
+            mocker.patch.object(scenario, 'prefetch', return_value=None)
 
             assert scenario.task_count == 13
             assert len(scenario.tasks) == 13
@@ -774,6 +815,7 @@ class TestIterationScenario:
             scenario = iterator.IteratorScenario(user)
 
             testdata_consumer_mock = mocker.patch('grizzly.scenarios.TestdataConsumer.__init__', return_value=None)
+            prefetch_mock = mocker.patch.object(scenario, 'prefetch', return_value=None)
 
             task_1 = scenario.tasks[-3]
             task_2 = scenario.tasks[-2]
@@ -790,9 +832,10 @@ class TestIterationScenario:
             with pytest.raises(StopUser):
                 scenario.on_start()
 
-            assert testdata_consumer_mock.call_count == 0
-            assert task_1_on_start_spy.call_count == 0
-            assert task_2_on_start_spy.call_count == 0
+            testdata_consumer_mock.assert_not_called()
+            task_1_on_start_spy.assert_not_called()
+            task_2_on_start_spy.assert_not_called()
+            prefetch_mock.assert_not_called()
             assert scenario.user._scenario_state == ScenarioState.STOPPED
 
             environ['TESTDATA_PRODUCER_ADDRESS'] = 'tcp://localhost:5555'
@@ -800,9 +843,10 @@ class TestIterationScenario:
             scenario.on_start()
 
             assert scenario.user._scenario_state == ScenarioState.RUNNING
-            assert testdata_consumer_mock.call_count == 1
-            assert task_1_on_start_spy.call_count == 1
-            assert task_2_on_start_spy.call_count == 1
+            testdata_consumer_mock.assert_called_once()
+            task_1_on_start_spy.assert_called_once_with()
+            task_2_on_start_spy.assert_called_once_with()
+            prefetch_mock.assert_called_once_with()
         finally:
             try:
                 del environ['TESTDATA_PRODUCER_ADDRESS']

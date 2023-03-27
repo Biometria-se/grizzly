@@ -30,6 +30,8 @@ class IteratorScenario(GrizzlyScenario):
     behave_steps: Dict[int, str]
     pace_time: Optional[str] = None  # class variable injected by `grizzly.utils.create_scenario_class_type`
 
+    _prefetch: bool
+
     current_task_index: int = 0
 
     def __init__(self, parent: 'GrizzlyUser') -> None:
@@ -39,6 +41,7 @@ class IteratorScenario(GrizzlyScenario):
         self.task_count = len(self.tasks)
         self.stats = self.user.environment.stats.get(self.user._scenario.locust_name, RequestType.SCENARIO())
         self.behave_steps = self.user._scenario.tasks.behave_steps.copy()
+        self._prefetch = False
 
     def run(self) -> None:  # type: ignore
         try:
@@ -144,8 +147,17 @@ class IteratorScenario(GrizzlyScenario):
 
         super().wait()
 
+    def prefetch(self) -> None:
+        self.iterator(prefetch=True)
+
     @task
-    def iterator(self) -> None:
+    def iterator(self, prefetch: Optional[bool] = False) -> None:
+        # if data has been prefetched, use it for the first iteration,
+        # then ask for new data the second iteration
+        if self._prefetch:
+            self._prefetch = False
+            return
+
         if self.start is not None:
             response_time = int((perf_counter() - self.start) * 1000)
             self.user.environment.events.request.fire(
@@ -179,7 +191,11 @@ class IteratorScenario(GrizzlyScenario):
 
         self.user.add_context(remote_context)
 
-    # user tasks will be injected between these two
+        # next call to this method should be ignored, first iteration should use the prefetched data
+        if prefetch:
+            self._prefetch = True
+
+    # <!-- user tasks will be injected between these two static tasks -->
 
     @task
     def pace(self) -> None:
