@@ -177,8 +177,7 @@ def test_router(mocker: MockerFixture, capsys: CaptureFixture) -> None:
     create_poller_mock = mocker.patch('zmq.green.Poller.__new__', return_value=poller_mock)
     # poller_mock.poll.return_value = {frontend_mock: zmq.POLLIN, backend_mock: zmq.POLLIN}
     poller_mock.poll.side_effect = [RuntimeError]
-    thread_mock = mocker.MagicMock()
-    create_thread_mock = mocker.patch('grizzly_extras.async_message.daemon.Thread.__new__', return_value=thread_mock)
+    thread_mock = mocker.patch('grizzly_extras.async_message.daemon.Thread')
 
     mocker.patch('grizzly_extras.async_message.daemon.uuid4', return_value='foobar')
 
@@ -219,16 +218,7 @@ def test_router(mocker: MockerFixture, capsys: CaptureFixture) -> None:
     assert kwargs == {}
     assert args == (backend_mock, zmq.POLLIN,)
 
-    print(worker)
-
-    assert create_thread_mock.call_count == 1
-    args, kwargs = create_thread_mock.call_args_list[0]
-    assert len(args) == 1
-    assert len(kwargs) == 2
-    assert kwargs.get('target', None) is worker
-    actual_context, actual_identity = kwargs.get('args', None)
-    assert actual_context is context_mock
-    assert actual_identity == 'foobar'
+    thread_mock.assert_called_once_with(target=worker, args=(context_mock, 'foobar',))
 
 
 def test_main(mocker: MockerFixture) -> None:
