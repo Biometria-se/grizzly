@@ -34,15 +34,15 @@ All variables in the endpoint have support for {@link framework.usage.variables.
 
 Network location:
 
-* `sbns resource name` _str_ - must be specfied, Azure Service Bus Namespace name
+* `<sbns resource name>` _str_ - must be specfied, Azure Service Bus Namespace name
 
 Path:
 
-* `queue name` _str_ - name of queue, prefixed with `queue:` of an existing queue (mutual exclusive<sup>1</sup>)
+* `<queue name>` _str_ - name of queue, prefixed with `queue:` of an existing queue (mutual exclusive<sup>1</sup>)
 
-* `topic name` _str_ - name of topic, prefixed with `topic:` of an existing topic (mutual exclusive<sup>1</sup>)
+* `<topic name>` _str_ - name of topic, prefixed with `topic:` of an existing topic (mutual exclusive<sup>1</sup>)
 
-* `subscription name` _str_ - name of an subscription on `topic name`, either an existing, or one to be created (if step text containing SQL Filter rule is specified)
+* `<subscription name>` _str_ - name of an subscription on `topic name`, either an existing, or one to be created (if step text containing SQL Filter rule is specified)
 
 <sup>1</sup> Either specify `queue:` or `topic`, not both
 
@@ -54,9 +54,9 @@ Query:
 
 Fragment:
 
-* `consume` _bool_ - if messages should be consumed (removed from endpoint), or only peeked at (left on endpoint) (default: `True`)
+* `<consume>` _bool_ - if messages should be consumed (removed from endpoint), or only peeked at (left on endpoint) (default: `True`)
 
-* `wait` _int_ - how many seconds to wait for a message to arrive on the endpoint (default: `∞`)
+* `<wait>` _int_ - how many seconds to wait for a message to arrive on the endpoint (default: `∞`)
 """  # noqa: E501
 from typing import Optional, cast
 from urllib.parse import urlparse, parse_qs
