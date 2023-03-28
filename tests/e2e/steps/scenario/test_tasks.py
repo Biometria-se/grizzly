@@ -448,7 +448,8 @@ def test_e2e_step_task_client_get_endpoint(e2e_fixture: End2EndFixture) -> None:
         assert task.source is None
         assert task.destination is None
         assert task._short_name == 'Http'
-        assert task.get_templates() == []
+        actual_templates = task.get_templates()
+        assert actual_templates == ['{{ example_openapi }}'], f"{actual_templates} != ['{{{{ example_openapi }}}}']"
 
         task = tasks[1]
         assert isinstance(task, HttpClientTask)
@@ -459,7 +460,8 @@ def test_e2e_step_task_client_get_endpoint(e2e_fixture: End2EndFixture) -> None:
         assert task.source is None
         assert task.destination is None
         assert task._short_name == 'Http'
-        assert task.get_templates() == ['{{ endpoint }}']
+        actual_templates = task.get_templates()
+        assert sorted(actual_templates) == sorted(['{{ endpoint }}', '{{ endpoint_result }}']), f"{actual_templates} != ['{{{{ endpoint }}}}', '{{{{ endpoint_result }}}}']"
 
     table: List[Dict[str, str]] = [{
         'e2e_fixture.host': e2e_fixture.host,

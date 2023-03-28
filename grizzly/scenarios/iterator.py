@@ -51,6 +51,8 @@ class IteratorScenario(GrizzlyScenario):
                 raise RescheduleTaskImmediately(e.reschedule).with_traceback(e.__traceback__)
             else:
                 raise RescheduleTask(e.reschedule).with_traceback(e.__traceback__)
+        except StopScenario as e:
+            raise StopUser() from e
 
         while True:
             try:
@@ -67,6 +69,7 @@ class IteratorScenario(GrizzlyScenario):
                         step = self.behave_steps.get(self.current_task_index + 1, self._task_queue[0].__name__)
                     except Exception:
                         step = 'unknown'
+
                     self.logger.debug(f'executing task {self.current_task_index+1} of {self.task_count}: {step}')
                     self.execute_next_task()
                 except RescheduleTaskImmediately:
@@ -85,7 +88,10 @@ class IteratorScenario(GrizzlyScenario):
                     self.wait()
             except InterruptTaskSet as e:
                 if self.user._scenario_state != ScenarioState.STOPPING:
-                    self.on_stop()
+                    try:
+                        self.on_stop()
+                    except:
+                        self.logger.error('on_stop failed', exc_info=True)
                     self.start = None
 
                     if e.reschedule:
@@ -109,7 +115,10 @@ class IteratorScenario(GrizzlyScenario):
                         e = StopUser()
 
                     self.iteration_stop(has_error=has_error)
-                    self.on_stop()
+                    try:
+                        self.on_stop()
+                    except:
+                        self.logger.error('on_stop failed', exc_info=True)
 
                     raise e
                 else:

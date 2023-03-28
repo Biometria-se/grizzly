@@ -660,6 +660,44 @@ class TestIterationScenario:
         assert 'ERROR' in caplog.text and 'IteratorScenario' in caplog.text
         assert 'Traceback (most recent call last):' in caplog.text
 
+        # problems in on_start
+        on_start.side_effect = [StopScenario]
+
+        with pytest.raises(StopUser):
+            scenario.run()
+
+        on_stop.reset_mock()
+
+        # problems in on_stop, in handling of InterruptTaskSet
+        caplog.clear()
+        on_start.side_effect = None
+        on_start.return_value = None
+        on_stop.side_effect = [RuntimeError]
+        get_next_task.side_effect = [InterruptTaskSet(reschedule=False)]
+
+        with caplog.at_level(logging.ERROR):
+            with pytest.raises(RescheduleTask):
+                scenario.run()
+
+        on_stop.assert_called_once_with()
+        assert caplog.messages == ['on_stop failed']
+        caplog.clear()
+
+        on_stop.reset_mock()
+
+        # problems in on_stop, in handling of StopScenario
+        scenario.user._scenario_state = ScenarioState.RUNNING
+        on_stop.side_effect = [RuntimeError]
+        get_next_task.side_effect = [StopScenario]
+
+        with caplog.at_level(logging.ERROR):
+            with pytest.raises(StopUser):
+                scenario.run()
+
+        on_stop.assert_called_once_with()
+        assert caplog.messages == ['on_stop failed']
+        caplog.clear()
+
     def test_run_tasks(self, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture, mocker: MockerFixture) -> None:
         reload(iterator)
 

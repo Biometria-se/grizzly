@@ -4,7 +4,7 @@ from typing import Dict, Any
 import pytest
 
 from _pytest.logging import LogCaptureFixture
-from zmq.sugar.constants import LINGER as ZMQ_LINGER
+from zmq.sugar.constants import LINGER as ZMQ_LINGER, REQ as ZMQ_REQ
 from grizzly.tasks.clients import ServiceBusClientTask
 from grizzly.types import RequestDirection
 from grizzly_extras.async_message import AsyncMessageRequest
@@ -13,7 +13,9 @@ from tests.fixtures import GrizzlyFixture, NoopZmqFixture, MockerFixture
 
 
 class TestServiceBusClientTask:
-    def test___init__(self, grizzly_fixture: GrizzlyFixture) -> None:
+    def test___init__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+        context_mock = mocker.patch('grizzly.tasks.clients.servicebus.zmq.Context', autospec=True)
+
         task = ServiceBusClientTask(RequestDirection.FROM, 'sb://my-sbns.servicebus.windows.net/;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=', 'test')
 
         assert task.endpoint == 'sb://my-sbns.servicebus.windows.net/;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324='
@@ -27,6 +29,10 @@ class TestServiceBusClientTask:
         assert task.worker_id is None
         assert task.text is None
         assert task.get_templates() == []
+        context_mock.assert_called_once_with()
+        context_mock.return_value.socket.assert_called_once_with(ZMQ_REQ)
+        context_mock.return_value.socket.return_value.connect.assert_called_once_with('tcp://127.0.0.1:5554')
+        context_mock.reset_mock()
 
         task = ServiceBusClientTask(
             RequestDirection.TO,
@@ -48,6 +54,10 @@ class TestServiceBusClientTask:
         assert task.worker_id is None
         assert task.__template_attributes__ == {'endpoint', 'destination', 'source', 'name', 'variable_template', 'context'}
         assert task.get_templates() == []
+        context_mock.assert_called_once_with()
+        context_mock.return_value.socket.assert_called_once_with(ZMQ_REQ)
+        context_mock.return_value.socket.return_value.connect.assert_called_once_with('tcp://127.0.0.1:5554')
+        context_mock.reset_mock()
 
         grizzly = grizzly_fixture.grizzly
         grizzly.state.configuration.update({'sbns.host': 'sb.windows.net', 'sbns.key.name': 'KeyName', 'sbns.key.secret': 'SeCrEtKeY=='})
@@ -77,6 +87,10 @@ class TestServiceBusClientTask:
         assert task.source is None
         assert task.worker_id is None
         assert sorted(task.get_templates()) == sorted(['topic:my-topic, subscription:my-subscription-{{ id }}', '{{ foobar }}'])
+        context_mock.assert_called_once_with()
+        context_mock.return_value.socket.assert_called_once_with(ZMQ_REQ)
+        context_mock.return_value.socket.return_value.connect.assert_called_once_with('tcp://127.0.0.1:5554')
+        context_mock.reset_mock()
 
         task = ServiceBusClientTask(
             RequestDirection.FROM, (
@@ -96,6 +110,10 @@ class TestServiceBusClientTask:
             'content_type': 'JSON',
         }
         assert task.worker_id is None
+        context_mock.assert_called_once_with()
+        context_mock.return_value.socket.assert_called_once_with(ZMQ_REQ)
+        context_mock.return_value.socket.return_value.connect.assert_called_once_with('tcp://127.0.0.1:5554')
+        context_mock.reset_mock()
 
         with pytest.raises(ValueError) as ve:
             ServiceBusClientTask(
@@ -104,6 +122,9 @@ class TestServiceBusClientTask:
                 'test',
             )
         assert str(ve.value) == 'MessageWait parameter in endpoint fragment is not a valid integer'
+        context_mock.assert_called_once_with()
+        context_mock.return_value.socket.assert_not_called()
+        context_mock.reset_mock()
 
         with pytest.raises(ValueError) as ve:
             ServiceBusClientTask(
@@ -112,6 +133,9 @@ class TestServiceBusClientTask:
                 'test',
             )
         assert str(ve.value) == 'Consume parameter in endpoint fragment is not a valid boolean'
+        context_mock.assert_called_once_with()
+        context_mock.return_value.socket.assert_not_called()
+        context_mock.reset_mock()
 
         with pytest.raises(ValueError) as ve:
             ServiceBusClientTask(
@@ -120,6 +144,9 @@ class TestServiceBusClientTask:
                 'test',
             )
         assert str(ve.value) == '"foo" is an unknown response content type'
+        context_mock.assert_called_once_with()
+        context_mock.return_value.socket.assert_not_called()
+        context_mock.reset_mock()
 
     def test_text(self, grizzly_fixture: GrizzlyFixture) -> None:
         task = ServiceBusClientTask(RequestDirection.FROM, 'sb://my-sbns.servicebus.windows.net/;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=', 'test')
@@ -130,13 +157,18 @@ class TestServiceBusClientTask:
 
         assert task.text == 'hello'
 
+        task.text = '''
+                hello
+        '''
+
+        assert task.text == 'hello'
+
     def test_connect(self, grizzly_fixture: GrizzlyFixture, noop_zmq: NoopZmqFixture, mocker: MockerFixture) -> None:
         _, _, scenario = grizzly_fixture()
         assert scenario is not None
 
         noop_zmq('grizzly.tasks.clients.servicebus')
 
-        zmq_connect_mock = noop_zmq.get_mock('zmq.Socket.connect')
         async_message_request_mock = mocker.patch('grizzly.utils.async_message_request')
 
         grizzly_fixture.grizzly.state.configuration.update({'sbns.key.secret': 'fooBARfoo'})
@@ -146,14 +178,14 @@ class TestServiceBusClientTask:
         task._parent = scenario
 
         # already connected
-        setattr(task, '_client', True)
+        task.worker_id = 'foo-bar'
 
         task.connect()
 
-        zmq_connect_mock.assert_not_called()
+        async_message_request_mock.assert_not_called()
 
         # successfully connected
-        setattr(task, '_client', None)
+        task.worker_id = None
         async_message_request_mock.return_value = {'success': True, 'worker': 'foo-bar-baz-foo'}
 
         task.connect()
@@ -161,7 +193,6 @@ class TestServiceBusClientTask:
         assert task.worker_id == 'foo-bar-baz-foo'
         assert task.endpoint == 'sb://my-sbns.servicebus.windows.net/;SharedAccessKeyName=AccessKey;SharedAccessKey=fooBARfoo'
 
-        zmq_connect_mock.assert_called_once_with('tcp://127.0.0.1:5554')
         async_message_request_mock.assert_called_once_with(task.client, {
             'worker': None,
             'action': 'HELLO',
@@ -178,9 +209,10 @@ class TestServiceBusClientTask:
         task._parent = mocker.MagicMock()
 
         # not connected
+        task._client = None
         with pytest.raises(ConnectionError) as ce:
             task.disconnect()
-        assert str(ce.value) == 'not connected'
+        assert str(ce.value) == 'not connected to async-messaged'
 
         client_mock.close.assert_not_called()
 
@@ -193,9 +225,7 @@ class TestServiceBusClientTask:
         async_message_request_mock.assert_called_once_with(task.parent, client_mock, {
             'worker': 'foo-bar-baz-foo',
             'action': 'DISCONNECT',
-            'context': {
-                'endpoint': task.context['endpoint'],
-            },
+            'context': task.context,
         })
         client_mock.setsockopt.assert_called_once_with(ZMQ_LINGER, 0)
         client_mock.close.assert_called_once_with()
@@ -224,6 +254,8 @@ class TestServiceBusClientTask:
         task._text = '1={{ condition }}'
 
         scenario.user._context['variables'].update({'id': 'baz-bar-foo', 'condition': '2'})
+        expected_context = task.context.copy()
+        expected_context['endpoint'] = expected_context['endpoint'].replace('{{ id }}', 'baz-bar-foo')
 
         with caplog.at_level(logging.INFO):
             task.subscribe()
@@ -232,9 +264,7 @@ class TestServiceBusClientTask:
         async_message_request_mock.assert_called_once_with(client_mock, {
             'worker': 'foo-bar-baz',
             'action': 'SUBSCRIBE',
-            'context': {
-                'endpoint': 'topic:my-topic, subscription:my-subscription-baz-bar-foo',
-            },
+            'context': expected_context,
             'payload': '1=2'
         })
 
@@ -262,9 +292,7 @@ class TestServiceBusClientTask:
         async_message_request_mock.assert_called_once_with(task.parent, client_mock, {
             'worker': 'foo-bar-baz',
             'action': 'UNSUBSCRIBE',
-            'context': {
-                'endpoint': task.context['endpoint'],
-            },
+            'context': task.context,
         })
 
     def test_on_start(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
@@ -353,7 +381,9 @@ class TestServiceBusClientTask:
         context_mock = mocker.patch.object(task, 'action', return_value=action_mock)
 
         # got response, empty payload
-        request: AsyncMessageRequest = {}
+        request: AsyncMessageRequest = {
+            'context': task.context,
+        }
 
         assert task.request(parent_mock, request) == {'message': 'foobar!'}
 
@@ -371,6 +401,7 @@ class TestServiceBusClientTask:
         meta_mock.clear()
 
         # got response, some payload
+        del request['context']['url']
         async_message_request_mock = mocker.patch('grizzly.tasks.clients.servicebus.async_message_request_wrapper', return_value={'message': 'foobar!', 'payload': '1234567890'})
 
         assert task.request(parent_mock, request) == {'message': 'foobar!', 'payload': '1234567890'}
@@ -405,11 +436,9 @@ class TestServiceBusClientTask:
         assert task.get(parent_mock) == (None, 'foobar',)
 
         request_mock.assert_called_once_with(parent_mock, {
-            'action': 'GET',
+            'action': 'RECEIVE',
             'worker': 'foo-bar',
-            'context': {
-                'endpoint': task.context['endpoint'],
-            },
+            'context': task.context,
             'payload': None,
         })
 
@@ -423,11 +452,9 @@ class TestServiceBusClientTask:
         assert task.get(parent_mock) == (None, 'foobar',)
 
         request_mock.assert_called_once_with(parent_mock, {
-            'action': 'GET',
+            'action': 'RECEIVE',
             'worker': 'foo-bar',
-            'context': {
-                'endpoint': task.context['endpoint'],
-            },
+            'context': task.context,
             'payload': None,
         })
 
@@ -457,11 +484,9 @@ class TestServiceBusClientTask:
         assert task.put(parent_mock) == (None, 'foobar',)
 
         request_mock.assert_called_once_with(parent_mock, {
-            'action': 'PUT',
+            'action': 'SEND',
             'worker': 'foo-baz',
-            'context': {
-                'endpoint': task.context['endpoint'],
-            },
+            'context': task.context,
             'payload': 'hello world',
         })
 
@@ -474,11 +499,9 @@ class TestServiceBusClientTask:
         assert task.put(parent_mock) == (None, 'foobar',)
 
         request_mock.assert_called_once_with(parent_mock, {
-            'action': 'PUT',
+            'action': 'SEND',
             'worker': 'foo-baz',
-            'context': {
-                'endpoint': task.context['endpoint'],
-            },
+            'context': task.context,
             'payload': 'hello world',
         })
 
@@ -492,11 +515,9 @@ class TestServiceBusClientTask:
         assert task.put(parent_mock) == (None, 'foobar',)
 
         request_mock.assert_called_once_with(parent_mock, {
-            'action': 'PUT',
+            'action': 'SEND',
             'worker': 'foo-baz',
-            'context': {
-                'endpoint': task.context['endpoint'],
-            },
+            'context': task.context,
             'payload': 'hello world',
         })
 
@@ -510,11 +531,9 @@ class TestServiceBusClientTask:
         assert task.put(parent_mock) == (None, 'foobar',)
 
         request_mock.assert_called_once_with(parent_mock, {
-            'action': 'PUT',
+            'action': 'SEND',
             'worker': 'foo-baz',
-            'context': {
-                'endpoint': task.context['endpoint'],
-            },
+            'context': task.context,
             'payload': 'hello world',
         })
 

@@ -54,6 +54,7 @@ from abc import ABC, ABCMeta, abstractmethod
 from typing import TYPE_CHECKING, Any, Callable, List, Type, Set, Optional, Union, overload, cast
 from os import environ
 from pathlib import Path
+from inspect import getmro
 
 from grizzly_extras.transformer import TransformerContentType
 
@@ -63,7 +64,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContextScenario
 
 GrizzlyTaskType = Callable[['GrizzlyScenario'], Any]
-GrizzlyTaskOnType = Optional[Callable[['GrizzlyScenario'], None]]
+GrizzlyTaskOnType = Callable[['GrizzlyScenario'], None]
 
 
 class grizzlytask:
@@ -73,20 +74,19 @@ class grizzlytask:
     _on_stop: Optional['OnGrizzlyTask'] = None
 
     class OnGrizzlyTask:
-        _on_func: Optional[GrizzlyTaskOnType] = None
+        _on_func: GrizzlyTaskOnType
 
         def __init__(self, on_func: GrizzlyTaskOnType) -> None:
             self._on_func = on_func
 
         def __call__(self, parent: GrizzlyScenario) -> None:
-            if self._on_func is not None:
-                self._on_func(parent)
+            self._on_func(parent)
 
     def __init__(self, task: GrizzlyTaskType, doc: Optional[str] = None) -> None:
         self._task = task
 
         if doc is None and task is not None:
-            self.__doc__ = doc
+            self.__doc__ = task.__doc__
 
     def __call__(self, parent: GrizzlyScenario) -> Any:
         return self._task(parent)
@@ -94,23 +94,18 @@ class grizzlytask:
     def _is_parent(self, arg: Any) -> bool:
         """
         ugly workaround since it is not possible to properly import GrizzlyScenario
-        and use `isinstance`, due to cyclic imports...
+        and use `isinstance` due to cyclic imports...
         """
-        is_parent: bool
+        mro_list = [m.__name__ for m in getmro(arg.__class__)]
 
-        try:
-            is_parent = arg.__class__.__base__.__name__ == 'GrizzlyScenario'
-        except:
-            is_parent = False
-
-        return is_parent
+        return 'GrizzlyScenario' in mro_list
 
     @overload
-    def on_start(self, parent: GrizzlyScenario, /) -> None:
+    def on_start(self, parent: GrizzlyScenario, /) -> None:  # pragma: no coverage
         ...
 
     @overload
-    def on_start(self, on_start: GrizzlyTaskOnType, /) -> None:
+    def on_start(self, on_start: GrizzlyTaskOnType, /) -> None:  # pragma: no coverage
         ...
 
     def on_start(self, arg: Union[GrizzlyTaskOnType, GrizzlyScenario], /) -> None:
@@ -119,13 +114,15 @@ class grizzlytask:
             self._on_start(cast('GrizzlyScenario', arg))
         elif not is_parent and self._on_start is None:
             self._on_start = self.OnGrizzlyTask(cast(GrizzlyTaskOnType, arg))
+        else:  # decorated function does not exist, so don't do anything
+            pass
 
     @overload
-    def on_stop(self, parent: GrizzlyScenario, /) -> None:
+    def on_stop(self, parent: GrizzlyScenario, /) -> None:  # pragma: no coverage
         ...
 
     @overload
-    def on_stop(self, on_start: GrizzlyTaskOnType, /) -> None:
+    def on_stop(self, on_start: GrizzlyTaskOnType, /) -> None:  # pragma: no coverage
         ...
 
     def on_stop(self, arg: Union[GrizzlyTaskOnType, GrizzlyScenario], /) -> None:
@@ -134,6 +131,8 @@ class grizzlytask:
             self._on_stop(cast('GrizzlyScenario', arg))
         elif not is_parent and self._on_stop is None:
             self._on_stop = self.OnGrizzlyTask(cast(GrizzlyTaskOnType, arg))
+        else:  # decorated function does not exist, so don't do anything
+            pass
 
 
 class GrizzlyTask(ABC):
