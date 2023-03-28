@@ -90,7 +90,7 @@ class RequestTaskHandlers:
 
 class RequestTaskResponse:
     status_codes: List[int]
-    content_type: TransformerContentType  # @TODO remove this one!
+    content_type: TransformerContentType
     handlers: RequestTaskHandlers
 
     def __init__(self) -> None:
