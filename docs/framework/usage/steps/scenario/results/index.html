@@ -15,7 +15,7 @@
         <link rel="next" href="../../utils/">
       
       <link rel="icon" href="../../../../../assets/favicon.ico">
-      <meta name="generator" content="mkdocs-1.4.2, mkdocs-material-9.1.3">
+      <meta name="generator" content="mkdocs-1.4.2, mkdocs-material-9.1.4">
     
     
       
@@ -23,7 +23,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../../../assets/stylesheets/main.c4a75a56.min.css">
+      <link rel="stylesheet" href="../../../../../assets/stylesheets/main.240905d7.min.css">
       
         
         <link rel="stylesheet" href="../../../../../assets/stylesheets/palette.a0c5b2b5.min.css">
@@ -572,6 +572,8 @@
         
           
         
+          
+        
       
       
         
@@ -630,6 +632,20 @@
     <li class="md-nav__item">
       <a href="../../../tasks/clients/http/" class="md-nav__link">
         HTTP
+      </a>
+    </li>
+  
+
+            
+          
+            
+              
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tasks/clients/servicebus/" class="md-nav__link">
+        Servicebus
       </a>
     </li>
   
@@ -716,8 +732,6 @@
         
           
             
-          
-        
           
         
           
@@ -848,20 +862,6 @@
     <li class="md-nav__item">
       <a href="../../../variables/testdata/integer_incrementer/" class="md-nav__link">
         Integer Incrementer
-      </a>
-    </li>
-  
-
-            
-          
-            
-              
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../../variables/testdata/servicebus/" class="md-nav__link">
-        Servicebus
       </a>
     </li>
   
@@ -1820,7 +1820,7 @@ locust statistics like response time and failures.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@when</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;fail ratio is greater than &quot;</span><span class="si">{fail_ratio:d}</span><span class="s1">&quot;</span><span class="si">% f</span><span class="s1">ail scenario&#39;</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">step_results_fail_ratio</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">fail_ratio</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
-<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.6.0/docs/../grizzly/steps/scenario/results.py#L13">[view_source]</a></p>
+<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.6.1/docs/../grizzly/steps/scenario/results.py#L13">[view_source]</a></p>
 <p>Sets how many percentages of requests that are allowed to fail before the whole scenario will be set as failed.</p>
 <p>This step cannot be used in combination with:</p>
 <ul>
@@ -1848,7 +1848,7 @@ locust statistics like response time and failures.</p>
 <span class="k">def</span> <span class="nf">step_results_avg_response_time</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span>
                                    <span class="n">avg_response_time</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
-<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.6.0/docs/../grizzly/steps/scenario/results.py#L39">[view_source]</a></p>
+<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.6.1/docs/../grizzly/steps/scenario/results.py#L39">[view_source]</a></p>
 <p>Sets the average response time (milliseconds) that all requests in a scenario must be below
 for it to pass.</p>
 <p>Default behavior is not to validate the result for a scenario based on average response time.</p>
@@ -1868,7 +1868,7 @@ for it to pass.</p>
 <span class="k">def</span> <span class="nf">step_results_response_time_percentile</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">percentile</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
                                           <span class="n">response_time</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
-<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.6.0/docs/../grizzly/steps/scenario/results.py#L59">[view_source]</a></p>
+<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.6.1/docs/../grizzly/steps/scenario/results.py#L59">[view_source]</a></p>
 <p>Sets the response time that a specified percentile of the requests needs to be below for the scenario to pass.</p>
 <p>Default behavior is not to validate the result for a scenario based on percetile response times.</p>
 <p><strong>Example</strong>:</p>
@@ -1924,7 +1924,7 @@ for it to pass.</p>
     <script id="__config" type="application/json">{"base": "../../../../..", "features": ["navigation.indexes", "navigation.instant", "navigation.sections", "navigation.tracking", "navigation.top", "toc.follow"], "search": "../../../../../assets/javascripts/workers/search.208ed371.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
-      <script src="../../../../../assets/javascripts/bundle.efa0ade1.min.js"></script>
+      <script src="../../../../../assets/javascripts/bundle.19047be9.min.js"></script>
       
     
   </body>
