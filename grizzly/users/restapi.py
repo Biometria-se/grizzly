@@ -79,6 +79,9 @@ from functools import wraps
 from enum import Enum
 from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
+from secrets import token_bytes
+from hashlib import sha256
+from base64 import urlsafe_b64encode
 
 from locust.contrib.fasthttp import FastHttpSession
 
@@ -240,6 +243,13 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
                 uuid[20:]
             )
 
+        def generate_code_challenge() -> str:
+            code_verifier: bytes = token_bytes(32)  # 32 bytes = 265 bits
+
+            return urlsafe_b64encode(
+                sha256(code_verifier).digest()
+            ).decode('utf-8').replace('=', '')
+
         headers_ua: Dict[str, str] = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:88.0) Gecko/20100101 Firefox/88.0'
         }
@@ -292,6 +302,8 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
                 else:
                     redirect_uri = auth_user_context['redirect_uri']
 
+                url = cast(str, self._context['auth']['url'])
+
                 params: Dict[str, List[str]] = {
                     'response_type': ['id_token'],
                     'client_id': [client_id],
@@ -303,12 +315,23 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
                     'nonce': [generate_uuid()],
                 }
 
+                is_token_v2_0 = 'oauth2/v2.0' in url
+
+                if is_token_v2_0:
+                    params.update({
+                        'response_type': ['code'],
+                        'response_mode': ['fragment'],
+                        'scope': ['openid profile offline_access'],
+                        'code_challenge_method': ['S256'],
+                        'code_challenge': [generate_code_challenge()],
+                    })
+
                 headers = {
                     'Host': str(auth_url_parsed.netloc),
                     **headers_ua,
                 }
 
-                response = client.get(cast(str, self._context['auth']['url']), headers=headers, params=params)
+                response = client.get(url, headers=headers, params=params)
                 logger.debug(f'user auth request 1: {response.url} ({response.status_code})')
                 total_response_length += int(response.headers.get('content-length', '0'))
 
@@ -316,6 +339,12 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
                     raise RuntimeError(f'user auth request 1: {response.url} had unexpected status code {response.status_code}')
 
                 referer = response.url
+
+                config = _parse_response_config(response)
+                exception_message = config.get('strServiceExceptionMessage', None)
+
+                if exception_message is not None and len(exception_message.strip()) > 0:
+                    raise RuntimeError(exception_message)
 
                 config = update_state(state, response)
                 # // request 1 -->
@@ -429,7 +458,6 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
                 exception_message = config.get('strServiceExceptionMessage', None)
 
                 if exception_message is not None and len(exception_message.strip()) > 0:
-                    logger.error(exception_message)
                     raise RuntimeError(exception_message)
 
                 user_proofs = config.get('arrUserProofs', [])
@@ -464,11 +492,15 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
                     'hprequestid': state['sessionId'],
                     'flowToken': state['sFT'],
                     'canary': state['canary'],
-                    'i2': '',
-                    'i17': '',
-                    'i18': '',
                     'i19': '1337',
                 }
+
+                if not is_token_v2_0:
+                    payload.update({
+                        'i2': '',
+                        'i17': '',
+                        'i18': '',
+                    })
 
                 response = client.post(url, headers=headers, data=payload, allow_redirects=False)
                 total_response_length += int(response.headers.get('content-length', '0'))
@@ -476,7 +508,16 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
                 logger.debug(f'user auth request 4: {response.url} ({response.status_code})')
 
                 if response.status_code != 302:
-                    raise RuntimeError(f'user auth request 4: {response.url} had unexpected status code {response.status_code}')
+                    try:
+                        config = _parse_response_config(response)
+                        exception_message = config.get('strServiceExceptionMessage', None)
+
+                        if exception_message is not None and len(exception_message.strip()) > 0:
+                            raise RuntimeError(exception_message)
+                    except ValueError:
+                        pass
+                    else:
+                        raise RuntimeError(f'user auth request 4: {response.url} had unexpected status code {response.status_code}')
 
                 assert 'Location' in response.headers, f'Location header was not found in response from {response.url}'
 
@@ -486,13 +527,19 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
 
                 token_url_parsed = urlparse(token_url)
                 fragments = parse_qs(token_url_parsed.fragment)
-                assert 'id_token' in fragments, f'could not find id_token in {token_url}'
-                id_token = fragments['id_token'][0]
+                if is_token_v2_0:
+                    assert 'code' in fragments, f'could not find code in {token_url}'
+                    token = fragments['code'][0]
+                else:
+                    assert 'id_token' in fragments, f'could not find id_token in {token_url}'
+                    token = fragments['id_token'][0]
 
-                self.headers['Authorization'] = f'Bearer {id_token}'
+                print(f'{token=}')
+                self.headers['Authorization'] = f'Bearer {token}'
                 self.session_started = time()
         except Exception as e:
             exception = e
+            self.logger.error(str(e), exc_info=True)
         finally:
             name = self.__class__.__name__.rsplit('_', 1)[-1]
 
