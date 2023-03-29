@@ -22,6 +22,7 @@ from grizzly.utils import (
     in_correct_section,
     parse_timespan,
     check_mq_client_logs,
+    async_message_request_wrapper,
 )
 from grizzly.types import RequestMethod
 from grizzly.types.behave import Context, Scenario, Status
@@ -30,8 +31,9 @@ from grizzly.tasks import RequestTask
 from grizzly.users import RestApiUser
 from grizzly.users.base import GrizzlyUser
 from grizzly.scenarios import IteratorScenario
+from grizzly_extras.async_message import AsyncMessageRequest
 
-from tests.fixtures import LocustFixture, BehaveFixture
+from tests.fixtures import LocustFixture, BehaveFixture, GrizzlyFixture
 
 
 class TestModuleLoader:
@@ -664,3 +666,41 @@ EXPLANATION:
 
     assert amqerr_fdc_files[3].strip() == f'{entry_date_2.strftime("%Y-%m-%d %H:%M:%S")}  {amqerr_fdc_file_2}'
     assert amqerr_fdc_files[4].strip() == f'{entry_date_3.strftime("%Y-%m-%d %H:%M:%S")}  {amqerr_fdc_file_3}'
+
+
+def test_async_message_request_wrapper(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+    _, _, scenario = grizzly_fixture()
+
+    assert scenario is not None
+
+    async_message_request_mock = mocker.patch('grizzly.utils.async_message_request', return_value=None)
+    client_mock = mocker.MagicMock()
+
+    # nothing to render
+    request: AsyncMessageRequest = {
+        'context': {
+            'endpoint': 'hello world'
+        }
+    }
+
+    async_message_request_wrapper(scenario, client_mock, request)
+
+    async_message_request_mock.assert_called_once_with(client_mock, request)
+    async_message_request_mock.reset_mock()
+
+    # template to render, variable not set
+    request = {
+        'context': {
+            'endpoint': 'hello {{ world }}!'
+        }
+    }
+
+    async_message_request_wrapper(scenario, client_mock, request)
+    async_message_request_mock.assert_called_once_with(client_mock, {'context': {'endpoint': 'hello !'}})
+    async_message_request_mock.reset_mock()
+
+    # template to render, variable set
+    scenario.user._context['variables'].update({'world': 'foobar'})
+
+    async_message_request_wrapper(scenario, client_mock, request)
+    async_message_request_mock.assert_called_once_with(client_mock, {'context': {'endpoint': 'hello foobar!'}})

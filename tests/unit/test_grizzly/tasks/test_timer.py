@@ -15,6 +15,7 @@ class TestTimerTask:
 
         assert task_factory.name == 'test-timer-1'
         assert task_factory.variable == 'aaaabbbb::test-timer-1'
+        assert task_factory.__template_attributes__ == set()
 
     def test__call__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         _, _, scenario = grizzly_fixture()

@@ -169,7 +169,6 @@ from .directory_contents import AtomicDirectoryContents
 from .csv_reader import AtomicCsvReader
 from .csv_writer import AtomicCsvWriter
 from .random_string import AtomicRandomString
-from .servicebus import AtomicServiceBus
 
 __all__ = [
     'AtomicRandomInteger',
@@ -179,6 +178,5 @@ __all__ = [
     'AtomicCsvReader',
     'AtomicCsvWriter',
     'AtomicRandomString',
-    'AtomicServiceBus',
     'destroy_variables',
 ]

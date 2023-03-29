@@ -370,6 +370,7 @@ def step_task_client_get_endpoint(context: Context, endpoint: str, name: str, va
         endpoint,
         name,
         variable=variable,
+        text=context.text,
     ))
 
 
@@ -401,6 +402,7 @@ def step_task_client_get_endpoint_until(context: Context, endpoint: str, name: s
         endpoint,
         name,
         scenario=grizzly.scenario,
+        text=context.text,
     )
 
     grizzly.scenario.tasks.add(UntilRequestTask(

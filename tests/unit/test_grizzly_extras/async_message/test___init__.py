@@ -5,6 +5,8 @@ from platform import node as hostname
 
 import pytest
 
+from zmq.error import Again as ZMQAgain
+from zmq.sugar.constants import NOBLOCK as ZMQ_NOBLOCK
 from pytest_mock import MockerFixture
 from _pytest.tmpdir import TempPathFactory
 from _pytest.capture import CaptureFixture
@@ -16,6 +18,7 @@ from grizzly_extras.async_message import (
     AsyncMessageHandler,
     ThreadLogger,
     register,
+    async_message_request,
 )
 
 from tests.helpers import onerror
@@ -178,3 +181,49 @@ class TestThreadLogger:
                 pass
 
             rmtree(test_context_root, onerror=onerror)
+
+
+def test_async_message_request(mocker: MockerFixture) -> None:
+    client_mock = mocker.MagicMock()
+    sleep_mock = mocker.patch('grizzly_extras.async_message.sleep', return_value=None)
+
+    # no valid response
+    client_mock.recv_json.side_effect = [ZMQAgain, None]
+
+    request: AsyncMessageRequest = {
+        'worker': None,
+        'action': 'HELLO',
+    }
+
+    with pytest.raises(RuntimeError) as re:
+        async_message_request(client_mock, request)
+    assert str(re.value) == 'no response'
+
+    sleep_mock.assert_called_once_with(0.1)
+    client_mock.send_json.assert_called_once_with(request)
+
+    assert client_mock.recv_json.call_count == 2
+    for i in range(2):
+        args, kwargs = client_mock.recv_json.call_args_list[i]
+        assert args == ()
+        assert kwargs == {'flags': ZMQ_NOBLOCK}
+
+    sleep_mock.reset_mock()
+    client_mock.reset_mock()
+
+    # unsuccessful response
+    client_mock.recv_json.side_effect = None
+    client_mock.recv_json.return_value = {'success': False, 'message': 'error! error! error!'}
+
+    with pytest.raises(RuntimeError) as re:
+        async_message_request(client_mock, request)
+    assert str(re.value) == 'error! error! error!'
+
+    sleep_mock.assert_not_called()
+    client_mock.send_json.assert_called_once_with(request)
+    client_mock.recv_json.assert_called_once_with(flags=ZMQ_NOBLOCK)
+
+    # valid response
+    client_mock.recv_json.return_value = {'success': True, 'worker': 'foo-bar-baz-foo', 'payload': 'yes'}
+
+    assert async_message_request(client_mock, request) == {'success': True, 'worker': 'foo-bar-baz-foo', 'payload': 'yes'}

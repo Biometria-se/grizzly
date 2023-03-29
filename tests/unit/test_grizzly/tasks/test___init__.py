@@ -16,6 +16,7 @@ from grizzly.tasks import (
 )
 from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContextScenario
+from grizzly.scenarios import GrizzlyScenario, IteratorScenario
 
 from tests.fixtures import GrizzlyFixture
 
@@ -39,6 +40,83 @@ class DummyTask(GrizzlyTask):
         raise NotImplementedError(f'{self.__class__.__name__} has not been implemented')
 
 
+def on_func(parent: GrizzlyScenario) -> Any:
+    """
+    hello world
+    """
+    pass
+
+
+def on_event(parent: GrizzlyScenario) -> None:
+    pass
+
+
+class Testgrizzlytask:
+    def test___init__(self) -> None:
+        task = grizzlytask(on_func)
+
+        assert task._task is on_func
+        assert task.__doc__ is not None
+        assert task.__doc__.strip() == 'hello world'
+
+    def test___call__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+        _, _, scenario = grizzly_fixture()
+        assert scenario is not None
+
+        task = grizzlytask(on_func)
+
+        task_call_mock = mocker.spy(task, '_task')
+
+        task(scenario)
+
+        task_call_mock.assert_called_once_with(scenario)
+
+    def test__is_parent(self, grizzly_fixture: GrizzlyFixture) -> None:
+        _, user, _ = grizzly_fixture()
+
+        task = grizzlytask(on_func)
+        assert not task._is_parent(on_func)
+
+        dummy = DummyTask()
+        assert not task._is_parent(dummy)
+
+        class DummySomething(GrizzlyScenario):
+            pass
+
+        foo = DummySomething(user)
+        assert task._is_parent(foo)
+
+        class DummyOther(IteratorScenario):
+            pass
+
+        bar = DummyOther(user)
+        assert task._is_parent(bar)
+
+    @pytest.mark.parametrize('event', ['on_start', 'on_stop'])
+    def test_on_event(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, event: str) -> None:
+        _, _, scenario = grizzly_fixture()
+        assert scenario is not None
+
+        task = grizzlytask(on_func)
+        assert getattr(task, f'_{event}', True) is None
+
+        # used as decorator
+        getattr(task, event)(on_event)
+        assert getattr(task, f'_{event}') is not None
+        assert getattr(task, f'_{event}')._on_func is on_event
+
+        # called
+        on_event_mock = mocker.patch.object(getattr(task, f'_{event}'), '_on_func')
+        getattr(task, event)(scenario)
+
+        on_event_mock.assert_called_once_with(scenario)
+
+        # called, but not set
+        task = grizzlytask(on_func)
+
+        task.on_start(scenario)
+
+
 class TestGrizzlyTask:
     def test___init__(self) -> None:
         try:
@@ -49,6 +127,7 @@ class TestGrizzlyTask:
         task = DummyTask()
 
         assert task._context_root == '.'
+        assert task.__template_attributes__ == {'string_template', 'list_template', 'dict_template'}
 
         try:
             environ['GRIZZLY_CONTEXT_ROOT'] = 'foo bar!'

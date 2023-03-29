@@ -409,6 +409,12 @@ def test_step_task_client_get_endpoint(behave_fixture: BehaveFixture) -> None:
 
     task = grizzly.scenario.tasks[-1]
     assert task.endpoint == '{{ endpoint_url }}'
+    assert sorted(task.get_templates()) == sorted(['{{ endpoint_url }}', '{{ test }}'])
+
+    behave.text = '1=1'
+    with pytest.raises(NotImplementedError) as nie:
+        step_task_client_get_endpoint(behave, 'https://{{ endpoint_url }}', 'step-name', 'test')
+    assert str(nie.value) == 'HttpClientTask has not implemented support for step text'
 
 
 def test_step_task_client_get_endpoint_until(behave_fixture: BehaveFixture) -> None:
@@ -452,6 +458,11 @@ def test_step_task_client_get_endpoint_until(behave_fixture: BehaveFixture) -> N
     assert isinstance(task.request, HttpClientTask)
     assert task.request.content_type == TransformerContentType.JSON
     assert task.request.endpoint == 'https://api.example.com/api/test'
+
+    behave.text = '1=1'
+    with pytest.raises(NotImplementedError) as nie:
+        step_task_client_get_endpoint_until(behave, 'https://$conf::test.host$/api/test | content_type=json', 'step-name', '$.`this`[success=false]')
+    assert str(nie.value) == 'HttpClientTask has not implemented support for step text'
 
 
 def test_step_task_date(behave_fixture: BehaveFixture) -> None:

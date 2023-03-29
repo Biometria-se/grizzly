@@ -37,11 +37,11 @@ class Task(GrizzlyTask):
                 parent.grizzly.state.locust.send_message('client_server', self.data)
 
         @implementation.on_start
-        def on_start() -> None:
+        def on_start(parent: GrizzlyScenario) -> None:
             self.logger.info(f'{self.__class__.__name__} on_start called before test')
 
         @implementation.on_stop
-        def on_stop() -> None:
+        def on_stop(parent: GrizzlyScenario) -> None:
             self.logger.info(f'{self.__class__.__name__} on_stop called after test')
 
         return implementation

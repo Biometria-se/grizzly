@@ -119,6 +119,8 @@ class RequestType(Enum, AdvancedEnum, metaclass=MixedEnumMeta, init='alias _weig
     RECEIVE = ('RECV', None,)
     CONNECT = ('CONN', None,)
     DISCONNECT = ('DISC', None,)
+    SUBSCRIBE = ('SUB', None,)
+    UNSUBSCRIBE = ('UNSUB', None,)
 
     def __call__(self) -> str:
         return str(self)

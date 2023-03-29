@@ -7,10 +7,10 @@ import pytest
 from _pytest.tmpdir import TempPathFactory
 
 from grizzly.testdata import GrizzlyVariables
-from grizzly.testdata.variables import AtomicCsvReader, AtomicIntegerIncrementer, AtomicServiceBus
+from grizzly.testdata.variables import AtomicCsvReader, AtomicIntegerIncrementer
 from grizzly.context import GrizzlyContext
 
-from tests.fixtures import AtomicVariableCleanupFixture, NoopZmqFixture
+from tests.fixtures import AtomicVariableCleanupFixture
 
 
 class TestGrizzlyVariables:
@@ -355,27 +355,6 @@ class TestGrizzlyVariables:
                 assert value['foo'] == 'bar'
                 assert external_dependencies == set()
                 assert message_handlers == {}
-            finally:
-                cleanup()
-
-        def test_AtomicServiceBus(self, noop_zmq: NoopZmqFixture, cleanup: AtomicVariableCleanupFixture) -> None:
-            noop_zmq('grizzly.testdata.variables.servicebus')
-
-            try:
-                grizzly = GrizzlyContext()
-                variable_name = 'AtomicServiceBus.test'
-                grizzly.state.variables[variable_name] = (
-                    'queue:documents-in | url="sb://sb.example.com/;SharedAccessKeyName=name;SharedAccessKey=key"'
-                )
-                value, external_dependencies, message_handlers = GrizzlyVariables.initialize_variable(grizzly, variable_name)
-                assert external_dependencies == set(['async-messaged'])
-                assert message_handlers == {}
-                assert not isinstance(value, AtomicServiceBus)
-                assert value == '__on_consumer__'
-
-                with pytest.raises(ValueError) as ve:
-                    AtomicServiceBus.destroy()
-                assert "AtomicServiceBus is not instantiated" in str(ve)
             finally:
                 cleanup()
 

@@ -28,6 +28,7 @@ class TestDateTask:
         assert task_factory.arguments.get('offset', None) == '-1D'
         assert task_factory.arguments.get('timezone', None) == '{{ timezone }}'
         assert task_factory.arguments.get('format', None) == '%Y-%m-%d'
+        assert task_factory.__template_attributes__ == {'value', 'arguments'}
         templates = sorted(task_factory.get_templates())
         assert len(templates) == 2
         assert templates == sorted([

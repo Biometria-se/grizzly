@@ -36,7 +36,7 @@ pip3 install grizzly-loadtester[mq]
 mq[s]://<username>:<password>@]<hostname>[:<port>]/<endpoint>?QueueManager=<queue manager>&Channel=<channel>[&wait=<wait>][&heartbeat=<heartbeat>][&KeyFile=<key repo path>[&SslCipher=<ssl cipher>][&CertLabel=<certificate label>]][&HeaderType=<header type>][&MaxMessageSize=<number of bytes>]
 ```
 
-All variables in the URL have support for {@link framework.usage.variables.templating}.
+All variables in the endpoint have support for {@link framework.usage.variables.templating}.
 
 * `mq[s]` _str_ - must be specified, `mqs` implies connecting with TLS, if `KeyFile` is not set in querystring, it will look for a key repository in `./<username>`
 
@@ -117,6 +117,7 @@ class MessageQueueClientTask(ClientTask):
         variable: Optional[str] = None,
         source: Optional[str] = None,
         destination: Optional[str] = None,
+        text: Optional[str] = None,
         scenario: Optional[GrizzlyContextScenario] = None,
     ) -> None:
         if pymqi.__name__ == 'grizzly_extras.dummy_pymqi':
@@ -125,7 +126,16 @@ class MessageQueueClientTask(ClientTask):
         if destination is not None:
             raise ValueError(f'{self.__class__.__name__}: destination is not allowed')
 
-        super().__init__(direction, endpoint, name, variable=variable, destination=destination, source=source, scenario=scenario)
+        super().__init__(
+            direction,
+            endpoint,
+            name,
+            variable=variable,
+            destination=destination,
+            source=source,
+            scenario=scenario,
+            text=text,
+        )
 
         self.create_context()
 
@@ -282,10 +292,7 @@ class MessageQueueClientTask(ClientTask):
                 raise RuntimeError(f'{parent.__class__.__name__}/{client_id} was unable to get an worker assigned')
 
             with self.action(parent) as meta:
-                meta['action'] = self.endpoint_path
                 request['worker'] = worker
-
-                meta.update({'request': request.copy()})
 
                 client.send_json(request)
 
@@ -301,9 +308,11 @@ class MessageQueueClientTask(ClientTask):
 
                 parent.logger.debug(f'got response from {worker} at {hostname()}')
 
-                response_length_source = (response or {}).get('payload', None) or ''
+                response_length_source = ((response or {}).get('payload', None) or '').encode('utf-8')
 
                 meta.update({
+                    'action': self.endpoint_path,
+                    'request': request.copy(),
                     'response_length': len(response_length_source),
                     'response': response,
                 })
@@ -333,7 +342,6 @@ class MessageQueueClientTask(ClientTask):
                 'endpoint': ', '.join(endpoint),
             },
             'payload': None,
-
         }
         response = self.request(parent, request)
 
@@ -358,7 +366,6 @@ class MessageQueueClientTask(ClientTask):
                 'endpoint': self.endpoint_path,
             },
             'payload': source,
-
         }
 
         response = self.request(parent, request)

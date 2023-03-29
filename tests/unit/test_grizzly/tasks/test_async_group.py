@@ -27,6 +27,7 @@ class TestAsyncRequestGroup:
         assert isinstance(task_factory.tasks, list)
         assert len(task_factory.tasks) == 0
         assert task_factory.name == 'test'
+        assert task_factory.__template_attributes__ == {'name', 'tasks'}
 
     def test_add(self) -> None:
         task_factory = AsyncRequestGroupTask(name='test')

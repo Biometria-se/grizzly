@@ -132,6 +132,7 @@ class TestUntilRequestTask:
         assert task.condition == '$.`this`[?status="ready"]'
         assert task.wait == 1.0
         assert task.retries == 3
+        assert task.__template_attributes__ == {'condition', 'request'}
 
         task = UntilRequestTask(grizzly, request, '$.`this`[?status="ready"] | wait=100, retries=10')
 

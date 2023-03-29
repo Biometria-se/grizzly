@@ -9,7 +9,7 @@ from time import sleep
 
 import setproctitle as proc
 
-import zmq
+import zmq.green as zmq
 
 from . import (
     ThreadLogger,

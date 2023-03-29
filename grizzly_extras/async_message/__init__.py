@@ -2,7 +2,7 @@ import logging
 import sys
 
 from abc import ABC, abstractmethod
-from typing import Optional, Dict, Any, TypedDict, Callable, List, cast
+from typing import Optional, Dict, Any, TypedDict, Callable, List, cast, final
 from os import environ, path
 from platform import node as hostname
 from json import dumps as jsondumps
@@ -10,7 +10,12 @@ from time import monotonic as time
 from io import StringIO
 from threading import Lock
 from datetime import datetime
+from time import sleep
 
+import zmq.green as zmq
+
+from zmq.error import Again as ZMQAgain
+from zmq.sugar.constants import NOBLOCK as ZMQ_NOBLOCK
 from grizzly_extras.transformer import JsonBytesEncoder
 
 __all__: List[str] = []
@@ -133,6 +138,7 @@ class AsyncMessageHandler(ABC):
     def close(self) -> None:
         raise NotImplementedError(f'{self.__class__.__name__}: close is not implemented')
 
+    @final
     def handle(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
         action = request['action']
         request_handler = self.get_handler(action)
@@ -189,3 +195,24 @@ def register(handlers: Dict[str, AsyncMessageRequestHandler], action: str, *acti
         return func
 
     return decorator
+
+
+def async_message_request(client: zmq.Socket, request: AsyncMessageRequest) -> AsyncMessageResponse:
+    client.send_json(request)
+
+    while True:
+        try:
+            response = cast(AsyncMessageResponse, client.recv_json(flags=ZMQ_NOBLOCK))
+            break
+        except ZMQAgain:
+            sleep(0.1)
+
+    if response is None:
+        raise RuntimeError('no response')
+
+    message = response.get('message', None)
+
+    if not response['success']:
+        raise RuntimeError(message)
+
+    return response

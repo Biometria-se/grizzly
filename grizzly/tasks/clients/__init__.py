@@ -40,7 +40,7 @@ from grizzly.tasks import GrizzlyMetaRequestTask, template, grizzlytask
 
 
 # see https://github.com/python/mypy/issues/5374
-@template('endpoint', 'destination', 'source', 'name')
+@template('endpoint', 'destination', 'source', 'name', 'variable_template')
 class ClientTask(GrizzlyMetaRequestTask):
     _schemes: List[str]
     _scheme: str
@@ -57,6 +57,7 @@ class ClientTask(GrizzlyMetaRequestTask):
     variable: Optional[str]
     source: Optional[str]
     destination: Optional[str]
+    _text: Optional[str]
 
     log_dir: Path
 
@@ -69,18 +70,26 @@ class ClientTask(GrizzlyMetaRequestTask):
         variable: Optional[str] = None,
         source: Optional[str] = None,
         destination: Optional[str] = None,
+        text: Optional[str] = None,
         scenario: Optional[GrizzlyContextScenario] = None,
     ) -> None:
         super().__init__(scenario)
 
         self.grizzly = GrizzlyContext()
 
+        if text is not None:
+            self.text = text
+        else:
+            self._text = None
+
         endpoint = cast(str, resolve_variable(self.grizzly, endpoint, only_grizzly=True))
         try:
             parsed = urlparse(endpoint)
-            if endpoint.index('://') != endpoint.rindex('://') or ('{{' in endpoint and '}}' in endpoint):
-                index = len(parsed.scheme) + 3
-                endpoint = endpoint[index:]
+            proto_sep = endpoint.index('://') + 3
+            # if `proto_sep` is followed by the start of a jinja template, we should remove the specified protocol, since it will
+            # be part of the rendered template
+            if proto_sep != endpoint.rindex('://') + 3 or (endpoint[proto_sep:proto_sep + 2] == '{{' and '}}' in endpoint):
+                endpoint = endpoint[proto_sep:]
         except ValueError:
             pass
 
@@ -128,11 +137,28 @@ class ClientTask(GrizzlyMetaRequestTask):
         self.log_dir = Path(context_root) / 'logs'
         self.log_dir.mkdir(parents=True, exist_ok=True)
 
-    def on_start(self) -> None:
+    def on_start(self, parent: GrizzlyScenario) -> None:
         pass
 
-    def on_stop(self) -> None:
+    def on_stop(self, parent: GrizzlyScenario) -> None:
         pass
+
+    # SOW: see https://github.com/python/mypy/issues/5936#issuecomment-1429175144
+    def text_fget(self) -> Optional[str]:
+        return self._text
+
+    def text_fset(self, value: str) -> None:
+        raise NotImplementedError(f'{self.__class__.__name__} has not implemented support for step text')
+
+    text = property(text_fget, text_fset)
+    # EOW
+
+    @property
+    def variable_template(self) -> Optional[str]:
+        if self.variable is None or ('{{' in self.variable and '}}' in self.variable):
+            return self.variable
+
+        return f'{{{{ {self.variable} }}}}'
 
     @final
     def __call__(self) -> grizzlytask:
@@ -144,12 +170,12 @@ class ClientTask(GrizzlyMetaRequestTask):
                 return self.put(parent)
 
         @task.on_start
-        def on_start() -> None:
-            return self.on_start()
+        def on_start(parent: GrizzlyScenario) -> None:
+            return self.on_start(parent)
 
         @task.on_stop
-        def on_stop() -> None:
-            return self.on_stop()
+        def on_stop(parent: GrizzlyScenario) -> None:
+            return self.on_stop(parent)
 
         return task
 
@@ -249,11 +275,13 @@ logger = logging.getLogger(__name__)
 from .http import HttpClientTask
 from .blobstorage import BlobStorageClientTask
 from .messagequeue import MessageQueueClientTask
+from .servicebus import ServiceBusClientTask
 
 
 __all__ = [
     'HttpClientTask',
     'BlobStorageClientTask',
     'MessageQueueClientTask',
+    'ServiceBusClientTask',
     'logger',
 ]

@@ -79,9 +79,19 @@ class BlobStorageClientTask(ClientTask):
         variable: Optional[str] = None,
         source: Optional[str] = None,
         destination: Optional[str] = None,
+        text: Optional[str] = None,
         scenario: Optional[GrizzlyContextScenario] = None,
     ) -> None:
-        super().__init__(direction, endpoint, name, variable=variable, destination=destination, source=source, scenario=scenario)
+        super().__init__(
+            direction,
+            endpoint,
+            name,
+            variable=variable,
+            destination=destination,
+            source=source,
+            scenario=scenario,
+            text=text,
+        )
 
         parsed = urlparse(self.endpoint)
 
@@ -154,7 +164,7 @@ class BlobStorageClientTask(ClientTask):
 
             with self.service_client.get_blob_client(container=self.container, blob=destination) as blob_client:
                 blob_client.upload_blob(source, content_settings=content_settings, overwrite=self.overwrite)
-                meta['response_length'] = len(source)
+                meta['response_length'] = len(source.encode('utf-8'))
 
             meta.update({'response': {}})
 

@@ -49,10 +49,12 @@ def step_run_testtask(context: Context) -> None:
 
 There are examples of this in the {@link framework.example}.
 '''
+from __future__ import annotations
 from abc import ABC, ABCMeta, abstractmethod
-from typing import TYPE_CHECKING, Any, Callable, List, Type, Set, Optional
+from typing import TYPE_CHECKING, Any, Callable, List, Type, Set, Optional, Union, overload, cast
 from os import environ
 from pathlib import Path
+from inspect import getmro
 
 from grizzly_extras.transformer import TransformerContentType
 
@@ -62,7 +64,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContextScenario
 
 GrizzlyTaskType = Callable[['GrizzlyScenario'], Any]
-GrizzlyTaskOnType = Optional[Callable[[], None]]
+GrizzlyTaskOnType = Callable[['GrizzlyScenario'], None]
 
 
 class grizzlytask:
@@ -72,39 +74,69 @@ class grizzlytask:
     _on_stop: Optional['OnGrizzlyTask'] = None
 
     class OnGrizzlyTask:
-        _on_func: Optional[GrizzlyTaskOnType] = None
+        _on_func: GrizzlyTaskOnType
 
         def __init__(self, on_func: GrizzlyTaskOnType) -> None:
             self._on_func = on_func
 
-        def __call__(self) -> None:
-            if self._on_func is not None:
-                self._on_func()
+        def __call__(self, parent: GrizzlyScenario) -> None:
+            self._on_func(parent)
 
     def __init__(self, task: GrizzlyTaskType, doc: Optional[str] = None) -> None:
         self._task = task
 
         if doc is None and task is not None:
-            self.__doc__ = doc
+            self.__doc__ = task.__doc__
 
-    def __call__(self, parent: 'GrizzlyScenario') -> Any:
+    def __call__(self, parent: GrizzlyScenario) -> Any:
         return self._task(parent)
 
-    def on_start(self, on_start: GrizzlyTaskOnType = None) -> None:
-        if self._on_start is None:
-            self._on_start = self.OnGrizzlyTask(on_start)
-        else:
-            self._on_start()
+    def _is_parent(self, arg: Any) -> bool:
+        """
+        ugly workaround since it is not possible to properly import GrizzlyScenario
+        and use `isinstance` due to cyclic imports...
+        """
+        mro_list = [m.__name__ for m in getmro(arg.__class__)]
 
-    def on_stop(self, on_stop: GrizzlyTaskOnType = None) -> None:
-        if self._on_stop is None:
-            self._on_stop = self.OnGrizzlyTask(on_stop)
-        else:
-            self._on_stop()
+        return 'GrizzlyScenario' in mro_list
+
+    @overload
+    def on_start(self, parent: GrizzlyScenario, /) -> None:  # pragma: no coverage
+        ...
+
+    @overload
+    def on_start(self, on_start: GrizzlyTaskOnType, /) -> None:  # pragma: no coverage
+        ...
+
+    def on_start(self, arg: Union[GrizzlyTaskOnType, GrizzlyScenario], /) -> None:
+        is_parent = self._is_parent(arg)
+        if is_parent and self._on_start is not None:
+            self._on_start(cast('GrizzlyScenario', arg))
+        elif not is_parent and self._on_start is None:
+            self._on_start = self.OnGrizzlyTask(cast(GrizzlyTaskOnType, arg))
+        else:  # decorated function does not exist, so don't do anything
+            pass
+
+    @overload
+    def on_stop(self, parent: GrizzlyScenario, /) -> None:  # pragma: no coverage
+        ...
+
+    @overload
+    def on_stop(self, on_start: GrizzlyTaskOnType, /) -> None:  # pragma: no coverage
+        ...
+
+    def on_stop(self, arg: Union[GrizzlyTaskOnType, GrizzlyScenario], /) -> None:
+        is_parent = self._is_parent(arg)
+        if is_parent and self._on_stop is not None:
+            self._on_stop(cast('GrizzlyScenario', arg))
+        elif not is_parent and self._on_stop is None:
+            self._on_stop = self.OnGrizzlyTask(cast(GrizzlyTaskOnType, arg))
+        else:  # decorated function does not exist, so don't do anything
+            pass
 
 
 class GrizzlyTask(ABC):
-    __template_attributes__: List[str] = []
+    __template_attributes__: Set[str] = set()
 
     _context_root: str
 
@@ -196,7 +228,15 @@ class template:
             self.attributes += list(additional_attributes)
 
     def __call__(self, cls: Type[GrizzlyTask]) -> Type[GrizzlyTask]:
-        cls.__template_attributes__ = self.attributes
+        # this class should have it's own instance of this set, not shared with all
+        # other tasks that inherits GrizzlyTask
+        if len(cls.__template_attributes__) < 1:
+            cls.__template_attributes__ = set(self.attributes)
+        else:
+            # this class already has an instance, but it might inherited by another class, that has some extra
+            # attributes that could be a template, but that class should have its own instance
+            original_attributes = cls.__template_attributes__.copy()
+            cls.__template_attributes__ = original_attributes.union(self.attributes)
 
         return cls
 

@@ -46,6 +46,9 @@ class GrizzlyScenario(SequentialTaskSet):
 
         return Template(input).render(**self.user._context['variables'], **variables)
 
+    def prefetch(self) -> None:
+        pass
+
     def on_start(self) -> None:
         producer_address = environ.get('TESTDATA_PRODUCER_ADDRESS', None)
         if producer_address is not None:
@@ -59,14 +62,16 @@ class GrizzlyScenario(SequentialTaskSet):
             self.logger.error('no address to testdata producer specified')
             raise StopUser()
 
+        self.prefetch()
+
         for task in self.tasks:
             if isinstance(task, grizzlytask):
-                task.on_start()
+                task.on_start(self)
 
     def on_stop(self) -> None:
         for task in self.tasks:
             if isinstance(task, grizzlytask):
-                task.on_stop()
+                task.on_stop(self)
 
         self.consumer.stop()
         self.user.scenario_state = ScenarioState.STOPPED

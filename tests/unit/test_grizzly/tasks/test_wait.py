@@ -17,6 +17,7 @@ class TestWaitTask:
         task_factory = WaitTask(time_expression='1.0', scenario=scenario.user._scenario)
 
         assert task_factory.time_expression == '1.0'
+        assert task_factory.__template_attributes__ == {'time_expression'}
         task = task_factory()
 
         assert callable(task)

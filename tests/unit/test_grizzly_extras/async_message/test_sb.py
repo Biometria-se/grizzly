@@ -6,6 +6,8 @@ import pytest
 from pytest_mock import MockerFixture
 
 from azure.servicebus import ServiceBusMessage, TransportType, ServiceBusClient, ServiceBusSender, ServiceBusReceiver
+from azure.core.exceptions import ResourceExistsError, ResourceNotFoundError
+
 from grizzly_extras.arguments import parse_arguments
 from grizzly_extras.async_message import AsyncMessageError, AsyncMessageRequest
 from grizzly_extras.async_message.sb import AsyncServiceBusHandler
@@ -110,6 +112,180 @@ class TestAsyncServiceBusHandler:
 
         assert handler._receiver_cache == {}
         assert receiver_instance.__exit__.call_count == 1
+
+    def test_subscribe(self, mocker: MockerFixture) -> None:
+        from grizzly_extras.async_message.sb import handlers
+
+        handler = AsyncServiceBusHandler(worker='asdf-asdf-asdf')
+
+        # malformed request, no context
+        request: AsyncMessageRequest = {
+            'action': 'SUBSCRIBE',
+        }
+
+        with pytest.raises(AsyncMessageError) as ame:
+            handlers[request['action']](handler, request)
+        assert str(ame.value) == 'no context in request'
+
+        # malformed request, subscribe on queue
+        request = {
+            'action': 'SUBSCRIBE',
+            'context': {
+                'url': 'sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=',
+                'endpoint': 'queue:test-queue',
+                'connection': 'receiver',
+            },
+        }
+
+        with pytest.raises(AsyncMessageError) as ame:
+            handlers[request['action']](handler, request)
+        assert str(ame.value) == 'subscriptions is only allowed on topics'
+
+        # malformed request, no subscription specified
+        request['context'].update({'endpoint': 'topic:my-topic'})
+
+        with pytest.raises(ValueError) as ve:
+            handlers[request['action']](handler, request)
+        assert str(ve.value) == 'endpoint needs to include subscription when receiving messages from a topic'
+
+        # malformed request, no rule text in payload
+        request['context'].update({'endpoint': 'topic:my-topic, subscription:my-subscription'})
+
+        with pytest.raises(AsyncMessageError) as ame:
+            handlers[request['action']](handler, request)
+        assert str(ame.value) == 'no rule text in request'
+
+        # pre: valid request
+        mgmt_client_mock = mocker.MagicMock()
+        create_client_mock = mocker.patch('grizzly_extras.async_message.sb.ServiceBusAdministrationClient.from_connection_string', return_value=mgmt_client_mock)
+
+        request['payload'] = '1=1'
+
+        # specified topic does not exist
+        mgmt_client_mock.get_topic.side_effect = [ResourceNotFoundError]
+
+        with pytest.raises(AsyncMessageError) as ame:
+            handlers[request['action']](handler, request)
+        assert str(ame.value) == 'topic "my-topic" does not exist'
+
+        create_client_mock.assert_called_once_with(conn_str='Endpoint=sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=')
+        mgmt_client_mock.get_topic.assert_called_once_with(topic_name='my-topic')
+
+        mgmt_client_mock.get_topic.side_effect = None
+        mgmt_client_mock.get_topic.reset_mock()
+
+        # subscription already exist, default rule does not exist, rule exists
+        rule_mock = mocker.MagicMock()
+        mgmt_client_mock.delete_rule.side_effect = [ResourceNotFoundError]
+        mgmt_client_mock.create_rule.side_effect = [ResourceExistsError]
+        mgmt_client_mock.get_rule.return_value = rule_mock
+
+        assert handlers[request['action']](handler, request) == {'message': 'created subscription my-subscription on topic my-topic'}
+
+        mgmt_client_mock.create_subscription.assert_not_called()
+        mgmt_client_mock.get_subscription.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription')
+        mgmt_client_mock.delete_rule.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription', rule_name='$Default')
+        mgmt_client_mock.create_rule.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription', rule_name='grizzly')
+        mgmt_client_mock.get_rule.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription', rule_name='grizzly')
+        assert rule_mock.filter.sql_expression == '1=1'
+        mgmt_client_mock.update_rule.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription', rule=rule_mock)
+
+        mgmt_client_mock.reset_mock()
+        rule_mock.reset_mock()
+
+        # subscription does not exist, default rule exists, rule does not exist
+        request['payload'] = 'foo=bar AND foo=baz'
+        mgmt_client_mock.get_rule.return_value = None
+        mgmt_client_mock.create_rule.return_value = rule_mock
+        mgmt_client_mock.delete_rule.side_effect = None
+        mgmt_client_mock.create_rule.side_effect = None
+        mgmt_client_mock.get_subscription.side_effect = [ResourceNotFoundError]
+
+        assert handlers[request['action']](handler, request) == {'message': 'created subscription my-subscription on topic my-topic'}
+
+        mgmt_client_mock.create_subscription.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription')
+        mgmt_client_mock.get_subscription.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription')
+        mgmt_client_mock.delete_rule.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription', rule_name='$Default')
+        mgmt_client_mock.create_rule.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription', rule_name='grizzly')
+        mgmt_client_mock.get_rule.assert_not_called()
+        assert rule_mock.filter.sql_expression == 'foo=bar AND foo=baz'
+        mgmt_client_mock.update_rule.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription', rule=rule_mock)
+
+    def test_unsubscribe(self, mocker: MockerFixture) -> None:
+        from grizzly_extras.async_message.sb import handlers
+
+        handler = AsyncServiceBusHandler(worker='asdf-asdf-asdf')
+
+        # malformed request, no context
+        request: AsyncMessageRequest = {
+            'action': 'UNSUBSCRIBE',
+        }
+
+        with pytest.raises(AsyncMessageError) as ame:
+            handlers[request['action']](handler, request)
+        assert str(ame.value) == 'no context in request'
+
+        # malformed request, subscribe on queue
+        request = {
+            'action': 'UNSUBSCRIBE',
+            'context': {
+                'url': 'sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=',
+                'endpoint': 'queue:test-queue',
+                'connection': 'receiver',
+            },
+        }
+
+        with pytest.raises(AsyncMessageError) as ame:
+            handlers[request['action']](handler, request)
+        assert str(ame.value) == 'subscriptions is only allowed on topics'
+
+        # malformed request, no subscription specified
+        request['context'].update({'endpoint': 'topic:my-topic'})
+
+        with pytest.raises(ValueError) as ve:
+            handlers[request['action']](handler, request)
+        assert str(ve.value) == 'endpoint needs to include subscription when receiving messages from a topic'
+
+        # pre: valid request
+        mgmt_client_mock = mocker.MagicMock()
+        create_client_mock = mocker.patch('grizzly_extras.async_message.sb.ServiceBusAdministrationClient.from_connection_string', return_value=mgmt_client_mock)
+        request['context'].update({'endpoint': 'topic:my-topic, subscription:my-subscription'})
+
+        # topic does not exist
+        mgmt_client_mock.get_topic.side_effect = [ResourceNotFoundError]
+
+        with pytest.raises(AsyncMessageError) as ame:
+            handlers[request['action']](handler, request)
+        assert str(ame.value) == 'topic "my-topic" does not exist'
+
+        create_client_mock.assert_called_once_with(conn_str='Endpoint=sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=')
+        mgmt_client_mock.get_topic.assert_called_once_with(topic_name='my-topic')
+        mgmt_client_mock.delete_subscription.assert_not_called()
+
+        mgmt_client_mock.reset_mock()
+
+        # subscription does not exist
+        mgmt_client_mock.get_topic.side_effect = None
+        mgmt_client_mock.get_subscription.side_effect = [ResourceNotFoundError]
+
+        with pytest.raises(AsyncMessageError) as ame:
+            handlers[request['action']](handler, request)
+        assert str(ame.value) == 'subscription "my-subscription" does not exist on topic "my-topic"'
+
+        mgmt_client_mock.get_topic.assert_called_once_with(topic_name='my-topic')
+        mgmt_client_mock.get_subscription.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription')
+        mgmt_client_mock.delete_subscription.assert_not_called()
+
+        mgmt_client_mock.reset_mock()
+
+        # all good
+        mgmt_client_mock.get_subscription.side_effect = None
+
+        assert handlers[request['action']](handler, request) == {'message': 'removed subscription my-subscription on topic my-topic'}
+
+        mgmt_client_mock.get_topic.assert_called_once_with(topic_name='my-topic')
+        mgmt_client_mock.get_subscription.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription')
+        mgmt_client_mock.delete_subscription.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription')
 
     def test_from_message(self) -> None:
         assert AsyncServiceBusHandler.from_message(None) == (None, None,)
