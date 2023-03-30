@@ -38,7 +38,7 @@ And set context variable "auth.refresh_time" to "3500"
 
 ``` gherkin
 Given a user of type "RestApi" load testing "https://api.example.com"
-And set context variable "auth.client.tenant" "<tenant name/guid>"
+And set context variable "auth.provider" to "<provider>"
 And set context variable "auth.client.id" to "<client id>"
 And set context variable "auth.client.secret" to "<client secret>"
 And set context variable "auth.client.resource" to "<resource url/guid>"
@@ -50,6 +50,7 @@ And set context variable "auth.client.resource" to "<resource url/guid>"
 
 ``` gherkin
 Given a user of type "RestApi" load testing "https://api.example.com"
+And set context variable "auth.provider" to "<provider>"
 And set context variable "auth.client.id" to "<client id>"
 And set context variable "auth.user.username" to "alice@example.onmicrosoft.com"
 And set context variable "auth.user.password" to "HemL1gaArn3!"
@@ -64,7 +65,7 @@ RestApi supports posting of multipart/form-data content-type, and in that case a
 
 * `multipart_form_data_filename` _str_ - the filename
 
-E.g:
+Example:
 
 ``` gherkin
 Then post request "path/my_template.j2.xml" with name "FormPost" to endpoint "example.url.com | content_type=multipart/form-data, multipart_form_data_filename=my_filename, multipart_form_data_name=form_name"
@@ -79,7 +80,7 @@ from functools import wraps
 from enum import Enum
 from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
-from secrets import token_bytes
+from secrets import token_urlsafe
 from hashlib import sha256
 from base64 import urlsafe_b64encode
 
@@ -91,7 +92,7 @@ from grizzly_extras.transformer import TransformerContentType
 
 from grizzly.types import GrizzlyResponse, RequestType, RequestMethod, WrappedFunc, GrizzlyResponseContextManager
 from grizzly.types.locust import Environment, StopUser
-from grizzly.utils import merge_dicts
+from grizzly.utils import merge_dicts, safe_del
 from grizzly.tasks import RequestTask
 from grizzly.clients import ResponseEventSession
 
@@ -117,12 +118,14 @@ class refresh_token:
             use_auth_client = (
                 auth_context.get('client', {}).get('id', None) is not None
                 and auth_context.get('client', {}).get('secret', None) is not None
+                and auth_context.get('provider', None) is not None
             )
             use_auth_user = (
                 auth_context.get('client', {}).get('id', None) is not None
                 and auth_context.get('user', {}).get('username', None) is not None
                 and auth_context.get('user', {}).get('password', None) is not None
                 and auth_context.get('user', {}).get('redirect_uri', None) is not None
+                and auth_context.get('provider', None) is not None
             )
 
             if use_auth_client:
@@ -140,10 +143,7 @@ class refresh_token:
                 if session_duration >= auth_context.get('refresh_time', 3000) or cls.headers.get('Authorization', None) is None:
                     cls.get_token(auth_method)
             else:
-                try:
-                    del cls.headers['Authorization']
-                except KeyError:
-                    pass
+                safe_del(cls.headers, 'Authorization')
 
             return func(cls, *args, **kwargs)
 
@@ -159,12 +159,11 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
         'verify_certificates': True,
         'auth': {
             'refresh_time': 3000,
-            'url': None,
+            'provider': None,
             'client': {
                 'id': None,
                 'secret': None,
                 'resource': None,
-                'tenant': None,
             },
             'user': {
                 'username': None,
@@ -204,13 +203,13 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
 
     def get_token(self, auth_method: AuthMethod) -> None:
         if auth_method == AuthMethod.CLIENT:
-            self.get_client_token()
+            self.get_oauth_token()
         elif auth_method == AuthMethod.USER:
-            self.get_user_token()
+            self.get_oauth_authorization()
         else:
             pass
 
-    def get_user_token(self) -> None:
+    def get_oauth_authorization(self) -> None:
         def _parse_response_config(response: requests.Response) -> Dict[str, Any]:
             match = re.search(r'Config={(.*?)};', response.text, re.MULTILINE)
 
@@ -243,16 +242,21 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
                 uuid[20:]
             )
 
-        def generate_code_challenge() -> str:
-            code_verifier: bytes = token_bytes(32)  # 32 bytes = 265 bits
+        def generate_pkcs() -> Tuple[str, str]:
+            code_verifier: bytes = urlsafe_b64encode(token_urlsafe(96)[:128].encode('ascii'))
 
-            return urlsafe_b64encode(
+            code_challenge = urlsafe_b64encode(
                 sha256(code_verifier).digest()
-            ).decode('utf-8').replace('=', '')
+            ).decode('ascii')[:-1]
+
+            return code_verifier.decode('ascii'), code_challenge
 
         headers_ua: Dict[str, str] = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:88.0) Gecko/20100101 Firefox/88.0'
         }
+
+        # this is added when successful
+        safe_del(self.headers, 'Authorization')
 
         auth_user_context = self._context['auth']['user']
         start_time = time_perf_counter()
@@ -260,16 +264,9 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
         exception: Optional[Exception] = None
 
         try:
-            if self._context['auth']['url'] is None:
-                try:
-                    [_, tenant] = auth_user_context['username'].rsplit('@', 1)
-                    if tenant is None or len(tenant) < 1:
-                        raise RuntimeError()
-                except Exception:
-                    raise ValueError(f'auth.url was not set and could not find tenant part in {auth_user_context["username"]}')
-                self._context['auth']['url'] = f'https://login.microsoftonline.com/{tenant}/oauth2/authorize'
-
-            auth_url_parsed = urlparse(self._context['auth']['url'])
+            provider_url = self._context['auth'].get('provider', None)
+            assert provider_url is not None, 'context variable auth.provider is not set'
+            auth_provider_parsed = urlparse(provider_url)
 
             total_response_length = 0
 
@@ -296,13 +293,12 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
                 username_lowercase = auth_user_context['username'].lower()
 
                 redirect_uri_parsed = urlparse(auth_user_context['redirect_uri'])
+                redirect_uri = auth_user_context['redirect_uri']
 
                 if len(redirect_uri_parsed.netloc) == 0:
-                    redirect_uri = f"{self._context['host']}{auth_user_context['redirect_uri']}"
-                else:
-                    redirect_uri = auth_user_context['redirect_uri']
+                    redirect_uri = f"{self._context['host']}{redirect_uri}"
 
-                url = cast(str, self._context['auth']['url'])
+                url = f'{provider_url}/authorize'
 
                 params: Dict[str, List[str]] = {
                     'response_type': ['id_token'],
@@ -316,18 +312,22 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
                 }
 
                 is_token_v2_0 = 'oauth2/v2.0' in url
+                self.logger.debug(f'{is_token_v2_0=}')
+                code_verifier: Optional[str] = None
+                code_challenge: Optional[str] = None
 
                 if is_token_v2_0:
+                    code_verifier, code_challenge = generate_pkcs()
                     params.update({
                         'response_type': ['code'],
                         'response_mode': ['fragment'],
                         'scope': ['openid profile offline_access'],
                         'code_challenge_method': ['S256'],
-                        'code_challenge': [generate_code_challenge()],
+                        'code_challenge': [code_challenge],
                     })
 
                 headers = {
-                    'Host': str(auth_url_parsed.netloc),
+                    'Host': str(auth_provider_parsed.netloc),
                     **headers_ua,
                 }
 
@@ -341,6 +341,7 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
                 referer = response.url
 
                 config = _parse_response_config(response)
+
                 exception_message = config.get('strServiceExceptionMessage', None)
 
                 if exception_message is not None and len(exception_message.strip()) > 0:
@@ -358,7 +359,7 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
 
                 headers = {
                     'Accept': 'application/json',
-                    'Host': str(auth_url_parsed.netloc),
+                    'Host': str(auth_provider_parsed.netloc),
                     'ContentType': 'application/json; charset=UTF-8',
                     'canary': state['apiCanary'],
                     'client-request-id': client_request_id,
@@ -410,7 +411,7 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
                 headers = {
                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
                     'Content-Type': 'application/x-www-form-urlencoded',
-                    'Host': str(auth_url_parsed.netloc),
+                    'Host': str(auth_provider_parsed.netloc),
                     'Referer': referer,
                     **headers_ua,
                 }
@@ -475,12 +476,12 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
 
                 #  <!-- request 4
                 assert not config['urlPost'].startswith('https://'), f"unexpected response from {response.url}, incorrect username and/or password?"
-                url = f'{str(auth_url_parsed.scheme)}://{str(auth_url_parsed.netloc)}{config["urlPost"]}'
+                url = f'{str(auth_provider_parsed.scheme)}://{str(auth_provider_parsed.netloc)}{config["urlPost"]}'
 
                 headers = {
                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
                     'Content-Type': 'application/x-www-form-urlencoded',
-                    'Host': str(auth_url_parsed.netloc),
+                    'Host': str(auth_provider_parsed.netloc),
                     'Referer': referer,
                     **headers_ua,
                 }
@@ -495,6 +496,7 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
                     'i19': '1337',
                 }
 
+                # does not seem to be needed for token v2.0, so only add them for v1.0
                 if not is_token_v2_0:
                     payload.update({
                         'i2': '',
@@ -516,8 +518,8 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
                             raise RuntimeError(exception_message)
                     except ValueError:
                         pass
-                    else:
-                        raise RuntimeError(f'user auth request 4: {response.url} had unexpected status code {response.status_code}')
+
+                    raise RuntimeError(f'user auth request 4: {response.url} had unexpected status code {response.status_code}')
 
                 assert 'Location' in response.headers, f'Location header was not found in response from {response.url}'
 
@@ -527,16 +529,18 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
 
                 token_url_parsed = urlparse(token_url)
                 fragments = parse_qs(token_url_parsed.fragment)
+
+                # exchange received with with a token
                 if is_token_v2_0:
+                    assert code_verifier is not None, 'no code verifier has been generated!'
                     assert 'code' in fragments, f'could not find code in {token_url}'
-                    token = fragments['code'][0]
+                    code = fragments['code'][0]
+                    self.get_oauth_token((code, code_verifier,))
                 else:
                     assert 'id_token' in fragments, f'could not find id_token in {token_url}'
                     token = fragments['id_token'][0]
-
-                print(f'{token=}')
-                self.headers['Authorization'] = f'Bearer {token}'
-                self.session_started = time()
+                    self.headers['Authorization'] = f'Bearer {token}'
+                    self.session_started = time()
         except Exception as e:
             exception = e
             self.logger.error(str(e), exc_info=True)
@@ -558,31 +562,69 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
             if exception is not None:
                 raise StopUser()
 
-    def get_client_token(self) -> None:
+    def get_oauth_token(self, pkcs: Optional[Tuple[str, str]] = None) -> None:
         name = self.__class__.__name__.rsplit('_', 1)[-1]
 
+        provider_url = self._context['auth'].get('provider', None)
+        assert provider_url is not None, 'context variable auth.provider is not set'
+
         auth_client_context = self._context['auth']['client']
-        resource = auth_client_context['resource'] if 'resource' in auth_client_context and auth_client_context['resource'] is not None else self.host
+        resource = auth_client_context.get('resource', self.host)
 
-        if 'url' not in self._context['auth'] or self._context['auth']['url'] is None:
-            if 'tenant' not in auth_client_context or auth_client_context['tenant'] is None:
-                raise ValueError('auth.client.tenant and auth.url is not set, one of them is needed!')
-            tenant = auth_client_context['tenant']
-            self._context['auth']['url'] = f'https://login.microsoftonline.com/{tenant}/oauth2/token'
+        url = f'{provider_url}/token'
 
+        # parameters valid for both versions
         parameters: Dict[str, Any] = {
             'data': {
-                'grant_type': 'client_credentials',
+                'grant_type': None,
                 'client_id': auth_client_context['id'],
-                'client_secret': auth_client_context['secret'],
-                'resource': resource,
             },
             'verify': self._context.get('verify_certificates', True),
         }
 
+        # build generic header values, but remove stuff that shouldn't be part
+        # of authentication flow
+        headers = {**self.headers}
+        safe_del(headers, 'Authorization')
+        safe_del(headers, 'Content-Type')
+        safe_del(headers, 'Ocp-Apim-Subscription-Key')
+
+        if pkcs is None:  # token v1.0
+            parameters['data'].update({
+                'grant_type': 'client_credentials',
+                'client_secret': auth_client_context['secret'],
+                'resource': resource,
+            })
+        else:  # token v2.0
+            code, code_verifier = pkcs
+
+            auth_user_context = self._context['auth']['user']
+            redirect_uri = auth_user_context['redirect_uri']
+            redirect_uri_parsed = urlparse(redirect_uri)
+
+            if len(redirect_uri_parsed.netloc) == 0:
+                redirect_uri = f"{self._context['host']}{redirect_uri}"
+
+            origin = f'{redirect_uri_parsed.scheme}://{redirect_uri_parsed.netloc}'
+
+            headers.update({
+                'Origin': origin,
+                'Referer': origin,
+            })
+
+            parameters['data'].update({
+                'grant_type': 'authorization_code',
+                'redirect_uri': redirect_uri,
+                'code': code,
+                'code_verifier': code_verifier,
+            })
+            parameters.update({'allow_redirects': False})
+
+        parameters.update({'headers': headers})
+
         with self.client.request(
             'POST',
-            self._context['auth']['url'],
+            url,
             name=f'{name} OAuth2 client token',
             request=None,
             catch_response=True,
@@ -590,16 +632,22 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
         ) as response:
             if response.status_code == 200:
                 payload = json.loads(response.text)
-                access_token = str(payload['access_token'])
 
-                self.headers['Authorization'] = f'Bearer {access_token}'
+                if pkcs is None:
+                    token = str(payload['access_token'])
+                else:
+                    token = str(payload['id_token'])
+
+                self.headers['Authorization'] = f'Bearer {token}'
                 self.session_started = time()
 
                 response.success()
             else:
                 message = self.get_error_message(response)
+                message = f'{message} ({response.status_code})'
 
-                response.failure(f'{response.status_code}: {message}')
+                self.logger.error(message)
+                response.failure(message)
 
                 raise StopUser()
 
@@ -735,7 +783,8 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
             return headers, response.text
 
     def add_context(self, context: Dict[str, Any]) -> None:
-        if context.get('auth', {}).get('user', {}).get('username', None) is not None:
+        # something change in auth context, we need to re-authenticate
+        if context.get('auth', {}) is not None:
             self.headers['Authorization'] = None
 
         super().add_context(context)

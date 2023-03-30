@@ -23,6 +23,7 @@ from grizzly.utils import (
     parse_timespan,
     check_mq_client_logs,
     async_message_request_wrapper,
+    safe_del,
 )
 from grizzly.types import RequestMethod
 from grizzly.types.behave import Context, Scenario, Status
@@ -704,3 +705,19 @@ def test_async_message_request_wrapper(grizzly_fixture: GrizzlyFixture, mocker: 
 
     async_message_request_wrapper(scenario, client_mock, request)
     async_message_request_mock.assert_called_once_with(client_mock, {'context': {'endpoint': 'hello foobar!'}})
+
+
+def test_safe_del() -> None:
+    struct = {'hello': 'world', 'foo': 'bar'}
+
+    safe_del(struct, 'bar')
+    assert struct == {'hello': 'world', 'foo': 'bar'}
+
+    safe_del(struct, 'hello')
+    assert struct == {'foo': 'bar'}
+
+    safe_del(struct, 'foo')
+    assert struct == {}
+
+    safe_del(struct, 'hello')
+    assert struct == {}
