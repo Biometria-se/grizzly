@@ -155,20 +155,20 @@ def test_get_template_variables() -> None:
     scenario.tasks.add(
         RequestTask(RequestMethod.POST, name='Test POST request', endpoint='/api/test/post')
     )
-    task = cast(RequestTask, scenario.tasks[-1])
+    task = cast(RequestTask, scenario.tasks()[-1])
     task.source = '{{ AtomicRandomString.test }}'
 
     scenario.tasks.add(
         RequestTask(RequestMethod.GET, name='{{ env }} GET request', endpoint='/api/{{ env }}/get')
     )
-    task = cast(RequestTask, scenario.tasks[-1])
+    task = cast(RequestTask, scenario.tasks()[-1])
     task.source = '{{ AtomicIntegerIncrementer.test }}'
 
     scenario.tasks.add(
         LogMessageTask(message='{{ foo }}')
     )
 
-    variables = get_template_variables(scenario.tasks)
+    variables = get_template_variables(scenario.tasks())
 
     expected_scenario_name = '_'.join([scenario.name, scenario.identifier])
 

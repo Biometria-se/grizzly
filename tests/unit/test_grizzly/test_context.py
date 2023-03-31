@@ -315,7 +315,7 @@ class TestGrizzlyContextScenario:
         assert not hasattr(scenario, 'user_class_name')
         assert scenario.iterations == 1
         assert scenario.context == {}
-        assert scenario.tasks == []
+        assert scenario.tasks() == []
         assert getattr(scenario, 'pace', '') is None
         assert isinstance(scenario.validation, GrizzlyContextScenarioValidation)
         assert not scenario.failure_exception
@@ -337,24 +337,24 @@ class TestGrizzlyContextScenario:
 
         scenario.tasks.add(request)
 
-        assert scenario.tasks == [request]
-        assert isinstance(scenario.tasks[-1], RequestTask) and scenario.tasks[-1].scenario is scenario
+        assert scenario.tasks() == [request]
+        assert isinstance(scenario.tasks()[-1], RequestTask) and scenario.tasks()[-1].scenario is scenario
 
         second_request = RequestTask(RequestMethod.POST, name='Second Request', endpoint='/api/test/2')
         second_request.source = '{"hello": "world!"}'
         assert isinstance(second_request.template, Template)
 
         scenario.tasks.add(second_request)
-        assert scenario.tasks == [request, second_request]
-        assert isinstance(scenario.tasks[-1], RequestTask) and scenario.tasks[-1].scenario is scenario
+        assert scenario.tasks() == [request, second_request]
+        assert isinstance(scenario.tasks()[-1], RequestTask) and scenario.tasks()[-1].scenario is scenario
 
         wait_task = WaitTask(time_expression='1.337')
         scenario.tasks.add(wait_task)
-        assert scenario.tasks == [request, second_request, wait_task]
+        assert scenario.tasks() == [request, second_request, wait_task]
 
         log_task = LogMessageTask(message='hello general')
         scenario.tasks.add(log_task)
-        assert scenario.tasks == [request, second_request, wait_task, log_task]
+        assert scenario.tasks() == [request, second_request, wait_task, log_task]
 
     def test_scenarios(self, behave_fixture: BehaveFixture) -> None:
         behave = behave_fixture.context

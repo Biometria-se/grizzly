@@ -58,8 +58,8 @@ class TestServiceBusUser:
             assert say_hello_spy.call_count == 3
 
             for index, (args, _) in enumerate(say_hello_spy.call_args_list):
-                assert args[0] is scenario.tasks[index + 1]
-                assert args[1] == cast(RequestTask, scenario.tasks[index + 1]).endpoint
+                assert args[0] is scenario.tasks()[index + 1]
+                assert args[1] == cast(RequestTask, scenario.tasks()[index + 1]).endpoint
         finally:
             setattr(ServiceBusUser, '_scenario', None)
             ServiceBusUser._context = {
@@ -108,8 +108,8 @@ class TestServiceBusUser:
             assert disconnect_spy.call_count == 3
 
             for index, (args, _) in enumerate(disconnect_spy.call_args_list):
-                assert args[0] is scenario.tasks[index + 1]
-                assert args[1] == cast(RequestTask, scenario.tasks[index + 1]).endpoint
+                assert args[0] is scenario.tasks()[index + 1]
+                assert args[1] == cast(RequestTask, scenario.tasks()[index + 1]).endpoint
         finally:
             setattr(ServiceBusUser, '_scenario', None)
             ServiceBusUser._context = {

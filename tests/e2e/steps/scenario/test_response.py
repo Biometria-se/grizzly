@@ -21,12 +21,12 @@ def test_e2e_step_response_save_matches(e2e_fixture: End2EndFixture, target: Res
         data = list(context.table)[0].as_dict()
         handler_type = data['target']
 
-        grizzly.scenario.tasks.pop()  # latest task is a dummy task
+        grizzly.scenario.tasks().pop()  # latest task is a dummy task
 
         assert len(grizzly.scenario.orphan_templates) == 1, 'unexpected number of orphan templates'
         assert grizzly.scenario.orphan_templates[0] == '{{ expression }}', f'{grizzly.scenario.orphan_templates[0]} != {{ expression }}'
 
-        request = grizzly.scenario.tasks[-2]
+        request = grizzly.scenario.tasks()[-2]
 
         assert isinstance(request, RequestTask), f'{request.__class__.__name__} != RequestTask'
 
@@ -76,11 +76,11 @@ def test_e2e_step_response_save(e2e_fixture: End2EndFixture, target: ResponseTar
         data = list(context.table)[0].as_dict()
         handler_type = data['target']
 
-        grizzly.scenario.tasks.pop()  # latest task is a dummy task
+        grizzly.scenario.tasks().pop()  # latest task is a dummy task
 
         assert len(grizzly.scenario.orphan_templates) == 0, 'unexpected number of orphan templates'
 
-        request = grizzly.scenario.tasks[-2]
+        request = grizzly.scenario.tasks()[-2]
 
         assert isinstance(request, RequestTask), f'{request.__class__.__name__} != RequestTask'
 
@@ -130,13 +130,13 @@ def test_e2e_step_response_validate(e2e_fixture: End2EndFixture, target: Respons
         handler_type = data['target']
         textual_condition = data['condition']
 
-        grizzly.scenario.tasks.pop()  # latest task is a dummy task
+        grizzly.scenario.tasks().pop()  # latest task is a dummy task
 
         assert len(grizzly.scenario.orphan_templates) == 0, 'unexpected number of orphan templates'
 
         assert grizzly.scenario.failure_exception is None
 
-        request = grizzly.scenario.tasks[-1]
+        request = grizzly.scenario.tasks()[-1]
 
         assert isinstance(request, RequestTask), f'{request.__class__.__name__} != RequestTask'
 
@@ -190,9 +190,9 @@ def test_e2e_step_allow_status_codes(e2e_fixture: End2EndFixture, status_codes: 
         data = list(context.table)[0].as_dict()
         status_codes = [int(status_code.strip()) for status_code in data['status_codes'].split(',') if status_code.strip() != '-200']
 
-        grizzly.scenario.tasks.pop()  # latest task is a dummy task
+        grizzly.scenario.tasks().pop()  # latest task is a dummy task
 
-        request = grizzly.scenario.tasks[-1]
+        request = grizzly.scenario.tasks()[-1]
 
         assert isinstance(request, RequestTask), f'{request.__class__.__name__} != RequestTask'
         assert request.response.status_codes == status_codes
@@ -225,14 +225,14 @@ def test_e2e_step_allow_status_codes_table(e2e_fixture: End2EndFixture) -> None:
 
         grizzly = cast(GrizzlyContext, context.grizzly)
 
-        grizzly.scenario.tasks.pop()
+        grizzly.scenario.tasks().pop()
 
-        request = grizzly.scenario.tasks[-1]
+        request = grizzly.scenario.tasks()[-1]
         assert isinstance(request, RequestTask), f'{request.__class__.__name__} != RequestTask'
         assert request.name == 'test-get-2', f'{request.name} != test-get-2'
         assert request.response.status_codes == [404], f'{str(request.response.status_codes)} != [404]'
 
-        request = grizzly.scenario.tasks[-2]
+        request = grizzly.scenario.tasks()[-2]
         assert isinstance(request, RequestTask), f'{request.__class__.__name__} != RequestTask'
         assert request.name == 'test-get-1', f'{request.name} != test-get-1'
         assert request.response.status_codes == [200, 302], f'{str(request.response.status_codes)} != [200, 302]'
@@ -270,7 +270,7 @@ def test_e2e_step_response_content_type(e2e_fixture: End2EndFixture, content_typ
         grizzly = cast(GrizzlyContext, context.grizzly)
         data = list(context.table)[0].as_dict()
 
-        request = grizzly.scenario.tasks[-2]
+        request = grizzly.scenario.tasks()[-2]
         assert isinstance(request, RequestTask), f'{request.__class__.__name__} != RequestTask'
         assert request.name == 'test-get-1', f'{request.name} != test-get-1'
         assert request.response.content_type == TransformerContentType.from_string(data['content_type'])

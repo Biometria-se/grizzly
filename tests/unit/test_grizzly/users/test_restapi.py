@@ -685,7 +685,7 @@ class TestRestApiUser:
 
     def test_async_request(self, restapi_user: RestApiScenarioFixture, mocker: MockerFixture) -> None:
         user, scenario = restapi_user
-        request = cast(RequestTask, scenario.tasks[-1])
+        request = cast(RequestTask, scenario.tasks()[-1])
 
         request_spy = mocker.patch.object(user, '_request')
 
@@ -716,7 +716,7 @@ class TestRestApiUser:
 
     def test_request(self, restapi_user: RestApiScenarioFixture, mocker: MockerFixture) -> None:
         user, scenario = restapi_user
-        request = cast(RequestTask, scenario.tasks[-1])
+        request = cast(RequestTask, scenario.tasks()[-1])
 
         request_spy = mocker.patch.object(user, '_request')
 
@@ -759,7 +759,7 @@ class TestRestApiUser:
                 cls_rcm = cast(Type[GrizzlyResponseContextManager], ResponseContextManager if request_func is RestApiUser.request else FastResponseContextManager)
                 return response_context_manager_fixture(cls_rcm, self.status_code, self.user.environment, response_body={}, **kwargs)  # type: ignore
 
-        request = cast(RequestTask, scenario.tasks[-1])
+        request = cast(RequestTask, scenario.tasks()[-1])
 
         # missing template variables
         with pytest.raises(StopUser):
