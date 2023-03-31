@@ -255,9 +255,6 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:88.0) Gecko/20100101 Firefox/88.0'
         }
 
-        # this is added when successful
-        safe_del(self.headers, 'Authorization')
-
         auth_user_context = self._context['auth']['user']
         start_time = time_perf_counter()
         total_response_length = 0
@@ -790,7 +787,7 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
 
     def add_context(self, context: Dict[str, Any]) -> None:
         # something change in auth context, we need to re-authenticate
-        if context.get('auth', {}) is not None:
+        if context.get('auth', {}).get('user', {}).get('username', None) is not None:
             self.headers['Authorization'] = None
 
         super().add_context(context)
