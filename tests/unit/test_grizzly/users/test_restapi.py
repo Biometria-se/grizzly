@@ -253,6 +253,17 @@ class TestRestApiUser:
             },
             'metadata': None,
         }
+        assert user.headers == {
+            'Authorization': None,
+            'Content-Type': 'application/json',
+            'x-grizzly-user': user.__class__.__name__,
+        }
+
+        RestApiUser._context['metadata'] = {'foo': 'bar'}
+
+        user = RestApiUser(user.environment)
+
+        assert user.headers.get('foo', None) == 'bar'
 
     def test_on_start(self, restapi_user: RestApiScenarioFixture) -> None:
         [user, _] = restapi_user
@@ -289,8 +300,16 @@ class TestRestApiUser:
         get_oauth_authorization_mock.assert_not_called()
         get_oauth_token_mock.assert_not_called()
 
-    def test_get_oauth_token(self, restapi_user: RestApiScenarioFixture, mocker: MockerFixture) -> None:
+    @pytest.mark.parametrize('grant_type', ['client_credentials', 'authorization_code'])
+    def test_get_oauth_token(self, restapi_user: RestApiScenarioFixture, mocker: MockerFixture, grant_type: str) -> None:
         [user, _] = restapi_user
+
+        if grant_type == 'authorization_code':
+            pkcs = ('code', 'code_verifier',)
+            token_name = 'id_token'
+        else:
+            pkcs = None
+            token_name = 'access_token'
 
         def mock_client_post(payload: Dict[str, Any], status_code: int = 200) -> None:
             def client_post(self: ResponseEventSession, method: str, url: str, name: Optional[str] = None, **kwargs: Dict[str, Any]) -> ResponseContextManager:
@@ -313,6 +332,7 @@ class TestRestApiUser:
                 client_post,
             )
 
+        user._context['host'] = 'https://example.com'
         user._context['auth'].update({
             'provider': 'https://login.example.com/oauth2',
             'client': {
@@ -329,18 +349,18 @@ class TestRestApiUser:
         mock_client_post({'error_description': 'fake error message'}, 400)
 
         with pytest.raises(StopUser):
-            user.get_oauth_token()
+            user.get_oauth_token(pkcs)
 
         assert user.session_started is None
 
         user.session_started = session_started
 
-        mock_client_post({'access_token': 'asdf'}, 200)
+        mock_client_post({token_name: 'asdf'}, 200)
 
         assert user.headers['Authorization'] is None
 
         with pytest.raises(ResultSuccess):
-            user.get_oauth_token()
+            user.get_oauth_token(pkcs)
 
         assert user.session_started >= session_started
         assert user.headers['Authorization'] == 'Bearer asdf'
@@ -348,7 +368,7 @@ class TestRestApiUser:
         user._context['auth']['provider'] = None
 
         with pytest.raises(AssertionError) as ae:
-            user.get_oauth_token()
+            user.get_oauth_token(pkcs)
         assert str(ae.value) == 'context variable auth.provider is not set'
 
     @pytest.mark.skip(reason='needs credentials, should run explicitly manually')
@@ -389,14 +409,19 @@ class TestRestApiUser:
             user.logger.info(fire.call_args_list)
             assert 0
 
-    def test_get_user_token(self, restapi_user: RestApiScenarioFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
+    @pytest.mark.parametrize('version', ['v1.0', 'v2.0'])
+    def test_get_oauth_authorization(self, restapi_user: RestApiScenarioFixture, mocker: MockerFixture, caplog: LogCaptureFixture, version: str) -> None:
         [user, _] = restapi_user
+
+        is_token_v2_0 = version == 'v2.0'
 
         fire_spy = mocker.spy(user.environment.events.request, 'fire')
         mocker.patch('grizzly.users.restapi.time_perf_counter', return_value=0.0)
+        get_oauth_token_mock = mocker.patch.object(user, 'get_oauth_token', return_value=None)
 
         class Error(Enum):
             REQUEST_1_NO_DOLLAR_CONFIG = 0
+            REQUEST_1_DOLLAR_CONFIG_ERROR = 10
             REQUEST_1_HTTP_STATUS = 1
             REQUEST_2_HTTP_STATUS = 2
             REQUEST_3_HTTP_STATUS = 3
@@ -432,6 +457,8 @@ class TestRestApiUser:
                         }
                         if inject_error == Error.REQUEST_1_MISSING_STATE:
                             del dollar_config_raw['hpgact']
+                        elif inject_error == Error.REQUEST_1_DOLLAR_CONFIG_ERROR:
+                            dollar_config_raw['strServiceExceptionMessage'] = 'oh no!'
 
                         dollar_config = jsondumps(dollar_config_raw)
                         response._content = f'$Config={dollar_config};'.encode('utf-8')
@@ -507,7 +534,13 @@ class TestRestApiUser:
                         redirect_uri = f"{user._context['host']}{auth_user_context['redirect_uri']}"
                     else:
                         redirect_uri = auth_user_context['redirect_uri']
-                    response.headers['Location'] = f'{redirect_uri}#id_token=asdf'
+
+                    if is_token_v2_0:
+                        token_name = 'code'
+                    else:
+                        token_name = 'id_token'
+
+                    response.headers['Location'] = f'{redirect_uri}#{token_name}=asdf'
                 else:
                     response._content = jsondumps({'error_description': 'error'}).encode('utf-8')
 
@@ -538,25 +571,18 @@ class TestRestApiUser:
         mock_request_session()
 
         # test when auth.provider is not set
-        with pytest.raises(StopUser):
+        with pytest.raises(AssertionError) as ae:
             user.get_oauth_authorization()
+        assert str(ae.value) == 'context variable auth.provider is not set'
 
-        fire_spy.assert_called_once_with(
-            request_type='GET',
-            response_time=0,
-            name='RestApiUser OAuth2 user token',
-            context=user._context,
-            response_length=0,
-            response=None,
-            exception=ANY,
-        )
-        _, kwargs = fire_spy.call_args_list[-1]
-        exception = kwargs.get('exception', None)
-        assert isinstance(exception, AssertionError)
-        assert str(exception) == 'context variable auth.provider is not set'
-        fire_spy.reset_mock()
+        fire_spy.assert_not_called()
 
-        user._context['auth']['provider'] = 'https://login.example.com/oauth2'
+        provider_url = 'https://login.example.com/oauth2'
+
+        if version != 'v1.0':
+            provider_url = f'{provider_url}{version}'
+
+        user._context['auth']['provider'] = provider_url
 
         # test when login sequence returns bad request
         mock_request_session(Error.REQUEST_1_HTTP_STATUS)
@@ -567,7 +593,7 @@ class TestRestApiUser:
         fire_spy.assert_called_once_with(
             request_type='GET',
             response_time=0,
-            name='RestApiUser OAuth2 user token',
+            name=f'RestApiUser OAuth2 user token {version}',
             context=user._context,
             response_length=0,
             response=None,
@@ -576,7 +602,7 @@ class TestRestApiUser:
         _, kwargs = fire_spy.call_args_list[-1]
         exception = kwargs.get('exception', None)
         assert isinstance(exception, RuntimeError)
-        assert str(exception) == 'user auth request 1: https://login.example.com/oauth2/authorize had unexpected status code 400'
+        assert str(exception) == f'user auth request 1: {provider_url}/authorize had unexpected status code 400'
         fire_spy.reset_mock()
 
         mock_request_session(Error.REQUEST_2_HTTP_STATUS)
@@ -587,7 +613,7 @@ class TestRestApiUser:
         fire_spy.assert_called_once_with(
             request_type='GET',
             response_time=0,
-            name='RestApiUser OAuth2 user token',
+            name=f'RestApiUser OAuth2 user token {version}',
             context=user._context,
             response_length=0,
             response=None,
@@ -607,7 +633,7 @@ class TestRestApiUser:
         fire_spy.assert_called_once_with(
             request_type='GET',
             response_time=0,
-            name='RestApiUser OAuth2 user token',
+            name=f'RestApiUser OAuth2 user token {version}',
             context=user._context,
             response_length=0,
             response=None,
@@ -628,7 +654,7 @@ class TestRestApiUser:
         fire_spy.assert_called_once_with(
             request_type='GET',
             response_time=0,
-            name='RestApiUser OAuth2 user token',
+            name=f'RestApiUser OAuth2 user token {version}',
             context=user._context,
             response_length=0,
             response=None,
@@ -654,7 +680,7 @@ class TestRestApiUser:
         fire_spy.assert_called_once_with(
             request_type='GET',
             response_time=0,
-            name='RestApiUser OAuth2 user token',
+            name=f'RestApiUser OAuth2 user token {version}',
             context=user._context,
             response_length=0,
             response=None,
@@ -679,7 +705,7 @@ class TestRestApiUser:
         fire_spy.assert_called_once_with(
             request_type='GET',
             response_time=0,
-            name='RestApiUser OAuth2 user token',
+            name=f'RestApiUser OAuth2 user token {version}',
             context=user._context,
             response_length=0,
             response=None,
@@ -701,7 +727,7 @@ class TestRestApiUser:
         fire_spy.assert_called_once_with(
             request_type='GET',
             response_time=0,
-            name='RestApiUser OAuth2 user token',
+            name=f'RestApiUser OAuth2 user token {version}',
             context=user._context,
             response_length=0,
             response=None,
@@ -721,7 +747,7 @@ class TestRestApiUser:
         fire_spy.assert_called_once_with(
             request_type='GET',
             response_time=0,
-            name='RestApiUser OAuth2 user token',
+            name=f'RestApiUser OAuth2 user token {version}',
             context=user._context,
             response_length=0,
             response=None,
@@ -730,7 +756,7 @@ class TestRestApiUser:
         _, kwargs = fire_spy.call_args_list[-1]
         exception = kwargs.get('exception', None)
         assert isinstance(exception, ValueError)
-        assert str(exception) == 'no config found in response from https://login.example.com/oauth2/authorize'
+        assert str(exception) == f'no config found in response from {provider_url}/authorize'
         fire_spy.reset_mock()
 
         mock_request_session(Error.REQUEST_1_MISSING_STATE)
@@ -740,7 +766,7 @@ class TestRestApiUser:
         fire_spy.assert_called_once_with(
             request_type='GET',
             response_time=0,
-            name='RestApiUser OAuth2 user token',
+            name=f'RestApiUser OAuth2 user token {version}',
             context=user._context,
             response_length=0,
             response=None,
@@ -749,7 +775,26 @@ class TestRestApiUser:
         _, kwargs = fire_spy.call_args_list[-1]
         exception = kwargs.get('exception', None)
         assert isinstance(exception, ValueError)
-        assert str(exception) == 'unexpected response body from https://login.example.com/oauth2/authorize: missing "hpgact" in config'
+        assert str(exception) == f'unexpected response body from {provider_url}/authorize: missing "hpgact" in config'
+        fire_spy.reset_mock()
+
+        mock_request_session(Error.REQUEST_1_DOLLAR_CONFIG_ERROR)
+        with pytest.raises(StopUser):
+            user.get_oauth_authorization()
+
+        fire_spy.assert_called_once_with(
+            request_type='GET',
+            response_time=0,
+            name=f'RestApiUser OAuth2 user token {version}',
+            context=user._context,
+            response_length=0,
+            response=None,
+            exception=ANY,
+        )
+        _, kwargs = fire_spy.call_args_list[-1]
+        exception = kwargs.get('exception', None)
+        assert isinstance(exception, RuntimeError)
+        assert str(exception) == 'oh no!'
         fire_spy.reset_mock()
 
         mock_request_session(Error.REQUEST_2_ERROR_MESSAGE)
@@ -759,7 +804,7 @@ class TestRestApiUser:
         fire_spy.assert_called_once_with(
             request_type='GET',
             response_time=0,
-            name='RestApiUser OAuth2 user token',
+            name=f'RestApiUser OAuth2 user token {version}',
             context=user._context,
             response_length=0,
             response=None,
@@ -778,13 +823,17 @@ class TestRestApiUser:
 
         user.get_oauth_authorization()
 
-        assert user.session_started > session_started
-        assert user.headers['Authorization'] == 'Bearer asdf'
+        if not is_token_v2_0:
+            get_oauth_token_mock.assert_not_called()
+            assert user.headers['Authorization'] == 'Bearer asdf'
+        else:
+            get_oauth_token_mock.assert_called_once_with((ANY, ANY,))
+            get_oauth_token_mock.reset_mock()
 
         fire_spy.assert_called_once_with(
             request_type='GET',
             response_time=0,
-            name='RestApiUser OAuth2 user token',
+            name=f'RestApiUser OAuth2 user token {version}',
             context=user._context,
             response_length=0,
             response=None,
@@ -800,7 +849,7 @@ class TestRestApiUser:
         fire_spy.assert_called_once_with(
             request_type='GET',
             response_time=0,
-            name='RestApiUser OAuth2 user token',
+            name=f'RestApiUser OAuth2 user token {version}',
             context=user._context,
             response_length=0,
             response=None,
@@ -1093,16 +1142,16 @@ class TestRestApiUser:
         user, _ = restapi_user
 
         assert 'test_context_variable' not in user._context
-        assert user._context['auth']['url'] is None
+        assert user._context['auth']['provider'] is None
         assert user._context['auth']['refresh_time'] == 3000
 
         user.add_context({'test_context_variable': 'value'})
 
         assert 'test_context_variable' in user._context
 
-        user.add_context({'auth': {'url': 'http://auth.example.org'}})
+        user.add_context({'auth': {'provider': 'http://auth.example.org'}})
 
-        assert user._context['auth']['url'] == 'http://auth.example.org'
+        assert user._context['auth']['provider'] == 'http://auth.example.org'
         assert user._context['auth']['refresh_time'] == 3000
 
         user.headers['Authorization'] = 'Bearer asdfasdfasdf'

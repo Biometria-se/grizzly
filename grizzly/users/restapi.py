@@ -262,11 +262,12 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
         start_time = time_perf_counter()
         total_response_length = 0
         exception: Optional[Exception] = None
+        provider_url = self._context['auth'].get('provider', None)
+        assert provider_url is not None, 'context variable auth.provider is not set'
+        auth_provider_parsed = urlparse(provider_url)
+        is_token_v2_0 = 'v2.0' in provider_url
 
         try:
-            provider_url = self._context['auth'].get('provider', None)
-            assert provider_url is not None, 'context variable auth.provider is not set'
-            auth_provider_parsed = urlparse(provider_url)
 
             total_response_length = 0
 
@@ -311,8 +312,6 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
                     'nonce': [generate_uuid()],
                 }
 
-                is_token_v2_0 = 'oauth2/v2.0' in url
-                self.logger.debug(f'{is_token_v2_0=}')
                 code_verifier: Optional[str] = None
                 code_challenge: Optional[str] = None
 
@@ -547,10 +546,12 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
         finally:
             name = self.__class__.__name__.rsplit('_', 1)[-1]
 
+            version = 'v1.0' if not is_token_v2_0 else 'v2.0'
+
             request_meta = {
                 'request_type': 'GET',
                 'response_time': int((time_perf_counter() - start_time) * 1000),
-                'name': f'{name} OAuth2 user token',
+                'name': f'{name} OAuth2 user token {version}',
                 'context': self._context,
                 'response': None,
                 'exception': exception,
@@ -572,6 +573,11 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
         resource = auth_client_context.get('resource', self.host)
 
         url = f'{provider_url}/token'
+
+        if pkcs is not None:
+            version = 'v2.0'
+        else:
+            version = 'v1.0'
 
         # parameters valid for both versions
         parameters: Dict[str, Any] = {
@@ -625,7 +631,7 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
         with self.client.request(
             'POST',
             url,
-            name=f'{name} OAuth2 client token',
+            name=f'{name} OAuth2 client token {version}',
             request=None,
             catch_response=True,
             **parameters,

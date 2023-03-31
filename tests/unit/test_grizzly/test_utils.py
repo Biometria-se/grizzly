@@ -188,12 +188,11 @@ def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
         'verify_certificates': True,
         'auth': {
             'refresh_time': 3000,
-            'url': None,
+            'provider': None,
             'client': {
                 'id': None,
                 'secret': None,
                 'resource': None,
-                'tenant': None,
             },
             'user': {
                 'username': None,
@@ -216,12 +215,11 @@ def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
         'verify_certificates': True,
         'auth': {
             'refresh_time': 3000,
-            'url': None,
+            'provider': None,
             'client': {
                 'id': None,
                 'secret': None,
                 'resource': None,
-                'tenant': None,
             },
             'user': {
                 'username': None,
@@ -249,7 +247,7 @@ def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
             'log_all_requests': True,
             'auth': {
                 'refresh_time': 1337,
-                'url': 'https://auth.example.com',
+                'provider': 'https://auth.example.com',
                 'user': {
                     'username': 'grizzly-user',
                 }
@@ -273,12 +271,11 @@ def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
         'verify_certificates': True,
         'auth': {
             'refresh_time': 1337,
-            'url': 'https://auth.example.com',
+            'provider': 'https://auth.example.com',
             'client': {
                 'id': None,
                 'secret': None,
                 'resource': None,
-                'tenant': None,
             },
             'user': {
                 'username': 'grizzly-user',
@@ -308,12 +305,11 @@ def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
         'verify_certificates': True,
         'auth': {
             'refresh_time': 1337,
-            'url': 'https://auth.example.com',
+            'provider': 'https://auth.example.com',
             'client': {
                 'id': None,
                 'secret': None,
                 'resource': None,
-                'tenant': None,
             },
             'user': {
                 'username': 'grizzly-user',
@@ -350,12 +346,11 @@ def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
         'verify_certificates': True,
         'auth': {
             'refresh_time': 3000,
-            'url': None,
+            'provider': None,
             'client': {
                 'id': None,
                 'secret': None,
                 'resource': None,
-                'tenant': None,
             },
             'user': {
                 'username': None,
@@ -387,12 +382,11 @@ def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
         'verify_certificates': True,
         'auth': {
             'refresh_time': 3000,
-            'url': None,
+            'provider': None,
             'client': {
                 'id': None,
                 'secret': None,
                 'resource': None,
-                'tenant': None,
             },
             'user': {
                 'username': None,
