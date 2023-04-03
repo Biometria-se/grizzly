@@ -66,8 +66,8 @@ class TestServiceBusClientTask:
         task = ServiceBusClientTask(
             RequestDirection.FROM,
             (
-                'sb://$conf::sbns.host$/topic:my-topic/subscription:my-subscription-{{ id }}'
-                ';SharedAccessKeyName=$conf::sbns.key.name$;SharedAccessKey=$conf::sbns.key.secret$#Consume=True;MessageWait=300'
+                'sb://$conf::sbns.host$/topic:my-topic/subscription:my-subscription-{{ id }}/expression:$.hello.world'
+                ';SharedAccessKeyName=$conf::sbns.key.name$;SharedAccessKey=$conf::sbns.key.secret$#Consume=True&MessageWait=300&ContentType=json'
             ),
             'test',
             text='foobar',
@@ -78,15 +78,16 @@ class TestServiceBusClientTask:
         assert task.context == {
             'url': task.endpoint,
             'connection': 'receiver',
-            'endpoint': 'topic:my-topic, subscription:my-subscription-{{ id }}',
+            'endpoint': 'topic:my-topic, subscription:my-subscription-{{ id }}, expression:$.hello.world',
             'consume': True,
             'message_wait': 300,
+            'content_type': 'JSON'
         }
         assert task.text == 'foobar'
         assert task.variable == 'foobar'
         assert task.source is None
         assert task.worker_id is None
-        assert sorted(task.get_templates()) == sorted(['topic:my-topic, subscription:my-subscription-{{ id }}', '{{ foobar }}'])
+        assert sorted(task.get_templates()) == sorted(['topic:my-topic, subscription:my-subscription-{{ id }}, expression:$.hello.world', '{{ foobar }}'])
         context_mock.assert_called_once_with()
         context_mock.return_value.socket.assert_called_once_with(ZMQ_REQ)
         context_mock.return_value.socket.return_value.connect.assert_called_once_with('tcp://127.0.0.1:5554')

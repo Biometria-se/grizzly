@@ -27,7 +27,7 @@
 Value of this is basically the "Connection String" from Azure (without `Endpoint=` prefix), with some additional information.
 
 ``` plain
-sb://<sbns resource name>.servicebus.windows.net/[queue:<queue name>|topic:<topic name>[/subscription:<subscription name>]];SharedAccessKeyName=<policy name>;SharedAccessKey=<access key>[#[Consume=<consume>][&][MessageWait=<wait>]]
+sb://<sbns resource name>.servicebus.windows.net/[queue:<queue name>|topic:<topic name>[/subscription:<subscription name>]][/expression:<expression>];SharedAccessKeyName=<policy name>;SharedAccessKey=<access key>[#[Consume=<consume>][&][MessageWait=<wait>][&][ContentType<content type>]]
 ```
 
 All variables in the endpoint have support for {@link framework.usage.variables.templating}.
@@ -44,6 +44,8 @@ Path:
 
 * `<subscription name>` _str_ - name of an subscription on `topic name`, either an existing, or one to be created (if step text containing SQL Filter rule is specified)
 
+* `<expression>` _str_ - JSON or XPath expression to filter out message on payload, only applicable when receiving messages
+
 <sup>1</sup> Either specify `queue:` or `topic`, not both
 
 Query:
@@ -57,6 +59,8 @@ Fragment:
 * `<consume>` _bool_ - if messages should be consumed (removed from endpoint), or only peeked at (left on endpoint) (default: `True`)
 
 * `<wait>` _int_ - how many seconds to wait for a message to arrive on the endpoint (default: `∞`)
+
+* `<content type>` _str_ - content type of response payload, should be used in combination with `<expression>`
 """  # noqa: E501
 from typing import Optional, cast
 from urllib.parse import urlparse, parse_qs
