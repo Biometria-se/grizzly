@@ -483,7 +483,7 @@ class TestMessageQueueUser:
         request_event_spy = mocker.spy(user.environment.events.request, 'fire')
         response_event_spy = mocker.spy(user.response_event, 'fire')
 
-        request = cast(RequestTask, scenario.tasks[-1])
+        request = cast(RequestTask, scenario.tasks()[-1])
         request.endpoint = 'queue:test-queue'
         request.method = RequestMethod.GET
         request.source = None
@@ -801,7 +801,7 @@ class TestMessageQueueUser:
 
         request_event_spy = mocker.spy(user.environment.events.request, 'fire')
 
-        request = cast(RequestTask, scenario.tasks[-1])
+        request = cast(RequestTask, scenario.tasks()[-1])
         request.endpoint = 'queue:TEST.QUEUE'
 
         user.add_context(remote_variables)

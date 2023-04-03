@@ -111,7 +111,7 @@ class TestBlobStorageUser:
             }),
         }
         user.add_context(remote_variables)
-        request = cast(RequestTask, scenario.tasks[-1])
+        request = cast(RequestTask, scenario.tasks()[-1])
         request.endpoint = 'some_container_name'
 
         upload_blob = mocker.patch('azure.storage.blob._blob_service_client.BlobClient.upload_blob', autospec=True)
@@ -141,10 +141,10 @@ class TestBlobStorageUser:
 
         json_payload = json.loads(payload)
         assert json_payload['result']['id'] == 'ID-31337'
-        assert blob_client.container_name == cast(RequestTask, scenario.tasks[-1]).endpoint
+        assert blob_client.container_name == cast(RequestTask, scenario.tasks()[-1]).endpoint
         assert blob_client.blob_name == os.path.basename(scenario.name)
 
-        request = cast(RequestTask, scenario.tasks[-1])
+        request = cast(RequestTask, scenario.tasks()[-1])
 
         user.request(request)
 

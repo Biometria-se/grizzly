@@ -128,7 +128,7 @@ class TestIotHubUser:
             }),
         }
         user.add_context(remote_variables)
-        request = cast(RequestTask, scenario.tasks[-1])
+        request = cast(RequestTask, scenario.tasks()[-1])
         request.endpoint = 'not_relevant'
 
         upload_blob = mocker.patch('azure.storage.blob._blob_client.BlobClient.upload_blob', autospec=True)
@@ -169,7 +169,7 @@ class TestIotHubUser:
         assert args[2] is True
         assert args[3] == 200
 
-        request = cast(RequestTask, scenario.tasks[-1])
+        request = cast(RequestTask, scenario.tasks()[-1])
 
         user.request(request)
 

@@ -22,7 +22,7 @@ def test_e2e_step_task_request_text_with_name_to_endpoint(e2e_fixture: End2EndFi
 
         grizzly = cast(GrizzlyContext, context.grizzly)
 
-        tasks = grizzly.scenario.tasks
+        tasks = grizzly.scenario.tasks()
 
         tasks.pop()  # remove dummy task added by fixture
 
@@ -121,7 +121,7 @@ def test_e2e_step_task_request_file_with_name_endpoint(e2e_fixture: End2EndFixtu
 
         grizzly = cast(GrizzlyContext, context.grizzly)
 
-        tasks = grizzly.scenario.tasks
+        tasks = grizzly.scenario.tasks()
 
         tasks.pop()  # remove dummy task added by fixture
 
@@ -196,7 +196,7 @@ def test_e2e_step_task_request_file_with_name(e2e_fixture: End2EndFixture) -> No
 
         grizzly = cast(GrizzlyContext, context.grizzly)
 
-        tasks = grizzly.scenario.tasks
+        tasks = grizzly.scenario.tasks()
 
         tasks.pop()  # remove dummy task added by fixture
 
@@ -245,7 +245,7 @@ def test_e2e_step_task_request_text_with_name(e2e_fixture: End2EndFixture) -> No
 
         grizzly = cast(GrizzlyContext, context.grizzly)
 
-        tasks = grizzly.scenario.tasks
+        tasks = grizzly.scenario.tasks()
 
         tasks.pop()  # remove dummy task added by fixture
 
@@ -305,7 +305,7 @@ def test_e2e_step_task_wait_seconds(e2e_fixture: End2EndFixture) -> None:
         from grizzly.tasks import WaitTask
         grizzly = cast(GrizzlyContext, context.grizzly)
 
-        tasks = grizzly.scenario.tasks
+        tasks = grizzly.scenario.tasks()
         tasks.pop()
 
         assert len(tasks) == 3
@@ -343,7 +343,7 @@ def test_e2e_step_task_log_message(e2e_fixture: End2EndFixture) -> None:
         from grizzly.tasks import LogMessageTask
         grizzly = cast(GrizzlyContext, context.grizzly)
 
-        tasks = grizzly.scenario.tasks
+        tasks = grizzly.scenario.tasks()
         tasks.pop()
 
         assert len(tasks) == 2
@@ -380,7 +380,7 @@ def test_e2e_step_task_transform(e2e_fixture: End2EndFixture) -> None:
 
         grizzly = cast(GrizzlyContext, context.grizzly)
 
-        tasks = grizzly.scenario.tasks
+        tasks = grizzly.scenario.tasks()
         tasks.pop()
 
         assert len(tasks) == 4
@@ -434,7 +434,7 @@ def test_e2e_step_task_client_get_endpoint(e2e_fixture: End2EndFixture) -> None:
         data = list(context.table)[0].as_dict()
         e2e_fixture_host = data['e2e_fixture.host']
 
-        tasks = grizzly.scenario.tasks
+        tasks = grizzly.scenario.tasks()
         tasks.pop()
 
         assert len(tasks) == 3
@@ -497,7 +497,7 @@ def test_e2e_step_task_client_get_endpoint_until(e2e_fixture: End2EndFixture) ->
         data = list(context.table)[0].as_dict()
         e2e_fixture_host = data['e2e_fixture.host']
 
-        tasks = grizzly.scenario.tasks
+        tasks = grizzly.scenario.tasks()
         tasks.pop()  # remove dummy task added by `test_steps`
 
         assert len(tasks) == 3
@@ -603,7 +603,7 @@ def test_e2e_step_task_client_put_endpoint_file_destination(e2e_fixture: End2End
 
         grizzly = cast(GrizzlyContext, context.grizzly)
 
-        tasks = grizzly.scenario.tasks
+        tasks = grizzly.scenario.tasks()
         tasks.pop()
 
         assert len(tasks) == 2
@@ -661,7 +661,7 @@ def test_e2e_step_task_client_put_endpoint_file(e2e_fixture: End2EndFixture) -> 
 
         grizzly = cast(GrizzlyContext, context.grizzly)
 
-        tasks = grizzly.scenario.tasks
+        tasks = grizzly.scenario.tasks()
         tasks.pop()
 
         assert len(tasks) == 2
@@ -718,7 +718,7 @@ def test_e2e_step_task_date(e2e_fixture: End2EndFixture) -> None:
 
         grizzly = cast(GrizzlyContext, context.grizzly)
 
-        tasks = grizzly.scenario.tasks
+        tasks = grizzly.scenario.tasks()
         tasks.pop()
 
         assert len(tasks) == 4
@@ -788,7 +788,7 @@ def test_e2e_step_async_group(e2e_fixture: End2EndFixture) -> None:
 
         assert grizzly.scenario.tasks.tmp.async_group is None
 
-        tasks = grizzly.scenario.tasks
+        tasks = grizzly.scenario.tasks()
         tasks.pop()
 
         assert len(tasks) == 2
@@ -898,29 +898,29 @@ def test_e2e_step_task_request_wait(e2e_fixture: End2EndFixture) -> None:
         from grizzly.tasks import TaskWaitTask
         grizzly = cast(GrizzlyContext, context.grizzly)
 
-        grizzly.scenario.tasks.pop()  # remove dummy
+        grizzly.scenario.tasks().pop()  # remove dummy
 
-        assert len(grizzly.scenario.tasks) == 4
+        assert len(grizzly.scenario.tasks()) == 4
 
-        task = grizzly.scenario.tasks[0]
+        task = grizzly.scenario.tasks()[0]
 
         assert isinstance(task, TaskWaitTask), f'{type(task)} is not expected TaskWaitTask'
         assert task.min_time == 15
         assert task.max_time == 18
 
-        task = grizzly.scenario.tasks[1]
+        task = grizzly.scenario.tasks()[1]
 
         assert isinstance(task, TaskWaitTask), f'{type(task)} is not expected TaskWaitTask'
         assert task.min_time == 1.4
         assert task.max_time == 1.7
 
-        task = grizzly.scenario.tasks[2]
+        task = grizzly.scenario.tasks()[2]
 
         assert isinstance(task, TaskWaitTask), f'{type(task)} is not expected TaskWaitTask'
         assert task.min_time == 15
         assert task.max_time is None
 
-        task = grizzly.scenario.tasks[3]
+        task = grizzly.scenario.tasks()[3]
 
         assert isinstance(task, TaskWaitTask), f'{type(task)} is not expected TaskWaitTask'
         assert task.min_time == 1.4
@@ -947,9 +947,9 @@ def test_e2e_step_task_conditional(e2e_fixture: End2EndFixture, value: int) -> N
     def validate_task_conditional(context: Context) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
 
-        grizzly.scenario.tasks.pop()  # remove dummy task
+        grizzly.scenario.tasks().pop()  # remove dummy task
 
-        assert len(grizzly.scenario.tasks) == 1
+        assert len(grizzly.scenario.tasks()) == 1
 
     def after_feature(context: Context, feature: Feature) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
@@ -992,9 +992,9 @@ def test_e2e_step_task_loop(e2e_fixture: End2EndFixture) -> None:
     def validate_task_loop(context: Context) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
 
-        grizzly.scenario.tasks.pop()  # remove dummy task
+        grizzly.scenario.tasks().pop()  # remove dummy task
 
-        assert len(grizzly.scenario.tasks) == 1
+        assert len(grizzly.scenario.tasks()) == 1
 
     def after_feature(context: Context, feature: Feature) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)

@@ -93,7 +93,7 @@ class TestTestdataProducer:
             grizzly.scenario.tasks.add(request)
             grizzly.scenario.tasks.add(LogMessageTask(message='hello {{ world }}'))
 
-            testdata, external_dependencies, message_handlers = initialize_testdata(grizzly, grizzly.scenario.tasks)
+            testdata, external_dependencies, message_handlers = initialize_testdata(grizzly, grizzly.scenario.tasks())
 
             assert external_dependencies == set()
             assert message_handlers == {}
@@ -224,7 +224,7 @@ class TestTestdataProducer:
             grizzly.scenario.tasks.add(request)
             grizzly.scenario.tasks.add(LogMessageTask(message='are you {{ sure }}'))
 
-            testdata, external_dependencies, message_handlers = initialize_testdata(grizzly, grizzly.scenario.tasks)
+            testdata, external_dependencies, message_handlers = initialize_testdata(grizzly, grizzly.scenario.tasks())
 
             assert external_dependencies == set()
             assert message_handlers == {}

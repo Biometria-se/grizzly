@@ -229,8 +229,9 @@ def step_setup_metadata(context: Context, key: str, value: str) -> None:
     casted_value = resolve_variable(grizzly, value)
 
     previous_task: Optional[GrizzlyTask] = None
-    if len(grizzly.scenario.tasks) > 0:
-        previous_task = grizzly.scenario.tasks[-1]
+    tasks = grizzly.scenario.tasks()
+    if len(tasks) > 0:
+        previous_task = tasks[-1]
 
     if isinstance(previous_task, RequestTask):
         previous_task.add_metadata(key, value)
