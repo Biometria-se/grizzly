@@ -15,7 +15,7 @@
         <link rel="next" href="../sftp/">
       
       <link rel="icon" href="../../../../assets/favicon.ico">
-      <meta name="generator" content="mkdocs-1.4.2, mkdocs-material-9.1.4">
+      <meta name="generator" content="mkdocs-1.4.2, mkdocs-material-9.1.5">
     
     
       
@@ -23,7 +23,7 @@
       
     
     
-      <link rel="stylesheet" href="../../../../assets/stylesheets/main.240905d7.min.css">
+      <link rel="stylesheet" href="../../../../assets/stylesheets/main.7a7fce14.min.css">
       
         
         <link rel="stylesheet" href="../../../../assets/stylesheets/palette.a0c5b2b5.min.css">
@@ -1899,33 +1899,13 @@
 </ul>
 <h2 id="format">Format</h2>
 <p>Format of <code>host</code> is the following:</p>
-<div class="highlight"><pre><span></span><code>http[s]://&lt;hostname&gt;
-</code></pre></div>
 <h2 id="examples">Examples</h2>
 <p>Example on how to use it in a scenario:</p>
-<div class="highlight"><pre><span></span><code><span class="k">Given </span><span class="nf">a user of type &quot;</span><span class="s">RestApi</span><span class="nf">&quot; load testing &quot;</span><span class="s">https://api.example.com</span><span class="nf">&quot;</span>
-<span class="k">Then </span><span class="nf">post request &quot;</span><span class="s">test/request.j2.json</span><span class="nf">&quot; to endpoint &quot;</span><span class="s">/api/test</span><span class="nf">&quot;</span>
-<span class="k">Then </span><span class="nf">get request from endpoint &quot;</span><span class="s">/api/test</span><span class="nf">&quot;</span>
-</code></pre></div>
-<p>To change how often the token should be refreshed, default is 3000 seconds:
-<div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">set context variable &quot;</span><span class="s">auth.refresh_time</span><span class="nf">&quot; to &quot;</span><span class="s">3500</span><span class="nf">&quot;</span>
-</code></pre></div></p>
+<p>To change how often the token should be refreshed, default is 3000 seconds:</p>
 <h3 id="authentication">Authentication</h3>
 <h4 id="client-secret">Client secret</h4>
-<div class="highlight"><pre><span></span><code><span class="k">Given </span><span class="nf">a user of type &quot;</span><span class="s">RestApi</span><span class="nf">&quot; load testing &quot;</span><span class="s">https://api.example.com</span><span class="nf">&quot;</span>
-<span class="k">And </span><span class="nf">set context variable &quot;</span><span class="s">auth.client.tenant</span><span class="nf">&quot; &quot;</span><span class="nv">&lt;tenant name/guid&gt;</span><span class="nf">&quot;</span>
-<span class="k">And </span><span class="nf">set context variable &quot;</span><span class="s">auth.client.id</span><span class="nf">&quot; to &quot;</span><span class="nv">&lt;client id&gt;</span><span class="nf">&quot;</span>
-<span class="k">And </span><span class="nf">set context variable &quot;</span><span class="s">auth.client.secret</span><span class="nf">&quot; to &quot;</span><span class="nv">&lt;client secret&gt;</span><span class="nf">&quot;</span>
-<span class="k">And </span><span class="nf">set context variable &quot;</span><span class="s">auth.client.resource</span><span class="nf">&quot; to &quot;</span><span class="nv">&lt;resource url/guid&gt;</span><span class="nf">&quot;</span>
-</code></pre></div>
 <h4 id="username-and-password">Username and password</h4>
 <p><code>auth.user.redirect_uri</code> needs to correspond to the endpoint that the client secret is registrered for.</p>
-<div class="highlight"><pre><span></span><code><span class="k">Given </span><span class="nf">a user of type &quot;</span><span class="s">RestApi</span><span class="nf">&quot; load testing &quot;</span><span class="s">https://api.example.com</span><span class="nf">&quot;</span>
-<span class="k">And </span><span class="nf">set context variable &quot;</span><span class="s">auth.client.id</span><span class="nf">&quot; to &quot;</span><span class="nv">&lt;client id&gt;</span><span class="nf">&quot;</span>
-<span class="k">And </span><span class="nf">set context variable &quot;</span><span class="s">auth.user.username</span><span class="nf">&quot; to &quot;</span><span class="s">alice@example.onmicrosoft.com</span><span class="nf">&quot;</span>
-<span class="k">And </span><span class="nf">set context variable &quot;</span><span class="s">auth.user.password</span><span class="nf">&quot; to &quot;</span><span class="s">HemL1gaArn3!</span><span class="nf">&quot;</span>
-<span class="k">And </span><span class="nf">set context variable &quot;</span><span class="s">auth.user.redirect_uri</span><span class="nf">&quot; to &quot;</span><span class="s">/app-registrered-redirect-uri</span><span class="nf">&quot;</span>
-</code></pre></div>
 <h4 id="multipartform-data">Multipart/form-data</h4>
 <p>RestApi supports posting of multipart/form-data content-type, and in that case additional arguments needs to be passed with the request:</p>
 <ul>
@@ -1936,7 +1916,28 @@
 <p><code>multipart_form_data_filename</code> <em>str</em> - the filename</p>
 </li>
 </ul>
-<p>E.g:</p>
+<p><div class="highlight"><pre><span></span><code>http[s]://&lt;hostname&gt;
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="k">Given </span><span class="nf">a user of type &quot;</span><span class="s">RestApi</span><span class="nf">&quot; load testing &quot;</span><span class="s">https://api.example.com</span><span class="nf">&quot;</span>
+<span class="k">Then </span><span class="nf">post request &quot;</span><span class="s">test/request.j2.json</span><span class="nf">&quot; to endpoint &quot;</span><span class="s">/api/test</span><span class="nf">&quot;</span>
+<span class="k">Then </span><span class="nf">get request from endpoint &quot;</span><span class="s">/api/test</span><span class="nf">&quot;</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">set context variable &quot;</span><span class="s">auth.refresh_time</span><span class="nf">&quot; to &quot;</span><span class="s">3500</span><span class="nf">&quot;</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="k">Given </span><span class="nf">a user of type &quot;</span><span class="s">RestApi</span><span class="nf">&quot; load testing &quot;</span><span class="s">https://api.example.com</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">set context variable &quot;</span><span class="s">auth.provider</span><span class="nf">&quot; to &quot;</span><span class="nv">&lt;provider&gt;</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">set context variable &quot;</span><span class="s">auth.client.id</span><span class="nf">&quot; to &quot;</span><span class="nv">&lt;client id&gt;</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">set context variable &quot;</span><span class="s">auth.client.secret</span><span class="nf">&quot; to &quot;</span><span class="nv">&lt;client secret&gt;</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">set context variable &quot;</span><span class="s">auth.client.resource</span><span class="nf">&quot; to &quot;</span><span class="nv">&lt;resource url/guid&gt;</span><span class="nf">&quot;</span>
+</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="k">Given </span><span class="nf">a user of type &quot;</span><span class="s">RestApi</span><span class="nf">&quot; load testing &quot;</span><span class="s">https://api.example.com</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">set context variable &quot;</span><span class="s">auth.provider</span><span class="nf">&quot; to &quot;</span><span class="nv">&lt;provider&gt;</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">set context variable &quot;</span><span class="s">auth.client.id</span><span class="nf">&quot; to &quot;</span><span class="nv">&lt;client id&gt;</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">set context variable &quot;</span><span class="s">auth.user.username</span><span class="nf">&quot; to &quot;</span><span class="s">alice@example.onmicrosoft.com</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">set context variable &quot;</span><span class="s">auth.user.password</span><span class="nf">&quot; to &quot;</span><span class="s">HemL1gaArn3!</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">set context variable &quot;</span><span class="s">auth.user.redirect_uri</span><span class="nf">&quot; to &quot;</span><span class="s">/app-registrered-redirect-uri</span><span class="nf">&quot;</span>
+</code></pre></div></p>
+<p><strong>Example</strong>:</p>
 <div class="highlight"><pre><span></span><code><span class="k">Then </span><span class="nf">post request &quot;</span><span class="s">path/my_template.j2.xml</span><span class="nf">&quot; with name &quot;</span><span class="s">FormPost</span><span class="nf">&quot; to endpoint &quot;</span><span class="s">example.url.com | content_type=multipart/form-data, multipart_form_data_filename=my_filename, multipart_form_data_name=form_name</span><span class="nf">&quot;</span>
 </code></pre></div>
 
@@ -1984,7 +1985,7 @@
     <script id="__config" type="application/json">{"base": "../../../..", "features": ["navigation.indexes", "navigation.instant", "navigation.sections", "navigation.tracking", "navigation.top", "toc.follow"], "search": "../../../../assets/javascripts/workers/search.208ed371.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
-      <script src="../../../../assets/javascripts/bundle.19047be9.min.js"></script>
+      <script src="../../../../assets/javascripts/bundle.407015b8.min.js"></script>
       
     
   </body>
