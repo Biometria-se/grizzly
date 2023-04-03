@@ -62,7 +62,7 @@ def test_step_task_request_with_name_endpoint_until(behave_fixture: BehaveFixtur
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
 
-    assert len(grizzly.scenario.tasks) == 0
+    assert len(grizzly.scenario.tasks()) == 0
 
     with pytest.raises(AssertionError) as ae:
         step_task_request_with_name_endpoint_until(behave, RequestMethod.POST, 'test', '/api/test', '$.`this`[?status="ready"]')
@@ -81,7 +81,7 @@ def test_step_task_request_with_name_endpoint_until(behave_fixture: BehaveFixtur
 
     step_task_request_with_name_endpoint_until(behave, RequestMethod.GET, 'test', '/api/test | content_type=json', '$.`this`[?status="ready"]')
 
-    assert len(grizzly.scenario.tasks) == 1
+    assert len(grizzly.scenario.tasks()) == 1
 
     rows: List[Row] = []
     rows.append(Row(['endpoint'], ['{{ variable }}']))
@@ -91,8 +91,8 @@ def test_step_task_request_with_name_endpoint_until(behave_fixture: BehaveFixtur
 
     step_task_request_with_name_endpoint_until(behave, RequestMethod.GET, 'test', '/api/{{ endpoint }} | content_type=json', '$.`this`[?status="{{ endpoint }}"]')
 
-    assert len(grizzly.scenario.tasks) == 4
-    tasks = cast(List[UntilRequestTask], grizzly.scenario.tasks)
+    assert len(grizzly.scenario.tasks()) == 4
+    tasks = cast(List[UntilRequestTask], grizzly.scenario.tasks())
 
     templates: List[str] = []
 
@@ -225,15 +225,17 @@ def test_step_task_wait_seconds(behave_fixture: BehaveFixture) -> None:
 
     step_task_wait_seconds(behave, '1.337')
 
-    assert isinstance(grizzly.scenario.tasks[-1], WaitTask)
-    assert grizzly.scenario.tasks[-1].time_expression == '1.337'
+    task = grizzly.scenario.tasks()[-1]
+    assert isinstance(task, WaitTask)
+    assert task.time_expression == '1.337'
 
     grizzly.state.variables['wait_time'] = '126'
 
     step_task_wait_seconds(behave, '{{ wait_time }}')
 
-    assert isinstance(grizzly.scenario.tasks[-1], WaitTask)
-    assert grizzly.scenario.tasks[-1].time_expression == '{{ wait_time }}'
+    task = grizzly.scenario.tasks()[-1]
+    assert isinstance(task, WaitTask)
+    assert task.time_expression == '{{ wait_time }}'
 
 
 def test_step_task_log_message(behave_fixture: BehaveFixture) -> None:
@@ -242,8 +244,9 @@ def test_step_task_log_message(behave_fixture: BehaveFixture) -> None:
 
     step_task_log_message(behave, 'hello {{ world }}')
 
-    assert isinstance(grizzly.scenario.tasks[-1], LogMessageTask)
-    assert grizzly.scenario.tasks[-1].message == 'hello {{ world }}'
+    task = grizzly.scenario.tasks()[-1]
+    assert isinstance(task, LogMessageTask)
+    assert task.message == 'hello {{ world }}'
 
 
 def test_step_task_transform_json(behave_fixture: BehaveFixture) -> None:
@@ -279,7 +282,7 @@ def test_step_task_transform_json(behave_fixture: BehaveFixture) -> None:
         'document_id',
     )
 
-    task = grizzly.scenario.tasks[-1]
+    task = grizzly.scenario.tasks()[-1]
     assert isinstance(task, TransformerTask)
     assert task.content_type == TransformerContentType.JSON
     assert task.expression == '$.document.id'
@@ -300,7 +303,7 @@ def test_step_task_transform_json(behave_fixture: BehaveFixture) -> None:
         'document_id',
     )
 
-    templates = grizzly.scenario.tasks[-1].get_templates()
+    templates = grizzly.scenario.tasks()[-1].get_templates()
 
     assert len(templates) == 1
     assert templates[-1] == jsondumps({
@@ -344,7 +347,7 @@ def test_step_task_transform_xml(behave_fixture: BehaveFixture) -> None:
         'document_id',
     )
 
-    task = grizzly.scenario.tasks[-1]
+    task = grizzly.scenario.tasks()[-1]
     assert isinstance(task, TransformerTask)
     assert task.content_type == TransformerContentType.XML
     assert task.expression == '/document/id/text()'
@@ -365,7 +368,7 @@ def test_step_task_transform_xml(behave_fixture: BehaveFixture) -> None:
         'document_id',
     )
 
-    templates = grizzly.scenario.tasks[-1].get_templates()
+    templates = grizzly.scenario.tasks()[-1].get_templates()
 
     assert len(templates) == 1
     assert templates[-1] == '''<?xml version="1.0" encoding="utf-8"?>
@@ -399,15 +402,15 @@ def test_step_task_client_get_endpoint(behave_fixture: BehaveFixture) -> None:
 
     grizzly.state.variables['test'] = 'none'
 
-    assert len(grizzly.scenario.tasks) == 0
+    assert len(grizzly.scenario.tasks()) == 0
     step_task_client_get_endpoint(behave, 'http://www.example.org', 'step-name', 'test')
-    assert len(grizzly.scenario.tasks) == 1
-    assert isinstance(grizzly.scenario.tasks[-1], HttpClientTask)
+    assert len(grizzly.scenario.tasks()) == 1
 
     grizzly.state.variables['endpoint_url'] = 'https://example.org'
     step_task_client_get_endpoint(behave, 'https://{{ endpoint_url }}', 'step-name', 'test')
 
-    task = grizzly.scenario.tasks[-1]
+    task = grizzly.scenario.tasks()[-1]
+    assert isinstance(task, HttpClientTask)
     assert task.endpoint == '{{ endpoint_url }}'
     assert sorted(task.get_templates()) == sorted(['{{ endpoint_url }}', '{{ test }}'])
 
@@ -439,8 +442,8 @@ def test_step_task_client_get_endpoint_until(behave_fixture: BehaveFixture) -> N
 
     step_task_client_get_endpoint_until(behave, 'https://api.example.io/api/test | content_type=json', 'step-name', '$.`this`[?success=true]')
 
-    assert len(grizzly.scenario.tasks) == 1
-    task = grizzly.scenario.tasks[-1]
+    assert len(grizzly.scenario.tasks()) == 1
+    task = grizzly.scenario.tasks()[-1]
     assert isinstance(task, UntilRequestTask)
     assert task.scenario is task.request.scenario
     assert isinstance(task.request, HttpClientTask)
@@ -451,8 +454,8 @@ def test_step_task_client_get_endpoint_until(behave_fixture: BehaveFixture) -> N
 
     step_task_client_get_endpoint_until(behave, 'https://$conf::test.host$/api/test | content_type=json', 'step-name', '$.`this`[success=false]')
 
-    assert len(grizzly.scenario.tasks) == 2
-    task = grizzly.scenario.tasks[-1]
+    assert len(grizzly.scenario.tasks()) == 2
+    task = grizzly.scenario.tasks()[-1]
     assert isinstance(task, UntilRequestTask)
     assert task.scenario is task.request.scenario
     assert isinstance(task.request, HttpClientTask)
@@ -477,10 +480,10 @@ def test_step_task_date(behave_fixture: BehaveFixture) -> None:
 
     step_task_date(behave, '{{ datetime.now() }} | offset=1D', 'date_variable')
 
-    assert len(grizzly.scenario.tasks) == 1
-    assert isinstance(grizzly.scenario.tasks[-1], DateTask)
+    assert len(grizzly.scenario.tasks()) == 1
 
-    task = grizzly.scenario.tasks[-1]
+    task = grizzly.scenario.tasks()[-1]
+    assert isinstance(task, DateTask)
     assert task.value == '{{ datetime.now() }}'
     assert task.variable == 'date_variable'
     assert task.arguments.get('offset') == '1D'
@@ -496,7 +499,7 @@ def test_step_task_client_put_endpoint_file_destination(behave_fixture: BehaveFi
     behave.text = 'hello'
 
     assert len(grizzly.scenario.orphan_templates) == 0
-    assert len(grizzly.scenario.tasks) == 0
+    assert len(grizzly.scenario.tasks()) == 0
 
     with pytest.raises(AssertionError) as ae:
         step_task_client_put_endpoint_file_destination(behave, 'file.json', 'http://example.org/put', 'step-name', 'uploaded-file.json')
@@ -510,8 +513,8 @@ def test_step_task_client_put_endpoint_file_destination(behave_fixture: BehaveFi
 
     step_task_client_put_endpoint_file_destination(behave, 'file-test.json', 'http://{{ url }}', 'step-name', 'uploaded-file-{{ suffix }}.json')
 
-    assert len(grizzly.scenario.tasks) == 1
-    task = grizzly.scenario.tasks[-1]
+    assert len(grizzly.scenario.tasks()) == 1
+    task = grizzly.scenario.tasks()[-1]
 
     assert isinstance(task, HttpClientTask)
     assert task.source == 'file-test.json'
@@ -533,7 +536,7 @@ def test_step_task_client_put_endpoint_file(behave_fixture: BehaveFixture) -> No
     behave.text = 'hello'
 
     assert len(grizzly.scenario.orphan_templates) == 0
-    assert len(grizzly.scenario.tasks) == 0
+    assert len(grizzly.scenario.tasks()) == 0
 
     with pytest.raises(AssertionError) as ae:
         step_task_client_put_endpoint_file(behave, 'file.json', 'http://example.org/put', 'step-name')
@@ -547,8 +550,8 @@ def test_step_task_client_put_endpoint_file(behave_fixture: BehaveFixture) -> No
 
     step_task_client_put_endpoint_file(behave, 'file-test.json', 'http://{{ url }}', 'step-name')
 
-    assert len(grizzly.scenario.tasks) == 1
-    task = grizzly.scenario.tasks[-1]
+    assert len(grizzly.scenario.tasks()) == 1
+    task = grizzly.scenario.tasks()[-1]
 
     assert isinstance(task, HttpClientTask)
     assert task.source == 'file-test.json'
@@ -582,7 +585,7 @@ def test_step_task_async_group_end(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = behave_fixture.grizzly
 
-    assert len(grizzly.scenario.tasks) == 0
+    assert len(grizzly.scenario.tasks()) == 0
     assert getattr(grizzly.scenario.tasks.tmp, 'async_group', '') is None
 
     with pytest.raises(AssertionError) as ae:
@@ -597,11 +600,11 @@ def test_step_task_async_group_end(behave_fixture: BehaveFixture) -> None:
     assert grizzly.scenario.tasks.tmp.async_group is not None
 
     step_task_request_text_with_name_endpoint(behave, RequestMethod.GET, 'test', direction=RequestDirection.FROM, endpoint='/api/test')
-    assert len(grizzly.scenario.tasks) == 0
+    assert len(grizzly.scenario.tasks) == 0  # OK here
 
     step_task_async_group_close(behave)
 
-    assert len(grizzly.scenario.tasks) == 1
+    assert len(grizzly.scenario.tasks()) == 1
     assert grizzly.scenario.tasks.tmp.async_group is None
 
 
@@ -620,7 +623,7 @@ def test_step_task_timer_start_and_stop(behave_fixture: BehaveFixture) -> None:
     timer = grizzly.scenario.tasks.tmp.timers.get('test-timer-1', None)
     assert isinstance(timer, TimerTask)
     assert timer.name == 'test-timer-1'
-    assert grizzly.scenario.tasks[-1] is timer
+    assert grizzly.scenario.tasks()[-1] is timer
 
     with pytest.raises(AssertionError) as ae:
         step_task_timer_start(behave, 'test-timer-1')
@@ -632,28 +635,28 @@ def test_step_task_timer_start_and_stop(behave_fixture: BehaveFixture) -> None:
         'test-timer-1': None,
     }
 
-    assert grizzly.scenario.tasks[-2] is grizzly.scenario.tasks[-1]
+    assert grizzly.scenario.tasks()[-2] is grizzly.scenario.tasks()[-1]
 
 
 def test_step_task_request_wait_between(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = behave_fixture.grizzly
 
-    assert len(grizzly.scenario.tasks) == 0
+    assert len(grizzly.scenario.tasks()) == 0
 
     step_task_wait_between(behave, 1.4, 1.7)
 
-    assert len(grizzly.scenario.tasks) == 1
+    assert len(grizzly.scenario.tasks()) == 1
 
-    task = cast(TaskWaitTask, grizzly.scenario.tasks[-1])
+    task = cast(TaskWaitTask, grizzly.scenario.tasks()[-1])
     assert task.min_time == 1.4
     assert task.max_time == 1.7
 
     step_task_wait_between(behave, 30, 20)
 
-    assert len(grizzly.scenario.tasks) == 2
+    assert len(grizzly.scenario.tasks()) == 2
 
-    task = cast(TaskWaitTask, grizzly.scenario.tasks[-1])
+    task = cast(TaskWaitTask, grizzly.scenario.tasks()[-1])
     assert task.min_time == 20
     assert task.max_time == 30
 
@@ -662,13 +665,13 @@ def test_step_task_wait_constant(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = behave_fixture.grizzly
 
-    assert len(grizzly.scenario.tasks) == 0
+    assert len(grizzly.scenario.tasks()) == 0
 
     step_task_wait_constant(behave, 10)
 
-    assert len(grizzly.scenario.tasks) == 1
+    assert len(grizzly.scenario.tasks()) == 1
 
-    task = cast(TaskWaitTask, grizzly.scenario.tasks[-1])
+    task = cast(TaskWaitTask, grizzly.scenario.tasks()[-1])
     assert task.min_time == 10
     assert task.max_time is None
 
@@ -745,8 +748,8 @@ def test_step_task_conditional_end(behave_fixture: BehaveFixture) -> None:
 
     step_task_conditional_end(behave)
 
-    assert len(grizzly.scenario.tasks) == 1
-    conditional = cast(ConditionalTask, grizzly.scenario.tasks[-1])
+    assert len(grizzly.scenario.tasks()) == 1
+    conditional = cast(ConditionalTask, grizzly.scenario.tasks()[-1])
 
     assert conditional.name == 'conditional-1'
     assert conditional.condition == '{{ value | int == 10 }}'
@@ -770,7 +773,8 @@ def test_step_task_loop(behave_fixture: BehaveFixture) -> None:
     step_task_loop_start(behave, '["hello", "world"]', 'foobar', 'test-loop')
 
     assert grizzly.scenario.tasks.tmp.loop is not None
-    assert len(grizzly.scenario.tasks) == 0
+    assert len(grizzly.scenario.tasks()) == 0
+    assert len(grizzly.scenario.tasks) == 0  # OK here
 
     assert grizzly.scenario.tasks.tmp.loop.name == 'test-loop'
     assert grizzly.scenario.tasks.tmp.loop.values == '["hello", "world"]'
@@ -786,10 +790,11 @@ def test_step_task_loop(behave_fixture: BehaveFixture) -> None:
     step_task_conditional_end(behave)
 
     assert len(grizzly.scenario.tasks.tmp.loop.tasks) == 3
+    assert len(grizzly.scenario.tasks()) == 3
 
     step_task_loop_end(behave)
 
-    assert len(grizzly.scenario.tasks) == 1
+    assert len(grizzly.scenario.tasks()) == 1
     assert getattr(grizzly.scenario.tasks.tmp, 'loop', '') is None
 
     with pytest.raises(AssertionError) as ae:

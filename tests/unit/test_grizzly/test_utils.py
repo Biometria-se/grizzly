@@ -23,6 +23,7 @@ from grizzly.utils import (
     parse_timespan,
     check_mq_client_logs,
     async_message_request_wrapper,
+    safe_del,
 )
 from grizzly.types import RequestMethod
 from grizzly.types.behave import Context, Scenario, Status
@@ -187,12 +188,11 @@ def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
         'verify_certificates': True,
         'auth': {
             'refresh_time': 3000,
-            'url': None,
+            'provider': None,
             'client': {
                 'id': None,
                 'secret': None,
                 'resource': None,
-                'tenant': None,
             },
             'user': {
                 'username': None,
@@ -215,12 +215,11 @@ def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
         'verify_certificates': True,
         'auth': {
             'refresh_time': 3000,
-            'url': None,
+            'provider': None,
             'client': {
                 'id': None,
                 'secret': None,
                 'resource': None,
-                'tenant': None,
             },
             'user': {
                 'username': None,
@@ -248,7 +247,7 @@ def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
             'log_all_requests': True,
             'auth': {
                 'refresh_time': 1337,
-                'url': 'https://auth.example.com',
+                'provider': 'https://auth.example.com',
                 'user': {
                     'username': 'grizzly-user',
                 }
@@ -272,12 +271,11 @@ def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
         'verify_certificates': True,
         'auth': {
             'refresh_time': 1337,
-            'url': 'https://auth.example.com',
+            'provider': 'https://auth.example.com',
             'client': {
                 'id': None,
                 'secret': None,
                 'resource': None,
-                'tenant': None,
             },
             'user': {
                 'username': 'grizzly-user',
@@ -307,12 +305,11 @@ def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
         'verify_certificates': True,
         'auth': {
             'refresh_time': 1337,
-            'url': 'https://auth.example.com',
+            'provider': 'https://auth.example.com',
             'client': {
                 'id': None,
                 'secret': None,
                 'resource': None,
-                'tenant': None,
             },
             'user': {
                 'username': 'grizzly-user',
@@ -349,12 +346,11 @@ def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
         'verify_certificates': True,
         'auth': {
             'refresh_time': 3000,
-            'url': None,
+            'provider': None,
             'client': {
                 'id': None,
                 'secret': None,
                 'resource': None,
-                'tenant': None,
             },
             'user': {
                 'username': None,
@@ -386,12 +382,11 @@ def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
         'verify_certificates': True,
         'auth': {
             'refresh_time': 3000,
-            'url': None,
+            'provider': None,
             'client': {
                 'id': None,
                 'secret': None,
                 'resource': None,
-                'tenant': None,
             },
             'user': {
                 'username': None,
@@ -704,3 +699,19 @@ def test_async_message_request_wrapper(grizzly_fixture: GrizzlyFixture, mocker: 
 
     async_message_request_wrapper(scenario, client_mock, request)
     async_message_request_mock.assert_called_once_with(client_mock, {'context': {'endpoint': 'hello foobar!'}})
+
+
+def test_safe_del() -> None:
+    struct = {'hello': 'world', 'foo': 'bar'}
+
+    safe_del(struct, 'bar')
+    assert struct == {'hello': 'world', 'foo': 'bar'}
+
+    safe_del(struct, 'hello')
+    assert struct == {'foo': 'bar'}
+
+    safe_del(struct, 'foo')
+    assert struct == {}
+
+    safe_del(struct, 'hello')
+    assert struct == {}

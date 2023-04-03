@@ -78,7 +78,7 @@ def test_initialize_testdata_with_tasks(
         scenario.tasks.add(ConditionalTask(name='conditional-1', condition='{{ AtomicIntegerIncrementer.value | int > 5 }}'))
         scenario.tasks.add(LogMessageTask(message='transformer_task={{ transformer_task }}'))
         scenario.orphan_templates.append('hello {{ orphan }} template')
-        testdata, external_dependencies, message_handlers = initialize_testdata(grizzly, scenario.tasks)
+        testdata, external_dependencies, message_handlers = initialize_testdata(grizzly, scenario.tasks())
 
         scenario_name = scenario.class_name
 
@@ -155,7 +155,7 @@ def test_initialize_testdata_with_payload_context(grizzly_fixture: GrizzlyFixtur
 
         grizzly.scenario.tasks.add(request)
 
-        testdata, external_dependencies, message_handlers = initialize_testdata(grizzly, grizzly.scenario.tasks)
+        testdata, external_dependencies, message_handlers = initialize_testdata(grizzly, grizzly.scenario.tasks())
 
         scenario_name = grizzly.scenario.class_name
 

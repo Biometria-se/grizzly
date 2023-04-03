@@ -76,7 +76,7 @@ def test_parse_response_content_type() -> None:
 def test_step_response_save_matches_metadata(grizzly_fixture: GrizzlyFixture) -> None:
     behave = grizzly_fixture.behave
     grizzly = grizzly_fixture.grizzly
-    request = cast(RequestTask, grizzly.scenario.tasks[0])
+    request = cast(RequestTask, grizzly.scenario.tasks()[0])
 
     with pytest.raises(ValueError) as ve:
         step_response_save_matches(behave, ResponseTarget.METADATA, '', '', '')
@@ -109,7 +109,7 @@ def test_step_response_save_matches_metadata(grizzly_fixture: GrizzlyFixture) ->
 def test_step_response_save_matches_payload(grizzly_fixture: GrizzlyFixture) -> None:
     behave = grizzly_fixture.behave
     grizzly = cast(GrizzlyContext, behave.grizzly)
-    request = cast(RequestTask, grizzly.scenario.tasks[0])
+    request = cast(RequestTask, grizzly.scenario.tasks()[0])
 
     with pytest.raises(ValueError) as ve:
         step_response_save_matches(behave, ResponseTarget.PAYLOAD, '', '', '')
@@ -141,7 +141,7 @@ def test_step_response_save_matches_payload(grizzly_fixture: GrizzlyFixture) -> 
 def test_step_response_save_metadata(grizzly_fixture: GrizzlyFixture) -> None:
     behave = grizzly_fixture.behave
     grizzly = cast(GrizzlyContext, behave.grizzly)
-    request = cast(RequestTask, grizzly.scenario.tasks[0])
+    request = cast(RequestTask, grizzly.scenario.tasks()[0])
 
     with pytest.raises(ValueError) as ve:
         step_response_save(behave, ResponseTarget.METADATA, '', '')
@@ -173,7 +173,7 @@ def test_step_response_save_metadata(grizzly_fixture: GrizzlyFixture) -> None:
 def test_step_response_save_payload(grizzly_fixture: GrizzlyFixture) -> None:
     behave = grizzly_fixture.behave
     grizzly = cast(GrizzlyContext, behave.grizzly)
-    request = cast(RequestTask, grizzly.scenario.tasks[0])
+    request = cast(RequestTask, grizzly.scenario.tasks()[0])
 
     with pytest.raises(ValueError) as ve:
         step_response_save(behave, ResponseTarget.PAYLOAD, '', '')
@@ -205,7 +205,7 @@ def test_step_response_save_payload(grizzly_fixture: GrizzlyFixture) -> None:
 def test_step_response_validate_metadata(grizzly_fixture: GrizzlyFixture) -> None:
     behave = grizzly_fixture.behave
     grizzly = cast(GrizzlyContext, behave.grizzly)
-    request = cast(RequestTask, grizzly.scenario.tasks[0])
+    request = cast(RequestTask, grizzly.scenario.tasks()[0])
 
     with pytest.raises(ValueError) as ve:
         step_response_validate(behave, ResponseTarget.METADATA, '', True, '')
@@ -228,7 +228,7 @@ def test_step_response_validate_metadata(grizzly_fixture: GrizzlyFixture) -> Non
 def test_step_response_validate_payload(grizzly_fixture: GrizzlyFixture) -> None:
     behave = grizzly_fixture.behave
     grizzly = cast(GrizzlyContext, behave.grizzly)
-    request = cast(RequestTask, grizzly.scenario.tasks[0])
+    request = cast(RequestTask, grizzly.scenario.tasks()[0])
 
     with pytest.raises(ValueError) as ve:
         step_response_validate(behave, ResponseTarget.PAYLOAD, '', True, '')
@@ -261,6 +261,17 @@ def test_step_response_allow_status_codes(behave_fixture: BehaveFixture) -> None
 
     step_response_allow_status_codes(behave, '200,302')
     assert request.response.status_codes == [200, 302]
+
+    grizzly.scenario.tasks.add(LogMessageTask(message='hello world'))
+    grizzly.scenario.tasks.tmp.conditional = ConditionalTask(
+        name='conditional',
+        condition='{{ value | int == 0}}',
+    )
+    grizzly.scenario.tasks.tmp.conditional.switch(True)
+
+    grizzly.scenario.tasks.add(request)
+    step_response_allow_status_codes(behave, '-200,-302,500')
+    assert request.response.status_codes == [500]
 
 
 def test_step_response_allow_status_codes_table(behave_fixture: BehaveFixture) -> None:
@@ -299,7 +310,7 @@ def test_step_response_allow_status_codes_table(behave_fixture: BehaveFixture) -
 
     request = RequestTask(RequestMethod.GET, name='no-code', endpoint='/api/test')
     request.scenario = grizzly.scenario
-    grizzly.scenario.tasks.insert(0, request)
+    grizzly.scenario.tasks().insert(0, request)
 
     rows = []
     '''
@@ -313,9 +324,31 @@ def test_step_response_allow_status_codes_table(behave_fixture: BehaveFixture) -
     behave.table = Table([column_name], rows=rows)
 
     step_response_allow_status_codes_table(behave)
-    assert cast(RequestTask, grizzly.scenario.tasks[0]).response.status_codes == [200]
-    assert cast(RequestTask, grizzly.scenario.tasks[1]).response.status_codes == [400]
-    assert cast(RequestTask, grizzly.scenario.tasks[2]).response.status_codes == [200, 302]
+    assert cast(RequestTask, grizzly.scenario.tasks()[0]).response.status_codes == [200]
+    assert cast(RequestTask, grizzly.scenario.tasks()[1]).response.status_codes == [400]
+    assert cast(RequestTask, grizzly.scenario.tasks()[2]).response.status_codes == [200, 302]
+
+    grizzly.scenario.tasks.clear()
+
+    grizzly.scenario.tasks.add(LogMessageTask(message='hello world'))
+    grizzly.scenario.tasks.tmp.conditional = ConditionalTask(
+        name='conditional',
+        condition='{{ value | int == 0}}',
+    )
+    grizzly.scenario.tasks.tmp.conditional.switch(True)
+
+    request = RequestTask(RequestMethod.SEND, name='test', endpoint='/api/test')
+    grizzly.scenario.tasks.add(request)
+    request = RequestTask(RequestMethod.GET, name='test-get', endpoint='/api/test')
+    grizzly.scenario.tasks.add(request)
+    request = RequestTask(RequestMethod.GET, name='no-code', endpoint='/api/test')
+    request.scenario = grizzly.scenario
+    grizzly.scenario.tasks().insert(0, request)
+
+    step_response_allow_status_codes_table(behave)
+    assert cast(RequestTask, grizzly.scenario.tasks()[0]).response.status_codes == [200]
+    assert cast(RequestTask, grizzly.scenario.tasks()[1]).response.status_codes == [400]
+    assert cast(RequestTask, grizzly.scenario.tasks()[2]).response.status_codes == [200, 302]
 
 
 def test_step_response_content_type(behave_fixture: BehaveFixture) -> None:
