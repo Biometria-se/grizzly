@@ -12,7 +12,9 @@ pip3 install grizzly-loadtester[mq]
 
 ## Step implementations
 
-* {@pylink grizzly.steps.scenario.tasks.step_task_client_get_endpoint}
+* {@pylink grizzly.steps.scenario.tasks.step_task_client_get_endpoint_payload}
+
+* {@pylink grizzly.steps.scenario.tasks.step_task_client_get_endpoint_payload_metadata}
 
 * {@pylink grizzly.steps.scenario.tasks.step_task_client_put_endpoint_file}
 
@@ -114,7 +116,8 @@ class MessageQueueClientTask(ClientTask):
         endpoint: str,
         name: Optional[str] = None,
         /,
-        variable: Optional[str] = None,
+        payload_variable: Optional[str] = None,
+        metadata_variable: Optional[str] = None,
         source: Optional[str] = None,
         destination: Optional[str] = None,
         text: Optional[str] = None,
@@ -130,7 +133,8 @@ class MessageQueueClientTask(ClientTask):
             direction,
             endpoint,
             name,
-            variable=variable,
+            payload_variable=payload_variable,
+            metadata_variable=metadata_variable,
             destination=destination,
             source=source,
             scenario=scenario,
@@ -345,8 +349,12 @@ class MessageQueueClientTask(ClientTask):
         }
         response = self.request(parent, request)
 
-        if response is not None and self.variable is not None:
-            parent.user._context['variables'][self.variable] = response['payload']
+        if response is not None:
+            if self.payload_variable is not None and response.get('payload', None) is not None:
+                parent.user._context['variables'][self.payload_variable] = response['payload']
+
+            if self.metadata_variable is not None and response.get('metadata', None) is not None:
+                parent.user._context['variables'][self.metadata_variable] = response['metadata']
 
         response = response or {}
 

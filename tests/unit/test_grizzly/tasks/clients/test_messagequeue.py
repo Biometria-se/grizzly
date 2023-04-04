@@ -77,7 +77,8 @@ class TestMessageQueueClientTask:
             assert task_factory._worker == {}
             assert task_factory.endpoint == 'mqs://localhost:1'
             assert task_factory.name is None
-            assert task_factory.variable is None
+            assert task_factory.payload_variable is None
+            assert task_factory.metadata_variable is None
             assert task_factory.destination is None
             assert task_factory.source is None
             assert not hasattr(task_factory, 'scenario')
@@ -99,7 +100,8 @@ class TestMessageQueueClientTask:
             assert task_factory._worker == {}
             assert task_factory.endpoint == 'mqs://localhost:1'
             assert task_factory.name == 'messagequeue-request'
-            assert task_factory.variable is None
+            assert task_factory.payload_variable is None
+            assert task_factory.metadata_variable is None
             assert task_factory.destination is None
             assert task_factory.source is None
             assert not hasattr(task_factory, 'scenario')
@@ -421,7 +423,7 @@ class TestMessageQueueClientTask:
 
         assert scenario is not None
 
-        scenario.grizzly.state.variables['mq-client-var'] = 'none'
+        scenario.grizzly.state.variables.update({'mq-client-var': 'none', 'mq-client-metadata': 'none'})
 
         fire_spy = mocker.spy(scenario.user.environment.events.request, 'fire')
 
@@ -435,7 +437,7 @@ class TestMessageQueueClientTask:
             task_factory = MessageQueueClientTask(
                 RequestDirection.FROM,
                 'mqs://mq_username:mq_password@mq.example.io/topic:INCOMING.MSG?QueueManager=QM01&Channel=TCP.IN',
-                variable='mq-client-var',
+                payload_variable='mq-client-var',
             )
             zmq_context = task_factory._zmq_context
 
@@ -447,6 +449,7 @@ class TestMessageQueueClientTask:
             task(scenario)
 
             assert scenario.user._context['variables'].get('mq-client-var', None) is None
+            assert scenario.user._context['variables'].get('mq-client-metadata', None) is None
             assert task_factory._worker.get(id(scenario), None) == 'dddd-eeee-ffff-9999'
             assert send_json_mock.call_count == 2
             args, kwargs = send_json_mock.call_args_list[-1]
@@ -483,6 +486,7 @@ class TestMessageQueueClientTask:
             task(scenario)
 
             assert scenario.user._context['variables'].get('mq-client-var', None) is None
+            assert scenario.user._context['variables'].get('mq-client-metadata', None) is None
             assert send_json_mock.call_count == 3
             args, kwargs = send_json_mock.call_args_list[-1]
             assert args == ({
@@ -513,6 +517,7 @@ class TestMessageQueueClientTask:
             task(scenario)
 
             assert scenario.user._context['variables'].get('mq-client-var', None) is None
+            assert scenario.user._context['variables'].get('mq-client-metadata', None) is None
             assert send_json_mock.call_count == 4
             assert recv_json_mock.call_count == 5
 
@@ -527,13 +532,15 @@ class TestMessageQueueClientTask:
             assert isinstance(exception, RuntimeError)
             assert str(exception) == 'response did not contain any payload'
 
-            messages = [{'success': True, 'payload': '{"hello": "world", "foo": "bar"}'}]
+            messages = [{'success': True, 'payload': '{"hello": "world", "foo": "bar"}', 'metadata': {'x-foo-bar': 'test'}}]
             recv_json_mock.side_effect = messages
             task_factory.name = 'mq-get-example'
+            task_factory.metadata_variable = 'mq-client-metadata'
 
             task(scenario)
 
             assert scenario.user._context['variables'].get('mq-client-var', None) == '{"hello": "world", "foo": "bar"}'
+            assert scenario.user._context['variables'].get('mq-client-metadata', None) == {'x-foo-bar': 'test'}
             assert send_json_mock.call_count == 5
             assert recv_json_mock.call_count == 6
 

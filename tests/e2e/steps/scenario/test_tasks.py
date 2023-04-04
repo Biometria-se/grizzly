@@ -444,7 +444,8 @@ def test_e2e_step_task_client_get_endpoint(e2e_fixture: End2EndFixture) -> None:
         assert task.direction == RequestDirection.FROM
         assert task.endpoint == f'https://{e2e_fixture_host}/example.json'
         assert task.name == 'https-get'
-        assert task.variable == 'example_openapi', f'{task.variable} != example_openapi'
+        assert task.payload_variable == 'example_openapi', f'{task.payload_variable} != example_openapi'
+        assert task.metadata_variable is None
         assert task.source is None
         assert task.destination is None
         assert task._short_name == 'Http'
@@ -456,12 +457,15 @@ def test_e2e_step_task_client_get_endpoint(e2e_fixture: End2EndFixture) -> None:
         assert task.direction == RequestDirection.FROM
         assert task.endpoint == '{{ endpoint }}'
         assert task.name == 'http-get'
-        assert task.variable == 'endpoint_result'
+        assert task.payload_variable == 'endpoint_payload'
+        assert task.metadata_variable == 'endpoint_metadata'
         assert task.source is None
         assert task.destination is None
         assert task._short_name == 'Http'
         actual_templates = task.get_templates()
-        assert sorted(actual_templates) == sorted(['{{ endpoint }}', '{{ endpoint_result }}']), f"{actual_templates} != ['{{{{ endpoint }}}}', '{{{{ endpoint_result }}}}']"
+        assert (
+            sorted(actual_templates) == sorted(['{{ endpoint }}', '{{ endpoint_payload }} {{ endpoint_metadata }}'])
+        ), f"{actual_templates} != ['{{{{ endpoint }}}}', '{{{{ endpoint_payload }}}} {{{{ endpoint_metadata}}}}']"
 
     table: List[Dict[str, str]] = [{
         'e2e_fixture.host': e2e_fixture.host,
@@ -472,11 +476,12 @@ def test_e2e_step_task_client_get_endpoint(e2e_fixture: End2EndFixture) -> None:
     feature_file = e2e_fixture.test_steps(
         scenario=[
             'And value for variable "example_openapi" is "None"',
-            'And value for variable "endpoint_result" is "None"',
+            'And value for variable "endpoint_payload" is "None"',
+            'And value for variable "endpoint_metadata" is "None"',
             f'And value for variable "endpoint" is "{e2e_fixture.host}"',
-            f'Then get "https://{e2e_fixture.host}/example.json" with name "https-get" and save response in "example_openapi"',
-            'Then get "http://{{ endpoint }}" with name "http-get" and save response in "endpoint_result"',
-            'Then log message "example_openapi={{ example_openapi }}, endpoint_result={{ endpoint_result }}"',
+            f'Then get "https://{e2e_fixture.host}/example.json" with name "https-get" and save response payload in "example_openapi"',
+            'Then get "http://{{ endpoint }}" with name "http-get" and save response payload in "endpoint_payload" and metadata in "endpoint_metadata"',
+            'Then log message "example_openapi={{ example_openapi }}, endpoint_payload={{ endpoint_payload }}, endpoint_metadata={{ endpoint_metadata }}"',
         ]
     )
 
@@ -514,7 +519,8 @@ def test_e2e_step_task_client_get_endpoint_until(e2e_fixture: End2EndFixture) ->
         assert task.direction == RequestDirection.FROM
         assert task.endpoint == f'http://{e2e_fixture_host}/api/until/id?nth=2&wrong=bar&right=foo&as_array=True', f'{task.name=}, {task.endpoint=}'
         assert task.name == 'https-get'
-        assert task.variable is None
+        assert task.payload_variable is None
+        assert task.metadata_variable is None
         assert task.source is None
         assert task.destination is None
         assert task._short_name == 'Http'
@@ -532,7 +538,8 @@ def test_e2e_step_task_client_get_endpoint_until(e2e_fixture: End2EndFixture) ->
         assert task.direction == RequestDirection.FROM
         assert task.endpoint == '{{ endpoint }}/api/until/success?nth=2&wrong=false&right=true&as_array=True', f'{task.name=}, {task.endpoint=}'
         assert task.name == 'http-get'
-        assert task.variable is None
+        assert task.payload_variable is None
+        assert task.metadata_variable is None
         assert task.source is None
         assert task.destination is None
         assert task._short_name == 'Http'
@@ -550,7 +557,8 @@ def test_e2e_step_task_client_get_endpoint_until(e2e_fixture: End2EndFixture) ->
         assert task.direction == RequestDirection.FROM
         assert task.endpoint == f'http://{e2e_fixture_host}/api/until/hello?nth=2&wrong=foobar&right=world&as_array=True', f'{task.name=}, {task.endpoint=}'
         assert task.name == 'https-env-get'
-        assert task.variable is None
+        assert task.payload_variable is None
+        assert task.metadata_variable is None
         assert task.source is None
         assert task.destination is None
         assert task._short_name == 'Http'
@@ -613,7 +621,8 @@ def test_e2e_step_task_client_put_endpoint_file_destination(e2e_fixture: End2End
         assert task.direction == RequestDirection.TO
         assert task.endpoint == 'bs://my-unsecure-storage?AccountKey=aaaabbb=&Container=my-container'
         assert task.name == 'bs-put'
-        assert task.variable is None
+        assert task.payload_variable is None
+        assert task.metadata_variable is None
         assert task.source == 'test-file.json'
         assert task.destination == 'uploaded-test-file.json'
         assert task._short_name == 'BlobStorage'
@@ -629,7 +638,8 @@ def test_e2e_step_task_client_put_endpoint_file_destination(e2e_fixture: End2End
         assert task.direction == RequestDirection.TO
         assert task.endpoint == 'bss://my-storage?AccountKey=aaaabbb=&Container=my-container'
         assert task.name == 'bss-put'
-        assert task.variable is None
+        assert task.payload_variable is None
+        assert task.metadata_variable is None
         assert task.source == 'test-files.json'
         assert task.destination == 'uploaded-test-files.json'
         assert task._short_name == 'BlobStorage'
@@ -671,7 +681,8 @@ def test_e2e_step_task_client_put_endpoint_file(e2e_fixture: End2EndFixture) -> 
         assert task.direction == RequestDirection.TO
         assert task.endpoint == 'bs://my-unsecure-storage?AccountKey=aaaabbb=&Container=my-container'
         assert task.name == 'bs-put'
-        assert task.variable is None
+        assert task.payload_variable is None
+        assert task.metadata_variable is None
         assert task.source == 'test-file.json'
         assert task.destination is None
         assert task._short_name == 'BlobStorage'
@@ -687,7 +698,8 @@ def test_e2e_step_task_client_put_endpoint_file(e2e_fixture: End2EndFixture) -> 
         assert task.direction == RequestDirection.TO
         assert task.endpoint == 'bss://my-storage?AccountKey=aaaabbb=&Container=my-container'
         assert task.name == 'bss-put'
-        assert task.variable is None
+        assert task.payload_variable is None
+        assert task.metadata_variable is None
         assert task.source == 'test-files.json'
         assert task.destination is None
         assert task._short_name == 'BlobStorage'

@@ -5,6 +5,7 @@ import pytest
 
 from pytest_mock import MockerFixture
 from requests import Response
+from requests.structures import CaseInsensitiveDict
 
 from grizzly_extras.transformer import TransformerContentType
 from grizzly.context import GrizzlyContext
@@ -22,7 +23,7 @@ class TestHttpClientTask:
         grizzly = cast(GrizzlyContext, behave.grizzly)
 
         with pytest.raises(AttributeError) as ae:
-            HttpClientTask(RequestDirection.TO, 'http://example.org', variable='test')
+            HttpClientTask(RequestDirection.TO, 'http://example.org', payload_variable='test')
         assert 'HttpClientTask: variable argument is not applicable for direction TO' in str(ae.value)
 
         with pytest.raises(AttributeError) as ae:
@@ -30,7 +31,11 @@ class TestHttpClientTask:
         assert 'HttpClientTask: source argument is not applicable for direction FROM' in str(ae.value)
 
         with pytest.raises(ValueError) as ve:
-            HttpClientTask(RequestDirection.FROM, 'http://example.org', variable='test')
+            HttpClientTask(RequestDirection.FROM, 'http://example.org', payload_variable='test')
+        assert 'HttpClientTask: variable test has not been initialized' in str(ve)
+
+        with pytest.raises(ValueError) as ve:
+            HttpClientTask(RequestDirection.FROM, 'http://example.org', payload_variable=None, metadata_variable='test')
         assert 'HttpClientTask: variable test has not been initialized' in str(ve)
 
         response = Response()
@@ -45,13 +50,19 @@ class TestHttpClientTask:
 
         grizzly.state.variables.update({'test': 'none'})
 
+        with pytest.raises(ValueError) as ve:
+            HttpClientTask(RequestDirection.FROM, 'http://example.org', payload_variable=None, metadata_variable='test')
+        assert 'HttpClientTask: payload variable is not set, but metadata variable is set' in str(ve)
+
         _, _, scenario = grizzly_fixture()
 
         assert scenario is not None
 
         request_fire_spy = mocker.spy(scenario.user.environment.events.request, 'fire')
 
-        task_factory = HttpClientTask(RequestDirection.FROM, 'http://example.org', variable='test')
+        grizzly.state.variables.update({'test_payload': 'none', 'test_metadata': 'none'})
+
+        task_factory = HttpClientTask(RequestDirection.FROM, 'http://example.org', payload_variable='test_payload', metadata_variable='test_metadata')
         assert task_factory.arguments == {}
         assert task_factory.__template_attributes__ == {'endpoint', 'destination', 'source', 'name', 'variable_template'}
 
@@ -59,14 +70,17 @@ class TestHttpClientTask:
 
         assert callable(task)
 
-        assert scenario.user._context['variables'].get('test', None) is None
+        assert scenario.user._context['variables'].get('test_payload', None) is None
+        assert scenario.user._context['variables'].get('test_metadata', None) is None
 
         task_factory.name = 'test-1'
         response.status_code = 400
+        response.headers = CaseInsensitiveDict({'x-foo-bar': 'test'})
 
         task(scenario)
 
-        assert scenario.user._context['variables'].get('test', '') == jsondumps({'hello': 'world'})
+        assert scenario.user._context['variables'].get('test_payload', '') == jsondumps({'hello': 'world'})
+        assert scenario.user._context['variables'].get('test_metadata', '') == {'x-foo-bar': 'test'}
         assert requests_get_spy.call_count == 1
         args, kwargs = requests_get_spy.call_args_list[-1]
         assert args[0] == 'http://example.org'
@@ -93,7 +107,7 @@ class TestHttpClientTask:
         assert log_entry.get('request', {}).get('metadata', None) is not None
         assert log_entry.get('request', {}).get('payload', '') is None
         assert log_entry.get('response', {}).get('url', None) == 'http://example.org'
-        assert log_entry.get('response', {}).get('metadata', None) == {}
+        assert log_entry.get('response', {}).get('metadata', None) == {'x-foo-bar': 'test'}
         assert log_entry.get('response', {}).get('payload', None) is not None
         assert log_entry.get('response', {}).get('status', None) == 400
 
@@ -151,7 +165,7 @@ class TestHttpClientTask:
 
         scenario.user._scenario.failure_exception = None
 
-        task_factory = HttpClientTask(RequestDirection.FROM, 'http://example.org', 'http-get', variable='test')
+        task_factory = HttpClientTask(RequestDirection.FROM, 'http://example.org', 'http-get', payload_variable='test')
         task = task_factory()
         assert task_factory.arguments == {}
         assert task_factory.content_type == TransformerContentType.UNDEFINED
@@ -177,7 +191,7 @@ class TestHttpClientTask:
 
         grizzly.state.configuration['test.host'] = 'https://example.org'
 
-        task_factory = HttpClientTask(RequestDirection.FROM, 'https://$conf::test.host$/api/test', 'http-env-get', variable='test')
+        task_factory = HttpClientTask(RequestDirection.FROM, 'https://$conf::test.host$/api/test', 'http-env-get', payload_variable='test')
         assert task_factory.arguments == {'verify': True}
         assert task_factory.content_type == TransformerContentType.UNDEFINED
         task = task_factory()
@@ -192,7 +206,7 @@ class TestHttpClientTask:
         assert kwargs.get('headers', {}).get('x-grizzly-user', None).startswith('HttpClientTask::')
         assert len(list(task_factory.log_dir.rglob('**/*'))) == 5
 
-        task_factory = HttpClientTask(RequestDirection.FROM, 'https://$conf::test.host$/api/test | verify=False, content_type=json', 'http-env-get-1', variable='test')
+        task_factory = HttpClientTask(RequestDirection.FROM, 'https://$conf::test.host$/api/test | verify=False, content_type=json', 'http-env-get-1', payload_variable='test')
         task = task_factory()
         assert task_factory.arguments == {'verify': False}
         assert task_factory.content_type == TransformerContentType.JSON
@@ -209,7 +223,7 @@ class TestHttpClientTask:
         assert request_fire_spy.call_count == 7
         assert len(list(task_factory.log_dir.rglob('**/*'))) == 5
 
-        task_factory = HttpClientTask(RequestDirection.FROM, 'https://$conf::test.host$/api/test | verify=True, content_type=json', 'http-env-get-2', variable='test')
+        task_factory = HttpClientTask(RequestDirection.FROM, 'https://$conf::test.host$/api/test | verify=True, content_type=json', 'http-env-get-2', payload_variable='test')
         task = task_factory()
         assert task_factory.arguments == {'verify': True}
         assert task_factory.content_type == TransformerContentType.JSON
@@ -229,7 +243,7 @@ class TestHttpClientTask:
         assert len(list(task_factory.log_dir.rglob('**/*'))) == 6
 
         with pytest.raises(NotImplementedError) as nie:
-            HttpClientTask(RequestDirection.FROM, 'https://$conf::test.host$/api/test | verify=True, content_type=json', 'http-env-get-2', variable='test', text='foobar')
+            HttpClientTask(RequestDirection.FROM, 'https://$conf::test.host$/api/test | verify=True, content_type=json', 'http-env-get-2', payload_variable='test', text='foobar')
         assert str(nie.value) == 'HttpClientTask has not implemented support for step text'
 
     def test_put(self, grizzly_fixture: GrizzlyFixture) -> None:

@@ -66,7 +66,8 @@ class TestBlobStorageClientTask:
         assert task.endpoint == 'bs://my-storage?AccountKey=aaaabbb=&Container=my-container'
         assert task.name is None
         assert task.source == ''
-        assert task.variable is None
+        assert task.payload_variable is None
+        assert task.metadata_variable is None
         assert task.destination is None
         assert task._endpoints_protocol == 'http'
         assert task.account_name == 'my-storage'
@@ -87,7 +88,8 @@ class TestBlobStorageClientTask:
         assert task.endpoint == 'bss://my-storage?AccountKey=aaaabbb=&Container=my-container&Overwrite=True'
         assert task.name == 'upload-empty-file'
         assert task.source == ''
-        assert task.variable is None
+        assert task.payload_variable is None
+        assert task.metadata_variable is None
         assert task.destination is None
         assert task._endpoints_protocol == 'https'
         assert task.account_name == 'my-storage'
@@ -123,7 +125,7 @@ class TestBlobStorageClientTask:
         task_factory = BlobStorageClientTask(
             RequestDirection.FROM,
             'bs://my-storage?AccountKey=aaaabbb=&Container=my-container',
-            variable='test',
+            payload_variable='test',
         )
         task = task_factory()
 

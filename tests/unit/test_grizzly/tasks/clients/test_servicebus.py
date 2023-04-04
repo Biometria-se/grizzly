@@ -71,7 +71,7 @@ class TestServiceBusClientTask:
             ),
             'test',
             text='foobar',
-            variable='foobar',
+            payload_variable='foobar',
         )
 
         assert task.endpoint == 'sb://sb.windows.net/;SharedAccessKeyName=KeyName;SharedAccessKey=SeCrEtKeY=='
@@ -84,10 +84,45 @@ class TestServiceBusClientTask:
             'content_type': 'JSON'
         }
         assert task.text == 'foobar'
-        assert task.variable == 'foobar'
+        assert task.payload_variable == 'foobar'
+        assert task.metadata_variable is None
         assert task.source is None
         assert task.worker_id is None
         assert sorted(task.get_templates()) == sorted(['topic:my-topic, subscription:my-subscription-{{ id }}, expression:$.hello.world', '{{ foobar }}'])
+        context_mock.assert_called_once_with()
+        context_mock.return_value.socket.assert_called_once_with(ZMQ_REQ)
+        context_mock.return_value.socket.return_value.connect.assert_called_once_with('tcp://127.0.0.1:5554')
+        context_mock.reset_mock()
+
+        grizzly.state.variables.update({'barfoo': 'none'})
+
+        task = ServiceBusClientTask(
+            RequestDirection.FROM,
+            (
+                'sb://$conf::sbns.host$/topic:my-topic/subscription:my-subscription-{{ id }}/expression:$.hello.world'
+                ';SharedAccessKeyName=$conf::sbns.key.name$;SharedAccessKey=$conf::sbns.key.secret$#Consume=True&MessageWait=300&ContentType=json'
+            ),
+            'test',
+            text='foobar',
+            payload_variable='foobar',
+            metadata_variable='barfoo',
+        )
+
+        assert task.endpoint == 'sb://sb.windows.net/;SharedAccessKeyName=KeyName;SharedAccessKey=SeCrEtKeY=='
+        assert task.context == {
+            'url': task.endpoint,
+            'connection': 'receiver',
+            'endpoint': 'topic:my-topic, subscription:my-subscription-{{ id }}, expression:$.hello.world',
+            'consume': True,
+            'message_wait': 300,
+            'content_type': 'JSON'
+        }
+        assert task.text == 'foobar'
+        assert task.payload_variable == 'foobar'
+        assert task.metadata_variable == 'barfoo'
+        assert task.source is None
+        assert task.worker_id is None
+        assert sorted(task.get_templates()) == sorted(['topic:my-topic, subscription:my-subscription-{{ id }}, expression:$.hello.world', '{{ foobar }} {{ barfoo }}'])
         context_mock.assert_called_once_with()
         context_mock.return_value.socket.assert_called_once_with(ZMQ_REQ)
         context_mock.return_value.socket.return_value.connect.assert_called_once_with('tcp://127.0.0.1:5554')
@@ -431,8 +466,8 @@ class TestServiceBusClientTask:
 
         request_mock = mocker.patch.object(task, 'request', return_value={'metadata': None, 'payload': 'foobar'})
 
-        # no variable
-        task.variable = None
+        # no variables
+        task.payload_variable = None
 
         assert task.get(parent_mock) == (None, 'foobar',)
 
@@ -447,8 +482,8 @@ class TestServiceBusClientTask:
 
         request_mock.reset_mock()
 
-        # with variable
-        task.variable = 'foobaz'
+        # with payload variable
+        task.payload_variable = 'foobaz'
 
         assert task.get(parent_mock) == (None, 'foobar',)
 
@@ -460,6 +495,22 @@ class TestServiceBusClientTask:
         })
 
         assert parent_mock.user._context['variables'] == {'foobaz': 'foobar'}
+
+        # with payload and metadata variable
+        task.payload_variable = 'foobaz'
+        task.metadata_variable = 'bazfoo'
+        request_mock = mocker.patch.object(task, 'request', return_value={'metadata': {'x-foo-bar': 'hello'}, 'payload': 'foobar'})
+
+        assert task.get(parent_mock) == ({'x-foo-bar': 'hello'}, 'foobar',)
+
+        request_mock.assert_called_once_with(parent_mock, {
+            'action': 'RECEIVE',
+            'worker': 'foo-bar',
+            'context': task.context,
+            'payload': None,
+        })
+
+        assert parent_mock.user._context['variables'] == {'foobaz': 'foobar', 'bazfoo': {'x-foo-bar': 'hello'}}
 
     def test_put(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         _, _, scenario = grizzly_fixture()
