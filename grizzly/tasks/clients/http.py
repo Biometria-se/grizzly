@@ -6,7 +6,9 @@ Only supports `RequestDirection.FROM`.
 
 ## Step implementations
 
-* {@pylink grizzly.steps.scenario.tasks.step_task_client_get_endpoint}
+* {@pylink grizzly.steps.scenario.tasks.step_task_client_get_endpoint_payload}
+
+* {@pylink grizzly.steps.scenario.tasks.step_task_client_get_endpoint_payload_metadata}
 
 ## Arguments
 
@@ -41,7 +43,8 @@ class HttpClientTask(ClientTask):
         endpoint: str,
         name: Optional[str] = None,
         /,
-        variable: Optional[str] = None,
+        payload_variable: Optional[str] = None,
+        metadata_variable: Optional[str] = None,
         source: Optional[str] = None,
         destination: Optional[str] = None,
         text: Optional[str] = None,
@@ -64,7 +67,8 @@ class HttpClientTask(ClientTask):
             direction,
             endpoint,
             name,
-            variable=variable,
+            payload_variable=payload_variable,
+            metadata_variable=metadata_variable,
             source=source,
             destination=destination,
             scenario=scenario,
@@ -90,27 +94,33 @@ class HttpClientTask(ClientTask):
             }})
 
             response = requests.get(url, headers=self.headers, **self.arguments)
-            value = response.text
-            if self.variable is not None:
-                parent.user._context['variables'][self.variable] = value
-            meta['response_length'] = len(value.encode('utf-8'))
+            payload = response.text
+            metadata = dict(response.headers)
+
+            if self.payload_variable is not None:
+                parent.user._context['variables'][self.payload_variable] = payload
+
+            if self.metadata_variable is not None:
+                parent.user._context['variables'][self.metadata_variable] = metadata
+
+            meta['response_length'] = len(payload.encode('utf-8'))
 
             exception: Optional[Exception] = None
 
             if response.status_code != 200:
-                exception = CatchResponseError(f'{response.status_code} not in [200]: {value}')
+                exception = CatchResponseError(f'{response.status_code} not in [200]: {payload}')
 
             meta.update({
                 'response': {
                     'url': response.url,
-                    'metadata': dict(response.headers),
-                    'payload': value,
+                    'metadata': metadata,
+                    'payload': payload,
                     'status': response.status_code,
                 },
                 'exception': exception,
             })
 
-            return dict(response.headers), value
+            return metadata, payload
 
     def put(self, parent: GrizzlyScenario) -> GrizzlyResponse:
         raise NotImplementedError(f'{self.__class__.__name__} has not implemented PUT')

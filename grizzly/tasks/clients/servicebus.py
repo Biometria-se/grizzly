@@ -1,10 +1,11 @@
 # pylint: disable=line-too-long
 """This task performs Azure SerciceBus operations to a specified endpoint.
 
-
 ## Step implementations
 
-* {@pylink grizzly.steps.scenario.tasks.step_task_client_get_endpoint}
+* {@pylink grizzly.steps.scenario.tasks.step_task_client_get_endpoint_payload}
+
+* {@pylink grizzly.steps.scenario.tasks.step_task_client_get_endpoint_payload_metadata}
 
 * {@pylink grizzly.steps.scenario.tasks.step_task_client_put_endpoint_file}
 
@@ -103,13 +104,24 @@ class ServiceBusClientTask(ClientTask):
         endpoint: str,
         name: Optional[str] = None,
         /,
-        variable: Optional[str] = None,
+        payload_variable: Optional[str] = None,
+        metadata_variable: Optional[str] = None,
         source: Optional[str] = None,
         destination: Optional[str] = None,
         text: Optional[str] = None,
         scenario: Optional[GrizzlyContextScenario] = None,
     ) -> None:
-        super().__init__(direction, endpoint, name, variable=variable, destination=destination, source=source, text=text, scenario=scenario)
+        super().__init__(
+            direction,
+            endpoint,
+            name,
+            payload_variable=payload_variable,
+            metadata_variable=metadata_variable,
+            destination=destination,
+            source=source,
+            text=text,
+            scenario=scenario,
+        )
 
         url = self.endpoint.replace(';', '?', 1).replace(';', '&')
 
@@ -286,8 +298,11 @@ class ServiceBusClientTask(ClientTask):
         metadata = response.get('metadata', None)
         payload = response.get('payload', None)
 
-        if payload is not None and self.variable is not None:
-            parent.user._context['variables'][self.variable] = payload
+        if payload is not None and self.payload_variable is not None:
+            parent.user._context['variables'][self.payload_variable] = payload
+
+        if metadata is not None and self.metadata_variable is not None:
+            parent.user._context['variables'][self.metadata_variable] = metadata
 
         return metadata, payload
 

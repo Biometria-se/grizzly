@@ -342,8 +342,8 @@ def step_task_transform(context: Context, content: str, content_type: Transforme
     ))
 
 
-@then(u'get "{endpoint}" with name "{name}" and save response in "{variable}"')
-def step_task_client_get_endpoint(context: Context, endpoint: str, name: str, variable: str) -> None:
+@then(u'get "{endpoint}" with name "{name}" and save response payload in "{payload_variable}" and metadata in "{metadata_variable}"')
+def step_task_client_get_endpoint_payload_metadata(context: Context, endpoint: str, name: str, payload_variable: str, metadata_variable: str) -> None:
     """
     Creates an instance of a {@pylink grizzly.tasks.clients} task, actual implementation of the task is determined
     based on the URL scheme specified in `endpoint`. Gets information from another host or endpoint than the scenario
@@ -354,14 +354,15 @@ def step_task_client_get_endpoint(context: Context, endpoint: str, name: str, va
     Example:
 
     ``` gherkin
-    Then get "https://www.example.org/example.json" with name "example-1" and save response in "example_openapi"
-    Then get "http://{{ endpoint }}" with name "example-2" and save response in "endpoint_result"
+    Then get "https://www.example.org/example.json" with name "example-1" and save response payload in "example_openapi" and metadata in "example_metadata"
+    Then get "http://{{ endpoint }}" with name "example-2" and save response payload in "endpoint_result" and metadata in "result_metadata"
     ```
 
     Args:
         endpoint (str): information about where to get information, see the specific getter task implementations for more information
         name (str): name of the request, used in request statistics
-        variable (str): name of, initialized, variable where response will be saved in
+        payload_variable (str): name of, initialized, variable where response payload will be saved in
+        metadata_variable (str): name of, initialized, variable where response metadata will be saved in
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -369,7 +370,41 @@ def step_task_client_get_endpoint(context: Context, endpoint: str, name: str, va
         RequestDirection.FROM,
         endpoint,
         name,
-        variable=variable,
+        payload_variable=payload_variable,
+        metadata_variable=metadata_variable,
+        text=context.text,
+    ))
+
+
+@then(u'get "{endpoint}" with name "{name}" and save response payload in "{variable}"')
+def step_task_client_get_endpoint_payload(context: Context, endpoint: str, name: str, variable: str) -> None:
+    """
+    Creates an instance of a {@pylink grizzly.tasks.clients} task, actual implementation of the task is determined
+    based on the URL scheme specified in `endpoint`. Gets information from another host or endpoint than the scenario
+    is load testing and saves the response in a variable.
+
+    See {@pylink grizzly.tasks.clients} task documentation for more information about client tasks.
+
+    Example:
+
+    ``` gherkin
+    Then get "https://www.example.org/example.json" with name "example-1" and save response payload in "example_openapi"
+    Then get "http://{{ endpoint }}" with name "example-2" and save response payload in "endpoint_result"
+    ```
+
+    Args:
+        endpoint (str): information about where to get information, see the specific getter task implementations for more information
+        name (str): name of the request, used in request statistics
+        variable (str): name of, initialized, variable where response payload will be saved in
+    """
+    grizzly = cast(GrizzlyContext, context.grizzly)
+
+    grizzly.scenario.tasks.add(get_task_client(endpoint)(
+        RequestDirection.FROM,
+        endpoint,
+        name,
+        payload_variable=variable,
+        metadata_variable=None,
         text=context.text,
     ))
 

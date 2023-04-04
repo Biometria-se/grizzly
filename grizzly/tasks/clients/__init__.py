@@ -54,7 +54,8 @@ class ClientTask(GrizzlyMetaRequestTask):
     direction: RequestDirection
     endpoint: str
     name: Optional[str]
-    variable: Optional[str]
+    payload_variable: Optional[str]
+    metadata_variable: Optional[str]
     source: Optional[str]
     destination: Optional[str]
     _text: Optional[str]
@@ -67,7 +68,8 @@ class ClientTask(GrizzlyMetaRequestTask):
         endpoint: str,
         name: Optional[str] = None,
         /,
-        variable: Optional[str] = None,
+        payload_variable: Optional[str] = None,
+        metadata_variable: Optional[str] = None,
         source: Optional[str] = None,
         destination: Optional[str] = None,
         text: Optional[str] = None,
@@ -114,18 +116,25 @@ class ClientTask(GrizzlyMetaRequestTask):
         self.direction = direction
         self.endpoint = endpoint
         self.name = name
-        self.variable = variable
+        self.payload_variable = payload_variable
+        self.metadata_variable = metadata_variable
         self.source = source
         self.destination = destination
 
-        if self.variable is not None and self.direction != RequestDirection.FROM:
+        if self.payload_variable is not None and self.direction != RequestDirection.FROM:
             raise AttributeError(f'{self.__class__.__name__}: variable argument is not applicable for direction {self.direction.name}')
 
         if self.source is not None and self.direction != RequestDirection.TO:
             raise AttributeError(f'{self.__class__.__name__}: source argument is not applicable for direction {self.direction.name}')
 
-        if self.variable is not None and self.variable not in self.grizzly.state.variables:
-            raise ValueError(f'{self.__class__.__name__}: variable {self.variable} has not been initialized')
+        if self.payload_variable is not None and self.payload_variable not in self.grizzly.state.variables:
+            raise ValueError(f'{self.__class__.__name__}: variable {self.payload_variable} has not been initialized')
+
+        if self.metadata_variable is not None and self.metadata_variable not in self.grizzly.state.variables:
+            raise ValueError(f'{self.__class__.__name__}: variable {self.metadata_variable} has not been initialized')
+
+        if self.payload_variable is None and self.metadata_variable is not None:
+            raise ValueError(f'{self.__class__.__name__}: payload variable is not set, but metadata variable is set')
 
         if self.source is None and self.direction == RequestDirection.TO:
             raise ValueError(f'{self.__class__.__name__}: source must be set for direction {self.direction.name}')
@@ -155,10 +164,15 @@ class ClientTask(GrizzlyMetaRequestTask):
 
     @property
     def variable_template(self) -> Optional[str]:
-        if self.variable is None or ('{{' in self.variable and '}}' in self.variable):
-            return self.variable
+        if self.payload_variable is None or ('{{' in self.payload_variable and '}}' in self.payload_variable):
+            return self.payload_variable
 
-        return f'{{{{ {self.variable} }}}}'
+        template = f'{{{{ {self.payload_variable} }}}}'
+
+        if self.metadata_variable is not None:
+            template = f'{template} {{{{ {self.metadata_variable} }}}}'
+
+        return template
 
     @final
     def __call__(self) -> grizzlytask:
@@ -204,7 +218,7 @@ class ClientTask(GrizzlyMetaRequestTask):
             exception = e
         finally:
             if self.name is None:
-                action = action or meta.get('action', self.variable)
+                action = action or meta.get('action', self.payload_variable)
                 name = f'{parent.user._scenario.identifier} {self._short_name}{meta.get("direction", self._direction_arrow[self.direction])}{action}'
             else:
                 rendered_name = parent.render(self.name)
