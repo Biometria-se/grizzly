@@ -785,7 +785,7 @@ def test_grizzly_print_stats(caplog: LogCaptureFixture, mocker: MockerFixture) -
     request_types_sequence_count = 5
     scenario_count = 10
 
-    for ident in range(1, scenario_count):
+    for ident in range(1, scenario_count + 1):
         for index, method in enumerate(request_types_sequence * request_types_sequence_count, 1):
             name = f'{ident:03} {index:02}-{method.lower()}-test'
 
@@ -795,6 +795,9 @@ def test_grizzly_print_stats(caplog: LogCaptureFixture, mocker: MockerFixture) -
                 response_time=randint(200, 300),
                 content_length=(index * randint(10, 20)),
             )
+
+        stats.log_request('DOC', 'TPM report OUT', response_time=randint(200, 300), content_length=999)
+        stats.log_request('DOC', 'TPM report IN', response_time=randint(200, 300), content_length=999)
 
         for method in ['SCEN', 'TSTD', 'VAR', 'CLTSK']:
             stats.log_request(
@@ -830,6 +833,11 @@ def test_grizzly_print_stats(caplog: LogCaptureFixture, mocker: MockerFixture) -
         assert re.match(fr'^TSTD\s+{ident:03}', grizzly_stats[index + 1].strip())
         assert re.match(fr'^GET\s+{ident:03} 01-get-test', grizzly_stats[index + 2].strip())
         assert re.match(fr'^VAR\s+{ident:03} var-test', grizzly_stats[index + (len(request_types_sequence) * request_types_sequence_count) + 3].strip())
+
+    last_stat_row = len(grizzly_stats) - 4
+
+    assert re.match(r'^DOC\s+TPM report OUT\s+10', grizzly_stats[last_stat_row].strip())
+    assert re.match(r'^DOC\s+TPM report IN\s+10', grizzly_stats[last_stat_row - 1].strip())
 
     for stat in grizzly_stats:
         assert stat in locust_stats
