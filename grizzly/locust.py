@@ -405,13 +405,7 @@ def run(context: Context) -> int:
                         for dependency, process in _processes.items():
                             if process.poll() is not None:
                                 logger.error(f'{dependency} is not running, restarting')
-                                processes.update({dependency: subprocess.Popen(
-                                    [dependency],
-                                    env=env,
-                                    shell=False,
-                                    stdout=subprocess.DEVNULL,
-                                    stderr=subprocess.DEVNULL,
-                                )})
+                                raise SystemExit(1)
 
                         gevent.sleep(10.0)
 
