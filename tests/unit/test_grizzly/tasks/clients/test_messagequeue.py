@@ -540,7 +540,7 @@ class TestMessageQueueClientTask:
             task(scenario)
 
             assert scenario.user._context['variables'].get('mq-client-var', None) == '{"hello": "world", "foo": "bar"}'
-            assert scenario.user._context['variables'].get('mq-client-metadata', None) == {'x-foo-bar': 'test'}
+            assert scenario.user._context['variables'].get('mq-client-metadata', None) == '{"x-foo-bar": "test"}'
             assert send_json_mock.call_count == 5
             assert recv_json_mock.call_count == 6
 

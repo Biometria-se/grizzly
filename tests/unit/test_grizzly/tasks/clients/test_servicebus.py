@@ -1,6 +1,8 @@
 import logging
 
 from typing import Dict, Any
+from json import dumps as jsondumps
+
 import pytest
 
 from _pytest.logging import LogCaptureFixture
@@ -510,7 +512,7 @@ class TestServiceBusClientTask:
             'payload': None,
         })
 
-        assert parent_mock.user._context['variables'] == {'foobaz': 'foobar', 'bazfoo': {'x-foo-bar': 'hello'}}
+        assert parent_mock.user._context['variables'] == {'foobaz': 'foobar', 'bazfoo': jsondumps({'x-foo-bar': 'hello'})}
 
     def test_put(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         _, _, scenario = grizzly_fixture()

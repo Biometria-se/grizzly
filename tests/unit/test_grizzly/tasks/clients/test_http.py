@@ -80,7 +80,7 @@ class TestHttpClientTask:
         task(scenario)
 
         assert scenario.user._context['variables'].get('test_payload', '') == jsondumps({'hello': 'world'})
-        assert scenario.user._context['variables'].get('test_metadata', '') == {'x-foo-bar': 'test'}
+        assert scenario.user._context['variables'].get('test_metadata', '') == jsondumps({'x-foo-bar': 'test'})
         assert requests_get_spy.call_count == 1
         args, kwargs = requests_get_spy.call_args_list[-1]
         assert args[0] == 'http://example.org'
