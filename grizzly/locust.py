@@ -405,13 +405,7 @@ def run(context: Context) -> int:
                         for dependency, process in _processes.items():
                             if process.poll() is not None:
                                 logger.error(f'{dependency} is not running, restarting')
-                                processes.update({dependency: subprocess.Popen(
-                                    [dependency],
-                                    env=env,
-                                    shell=False,
-                                    stdout=subprocess.DEVNULL,
-                                    stderr=subprocess.DEVNULL,
-                                )})
+                                raise SystemExit(1)
 
                         gevent.sleep(10.0)
 
@@ -601,7 +595,11 @@ def _grizzly_sort_stats(stats: lstats.RequestStats) -> List[Tuple[str, str, int]
     scenario_keys: List[Tuple[str, str]] = []
     scenario_sorted_keys: List[Tuple[str, str, int]] = []
     for index, key in enumerate(locust_keys):
-        ident, _ = key[0].split(' ', 1)
+        try:
+            ident, _ = key[0].split(' ', 1)
+        except ValueError:
+            ident = '999'
+
         is_last = index == len(locust_keys) - 1
         if (previous_ident is not None and previous_ident != ident) or is_last:
             if is_last:
