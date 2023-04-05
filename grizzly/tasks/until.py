@@ -43,16 +43,14 @@ ordinary {@pylink grizzly.tasks.request} or {@pylink grizzly.tasks.clients} task
 import json
 import logging
 
-from typing import TYPE_CHECKING, Callable, Any, Type, List, Optional, Generator, Dict, cast
+from typing import TYPE_CHECKING, Callable, Any, Type, List, Optional, cast
 from time import perf_counter
-from contextlib import contextmanager
 
 from jinja2 import Template
 from gevent import sleep as gsleep
 from grizzly_extras.transformer import Transformer, TransformerContentType, TransformerError, transformer
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments, split_value
 
-from grizzly.types.locust import Environment
 from grizzly.types import RequestType
 
 from . import GrizzlyTask, GrizzlyMetaRequestTask, template, grizzlytask
@@ -63,29 +61,6 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 logger = logging.getLogger(__name__)
-
-
-def no_error_handler(environment: Environment) -> Callable[..., None]:
-    def no_error_handler_wrapper(request_type: str, name: str, response_time: int, response_length: int, exception: Optional[Exception] = None, **_kwargs: Dict[str, Any]) -> None:
-        environment.stats.log_request(request_type, name, response_time, response_length)
-
-        if exception is not None:
-            logger.error(f'{request_type} {name}: {response_time=}, {response_length=}, {exception=}')
-            environment.stats.total.log_error(None)
-            environment.stats.get(name, request_type).log_error(None)
-
-    return no_error_handler_wrapper
-
-
-@contextmanager
-def suppress(environment: Environment) -> Generator[None, None, None]:
-    original_handlers = environment.events.request._handlers.copy()
-    environment.events.request._handlers = [no_error_handler(environment)]
-
-    try:
-        yield
-    finally:
-        environment.events.request._handlers = original_handlers
 
 
 @template('condition', 'request')
@@ -167,8 +142,7 @@ class UntilRequestTask(GrizzlyTask):
                     try:
                         gsleep(self.wait)
 
-                        with suppress(parent.user.environment):
-                            _, payload = self.request.execute(parent)
+                        _, payload = self.request.execute(parent)
 
                         if payload is not None:
                             transformed = transform.transform(payload)
