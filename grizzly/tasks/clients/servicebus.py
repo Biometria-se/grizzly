@@ -68,6 +68,7 @@ from urllib.parse import urlparse, parse_qs
 from platform import node as hostname
 from pathlib import Path
 from textwrap import dedent
+from json import dumps as jsondumps
 
 import zmq.green as zmq
 
@@ -302,7 +303,7 @@ class ServiceBusClientTask(ClientTask):
             parent.user._context['variables'][self.payload_variable] = payload
 
         if metadata is not None and self.metadata_variable is not None:
-            parent.user._context['variables'][self.metadata_variable] = metadata
+            parent.user._context['variables'][self.metadata_variable] = jsondumps(metadata)
 
         return metadata, payload
 

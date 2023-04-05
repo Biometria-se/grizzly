@@ -75,6 +75,7 @@ from typing import Optional, Dict, Any, Generator, List, cast
 from urllib.parse import urlparse, parse_qs, unquote
 from pathlib import Path
 from platform import node as hostname
+from json import dumps as jsondumps
 
 import zmq.green as zmq
 
@@ -354,7 +355,7 @@ class MessageQueueClientTask(ClientTask):
                 parent.user._context['variables'][self.payload_variable] = response['payload']
 
             if self.metadata_variable is not None and response.get('metadata', None) is not None:
-                parent.user._context['variables'][self.metadata_variable] = response['metadata']
+                parent.user._context['variables'][self.metadata_variable] = jsondumps(response['metadata'])
 
         response = response or {}
 

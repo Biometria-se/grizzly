@@ -19,6 +19,7 @@ Only supports `RequestDirection.FROM`.
 * `name` _str_ - name used in `locust` statistics
 '''
 from typing import Optional, Dict, Any
+from json import dumps as jsondumps
 
 import requests
 
@@ -101,7 +102,7 @@ class HttpClientTask(ClientTask):
                 parent.user._context['variables'][self.payload_variable] = payload
 
             if self.metadata_variable is not None:
-                parent.user._context['variables'][self.metadata_variable] = metadata
+                parent.user._context['variables'][self.metadata_variable] = jsondumps(metadata)
 
             meta['response_length'] = len(payload.encode('utf-8'))
 
