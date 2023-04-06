@@ -1,0 +1,66 @@
+name: test
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+    - main
+
+jobs:
+  test-e2e:
+    name: 'e2e tests ${{ matrix.run_mode }}'
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        run_mode: ['dist']
+
+    env:
+      E2E_RUN_MODE: "${{ matrix.run_mode }}"
+
+    steps:
+    - name: checkout
+      id: checkout
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: setup python
+      id: setup-python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        cache: 'pip'
+
+    - name: setup environment
+      id: setup-environment
+      run: |
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+        echo PYTHONPATH=$PWD >> $GITHUB_ENV
+
+    - name: install python dependencies
+      id: pip
+      run: python -m pip install -e .[dev]
+
+    - name: install docker-compose
+      id: install-docker-compose
+      if: matrix.run_mode == 'dist'
+      uses: KengoTODA/actions-setup-docker-compose@main
+      with:
+        version: '1.29.2'
+
+    - name: ssh agent
+      id: ssh-agent
+      run: |
+        ssh-agent -a /tmp/ssh_auth_sock
+
+    - name: 'pytest (e2e ${{ matrix.run_mode }})'
+      id: pytest-e2e
+      env:
+        SSH_AUTH_SOCK: /tmp/ssh_auth_sock
+      run: python -m pytest tests/e2e
+
+    - name: 'build log'
+      id: build-log
+      run: cat /tmp/grizzly-build.log
