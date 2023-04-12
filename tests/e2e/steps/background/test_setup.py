@@ -1,19 +1,20 @@
-from tempfile import NamedTemporaryFile
+import inspect
+
 from typing import cast, Dict, Any, List
 
 import pytest
-import yaml
 
 from grizzly.types.behave import Context
 from grizzly.context import GrizzlyContext
 
 from tests.fixtures import End2EndFixture
+from tests.helpers import message_callback
 
 
 @pytest.mark.parametrize('url', [
-    'influxdb://grizzly:password@localhost/grizzly-statistics',
+    'influxdb://grizzly:password@localhost/grizzly-statistics?Testplan=grizzly-statistics',
     'insights://localhost/?Testplan=grizzly-statistics&InstrumentationKey=asdfasdf=',
-    'influxdb://$conf::statistics.username$:$conf::statistics.password$@localhost/$conf::statistics.database$',
+    'influxdb://$conf::statistics.username$:$conf::statistics.password$@localhost/$conf::statistics.database$?Testplan=grizzly-statistics',
 ])
 def test_e2e_step_setup_save_statistics(e2e_fixture: End2EndFixture, url: str) -> None:
     env_conf: Dict[str, Any] = {
@@ -57,13 +58,9 @@ def test_e2e_step_setup_save_statistics(e2e_fixture: End2EndFixture, url: str) -
         identifier=url,
     )
 
-    with NamedTemporaryFile(delete=True, suffix='.yaml', dir=e2e_fixture.test_tmp_dir) as env_conf_file:
-        env_conf_file.write(yaml.dump(env_conf, Dumper=yaml.Dumper).encode())
-        env_conf_file.flush()
+    rc, _ = e2e_fixture.execute(feature_file, env_conf=env_conf)
 
-        rc, _ = e2e_fixture.execute(feature_file, env_conf_file=env_conf_file.name)
-
-        assert rc == 0
+    assert rc == 0
 
 
 @pytest.mark.parametrize('level', [
@@ -192,7 +189,7 @@ def test_e2e_step_setup_message_type_callback(
         direction = MessageDirection.from_string(data['direction'])
         message_type = data['message_type']
 
-        from tests.helpers import message_callback
+        from steps.helpers import message_callback  # type: ignore  # pylint: disable=import-error
 
         assert grizzly.setup.locust.messages == {
             direction: {
@@ -201,6 +198,13 @@ def test_e2e_step_setup_message_type_callback(
         }
 
         grizzly.setup.locust.messages.clear()
+
+    with open(e2e_fixture.root / 'features' / 'steps' / 'helpers.py', 'w+') as fd:
+        source = inspect.getsource(message_callback)
+        fd.write(f'''from grizzly.types.locust import Message, Environment
+
+{source}
+''')
 
     table: List[Dict[str, str]] = [{
         'direction': f'{from_node}_{to_node}',
@@ -211,7 +215,7 @@ def test_e2e_step_setup_message_type_callback(
 
     feature_file = e2e_fixture.test_steps(
         background=[
-            f'And add callback "tests.helpers.message_callback" for message type "{message_type}" from {from_node} to {to_node}',
+            f'And add callback "steps.helpers.message_callback" for message type "{message_type}" from {from_node} to {to_node}',
         ],
         identifier=message_type,
     )

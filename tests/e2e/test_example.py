@@ -1,12 +1,10 @@
-from tempfile import NamedTemporaryFile
 from typing import Optional
 from pathlib import Path
-from getpass import getuser
+from shutil import copytree
 
 import yaml
 
 from tests.fixtures import End2EndFixture
-from tests.helpers import run_command
 
 
 def test_e2e_example(e2e_fixture: End2EndFixture) -> None:
@@ -20,20 +18,20 @@ def test_e2e_example(e2e_fixture: End2EndFixture) -> None:
                 env_conf['configuration']['facts'][name]['host'] = f'http://{e2e_fixture.host}'
 
         if e2e_fixture._distributed:
-            example_root = str((e2e_fixture.root / '..' / 'test-example').resolve())
-            command = ['grizzly-cli', 'dist', '--project-name', 'test-example', 'build', '--no-cache', '--local-install']
-            code, output = run_command(
-                command,
-                cwd=str(e2e_fixture.mode_root),
-                env=e2e_fixture._env,
-            )
+            # copy examples
+            source = (Path(__file__) / '..' / '..' / '..' / 'example').resolve()
+            example_root = e2e_fixture.root.parent / 'test-example'
+            copytree(source, example_root, dirs_exist_ok=True)
 
-            try:
-                assert code == 0
-            except AssertionError:
-                print(''.join(output))
+            with open(Path(example_root) / 'features' / 'steps' / 'steps.py', 'a') as fd:
+                fd.write(
+                    e2e_fixture.step_start_webserver.format('/srv/grizzly')
+                )
 
-                raise
+            # create steps/webserver.py
+            webserver_source = e2e_fixture.test_tmp_dir.parent / 'tests' / 'webserver.py'
+            webserver_destination = example_root / 'features' / 'steps' / 'webserver.py'
+            webserver_destination.write_text(webserver_source.read_text())
 
             root = (Path(__file__) / '..' / '..' / '..').resolve()
             feature_file_root = str(example_root).replace(f'{root}/', '')
@@ -47,90 +45,59 @@ def test_e2e_example(e2e_fixture: End2EndFixture) -> None:
             with open(feature_file, 'w') as fd:
                 fd.truncate(0)
                 fd.write('\n'.join(feature_file_contents))
-
-            exec_root = str(e2e_fixture.mode_root)
         else:
-            example_root = exec_root = str(Path.cwd() / 'example')
-            feature_file = 'features/example.feature'
+            example_root = Path.cwd() / 'example'
 
-        with NamedTemporaryFile(delete=True, suffix='.yaml', dir=f'{example_root}/environments') as env_conf_file:
-            env_conf_file.write(yaml.dump(env_conf, Dumper=yaml.Dumper).encode())
-            env_conf_file.flush()
+        feature_file = 'features/example.feature'
 
-            command = [
-                'grizzly-cli',
-                e2e_fixture.mode, 'run',
-                '--yes',
-                '--verbose',
-                '-e', env_conf_file.name,
-                feature_file,
-            ]
+        original_root = e2e_fixture._root
+        e2e_fixture._root = example_root
 
-            if e2e_fixture._distributed:
-                command = command[:2] + ['--project-name', 'test-example'] + command[2:]
+        code, output = e2e_fixture.execute(feature_file, env_conf=env_conf)
 
-            code, output = run_command(
-                command,
-                env=e2e_fixture._env,
-                cwd=exec_root,
-            )
+        result = ''.join(output)
 
-            result = ''.join(output)
+        e2e_fixture._root = original_root
 
-            if e2e_fixture._distributed:
-                result = ''
-                for container in ['master', 'worker']:
-                    command = ['docker', 'container', 'logs', f'test-example-{getuser()}_{container}_1']
-                    _, output = run_command(
-                        command,
-                        cwd=exec_root,
-                        env=e2e_fixture._env,
-                    )
+        assert code == 0
+        assert 'ERROR' not in result
+        assert 'WARNING' not in result
+        assert '1 feature passed, 0 failed, 0 skipped' in result
+        assert '3 scenarios passed, 0 failed, 0 skipped' in result
+        # Then start webserver... added when running distributed
+        step_count = 26 if e2e_fixture._distributed else 25
+        assert f'{step_count} steps passed, 0 failed, 0 skipped, 0 undefined' in result
 
-                    result += ''.join(output)
+        assert 'ident   iter  status   description' in result
+        assert '001      2/2  passed   dog facts api' in result
+        assert '002      1/1  passed   cat facts api' in result
+        assert '003      1/1  passed   book api' in result
+        assert '------|-----|--------|---------------|' in result
 
-                if code != 0:
-                    print(''.join(output))
+        assert 'executing custom.User.request for get-cat-facts and /facts?limit=' in result
 
-            assert code == 0
-            assert 'ERROR' not in result
-            assert 'WARNING' not in result
-            assert '1 feature passed, 0 failed, 0 skipped' in result
-            assert '3 scenarios passed, 0 failed, 0 skipped' in result
-            # Then start webserver... added when running distributed
-            step_count = 26 if e2e_fixture._distributed else 25
-            assert f'{step_count} steps passed, 0 failed, 0 skipped, 0 undefined' in result
+        assert 'sending "client_server" from CLIENT' in result
+        assert "received from CLIENT" in result
+        assert "AtomicCustomVariable.foobar='foobar'" in result
 
-            assert 'ident   iter  status   description' in result
-            assert '001      2/2  passed   dog facts api' in result
-            assert '002      1/1  passed   cat facts api' in result
-            assert '003      1/1  passed   book api' in result
-            assert '------|-----|--------|---------------|' in result
+        # check debugging and that task index -> step expression is correct
+        assert 'executing task 1 of 3: iterator' in result
+        assert (
+            'executing task 2 of 3: Then get request with name "get-dog-facts" from endpoint '
+            '"/api/v1/resources/dogs?number={{ AtomicRandomInteger.dog_facts_count }}'
+        ) in result
+        assert 'executing task 3 of 3: pace' in result
 
-            assert 'executing custom.User.request for get-cat-facts and /facts?limit=' in result
+        assert 'executing task 1 of 4: iterator' in result
+        assert 'executing task 2 of 4: Then get request with name "get-cat-facts" from endpoint "/facts?limit={{ AtomicRandomInteger.cat_facts_count }}"' in result
+        assert 'executing task 3 of 4: And send message "{\'client\': \'server\'}"' in result
+        assert 'executing task 4 of 4: pace' in result
 
-            assert 'sending "client_server" from CLIENT' in result
-            assert "received from CLIENT" in result
-            assert "AtomicCustomVariable.foobar='foobar'" in result
-
-            # check debugging and that task index -> step expression is correct
-            assert 'executing task 1 of 3: iterator' in result
-            assert (
-                'executing task 2 of 3: Then get request with name "get-dog-facts" from endpoint '
-                '"/api/v1/resources/dogs?number={{ AtomicRandomInteger.dog_facts_count }}'
-            ) in result
-            assert 'executing task 3 of 3: pace' in result
-
-            assert 'executing task 1 of 4: iterator' in result
-            assert 'executing task 2 of 4: Then get request with name "get-cat-facts" from endpoint "/facts?limit={{ AtomicRandomInteger.cat_facts_count }}"' in result
-            assert 'executing task 3 of 4: And send message "{\'client\': \'server\'}"' in result
-            assert 'executing task 4 of 4: pace' in result
-
-            assert 'executing task 1 of 5: iterator' in result
-            assert 'executing task 2 of 5: Then get request with name "1-get-book" from endpoint "/books/{{ AtomicCsvReader.books.book }}.json | content_type=json"' in result
-            assert 'executing task 3 of 5: Then get request with name "2-get-author" from endpoint "{{ author_endpoint }}.json | content_type=json"' in result
-            assert 'executing task 4 of 5: Then log message "AtomicCustomVariable.foobar=\'{{ steps.custom.AtomicCustomVariable.foobar }}\'"' in result
-            assert 'executing task 5 of 5: pace' in result
+        assert 'executing task 1 of 5: iterator' in result
+        assert 'executing task 2 of 5: Then get request with name "1-get-book" from endpoint "/books/{{ AtomicCsvReader.books.book }}.json | content_type=json"' in result
+        assert 'executing task 3 of 5: Then get request with name "2-get-author" from endpoint "{{ author_endpoint }}.json | content_type=json"' in result
+        assert 'executing task 4 of 5: Then log message "AtomicCustomVariable.foobar=\'{{ steps.custom.AtomicCustomVariable.foobar }}\'"' in result
+        assert 'executing task 5 of 5: pace' in result
     except:
         if result is not None:
             print(result)

@@ -16,6 +16,7 @@ coverage.xml
 .venv/
 **/tmp*
 *.log
+*.hprof
 
 # automagically generated
 docs/licenses/*

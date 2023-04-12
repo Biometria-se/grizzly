@@ -1,8 +1,5 @@
 from typing import Dict, cast
 from textwrap import dedent
-from tempfile import NamedTemporaryFile
-
-import yaml
 
 from grizzly.context import GrizzlyContext
 from grizzly.types.behave import Context, Feature
@@ -70,10 +67,6 @@ def test_e2e_iteration_pace(e2e_fixture: End2EndFixture) -> None:
         Then end condition
     '''))  # noqa: E501
 
-    with NamedTemporaryFile(delete=True, suffix='.yaml', dir=e2e_fixture.test_tmp_dir) as env_conf_file:
-        env_conf_file.write(yaml.dump(env_conf, Dumper=yaml.Dumper).encode())
-        env_conf_file.flush()
+    rc, _ = e2e_fixture.execute(feature_file, env_conf=env_conf)
 
-        rc, _ = e2e_fixture.execute(feature_file, env_conf_file=env_conf_file.name)
-
-        assert rc == 0
+    assert rc == 0
