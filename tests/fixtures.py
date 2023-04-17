@@ -7,13 +7,18 @@ from types import TracebackType
 from unittest.mock import MagicMock
 from urllib.parse import urlparse
 from mypy_extensions import VarArg, KwArg
-from os import environ, getcwd, path
-from shutil import rmtree, copytree
+from os import environ, path
+from shutil import rmtree
 from json import dumps as jsondumps
 from pathlib import Path
 from textwrap import dedent, indent
 from hashlib import sha1
 from getpass import getuser
+from cProfile import Profile
+from contextlib import nullcontext
+from tempfile import NamedTemporaryFile
+
+import yaml
 
 from locust.clients import ResponseContextManager
 from locust.contrib.fasthttp import FastResponse, FastRequest
@@ -623,6 +628,25 @@ def {self.name}_{self.implementation.__name__}_wrapper(context: Context) -> None
 
 
 class End2EndFixture:
+    step_start_webserver = '''
+
+@then(u'start webserver on master port "{{port:d}}"')
+def step_start_webserver(context: Context, port: int) -> None:
+    from grizzly.locust import on_master
+    if not on_master(context):
+        return
+
+    from importlib.machinery import SourceFileLoader
+
+    w = SourceFileLoader(
+        'steps.webserver',
+        '{}/features/steps/webserver.py',
+    ).load_module('steps.webserver')
+
+    webserver = w.Webserver(port)
+    webserver.start()
+'''
+
     _tmp_path_factory: TempPathFactory
     _env: Dict[str, str]
     _validators: Dict[Optional[str], List[End2EndValidator]]
@@ -639,6 +663,7 @@ class End2EndFixture:
     test_tmp_dir: Path
     _tmp_path_factory_basetemp: Optional[Path]
     webserver: Webserver
+    profile: Optional[Profile]
 
     def __init__(self, tmp_path_factory: TempPathFactory, webserver: Webserver, distributed: bool) -> None:
         self.test_tmp_dir = (Path(__file__) / '..' / '..' / '.pytest_tmp').resolve()
@@ -647,7 +672,7 @@ class End2EndFixture:
         tmp_path_factory._basetemp = self.test_tmp_dir
 
         self._tmp_path_factory = tmp_path_factory
-        self.cwd = Path(getcwd())
+        self.cwd = Path.cwd()
         self._env = {}
         self._validators = {}
         self._root = None
@@ -655,16 +680,7 @@ class End2EndFixture:
         self._before_features = {}
         self._distributed = distributed
         self._has_pymqi = None
-
-    @property
-    def mode_root(self) -> Path:
-        if self._root is None:
-            raise AttributeError('root is not set')
-
-        if self._distributed:
-            return self.cwd
-        else:
-            return self._root
+        self.profile = None
 
     @property
     def root(self) -> Path:
@@ -695,6 +711,10 @@ class End2EndFixture:
         return self._has_pymqi
 
     def __enter__(self) -> 'End2EndFixture':
+        if environ.get('PROFILE', None) is not None:
+            self.profile = Profile()
+            self.profile.enable()
+
         project_name = 'test-project'
         test_context = self._tmp_path_factory.mktemp('test_context')
 
@@ -758,27 +778,8 @@ class End2EndFixture:
 
         (self._root / 'features' / f'{project_name}.feature').unlink()
 
-        step_start_webserver = '''
-
-@then(u'start webserver on master port "{{port:d}}"')
-def step_start_webserver(context: Context, port: int) -> None:
-    from grizzly.locust import on_master
-    if not on_master(context):
-        return
-
-    from importlib.machinery import SourceFileLoader
-
-    w = SourceFileLoader(
-        'steps.webserver',
-        '{}/features/steps/webserver.py',
-    ).load_module('steps.webserver')
-
-    webserver = w.Webserver(port)
-    webserver.start()
-'''
-
         # create base test-project ... steps.py
-        with open(self._root / 'features' / 'steps' / 'steps.py', 'w') as fd:
+        with open(self.root / 'features' / 'steps' / 'steps.py', 'w') as fd:
             fd.write('from importlib import import_module\n')
             fd.write('from typing import cast, Callable, Any\n\n')
             fd.write('from grizzly.types.behave import Context, then\n')
@@ -789,35 +790,28 @@ def step_start_webserver(context: Context, port: int) -> None:
             fd.write('from grizzly.steps import *\n')
 
         if self._distributed:
-            # copy examples
-            source = (Path(__file__) / '..' / '..' / 'example').resolve()
-            destination = test_context / 'test-example'
-            copytree(source, destination)
-
             # rewrite test requirements.txt to point to local code
-            for root in [self._root, destination]:
-                with open(f'{root}/requirements.txt', 'r+') as fd:
-                    fd.truncate(0)
-                    fd.flush()
-                    fd.write('grizzly-loadtester\n')
+            with open(f'{self.root}/requirements.txt', 'r+') as fd:
+                fd.truncate(0)
+                fd.flush()
+                fd.write('grizzly-loadtester\n')
 
-                with open(root / 'features' / 'steps' / 'steps.py', 'a') as fd:
-                    fd.write(
-                        step_start_webserver.format(
-                            str(root).replace(f'{Path.cwd()}', '/srv/grizzly'),
-                        )
+            with open(self.root / 'features' / 'steps' / 'steps.py', 'a') as fd:
+                fd.write(
+                    self.step_start_webserver.format(
+                        str(self.root).replace(str(self.root), '/srv/grizzly'),
                     )
+                )
 
-                # create steps/webserver.py
-                webserver_source = self.test_tmp_dir.parent / 'tests' / 'webserver.py'
-                webserver_destination = root / 'features' / 'steps' / 'webserver.py'
+            # create steps/webserver.py
+            webserver_source = self.test_tmp_dir.parent / 'tests' / 'webserver.py'
+            webserver_destination = self.root / 'features' / 'steps' / 'webserver.py'
+            webserver_destination.write_text(webserver_source.read_text())
 
-                webserver_destination.write_text(webserver_source.read_text())
-
-            command = ['grizzly-cli', 'dist', '--project-name', self._root.name, 'build', '--no-cache', '--local-install']
+            command = ['grizzly-cli', 'dist', '--project-name', self.root.name, 'build', '--no-cache', '--local-install']
             rc, output = run_command(
                 command,
-                cwd=str(self.mode_root),
+                cwd=str(self.cwd),
                 env=self._env,
             )
             try:
@@ -845,6 +839,10 @@ def step_start_webserver(context: Context, port: int) -> None:
 
         return self
 
+    @property
+    def keep_files(self) -> bool:
+        return environ.get('KEEP_FILES', None) is not None
+
     def __exit__(
         self,
         exc_type: Optional[Type[BaseException]],
@@ -854,18 +852,22 @@ def step_start_webserver(context: Context, port: int) -> None:
         # reset fixture basetemp
         self._tmp_path_factory._basetemp = self._tmp_path_factory_basetemp
 
+        if self.profile is not None:
+            self.profile.disable()
+            self.profile.dump_stats('grizzly-e2e-tests.hprof')
+
         if exc is None:
-            if self._distributed:
+            if self._distributed and not self.keep_files:
                 rc, output = run_command(
                     ['grizzly-cli', 'dist', '--project-name', self.root.name, 'clean'],
-                    cwd=str(self.mode_root),
+                    cwd=str(self.root),
                     env=self._env,
                 )
 
                 if rc != 0:
                     print(''.join(output))
 
-            if environ.get('KEEP_FILES', None) is None:
+            if not self.keep_files:
                 try:
                     rmtree(self.root.parent, onerror=onerror)
                 except AttributeError:
@@ -1065,48 +1067,54 @@ def step_start_webserver(context: Context, port: int) -> None:
 
         return feature_file_name
 
-    def execute(self, feature_file: str, env_conf_file: Optional[str] = None, testdata: Optional[Dict[str, str]] = None) -> Tuple[int, List[str]]:
-        if self._distributed:
-            root = (Path(__file__) / '..' / '..').resolve()
-            feature_file_root = str(self.root).replace(f'{root}/', '')
-            feature_file = f'{feature_file_root}/{feature_file}'
+    def execute(self, feature_file: str, env_conf: Optional[Dict[str, Any]] = None, testdata: Optional[Dict[str, str]] = None) -> Tuple[int, List[str]]:
+        env_conf_fd: Any
+        if env_conf is not None:
+            prefix = path.basename(feature_file).replace('.feature', '')
+            env_conf_fd = NamedTemporaryFile(delete=not self.keep_files, prefix=prefix, suffix='.yaml', dir=(self.root / 'environments'))
+        else:
+            env_conf_fd = nullcontext()
 
-        command = [
-            'grizzly-cli',
-            self.mode,
-            'run',
-            '--yes',
-            '--verbose',
-            feature_file,
-        ]
+        with env_conf_fd as env_conf_file:
+            command = [
+                'grizzly-cli',
+                self.mode,
+                'run',
+                '--yes',
+                '--verbose',
+                feature_file,
+            ]
 
-        if self._distributed:
-            command = command[:2] + ['--project-name', self.root.name] + command[2:]
+            if self._distributed:
+                command = command[:2] + ['--project-name', self.root.name] + command[2:]
 
-        if env_conf_file is not None:
-            command += ['-e', env_conf_file]
+            if env_conf is not None:
+                env_conf_file.write(yaml.dump(env_conf, Dumper=yaml.Dumper).encode())
+                env_conf_file.flush()
+                env_conf_path = str(env_conf_file.name).replace(f'{self.root}/', '')
+                command += ['-e', env_conf_path]
 
-        if testdata is not None:
-            for key, value in testdata.items():
-                command += ['-T', f'{key}={value}']
+            if testdata is not None:
+                for key, value in testdata.items():
+                    command += ['-T', f'{key}={value}']
 
-        rc, output = run_command(
-            command,
-            cwd=str(self.mode_root),
-            env=self._env,
-        )
+            rc, output = run_command(
+                command,
+                cwd=str(self.root),
+                env=self._env,
+            )
 
-        if rc != 0:
-            print(''.join(output))
-
-            for container in ['master', 'worker'] if self._distributed else []:
-                command = ['docker', 'container', 'logs', f'{self.root.name}-{getuser()}_{container}_1']
-                _, output = run_command(
-                    command,
-                    cwd=str(self.mode_root),
-                    env=self._env,
-                )
-
+            if rc != 0:
                 print(''.join(output))
 
-        return rc, output
+                for container in ['master', 'worker'] if self._distributed else []:
+                    command = ['docker', 'container', 'logs', f'{self.root.name}-{getuser()}_{container}_1']
+                    _, output = run_command(
+                        command,
+                        cwd=str(self.root),
+                        env=self._env,
+                    )
+
+                    print(''.join(output))
+
+            return rc, output

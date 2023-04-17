@@ -21,11 +21,9 @@ app = Flask('webserver')
 
 # ugly hack to get correct path when webserver.py is injected for running distributed
 root_dir = (Path(__file__).parent / '..').resolve()
-project_name = 'example'
 
-if '.pytest_tmp' in __file__:
-    root_dir = (root_dir / '..' / '..').resolve()
-    project_name = 'test-example'
+if '/srv/grizzly' not in str(root_dir):
+    root_dir = root_dir / 'example' / 'features'
 
 
 @app.route('/api/v1/resources/dogs')
@@ -46,9 +44,8 @@ def app_get_cat_fact() -> FlaskResponse:
 
 @app.route('/books/<book>.json')
 def app_get_book(book: str) -> FlaskResponse:
-    logger.debug(f'/books/{book}.json called')
-    logger.debug(f'{root_dir=}, {project_name=}')
-    with open(f'{root_dir}/{project_name}/features/requests/books/books.csv', 'r') as fd:
+    logger.debug(f'/books/{book}.json called, {root_dir=}')
+    with open(f'{root_dir}/requests/books/books.csv', 'r') as fd:
         reader = csv.DictReader(fd)
         for row in reader:
             if row['book'] == book:
