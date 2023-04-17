@@ -63,7 +63,7 @@ main() {
                 rc=$(( rc + $? ))
                 tag="v${version}"
             else
-                tag="$(git tag | grep -E '^v' | sort | tail -1)"
+                tag="$(git tag | grep -E '^v' | sort --version-sort | tail -1)"
             fi
 
             >&2 echo "checking out tag ${tag}"

@@ -814,11 +814,6 @@ def step_start_webserver(context: Context, port: int) -> None:
                 cwd=str(self.cwd),
                 env=self._env,
             )
-            with open('/tmp/grizzly-build.log', 'a+') as fd:
-                fd.write(' '.join(command))
-                fd.write('\n=================================================================\n')
-                fd.write(''.join(output))
-                fd.write('=================================================================\n')
             try:
                 assert rc == 0
             except AssertionError:
