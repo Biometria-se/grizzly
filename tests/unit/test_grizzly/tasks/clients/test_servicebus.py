@@ -354,6 +354,7 @@ class TestServiceBusClientTask:
 
         connect_mock.assert_called_once_with()
         subscribe_mock.assert_not_called()
+        assert task.context.get('endpoint', None) == 'topic:my-topic, subscription:my-subscription'
 
         connect_mock.reset_mock()
         subscribe_mock.reset_mock()
@@ -365,6 +366,7 @@ class TestServiceBusClientTask:
 
         connect_mock.assert_called_once_with()
         subscribe_mock.assert_called_once_with()
+        assert task.context.get('endpoint', None) == f'topic:my-topic, subscription:my-subscription_{id(scenario)}'
 
     def test_on_stop(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         _, _, scenario = grizzly_fixture()
