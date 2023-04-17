@@ -43,7 +43,7 @@ Path:
 
 * `<topic name>` _str_ - name of topic, prefixed with `topic:` of an existing topic (mutual exclusive<sup>1</sup>)
 
-* `<subscription name>` _str_ - name of an subscription on `topic name`, either an existing, or one to be created (if step text containing SQL Filter rule is specified)
+* `<subscription name>` _str_ - name of an subscription on `topic name`, either an existing, or one to be created (if step text containing SQL Filter rule is specified), the actual subscription name will be suffixed with unique id related to the user instance
 
 * `<expression>` _str_ - JSON or XPath expression to filter out message on payload, only applicable when receiving messages
 
@@ -76,6 +76,7 @@ from zmq.sugar.constants import REQ as ZMQ_REQ, LINGER as ZMQ_LINGER
 
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
 from grizzly_extras.transformer import TransformerContentType
+from grizzly_extras.arguments import parse_arguments
 
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestType
 from grizzly.context import GrizzlyContextScenario
@@ -254,6 +255,13 @@ class ServiceBusClientTask(ClientTask):
 
         # create subscription before connecting to it
         if self.text is not None:
+            # add id of user as suffix to subscription name, to make it unique
+            endpoint_arguments = parse_arguments(self.context['endpoint'], separator=':')
+
+            if 'subscription' in endpoint_arguments:
+                endpoint_arguments['subscription'] = f'{endpoint_arguments["subscription"]}_{id(self.parent)}'
+                self.context['endpoint'] = ', '.join([f'{key}:{value}' for key, value in endpoint_arguments.items()])
+
             self.subscribe()
 
         self.connect()
