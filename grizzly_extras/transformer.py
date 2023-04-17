@@ -113,6 +113,13 @@ class JsonTransformer(Transformer):
     @classmethod
     def parser(cls, expression: str) -> Callable[[Any], List[str]]:
         try:
+            expected: Optional[str] = None
+
+            # we only have one instance of equals
+            if '==' in expression and expression.index('==') == expression.rindex('==') and not ('?' in expression and '@' in expression):
+                expression, expected = expression.split('==', 1)
+                expected = expected.strip('"\'')
+
             if not cls.validate(expression):
                 raise RuntimeError(f'{cls.__name__}: not a valid expression')
 
@@ -129,7 +136,8 @@ class JsonTransformer(Transformer):
                     else:
                         value = str(m.value)
 
-                    values.append(value)
+                    if expected is None or expected == value:
+                        values.append(value)
 
                 return values
 

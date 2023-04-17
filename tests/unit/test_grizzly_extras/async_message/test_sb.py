@@ -826,6 +826,35 @@ class TestAsyncServiceBusHandler:
 
         assert response.get('payload', None) == jsondumps({'document': {'name': 'test', 'id': 13}})
 
+        message1 = ServiceBusMessage(jsondumps({
+            'name': 'bob',
+        }))
+
+        message2 = ServiceBusMessage(jsondumps({
+            'name': 'alice',
+        }))
+
+        message3 = ServiceBusMessage(jsondumps({
+            'name': 'mallory',
+        }))
+
+        receiver_instance_mock.return_value.__iter__.side_effect = [
+            iter([message1, message2, message3]),
+        ]
+        receiver_instance_mock.reset_mock()
+
+        request['context'].update({'endpoint': 'queue:test-queue, expression:$.name=="mallory"'})
+
+        setup_handler(handler, request)
+
+        response = handlers[request['action']](handler, request)
+
+        assert response.get('payload', None) == jsondumps({'name': 'mallory'})
+
+        assert receiver_instance_mock.return_value.__iter__.call_count == 1
+        assert receiver_instance_mock.return_value.complete_message.call_count == 3
+        assert receiver_instance_mock.return_value.abandon_message.call_count == 0
+
     def test_get_handler(self) -> None:
         handler = AsyncServiceBusHandler(worker='asdf-asdf-asdf')
 

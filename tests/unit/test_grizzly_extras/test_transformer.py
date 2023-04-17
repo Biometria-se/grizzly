@@ -166,6 +166,14 @@ class TestJsonTransformer:
         assert len(actual) == 1
         assert ['ISO 8879:1986'] == actual
 
+        get_values = JsonTransformer.parser('$.glossary.title=="example glossary"')
+        actual = get_values(example)
+        assert ['example glossary'] == actual
+
+        get_values = JsonTransformer.parser("$.glossary.title=='template glossary'")
+        actual = get_values(example)
+        assert [] == actual
+
         get_values = JsonTransformer.parser('$.*..title')
         actual = get_values(example)
         assert len(actual) == 2
