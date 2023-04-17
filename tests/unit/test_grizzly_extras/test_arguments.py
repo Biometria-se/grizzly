@@ -92,6 +92,12 @@ def test_parse_arguments(separator: str) -> None:
         'arg2': 'test value 2',
     }
 
+    arguments = parse_arguments(f'arg1{separator}$.expression=="{{{{ value }}}}"', separator)
+
+    assert arguments == {
+        'arg1': '$.expression=="{{ value }}"',
+    }
+
     with pytest.raises(ValueError) as ve:
         parse_arguments(f'url{separator}http://www.example.com?query_string{separator}value', separator)
     assert 'incorrect format in arguments: ' in str(ve)

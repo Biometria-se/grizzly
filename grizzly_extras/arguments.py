@@ -48,21 +48,28 @@ def parse_arguments(arguments: str, separator: str = '=', unquote: bool = True) 
 
         start_quote: Optional[str] = None
 
-        if value[0] in ['"', "'"]:
-            if value[-1] != value[0]:
+        inline_quotes = '==' in value and value.index('==') == value.rindex('==') and '?' not in value and '@' not in value
+
+        if not inline_quotes:
+            start_index = 0
+        else:
+            start_index = value.index('==') + 2  # == = 2 characters
+
+        if value[start_index] in ['"', "'"]:
+            if value[-1] != value[start_index]:
                 if previous_part is None and part_index < len(argument_parts) - 1:
                     previous_part = argument
                     continue
 
                 raise ValueError(f'value is incorrectly quoted: "{value}"')
-            start_quote = value[0]
-            if unquote:
+            start_quote = value[start_index]
+            if unquote and start_index == 0:
                 value = value[1:]
 
         if value[-1] in ['"', "'"]:
             if start_quote is None:
                 raise ValueError(f'value is incorrectly quoted: "{value}"')
-            if unquote:
+            if unquote and start_index == 0:
                 value = value[:-1]
 
         if start_quote is None and ' ' in value:
