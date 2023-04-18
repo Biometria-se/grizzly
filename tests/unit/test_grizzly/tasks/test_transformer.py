@@ -209,6 +209,21 @@ class TestTransformerTask:
         task_factory = TransformerTask(
             grizzly,
             variable='test_variable',
+            expression='$.success',
+            content_type=TransformerContentType.JSON,
+            content=jsondumps({
+                'success': True,
+            }),
+            scenario=scenario_context,
+        )
+        task = task_factory()
+        task(scenario)
+
+        assert scenario.user._context['variables']['test_variable'] == 'True'
+
+        task_factory = TransformerTask(
+            grizzly,
+            variable='test_variable',
             expression='//actor[@id="9"]',
             content_type=TransformerContentType.XML,
             content='''<root xmlns:foo="http://www.foo.org/" xmlns:bar="http://www.bar.org">

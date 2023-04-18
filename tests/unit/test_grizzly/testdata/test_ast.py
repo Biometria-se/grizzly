@@ -21,6 +21,7 @@ def test__parse_template(request_task: RequestTaskFixture) -> None:
     source['result']['TestSubString'] = '{{ a_sub_string[:3] }}'
     source['result']['TestString'] = '{{ a_string }}'
     source['result']['FooBar'] = '{{ (AtomicIntegerIncrementer.file_number | int) }}'
+    source['result']['Expression'] = '{{ expression == "True" }}'
 
     request.source = jsondumps(source)
     scenario = GrizzlyContextScenario(1)
@@ -28,7 +29,6 @@ def test__parse_template(request_task: RequestTaskFixture) -> None:
     scenario.tasks.add(request)
 
     templates = {scenario: set(request.get_templates())}
-
     variables = _parse_templates(templates)
 
     assert variables == {
@@ -42,6 +42,7 @@ def test__parse_template(request_task: RequestTaskFixture) -> None:
             'a_sub_string',
             'a_string',
             'AtomicIntegerIncrementer.file_number',
+            'expression',
         },
     }
 
