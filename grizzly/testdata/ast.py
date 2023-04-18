@@ -123,6 +123,9 @@ def _parse_templates(templates: Dict['GrizzlyContextScenario', Set[str]]) -> Dic
                 loader=Jinja2FileSystemLoader('.'),
             )
 
+            # json.dumps escapes quote (") causing it to be \\", which inturn causes problems for jinja
+            template = template.replace('\\"', "'")
+
             parsed = j2env.parse(template)
 
             for body in getattr(parsed, 'body', []):

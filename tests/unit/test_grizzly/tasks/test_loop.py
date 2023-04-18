@@ -245,3 +245,35 @@ class TestLoopTask:
         exception = kwargs.get('exception', '')
         assert isinstance(exception, ValueError)
         assert str(exception) == 'error'
+
+    def test_on_event(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+        mocker.patch('grizzly.tasks.loop.gsleep', autospec=True)
+        _, _, scenario = grizzly_fixture()
+
+        assert scenario is not None
+
+        grizzly = grizzly_fixture.grizzly
+
+        scenario_context = GrizzlyContextScenario(3)
+        scenario_context.name = scenario_context.description = 'test scenario'
+
+        grizzly.state.variables['foobar'] = scenario.user._context['variables']['foobar'] = 'none'
+
+        task_factory = LoopTask(grizzly, 'test', '[1, 2, 3, 4]', 'foobar', scenario_context)
+        task_factory.add(TestTask(name='test-1'))
+        task_factory.add(TestTask(name='test-2'))
+
+        on_start_mock = mocker.patch.object(TestTask, 'on_start', return_value=None)
+        on_stop_mock = mocker.patch.object(TestTask, 'on_stop', return_value=None)
+
+        task = task_factory()
+
+        task.on_start(scenario)
+
+        assert on_start_mock.call_count == 2
+        assert on_stop_mock.call_count == 0
+
+        task.on_stop(scenario)
+
+        assert on_start_mock.call_count == 2
+        assert on_stop_mock.call_count == 2

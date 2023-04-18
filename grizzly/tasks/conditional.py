@@ -30,7 +30,7 @@ the set for `condition` will have its own entry in the statistics, see respectiv
 
 * `condition` _str_: {@link framework.usage.variables.templating} string that must render `True` or `False`
 """
-from typing import TYPE_CHECKING, Any, Callable, List, Optional, Dict
+from typing import TYPE_CHECKING, Any, List, Optional, Dict
 from time import perf_counter
 
 from gevent import sleep as gsleep
@@ -87,7 +87,7 @@ class ConditionalTask(GrizzlyTaskWrapper):
         return []
 
     def __call__(self) -> grizzlytask:
-        tasks: Dict[bool, List[Callable[['GrizzlyScenario'], Any]]] = {}
+        tasks: Dict[bool, List[grizzlytask]] = {}
 
         for pointer, pointer_tasks in self.tasks.items():
             tasks.update({pointer: list(map(lambda t: t(), pointer_tasks))})
@@ -140,5 +140,15 @@ class ConditionalTask(GrizzlyTaskWrapper):
 
                 if exception is not None and self.scenario.failure_exception is not None:
                     raise self.scenario.failure_exception()
+
+        @task.on_start
+        def on_start(parent: 'GrizzlyScenario') -> None:
+            for task in tasks.get(True, []) + tasks.get(False, []):
+                task.on_start(parent)
+
+        @task.on_stop
+        def on_stop(parent: 'GrizzlyScenario') -> None:
+            for task in tasks.get(True, []) + tasks.get(False, []):
+                task.on_stop(parent)
 
         return task

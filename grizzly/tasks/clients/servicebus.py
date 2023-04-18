@@ -240,6 +240,9 @@ class ServiceBusClientTask(ClientTask):
         response = async_message_request_wrapper(self.parent, self.client, request)
         logger.info(response['message'])
 
+        if self.worker_id is None:
+            self.worker_id = response['worker']
+
     def unsubscribe(self) -> None:
         request: AsyncMessageRequest = {
             'worker': self.worker_id,

@@ -96,12 +96,6 @@ class LoopTask(GrizzlyTaskWrapper):
             except Exception as e:
                 exception = e
             finally:
-                if orig_value is None:
-                    try:
-                        del parent.user._context['variables'][self.variable]
-                    except:
-                        pass
-
                 response_time = int((perf_counter() - start) * 1000)
 
                 parent.user.environment.events.request.fire(
@@ -115,5 +109,15 @@ class LoopTask(GrizzlyTaskWrapper):
 
                 if exception is not None and self.scenario.failure_exception is not None:
                     raise self.scenario.failure_exception()
+
+        @task.on_start
+        def on_start(parent: 'GrizzlyScenario') -> None:
+            for task in tasks:
+                task.on_start(parent)
+
+        @task.on_stop
+        def on_stop(parent: 'GrizzlyScenario') -> None:
+            for task in tasks:
+                task.on_stop(parent)
 
         return task
