@@ -3,7 +3,6 @@ from typing import Any, cast
 import pytest
 
 from pytest_mock import MockerFixture
-from _pytest.logging import LogCaptureFixture
 from grizzly.tasks import ConditionalTask, grizzlytask
 from grizzly.scenarios import GrizzlyScenario
 from grizzly.context import GrizzlyContextScenario
@@ -37,7 +36,7 @@ class TestConditionalTask:
         task_factory.switch(None)
         assert task_factory._pointer is None
 
-    def test_add(self) -> None:
+    def test_add_and_peek(self) -> None:
         task_factory = ConditionalTask(name='test', condition='{{ value | int > 0 }}')
 
         # do not add task
@@ -60,14 +59,25 @@ class TestConditionalTask:
             task_factory.add(test_task)
         assert task_factory.tasks == {True: [test_task] * 3, False: [test_task] * 4}
 
+        # peek at tasks
+        task_factory.switch(True)
+        assert len(task_factory.peek()) == 3
+
+        task_factory.switch(False)
+        assert len(task_factory.peek()) == 4
+
+        task_factory._pointer = None
+        assert len(task_factory.peek()) == 0
+
         # task has name attribute, prefix it
+        task_factory.switch(False)
         task_factory.add(TestTask(name='dummy task'))
         test_task = cast(TestTask, task_factory.tasks.get(False, [])[-1])
         assert test_task.name == 'test:dummy task'
         test_task = cast(TestTask, task_factory.tasks.get(False, [])[-2])
         assert test_task.name is None
 
-    def test___call__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
+    def test___call__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         # pre: get context
         _, _, scenario = grizzly_fixture()
 
@@ -233,3 +243,60 @@ class TestConditionalTask:
         task(scenario)
 
         assert len(scenario._user.environment.stats.serialize_errors().keys()) == 1
+
+    def test_on_event(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+        _, _, scenario = grizzly_fixture()
+
+        assert scenario is not None
+
+        scenario_context = GrizzlyContextScenario(1)
+        scenario_context.name = scenario_context.description = 'test scenario'
+        task_factory = ConditionalTask(name='test', condition='{{ value }}', scenario=scenario_context)
+
+        task_factory.switch(True)
+        for i in range(0, 3):
+            task_factory.add(TestTask(name=f'dummy-true-{i}', scenario=scenario_context))
+
+        task_factory.switch(False)
+        for i in range(0, 4):
+            task_factory.add(TestTask(name=f'dummy-false-{i}', scenario=scenario_context))
+
+        mocker.patch('grizzly.tasks.conditional.gsleep', autospec=True)
+
+        task = task_factory()
+
+        on_start_mock = mocker.patch.object(TestTask, 'on_start', return_value=None)
+        on_stop_mock = mocker.patch.object(TestTask, 'on_stop', return_value=None)
+
+        task.on_start(scenario)
+
+        on_start_mock.call_count == 7
+        on_stop_mock.call_count == 0
+
+        task.on_stop(scenario)
+
+        on_start_mock.call_count == 7
+        on_stop_mock.call_count == 7
+
+        on_start_mock.reset_mock()
+        on_stop_mock.reset_mock()
+
+        task_factory = ConditionalTask(name='test', condition='{{ value }}', scenario=scenario_context)
+
+        task_factory.switch(True)
+        for i in range(0, 3):
+            task_factory.add(TestTask(name=f'dummy-true-{i}', scenario=scenario_context))
+
+        assert task_factory.tasks.get(False, None) is None
+
+        task = task_factory()
+
+        task.on_start(scenario)
+
+        on_start_mock.call_count == 3
+        on_stop_mock.call_count == 0
+
+        task.on_stop(scenario)
+
+        on_start_mock.call_count == 3
+        on_stop_mock.call_count == 3
