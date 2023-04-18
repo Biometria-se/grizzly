@@ -88,6 +88,12 @@ class TestTask(GrizzlyTask):
         self.call_count = 0
         self.task_call_count = 0
 
+    def on_start(self, parent: 'GrizzlyScenario') -> None:
+        return
+
+    def on_stop(self, parent: 'GrizzlyScenario') -> None:
+        return
+
     def __call__(self) -> grizzlytask:
         self.call_count += 1
 
@@ -103,6 +109,14 @@ class TestTask(GrizzlyTask):
             )
             self.task_call_count += 1
             parent.user.logger.debug(f'{self.name} executed')
+
+        @task.on_start
+        def on_start(parent: 'GrizzlyScenario') -> None:
+            self.on_start(parent)
+
+        @task.on_stop
+        def on_stop(parent: 'GrizzlyScenario') -> None:
+            self.on_stop(parent)
 
         return task
 
