@@ -594,3 +594,30 @@ class TestServiceBusClientTask:
         })
 
         request_mock.reset_mock()
+
+    def test_parent(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+        _, _, scenario = grizzly_fixture()
+        assert scenario is not None
+
+        client_mock = mocker.MagicMock()
+
+        task = ServiceBusClientTask(
+            RequestDirection.TO,
+            'sb://my-sbns.servicebus.windows.net/topic:my-topic;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=',
+            'test',
+            source='hello world',
+        )
+
+        task._client = client_mock
+
+        with pytest.raises(AttributeError) as ae:
+            _ = task.parent
+        assert str(ae.value) == 'no parent set'
+
+        task.parent = mocker.MagicMock()
+
+        _ = task.parent
+
+        with pytest.raises(AttributeError) as ae:
+            task.parent = scenario
+        assert str(ae.value) == 'parent already set, why are a different parent being set?'

@@ -99,6 +99,7 @@ class ServiceBusClientTask(ClientTask):
     worker_id: Optional[str]
     context: AsyncMessageContext
     _parent: Optional[GrizzlyScenario]
+    _first_response: Optional[AsyncMessageResponse]
 
     def __init__(
         self,
@@ -170,6 +171,8 @@ class ServiceBusClientTask(ClientTask):
         if content_type is not None:
             self.context.update({'content_type': content_type})
 
+        self._first_response = None
+
         # zmq connection to async-messaged must be done when creating the instance
         self._client = cast(zmq.Socket, self._zmq_context.socket(ZMQ_REQ))
         self.client.connect(self._zmq_url)
@@ -203,6 +206,9 @@ class ServiceBusClientTask(ClientTask):
         if self.worker_id is not None:
             return
 
+        if self._first_response is not None:
+            self.worker_id = self._first_response['worker']
+
         request: AsyncMessageRequest = {
             'worker': self.worker_id,
             'action': RequestType.HELLO.name,
@@ -211,7 +217,9 @@ class ServiceBusClientTask(ClientTask):
 
         response = async_message_request_wrapper(self.parent, self.client, request)
 
-        self.worker_id = response['worker']
+        if self._first_response is None:
+            self.worker_id = response['worker']
+            self._first_response = response
 
         logger.debug(f'connected to worker {self.worker_id} at {hostname()}')
 
@@ -240,8 +248,7 @@ class ServiceBusClientTask(ClientTask):
         response = async_message_request_wrapper(self.parent, self.client, request)
         logger.info(response['message'])
 
-        if self.worker_id is None:
-            self.worker_id = response['worker']
+        self._first_response = response
 
     def unsubscribe(self) -> None:
         request: AsyncMessageRequest = {
