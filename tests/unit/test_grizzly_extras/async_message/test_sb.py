@@ -406,36 +406,32 @@ class TestAsyncServiceBusHandler:
         assert isinstance(receiver, ServiceBusReceiver)
         assert topic_spy.call_count == 0
         assert queue_spy.call_count == 1
-        _, kwargs = queue_spy.call_args_list[-1]
-        assert len(kwargs) == 1
-        assert kwargs.get('queue_name', None) == 'test-queue'
+        args, kwargs = queue_spy.call_args_list[-1]
+        assert args == ()
+        assert kwargs == {'queue_name': 'test-queue'}
 
         handler.get_receiver_instance(client, dict({'wait': '100'}, **handler.get_endpoint_arguments('receiver', 'queue:test-queue')))
         assert topic_spy.call_count == 0
         assert queue_spy.call_count == 2
-        _, kwargs = queue_spy.call_args_list[-1]
-        assert len(kwargs) == 2
-        assert kwargs.get('queue_name', None) == 'test-queue'
-        assert kwargs.get('max_wait_time', None) == 100
+        args, kwargs = queue_spy.call_args_list[-1]
+        assert args == ()
+        assert kwargs == {'queue_name': 'test-queue', 'max_wait_time': 100}
 
         receiver = handler.get_receiver_instance(client, handler.get_endpoint_arguments('receiver', 'topic:test-topic, subscription: test-subscription'))
         assert topic_spy.call_count == 1
         assert queue_spy.call_count == 2
-        _, kwargs = topic_spy.call_args_list[-1]
-        assert len(kwargs) == 2
-        assert kwargs.get('topic_name', None) == 'test-topic'
-        assert kwargs.get('subscription_name', None) == 'test-subscription'
+        args, kwargs = topic_spy.call_args_list[-1]
+        assert args == ()
+        assert kwargs == {'topic_name': 'test-topic', 'subscription_name': 'test-subscription'}
 
         receiver = handler.get_receiver_instance(client, dict({'wait': '100'}, **handler.get_endpoint_arguments(
             'receiver', 'topic:test-topic, subscription:test-subscription, expression:$.foo.bar',
         )))
         assert topic_spy.call_count == 2
         assert queue_spy.call_count == 2
-        _, kwargs = topic_spy.call_args_list[-1]
-        assert len(kwargs) == 3
-        assert kwargs.get('topic_name', None) == 'test-topic'
-        assert kwargs.get('subscription_name', None) == 'test-subscription'
-        assert kwargs.get('max_wait_time', None) == 100
+        args, kwargs = topic_spy.call_args_list[-1]
+        assert args == ()
+        assert kwargs == {'topic_name': 'test-topic', 'subscription_name': 'test-subscription', 'max_wait_time': 100}
 
     def test_hello(self, mocker: MockerFixture) -> None:
         from grizzly_extras.async_message.sb import handlers

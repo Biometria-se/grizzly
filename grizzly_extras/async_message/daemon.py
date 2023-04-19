@@ -1,4 +1,4 @@
-from typing import List, Optional, Union, cast
+from typing import List, Optional, Union, Dict, cast
 from types import FrameType
 from uuid import uuid4
 from json import loads as jsonloads, dumps as jsondumps
@@ -64,6 +64,8 @@ def router() -> None:
 
     workers_available: List[str] = []
 
+    client_worker_map: Dict[str, str] = {}
+
     spawn_worker()
 
     while run:
@@ -105,16 +107,26 @@ def router() -> None:
             payload = jsonloads(msg[-1].decode())
 
             worker_id = payload.get('worker', None)
+            client_id = payload.get('client', None)
+
+            integration_url = payload.get('context', {}).get('url', None)
+            parsed = urlparse(integration_url)
+            client_key = f'{client_id}::{parsed.scheme}'
+
+            if worker_id is None:
+                worker_id = client_worker_map.get(client_key, None)
 
             if worker_id is None:
                 worker_id = workers_available.pop()
+                client_worker_map.update({client_key: worker_id})
                 payload['worker'] = worker_id.decode()
-                logger.info(f'assigning worker {payload["worker"]}')
+                logger.info(f'assigned worker {payload["worker"]} to {client_key}')
                 request = jsondumps(payload).encode()
                 if len(workers_available) == 0:
                     logger.debug('spawning an additional worker, for next client')
                     spawn_worker()
             else:
+                logger.debug(f'{client_id} is assigned {worker_id}')
                 worker_id = worker_id.encode()
                 request = msg[-1]
 

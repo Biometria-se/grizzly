@@ -256,6 +256,7 @@ class MessageQueueClientTask(ClientTask):
     def connect(self, client_id: int, client: zmq.Socket, meta: Dict[str, Any]) -> None:
         request = {
             'action': RequestType.CONNECT(),
+            'client': client_id,
             'context': self.context,
         }
 
@@ -285,7 +286,7 @@ class MessageQueueClientTask(ClientTask):
 
     def request(self, parent: GrizzlyScenario, request: AsyncMessageRequest) -> AsyncMessageResponse:
         with self.create_client() as client:
-            client_id = id(parent)
+            client_id = id(parent.user)
             worker = self._worker.get(client_id, None)
             if worker is None:
                 with self.action(parent, suppress=True) as meta:
@@ -297,7 +298,10 @@ class MessageQueueClientTask(ClientTask):
                 raise RuntimeError(f'{parent.__class__.__name__}/{client_id} was unable to get an worker assigned')
 
             with self.action(parent) as meta:
-                request['worker'] = worker
+                request.update({
+                    'worker': worker,
+                    'client': client_id,
+                })
 
                 client.send_json(request)
 

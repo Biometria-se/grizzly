@@ -98,6 +98,7 @@ class AsyncMessageContext(TypedDict, total=False):
 class AsyncMessageRequest(TypedDict, total=False):
     action: str
     worker: Optional[str]
+    client: int
     context: AsyncMessageContext
     payload: AsyncMessagePayload
 

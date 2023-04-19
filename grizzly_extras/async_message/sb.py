@@ -560,7 +560,6 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                         raise StopIteration()
 
                     break
-
                 except StopIteration:
                     delta = perf_counter() - wait_start
 

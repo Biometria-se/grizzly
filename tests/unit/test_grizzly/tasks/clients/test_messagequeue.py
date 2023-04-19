@@ -332,6 +332,7 @@ class TestMessageQueueClientTask:
                 args, kwargs = send_json_mock.call_args_list[-1]
                 assert args == ({
                     'action': 'CONN',
+                    'client': 111111,
                     'context': {
                         'url': task_factory.endpoint,
                         'connection': 'mq.example.io(1414)',
@@ -395,6 +396,7 @@ class TestMessageQueueClientTask:
                 args, kwargs = send_json_mock.call_args_list[-1]
                 assert args == ({
                     'action': 'CONN',
+                    'client': 444444,
                     'context': {
                         'url': task_factory.endpoint,
                         'connection': 'mq.example.io(1414)',
@@ -450,12 +452,13 @@ class TestMessageQueueClientTask:
 
             assert scenario.user._context['variables'].get('mq-client-var', None) is None
             assert scenario.user._context['variables'].get('mq-client-metadata', None) is None
-            assert task_factory._worker.get(id(scenario), None) == 'dddd-eeee-ffff-9999'
+            assert task_factory._worker.get(id(scenario.user), None) == 'dddd-eeee-ffff-9999'
             assert send_json_mock.call_count == 2
             args, kwargs = send_json_mock.call_args_list[-1]
             assert args == ({
                 'action': 'GET',
                 'worker': 'dddd-eeee-ffff-9999',
+                'client': id(scenario.user),
                 'context': {
                     'endpoint': 'topic:INCOMING.MSG',
                 },
@@ -492,6 +495,7 @@ class TestMessageQueueClientTask:
             assert args == ({
                 'action': 'GET',
                 'worker': 'dddd-eeee-ffff-9999',
+                'client': id(scenario.user),
                 'context': {
                     'endpoint': 'topic:INCOMING.MSG, max_message_size:13337',
                 },
@@ -603,7 +607,7 @@ class TestMessageQueueClientTask:
 
             task(scenario)
 
-            assert task_factory._worker.get(id(scenario), None) == 'dddd-eeee-ffff-9999'
+            assert task_factory._worker.get(id(scenario.user), None) == 'dddd-eeee-ffff-9999'
 
             assert recv_json_mock.call_count == 2
             assert send_json_mock.call_count == 2
@@ -611,6 +615,7 @@ class TestMessageQueueClientTask:
             assert args == ({
                 'action': 'PUT',
                 'worker': 'dddd-eeee-ffff-9999',
+                'client': id(scenario.user),
                 'context': {
                     'endpoint': 'queue:INCOMING.MSG',
                 },
@@ -644,6 +649,7 @@ class TestMessageQueueClientTask:
             assert args == ({
                 'action': 'PUT',
                 'worker': 'dddd-eeee-ffff-9999',
+                'client': id(scenario.user),
                 'context': {
                     'endpoint': 'queue:INCOMING.MSG',
                 },

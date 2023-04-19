@@ -680,8 +680,12 @@ def test_async_message_request_wrapper(grizzly_fixture: GrizzlyFixture, mocker: 
 
     async_message_request_wrapper(scenario, client_mock, request)
 
+    request.update({'client': id(scenario.user)})
+
     async_message_request_mock.assert_called_once_with(client_mock, request)
     async_message_request_mock.reset_mock()
+
+    del request['client']
 
     # template to render, variable not set
     request = {
@@ -691,14 +695,16 @@ def test_async_message_request_wrapper(grizzly_fixture: GrizzlyFixture, mocker: 
     }
 
     async_message_request_wrapper(scenario, client_mock, request)
-    async_message_request_mock.assert_called_once_with(client_mock, {'context': {'endpoint': 'hello !'}})
+
+    async_message_request_mock.assert_called_once_with(client_mock, {'context': {'endpoint': 'hello !'}, 'client': id(scenario.user)})
     async_message_request_mock.reset_mock()
 
     # template to render, variable set
     scenario.user._context['variables'].update({'world': 'foobar'})
 
     async_message_request_wrapper(scenario, client_mock, request)
-    async_message_request_mock.assert_called_once_with(client_mock, {'context': {'endpoint': 'hello foobar!'}})
+
+    async_message_request_mock.assert_called_once_with(client_mock, {'context': {'endpoint': 'hello foobar!'}, 'client': id(scenario.user)})
 
 
 def test_safe_del() -> None:

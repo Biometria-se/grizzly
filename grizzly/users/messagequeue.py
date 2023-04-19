@@ -385,6 +385,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
         am_request: AsyncMessageRequest = {
             'action': request.method.name,
             'worker': self.worker_id,
+            'client': id(self),
             'context': {
                 'endpoint': endpoint,
                 'metadata': metadata,

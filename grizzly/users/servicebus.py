@@ -213,7 +213,6 @@ class ServiceBusUser(ResponseHandler, RequestLogger, GrizzlyUser):
         })
 
         request: AsyncMessageRequest = {
-            'worker': self.worker_id,
             'action': RequestType.DISCONNECT.name,
             'context': context,
         }
@@ -242,7 +241,6 @@ class ServiceBusUser(ResponseHandler, RequestLogger, GrizzlyUser):
         })
 
         request: AsyncMessageRequest = {
-            'worker': self.worker_id,
             'action': RequestType.HELLO.name,
             'context': context,
         }
@@ -287,7 +285,12 @@ class ServiceBusUser(ResponseHandler, RequestLogger, GrizzlyUser):
 
         if len(name) > 65:
             name = f'{name[:65]}...'
-        request.update({'worker': self.worker_id})
+
+        request.update({
+            'worker': self.worker_id,
+            'client': id(self),
+        })
+
         connection = 'sender' if task.method.direction == RequestDirection.TO else 'receiver'
         request['context'].update({'connection': connection})
         action: Dict[str, Any] = {
