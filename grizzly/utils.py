@@ -298,6 +298,8 @@ def async_message_request_wrapper(parent: GrizzlyScenario, client: zmq.Socket, r
     if request.get('client', None) is None:
         request.update({'client': id(parent.user)})
 
+    parent.logger.debug(f'{request=}')
+
     return async_message_request(client, request)
 
 

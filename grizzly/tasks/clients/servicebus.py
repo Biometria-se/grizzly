@@ -204,10 +204,13 @@ class ServiceBusClientTask(ClientTask):
 
     def connect(self) -> None:
         if self.worker_id is not None:
+            logger.debug(f'{id(self.parent.user)}::sb already connected')
             return
 
         if self._first_response is not None:
-            self.worker_id = self._first_response['worker']
+            self.worker_id = self._first_response.get('worker', None)
+
+        logger.debug(f'{id(self.parent.user)}::sb connecting, {self.worker_id=}')
 
         request: AsyncMessageRequest = {
             'worker': self.worker_id,
@@ -221,7 +224,7 @@ class ServiceBusClientTask(ClientTask):
             self.worker_id = response['worker']
             self._first_response = response
 
-        logger.debug(f'connected to worker {self.worker_id} at {hostname()}')
+        logger.debug(f'{id(self.parent.user)}::sb connected to worker {self.worker_id} at {hostname()}')
 
     def disconnect(self) -> None:
         request: AsyncMessageRequest = {

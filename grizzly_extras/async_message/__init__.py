@@ -21,6 +21,9 @@ from grizzly_extras.transformer import JsonBytesEncoder
 __all__: List[str] = []
 
 
+logger = logging.getLogger(__name__)
+
+
 AsyncMessageMetadata = Optional[Dict[str, Any]]
 AsyncMessagePayload = Optional[Any]
 
@@ -199,21 +202,26 @@ def register(handlers: Dict[str, AsyncMessageRequestHandler], action: str, *acti
 
 
 def async_message_request(client: zmq.Socket, request: AsyncMessageRequest) -> AsyncMessageResponse:
-    client.send_json(request)
+    try:
+        client.send_json(request)
 
-    while True:
-        try:
-            response = cast(AsyncMessageResponse, client.recv_json(flags=ZMQ_NOBLOCK))
-            break
-        except ZMQAgain:
-            sleep(0.1)
+        while True:
+            try:
+                response = cast(AsyncMessageResponse, client.recv_json(flags=ZMQ_NOBLOCK))
+                break
+            except ZMQAgain:
+                sleep(0.1)
 
-    if response is None:
-        raise RuntimeError('no response')
+        if response is None:
+            raise RuntimeError('no response')
 
-    message = response.get('message', None)
+        message = response.get('message', None)
 
-    if not response['success']:
-        raise RuntimeError(message)
+        if not response['success']:
+            raise RuntimeError(message)
 
-    return response
+        return response
+    except Exception as e:
+        if not isinstance(e, RuntimeError):
+            logger.error(f'failed to send {request=}', exc_info=True)
+        raise

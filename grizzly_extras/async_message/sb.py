@@ -39,7 +39,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
     _receiver_cache: Dict[str, ServiceBusReceiver]
     _arguments: Dict[str, Dict[str, str]]
 
-    client: Optional[ServiceBusClient] = None
+    _client: Optional[ServiceBusClient] = None
     mgmt_client: Optional[ServiceBusAdministrationClient] = None
 
     def __init__(self, worker: str) -> None:
@@ -48,6 +48,17 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         self._sender_cache = {}
         self._receiver_cache = {}
         self._arguments = {}
+
+    @property
+    def client(self) -> ServiceBusClient:
+        if self._client is None:
+            raise AttributeError('no client')
+
+        return self._client
+
+    @client.setter
+    def client(self, value: ServiceBusClient) -> None:
+        self._client = value
 
     def close(self) -> None:
         for key, sender in self._sender_cache.items():
@@ -66,12 +77,11 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             self.logger.debug('closing management client')
             self.mgmt_client.close()
 
-    @classmethod
-    def get_sender_instance(cls, client: ServiceBusClient, arguments: Dict[str, str]) -> ServiceBusSender:
+    def get_sender_instance(self, arguments: Dict[str, str]) -> ServiceBusSender:
         endpoint_type = arguments['endpoint_type']
         endpoint_name = arguments['endpoint']
 
-        sender_arguments: Dict[str, str] = {}
+        sender_arguments: Dict[str, str] = {'client_identifier': self.worker}
 
         sender_type: Callable[[KwArg(Any)], ServiceBusSender]
 
@@ -79,35 +89,37 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             sender_arguments.update({'queue_name': endpoint_name})
             sender_type = cast(
                 Callable[[KwArg(Any)], ServiceBusSender],
-                client.get_queue_sender,
+                self.client.get_queue_sender,
             )
         else:
             sender_arguments.update({'topic_name': endpoint_name})
             sender_type = cast(
                 Callable[[KwArg(Any)], ServiceBusSender],
-                client.get_topic_sender,
+                self.client.get_topic_sender,
             )
 
         return sender_type(**sender_arguments)
 
-    @classmethod
-    def get_receiver_instance(cls, client: ServiceBusClient, arguments: Dict[str, str]) -> ServiceBusReceiver:
+    def get_receiver_instance(self, arguments: Dict[str, str]) -> ServiceBusReceiver:
         endpoint_type = arguments['endpoint_type']
         endpoint_name = arguments['endpoint']
         subscription_name = arguments.get('subscription', None)
         message_wait = arguments.get('wait', None)
 
-        receiver_arguments: Dict[str, Any] = {}
+        receiver_arguments: Dict[str, Any] = {
+            'client_identifier': self.worker,
+            'prefetch_count': 0,
+        }
         receiver_type: Callable[[KwArg(Any)], ServiceBusReceiver]
 
         if message_wait is not None:
             receiver_arguments.update({'max_wait_time': int(message_wait)})
 
         if endpoint_type == 'queue':
-            receiver_type = cast(Callable[[KwArg(Any)], ServiceBusReceiver], client.get_queue_receiver)
+            receiver_type = cast(Callable[[KwArg(Any)], ServiceBusReceiver], self.client.get_queue_receiver)
             receiver_arguments.update({'queue_name': endpoint_name})
         else:
-            receiver_type = cast(Callable[[KwArg(Any)], ServiceBusReceiver], client.get_subscription_receiver)
+            receiver_type = cast(Callable[[KwArg(Any)], ServiceBusReceiver], self.client.get_subscription_receiver)
             receiver_arguments.update({
                 'topic_name': endpoint_name,
                 'subscription_name': subscription_name,
@@ -371,33 +383,21 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         if not url.startswith('Endpoint='):
             url = f'Endpoint={url}'
 
-        if self.client is None or force:
-            if self.client is not None:
-                try:
-                    self.client.close()
-                except:
-                    pass
-
+        if self._client is None:
             self.client = ServiceBusClient.from_connection_string(
                 conn_str=url,
                 transport_type=TransportType.AmqpOverWebsocket,
             )
 
-        if self.mgmt_client is None or force:
-            if self.mgmt_client is not None:
-                try:
-                    self.mgmt_client.close()
-                except:
-                    pass
-
-            if self.logger._logger.level == logging.DEBUG:
-                self.mgmt_client = ServiceBusAdministrationClient.from_connection_string(conn_str=url)
+        if self.mgmt_client is None and self.logger._logger.level == logging.DEBUG:
+            self.mgmt_client = ServiceBusAdministrationClient.from_connection_string(conn_str=url)
 
         endpoint = context['endpoint']
         instance_type = context['connection']
         message_wait = context.get('message_wait', None)
         arguments = self.get_endpoint_arguments(instance_type, endpoint)
         endpoint_arguments = parse_arguments(endpoint, ':')
+
         try:
             del endpoint_arguments['expression']
         except:
@@ -405,7 +405,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
         cache_endpoint = ', '.join([f'{key}:{value}' for key, value in endpoint_arguments.items()])
 
-        if message_wait is not None and instance_type == 'receiver':
+        if instance_type == 'receiver' and message_wait is not None:
             arguments['wait'] = str(message_wait)
 
         cache: GenericCache
@@ -432,7 +432,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                 except:
                     pass
 
-            cache.update({cache_endpoint: get_instance(self.client, arguments).__enter__()})
+            cache.update({cache_endpoint: get_instance(arguments).__enter__()})
 
             self.logger.debug(f'cached {instance_type} instance for {cache_endpoint}')
 
@@ -571,7 +571,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                     else:
                         # ugly brute-force way of handling no messages on service bus
                         if retry < 3:
-                            self.logger.warning(f'receiver for {cache_endpoint} returned no message without trying, brute-force retry #{retry}')
+                            self.logger.warning(f'receiver for {cache_endpoint} returned no message without trying, brute-force retry #{retry}, {receiver._auto_lock_renewer=}, {receiver._prefetch_count=}')
                             # <!-- useful debugging information, actual message count on message entity
                             if self.logger._logger.level == logging.DEBUG and self.mgmt_client is not None:
                                 if 'topic' in endpoint_arguments:
