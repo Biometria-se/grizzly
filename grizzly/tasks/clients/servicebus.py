@@ -227,6 +227,9 @@ class ServiceBusClientTask(ClientTask):
         logger.debug(f'{id(self.parent.user)}::sb connected to worker {self.worker_id} at {hostname()}')
 
     def disconnect(self) -> None:
+        if self._client is None:
+            return
+
         request: AsyncMessageRequest = {
             'worker': self.worker_id,
             'action': RequestType.DISCONNECT.name,

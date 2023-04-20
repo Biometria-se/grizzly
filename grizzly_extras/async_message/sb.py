@@ -2,6 +2,7 @@ import logging
 
 from typing import Any, Callable, Dict, Optional, Union, Tuple, Iterable, cast
 from time import perf_counter, sleep
+
 from mypy_extensions import VarArg, KwArg
 
 from azure.servicebus import ServiceBusClient, ServiceBusMessage, TransportType, ServiceBusSender, ServiceBusReceiver, ServiceBusReceivedMessage
@@ -65,17 +66,22 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             self.logger.debug(f'closing sender {key}')
             sender.close()
 
+        self._sender_cache.clear()
+
         for key, receiver in self._receiver_cache.items():
             self.logger.debug(f'closing receiver {key}')
             receiver.close()
 
-        if self.client is not None:
-            self.logger.debug('closing client')
-            self.client.close()
+        self._receiver_cache.clear()
 
-        if self.mgmt_client is not None:
-            self.logger.debug('closing management client')
-            self.mgmt_client.close()
+        if len(self._sender_cache) + len(self._receiver_cache) == 0:
+            if self.client is not None:
+                self.logger.debug('closing client')
+                self.client.close()
+
+            if self.mgmt_client is not None:
+                self.logger.debug('closing management client')
+                self.mgmt_client.close()
 
     def get_sender_instance(self, arguments: Dict[str, str]) -> ServiceBusSender:
         endpoint_type = arguments['endpoint_type']
@@ -108,7 +114,6 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
         receiver_arguments: Dict[str, Any] = {
             'client_identifier': self.worker,
-            'prefetch_count': 0,
         }
         receiver_type: Callable[[KwArg(Any)], ServiceBusReceiver]
 
@@ -244,6 +249,8 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                 del cache[cache_endpoint]
             except:  # pragma: no cover
                 pass
+
+        self.close()
 
         return {
             'message': 'thanks for all the fish',
@@ -563,43 +570,41 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                 except StopIteration:
                     delta = perf_counter() - wait_start
 
-                    if message_wait > 0 and delta >= message_wait:
-                        error_message = f'no messages on {endpoint}'
-                        message = None
-                        if message_wait > 0:
-                            error_message = f'{error_message} within {message_wait} seconds'
-                    else:
-                        # ugly brute-force way of handling no messages on service bus
-                        if retry < 3:
-                            self.logger.warning(f'receiver for {cache_endpoint} returned no message without trying, brute-force retry #{retry}, {receiver._auto_lock_renewer=}, {receiver._prefetch_count=}')
-                            # <!-- useful debugging information, actual message count on message entity
-                            if self.logger._logger.level == logging.DEBUG and self.mgmt_client is not None:
-                                if 'topic' in endpoint_arguments:
-                                    topic_properties = self.mgmt_client.get_subscription_runtime_properties(
-                                        topic_name=endpoint_arguments['topic'],
-                                        subscription_name=endpoint_arguments['subscription']
-                                    )
-                                    self.logger.debug((
-                                        f'{cache_endpoint}: {topic_properties.active_message_count=}, '
-                                        f'{topic_properties.total_message_count=}, {topic_properties.transfer_dead_letter_message_count=}, '
-                                        f'{topic_properties.transfer_message_count=}'
-                                    ))
-                                elif 'queue' in endpoint_arguments:
-                                    queue_properties = self.mgmt_client.get_queue_runtime_properties(
-                                        queue_name=endpoint_arguments['queue'],
-                                    )
-                                    self.logger.debug((
-                                        f'{cache_endpoint}: {queue_properties.active_message_count=}, '
-                                        f'{queue_properties.total_message_count=}, {queue_properties.transfer_dead_letter_message_count=}, '
-                                        f'{queue_properties.transfer_message_count=}'
-                                    ))
-                            # // useful debugging information -->
-
-                            self._hello(request, force=True)
-                            receiver = self._receiver_cache[cache_endpoint]
+                    if message_wait > 0:
+                        if delta >= message_wait:
+                            error_message = f'no messages on {endpoint}'
                             message = None
-                            continue
-
+                            if message_wait > 0:
+                                error_message = f'{error_message} within {message_wait} seconds'
+                        else:
+                            # ugly brute-force way of handling no messages on service bus
+                            if retry < 3:
+                                self.logger.warning(f'receiver for {cache_endpoint} returned no message without trying, brute-force retry #{retry}')
+                                # <!-- useful debugging information, actual message count on message entity
+                                if self.logger._logger.level == logging.DEBUG and self.mgmt_client is not None:
+                                    if 'topic' in endpoint_arguments:
+                                        topic_properties = self.mgmt_client.get_subscription_runtime_properties(
+                                            topic_name=endpoint_arguments['topic'],
+                                            subscription_name=endpoint_arguments['subscription']
+                                        )
+                                        self.logger.debug((
+                                            f'{cache_endpoint}: {topic_properties.active_message_count=}, '
+                                            f'{topic_properties.total_message_count=}, {topic_properties.transfer_dead_letter_message_count=}, '
+                                            f'{topic_properties.transfer_message_count=}'
+                                        ))
+                                    elif 'queue' in endpoint_arguments:
+                                        queue_properties = self.mgmt_client.get_queue_runtime_properties(
+                                            queue_name=endpoint_arguments['queue'],
+                                        )
+                                        self.logger.debug((
+                                            f'{cache_endpoint}: {queue_properties.active_message_count=}, '
+                                            f'{queue_properties.total_message_count=}, {queue_properties.transfer_dead_letter_message_count=}, '
+                                            f'{queue_properties.transfer_message_count=}'
+                                        ))
+                                # // useful debugging information -->
+                                message = None
+                                continue
+                    else:
                         error_message = f'{endpoint} receiver returned no messages, without trying'
 
                     raise AsyncMessageError(error_message)

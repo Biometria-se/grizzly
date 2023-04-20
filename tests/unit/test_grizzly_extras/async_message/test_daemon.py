@@ -33,7 +33,7 @@ def test_signal_handler() -> None:
 def test_worker(mocker: MockerFixture, capsys: CaptureFixture, scheme: str, implementation: str) -> None:
     context_mock = mocker.MagicMock()
     worker_mock = mocker.MagicMock()
-    worker_mock.send_multipart.return_value = StopAsyncIteration
+    worker_mock.send_multipart.side_effect = cycle([StopAsyncIteration])
 
     context_mock.socket.return_value = worker_mock
 
@@ -49,7 +49,6 @@ def test_worker(mocker: MockerFixture, capsys: CaptureFixture, scheme: str, impl
         worker_mock.recv_multipart.side_effect = [
             zmq.Again,
             None,
-            build_zmq_message({'worker': 'ID-54321'}),
             build_zmq_message(message),
         ]
 
@@ -59,25 +58,25 @@ def test_worker(mocker: MockerFixture, capsys: CaptureFixture, scheme: str, impl
             side_effect=[response],
         )
 
-    mock_recv_multipart({'worker': 'ID-12345'})
+    mock_recv_multipart({'worker': 'ID-54321', 'context': {'url': f'{scheme}://dummy'}})
 
-    with pytest.raises(StopIteration):
+    with pytest.raises(StopAsyncIteration):
         worker(context_mock, 'ID-12345')
 
     assert worker_mock.send_multipart.call_count == 1
     args, _ = worker_mock.send_multipart.call_args_list[0]
     actual_response_proto = args[0]
-    assert actual_response_proto[0] == b'ID-12345'
+    assert actual_response_proto[0] == b'ID-54321'
     assert actual_response_proto[-1] == jsondumps({
         'worker': 'ID-12345',
         'response_time': 0,
         'success': False,
-        'message': 'no url found in request context',
+        'message': 'got ID-54321, expected ID-12345',
     }).encode()
 
     mock_recv_multipart({'worker': 'ID-12345', 'context': {'url': 'http://www.example.com'}})
 
-    with pytest.raises(StopIteration):
+    with pytest.raises(StopAsyncIteration):
         worker(context_mock, 'ID-12345')
 
     assert worker_mock.send_multipart.call_count == 2
@@ -107,7 +106,7 @@ def test_worker(mocker: MockerFixture, capsys: CaptureFixture, scheme: str, impl
         'response_time': 439,
     })
 
-    with pytest.raises(StopIteration):
+    with pytest.raises(StopAsyncIteration):
         worker(context_mock, 'ID-12345')
 
     assert integration_spy.call_count == 1

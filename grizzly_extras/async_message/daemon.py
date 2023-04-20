@@ -200,21 +200,31 @@ def worker(context: zmq.Context, identity: str) -> None:
             if request['worker'] != identity:
                 raise RuntimeError(f'got {request["worker"]}, expected {identity}')
 
+            action = request.get('action', None)
+
             if integration is None:
-                integration_url = request.get('context', {}).get('url', None)
-                if integration_url is None:
-                    raise RuntimeError('no url found in request context')
+                if action not in ['DISCONNECT', 'DISC']:
+                    integration_url = request.get('context', {}).get('url', None)
+                    if integration_url is None:
+                        raise RuntimeError('no url found in request context')
 
-                parsed = urlparse(integration_url)
+                    parsed = urlparse(integration_url)
 
-                if parsed.scheme in ['mq', 'mqs']:
-                    from .mq import AsyncMessageQueueHandler
-                    integration = AsyncMessageQueueHandler(identity)
-                elif parsed.scheme == 'sb':
-                    from .sb import AsyncServiceBusHandler
-                    integration = AsyncServiceBusHandler(identity)
+                    if parsed.scheme in ['mq', 'mqs']:
+                        from .mq import AsyncMessageQueueHandler
+                        integration = AsyncMessageQueueHandler(identity)
+                    elif parsed.scheme == 'sb':
+                        from .sb import AsyncServiceBusHandler
+                        integration = AsyncServiceBusHandler(identity)
+                    else:
+                        raise RuntimeError(f'integration for {str(parsed.scheme)}:// is not implemented')
                 else:
-                    raise RuntimeError(f'integration for {str(parsed.scheme)}:// is not implemented')
+                    response = {
+                        'worker': identity,
+                        'response_time': 0,
+                        'success': True,
+                        'message': f'already handled {action}',
+                    }
         except Exception as e:
             response = {
                 'worker': identity,
@@ -228,8 +238,7 @@ def worker(context: zmq.Context, identity: str) -> None:
             response = integration.handle(request)
             logger.debug('got response from handler')
 
-            if request.get('action', None) in ['DISCONNECT', 'DISC']:
-                integration.close()
+            if action in ['DISCONNECT', 'DISC']:
                 integration = None
 
         response_proto = [

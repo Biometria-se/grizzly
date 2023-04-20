@@ -144,15 +144,18 @@ class AsyncMessageHandler(ABC):
 
     @final
     def handle(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
-        action = request['action']
-        request_handler = self.get_handler(action)
-        self.logger.debug(f'handling {action}, request=\n{jsondumps(request, indent=2, cls=JsonBytesEncoder)}')
-
-        response: AsyncMessageResponse
-
         start_time = time()
 
         try:
+            action = request.get('action', None)
+            if action is None:
+                raise RuntimeError('no action in request')
+
+            request_handler = self.get_handler(action)
+            self.logger.debug(f'handling {action}, request=\n{jsondumps(request, indent=2, cls=JsonBytesEncoder)}')
+
+            response: AsyncMessageResponse
+
             if request_handler is None:
                 raise AsyncMessageError(f'no implementation for {action}')
 
@@ -161,9 +164,9 @@ class AsyncMessageHandler(ABC):
         except Exception as e:
             response = {
                 'success': False,
-                'message': f'{action}: {e.__class__.__name__}="{str(e)}"',
+                'message': f'{action or "UNKNOWN"}: {e.__class__.__name__}="{str(e)}"',
             }
-            self.logger.error(f'{action}: {e.__class__.__name__}="{str(e)}"', exc_info=True)
+            self.logger.error(f'{action or "UNKNOWN"}: {e.__class__.__name__}="{str(e)}"', exc_info=True)
         finally:
             total_time = int((time() - start_time) * 1000)
             response.update({

@@ -249,11 +249,9 @@ class TestServiceBusClientTask:
         task = ServiceBusClientTask(RequestDirection.FROM, 'sb://my-sbns.servicebus.windows.net/;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=', 'test')
         task._parent = scenario
 
-        # not connected
+        # not connected, don't do anything
         task._client = None
-        with pytest.raises(ConnectionError) as ce:
-            task.disconnect()
-        assert str(ce.value) == 'not connected to async-messaged'
+        task.disconnect()
 
         client_mock.close.assert_not_called()
 
