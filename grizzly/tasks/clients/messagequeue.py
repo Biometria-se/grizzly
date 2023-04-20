@@ -79,11 +79,10 @@ from json import dumps as jsondumps
 
 import zmq.green as zmq
 
-from zmq.error import Again as ZMQAgain, ZMQError
-from zmq.sugar.constants import NOBLOCK as ZMQ_NOBLOCK, REQ as ZMQ_REQ, LINGER as ZMQ_LINGER
+from zmq.error import ZMQError
+from zmq.sugar.constants import REQ as ZMQ_REQ, LINGER as ZMQ_LINGER
 
-from gevent import sleep as gsleep
-from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageResponse, AsyncMessageRequest
+from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageResponse, AsyncMessageRequest, async_message_request
 
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestType
 from grizzly.context import GrizzlyContextScenario
@@ -254,33 +253,21 @@ class MessageQueueClientTask(ClientTask):
                 client.close()
 
     def connect(self, client_id: int, client: zmq.Socket, meta: Dict[str, Any]) -> None:
-        request = {
+        request: AsyncMessageRequest = {
             'action': RequestType.CONNECT(),
             'client': client_id,
             'context': self.context,
         }
 
         meta.update({'action': self.endpoint_path, 'direction': '<->'})
+        response: Optional[AsyncMessageResponse] = None
 
-        client.send_json(request)
-
-        response = None
-
-        while True:
-            try:
-                response = client.recv_json(flags=ZMQ_NOBLOCK)
-                break
-            except ZMQAgain:
-                gsleep(0.1)
-
-        meta.update({'response_length': len((response or {}).get('payload', None) or '')})
-
-        if response is None:
-            raise RuntimeError('no response when trying to connect')
-
-        message = response.get('message', None)
-        if not response['success']:
-            raise RuntimeError(message)
+        try:
+            response = async_message_request(client, request)
+        except:
+            raise
+        finally:
+            meta.update({'response_length': len((response or {}).get('payload', None) or '')})
 
         self._worker.update({client_id: response['worker']})
 
@@ -302,36 +289,23 @@ class MessageQueueClientTask(ClientTask):
                     'worker': worker,
                     'client': client_id,
                 })
+                response: Optional[AsyncMessageResponse] = None
 
-                client.send_json(request)
+                try:
+                    response = async_message_request(client, request)
 
-                response = None
+                    parent.logger.debug(f'got response from {worker} at {hostname()}')
+                except:
+                    raise
+                finally:
+                    response_length_source = ((response or {}).get('payload', None) or '').encode('utf-8')
 
-                parent.logger.debug(f'waiting for response from {worker} at {hostname()}')
-                while True:
-                    try:
-                        response = cast(AsyncMessageResponse, client.recv_json(flags=ZMQ_NOBLOCK))
-                        break
-                    except ZMQAgain:
-                        gsleep(0.1)
-
-                parent.logger.debug(f'got response from {worker} at {hostname()}')
-
-                response_length_source = ((response or {}).get('payload', None) or '').encode('utf-8')
-
-                meta.update({
-                    'action': self.endpoint_path,
-                    'request': request.copy(),
-                    'response_length': len(response_length_source),
-                    'response': response,
-                })
-
-                if response is None:
-                    raise RuntimeError('no response')
-
-                message = response.get('message', None)
-                if not response['success']:
-                    raise RuntimeError(message)
+                    meta.update({
+                        'action': self.endpoint_path,
+                        'request': request.copy(),
+                        'response_length': len(response_length_source),
+                        'response': response,
+                    })
 
                 payload = response.get('payload', None)
                 if payload is None or len(payload) < 1:

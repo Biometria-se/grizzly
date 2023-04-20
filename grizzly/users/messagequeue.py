@@ -123,17 +123,15 @@ And metadata "filename" is "my_filename"
 '''
 import logging
 
-from typing import Dict, Any, Generator, Tuple, Optional, cast
+from typing import Dict, Any, Generator, Tuple, Optional
 from urllib.parse import urlparse, parse_qs, unquote
 from contextlib import contextmanager
 from time import perf_counter as time
 
-from zmq.sugar.constants import NOBLOCK as ZMQ_NOBLOCK, REQ as ZMQ_REQ
-from zmq.error import Again as ZMQAgain
+from zmq.sugar.constants import REQ as ZMQ_REQ
 import zmq.green as zmq
 
-from gevent import sleep as gsleep
-from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse, AsyncMessageError
+from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse, async_message_request
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
 
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestType
@@ -306,15 +304,7 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
         try:
             yield action
 
-            self.zmq_client.send_json(am_request)
-
-            # do not block all other "threads", just it self
-            while True:
-                try:
-                    response = cast(AsyncMessageResponse, self.zmq_client.recv_json(flags=ZMQ_NOBLOCK))
-                    break
-                except ZMQAgain:
-                    gsleep(0.1)
+            response = async_message_request(self.zmq_client, am_request)
 
         except Exception as e:
             exception = e
@@ -333,9 +323,6 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
                 delta = total_time - mq_response_time
                 if delta > 100:  # @TODO: what is a suitable value?
                     logger.warning(f'{self.__class__.__name__}: communicating with async-messaged took {delta} ms')
-
-                if not response['success'] and exception is None:
-                    exception = AsyncMessageError(response['message'])
             else:
                 response = {}
 

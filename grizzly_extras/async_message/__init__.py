@@ -10,7 +10,7 @@ from time import monotonic as time
 from io import StringIO
 from threading import Lock
 from datetime import datetime
-from time import sleep
+from time import sleep, perf_counter
 
 import zmq.green as zmq
 
@@ -209,22 +209,25 @@ def async_message_request(client: zmq.Socket, request: AsyncMessageRequest) -> A
         client.send_json(request)
 
         while True:
+            start = perf_counter()
             try:
                 response = cast(AsyncMessageResponse, client.recv_json(flags=ZMQ_NOBLOCK))
                 break
             except ZMQAgain:
                 sleep(0.1)
+            delta = perf_counter() - start
+            logger.debug(f'async_message_request::recv_json took {delta} seconds')
 
         if response is None:
-            raise RuntimeError('no response')
+            raise AsyncMessageError('no response')
 
         message = response.get('message', None)
 
         if not response['success']:
-            raise RuntimeError(message)
+            raise AsyncMessageError(message)
 
         return response
     except Exception as e:
-        if not isinstance(e, RuntimeError):
+        if not isinstance(e, AsyncMessageError):
             logger.error(f'failed to send {request=}', exc_info=True)
         raise

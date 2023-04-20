@@ -74,12 +74,10 @@ from urllib.parse import urlparse, parse_qs
 from time import perf_counter as time
 from contextlib import contextmanager
 
-from zmq.error import Again as ZMQAgain
-from zmq.sugar.constants import NOBLOCK as ZMQ_NOBLOCK, REQ as ZMQ_REQ
+from zmq.sugar.constants import REQ as ZMQ_REQ
 import zmq.green as zmq
 
-from gevent import sleep as gsleep
-from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageResponse, AsyncMessageRequest, AsyncMessageError
+from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageResponse, AsyncMessageRequest, async_message_request
 from grizzly_extras.arguments import parse_arguments, get_unsupported_arguments
 
 from grizzly.types import RequestMethod, RequestDirection, GrizzlyResponse, RequestType
@@ -310,14 +308,7 @@ class ServiceBusUser(ResponseHandler, RequestLogger, GrizzlyUser):
         try:
             yield action
 
-            self.zmq_client.send_json(request)
-
-            while True:
-                try:
-                    response = cast(AsyncMessageResponse, self.zmq_client.recv_json(flags=ZMQ_NOBLOCK))
-                    break
-                except ZMQAgain:
-                    gsleep(0.1)
+            response = async_message_request(self.zmq_client, request)
         except Exception as e:
             exception = e
         finally:
@@ -329,9 +320,6 @@ class ServiceBusUser(ResponseHandler, RequestLogger, GrizzlyUser):
                     self.worker_id = response_worker
 
                 assert self.worker_id == response_worker
-
-                if not response.get('success', False) and exception is None:
-                    exception = AsyncMessageError(response['message'])
             else:
                 response = {}
 
