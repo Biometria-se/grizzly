@@ -216,7 +216,8 @@ def async_message_request(client: zmq.Socket, request: AsyncMessageRequest) -> A
             except ZMQAgain:
                 sleep(0.1)
             delta = perf_counter() - start
-            logger.debug(f'async_message_request::recv_json took {delta} seconds')
+            if delta > 1.0:
+                logger.debug(f'async_message_request::recv_json took {delta} seconds')
 
         if response is None:
             raise AsyncMessageError('no response')

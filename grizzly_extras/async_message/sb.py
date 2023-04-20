@@ -502,6 +502,12 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
             wait_start = perf_counter()
 
+            # reset last activity timestamp, might be set from previous usage that was more
+            # than message_wait ago, which will cause a "timeout" when trying to read it now
+            # which means we'll not get any messages, even though the endpoint isn't empty
+            if message_wait > 0:
+                receiver._handler._last_activity_timestamp = None
+
             for retry in range(1, 4):
                 try:
                     if expression is not None:
@@ -568,6 +574,8 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
                     break
                 except StopIteration:
+                    if message_wait > 0:
+                        receiver._handler._last_activity_timestamp = None
                     delta = perf_counter() - wait_start
 
                     if message_wait > 0:
@@ -602,6 +610,9 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                                             f'{queue_properties.transfer_message_count=}'
                                         ))
                                 # // useful debugging information -->
+
+                                self._hello(request, force=True)
+                                receiver = self._receiver_cache[cache_endpoint]
                                 message = None
                                 continue
                     else:
