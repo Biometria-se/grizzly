@@ -10,7 +10,7 @@ from time import monotonic as time
 from io import StringIO
 from threading import Lock
 from datetime import datetime
-from time import sleep
+from time import sleep, perf_counter
 
 import zmq.green as zmq
 
@@ -19,6 +19,9 @@ from zmq.sugar.constants import NOBLOCK as ZMQ_NOBLOCK
 from grizzly_extras.transformer import JsonBytesEncoder
 
 __all__: List[str] = []
+
+
+logger = logging.getLogger(__name__)
 
 
 AsyncMessageMetadata = Optional[Dict[str, Any]]
@@ -98,6 +101,7 @@ class AsyncMessageContext(TypedDict, total=False):
 class AsyncMessageRequest(TypedDict, total=False):
     action: str
     worker: Optional[str]
+    client: int
     context: AsyncMessageContext
     payload: AsyncMessagePayload
 
@@ -140,15 +144,18 @@ class AsyncMessageHandler(ABC):
 
     @final
     def handle(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
-        action = request['action']
-        request_handler = self.get_handler(action)
-        self.logger.debug(f'handling {action}, request=\n{jsondumps(request, indent=2, cls=JsonBytesEncoder)}')
-
-        response: AsyncMessageResponse
-
         start_time = time()
 
         try:
+            action = request.get('action', None)
+            if action is None:
+                raise RuntimeError('no action in request')
+
+            request_handler = self.get_handler(action)
+            self.logger.debug(f'handling {action}, request=\n{jsondumps(request, indent=2, cls=JsonBytesEncoder)}')
+
+            response: AsyncMessageResponse
+
             if request_handler is None:
                 raise AsyncMessageError(f'no implementation for {action}')
 
@@ -157,9 +164,9 @@ class AsyncMessageHandler(ABC):
         except Exception as e:
             response = {
                 'success': False,
-                'message': f'{action}: {e.__class__.__name__}="{str(e)}"',
+                'message': f'{action or "UNKNOWN"}: {e.__class__.__name__}="{str(e)}"',
             }
-            self.logger.error(f'{action}: {e.__class__.__name__}="{str(e)}"', exc_info=True)
+            self.logger.error(f'{action or "UNKNOWN"}: {e.__class__.__name__}="{str(e)}"', exc_info=True)
         finally:
             total_time = int((time() - start_time) * 1000)
             response.update({
@@ -198,21 +205,30 @@ def register(handlers: Dict[str, AsyncMessageRequestHandler], action: str, *acti
 
 
 def async_message_request(client: zmq.Socket, request: AsyncMessageRequest) -> AsyncMessageResponse:
-    client.send_json(request)
+    try:
+        client.send_json(request)
 
-    while True:
-        try:
-            response = cast(AsyncMessageResponse, client.recv_json(flags=ZMQ_NOBLOCK))
-            break
-        except ZMQAgain:
-            sleep(0.1)
+        while True:
+            start = perf_counter()
+            try:
+                response = cast(AsyncMessageResponse, client.recv_json(flags=ZMQ_NOBLOCK))
+                break
+            except ZMQAgain:
+                sleep(0.1)
+            delta = perf_counter() - start
+            if delta > 1.0:
+                logger.debug(f'async_message_request::recv_json took {delta} seconds')
 
-    if response is None:
-        raise RuntimeError('no response')
+        if response is None:
+            raise AsyncMessageError('no response')
 
-    message = response.get('message', None)
+        message = response.get('message', None)
 
-    if not response['success']:
-        raise RuntimeError(message)
+        if not response['success']:
+            raise AsyncMessageError(message)
 
-    return response
+        return response
+    except Exception as e:
+        if not isinstance(e, AsyncMessageError):
+            logger.error(f'failed to send {request=}', exc_info=True)
+        raise

@@ -75,12 +75,14 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
 
     @register(handlers, 'CONN')
     def connect(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
-        if self.qmgr is not None:
-            raise AsyncMessageError('already connected')
-
         context = request.get('context', None)
         if context is None:
             raise AsyncMessageError('no context in request')
+
+        if self.qmgr is not None:
+            return {
+                'message': 're-used connection',
+            }
 
         connection = context['connection']
         queue_manager = context['queue_manager']

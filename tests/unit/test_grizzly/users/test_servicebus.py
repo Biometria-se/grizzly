@@ -174,7 +174,6 @@ class TestServiceBusUser:
             assert len(args) == 3
             assert len(kwargs) == 0
             assert args[1] == {
-                'worker': None,
                 'action': 'DISCONNECT',
                 'context': {
                     'endpoint': 'queue:test-queue',
@@ -243,7 +242,6 @@ class TestServiceBusUser:
         assert len(kwargs) == 0
         assert args[1] is task
         assert args[2] == {
-            'worker': None,
             'action': 'HELLO',
             'context': {
                 'endpoint': 'topic:test-topic',
@@ -274,7 +272,6 @@ class TestServiceBusUser:
         assert len(kwargs) == 0
         assert args[1] is task
         assert args[2] == {
-            'worker': None,
             'action': 'HELLO',
             'context': {
                 'endpoint': 'topic:test-topic, subscription:test-subscription',
@@ -420,6 +417,7 @@ class TestServiceBusUser:
         assert kwargs == {}
         assert args == ({
             'worker': 'asdf-asdf-asdf',
+            'client': id(user),
             'action': 'SEND',
             'payload': 'hello',
             'context': {
@@ -474,6 +472,7 @@ class TestServiceBusUser:
         assert kwargs == {}
         assert args == ({
             'worker': 'asdf-asdf-asdf',
+            'client': id(user),
             'action': 'RECEIVE',
             'payload': None,
             'context': {
@@ -529,6 +528,7 @@ class TestServiceBusUser:
         assert kwargs == {}
         assert args == ({
             'worker': 'asdf-asdf-asdf',
+            'client': id(user),
             'action': 'RECEIVE',
             'payload': None,
             'context': {

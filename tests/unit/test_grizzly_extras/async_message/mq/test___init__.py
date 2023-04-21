@@ -1,7 +1,7 @@
 import subprocess
 import sys
 
-from typing import Any, List, Tuple, Dict, cast
+from typing import Any, List, Tuple, cast
 from os import environ
 
 import pytest
@@ -144,26 +144,7 @@ class TestAsyncMessageQueueHandler:
 
         with pytest.raises(AsyncMessageError) as mqe:
             handlers[request['action']](handler, request)
-        assert 'already connected' in str(mqe)
-
-        handler.qmgr = None
-
-        with pytest.raises(AsyncMessageError) as mqe:
-            handlers[request['action']](handler, request)
         assert 'no context' in str(mqe)
-
-        def mocked_connect(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Any:
-            pass
-
-        mocker.patch.object(
-            pymqi.QueueManager,
-            'connect_with_options',
-            mocked_connect,
-        )
-
-        pymqi_sco_spy = mocker.spy(pymqi.SCO, '__init__')
-        pymqi_cd_spy = mocker.spy(pymqi.CD, '__init__')
-        pymqi_connect_with_options_spy = mocker.spy(pymqi.QueueManager, 'connect_with_options')
 
         request.update({
             'context': {
@@ -175,6 +156,21 @@ class TestAsyncMessageQueueHandler:
                 'queue_manager': 'QM1',
             }
         })
+
+        response = handlers[request['action']](handler, request)
+        assert response.get('message', None) == 're-used connection'
+
+        handler.qmgr = None
+
+        mocker.patch.object(
+            pymqi.QueueManager,
+            'connect_with_options',
+            autospec=True,
+        )
+
+        pymqi_sco_spy = mocker.spy(pymqi.SCO, '__init__')
+        pymqi_cd_spy = mocker.spy(pymqi.CD, '__init__')
+        pymqi_connect_with_options_spy = mocker.spy(pymqi.QueueManager, 'connect_with_options')
 
         response = handlers[request['action']](handler, request)
 
@@ -204,7 +200,7 @@ class TestAsyncMessageQueueHandler:
 
         pymqi_sco_spy.reset_mock()
         pymqi_cd_spy.reset_mock()
-        pymqi_connect_with_options_spy.reset_mock()
+        pymqi_connect_with_options_spy.reset_mock()  # does not reset call count?!
         pymqi_cd_setitem_spy = mocker.spy(pymqi.CD, '__setitem__')
 
         request['context'].update({
@@ -237,8 +233,8 @@ class TestAsyncMessageQueueHandler:
         assert args[1] == 'SSLCipherSpec'
         assert args[2].decode().strip() == 'ECDHE_RSA_AES_256_GCM_SHA384'
 
-        assert pymqi_connect_with_options_spy.call_count == 1
-        args, kwargs = pymqi_connect_with_options_spy.call_args_list[0]
+        assert pymqi_connect_with_options_spy.call_count == 2
+        args, kwargs = pymqi_connect_with_options_spy.call_args_list[-1]
 
         assert args[0] is handler.qmgr
         assert kwargs.get('user', b'').decode().strip() == 'bob'
@@ -272,8 +268,8 @@ class TestAsyncMessageQueueHandler:
         assert args[1] == 'SSLCipherSpec'
         assert args[2].decode().strip() == 'rot13'
 
-        assert pymqi_connect_with_options_spy.call_count == 1
-        args, kwargs = pymqi_connect_with_options_spy.call_args_list[0]
+        assert pymqi_connect_with_options_spy.call_count == 3
+        args, kwargs = pymqi_connect_with_options_spy.call_args_list[-1]
 
         assert args[0] is handler.qmgr
         assert kwargs.get('user', b'').decode().strip() == 'bob'

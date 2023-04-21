@@ -47,6 +47,7 @@ class TestAsyncServiceBusHandler:
         from grizzly_extras.async_message.sb import handlers
 
         handler = AsyncServiceBusHandler(worker='asdf-asdf-asdf')
+        handler._client = mocker.MagicMock()
         request: AsyncMessageRequest = {
             'action': 'DISCONNECT',
         }
@@ -374,21 +375,23 @@ class TestAsyncServiceBusHandler:
 
         handler = AsyncServiceBusHandler('asdf-asdf-asdf')
 
-        sender = handler.get_sender_instance(client, handler.get_endpoint_arguments('sender', 'queue:test-queue'))
+        handler._client = client
+
+        sender = handler.get_sender_instance(handler.get_endpoint_arguments('sender', 'queue:test-queue'))
         assert isinstance(sender, ServiceBusSender)
         assert topic_spy.call_count == 0
         assert queue_spy.call_count == 1
-        _, kwargs = queue_spy.call_args_list[0]
-        assert len(kwargs) == 1
-        assert kwargs.get('queue_name', None) == 'test-queue'
+        args, kwargs = queue_spy.call_args_list[0]
+        assert args == ()
+        assert kwargs == {'client_identifier': 'asdf-asdf-asdf', 'queue_name': 'test-queue'}
 
-        sender = handler.get_sender_instance(client, handler.get_endpoint_arguments('sender', 'topic:test-topic'))
+        sender = handler.get_sender_instance(handler.get_endpoint_arguments('sender', 'topic:test-topic'))
         assert isinstance(sender, ServiceBusSender)
         assert queue_spy.call_count == 1
         assert topic_spy.call_count == 1
-        _, kwargs = topic_spy.call_args_list[0]
-        assert len(kwargs) == 1
-        assert kwargs.get('topic_name', None) == 'test-topic'
+        args, kwargs = topic_spy.call_args_list[0]
+        assert args == ()
+        assert kwargs == {'client_identifier': 'asdf-asdf-asdf', 'topic_name': 'test-topic'}
 
     def test_get_receiver_instance(self, mocker: MockerFixture) -> None:
         url = 'Endpoint=sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789='
@@ -401,41 +404,38 @@ class TestAsyncServiceBusHandler:
         topic_spy = mocker.spy(client, 'get_subscription_receiver')
 
         handler = AsyncServiceBusHandler('asdf-asdf-asdf')
+        handler._client = client
 
-        receiver = handler.get_receiver_instance(client, handler.get_endpoint_arguments('receiver', 'queue:test-queue'))
+        receiver = handler.get_receiver_instance(handler.get_endpoint_arguments('receiver', 'queue:test-queue'))
         assert isinstance(receiver, ServiceBusReceiver)
         assert topic_spy.call_count == 0
         assert queue_spy.call_count == 1
-        _, kwargs = queue_spy.call_args_list[-1]
-        assert len(kwargs) == 1
-        assert kwargs.get('queue_name', None) == 'test-queue'
+        args, kwargs = queue_spy.call_args_list[-1]
+        assert args == ()
+        assert kwargs == {'client_identifier': 'asdf-asdf-asdf', 'queue_name': 'test-queue'}
 
-        handler.get_receiver_instance(client, dict({'wait': '100'}, **handler.get_endpoint_arguments('receiver', 'queue:test-queue')))
+        handler.get_receiver_instance(dict({'wait': '100'}, **handler.get_endpoint_arguments('receiver', 'queue:test-queue')))
         assert topic_spy.call_count == 0
         assert queue_spy.call_count == 2
-        _, kwargs = queue_spy.call_args_list[-1]
-        assert len(kwargs) == 2
-        assert kwargs.get('queue_name', None) == 'test-queue'
-        assert kwargs.get('max_wait_time', None) == 100
+        args, kwargs = queue_spy.call_args_list[-1]
+        assert args == ()
+        assert kwargs == {'client_identifier': 'asdf-asdf-asdf', 'queue_name': 'test-queue', 'max_wait_time': 100}
 
-        receiver = handler.get_receiver_instance(client, handler.get_endpoint_arguments('receiver', 'topic:test-topic, subscription: test-subscription'))
+        receiver = handler.get_receiver_instance(handler.get_endpoint_arguments('receiver', 'topic:test-topic, subscription: test-subscription'))
         assert topic_spy.call_count == 1
         assert queue_spy.call_count == 2
-        _, kwargs = topic_spy.call_args_list[-1]
-        assert len(kwargs) == 2
-        assert kwargs.get('topic_name', None) == 'test-topic'
-        assert kwargs.get('subscription_name', None) == 'test-subscription'
+        args, kwargs = topic_spy.call_args_list[-1]
+        assert args == ()
+        assert kwargs == {'client_identifier': 'asdf-asdf-asdf', 'topic_name': 'test-topic', 'subscription_name': 'test-subscription'}
 
-        receiver = handler.get_receiver_instance(client, dict({'wait': '100'}, **handler.get_endpoint_arguments(
+        receiver = handler.get_receiver_instance(dict({'wait': '100'}, **handler.get_endpoint_arguments(
             'receiver', 'topic:test-topic, subscription:test-subscription, expression:$.foo.bar',
         )))
         assert topic_spy.call_count == 2
         assert queue_spy.call_count == 2
-        _, kwargs = topic_spy.call_args_list[-1]
-        assert len(kwargs) == 3
-        assert kwargs.get('topic_name', None) == 'test-topic'
-        assert kwargs.get('subscription_name', None) == 'test-subscription'
-        assert kwargs.get('max_wait_time', None) == 100
+        args, kwargs = topic_spy.call_args_list[-1]
+        assert args == ()
+        assert kwargs == {'client_identifier': 'asdf-asdf-asdf', 'topic_name': 'test-topic', 'subscription_name': 'test-subscription', 'max_wait_time': 100}
 
     def test_hello(self, mocker: MockerFixture) -> None:
         from grizzly_extras.async_message.sb import handlers
@@ -449,7 +449,7 @@ class TestAsyncServiceBusHandler:
             handlers[request['action']](handler, request)
         assert 'no context in request' in str(ame)
 
-        assert handler.client is None
+        assert handler._client is None
 
         servicebusclient_connect_spy = mocker.spy(ServiceBusClient, 'from_connection_string')
 
@@ -489,10 +489,9 @@ class TestAsyncServiceBusHandler:
         assert sender_instance_spy.return_value.__enter__.call_count == 1
         assert receiver_instance_spy.call_count == 0
 
-        args, _ = sender_instance_spy.call_args_list[0]
-        assert len(args) == 2
-        assert args[0] is handler.client
-        assert args[1] == {'endpoint_type': 'queue', 'endpoint': 'test-queue'}
+        args, kwargs = sender_instance_spy.call_args_list[0]
+        assert args == ({'endpoint_type': 'queue', 'endpoint': 'test-queue'},)
+        assert kwargs == {}
 
         assert handler._sender_cache.get('queue:test-queue', None) is not None
         assert handler._receiver_cache == {}
@@ -520,10 +519,9 @@ class TestAsyncServiceBusHandler:
         assert receiver_instance_spy.call_count == 1
         assert receiver_instance_spy.return_value.__enter__.call_count == 1
 
-        args, _ = receiver_instance_spy.call_args_list[0]
-        assert len(args) == 2
-        assert args[0] is handler.client
-        assert args[1] == {'endpoint_type': 'topic', 'endpoint': 'test-topic', 'subscription': 'test-subscription', 'wait': '10'}
+        args, kwargs = receiver_instance_spy.call_args_list[0]
+        assert kwargs == {}
+        assert args == ({'endpoint_type': 'topic', 'endpoint': 'test-topic', 'subscription': 'test-subscription', 'wait': '10'},)
 
         assert handler._sender_cache.get('queue:test-queue', None) is not None
         assert handler._receiver_cache.get('topic:test-topic, subscription:test-subscription', None) is not None
@@ -572,7 +570,7 @@ class TestAsyncServiceBusHandler:
             handlers[request['action']](handler, request)
         assert 'no context in request' in str(ame)
 
-        assert handler.client is None
+        assert handler._client is None
 
         # sender request
         request = {
