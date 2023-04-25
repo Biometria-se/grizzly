@@ -205,7 +205,6 @@ def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
     user_type_1 = user_class_type_1(locust_fixture.env)
 
     assert user_type_1.headers == {
-        'Authorization': None,
         'Content-Type': 'application/json',
         'x-grizzly-user': f'grizzly.users.RestApiUser_{scenario.identifier}',
     }
@@ -291,7 +290,6 @@ def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
 
     user_type_2 = user_class_type_2(locust_fixture.env)
     assert user_type_2.headers == {
-        'Authorization': None,
         'Content-Type': 'application/xml',
         'x-grizzly-user': f'RestApiUser_{scenario.identifier}',
         'Foo-Bar': 'hello world',

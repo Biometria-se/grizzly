@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Tuple, Protocol, TypedDict, Optional, Type, Literal, cast
+from typing import Any, Dict, Tuple, Protocol, TypedDict, Optional, Type, Literal, Union, cast, runtime_checkable
 from functools import wraps
 from enum import Enum
 from time import time
+from importlib import import_module
 
 from grizzly.types import WrappedFunc
 from grizzly.types.locust import Environment
@@ -41,6 +42,7 @@ class GrizzlyHttpContext(TypedDict):
     auth: Optional[GrizzlyAuthHttpContext]
 
 
+@runtime_checkable
 class GrizzlyHttpAuthClient(Protocol):
     host: str
     environment: Environment
@@ -52,8 +54,20 @@ class GrizzlyHttpAuthClient(Protocol):
 class refresh_token:
     impl: Type[RefreshToken]
 
-    def __init__(self, impl: Type[RefreshToken]) -> None:
-        self.impl = impl
+    def __init__(self, impl: Union[Type[RefreshToken], str]) -> None:
+        if isinstance(impl, str):
+            if impl.count('.') > 1:
+                module_name, class_name = impl.rsplit('.', 1)
+            else:
+                module_name = 'grizzly.auth'
+                class_name = impl
+
+            module = import_module(module_name)
+            dynamic_impl = getattr(module, class_name)
+            assert issubclass(dynamic_impl, RefreshToken), f'{module_name}.{class_name} is not a subclass of grizzly.auth.RefreshToken'
+            impl = dynamic_impl
+
+        self.impl = cast(Type[RefreshToken], impl)
 
     def __call__(self, func: WrappedFunc) -> WrappedFunc:
         @wraps(func)
@@ -104,6 +118,7 @@ class refresh_token:
         return cast(WrappedFunc, refresh_token)
 
 
+@runtime_checkable
 class RefreshToken(Protocol):
     @classmethod
     def get_token(cls, client: GrizzlyHttpAuthClient, auth_method: Literal[AuthMethod.CLIENT, AuthMethod.USER]) -> str:

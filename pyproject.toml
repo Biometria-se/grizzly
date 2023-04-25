@@ -266,5 +266,6 @@ addopts = [
 timeout = 10
 filterwarnings = [
     "ignore:setDaemon\\(\\) is deprecated.*:DeprecationWarning",
-    "ignore:.*pkg_resources.*:DeprecationWarning"
+    "ignore:.*pkg_resources.*:DeprecationWarning",
+    "error:.*:gevent.monkey.MonkeyPatchWarning"
 ]

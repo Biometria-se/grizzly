@@ -117,6 +117,10 @@ class AAD(RefreshToken):
                 username_lowercase = cast(str, auth_user_context['username']).lower()
 
                 redirect_uri = cast(str, auth_user_context['redirect_uri'])
+                redirect_uri_parsed = urlparse(redirect_uri)
+
+                if len(redirect_uri_parsed.netloc) == 0:
+                    redirect_uri = f"{client.host}{redirect_uri}"
 
                 url = f'{provider_url}/authorize'
 
@@ -389,13 +393,12 @@ class AAD(RefreshToken):
         assert auth_context is not None, 'context variable auth is not set'
         provider_url = auth_context.get('provider', None)
         assert provider_url is not None, 'context variable auth.provider is not set'
-        is_token_v2_0 = 'v2.0' in provider_url
 
         auth_client_context = auth_context.get('client', None)
         assert auth_client_context is not None, 'context variable auth.client is not set'
-        auth_user_context = auth_context.get('user', None)
-        assert auth_user_context is not None, 'context variable auth.user is not set'
         resource = auth_client_context.get('resource', client.host)
+
+        auth_user_context = auth_context.get('user', None)
 
         url = f'{provider_url}/token'
 
@@ -429,6 +432,7 @@ class AAD(RefreshToken):
                 'resource': resource,
             })
         else:  # token v2.0
+            assert auth_user_context is not None, 'context variable auth.user is not set'
             code, code_verifier = pkcs
 
             redirect_uri = auth_user_context['redirect_uri']
@@ -437,6 +441,7 @@ class AAD(RefreshToken):
 
             if len(redirect_uri_parsed.netloc) == 0:
                 redirect_uri = f"{client.host}{redirect_uri}"
+                redirect_uri_parsed = urlparse(redirect_uri)
 
             origin = f'{redirect_uri_parsed.scheme}://{redirect_uri_parsed.netloc}'
 
@@ -451,9 +456,8 @@ class AAD(RefreshToken):
                 'code': code,
                 'code_verifier': code_verifier,
             })
-            parameters.update({'allow_redirects': False})
 
-        parameters.update({'headers': headers})
+        parameters.update({'headers': headers, 'allow_redirects': (pkcs is None)})
 
         exception: Optional[Exception] = None
 
@@ -467,6 +471,9 @@ class AAD(RefreshToken):
 
                 payload = json.loads(response.text)
 
+                if response.status_code != 200:
+                    raise RuntimeError(payload['error_description'])
+
                 if pkcs is None:
                     token = str(payload['access_token'])
                 else:
@@ -479,10 +486,8 @@ class AAD(RefreshToken):
         finally:
             name = client.__class__.__name__.rsplit('_', 1)[-1]
 
-            version = 'v1.0' if not is_token_v2_0 else 'v2.0'
-
             request_meta = {
-                'request_type': 'GET',
+                'request_type': 'POST',
                 'response_time': int((time_perf_counter() - start_time) * 1000),
                 'name': f'{name} {cls.__name__} OAuth2 user token {version}',
                 'context': client._context,
