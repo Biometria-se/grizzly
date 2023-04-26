@@ -1,4 +1,6 @@
-'''This task performs a HTTP request to a specified endpoint.
+'''
+@anchor pydoc:grizzly.tasks.clients.http HTTP
+This task performs a HTTP request to a specified endpoint.
 
 This is useful if the scenario is using a non-HTTP user or a request to a URL other than the one under testing is needed, e.g. for testdata.
 

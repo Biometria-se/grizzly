@@ -2,7 +2,7 @@ import itertools
 import logging
 import re
 
-from typing import TYPE_CHECKING, Optional, List, Dict, Any, Tuple, Set
+from typing import TYPE_CHECKING, Optional, List, Dict, Any, Tuple, Set, cast
 from collections import namedtuple
 from os import environ
 from time import perf_counter as time
@@ -157,15 +157,16 @@ def create_context_variable(grizzly: 'GrizzlyContext', variable: str, value: str
         grizzly.scenario.orphan_templates.append(value)
 
     casted_value = resolve_variable(grizzly, value)
+    casted_variable = cast(str, resolve_variable(grizzly, variable))
 
     prefix: Optional[str] = None
 
-    if variable.count('/') == 1 and variable.count('.') > 0:
-        prefix, variable = variable.split('/', 1)
+    if casted_variable.count('/') == 1 and casted_variable.count('.') > 0:
+        prefix, casted_variable = casted_variable.split('/', 1)
 
-    variable = variable.lower().replace(' ', '_').replace('/', '.')
+    casted_variable = casted_variable.lower().replace(' ', '_').replace('/', '.')
 
-    transformed = transform(grizzly, {variable: casted_value}, objectify=False)
+    transformed = transform(grizzly, {casted_variable: casted_value}, objectify=False)
 
     if prefix is not None:
         transformed = {prefix: transformed}
