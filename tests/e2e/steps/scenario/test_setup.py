@@ -16,7 +16,7 @@ def test_e2e_step_setup_set_context_variable(e2e_fixture: End2EndFixture) -> Non
         ('token/client id', 'aaaa-bbbb-cccc-dddd', '{"token": {"client_id": "aaaa-bbbb-cccc-dddd"}}',),
         ('log_all_requests', 'True', '{"log_all_requests": true}',),
         ('run_id', '13', '{"run_id": 13}',),
-        # ('www.example.com/auth.user.username', 'bob', '{"www.example.com": {"auth": {"user": {"username": "bob"}}}}'),
+        ('www.example.com/auth.user.username', 'bob', '{"www.example.com": {"auth": {"user": {"username": "bob"}}}}'),
     ]
 
     def validate_context_variable(context: Context) -> None:

@@ -1,14 +1,19 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Tuple, Protocol, TypedDict, Optional, Type, Literal, Union, cast, runtime_checkable
+from typing import Any, Dict, Tuple, Protocol, TypedDict, Optional, Type, Literal, Union, cast, runtime_checkable, TYPE_CHECKING
 from functools import wraps
 from enum import Enum
 from time import time
 from importlib import import_module
+from urllib.parse import urlparse
 
 from grizzly.types import WrappedFunc
 from grizzly.types.locust import Environment
-from grizzly.utils import safe_del
+from grizzly.utils import safe_del, merge_dicts
+
+
+if TYPE_CHECKING:
+    from grizzly.scenarios import GrizzlyScenario
 
 
 class AuthMethod(Enum):
@@ -49,12 +54,14 @@ class GrizzlyHttpAuthClient(Protocol):
     headers: Dict[str, str]
     _context: GrizzlyHttpContext
     session_started: Optional[float]
+    parent: Optional['GrizzlyScenario']
 
 
 class refresh_token:
     impl: Type[RefreshToken]
+    render: bool
 
-    def __init__(self, impl: Union[Type[RefreshToken], str]) -> None:
+    def __init__(self, impl: Union[Type[RefreshToken], str], render: bool = False) -> None:
         if isinstance(impl, str):
             if impl.count('.') > 1:
                 module_name, class_name = impl.rsplit('.', 1)
@@ -68,10 +75,28 @@ class refresh_token:
             impl = dynamic_impl
 
         self.impl = cast(Type[RefreshToken], impl)
+        self.render = render
 
     def __call__(self, func: WrappedFunc) -> WrappedFunc:
+        def render(client: GrizzlyHttpAuthClient) -> None:
+            if client.parent is None:
+                return
+
+            host = client.parent.render(client.host)
+            parsed = urlparse(host)
+            client.host = f'{parsed.scheme}://{parsed.netloc}'
+
+            client_context = client.parent.user._context.get(parsed.netloc, None)
+
+            # we have a host specific context that we should merge into current context
+            if client_context is not None:
+                client._context = cast(GrizzlyHttpContext, merge_dicts(cast(dict, client._context), cast(dict, client_context)))
+
         @wraps(func)
         def refresh_token(client: GrizzlyHttpAuthClient, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Any:
+            if self.render:
+                render(client)
+
             auth_context = client._context.get('auth', None)
 
             if auth_context is not None:

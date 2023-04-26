@@ -145,6 +145,8 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
             metadata = cast(Dict[str, str], metadata)
             self.headers.update(metadata)
 
+        self.parent = None
+
     def on_start(self) -> None:
         super().on_start()
 

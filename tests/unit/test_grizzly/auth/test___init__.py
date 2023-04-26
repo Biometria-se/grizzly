@@ -1,5 +1,6 @@
 from typing import Any, Dict, Tuple, Literal, cast
 from time import time
+from unittest.mock import ANY
 
 import pytest
 
@@ -8,7 +9,8 @@ from pytest_mock import MockerFixture
 from grizzly.auth import refresh_token, RefreshToken, AuthMethod, GrizzlyHttpAuthClient
 from grizzly.users import RestApiUser
 from grizzly.tasks import RequestTask
-from grizzly.types import RequestMethod
+from grizzly.tasks.clients import HttpClientTask
+from grizzly.types import RequestMethod, RequestDirection
 from grizzly.utils import safe_del
 
 from tests.fixtures import GrizzlyFixture
@@ -186,3 +188,90 @@ def test_refresh_token_user(grizzly_fixture: GrizzlyFixture, mocker: MockerFixtu
         assert user.headers.get('Authorization', None) == 'Bearer dummy'
     finally:
         pass
+
+
+@pytest.mark.parametrize('host', ['www.example.com', '{{ test_host }}'])
+def test_refresh_token_user_render(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, host: str) -> None:
+    _, user, parent = grizzly_fixture(user_type=RestApiUser)
+    assert isinstance(user, RestApiUser)
+    assert parent is not None
+
+    decorator = refresh_token(DummyAuth, render=True)
+    get_token_mock = mocker.spy(DummyAuth, 'get_token')
+
+    def get(self: 'HttpClientTask', *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+        return None
+
+    mocker.patch(
+        'grizzly.tasks.clients.http.HttpClientTask.get',
+        decorator(get),
+    )
+
+    if '{{' in host and '}}' in host:
+        rendered_host = 'www.example.net'
+    else:
+        rendered_host = host
+
+    grizzly = grizzly_fixture.grizzly
+    grizzly.state.variables.update({'foobar': 'none', 'test_host': f'http://{rendered_host}'})
+    user._context.update({'variables': {'test_host': f'http://{rendered_host}'}})
+
+    # no auth in context
+    client = HttpClientTask(RequestDirection.FROM, f'http://{host}/blob/file.txt', 'test', payload_variable='foobar')
+    client.on_start(parent)
+
+    assert client.parent is not None
+
+    if rendered_host == host:
+        assert client.host == f'http://{host}/blob/file.txt'
+    else:  # assumed that variables contains scheme
+        assert client.host == f'{host}/blob/file.txt'
+
+    client.get(parent)
+
+    get_token_mock.assert_not_called()
+    assert client._context == {'verify_certificates': True, 'metadata': None, 'auth': None}
+    assert client.host == f'http://{rendered_host}'
+
+    get_token_mock.reset_mock()
+
+    # auth in context
+    cast(dict, client.parent.user._context).update({
+        rendered_host: {
+            'auth': {
+                'client': {
+                    'id': 'foobar',
+                },
+                'user': {
+                    'username': 'bob',
+                    'password': 'password',
+                    'redirect_uri': '/authenticated',
+                },
+                'provider': 'https://login.example.com/oauth2',
+            },
+        },
+    })
+
+    client.get(parent)
+
+    get_token_mock.assert_called_once_with(client, AuthMethod.USER)
+
+    actual_context = cast(dict, client._context.copy())
+    safe_del(actual_context, rendered_host)
+
+    assert actual_context == {
+        'verify_certificates': True,
+        'metadata': None,
+        'auth': {
+            'client': {
+                'id': 'foobar',
+            },
+            'user': {
+                'username': 'bob',
+                'password': 'password',
+                'redirect_uri': '/authenticated',
+            },
+            'provider': 'https://login.example.com/oauth2',
+        },
+    }
+    assert client.headers == {'Authorization': 'Bearer dummy', 'x-grizzly-user': ANY}

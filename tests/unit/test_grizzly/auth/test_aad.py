@@ -238,7 +238,7 @@ class TestAAD:
             AAD.get_aad_oauth_authorization(user)
 
         fire_spy.assert_called_once_with(
-            request_type='GET',
+            request_type='AUTH',
             response_time=0,
             name=f'001 AAD OAuth2 user token {version}',
             context=user._context,
@@ -258,7 +258,7 @@ class TestAAD:
             AAD.get_aad_oauth_authorization(user)
 
         fire_spy.assert_called_once_with(
-            request_type='GET',
+            request_type='AUTH',
             response_time=0,
             name=f'001 AAD OAuth2 user token {version}',
             context=user._context,
@@ -278,7 +278,7 @@ class TestAAD:
             AAD.get_aad_oauth_authorization(user)
 
         fire_spy.assert_called_once_with(
-            request_type='GET',
+            request_type='AUTH',
             response_time=0,
             name=f'001 AAD OAuth2 user token {version}',
             context=user._context,
@@ -299,7 +299,7 @@ class TestAAD:
                 AAD.get_aad_oauth_authorization(user)
 
         fire_spy.assert_called_once_with(
-            request_type='GET',
+            request_type='AUTH',
             response_time=0,
             name=f'001 AAD OAuth2 user token {version}',
             context=user._context,
@@ -325,7 +325,7 @@ class TestAAD:
         expected_error_message = 'test-user@example.com requires MFA for login: fax = +46 1234'
 
         fire_spy.assert_called_once_with(
-            request_type='GET',
+            request_type='AUTH',
             response_time=0,
             name=f'001 AAD OAuth2 user token {version}',
             context=user._context,
@@ -350,7 +350,7 @@ class TestAAD:
         assert user.session_started is None
 
         fire_spy.assert_called_once_with(
-            request_type='GET',
+            request_type='AUTH',
             response_time=0,
             name=f'001 AAD OAuth2 user token {version}',
             context=user._context,
@@ -372,7 +372,7 @@ class TestAAD:
         assert user.session_started is None
 
         fire_spy.assert_called_once_with(
-            request_type='GET',
+            request_type='AUTH',
             response_time=0,
             name=f'001 AAD OAuth2 user token {version}',
             context=user._context,
@@ -392,7 +392,7 @@ class TestAAD:
             AAD.get_aad_oauth_authorization(user)
 
         fire_spy.assert_called_once_with(
-            request_type='GET',
+            request_type='AUTH',
             response_time=0,
             name=f'001 AAD OAuth2 user token {version}',
             context=user._context,
@@ -411,7 +411,7 @@ class TestAAD:
             AAD.get_aad_oauth_authorization(user)
 
         fire_spy.assert_called_once_with(
-            request_type='GET',
+            request_type='AUTH',
             response_time=0,
             name=f'001 AAD OAuth2 user token {version}',
             context=user._context,
@@ -430,7 +430,7 @@ class TestAAD:
             AAD.get_aad_oauth_authorization(user)
 
         fire_spy.assert_called_once_with(
-            request_type='GET',
+            request_type='AUTH',
             response_time=0,
             name=f'001 AAD OAuth2 user token {version}',
             context=user._context,
@@ -449,7 +449,7 @@ class TestAAD:
             AAD.get_aad_oauth_authorization(user)
 
         fire_spy.assert_called_once_with(
-            request_type='GET',
+            request_type='AUTH',
             response_time=0,
             name=f'001 AAD OAuth2 user token {version}',
             context=user._context,
@@ -477,7 +477,7 @@ class TestAAD:
             get_add_oauth_token_mock.reset_mock()
 
         fire_spy.assert_called_once_with(
-            request_type='GET',
+            request_type='AUTH',
             response_time=0,
             name=f'001 AAD OAuth2 user token {version}',
             context=user._context,
@@ -493,7 +493,7 @@ class TestAAD:
         assert AAD.get_aad_oauth_authorization(user) == 'asdf'
 
         fire_spy.assert_called_once_with(
-            request_type='GET',
+            request_type='AUTH',
             response_time=0,
             name=f'001 AAD OAuth2 user token {version}',
             context=user._context,
@@ -593,7 +593,7 @@ class TestAAD:
             fire_spy.assert_not_called()
         else:
             fire_spy.assert_called_once_with(
-                request_type='POST',
+                request_type='AUTH',
                 response_time=ANY,
                 name='001 AAD OAuth2 user token v1.0',
                 context=user._context,

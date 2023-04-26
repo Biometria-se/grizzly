@@ -17,6 +17,7 @@ coverage.xml
 **/tmp*
 *.log
 *.hprof
+*.bak
 
 # automagically generated
 docs/licenses/*

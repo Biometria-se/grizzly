@@ -17,6 +17,9 @@ from werkzeug.datastructures import Headers as FlaskHeaders
 logger = logging.getLogger('webserver')
 
 
+auth_expected: Optional[Dict[str, Any]] = None
+
+
 app = Flask('webserver')
 
 # ugly hack to get correct path when webserver.py is injected for running distributed
@@ -95,6 +98,13 @@ def app_echo() -> FlaskResponse:
         for key, value in request.args.items():
             payload[key] = value
 
+    if auth_expected is not None:
+        if request.headers.get('Authorization', '') != f'Bearer {auth_expected["token"]}':
+            response = jsonify({'message': 'not authenticated'})
+            response.status_code = 403
+
+            return response
+
     headers = get_headers(request)
 
     response = jsonify(payload)
@@ -164,6 +174,34 @@ def app_until_attribute(attribute: str) -> FlaskResponse:
     return response
 
 
+@app.route('/oauth2/authorize')
+def app_oauth2_authorize() -> FlaskResponse:
+    return jsonify({'message': 'not implemented'}, status=400)
+
+
+@app.route('/oauth2/token', methods=['POST'])
+def app_oauth2_token() -> FlaskResponse:
+    form = request.form
+
+    logger.debug(f'/oauth2/token called with {form=}')
+
+    if auth_expected is None:
+        response = jsonify({'message': 'not setup for authentication'})
+        response.status_code = 400
+        return response
+
+    try:
+        assert form['grant_type'] == 'client_credentials', f'grant_type {form["grant_type"]} != client_credentials'
+        assert form['client_secret'] == auth_expected['client']['secret'], f'client_secret {form["client_secret"]} != {auth_expected["client"]["secret"]}'
+        assert form['client_id'] == auth_expected['client']['id'], f'client_id {form["client_id"]} != {auth_expected["client"]["id"]}'
+    except AssertionError as e:
+        response = jsonify({'message': str(e)})
+        response.status_code = 400
+        return response
+
+    return jsonify({'access_token': auth_expected['token']})
+
+
 @app.errorhandler(404)
 def catch_all(_: Any) -> FlaskResponse:
     return jsonify({}, status=200)
@@ -184,6 +222,19 @@ class Webserver:
     @property
     def port(self) -> int:
         return cast(int, self._web_server.server_port)
+
+    @property
+    def auth(self) -> Optional[Dict[str, Any]]:
+        return auth_expected
+
+    @auth.setter
+    def auth(self, value: Dict[str, Any]) -> None:
+        global auth_expected
+        auth_expected = value
+
+    @property
+    def auth_provider_uri(self) -> str:
+        return '/oauth2'
 
     def start(self) -> None:
         self._greenlet = gevent.spawn(lambda: self._web_server.serve_forever())

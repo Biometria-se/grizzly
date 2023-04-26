@@ -50,6 +50,7 @@ class ClientTask(GrizzlyMetaRequestTask):
         RequestDirection.TO: '->',
     }
 
+    host: str
     grizzly: GrizzlyContext
     direction: RequestDirection
     endpoint: str
@@ -120,6 +121,7 @@ class ClientTask(GrizzlyMetaRequestTask):
         self.metadata_variable = metadata_variable
         self.source = source
         self.destination = destination
+        self.host = endpoint
 
         if self.payload_variable is not None and self.direction != RequestDirection.FROM:
             raise AttributeError(f'{self.__class__.__name__}: variable argument is not applicable for direction {self.direction.name}')

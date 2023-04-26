@@ -23,6 +23,8 @@ if TYPE_CHECKING:
 
 
 class GrizzlyUser(User):
+    __dependencies__: Set[str] = set()
+
     _context_root: str
     _context: Dict[str, Any] = {
         'variables': {},
@@ -30,8 +32,6 @@ class GrizzlyUser(User):
     _scenario: 'GrizzlyContextScenario'
 
     _scenario_state: Optional[ScenarioState]
-
-    __dependencies__: Set[str] = set()
 
     logger: Logger
 

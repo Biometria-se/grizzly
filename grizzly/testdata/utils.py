@@ -158,9 +158,19 @@ def create_context_variable(grizzly: 'GrizzlyContext', variable: str, value: str
 
     casted_value = resolve_variable(grizzly, value)
 
+    prefix: Optional[str] = None
+
+    if variable.count('/') == 1 and variable.count('.') > 0:
+        prefix, variable = variable.split('/', 1)
+
     variable = variable.lower().replace(' ', '_').replace('/', '.')
 
-    return transform(grizzly, {variable: casted_value}, objectify=False)
+    transformed = transform(grizzly, {variable: casted_value}, objectify=False)
+
+    if prefix is not None:
+        transformed = {prefix: transformed}
+
+    return transformed
 
 
 def resolve_variable(grizzly: 'GrizzlyContext', value: str, guess_datatype: Optional[bool] = True, only_grizzly: bool = False) -> GrizzlyVariableType:

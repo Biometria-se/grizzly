@@ -175,6 +175,22 @@ def test_step_setup_set_context_variable(behave_fixture: BehaveFixture) -> None:
         'host': 'http://example.com',
     }
 
+    step_setup_set_context_variable(behave, 'www.example.com/auth.user.username', 'bob')
+    step_setup_set_context_variable(behave, 'www.example.com/auth.user.password', 'password')
+    assert grizzly.scenario.context == {
+        'url': 'HOST',
+        'tenant': 'example.com',
+        'host': 'http://example.com',
+        'www.example.com': {
+            'auth': {
+                'user': {
+                    'username': 'bob',
+                    'password': 'password',
+                },
+            },
+        },
+    }
+
 
 def test_step_setup_iterations(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
