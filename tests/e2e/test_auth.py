@@ -62,31 +62,34 @@ def test_e2e_auth(e2e_fixture: End2EndFixture) -> None:
 
         return '\n'.join(steps)
 
-    feature_file = e2e_fixture.create_feature(dedent(f'''Feature: test auth
-    Background: common configuration
-        Given "2" users
-        And spawn rate is "2" users per second
-        {start_webserver_step}
-    Scenario: RestApi auth
-        Given a user of type "RestApi" load testing "http://{e2e_fixture.host}"
-        And set context variable "auth.provider" to "http://{e2e_fixture.host}{e2e_fixture.webserver.auth_provider_uri}"
-        And set context variable "auth.client.id" to "{e2e_fixture.webserver.auth['client']['id']}"
-        And set context variable "auth.client.secret" to "{e2e_fixture.webserver.auth['client']['secret']}"
-        {add_metadata()}
-        And repeat for "1" iterations
-        Then get request with name "restapi-echo" from endpoint "/api/echo"
+    try:
+        feature_file = e2e_fixture.create_feature(dedent(f'''Feature: test auth
+        Background: common configuration
+            Given "2" users
+            And spawn rate is "2" users per second
+            {start_webserver_step}
+        Scenario: RestApi auth
+            Given a user of type "RestApi" load testing "http://{e2e_fixture.host}"
+            And set context variable "auth.provider" to "http://{e2e_fixture.host}{e2e_fixture.webserver.auth_provider_uri}"
+            And set context variable "auth.client.id" to "{e2e_fixture.webserver.auth['client']['id']}"
+            And set context variable "auth.client.secret" to "{e2e_fixture.webserver.auth['client']['secret']}"
+            {add_metadata()}
+            And repeat for "1" iterations
+            Then get request with name "restapi-echo" from endpoint "/api/echo"
 
-    Scenario: HttpClientTask auth
-        Given a user of type "RestApi" load testing "http://{e2e_fixture.host}"
-        And value for variable "foobar" is "none"
-        And set context variable "{e2e_fixture.host}/auth.provider" to "http://{e2e_fixture.host}{e2e_fixture.webserver.auth_provider_uri}"
-        And set context variable "{e2e_fixture.host}/auth.client.id" to "{e2e_fixture.webserver.auth['client']['id']}"
-        And set context variable "{e2e_fixture.host}/auth.client.secret" to "{e2e_fixture.webserver.auth['client']['secret']}"
-        And repeat for "1" iterations
-        Then get "http://{e2e_fixture.host}/api/echo" with name "httpclient-echo" and save response payload in "foobar"
-        {add_metadata()}
-    '''))
+        Scenario: HttpClientTask auth
+            Given a user of type "RestApi" load testing "http://{e2e_fixture.host}"
+            And value for variable "foobar" is "none"
+            And set context variable "{e2e_fixture.host}/auth.provider" to "http://{e2e_fixture.host}{e2e_fixture.webserver.auth_provider_uri}"
+            And set context variable "{e2e_fixture.host}/auth.client.id" to "{e2e_fixture.webserver.auth['client']['id']}"
+            And set context variable "{e2e_fixture.host}/auth.client.secret" to "{e2e_fixture.webserver.auth['client']['secret']}"
+            And repeat for "1" iterations
+            Then get "http://{e2e_fixture.host}/api/echo" with name "httpclient-echo" and save response payload in "foobar"
+            {add_metadata()}
+        '''))
 
-    rc, _ = e2e_fixture.execute(feature_file)
+        rc, _ = e2e_fixture.execute(feature_file)
 
-    assert rc == 0
+        assert rc == 0
+    finally:
+        e2e_fixture.webserver.auth = None

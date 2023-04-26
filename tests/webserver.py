@@ -241,7 +241,7 @@ class Webserver:
         return auth_expected
 
     @auth.setter
-    def auth(self, value: Dict[str, Any]) -> None:
+    def auth(self, value: Optional[Dict[str, Any]]) -> None:
         global auth_expected
         auth_expected = value
 
