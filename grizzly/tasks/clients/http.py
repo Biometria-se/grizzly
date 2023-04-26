@@ -105,7 +105,7 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
 
         self.arguments = {}
         self.headers = {
-            'x-grizzly-user': f'{self.__class__.__name__}::{id(self)}'
+            'x-grizzly-user': f'{self.__class__.__name__}::{id(self)}',
         }
 
         if self._scheme == 'https':
@@ -125,6 +125,9 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
         self.session_started = time()
         self.environment = parent.user.environment
         self.parent = parent
+        metadata = self._context.get('metadata', None)
+        if metadata is not None:
+            self.headers.update(metadata)
 
     @refresh_token(AAD, render=True)
     def get(self, parent: GrizzlyScenario) -> GrizzlyResponse:

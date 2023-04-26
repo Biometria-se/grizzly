@@ -10,6 +10,8 @@ from pytest_mock import MockerFixture
 from grizzly.context import GrizzlyContext
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import  # noqa: F403
 from grizzly.testdata import GrizzlyVariables, GrizzlyVariableType
+from grizzly.tasks.clients import HttpClientTask
+from grizzly.types import RequestDirection, RequestMethod
 
 from tests.fixtures import BehaveFixture
 
@@ -337,6 +339,15 @@ def test_step_setup_metadata(behave_fixture: BehaveFixture) -> None:
     grizzly.scenario.tasks.add(request)
     step_setup_metadata(behave, 'new_header', 'new_value')
 
-    assert grizzly.scenario.context.get('metadata', None) is None
-    assert request.metadata is not None
-    assert request.metadata.get('new_header') == 'new_value'
+    assert grizzly.scenario.context.get('metadata', {}) is None
+    assert request.metadata == {'new_header': 'new_value'}
+
+    grizzly.state.variables.update({'test_payload': 'none', 'test_metadata': 'none'})
+    task_factory = HttpClientTask(RequestDirection.FROM, 'http://example.org', payload_variable='test_payload', metadata_variable='test_metadata')
+
+    grizzly.scenario.tasks.add(task_factory)
+    step_setup_metadata(behave, 'x-test-header', 'foobar')
+
+    assert grizzly.scenario.context.get('metadata', {}) is None
+    assert request.metadata == {'new_header': 'new_value'}
+    assert task_factory._context['metadata'] == {'x-test-header': 'foobar'}

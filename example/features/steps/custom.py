@@ -5,13 +5,14 @@ from typing import Any, Dict
 
 from grizzly.scenarios import GrizzlyScenario
 from grizzly.users import RestApiUser
+from grizzly.users.restapi import RestApiUserMeta
 from grizzly.tasks import RequestTask, GrizzlyTask, grizzlytask
 from grizzly.types import GrizzlyResponse
 from grizzly.types.locust import Message, Environment, WorkerRunner, LocalRunner
 from grizzly.testdata.variables import AtomicVariable
 
 
-class User(RestApiUser):
+class User(RestApiUser, metaclass=RestApiUserMeta):
     def request(self, request: RequestTask) -> GrizzlyResponse:
         self.logger.info(f'executing custom.User.request for {request.name} and {request.endpoint}')
 

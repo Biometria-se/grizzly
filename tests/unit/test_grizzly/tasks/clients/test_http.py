@@ -1,5 +1,6 @@
 from typing import cast
 from json import dumps as jsondumps, loads as jsonloads
+from unittest.mock import ANY
 
 import pytest
 
@@ -18,6 +19,32 @@ from tests.fixtures import GrizzlyFixture
 
 
 class TestHttpClientTask:
+    def test_on_start(self, grizzly_fixture: GrizzlyFixture) -> None:
+        _, _, scenario = grizzly_fixture()
+
+        assert scenario is not None
+
+        behave = grizzly_fixture.behave
+        grizzly = cast(GrizzlyContext, behave.grizzly)
+        grizzly.state.variables.update({'test_payload': 'none', 'test_metadata': 'none'})
+
+        task_factory = HttpClientTask(RequestDirection.FROM, 'http://example.org', payload_variable='test_payload', metadata_variable='test_metadata')
+        task = task_factory()
+
+        task_factory.add_metadata('x-test-header', 'foobar')
+
+        assert getattr(task_factory, 'parent', None) is None
+        assert getattr(task_factory, 'environment', None) is None
+        assert getattr(task_factory, 'session_started', None) is None
+        assert task_factory.headers == {'x-grizzly-user': ANY}
+
+        task.on_start(scenario)
+
+        assert task_factory.parent is scenario
+        assert task_factory.environment is scenario.user.environment
+        assert getattr(task_factory, 'session_started', -1.0) >= 0.0
+        assert task_factory.headers == {'x-grizzly-user': ANY, 'x-test-header': 'foobar'}
+
     def test_get(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
         behave = grizzly_fixture.behave
         grizzly = cast(GrizzlyContext, behave.grizzly)
@@ -229,6 +256,11 @@ class TestHttpClientTask:
         assert task_factory.content_type == TransformerContentType.JSON
 
         scenario.user._scenario.context['log_all_requests'] = True
+        task_factory._context['metadata'] = {'x-test-header': 'foobar'}
+
+        task.on_start(scenario)
+
+        assert task_factory.headers.get('x-test-header', None) == 'foobar'
 
         task(scenario)
 
@@ -237,7 +269,9 @@ class TestHttpClientTask:
         assert args[0] == 'https://example.org/api/test'
         assert len(kwargs) == 2
         assert kwargs.get('verify', None)
-        assert kwargs.get('headers', {}).get('x-grizzly-user', None).startswith('HttpClientTask::')
+        headers = kwargs.get('headers', {})
+        assert headers.get('x-grizzly-user', None).startswith('HttpClientTask::')
+        assert headers.get('x-test-header', None) == 'foobar'
         assert request_fire_spy.call_count == 8
         args, kwargs = request_fire_spy.call_args_list[-1]
         assert len(list(task_factory.log_dir.rglob('**/*'))) == 6

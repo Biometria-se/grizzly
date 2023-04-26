@@ -99,9 +99,22 @@ def app_echo() -> FlaskResponse:
             payload[key] = value
 
     if auth_expected is not None:
-        if request.headers.get('Authorization', '') != f'Bearer {auth_expected["token"]}':
-            response = jsonify({'message': 'not authenticated'})
-            response.status_code = 403
+        try:
+            assert request.headers.get('Authorization', '') == f'Bearer {auth_expected["token"]}', 'not authenticated'
+
+            expected_headers = auth_expected.get('headers', None)
+            if expected_headers is not None:
+                for key, expected_value in expected_headers.items():
+                    actual_value = request.headers.get(key, '')
+                    assert actual_value == expected_value, f'header {key}: {actual_value} != {expected_value}'
+
+        except AssertionError as e:
+            response = jsonify({'message': str(e)})
+
+            if str(e) == 'not authenticated':
+                response.status_code = 401
+            else:
+                response.status_code = 403
 
             return response
 

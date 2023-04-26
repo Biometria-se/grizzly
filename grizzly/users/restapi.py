@@ -73,8 +73,9 @@ Then post request "path/my_template.j2.xml" with name "FormPost" to endpoint "ex
 '''  # noqa: E501
 import json
 
-from typing import Dict, Optional, Any, Tuple, Union, _ProtocolMeta, cast
+from typing import Dict, Optional, Any, Tuple, Union, cast
 from time import time
+from abc import ABCMeta
 
 from locust.contrib.fasthttp import FastHttpSession
 
@@ -95,7 +96,7 @@ from urllib3 import disable_warnings as urllib3_disable_warnings
 urllib3_disable_warnings()
 
 
-class RestApiUserMeta(UserMeta, _ProtocolMeta):
+class RestApiUserMeta(UserMeta, ABCMeta):
     pass
 
 

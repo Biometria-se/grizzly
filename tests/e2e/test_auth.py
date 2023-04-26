@@ -1,4 +1,4 @@
-from typing import cast
+from typing import List, cast
 from textwrap import dedent
 
 from grizzly.types.behave import Context, Feature
@@ -47,7 +47,20 @@ def test_e2e_auth(e2e_fixture: End2EndFixture) -> None:
             'secret': 'dummy-client-secret',
         },
         'token': 'foobar',
+        'headers': {
+            'x-subscription': 'foobar',
+        }
     }
+
+    def add_metadata() -> str:
+        if e2e_fixture.webserver.auth is None:
+            return ''
+
+        steps: List[str] = []
+        for key, value in e2e_fixture.webserver.auth.get('headers', {}).items():
+            steps.append(f'And metadata "{key}" is "{value}"')
+
+        return '\n'.join(steps)
 
     feature_file = e2e_fixture.create_feature(dedent(f'''Feature: test auth
     Background: common configuration
@@ -59,6 +72,7 @@ def test_e2e_auth(e2e_fixture: End2EndFixture) -> None:
         And set context variable "auth.provider" to "http://{e2e_fixture.host}{e2e_fixture.webserver.auth_provider_uri}"
         And set context variable "auth.client.id" to "{e2e_fixture.webserver.auth['client']['id']}"
         And set context variable "auth.client.secret" to "{e2e_fixture.webserver.auth['client']['secret']}"
+        {add_metadata()}
         And repeat for "1" iterations
         Then get request with name "restapi-echo" from endpoint "/api/echo"
 
@@ -70,6 +84,7 @@ def test_e2e_auth(e2e_fixture: End2EndFixture) -> None:
         And set context variable "{e2e_fixture.host}/auth.client.secret" to "{e2e_fixture.webserver.auth['client']['secret']}"
         And repeat for "1" iterations
         Then get "http://{e2e_fixture.host}/api/echo" with name "httpclient-echo" and save response payload in "foobar"
+        {add_metadata()}
     '''))
 
     rc, _ = e2e_fixture.execute(feature_file)

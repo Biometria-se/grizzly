@@ -6,6 +6,7 @@ from enum import Enum
 from time import time
 from importlib import import_module
 from urllib.parse import urlparse
+from abc import ABCMeta
 
 from grizzly.types import WrappedFunc
 from grizzly.types.locust import Environment
@@ -47,14 +48,19 @@ class GrizzlyHttpContext(TypedDict):
     auth: Optional[GrizzlyAuthHttpContext]
 
 
-@runtime_checkable
-class GrizzlyHttpAuthClient(Protocol):
+class GrizzlyHttpAuthClient(metaclass=ABCMeta):
     host: str
     environment: Environment
     headers: Dict[str, str]
     _context: GrizzlyHttpContext
     session_started: Optional[float]
     parent: Optional['GrizzlyScenario']
+
+    def add_metadata(self, key: str, value: str) -> None:
+        if self._context.get('metadata', None) is None:
+            self._context['metadata'] = {}
+
+        cast(dict, self._context['metadata']).update({key: value})
 
 
 class refresh_token:
@@ -66,12 +72,12 @@ class refresh_token:
             if impl.count('.') > 1:
                 module_name, class_name = impl.rsplit('.', 1)
             else:
-                module_name = 'grizzly.auth'
+                module_name = RefreshToken.__module__
                 class_name = impl
 
             module = import_module(module_name)
             dynamic_impl = getattr(module, class_name)
-            assert issubclass(dynamic_impl, RefreshToken), f'{module_name}.{class_name} is not a subclass of grizzly.auth.RefreshToken'
+            assert issubclass(dynamic_impl, RefreshToken), f'{module_name}.{class_name} is not a subclass of {RefreshToken.__module__}.{RefreshToken.__name__}'
             impl = dynamic_impl
 
         self.impl = cast(Type[RefreshToken], impl)
