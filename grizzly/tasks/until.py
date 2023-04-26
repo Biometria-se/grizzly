@@ -210,4 +210,12 @@ class UntilRequestTask(GrizzlyTask):
                 if exception is not None and self.scenario.failure_exception is not None:
                     raise self.scenario.failure_exception()
 
+        @task.on_start
+        def on_start(parent: 'GrizzlyScenario') -> None:
+            self.request.on_start(parent)
+
+        @task.on_stop
+        def on_stop(parent: 'GrizzlyScenario') -> None:
+            self.request.on_stop(parent)
+
         return task

@@ -16,6 +16,11 @@ from grizzly_extras.transformer import TransformerContentType, TransformerError,
 
 from tests.fixtures import GrizzlyFixture
 
+parameterize = ('meta_request_task_type,meta_args,meta_kwargs', [
+    (RequestTask, (RequestMethod.GET,), {'name': 'test-request', 'endpoint': '/api/test | content_type=json'}),
+    (HttpClientTask, (RequestDirection.FROM, 'https://example.io/test | content_type=json', 'test-request',), {}),
+])
+
 
 class TestUntilRequestTask:
     def test___init__(self, grizzly_fixture: GrizzlyFixture) -> None:
@@ -55,10 +60,7 @@ class TestUntilRequestTask:
             UntilRequestTask(grizzly, request, '$.`this`[?status="ready"] | wait=0.1, retries=0')
         assert 'retries argument cannot be less than 1' in str(ve)
 
-    @pytest.mark.parametrize('meta_request_task_type, meta_args, meta_kwargs', [
-        (RequestTask, (RequestMethod.GET,), {'name': 'test-request', 'endpoint': '/api/test | content_type=json'}),
-        (HttpClientTask, (RequestDirection.FROM, 'https://example.io/test | content_type=json', 'test-request',), {}),
-    ])
+    @pytest.mark.parametrize(*parameterize)
     def test___call__(
         self,
         grizzly_fixture: GrizzlyFixture,
@@ -427,3 +429,55 @@ class TestUntilRequestTask:
         assert kwargs.get('response_length', None) == 0
         assert kwargs.get('context', None) == {'variables': {}}
         assert isinstance(kwargs.get('exception', ''), RuntimeError)
+
+    @pytest.mark.parametrize(*parameterize)
+    def test_on_start(
+        self,
+        grizzly_fixture: GrizzlyFixture,
+        mocker: MockerFixture,
+        meta_request_task_type: Type[GrizzlyMetaRequestTask],
+        meta_args: Tuple[Any, ...],
+        meta_kwargs: Dict[str, Any],
+    ) -> None:
+        _, _, scenario = grizzly_fixture()
+        assert scenario is not None
+
+        meta_request_task = meta_request_task_type(*meta_args, **meta_kwargs)
+
+        meta_request_task.scenario = grizzly_fixture.request_task.request.scenario
+        on_start_spy = mocker.spy(meta_request_task, 'on_start')
+
+        grizzly = grizzly_fixture.grizzly
+
+        task_factory = UntilRequestTask(grizzly, meta_request_task, "$.`this`[?status='ready'] | wait=100, retries=10", scenario=meta_request_task.scenario)
+        task = task_factory()
+
+        task.on_start(scenario)
+
+        on_start_spy.assert_called_once_with(scenario)
+
+    @pytest.mark.parametrize(*parameterize)
+    def test_on_stop(
+        self,
+        grizzly_fixture: GrizzlyFixture,
+        mocker: MockerFixture,
+        meta_request_task_type: Type[GrizzlyMetaRequestTask],
+        meta_args: Tuple[Any, ...],
+        meta_kwargs: Dict[str, Any],
+    ) -> None:
+        _, _, scenario = grizzly_fixture()
+        assert scenario is not None
+
+        meta_request_task = meta_request_task_type(*meta_args, **meta_kwargs)
+
+        meta_request_task.scenario = grizzly_fixture.request_task.request.scenario
+        on_stop_spy = mocker.spy(meta_request_task, 'on_stop')
+
+        grizzly = grizzly_fixture.grizzly
+
+        task_factory = UntilRequestTask(grizzly, meta_request_task, "$.`this`[?status='ready'] | wait=100, retries=10", scenario=meta_request_task.scenario)
+        task = task_factory()
+
+        task.on_stop(scenario)
+
+        on_stop_spy.assert_called_once_with(scenario)
