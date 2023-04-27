@@ -248,11 +248,11 @@ class TestdataProducer:
                                                 data = {}
                                                 break
                                             else:
+                                                data['variables'][key] = value
+
                                                 if key in self.grizzly.state.alias:
                                                     key = self.grizzly.state.alias[key]
                                                     data[key] = value
-                                                else:
-                                                    data['variables'][key] = value
 
                                         message['data'] = data
 

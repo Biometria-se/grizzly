@@ -77,7 +77,15 @@ def get_headers(request: FlaskRequest) -> FlaskHeaders:
     return FlaskHeaders({key: value for key, value in request.headers.items() if not key.lower() == 'content-length'})
 
 
-@app.route('/api/echo')
+@app.route('/api/statuscode/<statuscode>')
+def app_statuscode(statuscode: int) -> FlaskResponse:
+    response = jsonify({'message': 'a-okay!'})
+    response.status_code = statuscode
+
+    return response
+
+
+@app.route('/api/echo', methods=['POST', 'PUT', 'GET'])
 def app_echo() -> FlaskResponse:
     if request.method in ['POST', 'PUT']:
         payload = request.json

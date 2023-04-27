@@ -104,6 +104,7 @@ class DateTask(GrizzlyTask):
             timezone_argument = self.arguments.get('timezone', None)
             timezone: Optional[ZoneInfo] = None  # None in asttimezone == local time zone
             if timezone_argument is not None:
+                timezone_argument = parent.render(timezone_argument)
                 try:
                     timezone = ZoneInfo(timezone_argument)
                 except ZoneInfoNotFoundError as e:

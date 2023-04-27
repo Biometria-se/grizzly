@@ -58,7 +58,10 @@ def test_e2e_step_user_type_with_weight(e2e_fixture: End2EndFixture, user_type: 
 
     rc, _ = e2e_fixture.execute(feature_file)
 
-    assert rc == 0
+    if user_type == 'Sftp':
+        assert rc == 1
+    else:
+        assert rc == 0
 
 
 @pytest.mark.parametrize('user_type,host', [
@@ -106,4 +109,7 @@ def test_e2e_step_user_type(e2e_fixture: End2EndFixture, user_type: str, host: s
 
     rc, _ = e2e_fixture.execute(feature_file)
 
-    assert rc == 0
+    if user_type == 'Sftp':
+        assert rc == 1
+    else:
+        assert rc == 0

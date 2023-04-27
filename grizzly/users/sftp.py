@@ -60,6 +60,9 @@ class SftpUser(ResponseHandler, RequestLogger, GrizzlyUser, FileRequests):
     _context_root: str
     _payload_root: str
 
+    host: str
+    port: int
+
     sftp_client: SftpClientSession
     session: SFTPClient
 
@@ -93,7 +96,8 @@ class SftpUser(ResponseHandler, RequestLogger, GrizzlyUser, FileRequests):
         if ':' in host:
             [host, _] = host.split(':', 1)
 
-        port = int(parsed.port) if parsed.port is not None else 22
+        self.host = host
+        self.port = int(parsed.port) if parsed.port is not None else 22
         username = self._context['auth']['username']
         password = self._context['auth']['password']
         key_file = self._context['auth']['key_file']
@@ -103,10 +107,10 @@ class SftpUser(ResponseHandler, RequestLogger, GrizzlyUser, FileRequests):
 
         if password is None and key_file is None:
             raise ValueError(f'{self.__class__.__name__}: "auth.password" or "auth.key" context variable must be set')
-        self.sftp_client = SftpClientSession(host, port)
 
     def on_start(self) -> None:
         super().on_start()
+        self.sftp_client = SftpClientSession(self.host, self.port)
         self.session = self.sftp_client.session(**self._context['auth']).__enter__()
 
     def on_stop(self) -> None:

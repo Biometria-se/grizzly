@@ -134,8 +134,8 @@ class TestTestdataProducer:
                 assert variables['AtomicIntegerIncrementer.messageID'] == 456
                 assert variables['messageID'] == 123
                 assert variables['AtomicDirectoryContents.test'] == f'adirectory{sep}file1.txt'
-                assert 'AtomicCsvReader.test.header1' not in variables
-                assert 'AtomicCsvReader.test.header2' not in variables
+                assert variables['AtomicCsvReader.test.header1'] == 'value1'
+                assert variables['AtomicCsvReader.test.header2'] == 'value2'
                 assert variables['AtomicIntegerIncrementer.value'] == 1
                 utc_date = variables['AtomicDate.utc']
                 assert 'T' in utc_date and utc_date.endswith('Z')
@@ -154,8 +154,8 @@ class TestTestdataProducer:
                 assert variables['AtomicIntegerIncrementer.messageID'] == 457
                 assert variables['messageID'] == 123
                 assert variables['AtomicDirectoryContents.test'] == f'adirectory{sep}file2.txt'
-                assert 'AtomicCsvReader.test.header1' not in variables
-                assert 'AtomicCsvReader.test.header2' not in variables
+                assert variables['AtomicCsvReader.test.header1'] == 'value3'
+                assert variables['AtomicCsvReader.test.header2'] == 'value4'
                 assert variables['AtomicIntegerIncrementer.value'] == 6
                 assert data['auth.user.username'] == 'value3'
                 assert data['auth.user.password'] == 'value4'
