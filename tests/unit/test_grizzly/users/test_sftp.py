@@ -26,22 +26,22 @@ class TestSftpUser:
         environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
 
         try:
-            SftpUser.host = 'http://test.nu'
+            SftpUser.host = 'http://example.com'
 
             with pytest.raises(ValueError):
                 SftpUser(locust_fixture.env)
 
-            SftpUser.host = 'sftp://username:password@test.nu'
+            SftpUser.host = 'sftp://username:password@example.com'
 
             with pytest.raises(ValueError):
                 SftpUser(locust_fixture.env)
 
-            SftpUser.host = 'sftp://test.nu/pub/test'
+            SftpUser.host = 'sftp://example.com/pub/test'
 
             with pytest.raises(ValueError):
                 SftpUser(locust_fixture.env)
 
-            SftpUser.host = 'sftp://test.nu'
+            SftpUser.host = 'sftp://example.com'
 
             with pytest.raises(ValueError):
                 SftpUser(locust_fixture.env)
@@ -55,16 +55,14 @@ class TestSftpUser:
 
             user = SftpUser(locust_fixture.env)
 
-            assert isinstance(user.sftp_client, SftpClientSession)
-            assert user.sftp_client.port == 22
-            assert user.sftp_client.host == 'test.nu'
+            assert user.port == 22
+            assert user.host == 'example.com'
 
-            SftpUser.host = 'sftp://test.nu:1337'
+            SftpUser.host = 'sftp://example.com:1337'
             user = SftpUser(locust_fixture.env)
 
-            assert isinstance(user.sftp_client, SftpClientSession)
-            assert user.sftp_client.port == 1337
-            assert user.sftp_client.host == 'test.nu'
+            assert user.port == 1337
+            assert user.host == 'example.com'
 
             SftpUser._context['auth']['key_file'] = '~/.ssh/id_rsa'
 
@@ -84,18 +82,16 @@ class TestSftpUser:
         }
         user = SftpUser(locust_fixture.env)
 
-        session_spy = mocker.patch.object(user.sftp_client, 'session', return_value=mocker.MagicMock())
+        sftp_client_mock = mocker.spy(SftpClientSession, '__init__')
+        session_spy = mocker.patch.object(SftpClientSession, 'session', return_value=mocker.MagicMock())
 
         assert not hasattr(user, 'session')
 
         user.on_start()
 
         assert hasattr(user, 'session')
-        assert session_spy.call_count == 1
-        args, kwargs = session_spy.call_args_list[-1]
-        assert len(args) == 0
-        assert kwargs == user._context['auth']
-
+        sftp_client_mock.assert_called_once_with(user.sftp_client, user.host, user.port)
+        session_spy.assert_called_once_with(**user._context['auth'])
         assert session_spy.return_value.__enter__.call_count == 1
 
     def test_on_stop(self, locust_fixture: LocustFixture, paramiko_fixture: ParamikoFixture, mocker: MockerFixture) -> None:

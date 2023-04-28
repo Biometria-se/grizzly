@@ -243,9 +243,14 @@ def print_scenario_summary(grizzly: GrizzlyContext) -> None:
         max_length_status = max(len(Status.undefined.name) if stat.num_requests < 1 else len(Status.passed.name), max_length_status)
 
     for scenario in grizzly.scenarios():
+        total_errors = 0
+        for error in stats.errors.values():
+            if error.name.startswith(scenario.identifier):
+                total_errors += 1
+
         stat = stats.get(scenario.locust_name, RequestType.SCENARIO())
         if stat.num_requests > 0:
-            if stat.num_failures == 0 and stat.num_requests == scenario.iterations:
+            if stat.num_failures == 0 and stat.num_requests == scenario.iterations and total_errors == 0:
                 status = Status.passed
             else:
                 status = Status.failed

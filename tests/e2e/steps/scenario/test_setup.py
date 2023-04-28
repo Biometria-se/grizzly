@@ -1,6 +1,6 @@
 import textwrap
 
-from typing import cast, List, Dict
+from typing import cast, List, Dict, Any
 
 import pytest
 
@@ -10,26 +10,36 @@ from grizzly.context import GrizzlyContext
 from tests.fixtures import End2EndFixture
 
 
-@pytest.mark.parametrize('name,value,expected', [
-    ('token.url', 'http://example.com/api/auth', '{"token": {"url": "http://example.com/api/auth"}}',),
-    ('token/client id', 'aaaa-bbbb-cccc-dddd', '{"token": {"client_id": "aaaa-bbbb-cccc-dddd"}}',),
-    ('log_all_requests', 'True', '{"log_all_requests": true}',),
-    ('run_id', '13', '{"run_id": 13}',),
-])
-def test_e2e_step_setup_set_context_variable(e2e_fixture: End2EndFixture, name: str, value: str, expected: str) -> None:
+def test_e2e_step_setup_set_context_variable(e2e_fixture: End2EndFixture) -> None:
+    testdata = [
+        ('token.url', 'http://example.com/api/auth', '{"token": {"url": "http://example.com/api/auth"}}',),
+        ('token/client id', 'aaaa-bbbb-cccc-dddd', '{"token": {"client_id": "aaaa-bbbb-cccc-dddd"}}',),
+        ('log_all_requests', 'True', '{"log_all_requests": true}',),
+        ('run_id', '13', '{"run_id": 13}',),
+        # ('www.example.com/auth.user.username', 'bob', '{"www.example.com": {"auth": {"user": {"username": "bob"}}}}'),
+    ]
+
     def validate_context_variable(context: Context) -> None:
         from json import loads as jsonloads
+        from grizzly.utils import merge_dicts
+
         grizzly = cast(GrizzlyContext, context.grizzly)
-        data = list(context.table)[0].as_dict()
+        expected_total: Dict[str, Any] = {}
+        first_row = list(context.table)[0].as_dict()
+        expected_host = first_row['expected']
 
-        expected = jsonloads(data['expected'])
-        e2e_fixture_host = data['e2e_fixture.host']
-        expected['hello'] = {'world': 'foobar'}
+        for row in list(context.table)[1:]:
+            data = row.as_dict()
 
-        if 'token' not in expected:
-            expected['token'] = {'client_secret': 'something'}
-        else:
-            expected['token'].update({'client_secret': 'something'})
+            expected = jsonloads(data['expected'])
+            expected['hello'] = {'world': 'foobar'}
+
+            if 'token' not in expected:
+                expected['token'] = {'client_secret': 'something'}
+            else:
+                expected['token'].update({'client_secret': 'something'})
+
+            expected_total = merge_dicts(expected_total, expected)
 
         actual = grizzly.scenario.context.copy()
 
@@ -38,19 +48,20 @@ def test_e2e_step_setup_set_context_variable(e2e_fixture: End2EndFixture, name: 
         except KeyError:
             pass
 
-        assert actual == expected, f'{str(actual)} != {str(expected)}'
-        assert grizzly.scenario.context.get('host', None) == f'http://{e2e_fixture_host}'  # added by fixture
+        assert actual == expected_total, f'{str(actual)} != {str(expected)}'
+        assert grizzly.scenario.context.get('host', None) == f'http://{expected_host}'  # added by fixture
 
-    table: List[Dict[str, str]] = [{
-        'expected': expected,
-        'e2e_fixture.host': e2e_fixture.host,
-    }]
+    table: List[Dict[str, str]] = [{'expected': e2e_fixture.host}]
+    scenario: List[str] = []
+
+    for name, value, expected in testdata:
+        table.append({'expected': expected})
+        scenario.append(f'And set context variable "{name}" to "{value}"')
 
     e2e_fixture.add_validator(validate_context_variable, table=table)
 
     feature_file = e2e_fixture.test_steps(
-        scenario=[
-            f'And set context variable "{name}" to "{value}"',
+        scenario=scenario + [
             'And set context variable "hello.world" to "foobar"',
             'And set context variable "token/client_secret" to "something"',
         ],
@@ -62,6 +73,7 @@ def test_e2e_step_setup_set_context_variable(e2e_fixture: End2EndFixture, name: 
     assert rc == 0
 
 
+# no easy way to rewrite without parameterize without rewriting End2EndFixture...
 @pytest.mark.parametrize('iterations', [
     '10', '1', '{{ leveranser * 0.25 }}',
 ])
@@ -103,6 +115,7 @@ def test_e2e_step_setup_iterations(e2e_fixture: End2EndFixture, iterations: str)
     assert rc == 0
 
 
+# no easy way to rewrite without parameterize without rewriting End2EndFixture...
 @pytest.mark.parametrize('pace', ['2000', '{{ pace }}'])
 def test_e2e_step_setup_pace(e2e_fixture: End2EndFixture, pace: str) -> None:
     def validate_iterations(context: Context) -> None:
@@ -111,6 +124,9 @@ def test_e2e_step_setup_pace(e2e_fixture: End2EndFixture, pace: str) -> None:
         pace = data['pace']
 
         assert grizzly.scenario.pace == pace, f'{grizzly.scenario.pace} != {pace}'
+
+        if '{{' in pace:
+            assert grizzly.scenario.orphan_templates == [pace], f'{pace} not in {grizzly.scenario.orphan_templates}'
 
     table: List[Dict[str, str]] = [{
         'pace': pace,
@@ -129,7 +145,7 @@ def test_e2e_step_setup_pace(e2e_fixture: End2EndFixture, pace: str) -> None:
         identifier=pace,
     )
 
-    rc, _ = e2e_fixture.execute(feature_file, testdata={'pace': pace})
+    rc, _ = e2e_fixture.execute(feature_file, testdata={'pace': '2000'})
 
     assert rc == 0
 
@@ -218,6 +234,7 @@ def test_e2e_step_variable_value(e2e_fixture: End2EndFixture) -> None:
 def test_e2e_step_set_variable_alias(e2e_fixture: End2EndFixture) -> None:
     def validate_variable_alias(context: Context) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
+        grizzly.scenario.tasks.pop()
 
         alias = grizzly.state.alias
 
@@ -243,13 +260,16 @@ def test_e2e_step_set_variable_alias(e2e_fixture: End2EndFixture) -> None:
 
     (e2e_fixture.root / 'features' / 'requests' / 'users.csv').write_text(textwrap.dedent(
         '''username,password
-        grizzly,secret
-        '''
+grizzly,secret'''
     ))
 
-    rc, _ = e2e_fixture.execute(feature_file)
+    rc, output = e2e_fixture.execute(feature_file)
+
+    result = ''.join(output)
 
     assert rc == 0
+    assert 'username=grizzly' in result
+    assert 'password=secret' in result
 
 
 def test_e2e_step_setup_log_all_requests(e2e_fixture: End2EndFixture) -> None:

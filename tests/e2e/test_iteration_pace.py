@@ -9,8 +9,8 @@ from tests.fixtures import End2EndFixture
 
 def test_e2e_iteration_pace(e2e_fixture: End2EndFixture) -> None:
     def after_feature(context: Context, feature: Feature) -> None:
-        from grizzly.locust import on_master
-        if on_master(context):
+        from grizzly.locust import on_worker
+        if on_worker(context):
             return
 
         grizzly = cast(GrizzlyContext, context.grizzly)
@@ -50,7 +50,7 @@ def test_e2e_iteration_pace(e2e_fixture: End2EndFixture) -> None:
 
     feature_file = e2e_fixture.create_feature(dedent(f'''Feature: Iteration Pace
     Background: common configuration
-        Given "1" user
+        Given "2" user
         And spawn rate is "1" user per second
         {start_webserver_step}
     Scenario: RequestTask
@@ -65,8 +65,19 @@ def test_e2e_iteration_pace(e2e_fixture: End2EndFixture) -> None:
         But if condition is false, execute these tasks
         Then get request with name "sleep-2" from endpoint "/api/sleep/0.6"
         Then end condition
+    Scenario: Dummy
+        Given a user of type "RestApi" load testing "http://{e2e_fixture.host}"
+        And repeat for "3" iteration
+        Then log message "dummy"
     '''))  # noqa: E501
 
-    rc, _ = e2e_fixture.execute(feature_file, env_conf=env_conf)
+    rc, output = e2e_fixture.execute(feature_file, env_conf=env_conf)
 
-    assert rc == 0
+    result = ''.join(output)
+
+    assert rc == 1
+    assert 'HOOK-ERROR in after_feature: RuntimeError: locust test failed'
+    if e2e_fixture._distributed:
+        assert "1                  PACE 001 RequestTask: \"RuntimeError('pace falling behind')\"" in result  # ?!?!?!
+    else:
+        assert "1                  PACE 001 RequestTask: RuntimeError('pace falling behind')" in result

@@ -1105,16 +1105,20 @@ def step_start_webserver(context: Context, port: int) -> None:
             )
 
             if rc != 0:
+
+                if self._distributed:
+                    output = []
+
+                    for container in ['master', 'worker']:
+                        command = ['docker', 'container', 'logs', f'{self.root.name}-{getuser()}-{container}-1']
+                        _, o = run_command(
+                            command,
+                            cwd=str(self.root),
+                            env=self._env,
+                        )
+
+                        output += o
+
                 print(''.join(output))
-
-                for container in ['master', 'worker'] if self._distributed else []:
-                    command = ['docker', 'container', 'logs', f'{self.root.name}-{getuser()}_{container}_1']
-                    _, output = run_command(
-                        command,
-                        cwd=str(self.root),
-                        env=self._env,
-                    )
-
-                    print(''.join(output))
 
             return rc, output

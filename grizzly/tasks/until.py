@@ -52,6 +52,7 @@ from grizzly_extras.transformer import Transformer, TransformerContentType, Tran
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments, split_value
 
 from grizzly.types import RequestType
+from grizzly.utils import safe_del
 
 from . import GrizzlyTask, GrizzlyMetaRequestTask, template, grizzlytask
 
@@ -136,6 +137,8 @@ class UntilRequestTask(GrizzlyTask):
             start = perf_counter()
 
             try:
+                error_count_before = len(parent.user.environment.stats.errors.keys())
+
                 while retry < self.retries:
                     number_of_matches = 0
 
@@ -163,6 +166,17 @@ class UntilRequestTask(GrizzlyTask):
                             break
                         else:
                             retry += 1
+
+                # remove any errors produced during until loop
+                error_count_after = len(parent.user.environment.stats.errors.keys())
+                if error_count_after > error_count_before:
+                    error_keys: List[str] = []
+                    for error_key, error in parent.user.environment.stats.errors.items():
+                        if error.name == f'{parent.user._scenario.identifier} {self.request.name}':
+                            error_keys.append(error_key)
+
+                    for error_key in error_keys:
+                        safe_del(parent.user.environment.stats.errors, error_key)
             except Exception as e:
                 parent.logger.error(f'{task_name}: error retry={retry}', exc_info=True)
                 if exception is None:

@@ -2,8 +2,6 @@ from json import dumps as jsondumps
 from typing import cast, List, Dict
 from textwrap import dedent
 
-import pytest
-
 from grizzly.context import GrizzlyContext
 from grizzly.types.behave import Context, Feature
 
@@ -30,7 +28,7 @@ def test_e2e_step_task_request_text_with_name_to_endpoint(e2e_fixture: End2EndFi
         assert isinstance(request, RequestTask)
         assert request.method == RequestMethod.POST, f'{request.method} != RequestMethod.POST'
         assert request.name == 'test-post', f'{request.name} != test-post'
-        assert request.endpoint == '/api/test', f'{request.endpoint} != /api/test'
+        assert request.endpoint == '/api/echo', f'{request.endpoint} != /api/echo'
         assert isinstance(request.template, Template), 'request.template is not a Template'
         assert request.source is not None, 'request.source is None'
         assert jsonloads(request.source) == {'test': 'post'}, f"{request.source} != {'test': 'post'}"
@@ -40,7 +38,7 @@ def test_e2e_step_task_request_text_with_name_to_endpoint(e2e_fixture: End2EndFi
         assert isinstance(request, RequestTask)
         assert request.method == RequestMethod.PUT
         assert request.name == 'test-put'
-        assert request.endpoint == '/api/test'
+        assert request.endpoint == '/api/echo'
         assert isinstance(request.template, Template)
         assert request.source is not None
         assert jsonloads(request.source) == {'test': 'put'}
@@ -50,7 +48,7 @@ def test_e2e_step_task_request_text_with_name_to_endpoint(e2e_fixture: End2EndFi
         assert isinstance(request, RequestTask)
         assert request.method == RequestMethod.GET
         assert request.name == 'test-get'
-        assert request.endpoint == '/api/test'
+        assert request.endpoint == '/api/echo'
         assert request.template is None
         assert request.source is None
         assert request.response.content_type == TransformerContentType.UNDEFINED
@@ -78,21 +76,21 @@ def test_e2e_step_task_request_text_with_name_to_endpoint(e2e_fixture: End2EndFi
 
     feature_file = e2e_fixture.test_steps(
         scenario=[
-            dedent('''Then post request with name "test-post" to endpoint "/api/test"
+            dedent('''Then post request with name "test-post" to endpoint "/api/echo"
                 """
                 {
                     "test": "post"
                 }
                 """
             '''),
-            dedent('''Then put request with name "test-put" to endpoint "/api/test | content_type=json"
+            dedent('''Then put request with name "test-put" to endpoint "/api/echo | content_type=json"
                 """
                 {
                     "test": "put"
                 }
                 """
             '''),
-            'Then get request with name "test-get" from endpoint "/api/test"',
+            'Then get request with name "test-get" from endpoint "/api/echo"',
             dedent('''Then send request with name "test-send" to endpoint "queue:receive-queue"
                 """
                 {
@@ -104,9 +102,15 @@ def test_e2e_step_task_request_text_with_name_to_endpoint(e2e_fixture: End2EndFi
         ],
     )
 
-    rc, _ = e2e_fixture.execute(feature_file)
+    rc, output = e2e_fixture.execute(feature_file)
 
-    assert rc == 0
+    result = ''.join(output)
+
+    assert rc == 1
+
+    assert 'HOOK-ERROR in after_feature: RuntimeError: locust test failed' in result
+    assert 'NotImplementedError: RECEIVE is not implemented for RestApiUser_001' in result
+    assert 'NotImplementedError: SEND is not implemented for RestApiUser_001' in result
 
 
 def test_e2e_step_task_request_file_with_name_endpoint(e2e_fixture: End2EndFixture) -> None:
@@ -140,7 +144,7 @@ def test_e2e_step_task_request_file_with_name_endpoint(e2e_fixture: End2EndFixtu
         assert isinstance(request, RequestTask)
         assert request.method == RequestMethod.POST
         assert request.name == 'test-post'
-        assert request.endpoint == '/api/test'
+        assert request.endpoint == '/api/echo'
         assert isinstance(request.template, Template)
         assert request.source is not None
         assert jsonloads(request.source) == {'test': 'request-{{ post }}'}
@@ -151,7 +155,7 @@ def test_e2e_step_task_request_file_with_name_endpoint(e2e_fixture: End2EndFixtu
         assert isinstance(request, RequestTask)
         assert request.method == RequestMethod.PUT
         assert request.name == 'test-put-{{ foo }}'
-        assert request.endpoint == '/api/{{ bar }}'
+        assert request.endpoint == '/api/echo?foo={{ bar }}'
         assert isinstance(request.template, Template)
         assert request.source is not None
         assert jsonloads(request.source) == {'test': 'request-put-{{ foobar }}'}
@@ -174,14 +178,18 @@ def test_e2e_step_task_request_file_with_name_endpoint(e2e_fixture: End2EndFixtu
             'And value for variable "post" is "get"',
             'And value for variable "foobar" is "barfoo"',
             'Then send request "test/request-send.j2.json" with name "test-send" to endpoint "queue:receive-queue | content_type=xml"',
-            'Then post request "test/request-post.j2.json" with name "test-post" to endpoint "/api/test | content_type=json"',
-            'Then put request "test/request-put.j2.json" with name "test-put-{{ foo }}" to endpoint "/api/{{ bar }}"',
+            'Then post request "test/request-post.j2.json" with name "test-post" to endpoint "/api/echo | content_type=json"',
+            'Then put request "test/request-put.j2.json" with name "test-put-{{ foo }}" to endpoint "/api/echo?foo={{ bar }}"',
         ],
     )
 
-    rc, _ = e2e_fixture.execute(feature_file)
+    rc, output = e2e_fixture.execute(feature_file)
 
-    assert rc == 0
+    result = ''.join(output)
+
+    assert rc == 1
+    assert 'HOOK-ERROR in after_feature: RuntimeError: locust test failed' in result
+    assert 'NotImplementedError: SEND is not implemented for RestApiUser_001' in result
 
 
 def test_e2e_step_task_request_file_with_name(e2e_fixture: End2EndFixture) -> None:
@@ -204,7 +212,7 @@ def test_e2e_step_task_request_file_with_name(e2e_fixture: End2EndFixture) -> No
             assert isinstance(request, RequestTask)
             assert request.method == RequestMethod.POST
             assert request.name == f'test-post-{index}'
-            assert request.endpoint == '/api/test'
+            assert request.endpoint == '/api/echo'
             assert isinstance(request.template, Template)
             assert request.source is not None
             assert jsonloads(request.source) == {'test': f'request-{{{{ post_{index} }}}}-{index}'}
@@ -223,7 +231,7 @@ def test_e2e_step_task_request_file_with_name(e2e_fixture: End2EndFixture) -> No
         scenario=[
             'And value for variable "post_1" is "hello world"',
             'And value for variable "post_2" is "foobar"',
-            'Then post request "test/request-post-1.j2.json" with name "test-post-1" to endpoint "/api/test | content_type=json"',
+            'Then post request "test/request-post-1.j2.json" with name "test-post-1" to endpoint "/api/echo | content_type=json"',
             'Then post request "test/request-post-2.j2.json" with name "test-post-2"',
         ],
     )
@@ -253,7 +261,7 @@ def test_e2e_step_task_request_text_with_name(e2e_fixture: End2EndFixture) -> No
             assert isinstance(request, RequestTask)
             assert request.method == RequestMethod.POST
             assert request.name == f'test-post-{index}'
-            assert request.endpoint == '/api/test'
+            assert request.endpoint == '/api/echo'
             assert isinstance(request.template, Template)
             assert request.source is not None
             assert jsonloads(request.source) == {'value': f'test-post-{index}'}
@@ -264,7 +272,7 @@ def test_e2e_step_task_request_text_with_name(e2e_fixture: End2EndFixture) -> No
             assert isinstance(request, RequestTask)
             assert request.method == RequestMethod.GET
             assert request.name == f'test-get-{index}'
-            assert request.endpoint == '/api/test'
+            assert request.endpoint == '/api/echo'
             assert request.template is None
             assert request.source is None
             assert request.response.content_type == TransformerContentType.XML
@@ -274,7 +282,7 @@ def test_e2e_step_task_request_text_with_name(e2e_fixture: End2EndFixture) -> No
 
     feature_file = e2e_fixture.test_steps(
         scenario=[
-            dedent('''Then post request with name "test-post-1" to endpoint "/api/test | content_type=json"
+            dedent('''Then post request with name "test-post-1" to endpoint "/api/echo | content_type=json"
                 """
                 {
                     "value": "test-post-1"
@@ -288,7 +296,7 @@ def test_e2e_step_task_request_text_with_name(e2e_fixture: End2EndFixture) -> No
                 }
                 """
             '''),
-            'Then get request with name "test-get-1" from endpoint "/api/test | content_type=\"application/xml\""',
+            'Then get request with name "test-get-1" from endpoint "/api/echo | content_type=\"application/xml\""',
             'Then get request with name "test-get-2"',
         ],
     )
@@ -387,7 +395,7 @@ def test_e2e_step_task_transform(e2e_fixture: End2EndFixture) -> None:
         assert isinstance(task, TransformerTask)
         assert task.content == '{{ document }}'
         assert task.variable == 'document_id'
-        assert task.expression == '$.documents.id'
+        assert task.expression == '$.document.id'
         assert task.content_type == TransformerContentType.JSON
         assert issubclass(task._transformer, JsonTransformer)
         assert task.get_templates() == ['{{ document }}']
@@ -397,7 +405,7 @@ def test_e2e_step_task_transform(e2e_fixture: End2EndFixture) -> None:
         assert isinstance(task, TransformerTask)
         assert task.content == '{{ document }}'
         assert task.variable == 'document_title'
-        assert task.expression == '$.documents.title'
+        assert task.expression == '$.document.title'
         assert task.content_type == TransformerContentType.JSON
         assert issubclass(task._transformer, JsonTransformer)
         assert task.get_templates() == ['{{ document }}']
@@ -410,8 +418,8 @@ def test_e2e_step_task_transform(e2e_fixture: End2EndFixture) -> None:
             'And value for variable "document_id" is "None"',
             'And value for variable "document_title" is "None"',
             'And value for variable "document" is "{\"document\": {\"id\": \"DOCUMENT_8843-1\", \"title\": \"TPM Report 2021\"}}"',
-            'Then parse "{{ document }}" as "json" and save value of "$.documents.id" in variable "document_id"',
-            'Then parse "{{ document }}" as "json" and save value of "$.documents.title" in variable "document_title"',
+            'Then parse "{{ document }}" as "json" and save value of "$.document.id" in variable "document_id"',
+            'Then parse "{{ document }}" as "json" and save value of "$.document.title" in variable "document_title"',
             'Then log message "document_id={{ document_id }}"',
             'Then log message "document_title={{ document_title }}"',
         ]
@@ -440,7 +448,7 @@ def test_e2e_step_task_client_get_endpoint(e2e_fixture: End2EndFixture) -> None:
         task = tasks[0]
         assert isinstance(task, HttpClientTask)
         assert task.direction == RequestDirection.FROM
-        assert task.endpoint == f'https://{e2e_fixture_host}/example.json'
+        assert task.endpoint == f'http://{e2e_fixture_host}/api/echo?foo=bar'
         assert task.name == 'https-get'
         assert task.payload_variable == 'example_openapi', f'{task.payload_variable} != example_openapi'
         assert task.metadata_variable is None
@@ -453,7 +461,7 @@ def test_e2e_step_task_client_get_endpoint(e2e_fixture: End2EndFixture) -> None:
         task = tasks[1]
         assert isinstance(task, HttpClientTask)
         assert task.direction == RequestDirection.FROM
-        assert task.endpoint == '{{ endpoint }}'
+        assert task.endpoint == '{{ endpoint }}/api/echo?bar=foo', f'{task.endpoint=}'
         assert task.name == 'http-get'
         assert task.payload_variable == 'endpoint_payload'
         assert task.metadata_variable == 'endpoint_metadata'
@@ -462,7 +470,7 @@ def test_e2e_step_task_client_get_endpoint(e2e_fixture: End2EndFixture) -> None:
         assert task._short_name == 'Http'
         actual_templates = task.get_templates()
         assert (
-            sorted(actual_templates) == sorted(['{{ endpoint }}', '{{ endpoint_payload }} {{ endpoint_metadata }}'])
+            sorted(actual_templates) == sorted(['{{ endpoint }}/api/echo?bar=foo', '{{ endpoint_payload }} {{ endpoint_metadata }}'])
         ), f"{actual_templates} != ['{{{{ endpoint }}}}', '{{{{ endpoint_payload }}}} {{{{ endpoint_metadata}}}}']"
 
     table: List[Dict[str, str]] = [{
@@ -473,12 +481,12 @@ def test_e2e_step_task_client_get_endpoint(e2e_fixture: End2EndFixture) -> None:
 
     feature_file = e2e_fixture.test_steps(
         scenario=[
-            'And value for variable "example_openapi" is "None"',
-            'And value for variable "endpoint_payload" is "None"',
-            'And value for variable "endpoint_metadata" is "None"',
-            f'And value for variable "endpoint" is "{e2e_fixture.host}"',
-            f'Then get "https://{e2e_fixture.host}/example.json" with name "https-get" and save response payload in "example_openapi"',
-            'Then get "http://{{ endpoint }}" with name "http-get" and save response payload in "endpoint_payload" and metadata in "endpoint_metadata"',
+            'And value for variable "example_openapi" is "none"',
+            'And value for variable "endpoint_payload" is "none"',
+            'And value for variable "endpoint_metadata" is "none"',
+            f'And value for variable "endpoint" is "http://{e2e_fixture.host}"',
+            f'Then get "http://{e2e_fixture.host}/api/echo?foo=bar" with name "https-get" and save response payload in "example_openapi"',
+            'Then get "http://{{ endpoint }}/api/echo?bar=foo" with name "http-get" and save response payload in "endpoint_payload" and metadata in "endpoint_metadata"',
             'Then log message "example_openapi={{ example_openapi }}, endpoint_payload={{ endpoint_payload }}, endpoint_metadata={{ endpoint_metadata }}"',
         ]
     )
@@ -489,6 +497,31 @@ def test_e2e_step_task_client_get_endpoint(e2e_fixture: End2EndFixture) -> None:
 
 
 def test_e2e_step_task_client_get_endpoint_until(e2e_fixture: End2EndFixture) -> None:
+    def after_feature(context: Context, feature: Feature) -> None:
+        from grizzly.locust import on_master
+
+        if on_master(context):
+            return
+
+        grizzly = cast(GrizzlyContext, context.grizzly)
+        stats = grizzly.state.locust.environment.stats
+
+        expectations = [
+            ('CLTSK', '001 http-get', 2, 1,),
+            ('UNTL', '001 http-get, w=0.11s, r=3, em=1', 1, 0,),
+            ('CLTSK', '001 http-env-get', 1, 1,),
+            ('UNTL', '001 https-env-get, w=0.1s, r=1, em=1', 1, 1,),
+            ('CLTSK', '001 https-get', 2, 1,),
+            ('UNTL', '001 https-get, w=0.12s r=1, em=1', 1, 0,),
+        ]
+
+        for method, name, expected_num_requests, expected_num_failures in expectations:
+            stat = stats.get(name, method)
+            assert stat.num_failures == expected_num_failures, f'{stat.method}:{stat.name}.num_failures: {stat.num_failures} != {expected_num_failures}'
+            assert stat.num_requests == expected_num_requests, f'{stat.method}:{stat.name}.num_requests: {stat.num_requests} != {expected_num_requests}'
+
+    e2e_fixture.add_after_feature(after_feature)
+
     def validate_client_task_until(context: Context) -> None:
         from grizzly.types import RequestDirection
         from grizzly_extras.transformer import TransformerContentType
@@ -508,7 +541,7 @@ def test_e2e_step_task_client_get_endpoint_until(e2e_fixture: End2EndFixture) ->
         parent_task = tasks[0]
         assert isinstance(parent_task, UntilRequestTask)
         assert parent_task.retries == 3
-        assert parent_task.wait == 1.0
+        assert parent_task.wait == 0.11, f'{parent_task.wait=}'
         assert parent_task.expected_matches == 1
         task = parent_task.request
         assert isinstance(task, HttpClientTask)
@@ -527,7 +560,7 @@ def test_e2e_step_task_client_get_endpoint_until(e2e_fixture: End2EndFixture) ->
         parent_task = tasks[1]
         assert isinstance(parent_task, UntilRequestTask)
         assert parent_task.retries == 3
-        assert parent_task.wait == 2.0
+        assert parent_task.wait == 0.12
         assert parent_task.expected_matches == 1
         task = parent_task.request
         assert isinstance(task, HttpClientTask)
@@ -545,8 +578,8 @@ def test_e2e_step_task_client_get_endpoint_until(e2e_fixture: End2EndFixture) ->
 
         parent_task = tasks[2]
         assert isinstance(parent_task, UntilRequestTask)
-        assert parent_task.retries == 4
-        assert parent_task.wait == 1.0
+        assert parent_task.retries == 1
+        assert parent_task.wait == 0.1
         assert parent_task.expected_matches == 1
         task = parent_task.request
         assert isinstance(task, HttpClientTask)
@@ -573,15 +606,15 @@ def test_e2e_step_task_client_get_endpoint_until(e2e_fixture: End2EndFixture) ->
             f'And value for variable "endpoint" is "http://{e2e_fixture.host}"',
             (
                 f'Then get "http://{e2e_fixture.host}/api/until/id?nth=2&wrong=bar&right=foo&as_array=True | '
-                'content_type=json" with name "https-get" until "$.`this`[?id="foo"]"'
+                'content_type=json" with name "https-get" until "$.`this`[?id="foo"] | wait=0.11"'
             ),
             (
                 'Then get "http://{{ endpoint }}/api/until/success?nth=2&wrong=false&right=true&as_array=True | '
-                'content_type=json" with name "http-get" until "$.`this`[?success="true"] | wait=2.0"'
+                'content_type=json" with name "http-get" until "$.`this`[?success="true"] | wait=0.12"'
             ),
             (
                 'Then get "https://$conf::test.host$/api/until/hello?nth=2&wrong=foobar&right=world&as_array=True | content_type=json, verify=False" with name "https-env-get" '
-                'until "$.`this`[?hello=\"world\"] | retries=4, expected_matches=1"'
+                'until "$.`this`[?hello=\"world\"] | retries=1, expected_matches=1, wait=0.1"'
             ),
         ]
     )
@@ -594,12 +627,31 @@ def test_e2e_step_task_client_get_endpoint_until(e2e_fixture: End2EndFixture) ->
         }
     }
 
-    rc, _ = e2e_fixture.execute(feature_file, env_conf=env_conf)
+    rc, output = e2e_fixture.execute(feature_file, env_conf=env_conf)
 
-    assert rc == 0
+    result = ''.join(output)
+
+    assert rc == 1
+    assert 'HOOK-ERROR in after_feature: RuntimeError: locust test failed' in result
 
 
 def test_e2e_step_task_client_put_endpoint_file_destination(e2e_fixture: End2EndFixture) -> None:
+    def after_feature(context: Context, feature: Feature) -> None:
+        from grizzly.locust import on_master
+
+        if on_master(context):
+            return
+
+        grizzly = cast(GrizzlyContext, context.grizzly)
+        errors = grizzly.state.locust.environment.stats.errors
+
+        assert len(errors) == 2
+
+        for error in errors.values():
+            assert isinstance(error.error, FileNotFoundError)
+
+    e2e_fixture.add_after_feature(after_feature)
+
     def validate_client_task(context: Context) -> None:
         from grizzly.types import RequestDirection
         from grizzly.tasks.clients import BlobStorageClientTask
@@ -654,12 +706,31 @@ def test_e2e_step_task_client_put_endpoint_file_destination(e2e_fixture: End2End
         ]
     )
 
-    rc, _ = e2e_fixture.execute(feature_file)
+    rc, output = e2e_fixture.execute(feature_file)
 
-    assert rc == 0
+    result = ''.join(output)
+
+    assert rc == 1
+    assert 'HOOK-ERROR in after_feature: RuntimeError: locust test failed' in result
 
 
 def test_e2e_step_task_client_put_endpoint_file(e2e_fixture: End2EndFixture) -> None:
+    def after_feature(context: Context, feature: Feature) -> None:
+        from grizzly.locust import on_master
+
+        if on_master(context):
+            return
+
+        grizzly = cast(GrizzlyContext, context.grizzly)
+        errors = grizzly.state.locust.environment.stats.errors
+
+        assert len(errors) == 2
+
+        for error in errors.values():
+            assert isinstance(error.error, FileNotFoundError)
+
+    e2e_fixture.add_after_feature(after_feature)
+
     def validate_client_task(context: Context) -> None:
         from grizzly.types import RequestDirection
         from grizzly.tasks.clients import BlobStorageClientTask
@@ -714,9 +785,12 @@ def test_e2e_step_task_client_put_endpoint_file(e2e_fixture: End2EndFixture) -> 
         ]
     )
 
-    rc, _ = e2e_fixture.execute(feature_file)
+    rc, output = e2e_fixture.execute(feature_file)
 
-    assert rc == 0
+    result = ''.join(output)
+
+    assert rc == 1
+    assert 'HOOK-ERROR in after_feature: RuntimeError: locust test failed' in result
 
 
 def test_e2e_step_task_date(e2e_fixture: End2EndFixture) -> None:
@@ -814,7 +888,7 @@ def test_e2e_step_async_group(e2e_fixture: End2EndFixture) -> None:
         assert isinstance(request, RequestTask)
         assert request.method == RequestMethod.POST
         assert request.name == 'async-group-{{ index }}:test-post-1'
-        assert request.endpoint == '/api/test'
+        assert request.endpoint == '/api/echo'
         assert isinstance(request.template, Template)
         assert request.source is not None
         assert jsonloads(request.source) == {'value': 'i have good news!'}
@@ -824,7 +898,7 @@ def test_e2e_step_async_group(e2e_fixture: End2EndFixture) -> None:
         assert isinstance(request, RequestTask)
         assert request.method == RequestMethod.GET
         assert request.name == 'async-group-{{ index }}:test-get-1'
-        assert request.endpoint == '/api/test'
+        assert request.endpoint == '/api/echo?foo=bar'
         assert request.template is None
         assert request.source is None
         assert request.get_templates() == ['async-group-{{ index }}:test-get-1']
@@ -833,7 +907,7 @@ def test_e2e_step_async_group(e2e_fixture: End2EndFixture) -> None:
         assert isinstance(task, RequestTask)
         assert task.method == RequestMethod.GET
         assert task.name == 'test-get-2'
-        assert task.endpoint == '/api/test'
+        assert task.endpoint == '/api/echo?bar=foo'
         assert task.source is None
         assert task.template is None
 
@@ -843,16 +917,16 @@ def test_e2e_step_async_group(e2e_fixture: End2EndFixture) -> None:
         scenario=[
             'And value for variable "index" is "13"',
             'Given an async request group with name "async-group-{{ index }}"',
-            dedent('''Then post request with name "test-post-1" to endpoint "/api/test"
+            dedent('''Then post request with name "test-post-1" to endpoint "/api/echo"
                 """
                 {
                     "value": "i have good news!"
                 }
                 """
             '''),
-            'Then get request with name "test-get-1" from endpoint "/api/test"',
+            'Then get request with name "test-get-1" from endpoint "/api/echo?foo=bar"',
             'And close async request group',
-            'Then get request with name "test-get-2" from endpoint "/api/test"',
+            'Then get request with name "test-get-2" from endpoint "/api/echo?bar=foo"',
         ]
     )
 
@@ -949,23 +1023,25 @@ def test_e2e_step_task_request_wait(e2e_fixture: End2EndFixture) -> None:
     assert rc == 0
 
 
-@pytest.mark.parametrize('value', [1, 6], scope='function')
-def test_e2e_step_task_conditional(e2e_fixture: End2EndFixture, value: int) -> None:
+def test_e2e_step_task_conditional(e2e_fixture: End2EndFixture) -> None:
     def validate_task_conditional(context: Context) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
 
         grizzly.scenario.tasks().pop()  # remove dummy task
 
-        assert len(grizzly.scenario.tasks()) == 1
+        assert len(grizzly.scenario.tasks()) == 2
 
     def after_feature(context: Context, feature: Feature) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
 
         stats = grizzly.state.locust.environment.stats
 
-        suffix = 'True' if int(grizzly.state.variables['value']) > 5 else 'False'
+        conditional = stats.get('001 conditional-1: False (1)', 'COND')
 
-        conditional = stats.get(f'001 conditional-1: {suffix} (1)', 'COND')
+        assert conditional.num_requests == 1, f'{conditional.num_requests} != 1'
+        assert conditional.total_content_length == 1, f'{conditional.total_content_length} != 1'
+
+        conditional = stats.get('001 conditional-2: True (1)', 'COND')
 
         assert conditional.num_requests == 1, f'{conditional.num_requests} != 1'
         assert conditional.total_content_length == 1, f'{conditional.total_content_length} != 1'
@@ -975,24 +1051,30 @@ def test_e2e_step_task_conditional(e2e_fixture: End2EndFixture, value: int) -> N
 
     feature_file = e2e_fixture.test_steps(
         scenario=[
-            'And ask for value of variable "value"',
-            'When condition "{{ value | int > 5 }}" with name "conditional-1" is true, execute these tasks',
-            'Then log message "{{ value }} was greater than 5"',
+            'And ask for value of variable "value_1"',
+            'And ask for value of variable "value_2"',
+            'When condition "{{ value_1 | int > 5 }}" with name "conditional-1" is true, execute these tasks',
+            'Then log message "{{ value_1 }} was greater than 5"',
             'But if condition is false, execute these tasks',
-            'Then log message "{{ value }} was less than or equal to 5"',
+            'Then log message "{{ value_1 }} was less than or equal to 5"',
+            'Then end condition',
+            'When condition "{{ value_2 | int > 5 }}" with name "conditional-2" is true, execute these tasks',
+            'Then log message "{{ value_2 }} was greater than 5"',
+            'But if condition is false, execute these tasks',
+            'Then log message "{{ value_2 }} was less than or equal to 5"',
             'Then end condition',
         ],
     )
 
-    rc, output = e2e_fixture.execute(feature_file, testdata={'value': str(value)})
+    rc, output = e2e_fixture.execute(feature_file, testdata={'value_1': '1', 'value_2': '6'})
 
     assert rc == 0
     result = ''.join(output)
 
-    if value > 5:
-        assert f'{value} was greater than 5' in result
-    else:
-        assert f'{value} was less than or equal to 5' in result
+    assert '1 was greater than 5' not in result
+    assert '1 was less than or equal to 5' in result
+    assert '6 was greater than 5' in result
+    assert '6 was less than or equal to 5' not in result
 
 
 def test_e2e_step_task_loop(e2e_fixture: End2EndFixture) -> None:

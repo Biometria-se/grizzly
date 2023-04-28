@@ -1,3 +1,5 @@
+import logging
+
 from os import environ
 from typing import Any, Dict, Tuple, List, cast
 from time import perf_counter as time
@@ -15,13 +17,12 @@ from .testdata.variables import destroy_variables
 from .locust import run as locustrun, on_worker
 from .utils import catch, check_mq_client_logs, fail_direct, in_correct_section
 
+logger = logging.getLogger(__name__)
+
 try:
     import pymqi  # pylint: disable=unused-import
 except ModuleNotFoundError:
     from grizzly_extras import dummy_pymqi as pymqi
-
-
-last_task_count: Dict[str, int] = {}
 
 
 def before_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
@@ -49,11 +50,13 @@ def before_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], *
     context.grizzly = grizzly
     context.start = time()
     context.started = datetime.now().astimezone()
+    context.last_task_count = {}
 
 
 @catch(KeyboardInterrupt)
 def after_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
     return_code: int
+    cause: str
 
     # all scenarios has been processed, let's run locust
     if feature.status == Status.passed:
@@ -71,25 +74,24 @@ def after_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], **
                 if grizzly_scenario is None:
                     continue
 
+                total_errors = 0
+                for error in stats.errors.values():
+                    if error.name.startswith(grizzly_scenario.identifier):
+                        total_errors += 1
+
                 scenario_stat = stats.get(grizzly_scenario.locust_name, RequestType.SCENARIO())
 
-                if scenario_stat.num_failures > 0 or scenario_stat.num_requests != grizzly_scenario.iterations:
+                if scenario_stat.num_failures > 0 or scenario_stat.num_requests != grizzly_scenario.iterations or total_errors > 0:
                     behave_scenario.set_status(Status.failed)
+                    return_code = 1
 
-                rindex = -1
+        if pymqi.__name__ != 'grizzly_extras.dummy_pymqi' and not on_worker(context):
+            check_mq_client_logs(context)
 
-                for stat in stats.entries.values():
-                    if stat.method == RequestType.SCENARIO() or not stat.name.startswith(f'{grizzly_scenario.identifier} '):
-                        continue
-
-                    if stat.num_failures > 0:
-                        rindex -= 1
-                        behave_step = cast(Step, behave_scenario.steps[rindex])
-                        behave_step.status = Status.failed
-
-            if pymqi.__name__ != 'grizzly_extras.dummy_pymqi' and not on_worker(context):
-                check_mq_client_logs(context)
+        if return_code != 0:
+            cause = 'locust test failed'
     else:
+        cause = 'failed to prepare locust test'
         return_code = 1
 
     if not on_worker(context):
@@ -107,6 +109,9 @@ def after_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], **
             feature.scenarios[-1].steps[-1].duration = duration
         except Exception:
             pass
+
+        if return_code != 0:
+            raise RuntimeError(cause)
 
 
 def before_scenario(context: Context, scenario: Scenario, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
@@ -139,8 +144,8 @@ def before_scenario(context: Context, scenario: Scenario, *args: Tuple[Any, ...]
 
     grizzly.scenarios.create(scenario)
 
-    if grizzly.scenario.identifier not in last_task_count:
-        last_task_count[grizzly.scenario.identifier] = 0
+    if grizzly.scenario.identifier not in context.last_task_count:
+        context.last_task_count[grizzly.scenario.identifier] = 0
 
 
 def after_scenario(context: Context, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
@@ -173,8 +178,9 @@ def after_step(context: Context, step: Step, *args: Tuple[Any, ...], **kwargs: D
 
     if len(grizzly.scenario.tasks._tmp.__stack__) == 0:
         task_index = len(grizzly.scenario.tasks)
+        last_task_index = context.last_task_count.get(grizzly.scenario.identifier, None)
 
-        if task_index > last_task_count[grizzly.scenario.identifier]:
-            last_task_count[grizzly.scenario.identifier] = task_index
-            # GrizzlyIterator offset by one, since it has an interal task
+        if last_task_index is not None and task_index > last_task_index:
+            context.last_task_count[grizzly.scenario.identifier] = task_index
+            # GrizzlyIterator offset by one, since it has an interal task which is not represented by a step
             grizzly.scenario.tasks.behave_steps.update({task_index + 1: f'{step.keyword} {step.name}'})

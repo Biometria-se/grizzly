@@ -28,7 +28,7 @@ def test_e2e_until(e2e_fixture: End2EndFixture) -> None:
             ('002 http-client-task', 'CLTSK', 1, 2,),
         ]
 
-        assert len(stats.errors) == 2, f'expected 0 logged errors, got {len(stats.errors)}'
+        assert len(stats.errors) == 0, f'expected 0 logged errors, got {len(stats.errors)}'
 
         for name, method, expected_num_failures, expected_num_requests in expectations:
             stat = stats.get(name, method)

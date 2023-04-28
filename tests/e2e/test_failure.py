@@ -23,7 +23,6 @@ def test_e2e_failure(e2e_fixture: End2EndFixture) -> None:
             ('001 stop user', 'TSTD', 0, 1,),
             ('001 stop-get1', 'GET', 0, 1,),
             ('001 stop-get2', 'GET', 1, 1,),
-            ('001 stop-get3', 'GET', 0, 0,),
             # failure exception is RestartScenario, do not run steps after the failing step, restart from task 0
             ('002 restart scenario', 'SCEN', 1, 2,),
             ('002 restart scenario', 'TSTD', 0, 2,),
@@ -82,6 +81,7 @@ def test_e2e_failure(e2e_fixture: End2EndFixture) -> None:
         Then get request with name "default-get3" from endpoint "/api/echo"
     '''))
 
-    rc, _ = e2e_fixture.execute(feature_file)
+    rc, output = e2e_fixture.execute(feature_file)
 
-    assert rc == 0
+    assert rc == 1
+    assert "HOOK-ERROR in after_feature: RuntimeError: locust test failed" in ''.join(output)
