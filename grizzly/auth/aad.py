@@ -2,7 +2,7 @@ import re
 import json
 import logging
 
-from typing import Literal, Dict, Any, Tuple, Optional, List, cast
+from typing import Dict, Any, Tuple, Optional, List, cast
 from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
 from secrets import token_urlsafe
@@ -14,7 +14,7 @@ import requests
 
 from grizzly.utils import safe_del
 from grizzly.types.locust import StopUser
-from . import RefreshToken, AuthMethod, GrizzlyHttpAuthClient
+from . import RefreshToken, GrizzlyHttpAuthClient
 
 
 logger = logging.getLogger(__name__)
@@ -22,14 +22,7 @@ logger = logging.getLogger(__name__)
 
 class AAD(RefreshToken):
     @classmethod
-    def get_token(cls, client: GrizzlyHttpAuthClient, auth_method: Literal[AuthMethod.CLIENT, AuthMethod.USER]) -> str:
-        if auth_method == AuthMethod.CLIENT:
-            return cls.get_aad_oauth_token(client)
-        else:
-            return cls.get_aad_oauth_authorization(client)
-
-    @classmethod
-    def get_aad_oauth_authorization(cls, client: GrizzlyHttpAuthClient) -> str:
+    def get_oauth_authorization(cls, client: GrizzlyHttpAuthClient) -> str:
         def _parse_response_config(response: requests.Response) -> Dict[str, Any]:
             match = re.search(r'Config={(.*?)};', response.text, re.MULTILINE)
 
@@ -357,7 +350,7 @@ class AAD(RefreshToken):
                     assert code_verifier is not None, 'no code verifier has been generated!'
                     assert 'code' in fragments, f'could not find code in {token_url}'
                     code = fragments['code'][0]
-                    return cls.get_aad_oauth_token(client, (code, code_verifier,))
+                    return cls.get_oauth_token(client, (code, code_verifier,))
                 else:
                     assert 'id_token' in fragments, f'could not find id_token in {token_url}'
                     token = fragments['id_token'][0]
@@ -386,7 +379,7 @@ class AAD(RefreshToken):
                 raise StopUser()
 
     @classmethod
-    def get_aad_oauth_token(cls, client: GrizzlyHttpAuthClient, pkcs: Optional[Tuple[str, str]] = None) -> str:
+    def get_oauth_token(cls, client: GrizzlyHttpAuthClient, pkcs: Optional[Tuple[str, str]] = None) -> str:
         auth_context = client._context.get('auth', None)
         assert auth_context is not None, 'context variable auth is not set'
         provider_url = auth_context.get('provider', None)

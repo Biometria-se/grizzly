@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Tuple, Protocol, TypedDict, Optional, Type, Literal, Union, cast, runtime_checkable, TYPE_CHECKING
+from typing import Any, Dict, Tuple, TypedDict, Optional, Type, Literal, Union, cast, TYPE_CHECKING
 from functools import wraps
 from enum import Enum
 from time import time
@@ -149,11 +149,21 @@ class refresh_token:
         return cast(WrappedFunc, refresh_token)
 
 
-@runtime_checkable
-class RefreshToken(Protocol):
+class RefreshToken(metaclass=ABCMeta):
     @classmethod
     def get_token(cls, client: GrizzlyHttpAuthClient, auth_method: Literal[AuthMethod.CLIENT, AuthMethod.USER]) -> str:
-        raise NotImplementedError(f'{cls.__class__.__name__} has not implemented "get_token"')
+        if auth_method == AuthMethod.CLIENT:
+            return cls.get_oauth_token(client)
+        else:
+            return cls.get_oauth_authorization(client)
+
+    @classmethod
+    def get_oauth_authorization(cls, client: GrizzlyHttpAuthClient) -> str:
+        raise NotImplementedError(f'{cls.__name__} has not implemented "get_oauth_authorization"')
+
+    @classmethod
+    def get_oauth_token(cls, client: GrizzlyHttpAuthClient, pkcs: Optional[Tuple[str, str]] = None) -> str:
+        raise NotImplementedError(f'{cls.__name__} has not implemented "get_oauth_token"')
 
 
 from .aad import AAD

@@ -1,6 +1,8 @@
 from typing import List, cast
 from textwrap import dedent
 
+import pytest
+
 from grizzly.types.behave import Context, Feature
 from grizzly.context import GrizzlyContext
 
@@ -8,6 +10,9 @@ from tests.fixtures import End2EndFixture
 
 
 def test_e2e_auth(e2e_fixture: End2EndFixture) -> None:
+    if e2e_fixture._distributed:
+        pytest.skip('telling the webserver what to expected auth-wise is not as simple when running dist, compare to running local')
+
     def after_feature(context: Context, feature: Feature) -> None:
         from grizzly.locust import on_master
         if on_master(context):
@@ -34,11 +39,6 @@ def test_e2e_auth(e2e_fixture: End2EndFixture) -> None:
             assert stat.num_requests == expected_num_requests, f'{stat.method}:{stat.name}.num_requests: {stat.num_requests} != {expected_num_requests}'
 
     e2e_fixture.add_after_feature(after_feature)
-
-    if e2e_fixture._distributed:
-        start_webserver_step = f'Then start webserver on master port "{e2e_fixture.webserver.port}"\n\n'
-    else:
-        start_webserver_step = ''
 
     # inject expected properties
     e2e_fixture.webserver.auth = {
@@ -67,7 +67,6 @@ def test_e2e_auth(e2e_fixture: End2EndFixture) -> None:
         Background: common configuration
             Given "2" users
             And spawn rate is "2" users per second
-            {start_webserver_step}
         Scenario: RestApi auth
             Given a user of type "RestApi" load testing "http://{e2e_fixture.host}"
             And set context variable "auth.provider" to "http://{e2e_fixture.host}{e2e_fixture.webserver.auth_provider_uri}"

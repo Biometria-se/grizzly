@@ -199,7 +199,7 @@ def app_oauth2_token() -> FlaskResponse:
     logger.debug(f'/oauth2/token called with {form=}')
 
     if auth_expected is None:
-        response = jsonify({'message': 'not setup for authentication'})
+        response = jsonify({'error_description': 'not setup for authentication'})
         response.status_code = 400
         return response
 
@@ -208,7 +208,7 @@ def app_oauth2_token() -> FlaskResponse:
         assert form['client_secret'] == auth_expected['client']['secret'], f'client_secret {form["client_secret"]} != {auth_expected["client"]["secret"]}'
         assert form['client_id'] == auth_expected['client']['id'], f'client_id {form["client_id"]} != {auth_expected["client"]["id"]}'
     except AssertionError as e:
-        response = jsonify({'message': str(e)})
+        response = jsonify({'error_description': str(e)})
         response.status_code = 400
         return response
 
