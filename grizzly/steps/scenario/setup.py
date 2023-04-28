@@ -12,6 +12,7 @@ from grizzly.testdata.utils import create_context_variable, resolve_variable
 from grizzly.utils import merge_dicts
 from grizzly.exceptions import RestartScenario
 from grizzly.tasks import RequestTask, GrizzlyTask
+from grizzly.auth import GrizzlyHttpAuthClient
 from grizzly.steps._helpers import is_template
 
 
@@ -211,6 +212,15 @@ def step_setup_restart_scenario_on_failure(context: Context) -> None:
 def step_setup_metadata(context: Context, key: str, value: str) -> None:
     '''Set a metadata (header) value to be used by the user when sending requests.
 
+    When step expression is used before any tasks has been added in the scenario the metadata will
+    be used for all requests the specified loadtesting user executes in the scenario.
+
+    If used after a {@pylink grizzly.tasks.request} task, the metadata will be added and only used
+    for that request.
+
+    If used after a task that implements `grizzly.auth.GrizzlyHttpAuthClient` (e.g. {@pylink grizzly.tasks.clients.http}),
+    the metadata will be added and only used when that task executes.
+
     Example:
 
     ``` gherkin
@@ -222,6 +232,9 @@ def step_setup_metadata(context: Context, key: str, value: str) -> None:
     ``` gherkin
     Then post request ...
     And metadata "x-header" is "{{ value }}"
+
+    Then get "https://{{ client_url }}" with name "client-http" and save response payload in "payload"
+    And metadata "Ocp-Apim-Subscription-Key" is "deadbeefb00f"
     ```
     '''
 
@@ -233,7 +246,7 @@ def step_setup_metadata(context: Context, key: str, value: str) -> None:
     if len(tasks) > 0:
         previous_task = tasks[-1]
 
-    if isinstance(previous_task, RequestTask):
+    if isinstance(previous_task, (RequestTask, GrizzlyHttpAuthClient,)):
         previous_task.add_metadata(key, value)
     else:
         if grizzly.scenario.context.get('metadata', None) is None:

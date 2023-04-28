@@ -258,6 +258,28 @@ def test_create_context_variable() -> None:
                 'value': 3000,
             }
         }
+
+        assert create_context_variable(grizzly, 'www.example.com/auth.user.username', 'bob') == {
+            'www.example.com': {
+                'auth': {
+                    'user': {
+                        'username': 'bob',
+                    },
+                },
+            },
+        }
+
+        grizzly.state.configuration.update({'test.host': 'www.example.net'})
+
+        assert create_context_variable(grizzly, '$conf::test.host$/auth.user.username', 'bob') == {
+            'www.example.net': {
+                'auth': {
+                    'user': {
+                        'username': 'bob',
+                    },
+                },
+            },
+        }
     finally:
         GrizzlyContext.destroy()
         try:

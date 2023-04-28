@@ -108,9 +108,10 @@ class RequestMethod(Enum, AdvancedEnum, metaclass=MixedEnumMeta, settings=NoAlia
 
 
 class RequestType(Enum, AdvancedEnum, metaclass=MixedEnumMeta, init='alias _weight'):
-    SCENARIO = ('SCEN', 0,)
-    TESTDATA = ('TSTD', 1,)
-    PACE = ('PACE', 2,)
+    AUTH = ('AUTH', 0,)
+    SCENARIO = ('SCEN', 1,)
+    TESTDATA = ('TSTD', 2,)
+    PACE = ('PACE', 3,)
     UNTIL = ('UNTL', None,)
     VARIABLE = ('VAR', None,)
     ASYNC_GROUP = ('ASYNC', None,)

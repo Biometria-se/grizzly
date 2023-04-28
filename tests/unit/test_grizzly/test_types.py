@@ -55,7 +55,8 @@ class TestRequestType:
         assert input() == input.value[0] == str(input)
 
     def test_weight(self) -> None:
-        assert RequestType.SCENARIO.weight == 0
+        assert RequestType.AUTH.weight == 0
+        assert RequestType.SCENARIO.weight == 1
         assert RequestType.TESTDATA.weight > RequestType.SCENARIO.weight
         assert RequestType.UNTIL.weight > RequestType.TESTDATA.weight
         assert RequestType.VARIABLE.weight == RequestType.UNTIL.weight
@@ -68,9 +69,10 @@ class TestRequestType:
     def test_get_method_weight(self) -> None:
         assert RequestType.get_method_weight('ASDF') == RequestType.get_method_weight('GET')
         assert RequestType.get_method_weight('GET') == RequestType.get_method_weight('POST')
-        assert RequestType.get_method_weight('SCEN') == 0
-        assert RequestType.get_method_weight('TSTD') == 1
-        assert RequestType.get_method_weight('PACE') == 2
+        assert RequestType.get_method_weight('AUTH') == 0
+        assert RequestType.get_method_weight('SCEN') == 1
+        assert RequestType.get_method_weight('TSTD') == 2
+        assert RequestType.get_method_weight('PACE') == 3
 
         for request_type in RequestType:
             if request_type.weight < 10:

@@ -206,6 +206,12 @@ class GrizzlyMetaRequestTask(GrizzlyTask, metaclass=ABCMeta):
     def execute(self, parent: 'GrizzlyScenario') -> 'GrizzlyResponse':
         raise NotImplementedError(f'{self.__class__.name} has not implemented "execute"')
 
+    def on_start(self, parent: 'GrizzlyScenario') -> None:
+        pass
+
+    def on_stop(self, parent: 'GrizzlyScenario') -> None:
+        pass
+
 
 class GrizzlyTaskWrapper(GrizzlyTask, metaclass=ABCMeta):
     name: str

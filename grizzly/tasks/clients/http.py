@@ -1,4 +1,6 @@
-'''This task performs a HTTP request to a specified endpoint.
+'''
+@anchor pydoc:grizzly.tasks.clients.http HTTP
+This task performs a HTTP request to a specified endpoint.
 
 This is useful if the scenario is using a non-HTTP user or a request to a URL other than the one under testing is needed, e.g. for testdata.
 
@@ -17,9 +19,30 @@ Only supports `RequestDirection.FROM`.
 * `endpoint` _str_ - URL to perform GET request from
 
 * `name` _str_ - name used in `locust` statistics
+
+## Authentication
+
+To enable authentication for `HttpClientTask` the `auth` context tree has to be correctly set. This is done by using
+{@pylink grizzly.steps.scenario.setup.step_setup_set_context_variable} where the branches are prefixed with `<host>/`, e.g.:
+
+``` gherkin
+And value for variable "foobar" is "none"
+And value for variable "url" is "https://www.example.com/api/test"
+And set context variable "www.example.com/auth.user.username" to "bob"
+And set context variable "www.example.com/auth.user.password" to "password"
+And set context variable "www.example.com/auth.user.redirect_uri" to "/authenticated"
+And set context variable "www.example.com/auth.provider" to "https://login.example.com/oauth2"
+And set context variable "www.example.com/auth.client.id" to "aaaa-bbbb-cccc-dddd"
+
+Then get "https://{{ url }}" with name "authenticated-get" and save response payload in "foobar"
+```
+
+This will make any requests towards `www.example.com` to get a token from `http://login.example.com/oauth2` and use it in any
+requests towards `www.example.com`.
 '''
 from typing import Optional, Dict, Any
 from json import dumps as jsondumps
+from time import time
 
 import requests
 
@@ -29,14 +52,20 @@ from grizzly_extras.arguments import split_value, parse_arguments
 from grizzly.types import GrizzlyResponse, RequestDirection, bool_type
 from grizzly.scenarios import GrizzlyScenario
 from grizzly.context import GrizzlyContextScenario
+from grizzly.auth import GrizzlyHttpAuthClient, refresh_token, AAD, GrizzlyHttpContext
 
 from . import client, ClientTask
 
 
 @client('http', 'https')
-class HttpClientTask(ClientTask):
+class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
     arguments: Dict[str, Any]
     headers: Dict[str, str]
+    session_started: Optional[float]
+    host: str
+
+    _context: GrizzlyHttpContext
+    parent: Optional[GrizzlyScenario]
 
     def __init__(
         self,
@@ -78,12 +107,31 @@ class HttpClientTask(ClientTask):
 
         self.arguments = {}
         self.headers = {
-            'x-grizzly-user': f'{self.__class__.__name__}::{id(self)}'
+            'x-grizzly-user': f'{self.__class__.__name__}::{id(self)}',
         }
 
         if self._scheme == 'https':
             self.arguments = {'verify': verify}
 
+        self.session_started = None
+        self._context = {
+            'verify_certificates': verify,
+            'metadata': None,
+            'auth': None,
+        }
+        self.parent = None
+
+    def on_start(self, parent: GrizzlyScenario) -> None:
+        super().on_start(parent)
+
+        self.session_started = time()
+        self.environment = parent.user.environment
+        self.parent = parent
+        metadata = self._context.get('metadata', None)
+        if metadata is not None:
+            self.headers.update(metadata)
+
+    @refresh_token(AAD, render=True)
     def get(self, parent: GrizzlyScenario) -> GrizzlyResponse:
         with self.action(parent) as meta:
             url = parent.render(self.endpoint)

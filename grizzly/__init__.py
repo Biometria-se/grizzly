@@ -1,3 +1,7 @@
+from gevent import monkey
+
+monkey.patch_all()
+
 from importlib.metadata import version, PackageNotFoundError
 from .__version__ import __version__
 
