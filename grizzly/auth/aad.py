@@ -391,9 +391,11 @@ class AAD(RefreshToken):
 
         auth_user_context = auth_context.get('user', None)
 
+        is_token_v2_0 = 'v2.0' in provider_url
+
         url = f'{provider_url}/token'
 
-        if pkcs is not None:
+        if is_token_v2_0:
             version = 'v2.0'
         else:
             version = 'v1.0'
@@ -416,13 +418,7 @@ class AAD(RefreshToken):
 
         start_time = time_perf_counter()
 
-        if pkcs is None:  # token v1.0
-            parameters['data'].update({
-                'grant_type': 'client_credentials',
-                'client_secret': auth_client_context['secret'],
-                'resource': resource,
-            })
-        else:  # token v2.0
+        if pkcs is not None:  # token v2.0, authorization_code
             assert auth_user_context is not None, 'context variable auth.user is not set'
             code, code_verifier = pkcs
 
@@ -447,6 +443,24 @@ class AAD(RefreshToken):
                 'code': code,
                 'code_verifier': code_verifier,
             })
+        elif not is_token_v2_0:  # token v1.0
+            parameters['data'].update({
+                'grant_type': 'client_credentials',
+                'client_secret': auth_client_context['secret'],
+                'resource': resource,
+            })
+        elif is_token_v2_0:  # token v2.0
+            tenant = auth_context.get('tenant', None)
+            if tenant is None:
+                provider_url_parsed = urlparse(provider_url)
+                tenant, _ = provider_url_parsed.path[1:].split('/', 1)
+
+            parameters['data'].update({
+                'grant_type': 'client_credentials',
+                'client_secret': auth_client_context['secret'],
+                'scope': resource,
+                'tenant': tenant,
+            })
 
         parameters.update({'headers': headers, 'allow_redirects': (pkcs is None)})
 
@@ -457,9 +471,7 @@ class AAD(RefreshToken):
         try:
             with requests.Session() as session:
                 response = session.post(url, **parameters)
-
                 response_length = len(response.text.encode())
-
                 payload = json.loads(response.text)
 
                 if response.status_code != 200:

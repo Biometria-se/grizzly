@@ -503,9 +503,15 @@ class TestAAD:
         )
         fire_spy.reset_mock()
 
-    @pytest.mark.parametrize('grant_type', ['client_credentials', 'authorization_code'])
+    @pytest.mark.parametrize('grant_type', [
+        'client_credentials::v1',
+        'client_credentials::v2',
+        'authorization_code::v2',
+    ])
     def test_get_oauth_token(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, grant_type: str) -> None:
         _, user, _ = grizzly_fixture(user_type=RestApiUser)
+
+        grant_type, version = grant_type.split('::', 1)
 
         user.__class__.__name__ = f'{user.__class__.__name__}_001'
 
@@ -518,12 +524,16 @@ class TestAAD:
 
         assert isinstance(user, RestApiUser)
 
+        provider_url = 'https://login.example.com/foobarinc/oauth2'
+
         if grant_type == 'authorization_code':
             pkcs = ('code', 'code_verifier',)
             token_name = 'id_token'
         else:
             pkcs = None
             token_name = 'access_token'
+            if version == 'v2':
+                provider_url = f'{provider_url}/v2.0'
 
         fire_spy = mocker.spy(user.environment.events.request, 'fire')
 
@@ -539,7 +549,7 @@ class TestAAD:
             AAD.get_oauth_token(user, pkcs)
         assert str(ae.value) == 'context variable auth.provider is not set'
 
-        cast(GrizzlyAuthHttpContext, user._context['auth']).update({'provider': 'https://login.example.com/oauth2'})
+        cast(GrizzlyAuthHttpContext, user._context['auth']).update({'provider': provider_url})
 
         with pytest.raises(AssertionError) as ae:
             AAD.get_oauth_token(user, pkcs)
@@ -556,7 +566,7 @@ class TestAAD:
 
         user._context['host'] = user.host = 'https://example.com'
         cast(GrizzlyAuthHttpContext, user._context['auth']).update({
-            'provider': 'https://login.example.com/oauth2',
+            'provider': provider_url,
             'client': {
                 'id': 'asdf',
                 'secret': 'asdf',
@@ -574,14 +584,20 @@ class TestAAD:
         with pytest.raises(StopUser):
             AAD.get_oauth_token(user, pkcs)
 
-        requests_mock.assert_called_once_with('https://login.example.com/oauth2/token', verify=True, data=ANY, headers=ANY, allow_redirects=(pkcs is None))
+        requests_mock.assert_called_once_with(f'{provider_url}/token', verify=True, data=ANY, headers=ANY, allow_redirects=(pkcs is None))
         _, kwargs = requests_mock.call_args_list[-1]
         data = kwargs.get('data', None)
         assert data['grant_type'] == grant_type
         assert data['client_id'] == 'asdf'
         if pkcs is None:
-            assert data['resource'] == 'asdf'
-            assert len(data) == 4
+            if version == 'v1':
+                assert data['resource'] == 'asdf'
+                assert len(data) == 4
+            else:
+                print(f'{data=}')
+                assert data['scope'] == 'asdf'
+                assert data['tenant'] == 'foobarinc'
+                assert len(data) == 5
         else:
             assert data['redirect_uri'] == f'{user.host}/auth'
             assert data['code'] == pkcs[0]
@@ -595,7 +611,7 @@ class TestAAD:
             fire_spy.assert_called_once_with(
                 request_type='AUTH',
                 response_time=ANY,
-                name='001 AAD OAuth2 user token v1.0',
+                name=f'001 AAD OAuth2 user token {version}.0',
                 context=user._context,
                 response=None,
                 exception=ANY,
@@ -622,7 +638,7 @@ class TestAAD:
         assert AAD.get_oauth_token(user, pkcs) == 'asdf'
 
         assert user.session_started >= session_started
-        requests_mock.assert_called_once_with('https://login.example.com/oauth2/token', verify=False, data=ANY, headers=ANY, allow_redirects=(pkcs is None))
+        requests_mock.assert_called_once_with(f'{provider_url}/token', verify=False, data=ANY, headers=ANY, allow_redirects=(pkcs is None))
         _, kwargs = requests_mock.call_args_list[-1]
         data = kwargs.get('data', None)
         headers = kwargs.get('headers', None)
@@ -634,8 +650,13 @@ class TestAAD:
         assert 'Ocp-Apim-Subscription-Key' not in headers
 
         if pkcs is None:
-            assert data['resource'] == 'asdf'
-            assert len(data) == 4
+            if version == 'v1':
+                assert data['resource'] == 'asdf'
+                assert len(data) == 4
+            else:
+                assert data['scope'] == 'asdf'
+                assert data['tenant'] == 'foobarinc'
+                assert len(data) == 5
         else:
             assert data['redirect_uri'] == f'{user.host}/auth'
             assert data['code'] == pkcs[0]
