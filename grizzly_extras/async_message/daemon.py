@@ -1,4 +1,4 @@
-from typing import List, Optional, Union, cast
+from typing import List, Optional, Union, Dict, cast
 from types import FrameType
 from uuid import uuid4
 from json import loads as jsonloads, dumps as jsondumps
@@ -64,7 +64,11 @@ def router() -> None:
 
     workers_available: List[str] = []
 
+    client_worker_map: Dict[str, str] = {}
+
     spawn_worker()
+
+    worker_id: str
 
     while run:
         socks = dict(poller.poll(timeout=1000))
@@ -86,11 +90,13 @@ def router() -> None:
                 continue
 
             reply = backend_response[2:]
+            worker_id = backend_response[0].decode()
+
             if reply[0] != LRU_READY.encode():
                 frontend.send_multipart(reply)
+                logger.debug(f'forwarding backend response from {worker_id}')
             else:
-                worker_id = backend_response[0]
-                logger.info(f'worker {worker_id.decode()} ready')
+                logger.info(f'worker {worker_id} ready')
                 workers_available.append(worker_id)
 
         if socks.get(frontend) == zmq.POLLIN:
@@ -102,24 +108,50 @@ def router() -> None:
                 continue
 
             request_id = msg[0]
-            payload = jsonloads(msg[-1].decode())
+            payload = cast(AsyncMessageRequest, jsonloads(msg[-1].decode()))
 
-            worker_id = payload.get('worker', None)
+            request_worker_id = payload.get('worker', None)
+            request_client_id = payload.get('client', None)
+            client_key: Optional[str] = None
 
-            if worker_id is None:
+            logger.debug(f'{request_worker_id=} ({type(request_worker_id)}), {request_client_id=} ({type(request_client_id)})')
+
+            if request_client_id is not None:
+                integration_url = payload.get('context', {}).get('url', None)
+                parsed = urlparse(integration_url)
+                scheme = parsed.scheme
+                if isinstance(scheme, bytes):
+                    scheme = scheme.decode()
+
+                client_key = f'{request_client_id}::{scheme}'
+
+            if request_worker_id is None and client_key is not None:
+                request_worker_id = client_worker_map.get(client_key, None)
+
+            if request_worker_id is None:
                 worker_id = workers_available.pop()
-                payload['worker'] = worker_id.decode()
-                logger.info(f'assigning worker {payload["worker"]}')
-                request = jsondumps(payload).encode()
+
+                if client_key is not None:
+                    client_worker_map.update({client_key: worker_id})
+
+                payload['worker'] = worker_id
+                logger.info(f'assigned worker {payload["worker"]} to {client_key}')
+
                 if len(workers_available) == 0:
                     logger.debug('spawning an additional worker, for next client')
                     spawn_worker()
             else:
-                worker_id = worker_id.encode()
-                request = msg[-1]
+                logger.debug(f'{request_client_id} is assigned {request_worker_id}')
+                worker_id = request_worker_id
 
-            backend_request = [worker_id, SPLITTER_FRAME, request_id, SPLITTER_FRAME, request]
+                if payload.get('worker', None) is None:
+                    payload['worker'] = worker_id
+
+            request = jsondumps(payload).encode()
+            backend_request = [worker_id.encode(), SPLITTER_FRAME, request_id, SPLITTER_FRAME, request]
+            logger.debug(f'{backend_request=}')
             backend.send_multipart(backend_request)
+            logger.debug(f'forwarding frontend request to worker {request_worker_id}')
 
     logger.info('stopping')
     for worker_thread in worker_threads:
@@ -162,43 +194,51 @@ def worker(context: zmq.Context, identity: str) -> None:
             jsonloads(request_proto[-1].decode()),
         )
 
-        if request['worker'] != identity:
-            logger.error(f'got {request["worker"]}, expected {identity}')
-            continue
-
         response: Optional[AsyncMessageResponse] = None
-        if integration is None:
-            try:
-                integration_url = request.get('context', {}).get('url', None)
-                if integration_url is None:
-                    raise RuntimeError('no url found in request context')
 
-                parsed = urlparse(integration_url)
+        try:
+            if request['worker'] != identity:
+                raise RuntimeError(f'got {request["worker"]}, expected {identity}')
 
-                if parsed.scheme in ['mq', 'mqs']:
-                    from .mq import AsyncMessageQueueHandler
-                    integration = AsyncMessageQueueHandler(identity)
-                elif parsed.scheme == 'sb':
-                    from .sb import AsyncServiceBusHandler
-                    integration = AsyncServiceBusHandler(identity)
+            action = request.get('action', None)
+
+            if integration is None:
+                if action not in ['DISCONNECT', 'DISC']:
+                    integration_url = request.get('context', {}).get('url', None)
+                    if integration_url is None:
+                        raise RuntimeError('no url found in request context')
+
+                    parsed = urlparse(integration_url)
+
+                    if parsed.scheme in ['mq', 'mqs']:
+                        from .mq import AsyncMessageQueueHandler
+                        integration = AsyncMessageQueueHandler(identity)
+                    elif parsed.scheme == 'sb':
+                        from .sb import AsyncServiceBusHandler
+                        integration = AsyncServiceBusHandler(identity)
+                    else:
+                        raise RuntimeError(f'integration for {str(parsed.scheme)}:// is not implemented')
                 else:
-                    raise RuntimeError(f'integration for {str(parsed.scheme)}:// is not implemented')
-
-            except Exception as e:
-                response = {
-                    'worker': identity,
-                    'response_time': 0,
-                    'success': False,
-                    'message': str(e),
-                }
+                    response = {
+                        'worker': identity,
+                        'response_time': 0,
+                        'success': True,
+                        'message': f'already handled {action}',
+                    }
+        except Exception as e:
+            response = {
+                'worker': identity,
+                'response_time': 0,
+                'success': False,
+                'message': str(e),
+            }
 
         if response is None and integration is not None:
             logger.debug('send request to handler')
             response = integration.handle(request)
             logger.debug('got response from handler')
 
-            if request.get('action', None) in ['DISCONNECT', 'DISC']:
-                integration.close()
+            if action in ['DISCONNECT', 'DISC']:
                 integration = None
 
         response_proto = [

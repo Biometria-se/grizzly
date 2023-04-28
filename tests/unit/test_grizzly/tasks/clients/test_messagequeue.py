@@ -15,6 +15,7 @@ from zmq.error import Again as ZMQAgain
 
 from grizzly.tasks.clients import MessageQueueClientTask
 from grizzly.types import RequestDirection
+from grizzly_extras.async_message import AsyncMessageError
 
 try:
     import pymqi
@@ -303,13 +304,8 @@ class TestMessageQueueClientTask:
             if zmq_context is not None:
                 zmq_context.destroy()
 
-    def test_connect(self, grizzly_fixture: GrizzlyFixture, noop_zmq: NoopZmqFixture) -> None:
+    def test_connect(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.tasks.clients.messagequeue')
-
-        recv_json_mock = noop_zmq.get_mock('recv_json')
-        send_json_mock = noop_zmq.get_mock('send_json')
-
-        recv_json_mock.side_effect = [ZMQAgain, None]
 
         zmq_context: Optional[zmq.Context] = None
         try:
@@ -320,10 +316,14 @@ class TestMessageQueueClientTask:
             zmq_context = task_factory._zmq_context
 
             with task_factory.create_client() as client:
+                recv_json_mock = mocker.patch.object(client, 'recv_json')
+                send_json_mock = mocker.patch.object(client, 'send_json')
+                recv_json_mock.side_effect = [ZMQAgain, None]
+
                 meta: Dict[str, Any] = {}
-                with pytest.raises(RuntimeError) as re:
+                with pytest.raises(AsyncMessageError) as ame:
                     task_factory.connect(111111, client, meta)
-                assert str(re.value) == 'no response when trying to connect'
+                assert str(ame.value) == 'no response'
                 assert meta.get('response_length', None) == 0
                 assert meta.get('action', None) == 'topic:INCOMING.MSG'
                 assert meta.get('direction', None) == '<->'
@@ -332,6 +332,7 @@ class TestMessageQueueClientTask:
                 args, kwargs = send_json_mock.call_args_list[-1]
                 assert args == ({
                     'action': 'CONN',
+                    'client': 111111,
                     'context': {
                         'url': task_factory.endpoint,
                         'connection': 'mq.example.io(1414)',
@@ -356,9 +357,9 @@ class TestMessageQueueClientTask:
                 message = {'success': False, 'message': 'unknown error yo'}
                 recv_json_mock.side_effect = [message]
 
-                with pytest.raises(RuntimeError) as re:
+                with pytest.raises(AsyncMessageError) as ame:
                     task_factory.connect(222222, client, meta)
-                assert str(re.value) == 'unknown error yo'
+                assert str(ame.value) == 'unknown error yo'
 
                 assert send_json_mock.call_count == 2
                 assert recv_json_mock.call_count == 3
@@ -389,12 +390,17 @@ class TestMessageQueueClientTask:
             zmq_context = task_factory._zmq_context
 
             with task_factory.create_client() as client:
+                recv_json_mock = mocker.patch.object(client, 'recv_json')
+                send_json_mock = mocker.patch.object(client, 'send_json')
+
                 task_factory.connect(444444, client, meta)
-                assert send_json_mock.call_count == 4
-                assert recv_json_mock.call_count == 5
+
+                assert send_json_mock.call_count == 1
+                assert recv_json_mock.call_count == 1
                 args, kwargs = send_json_mock.call_args_list[-1]
                 assert args == ({
                     'action': 'CONN',
+                    'client': 444444,
                     'context': {
                         'url': task_factory.endpoint,
                         'connection': 'mq.example.io(1414)',
@@ -411,7 +417,6 @@ class TestMessageQueueClientTask:
                     },
                 },)
                 assert kwargs == {}
-
         finally:
             if zmq_context is not None:
                 zmq_context.destroy()
@@ -450,12 +455,13 @@ class TestMessageQueueClientTask:
 
             assert scenario.user._context['variables'].get('mq-client-var', None) is None
             assert scenario.user._context['variables'].get('mq-client-metadata', None) is None
-            assert task_factory._worker.get(id(scenario), None) == 'dddd-eeee-ffff-9999'
+            assert task_factory._worker.get(id(scenario.user), None) == 'dddd-eeee-ffff-9999'
             assert send_json_mock.call_count == 2
             args, kwargs = send_json_mock.call_args_list[-1]
             assert args == ({
                 'action': 'GET',
                 'worker': 'dddd-eeee-ffff-9999',
+                'client': id(scenario.user),
                 'context': {
                     'endpoint': 'topic:INCOMING.MSG',
                 },
@@ -472,7 +478,7 @@ class TestMessageQueueClientTask:
             assert kwargs.get('response_length', None) == 0
             assert kwargs.get('context', None) == scenario.user._context
             exception = kwargs.get('exception', None)
-            assert isinstance(exception, RuntimeError)
+            assert isinstance(exception, AsyncMessageError)
             assert str(exception) == 'no response'
 
             messages = [{'success': False, 'message': 'memory corruption'}]
@@ -492,6 +498,7 @@ class TestMessageQueueClientTask:
             assert args == ({
                 'action': 'GET',
                 'worker': 'dddd-eeee-ffff-9999',
+                'client': id(scenario.user),
                 'context': {
                     'endpoint': 'topic:INCOMING.MSG, max_message_size:13337',
                 },
@@ -508,7 +515,7 @@ class TestMessageQueueClientTask:
             assert kwargs.get('response_length', None) == 0
             assert kwargs.get('context', None) == scenario.user._context
             exception = kwargs.get('exception', None)
-            assert isinstance(exception, RuntimeError)
+            assert isinstance(exception, AsyncMessageError)
             assert str(exception) == 'memory corruption'
 
             messages = [{'success': True, 'payload': None}]
@@ -603,7 +610,7 @@ class TestMessageQueueClientTask:
 
             task(scenario)
 
-            assert task_factory._worker.get(id(scenario), None) == 'dddd-eeee-ffff-9999'
+            assert task_factory._worker.get(id(scenario.user), None) == 'dddd-eeee-ffff-9999'
 
             assert recv_json_mock.call_count == 2
             assert send_json_mock.call_count == 2
@@ -611,6 +618,7 @@ class TestMessageQueueClientTask:
             assert args == ({
                 'action': 'PUT',
                 'worker': 'dddd-eeee-ffff-9999',
+                'client': id(scenario.user),
                 'context': {
                     'endpoint': 'queue:INCOMING.MSG',
                 },
@@ -644,6 +652,7 @@ class TestMessageQueueClientTask:
             assert args == ({
                 'action': 'PUT',
                 'worker': 'dddd-eeee-ffff-9999',
+                'client': id(scenario.user),
                 'context': {
                     'endpoint': 'queue:INCOMING.MSG',
                 },
