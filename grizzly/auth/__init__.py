@@ -27,6 +27,7 @@ class GrizzlyAuthHttpContextUser(TypedDict):
     username: Optional[str]
     password: Optional[str]
     redirect_uri: Optional[str]
+    response_mode: Literal['form_post', 'fragment']
 
 
 class GrizzlyAuthHttpContextClient(TypedDict):
@@ -93,6 +94,8 @@ class refresh_token:
             client.host = f'{parsed.scheme}://{parsed.netloc}'
 
             client_context = client.parent.user._context.get(parsed.netloc, None)
+            client.parent.logger.debug(f'!! {parsed.netloc=}, {client_context=}')
+            client.parent.logger.debug(f'!! {client.parent.user._context=}')
 
             # we have a host specific context that we should merge into current context
             if client_context is not None:

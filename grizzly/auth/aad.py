@@ -9,6 +9,7 @@ from secrets import token_urlsafe
 from hashlib import sha256
 from base64 import urlsafe_b64encode
 from time import perf_counter as time_perf_counter
+from html.parser import HTMLParser
 
 import requests
 
@@ -18,6 +19,55 @@ from . import RefreshToken, GrizzlyHttpAuthClient
 
 
 logger = logging.getLogger(__name__)
+
+
+class FormPostParser(HTMLParser):
+    action: Optional[str]
+    id_token: Optional[str]
+    client_info: Optional[str]
+    state: Optional[str]
+    session_state: Optional[str]
+
+    def __init__(self) -> None:
+        super().__init__()
+
+        self.action = None
+        self.id_token = None
+        self.client_info = None
+        self.state = None
+        self.session_state = None
+
+    @property
+    def payload(self) -> Dict[str, str]:
+        assert self.id_token is not None, 'could not find id_token in response'
+        assert self.client_info is not None, 'could not find client_info in response'
+        assert self.state is not None, 'could not find state in response'
+        assert self.session_state is not None, 'could not find session_state in response'
+
+        return {
+            'id_token': self.id_token,
+            'client_info': self.client_info,
+            'state': self.state,
+            'session_state': self.session_state,
+        }
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag == 'form':
+            for attr, value in attrs:
+                if attr == 'action':
+                    self.action = value
+        elif tag == 'input':
+            prop_name: Optional[str] = None
+            prop_value: Optional[str] = None
+
+            for attr, value in attrs:
+                if attr == 'name':
+                    prop_name = value
+                elif attr == 'value':
+                    prop_value = value
+
+            if prop_name is not None and prop_value is not None:
+                setattr(self, prop_name, prop_value)
 
 
 class AAD(RefreshToken):
@@ -82,6 +132,7 @@ class AAD(RefreshToken):
         exception: Optional[Exception] = None
         auth_provider_parsed = urlparse(provider_url)
         is_token_v2_0 = 'v2.0' in provider_url
+        response_mode = auth_user_context.get('response_mode', 'fragment')
 
         try:
 
@@ -132,14 +183,24 @@ class AAD(RefreshToken):
                 code_challenge: Optional[str] = None
 
                 if is_token_v2_0:
-                    code_verifier, code_challenge = generate_pkcs()
                     params.update({
-                        'response_type': ['code'],
-                        'response_mode': ['fragment'],
+                        'response_mode': [response_mode],
                         'scope': ['openid profile offline_access'],
-                        'code_challenge_method': ['S256'],
-                        'code_challenge': [code_challenge],
                     })
+
+                    if response_mode == 'fragment':
+                        code_verifier, code_challenge = generate_pkcs()
+                        params.update({
+                            'response_type': ['code'],
+                            'code_challenge_method': ['S256'],
+                            'code_challenge': [code_challenge],
+                        })
+                    else:
+                        del params['client-request-id']
+                        params.update({
+                            'client_info': ['1'],
+                            'x-client-brkrver': ['IDWeb.1.26.0.0'],
+                        })
 
                 headers = {
                     'Host': str(auth_provider_parsed.netloc),
@@ -324,37 +385,71 @@ class AAD(RefreshToken):
 
                 logger.debug(f'user auth request 4: {response.url} ({response.status_code})')
 
-                if response.status_code != 302:
-                    try:
-                        config = _parse_response_config(response)
-                        exception_message = config.get('strServiceExceptionMessage', None)
+                if not is_token_v2_0 or (is_token_v2_0 and response_mode == 'fragment'):
+                    if response.status_code != 302:
+                        try:
+                            config = _parse_response_config(response)
+                            exception_message = config.get('strServiceExceptionMessage', None)
 
-                        if exception_message is not None and len(exception_message.strip()) > 0:
-                            raise RuntimeError(exception_message)
-                    except ValueError:
-                        pass
+                            if exception_message is not None and len(exception_message.strip()) > 0:
+                                raise RuntimeError(exception_message)
+                        except ValueError:
+                            pass
 
-                    raise RuntimeError(f'user auth request 4: {response.url} had unexpected status code {response.status_code}')
+                        raise RuntimeError(f'user auth request 4: {response.url} had unexpected status code {response.status_code}')
 
-                assert 'Location' in response.headers, f'Location header was not found in response from {response.url}'
+                    assert 'Location' in response.headers, f'Location header was not found in response from {response.url}'
 
-                token_url = response.headers['Location']
-                assert token_url.startswith(f'{redirect_uri}'), f'unexpected redirect URI, got {token_url} but expected {redirect_uri}'
-                # // request 4 -->
+                    token_url = response.headers['Location']
+                    assert token_url.startswith(f'{redirect_uri}'), f'unexpected redirect URI, got {token_url} but expected {redirect_uri}'
+                    # // request 4 -->
 
-                token_url_parsed = urlparse(token_url)
-                fragments = parse_qs(token_url_parsed.fragment)
+                    token_url_parsed = urlparse(token_url)
+                    fragments = parse_qs(token_url_parsed.fragment)
 
-                # exchange received with with a token
-                if is_token_v2_0:
-                    assert code_verifier is not None, 'no code verifier has been generated!'
-                    assert 'code' in fragments, f'could not find code in {token_url}'
-                    code = fragments['code'][0]
-                    return cls.get_oauth_token(client, (code, code_verifier,))
-                else:
-                    assert 'id_token' in fragments, f'could not find id_token in {token_url}'
-                    token = fragments['id_token'][0]
-                    return token
+                    # exchange received with with a token
+                    if is_token_v2_0:
+                        assert code_verifier is not None, 'no code verifier has been generated!'
+                        assert 'code' in fragments, f'could not find code in {token_url}'
+                        code = fragments['code'][0]
+                        return cls.get_oauth_token(client, (code, code_verifier,))
+                    else:
+                        assert 'id_token' in fragments, f'could not find id_token in {token_url}'
+                        token = fragments['id_token'][0]
+                        return token
+                elif is_token_v2_0 and response_mode == 'form_post':
+                    if response.status_code != 200:
+                        try:
+                            config = _parse_response_config(response)
+                            exception_message = config.get('strServiceExceptionMessage', None)
+
+                            if exception_message is not None and len(exception_message.strip()) > 0:
+                                raise RuntimeError(exception_message)
+                        except ValueError:
+                            pass
+
+                        raise RuntimeError(f'user auth request 4: {response.url} had unexpected status code {response.status_code}')
+
+                    parser = FormPostParser()
+                    parser.feed(response.text)
+                    assert parser.action is not None, 'could not find action in response'
+
+                    origin = f'{redirect_uri_parsed.scheme}://{redirect_uri_parsed.netloc}'
+
+                    headers.update({
+                        'Origin': origin,
+                        'Referer': origin,
+                    })
+
+                    response = session.post(parser.action, headers=headers, data=parser.payload, allow_redirects=False, verify=False)
+
+                    print(f'{parser.action=}')
+                    print(f'{response.headers=}')
+                    print(response.request.headers)
+
+                    if response.status_code != 302:
+                        raise RuntimeError(f'user auth request 5: {response.url} had unexpected status code {response.status_code}')
+
         except Exception as e:
             exception = e
             logger.error(str(e), exc_info=True)
