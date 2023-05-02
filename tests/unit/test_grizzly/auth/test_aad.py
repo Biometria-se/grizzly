@@ -13,7 +13,7 @@ import requests
 from requests.models import Response
 from _pytest.logging import LogCaptureFixture
 
-from grizzly.auth import AuthMethod, AAD, GrizzlyAuthHttpContext, GrizzlyAuthHttpContextUser
+from grizzly.auth import AuthMethod, AuthType, AAD, GrizzlyAuthHttpContext, GrizzlyAuthHttpContextUser
 from grizzly.users import RestApiUser
 from grizzly.types.locust import StopUser
 from grizzly.utils import safe_del
@@ -47,6 +47,91 @@ class TestAAD:
         get_oauth_authorization_mock.assert_called_once_with(user)
         get_oauth_authorization_mock.reset_mock()
 
+    @pytest.mark.skip(reason='needs real secrets')
+    def test_get_oauth_authorization_real_initialize_uri(self, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture) -> None:
+        from grizzly.tasks.clients import HttpClientTask
+        from grizzly.types import RequestDirection
+
+        _, user, scenario = grizzly_fixture(user_type=RestApiUser)
+        grizzly = grizzly_fixture.grizzly
+
+        assert scenario is not None
+        scenario._user = user
+
+        grizzly.state.variables['test_payload'] = 'none'
+
+        task_factory = HttpClientTask(
+            RequestDirection.FROM,
+            '',
+            payload_variable='test_payload',
+        )
+
+        user._context.update({
+            'host': {
+                'auth': {
+                    'user': {
+                        'username': '',
+                        'password': '',
+                        'initialize_uri': '',
+                    },
+                },
+                'verify_certificates': False,
+            },
+        })
+
+        task = task_factory()
+
+        task.on_start(scenario)
+
+        with caplog.at_level(logging.DEBUG):
+            task(scenario)
+
+        payload = user._context['variables'].get('test_payload', None)
+        assert payload is not None
+
+    @pytest.mark.skip(reason='needs real secrets')
+    def test_get_oauth_authorization_provider(self, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture) -> None:
+        from grizzly.tasks.clients import HttpClientTask
+        from grizzly.types import RequestDirection
+
+        _, user, scenario = grizzly_fixture(user_type=RestApiUser)
+        grizzly = grizzly_fixture.grizzly
+
+        assert scenario is not None
+        scenario._user = user
+
+        grizzly.state.variables['test_payload'] = 'none'
+
+        task_factory = HttpClientTask(
+            RequestDirection.FROM,
+            '',
+            payload_variable='test_payload',
+        )
+
+        user._context.update({
+            'host': {
+                'auth': {
+                    'provider': '',
+                    'client': {
+                        'id': '',
+                    },
+                    'user': {
+                        'username': '',
+                        'password': '',
+                        'redirect_uri': '',
+                    },
+                },
+            },
+        })
+        task_factory.headers.update({'Ocp-Apim-Subscription-Key': ''})
+
+        task = task_factory()
+
+        task.on_start(scenario)
+
+        with caplog.at_level(logging.DEBUG):
+            task(scenario)
+
     @pytest.mark.parametrize('version', ['v1.0', 'v2.0'])
     def test_get_oauth_authorization(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, caplog: LogCaptureFixture, version: str) -> None:
         _, user, _ = grizzly_fixture(user_type=RestApiUser)
@@ -63,7 +148,7 @@ class TestAAD:
         get_oauth_token_mock = mocker.patch.object(AAD, 'get_oauth_token', return_value=None)
 
         if is_token_v2_0:
-            get_oauth_token_mock.return_value = fake_token
+            get_oauth_token_mock.return_value = (AuthType.HEADER, fake_token,)
 
         class Error(Enum):
             REQUEST_1_NO_DOLLAR_CONFIG = 0
@@ -134,31 +219,33 @@ class TestAAD:
                     if inject_error == Error.REQUEST_2_HTTP_STATUS:
                         response.status_code = 400
                 elif method == 'POST' and url.endswith('/login'):
+                    dollar_dict = {
+                        'hpgact': 1800,
+                        'hpgid': 11,
+                        'sFT': 'xxxxxxxxxxxxxxxxxxx',
+                        'sCtx': 'yyyyyyyyyyyyyyyyyyy',
+                        'apiCanary': 'zzzzzzzzzzzzzzzzzz',
+                        'canary': 'canary=1:1',
+                        'correlationId': 'aa-bb-cc',
+                        'sessionId': 'session-a-b-c',
+                        'country': 'SE',
+                        'urlGetCredentialType': 'https://test.nu/GetCredentialType?mkt=en-US',
+                        'urlPost': '/kmsi',
+                    }
+
                     if inject_error == Error.REQUEST_3_ERROR_MESSAGE:
-                        dollar_config = jsondumps({
+                        dollar_dict.update({
                             'strServiceExceptionMessage': 'failed big time',
                         })
                     elif inject_error == Error.REQUEST_3_MFA_REQUIRED:
-                        dollar_config = jsondumps({
+                        dollar_dict.update({
                             'arrUserProofs': [{
                                 'authMethodId': 'fax',
                                 'display': '+46 1234',
                             }]
                         })
-                    else:
-                        dollar_config = jsondumps({
-                            'hpgact': 1800,
-                            'hpgid': 11,
-                            'sFT': 'xxxxxxxxxxxxxxxxxxx',
-                            'sCtx': 'yyyyyyyyyyyyyyyyyyy',
-                            'apiCanary': 'zzzzzzzzzzzzzzzzzz',
-                            'canary': 'canary=1:1',
-                            'correlationId': 'aa-bb-cc',
-                            'sessionId': 'session-a-b-c',
-                            'country': 'SE',
-                            'urlGetCredentialType': 'https://test.nu/GetCredentialType?mkt=en-US',
-                            'urlPost': '/kmsi',
-                        })
+
+                    dollar_config = jsondumps(dollar_dict)
                     response._content = f'$Config={dollar_config};'.encode('utf-8')
                     response.headers['x-ms-request-id'] = 'aaaa-bbbb-cccc-dddd'
                     if inject_error == Error.REQUEST_3_HTTP_STATUS:
@@ -361,7 +448,7 @@ class TestAAD:
         _, kwargs = fire_spy.call_args_list[-1]
         exception = kwargs.get('exception', None)
         assert isinstance(exception, RuntimeError)
-        assert str(exception) == 'user auth request 4: https://login.example.com/kmsi had unexpected status code 200'
+        assert str(exception) == 'user auth request 4: https://test.nu/kmsi had unexpected status code 200'
         fire_spy.reset_mock()
 
         mock_request_session(Error.REQUEST_4_HTTP_STATUS_CONFIG)
@@ -468,7 +555,7 @@ class TestAAD:
 
         user.session_started = session_started
 
-        assert AAD.get_oauth_authorization(user) == 'asdf'
+        assert AAD.get_oauth_authorization(user) == (AuthType.HEADER, 'asdf',)
 
         if not is_token_v2_0:
             get_oauth_token_mock.assert_not_called()
@@ -490,7 +577,7 @@ class TestAAD:
         # test no host in redirect uri
         cast(GrizzlyAuthHttpContextUser, cast(GrizzlyAuthHttpContext, user._context['auth'])['user'])['redirect_uri'] = '/authenticated'
 
-        assert AAD.get_oauth_authorization(user) == 'asdf'
+        assert AAD.get_oauth_authorization(user) == (AuthType.HEADER, 'asdf',)
 
         fire_spy.assert_called_once_with(
             request_type='AUTH',
@@ -562,7 +649,7 @@ class TestAAD:
                 AAD.get_oauth_token(user, pkcs)
             assert str(ae.value) == 'context variable auth.user is not set'
 
-            cast(GrizzlyAuthHttpContext, user._context['auth']).update({'user': {'username': None, 'password': None, 'redirect_uri': '/auth'}})
+            cast(GrizzlyAuthHttpContext, user._context['auth']).update({'user': {'username': None, 'password': None, 'redirect_uri': '/auth', 'initialize_uri': None}})
 
         user._context['host'] = user.host = 'https://example.com'
         cast(GrizzlyAuthHttpContext, user._context['auth']).update({
@@ -635,10 +722,10 @@ class TestAAD:
 
         requests_mock = mock_requests_post(jsondumps({token_name: 'asdf'}), 200)
 
-        assert AAD.get_oauth_token(user, pkcs) == 'asdf'
+        assert AAD.get_oauth_token(user, pkcs) == (AuthType.HEADER, 'asdf',)
 
         assert user.session_started >= session_started
-        requests_mock.assert_called_once_with(f'{provider_url}/token', verify=False, data=ANY, headers=ANY, allow_redirects=(pkcs is None))
+        requests_mock.assert_called_once_with(f'{provider_url}/token', verify=True, data=ANY, headers=ANY, allow_redirects=(pkcs is None))
         _, kwargs = requests_mock.call_args_list[-1]
         data = kwargs.get('data', None)
         headers = kwargs.get('headers', None)

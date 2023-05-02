@@ -1,6 +1,7 @@
 from typing import cast
 from json import dumps as jsondumps, loads as jsonloads
 from unittest.mock import ANY
+from itertools import cycle
 
 import pytest
 
@@ -106,13 +107,14 @@ class TestHttpClientTask:
 
         task(scenario)
 
-        assert scenario.user._context['variables'].get('test_payload', '') == jsondumps({'hello': 'world'})
-        assert scenario.user._context['variables'].get('test_metadata', '') == jsondumps({'x-foo-bar': 'test'})
+        assert scenario.user._context['variables'].get('test_payload', None) is None
+        assert scenario.user._context['variables'].get('test_metadata', None) is None
         assert requests_get_spy.call_count == 1
         args, kwargs = requests_get_spy.call_args_list[-1]
         assert args[0] == 'http://example.org'
-        assert len(kwargs) == 1
+        assert len(kwargs) == 2
         assert kwargs.get('headers', {}).get('x-grizzly-user', None).startswith('HttpClientTask::')
+        assert kwargs.get('cookies', None) == {}
 
         assert request_fire_spy.call_count == 1
         _, kwargs = request_fire_spy.call_args_list[-1]
@@ -148,8 +150,9 @@ class TestHttpClientTask:
         assert requests_get_spy.call_count == 2
         args, kwargs = requests_get_spy.call_args_list[-1]
         assert args[0] == 'http://example.org'
-        assert len(kwargs) == 1
+        assert len(kwargs) == 2
         assert kwargs.get('headers', {}).get('x-grizzly-user', None).startswith('HttpClientTask::')
+        assert kwargs.get('cookies', None) == {}
 
         assert request_fire_spy.call_count == 2
         _, kwargs = request_fire_spy.call_args_list[-1]
@@ -177,8 +180,9 @@ class TestHttpClientTask:
         assert requests_get_spy.call_count == 4
         args, kwargs = requests_get_spy.call_args_list[-1]
         assert args[0] == 'http://example.org'
-        assert len(kwargs) == 1
+        assert len(kwargs) == 2
         assert kwargs.get('headers', {}).get('x-grizzly-user', None).startswith('HttpClientTask::')
+        assert kwargs.get('cookies', None) == {}
 
         assert request_fire_spy.call_count == 4
         _, kwargs = request_fire_spy.call_args_list[-1]
@@ -203,8 +207,9 @@ class TestHttpClientTask:
         assert requests_get_spy.call_count == 5
         args, kwargs = requests_get_spy.call_args_list[-1]
         assert args[0] == 'http://example.org'
-        assert len(kwargs) == 1
+        assert len(kwargs) == 2
         assert kwargs.get('headers', {}).get('x-grizzly-user', None).startswith('HttpClientTask::')
+        assert kwargs.get('cookies', None) == {}
 
         assert request_fire_spy.call_count == 5
         _, kwargs = request_fire_spy.call_args_list[-1]
@@ -222,15 +227,21 @@ class TestHttpClientTask:
         assert task_factory.arguments == {'verify': True}
         assert task_factory.content_type == TransformerContentType.UNDEFINED
         task = task_factory()
+        response.url = 'https://example.org/api/test'
+        requests_get_spy.side_effect = cycle([response])
 
         task(scenario)
 
         assert requests_get_spy.call_count == 6
         args, kwargs = requests_get_spy.call_args_list[-1]
         assert args[0] == 'https://example.org/api/test'
-        assert len(kwargs) == 2
+        assert len(kwargs) == 3
         assert kwargs.get('verify', None)
         assert kwargs.get('headers', {}).get('x-grizzly-user', None).startswith('HttpClientTask::')
+        assert kwargs.get('cookies', None) == {}
+
+        print(list(task_factory.log_dir.rglob('**/*')))
+
         assert len(list(task_factory.log_dir.rglob('**/*'))) == 5
 
         task_factory = HttpClientTask(RequestDirection.FROM, 'https://$conf::test.host$/api/test | verify=False, content_type=json', 'http-env-get-1', payload_variable='test')
@@ -244,9 +255,10 @@ class TestHttpClientTask:
         assert requests_get_spy.call_count == 7
         args, kwargs = requests_get_spy.call_args_list[-1]
         assert args[0] == 'https://example.org/api/test'
-        assert len(kwargs) == 2
+        assert len(kwargs) == 3
         assert not kwargs.get('verify', None)
         assert kwargs.get('headers', {}).get('x-grizzly-user', None).startswith('HttpClientTask::')
+        assert kwargs.get('cookies', None) == {}
         assert request_fire_spy.call_count == 7
         assert len(list(task_factory.log_dir.rglob('**/*'))) == 5
 
@@ -267,11 +279,12 @@ class TestHttpClientTask:
         assert requests_get_spy.call_count == 8
         args, kwargs = requests_get_spy.call_args_list[-1]
         assert args[0] == 'https://example.org/api/test'
-        assert len(kwargs) == 2
+        assert len(kwargs) == 3
         assert kwargs.get('verify', None)
         headers = kwargs.get('headers', {})
         assert headers.get('x-grizzly-user', None).startswith('HttpClientTask::')
         assert headers.get('x-test-header', None) == 'foobar'
+        assert kwargs.get('cookies', None) == {}
         assert request_fire_spy.call_count == 8
         args, kwargs = request_fire_spy.call_args_list[-1]
         assert len(list(task_factory.log_dir.rglob('**/*'))) == 6

@@ -23,11 +23,16 @@ class AuthMethod(Enum):
     USER = 3
 
 
+class AuthType(Enum):
+    HEADER = 1
+    COOKIE = 2
+
+
 class GrizzlyAuthHttpContextUser(TypedDict):
     username: Optional[str]
     password: Optional[str]
     redirect_uri: Optional[str]
-    response_mode: Literal['form_post', 'fragment']
+    initialize_uri: Optional[str]
 
 
 class GrizzlyAuthHttpContextClient(TypedDict):
@@ -53,6 +58,7 @@ class GrizzlyHttpAuthClient(metaclass=ABCMeta):
     host: str
     environment: Environment
     headers: Dict[str, str]
+    cookies: Dict[str, str]
     _context: GrizzlyHttpContext
     session_started: Optional[float]
     parent: Optional['GrizzlyScenario']
@@ -66,9 +72,8 @@ class GrizzlyHttpAuthClient(metaclass=ABCMeta):
 
 class refresh_token:
     impl: Type[RefreshToken]
-    render: bool
 
-    def __init__(self, impl: Union[Type[RefreshToken], str], render: bool = False) -> None:
+    def __init__(self, impl: Union[Type[RefreshToken], str]) -> None:
         if isinstance(impl, str):
             if impl.count('.') > 1:
                 module_name, class_name = impl.rsplit('.', 1)
@@ -82,7 +87,6 @@ class refresh_token:
             impl = dynamic_impl
 
         self.impl = cast(Type[RefreshToken], impl)
-        self.render = render
 
     def __call__(self, func: WrappedFunc) -> WrappedFunc:
         def render(client: GrizzlyHttpAuthClient) -> None:
@@ -94,8 +98,6 @@ class refresh_token:
             client.host = f'{parsed.scheme}://{parsed.netloc}'
 
             client_context = client.parent.user._context.get(parsed.netloc, None)
-            client.parent.logger.debug(f'!! {parsed.netloc=}, {client_context=}')
-            client.parent.logger.debug(f'!! {client.parent.user._context=}')
 
             # we have a host specific context that we should merge into current context
             if client_context is not None:
@@ -103,7 +105,7 @@ class refresh_token:
 
         @wraps(func)
         def refresh_token(client: GrizzlyHttpAuthClient, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Any:
-            if self.render:
+            if client._context.get('auth', None) is None:
                 render(client)
 
             auth_context = client._context.get('auth', None)
@@ -119,13 +121,18 @@ class refresh_token:
                     and auth_context.get('provider', None) is not None
                 )
                 use_auth_user = (
-                    auth_client is not None
-                    and auth_user is not None
-                    and auth_client.get('id', None) is not None
+                    auth_user is not None
                     and auth_user.get('username', None) is not None
                     and auth_user.get('password', None) is not None
-                    and auth_user.get('redirect_uri', None) is not None
-                    and auth_context.get('provider', None) is not None
+                    and (
+                        (
+                            auth_user.get('redirect_uri', None) is not None
+                            and auth_context.get('provider', None) is not None
+                            and auth_client is not None
+                            and auth_client.get('id', None) is not None
+                        )
+                        or auth_user.get('initialize_uri', None) is not None
+                    )
                 )
 
                 if use_auth_client:
@@ -140,12 +147,17 @@ class refresh_token:
                     session_duration = session_now - client.session_started
 
                     # refresh token if session has been alive for at least refresh_time
-                    if session_duration >= auth_context.get('refresh_time', 3000) or client.headers.get('Authorization', None) is None:
-                        token = self.impl.get_token(client, auth_method)
+                    if session_duration >= auth_context.get('refresh_time', 3000) or (client.headers.get('Authorization', None) is None and client.cookies == {}):
+                        auth_type, secret = self.impl.get_token(client, auth_method)
                         client.session_started = time()
-                        client.headers.update({'Authorization': f'Bearer {token}'})
+                        if auth_type == AuthType.HEADER:
+                            client.headers.update({'Authorization': f'Bearer {secret}'})
+                        else:
+                            name, value = secret.split('=', 1)
+                            client.cookies.update({name: value})
                 else:
                     safe_del(client.headers, 'Authorization')
+                    safe_del(client.headers, 'Cookie')
 
             return func(client, *args, **kwargs)
 
@@ -154,18 +166,18 @@ class refresh_token:
 
 class RefreshToken(metaclass=ABCMeta):
     @classmethod
-    def get_token(cls, client: GrizzlyHttpAuthClient, auth_method: Literal[AuthMethod.CLIENT, AuthMethod.USER]) -> str:
+    def get_token(cls, client: GrizzlyHttpAuthClient, auth_method: Literal[AuthMethod.CLIENT, AuthMethod.USER]) -> Tuple[AuthType, str]:
         if auth_method == AuthMethod.CLIENT:
             return cls.get_oauth_token(client)
         else:
             return cls.get_oauth_authorization(client)
 
     @classmethod
-    def get_oauth_authorization(cls, client: GrizzlyHttpAuthClient) -> str:
+    def get_oauth_authorization(cls, client: GrizzlyHttpAuthClient) -> Tuple[AuthType, str]:
         raise NotImplementedError(f'{cls.__name__} has not implemented "get_oauth_authorization"')
 
     @classmethod
-    def get_oauth_token(cls, client: GrizzlyHttpAuthClient, pkcs: Optional[Tuple[str, str]] = None) -> str:
+    def get_oauth_token(cls, client: GrizzlyHttpAuthClient, pkcs: Optional[Tuple[str, str]] = None) -> Tuple[AuthType, str]:
         raise NotImplementedError(f'{cls.__name__} has not implemented "get_oauth_token"')
 
 

@@ -15,7 +15,7 @@ import requests
 
 from grizzly.utils import safe_del
 from grizzly.types.locust import StopUser
-from . import RefreshToken, GrizzlyHttpAuthClient
+from . import RefreshToken, GrizzlyHttpAuthClient, AuthType
 
 
 logger = logging.getLogger(__name__)
@@ -72,7 +72,7 @@ class FormPostParser(HTMLParser):
 
 class AAD(RefreshToken):
     @classmethod
-    def get_oauth_authorization(cls, client: GrizzlyHttpAuthClient) -> str:
+    def get_oauth_authorization(cls, client: GrizzlyHttpAuthClient) -> Tuple[AuthType, str]:
         def _parse_response_config(response: requests.Response) -> Dict[str, Any]:
             match = re.search(r'Config={(.*?)};', response.text, re.MULTILINE)
 
@@ -122,20 +122,29 @@ class AAD(RefreshToken):
         assert auth_context is not None, 'context variable auth is not set'
         auth_user_context = auth_context.get('user', None)
         assert auth_user_context is not None, 'context variable auth.user is not set'
-        auth_client_context = auth_context.get('client', None)
-        assert auth_client_context is not None, 'context variable auth.client is not set'
-        provider_url = auth_context.get('provider', None)
-        assert provider_url is not None, 'context variable auth.provider is not set'
+
+        initialize_uri = auth_user_context.get('initialize_uri', None)
+        redirect_uri = auth_user_context.get('redirect_uri', None)
+
+        assert initialize_uri is None or redirect_uri is None, 'both auth.user.initialize_uri and auth.user.redirect_uri is set'
+
+        is_token_v2_0: Optional[bool] = None
+        if initialize_uri is None:
+            redirect_uri = cast(str, redirect_uri)
+            auth_client_context = auth_context.get('client', None)
+            assert auth_client_context is not None, 'context variable auth.client is not set'
+            provider_url = auth_context.get('provider', None)
+            assert provider_url is not None, 'context variable auth.provider is not set'
+            auth_provider_parsed = urlparse(provider_url)
+            is_token_v2_0 = 'v2.0' in provider_url
 
         start_time = time_perf_counter()
         total_response_length = 0
         exception: Optional[Exception] = None
-        auth_provider_parsed = urlparse(provider_url)
-        is_token_v2_0 = 'v2.0' in provider_url
-        response_mode = auth_user_context.get('response_mode', 'fragment')
+        verify = client._context.get('verify_certificates', True)
+        username_lowercase = cast(str, auth_user_context['username']).lower()
 
         try:
-
             total_response_length = 0
 
             with requests.Session() as session:
@@ -156,58 +165,65 @@ class AAD(RefreshToken):
                 }
 
                 # <!-- request 1
-                client_id = cast(str, auth_client_context['id'])
-                client_request_id = generate_uuid()
-                username_lowercase = cast(str, auth_user_context['username']).lower()
+                if initialize_uri is None:
+                    # <!-- dummy stuff, done earlier
+                    assert auth_client_context is not None
+                    assert redirect_uri is not None
+                    # // -->
+                    client_id = cast(str, auth_client_context['id'])
+                    client_request_id = generate_uuid()
 
-                redirect_uri = cast(str, auth_user_context['redirect_uri'])
-                redirect_uri_parsed = urlparse(redirect_uri)
+                    redirect_uri_parsed = urlparse(redirect_uri)
 
-                if len(redirect_uri_parsed.netloc) == 0:
-                    redirect_uri = f"{client.host}{redirect_uri}"
+                    if len(redirect_uri_parsed.netloc) == 0:
+                        redirect_uri = f"{client.host}{redirect_uri}"
 
-                url = f'{provider_url}/authorize'
+                    url = f'{provider_url}/authorize'
 
-                params: Dict[str, List[str]] = {
-                    'response_type': ['id_token'],
-                    'client_id': [client_id],
-                    'redirect_uri': [redirect_uri],
-                    'state': [generate_uuid()],
-                    'client-request-id': [client_request_id],
-                    'x-client-SKU': ['Js'],
-                    'x-client-Ver': ['1.0.18'],
-                    'nonce': [generate_uuid()],
-                }
+                    params: Dict[str, List[str]] = {
+                        'response_type': ['id_token'],
+                        'client_id': [client_id],
+                        'redirect_uri': [redirect_uri],
+                        'state': [generate_uuid()],
+                        'client-request-id': [client_request_id],
+                        'x-client-SKU': ['Js'],
+                        'x-client-Ver': ['1.0.18'],
+                        'nonce': [generate_uuid()],
+                    }
 
-                code_verifier: Optional[str] = None
-                code_challenge: Optional[str] = None
+                    code_verifier: Optional[str] = None
+                    code_challenge: Optional[str] = None
 
-                if is_token_v2_0:
-                    params.update({
-                        'response_mode': [response_mode],
-                        'scope': ['openid profile offline_access'],
-                    })
+                    if is_token_v2_0:
+                        params.update({
+                            'response_mode': ['fragment'],
+                        })
 
-                    if response_mode == 'fragment':
                         code_verifier, code_challenge = generate_pkcs()
                         params.update({
                             'response_type': ['code'],
                             'code_challenge_method': ['S256'],
                             'code_challenge': [code_challenge],
-                        })
-                    else:
-                        del params['client-request-id']
-                        params.update({
-                            'client_info': ['1'],
-                            'x-client-brkrver': ['IDWeb.1.26.0.0'],
+                            'scope': ['openid profile offline_access'],
                         })
 
-                headers = {
-                    'Host': str(auth_provider_parsed.netloc),
-                    **headers_ua,
-                }
+                    headers = {
+                        'Host': auth_provider_parsed.netloc,
+                        **headers_ua,
+                    }
 
-                response = session.get(url, headers=headers, params=params)
+                    response = session.get(url, headers=headers, params=params, allow_redirects=False)
+                else:
+                    initialize_uri_parsed = urlparse(initialize_uri)
+                    if len(initialize_uri_parsed.netloc) < 1:
+                        initialize_uri = f'{client.host}{initialize_uri}'
+
+                    initialize_uri_parsed = urlparse(initialize_uri)
+
+                    response = session.get(initialize_uri, verify=verify)
+
+                    is_token_v2_0 = 'v2.0' in response.url
+
                 logger.debug(f'user auth request 1: {response.url} ({response.status_code})')
                 total_response_length += int(response.headers.get('content-length', '0'))
 
@@ -216,14 +232,12 @@ class AAD(RefreshToken):
 
                 referer = response.url
 
-                config = _parse_response_config(response)
+                config = update_state(state, response)
 
                 exception_message = config.get('strServiceExceptionMessage', None)
 
                 if exception_message is not None and len(exception_message.strip()) > 0:
                     raise RuntimeError(exception_message)
-
-                config = update_state(state, response)
                 # // request 1 -->
 
                 # <!-- request 2
@@ -231,14 +245,15 @@ class AAD(RefreshToken):
                 params = parse_qs(url_parsed.query)
 
                 url = f'{url_parsed.scheme}://{url_parsed.netloc}{url_parsed.path}'
+                host = url_parsed.netloc
                 params['mkt'] = ['sv-SE']
 
                 headers = {
                     'Accept': 'application/json',
-                    'Host': str(auth_provider_parsed.netloc),
+                    'Host': host,
                     'ContentType': 'application/json; charset=UTF-8',
                     'canary': state['apiCanary'],
-                    'client-request-id': client_request_id,
+                    'client-request-id': state['correlationId'],
                     'hpgact': state['hpgact'],
                     'hpgid': state['hpgid'],
                     'hpgrequestid': state['sessionId'],
@@ -263,7 +278,7 @@ class AAD(RefreshToken):
                     'isAccessPassSupported': True,
                 }
 
-                response = session.post(url, headers=headers, params=params, json=payload)
+                response = session.post(url, headers=headers, params=params, json=payload, allow_redirects=False)
                 total_response_length += int(response.headers.get('content-length', '0'))
 
                 logger.debug(f'user auth request 2: {response.url} ({response.status_code})')
@@ -281,13 +296,17 @@ class AAD(RefreshToken):
                 # // request 2 -->
 
                 # <!-- request 3
-                assert config['urlPost'].startswith('https://'), f"response from {response.url} contained unexpected value '{config['urlPost']}'"
-                url = config['urlPost']
+                if initialize_uri is None:
+                    assert config['urlPost'].startswith('https://'), f"response from {response.url} contained unexpected value '{config['urlPost']}'"
+                    url = config['urlPost']
+                else:
+                    assert not config['urlPost'].startswith('https://'), f"response from {response.url} contained unexpected value '{config['urlPost']}'"
+                    url = f'{url_parsed.scheme}://{host}{config["urlPost"]}'
 
                 headers = {
                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
                     'Content-Type': 'application/x-www-form-urlencoded',
-                    'Host': str(auth_provider_parsed.netloc),
+                    'Host': host,
                     'Referer': referer,
                     **headers_ua,
                 }
@@ -330,7 +349,7 @@ class AAD(RefreshToken):
                 if response.status_code != 200:
                     raise RuntimeError(f'user auth request 3: {response.url} had unexpected status code {response.status_code}')
 
-                config = _parse_response_config(response)
+                config = update_state(state, response)
 
                 exception_message = config.get('strServiceExceptionMessage', None)
 
@@ -344,20 +363,16 @@ class AAD(RefreshToken):
                     error_message = f'{username_lowercase} requires MFA for login: {user_proof["authMethodId"]} = {user_proof["display"]}'
                     logger.error(error_message)
                     raise RuntimeError(error_message)
-
-                # update state
-                state['sessionId'] = config['sessionId']
-                state['sFT'] = config['sFT']
                 # // request 3 -->
 
                 #  <!-- request 4
                 assert not config['urlPost'].startswith('https://'), f"unexpected response from {response.url}, incorrect username and/or password?"
-                url = f'{str(auth_provider_parsed.scheme)}://{str(auth_provider_parsed.netloc)}{config["urlPost"]}'
+                url = f'https://{host}{config["urlPost"]}'
 
                 headers = {
                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
                     'Content-Type': 'application/x-www-form-urlencoded',
-                    'Host': str(auth_provider_parsed.netloc),
+                    'Host': host,
                     'Referer': referer,
                     **headers_ua,
                 }
@@ -385,7 +400,7 @@ class AAD(RefreshToken):
 
                 logger.debug(f'user auth request 4: {response.url} ({response.status_code})')
 
-                if not is_token_v2_0 or (is_token_v2_0 and response_mode == 'fragment'):
+                if initialize_uri is None:
                     if response.status_code != 302:
                         try:
                             config = _parse_response_config(response)
@@ -416,9 +431,12 @@ class AAD(RefreshToken):
                     else:
                         assert 'id_token' in fragments, f'could not find id_token in {token_url}'
                         token = fragments['id_token'][0]
-                        return token
-                elif is_token_v2_0 and response_mode == 'form_post':
-                    if response.status_code != 200:
+                        return (AuthType.HEADER, token,)
+                else:
+                    parser = FormPostParser()
+                    parser.feed(response.text)
+
+                    if response.status_code != 200 or parser.action is None:
                         try:
                             config = _parse_response_config(response)
                             exception_message = config.get('strServiceExceptionMessage', None)
@@ -430,33 +448,40 @@ class AAD(RefreshToken):
 
                         raise RuntimeError(f'user auth request 4: {response.url} had unexpected status code {response.status_code}')
 
-                    parser = FormPostParser()
-                    parser.feed(response.text)
-                    assert parser.action is not None, 'could not find action in response'
-
-                    origin = f'{redirect_uri_parsed.scheme}://{redirect_uri_parsed.netloc}'
+                    origin = f'https://{host}'
 
                     headers.update({
                         'Origin': origin,
                         'Referer': origin,
                     })
 
-                    response = session.post(parser.action, headers=headers, data=parser.payload, allow_redirects=False, verify=False)
+                    safe_del(headers, 'Host')
 
-                    print(f'{parser.action=}')
-                    print(f'{response.headers=}')
-                    print(response.request.headers)
+                    response = session.post(parser.action, headers=headers, data=parser.payload, allow_redirects=True, verify=verify)
 
-                    if response.status_code != 302:
+                    if response.status_code != 200:
                         raise RuntimeError(f'user auth request 5: {response.url} had unexpected status code {response.status_code}')
 
+                    for cookie in session.cookies:
+                        if cookie.domain_initial_dot:
+                            domain = cookie.domain[1:]
+                        else:
+                            domain = cookie.domain
+
+                        if domain in initialize_uri:
+                            return AuthType.COOKIE, f'{cookie.name}={cookie.value}'
+
+                    raise RuntimeError('did not find AAD cookie in response in authorization flow session')
         except Exception as e:
             exception = e
             logger.error(str(e), exc_info=True)
         finally:
             name = client.__class__.__name__.rsplit('_', 1)[-1]
 
-            version = 'v1.0' if not is_token_v2_0 else 'v2.0'
+            if is_token_v2_0 is None:
+                version = ''
+            else:
+                version = 'v1.0' if not is_token_v2_0 else 'v2.0'
 
             request_meta = {
                 'request_type': 'AUTH',
@@ -474,7 +499,7 @@ class AAD(RefreshToken):
                 raise StopUser()
 
     @classmethod
-    def get_oauth_token(cls, client: GrizzlyHttpAuthClient, pkcs: Optional[Tuple[str, str]] = None) -> str:
+    def get_oauth_token(cls, client: GrizzlyHttpAuthClient, pkcs: Optional[Tuple[str, str]] = None) -> Tuple[AuthType, str]:
         auth_context = client._context.get('auth', None)
         assert auth_context is not None, 'context variable auth is not set'
         provider_url = auth_context.get('provider', None)
@@ -501,7 +526,7 @@ class AAD(RefreshToken):
                 'grant_type': None,
                 'client_id': auth_client_context['id'],
             },
-            'verify': client._context.get('verify_certificates', True),
+            'verify': True,
         }
 
         # build generic header values, but remove stuff that shouldn't be part
@@ -577,7 +602,7 @@ class AAD(RefreshToken):
                 else:
                     token = str(payload['id_token'])
 
-                return token
+                return (AuthType.HEADER, token,)
         except Exception as e:
             exception = e
             logger.error(str(e), exc_info=True)

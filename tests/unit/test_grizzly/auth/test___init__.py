@@ -6,7 +6,7 @@ import pytest
 
 from pytest_mock import MockerFixture
 
-from grizzly.auth import refresh_token, RefreshToken, AuthMethod, GrizzlyHttpAuthClient
+from grizzly.auth import refresh_token, RefreshToken, AuthMethod, AuthType, GrizzlyHttpAuthClient
 from grizzly.users import RestApiUser
 from grizzly.tasks import RequestTask
 from grizzly.tasks.clients import HttpClientTask
@@ -18,8 +18,8 @@ from tests.fixtures import GrizzlyFixture
 
 class DummyAuth(RefreshToken):
     @classmethod
-    def get_token(cls, client: GrizzlyHttpAuthClient, auth_method: Literal[AuthMethod.CLIENT, AuthMethod.USER]) -> str:
-        return 'dummy'
+    def get_token(cls, client: GrizzlyHttpAuthClient, auth_method: Literal[AuthMethod.CLIENT, AuthMethod.USER]) -> Tuple[AuthType, str]:
+        return AuthType.HEADER, 'dummy'
 
 
 class NotAnAuth:
@@ -180,6 +180,7 @@ def test_refresh_token_user(grizzly_fixture: GrizzlyFixture, mocker: MockerFixtu
             'username': 'alice@example.com',
             'password': 'HemligaArne',
             'redirect_uri': '/authenticated',
+            'initialize_uri': None,
         }
 
         # new user in context, needs to get a new token
@@ -196,7 +197,7 @@ def test_refresh_token_user_render(grizzly_fixture: GrizzlyFixture, mocker: Mock
     assert isinstance(user, RestApiUser)
     assert parent is not None
 
-    decorator = refresh_token(DummyAuth, render=True)
+    decorator = refresh_token(DummyAuth)
     get_token_mock = mocker.spy(DummyAuth, 'get_token')
 
     def get(self: 'HttpClientTask', *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:

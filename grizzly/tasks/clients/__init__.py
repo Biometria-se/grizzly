@@ -217,6 +217,7 @@ class ClientTask(GrizzlyMetaRequestTask):
             # get metadata back from actual implementation
             yield meta
         except Exception as e:
+            parent.logger.error(str(e), exc_info=True)
             exception = e
         finally:
             if self.name is None:

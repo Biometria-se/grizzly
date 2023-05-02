@@ -106,6 +106,7 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
         )
 
         self.arguments = {}
+        self.cookies = {}
         self.headers = {
             'x-grizzly-user': f'{self.__class__.__name__}::{id(self)}',
         }
@@ -131,7 +132,7 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
         if metadata is not None:
             self.headers.update(metadata)
 
-    @refresh_token(AAD, render=True)
+    @refresh_token(AAD)
     def get(self, parent: GrizzlyScenario) -> GrizzlyResponse:
         with self.action(parent) as meta:
             url = parent.render(self.endpoint)
@@ -142,22 +143,24 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
                 'payload': None,
             }})
 
-            response = requests.get(url, headers=self.headers, **self.arguments)
+            response = requests.get(url, headers=self.headers, cookies=self.cookies, **self.arguments)
+
             payload = response.text
             metadata = dict(response.headers)
 
-            if self.payload_variable is not None:
-                parent.user._context['variables'][self.payload_variable] = payload
-
-            if self.metadata_variable is not None:
-                parent.user._context['variables'][self.metadata_variable] = jsondumps(metadata)
-
-            meta['response_length'] = len(payload.encode('utf-8'))
-
             exception: Optional[Exception] = None
 
-            if response.status_code != 200:
+            if response.status_code != 200 or response.url != url:
+                parent.logger.error(f'{response.url} returned {response.status_code}')
                 exception = CatchResponseError(f'{response.status_code} not in [200]: {payload}')
+            else:
+                if self.payload_variable is not None:
+                    parent.user._context['variables'][self.payload_variable] = payload
+
+                if self.metadata_variable is not None:
+                    parent.user._context['variables'][self.metadata_variable] = jsondumps(metadata)
+
+            meta['response_length'] = len(payload.encode('utf-8'))
 
             meta.update({
                 'response': {
