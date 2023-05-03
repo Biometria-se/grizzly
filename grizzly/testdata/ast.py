@@ -8,7 +8,7 @@ from jinja2 import nodes as j2
 from grizzly.tasks import GrizzlyTask
 
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContextScenario
 
 logger = logging.getLogger(__name__)

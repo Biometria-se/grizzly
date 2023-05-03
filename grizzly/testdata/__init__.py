@@ -5,7 +5,7 @@ from grizzly.types import GrizzlyVariableType
 from grizzly.types.locust import MessageHandler
 
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContext
     from .variables import AtomicVariable
 

@@ -50,15 +50,15 @@ class TransformerContentType(PermutationEnum):
 class Transformer(ABCMeta):
     @classmethod
     def transform(cls, raw: str) -> Any:
-        raise NotImplementedError(f'{cls.__name__} has not implemented transform')
+        raise NotImplementedError(f'{cls.__name__} has not implemented transform')  # pragma: no cover
 
     @classmethod
     def validate(cls, expression: str) -> bool:
-        raise NotImplementedError(f'{cls.__name__} has not implemented validate')
+        raise NotImplementedError(f'{cls.__name__} has not implemented validate')  # pragma: no cover
 
     @classmethod
     def parser(cls, expression: str) -> Callable[[Any], List[str]]:
-        raise NotImplementedError(f'{cls.__name__} has not implemented parse')
+        raise NotImplementedError(f'{cls.__name__} has not implemented parse')  # pragma: no cover
 
 
 class transformer:

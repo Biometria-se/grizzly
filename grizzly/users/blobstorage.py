@@ -97,7 +97,7 @@ class BlobStorageUser(GrizzlyUser):
                 if request.method in [RequestMethod.SEND, RequestMethod.PUT]:
                     blob_client.upload_blob(payload)
                     response_length = len(payload or '')
-                else:
+                else:  # pragma: no cover
                     raise NotImplementedError(f'{self.__class__.__name__} has not implemented {request.method.name}')
         except Exception as e:
             exception = e

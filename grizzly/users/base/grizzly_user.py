@@ -18,7 +18,7 @@ from grizzly.utils import merge_dicts
 from . import FileRequests
 
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContextScenario
 
 
@@ -70,7 +70,7 @@ class GrizzlyUser(User):
 
     @abstractmethod
     def request(self, request: RequestTask) -> GrizzlyResponse:
-        raise NotImplementedError(f'{self.__class__.__name__} has not implemented request')
+        raise NotImplementedError(f'{self.__class__.__name__} has not implemented request')  # pragma: no cover
 
     def render(self, request: RequestTask) -> Tuple[str, str, Optional[str], Optional[Dict[str, str]], Optional[Dict[str, str]]]:
         scenario_name = f'{request.scenario.identifier} {request.name}'

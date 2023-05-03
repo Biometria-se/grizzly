@@ -126,7 +126,7 @@ class AtomicVariable(Generic[T], AbstractAtomicClass):
             return self._get_value(variable)
 
     def __setitem__(self, variable: str, value: Optional[T]) -> None:
-        raise NotImplementedError(f'{self.__class__.__name__} has not implemented "__setitem__"')
+        raise NotImplementedError(f'{self.__class__.__name__} has not implemented "__setitem__"')  # pragma: no cover
 
     def __delitem__(self, variable: str) -> None:
         try:

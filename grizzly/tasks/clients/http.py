@@ -175,4 +175,4 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
             return metadata, payload
 
     def put(self, parent: GrizzlyScenario) -> GrizzlyResponse:
-        raise NotImplementedError(f'{self.__class__.__name__} has not implemented PUT')
+        raise NotImplementedError(f'{self.__class__.__name__} has not implemented PUT')  # pragma: no cover

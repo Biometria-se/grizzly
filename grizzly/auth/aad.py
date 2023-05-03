@@ -51,7 +51,7 @@ class FormPostParser(HTMLParser):
             'session_state': self.session_state,
         }
 
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+    def handle_starttag(self, tag: str, attrs: List[Tuple[str, Optional[str]]]) -> None:
         if tag == 'form':
             for attr, value in attrs:
                 if attr == 'action':

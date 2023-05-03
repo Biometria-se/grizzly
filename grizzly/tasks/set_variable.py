@@ -24,7 +24,7 @@ from grizzly.testdata.variables import AtomicVariable
 
 from . import GrizzlyTask, template, grizzlytask
 
-if TYPE_CHECKING:  # pragma: no coverage
+if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContextScenario
     from grizzly.scenarios import GrizzlyScenario
 

@@ -19,7 +19,7 @@ from grizzly.utils import merge_dicts
 from . import GrizzlyVariables
 
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 
 

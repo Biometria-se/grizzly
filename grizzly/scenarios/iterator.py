@@ -17,7 +17,7 @@ from grizzly.exceptions import RestartScenario, StopScenario
 
 from . import GrizzlyScenario
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from grizzly.users.base import GrizzlyUser
 
 

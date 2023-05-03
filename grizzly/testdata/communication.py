@@ -21,7 +21,7 @@ from .variables import AtomicVariablePersist
 from . import GrizzlyVariables
 
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContext
     from grizzly.scenarios import GrizzlyScenario
 
