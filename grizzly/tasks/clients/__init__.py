@@ -159,7 +159,7 @@ class ClientTask(GrizzlyMetaRequestTask):
         return self._text
 
     def text_fset(self, value: str) -> None:
-        raise NotImplementedError(f'{self.__class__.__name__} has not implemented support for step text')
+        raise NotImplementedError(f'{self.__class__.__name__} has not implemented support for step text')  # pragma: no cover
 
     text = property(text_fget, text_fset)
     # EOW
@@ -200,11 +200,11 @@ class ClientTask(GrizzlyMetaRequestTask):
 
     @abstractmethod
     def get(self, parent: GrizzlyScenario) -> GrizzlyResponse:
-        raise NotImplementedError(f'{self.__class__.__name__} has not implemented GET')
+        raise NotImplementedError(f'{self.__class__.__name__} has not implemented GET')  # pragma: no cover
 
     @abstractmethod
     def put(self, parent: GrizzlyScenario) -> GrizzlyResponse:
-        raise NotImplementedError(f'{self.__class__.__name__} has not implemented PUT')
+        raise NotImplementedError(f'{self.__class__.__name__} has not implemented PUT')  # pragma: no cover
 
     @contextmanager
     def action(self, parent: GrizzlyScenario, action: Optional[str] = None, suppress: bool = False) -> Generator[Dict[str, Any], None, None]:
@@ -217,6 +217,7 @@ class ClientTask(GrizzlyMetaRequestTask):
             # get metadata back from actual implementation
             yield meta
         except Exception as e:
+            parent.logger.error(str(e), exc_info=True)
             exception = e
         finally:
             if self.name is None:

@@ -143,7 +143,7 @@ class AtomicCsvWriter(AtomicVariable[str], AtomicVariableSettable):
             del instance._buffer[variable]
 
     def __getitem__(self, variable: str) -> Optional[str]:
-        raise NotImplementedError(f'{self.__class__.__name__} has not implemented "__getitem__"')
+        raise NotImplementedError(f'{self.__class__.__name__} has not implemented "__getitem__"')  # pragma: no cover
 
     def __setitem__(self, variable: str, value: Optional[str]) -> None:
         if value is None or isinstance(self.grizzly.state.locust, MasterRunner):

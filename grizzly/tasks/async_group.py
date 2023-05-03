@@ -68,7 +68,7 @@ class AsyncRequestGroupTask(GrizzlyTaskWrapper):
         @grizzlytask
         def task(parent: 'GrizzlyScenario') -> Any:
             if not isinstance(parent.user, AsyncRequests):
-                raise NotImplementedError(f'{parent.user.__class__.__name__} does not inherit AsyncRequests')
+                raise NotImplementedError(f'{parent.user.__class__.__name__} does not inherit AsyncRequests')  # pragma: no cover
 
             exception: Optional[Exception] = None
             response_length = 0

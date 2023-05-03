@@ -138,4 +138,4 @@ class PermutationEnum(Enum, metaclass=PermutationMeta):
     @classmethod
     @abstractmethod
     def from_string(cls, value: str) -> Enum:
-        raise NotImplementedError(f'{cls.__name__} has not implemented `from_string`')
+        raise NotImplementedError(f'{cls.__name__} has not implemented `from_string`')  # pragma: no cover

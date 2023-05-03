@@ -51,6 +51,7 @@ class TestRestApiUser:
                     'username': None,
                     'password': None,
                     'redirect_uri': None,
+                    'initialize_uri': None,
                 },
             },
             'metadata': None,
@@ -83,7 +84,7 @@ class TestRestApiUser:
             assert isinstance(user, RestApiUser)
 
             user._context = {
-                'host': 'https://backend.example.com',
+                'host': '',
                 'auth': {
                     'client': {
                         'id': '',
@@ -91,9 +92,10 @@ class TestRestApiUser:
                     'user': {
                         'username': '',
                         'password': '',
-                        'redirect_uri': 'https://www.example.com/code',
+                        'redirect_uri': '',
+                        'response_mode': '',
                     },
-                    'provider': None,
+                    'provider': '',
                 },
                 'verify_certificates': False,
                 'metadata': {
@@ -109,7 +111,7 @@ class TestRestApiUser:
             fire = mocker.spy(user.environment.events.request, 'fire')
 
             # user.get_oauth_authorization()
-            request = RequestTask(RequestMethod.GET, name='test', endpoint='/api/v2/test')
+            request = RequestTask(RequestMethod.GET, name='test', endpoint='/api/test')
             request.scenario = user._scenario
             headers, body = user.request(request)
             user.logger.info(headers)

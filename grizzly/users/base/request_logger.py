@@ -151,7 +151,7 @@ class RequestLogger(ResponseEvent, GrizzlyUser):
         }
 
     def request(self, request: RequestTask) -> GrizzlyResponse:
-        raise NotImplementedError(f'{self.__class__.__name__} has not implemented request')
+        raise NotImplementedError(f'{self.__class__.__name__} has not implemented request')  # pragma: no cover
 
     def request_logger(
         self,

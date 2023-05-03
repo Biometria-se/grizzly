@@ -119,6 +119,7 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
                 'username': None,
                 'password': None,
                 'redirect_uri': None,
+                'initialize_uri': None,
             },
         },
         'metadata': None,
@@ -147,6 +148,7 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
             self.headers.update(metadata)
 
         self.parent = None
+        self.cookies = {}
 
     def on_start(self) -> None:
         super().on_start()
@@ -257,6 +259,7 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
             name=name,
             url=url,
             catch_response=True,
+            cookies=self.cookies,
             **parameters,
         ) as response:
             if not isinstance(client, ResponseEventSession):

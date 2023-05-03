@@ -150,7 +150,7 @@ class GrizzlyTask(ABC):
 
     @abstractmethod
     def __call__(self) -> grizzlytask:
-        raise NotImplementedError(f'{self.__class__.__name__} has not been implemented')
+        raise NotImplementedError(f'{self.__class__.__name__} has not been implemented')  # pragma: no cover
 
     def get_templates(self) -> List[str]:
         def is_template(value: str) -> bool:
@@ -204,7 +204,7 @@ class GrizzlyMetaRequestTask(GrizzlyTask, metaclass=ABCMeta):
     endpoint: str
 
     def execute(self, parent: 'GrizzlyScenario') -> 'GrizzlyResponse':
-        raise NotImplementedError(f'{self.__class__.name} has not implemented "execute"')
+        raise NotImplementedError(f'{self.__class__.name} has not implemented "execute"')  # pragma: no cover
 
     def on_start(self, parent: 'GrizzlyScenario') -> None:
         pass
@@ -218,11 +218,11 @@ class GrizzlyTaskWrapper(GrizzlyTask, metaclass=ABCMeta):
 
     @abstractmethod
     def add(self, task: GrizzlyTask) -> None:
-        raise NotImplementedError(f'{self.__class__.__name__} has not implemented add')
+        raise NotImplementedError(f'{self.__class__.__name__} has not implemented add')  # pragma: no cover
 
     @abstractmethod
     def peek(self) -> List[GrizzlyTask]:
-        raise NotImplementedError(f'{self.__class__.__name__} has not implemented peek')
+        raise NotImplementedError(f'{self.__class__.__name__} has not implemented peek')  # pragma: no cover
 
 
 class template:

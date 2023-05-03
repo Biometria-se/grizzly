@@ -29,7 +29,7 @@ class ResponseHandlerAction(ABC):
         user: GrizzlyUser,
         response: Optional[GrizzlyResponseContextManager] = None,
     ) -> None:
-        raise NotImplementedError(f'{self.__class__.__name__} has not implemented __call__')
+        raise NotImplementedError(f'{self.__class__.__name__} has not implemented __call__')  # pragma: no cover
 
     def get_match(
         self,
