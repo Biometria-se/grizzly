@@ -26,9 +26,29 @@ class NotAnAuth:
     pass
 
 
+class TestGrizzlyHttpAuthClient:
+    def test_add_metadata(self) -> None:
+        class HttpAuth(GrizzlyHttpAuthClient):
+            def __init__(self) -> None:
+                self._context = {
+                    'verify_certificates': True,
+                    'metadata': None,
+                    'auth': None,
+                }
+
+        client = HttpAuth()
+
+        assert client._context.get('metadata', {}) is None
+
+        client.add_metadata('foo', 'bar')
+
+        assert client._context.get('metadata', None) == {'foo': 'bar'}
+
+
 def test_refresh_token_client(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
-    _, user, _ = grizzly_fixture(user_type=RestApiUser)
+    _, user, scenario = grizzly_fixture(user_type=RestApiUser)
     assert isinstance(user, RestApiUser)
+    assert scenario is not None
 
     decorator = refresh_token(DummyAuth)
     get_token_mock = mocker.spy(DummyAuth, 'get_token')
@@ -46,10 +66,23 @@ def test_refresh_token_client(grizzly_fixture: GrizzlyFixture, mocker: MockerFix
     )
 
     try:
-        auth_client_context = auth_context['client']
         request_task = RequestTask(RequestMethod.POST, name='test-request', endpoint='/api/test')
         user._scenario.tasks.clear()
         user._scenario.tasks.add(request_task)
+
+        # no auth, no parent
+        original_auth_context = cast(dict, user._context['auth']).copy()
+        user._context['auth'] = None
+
+        user.request(request_task)
+
+        get_token_mock.assert_not_called()
+        assert user._context['auth'] is None
+
+        user._context['auth'] = original_auth_context
+
+        auth_client_context = auth_context['client']
+        auth_context = user.context()['auth']
 
         # no authentication for api, request will be called which raises NotRefreshed
         assert auth_context['provider'] is None

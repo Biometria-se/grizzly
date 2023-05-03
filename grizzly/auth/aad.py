@@ -463,15 +463,12 @@ class AAD(RefreshToken):
                         raise RuntimeError(f'user auth request 5: {response.url} had unexpected status code {response.status_code}')
 
                     for cookie in session.cookies:
-                        if cookie.domain_initial_dot:
-                            domain = cookie.domain[1:]
-                        else:
-                            domain = cookie.domain
+                        domain = cookie.domain[1:] if cookie.domain_initial_dot else cookie.domain
 
                         if domain in initialize_uri:
                             return AuthType.COOKIE, f'{cookie.name}={cookie.value}'
 
-                    raise RuntimeError('did not find AAD cookie in response in authorization flow session')
+                    raise RuntimeError('did not find AAD cookie in authorization flow response session')
         except Exception as e:
             exception = e
             logger.error(str(e), exc_info=True)

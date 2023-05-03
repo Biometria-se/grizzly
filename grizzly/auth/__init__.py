@@ -13,7 +13,7 @@ from grizzly.types.locust import Environment
 from grizzly.utils import safe_del, merge_dicts
 
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from grizzly.scenarios import GrizzlyScenario
 
 
@@ -174,11 +174,11 @@ class RefreshToken(metaclass=ABCMeta):
 
     @classmethod
     def get_oauth_authorization(cls, client: GrizzlyHttpAuthClient) -> Tuple[AuthType, str]:
-        raise NotImplementedError(f'{cls.__name__} has not implemented "get_oauth_authorization"')
+        raise NotImplementedError(f'{cls.__name__} has not implemented "get_oauth_authorization"')  # pragma: no cover
 
     @classmethod
     def get_oauth_token(cls, client: GrizzlyHttpAuthClient, pkcs: Optional[Tuple[str, str]] = None) -> Tuple[AuthType, str]:
-        raise NotImplementedError(f'{cls.__name__} has not implemented "get_oauth_token"')
+        raise NotImplementedError(f'{cls.__name__} has not implemented "get_oauth_token"')  # pragma: no cover
 
 
 from .aad import AAD
