@@ -149,9 +149,7 @@ def router() -> None:
 
             request = jsondumps(payload).encode()
             backend_request = [worker_id.encode(), SPLITTER_FRAME, request_id, SPLITTER_FRAME, request]
-            logger.debug(f'{backend_request=}')
             backend.send_multipart(backend_request)
-            logger.debug(f'forwarding frontend request to worker {request_worker_id}')
 
     logger.info('stopping')
     for worker_thread in worker_threads:

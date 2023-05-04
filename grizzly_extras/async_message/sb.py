@@ -473,6 +473,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         message: Optional[ServiceBusMessage] = None
         metadata: Optional[Dict[str, Any]] = None
         payload = request.get('payload', None)
+        client = request.get('client', -1)
 
         if instance_type not in ['receiver', 'sender']:
             raise AsyncMessageError(f'"{instance_type}" is not a valid value for context.connection')
@@ -524,10 +525,10 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                     for received_message in receiver:
                         message = cast(ServiceBusReceivedMessage, received_message)
 
-                        self.logger.debug(f'got message id: {message.message_id}')
+                        self.logger.debug(f'{client}::{cache_endpoint}: got message id {message.message_id}')
 
                         if expression is None:
-                            self.logger.debug(f'completing message id: {message.message_id}')
+                            self.logger.debug(f'{client}::{cache_endpoint}: completing message id {message.message_id}')
                             receiver.complete_message(message)
                             break
 
@@ -546,10 +547,10 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
                             values = get_values(transformed_payload)
 
-                            self.logger.debug(f'expression={request_arguments["expression"]}, matches={values}, payload={transformed_payload}')
+                            self.logger.debug(f'{client}::{cache_endpoint}: expression={request_arguments["expression"]}, matches={values}, payload={transformed_payload}')
 
                             if len(values) > 0:
-                                self.logger.debug(f'completing message id: {message.message_id}, with expression "{request_arguments["expression"]}"')
+                                self.logger.debug(f'{client}::{cache_endpoint}: completing message id {message.message_id}, with expression "{request_arguments["expression"]}"')
                                 receiver.complete_message(message)
                                 had_error = False
                                 break
@@ -559,13 +560,15 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                             if had_error:
                                 if message is not None:
                                     if not consume:
-                                        self.logger.debug(f'abandoning message id: {message.message_id}, {message._raw_amqp_message.header.delivery_count}')
+                                        self.logger.debug(
+                                            f'{client}::{cache_endpoint}: abandoning message id {message.message_id}, {message._raw_amqp_message.header.delivery_count}',
+                                        )
                                         receiver.abandon_message(message)
                                         message = None
                                     else:
-                                        self.logger.debug(f'consuming and ignoring message id: {message.message_id}')
+                                        self.logger.debug(f'{client}::{cache_endpoint}: consuming and ignoring message id {message.message_id}')
                                         receiver.complete_message(message)  # remove message from endpoint, but ignore contents
-                                        payload = metadata = None
+                                        message = payload = metadata = None
 
                                 if message_wait > 0 and (perf_counter() - wait_start) >= message_wait:
                                     raise StopIteration()
@@ -577,8 +580,6 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
                     break
                 except StopIteration:
-                    if message_wait > 0:
-                        receiver._handler._last_activity_timestamp = None
                     delta = perf_counter() - wait_start
 
                     if message_wait > 0:
@@ -587,10 +588,13 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                             message = None
                             if message_wait > 0:
                                 error_message = f'{error_message} within {message_wait} seconds'
+                        elif consume and expression is not None:
+                            self.logger.debug(f'{client}::{cache_endpoint}: waiting for more messages')
+                            continue
                         else:
                             # ugly brute-force way of handling no messages on service bus
                             if retry < 3:
-                                self.logger.warning(f'receiver for {cache_endpoint} returned no message without trying, brute-force retry #{retry}')
+                                self.logger.warning(f'receiver for {client}::{cache_endpoint} returned no message without trying, brute-force retry #{retry}')
                                 # <!-- useful debugging information, actual message count on message entity
                                 if self.logger._logger.level == logging.DEBUG and self.mgmt_client is not None:
                                     if 'topic' in endpoint_arguments:
