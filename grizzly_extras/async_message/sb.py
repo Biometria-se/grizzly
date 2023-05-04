@@ -61,21 +61,24 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
     def client(self, value: ServiceBusClient) -> None:
         self._client = value
 
-    def close(self) -> None:
-        for key, sender in self._sender_cache.items():
-            self.logger.debug(f'closing sender {key}')
-            sender.close()
+    def close(self, soft: bool = False) -> None:
+        self.logger.debug(f'close: {soft=}')
+        if not soft:
+            for key, sender in self._sender_cache.items():
+                self.logger.debug(f'closing sender {key}')
+                sender.close()
 
-        self._sender_cache.clear()
+            self._sender_cache.clear()
 
-        for key, receiver in self._receiver_cache.items():
-            self.logger.debug(f'closing receiver {key}')
-            receiver.close()
+            for key, receiver in self._receiver_cache.items():
+                self.logger.debug(f'closing receiver {key}')
+                receiver.close()
 
-        self._receiver_cache.clear()
+            self._receiver_cache.clear()
 
         if len(self._sender_cache) + len(self._receiver_cache) == 0:
-            if self.client is not None:
+            self.logger.debug('no senders or receivers left, close ServiceBus clients')
+            if self._client is not None:
                 self.logger.debug('closing client')
                 self.client.close()
 
@@ -250,7 +253,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             except:  # pragma: no cover
                 pass
 
-        self.close()
+            self.close(soft=True)
 
         return {
             'message': 'thanks for all the fish',
