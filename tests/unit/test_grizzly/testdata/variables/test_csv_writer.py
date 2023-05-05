@@ -81,7 +81,6 @@ class TestAtomicCsvWriter:
             t = AtomicCsvWriter('output', 'foobar.csv | headers="foo,bar"')
 
             assert t._settings == {'output': {'headers': ['foo', 'bar'], 'destination': 'foobar.csv', 'overwrite': False}}
-            assert t._buffer == {'output': {}}
 
             u = AtomicCsvWriter('foobar', 'output.csv | headers="bar,foo", overwrite=True')
 
@@ -99,7 +98,6 @@ class TestAtomicCsvWriter:
                     'overwrite': True,
                 },
             }
-            assert t._buffer == {'output': {}, 'foobar': {}}
         finally:
             cleanup()
 
@@ -107,16 +105,13 @@ class TestAtomicCsvWriter:
         try:
             u = AtomicCsvWriter('foobar', 'output.csv | headers="bar,foo", overwrite=True')
             assert len(u._settings) == 1
-            assert len(u._buffer) == 1
 
             t = AtomicCsvWriter('output', 'foobar.csv | headers="foo,bar"')
             assert len(t._settings) == 2
-            assert len(t._buffer) == 2
 
             AtomicCsvWriter.clear()
 
             assert len(t._settings) == 0
-            assert len(t._buffer) == 0
         finally:
             cleanup()
 
@@ -135,35 +130,30 @@ class TestAtomicCsvWriter:
 
         t = AtomicCsvWriter('output', 'output.csv | headers="foo,bar"')
 
-        assert t._buffer == {'output': {}}
+        assert not hasattr(t, '_buffer')
+
+        with pytest.raises(ValueError) as ve:
+            t['world'] = 'hello'
+        assert str(ve.value) == 'AtomicCsvWriter.world is not a valid reference'
 
         with pytest.raises(ValueError) as ve:
             t['output'] = 'hello'
-        assert str(ve.value) == 'AtomicCsvWriter.output is not a valid reference'
+        assert str(ve.value) == 'AtomicCsvWriter.output: less values (1) than headers (2)'
 
         with pytest.raises(ValueError) as ve:
-            t['output.baz'] = 'hello'
-        assert str(ve.value) == 'AtomicCsvWriter.output has not specified header "baz"'
+            t['output'] = 'hello,world,foo'
+        assert str(ve.value) == 'AtomicCsvWriter.output: more values (3) than headers (2)'
 
-        t['output.foo'] = 'hello'
-
-        send_message_mock.assert_not_called()
-        assert t._buffer == {'output': {'foo': 'hello'}}
-
-        with pytest.raises(ValueError) as ve:
-            t['output.foo'] = 'world'
-        assert str(ve.value) == 'AtomicCsvWriter.output has already set value for "foo" in current row'
-
-        send_message_mock.assert_not_called()
-        assert t._buffer == {'output': {'foo': 'hello'}}
-
-        t['output.bar'] = 'world!'
+        t['output'] = 'hello, world'
 
         send_message_mock.assert_called_once_with('atomiccsvwriter', {
             'destination': 'output.csv',
-            'row': {'foo': 'hello', 'bar': 'world!'}
+            'row': {'foo': 'hello', 'bar': 'world'}
         })
-        assert t._buffer == {'output': {}}
+        send_message_mock.reset_mock()
 
-        # pass through
-        t['output'] = None
+        with pytest.raises(ValueError) as ve:
+            t['output.foo'] = 'world'
+        assert str(ve.value) == 'AtomicCsvWriter.output.foo is not a valid reference'
+
+        send_message_mock.assert_not_called()

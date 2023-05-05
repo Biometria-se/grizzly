@@ -21,6 +21,7 @@ from grizzly.testdata.utils import initialize_testdata, transform
 from grizzly.testdata.variables import AtomicIntegerIncrementer
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import LogMessageTask
+from grizzly.testdata.variables.csv_writer import atomiccsvwriter_message_handler
 
 from tests.fixtures import AtomicVariableCleanupFixture, BehaveFixture, GrizzlyFixture, NoopZmqFixture
 
@@ -73,10 +74,12 @@ class TestTestdataProducer:
             grizzly = cast(GrizzlyContext, behave_fixture.context.grizzly)
             grizzly.scenarios.clear()
             grizzly.scenarios.create(behave_fixture.create_scenario(scenario.__class__.__name__))
+            grizzly.scenario.orphan_templates.append('{{ AtomicCsvWriter.output }}')
             grizzly.state.variables['messageID'] = 123
             grizzly.state.variables['AtomicIntegerIncrementer.messageID'] = 456
             grizzly.state.variables['AtomicDirectoryContents.test'] = 'adirectory'
             grizzly.state.variables['AtomicCsvReader.test'] = 'test.csv'
+            grizzly.state.variables['AtomicCsvWriter.output'] = 'output.csv | headers="foo,bar"'
             grizzly.state.alias['AtomicCsvReader.test.header1'] = 'auth.user.username'
             grizzly.state.alias['AtomicCsvReader.test.header2'] = 'auth.user.password'
             grizzly.state.variables['AtomicIntegerIncrementer.value'] = '1 | step=5, persist=True'
@@ -96,7 +99,7 @@ class TestTestdataProducer:
             testdata, external_dependencies, message_handlers = initialize_testdata(grizzly, grizzly.scenario.tasks())
 
             assert external_dependencies == set()
-            assert message_handlers == {}
+            assert message_handlers == {'atomiccsvwriter': atomiccsvwriter_message_handler}
 
             producer = TestdataProducer(
                 grizzly=grizzly,
@@ -127,6 +130,7 @@ class TestTestdataProducer:
                 data = message['data']
                 assert 'variables' in data
                 variables = data['variables']
+                assert 'AtomicCsvWriter.output' not in variables
                 assert 'AtomicIntegerIncrementer.messageID' in variables
                 assert 'AtomicDate.now' in variables
                 assert 'messageID' in variables

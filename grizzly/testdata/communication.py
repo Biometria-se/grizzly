@@ -238,7 +238,10 @@ class TestdataProducer:
 
                                                     value = loaded_variable_datatypes[testdata_type][data_attribute]
                                                 else:
-                                                    value = variable[variable_name]
+                                                    try:
+                                                        value = variable[variable_name]
+                                                    except NotImplementedError:
+                                                        continue
                                             else:
                                                 value = variable
 

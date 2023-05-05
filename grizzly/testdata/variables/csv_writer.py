@@ -4,7 +4,7 @@ This variable writes to a CSV file.
 
 The CSV files **must** have headers for each column, since these are used to reference the value.
 
-When all specified headers has been set, the row will be "flushed" and written to the specified destination file.
+When setting the value of the variable there must be one value per specified header.
 
 ## Format
 
@@ -20,8 +20,7 @@ Value is the path, relative to `requests/`, of an file ending with `.csv`.
 ``` gherkin
 And value for variable "AtomicCsvWriter.output" is "output.csv | headers='foo,bar'"
 ...
-And value for variable "AtomicCsvWriter.output.foo" is "{{ value }}"
-And value for variable "AtomicCsvWriter.output.bar" is "{{ value }}"
+And value for variable "AtomicCsvWriter.output" is "{{ foo_value }}, {{ bar_value }}"
 ```
 
 '''
@@ -99,7 +98,6 @@ class AtomicCsvWriter(AtomicVariable[str], AtomicVariableSettable):
     __message_handlers__ = {'atomiccsvwriter': atomiccsvwriter_message_handler}
 
     _settings: Dict[str, Dict[str, Any]]
-    _buffer: Dict[str, Dict[str, Any]]
     arguments: Dict[str, Any] = {'headers': list_type, 'overwrite': bool_type}
 
     def __init__(self, variable: str, value: str, outer_lock: bool = False) -> None:
@@ -123,12 +121,10 @@ class AtomicCsvWriter(AtomicVariable[str], AtomicVariableSettable):
             if self.__initialized:
                 if variable not in self._settings:
                     self._settings[variable] = settings
-                    self._buffer[variable] = {}
 
                 return
 
             self._settings = {variable: settings}
-            self._buffer = {variable: {}}
             self.__initialized = True
 
     @classmethod
@@ -140,7 +136,6 @@ class AtomicCsvWriter(AtomicVariable[str], AtomicVariableSettable):
 
         for variable in variables:
             del instance._settings[variable]
-            del instance._buffer[variable]
 
     def __getitem__(self, variable: str) -> Optional[str]:
         raise NotImplementedError(f'{self.__class__.__name__} has not implemented "__getitem__"')  # pragma: no cover
@@ -149,27 +144,30 @@ class AtomicCsvWriter(AtomicVariable[str], AtomicVariableSettable):
         if value is None or isinstance(self.grizzly.state.locust, MasterRunner):
             return
 
-        if variable.count('.') < 1:
+        if variable not in self._settings:
             raise ValueError(f'{self.__class__.__name__}.{variable} is not a valid reference')
 
-        variable, header = variable.split('.', 1)
+        values = [v.strip() for v in value.split(',')]
 
-        if header not in self._settings[variable].get('headers', []):
-            raise ValueError(f'{self.__class__.__name__}.{variable} has not specified header "{header}"')
+        headers = self._settings[variable].get('headers', [])
+        values_count = len(values)
+        header_count = len(headers)
 
-        buffer = self._buffer.get(variable, {})
+        if values_count != header_count:
+            delta = values_count - header_count
+            if delta < 0:
+                diff_text = 'less'
+            else:
+                diff_text = 'more'
 
-        if header in buffer:
-            raise ValueError(f'{self.__class__.__name__}.{variable} has already set value for "{header}" in current row')
+            raise ValueError(f'{self.__class__.__name__}.{variable}: {diff_text} values ({values_count}) than headers ({header_count})')
 
-        buffer.update({header: value})
+        buffer = {key: value for key, value in zip(headers, values)}
 
         # values for all headers set, flush to file
-        if list(buffer.keys()) == self._settings[variable].get('headers', []):
-            data = {
-                'destination': self._settings[variable]['destination'],
-                'row': buffer.copy(),
-            }
+        data = {
+            'destination': self._settings[variable]['destination'],
+            'row': buffer,
+        }
 
-            self.grizzly.state.locust.send_message('atomiccsvwriter', data)
-            self._buffer[variable].clear()
+        self.grizzly.state.locust.send_message('atomiccsvwriter', data)

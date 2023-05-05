@@ -81,13 +81,13 @@ class TestSetVariableTask:
 
             grizzly_fixture.grizzly.state.variables.update({'AtomicCsvWriter.output': 'output.csv | headers="foo,bar"'})
             GrizzlyVariables.initialize_variable(grizzly_fixture.grizzly, 'AtomicCsvWriter.output')
-            task_factory_foo = SetVariableTask('AtomicCsvWriter.output.foo', '{{ value }}')
-            scenario.user._context['variables'].update({'value': 'hello world!'})
+            task_factory_foo = SetVariableTask('AtomicCsvWriter.output', '{{ value }}')
+            scenario.user._context['variables'].update({'value': 'hello, world!'})
 
             task = task_factory_foo()
             task(scenario)
 
-            set_value_mock.assert_called_once_with('output.foo', 'hello world!')
+            set_value_mock.assert_called_once_with('output', 'hello, world!')
             assert 'AtomicCsvWriter.output.foo' not in scenario.user._context['variables']
         finally:
             cleanup()
