@@ -63,12 +63,13 @@ Fragment:
 
 * `<content type>` _str_ - content type of response payload, should be used in combination with `<expression>`
 """  # noqa: E501
-from typing import Optional, cast
+from typing import Optional, Dict, cast
 from urllib.parse import urlparse, parse_qs
 from platform import node as hostname
 from pathlib import Path
 from textwrap import dedent
 from json import dumps as jsondumps
+from dataclasses import dataclass, field
 
 import zmq.green as zmq
 
@@ -87,6 +88,29 @@ from grizzly.utils import async_message_request_wrapper
 from . import client, ClientTask, logger  # pylint: disable=unused-import
 
 
+@dataclass
+class State:
+    worker: Optional[str] = field(init=False, default=None)
+    parent: GrizzlyScenario
+    _first_response: Optional[AsyncMessageResponse] = field(init=False, default=None)
+    client: zmq.Socket
+    context: AsyncMessageContext
+
+    @property
+    def parent_id(self) -> int:
+        return id(self.parent.user)
+
+    @property
+    def first_response(self) -> Optional[AsyncMessageResponse]:
+        return self._first_response
+
+    @first_response.setter
+    def first_response(self, value: Optional[AsyncMessageResponse]) -> None:
+        self._first_response = value
+        if value is not None:
+            self.worker = value.get('worker', None)
+
+
 @template('context')
 @client('sb')
 class ServiceBusClientTask(ClientTask):
@@ -95,11 +119,8 @@ class ServiceBusClientTask(ClientTask):
     _zmq_url = 'tcp://127.0.0.1:5554'
     _zmq_context: zmq.Context
 
-    _client: Optional[zmq.Socket] = None
-    worker_id: Optional[str]
+    _state: Dict[GrizzlyScenario, State]
     context: AsyncMessageContext
-    _parent: Optional[GrizzlyScenario]
-    _first_response: Optional[AsyncMessageResponse]
 
     def __init__(
         self,
@@ -131,8 +152,6 @@ class ServiceBusClientTask(ClientTask):
         parsed = urlparse(url)
 
         self.endpoint = f'{parsed.scheme}://{parsed.netloc}/;{parsed.query.replace("&", ";")}'
-        self._parent = None
-        self.worker_id = None
         self._zmq_context = zmq.Context()
 
         parameters = parse_qs(parsed.fragment)
@@ -171,138 +190,125 @@ class ServiceBusClientTask(ClientTask):
         if content_type is not None:
             self.context.update({'content_type': content_type})
 
-        self._first_response = None
+        self._state = {}
 
-        # zmq connection to async-messaged must be done when creating the instance
-        self._client = cast(zmq.Socket, self._zmq_context.socket(ZMQ_REQ))
-        self.client.connect(self._zmq_url)
+    def get_state(self, parent: 'GrizzlyScenario') -> State:
+        state = self._state.get(parent, None)
 
-    @property
-    def parent(self) -> GrizzlyScenario:
-        if self._parent is None:
-            raise AttributeError('no parent set')
+        if state is None:
+            context = self.context.copy()
+            # add id of user as suffix to subscription name, to make it unique
+            endpoint_arguments = parse_arguments(context['endpoint'], separator=':')
 
-        return self._parent
+            if 'subscription' in endpoint_arguments:
+                endpoint_arguments['subscription'] = f'{endpoint_arguments["subscription"]}_{id(parent.user)}'
+                context['endpoint'] = ', '.join([f'{key}:{value}' for key, value in endpoint_arguments.items()])
 
-    @parent.setter
-    def parent(self, value: GrizzlyScenario) -> None:
-        if self._parent is not None and value is not self._parent:
-            raise AttributeError('parent already set, why are a different parent being set?')
+            state = State(
+                parent=parent,
+                client=cast(zmq.Socket, self._zmq_context.socket(ZMQ_REQ)),
+                context=context,
+            )
+            state.client.connect(self._zmq_url)
+            self._state.update({parent: state})
 
-        self._parent = value
-
-    @property
-    def client(self) -> zmq.Socket:
-        if self._client is None:
-            raise ConnectionError('not connected to async-messaged')
-
-        return self._client
+        return state
 
     @ClientTask.text.setter  # type: ignore
     def text(self, value: str) -> None:
         self._text = dedent(value).strip()
 
-    def connect(self) -> None:
-        if self.worker_id is not None:
-            logger.debug(f'{id(self.parent.user)}::sb already connected')
-            return
+    def connect(self, parent: GrizzlyScenario) -> None:
+        state = self.get_state(parent)
 
-        if self._first_response is not None:
-            self.worker_id = self._first_response.get('worker', None)
-
-        logger.debug(f'{id(self.parent.user)}::sb connecting, {self.worker_id=}')
+        logger.debug(f'{state.parent_id}::sb connecting, {state.worker=}')
 
         request: AsyncMessageRequest = {
-            'worker': self.worker_id,
+            'worker': state.worker,
             'action': RequestType.HELLO.name,
-            'context': self.context,
+            'context': state.context,
         }
 
-        response = async_message_request_wrapper(self.parent, self.client, request)
+        response = async_message_request_wrapper(parent, state.client, request)
 
-        if self._first_response is None:
-            self.worker_id = response['worker']
-            self._first_response = response
+        if state.first_response is None:
+            state.first_response = response
 
-        logger.debug(f'{id(self.parent.user)}::sb connected to worker {self.worker_id} at {hostname()}')
+        logger.debug(f'{state.parent_id}::sb connected to worker {state.worker} at {hostname()}')
 
-    def disconnect(self) -> None:
-        if self._client is None:
+    def disconnect(self, parent: GrizzlyScenario) -> None:
+        state = self.get_state(parent)
+
+        if state.worker is None:
             return
 
         request: AsyncMessageRequest = {
-            'worker': self.worker_id,
+            'worker': state.worker,
             'action': RequestType.DISCONNECT.name,
-            'context': self.context,
+            'context': state.context,
         }
 
-        async_message_request_wrapper(self.parent, self.client, request)
+        async_message_request_wrapper(parent, state.client, request)
 
-        self.worker_id = None
-        self.client.setsockopt(ZMQ_LINGER, 0)
-        self.client.close()
-        self._client = None
+        state.client.setsockopt(ZMQ_LINGER, 0)
+        state.client.close()
 
-    def subscribe(self) -> None:
+        del self._state[parent]
+
+    def subscribe(self, parent: GrizzlyScenario) -> None:
+        state = self.get_state(parent)
+
         request: AsyncMessageRequest = {
-            'worker': self.worker_id,
+            'worker': state.worker,
             'action': RequestType.SUBSCRIBE.name,
-            'context': self.context,
+            'context': state.context,
             'payload': self.text,
         }
 
-        response = async_message_request_wrapper(self.parent, self.client, request)
+        response = async_message_request_wrapper(parent, state.client, request)
         logger.info(response['message'])
 
-        self._first_response = response
+        state.first_response = response
 
-    def unsubscribe(self) -> None:
+    def unsubscribe(self, parent: GrizzlyScenario) -> None:
+        state = self.get_state(parent)
+
         request: AsyncMessageRequest = {
-            'worker': self.worker_id,
+            'worker': state.worker,
             'action': RequestType.UNSUBSCRIBE.name,
-            'context': self.context,
+            'context': state.context,
         }
 
-        response = async_message_request_wrapper(self.parent, self.client, request)
+        response = async_message_request_wrapper(parent, state.client, request)
         logger.info(response['message'])
 
     def on_start(self, parent: GrizzlyScenario) -> None:
-        self.parent = parent
-
         # create subscription before connecting to it
         if self.text is not None:
-            # add id of user as suffix to subscription name, to make it unique
-            endpoint_arguments = parse_arguments(self.context['endpoint'], separator=':')
+            self.subscribe(parent)
 
-            if 'subscription' in endpoint_arguments:
-                endpoint_arguments['subscription'] = f'{endpoint_arguments["subscription"]}_{id(self.parent)}'
-                self.context['endpoint'] = ', '.join([f'{key}:{value}' for key, value in endpoint_arguments.items()])
-
-            self.subscribe()
-
-        self.connect()
+        self.connect(parent)
 
     def on_stop(self, parent: GrizzlyScenario) -> None:
-        self.parent = parent
-
         if self.text is not None:
-            self.unsubscribe()
+            self.unsubscribe(parent)
 
-        self.disconnect()
+        self.disconnect(parent)
 
     def request(self, parent: GrizzlyScenario, request: AsyncMessageRequest) -> AsyncMessageResponse:
         response = None
+        state = self.get_state(parent)
 
         with self.action(parent) as meta:
             if request['context'].get('url', None) is None:
                 request['context'].update({'url': self.endpoint})
 
-            response = async_message_request_wrapper(parent, self.client, request)
+            response = async_message_request_wrapper(parent, state.client, request)
 
             response_length_source = ((response or {}).get('payload', None) or '').encode('utf-8')
 
             meta.update({
-                'action': self.context['endpoint'],
+                'action': state.context['endpoint'],
                 'request': request.copy(),
                 'response_length': len(response_length_source),
                 'response': response,
@@ -311,10 +317,12 @@ class ServiceBusClientTask(ClientTask):
         return response or {}
 
     def get(self, parent: GrizzlyScenario) -> GrizzlyResponse:
+        state = self.get_state(parent)
+
         request: AsyncMessageRequest = {
             'action': 'RECEIVE',
-            'worker': self.worker_id,
-            'context': self.context,
+            'worker': state.worker,
+            'context': state.context,
             'payload': None,
         }
 
@@ -332,6 +340,8 @@ class ServiceBusClientTask(ClientTask):
         return metadata, payload
 
     def put(self, parent: GrizzlyScenario) -> GrizzlyResponse:
+        state = self.get_state(parent)
+
         source = parent.render(cast(str, self.source))
         source_file = Path(self._context_root) / 'requests' / source
 
@@ -340,8 +350,8 @@ class ServiceBusClientTask(ClientTask):
 
         request: AsyncMessageRequest = {
             'action': 'SEND',
-            'worker': self.worker_id,
-            'context': self.context,
+            'worker': state.worker,
+            'context': state.context,
             'payload': source,
         }
 

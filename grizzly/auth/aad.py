@@ -473,7 +473,10 @@ class AAD(RefreshToken):
             exception = e
             logger.error(str(e), exc_info=True)
         finally:
-            name = client.__class__.__name__.rsplit('_', 1)[-1]
+            if client.parent is not None:
+                scenario_index = client.parent.user._scenario.identifier
+            else:
+                scenario_index = client.__class__.__name__.rsplit('_', 1)[-1]
 
             if is_token_v2_0 is None:
                 version = ''
@@ -483,7 +486,7 @@ class AAD(RefreshToken):
             request_meta = {
                 'request_type': 'AUTH',
                 'response_time': int((time_perf_counter() - start_time) * 1000),
-                'name': f'{name} {cls.__name__} OAuth2 user token {version}',
+                'name': f'{scenario_index} {cls.__name__} OAuth2 user token {version}',
                 'context': client._context,
                 'response': None,
                 'exception': exception,

@@ -128,7 +128,7 @@ class AsyncMessageHandler(ABC):
     def __init__(self, worker: str) -> None:
         self.worker = worker
         self.message_wait = None
-        self.logger = ThreadLogger(f'handler::{worker}')
+        self.logger = ThreadLogger(f'handler::{self.__class__.__name__}::{worker}')
 
         # silence uamqp loggers
         for uamqp_logger_name in ['uamqp', 'uamqp.c_uamqp']:
