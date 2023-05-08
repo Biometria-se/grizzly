@@ -74,7 +74,8 @@ class SetVariableTask(GrizzlyTask):
 
             if self._variable_instance is not None:
                 self._variable_instance[self._variable_key] = value
-            else:
-                parent.user._context['variables'][self.variable] = value
+
+            # always update user context with new value
+            parent.user._context['variables'][self.variable] = value
 
         return task
