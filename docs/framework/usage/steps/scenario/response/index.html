@@ -15,7 +15,7 @@
         <link rel="next" href="../../utils/">
       
       <link rel="icon" href="../../../../../assets/favicon.ico">
-      <meta name="generator" content="mkdocs-1.4.3, mkdocs-material-9.1.9">
+      <meta name="generator" content="mkdocs-1.4.3, mkdocs-material-9.1.11">
     
     
       
@@ -1919,7 +1919,7 @@ This module contains step implementations that handles <a href="/grizzly/framewo
                                <span class="n">expression</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">match_with</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
                                <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
-<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.6.4/docs/../grizzly/steps/scenario/response.py#L44">[view_source]</a></p>
+<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.6.5/docs/../grizzly/steps/scenario/response.py#L44">[view_source]</a></p>
 <p>Save specified parts of a response, either from meta data (header) or payload (body), in a variable.</p>
 <p>With this step it is possible to change variable values and as such use values from a response later on in the load test.</p>
 <p>The <a href="/grizzly/framework/usage/tasks/request#pydoc:grizzly.tasks.request">Request</a> task preceded by this step will fail if the specified <code>expression</code> has no or more than one match.</p>
@@ -1960,7 +1960,7 @@ This module contains step implementations that handles <a href="/grizzly/framewo
 <span class="k">def</span> <span class="nf">step_response_save</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">target</span><span class="p">:</span> <span class="n">ResponseTarget</span><span class="p">,</span>
                        <span class="n">expression</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">variable</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
-<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.6.4/docs/../grizzly/steps/scenario/response.py#L85">[view_source]</a></p>
+<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.6.5/docs/../grizzly/steps/scenario/response.py#L85">[view_source]</a></p>
 <p>Save metadata (header) or payload (body) value from a response in a variable.</p>
 <p>This step expression is the same as <a href="#pydoc:grizzly.steps.scenario.response.step_response_save_matches">step_response_save_matches</a> if <code>match_with</code> is set to <code>.*</code>.</p>
 <p>With this step it is possible to change variable values and as such use values from a response later on in the load test.</p>
@@ -1988,7 +1988,7 @@ This module contains step implementations that handles <a href="/grizzly/framewo
                            <span class="n">expression</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">condition</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
                            <span class="n">match_with</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
-<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.6.4/docs/../grizzly/steps/scenario/response.py#L113">[view_source]</a></p>
+<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.6.5/docs/../grizzly/steps/scenario/response.py#L113">[view_source]</a></p>
 <p>Fails the request based on the value of a response meta data (header) or payload (body).</p>
 <p><strong>Example</strong>:</p>
 <div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">restart scenario on failure</span>
@@ -2015,7 +2015,7 @@ This module contains step implementations that handles <a href="/grizzly/framewo
 <span class="k">def</span> <span class="nf">step_response_allow_status_codes</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span>
                                      <span class="n">status_list</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
-<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.6.4/docs/../grizzly/steps/scenario/response.py#L140">[view_source]</a></p>
+<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.6.5/docs/../grizzly/steps/scenario/response.py#L140">[view_source]</a></p>
 <p>Set allowed response status codes for the latest defined request in the scenario.</p>
 <p>By default <code>200</code> is the only allowed respoonse status code. By prefixing a code with minus (<code>-</code>),
 it will be removed from the list of allowed response status codes.</p>
@@ -2036,7 +2036,7 @@ it will be removed from the list of allowed response status codes.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@then</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;allow response status codes&#39;</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">step_response_allow_status_codes_table</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
-<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.6.4/docs/../grizzly/steps/scenario/response.py#L170">[view_source]</a></p>
+<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.6.5/docs/../grizzly/steps/scenario/response.py#L170">[view_source]</a></p>
 <p>Set allowed response status codes for the latest defined requests based on a data table.</p>
 <p>Specifies a comma separeated list of allowed return codes for the latest requests in a data table.</p>
 <p>By default <code>200</code> is the only allowed respoonse status code. By prefixing a code with minus (<code>-</code>),
@@ -2061,7 +2061,7 @@ status codes should map to.</p>
 <span class="k">def</span> <span class="nf">step_response_content_type</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span>
                                <span class="n">content_type</span><span class="p">:</span> <span class="n">TransformerContentType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
-<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.6.4/docs/../grizzly/steps/scenario/response.py#L222">[view_source]</a></p>
+<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.6.5/docs/../grizzly/steps/scenario/response.py#L222">[view_source]</a></p>
 <p>Set the content type of a response, instead of guessing it.</p>
 <p>This is applicable when there is a <code>step_response_validate</code> or <code>step_response_save</code> is included in
 the scenario, and is valid only for the latest defined request.</p>

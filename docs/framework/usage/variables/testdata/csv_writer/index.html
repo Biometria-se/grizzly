@@ -15,7 +15,7 @@
         <link rel="next" href="../directory_contents/">
       
       <link rel="icon" href="../../../../../assets/favicon.ico">
-      <meta name="generator" content="mkdocs-1.4.3, mkdocs-material-9.1.9">
+      <meta name="generator" content="mkdocs-1.4.3, mkdocs-material-9.1.11">
     
     
       
@@ -1816,7 +1816,7 @@
 <p><a id="pydoc:grizzly.testdata.variables.csv_writer"></a>
 This variable writes to a CSV file.</p>
 <p>The CSV files <strong>must</strong> have headers for each column, since these are used to reference the value.</p>
-<p>When all specified headers has been set, the row will be "flushed" and written to the specified destination file.</p>
+<p>When setting the value of the variable there must be one value per specified header.</p>
 <h2 id="format">Format</h2>
 <p>Value is the path, relative to <code>requests/</code>, of an file ending with <code>.csv</code>.</p>
 <h2 id="arguments">Arguments</h2>
@@ -1827,8 +1827,7 @@ This variable writes to a CSV file.</p>
 <h2 id="example">Example</h2>
 <div class="highlight"><pre><span></span><code><span class="k">And </span><span class="nf">value for variable &quot;</span><span class="s">AtomicCsvWriter.output</span><span class="nf">&quot; is &quot;</span><span class="s">output.csv | headers=&#39;foo,bar&#39;</span><span class="nf">&quot;</span>
 <span class="nf">...</span>
-<span class="k">And </span><span class="nf">value for variable &quot;</span><span class="s">AtomicCsvWriter.output.foo</span><span class="nf">&quot; is &quot;</span><span class="s">{{ value }}</span><span class="nf">&quot;</span>
-<span class="k">And </span><span class="nf">value for variable &quot;</span><span class="s">AtomicCsvWriter.output.bar</span><span class="nf">&quot; is &quot;</span><span class="s">{{ value }}</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">value for variable &quot;</span><span class="s">AtomicCsvWriter.output</span><span class="nf">&quot; is &quot;</span><span class="s">{{ foo_value }}, {{ bar_value }}</span><span class="nf">&quot;</span>
 </code></pre></div>
 
 

@@ -15,7 +15,7 @@
         <link rel="next" href="../../../changelog/">
       
       <link rel="icon" href="../../../../assets/favicon.ico">
-      <meta name="generator" content="mkdocs-1.4.3, mkdocs-material-9.1.9">
+      <meta name="generator" content="mkdocs-1.4.3, mkdocs-material-9.1.11">
     
     
       
@@ -1804,7 +1804,7 @@
 <span class="nd">@given</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;ask for value of variable &quot;</span><span class="si">{name}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">step_setup_variable_value_ask</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
-<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.6.4/docs/../grizzly/steps/setup.py#L15">[view_source]</a></p>
+<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.6.5/docs/../grizzly/steps/setup.py#L15">[view_source]</a></p>
 <p>This step is used to indicate for <code>grizzly-cli</code> that it should ask for an initial value for the variable.
 It will then inject the value into the locust runtime environment, and in this step read it and insert it
 into the locust context which grizzly will use to setup locust.</p>
@@ -1823,7 +1823,7 @@ into the locust context which grizzly will use to setup locust.</p>
 <div class="highlight"><pre><span></span><code><span class="nd">@given</span><span class="p">(</span><span class="sa">u</span><span class="s1">&#39;value for variable &quot;</span><span class="si">{name}</span><span class="s1">&quot; is &quot;</span><span class="si">{value}</span><span class="s1">&quot;&#39;</span><span class="p">)</span>
 <span class="k">def</span> <span class="nf">step_setup_variable_value</span><span class="p">(</span><span class="n">context</span><span class="p">:</span> <span class="n">Context</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span>
 </code></pre></div>
-<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.6.4/docs/../grizzly/steps/setup.py#L45">[view_source]</a></p>
+<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.6.5/docs/../grizzly/steps/setup.py#L45">[view_source]</a></p>
 <p>Use this step to initialize a variable that should have the same [start] value for every run of
 the scenario. If this step is used for a variable that has already been initialized, it is assumed that the value will change during runtime
 so instead a <a href="/grizzly/framework/usage/tasks/set_variable#pydoc:grizzly.tasks.set_variable">Set variable</a> task will be added instead. The <a href="/grizzly/framework/usage/variables/testdata#pydoc:grizzly.testdata.variables">Variables</a> must have implemented
