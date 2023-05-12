@@ -5,7 +5,6 @@ import re
 from typing import TYPE_CHECKING, Generic, Type, List, Any, Dict, Tuple, Optional, cast, Generator, Union
 from types import FunctionType
 from importlib import import_module
-from functools import wraps
 from contextlib import contextmanager
 from collections.abc import Mapping
 from copy import deepcopy
@@ -16,8 +15,8 @@ from json import dumps as jsondumps, loads as jsonloads
 from dateutil.parser import parse as dateparser, ParserError
 from locust.stats import STATS_NAME_WIDTH
 
-from grizzly.types import WrappedFunc, T
-from grizzly.types.behave import Context, Scenario, Status
+from grizzly.types import T
+from grizzly.types.behave import Context
 from grizzly_extras.async_message import AsyncMessageRequest, AsyncMessageResponse, async_message_request
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -46,32 +45,6 @@ class ModuleLoader(Generic[T]):
         class_type_instance = globals()[class_name]
 
         return cast(Type[T], class_type_instance)
-
-
-class catch:
-    def __init__(self, exception_type: Type[BaseException]) -> None:
-        self.exception_type = exception_type
-
-    def __call__(self, func: WrappedFunc) -> WrappedFunc:
-        exception_type = self.exception_type
-
-        @wraps(func)
-        def catch_wrapper(context: Context, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Any:
-            try:
-                return func(context, *args, **kwargs)
-            except exception_type as e:
-                context._set_root_attribute(Status.failed.name, True)
-
-                if len(args) > 0:
-                    if isinstance(args[0], Scenario):
-                        scenario = args[0]
-                        scenario.set_status(Status.failed)
-                    else:
-                        raise e from e
-                else:
-                    raise e from e
-
-        return cast(WrappedFunc, catch_wrapper)
 
 
 @contextmanager

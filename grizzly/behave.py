@@ -1,7 +1,7 @@
 import logging
 
 from os import environ
-from typing import Any, Dict, Tuple, List, cast
+from typing import Any, Dict, Tuple, List, Optional, cast
 from time import perf_counter as time
 from datetime import datetime
 from pathlib import Path
@@ -15,7 +15,7 @@ from grizzly.types.behave import Context, Feature, Step, Scenario, Status
 from .context import GrizzlyContext
 from .testdata.variables import destroy_variables
 from .locust import run as locustrun, on_worker
-from .utils import catch, check_mq_client_logs, fail_direct, in_correct_section
+from .utils import check_mq_client_logs, fail_direct, in_correct_section
 
 logger = logging.getLogger(__name__)
 
@@ -53,21 +53,26 @@ def before_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], *
     context.last_task_count = {}
 
 
-@catch(KeyboardInterrupt)
 def after_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
     return_code: int
     cause: str
 
     # all scenarios has been processed, let's run locust
     if feature.status == Status.passed:
+        status: Optional[Status] = None
+
         return_code = locustrun(context)
 
         if return_code != 0:
-            feature.set_status(Status.failed)
+            status = Status.failed if return_code != 15 else Status.skipped
+            feature.set_status(status)
 
         if not on_worker(context):
             grizzly = cast(GrizzlyContext, context.grizzly)
             stats = grizzly.state.locust.environment.stats
+
+            if status is None:
+                status = Status.failed
 
             for behave_scenario in cast(List[Scenario], feature.scenarios):
                 grizzly_scenario = grizzly.scenarios.find_by_description(behave_scenario.name)
@@ -82,14 +87,15 @@ def after_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], **
                 scenario_stat = stats.get(grizzly_scenario.locust_name, RequestType.SCENARIO())
 
                 if scenario_stat.num_failures > 0 or scenario_stat.num_requests != grizzly_scenario.iterations or total_errors > 0:
-                    behave_scenario.set_status(Status.failed)
-                    return_code = 1
+                    behave_scenario.set_status(status)
+                    if return_code == 0:
+                        return_code = 1
 
         if pymqi.__name__ != 'grizzly_extras.dummy_pymqi' and not on_worker(context):
             check_mq_client_logs(context)
 
         if return_code != 0:
-            cause = 'locust test failed'
+            cause = 'locust test failed' if return_code != 15 else 'locust test aborted'
     else:
         cause = 'failed to prepare locust test'
         return_code = 1
@@ -98,9 +104,14 @@ def after_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], **
         # show start and stop date time
         stopped = datetime.now().astimezone()
 
+        end_text = 'Aborted' if return_code == 15 else 'Finished'
+
         print('')
-        print(f'Started: {context.started}')
-        print(f'Stopped: {stopped}')
+        print(f'{"Started":<{len(end_text)}}: {context.started}')
+        print(f'{end_text}: {stopped}')
+
+        if return_code != 0:
+            print('')
 
         # the features duration is the sum of all scenarios duration, which is the sum of all steps duration
         try:

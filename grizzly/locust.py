@@ -2,14 +2,13 @@ import sys
 import logging
 import subprocess
 
-from typing import NoReturn, Optional, Callable, List, Tuple, Set, Dict, Type, Union, cast
+from typing import Any, NoReturn, Optional, Callable, List, Tuple, Set, Dict, Type, Union, cast
 from types import FrameType
 from os import environ
 from signal import SIGTERM, SIGINT, signal, Signals
 from socket import error as SocketError
 from math import ceil
 from operator import itemgetter
-from functools import wraps
 
 import gevent
 
@@ -26,7 +25,7 @@ from .context import GrizzlyContext
 from .tasks import GrizzlyTask
 from .utils import create_scenario_class_type, create_user_class_type
 from .types import RequestType, TestdataType
-from .types.locust import Environment, LocustRunner, MasterRunner, WorkerRunner, MessageHandler
+from .types.locust import Environment, LocustRunner, MasterRunner, WorkerRunner, MessageHandler, Message
 from .types.behave import Context, Status
 
 __all__ = [
@@ -34,7 +33,8 @@ __all__ = [
 ]
 
 
-unhandled_greenlet_exception = False
+unhandled_greenlet_exception: bool = False
+abort_test: bool = False
 
 
 logger = logging.getLogger('grizzly.locust')
@@ -250,7 +250,10 @@ def print_scenario_summary(grizzly: GrizzlyContext) -> None:
 
         stat = stats.get(scenario.locust_name, RequestType.SCENARIO())
         if stat.num_requests > 0:
-            if stat.num_failures == 0 and stat.num_requests == scenario.iterations and total_errors == 0:
+            if abort_test:
+                status = Status.skipped
+                stat.num_requests -= 1
+            elif stat.num_failures == 0 and stat.num_requests == scenario.iterations and total_errors == 0:
                 status = Status.passed
             else:
                 status = Status.failed
@@ -277,20 +280,13 @@ def print_scenario_summary(grizzly: GrizzlyContext) -> None:
     print(separator)
 
 
-def verbose_returncode(func: Callable[[Context], int]) -> Callable[[Context], int]:
-    @wraps(func)
-    def wrapper(context: Context) -> int:
-        returncode = func(context)
+def grizzly_test_abort(environment: Environment, msg: Message, **kwargs: Dict[str, Any]) -> None:
+    global abort_test
 
-        if on_master(context):
-            print(f'grizzly.returncode={returncode}')
-
-        return returncode
-
-    return wrapper
+    if not abort_test:
+        abort_test = True
 
 
-@verbose_returncode
 def run(context: Context) -> int:
     def shutdown_external_processes(processes: Dict[str, subprocess.Popen]) -> Callable[[Union[int, Signals], Optional[FrameType]], None]:
         def wrapper(signum: int, frame: Optional[FrameType] = None) -> None:
@@ -421,10 +417,13 @@ def run(context: Context) -> int:
             watch_running_external_processes_greenlet = gevent.spawn_later(10, start_watching_external_processes(external_processes))
             watch_running_external_processes_greenlet.link_exception(greenlet_exception_handler)
 
-        if not on_worker(context) and len(message_handlers) > 0:
+        if not isinstance(runner, WorkerRunner):
             for message_type, callback in message_handlers.items():
                 grizzly.state.locust.register_message(message_type, callback)
                 logger.info(f'registered callback for message type "{message_type}"')
+
+            runner.register_message('client_aborted', grizzly_test_abort)
+            logger.info('registered callback for message type "client_aborted"')
 
         main_greenlet = runner.greenlet
 
@@ -512,11 +511,13 @@ def run(context: Context) -> int:
                         logger.debug(f'{runner.user_count=}')
                         count = 0
 
-                logger.info(f'{runner.user_count=}, quit {runner.__class__.__name__}')
-                runner.environment.events.quitting.fire(environment=runner.environment, reverse=True)
+                logger.info(f'{runner.user_count=}, quit {runner.__class__.__name__}, {abort_test=}')
+                # has already been fired if abort_test = True
+                if not abort_test:
+                    runner.environment.events.quitting.fire(environment=runner.environment, reverse=True)
+
                 if isinstance(runner, MasterRunner):
                     runner.send_message('grizzly_worker_quit', None)
-
                     runner.stop(send_stop_to_client=False)
 
                     # wait for all clients to quit
@@ -563,9 +564,21 @@ def run(context: Context) -> int:
                 signame = 'UNKNOWN'
 
             def wrapper() -> None:
+                global abort_test
+                if abort_test:
+                    return
+
                 logger.info(f'handling signal {signame} ({signum})')
-                runner.environment.events.quitting.fire(environment=runner.environment, reverse=True)
-                runner.quit()
+                abort_test = True
+                if isinstance(runner, WorkerRunner):
+                    runner._send_stats()
+                    runner.client.send(Message('client_aborted', None, runner.client_id))
+
+                runner.environment.events.quitting.fire(environment=runner.environment, reverse=True, abort=True)
+
+                # master will quit when all workers has stopped
+                if not isinstance(runner, MasterRunner):
+                    runner.quit()
 
             return wrapper
 
@@ -579,7 +592,9 @@ def run(context: Context) -> int:
         except KeyboardInterrupt as e:
             raise e
         finally:
-            if unhandled_greenlet_exception:
+            if abort_test:
+                code = SIGTERM.value
+            elif unhandled_greenlet_exception:
                 code = 2
             elif environment.process_exit_code is not None:
                 code = environment.process_exit_code

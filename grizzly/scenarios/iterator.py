@@ -14,6 +14,7 @@ from gevent import sleep as gsleep
 from grizzly.types import RequestType, ScenarioState
 from grizzly.types.locust import StopUser
 from grizzly.exceptions import RestartScenario, StopScenario
+from grizzly.tasks import GrizzlyTask
 
 from . import GrizzlyScenario
 
@@ -43,7 +44,19 @@ class IteratorScenario(GrizzlyScenario):
         self.behave_steps = self.user._scenario.tasks.behave_steps.copy()
         self._prefetch = False
 
+    @classmethod
+    def populate(cls, task_factory: GrizzlyTask) -> None:
+        """
+        IteratorScenario.pace *must* be the last task for this scenario.
+        """
+        cls.tasks.insert(-1, task_factory())
+
     def run(self) -> None:  # type: ignore
+        """
+        Override locust.user.sequential_taskset.SequentialTaskSet.run so we can have some control over how a scenario is executed.
+        Includes handling of StopScenario (we want all tasks to complete before user is allowed to stop) and
+        RestartScenario (if there's an error in a scenario, we might want to start over from task 0) exceptions.
+        """
         try:
             self.on_start()
         except InterruptTaskSet as e:
@@ -143,14 +156,18 @@ class IteratorScenario(GrizzlyScenario):
 
     def wait(self) -> None:
         if self.user._scenario_state == ScenarioState.STOPPING:
-            if self.current_task_index < self.task_count - 1:
+            if self.current_task_index < self.task_count - 1 and not self.parent.abort:
                 self.logger.debug(f'not finished with scenario, currently at task {self.current_task_index+1} of {self.task_count}, let me be!')
                 self.user._state = LOCUST_STATE_RUNNING
                 self._sleep(self.wait_time())
                 self.user._state = LOCUST_STATE_RUNNING
                 return
             else:
-                self.logger.debug("okay, I'm done with my running tasks now")
+                if not self.parent.abort:
+                    self.logger.debug("okay, I'm done with my running tasks now")
+                else:
+                    self.logger.debug("since you're asking nicely")
+
                 self.user._state = LOCUST_STATE_STOPPING
                 self.user.scenario_state = ScenarioState.STOPPED
 

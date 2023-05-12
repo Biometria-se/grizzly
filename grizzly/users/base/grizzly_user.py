@@ -37,6 +37,8 @@ class GrizzlyUser(User):
 
     weight: int = 1
     host: str
+    abort: bool
+    environment: Environment
 
     def __init__(self, environment: Environment, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
         super().__init__(environment, *args, **kwargs)
@@ -45,8 +47,16 @@ class GrizzlyUser(User):
         self._context = merge_dicts({}, GrizzlyUser._context)
         self.logger = logging.getLogger(f'{self.__class__.__name__}/{id(self)}')
         self._scenario_state = None
+        self.abort = False
+
+        environment.events.quitting.add_listener(self.on_quitting)
 
         assert self.host is not None, f'{self.__class__.__name__} must have host set'
+
+    def on_quitting(self, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+        # if it already has been called with True, do not change it back to False
+        if not self.abort:
+            self.abort = kwargs.get('abort', False)
 
     @property
     def scenario_state(self) -> Optional[ScenarioState]:
@@ -60,7 +70,7 @@ class GrizzlyUser(User):
             self.logger.debug(f'scenario state={old_state} -> {value}')
 
     def stop(self, force: bool = False) -> bool:
-        if not force:
+        if not force and not self.abort:
             self.logger.debug('stop scenarios before stopping user')
             self.scenario_state = ScenarioState.STOPPING
             self._state = LOCUST_STATE_RUNNING
