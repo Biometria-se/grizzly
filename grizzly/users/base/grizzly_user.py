@@ -56,7 +56,7 @@ class GrizzlyUser(User):
     def on_quitting(self, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
         # if it already has been called with True, do not change it back to False
         if not self.abort:
-            self.abort = kwargs.get('abort', False)
+            self.abort = cast(bool, kwargs.get('abort', False))
 
     @property
     def scenario_state(self) -> Optional[ScenarioState]:

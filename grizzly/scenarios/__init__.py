@@ -101,14 +101,15 @@ class GrizzlyScenario(SequentialTaskSet):
         if self.task_greenlet is not None and kwargs.get('abort', False):
             self.task_greenlet.throw(StopScenario)
 
-    def execute_next_task(self):
+    def execute_next_task(self) -> None:
         """
         Execute task in a greenlet, so that we have the possibility to stop it on demand. Any exceptions
         raised in the greenlet should be caught else where.
         """
         try:
             self.task_greenlet = self.task_greenlet_factory.spawn(super().execute_next_task)
-            self.task_greenlet.join()
+            if self.task_greenlet is not None:  # stupid mypy?!
+                self.task_greenlet.join()
         finally:
             self.task_greenlet = None
 
