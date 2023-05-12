@@ -2,10 +2,9 @@ import sys
 import logging
 import subprocess
 
-from typing import Any, NoReturn, Optional, Callable, List, Tuple, Set, Dict, Type, Union, cast
-from types import FrameType
+from typing import Any, NoReturn, Optional, Callable, List, Tuple, Set, Dict, Type, cast
 from os import environ
-from signal import SIGTERM, SIGINT, signal, Signals
+from signal import SIGTERM, SIGINT, Signals
 from socket import error as SocketError
 from math import ceil
 from operator import itemgetter
@@ -288,21 +287,18 @@ def grizzly_test_abort(environment: Environment, msg: Message, **kwargs: Dict[st
 
 
 def run(context: Context) -> int:
-    def shutdown_external_processes(processes: Dict[str, subprocess.Popen]) -> Callable[[Union[int, Signals], Optional[FrameType]], None]:
-        def wrapper(signum: int, frame: Optional[FrameType] = None) -> None:
-            if len(processes) > 0:
-                if watch_running_external_processes_greenlet is not None:
-                    watch_running_external_processes_greenlet.kill(block=False)
+    def shutdown_external_processes(processes: Dict[str, subprocess.Popen]) -> None:
+        if len(processes) > 0:
+            if watch_running_external_processes_greenlet is not None:
+                watch_running_external_processes_greenlet.kill(block=False)
 
-                for dependency, process in processes.items():
-                    logger.info(f'stopping {dependency}')
-                    process.terminate()
-                    process.wait()
-                    logger.debug(f'{process.returncode=}')
+            for dependency, process in processes.items():
+                logger.info(f'stopping {dependency}')
+                process.terminate()
+                process.wait()
+                logger.debug(f'{process.returncode=}')
 
-                processes.clear()
-
-        return wrapper
+            processes.clear()
 
     grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -584,7 +580,6 @@ def run(context: Context) -> int:
 
         gevent.signal_handler(SIGTERM, sig_handler(SIGTERM))
         gevent.signal_handler(SIGINT, sig_handler(SIGINT))
-        signal(SIGINT, shutdown_external_processes(external_processes))
 
         try:
             main_greenlet.join()
@@ -605,7 +600,7 @@ def run(context: Context) -> int:
 
             return code
     finally:
-        shutdown_external_processes(external_processes)(SIGTERM, None)
+        shutdown_external_processes(external_processes)
 
 
 def _grizzly_sort_stats(stats: lstats.RequestStats) -> List[Tuple[str, str, int]]:
