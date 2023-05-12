@@ -202,6 +202,9 @@ def check_mq_client_logs(context: Context) -> None:
         stats_logger.info(separator)
         stats_logger.info('')
 
+        for handler in stats_logger.handlers:
+            handler.flush()
+
     if not hasattr(context, 'started'):
         return
 

@@ -99,7 +99,7 @@ class GrizzlyScenario(SequentialTaskSet):
         running task to stop by throwing an exception in the greenlet where it is running.
         """
         if self.task_greenlet is not None and kwargs.get('abort', False):
-            self.task_greenlet.throw(StopScenario)
+            self.task_greenlet.kill(StopScenario, block=False)
 
     def execute_next_task(self) -> None:
         """

@@ -106,7 +106,7 @@ def after_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], **
 
         end_text = 'Aborted' if return_code == 15 else 'Finished'
 
-        print('')
+        print('', flush=True)
         print(f'{"Started":<{len(end_text)}}: {context.started}')
         print(f'{end_text}: {stopped}')
 

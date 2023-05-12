@@ -535,6 +535,10 @@ def run(context: Context) -> int:
                 lstats.print_error_report(runner.stats)
                 print_scenario_summary(grizzly)
 
+                # make sure everything is flushed
+                for handler in stats_logger.handlers:
+                    handler.flush()
+
             def spawning_complete() -> bool:
                 if isinstance(runner, MasterRunner):
                     return runner.spawning_completed
@@ -573,8 +577,8 @@ def run(context: Context) -> int:
                 runner.environment.events.quitting.fire(environment=runner.environment, reverse=True, abort=True)
 
                 # master will quit when all workers has stopped
-                if not isinstance(runner, MasterRunner):
-                    runner.quit()
+                # if not isinstance(runner, MasterRunner):
+                #    runner.quit()
 
             return wrapper
 
