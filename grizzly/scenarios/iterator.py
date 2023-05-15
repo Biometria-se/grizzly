@@ -93,7 +93,7 @@ class IteratorScenario(GrizzlyScenario):
                     # tasks will wrap the grizzly.exceptions.StopScenario thrown when aborting to what ever
                     # the scenario has specified todo when failing, we must force it to stop scenario
                     if self.abort:
-                        raise StopScenario()
+                        raise StopUser()
 
                     self.logger.info(f'restarting scenario at task {self.current_task_index+1} of {self.task_count}')
                     # move locust.user.sequential_task.SequentialTaskSet index pointer the number of tasks left until end, so it will start over

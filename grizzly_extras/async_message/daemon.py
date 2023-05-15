@@ -27,6 +27,13 @@ run: bool = True
 
 
 def signal_handler(signum: Union[int, Signals], frame: Optional[FrameType]) -> None:
+    logger = ThreadLogger('signal_handler')
+    logger.debug(f'received signal {signum}')
+
+    if signum == signal.SIGTERM:
+        logger.debug('ignoring')
+        return
+
     global run
     if run:
         run = False

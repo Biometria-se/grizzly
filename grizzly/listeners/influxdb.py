@@ -3,7 +3,7 @@ import os
 import json
 
 from types import TracebackType
-from typing import Any, Dict, List, Optional, Type, Literal, TypedDict, cast
+from typing import Any, Dict, List, Optional, Type, Literal, TypedDict, Tuple, cast
 from datetime import datetime, timezone, timedelta
 from urllib.parse import urlparse, parse_qs, unquote
 from platform import node as get_hostname
@@ -112,6 +112,9 @@ class InfluxDb:
 
 
 class InfluxDbListener:
+    run_events_greenlet: gevent.Greenlet
+    run_user_count_greenlet: gevent.Greenlet
+
     def __init__(
         self,
         environment: Environment,
@@ -143,12 +146,21 @@ class InfluxDbListener:
         self._profile_name = params['ProfileName'][0] if 'ProfileName' in params else ''
         self._description = params['Description'][0] if 'Description' in params else ''
 
-        gevent.spawn(self.run_events)
-        gevent.spawn(self.run_user_count)
+        self.run_events_greenlet = gevent.spawn(self.run_events)
+        self.run_user_count_greenlet = gevent.spawn(self.run_user_count)
         self.connection = self.create_client().connect()
         self.grizzly = GrizzlyContext()
         self.logger = logging.getLogger(__name__)
         self.environment.events.request.add_listener(self.request)
+        self.environment.events.quitting.add_listener(self.on_quitting)
+
+    def on_quitting(self, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+        """
+        When locust is quitting, with abort=True (signal received) we should force the
+        running task to stop by throwing an exception in the greenlet where it is running.
+        """
+        if kwargs.get('abort', False):
+            self.run_user_count_greenlet.kill(block=False)
 
     def create_client(self) -> InfluxDb:
         return InfluxDb(

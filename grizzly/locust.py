@@ -504,7 +504,7 @@ def run(context: Context) -> int:
                     gevent.sleep(1.0)
                     count += 1
                     if count % 10 == 0:
-                        logger.debug(f'{runner.user_count=}')
+                        logger.debug(f'{runner.user_count=}, {runner.user_classes_count=}')
                         count = 0
 
                 logger.info(f'{runner.user_count=}, quit {runner.__class__.__name__}, {abort_test=}')
