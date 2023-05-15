@@ -52,6 +52,7 @@ from grizzly_extras.transformer import Transformer, TransformerContentType, Tran
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments, split_value
 
 from grizzly.types import RequestType
+from grizzly.types.locust import StopUser
 from grizzly.utils import safe_del
 
 from . import GrizzlyTask, GrizzlyMetaRequestTask, template, grizzlytask
@@ -161,6 +162,9 @@ class UntilRequestTask(GrizzlyTask):
                         if exception is None:
                             exception = e
                         number_of_matches = 0
+
+                        if isinstance(e, StopUser):
+                            break
                     finally:
                         if number_of_matches == self.expected_matches:
                             break

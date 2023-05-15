@@ -233,7 +233,7 @@ class TestInfluxDbListener:
         mocker.patch(
             'grizzly.listeners.influxdb.InfluxDbListener.finished',
             new_callable=mocker.PropertyMock,
-            side_effect=[True] + [False, True],
+            side_effect=[False, True] + [False, False, False, True],
         )
 
         listener = InfluxDbListener(
@@ -315,6 +315,8 @@ class TestInfluxDbListener:
             'grizzly.listeners.influxdb.InfluxDb.write',
             write,
         )
+
+        print(f'{listener.finished=}')
 
         listener._log_request('GET', '/api/v1/test', 'Success', {'response_time': 133.7}, None)
         assert len(listener._events) == 1

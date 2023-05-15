@@ -31,7 +31,7 @@ def signal_handler(signum: Union[int, Signals], frame: Optional[FrameType]) -> N
     logger.debug(f'received signal {signum}')
 
     global abort
-    if abort:
+    if not abort:
         abort = True
 
 

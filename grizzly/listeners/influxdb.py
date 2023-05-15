@@ -175,7 +175,7 @@ class InfluxDbListener:
 
         assert runner is not None, 'no runner is set'
 
-        while self.finished:
+        while not self.finished:
             points: List[Any] = []
             timestamp = datetime.now(timezone.utc).isoformat()
 
@@ -203,7 +203,8 @@ class InfluxDbListener:
                 break
 
     def run_events(self) -> None:
-        while self.finished:
+        print(f'run_events: {self.finished=}')
+        while not self.finished:
             if self._events:
                 # Buffer samples, so that a locust greenlet will write to the new list
                 # instead of the one that has been sent into postgres client
@@ -211,9 +212,11 @@ class InfluxDbListener:
                     events_buffer = self._events
                     self._events = []
                     self.connection.write(events_buffer)
+                    print('wrote')
                 except Exception as e:
                     self.logger.error(str(e))
             elif self.finished:
+                print('finished')
                 break
             gevent.sleep(0.5)
 
