@@ -29,13 +29,13 @@ def test_e2e_step_results_avg_response_time(e2e_fixture: End2EndFixture) -> None
     def validate_avg_response_time(context: Context) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
 
-        assert grizzly.scenario.validation.avg_response_time == 200, f'{grizzly.scenario.validation.avg_response_time} != 200'
+        assert grizzly.scenario.validation.avg_response_time == 500, f'{grizzly.scenario.validation.avg_response_time} != 500'
 
     e2e_fixture.add_validator(validate_avg_response_time)
 
     feature_file = e2e_fixture.test_steps(
         scenario=[
-            'When average response time is greater than "200" milliseconds fail scenario',
+            'When average response time is greater than "500" milliseconds fail scenario',
         ],
     )
 

@@ -17,7 +17,7 @@ import zmq.green as zmq
 from zmq.error import Again as ZMQAgain
 from zmq.sugar.constants import NOBLOCK as ZMQ_NOBLOCK
 from grizzly_extras.transformer import JsonBytesEncoder
-from grizzly.exceptions import StopScenario
+
 
 __all__: List[str] = []
 
@@ -118,6 +118,10 @@ class AsyncMessageResponse(TypedDict, total=False):
 
 
 class AsyncMessageError(Exception):
+    pass
+
+
+class AsyncMessageAbort(Exception):
     pass
 
 
@@ -230,6 +234,6 @@ def async_message_request(client: zmq.Socket, request: AsyncMessageRequest) -> A
 
         return response
     except Exception as e:
-        if not isinstance(e, (AsyncMessageError, StopScenario,)):
+        if not isinstance(e, (AsyncMessageError, AsyncMessageAbort,)):
             logger.error(f'failed to send {request=}', exc_info=True)
         raise
