@@ -24,6 +24,7 @@ class GrizzlyScenario(SequentialTaskSet):
     grizzly: GrizzlyContext
     task_greenlet: Optional[GreenletWithExceptionCatching]
     task_greenlet_factory: GreenletWithExceptionCatching
+    abort: bool
 
     def __init__(self, parent: 'GrizzlyUser') -> None:
         super().__init__(parent=parent)
@@ -32,6 +33,7 @@ class GrizzlyScenario(SequentialTaskSet):
         self.user.scenario_state = ScenarioState.STOPPED
         self.task_greenlet = None
         self.task_greenlet_factory = GreenletWithExceptionCatching()
+        self.abort = False
         self.parent.environment.events.quitting.add_listener(self.on_quitting)
 
     @property
@@ -99,6 +101,7 @@ class GrizzlyScenario(SequentialTaskSet):
         running task to stop by throwing an exception in the greenlet where it is running.
         """
         if self.task_greenlet is not None and kwargs.get('abort', False):
+            self.abort = True
             self.task_greenlet.kill(StopScenario, block=False)
 
     def execute_next_task(self) -> None:

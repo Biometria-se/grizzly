@@ -90,6 +90,11 @@ class IteratorScenario(GrizzlyScenario):
                 except RescheduleTask:
                     self.wait()
                 except RestartScenario:
+                    # tasks will wrap the grizzly.exceptions.StopScenario thrown when aborting to what ever
+                    # the scenario has specified todo when failing, we must force it to stop scenario
+                    if self.abort:
+                        raise StopScenario()
+
                     self.logger.info(f'restarting scenario at task {self.current_task_index+1} of {self.task_count}')
                     # move locust.user.sequential_task.SequentialTaskSet index pointer the number of tasks left until end, so it will start over
                     tasks_left = self.task_count - (self._task_index % self.task_count)
@@ -156,14 +161,14 @@ class IteratorScenario(GrizzlyScenario):
 
     def wait(self) -> None:
         if self.user._scenario_state == ScenarioState.STOPPING:
-            if self.current_task_index < self.task_count - 1 and not self.parent.abort:
+            if self.current_task_index < self.task_count - 1 and not self.abort:
                 self.logger.debug(f'not finished with scenario, currently at task {self.current_task_index+1} of {self.task_count}, let me be!')
                 self.user._state = LOCUST_STATE_RUNNING
                 self._sleep(self.wait_time())
                 self.user._state = LOCUST_STATE_RUNNING
                 return
             else:
-                if not self.parent.abort:
+                if not self.abort:
                     self.logger.debug("okay, I'm done with my running tasks now")
                 else:
                     self.logger.debug("since you're asking nicely")
