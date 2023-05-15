@@ -152,15 +152,10 @@ class InfluxDbListener:
         self.grizzly = GrizzlyContext()
         self.logger = logging.getLogger(__name__)
         self.environment.events.request.add_listener(self.request)
-        self.environment.events.quitting.add_listener(self.on_quitting)
+        self.environment.events.quit.add_listener(self.on_quit)
 
-    def on_quitting(self, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
-        """
-        When locust is quitting, with abort=True (signal received) we should force the
-        running task to stop by throwing an exception in the greenlet where it is running.
-        """
-        if kwargs.get('abort', False):
-            self.run_user_count_greenlet.kill(block=False)
+    def on_quit(self, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+        self.finished = True
 
     def create_client(self) -> InfluxDb:
         return InfluxDb(
@@ -180,7 +175,7 @@ class InfluxDbListener:
 
         assert runner is not None, 'no runner is set'
 
-        while True:
+        while self.finished:
             points: List[Any] = []
             timestamp = datetime.now(timezone.utc).isoformat()
 
@@ -208,7 +203,7 @@ class InfluxDbListener:
                 break
 
     def run_events(self) -> None:
-        while True:
+        while self.finished:
             if self._events:
                 # Buffer samples, so that a locust greenlet will write to the new list
                 # instead of the one that has been sent into postgres client

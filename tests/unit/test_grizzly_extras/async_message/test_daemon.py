@@ -130,7 +130,7 @@ def test_worker(mocker: MockerFixture, capsys: CaptureFixture, scheme: str, impl
     import grizzly_extras.async_message.daemon as daemon
 
     def hack(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
-        daemon.run = False
+        daemon.abort = True
 
     worker_mock.send_multipart = hack
 

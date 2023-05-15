@@ -23,20 +23,16 @@ from . import (
 from grizzly_extras.transformer import JsonBytesEncoder
 
 
-run: bool = True
+abort: bool = False
 
 
 def signal_handler(signum: Union[int, Signals], frame: Optional[FrameType]) -> None:
     logger = ThreadLogger('signal_handler')
     logger.debug(f'received signal {signum}')
 
-    if signum == signal.SIGTERM:
-        logger.debug('ignoring')
-        return
-
-    global run
-    if run:
-        run = False
+    global abort
+    if abort:
+        abort = True
 
 
 signal(SIGTERM, signal_handler)
@@ -77,7 +73,7 @@ def router() -> None:
 
     worker_id: str
 
-    while run:
+    while not abort:
         socks = dict(poller.poll(timeout=1000))
 
         if not socks:
@@ -181,14 +177,14 @@ def worker(context: zmq.Context, identity: str) -> None:
 
     integration: Optional[AsyncMessageHandler] = None
 
-    while run:
+    while not abort:
         try:
             request_proto = worker.recv_multipart(flags=zmq.NOBLOCK)
         except zmq.Again:
             sleep(0.1)
             continue
 
-        logger.debug(f"i'm alive! {run=}")
+        logger.debug(f"i'm alive! {abort=}")
 
         if not request_proto:
             logger.error('empty msg')
@@ -241,7 +237,7 @@ def worker(context: zmq.Context, identity: str) -> None:
 
         worker.send_multipart(response_proto)
 
-    logger.debug(f"i'm going to die! {run=}")
+    logger.debug(f"i'm going to die! {abort=}")
     logger.info('stopping')
     if integration is not None:
         logger.debug(f'closing {integration.__class__.__name__}')

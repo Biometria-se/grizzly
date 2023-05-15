@@ -292,10 +292,22 @@ def run(context: Context) -> int:
             if watch_running_external_processes_greenlet is not None:
                 watch_running_external_processes_greenlet.kill(block=False)
 
+            stop_method = 'killing' if abort_test else 'stopping'
+
             for dependency, process in processes.items():
-                logger.info(f'stopping {dependency}')
-                process.terminate()
-                process.wait()
+                logger.info(f'{stop_method} {dependency}')
+                if sys.platform == 'win32':
+                    from signal import CTRL_BREAK_EVENT  # pylint: disable=no-name-in-module
+                    process.send_signal(CTRL_BREAK_EVENT)
+                else:
+                    process.terminate()
+
+                if not abort_test:
+                    process.wait()
+                else:
+                    process.kill()
+                    process.returncode = 1
+
                 logger.debug(f'{process.returncode=}')
 
             processes.clear()
@@ -382,6 +394,16 @@ def run(context: Context) -> int:
             if grizzly.state.verbose:
                 env['GRIZZLY_EXTRAS_LOGLEVEL'] = 'DEBUG'
 
+            parameters: Dict[str, Any] = {}
+            if sys.platform == 'win32':
+                parameters.update({'creationflags': subprocess.CREATE_NEW_PROCESS_GROUP})
+            else:
+                def preexec() -> None:
+                    import os
+                    os.setpgrp()
+
+                parameters.update({'preexec_fn': preexec})
+
             for external_dependency in external_dependencies:
                 logger.info(f'starting {external_dependency}')
                 external_processes.update({external_dependency: subprocess.Popen(
@@ -390,8 +412,8 @@ def run(context: Context) -> int:
                     shell=False,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
+                    **parameters,
                 )})
-                # gevent.sleep(2)
 
             def start_watching_external_processes(processes: Dict[str, subprocess.Popen]) -> Callable[[], None]:
                 logger.info('making sure external processes are alive every 10 seconds')
