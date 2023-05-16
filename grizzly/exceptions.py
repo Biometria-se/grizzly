@@ -1,6 +1,7 @@
 from typing import Optional
 
 from locust.exception import StopUser
+from grizzly_extras.async_message import AsyncMessageAbort
 
 __all__ = [
     'StopUser',
@@ -25,5 +26,5 @@ class RestartScenario(Exception):
     pass
 
 
-class StopScenario(Exception):
+class StopScenario(AsyncMessageAbort):
     pass

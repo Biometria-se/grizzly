@@ -17,11 +17,11 @@ from grizzly_extras.async_message.daemon import router, worker, main, signal_han
 def test_signal_handler() -> None:
     import grizzly_extras.async_message.daemon as daemon
 
-    assert getattr(daemon, 'run')
+    assert not getattr(daemon, 'abort')
 
     signal_handler(SIGINT, None)
 
-    assert not getattr(daemon, 'run')
+    assert getattr(daemon, 'abort')
 
     reload(daemon)
 
@@ -130,7 +130,7 @@ def test_worker(mocker: MockerFixture, capsys: CaptureFixture, scheme: str, impl
     import grizzly_extras.async_message.daemon as daemon
 
     def hack(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
-        daemon.run = False
+        daemon.abort = True
 
     worker_mock.send_multipart = hack
 

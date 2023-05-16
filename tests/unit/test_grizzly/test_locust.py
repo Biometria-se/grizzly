@@ -636,7 +636,6 @@ def test_run_worker(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
     capture = capsys.readouterr()
 
     assert 'failed to connect to the locust master' in capture.err
-    assert 'grizzly.returncode=1' not in capture.out
 
     assert messagequeue_process_spy.call_count == 0
 
@@ -696,7 +695,6 @@ def test_run_master(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
 
     capture = capsys.readouterr()
     assert 'cannot be both master and worker' in capture.err
-    assert 'grizzly.returncode=254' in capture.out
 
     behave.config.userdata = {'master': 'true'}
 
@@ -707,7 +705,6 @@ def test_run_master(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
 
     capture = capsys.readouterr()
     assert 'spawn rate is not set' in capture.err
-    assert 'grizzly.returncode=254' in capture.out
 
     grizzly.setup.spawn_rate = 1
 
@@ -715,7 +712,6 @@ def test_run_master(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
 
     capture = capsys.readouterr()
     assert 'step \'Given "user_count" users\' is not in the feature file' in capture.err
-    assert 'grizzly.returncode=254' in capture.out
 
     grizzly.setup.user_count = 2
     grizzly.scenarios.create(behave_fixture.create_scenario('test'))

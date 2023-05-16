@@ -83,7 +83,7 @@ class TestGrizzlyUser:
                     'host': 'http://example.io',
                 },
             )
-            user = user_type(locust_fixture)
+            user = user_type(locust_fixture.env)
             assert issubclass(user.__class__, (FileRequests,))
 
             request.source = f'{str(test_file)}'

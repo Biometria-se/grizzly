@@ -3,7 +3,7 @@ import os
 import json
 
 from types import TracebackType
-from typing import Any, Dict, List, Optional, Type, Literal, TypedDict, cast
+from typing import Any, Dict, List, Optional, Type, Literal, TypedDict, Tuple, cast
 from datetime import datetime, timezone, timedelta
 from urllib.parse import urlparse, parse_qs, unquote
 from platform import node as get_hostname
@@ -112,6 +112,9 @@ class InfluxDb:
 
 
 class InfluxDbListener:
+    run_events_greenlet: gevent.Greenlet
+    run_user_count_greenlet: gevent.Greenlet
+
     def __init__(
         self,
         environment: Environment,
@@ -143,12 +146,16 @@ class InfluxDbListener:
         self._profile_name = params['ProfileName'][0] if 'ProfileName' in params else ''
         self._description = params['Description'][0] if 'Description' in params else ''
 
-        gevent.spawn(self.run_events)
-        gevent.spawn(self.run_user_count)
+        self.run_events_greenlet = gevent.spawn(self.run_events)
+        self.run_user_count_greenlet = gevent.spawn(self.run_user_count)
         self.connection = self.create_client().connect()
         self.grizzly = GrizzlyContext()
         self.logger = logging.getLogger(__name__)
         self.environment.events.request.add_listener(self.request)
+        self.environment.events.quit.add_listener(self.on_quit)
+
+    def on_quit(self, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+        self._finished = True
 
     def create_client(self) -> InfluxDb:
         return InfluxDb(
@@ -168,7 +175,7 @@ class InfluxDbListener:
 
         assert runner is not None, 'no runner is set'
 
-        while True:
+        while not self.finished:
             points: List[Any] = []
             timestamp = datetime.now(timezone.utc).isoformat()
 
@@ -192,11 +199,9 @@ class InfluxDbListener:
 
             if not self.finished:
                 gevent.sleep(5.0)
-            else:
-                break
 
     def run_events(self) -> None:
-        while True:
+        while not self.finished:
             if self._events:
                 # Buffer samples, so that a locust greenlet will write to the new list
                 # instead of the one that has been sent into postgres client
@@ -206,9 +211,9 @@ class InfluxDbListener:
                     self.connection.write(events_buffer)
                 except Exception as e:
                     self.logger.error(str(e))
-            elif self.finished:
-                break
-            gevent.sleep(0.5)
+
+            if not self.finished:
+                gevent.sleep(0.5)
 
     def _log_request(
         self,
@@ -301,8 +306,6 @@ class InfluxDbListener:
             logger_method(message_to_log)
             self._log_request(request_type, name, result, metrics, exception)
         except Exception as e:
-            import traceback
-            traceback.print_exc()
             self.logger.error(f'failed to write metric for "{request_type} {name}": {str(e)}')
 
     def _create_metrics(self, response_time: int, response_length: int) -> Dict[str, Any]:

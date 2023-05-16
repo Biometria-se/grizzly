@@ -2,14 +2,12 @@ import sys
 import logging
 import subprocess
 
-from typing import NoReturn, Optional, Callable, List, Tuple, Set, Dict, Type, Union, cast
-from types import FrameType
+from typing import Any, NoReturn, Optional, Callable, List, Tuple, Set, Dict, Type, cast
 from os import environ
-from signal import SIGTERM, SIGINT, signal, Signals
+from signal import SIGTERM, SIGINT, Signals
 from socket import error as SocketError
 from math import ceil
 from operator import itemgetter
-from functools import wraps
 
 import gevent
 
@@ -26,7 +24,7 @@ from .context import GrizzlyContext
 from .tasks import GrizzlyTask
 from .utils import create_scenario_class_type, create_user_class_type
 from .types import RequestType, TestdataType
-from .types.locust import Environment, LocustRunner, MasterRunner, WorkerRunner, MessageHandler
+from .types.locust import Environment, LocustRunner, MasterRunner, WorkerRunner, MessageHandler, Message
 from .types.behave import Context, Status
 
 __all__ = [
@@ -34,7 +32,8 @@ __all__ = [
 ]
 
 
-unhandled_greenlet_exception = False
+unhandled_greenlet_exception: bool = False
+abort_test: bool = False
 
 
 logger = logging.getLogger('grizzly.locust')
@@ -250,7 +249,10 @@ def print_scenario_summary(grizzly: GrizzlyContext) -> None:
 
         stat = stats.get(scenario.locust_name, RequestType.SCENARIO())
         if stat.num_requests > 0:
-            if stat.num_failures == 0 and stat.num_requests == scenario.iterations and total_errors == 0:
+            if abort_test:
+                status = Status.skipped
+                stat.num_requests -= 1
+            elif stat.num_failures == 0 and stat.num_requests == scenario.iterations and total_errors == 0:
                 status = Status.passed
             else:
                 status = Status.failed
@@ -277,36 +279,38 @@ def print_scenario_summary(grizzly: GrizzlyContext) -> None:
     print(separator)
 
 
-def verbose_returncode(func: Callable[[Context], int]) -> Callable[[Context], int]:
-    @wraps(func)
-    def wrapper(context: Context) -> int:
-        returncode = func(context)
+def grizzly_test_abort(environment: Environment, msg: Message, **kwargs: Dict[str, Any]) -> None:
+    global abort_test
 
-        if on_master(context):
-            print(f'grizzly.returncode={returncode}')
-
-        return returncode
-
-    return wrapper
+    if not abort_test:
+        abort_test = True
 
 
-@verbose_returncode
 def run(context: Context) -> int:
-    def shutdown_external_processes(processes: Dict[str, subprocess.Popen]) -> Callable[[Union[int, Signals], Optional[FrameType]], None]:
-        def wrapper(signum: int, frame: Optional[FrameType] = None) -> None:
-            if len(processes) > 0:
-                if watch_running_external_processes_greenlet is not None:
-                    watch_running_external_processes_greenlet.kill(block=False)
+    def shutdown_external_processes(processes: Dict[str, subprocess.Popen]) -> None:
+        if len(processes) > 0:
+            if watch_running_external_processes_greenlet is not None:
+                watch_running_external_processes_greenlet.kill(block=False)
 
-                for dependency, process in processes.items():
-                    logger.info(f'stopping {dependency}')
+            stop_method = 'killing' if abort_test else 'stopping'
+
+            for dependency, process in processes.items():
+                logger.info(f'{stop_method} {dependency}')
+                if sys.platform == 'win32':
+                    from signal import CTRL_BREAK_EVENT  # pylint: disable=no-name-in-module
+                    process.send_signal(CTRL_BREAK_EVENT)
+                else:
                     process.terminate()
+
+                if not abort_test:
                     process.wait()
-                    logger.debug(f'{process.returncode=}')
+                else:
+                    process.kill()
+                    process.returncode = 1
 
-                processes.clear()
+                logger.debug(f'{process.returncode=}')
 
-        return wrapper
+            processes.clear()
 
     grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -390,6 +394,16 @@ def run(context: Context) -> int:
             if grizzly.state.verbose:
                 env['GRIZZLY_EXTRAS_LOGLEVEL'] = 'DEBUG'
 
+            parameters: Dict[str, Any] = {}
+            if sys.platform == 'win32':
+                parameters.update({'creationflags': subprocess.CREATE_NEW_PROCESS_GROUP})
+            else:
+                def preexec() -> None:
+                    import os
+                    os.setpgrp()
+
+                parameters.update({'preexec_fn': preexec})
+
             for external_dependency in external_dependencies:
                 logger.info(f'starting {external_dependency}')
                 external_processes.update({external_dependency: subprocess.Popen(
@@ -398,8 +412,8 @@ def run(context: Context) -> int:
                     shell=False,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
+                    **parameters,
                 )})
-                # gevent.sleep(2)
 
             def start_watching_external_processes(processes: Dict[str, subprocess.Popen]) -> Callable[[], None]:
                 logger.info('making sure external processes are alive every 10 seconds')
@@ -421,10 +435,13 @@ def run(context: Context) -> int:
             watch_running_external_processes_greenlet = gevent.spawn_later(10, start_watching_external_processes(external_processes))
             watch_running_external_processes_greenlet.link_exception(greenlet_exception_handler)
 
-        if not on_worker(context) and len(message_handlers) > 0:
+        if not isinstance(runner, WorkerRunner):
             for message_type, callback in message_handlers.items():
                 grizzly.state.locust.register_message(message_type, callback)
                 logger.info(f'registered callback for message type "{message_type}"')
+
+            runner.register_message('client_aborted', grizzly_test_abort)
+            logger.info('registered callback for message type "client_aborted"')
 
         main_greenlet = runner.greenlet
 
@@ -509,14 +526,16 @@ def run(context: Context) -> int:
                     gevent.sleep(1.0)
                     count += 1
                     if count % 10 == 0:
-                        logger.debug(f'{runner.user_count=}')
+                        logger.debug(f'{runner.user_count=}, {runner.user_classes_count=}')
                         count = 0
 
-                logger.info(f'{runner.user_count=}, quit {runner.__class__.__name__}')
-                runner.environment.events.quitting.fire(environment=runner.environment, reverse=True)
+                logger.info(f'{runner.user_count=}, quit {runner.__class__.__name__}, {abort_test=}')
+                # has already been fired if abort_test = True
+                if not abort_test:
+                    runner.environment.events.quitting.fire(environment=runner.environment, reverse=True)
+
                 if isinstance(runner, MasterRunner):
                     runner.send_message('grizzly_worker_quit', None)
-
                     runner.stop(send_stop_to_client=False)
 
                     # wait for all clients to quit
@@ -537,6 +556,10 @@ def run(context: Context) -> int:
                 grizzly_print_percentile_stats(runner.stats)
                 lstats.print_error_report(runner.stats)
                 print_scenario_summary(grizzly)
+
+                # make sure everything is flushed
+                for handler in stats_logger.handlers:
+                    handler.flush()
 
             def spawning_complete() -> bool:
                 if isinstance(runner, MasterRunner):
@@ -563,15 +586,26 @@ def run(context: Context) -> int:
                 signame = 'UNKNOWN'
 
             def wrapper() -> None:
+                global abort_test
+                if abort_test:
+                    return
+
                 logger.info(f'handling signal {signame} ({signum})')
-                runner.environment.events.quitting.fire(environment=runner.environment, reverse=True)
-                runner.quit()
+                abort_test = True
+                if isinstance(runner, WorkerRunner):
+                    runner._send_stats()
+                    runner.client.send(Message('client_aborted', None, runner.client_id))
+
+                runner.environment.events.quitting.fire(environment=runner.environment, reverse=True, abort=True)
+
+                # master will quit when all workers has stopped
+                # if not isinstance(runner, MasterRunner):
+                #    runner.quit()
 
             return wrapper
 
         gevent.signal_handler(SIGTERM, sig_handler(SIGTERM))
         gevent.signal_handler(SIGINT, sig_handler(SIGINT))
-        signal(SIGINT, shutdown_external_processes(external_processes))
 
         try:
             main_greenlet.join()
@@ -579,7 +613,9 @@ def run(context: Context) -> int:
         except KeyboardInterrupt as e:
             raise e
         finally:
-            if unhandled_greenlet_exception:
+            if abort_test:
+                code = SIGTERM.value
+            elif unhandled_greenlet_exception:
                 code = 2
             elif environment.process_exit_code is not None:
                 code = environment.process_exit_code
@@ -590,7 +626,7 @@ def run(context: Context) -> int:
 
             return code
     finally:
-        shutdown_external_processes(external_processes)(SIGTERM, None)
+        shutdown_external_processes(external_processes)
 
 
 def _grizzly_sort_stats(stats: lstats.RequestStats) -> List[Tuple[str, str, int]]:

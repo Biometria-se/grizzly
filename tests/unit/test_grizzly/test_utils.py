@@ -1,6 +1,6 @@
 import logging
 
-from typing import Optional, Type, cast
+from typing import Type, cast
 from types import FunctionType
 from datetime import datetime, timedelta, timezone
 from os import utime
@@ -15,7 +15,6 @@ from locust import TaskSet
 
 from grizzly.utils import ModuleLoader
 from grizzly.utils import (
-    catch,
     create_scenario_class_type,
     create_user_class_type,
     fail_direct,
@@ -26,7 +25,7 @@ from grizzly.utils import (
     safe_del,
 )
 from grizzly.types import RequestMethod
-from grizzly.types.behave import Context, Scenario, Status
+from grizzly.types.behave import Context
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 from grizzly.tasks import RequestTask
 from grizzly.users import RestApiUser
@@ -85,56 +84,6 @@ class TestModuleLoader:
                 assert hasattr(user_class_instance, 'tasks')
         finally:
             GrizzlyContext.destroy()
-
-
-def test_catch(behave_fixture: BehaveFixture) -> None:
-    behave = behave_fixture.context
-    behave_scenario = Scenario(filename=None, line=None, keyword='', name='')
-
-    @catch(KeyboardInterrupt)
-    def raises_KeyboardInterrupt(context: Context, scenario: Scenario) -> None:
-        raise KeyboardInterrupt()
-
-    try:
-        raises_KeyboardInterrupt(behave, behave_scenario)
-    except KeyboardInterrupt:
-        pytest.fail('function raised KeyboardInterrupt, when it should not have')
-
-    assert behave.failed
-    assert behave_scenario.status == Status.failed
-    behave._set_root_attribute(Status.failed.name, False)
-    behave_scenario.set_status(Status.undefined)
-
-    @catch(ValueError)
-    def raises_ValueError_not(context: Context, scenario: Scenario) -> None:
-        raise KeyboardInterrupt()
-
-    with pytest.raises(KeyboardInterrupt):
-        raises_ValueError_not(behave, behave_scenario)
-
-    assert not behave.failed
-    assert not behave_scenario.status == Status.failed
-    behave._set_root_attribute(Status.failed.name, False)
-    behave_scenario.set_status(Status.undefined)
-
-    @catch(ValueError)
-    def raises_ValueError(context: Context, scenario: Optional[Scenario] = None) -> None:
-        raise ValueError()
-
-    with pytest.raises(ValueError):
-        raises_ValueError(behave)
-
-    @catch(NotImplementedError)
-    def no_scenario_argument(context: Context, other: str) -> None:
-        raise NotImplementedError()
-
-    with pytest.raises(NotImplementedError):
-        no_scenario_argument(behave, 'not a scenario')
-
-    try:
-        raises_ValueError(behave, behave_scenario)
-    except ValueError:
-        pytest.fail('function raised ValueError, when it should not have')
 
 
 def test_fail_directly(behave_fixture: BehaveFixture) -> None:

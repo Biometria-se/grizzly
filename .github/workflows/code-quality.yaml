@@ -40,6 +40,12 @@ jobs:
       id: flake8
       run: python -m flake8
 
+    - name: gevent poison check
+      id: gevent-poison
+      run: |
+        find grizzly_extras/ -type f -name '*.py' -exec grep -nHE '^\s?(import|from) grizzly\.' {} \;
+        find grizzly_extras/ -type f -name '*.py' -exec grep -nHE '^\s*(import|from) grizzly\.' {} \;  | awk '/(import|from) grizzly\./ {exit 1}'
+
   test-and-coverage:
     name: "test-and-coverage / ${{ matrix.runs-on }} / python-${{ matrix.python-version }}"
     runs-on: ${{ matrix.runs-on }}
