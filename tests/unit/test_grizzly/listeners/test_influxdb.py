@@ -233,7 +233,7 @@ class TestInfluxDbListener:
         mocker.patch(
             'grizzly.listeners.influxdb.InfluxDbListener.finished',
             new_callable=mocker.PropertyMock,
-            side_effect=[False, True] + [False, False, False, True],
+            side_effect=[False, True, True] + [False, False, False, True, True],
         )
 
         listener = InfluxDbListener(

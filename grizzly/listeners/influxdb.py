@@ -155,7 +155,7 @@ class InfluxDbListener:
         self.environment.events.quit.add_listener(self.on_quit)
 
     def on_quit(self, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
-        self.finished = True
+        self._finished = True
 
     def create_client(self) -> InfluxDb:
         return InfluxDb(
@@ -199,8 +199,6 @@ class InfluxDbListener:
 
             if not self.finished:
                 gevent.sleep(5.0)
-            else:
-                break
 
     def run_events(self) -> None:
         while not self.finished:
@@ -213,9 +211,9 @@ class InfluxDbListener:
                     self.connection.write(events_buffer)
                 except Exception as e:
                     self.logger.error(str(e))
-            elif self.finished:
-                break
-            gevent.sleep(0.5)
+
+            if not self.finished:
+                gevent.sleep(0.5)
 
     def _log_request(
         self,
