@@ -53,6 +53,7 @@ from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments,
 
 from grizzly.types import RequestType
 from grizzly.types.locust import StopUser
+from grizzly.exceptions import StopScenario
 from grizzly.utils import safe_del
 
 from . import GrizzlyTask, GrizzlyMetaRequestTask, template, grizzlytask
@@ -135,6 +136,10 @@ class UntilRequestTask(GrizzlyTask):
             exception: Optional[Exception] = None
             response_length = 0
 
+            # when doing the until task, disable that the wrapped task will throw an exception
+            original_failure_exception = parent.user._scenario.failure_exception
+            parent.user._scenario.failure_exception = None
+
             start = perf_counter()
 
             try:
@@ -163,7 +168,9 @@ class UntilRequestTask(GrizzlyTask):
                             exception = e
                         number_of_matches = 0
 
-                        if isinstance(e, StopUser):
+                        # only way to get these exceptions here is if we've beem abprted
+                        # by injecting an exception in the task greenlet
+                        if isinstance(e, (StopUser, StopScenario,)):
                             break
                     finally:
                         if number_of_matches == self.expected_matches:
@@ -186,6 +193,9 @@ class UntilRequestTask(GrizzlyTask):
                 if exception is None:
                     exception = e
             finally:
+                # restore original
+                parent.user._scenario.failure_exception = original_failure_exception
+
                 response_time = int((perf_counter() - start) * 1000)
 
                 if number_of_matches == self.expected_matches:
@@ -198,6 +208,7 @@ class UntilRequestTask(GrizzlyTask):
                         payload_formatted = json.dumps(json.loads(payload or ''), indent=2)
                     except Exception:  # pragma: no cover
                         payload_formatted = payload or ''
+
                     parent.logger.error(
                         f'{task_name}: endpoint={endpoint_rendered}, {number_of_matches=}, condition={condition_rendered}, {retry=}, {response_time=} payload=\n{payload_formatted}'
                     )

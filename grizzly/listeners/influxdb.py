@@ -203,7 +203,6 @@ class InfluxDbListener:
                 break
 
     def run_events(self) -> None:
-        print(f'run_events: {self.finished=}')
         while not self.finished:
             if self._events:
                 # Buffer samples, so that a locust greenlet will write to the new list
@@ -212,11 +211,9 @@ class InfluxDbListener:
                     events_buffer = self._events
                     self._events = []
                     self.connection.write(events_buffer)
-                    print('wrote')
                 except Exception as e:
                     self.logger.error(str(e))
             elif self.finished:
-                print('finished')
                 break
             gevent.sleep(0.5)
 
@@ -311,8 +308,6 @@ class InfluxDbListener:
             logger_method(message_to_log)
             self._log_request(request_type, name, result, metrics, exception)
         except Exception as e:
-            import traceback
-            traceback.print_exc()
             self.logger.error(f'failed to write metric for "{request_type} {name}": {str(e)}')
 
     def _create_metrics(self, response_time: int, response_length: int) -> Dict[str, Any]:
