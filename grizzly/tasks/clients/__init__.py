@@ -265,8 +265,8 @@ class ClientTask(GrizzlyMetaRequestTask):
 
                 log_file.write_text(jsondumps(request_log, indent=2))
 
-        if exception is not None and parent.user._scenario.failure_exception is not None:
-            raise parent.user._scenario.failure_exception()
+            if exception is not None and parent.user._scenario.failure_exception is not None:
+                raise parent.user._scenario.failure_exception()
 
 
 class client:
