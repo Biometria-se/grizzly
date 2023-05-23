@@ -6,6 +6,7 @@ import pytest
 
 from pytest_mock import MockerFixture
 from _pytest.logging import LogCaptureFixture
+from jinja2.filters import FILTERS
 
 from grizzly.types.behave import Scenario
 from grizzly.context import GrizzlyContext
@@ -17,6 +18,7 @@ from grizzly.testdata.utils import (
     resolve_variable,
     _objectify,
     transform,
+    templatingfilter,
 )
 from grizzly_extras.transformer import TransformerContentType
 
@@ -288,8 +290,8 @@ def test_create_context_variable() -> None:
             pass
 
 
-def test_resolve_variable() -> None:
-    grizzly = GrizzlyContext()
+def test_resolve_variable(grizzly_fixture: GrizzlyFixture) -> None:
+    grizzly = grizzly_fixture.grizzly
 
     try:
         assert 'test' not in grizzly.state.variables
@@ -360,8 +362,16 @@ def test_resolve_variable() -> None:
         assert resolve_variable(grizzly, '') == ''
 
         assert resolve_variable(grizzly, '$conf::sut.host$ blah $env::HELLO_WORLD$ blah') == 'http://host.docker.internal:8003 blah first "environment" variable! blah'
+
+        @templatingfilter
+        def testuppercase(value: str) -> str:
+            return value.upper()
+
+        grizzly.state.variables['lowercase_value'] = 'foobar'
+
+        assert resolve_variable(grizzly, 'hello {{ lowercase_value | testuppercase }}!') == 'hello FOOBAR!'
+
     finally:
-        GrizzlyContext.destroy()
         try:
             del environ['HELLO_WORLD']
         except KeyError:
@@ -542,3 +552,32 @@ def test_transform(behave_fixture: BehaveFixture, noop_zmq: NoopZmqFixture, clea
         caplog.clear()
     finally:
         cleanup()
+
+
+def test_templatingfilter(grizzly_fixture: GrizzlyFixture) -> None:
+    grizzly = grizzly_fixture.grizzly
+
+    def testuppercase(value: str) -> str:
+        return value.upper()
+
+    assert FILTERS.get('testuppercase', None) is None
+
+    templatingfilter(testuppercase)
+
+    assert FILTERS.get('testuppercase', None) is testuppercase
+
+    actual = grizzly.state.jinja2.from_string('{{ variable | testuppercase }}').render(variable='foobar')
+
+    assert actual == 'FOOBAR'
+
+    def _testuppercase(value: str) -> str:
+        return value.upper()
+
+    uc = _testuppercase
+    setattr(uc, '__name__', 'testuppercase')
+
+    with pytest.raises(AssertionError) as ae:
+        templatingfilter(uc)
+    assert str(ae.value) == 'testuppercase is already registered as a filter'
+
+    assert FILTERS.get('testuppercase', None) is testuppercase

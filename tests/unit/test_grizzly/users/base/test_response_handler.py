@@ -10,6 +10,7 @@ from pytest_mock import MockerFixture
 from locust.event import EventHook
 from locust.clients import ResponseContextManager
 from requests.models import Response
+from jinja2.filters import FILTERS
 
 from grizzly.clients import ResponseEventSession
 from grizzly.context import GrizzlyContextScenario
@@ -20,6 +21,7 @@ from grizzly.types import RequestMethod
 from grizzly.types.locust import LocustError, CatchResponseError, StopUser
 from grizzly.tasks import RequestTask
 from grizzly_extras.transformer import TransformerContentType
+from grizzly.testdata.utils import templatingfilter
 
 from tests.fixtures import LocustFixture
 from tests.helpers import TestUser
@@ -212,21 +214,29 @@ class TestValidationHandlerAction:
             with pytest.raises(ResponseHandlerError):
                 handler((TransformerContentType.JSON, example), user, None)
 
+            @templatingfilter
+            def uppercase(value: str) -> str:
+                return value.upper()
+
+            @templatingfilter
+            def lowercase(value: str) -> str:
+                return value.lower()
+
             # no match in multiple values (list)
-            user.set_context_variable('format', 'YAML')
+            user.set_context_variable('format', 'yaml')
             handler = ValidationHandlerAction(
                 True,
                 expression='$.*..GlossSeeAlso[*]',
-                match_with='{{ format }}',
+                match_with='{{ format | uppercase }}',
             )
             handler((TransformerContentType.JSON, example), user, response_context_manager)
             assert response_context_manager._manual_result is None
 
-            user.set_context_variable('property', 'title')
+            user.set_context_variable('property', 'TITLE')
             user.set_context_variable('regexp', '.*ary$')
             handler = ValidationHandlerAction(
                 True,
-                expression='$.glossary.{{ property }}',
+                expression='$.glossary.{{ property | lowercase }}',
                 match_with='{{ regexp }}',
             )
             handler((TransformerContentType.JSON, example), user, response_context_manager)
@@ -254,6 +264,12 @@ class TestValidationHandlerAction:
             assert isinstance(getattr(response_context_manager, '_manual_result', None), ResponseHandlerError)
             response_context_manager._manual_result = None
         finally:
+            for filter_name in ['uppercase', 'lowercase']:
+                try:
+                    del FILTERS[filter_name]
+                except:
+                    pass
+
             assert user._context['variables'] is not TestUser(locust_fixture.env)._context['variables']
 
     def test___call___false(self, locust_fixture: LocustFixture) -> None:

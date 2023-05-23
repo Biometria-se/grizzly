@@ -64,6 +64,7 @@ from grizzly_extras.transformer import TransformerContentType
 from grizzly_extras.arguments import parse_arguments, split_value, unquote
 
 from grizzly.types import GrizzlyResponse, RequestMethod
+from grizzly.context import GrizzlyContext
 
 from . import GrizzlyMetaRequestTask, template, grizzlytask  # pylint: disable=unused-import
 
@@ -117,6 +118,7 @@ class RequestTask(GrizzlyMetaRequestTask):
     _source: Optional[str]
     arguments: Optional[Dict[str, str]]
     metadata: Optional[Dict[str, str]]
+    grizzly = GrizzlyContext()
 
     response: RequestTaskResponse
 
@@ -168,7 +170,7 @@ class RequestTask(GrizzlyMetaRequestTask):
             return None
 
         if self._template is None:
-            self._template = Template(self._source)
+            self._template = self.grizzly.state.jinja2.from_string(self._source)
 
         return self._template
 

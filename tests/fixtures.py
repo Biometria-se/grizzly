@@ -35,6 +35,7 @@ from behave.step_registry import registry as step_registry
 from behave.model import Background
 from behave.runner import Runner as BehaveRunner
 from requests.models import CaseInsensitiveDict, Response, PreparedRequest
+from jinja2.filters import FILTERS
 
 from grizzly.types import GrizzlyResponseContextManager, RequestMethod
 from grizzly.types.behave import Context as BehaveContext, Scenario, Step, Feature
@@ -406,6 +407,17 @@ class GrizzlyFixture:
             GrizzlyContext.destroy()
         except:
             pass
+
+        # clean up filters, since we might've added custom ones
+        filter_keys = reversed(list(FILTERS.keys()))
+        for key in filter_keys:
+            if key == 'tojson':
+                break
+
+            try:
+                del FILTERS[key]
+            except:
+                pass
 
         return True
 

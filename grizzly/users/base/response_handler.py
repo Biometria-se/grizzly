@@ -2,20 +2,21 @@ from typing import Any, Dict, Tuple, Optional, List, cast
 from abc import ABC, abstractmethod
 from json import dumps as jsondumps
 
-import jinja2 as j2
-
 from grizzly_extras.transformer import transformer, TransformerError, PlainTransformer, TransformerContentType
 
 from grizzly.types import HandlerContextType, GrizzlyResponseContextManager, GrizzlyResponse
 from grizzly.types.locust import Environment
 from grizzly.tasks import RequestTask
 from grizzly.exceptions import ResponseHandlerError, TransformerLocustError
+from grizzly.context import GrizzlyContext
 
 from .grizzly_user import GrizzlyUser
 from .response_event import ResponseEvent
 
 
 class ResponseHandlerAction(ABC):
+    grizzly = GrizzlyContext()
+
     def __init__(self, /, expression: str, match_with: str, expected_matches: int = 1, as_json: bool = False) -> None:
         self.expression = expression
         self.match_with = match_with
@@ -47,8 +48,9 @@ class ResponseHandlerAction(ABC):
             condition (bool): used by validation handler for negative matching
         '''
         input_content_type, input_payload = input_context
-        interpolated_expression = j2.Template(self.expression).render(user.context_variables)
-        interpolated_match_with = j2.Template(self.match_with).render(user.context_variables)
+        j2env = self.grizzly.state.jinja2
+        interpolated_expression = j2env.from_string(self.expression).render(user.context_variables)
+        interpolated_match_with = j2env.from_string(self.match_with).render(user.context_variables)
 
         try:
             transform = transformer.available.get(input_content_type, None)

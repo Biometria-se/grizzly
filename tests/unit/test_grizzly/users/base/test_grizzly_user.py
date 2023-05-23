@@ -9,12 +9,14 @@ import pytest
 from _pytest.tmpdir import TempPathFactory
 from _pytest.logging import LogCaptureFixture
 from pytest_mock import MockerFixture
+from jinja2.filters import FILTERS
 
 from grizzly.users.base import GrizzlyUser, FileRequests
 from grizzly.types import GrizzlyResponse, RequestMethod, ScenarioState
 from grizzly.types.locust import StopUser
 from grizzly.context import GrizzlyContextScenario
 from grizzly.tasks import RequestTask
+from grizzly.testdata.utils import templatingfilter
 
 from tests.fixtures import LocustFixture
 
@@ -38,33 +40,37 @@ class TestGrizzlyUser:
         test_file_context = path.dirname(path.dirname(str(test_file)))
         environ['GRIZZLY_CONTEXT_ROOT'] = test_file_context
 
+        @templatingfilter
+        def uppercase(value: str) -> str:
+            return value.upper()
+
         try:
 
             user = DummyGrizzlyUser(locust_fixture.env)
             request = RequestTask(RequestMethod.POST, name='test', endpoint='/api/test')
 
-            request.source = 'hello {{ name }}'
+            request.source = 'hello {{ name | uppercase }}'
             scenario = GrizzlyContextScenario(1)
             scenario.name = 'test'
             request.scenario = scenario
 
             user.add_context({'variables': {'name': 'bob'}})
 
-            assert user.render(request) == ('test', '/api/test', 'hello bob', None, None)
+            assert user.render(request) == ('test', '/api/test', 'hello BOB', None, None)
 
             user.set_context_variable('name', 'alice')
 
-            assert user.render(request) == ('test', '/api/test', 'hello alice', None, None)
+            assert user.render(request) == ('test', '/api/test', 'hello ALICE', None, None)
 
-            request.endpoint = '/api/test?data={{ querystring }}'
+            request.endpoint = '/api/test?data={{ querystring | uppercase }}'
             user.set_context_variable('querystring', 'querystring_data')
-            assert user.render(request) == ('test', '/api/test?data=querystring_data', 'hello alice', None, None)
+            assert user.render(request) == ('test', '/api/test?data=QUERYSTRING_DATA', 'hello ALICE', None, None)
 
             request.source = None
-            assert user.render(request) == ('test', '/api/test?data=querystring_data', None, None, None)
+            assert user.render(request) == ('test', '/api/test?data=QUERYSTRING_DATA', None, None, None)
 
-            request.name = '{{ name }}'
-            assert user.render(request) == ('alice', '/api/test?data=querystring_data', None, None, None)
+            request.name = '{{ name | uppercase }}'
+            assert user.render(request) == ('ALICE', '/api/test?data=QUERYSTRING_DATA', None, None, None)
 
             request.name = '{{ name'
             with pytest.raises(StopUser):
@@ -74,7 +80,7 @@ class TestGrizzlyUser:
             request.name = '{{ name }}'
             request.source = '{{ blobfile }}'
             user.set_context_variable('blobfile', str(test_file))
-            assert user.render(request) == ('alice', '/api/test?data=querystring_data', 'this is a test alice', None, None)
+            assert user.render(request) == ('alice', '/api/test?data=QUERYSTRING_DATA', 'this is a test alice', None, None)
 
             user_type = type(
                 'ContextVariablesUserFileRequest',
@@ -91,14 +97,15 @@ class TestGrizzlyUser:
             _, endpoint, _, _, _ = user.render(request)
             assert endpoint == '/tmp/blobfile.txt'
 
-            request = RequestTask(RequestMethod.POST, name='test', endpoint='/api/test | my_argument="{{ argument_variable }}"')
+            request = RequestTask(RequestMethod.POST, name='test', endpoint='/api/test | my_argument="{{ argument_variable | uppercase }}"')
             request.scenario = scenario
             user.set_context_variable('argument_variable', 'argument variable value')
             user.set_context_variable('name', 'donovan')
             request.source = 'hello {{ name }}'
-            assert user.render(request) == ('test', '/api/test', 'hello donovan', {'my_argument': 'argument variable value'}, None)
+            assert user.render(request) == ('test', '/api/test', 'hello donovan', {'my_argument': 'ARGUMENT VARIABLE VALUE'}, None)
 
         finally:
+            del FILTERS['uppercase']
             shutil.rmtree(test_file_context)
             del environ['GRIZZLY_CONTEXT_ROOT']
 

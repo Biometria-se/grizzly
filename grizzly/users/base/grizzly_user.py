@@ -6,7 +6,6 @@ from logging import Logger
 from abc import abstractmethod
 from json import dumps as jsondumps, loads as jsonloads
 
-from jinja2 import Template
 from locust.user.users import User
 from locust.user.task import LOCUST_STATE_RUNNING
 
@@ -14,6 +13,7 @@ from grizzly.types import GrizzlyResponse, RequestType, ScenarioState
 from grizzly.types.locust import Environment, StopUser
 from grizzly.tasks import RequestTask
 from grizzly.utils import merge_dicts
+from grizzly.context import GrizzlyContext
 
 from . import FileRequests
 
@@ -39,6 +39,7 @@ class GrizzlyUser(User):
     host: str
     abort: bool
     environment: Environment
+    grizzly = GrizzlyContext()
 
     def __init__(self, environment: Environment, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
         super().__init__(environment, *args, **kwargs)
@@ -86,10 +87,11 @@ class GrizzlyUser(User):
         scenario_name = f'{request.scenario.identifier} {request.name}'
 
         try:
+            j2env = self.grizzly.state.jinja2
             payload: Optional[str] = None
-            name = Template(request.name).render(**self.context_variables)
+            name = j2env.from_string(request.name).render(**self.context_variables)
             scenario_name = f'{request.scenario.identifier} {name}'
-            endpoint = Template(request.endpoint).render(**self.context_variables)
+            endpoint = j2env.from_string(request.endpoint).render(**self.context_variables)
             arguments: Optional[Dict[str, str]] = None
             metadata: Optional[Dict[str, str]] = None
 
@@ -105,7 +107,7 @@ class GrizzlyUser(User):
 
                         # nested template
                         if '{{' in payload and '}}' in payload:
-                            payload = Template(payload).render(**self.context_variables)
+                            payload = j2env.from_string(payload).render(**self.context_variables)
                     else:
                         file_name = path.basename(payload)
                         if not endpoint.endswith(file_name):
@@ -113,12 +115,12 @@ class GrizzlyUser(User):
 
             if request.arguments is not None:
                 arguments_json = jsondumps(request.arguments)
-                rendered_json = Template(arguments_json).render(**self.context_variables)
+                rendered_json = j2env.from_string(arguments_json).render(**self.context_variables)
                 arguments = jsonloads(rendered_json)
 
             if request.metadata is not None:
                 metadata_json = jsondumps(request.metadata)
-                rendered_metadata = Template(metadata_json).render(**self.context_variables)
+                rendered_metadata = j2env.from_string(metadata_json).render(**self.context_variables)
                 metadata = jsonloads(rendered_metadata)
 
             return name, endpoint, payload, arguments, metadata

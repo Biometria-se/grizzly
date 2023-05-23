@@ -6,6 +6,9 @@ from dataclasses import dataclass, field
 
 import yaml
 
+from jinja2 import Environment
+from jinja2.filters import FILTERS
+
 from grizzly.types import MessageCallback, MessageDirection
 from grizzly.types.locust import MasterRunner, WorkerRunner, LocalRunner
 from grizzly.types.behave import Scenario
@@ -104,6 +107,10 @@ class GrizzlyContext:
         return self._scenarios
 
 
+def jinja2_environment_factory() -> Environment:
+    return Environment(autoescape=False)
+
+
 @dataclass
 class GrizzlyContextState:
     spawning_complete: bool = field(default=False)
@@ -114,6 +121,14 @@ class GrizzlyContextState:
     verbose: bool = field(default=False)
     locust: Union[MasterRunner, WorkerRunner, LocalRunner] = field(init=False, repr=False)
     persistent: Dict[str, str] = field(init=False, repr=False, default_factory=dict)
+    _jinja2: Environment = field(init=False, repr=False, default_factory=jinja2_environment_factory)
+
+    @property
+    def jinja2(self) -> Environment:
+        # something might have changed in the filters department
+        self._jinja2.filters = FILTERS
+
+        return self._jinja2
 
 
 @dataclass
