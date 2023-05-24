@@ -2,13 +2,13 @@ import itertools
 import logging
 import re
 
-from typing import TYPE_CHECKING, Optional, List, Dict, Any, Tuple, Set, cast
+from typing import TYPE_CHECKING, Optional, List, Dict, Any, Tuple, Set, Callable, cast
 from collections import namedtuple
 from os import environ
 from time import perf_counter as time
 
-from jinja2 import Template, Environment
 from jinja2.meta import find_undeclared_variables
+from jinja2.filters import FILTERS
 
 from grizzly.types import RequestType, TestdataType, GrizzlyVariableType
 from grizzly.types.locust import StopUser, MessageHandler
@@ -185,9 +185,8 @@ def resolve_variable(grizzly: 'GrizzlyContext', value: str, guess_datatype: Opti
 
     resolved_variable: GrizzlyVariableType
     if '{{' in value and '}}' in value and not only_grizzly:
-        template = Template(value)
-        j2env = Environment(autoescape=False)
-        template_parsed = j2env.parse(value)
+        template = grizzly.state.jinja2.from_string(value)
+        template_parsed = template.environment.parse(value)
         template_variables = find_undeclared_variables(template_parsed)
 
         for template_variable in template_variables:
@@ -231,3 +230,19 @@ def resolve_variable(grizzly: 'GrizzlyContext', value: str, guess_datatype: Opti
         resolved_variable = f'{quote_char}{resolved_variable}{quote_char}'
 
     return resolved_variable
+
+
+class templatingfilter:
+    name: str
+
+    def __init__(self, filter: Callable) -> None:
+        name = filter.__name__
+        existing_filter = FILTERS.get(name, None)
+
+        if existing_filter is None:
+            FILTERS[name] = filter
+        elif existing_filter is not filter:
+            raise AssertionError(f'{name} is already registered as a filter')
+        else:
+            # code executed twice, so adding the same filter again
+            pass

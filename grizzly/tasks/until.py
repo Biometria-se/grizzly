@@ -46,7 +46,6 @@ import logging
 from typing import TYPE_CHECKING, Callable, Any, Type, List, Optional, cast
 from time import perf_counter
 
-from jinja2 import Template
 from gevent import sleep as gsleep
 from grizzly_extras.transformer import Transformer, TransformerContentType, TransformerError, transformer
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments, split_value
@@ -96,7 +95,7 @@ class UntilRequestTask(GrizzlyTask):
             self.condition, until_arguments = split_value(self.condition)
 
             if '{{' in until_arguments and '}}' in until_arguments:
-                until_arguments = Template(until_arguments).render(**grizzly.state.variables)
+                until_arguments = grizzly.state.jinja2.from_string(until_arguments).render(**grizzly.state.variables)
 
             arguments = parse_arguments(until_arguments)
 

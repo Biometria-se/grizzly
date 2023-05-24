@@ -15,6 +15,12 @@ from grizzly.behave import (  # noqa: F401
 )
 from grizzly.context import GrizzlyContext
 from grizzly.exceptions import StopUser
+from grizzly.testdata.utils import templatingfilter
+
+
+@templatingfilter
+def touppercase(value: str) -> str:
+    return value.upper()
 
 
 def before_scenario(

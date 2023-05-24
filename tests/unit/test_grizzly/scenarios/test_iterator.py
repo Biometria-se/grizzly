@@ -20,6 +20,7 @@ from grizzly.testdata.utils import transform
 from grizzly.tasks import WaitTask, LogMessageTask, grizzlytask
 from grizzly.exceptions import RestartScenario, StopScenario
 from grizzly.types import ScenarioState
+from grizzly.testdata.utils import templatingfilter
 
 from tests.fixtures import GrizzlyFixture
 from tests.helpers import RequestCalled, TestTask, regex
@@ -36,6 +37,25 @@ class TestIterationScenario:
         assert isinstance(scenario, iterator.IteratorScenario)
         assert issubclass(scenario.__class__, SequentialTaskSet)
         assert scenario.pace_time is None
+
+    def test_render(self, grizzly_fixture: GrizzlyFixture) -> None:
+        _, _, scenario = grizzly_fixture(scenario_type=iterator.IteratorScenario)
+
+        assert isinstance(scenario, iterator.IteratorScenario)
+
+        @templatingfilter
+        def sarcasm(value: str) -> str:
+            sarcastic_value: List[str] = []
+            for index, c in enumerate(value):
+                if index % 2 == 0:
+                    sarcastic_value.append(c.upper())
+                else:
+                    sarcastic_value.append(c.lower())
+
+            return ''.join(sarcastic_value)
+
+        scenario.user._context['variables'].update({'are': 'foo'})
+        assert scenario.render('how {{ are }} we {{ doing | sarcasm }} today', variables={'doing': 'bar'}) == 'how foo we BaR today'
 
     def test_populate(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         reload(iterator)

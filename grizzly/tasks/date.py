@@ -38,7 +38,7 @@ from datetime import datetime
 try:
     from zoneinfo import ZoneInfo, ZoneInfoNotFoundError  # pylint: disable=import-error
 except ImportError:
-    # pyright: reportMissingImports=false
+    # pyright: ignoreReportMissingImports
     from backports.zoneinfo import ZoneInfo, ZoneInfoNotFoundError  # type: ignore[no-redef]  # pylint: disable=import-error
 
 from dateutil.parser import ParserError, parse as dateparser

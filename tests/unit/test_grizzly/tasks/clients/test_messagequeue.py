@@ -1,5 +1,6 @@
 import subprocess
 import sys
+import logging
 
 from os import environ
 from typing import Optional, Dict, Any, List
@@ -8,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from _pytest.tmpdir import TempPathFactory
+from _pytest.logging import LogCaptureFixture
 from pytest_mock import MockerFixture
 
 import zmq.green as zmq
@@ -15,6 +17,8 @@ from zmq.error import Again as ZMQAgain
 
 from grizzly.tasks.clients import MessageQueueClientTask
 from grizzly.types import RequestDirection
+from grizzly.scenarios import IteratorScenario
+from grizzly.exceptions import RestartScenario
 from grizzly_extras.async_message import AsyncMessageError
 
 try:
@@ -421,12 +425,12 @@ class TestMessageQueueClientTask:
             if zmq_context is not None:
                 zmq_context.destroy()
 
-    def test_get(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture) -> None:
+    def test_get(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture) -> None:
         noop_zmq('grizzly.tasks.clients.messagequeue')
 
-        _, _, scenario = grizzly_fixture()
+        _, _, scenario = grizzly_fixture(scenario_type=IteratorScenario)
 
-        assert scenario is not None
+        assert isinstance(scenario, IteratorScenario)
 
         scenario.grizzly.state.variables.update({'mq-client-var': 'none', 'mq-client-metadata': 'none'})
 
@@ -559,6 +563,29 @@ class TestMessageQueueClientTask:
             assert kwargs.get('response_length', None) == len(messages[0].get('payload', ''))
             assert kwargs.get('context', None) == scenario.user._context
             assert kwargs.get('exception', RuntimeError) is None
+
+            async_message_request_mock = mocker.patch('grizzly.tasks.clients.messagequeue.async_message_request', side_effect=[AsyncMessageError('oooh nooo')])
+            scenario.user._scenario.failure_exception = RestartScenario
+
+            log_error_mock = mocker.patch.object(scenario.stats, 'log_error')
+            mocker.patch.object(scenario, 'on_start', return_value=None)
+            mocker.patch.object(scenario, 'wait', side_effect=[RuntimeError])
+            scenario.user.environment.catch_exceptions = False
+
+            scenario.tasks.clear()
+            scenario._task_queue.clear()
+            scenario._task_queue.append(task)
+            scenario.task_count = 1
+
+            with pytest.raises(RuntimeError):
+                with caplog.at_level(logging.INFO):
+                    scenario.run()
+
+            async_message_request_mock.assert_called_once()
+            log_error_mock.assert_called_once_with(None)
+
+            assert 'restarting scenario' in '\n'.join(caplog.messages)
+
         finally:
             if zmq_context is not None:
                 zmq_context.destroy()

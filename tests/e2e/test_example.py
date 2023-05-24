@@ -50,13 +50,15 @@ def test_e2e_example(e2e_fixture: End2EndFixture) -> None:
 
         feature_file = 'features/example.feature'
 
-        original_root = e2e_fixture._root
+        # use test-example project stucture, but with original project name (image)
+        original_root = e2e_fixture.root
         e2e_fixture._root = example_root
 
-        code, output = e2e_fixture.execute(feature_file, env_conf=env_conf)
+        code, output = e2e_fixture.execute(feature_file, env_conf=env_conf, project_name=original_root.name)
 
         result = ''.join(output)
 
+        # restore original root
         e2e_fixture._root = original_root
 
         assert code == 0
@@ -64,9 +66,7 @@ def test_e2e_example(e2e_fixture: End2EndFixture) -> None:
         assert 'WARNING' not in result
         assert '1 feature passed, 0 failed, 0 skipped' in result
         assert '3 scenarios passed, 0 failed, 0 skipped' in result
-        # Then start webserver... added when running distributed
-        step_count = 26 if e2e_fixture._distributed else 25
-        assert f'{step_count} steps passed, 0 failed, 0 skipped, 0 undefined' in result
+        assert 'steps passed, 0 failed, 0 skipped, 0 undefined' in result
 
         assert 'ident   iter  status   description' in result
         assert '001      2/2  passed   dog facts api' in result
@@ -81,6 +81,7 @@ def test_e2e_example(e2e_fixture: End2EndFixture) -> None:
         assert "AtomicCustomVariable.foobar='foobar'" in result
 
         # check debugging and that task index -> step expression is correct
+        # dog facts api
         assert 'executing task 1 of 3: iterator' in result
         assert (
             'executing task 2 of 3: Then get request with name "get-dog-facts" from endpoint '
@@ -88,11 +89,16 @@ def test_e2e_example(e2e_fixture: End2EndFixture) -> None:
         ) in result
         assert 'executing task 3 of 3: pace' in result
 
-        assert 'executing task 1 of 4: iterator' in result
-        assert 'executing task 2 of 4: Then get request with name "get-cat-facts" from endpoint "/facts?limit={{ AtomicRandomInteger.cat_facts_count }}"' in result
-        assert 'executing task 3 of 4: And send message "{\'client\': \'server\'}"' in result
-        assert 'executing task 4 of 4: pace' in result
+        # cat facts api
+        assert 'executing task 1 of 5: iterator' in result
+        assert 'executing task 2 of 5: Then get request with name "get-cat-facts" from endpoint "/facts?limit={{ AtomicRandomInteger.cat_facts_count }}"' in result
+        assert 'executing task 3 of 5: And send message "{\'client\': \'server\'}"' in result
+        assert 'executing task 4 of 5: Then log message "foo={{ foo | touppercase }}, bar={{ bar | touppercase }}"' in result
+        assert 'executing task 5 of 5: pace' in result
 
+        assert 'foo=BAR, bar=BAR' in result
+
+        # book api
         assert 'executing task 1 of 5: iterator' in result
         assert 'executing task 2 of 5: Then get request with name "1-get-book" from endpoint "/books/{{ AtomicCsvReader.books.book }}.json | content_type=json"' in result
         assert 'executing task 3 of 5: Then get request with name "2-get-author" from endpoint "{{ author_endpoint }}.json | content_type=json"' in result

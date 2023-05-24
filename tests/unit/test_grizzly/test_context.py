@@ -2,6 +2,7 @@ import shutil
 
 from typing import Tuple, Dict, Any, Optional, cast
 from os import path, environ
+from unittest.mock import ANY
 
 import pytest
 
@@ -164,6 +165,7 @@ class TestGrizzlyContextState:
             'alias': ({}, {'AtomicIntegerIncrementer.test': 'auth.randomseed'}),
             'verbose': (False, True),
             'persistent': ({}, {'AtomicIntegerIncrementer.persist': '1 | step=10, persist=True'}),
+            '_jinja2': (ANY, ANY),
         }
         actual_attributes = list(state.__dict__.keys())
         actual_attributes.sort()

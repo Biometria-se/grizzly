@@ -1,5 +1,5 @@
 wheel>=0.37.0
-git+https://github.com/mgor/novella.git@grizzly#egg=novella
+novella @ git+https://github.com/mgor/novella.git@grizzly
 pydoc-markdown[novella]>=4.6.1
 docspec==2.1.2
 docspec-python==2.1.2
@@ -9,4 +9,4 @@ requests>=2.27.1
 mkdocs>=1.3.0
 mkdocs-material>=8.3.2
 packaging>=21.3
-grizzly-loadtester-cli
+grizzly-loadtester-cli @ git+https://github.com/biometria-se/grizzly-cli.git@main

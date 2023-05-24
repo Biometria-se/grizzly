@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, Optional, Dict, Any, Tuple, cast
 from os import environ
 
 from locust.user.sequential_taskset import SequentialTaskSet
-from jinja2 import Template
 
 from grizzly.types import ScenarioState
 from grizzly.types.locust import StopUser
@@ -48,7 +47,7 @@ class GrizzlyScenario(SequentialTaskSet):
         if variables is None:
             variables = {}
 
-        return Template(input).render(**self.user._context['variables'], **variables)
+        return self.grizzly.state.jinja2.from_string(input).render(**self.user._context['variables'], **variables)
 
     def prefetch(self) -> None:
         """

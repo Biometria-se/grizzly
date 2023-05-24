@@ -146,3 +146,27 @@ Then put request with name "example-{{ initial_id }}" to "/api/v{{ initial_id }}
     """
 ```
 
+## Custom filters
+
+It is possible to implement [custom jinja2 filters](https://ttl255.com/jinja2-tutorial-part-4-template-filters/#write-custom) by decorating them with `grizzly.testdata.utils.templatingfilter`.
+
+``` python
+from grizzly.testdata.utils import templatingfilter
+
+
+@templatingfilter
+def touppercase(value: str) -> str:
+    return value.upper()
+```
+
+The name of the filter will be the same as the function name. By using the decorator it will be added to the default filters and can be used in templating expressions, such as:
+
+``` gherkin
+And value for variable "foo" is "bar"
+And value for variable "bar" is "{{ foo | touppercase }}"
+
+Then log message "foo={{ foo | touppercase }}, bar={{ bar }}"
+```
+
+A good place to define your filters is in your projects `features/environment.py` file. If you define it in any file containing step implementation the filter might be registered twice, and you'll get an error
+that an filter already exists with the name.

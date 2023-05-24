@@ -16,8 +16,11 @@ Feature: grizzly example
     Given a user of type "steps.custom.User" load testing "$conf::facts.cat.host$"
     And repeat for "1" iteration
     And value for variable "AtomicRandomInteger.cat_facts_count" is "1..5"
+    And value for variable "foo" is "bar"
+    And value for variable "bar" is "{{ foo | touppercase }}"
     Then get request with name "get-cat-facts" from endpoint "/facts?limit={{ AtomicRandomInteger.cat_facts_count }}"
     And send message "{'client': 'server'}"
+    Then log message "foo={{ foo | touppercase }}, bar={{ bar | touppercase }}"
 
   Scenario: book api
     Given a user of type "RestApi" load testing "$conf::facts.book.host$"

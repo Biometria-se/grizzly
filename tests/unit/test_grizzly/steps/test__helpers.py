@@ -15,6 +15,7 @@ from grizzly.tasks.async_group import AsyncRequestGroupTask
 from grizzly.types import RequestMethod, ResponseTarget, ResponseAction
 from grizzly.types.behave import Table, Row
 from grizzly.tasks import RequestTask, WaitTask
+from grizzly.testdata.utils import templatingfilter
 from grizzly.steps._helpers import (
     add_validation_handler,
     add_save_handler,
@@ -59,6 +60,10 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
         name_prefix = ''
 
     tasks = grizzly.scenario.tasks()
+
+    @templatingfilter
+    def uppercase(value: str) -> str:
+        return value.upper()
 
     tasks.clear()
 
@@ -163,7 +168,7 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
 
         values = [
             ['bob', 'morning', '{{ AtomicRandomString.object }} is garbage'],
-            ['alice', 'noon', 'i like {{ fruit }}'],
+            ['alice', 'noon', 'i like {{ fruit | uppercase }}'],
             ['chad', 'evening', 'have you tried {{ AtomicDate.action }} it off and on again?'],
             ['dave', 'night', 'yabba {{ AtomicCsvReader.response.word }} doo'],
         ]
