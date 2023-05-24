@@ -760,7 +760,7 @@ def step_start_webserver(context: Context, port: int) -> None:
 
         # install grizzly-cli
         rc, output = run_command(
-            ['python3', '-m', 'pip', 'install', 'grizzly-loadtester-cli'],
+            ['python3', '-m', 'pip', 'install', 'git+https://github.com/biometria-se/grizzly-cli.git@main'],
             cwd=str(test_context),
             env=self._env,
         )
@@ -1079,13 +1079,22 @@ def step_start_webserver(context: Context, port: int) -> None:
 
         return feature_file_name
 
-    def execute(self, feature_file: str, env_conf: Optional[Dict[str, Any]] = None, testdata: Optional[Dict[str, str]] = None) -> Tuple[int, List[str]]:
+    def execute(
+        self,
+        feature_file: str,
+        env_conf: Optional[Dict[str, Any]] = None,
+        testdata: Optional[Dict[str, str]] = None,
+        project_name: Optional[str] = None,
+    ) -> Tuple[int, List[str]]:
         env_conf_fd: Any
         if env_conf is not None:
             prefix = path.basename(feature_file).replace('.feature', '')
             env_conf_fd = NamedTemporaryFile(delete=not self.keep_files, prefix=prefix, suffix='.yaml', dir=(self.root / 'environments'))
         else:
             env_conf_fd = nullcontext()
+
+        if project_name is None:
+            project_name = self.root.name
 
         with env_conf_fd as env_conf_file:
             command = [
@@ -1098,7 +1107,7 @@ def step_start_webserver(context: Context, port: int) -> None:
             ]
 
             if self._distributed:
-                command = command[:2] + ['--project-name', self.root.name] + command[2:]
+                command = command[:2] + ['--project-name', project_name] + command[2:]
 
             if env_conf is not None:
                 env_conf_file.write(yaml.dump(env_conf, Dumper=yaml.Dumper).encode())

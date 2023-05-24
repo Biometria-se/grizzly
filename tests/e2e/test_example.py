@@ -50,13 +50,15 @@ def test_e2e_example(e2e_fixture: End2EndFixture) -> None:
 
         feature_file = 'features/example.feature'
 
-        original_root = e2e_fixture._root
+        # use test-example project stucture, but with original project name (image)
+        original_root = e2e_fixture.root
         e2e_fixture._root = example_root
 
-        code, output = e2e_fixture.execute(feature_file, env_conf=env_conf)
+        code, output = e2e_fixture.execute(feature_file, env_conf=env_conf, project_name=original_root.name)
 
         result = ''.join(output)
 
+        # restore original root
         e2e_fixture._root = original_root
 
         assert code == 0

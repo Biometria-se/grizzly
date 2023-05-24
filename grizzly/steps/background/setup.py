@@ -169,7 +169,7 @@ def step_setup_message_type_callback(context: Context, callback_name: str, messa
     try:
         module = import_module(module_name)
     except ModuleNotFoundError as e:
-        assert 0, f'no module named {e.name}'
+        raise AssertionError(f'no module named {e.name}')
 
     callback = getattr(module, callback_name, None)
 
