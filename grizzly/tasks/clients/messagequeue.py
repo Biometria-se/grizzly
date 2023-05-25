@@ -293,7 +293,6 @@ class MessageQueueClientTask(ClientTask):
 
                 try:
                     response = async_message_request(client, request)
-
                     parent.logger.debug(f'got response from {worker} at {hostname()}')
                 except:
                     raise
@@ -308,7 +307,7 @@ class MessageQueueClientTask(ClientTask):
                     })
 
                 payload = response.get('payload', None)
-                if payload is None or len(payload) < 1:
+                if payload is None or len(payload.encode()) < 1:
                     raise RuntimeError('response did not contain any payload')
 
                 return response

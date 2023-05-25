@@ -84,7 +84,11 @@ class IteratorScenario(GrizzlyScenario):
                         step = 'unknown'
 
                     self.logger.debug(f'executing task {self.current_task_index+1} of {self.task_count}: {step}')
-                    self.execute_next_task()
+                    try:
+                        self.execute_next_task()
+                    except Exception as e:
+                        self.logger.error(f'task {self.current_task_index+1} of {self.task_count}: {step}, failed: {e}')
+                        raise e
                 except RescheduleTaskImmediately:
                     pass
                 except RescheduleTask:

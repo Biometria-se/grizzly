@@ -180,10 +180,7 @@ class ClientTask(GrizzlyMetaRequestTask):
     def __call__(self) -> grizzlytask:
         @grizzlytask
         def task(parent: 'GrizzlyScenario') -> GrizzlyResponse:
-            if self.direction == RequestDirection.FROM:
-                return self.get(parent)
-            else:
-                return self.put(parent)
+            return self.execute(parent)
 
         @task.on_start
         def on_start(parent: GrizzlyScenario) -> None:
@@ -196,7 +193,10 @@ class ClientTask(GrizzlyMetaRequestTask):
         return task
 
     def execute(self, parent: GrizzlyScenario) -> GrizzlyResponse:
-        return self.get(parent)
+        if self.direction == RequestDirection.FROM:
+            return self.get(parent)
+        else:
+            return self.put(parent)
 
     @abstractmethod
     def get(self, parent: GrizzlyScenario) -> GrizzlyResponse:
@@ -217,7 +217,7 @@ class ClientTask(GrizzlyMetaRequestTask):
             # get metadata back from actual implementation
             yield meta
         except Exception as e:
-            parent.logger.error(str(e), exc_info=True)
+            parent.logger.error(f'{self.__class__.__name__}: {str(e)}', exc_info=True)
             exception = e
         finally:
             if self.name is None:
@@ -266,7 +266,10 @@ class ClientTask(GrizzlyMetaRequestTask):
                 log_file.write_text(jsondumps(request_log, indent=2))
 
             if exception is not None and parent.user._scenario.failure_exception is not None:
+                parent.logger.error(f'{self.__class__.__name__} raising {parent.user._scenario.failure_exception}')
                 raise parent.user._scenario.failure_exception()
+            elif exception is not None:
+                parent.logger.warning(f'{self.__class__.__name__} ignoring {exception}')
 
 
 class client:
