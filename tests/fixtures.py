@@ -773,7 +773,7 @@ def step_start_webserver(context: Context, port: int) -> None:
 
         # create grizzly project
         rc, output = run_command(
-            ['grizzly-cli', 'init', '--yes', project_name],
+            ['grizzly-cli', 'init', '--with-mq', '--yes', project_name],
             cwd=str(test_context),
             env=self._env,
         )

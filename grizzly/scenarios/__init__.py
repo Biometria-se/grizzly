@@ -36,7 +36,6 @@ class GrizzlyScenario(SequentialTaskSet):
         self.abort = False
         self.spawning_complete = False
         self.parent.environment.events.quitting.add_listener(self.on_quitting)
-        self.parent.environment.events.spawning_complete.add_listener(self.on_spawning_complete)
 
     @property
     def user(self) -> 'GrizzlyUser':
@@ -105,13 +104,6 @@ class GrizzlyScenario(SequentialTaskSet):
         if self.task_greenlet is not None and kwargs.get('abort', False):
             self.abort = True
             self.task_greenlet.kill(StopScenario, block=False)
-
-    def on_spawning_complete(self, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
-        """
-        Set scenario state for spawning complete, so we can control what happens with users before
-        spawning actually is complete.
-        """
-        self.spawning_complete = True
 
     def execute_next_task(self) -> None:
         """

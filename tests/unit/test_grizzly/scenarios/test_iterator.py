@@ -518,6 +518,9 @@ class TestIterationScenario:
 
         assert isinstance(scenario, iterator.IteratorScenario)
 
+        # always assume that spawning is complete in unit test
+        scenario.grizzly.state.spawning_complete = True
+
         side_effects: List[Optional[InterruptTaskSet]] = [
             InterruptTaskSet(reschedule=False),
             InterruptTaskSet(reschedule=True),

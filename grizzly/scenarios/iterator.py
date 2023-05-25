@@ -74,8 +74,6 @@ class IteratorScenario(GrizzlyScenario):
                 if not self._task_queue:
                     self.schedule_task(self.get_next_task())
 
-                self.logger.debug(f'{len(self._task_queue)} tasks in queue')
-
                 try:
                     if self.user._state == LOCUST_STATE_STOPPING:
                         raise StopUser()
@@ -101,6 +99,7 @@ class IteratorScenario(GrizzlyScenario):
                     # move locust.user.sequential_task.SequentialTaskSet index pointer the number of tasks left until end, so it will start over
                     tasks_left = self.task_count - (self._task_index % self.task_count)
                     self._task_index += tasks_left
+                    self.logger.info(f'{len(self._task_queue)} tasks in queue')  # @TODO: this should not be info
                     self._task_queue.clear()  # we should remove any scheduled tasks when restarting
 
                     self.stats.log_error(None)
@@ -143,13 +142,15 @@ class IteratorScenario(GrizzlyScenario):
                         self.logger.error('on_stop failed', exc_info=True)
 
                     # to avoid spawning of a new user, we should wait until spawning is complete
-                    count = 0
-                    while not self.spawning_complete:
-                        count += 1
-                        if count % 10 == 0:
-                            self.logger.debug('spawning not complete, wait')
-                            count = 0
-                        gsleep(0.1)
+                    if has_error:
+                        count = 0
+                        while not self.grizzly.state.spawning_complete:
+                            if count % 10 == 0:
+                                self.logger.debug('spawning not complete, wait')
+                                if count > 0:
+                                    count = 0
+                            gsleep(0.1)
+                            count += 1
 
                     raise e
                 else:
