@@ -836,6 +836,7 @@ def step_start_webserver(context: Context, port: int) -> None:
             grizzly_package = '.'
             if self.has_pymqi():
                 grizzly_package = f'{grizzly_package}[mq]'
+                self._env.update({'LD_LIBRARY_PATH': environ.get('LD_LIBRARY_PATH', '')})
 
             rc, output = run_command(
                 ['python3', '-m', 'pip', 'install', grizzly_package],

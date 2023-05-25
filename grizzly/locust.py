@@ -441,7 +441,6 @@ def run(context: Context) -> int:
                 logger.info(f'registered callback for message type "{message_type}"')
 
             runner.register_message('client_aborted', grizzly_test_abort)
-            logger.info('registered callback for message type "client_aborted"')
 
         main_greenlet = runner.greenlet
 

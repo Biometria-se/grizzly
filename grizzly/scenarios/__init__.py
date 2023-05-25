@@ -24,6 +24,7 @@ class GrizzlyScenario(SequentialTaskSet):
     task_greenlet: Optional[GreenletWithExceptionCatching]
     task_greenlet_factory: GreenletWithExceptionCatching
     abort: bool
+    spawning_complete: bool
 
     def __init__(self, parent: 'GrizzlyUser') -> None:
         super().__init__(parent=parent)
@@ -33,7 +34,9 @@ class GrizzlyScenario(SequentialTaskSet):
         self.task_greenlet = None
         self.task_greenlet_factory = GreenletWithExceptionCatching()
         self.abort = False
+        self.spawning_complete = False
         self.parent.environment.events.quitting.add_listener(self.on_quitting)
+        self.parent.environment.events.spawning_complete.add_listener(self.on_spawning_complete)
 
     @property
     def user(self) -> 'GrizzlyUser':
@@ -102,6 +105,13 @@ class GrizzlyScenario(SequentialTaskSet):
         if self.task_greenlet is not None and kwargs.get('abort', False):
             self.abort = True
             self.task_greenlet.kill(StopScenario, block=False)
+
+    def on_spawning_complete(self, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+        """
+        Set scenario state for spawning complete, so we can control what happens with users before
+        spawning actually is complete.
+        """
+        self.spawning_complete = True
 
     def execute_next_task(self) -> None:
         """
