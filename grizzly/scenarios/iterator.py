@@ -87,7 +87,8 @@ class IteratorScenario(GrizzlyScenario):
                     try:
                         self.execute_next_task()
                     except Exception as e:
-                        self.logger.error(f'task {self.current_task_index+1} of {self.task_count}: {step}, failed: {e}')
+                        if not isinstance(e, StopScenario):
+                            self.logger.error(f'task {self.current_task_index+1} of {self.task_count}: {step}, failed: {e} ({type(e)})')
                         raise e
                 except RescheduleTaskImmediately:
                     pass

@@ -266,11 +266,29 @@ class GrizzlyContextScenario:
     context: Dict[str, Any] = field(init=False, repr=False, hash=False, compare=False, default_factory=dict)
     _tasks: GrizzlyContextTasks = field(init=False, repr=False, hash=False, compare=False)
     validation: GrizzlyContextScenarioValidation = field(init=False, hash=False, compare=False, default_factory=GrizzlyContextScenarioValidation)
-    failure_exception: Optional[Type[Exception]] = field(init=False, default=None)
+    _failure_exception: Optional[Type[Exception]] = field(init=False, default=None)
     orphan_templates: List[str] = field(init=False, repr=False, hash=False, compare=False, default_factory=list)
 
     def __post_init__(self) -> None:
         self._tasks = GrizzlyContextTasks(self)
+        self._logger = logging.getLogger('grizzly-context-scenario')
+
+    @property
+    def failure_exception(self) -> Optional[Type[Exception]]:
+        return self._failure_exception
+
+    @failure_exception.setter
+    def failure_exception(self, value: Optional[Type[Exception]]) -> None:
+        orig_value = self._failure_exception
+        self._failure_exception = value
+        import inspect
+        try:
+            frame = inspect.stack()[1]
+            callee = f'{frame.filename}:{frame.lineno}: {frame.function}'
+        except:
+            callee = 'unknown'
+
+        self._logger.info(f'failure_exception: {orig_value} -> {value} ({callee})')  # @TODO: shouldn't be info, or even exist?
 
     @property
     def tasks(self) -> GrizzlyContextTasks:
