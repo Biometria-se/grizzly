@@ -305,7 +305,6 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
             yield action
 
             response = async_message_request(self.zmq_client, am_request)
-
         except Exception as e:
             exception = e
             self.logger.error(str(e), exc_info=True)
