@@ -19,25 +19,23 @@ class TestTaskWaitTask:
         assert task_factory.max_time == 13.0
 
     def test___call__(self, grizzly_fixture: GrizzlyFixture) -> None:
-        _, _, scenario = grizzly_fixture()
-
-        assert scenario is not None
+        parent = grizzly_fixture()
 
         # force the scenario user to not have a wait_time method
-        scenario.user.wait_time = None
+        parent.user.wait_time = None
 
         with pytest.raises(MissingWaitTimeError):
-            scenario.wait_time()
+            parent.wait_time()
 
         task = TaskWaitTask(1.0, 12.0)()
 
-        task(scenario)
+        task(parent)
 
-        wait_time = scenario.wait_time()
+        wait_time = parent.wait_time()
         assert wait_time >= 1.0 and wait_time <= 12.0
 
         task = TaskWaitTask(13.0)()
 
-        task(scenario)
+        task(parent)
 
-        assert scenario.wait_time() == 13.0
+        assert parent.wait_time() == 13.0

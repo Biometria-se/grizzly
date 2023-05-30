@@ -129,11 +129,10 @@ class TestBlobStorageClientTask:
         )
         task = task_factory()
 
-        _, _, scenario = grizzly_fixture()
-        assert scenario is not None
+        parent = grizzly_fixture()
 
         with pytest.raises(NotImplementedError) as nie:
-            task(scenario)
+            task(parent)
         assert 'BlobStorageClientTask has not implemented GET' in str(nie.value)
 
     def test_put(self, behave_fixture: BehaveFixture, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, tmp_path_factory: TempPathFactory) -> None:
@@ -175,24 +174,23 @@ class TestBlobStorageClientTask:
 
             task = task_factory()
 
-            _, _, scenario = grizzly_fixture()
-            assert scenario is not None
+            parent = grizzly_fixture()
 
-            request_fire_spy = mocker.spy(scenario.user.environment.events.request, 'fire')
+            request_fire_spy = mocker.spy(parent.user.environment.events.request, 'fire')
 
-            scenario.user._context['variables'].update(grizzly.state.variables)
+            parent.user._context['variables'].update(grizzly.state.variables)
 
-            task(scenario)
+            task(parent)
 
             assert upload_blob_mock.call_count == 0
 
             assert request_fire_spy.call_count == 1
             _, kwargs = request_fire_spy.call_args_list[-1]
             assert kwargs.get('request_type', None) == 'CLTSK'
-            assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} BlobStorage->my-container'
+            assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} BlobStorage->my-container'
             assert kwargs.get('response_time', None) >= 0.0
             assert kwargs.get('response_length') == 0
-            assert kwargs.get('context', None) is scenario.user._context
+            assert kwargs.get('context', None) is parent.user._context
             exception = kwargs.get('exception', '')
             assert isinstance(exception, FileNotFoundError)
             assert str(exception) == 'source.json'
@@ -214,7 +212,7 @@ class TestBlobStorageClientTask:
 
             task = task_factory()
 
-            task(scenario)
+            task(parent)
 
             assert upload_blob_mock.call_count == 1
 
@@ -233,16 +231,16 @@ class TestBlobStorageClientTask:
             assert request_fire_spy.call_count == 2
             _, kwargs = request_fire_spy.call_args_list[-1]
             assert kwargs.get('request_type', None) == 'CLTSK'
-            assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} test-bss-request'
+            assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} test-bss-request'
             assert kwargs.get('response_time', None) >= 0.0
             assert kwargs.get('response_length') == len('this is my hello world test!')
-            assert kwargs.get('context', None) is scenario.user._context
+            assert kwargs.get('context', None) is parent.user._context
             assert kwargs.get('exception', '') is None
 
             task_factory.destination = None
             task_factory.overwrite = True
 
-            task(scenario)
+            task(parent)
 
             assert upload_blob_mock.call_count == 2
 
@@ -258,10 +256,10 @@ class TestBlobStorageClientTask:
             assert request_fire_spy.call_count == 3
             _, kwargs = request_fire_spy.call_args_list[-1]
             assert kwargs.get('request_type', None) == 'CLTSK'
-            assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} test-bss-request'
+            assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} test-bss-request'
             assert kwargs.get('response_time', None) >= 0.0
             assert kwargs.get('response_length') == len('this is my hello world test!')
-            assert kwargs.get('context', None) is scenario.user._context
+            assert kwargs.get('context', None) is parent.user._context
             assert kwargs.get('exception', '') is None
         finally:
             try:

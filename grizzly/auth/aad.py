@@ -2,7 +2,7 @@ import re
 import json
 import logging
 
-from typing import Dict, Any, Tuple, Optional, List, cast
+from typing import Dict, Any, Tuple, Optional, List, cast, TYPE_CHECKING
 from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
 from secrets import token_urlsafe
@@ -16,6 +16,10 @@ import requests
 from grizzly.utils import safe_del
 from grizzly.types.locust import StopUser
 from . import RefreshToken, GrizzlyHttpAuthClient, AuthType
+
+
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.scenarios import GrizzlyScenario
 
 
 logger = logging.getLogger(__name__)
@@ -72,7 +76,7 @@ class FormPostParser(HTMLParser):
 
 class AAD(RefreshToken):
     @classmethod
-    def get_oauth_authorization(cls, client: GrizzlyHttpAuthClient) -> Tuple[AuthType, str]:
+    def get_oauth_authorization(cls, parent: 'GrizzlyScenario', client: GrizzlyHttpAuthClient) -> Tuple[AuthType, str]:
         def _parse_response_config(response: requests.Response) -> Dict[str, Any]:
             match = re.search(r'Config={(.*?)};', response.text, re.MULTILINE)
 
@@ -427,7 +431,7 @@ class AAD(RefreshToken):
                         assert code_verifier is not None, 'no code verifier has been generated!'
                         assert 'code' in fragments, f'could not find code in {token_url}'
                         code = fragments['code'][0]
-                        return cls.get_oauth_token(client, (code, code_verifier,))
+                        return cls.get_oauth_token(parent, client, (code, code_verifier,))
                     else:
                         assert 'id_token' in fragments, f'could not find id_token in {token_url}'
                         token = fragments['id_token'][0]
@@ -473,10 +477,7 @@ class AAD(RefreshToken):
             exception = e
             logger.error(str(e), exc_info=True)
         finally:
-            if client.parent is not None:
-                scenario_index = client.parent.user._scenario.identifier
-            else:
-                scenario_index = client.__class__.__name__.rsplit('_', 1)[-1]
+            scenario_index = parent.user._scenario.identifier
 
             if is_token_v2_0 is None:
                 version = ''
@@ -493,13 +494,13 @@ class AAD(RefreshToken):
                 'response_length': total_response_length,
             }
 
-            client.environment.events.request.fire(**request_meta)
+            parent.user.environment.events.request.fire(**request_meta)
 
             if exception is not None:
                 raise StopUser()
 
     @classmethod
-    def get_oauth_token(cls, client: GrizzlyHttpAuthClient, pkcs: Optional[Tuple[str, str]] = None) -> Tuple[AuthType, str]:
+    def get_oauth_token(cls, parent: 'GrizzlyScenario', client: GrizzlyHttpAuthClient, pkcs: Optional[Tuple[str, str]] = None) -> Tuple[AuthType, str]:
         auth_context = client._context.get('auth', None)
         assert auth_context is not None, 'context variable auth is not set'
         provider_url = auth_context.get('provider', None)
@@ -607,10 +608,7 @@ class AAD(RefreshToken):
             exception = e
             logger.error(str(e), exc_info=True)
         finally:
-            if client.parent is not None:
-                scenario_index = client.parent.user._scenario.identifier
-            else:
-                scenario_index = client.__class__.__name__.rsplit('_', 1)[-1]
+            scenario_index = parent.user._scenario.identifier
 
             request_meta = {
                 'request_type': 'AUTH',
@@ -623,7 +621,7 @@ class AAD(RefreshToken):
             }
 
             if pkcs is None:
-                client.environment.events.request.fire(**request_meta)
+                parent.user.environment.events.request.fire(**request_meta)
 
             if exception is not None:
                 raise StopUser()

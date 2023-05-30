@@ -23,7 +23,7 @@ from grizzly.tasks import RequestTask
 from grizzly_extras.transformer import TransformerContentType
 from grizzly.testdata.utils import templatingfilter
 
-from tests.fixtures import LocustFixture
+from tests.fixtures import LocustFixture, BehaveFixture
 from tests.helpers import TestUser
 
 if TYPE_CHECKING:
@@ -43,7 +43,7 @@ class TestResponseHandlerAction:
     def test___(self, locust_fixture: LocustFixture) -> None:
         assert issubclass(ResponseHandlerAction, ABC)
         TestUser.host = 'http://example.net'
-        user = TestUser(locust_fixture.env)
+        user = TestUser(locust_fixture.environment)
         handler = TestResponseHandlerAction.Dummy('$.', '.*')
         assert handler.expression == '$.'
         assert handler.match_with == '.*'
@@ -55,7 +55,7 @@ class TestResponseHandlerAction:
 
     def test_get_matches(self, locust_fixture: LocustFixture) -> None:
         TestUser.host = 'http://example.net'
-        user = TestUser(locust_fixture.env)
+        user = TestUser(locust_fixture.environment)
         handler = TestResponseHandlerAction.Dummy('//hello/world', '.*')
 
         with pytest.raises(TypeError) as te:
@@ -95,18 +95,17 @@ class TestValidationHandlerAction:
         assert handler.match_with == 'foo'
         assert handler.expected_matches == 1
 
-    def test___call___true(self, locust_fixture: LocustFixture) -> None:
-        scenario = GrizzlyContextScenario(index=1)
-        scenario.name = 'test-scenario'
+    def test___call___true(self, behave_fixture: BehaveFixture) -> None:
+        scenario = GrizzlyContextScenario(index=1, behave=behave_fixture.create_scenario('test-scenario'))
         TestUser.host = 'http://example.net'
-        user = TestUser(locust_fixture.env)
+        user = TestUser(behave_fixture.locust.environment)
         user._scenario = scenario
 
         try:
             response = Response()
             response._content = '{}'.encode('utf-8')
             response.status_code = 200
-            response_context_manager = ResponseContextManager(response, locust_fixture.env.events.request, {})
+            response_context_manager = ResponseContextManager(response, behave_fixture.locust.environment.events.request, {})
             response_context_manager._entered = True
 
             handler = ValidationHandlerAction(
@@ -270,18 +269,17 @@ class TestValidationHandlerAction:
                 except:
                     pass
 
-            assert user._context['variables'] is not TestUser(locust_fixture.env)._context['variables']
+            assert user._context['variables'] is not TestUser(behave_fixture.locust.environment)._context['variables']
 
-    def test___call___false(self, locust_fixture: LocustFixture) -> None:
-        scenario = GrizzlyContextScenario(index=1)
-        scenario.name = 'test-scenario'
+    def test___call___false(self, behave_fixture: BehaveFixture) -> None:
+        scenario = GrizzlyContextScenario(index=1, behave=behave_fixture.create_scenario('test-scenario'))
         TestUser.host = 'http://example.io'
-        user = TestUser(locust_fixture.env)
+        user = TestUser(behave_fixture.locust.environment)
         user._scenario = scenario
         response = Response()
         response._content = '{}'.encode('utf-8')
         response.status_code = 200
-        response_context_manager = ResponseContextManager(response, locust_fixture.env.events.request, {})
+        response_context_manager = ResponseContextManager(response, behave_fixture.locust.environment.events.request, {})
         response_context_manager._entered = True
 
         handler = ValidationHandlerAction(False, expression='$.test.value', match_with='test')
@@ -446,16 +444,15 @@ class TestSaveHandlerAction:
         assert handler.match_with == 'foo'
         assert handler.expected_matches == 1
 
-    def test___call__(self, locust_fixture: LocustFixture) -> None:
+    def test___call__(self, behave_fixture: BehaveFixture) -> None:
         TestUser.host = 'http://example.com'
-        user = TestUser(locust_fixture.env)
+        user = TestUser(behave_fixture.locust.environment)
         response = Response()
         response._content = '{}'.encode('utf-8')
         response.status_code = 200
-        response_context_manager = ResponseContextManager(response, locust_fixture.env.events.request, {})
+        response_context_manager = ResponseContextManager(response, behave_fixture.locust.environment.events.request, {})
         response_context_manager._entered = True
-        scenario = GrizzlyContextScenario(index=1)
-        scenario.name = 'test-scenario'
+        scenario = GrizzlyContextScenario(index=1, behave=behave_fixture.create_scenario('test-scenario'))
         user._scenario = scenario
 
         assert 'test' not in user.context_variables
@@ -678,13 +675,13 @@ class TestResponseHandler:
         ResponseHandler.host = None
 
         with pytest.raises(LocustError):
-            ResponseHandler(locust_fixture.env)
+            ResponseHandler(locust_fixture.environment)
 
         fake_user_type = type('FakeResponseHandlerUser', (ResponseHandler, HttpRequests, ), {
             'host': '',
         })
 
-        user = fake_user_type(locust_fixture.env)
+        user = fake_user_type(locust_fixture.environment)
 
         assert issubclass(user.__class__, ResponseEvent)
         assert isinstance(user.client, ResponseEventSession)
@@ -692,15 +689,15 @@ class TestResponseHandler:
         assert len(user.response_event._handlers) == 1
 
         ResponseHandler.host = ''
-        user = ResponseHandler(locust_fixture.env)
+        user = ResponseHandler(locust_fixture.environment)
         assert user.client is None
         assert isinstance(user.response_event, EventHook)
         assert len(user.response_event._handlers) == 1
 
     def test_response_handler_response_context(self, mocker: MockerFixture, locust_fixture: LocustFixture) -> None:
         ResponseHandler.host = TestUser.host = 'http://example.com'
-        user = ResponseHandler(locust_fixture.env)
-        test_user = TestUser(locust_fixture.env)
+        user = ResponseHandler(locust_fixture.environment)
+        test_user = TestUser(locust_fixture.environment)
 
         response = Response()
         response._content = jsondumps({}).encode('utf-8')
@@ -793,8 +790,8 @@ class TestResponseHandler:
 
     def test_response_handler_custom_response(self, mocker: MockerFixture, locust_fixture: LocustFixture) -> None:
         ResponseHandler.host = TestUser.host = 'http://example.com'
-        user = ResponseHandler(locust_fixture.env)
-        test_user = TestUser(locust_fixture.env)
+        user = ResponseHandler(locust_fixture.environment)
+        test_user = TestUser(locust_fixture.environment)
 
         request = RequestTask(RequestMethod.POST, name='test-request', endpoint='/api/v2/test')
 

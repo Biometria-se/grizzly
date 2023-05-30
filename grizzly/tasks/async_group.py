@@ -40,7 +40,6 @@ from grizzly.users.base import AsyncRequests
 from . import GrizzlyTask, GrizzlyTaskWrapper, RequestTask, template, grizzlytask
 
 if TYPE_CHECKING:  # pragma: no cover
-    from grizzly.context import GrizzlyContextScenario
     from grizzly.scenarios import GrizzlyScenario
 
 
@@ -48,8 +47,8 @@ if TYPE_CHECKING:  # pragma: no cover
 class AsyncRequestGroupTask(GrizzlyTaskWrapper):
     tasks: List[GrizzlyTask]
 
-    def __init__(self, name: str, scenario: Optional['GrizzlyContextScenario'] = None) -> None:
-        super().__init__(scenario)
+    def __init__(self, name: str) -> None:
+        super().__init__()
 
         self.name = name
         self.tasks = []
@@ -104,7 +103,7 @@ class AsyncRequestGroupTask(GrizzlyTaskWrapper):
                 )
 
                 for request in self.tasks:
-                    greenlet = gevent.spawn(parent.user.async_request, request)
+                    greenlet = gevent.spawn(parent.user.async_request, parent, request)
                     if debug_enabled:
                         greenlet.settrace(trace_green)
                     greenlets.append(greenlet)
@@ -128,14 +127,14 @@ class AsyncRequestGroupTask(GrizzlyTaskWrapper):
 
                 parent.user.environment.events.request.fire(
                     request_type=RequestType.ASYNC_GROUP(),
-                    name=f'{self.scenario.identifier} {self.name} ({len(self.tasks)})',
+                    name=f'{parent.user._scenario.identifier} {self.name} ({len(self.tasks)})',
                     response_time=response_time,
                     response_length=response_length,
                     context=parent.user._context,
                     exception=exception,
                 )
 
-                if exception is not None and self.scenario.failure_exception is not None:
-                    raise self.scenario.failure_exception()
+                if exception is not None and parent.user._scenario.failure_exception is not None:
+                    raise parent.user._scenario.failure_exception()
 
         return task

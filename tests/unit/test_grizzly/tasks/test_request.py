@@ -85,18 +85,19 @@ class TestRequestTask:
         task = task_factory()
         assert callable(task)
 
-        _, _, scenario = grizzly_fixture()
+        parent = grizzly_fixture()
 
-        assert scenario is not None
+        mocker.patch.object(parent.user, 'request', autospec=True)
+        request_spy = mocker.spy(parent.user, 'request')
 
-        mocker.patch.object(scenario.user, 'request', autospec=True)
-        request_spy = mocker.spy(scenario.user, 'request')
-
-        task(scenario)
+        task(parent)
 
         assert request_spy.call_count == 1
-        args, _ = request_spy.call_args_list[0]
-        assert args[0] is task_factory
+        args, kwargs = request_spy.call_args_list[0]
+        assert args[0] is parent
+        assert args[1] is task_factory
+        assert len(args) == 2
+        assert kwargs == {}
 
         # automagically create template if not set
         task_factory.source = 'hello {{ world }}'

@@ -23,42 +23,42 @@ def test_task_failing(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, ca
         def put(self, parent: GrizzlyScenario) -> GrizzlyResponse:
             return None, 'put'
 
-    _, _, scenario = grizzly_fixture(scenario_type=IteratorScenario)
+    parent = grizzly_fixture(scenario_type=IteratorScenario)
 
-    assert isinstance(scenario, IteratorScenario)
+    assert isinstance(parent, IteratorScenario)
 
     task_factory = TestTask(RequestDirection.FROM, 'test://foo.bar', 'dummy-stuff')
 
     task = task_factory()
 
-    scenario.user._scenario.failure_exception = StopUser
+    parent.user._scenario.failure_exception = StopUser
 
     with pytest.raises(StopUser):
-        task(scenario)
+        task(parent)
 
-    scenario.user._scenario.failure_exception = RestartScenario
+    parent.user._scenario.failure_exception = RestartScenario
 
     with pytest.raises(RestartScenario):
-        task(scenario)
+        task(parent)
 
-    scenario.user._scenario.failure_exception = None
+    parent.user._scenario.failure_exception = None
 
-    task(scenario)
+    task(parent)
 
-    log_error_mock = mocker.patch.object(scenario.stats, 'log_error')
-    mocker.patch.object(scenario, 'on_start', return_value=None)
-    mocker.patch.object(scenario, 'wait', side_effect=[NotImplementedError, NotImplementedError])
-    scenario.user.environment.catch_exceptions = True
-    scenario.user._scenario.failure_exception = RestartScenario
+    log_error_mock = mocker.patch.object(parent.stats, 'log_error')
+    mocker.patch.object(parent, 'on_start', return_value=None)
+    mocker.patch.object(parent, 'wait', side_effect=[NotImplementedError, NotImplementedError])
+    parent.user.environment.catch_exceptions = True
+    parent.user._scenario.failure_exception = RestartScenario
 
-    scenario.tasks.clear()
-    scenario._task_queue.clear()
-    scenario._task_queue.append(task)
-    scenario.task_count = 1
+    parent.tasks.clear()
+    parent._task_queue.clear()
+    parent._task_queue.append(task)
+    parent.task_count = 1
 
     with pytest.raises(NotImplementedError):
         with caplog.at_level(logging.INFO):
-            scenario.run()
+            parent.run()
 
     log_error_mock.assert_called_once_with(None)
 

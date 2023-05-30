@@ -85,7 +85,6 @@ from zmq.sugar.constants import REQ as ZMQ_REQ, LINGER as ZMQ_LINGER
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageResponse, AsyncMessageRequest, async_message_request
 
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestType
-from grizzly.context import GrizzlyContextScenario
 from grizzly.scenarios import GrizzlyScenario
 from grizzly.testdata.utils import resolve_variable
 
@@ -121,7 +120,6 @@ class MessageQueueClientTask(ClientTask):
         source: Optional[str] = None,
         destination: Optional[str] = None,
         text: Optional[str] = None,
-        scenario: Optional[GrizzlyContextScenario] = None,
     ) -> None:
         if pymqi.__name__ == 'grizzly_extras.dummy_pymqi':
             pymqi.raise_for_error(self.__class__)
@@ -137,7 +135,6 @@ class MessageQueueClientTask(ClientTask):
             metadata_variable=metadata_variable,
             destination=destination,
             source=source,
-            scenario=scenario,
             text=text,
         )
 

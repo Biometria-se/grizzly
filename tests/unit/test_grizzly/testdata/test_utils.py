@@ -26,7 +26,8 @@ from tests.fixtures import BehaveFixture, AtomicVariableCleanupFixture, GrizzlyF
 
 
 def test_initialize_testdata_no_tasks(grizzly_fixture: GrizzlyFixture) -> None:
-    testdata, external_dependencies, message_handlers = initialize_testdata(grizzly_fixture.grizzly, [])
+    grizzly_fixture.grizzly.scenario.tasks.clear()
+    testdata, external_dependencies, message_handlers = initialize_testdata(grizzly_fixture.grizzly)
     assert testdata == {}
     assert external_dependencies == set()
     assert message_handlers == {}
@@ -62,27 +63,26 @@ def test_initialize_testdata_with_tasks(
         request.name = '{{ request_name }}'
         request.endpoint = '/api/{{ endpoint_part }}/test'
         request.response.content_type = TransformerContentType.JSON
-        scenario = request.scenario
-        scenario.tasks.add(request)
-        scenario.tasks.add(LogMessageTask(message='{{ message }}'))
-        scenario.tasks.add(DateTask(variable='date_task', value='{{ date_task_date }} | timezone="{{ timezone }}", offset="-{{ days }}D"'))
-        scenario.tasks.add(TransformerTask(
+        grizzly.scenario.tasks.clear()
+        grizzly.scenario.tasks.add(request)
+        grizzly.scenario.tasks.add(LogMessageTask(message='{{ message }}'))
+        grizzly.scenario.tasks.add(DateTask(variable='date_task', value='{{ date_task_date }} | timezone="{{ timezone }}", offset="-{{ days }}D"'))
+        grizzly.scenario.tasks.add(TransformerTask(
             grizzly,
             expression='$.expression',
             variable='transformer_task',
             content='hello this is the {{ content }}!',
             content_type=TransformerContentType.JSON,
         ))
-        assert scenario.tasks.scenario is scenario
         request.content_type = TransformerContentType.JSON
-        scenario.tasks.add(UntilRequestTask(grizzly, request=request, condition='{{ condition }}'))
-        scenario.tasks.add(ConditionalTask(name='conditional-1', condition='{{ value | int > 5 }}'))
-        scenario.tasks.add(ConditionalTask(name='conditional-1', condition='{{ AtomicIntegerIncrementer.value | int > 5 }}'))
-        scenario.tasks.add(LogMessageTask(message='transformer_task={{ transformer_task }}'))
-        scenario.orphan_templates.append('hello {{ orphan }} template')
-        testdata, external_dependencies, message_handlers = initialize_testdata(grizzly, scenario.tasks())
+        grizzly.scenario.tasks.add(UntilRequestTask(grizzly, request=request, condition='{{ condition }}'))
+        grizzly.scenario.tasks.add(ConditionalTask(name='conditional-1', condition='{{ value | int > 5 }}'))
+        grizzly.scenario.tasks.add(ConditionalTask(name='conditional-1', condition='{{ AtomicIntegerIncrementer.value | int > 5 }}'))
+        grizzly.scenario.tasks.add(LogMessageTask(message='transformer_task={{ transformer_task }}'))
+        grizzly.scenario.orphan_templates.append('hello {{ orphan }} template')
+        testdata, external_dependencies, message_handlers = initialize_testdata(grizzly)
 
-        scenario_name = scenario.class_name
+        scenario_name = grizzly.scenario.class_name
 
         assert external_dependencies == set()
         assert message_handlers == {}
@@ -116,8 +116,7 @@ def test_initialize_testdata_with_payload_context(grizzly_fixture: GrizzlyFixtur
 
     try:
         grizzly = grizzly_fixture.grizzly
-        _, _, scenario = grizzly_fixture()
-        assert scenario is not None
+        parent = grizzly_fixture()
         context_root = grizzly_fixture.request_task.context_root
         request = grizzly_fixture.request_task.request
         mkdir(path.join(context_root, 'adirectory'))
@@ -138,7 +137,7 @@ def test_initialize_testdata_with_payload_context(grizzly_fixture: GrizzlyFixtur
         source['result']['CsvRowValue2'] = '{{ AtomicCsvReader.test.header2 }}'
         source['result']['File'] = '{{ AtomicDirectoryContents.test }}'
 
-        behave_scenario = Scenario(filename=None, line=None, keyword='', name=scenario.__class__.__name__)
+        behave_scenario = Scenario(filename=None, line=None, keyword='', name=parent.__class__.__name__)
         grizzly.scenarios.create(behave_scenario)
         grizzly.state.variables['messageID'] = 123
         grizzly.state.variables['AtomicIntegerIncrementer.messageID'] = 456
@@ -157,7 +156,7 @@ def test_initialize_testdata_with_payload_context(grizzly_fixture: GrizzlyFixtur
 
         grizzly.scenario.tasks.add(request)
 
-        testdata, external_dependencies, message_handlers = initialize_testdata(grizzly, grizzly.scenario.tasks())
+        testdata, external_dependencies, message_handlers = initialize_testdata(grizzly)
 
         scenario_name = grizzly.scenario.class_name
 

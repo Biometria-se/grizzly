@@ -236,6 +236,8 @@ class TestGrizzlyContext:
 
         assert grizzly is second_grizzly
 
+        grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+
         expected_attributes = [
             'setup',
             'state',
@@ -307,13 +309,14 @@ class TestGrizzlyContextScenario:
         999,
         1004,
     ])
-    def test(self, index: int) -> None:
-        scenario = GrizzlyContextScenario(index)
+    def test(self, index: int, behave_fixture: BehaveFixture) -> None:
+        scenario = GrizzlyContextScenario(index, behave=behave_fixture.create_scenario('Test'))
         identifier = f'{index:03}'
 
         assert scenario.index == index
         assert scenario.identifier == identifier
-        assert not hasattr(scenario, 'name')
+        assert scenario.name == 'Test'
+        assert scenario.description == 'Test'
         assert not hasattr(scenario, 'user_class_name')
         assert scenario.iterations == 1
         assert scenario.context == {}
@@ -322,7 +325,6 @@ class TestGrizzlyContextScenario:
         assert isinstance(scenario.validation, GrizzlyContextScenarioValidation)
         assert not scenario.failure_exception
 
-        scenario.name = 'Test'
         assert scenario.class_name == f'Test_{identifier}'
 
         scenario.name = f'Test_{identifier}'
@@ -330,9 +332,8 @@ class TestGrizzlyContextScenario:
 
         assert not scenario.should_validate()
 
-    def test_tasks(self, request_task: RequestTaskFixture) -> None:
-        scenario = GrizzlyContextScenario(1)
-        scenario.name = 'TestScenario'
+    def test_tasks(self, request_task: RequestTaskFixture, behave_fixture: BehaveFixture) -> None:
+        scenario = GrizzlyContextScenario(1, behave=behave_fixture.create_scenario('TestScenario'))
         scenario.context['host'] = 'test'
         scenario.user.class_name = 'TestUser'
         request = request_task.request
@@ -340,7 +341,6 @@ class TestGrizzlyContextScenario:
         scenario.tasks.add(request)
 
         assert scenario.tasks() == [request]
-        assert isinstance(scenario.tasks()[-1], RequestTask) and scenario.tasks()[-1].scenario is scenario
 
         second_request = RequestTask(RequestMethod.POST, name='Second Request', endpoint='/api/test/2')
         second_request.source = '{"hello": "world!"}'
@@ -348,7 +348,6 @@ class TestGrizzlyContextScenario:
 
         scenario.tasks.add(second_request)
         assert scenario.tasks() == [request, second_request]
-        assert isinstance(scenario.tasks()[-1], RequestTask) and scenario.tasks()[-1].scenario is scenario
 
         wait_task = WaitTask(time_expression='1.337')
         scenario.tasks.add(wait_task)
@@ -549,12 +548,8 @@ class TestGrizzlyContextTasksTmp:
 
 class TestGrizzlyContextTasks:
     def test___init__(self) -> None:
-        scenario = GrizzlyContextScenario(2)
-        scenario.name = scenario.description = 'test scenario'
+        tasks = GrizzlyContextTasks()
 
-        tasks = GrizzlyContextTasks(scenario)
-
-        assert tasks.scenario is scenario
         assert isinstance(tasks._tmp, GrizzlyContextTasksTmp)
         assert tasks.tmp is tasks._tmp
 
@@ -562,10 +557,7 @@ class TestGrizzlyContextTasks:
         grizzly = grizzly_fixture.grizzly
         grizzly.state.variables['loop_value'] = 'none'
 
-        scenario = GrizzlyContextScenario(2)
-        scenario.name = scenario.description = 'test scenario'
-
-        tasks = GrizzlyContextTasks(scenario)
+        tasks = GrizzlyContextTasks()
 
         assert len(tasks()) == 0
 

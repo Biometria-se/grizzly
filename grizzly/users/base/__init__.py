@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.types import GrizzlyResponse
     from grizzly.tasks import RequestTask
+    from grizzly.scenarios import GrizzlyScenario
 
 
 class FileRequests:
@@ -17,7 +18,7 @@ class HttpRequests:
 
 class AsyncRequests:
     @abstractmethod
-    def async_request(self, request: 'RequestTask') -> 'GrizzlyResponse':
+    def async_request(self, parent: 'GrizzlyScenario', request: 'RequestTask') -> 'GrizzlyResponse':
         raise NotImplementedError(f'{self.__class__.__name__} has not implemented async_request')  # pragma: no cover
 
 

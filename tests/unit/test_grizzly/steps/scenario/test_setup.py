@@ -34,6 +34,7 @@ def test_parse_iteration_gramatical_number() -> None:
 def test_step_setup_set_context_variable(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     step_setup_set_context_variable(behave, 'token.url', 'test')
     assert grizzly.scenario.context == {
@@ -197,6 +198,7 @@ def test_step_setup_set_context_variable(behave_fixture: BehaveFixture) -> None:
 def test_step_setup_iterations(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     assert grizzly.scenario.iterations == 1
 
@@ -246,6 +248,7 @@ def test_step_setup_iterations(behave_fixture: BehaveFixture) -> None:
 def test_step_setup_pace(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     assert getattr(grizzly.scenario, 'pace', '') is None
 
@@ -302,6 +305,8 @@ def test_step_setup_set_variable_alias(behave_fixture: BehaveFixture, mocker: Mo
 def test_step_setup_log_all_requests(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+
     assert 'log_all_requests' not in grizzly.scenario.context
 
     step_setup_log_all_requests(behave)
@@ -312,6 +317,7 @@ def test_step_setup_log_all_requests(behave_fixture: BehaveFixture) -> None:
 def test_step_setup_metadata(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     assert grizzly.scenario.context.get('metadata', None) is None
 

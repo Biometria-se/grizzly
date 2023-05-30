@@ -173,47 +173,47 @@ class TestInfluxDbListener:
     @pytest.mark.usefixtures('patch_influxdblistener')
     def test___init__(self, locust_fixture: LocustFixture, patch_influxdblistener: Callable[[], None]) -> None:
         with pytest.raises(AssertionError) as ae:
-            InfluxDbListener(locust_fixture.env, '')
+            InfluxDbListener(locust_fixture.environment, '')
         assert 'hostname not found in' in str(ae)
 
         with pytest.raises(AssertionError) as ae:
-            InfluxDbListener(locust_fixture.env, 'https://influx.test.com')
+            InfluxDbListener(locust_fixture.environment, 'https://influx.test.com')
         assert 'database was not found in' in str(ae)
 
         with pytest.raises(AssertionError) as ae:
-            InfluxDbListener(locust_fixture.env, 'https://influx.test.com/testdb')
+            InfluxDbListener(locust_fixture.environment, 'https://influx.test.com/testdb')
         assert 'Testplan not found in' in str(ae)
 
         patch_influxdblistener()
 
-        assert len(locust_fixture.env.events.request._handlers) == 1  # interally added handler for deprecated request events
+        assert len(locust_fixture.environment.events.request._handlers) == 1  # interally added handler for deprecated request events
 
-        listener = InfluxDbListener(locust_fixture.env, 'https://influx.test.com/testdb?Testplan=unittest-plan')
+        listener = InfluxDbListener(locust_fixture.environment, 'https://influx.test.com/testdb?Testplan=unittest-plan')
 
-        assert len(locust_fixture.env.events.request._handlers) == 2
+        assert len(locust_fixture.environment.events.request._handlers) == 2
         assert listener.influx_port == 8086
         assert listener._testplan == 'unittest-plan'
         assert listener._target_environment is None
         assert listener._hostname == socket.gethostname()
-        assert listener.environment is locust_fixture.env
+        assert listener.environment is locust_fixture.environment
         assert listener._username == os.getenv('USER', 'unknown')
         assert listener._events == []
         assert not listener._finished
         assert listener._profile_name == ''
         assert listener._description == ''
 
-        locust_fixture.env.events.request._handlers.pop()
+        locust_fixture.environment.events.request._handlers.pop()
 
         listener = InfluxDbListener(
-            locust_fixture.env,
+            locust_fixture.environment,
             'https://influx.test.com:1337/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
         )
-        assert len(locust_fixture.env.events.request._handlers) == 2
+        assert len(locust_fixture.environment.events.request._handlers) == 2
         assert listener.influx_port == 1337
         assert listener._testplan == 'unittest-plan'
         assert listener._target_environment == 'local'
         assert listener._hostname == socket.gethostname()
-        assert listener.environment is locust_fixture.env
+        assert listener.environment is locust_fixture.environment
         assert listener._username == os.getenv('USER', 'unknown')
         assert listener._events == []
         assert not listener._finished
@@ -237,7 +237,7 @@ class TestInfluxDbListener:
         )
 
         listener = InfluxDbListener(
-            locust_fixture.env,
+            locust_fixture.environment,
             'https://influx.test.com:1337/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
         )
 
@@ -275,7 +275,7 @@ class TestInfluxDbListener:
         patch_influxdblistener()
 
         listener = InfluxDbListener(
-            locust_fixture.env,
+            locust_fixture.environment,
             'https://influx.test.com:1337/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
         )
 
@@ -340,7 +340,7 @@ class TestInfluxDbListener:
         datetime_mock.now.return_value = expected_datetime
 
         listener = InfluxDbListener(
-            grizzly_fixture.locust_env,
+            grizzly_fixture.behave.locust.environment,
             'https://influx.test.com:1337/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
         )
 
@@ -408,7 +408,7 @@ class TestInfluxDbListener:
                     'result': 'Failure',
                     'testplan': 'unittest-plan',
                     'hostname': get_hostname(),
-                    'scenario': '001 test-scenario',
+                    'scenario': '001 test scenario',
                     'TEST1': 'unittest-1',
                     'TEST2': 'unittest-2',
                 }
@@ -442,7 +442,7 @@ class TestInfluxDbListener:
             return logger_call
 
         listener = InfluxDbListener(
-            locust_fixture.env,
+            locust_fixture.environment,
             'https://influx.example.com:1337/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
         )
 
@@ -466,7 +466,7 @@ class TestInfluxDbListener:
         self, locust_fixture: LocustFixture, mocker: MockerFixture, caplog: LogCaptureFixture,
     ) -> None:
         listener = InfluxDbListener(
-            locust_fixture.env,
+            locust_fixture.environment,
             'https://influx.example.com:1337/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
         )
         mocker.patch.object(listener, '_create_metrics', side_effect=[Exception])
@@ -481,7 +481,7 @@ class TestInfluxDbListener:
         patch_influxdblistener()
 
         listener = InfluxDbListener(
-            locust_fixture.env,
+            locust_fixture.environment,
             'https://influx.example.com:1337/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
         )
         expected_keys = ['response_time', 'response_length']

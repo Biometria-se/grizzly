@@ -12,6 +12,7 @@ from locust.clients import ResponseContextManager
 from locust.event import EventHook
 from paramiko.transport import Transport
 from paramiko.sftp_client import SFTPClient
+from behave.model import Scenario
 
 from grizzly.clients import ResponseEventSession, SftpClientSession
 from grizzly.types import RequestMethod
@@ -60,10 +61,8 @@ class TestResponseEventSession:
 
         session = ResponseEventSession(base_url='', request_event=RequestEvent())
         request = RequestTask(RequestMethod.POST, name='test-request', endpoint='/api/test')
-        scenario = GrizzlyContextScenario(1)
-        scenario.name = 'TestScenario'
+        scenario = GrizzlyContextScenario(1, behave=Scenario('<stdin>', 0, 'Any', 'TestScenario'))
         scenario.context['host'] = 'test'
-        request.scenario = scenario
 
         def handler(expected_request: Optional[RequestTask] = None) -> Callable[
             [str, Union[ResponseContextManager, Tuple[Dict[str, Any], str]], Optional[RequestTask], GrizzlyUser],
@@ -91,7 +90,6 @@ class TestResponseEventSession:
             session.request(method='GET', url='http://example.org', name='test-name', catch_response=False, request=request)
 
         second_request = RequestTask(RequestMethod.GET, name='test-request', endpoint='/api/test')
-        second_request.scenario = scenario
 
         # handler is called, but request is not the same
         session.request(method='GET', url='http://example.org', name='test-name', catch_response=False, request=second_request)

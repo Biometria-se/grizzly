@@ -32,7 +32,7 @@ from grizzly_extras.transformer import TransformerContentType
 from grizzly_extras.arguments import split_value, parse_arguments
 
 from grizzly.types import RequestType, RequestDirection, GrizzlyResponse
-from grizzly.context import GrizzlyContext, GrizzlyContextScenario
+from grizzly.context import GrizzlyContext
 from grizzly.scenarios import GrizzlyScenario
 from grizzly.testdata.utils import resolve_variable
 from grizzly.users.base import RequestLogger
@@ -74,9 +74,8 @@ class ClientTask(GrizzlyMetaRequestTask):
         source: Optional[str] = None,
         destination: Optional[str] = None,
         text: Optional[str] = None,
-        scenario: Optional[GrizzlyContextScenario] = None,
     ) -> None:
-        super().__init__(scenario)
+        super().__init__()
 
         self.grizzly = GrizzlyContext()
 

@@ -47,6 +47,7 @@ def test_step_setup_variable_value_ask(behave_fixture: BehaveFixture) -> None:
 def test_step_setup_variable_value(behave_fixture: BehaveFixture, mocker: MockerFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     assert 'test' not in grizzly.state.variables
 

@@ -61,6 +61,7 @@ def test_parse_direction() -> None:
 def test_step_task_request_with_name_endpoint_until(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     assert len(grizzly.scenario.tasks()) == 0
 
@@ -116,6 +117,9 @@ def test_step_task_request_with_name_endpoint_until(behave_fixture: BehaveFixtur
 @pytest.mark.parametrize('method', RequestDirection.TO.methods)
 def test_step_task_request_file_with_name_endpoint(behave_fixture: BehaveFixture, method: RequestMethod) -> None:
     behave = behave_fixture.context
+    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+
     step_task_request_file_with_name_endpoint(behave, method, '{}', 'the_name', 'the_container')
 
 
@@ -130,6 +134,9 @@ def test_step_task_request_file_with_name_endpoint_wrong_direction(behave_fixtur
 @pytest.mark.parametrize('method', RequestDirection.TO.methods)
 def test_step_task_request_file_with_name(behave_fixture: BehaveFixture, method: RequestMethod) -> None:
     behave = behave_fixture.context
+    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+
     with pytest.raises(ValueError):
         step_task_request_file_with_name(behave, method, '{}', f'{method.name}-test')
 
@@ -149,6 +156,8 @@ def test_step_task_request_file_with_name_wrong_direction(behave_fixture: Behave
 @pytest.mark.parametrize('method', RequestDirection.TO.methods)
 def test_step_task_request_text_with_name_endpoint_to(behave_fixture: BehaveFixture, method: RequestMethod) -> None:
     behave = behave_fixture.context
+    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     behave.text = '{}'
 
     step_task_request_text_with_name_endpoint(behave, method, 'test-name', RequestDirection.TO, '/api/test')
@@ -175,6 +184,8 @@ def test_step_task_request_text_with_name_endpoint_from(behave_fixture: BehaveFi
 @pytest.mark.parametrize('method', RequestDirection.FROM.methods)
 def test_step_task_request_text_with_name_endpoint_no_text(behave_fixture: BehaveFixture, method: RequestMethod) -> None:
     behave = behave_fixture.context
+    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     behave.text = None
 
     step_task_request_text_with_name_endpoint(behave, method, 'test-name', RequestDirection.FROM, '/api/test')
@@ -193,6 +204,9 @@ def test_step_task_request_text_with_name_endpoint_no_direction(behave_fixture: 
 
 def test_step_task_request_text_with_name(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
+    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+
     behave.text = '{}'
 
     with pytest.raises(ValueError):
@@ -214,6 +228,7 @@ def test_step_task_request_text_with_name(behave_fixture: BehaveFixture) -> None
 def test_step_task_wait_seconds(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     with pytest.raises(AssertionError) as ae:
         step_task_wait_seconds(behave, '-1.0')
@@ -241,6 +256,7 @@ def test_step_task_wait_seconds(behave_fixture: BehaveFixture) -> None:
 def test_step_task_log_message(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     step_task_log_message(behave, 'hello {{ world }}')
 
@@ -252,6 +268,7 @@ def test_step_task_log_message(behave_fixture: BehaveFixture) -> None:
 def test_step_task_transform_json(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     with pytest.raises(ValueError) as ve:
         step_task_transform(
@@ -317,6 +334,7 @@ def test_step_task_transform_json(behave_fixture: BehaveFixture) -> None:
 def test_step_task_transform_xml(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     with pytest.raises(ValueError) as ve:
         step_task_transform(
@@ -382,6 +400,7 @@ def test_step_task_transform_xml(behave_fixture: BehaveFixture) -> None:
 def test_step_task_client_get_endpoint_payload_metadata(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     with pytest.raises(AssertionError) as ae:
         step_task_client_get_endpoint_payload_metadata(behave, 'obscure.example.com', 'step-name', 'test', 'metadata')
@@ -434,6 +453,7 @@ def test_step_task_client_get_endpoint_payload_metadata(behave_fixture: BehaveFi
 def test_step_task_client_get_endpoint_payload(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     with pytest.raises(AssertionError) as ae:
         step_task_client_get_endpoint_payload(behave, 'obscure.example.com', 'step-name', 'test')
@@ -475,6 +495,7 @@ def test_step_task_client_get_endpoint_payload(behave_fixture: BehaveFixture) ->
 def test_step_task_client_get_endpoint_until(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     with pytest.raises(AssertionError) as ae:
         step_task_client_get_endpoint_until(behave, 'api.example.io/api/test', 'step-name', '$.`this`[?status=true]')
@@ -497,7 +518,6 @@ def test_step_task_client_get_endpoint_until(behave_fixture: BehaveFixture) -> N
     assert len(grizzly.scenario.tasks()) == 1
     task = grizzly.scenario.tasks()[-1]
     assert isinstance(task, UntilRequestTask)
-    assert task.scenario is task.request.scenario
     assert isinstance(task.request, HttpClientTask)
     assert task.request.content_type == TransformerContentType.JSON
     assert task.request.endpoint == 'https://api.example.io/api/test'
@@ -509,7 +529,6 @@ def test_step_task_client_get_endpoint_until(behave_fixture: BehaveFixture) -> N
     assert len(grizzly.scenario.tasks()) == 2
     task = grizzly.scenario.tasks()[-1]
     assert isinstance(task, UntilRequestTask)
-    assert task.scenario is task.request.scenario
     assert isinstance(task.request, HttpClientTask)
     assert task.request.content_type == TransformerContentType.JSON
     assert task.request.endpoint == 'https://api.example.com/api/test'
@@ -523,6 +542,7 @@ def test_step_task_client_get_endpoint_until(behave_fixture: BehaveFixture) -> N
 def test_step_task_date(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     with pytest.raises(AssertionError) as ae:
         step_task_date(behave, '{{ datetime.now() }} | offset=1D', 'date_variable')
@@ -547,6 +567,7 @@ def test_step_task_date(behave_fixture: BehaveFixture) -> None:
 def test_step_task_client_put_endpoint_file_destination(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     behave.text = 'hello'
 
@@ -584,6 +605,7 @@ def test_step_task_client_put_endpoint_file_destination(behave_fixture: BehaveFi
 def test_step_task_client_put_endpoint_file(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     behave.text = 'hello'
 
@@ -620,6 +642,7 @@ def test_step_task_client_put_endpoint_file(behave_fixture: BehaveFixture) -> No
 def test_step_task_async_group_start(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = behave_fixture.grizzly
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     assert getattr(grizzly.scenario.tasks.tmp, 'async_group', '') is None
 
@@ -636,6 +659,7 @@ def test_step_task_async_group_start(behave_fixture: BehaveFixture) -> None:
 def test_step_task_async_group_end(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = behave_fixture.grizzly
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     assert len(grizzly.scenario.tasks()) == 0
     assert getattr(grizzly.scenario.tasks.tmp, 'async_group', '') is None
@@ -663,6 +687,7 @@ def test_step_task_async_group_end(behave_fixture: BehaveFixture) -> None:
 def test_step_task_timer_start_and_stop(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = behave_fixture.grizzly
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     assert grizzly.scenario.tasks.tmp.timers == {}
 
@@ -693,6 +718,7 @@ def test_step_task_timer_start_and_stop(behave_fixture: BehaveFixture) -> None:
 def test_step_task_request_wait_between(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = behave_fixture.grizzly
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     assert len(grizzly.scenario.tasks()) == 0
 
@@ -716,6 +742,7 @@ def test_step_task_request_wait_between(behave_fixture: BehaveFixture) -> None:
 def test_step_task_wait_constant(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = behave_fixture.grizzly
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     assert len(grizzly.scenario.tasks()) == 0
 
@@ -731,6 +758,7 @@ def test_step_task_wait_constant(behave_fixture: BehaveFixture) -> None:
 def test_step_task_conditional_if(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = behave_fixture.grizzly
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     assert getattr(grizzly.scenario.tasks.tmp, 'conditional', '') is None
 
@@ -760,6 +788,7 @@ def test_step_task_conditional_if(behave_fixture: BehaveFixture) -> None:
 def test_step_task_conditional_else(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = behave_fixture.grizzly
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     assert getattr(grizzly.scenario.tasks.tmp, 'conditional', '') is None
 
@@ -787,6 +816,7 @@ def test_step_task_conditional_else(behave_fixture: BehaveFixture) -> None:
 def test_step_task_conditional_end(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = behave_fixture.grizzly
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     assert getattr(grizzly.scenario.tasks.tmp, 'conditional', '') is None
 
@@ -813,6 +843,7 @@ def test_step_task_conditional_end(behave_fixture: BehaveFixture) -> None:
 def test_step_task_loop(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = behave_fixture.grizzly
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     assert getattr(grizzly.scenario.tasks.tmp, 'loop', '') is None
 

@@ -123,7 +123,7 @@ And metadata "filename" is "my_filename"
 '''
 import logging
 
-from typing import Dict, Any, Generator, Tuple, Optional
+from typing import Dict, Any, Generator, Tuple, Optional, TYPE_CHECKING
 from urllib.parse import urlparse, parse_qs, unquote
 from contextlib import contextmanager
 from time import perf_counter as time
@@ -141,6 +141,10 @@ from grizzly.utils import merge_dicts
 
 from .base import GrizzlyUser, ResponseHandler, RequestLogger
 from . import logger
+
+
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.scenarios import GrizzlyScenario
 
 
 # no used here, but needed for sanity check
@@ -364,10 +368,10 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
             if exception is not None and failure_exception is not None:
                 raise failure_exception()
 
-    def request(self, request: RequestTask) -> GrizzlyResponse:
+    def request(self, parent: 'GrizzlyScenario', request: RequestTask) -> GrizzlyResponse:
         request_name, endpoint, payload, _, metadata = self.render(request)
 
-        name = f'{request.scenario.identifier} {request_name}'
+        name = f'{self._scenario.identifier} {request_name}'
 
         am_request: AsyncMessageRequest = {
             'action': request.method.name,
@@ -398,6 +402,6 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
             if 'expression' in arguments and request.method.direction != RequestDirection.FROM:
                 raise RuntimeError('argument "expression" is not allowed when sending to an endpoint')
 
-            action['failure_exception'] = request.scenario.failure_exception
+            action['failure_exception'] = self._scenario.failure_exception
 
         return action['metadata'], action['payload']

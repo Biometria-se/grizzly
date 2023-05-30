@@ -87,7 +87,7 @@ def test_init_master(listener_test_mocker: None, caplog: LogCaptureFixture, griz
     try:
         grizzly_fixture()
         grizzly = grizzly_fixture.grizzly
-        runner = MasterRunner(grizzly_fixture.locust_env, '0.0.0.0', 5555)
+        runner = MasterRunner(grizzly_fixture.behave.locust.environment, '0.0.0.0', 5555)
         grizzly.state.locust = runner
 
         init_function = init(grizzly, {})
@@ -139,7 +139,7 @@ def test_init_worker(listener_test_mocker: None, grizzly_fixture: GrizzlyFixture
         init_function = init(grizzly)
         assert callable(init_function)
 
-        runner = WorkerRunner(grizzly_fixture.locust_env, 'localhost', 5555)
+        runner = WorkerRunner(grizzly_fixture.behave.locust.environment, 'localhost', 5555)
 
         grizzly.state.locust = runner
 
@@ -181,7 +181,7 @@ def test_init_local(listener_test_mocker: None, grizzly_fixture: GrizzlyFixture)
 
     try:
         grizzly = grizzly_fixture.grizzly
-        runner = LocalRunner(grizzly_fixture.locust_env)
+        runner = LocalRunner(grizzly_fixture.behave.locust.environment)
         grizzly.state.locust = runner
 
         init_function = init(grizzly, {})
@@ -248,7 +248,7 @@ def test_init_statistics_listener(mocker: MockerFixture, locust_fixture: LocustF
     try:
         grizzly = GrizzlyContext()
 
-        environment = locust_fixture.env
+        environment = locust_fixture.environment
 
         environment.events.quitting._handlers = []
         environment.events.spawning_complete._handlers = []
@@ -289,7 +289,7 @@ def test_locust_test_start(listener_test_mocker: None, grizzly_fixture: GrizzlyF
         scenario = Scenario(filename=None, line=None, keyword='', name='Test Scenario')
         grizzly.scenarios.create(scenario)
         grizzly.scenario.iterations = -1
-        runner = MasterRunner(grizzly_fixture.locust_env, '0.0.0.0', 5555)
+        runner = MasterRunner(grizzly_fixture.behave.locust.environment, '0.0.0.0', 5555)
         grizzly.state.locust = runner
 
         locust_test_start(grizzly)(grizzly.state.locust.environment)
@@ -343,7 +343,7 @@ def test_quitting(mocker: MockerFixture, listener_test_mocker: None, grizzly_fix
 
     try:
         grizzly = grizzly_fixture.grizzly
-        runner = MasterRunner(grizzly_fixture.locust_env, '0.0.0.0', 5555)
+        runner = MasterRunner(grizzly_fixture.behave.locust.environment, '0.0.0.0', 5555)
         grizzly.state.locust = runner
 
         init_testdata = _init_testdata_producer(grizzly, '5557', {})
@@ -480,7 +480,7 @@ def test_validate_result(mocker: MockerFixture, listener_test_mocker: None, capl
 
 
 def test_grizzly_worker_quit_non_worker(locust_fixture: LocustFixture, caplog: LogCaptureFixture) -> None:
-    environment = locust_fixture.env
+    environment = locust_fixture.environment
     environment.runner = LocalRunner(environment=environment)
 
     with caplog.at_level(logging.DEBUG):
@@ -494,7 +494,7 @@ def test_grizzly_worker_quit_non_worker(locust_fixture: LocustFixture, caplog: L
 
 
 def test_grizzly_worker_quit_worker(listener_test_mocker: None, locust_fixture: LocustFixture, caplog: LogCaptureFixture, mocker: MockerFixture) -> None:
-    environment = locust_fixture.env
+    environment = locust_fixture.environment
     environment.runner = WorkerRunner(environment=environment, master_host='localhost', master_port=1337)
 
     runner_stop_mock = mocker.patch.object(environment.runner, 'stop', autospec=True)

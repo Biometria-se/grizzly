@@ -69,7 +69,6 @@ from grizzly.context import GrizzlyContext
 from . import GrizzlyMetaRequestTask, template, grizzlytask  # pylint: disable=unused-import
 
 if TYPE_CHECKING:  # pragma: no cover
-    from grizzly.context import GrizzlyContextScenario
     from grizzly.scenarios import GrizzlyScenario
     from grizzly.users.base.response_handler import ResponseHandlerAction
 
@@ -122,8 +121,8 @@ class RequestTask(GrizzlyMetaRequestTask):
 
     response: RequestTaskResponse
 
-    def __init__(self, method: RequestMethod, name: str, endpoint: str, source: Optional[str] = None, scenario: Optional['GrizzlyContextScenario'] = None) -> None:
-        super().__init__(scenario)
+    def __init__(self, method: RequestMethod, name: str, endpoint: str, source: Optional[str] = None) -> None:
+        super().__init__()
 
         self.method = method
         self.name = name
@@ -183,9 +182,9 @@ class RequestTask(GrizzlyMetaRequestTask):
     def __call__(self) -> grizzlytask:
         @grizzlytask
         def task(parent: 'GrizzlyScenario') -> Any:
-            return parent.user.request(self)
+            return parent.user.request(parent, self)
 
         return task
 
     def execute(self, parent: 'GrizzlyScenario') -> GrizzlyResponse:
-        return parent.user.request(self)
+        return parent.user.request(parent, self)

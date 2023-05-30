@@ -29,7 +29,7 @@ Then send request "test/blob.file" to endpoint "azure-blobstorage-container-name
 '''
 import os
 
-from typing import Dict, Any, Tuple, Optional
+from typing import Dict, Any, Tuple, Optional, TYPE_CHECKING
 from urllib.parse import urlparse, parse_qs
 from time import perf_counter as time
 
@@ -41,6 +41,10 @@ from grizzly.tasks import RequestTask
 from grizzly.utils import merge_dicts
 
 from .base import GrizzlyUser
+
+
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.scenarios import GrizzlyScenario
 
 
 class BlobStorageUser(GrizzlyUser):
@@ -83,10 +87,10 @@ class BlobStorageUser(GrizzlyUser):
         self.client.close()
         super().on_stop()
 
-    def request(self, request: RequestTask) -> GrizzlyResponse:
+    def request(self, parent: 'GrizzlyScenario', request: RequestTask) -> GrizzlyResponse:
         request_name, endpoint, payload, _, _ = self.render(request)
 
-        name = f'{request.scenario.identifier} {request_name}'
+        name = f'{self._scenario.identifier} {request_name}'
 
         exception: Optional[Exception] = None
         start_time = time()
@@ -115,7 +119,7 @@ class BlobStorageUser(GrizzlyUser):
             if exception is not None:
                 if isinstance(exception, NotImplementedError):
                     raise StopUser()
-                elif request.scenario.failure_exception is not None:
-                    raise request.scenario.failure_exception()
+                elif self._scenario.failure_exception is not None:
+                    raise self._scenario.failure_exception()
 
             return {}, payload

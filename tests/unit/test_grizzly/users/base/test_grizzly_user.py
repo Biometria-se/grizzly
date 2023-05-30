@@ -1,6 +1,7 @@
 import shutil
 import logging
 
+from typing import cast
 from os import environ, path
 from json import loads as jsonloads
 
@@ -14,11 +15,12 @@ from jinja2.filters import FILTERS
 from grizzly.users.base import GrizzlyUser, FileRequests
 from grizzly.types import GrizzlyResponse, RequestMethod, ScenarioState
 from grizzly.types.locust import StopUser
-from grizzly.context import GrizzlyContextScenario
+from grizzly.context import GrizzlyContextScenario, GrizzlyContext
 from grizzly.tasks import RequestTask
 from grizzly.testdata.utils import templatingfilter
+from grizzly.scenarios import GrizzlyScenario
 
-from tests.fixtures import LocustFixture
+from tests.fixtures import BehaveFixture, GrizzlyFixture
 
 
 logging.getLogger().setLevel(logging.CRITICAL)
@@ -27,12 +29,12 @@ logging.getLogger().setLevel(logging.CRITICAL)
 class DummyGrizzlyUser(GrizzlyUser):
     host: str = 'http://example.com'
 
-    def request(self, request: RequestTask) -> GrizzlyResponse:
+    def request(self, parent: GrizzlyScenario, request: RequestTask) -> GrizzlyResponse:
         raise NotImplementedError(f'{self.__class__.__name__} has not implemented request')
 
 
 class TestGrizzlyUser:
-    def test_render(self, locust_fixture: LocustFixture, tmp_path_factory: TempPathFactory) -> None:
+    def test_render(self, behave_fixture: BehaveFixture, tmp_path_factory: TempPathFactory) -> None:
         test_context = tmp_path_factory.mktemp('renderer_test') / 'requests'
         test_context.mkdir()
         test_file = test_context / 'blobfile.txt'
@@ -40,19 +42,19 @@ class TestGrizzlyUser:
         test_file_context = path.dirname(path.dirname(str(test_file)))
         environ['GRIZZLY_CONTEXT_ROOT'] = test_file_context
 
+        grizzly = cast(GrizzlyContext, behave_fixture.context.grizzly)
+        grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+
         @templatingfilter
         def uppercase(value: str) -> str:
             return value.upper()
 
         try:
-
-            user = DummyGrizzlyUser(locust_fixture.env)
+            DummyGrizzlyUser.__scenario__ = grizzly.scenario
+            user = DummyGrizzlyUser(behave_fixture.locust.environment)
             request = RequestTask(RequestMethod.POST, name='test', endpoint='/api/test')
 
             request.source = 'hello {{ name | uppercase }}'
-            scenario = GrizzlyContextScenario(1)
-            scenario.name = 'test'
-            request.scenario = scenario
 
             user.add_context({'variables': {'name': 'bob'}})
 
@@ -87,9 +89,10 @@ class TestGrizzlyUser:
                 (GrizzlyUser, FileRequests, ),
                 {
                     'host': 'http://example.io',
+                    '__scenario__': grizzly.scenario,
                 },
             )
-            user = user_type(locust_fixture.env)
+            user = user_type(behave_fixture.locust.environment)
             assert issubclass(user.__class__, (FileRequests,))
 
             request.source = f'{str(test_file)}'
@@ -98,7 +101,6 @@ class TestGrizzlyUser:
             assert endpoint == '/tmp/blobfile.txt'
 
             request = RequestTask(RequestMethod.POST, name='test', endpoint='/api/test | my_argument="{{ argument_variable | uppercase }}"')
-            request.scenario = scenario
             user.set_context_variable('argument_variable', 'argument variable value')
             user.set_context_variable('name', 'donovan')
             request.source = 'hello {{ name }}'
@@ -110,7 +112,7 @@ class TestGrizzlyUser:
             del environ['GRIZZLY_CONTEXT_ROOT']
 
     @pytest.mark.usefixtures('locust_fixture')
-    def test_render_nested(self, locust_fixture: LocustFixture, tmp_path_factory: TempPathFactory) -> None:
+    def test_render_nested(self, behave_fixture: BehaveFixture, tmp_path_factory: TempPathFactory) -> None:
         test_context = tmp_path_factory.mktemp('render_nested') / 'requests' / 'test'
         test_context.mkdir(parents=True)
         test_file = test_context / 'payload.j2.json'
@@ -134,14 +136,16 @@ class TestGrizzlyUser:
         )
         environ['GRIZZLY_CONTEXT_ROOT'] = test_file_context
 
+        grizzly = cast(GrizzlyContext, behave_fixture.context.grizzly)
+
         try:
-            user = DummyGrizzlyUser(locust_fixture.env)
+            grizzly.scenarios.clear()
+            grizzly._scenarios.append(GrizzlyContextScenario(999, behave=behave_fixture.create_scenario('test')))
+            DummyGrizzlyUser.__scenario__ = grizzly.scenario
+            user = DummyGrizzlyUser(behave_fixture.locust.environment)
             request = RequestTask(RequestMethod.POST, name='{{ name }}', endpoint='/api/test/{{ value }}')
 
             request.source = '{{ file_path }}'
-            scenario = GrizzlyContextScenario(999)
-            scenario.name = 'test'
-            request.scenario = scenario
 
             user.add_context({
                 'variables': {
@@ -168,15 +172,20 @@ class TestGrizzlyUser:
             shutil.rmtree(test_file_context)
             del environ['GRIZZLY_CONTEXT_ROOT']
 
-    def test_request(self, locust_fixture: LocustFixture) -> None:
-        user = DummyGrizzlyUser(locust_fixture.env)
+    def test_request(self, grizzly_fixture: GrizzlyFixture) -> None:
+        parent = grizzly_fixture()
+        grizzly = grizzly_fixture.grizzly
+        DummyGrizzlyUser.__scenario__ = grizzly.scenario
+        user = DummyGrizzlyUser(grizzly_fixture.behave.locust.environment)
         payload = RequestTask(RequestMethod.GET, name='test', endpoint='/api/test')
 
         with pytest.raises(NotImplementedError):
-            user.request(payload)
+            user.request(parent, payload)
 
-    def test_context(self, locust_fixture: LocustFixture) -> None:
-        user = DummyGrizzlyUser(locust_fixture.env)
+    def test_context(self, behave_fixture: BehaveFixture) -> None:
+        behave_fixture.grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+        DummyGrizzlyUser.__scenario__ = behave_fixture.grizzly.scenario
+        user = DummyGrizzlyUser(behave_fixture.locust.environment)
 
         context = user.context()
 
@@ -186,8 +195,10 @@ class TestGrizzlyUser:
         user.set_context_variable('test', 'value')
         assert user.context_variables == {'test': 'value'}
 
-    def test_stop(self, locust_fixture: LocustFixture, caplog: LogCaptureFixture, mocker: MockerFixture) -> None:
-        user = DummyGrizzlyUser(locust_fixture.env)
+    def test_stop(self, behave_fixture: BehaveFixture, caplog: LogCaptureFixture, mocker: MockerFixture) -> None:
+        behave_fixture.grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+        DummyGrizzlyUser.__scenario__ = behave_fixture.grizzly.scenario
+        user = DummyGrizzlyUser(behave_fixture.locust.environment)
 
         mocker.patch('grizzly.users.base.grizzly_user.User.stop', return_value=True)
 

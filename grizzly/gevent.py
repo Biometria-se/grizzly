@@ -1,12 +1,7 @@
-import logging
-
 from typing import Any, Callable, Dict, Tuple
 from functools import wraps
 
 from gevent import Greenlet, getcurrent
-
-
-logger = logging.getLogger(__name__)
 
 
 class GreenletWithExceptionCatching(Greenlet):
@@ -25,7 +20,6 @@ class GreenletWithExceptionCatching(Greenlet):
             try:
                 return func(*args, **kwargs)
             except Exception as exception:
-                logger.error(f'{func} raised {exception}')
                 self.wrap_exceptions(self.handle_exception)(exception)
                 return exception
 

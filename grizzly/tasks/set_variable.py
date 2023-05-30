@@ -25,7 +25,6 @@ from grizzly.testdata.variables import AtomicVariable
 from . import GrizzlyTask, template, grizzlytask
 
 if TYPE_CHECKING:  # pragma: no cover
-    from grizzly.context import GrizzlyContextScenario
     from grizzly.scenarios import GrizzlyScenario
 
 
@@ -38,8 +37,8 @@ class SetVariableTask(GrizzlyTask):
     _variable_instance_type: Optional[Type[AtomicVariable]] = None
     _variable_key: str
 
-    def __init__(self, variable: str, value: str, scenario: Optional[GrizzlyContextScenario] = None) -> None:
-        super().__init__(scenario)
+    def __init__(self, variable: str, value: str) -> None:
+        super().__init__()
 
         self.variable = variable
         self.value = value

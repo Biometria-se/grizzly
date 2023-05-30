@@ -10,11 +10,9 @@ from tests.fixtures import GrizzlyFixture
 
 class TestWaitTask:
     def test(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
-        _, _, scenario = grizzly_fixture()
+        parent = grizzly_fixture()
 
-        assert scenario is not None
-
-        task_factory = WaitTask(time_expression='1.0', scenario=scenario.user._scenario)
+        task_factory = WaitTask(time_expression='1.0')
 
         assert task_factory.time_expression == '1.0'
         assert task_factory.__template_attributes__ == {'time_expression'}
@@ -24,9 +22,9 @@ class TestWaitTask:
 
         import grizzly.tasks.wait
         gsleep_spy = mocker.patch.object(grizzly.tasks.wait, 'gsleep', autospec=True)
-        request_fire_spy = mocker.spy(scenario.user.environment.events.request, 'fire')
+        request_fire_spy = mocker.spy(parent.user.environment.events.request, 'fire')
 
-        task(scenario)
+        task(parent)
 
         assert gsleep_spy.call_count == 1
         assert request_fire_spy.call_count == 0
@@ -34,9 +32,9 @@ class TestWaitTask:
         assert args[0] == 1.0
 
         task_factory.time_expression = '{{ wait_time }}'
-        scenario.user._context['variables']['wait_time'] = 126
+        parent.user._context['variables']['wait_time'] = 126
 
-        task(scenario)
+        task(parent)
 
         assert gsleep_spy.call_count == 2
         assert request_fire_spy.call_count == 0
@@ -46,16 +44,16 @@ class TestWaitTask:
         task_factory.time_expression = 'foobar'
 
         with pytest.raises(StopUser):
-            task(scenario)
+            task(parent)
 
         assert gsleep_spy.call_count == 2
         assert request_fire_spy.call_count == 1
         _, kwargs = request_fire_spy.call_args_list[-1]
         assert kwargs.get('request_type', None) == 'WAIT'
-        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} WaitTask=>foobar'
+        assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} WaitTask=>foobar'
         assert kwargs.get('response_time', None) == 0
         assert kwargs.get('response_length', None) == 0
-        assert kwargs.get('context', None) is scenario.user._context
+        assert kwargs.get('context', None) is parent.user._context
         exception = kwargs.get('exception', None)
         assert isinstance(exception, ValueError)
         assert str(exception) == "could not convert string to float: 'foobar'"
@@ -64,19 +62,19 @@ class TestWaitTask:
 
         assert task_factory.get_templates() == ['{{ foobar }}']
 
-        scenario.user._context['variables']['foobar'] = 'foobar'
+        parent.user._context['variables']['foobar'] = 'foobar'
 
         with pytest.raises(StopUser):
-            task(scenario)
+            task(parent)
 
         assert gsleep_spy.call_count == 2
         assert request_fire_spy.call_count == 2
         _, kwargs = request_fire_spy.call_args_list[-1]
         assert kwargs.get('request_type', None) == 'WAIT'
-        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} WaitTask=>{{{{ foobar }}}}'
+        assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} WaitTask=>{{{{ foobar }}}}'
         assert kwargs.get('response_time', None) == 0
         assert kwargs.get('response_length', None) == 0
-        assert kwargs.get('context', None) is scenario.user._context
+        assert kwargs.get('context', None) is parent.user._context
         exception = kwargs.get('exception', None)
         assert isinstance(exception, ValueError)
         assert str(exception) == "could not convert string to float: 'foobar'"
@@ -86,16 +84,16 @@ class TestWaitTask:
         assert task_factory.get_templates() == ['{{ undefined_variable }}']
 
         with pytest.raises(StopUser):
-            task(scenario)
+            task(parent)
 
         assert gsleep_spy.call_count == 2
         assert request_fire_spy.call_count == 3
         _, kwargs = request_fire_spy.call_args_list[-1]
         assert kwargs.get('request_type', None) == 'WAIT'
-        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} WaitTask=>{{{{ undefined_variable }}}}'
+        assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} WaitTask=>{{{{ undefined_variable }}}}'
         assert kwargs.get('response_time', None) == 0
         assert kwargs.get('response_length', None) == 0
-        assert kwargs.get('context', None) is scenario.user._context
+        assert kwargs.get('context', None) is parent.user._context
         exception = kwargs.get('exception', None)
         assert isinstance(exception, RuntimeError)
         assert str(exception) == '"{{ undefined_variable }}" rendered into "" which is not valid'

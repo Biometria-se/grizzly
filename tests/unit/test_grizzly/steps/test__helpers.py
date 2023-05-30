@@ -49,8 +49,9 @@ def test_add_request_task_response_status_codes() -> None:
 
 @pytest.mark.parametrize('as_async', [False, True])
 def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: TempPathFactory, as_async: bool) -> None:
-    behave = grizzly_fixture.behave
+    behave = grizzly_fixture.behave.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test scenario'))
     grizzly.scenario.context['host'] = 'http://test'
 
     if as_async:
@@ -258,19 +259,20 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
 
 @pytest.mark.parametrize('as_async', [False, True])
 def test_add_save_handler(behave_fixture: BehaveFixture, locust_fixture: LocustFixture, as_async: bool) -> None:
+    behave = behave_fixture.context
+    grizzly = cast(GrizzlyContext, behave.grizzly)
+    scenario = GrizzlyContextScenario(index=2, behave=behave_fixture.create_scenario('test scenario'))
+    grizzly.scenarios.append(scenario)
+
+    TestUser.__scenario__ = scenario
     TestUser.host = 'https://example.io'
-    user = TestUser(locust_fixture.env)
-    scenario = GrizzlyContextScenario(index=2)
-    scenario.name = 'test scenario'
-    user._scenario = scenario
+    user = TestUser(locust_fixture.environment)
+
     response = Response()
     response._content = '{}'.encode('utf-8')
     response.status_code = 200
     response_context_manager = ResponseContextManager(response, None, None)
     response_context_manager._entered = True
-
-    behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
 
     if as_async:
         grizzly.scenario.tasks.tmp.async_group = AsyncRequestGroupTask(name='async-test-2')
@@ -396,19 +398,20 @@ def test_add_save_handler(behave_fixture: BehaveFixture, locust_fixture: LocustF
 
 @pytest.mark.parametrize('as_async', [False, True])
 def test_add_validation_handler(behave_fixture: BehaveFixture, locust_fixture: LocustFixture, as_async: bool) -> None:
+    behave = behave_fixture.context
+    grizzly = cast(GrizzlyContext, behave.grizzly)
+    scenario = GrizzlyContextScenario(index=1, behave=behave_fixture.create_scenario('test scenario'))
+    grizzly.scenarios.append(scenario)
+
+    TestUser.__scenario__ = scenario
     TestUser.host = 'http://example.io'
-    user = TestUser(locust_fixture.env)
-    scenario = GrizzlyContextScenario(index=1)
-    scenario.name = 'test scenario'
-    user._scenario = scenario
+    user = TestUser(locust_fixture.environment)
+
     response = Response()
     response._content = '{}'.encode('utf-8')
     response.status_code = 200
     response_context_manager = ResponseContextManager(response, None, None)
     response_context_manager._entered = True
-
-    behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
 
     if as_async:
         grizzly.scenario.tasks.tmp.async_group = AsyncRequestGroupTask(name='test-async-3')

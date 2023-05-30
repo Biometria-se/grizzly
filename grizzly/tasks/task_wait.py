@@ -34,15 +34,14 @@ from . import GrizzlyTask, grizzlytask
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.scenarios import GrizzlyScenario
-    from grizzly.context import GrizzlyContextScenario
 
 
 class TaskWaitTask(GrizzlyTask):
     min_time: float
     max_time: Optional[float]
 
-    def __init__(self, min_time: float, max_time: Optional[float] = None, scenario: Optional['GrizzlyContextScenario'] = None) -> None:
-        super().__init__(scenario)
+    def __init__(self, min_time: float, max_time: Optional[float] = None) -> None:
+        super().__init__()
 
         self.min_time = min_time
         self.max_time = max_time
