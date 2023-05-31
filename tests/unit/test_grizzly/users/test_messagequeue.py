@@ -483,7 +483,8 @@ class TestMessageQueueUser:
         request_event_spy = mocker.spy(user.environment.events.request, 'fire')
         response_event_spy = mocker.spy(user.response_event, 'fire')
 
-        request = cast(RequestTask, scenario.tasks()[-1])
+        request = scenario.tasks()[-1]
+        assert isinstance(request, RequestTask)
         request.endpoint = 'queue:test-queue'
         request.method = RequestMethod.GET
         request.source = None
@@ -503,7 +504,7 @@ class TestMessageQueueUser:
         _, kwargs = request_event_spy.call_args_list[1]
         assert kwargs['request_type'] == 'GET'
         assert kwargs['exception'] is None
-        assert kwargs['response_length'] == len(test_payload)
+        assert kwargs['response_length'] == len(test_payload.encode())
 
         assert response_event_spy.call_count == 1
         _, kwargs = response_event_spy.call_args_list[0]
@@ -576,6 +577,8 @@ class TestMessageQueueUser:
         _, kwargs = request_event_spy.call_args_list[0]
         assert kwargs['exception'] is None
         assert response_event_spy.call_count == 1
+
+        request.response.handlers.payload.clear()
 
         request_event_spy.reset_mock()
         response_event_spy.reset_mock()
@@ -664,11 +667,14 @@ class TestMessageQueueUser:
         send_json_spy.return_value = None
         send_json_spy.reset_mock()
 
-        noop_zmq.get_mock('zmq.Socket.recv_json').side_effect = the_side_effect * 7
+        recv_json = noop_zmq.get_mock('zmq.Socket.recv_json')
+        recv_json.side_effect = the_side_effect * 7
 
         request.method = RequestMethod.GET
         request.endpoint = 'queue:IFKTEST'
+
         user.request(request)
+
         assert send_json_spy.call_count == 1
         args, kwargs = send_json_spy.call_args_list[0]
         assert len(args) == 1
