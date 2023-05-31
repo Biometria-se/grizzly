@@ -11,6 +11,7 @@ from pytest_mock.plugin import MockerFixture
 from grizzly_extras.async_message import AsyncMessageRequest, AsyncMessageError
 from grizzly_extras.async_message.mq import AsyncMessageQueueHandler
 from grizzly_extras.async_message.mq.rfh2 import Rfh2Encoder
+from grizzly_extras.async_message.utils import tohex
 from grizzly_extras.transformer import transformer, TransformerContentType
 
 try:
@@ -345,8 +346,10 @@ class TestAsyncMessageQueueHandler:
         handler.header_type = None
         response = handler._request(request)
         assert response.get('payload', None) == 'test payload'
-        assert response.get('metadata', None) == pymqi.MD().get()
-        assert response.get('response_length', 0) == len('test payload')
+        actual_metadata = pymqi.MD().get()
+        actual_metadata['MsgId'] = tohex(actual_metadata['MsgId'])
+        assert response.get('metadata', None) == actual_metadata
+        assert response.get('response_length', 0) == len('test payload'.encode())
 
         assert handler_queue_context.call_count == 1
         _, kwargs = handler_queue_context.call_args_list[-1]
@@ -363,7 +366,9 @@ class TestAsyncMessageQueueHandler:
 
         assert mocked_qmgr_commit.call_count == 0
         assert mocked_qmgr_backout.call_count == 0
-        assert response.get('metadata', None) == Rfh2Encoder.create_md().get()
+        actual_metadata = Rfh2Encoder.create_md().get()
+        actual_metadata['MsgId'] = tohex(actual_metadata['MsgId'])
+        assert response.get('metadata', None) == actual_metadata
         assert response.get('response_length', 0) == 284
 
         assert handler_queue_context.call_count == 2
@@ -398,7 +403,9 @@ class TestAsyncMessageQueueHandler:
         assert mocked_qmgr_commit.call_count == 1
         assert mocked_qmgr_backout.call_count == 0
         assert response.get('payload', None) == 'test payload'
-        assert response.get('metadata', None) == pymqi.MD().get()
+        actual_metadata = pymqi.MD().get()
+        actual_metadata['MsgId'] = tohex(actual_metadata['MsgId'])
+        assert response.get('metadata', None) == actual_metadata
         assert response.get('response_length', None) == len('test payload')
 
         assert handler_queue_context.call_count == 4
@@ -432,8 +439,10 @@ class TestAsyncMessageQueueHandler:
         assert mocked_qmgr_commit.call_count == 2
         assert mocked_qmgr_backout.call_count == 0
         assert response.get('payload', None) == 'test payload'
-        assert response.get('metadata', None) == Rfh2Encoder.create_md().get()
-        assert response.get('response_length', None) == len('test payload')
+        actual_metadata = Rfh2Encoder.create_md().get()
+        actual_metadata['MsgId'] = tohex(actual_metadata['MsgId'])
+        assert response.get('metadata', None) == actual_metadata
+        assert response.get('response_length', None) == len('test payload'.encode())
 
         assert handler_queue_context.call_count == 5
         _, kwargs = handler_queue_context.call_args_list[-1]
@@ -738,7 +747,7 @@ class TestAsyncMessageQueueHandler:
         request['context']['endpoint'] = "queue:theendpoint, expression: '$.actors[?(@.name='Pernilla August')]'"
         response = handlers[request['action']](handler, request)
         assert response['payload'] == queue_messages['id1'].payload
-        assert response['response_length'] == len(queue_messages['id1'].payload)
+        assert response['response_length'] == len(queue_messages['id1'].payload.encode())
 
         # Match no message = timeout
         request['context']['endpoint'] = "queue:theendpoint, expression: $.singers[?(@.id='NOTEXIST')]"

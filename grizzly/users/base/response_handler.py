@@ -200,12 +200,12 @@ class ResponseHandler(ResponseEvent):
             response_metadata, response_payload = cast(GrizzlyResponse, context)
             response_context = None
 
-        if len(handlers.payload) > 0 and response_payload is not None and len(response_payload) > 0:
+        if len(handlers.payload) > 0:
             try:
                 # do not guess which transformer to use
                 impl = transformer.available.get(request.response.content_type, None)
                 if impl is not None:
-                    response_payload = impl.transform(response_payload)
+                    response_payload = impl.transform(response_payload or '')
                 else:
                     raise TransformerError(f'failed to transform: {response_payload} with content type {request.response.content_type.name}')
             except TransformerError as e:
@@ -218,6 +218,6 @@ class ResponseHandler(ResponseEvent):
             for handler in handlers.payload:
                 handler((request.response.content_type, response_payload), user, response_context)
 
-        if len(handlers.metadata) > 0 and response_metadata is not None:
+        if len(handlers.metadata) > 0:
             for handler in handlers.metadata:
-                handler((TransformerContentType.JSON, response_metadata), user, response_context)
+                handler((TransformerContentType.JSON, response_metadata or {}), user, response_context)

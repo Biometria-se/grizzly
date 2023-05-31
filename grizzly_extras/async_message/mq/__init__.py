@@ -1,9 +1,11 @@
-from typing import Optional, Generator, Dict, cast
+from typing import Any, Optional, Generator, Dict, cast
 from time import perf_counter as time, sleep
 from contextlib import contextmanager
 
 from grizzly_extras.transformer import transformer, TransformerError, TransformerContentType
 from grizzly_extras.arguments import parse_arguments, get_unsupported_arguments
+
+from grizzly_extras.async_message.utils import tohex
 
 
 from grizzly_extras.async_message import (
@@ -229,6 +231,14 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
             content_type = TransformerContentType.from_string(value)
         return content_type
 
+    def _get_safe_message_descriptor(self, md: pymqi.MD) -> Dict[str, Any]:
+        metadata: Dict[str, Any] = md.get()
+
+        if 'MsgId' in metadata:
+            metadata['MsgId'] = tohex(metadata['MsgId'])
+
+        return metadata
+
     def _request(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
         if self.qmgr is None:
             raise AsyncMessageError('not connected')
@@ -296,6 +306,8 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                     queue.put(request_payload, md)
 
                 elif action == 'GET':
+                    payload = None
+
                     if msg_id_to_fetch is not None:
                         gmo = self._create_gmo()
                         gmo.MatchOptions = pymqi.CMQC.MQMO_MATCH_MSG_ID
@@ -307,9 +319,14 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                         try:
                             message = queue.get(max_message_size, md, gmo)
                             payload = self._get_payload(message)
-                            response_length = len(payload) if payload is not None else 0
-                            if retries > 0:
+                            response_length = len((payload or '').encode())
+
+                            if response_length == 0:
+                                do_retry = True  # we should consume the empty message, not put it back on queue
+                                self.logger.warning('message with size 0 bytes consumed, get next message')
+                            elif retries > 0:
                                 self.logger.warning(f'got message after {retries} retries')
+
                             self.qmgr.commit()
                         except:
                             self.qmgr.backout()
@@ -327,7 +344,8 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                             else:
                                 raise AsyncMessageError(f'message with size {original_length} bytes does not fit in message buffer of {max_message_size} bytes')
                         elif e.reason == pymqi.CMQC.MQRC_BACKED_OUT:
-                            self.logger.warning(f'got MQRC_BACKED_OUT while getting message, {retries=}')
+                            warning_message = ['got MQRC_BACKED_OUT while getting message', f'{retries=}']
+                            self.logger.warning(', '.join(warning_message))
                             do_retry = True
                         else:
                             # Some other error condition.
@@ -342,7 +360,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                     self.logger.info(f'{action} on {queue_name} took {delta} ms, {response_length=}, {retries=}')
                     return {
                         'payload': payload,
-                        'metadata': md.get(),
+                        'metadata': self._get_safe_message_descriptor(md),
                         'response_length': response_length,
                     }
 
