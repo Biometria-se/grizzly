@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Dict, Tuple, Optional, Set, cast
 from logging import Logger
 from abc import abstractmethod
 from json import dumps as jsondumps, loads as jsonloads
-from dataclasses import replace as dataclass_copy
+from copy import copy
 
 from locust.user.users import User
 from locust.user.task import LOCUST_STATE_RUNNING
@@ -52,7 +52,7 @@ class GrizzlyUser(User):
         self.logger = logging.getLogger(f'{self.__class__.__name__}/{id(self)}')
         self._scenario_state = None
         self.abort = False
-        self._scenario = dataclass_copy(self.__scenario__)
+        self._scenario = copy(self.__scenario__)
         # these are not copied, and we can share reference
         self._scenario._tasks = self.__scenario__._tasks
 
