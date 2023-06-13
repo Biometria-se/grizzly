@@ -12,6 +12,7 @@ from tests.fixtures import BehaveFixture
 def test_step_user_type(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     assert hasattr(grizzly.scenario, 'user')
     assert not hasattr(grizzly.scenario.user, 'class_name')
@@ -53,6 +54,7 @@ def test_step_user_type(behave_fixture: BehaveFixture) -> None:
 def test_step_user_type_with_weight(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     assert hasattr(grizzly.scenario, 'user')
     assert not hasattr(grizzly.scenario.user, 'class_name')

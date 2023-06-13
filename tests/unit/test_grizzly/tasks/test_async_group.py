@@ -65,30 +65,23 @@ class TestAsyncRequestGroup:
         ])
 
     def test___call__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
-        _, _, scenario = grizzly_fixture()
+        parent = grizzly_fixture()
 
-        assert scenario is not None
-
-        scenario_context = GrizzlyContextScenario(1)
-        scenario_context.name = scenario_context.description = 'test scenario'
-
-        task_factory = AsyncRequestGroupTask(name='test-async-group', scenario=scenario_context)
+        task_factory = AsyncRequestGroupTask(name='test-async-group')
         requests = cast(List[RequestTask], task_factory.tasks)
         task = task_factory()
 
         with pytest.raises(NotImplementedError) as nie:
-            task(scenario)
+            task(parent)
         assert str(nie.value) == 'TestUser does not inherit AsyncRequests'
 
-        _, _, scenario = grizzly_fixture(user_type=RestApiUser)
-
-        assert scenario is not None
+        parent = grizzly_fixture(user_type=RestApiUser)
 
         joinall_mock = mocker.patch('grizzly.tasks.async_group.gevent.joinall', return_value=None)
-        requests_event_mock = mocker.spy(scenario.user.environment.events.request, 'fire')
+        requests_event_mock = mocker.spy(parent.user.environment.events.request, 'fire')
 
         # no requests in group
-        task(scenario)
+        task(parent)
 
         assert joinall_mock.call_count == 1
         args, _ = joinall_mock.call_args_list[-1]
@@ -97,10 +90,10 @@ class TestAsyncRequestGroup:
         assert requests_event_mock.call_count == 1
         _, kwargs = requests_event_mock.call_args_list[-1]
         assert kwargs.get('request_type', None) == 'ASYNC'
-        assert kwargs.get('name', None) == f'{scenario_context.identifier} {task_factory.name} (0)'
+        assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} {task_factory.name} (0)'
         assert kwargs.get('response_time', None) >= 0
         assert kwargs.get('response_length', None) == 0
-        assert kwargs.get('context', None) is scenario.user._context
+        assert kwargs.get('context', None) is parent.user._context
         assert kwargs.get('exception', '') is None
 
         spawn_mock = mocker.patch('grizzly.tasks.async_group.gevent.spawn', return_value=MagicMock(spec=Greenlet))
@@ -116,13 +109,15 @@ class TestAsyncRequestGroup:
         assert len(requests) == 2
         assert requests[-1].name == 'test-async-group:test-get'
 
-        task(scenario)
+        task(parent)
 
         assert spawn_mock.call_count == len(task_factory.tasks)
         args, _ = spawn_mock.call_args_list[0]
-        assert args[1] is task_factory.tasks[0]
+        assert args[1] is parent
+        assert args[2] is task_factory.tasks[0]
         args, _ = spawn_mock.call_args_list[1]
-        assert args[1] is task_factory.tasks[1]
+        assert args[1] is parent
+        assert args[2] is task_factory.tasks[1]
         assert settrace_mock.call_count == 0
 
         assert joinall_mock.call_count == 2
@@ -132,43 +127,43 @@ class TestAsyncRequestGroup:
         assert requests_event_mock.call_count == 2
         _, kwargs = requests_event_mock.call_args_list[-1]
         assert kwargs.get('request_type', None) == 'ASYNC'
-        assert kwargs.get('name', None) == f'{scenario_context.identifier} {task_factory.name} (2)'
+        assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} {task_factory.name} (2)'
         assert kwargs.get('response_time', None) >= 0
         assert kwargs.get('response_length', None) == len('hello world!') * 2
-        assert kwargs.get('context', None) is scenario.user._context
+        assert kwargs.get('context', None) is parent.user._context
         assert kwargs.get('exception', '') is None
 
         # exception in one of the requests
         spawn_mock.return_value.get.side_effect = [RuntimeError, ({}, 'foo bar',)]
 
-        task(scenario)
+        task(parent)
 
         assert requests_event_mock.call_count == 3
         _, kwargs = requests_event_mock.call_args_list[-1]
         assert kwargs.get('request_type', None) == 'ASYNC'
-        assert kwargs.get('name', None) == f'{scenario_context.identifier} {task_factory.name} (2)'
+        assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} {task_factory.name} (2)'
         assert kwargs.get('response_time', None) >= 0
         assert kwargs.get('response_length', None) == len('foo bar')
-        assert kwargs.get('context', None) is scenario.user._context
+        assert kwargs.get('context', None) is parent.user._context
         assert isinstance(kwargs.get('exception', None), RuntimeError)
 
         # exception before spawning greenlets, with a scenario failure exception
         joinall_mock.side_effect = [RuntimeError]
-        scenario_context.failure_exception = RestartScenario
+        parent.user._scenario.failure_exception = RestartScenario
 
         with pytest.raises(RestartScenario):
-            task(scenario)
+            task(parent)
 
         # with greenlet trace method
         joinall_mock.side_effect = [RuntimeError]
         spawn_mock.reset_mock()
         try:
             environ['GEVENT_MONITOR_THREAD_ENABLE'] = 'true'
-            scenario_context.failure_exception = StopUser
+            parent.user._scenario.failure_exception = StopUser
 
             with caplog.at_level(logging.DEBUG):
                 with pytest.raises(StopUser):
-                    task(scenario)
+                    task(parent)
 
             spawn_mock.call_count == 2
             assert settrace_mock.call_count == 2
@@ -177,23 +172,20 @@ class TestAsyncRequestGroup:
 
     @pytest.mark.skip(reason='needs a webservice that sleeps')
     def test___call___real(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
-        _, user, scenario = grizzly_fixture(host='http://host.docker.internal:8002', user_type=RestApiUser, scenario_type=IteratorScenario)
+        parent = grizzly_fixture(host='http://host.docker.internal:8002', user_type=RestApiUser, scenario_type=IteratorScenario)
 
-        assert scenario is not None
-        assert user is not None
+        request_spy = mocker.spy(parent.user.environment.events.request, 'fire')
 
-        request_spy = mocker.spy(user.environment.events.request, 'fire')
+        assert parent.user.host == 'http://host.docker.internal:8002'
 
-        assert user.host == 'http://host.docker.internal:8002'
+        context_scenario = GrizzlyContextScenario(1, behave=grizzly_fixture.behave.create_scenario('test scenario'))
+        parent.user._scenario = context_scenario
 
-        context_scenario = GrizzlyContextScenario(1)
-        context_scenario.name = context_scenario.description = 'test scenario'
+        task_factory = AsyncRequestGroupTask(name='test')
 
-        task_factory = AsyncRequestGroupTask(name='test', scenario=context_scenario)
-
-        task_factory.add(RequestTask(RequestMethod.GET, name='sleep-2', endpoint='/api/sleep/2', scenario=context_scenario))
-        task_factory.add(RequestTask(RequestMethod.GET, name='sleep-6', endpoint='/api/sleep/6', scenario=context_scenario))
-        task_factory.add(RequestTask(RequestMethod.GET, name='sleep-1', endpoint='/api/sleep/1', scenario=context_scenario))
+        task_factory.add(RequestTask(RequestMethod.GET, name='sleep-2', endpoint='/api/sleep/2'))
+        task_factory.add(RequestTask(RequestMethod.GET, name='sleep-6', endpoint='/api/sleep/6'))
+        task_factory.add(RequestTask(RequestMethod.GET, name='sleep-1', endpoint='/api/sleep/1'))
         # task_factory.add(RequestTask(RequestMethod.POST, name='post-echo', endpoint='/api/echo', source='{"foo": "bar"}', scenario=context_scenario))
 
         assert len(task_factory.tasks) == 3
@@ -202,7 +194,7 @@ class TestAsyncRequestGroup:
         caplog.handler.formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
 
         with caplog.at_level(logging.DEBUG):
-            task(scenario)
+            task(parent)
 
         with open('output.log', 'w+') as fd:
             fd.write(caplog.text)

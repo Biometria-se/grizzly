@@ -51,7 +51,6 @@ from azure.storage.blob import BlobServiceClient, ContentSettings
 
 from grizzly.types import RequestDirection, GrizzlyResponse, bool_type
 from grizzly.scenarios import GrizzlyScenario
-from grizzly.context import GrizzlyContextScenario
 
 from . import client, ClientTask
 
@@ -81,7 +80,6 @@ class BlobStorageClientTask(ClientTask):
         source: Optional[str] = None,
         destination: Optional[str] = None,
         text: Optional[str] = None,
-        scenario: Optional[GrizzlyContextScenario] = None,
     ) -> None:
         super().__init__(
             direction,
@@ -91,7 +89,6 @@ class BlobStorageClientTask(ClientTask):
             metadata_variable=metadata_variable,
             destination=destination,
             source=source,
-            scenario=scenario,
             text=text,
         )
 

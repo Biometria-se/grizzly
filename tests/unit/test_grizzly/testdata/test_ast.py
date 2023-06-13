@@ -3,10 +3,10 @@ from json import loads as jsonloads, dumps as jsondumps
 
 from grizzly.testdata.ast import _parse_templates, get_template_variables
 from grizzly.types import RequestMethod
-from grizzly.context import GrizzlyContextScenario
+from grizzly.context import GrizzlyContextScenario, GrizzlyContext
 from grizzly.tasks import RequestTask, LogMessageTask
 
-from tests.fixtures import RequestTaskFixture
+from tests.fixtures import RequestTaskFixture, BehaveFixture
 
 
 def test__parse_template(request_task: RequestTaskFixture) -> None:
@@ -24,8 +24,7 @@ def test__parse_template(request_task: RequestTaskFixture) -> None:
     source['result']['Expression'] = '{{ expression == "True" }}'
 
     request.source = jsondumps(source)
-    scenario = GrizzlyContextScenario(1)
-    scenario.name = 'TestScenario'
+    scenario = GrizzlyContextScenario(1, behave=request_task.behave_fixture.create_scenario('TestScenario'))
     scenario.tasks.add(request)
 
     templates = {scenario: set(request.get_templates())}
@@ -56,8 +55,7 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture) -> None:
     source['result'] = {'FooBar': '{{ AtomicIntegerIncrementer.file_number | int }}'}
 
     request.source = jsondumps(source)
-    scenario = GrizzlyContextScenario(1)
-    scenario.name = 'TestScenario'
+    scenario = GrizzlyContextScenario(1, behave=request_task.behave_fixture.create_scenario('TestScenario'))
     scenario.tasks.add(request)
 
     templates = {scenario: set(request.get_templates())}
@@ -145,40 +143,45 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture) -> None:
     }
 
 
-def test_get_template_variables() -> None:
-    variables = get_template_variables([])
+def test_get_template_variables(behave_fixture: BehaveFixture) -> None:
+    behave = behave_fixture.context
+    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+    grizzly.scenario.tasks.clear()
+    variables = get_template_variables(grizzly)
     assert variables == {}
 
-    scenario = GrizzlyContextScenario(1)
-    scenario.name = 'TestScenario'
-    scenario.context['host'] = 'http://test.nu'
-    scenario.user.class_name = 'TestUser'
-    scenario.tasks.add(
+    grizzly.scenario.context['host'] = 'http://test.nu'
+    grizzly.scenario.user.class_name = 'TestUser'
+    grizzly.scenario.tasks.add(
         RequestTask(RequestMethod.POST, name='Test POST request', endpoint='/api/test/post')
     )
-    task = cast(RequestTask, scenario.tasks()[-1])
+    task = cast(RequestTask, grizzly.scenario.tasks()[-1])
     task.source = '{{ AtomicRandomString.test }}'
 
-    scenario.tasks.add(
+    grizzly.scenario.tasks.add(
         RequestTask(RequestMethod.GET, name='{{ env }} GET request', endpoint='/api/{{ env }}/get')
     )
-    task = cast(RequestTask, scenario.tasks()[-1])
+    task = cast(RequestTask, grizzly.scenario.tasks()[-1])
     task.source = '{{ AtomicIntegerIncrementer.test }}'
 
-    scenario.tasks.add(
+    grizzly.scenario.tasks.add(
         LogMessageTask(message='{{ foo }}')
     )
 
-    variables = get_template_variables(scenario.tasks())
+    grizzly.scenario.orphan_templates.append('{{ foobar }}')
 
-    expected_scenario_name = '_'.join([scenario.name, scenario.identifier])
+    variables = get_template_variables(grizzly)
 
-    assert scenario.class_name == expected_scenario_name
+    expected_scenario_name = '_'.join([grizzly.scenario.name, grizzly.scenario.identifier])
+
+    assert grizzly.scenario.class_name == expected_scenario_name
     assert variables == {
         expected_scenario_name: {
             'AtomicRandomString.test',
             'AtomicIntegerIncrementer.test',
             'foo',
             'env',
+            'foobar',
         },
     }

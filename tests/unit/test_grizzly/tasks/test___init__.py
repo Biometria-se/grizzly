@@ -28,7 +28,7 @@ class DummyTask(GrizzlyTask):
     dict_template: Dict[str, str]
 
     def __init__(self, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
-        super().__init__(*args, **kwargs)  # type: ignore
+        super().__init__(*args, **kwargs)
         self.string_template = '{{ string_template }}'
         self.list_template = ['{{ list_template_1 }}', '{{ list_template_2 }}', '{{ list_template_3 }}']
         self.dict_template = {
@@ -60,19 +60,18 @@ class Testgrizzlytask:
         assert task.__doc__.strip() == 'hello world'
 
     def test___call__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
-        _, _, scenario = grizzly_fixture()
-        assert scenario is not None
+        parent = grizzly_fixture()
 
         task = grizzlytask(on_func)
 
         task_call_mock = mocker.spy(task, '_task')
 
-        task(scenario)
+        task(parent)
 
-        task_call_mock.assert_called_once_with(scenario)
+        task_call_mock.assert_called_once_with(parent)
 
     def test__is_parent(self, grizzly_fixture: GrizzlyFixture) -> None:
-        _, user, _ = grizzly_fixture()
+        parent = grizzly_fixture()
 
         task = grizzlytask(on_func)
         assert not task._is_parent(on_func)
@@ -83,19 +82,18 @@ class Testgrizzlytask:
         class DummySomething(GrizzlyScenario):
             pass
 
-        foo = DummySomething(user)
+        foo = DummySomething(parent.user)
         assert task._is_parent(foo)
 
         class DummyOther(IteratorScenario):
             pass
 
-        bar = DummyOther(user)
+        bar = DummyOther(parent.user)
         assert task._is_parent(bar)
 
     @pytest.mark.parametrize('event', ['on_start', 'on_stop'])
     def test_on_event(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, event: str) -> None:
-        _, _, scenario = grizzly_fixture()
-        assert scenario is not None
+        parent = grizzly_fixture()
 
         task = grizzlytask(on_func)
         assert getattr(task, f'_{event}', True) is None
@@ -107,14 +105,14 @@ class Testgrizzlytask:
 
         # called
         on_event_mock = mocker.patch.object(getattr(task, f'_{event}'), '_on_func')
-        getattr(task, event)(scenario)
+        getattr(task, event)(parent)
 
-        on_event_mock.assert_called_once_with(scenario)
+        on_event_mock.assert_called_once_with(parent)
 
         # called, but not set
         task = grizzlytask(on_func)
 
-        task.on_start(scenario)
+        task.on_start(parent)
 
 
 class TestGrizzlyTask:
@@ -160,26 +158,25 @@ class TestGrizzlyTask:
         ])
 
         mocker.patch('grizzly.tasks.loop.gsleep', autospec=True)
-        _, _, scenario = grizzly_fixture()
-
-        assert scenario is not None
+        parent = grizzly_fixture()
 
         grizzly = grizzly_fixture.grizzly
 
-        scenario_context = GrizzlyContextScenario(3)
-        scenario_context.name = scenario_context.description = 'test scenario'
+        scenario_context = GrizzlyContextScenario(3, behave=grizzly_fixture.behave.create_scenario('test scenario'))
+        grizzly.scenarios.clear()
+        grizzly.scenarios.append(scenario_context)
 
-        grizzly.state.variables['endpoint_suffix'] = scenario.user._context['variables']['endpoint_suffix'] = 'none'
+        grizzly.state.variables['endpoint_suffix'] = parent.user._context['variables']['endpoint_suffix'] = 'none'
 
         # conditional -> loop -> request
-        conditional_factory = ConditionalTask('conditional-{{ conditional_name }}', '{{ value | int > 0 }}', scenario=scenario_context)
+        conditional_factory = ConditionalTask('conditional-{{ conditional_name }}', '{{ value | int > 0 }}')
 
         conditional_factory.switch(True)
 
-        loop_factory = LoopTask(grizzly, 'loop-{{ loop_name }}', '["hello", "world"]', 'endpoint_suffix', scenario_context)
+        loop_factory = LoopTask(grizzly, 'loop-{{ loop_name }}', '["hello", "world"]', 'endpoint_suffix')
 
         for i in range(0, 3):
-            loop_factory.add(RequestTask(RequestMethod.GET, name=f'test-{i}', endpoint='/api/test/{{ endpoint_suffix }}', source=None, scenario=scenario_context))
+            loop_factory.add(RequestTask(RequestMethod.GET, name=f'test-{i}', endpoint='/api/test/{{ endpoint_suffix }}', source=None))
 
         conditional_factory.add(loop_factory)
 
@@ -193,14 +190,14 @@ class TestGrizzlyTask:
         ])
 
         # loop -> conditional -> request
-        conditional_factory = ConditionalTask('conditional-{{ conditional_name }}', '{{ value | int > 0 }}', scenario=scenario_context)
+        conditional_factory = ConditionalTask('conditional-{{ conditional_name }}', '{{ value | int > 0 }}')
 
         conditional_factory.switch(True)
 
-        loop_factory = LoopTask(grizzly, 'loop-{{ loop_name }}', '["hello", "world"]', 'endpoint_suffix', scenario_context)
+        loop_factory = LoopTask(grizzly, 'loop-{{ loop_name }}', '["hello", "world"]', 'endpoint_suffix')
 
         for i in range(0, 3):
-            conditional_factory.add(RequestTask(RequestMethod.GET, name=f'test-{i}', endpoint='/api/test/{{ endpoint_suffix }}', source=None, scenario=scenario_context))
+            conditional_factory.add(RequestTask(RequestMethod.GET, name=f'test-{i}', endpoint='/api/test/{{ endpoint_suffix }}', source=None))
 
         loop_factory.add(conditional_factory)
 
@@ -214,13 +211,13 @@ class TestGrizzlyTask:
         ])
 
         # conditional -> loop -> async group -> request
-        conditional_factory = ConditionalTask('conditional-{{ conditional_name }}', '{{ value | int > 0 }}', scenario=scenario_context)
+        conditional_factory = ConditionalTask('conditional-{{ conditional_name }}', '{{ value | int > 0 }}')
 
         conditional_factory.switch(False)
 
-        loop_factory = LoopTask(grizzly, 'loop-{{ loop_name }}', '["hello", "world"]', 'endpoint_suffix', scenario_context)
+        loop_factory = LoopTask(grizzly, 'loop-{{ loop_name }}', '["hello", "world"]', 'endpoint_suffix')
 
-        async_group_factory = AsyncRequestGroupTask('async-{{ async_name }}', scenario=scenario_context)
+        async_group_factory = AsyncRequestGroupTask('async-{{ async_name }}')
 
         for i in range(0, 3):
             async_group_factory.add(RequestTask(
@@ -228,7 +225,6 @@ class TestGrizzlyTask:
                 name=f'request-{i}-{{{{ request_name }}}}',
                 endpoint='/api/test/{{ endpoint_suffix }}',
                 source=None,
-                scenario=scenario_context,
             ))
 
         loop_factory.add(async_group_factory)

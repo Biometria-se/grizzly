@@ -4,7 +4,7 @@ import unicodedata
 import re
 import traceback
 
-from typing import Dict, Any, Tuple, Optional, Union, cast
+from typing import Dict, Any, Tuple, Optional, Union, cast, TYPE_CHECKING
 from datetime import datetime, timedelta
 from urllib.parse import urlparse, urlunparse
 
@@ -19,6 +19,9 @@ from grizzly.utils import merge_dicts
 
 from .response_event import ResponseEvent
 from .grizzly_user import GrizzlyUser
+
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.scenarios import GrizzlyScenario
 
 
 LOG_FILE_TEMPLATE = '''
@@ -150,8 +153,8 @@ class RequestLogger(ResponseEvent, GrizzlyUser):
             },
         }
 
-    def request(self, request: RequestTask) -> GrizzlyResponse:
-        raise NotImplementedError(f'{self.__class__.__name__} has not implemented request')  # pragma: no cover
+    def request(self, parent: 'GrizzlyScenario', request: RequestTask) -> GrizzlyResponse:  # pragma: no cover
+        return None, None
 
     def request_logger(
         self,

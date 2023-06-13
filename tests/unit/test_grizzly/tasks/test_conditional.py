@@ -83,7 +83,7 @@ class TestConditionalTask:
 
     def test___call__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         # pre: get context
-        _, _, scenario = grizzly_fixture()
+        parent = grizzly_fixture()
 
         class TestRestartScenarioTask(TestTask):
             def __call__(self) -> grizzlytask:
@@ -117,23 +117,23 @@ class TestConditionalTask:
 
                 return task
 
-        assert scenario is not None
+        assert parent is not None
 
-        scenario_context = GrizzlyContextScenario(1)
-        scenario_context.name = scenario_context.description = 'test scenario'
-        task_factory = ConditionalTask(name='test', condition='{{ value }}', scenario=scenario_context)
+        scenario_context = GrizzlyContextScenario(1, behave=grizzly_fixture.behave.create_scenario('test scenario'))
+        parent.user._scenario = scenario_context
+        task_factory = ConditionalTask(name='test', condition='{{ value }}')
 
         mocker.patch('grizzly.tasks.conditional.gsleep', autospec=True)
-        request_spy = mocker.spy(scenario.user.environment.events.request, 'fire')
+        request_spy = mocker.spy(parent.user.environment.events.request, 'fire')
 
         # pre: add tasks
         task_factory.switch(True)
         for i in range(0, 3):
-            task_factory.add(TestTask(name=f'dummy-true-{i}', scenario=scenario_context))
+            task_factory.add(TestTask(name=f'dummy-true-{i}'))
 
         task_factory.switch(False)
         for i in range(0, 4):
-            task_factory.add(TestTask(name=f'dummy-false-{i}', scenario=scenario_context))
+            task_factory.add(TestTask(name=f'dummy-false-{i}'))
 
         # pre: get task implementation
         task = task_factory()
@@ -146,9 +146,9 @@ class TestConditionalTask:
         assert total_task___call___count == len(task_factory.tasks.get(True, [])) + len(task_factory.tasks.get(False, []))
 
         # invalid condition, no scenario.failure_exception
-        scenario.user._context.update({'variables': {'value': 'foobar'}})
+        parent.user._context.update({'variables': {'value': 'foobar'}})
 
-        task(scenario)
+        task(parent)
 
         assert request_spy.call_count == 1
         _, kwargs = request_spy.call_args_list[-1]
@@ -157,17 +157,17 @@ class TestConditionalTask:
         assert kwargs.get('name', None) == f'{scenario_context.identifier} test: Invalid (0)'
         assert kwargs.get('response_time', None) >= 0.0
         assert kwargs.get('response_length', None) == 0
-        assert kwargs.get('context', None) is scenario.user._context
+        assert kwargs.get('context', None) is parent.user._context
         exception = kwargs.get('exception', None)
         assert isinstance(exception, RuntimeError)
         assert str(exception) == '"{{ value }}" resolved to "foobar" which is invalid'
 
         # invalid condition, RestartScenario scenario.failure_exception
-        scenario.user._context.update({'variables': {'value': 'foobar'}})
+        parent.user._context.update({'variables': {'value': 'foobar'}})
         scenario_context.failure_exception = RestartScenario
 
         with pytest.raises(RestartScenario):
-            task(scenario)
+            task(parent)
 
         assert request_spy.call_count == 2
         _, kwargs = request_spy.call_args_list[-1]
@@ -176,7 +176,7 @@ class TestConditionalTask:
         assert kwargs.get('name', None) == f'{scenario_context.identifier} test: Invalid (0)'
         assert kwargs.get('response_time', None) >= 0.0
         assert kwargs.get('response_length', None) == 0
-        assert kwargs.get('context', None) is scenario.user._context
+        assert kwargs.get('context', None) is parent.user._context
         exception = kwargs.get('exception', None)
         assert isinstance(exception, RuntimeError)
         assert str(exception) == '"{{ value }}" resolved to "foobar" which is invalid'
@@ -185,9 +185,9 @@ class TestConditionalTask:
 
         # true condition
         task_factory.condition = '{{ value | int > 0 }}'
-        scenario.user._context.update({'variables': {'value': 1}})
+        parent.user._context.update({'variables': {'value': 1}})
 
-        task(scenario)
+        task(parent)
 
         assert request_spy.call_count == 3 + 3
         _, kwargs = request_spy.call_args_list[-1]
@@ -196,7 +196,7 @@ class TestConditionalTask:
         assert kwargs.get('name', None) == f'{scenario_context.identifier} test: True (3)'
         assert kwargs.get('response_time', None) >= 0.0
         assert kwargs.get('response_length', None) == 3
-        assert kwargs.get('context', None) is scenario.user._context
+        assert kwargs.get('context', None) is parent.user._context
         assert kwargs.get('exception', RuntimeError()) is None
 
         request_calls = request_spy.call_args_list[2:-1]
@@ -206,9 +206,9 @@ class TestConditionalTask:
             assert kwargs.get('request_type', None) == 'TSTSK'
 
         # false condition
-        scenario.user._context.update({'variables': {'value': 0}})
+        parent.user._context.update({'variables': {'value': 0}})
 
-        task(scenario)
+        task(parent)
 
         assert request_spy.call_count == 4 + 3 + 4
         _, kwargs = request_spy.call_args_list[-1]
@@ -217,7 +217,7 @@ class TestConditionalTask:
         assert kwargs.get('name', None) == f'{scenario_context.identifier} test: False (4)'
         assert kwargs.get('response_time', None) >= 0.0
         assert kwargs.get('response_length', None) == 4
-        assert kwargs.get('context', None) is scenario.user._context
+        assert kwargs.get('context', None) is parent.user._context
         assert kwargs.get('exception', RuntimeError()) is None
 
         request_calls = request_spy.call_args_list[-5:-1]
@@ -225,45 +225,43 @@ class TestConditionalTask:
         for _, kwargs in request_calls:
             assert kwargs.get('request_type', None) == 'TSTSK'
 
-        task_factory.add(TestRestartScenarioTask(name=f'restart-scenario-false-{i}', scenario=scenario_context))
+        task_factory.add(TestRestartScenarioTask(name=f'restart-scenario-false-{i}'))
         task_factory.switch(True)
-        task_factory.add(TestStopUserTask(name=f'stop-user-true-{i}', scenario=scenario_context))
+        task_factory.add(TestStopUserTask(name=f'stop-user-true-{i}'))
 
-        scenario._user.environment.stats.clear_all()
+        parent._user.environment.stats.clear_all()
 
         task = task_factory()
 
         # false condition
-        task(scenario)
+        task(parent)
 
-        assert len(scenario._user.environment.stats.serialize_errors().keys()) == 1
+        assert len(parent._user.environment.stats.serialize_errors().keys()) == 1
 
-        scenario._user.environment.stats.clear_all()
+        parent._user.environment.stats.clear_all()
 
         # true condition
         task_factory.condition = '{{ value | int > 0 }}'
-        scenario.user._context.update({'variables': {'value': 1}})
+        parent.user._context.update({'variables': {'value': 1}})
 
-        task(scenario)
+        task(parent)
 
-        assert len(scenario._user.environment.stats.serialize_errors().keys()) == 1
+        assert len(parent._user.environment.stats.serialize_errors().keys()) == 1
 
     def test_on_event(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
-        _, _, scenario = grizzly_fixture()
+        parent = grizzly_fixture()
 
-        assert scenario is not None
-
-        scenario_context = GrizzlyContextScenario(1)
-        scenario_context.name = scenario_context.description = 'test scenario'
-        task_factory = ConditionalTask(name='test', condition='{{ value }}', scenario=scenario_context)
+        scenario_context = GrizzlyContextScenario(1, behave=grizzly_fixture.behave.create_scenario('test scenario'))
+        parent.user._scenario = scenario_context
+        task_factory = ConditionalTask(name='test', condition='{{ value }}')
 
         task_factory.switch(True)
         for i in range(0, 3):
-            task_factory.add(TestTask(name=f'dummy-true-{i}', scenario=scenario_context))
+            task_factory.add(TestTask(name=f'dummy-true-{i}'))
 
         task_factory.switch(False)
         for i in range(0, 4):
-            task_factory.add(TestTask(name=f'dummy-false-{i}', scenario=scenario_context))
+            task_factory.add(TestTask(name=f'dummy-false-{i}'))
 
         mocker.patch('grizzly.tasks.conditional.gsleep', autospec=True)
 
@@ -272,12 +270,12 @@ class TestConditionalTask:
         on_start_mock = mocker.patch.object(TestTask, 'on_start', return_value=None)
         on_stop_mock = mocker.patch.object(TestTask, 'on_stop', return_value=None)
 
-        task.on_start(scenario)
+        task.on_start(parent)
 
         on_start_mock.call_count == 7
         on_stop_mock.call_count == 0
 
-        task.on_stop(scenario)
+        task.on_stop(parent)
 
         on_start_mock.call_count == 7
         on_stop_mock.call_count == 7
@@ -285,22 +283,22 @@ class TestConditionalTask:
         on_start_mock.reset_mock()
         on_stop_mock.reset_mock()
 
-        task_factory = ConditionalTask(name='test', condition='{{ value }}', scenario=scenario_context)
+        task_factory = ConditionalTask(name='test', condition='{{ value }}')
 
         task_factory.switch(True)
         for i in range(0, 3):
-            task_factory.add(TestTask(name=f'dummy-true-{i}', scenario=scenario_context))
+            task_factory.add(TestTask(name=f'dummy-true-{i}'))
 
         assert task_factory.tasks.get(False, None) is None
 
         task = task_factory()
 
-        task.on_start(scenario)
+        task.on_start(parent)
 
         on_start_mock.call_count == 3
         on_stop_mock.call_count == 0
 
-        task.on_stop(scenario)
+        task.on_stop(parent)
 
         on_start_mock.call_count == 3
         on_stop_mock.call_count == 3

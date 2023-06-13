@@ -21,11 +21,9 @@ from tests.fixtures import GrizzlyFixture
 
 class TestHttpClientTask:
     def test_on_start(self, grizzly_fixture: GrizzlyFixture) -> None:
-        _, _, scenario = grizzly_fixture()
+        parent = grizzly_fixture()
 
-        assert scenario is not None
-
-        behave = grizzly_fixture.behave
+        behave = grizzly_fixture.behave.context
         grizzly = cast(GrizzlyContext, behave.grizzly)
         grizzly.state.variables.update({'test_payload': 'none', 'test_metadata': 'none'})
 
@@ -39,15 +37,13 @@ class TestHttpClientTask:
         assert getattr(task_factory, 'session_started', None) is None
         assert task_factory.headers == {'x-grizzly-user': ANY}
 
-        task.on_start(scenario)
+        task.on_start(parent)
 
-        assert task_factory.parent is scenario
-        assert task_factory.environment is scenario.user.environment
         assert getattr(task_factory, 'session_started', -1.0) >= 0.0
         assert task_factory.headers == {'x-grizzly-user': ANY, 'x-test-header': 'foobar'}
 
     def test_get(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
-        behave = grizzly_fixture.behave
+        behave = grizzly_fixture.behave.context
         grizzly = cast(GrizzlyContext, behave.grizzly)
 
         with pytest.raises(AttributeError) as ae:
@@ -82,11 +78,9 @@ class TestHttpClientTask:
             HttpClientTask(RequestDirection.FROM, 'http://example.org', payload_variable=None, metadata_variable='test')
         assert 'HttpClientTask: payload variable is not set, but metadata variable is set' in str(ve)
 
-        _, _, scenario = grizzly_fixture()
+        parent = grizzly_fixture()
 
-        assert scenario is not None
-
-        request_fire_spy = mocker.spy(scenario.user.environment.events.request, 'fire')
+        request_fire_spy = mocker.spy(parent.user.environment.events.request, 'fire')
 
         grizzly.state.variables.update({'test_payload': 'none', 'test_metadata': 'none'})
 
@@ -98,17 +92,17 @@ class TestHttpClientTask:
 
         assert callable(task)
 
-        assert scenario.user._context['variables'].get('test_payload', None) is None
-        assert scenario.user._context['variables'].get('test_metadata', None) is None
+        assert parent.user._context['variables'].get('test_payload', None) is None
+        assert parent.user._context['variables'].get('test_metadata', None) is None
 
         task_factory.name = 'test-1'
         response.status_code = 400
         response.headers = CaseInsensitiveDict({'x-foo-bar': 'test'})
 
-        task(scenario)
+        task(parent)
 
-        assert scenario.user._context['variables'].get('test_payload', None) is None
-        assert scenario.user._context['variables'].get('test_metadata', None) is None
+        assert parent.user._context['variables'].get('test_payload', None) is None
+        assert parent.user._context['variables'].get('test_metadata', None) is None
         assert requests_get_spy.call_count == 1
         args, kwargs = requests_get_spy.call_args_list[-1]
         assert args[0] == 'http://example.org'
@@ -119,10 +113,10 @@ class TestHttpClientTask:
         assert request_fire_spy.call_count == 1
         _, kwargs = request_fire_spy.call_args_list[-1]
         assert kwargs.get('request_type', None) == 'CLTSK'
-        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} test-1'
+        assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} test-1'
         assert kwargs.get('response_time', None) >= 0.0
         assert kwargs.get('response_length') == len(jsondumps({'hello': 'world'}))
-        assert kwargs.get('context', None) is scenario.user._context
+        assert kwargs.get('context', None) is parent.user._context
         exception = kwargs.get('exception', None)
         assert isinstance(exception, CatchResponseError)
         assert str(exception) == '400 not in [200]: {"hello": "world"}'
@@ -140,13 +134,13 @@ class TestHttpClientTask:
         assert log_entry.get('response', {}).get('payload', None) is not None
         assert log_entry.get('response', {}).get('status', None) == 400
 
-        scenario.user._context['variables']['test'] = None
+        parent.user._context['variables']['test'] = None
         response.status_code = 200
         task_factory.name = 'test-2'
 
-        task(scenario)
+        task(parent)
 
-        assert scenario.user._context['variables'].get('test', '') is None  # not set
+        assert parent.user._context['variables'].get('test', '') is None  # not set
         assert requests_get_spy.call_count == 2
         args, kwargs = requests_get_spy.call_args_list[-1]
         assert args[0] == 'http://example.org'
@@ -157,26 +151,26 @@ class TestHttpClientTask:
         assert request_fire_spy.call_count == 2
         _, kwargs = request_fire_spy.call_args_list[-1]
         assert kwargs.get('request_type', None) == 'CLTSK'
-        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} test-2'
+        assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} test-2'
         assert kwargs.get('response_time', None) >= 0.0
         assert kwargs.get('response_length') == 0
-        assert kwargs.get('context', None) is scenario.user._context
+        assert kwargs.get('context', None) is parent.user._context
         assert isinstance(kwargs.get('exception', None), RuntimeError)
         assert len(list(task_factory.log_dir.rglob('**/*'))) == 2
 
-        scenario.user._scenario.failure_exception = StopUser
+        parent.user._scenario.failure_exception = StopUser
         task_factory.name = 'test-3'
 
         with pytest.raises(StopUser):
-            task(scenario)
+            task(parent)
 
-        scenario.user._scenario.failure_exception = RestartScenario
+        parent.user._scenario.failure_exception = RestartScenario
         task_factory.name = 'test-4'
 
         with pytest.raises(RestartScenario):
-            task(scenario)
+            task(parent)
 
-        assert scenario.user._context['variables'].get('test', '') is None  # not set
+        assert parent.user._context['variables'].get('test', '') is None  # not set
         assert requests_get_spy.call_count == 4
         args, kwargs = requests_get_spy.call_args_list[-1]
         assert args[0] == 'http://example.org'
@@ -187,23 +181,23 @@ class TestHttpClientTask:
         assert request_fire_spy.call_count == 4
         _, kwargs = request_fire_spy.call_args_list[-1]
         assert kwargs.get('request_type', None) == 'CLTSK'
-        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} test-4'
+        assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} test-4'
         assert kwargs.get('response_time', None) >= 0.0
         assert kwargs.get('response_length') == 0
-        assert kwargs.get('context', None) is scenario.user._context
+        assert kwargs.get('context', None) is parent.user._context
         assert isinstance(kwargs.get('exception', None), RuntimeError)
         assert len(list(task_factory.log_dir.rglob('**/*'))) == 4
 
-        scenario.user._scenario.failure_exception = None
+        parent.user._scenario.failure_exception = None
 
         task_factory = HttpClientTask(RequestDirection.FROM, 'http://example.org', 'http-get', payload_variable='test')
         task = task_factory()
         assert task_factory.arguments == {}
         assert task_factory.content_type == TransformerContentType.UNDEFINED
 
-        task(scenario)
+        task(parent)
 
-        assert scenario.user._context['variables'].get('test', '') is None  # not set
+        assert parent.user._context['variables'].get('test', '') is None  # not set
         assert requests_get_spy.call_count == 5
         args, kwargs = requests_get_spy.call_args_list[-1]
         assert args[0] == 'http://example.org'
@@ -214,10 +208,10 @@ class TestHttpClientTask:
         assert request_fire_spy.call_count == 5
         _, kwargs = request_fire_spy.call_args_list[-1]
         assert kwargs.get('request_type', None) == 'CLTSK'
-        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} http-get'
+        assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} http-get'
         assert kwargs.get('response_time', None) >= 0.0
         assert kwargs.get('response_length') == 0
-        assert kwargs.get('context', None) is scenario.user._context
+        assert kwargs.get('context', None) is parent.user._context
         assert isinstance(kwargs.get('exception', None), RuntimeError)
         assert len(list(task_factory.log_dir.rglob('**/*'))) == 5
 
@@ -230,7 +224,7 @@ class TestHttpClientTask:
         response.url = 'https://example.org/api/test'
         requests_get_spy.side_effect = cycle([response])
 
-        task(scenario)
+        task(parent)
 
         assert requests_get_spy.call_count == 6
         args, kwargs = requests_get_spy.call_args_list[-1]
@@ -250,7 +244,7 @@ class TestHttpClientTask:
         assert task_factory.content_type == TransformerContentType.JSON
         assert len(list(task_factory.log_dir.rglob('**/*'))) == 5
 
-        task(scenario)
+        task(parent)
 
         assert requests_get_spy.call_count == 7
         args, kwargs = requests_get_spy.call_args_list[-1]
@@ -267,14 +261,14 @@ class TestHttpClientTask:
         assert task_factory.arguments == {'verify': True}
         assert task_factory.content_type == TransformerContentType.JSON
 
-        scenario.user._scenario.context['log_all_requests'] = True
+        parent.user._scenario.context['log_all_requests'] = True
         task_factory._context['metadata'] = {'x-test-header': 'foobar'}
 
-        task.on_start(scenario)
+        task.on_start(parent)
 
         assert task_factory.headers.get('x-test-header', None) == 'foobar'
 
-        task(scenario)
+        task(parent)
 
         assert requests_get_spy.call_count == 8
         args, kwargs = requests_get_spy.call_args_list[-1]
@@ -297,9 +291,8 @@ class TestHttpClientTask:
         task_factory = HttpClientTask(RequestDirection.TO, 'http://put.example.org', source='')
         task = task_factory()
 
-        _, _, scenario = grizzly_fixture()
-        assert scenario is not None
+        parent = grizzly_fixture()
 
         with pytest.raises(NotImplementedError) as nie:
-            task(scenario)
+            task(parent)
         assert 'HttpClientTask has not implemented PUT' in str(nie.value)

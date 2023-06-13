@@ -436,7 +436,6 @@ def step_task_client_get_endpoint_until(context: Context, endpoint: str, name: s
         RequestDirection.FROM,
         endpoint,
         name,
-        scenario=grizzly.scenario,
         text=context.text,
     )
 

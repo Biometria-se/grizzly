@@ -80,7 +80,6 @@ from grizzly_extras.transformer import TransformerContentType
 from grizzly_extras.arguments import parse_arguments
 
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestType
-from grizzly.context import GrizzlyContextScenario
 from grizzly.scenarios import GrizzlyScenario
 from grizzly.tasks import template
 from grizzly.utils import async_message_request_wrapper
@@ -133,7 +132,6 @@ class ServiceBusClientTask(ClientTask):
         source: Optional[str] = None,
         destination: Optional[str] = None,
         text: Optional[str] = None,
-        scenario: Optional[GrizzlyContextScenario] = None,
     ) -> None:
         super().__init__(
             direction,
@@ -144,7 +142,6 @@ class ServiceBusClientTask(ClientTask):
             destination=destination,
             source=source,
             text=text,
-            scenario=scenario,
         )
 
         url = self.endpoint.replace(';', '?', 1).replace(';', '&')

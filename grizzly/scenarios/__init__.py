@@ -24,6 +24,7 @@ class GrizzlyScenario(SequentialTaskSet):
     task_greenlet: Optional[GreenletWithExceptionCatching]
     task_greenlet_factory: GreenletWithExceptionCatching
     abort: bool
+    spawning_complete: bool
 
     def __init__(self, parent: 'GrizzlyUser') -> None:
         super().__init__(parent=parent)
@@ -33,6 +34,7 @@ class GrizzlyScenario(SequentialTaskSet):
         self.task_greenlet = None
         self.task_greenlet_factory = GreenletWithExceptionCatching()
         self.abort = False
+        self.spawning_complete = False
         self.parent.environment.events.quitting.add_listener(self.on_quitting)
 
     @property

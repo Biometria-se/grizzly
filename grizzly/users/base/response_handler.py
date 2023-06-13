@@ -101,7 +101,10 @@ class ResponseHandlerAction(ABC):
                 if self.as_json:
                     match = jsondumps([match])
             else:
-                match = jsondumps(matches)
+                if self.as_json:
+                    match = jsondumps(matches)
+                else:
+                    match = '\n'.join(matches)
 
         return match, interpolated_expression, interpolated_match_with
 

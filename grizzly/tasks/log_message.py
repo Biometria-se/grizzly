@@ -15,12 +15,11 @@ This task does not have any request statistics entries.
 
 * `message` _str_ - message to log at `INFO` level, can be a template
 '''
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from . import GrizzlyTask, template, grizzlytask
 
 if TYPE_CHECKING:  # pragma: no cover
-    from grizzly.context import GrizzlyContextScenario
     from grizzly.scenarios import GrizzlyScenario
 
 
@@ -28,8 +27,8 @@ if TYPE_CHECKING:  # pragma: no cover
 class LogMessageTask(GrizzlyTask):
     message: str
 
-    def __init__(self, message: str, scenario: Optional['GrizzlyContextScenario'] = None) -> None:
-        super().__init__(scenario)
+    def __init__(self, message: str) -> None:
+        super().__init__()
 
         self.message = message
 

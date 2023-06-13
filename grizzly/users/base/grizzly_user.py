@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Dict, Tuple, Optional, Set, cast
 from logging import Logger
 from abc import abstractmethod
 from json import dumps as jsondumps, loads as jsonloads
+from copy import copy
 
 from locust.user.users import User
 from locust.user.task import LOCUST_STATE_RUNNING
@@ -20,16 +21,18 @@ from . import FileRequests
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContextScenario
+    from grizzly.scenarios import GrizzlyScenario
 
 
 class GrizzlyUser(User):
     __dependencies__: Set[str] = set()
+    __scenario__: 'GrizzlyContextScenario'  # reference to grizzly scenario this user is part of
 
     _context_root: str
     _context: Dict[str, Any] = {
         'variables': {},
     }
-    _scenario: 'GrizzlyContextScenario'
+    _scenario: 'GrizzlyContextScenario'  # copy of scenario for this user instance
 
     _scenario_state: Optional[ScenarioState]
 
@@ -49,6 +52,9 @@ class GrizzlyUser(User):
         self.logger = logging.getLogger(f'{self.__class__.__name__}/{id(self)}')
         self._scenario_state = None
         self.abort = False
+        self._scenario = copy(self.__scenario__)
+        # these are not copied, and we can share reference
+        self._scenario._tasks = self.__scenario__._tasks
 
         environment.events.quitting.add_listener(self.on_quitting)
 
@@ -80,17 +86,17 @@ class GrizzlyUser(User):
             return cast(bool, super().stop(force=force))
 
     @abstractmethod
-    def request(self, request: RequestTask) -> GrizzlyResponse:
+    def request(self, parent: 'GrizzlyScenario', request: RequestTask) -> GrizzlyResponse:
         raise NotImplementedError(f'{self.__class__.__name__} has not implemented request')  # pragma: no cover
 
     def render(self, request: RequestTask) -> Tuple[str, str, Optional[str], Optional[Dict[str, str]], Optional[Dict[str, str]]]:
-        scenario_name = f'{request.scenario.identifier} {request.name}'
+        scenario_name = f'{self._scenario.identifier} {request.name}'
 
         try:
             j2env = self.grizzly.state.jinja2
             payload: Optional[str] = None
             name = j2env.from_string(request.name).render(**self.context_variables)
-            scenario_name = f'{request.scenario.identifier} {name}'
+            scenario_name = f'{self._scenario.identifier} {name}'
             endpoint = j2env.from_string(request.endpoint).render(**self.context_variables)
             arguments: Optional[Dict[str, str]] = None
             metadata: Optional[Dict[str, str]] = None

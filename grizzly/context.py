@@ -98,7 +98,7 @@ class GrizzlyContext:
     @property
     def scenario(self) -> 'GrizzlyContextScenario':
         if len(self._scenarios) < 1:
-            self._scenarios.append(GrizzlyContextScenario(1))
+            raise ValueError('no scenarios created!')
 
         return self._scenarios[-1]
 
@@ -222,14 +222,12 @@ class GrizzlyContextTasksTmp:
 
 
 class GrizzlyContextTasks(List['GrizzlyTask']):
-    scenario: 'GrizzlyContextScenario'
     _tmp: GrizzlyContextTasksTmp
     behave_steps: Dict[int, str]
 
-    def __init__(self, scenario: 'GrizzlyContextScenario', *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+    def __init__(self, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
         super().__init__(*args, **kwargs)
 
-        self.scenario = scenario
         self._tmp = GrizzlyContextTasksTmp()
         self.behave_steps = {}
 
@@ -244,9 +242,6 @@ class GrizzlyContextTasks(List['GrizzlyTask']):
             return cast(List['GrizzlyTask'], self)
 
     def add(self, task: 'GrizzlyTask') -> None:
-        if not hasattr(task, 'scenario') or task.scenario is None or task.scenario is not self.scenario:
-            task.scenario = self.scenario
-
         if len(self.tmp.__stack__) > 0:
             self.tmp.__stack__[-1].add(task)
         else:
@@ -262,7 +257,7 @@ class GrizzlyContextScenario:
     iterations: int = field(init=False, repr=False, hash=False, compare=False, default=1)
     pace: Optional[str] = field(init=False, repr=False, hash=False, compare=False, default=None)
 
-    behave: Scenario = field(init=False, repr=False, hash=False, compare=False)
+    behave: Scenario = field(init=True, repr=False, hash=False, compare=False)
     context: Dict[str, Any] = field(init=False, repr=False, hash=False, compare=False, default_factory=dict)
     _tasks: GrizzlyContextTasks = field(init=False, repr=False, hash=False, compare=False)
     validation: GrizzlyContextScenarioValidation = field(init=False, hash=False, compare=False, default_factory=GrizzlyContextScenarioValidation)
@@ -270,7 +265,10 @@ class GrizzlyContextScenario:
     orphan_templates: List[str] = field(init=False, repr=False, hash=False, compare=False, default_factory=list)
 
     def __post_init__(self) -> None:
-        self._tasks = GrizzlyContextTasks(self)
+        self.name = self.behave.name
+        self.description = self.behave.name
+
+        self._tasks = GrizzlyContextTasks()
 
     @property
     def tasks(self) -> GrizzlyContextTasks:
@@ -362,9 +360,6 @@ class GrizzlyContextScenarios(List[GrizzlyContextScenario]):
         return None
 
     def create(self, behave_scenario: Scenario) -> None:
-        grizzly_scenario = GrizzlyContextScenario(len(self) + 1)
-        grizzly_scenario.behave = behave_scenario
-        grizzly_scenario.name = behave_scenario.name
-        grizzly_scenario.description = behave_scenario.name
+        grizzly_scenario = GrizzlyContextScenario(len(self) + 1, behave=behave_scenario)
 
         self.append(grizzly_scenario)

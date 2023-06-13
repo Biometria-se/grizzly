@@ -107,8 +107,8 @@ def create_user_class_type(scenario: 'GrizzlyContextScenario', global_context: O
     return type(user_class_name, (base_user_class_type, ), {
         '__module__': base_user_class_type.__module__,
         '__dependencies__': base_user_class_type.__dependencies__,
+        '__scenario__': scenario,
         '_context': context,
-        '_scenario': scenario,
         **distribution,
     })
 

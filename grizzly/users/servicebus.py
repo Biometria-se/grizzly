@@ -69,7 +69,7 @@ And set response content type to "application/xml"
 '''
 import logging
 
-from typing import Generator, Dict, Any, Tuple, Optional, Set, cast
+from typing import Generator, Dict, Any, Tuple, Optional, Set, cast, TYPE_CHECKING
 from urllib.parse import urlparse, parse_qs
 from time import perf_counter as time
 from contextlib import contextmanager
@@ -87,6 +87,10 @@ from grizzly.utils import merge_dicts
 
 from .base import GrizzlyUser, ResponseHandler, RequestLogger
 from . import logger
+
+
+if TYPE_CHECKING:  # pargma: no cover
+    from grizzly.scenarios import GrizzlyScenario
 
 
 class ServiceBusUser(ResponseHandler, RequestLogger, GrizzlyUser):
@@ -154,13 +158,12 @@ class ServiceBusUser(ResponseHandler, RequestLogger, GrizzlyUser):
         self.zmq_client = self.zmq_context.socket(ZMQ_REQ)
         self.zmq_client.connect(self.zmq_url)
 
-        if getattr(self, '_scenario', None) is not None:
-            for task in self._scenario.tasks:
-                if not isinstance(task, RequestTask):
-                    continue
+        for task in self._scenario.tasks:
+            if not isinstance(task, RequestTask):
+                continue
 
-                endpoint = task.endpoint
-                self.say_hello(task, endpoint)
+            endpoint = task.endpoint
+            self.say_hello(task, endpoint)
 
     def on_stop(self) -> None:
         if getattr(self, '_scenario', None) is not None:
@@ -272,7 +275,7 @@ class ServiceBusUser(ResponseHandler, RequestLogger, GrizzlyUser):
             if task.method.direction == RequestDirection.TO and arguments.get('expression', None) is not None:
                 raise RuntimeError('argument expression is only allowed when receiving messages')
 
-            metadata['failure_exception'] = task.scenario.failure_exception
+            metadata['failure_exception'] = self._scenario.failure_exception
 
         self.hellos.add(description)
 
@@ -329,7 +332,7 @@ class ServiceBusUser(ResponseHandler, RequestLogger, GrizzlyUser):
             try:
                 if not action.get('meta', False):
                     self.response_event.fire(
-                        name=f'{task.scenario.identifier} {task.name}',
+                        name=f'{self._scenario.identifier} {task.name}',
                         request=task,
                         context=(
                             response.get('metadata', None),
@@ -359,7 +362,7 @@ class ServiceBusUser(ResponseHandler, RequestLogger, GrizzlyUser):
         }
 
         if exception is not None and not is_meta:
-            if isinstance(exception, NotImplementedError) or isinstance(task.scenario.failure_exception, StopUser):
+            if isinstance(exception, NotImplementedError) or isinstance(self._scenario.failure_exception, StopUser):
                 try:
                     self.zmq_client.disconnect(self.zmq_url)
                 except:
@@ -367,13 +370,13 @@ class ServiceBusUser(ResponseHandler, RequestLogger, GrizzlyUser):
 
             if isinstance(exception, NotImplementedError):
                 raise StopUser()
-            elif task.scenario.failure_exception is not None:
-                raise task.scenario.failure_exception()
+            elif self._scenario.failure_exception is not None:
+                raise self._scenario.failure_exception()
 
-    def request(self, request: RequestTask) -> GrizzlyResponse:
+    def request(self, parent: 'GrizzlyScenario', request: RequestTask) -> GrizzlyResponse:
         request_name, endpoint, payload, _, _ = self.render(request)
 
-        name = f'{request.scenario.identifier} {request_name}'
+        name = f'{self._scenario.identifier} {request_name}'
 
         self.say_hello(request, endpoint)
 
@@ -392,6 +395,6 @@ class ServiceBusUser(ResponseHandler, RequestLogger, GrizzlyUser):
             if request.method not in [RequestMethod.SEND, RequestMethod.RECEIVE]:
                 raise NotImplementedError(f'{self.__class__.__name__}: no implementation for {request.method.name} requests')
 
-            action['failure_exception'] = request.scenario.failure_exception
+            action['failure_exception'] = self._scenario.failure_exception
 
         return action['metadata'], action['payload']

@@ -12,10 +12,10 @@ from grizzly.testdata.variables import AtomicVariable
 
 
 class User(RestApiUser):
-    def request(self, request: RequestTask) -> GrizzlyResponse:
+    def request(self, parent: GrizzlyScenario, request: RequestTask) -> GrizzlyResponse:
         self.logger.info(f'executing custom.User.request for {request.name} and {request.endpoint}')
 
-        return super().request(request)
+        return super().request(parent, request)
 
 
 class Task(GrizzlyTask):

@@ -34,7 +34,7 @@ from . import GrizzlyTask, GrizzlyTaskWrapper, template, grizzlytask
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.scenarios import GrizzlyScenario
-    from grizzly.context import GrizzlyContextScenario, GrizzlyContext
+    from grizzly.context import GrizzlyContext
 
 
 @template('values', 'tasks')
@@ -45,8 +45,8 @@ class LoopTask(GrizzlyTaskWrapper):
     values: str
     variable: str
 
-    def __init__(self, grizzly: 'GrizzlyContext', name: str, values: str, variable: str, scenario: Optional['GrizzlyContextScenario'] = None) -> None:
-        super().__init__(scenario)
+    def __init__(self, grizzly: 'GrizzlyContext', name: str, values: str, variable: str) -> None:
+        super().__init__()
 
         self.name = name
         self.values = values
@@ -100,15 +100,15 @@ class LoopTask(GrizzlyTaskWrapper):
 
                 parent.user.environment.events.request.fire(
                     request_type='LOOP',
-                    name=f'{self.scenario.identifier} {self.name} ({task_count})',
+                    name=f'{parent.user._scenario.identifier} {self.name} ({task_count})',
                     response_time=response_time,
                     response_length=response_length,
                     context=parent.user._context,
                     exception=exception,
                 )
 
-                if exception is not None and self.scenario.failure_exception is not None:
-                    raise self.scenario.failure_exception()
+                if exception is not None and parent.user._scenario.failure_exception is not None:
+                    raise parent.user._scenario.failure_exception()
 
         @task.on_start
         def on_start(parent: 'GrizzlyScenario') -> None:

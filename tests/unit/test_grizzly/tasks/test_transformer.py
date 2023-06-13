@@ -15,18 +15,13 @@ class TestTransformerTask:
     def test(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         grizzly = grizzly_fixture.grizzly
 
-        _, _, scenario = grizzly_fixture()
+        parent = grizzly_fixture()
 
-        assert scenario is not None
-
-        scenario_context = grizzly_fixture.request_task.request.scenario
-
-        fire_spy = mocker.spy(scenario.user.environment.events.request, 'fire')
+        fire_spy = mocker.spy(parent.user.environment.events.request, 'fire')
 
         with pytest.raises(ValueError) as ve:
             TransformerTask(
                 grizzly, variable='test_variable', expression='$.', content_type=TransformerContentType.JSON, content='',
-                scenario=scenario_context,
             )
         assert 'test_variable has not been initialized' in str(ve)
 
@@ -38,7 +33,6 @@ class TestTransformerTask:
         with pytest.raises(ValueError) as ve:
             TransformerTask(
                 grizzly, variable='test_variable', expression='$.', content_type=TransformerContentType.JSON, content='',
-                scenario=scenario_context,
             )
         assert 'could not find a transformer for JSON' in str(ve)
 
@@ -47,13 +41,11 @@ class TestTransformerTask:
         with pytest.raises(ValueError) as ve:
             TransformerTask(
                 grizzly, variable='test_variable', expression='$.', content_type=TransformerContentType.JSON, content='',
-                scenario=scenario_context,
             )
         assert '$. is not a valid expression for JSON' in str(ve)
 
         task_factory = TransformerTask(
             grizzly, variable='test_variable', expression='$.result.value', content_type=TransformerContentType.JSON, content='',
-            scenario=scenario_context,
         )
 
         assert task_factory.__template_attributes__ == {'content'}
@@ -62,16 +54,16 @@ class TestTransformerTask:
 
         assert callable(task)
 
-        task(scenario)
+        task(parent)
 
         assert fire_spy.call_count == 1
         _, kwargs = fire_spy.call_args_list[-1]
 
         assert kwargs.get('request_type', None) == 'TRNSF'
-        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} Transformer=>test_variable'
+        assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} Transformer=>test_variable'
         assert kwargs.get('response_time', None) >= 0.0
         assert kwargs.get('response_length', None) == 0
-        assert kwargs.get('context', None) == scenario.user._context
+        assert kwargs.get('context', None) == parent.user._context
         exception = kwargs.get('exception', None)
         assert isinstance(exception, TransformerLocustError)
         assert str(exception) == 'failed to transform JSON'
@@ -86,18 +78,17 @@ class TestTransformerTask:
                     'value': 'hello world!',
                 },
             }),
-            scenario=scenario_context,
         )
 
         task = task_factory()
 
         assert callable(task)
 
-        assert scenario.user._context['variables'].get('test_variable', None) is None
+        assert parent.user._context['variables'].get('test_variable', None) is None
 
-        task(scenario)
+        task(parent)
 
-        assert scenario.user._context['variables'].get('test_variable', None) == 'hello world!'
+        assert parent.user._context['variables'].get('test_variable', None) == 'hello world!'
 
         grizzly.state.variables.update({'payload_url': 'none'})
         content = jsondumps({
@@ -119,18 +110,17 @@ class TestTransformerTask:
             expression='$.payloads[0].url',
             content_type=TransformerContentType.JSON,
             content=content,
-            scenario=scenario_context,
         )
 
         task = task_factory()
 
         assert callable(task)
 
-        task(scenario)
+        task(parent)
 
-        assert scenario.user._context['variables'].get('payload_url', None) == 'https://mystorageaccount.blob.core.windows.net/mycontainer/myfile'
+        assert parent.user._context['variables'].get('payload_url', None) == 'https://mystorageaccount.blob.core.windows.net/mycontainer/myfile'
 
-        scenario.user._context['variables'].update({
+        parent.user._context['variables'].update({
             'payload_url': None,
             'payload': content,
         })
@@ -141,16 +131,15 @@ class TestTransformerTask:
             expression='$.payloads[0].url',
             content_type=TransformerContentType.JSON,
             content='{{ payload }}',
-            scenario=scenario_context,
         )
 
         task = task_factory()
 
         assert callable(task)
 
-        task(scenario)
+        task(parent)
 
-        assert scenario.user._context['variables'].get('payload_url', None) == 'https://mystorageaccount.blob.core.windows.net/mycontainer/myfile'
+        assert parent.user._context['variables'].get('payload_url', None) == 'https://mystorageaccount.blob.core.windows.net/mycontainer/myfile'
 
         assert fire_spy.call_count == 1
 
@@ -164,26 +153,25 @@ class TestTransformerTask:
                     'value': 'hello world!',
                 },
             }),
-            scenario=scenario_context,
         )
         task = task_factory()
-        scenario_context.failure_exception = RestartScenario
+        parent.user._scenario.failure_exception = RestartScenario
         with pytest.raises(RestartScenario):
-            task(scenario)
+            task(parent)
 
         assert fire_spy.call_count == 2
         _, kwargs = fire_spy.call_args_list[-1]
 
         assert kwargs.get('request_type', None) == 'TRNSF'
-        assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} Transformer=>test_variable'
+        assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} Transformer=>test_variable'
         assert kwargs.get('response_time', None) >= 0.0
         assert kwargs.get('response_length', None) == 37
-        assert kwargs.get('context', None) == scenario.user._context
+        assert kwargs.get('context', None) == parent.user._context
         exception = kwargs.get('exception', None)
         assert isinstance(exception, RuntimeError)
         assert str(exception) == '"$.result.name" returned 0 matches'
 
-        scenario_context.failure_exception = None
+        parent.user._scenario.failure_exception = None
 
         task_factory = TransformerTask(
             grizzly,
@@ -197,12 +185,11 @@ class TestTransformerTask:
                     {'value': 'hello world!'},
                 ],
             }),
-            scenario=scenario_context,
         )
         task = task_factory()
-        task(scenario)
+        task(parent)
 
-        assert scenario.user._context['variables']['test_variable'] == '''{"value": "hello world!"}
+        assert parent.user._context['variables']['test_variable'] == '''{"value": "hello world!"}
 {"value": "hello world!"}
 {"value": "hello world!"}'''
 
@@ -214,12 +201,11 @@ class TestTransformerTask:
             content=jsondumps({
                 'success': True,
             }),
-            scenario=scenario_context,
         )
         task = task_factory()
-        task(scenario)
+        task(parent)
 
-        assert scenario.user._context['variables']['test_variable'] == 'True'
+        assert parent.user._context['variables']['test_variable'] == 'True'
 
         task_factory = TransformerTask(
             grizzly,
@@ -238,16 +224,15 @@ class TestTransformerTask:
     <foo:singer id="12">Ray Charles</foo:singer>
   </foo:singers>
 </root>''',
-            scenario=scenario_context,
         )
 
         task = task_factory()
 
         assert callable(task)
 
-        task(scenario)
+        task(parent)
 
-        assert scenario.user._context['variables']['test_variable'] == '<actor id="9">Michael Caine</actor>'
+        assert parent.user._context['variables']['test_variable'] == '<actor id="9">Michael Caine</actor>'
 
         grizzly.state.variables['child_elem'] = 'none'
 
@@ -268,15 +253,14 @@ class TestTransformerTask:
     <foo:singer id="12">Ray Charles</foo:singer>
   </foo:singers>
 </root>''',
-            scenario=scenario_context,
         )
 
         task = task_factory()
 
         assert callable(task)
 
-        task(scenario)
+        task(parent)
 
-        assert scenario.user._context['variables']['child_elem'] == '''<actor id="7">Christian Bale</actor>
+        assert parent.user._context['variables']['child_elem'] == '''<actor id="7">Christian Bale</actor>
 <actor id="8">Liam Neeson</actor>
 <actor id="9">Michael Caine</actor>'''

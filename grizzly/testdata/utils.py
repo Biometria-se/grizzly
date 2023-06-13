@@ -13,7 +13,6 @@ from jinja2.filters import FILTERS
 from grizzly.types import RequestType, TestdataType, GrizzlyVariableType
 from grizzly.types.locust import StopUser, MessageHandler
 from grizzly.testdata.ast import get_template_variables
-from grizzly.tasks import GrizzlyTask
 from grizzly.utils import merge_dicts
 
 from . import GrizzlyVariables
@@ -26,9 +25,9 @@ if TYPE_CHECKING:  # pragma: no cover
 logger = logging.getLogger(__name__)
 
 
-def initialize_testdata(grizzly: 'GrizzlyContext', tasks: List[GrizzlyTask]) -> Tuple[TestdataType, Set[str], Dict[str, MessageHandler]]:
+def initialize_testdata(grizzly: 'GrizzlyContext') -> Tuple[TestdataType, Set[str], Dict[str, MessageHandler]]:
     testdata: TestdataType = {}
-    template_variables = get_template_variables(tasks)
+    template_variables = get_template_variables(grizzly)
 
     found_variables = set()
     for variable in itertools.chain(*template_variables.values()):

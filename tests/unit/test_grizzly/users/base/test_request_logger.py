@@ -14,19 +14,22 @@ from grizzly.users.base import RequestLogger, HttpRequests
 from grizzly.types import RequestMethod, GrizzlyResponseContextManager
 from grizzly.tasks import RequestTask
 
-from tests.fixtures import LocustFixture, ResponseContextManagerFixture
+from tests.fixtures import ResponseContextManagerFixture, BehaveFixture
 
 
-@pytest.mark.usefixtures('locust_fixture')
+@pytest.mark.usefixtures('behave_fixture')
 @pytest.fixture
-def request_logger(locust_fixture: LocustFixture, tmp_path_factory: TempPathFactory) -> Generator[RequestLogger, None, None]:
+def request_logger(behave_fixture: BehaveFixture, tmp_path_factory: TempPathFactory) -> Generator[RequestLogger, None, None]:
     test_context = tmp_path_factory.mktemp('test_context') / 'requests'
     test_context_root = path.dirname(str(test_context))
     environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
 
+    behave_fixture.grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+
     try:
         RequestLogger.host = 'https://example.org'
-        yield RequestLogger(locust_fixture.env)
+        RequestLogger.__scenario__ = behave_fixture.grizzly.scenario
+        yield RequestLogger(behave_fixture.locust.environment)
     finally:
         shutil.rmtree(test_context_root)
 
@@ -52,21 +55,25 @@ def get_log_files() -> Callable[[], List[str]]:
 
 
 class TestRequestLogger:
-    def test___init__(self, locust_fixture: LocustFixture) -> None:
+    def test___init__(self, behave_fixture: BehaveFixture) -> None:
         assert not path.isdir(path.join(environ['GRIZZLY_CONTEXT_ROOT'], 'logs'))
+
+        behave_fixture.grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
         fake_user_type = type('FakeRequestLogger', (RequestLogger, HttpRequests,), {
             'host': 'https://test.example.org',
+            '__scenario__': behave_fixture.grizzly.scenario,
         })
 
-        user = fake_user_type(locust_fixture.env)
+        user = fake_user_type(behave_fixture.locust.environment)
 
         assert path.isdir(path.join(environ['GRIZZLY_CONTEXT_ROOT'], 'logs'))
         assert not user._context.get('log_all_requests', None)
         assert len(user.response_event._handlers) == 1
 
+        RequestLogger.__scenario__ = behave_fixture.grizzly.scenario
         RequestLogger.host = 'mq://example.org'
-        user = RequestLogger(locust_fixture.env)
+        user = RequestLogger(behave_fixture.locust.environment)
 
         assert len(user.response_event._handlers) == 1
         assert user.client is None
@@ -97,11 +104,6 @@ class TestRequestLogger:
         assert request_logger._remove_secrets_attribute(None) is None
         assert request_logger._remove_secrets_attribute(True) is True
         assert request_logger._remove_secrets_attribute('hello world') == 'hello world'
-
-    @pytest.mark.usefixtures('request_logger')
-    def test_request(self, request_logger: RequestLogger) -> None:
-        with pytest.raises(NotImplementedError):
-            request_logger.request(RequestTask(RequestMethod.GET, 'test', endpoint='/hello'))
 
     @pytest.mark.usefixtures('request_logger', 'get_log_files')
     @pytest.mark.parametrize('cls_rcm', [ResponseContextManager, FastResponseContextManager])

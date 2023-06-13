@@ -18,12 +18,9 @@ class TestTimerTask:
         assert task_factory.__template_attributes__ == set()
 
     def test__call__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
-        _, _, scenario = grizzly_fixture()
+        parent = grizzly_fixture()
 
-        assert scenario is not None
-
-        scenario_context = grizzly_fixture.request_task.request.scenario
-        request_fire_spy = mocker.spy(scenario.user.environment.events.request, 'fire')
+        request_fire_spy = mocker.spy(parent.user.environment.events.request, 'fire')
         dummy_task = LogMessageTask(message='dummy')()
 
         # flat
@@ -31,37 +28,37 @@ class TestTimerTask:
 
         expected_variable_prefix = sha1('timer-test-timer-1'.encode('utf-8')).hexdigest()[:8]
 
-        task_factory = TimerTask(name='test-timer-1', scenario=scenario_context)
+        task_factory = TimerTask(name='test-timer-1')
 
         task = task_factory()
-        scenario.tasks = [dummy_task, task, dummy_task, task]
-        scenario.tasks += [dummy_task] * 7
+        parent.tasks = [dummy_task, task, dummy_task, task]
+        parent.tasks += [dummy_task] * 7
 
         assert request_fire_spy.call_count == 0
-        assert scenario.user._context['variables'] == {}
+        assert parent.user._context['variables'] == {}
 
-        scenario._task_index = 1
-        task(scenario)
+        parent._task_index = 1
+        task(parent)
 
         assert request_fire_spy.call_count == 0
-        assert scenario.user._context['variables'].get(f'{expected_variable_prefix}::test-timer-1', None) == {
+        assert parent.user._context['variables'].get(f'{expected_variable_prefix}::test-timer-1', None) == {
             'start': 2.0,
             'task-index': 1,
         }
 
-        scenario._task_index = 9
-        task(scenario)
+        parent._task_index = 9
+        task(parent)
 
-        assert scenario.user._context['variables'] == {}
+        assert parent.user._context['variables'] == {}
 
         assert request_fire_spy.call_count == 1
         _, kwargs = request_fire_spy.call_args_list[-1]
 
         assert kwargs.get('request_type', None) == 'TIMR'
-        assert kwargs.get('name', None) == f'{scenario_context.identifier} test-timer-1'
+        assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} test-timer-1'
         assert kwargs.get('response_time', None) == 10000
         assert kwargs.get('response_length', None) == 9
-        assert kwargs.get('context', None) == scenario.user._context
+        assert kwargs.get('context', None) == parent.user._context
         assert kwargs.get('exception', RuntimeError) is None
 
         request_fire_spy.reset_mock()
@@ -73,31 +70,31 @@ class TestTimerTask:
         expected_variable_prefix_2 = sha1('timer-test-timer-2'.encode('utf-8')).hexdigest()[:8]
 
         task_1 = task
-        task_2 = TimerTask(name='test-timer-2', scenario=scenario_context)()
+        task_2 = TimerTask(name='test-timer-2')()
 
-        scenario.tasks = [task_1, dummy_task, task_2]
-        scenario.tasks += [dummy_task] * 7
-        scenario.tasks += [task_2, task_1]
-
-        assert request_fire_spy.call_count == 0
-        assert scenario.user._context['variables'] == {}
-
-        scenario._task_index = 1
-        task_1(scenario)
+        parent.tasks = [task_1, dummy_task, task_2]
+        parent.tasks += [dummy_task] * 7
+        parent.tasks += [task_2, task_1]
 
         assert request_fire_spy.call_count == 0
-        assert scenario.user._context['variables'] == {
+        assert parent.user._context['variables'] == {}
+
+        parent._task_index = 1
+        task_1(parent)
+
+        assert request_fire_spy.call_count == 0
+        assert parent.user._context['variables'] == {
             f'{expected_variable_prefix_1}::test-timer-1': {
                 'start': 2.0,
                 'task-index': 1,
             }
         }
 
-        scenario._task_index = 3
-        task_2(scenario)
+        parent._task_index = 3
+        task_2(parent)
 
         assert request_fire_spy.call_count == 0
-        assert scenario.user._context['variables'] == {
+        assert parent.user._context['variables'] == {
             f'{expected_variable_prefix_1}::test-timer-1': {
                 'start': 2.0,
                 'task-index': 1,
@@ -108,33 +105,33 @@ class TestTimerTask:
             }
         }
 
-        scenario._task_index = 10
-        task_2(scenario)
+        parent._task_index = 10
+        task_2(parent)
 
         assert request_fire_spy.call_count == 1
         _, kwargs = request_fire_spy.call_args_list[-1]
         assert kwargs.get('request_type', None) == 'TIMR'
-        assert kwargs.get('name', None) == f'{scenario_context.identifier} test-timer-2'
+        assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} test-timer-2'
         assert kwargs.get('response_time', None) == 2000
         assert kwargs.get('response_length', None) == 8
-        assert kwargs.get('context', None) == scenario.user._context
+        assert kwargs.get('context', None) == parent.user._context
         assert kwargs.get('exception', RuntimeError) is None
-        assert scenario.user._context['variables'] == {
+        assert parent.user._context['variables'] == {
             f'{expected_variable_prefix_1}::test-timer-1': {
                 'start': 2.0,
                 'task-index': 1,
             }
         }
 
-        scenario._task_index = 11
-        task_1(scenario)
+        parent._task_index = 11
+        task_1(parent)
 
         assert request_fire_spy.call_count == 2
         _, kwargs = request_fire_spy.call_args_list[-1]
         assert kwargs.get('request_type', None) == 'TIMR'
-        assert kwargs.get('name', None) == f'{scenario_context.identifier} test-timer-1'
+        assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} test-timer-1'
         assert kwargs.get('response_time', None) == 10000
         assert kwargs.get('response_length', None) == 11
-        assert kwargs.get('context', None) == scenario.user._context
+        assert kwargs.get('context', None) == parent.user._context
         assert kwargs.get('exception', RuntimeError) is None
-        assert scenario.user._context['variables'] == {}
+        assert parent.user._context['variables'] == {}

@@ -131,7 +131,7 @@ def test_before_feature(behave_fixture: BehaveFixture, tmp_path_factory: TempPat
 
 
 def test_after_feature(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, capsys: CaptureFixture) -> None:
-    behave = grizzly_fixture.behave
+    behave = grizzly_fixture.behave.context
     grizzly = grizzly_fixture.grizzly
     feature = Feature(None, None, '', '', scenarios=[behave.scenario])
     behave.scenario.steps = [Step(None, None, '', '', ''), Step(None, None, '', '', '')]
@@ -301,7 +301,7 @@ def test_before_scenario(behave_fixture: BehaveFixture, mocker: MockerFixture) -
 def test_after_scenario(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = behave_fixture.grizzly
-
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     grizzly.scenario.tasks.tmp.async_group = AsyncRequestGroupTask(name='test-async-1')
 
     with pytest.raises(AssertionError) as ae:
@@ -372,7 +372,7 @@ def test_before_step(behave_fixture: BehaveFixture) -> None:
 
 
 def test_after_step(grizzly_fixture: GrizzlyFixture) -> None:
-    behave = grizzly_fixture.behave
+    behave = grizzly_fixture.behave.context
     grizzly = grizzly_fixture.grizzly
 
     behave.last_task_count = {}

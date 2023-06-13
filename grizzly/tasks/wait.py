@@ -10,7 +10,7 @@ This task executes a `gevent.sleep` and is used to manually create delays betwee
 
 * `time_expression` _str_ - float as string or a {@pydocfractions of seconds to excplicitly sleep in the scenario
 '''
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from gevent import sleep as gsleep
 
@@ -19,7 +19,6 @@ from grizzly.exceptions import StopUser
 from . import GrizzlyTask, template, grizzlytask
 
 if TYPE_CHECKING:  # pragma: no cover
-    from grizzly.context import GrizzlyContextScenario
     from grizzly.scenarios import GrizzlyScenario
 
 
@@ -27,8 +26,8 @@ if TYPE_CHECKING:  # pragma: no cover
 class WaitTask(GrizzlyTask):
     time_expression: str
 
-    def __init__(self, time_expression: str, scenario: Optional['GrizzlyContextScenario'] = None) -> None:
-        super().__init__(scenario)
+    def __init__(self, time_expression: str) -> None:
+        super().__init__()
 
         self.time_expression = time_expression
 
@@ -47,7 +46,7 @@ class WaitTask(GrizzlyTask):
             except Exception as exception:
                 parent.user.environment.events.request.fire(
                     request_type='WAIT',
-                    name=f'{self.scenario.identifier} WaitTask=>{self.time_expression}',
+                    name=f'{parent.user._scenario.identifier} WaitTask=>{self.time_expression}',
                     response_time=0,
                     response_length=0,
                     context=parent.user._context,

@@ -17,12 +17,10 @@ class TestLogMessageTask:
 
         assert callable(task)
 
-        _, _, scenario = grizzly_fixture()
-
-        assert scenario is not None
+        parent = grizzly_fixture()
 
         with caplog.at_level(logging.INFO):
-            task(scenario)
+            task(parent)
         assert 'hello world!' in caplog.text
         caplog.clear()
 
@@ -33,9 +31,9 @@ class TestLogMessageTask:
 
         assert callable(task)
 
-        scenario.user._context['variables']['variable'] = 'hello world!'
+        parent.user._context['variables']['variable'] = 'hello world!'
 
         with caplog.at_level(logging.INFO):
-            task(scenario)
+            task(parent)
         assert 'variable=hello world!' in caplog.text
         caplog.clear()
