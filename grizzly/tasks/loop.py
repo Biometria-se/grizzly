@@ -98,17 +98,20 @@ class LoopTask(GrizzlyTaskWrapper):
             finally:
                 response_time = int((perf_counter() - start) * 1000)
 
-                parent.user.environment.events.request.fire(
-                    request_type='LOOP',
-                    name=f'{parent.user._scenario.identifier} {self.name} ({task_count})',
-                    response_time=response_time,
-                    response_length=response_length,
-                    context=parent.user._context,
-                    exception=exception,
-                )
+                if exception is not None and parent.user._scenario.failure_exception is not None and isinstance(exception, parent.user._scenario.failure_exception):
+                    raise exception
+                else:
+                    parent.user.environment.events.request.fire(
+                        request_type='LOOP',
+                        name=f'{parent.user._scenario.identifier} {self.name} ({task_count})',
+                        response_time=response_time,
+                        response_length=response_length,
+                        context=parent.user._context,
+                        exception=exception,
+                    )
 
-                if exception is not None and parent.user._scenario.failure_exception is not None:
-                    raise parent.user._scenario.failure_exception()
+                    if exception is not None and parent.user._scenario.failure_exception is not None:
+                        raise parent.user._scenario.failure_exception()
 
         @task.on_start
         def on_start(parent: 'GrizzlyScenario') -> None:
