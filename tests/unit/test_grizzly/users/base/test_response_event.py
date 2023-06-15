@@ -21,11 +21,11 @@ class TestResponseEvent:
         assert ResponseEvent.host is None
 
         with pytest.raises(LocustError):
-            ResponseEvent(locust_fixture.env)
+            ResponseEvent(locust_fixture.environment)
 
         ResponseEvent.host = 'http://example.org'
 
-        user = ResponseEvent(locust_fixture.env)
+        user = ResponseEvent(locust_fixture.environment)
         assert getattr(user, 'client', '') is None
         assert len(user.response_event._handlers) == 0
 
@@ -33,7 +33,7 @@ class TestResponseEvent:
             'host': 'https://example.org'
         })
 
-        user = fake_user_type(locust_fixture.env)
+        user = fake_user_type(locust_fixture.environment)
         assert isinstance(user.client, ResponseEventSession)
         assert len(user.response_event._handlers) == 0
 
@@ -42,7 +42,7 @@ class TestResponseEvent:
             pass
 
         ResponseEvent.host = TestUser.host = 'http://example.com'
-        user = ResponseEvent(locust_fixture.env)
+        user = ResponseEvent(locust_fixture.environment)
 
         def handler(name: str, request: Optional[RequestTask], context: Union[ResponseContextManager, Tuple[Dict[str, Any], str]], user: User) -> None:
             raise Called()
@@ -58,5 +58,5 @@ class TestResponseEvent:
                 '',
                 RequestTask(RequestMethod.POST, name='test-request', endpoint='/api/test'),
                 ResponseContextManager(Response(), None, None),
-                TestUser(environment=locust_fixture.env),
+                TestUser(environment=locust_fixture.environment),
             )

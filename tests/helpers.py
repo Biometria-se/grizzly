@@ -11,7 +11,6 @@ from pathlib import Path
 from locust import task
 from locust.event import EventHook
 
-from grizzly.context import GrizzlyContextScenario
 from grizzly.users.base import GrizzlyUser
 from grizzly.types.locust import Message, Environment
 from grizzly.types import GrizzlyResponse, RequestMethod
@@ -60,7 +59,7 @@ class TestUser(GrizzlyUser):
     def config_property(self, value: Optional[str]) -> None:
         self._config_property = value
 
-    def request(self, request: RequestTask) -> GrizzlyResponse:
+    def request(self, parent: GrizzlyScenario, request: RequestTask) -> GrizzlyResponse:
         raise RequestCalled(request)
 
 
@@ -70,6 +69,7 @@ class TestScenario(GrizzlyScenario):
     @task
     def task(self) -> None:
         self.user.request(
+            self,
             RequestTask(RequestMethod.POST, name='test', endpoint='payload.j2.json')
         )
 
@@ -82,8 +82,8 @@ class TestTask(GrizzlyTask):
     call_count: int
     task_call_count: int
 
-    def __init__(self, name: Optional[str] = None, scenario: Optional[GrizzlyContextScenario] = None) -> None:
-        super().__init__(scenario)
+    def __init__(self, name: Optional[str] = None) -> None:
+        super().__init__()
         self.name = name
         self.call_count = 0
         self.task_call_count = 0

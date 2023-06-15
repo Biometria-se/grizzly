@@ -18,18 +18,20 @@ from grizzly.context import GrizzlyContextScenario
 from grizzly_extras.async_message import AsyncMessageResponse, AsyncMessageError
 from grizzly_extras.transformer import TransformerContentType
 
-from tests.fixtures import LocustFixture, NoopZmqFixture
+from tests.fixtures import NoopZmqFixture, BehaveFixture, GrizzlyFixture
 
 
 class TestServiceBusUser:
-    def test_on_start(self, locust_fixture: LocustFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
+    def test_on_start(self, behave_fixture: BehaveFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.users.servicebus')
         try:
             zmq_client_connect_spy = mocker.patch('grizzly.users.servicebus.zmq.Socket.connect', return_value=None)
             say_hello_spy = mocker.patch('grizzly.users.servicebus.ServiceBusUser.say_hello', return_value=None)
+            behave_fixture.grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
+            ServiceBusUser.__scenario__ = behave_fixture.grizzly.scenario
             ServiceBusUser.host = 'Endpoint=sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789='
-            user = ServiceBusUser(environment=locust_fixture.env)
+            user = ServiceBusUser(environment=behave_fixture.locust.environment)
             assert issubclass(user.__class__, GrizzlyUser)
             assert issubclass(user.__class__, ResponseHandler)
             assert issubclass(user.__class__, RequestLogger)
@@ -42,8 +44,7 @@ class TestServiceBusUser:
             assert user.zmq_client.type == ZMQ_REQ
             assert say_hello_spy.call_count == 0
 
-            scenario = GrizzlyContextScenario(2)
-            scenario.name = 'test'
+            scenario = GrizzlyContextScenario(2, behave=behave_fixture.create_scenario('test'))
             scenario.user.class_name = 'ServiceBusUser'
 
             scenario.tasks.add(WaitTask(time_expression='1.54'))
@@ -51,9 +52,9 @@ class TestServiceBusUser:
             scenario.tasks.add(RequestTask(RequestMethod.RECEIVE, name='test-receive', endpoint='queue:test-queue'))
             scenario.tasks.add(RequestTask(RequestMethod.SEND, name='test-send', endpoint='topic:test-topic'))
 
+            ServiceBusUser.__scenario__ = scenario
             ServiceBusUser.host = 'Endpoint=sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789='
-            ServiceBusUser._scenario = scenario
-            user = ServiceBusUser(environment=locust_fixture.env)
+            user = ServiceBusUser(environment=behave_fixture.locust.environment)
             user.on_start()
             assert say_hello_spy.call_count == 3
 
@@ -68,15 +69,17 @@ class TestServiceBusUser:
                 }
             }
 
-    def test_on_stop(self, locust_fixture: LocustFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
+    def test_on_stop(self, behave_fixture: BehaveFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.users.servicebus')
         try:
             zmq_client_disconnect_spy = mocker.patch('grizzly.users.servicebus.zmq.Socket.disconnect', return_value=None)
             disconnect_spy = mocker.patch('grizzly.users.servicebus.ServiceBusUser.disconnect', return_value=None)
             mocker.patch('grizzly.users.servicebus.ServiceBusUser.say_hello', return_value=None)
+            behave_fixture.grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
+            ServiceBusUser.__scenario__ = behave_fixture.grizzly.scenario
             ServiceBusUser.host = 'Endpoint=sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789='
-            user = ServiceBusUser(environment=locust_fixture.env)
+            user = ServiceBusUser(environment=behave_fixture.locust.environment)
             assert issubclass(user.__class__, GrizzlyUser)
             assert issubclass(user.__class__, ResponseHandler)
             assert issubclass(user.__class__, RequestLogger)
@@ -91,8 +94,7 @@ class TestServiceBusUser:
             assert user.zmq_client.type == ZMQ_REQ
             assert disconnect_spy.call_count == 0
 
-            scenario = GrizzlyContextScenario(2)
-            scenario.name = 'test'
+            scenario = GrizzlyContextScenario(2, behave=behave_fixture.create_scenario('test'))
             scenario.user.class_name = 'ServiceBusUser'
 
             scenario.tasks.add(WaitTask(time_expression='1.54'))
@@ -100,9 +102,9 @@ class TestServiceBusUser:
             scenario.tasks.add(RequestTask(RequestMethod.RECEIVE, name='test-receive', endpoint='queue:test-queue'))
             scenario.tasks.add(RequestTask(RequestMethod.SEND, name='test-send', endpoint='topic:test-topic'))
 
+            ServiceBusUser.__scenario__ = scenario
             ServiceBusUser.host = 'Endpoint=sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789='
-            ServiceBusUser._scenario = scenario
-            user = ServiceBusUser(environment=locust_fixture.env)
+            user = ServiceBusUser(environment=behave_fixture.locust.environment)
             user.on_start()
             user.on_stop()
             assert disconnect_spy.call_count == 3
@@ -118,28 +120,31 @@ class TestServiceBusUser:
                 }
             }
 
-    def test_create(self, locust_fixture: LocustFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
+    def test_create(self, behave_fixture: BehaveFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.users.servicebus')
 
         try:
+            behave_fixture.grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+            ServiceBusUser.__scenario__ = behave_fixture.grizzly.scenario
+
             ServiceBusUser.host = 'Endpoint=mq://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=secret='
             with pytest.raises(ValueError) as e:
-                ServiceBusUser(environment=locust_fixture.env)
+                ServiceBusUser(environment=behave_fixture.locust.environment)
             assert 'ServiceBusUser: "mq" is not a supported scheme' in str(e)
 
             ServiceBusUser.host = 'Endpoint=sb://sb.example.org'
             with pytest.raises(ValueError) as e:
-                ServiceBusUser(environment=locust_fixture.env)
+                ServiceBusUser(environment=behave_fixture.locust.environment)
             assert 'ServiceBusUser: SharedAccessKeyName and SharedAccessKey must be in the query string' in str(e)
 
             ServiceBusUser.host = 'Endpoint=sb://sb.example.org/;SharedAccessKey=secret='
             with pytest.raises(ValueError) as e:
-                ServiceBusUser(environment=locust_fixture.env)
+                ServiceBusUser(environment=behave_fixture.locust.environment)
             assert 'ServiceBusUser: SharedAccessKeyName must be in the query string' in str(e)
 
             ServiceBusUser.host = 'Endpoint=sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey'
             with pytest.raises(ValueError) as e:
-                ServiceBusUser(environment=locust_fixture.env)
+                ServiceBusUser(environment=behave_fixture.locust.environment)
             assert 'ServiceBusUser: SharedAccessKey must be in the query string' in str(e)
         finally:
             setattr(ServiceBusUser, '_scenario', None)
@@ -149,17 +154,19 @@ class TestServiceBusUser:
                 }
             }
 
-    def test_disconnect(self, locust_fixture: LocustFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
+    def test_disconnect(self, behave_fixture: BehaveFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.users.servicebus')
         try:
+            behave_fixture.grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+            ServiceBusUser.__scenario__ = behave_fixture.grizzly.scenario
             ServiceBusUser.host = 'Endpoint=sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789='
-            user = ServiceBusUser(environment=locust_fixture.env)
+            user = ServiceBusUser(environment=behave_fixture.locust.environment)
             async_action_spy = mocker.patch.object(user, 'async_action')
 
             task = RequestTask(RequestMethod.SEND, name='test-send', endpoint='queue:test-queue')
-            scenario = GrizzlyContextScenario(1)
-            scenario.name = 'test'
+            scenario = GrizzlyContextScenario(1, behave=behave_fixture.create_scenario('test'))
             scenario.tasks.add(task)
+            user._scenario = scenario
 
             user.disconnect(task, task.endpoint)
 
@@ -201,12 +208,14 @@ class TestServiceBusUser:
                 }
             }
 
-    def test_say_hello(self, noop_zmq: NoopZmqFixture, locust_fixture: LocustFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
+    def test_say_hello(self, noop_zmq: NoopZmqFixture, behave_fixture: BehaveFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
         noop_zmq('grizzly.users.servicebus')
+        behave_fixture.grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
+        ServiceBusUser.__scenario__ = behave_fixture.grizzly.scenario
         ServiceBusUser.host = 'Endpoint=sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789='
 
-        user = ServiceBusUser(environment=locust_fixture.env)
+        user = ServiceBusUser(environment=behave_fixture.locust.environment)
         user.on_start()
         assert user.hellos == set()
 
@@ -215,9 +224,9 @@ class TestServiceBusUser:
         user.hellos = set(['sender=queue:test-queue'])
 
         task = RequestTask(RequestMethod.SEND, name='test-send', endpoint='queue:"{{ queue_name }}"')
-        scenario = GrizzlyContextScenario(1)
-        scenario.name = 'test'
+        scenario = GrizzlyContextScenario(1, behave=behave_fixture.create_scenario('test'))
         scenario.tasks.add(task)
+        user._scenario = scenario
 
         with caplog.at_level(logging.ERROR):
             with pytest.raises(StopUser):
@@ -318,18 +327,27 @@ class TestServiceBusUser:
             user.say_hello(task, task.endpoint)
         assert 'argument expression is only allowed when receiving messages' in str(re)
 
-    def test_request(self, locust_fixture: LocustFixture, noop_zmq: NoopZmqFixture, mocker: MockerFixture) -> None:
+    def test_request(self, grizzly_fixture: GrizzlyFixture, noop_zmq: NoopZmqFixture, mocker: MockerFixture) -> None:
         noop_zmq('grizzly.users.servicebus')
 
+        parent = grizzly_fixture()
+
+        grizzly = grizzly_fixture.grizzly
+
+        grizzly.scenario.tasks.clear()
+
+        ServiceBusUser.__scenario__ = grizzly.scenario
         ServiceBusUser.host = 'sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789='
 
-        user = ServiceBusUser(environment=locust_fixture.env)
+        user = ServiceBusUser(environment=grizzly_fixture.behave.locust.environment)
+        parent._user = user
+
         user.on_start()
         user.worker_id = 'asdf-asdf-asdf'
 
         send_json_spy = noop_zmq.get_mock('send_json')
         say_hello_spy = mocker.patch.object(user, 'say_hello', side_effect=[None] * 10)
-        request_fire_spy = mocker.spy(user.environment.events.request, 'fire')
+        request_fire_spy = mocker.spy(parent.user.environment.events.request, 'fire')
         response_event_fire_spy = mocker.spy(user.response_event, 'fire')
 
         def mock_recv_json(response: AsyncMessageResponse) -> None:
@@ -345,8 +363,7 @@ class TestServiceBusUser:
             'message': 'unknown error',
         })
 
-        scenario = GrizzlyContextScenario(1)
-        scenario.name = 'test'
+        scenario = GrizzlyContextScenario(1, behave=grizzly_fixture.behave.create_scenario('test'))
         user._scenario = scenario
 
         # unsupported request method
@@ -357,7 +374,7 @@ class TestServiceBusUser:
         mocker.patch.object(user.zmq_client, 'disconnect', side_effect=[TypeError])
 
         with pytest.raises(StopUser):
-            user.request(task)
+            user.request(parent, task)
 
         assert say_hello_spy.call_count == 1
         assert send_json_spy.call_count == 0
@@ -388,7 +405,7 @@ class TestServiceBusUser:
         # unsuccessful response from async-messaged
         scenario.failure_exception = None
 
-        user.request(task)
+        user.request(parent, task)
         assert say_hello_spy.call_count == 2
         assert send_json_spy.call_count == 1
         assert request_fire_spy.call_count == 2
@@ -441,7 +458,7 @@ class TestServiceBusUser:
             'response_length': 133,
         })
 
-        metadata, payload = user.request(task)
+        metadata, payload = user.request(parent, task)
         assert say_hello_spy.call_count == 3
         assert send_json_spy.call_count == 2
         assert request_fire_spy.call_count == 3
@@ -497,7 +514,7 @@ class TestServiceBusUser:
             'response_length': 133,
         })
 
-        metadata, payload = user.request(task)
+        metadata, payload = user.request(parent, task)
         assert say_hello_spy.call_count == 4
         assert send_json_spy.call_count == 3
         assert request_fire_spy.call_count == 4

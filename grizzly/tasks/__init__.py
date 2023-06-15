@@ -61,7 +61,6 @@ from grizzly_extras.transformer import TransformerContentType
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.types import GrizzlyResponse
     from grizzly.scenarios import GrizzlyScenario
-    from grizzly.context import GrizzlyContextScenario
 
 GrizzlyTaskType = Callable[['GrizzlyScenario'], Any]
 GrizzlyTaskOnType = Callable[['GrizzlyScenario'], None]
@@ -140,13 +139,10 @@ class GrizzlyTask(ABC):
 
     _context_root: str
 
-    scenario: 'GrizzlyContextScenario'
     step: str
 
-    def __init__(self, scenario: Optional['GrizzlyContextScenario'] = None) -> None:
+    def __init__(self) -> None:
         self._context_root = environ.get('GRIZZLY_CONTEXT_ROOT', '.')
-        if scenario is not None:
-            self.scenario = scenario
 
     @abstractmethod
     def __call__(self) -> grizzlytask:

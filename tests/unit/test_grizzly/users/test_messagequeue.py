@@ -24,33 +24,37 @@ from grizzly.testdata import GrizzlyVariables
 from grizzly.testdata.utils import transform
 from grizzly.exceptions import ResponseHandlerError, RestartScenario
 from grizzly.steps._helpers import add_save_handler
+from grizzly.scenarios import IteratorScenario, GrizzlyScenario
 from grizzly_extras.async_message import AsyncMessageResponse
 from grizzly_extras.transformer import TransformerContentType
 
-from tests.fixtures import GrizzlyFixture, LocustFixture, NoopZmqFixture
+from tests.fixtures import GrizzlyFixture, NoopZmqFixture, BehaveFixture
 
 MqScenarioFixture = Tuple[MessageQueueUser, GrizzlyContextScenario, Environment]
 
 
 @pytest.mark.usefixtures('grizzly_fixture')
 @pytest.fixture
-def mq_user(grizzly_fixture: GrizzlyFixture) -> MqScenarioFixture:
-    environment, user, task = grizzly_fixture(
-        'mq://mq.example.com:1337/?QueueManager=QMGR01&Channel=Kanal1', MessageQueueUser)
+def mq_parent(grizzly_fixture: GrizzlyFixture) -> GrizzlyScenario:
+    parent = grizzly_fixture(
+        host='mq://mq.example.com:1337/?QueueManager=QMGR01&Channel=Kanal1',
+        user_type=MessageQueueUser,
+    )
 
     request = grizzly_fixture.request_task.request
 
-    scenario = GrizzlyContextScenario(1)
-    scenario.name = task.__class__.__name__
+    scenario = GrizzlyContextScenario(1, behave=grizzly_fixture.behave.create_scenario(parent.__class__.__name__))
     scenario.user.class_name = 'MessageQueueUser'
     scenario.context['host'] = 'test'
 
     request.method = RequestMethod.SEND
-    request.scenario = scenario
 
     scenario.tasks.add(request)
+    grizzly_fixture.grizzly.scenarios.clear()
+    grizzly_fixture.grizzly.scenarios.append(scenario)
+    parent.user._scenario = scenario
 
-    return cast(MessageQueueUser, user), scenario, environment
+    return parent
 
 
 class TestMessageQueueUserNoPymqi:
@@ -67,7 +71,7 @@ class TestMessageQueueUserNoPymqi:
             [
                 sys.executable,
                 '-c',
-                'import grizzly.users.messagequeue as mq; from grizzly.locust import Environment; print(f"{mq.pymqi.__name__=}"); mq.MessageQueueUser(Environment())'
+                'import grizzly.users.messagequeue as mq; from grizzly.types.locust import Environment; print(f"{mq.pymqi.__name__=}"); mq.MessageQueueUser(Environment())'
             ],
             env=env,
             stdout=subprocess.PIPE,
@@ -94,11 +98,13 @@ class TestMessageQueueUser:
         'channel': '',
     }
 
-    def test_on_start(self, locust_fixture: LocustFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
+    def test_on_start(self, behave_fixture: BehaveFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.users.messagequeue')
 
+        behave_fixture.grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+        MessageQueueUser.__scenario__ = behave_fixture.grizzly.scenario
         MessageQueueUser.host = 'mq://mq.example.com:1337/?QueueManager=QMGR01&Channel=Kanal1'
-        user = MessageQueueUser(locust_fixture.env)
+        user = MessageQueueUser(behave_fixture.locust.environment)
 
         assert not hasattr(user, 'zmq_client')
 
@@ -131,11 +137,14 @@ class TestMessageQueueUser:
         assert kwargs == {}
         assert args == (user.zmq_url,)
 
-    def test_on_stop(self, locust_fixture: LocustFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
+    def test_on_stop(self, behave_fixture: BehaveFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.users.messagequeue')
 
+        behave_fixture.grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+
+        MessageQueueUser.__scenario__ = behave_fixture.grizzly.scenario
         MessageQueueUser.host = 'mq://mq.example.com:1337/?QueueManager=QMGR01&Channel=Kanal1'
-        user = MessageQueueUser(locust_fixture.env)
+        user = MessageQueueUser(behave_fixture.locust.environment)
         action_spy = mocker.patch.object(user, 'action_context', return_value=mocker.MagicMock())
 
         user.on_start()
@@ -176,41 +185,44 @@ class TestMessageQueueUser:
         assert len(args) == 1
         assert args[0] == user.zmq_url
 
-    def test_create(self, locust_fixture: LocustFixture) -> None:
+    def test_create(self, behave_fixture: BehaveFixture) -> None:
+        behave_fixture.grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+        MessageQueueUser.__scenario__ = behave_fixture.grizzly.scenario
+
         try:
             MessageQueueUser.host = 'http://mq.example.com:1337'
             with pytest.raises(ValueError) as e:
-                MessageQueueUser(environment=locust_fixture.env)
+                MessageQueueUser(environment=behave_fixture.locust.environment)
             assert 'is not a supported scheme for MessageQueueUser' in str(e)
 
             MessageQueueUser.host = 'mq://mq.example.com:1337'
             with pytest.raises(ValueError) as e:
-                MessageQueueUser(environment=locust_fixture.env)
+                MessageQueueUser(environment=behave_fixture.locust.environment)
             assert 'needs QueueManager and Channel in the query string' in str(e)
 
             MessageQueueUser.host = 'mq://:1337'
             with pytest.raises(ValueError) as e:
-                MessageQueueUser(environment=locust_fixture.env)
+                MessageQueueUser(environment=behave_fixture.locust.environment)
             assert 'hostname is not specified in' in str(e)
 
             MessageQueueUser.host = 'mq://mq.example.com:1337/?Channel=Kanal1'
             with pytest.raises(ValueError) as e:
-                MessageQueueUser(environment=locust_fixture.env)
+                MessageQueueUser(environment=behave_fixture.locust.environment)
             assert 'needs QueueManager in the query string' in str(e)
 
             MessageQueueUser.host = 'mq://mq.example.com:1337/?QueueManager=QMGR01'
             with pytest.raises(ValueError) as e:
-                MessageQueueUser(environment=locust_fixture.env)
+                MessageQueueUser(environment=behave_fixture.locust.environment)
             assert 'needs Channel in the query string' in str(e)
 
             MessageQueueUser.host = 'mq://username:password@mq.example.com?Channel=Kanal1&QueueManager=QMGR01'
             with pytest.raises(ValueError) as e:
-                MessageQueueUser(environment=locust_fixture.env)
+                MessageQueueUser(environment=behave_fixture.locust.environment)
             assert 'username and password should be set via context' in str(e)
 
             # Test default port and ssl_cipher
             MessageQueueUser.host = 'mq://mq.example.com?Channel=Kanal1&QueueManager=QMGR01'
-            user = MessageQueueUser(environment=locust_fixture.env)
+            user = MessageQueueUser(environment=behave_fixture.locust.environment)
             assert user.am_context.get('connection', None) == 'mq.example.com(1414)'
             assert user.am_context.get('ssl_cipher', None) == 'ECDHE_RSA_AES_256_GCM_SHA384'
 
@@ -223,7 +235,7 @@ class TestMessageQueueUser:
             }
 
             MessageQueueUser.host = 'mq://mq.example.com:1415?Channel=Kanal1&QueueManager=QMGR01'
-            user = MessageQueueUser(environment=locust_fixture.env)
+            user = MessageQueueUser(environment=behave_fixture.locust.environment)
 
             assert user.am_context.get('connection', None) == 'mq.example.com(1415)'
             assert user.am_context.get('queue_manager', None) == 'QMGR01'
@@ -234,31 +246,31 @@ class TestMessageQueueUser:
 
             MessageQueueUser._context['auth']['cert_label'] = None
 
-            user = MessageQueueUser(environment=locust_fixture.env)
+            user = MessageQueueUser(environment=behave_fixture.locust.environment)
 
             assert user.am_context.get('cert_label', None) == 'syrsa'
 
             MessageQueueUser._context['message']['wait'] = 5
 
-            user = MessageQueueUser(environment=locust_fixture.env)
+            user = MessageQueueUser(environment=behave_fixture.locust.environment)
             assert user.am_context.get('message_wait', None) == 5
             assert issubclass(user.__class__, (RequestLogger, ResponseHandler,))
 
             MessageQueueUser._context['message']['header_type'] = 'RFH2'
 
-            user = MessageQueueUser(environment=locust_fixture.env)
+            user = MessageQueueUser(environment=behave_fixture.locust.environment)
             assert user.am_context.get('header_type', None) == 'rfh2'
             assert issubclass(user.__class__, (RequestLogger, ResponseHandler,))
 
             MessageQueueUser._context['message']['header_type'] = 'None'
 
-            user = MessageQueueUser(environment=locust_fixture.env)
+            user = MessageQueueUser(environment=behave_fixture.locust.environment)
             assert user.am_context.get('header_type', None) is None
             assert issubclass(user.__class__, (RequestLogger, ResponseHandler,))
 
             MessageQueueUser._context['message']['header_type'] = 'wrong'
             with pytest.raises(ValueError) as e:
-                MessageQueueUser(environment=locust_fixture.env)
+                MessageQueueUser(environment=behave_fixture.locust.environment)
             assert 'unsupported value for header_type: "wrong"' in str(e)
 
         finally:
@@ -272,7 +284,7 @@ class TestMessageQueueUser:
                 }
             }
 
-    def test_on_start__action_conn_error(self, locust_fixture: LocustFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
+    def test_on_start__action_conn_error(self, behave_fixture: BehaveFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         def mocked_zmq_connect(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Any:
             raise ZMQError(msg='error connecting')
 
@@ -283,7 +295,7 @@ class TestMessageQueueUser:
             mocked_zmq_connect,
         )
 
-        scenario = GrizzlyContextScenario(3)
+        scenario = GrizzlyContextScenario(3, behave=behave_fixture.create_scenario('test scenario'))
 
         def mocked_request_fire(*args: Tuple[Any, ...], **_kwargs: Dict[str, Any]) -> None:
             # ehm, mypy thinks that _kwargs has type dict[str, Dict[str, Any]]
@@ -306,8 +318,9 @@ class TestMessageQueueUser:
             mocked_request_fire,
         )
 
+        MessageQueueUser.__scenario__ = scenario
         MessageQueueUser.host = 'mq://mq.example.com:1337/?QueueManager=QMGR01&Channel=Kanal1'
-        user = MessageQueueUser(locust_fixture.env)
+        user = MessageQueueUser(behave_fixture.locust.environment)
 
         request = RequestTask(RequestMethod.PUT, name='test-put', endpoint='EXAMPLE.QUEUE')
         scenario.name = 'test'
@@ -319,7 +332,11 @@ class TestMessageQueueUser:
             user.on_start()
 
     @pytest.mark.skip(reason='needs real credentials and host etc.')
-    def test_get_tls_real(self, locust_fixture: LocustFixture) -> None:
+    def test_get_tls_real(self, grizzly_fixture: GrizzlyFixture) -> None:
+        parent = grizzly_fixture(user_type=MessageQueueUser, scenario_type=IteratorScenario)
+        assert isinstance(parent, IteratorScenario)
+        assert isinstance(parent.user, MessageQueueUser)
+
         process: Optional[subprocess.Popen] = None
         try:
             process = subprocess.Popen(
@@ -346,15 +363,15 @@ class TestMessageQueueUser:
             }
 
             request = RequestTask(RequestMethod.GET, name='test-get', endpoint=self.real_stuff['endpoint'])
-            scenario = GrizzlyContextScenario(1)
-            scenario.name = 'test'
+            scenario = GrizzlyContextScenario(1, behave=grizzly_fixture.behave.create_scenario('get tls real'))
             scenario.failure_exception = StopUser
             scenario.tasks.add(request)
 
             MessageQueueUser.host = f'mq://{self.real_stuff["host"]}/?QueueManager={self.real_stuff["queue_manager"]}&Channel={self.real_stuff["channel"]}'
-            user = MessageQueueUser(locust_fixture.env)
+            user = MessageQueueUser(parent.user.environment)
+            parent.user = user
 
-            user.request(request)
+            parent.user.request(parent, request)
             assert 0
         finally:
             if process is not None:
@@ -375,7 +392,11 @@ class TestMessageQueueUser:
             }
 
     @pytest.mark.skip(reason='needs real credentials and host etc.')
-    def test_put_tls_real(self, locust_fixture: LocustFixture) -> None:
+    def test_put_tls_real(self, grizzly_fixture: GrizzlyFixture) -> None:
+        parent = grizzly_fixture(user_type=MessageQueueUser, scenario_type=IteratorScenario)
+        assert isinstance(parent, IteratorScenario)
+        assert isinstance(parent.user, MessageQueueUser)
+
         process: Optional[subprocess.Popen] = None
         try:
             process = subprocess.Popen(
@@ -400,15 +421,15 @@ class TestMessageQueueUser:
 
             request = RequestTask(RequestMethod.PUT, name='test-put', endpoint=self.real_stuff['endpoint'])
             request.source = 'we <3 IBM MQ'
-            scenario = GrizzlyContextScenario(1)
-            scenario.name = 'test'
+            scenario = GrizzlyContextScenario(1, behave=grizzly_fixture.behave.create_scenario('put tls real'))
             scenario.failure_exception = StopUser
             scenario.tasks.add(request)
 
             MessageQueueUser.host = f'mq://{self.real_stuff["host"]}/?QueueManager={self.real_stuff["queue_manager"]}&Channel={self.real_stuff["channel"]}'
-            user = MessageQueueUser(locust_fixture.env)
+            user = MessageQueueUser(parent.user.environment)
+            parent.user = user
 
-            user.request(request)
+            parent.user.request(parent, request)
         finally:
             if process is not None:
                 try:
@@ -427,10 +448,12 @@ class TestMessageQueueUser:
                 }
             }
 
-    def test_get(self, mq_user: MqScenarioFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
-        [user, scenario, _] = mq_user
-
+    def test_get(self, grizzly_fixture: GrizzlyFixture, mq_parent: GrizzlyScenario, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.users.messagequeue')
+
+        assert isinstance(mq_parent.user, MessageQueueUser)
+
+        grizzly = grizzly_fixture.grizzly
 
         response_connected: AsyncMessageResponse = {
             'worker': '0000-1337',
@@ -452,10 +475,7 @@ class TestMessageQueueUser:
             }
         ]
 
-        grizzly = GrizzlyContext()
-        grizzly.scenarios.append(scenario)
-
-        user._context = {
+        mq_parent.user._context = {
             'auth': {
                 'username': None,
                 'password': None,
@@ -480,20 +500,19 @@ class TestMessageQueueUser:
             'metadata_variable': '',
         })
 
-        request_event_spy = mocker.spy(user.environment.events.request, 'fire')
-        response_event_spy = mocker.spy(user.response_event, 'fire')
+        request_event_spy = mocker.spy(mq_parent.user.environment.events.request, 'fire')
+        response_event_spy = mocker.spy(mq_parent.user.response_event, 'fire')
 
-        request = scenario.tasks()[-1]
-        assert isinstance(request, RequestTask)
+        request = cast(RequestTask, mq_parent.user._scenario.tasks()[-1])
         request.endpoint = 'queue:test-queue'
         request.method = RequestMethod.GET
         request.source = None
-        scenario.tasks.add(request)
+        mq_parent.user._scenario.tasks.add(request)
 
-        user.add_context(remote_variables)
-        user.on_start()
+        mq_parent.user.add_context(remote_variables)
+        mq_parent.user.on_start()
 
-        metadata, payload = user.request(request)
+        metadata, payload = mq_parent.user.request(mq_parent, request)
 
         assert request_event_spy.call_count == 2
         _, kwargs = request_event_spy.call_args_list[0]
@@ -510,7 +529,7 @@ class TestMessageQueueUser:
         _, kwargs = response_event_spy.call_args_list[0]
         assert kwargs['request'] is request
         assert kwargs['context'] == (pymqi.MD().get(), test_payload)
-        assert kwargs['user'] is user
+        assert kwargs['user'] is mq_parent.user
 
         assert payload == test_payload
         assert metadata == pymqi.MD().get()
@@ -535,9 +554,9 @@ class TestMessageQueueUser:
         request.response.content_type = TransformerContentType.JSON
 
         add_save_handler(grizzly, ResponseTarget.PAYLOAD, '$.test', '.*', 'payload_variable')
-        user.request(request)
+        mq_parent.user.request(mq_parent, request)
 
-        assert user.context_variables['payload_variable'] == ''
+        assert mq_parent.user.context_variables['payload_variable'] == ''
         assert request_event_spy.call_count == 1
         _, kwargs = request_event_spy.call_args_list[0]
         assert kwargs['request_type'] == 'GET'
@@ -546,8 +565,8 @@ class TestMessageQueueUser:
         assert response_event_spy.call_count == 1
         _, kwargs = response_event_spy.call_args_list[0]
         assert kwargs['request'] is request
-        assert kwargs['user'] is user
-        assert kwargs['context'] == (pymqi.MD().get(), test_payload)
+        assert kwargs['user'] is mq_parent.user
+        assert kwargs['context'] == (pymqi.MD().get(), test_payload,)
 
         request_event_spy.reset_mock()
         response_event_spy.reset_mock()
@@ -569,9 +588,9 @@ class TestMessageQueueUser:
         ]
 
         request.response.content_type = TransformerContentType.JSON
-        user.request(request)
+        mq_parent.user.request(mq_parent, request)
 
-        assert user.context_variables['payload_variable'] == 'payload_variable value'
+        assert mq_parent.user.context_variables['payload_variable'] == 'payload_variable value'
 
         assert request_event_spy.call_count == 1
         _, kwargs = request_event_spy.call_args_list[0]
@@ -583,7 +602,7 @@ class TestMessageQueueUser:
         request_event_spy.reset_mock()
         response_event_spy.reset_mock()
 
-        user.request(request)
+        mq_parent.user.request(mq_parent, request)
 
         assert request_event_spy.call_count == 1
         _, kwargs = request_event_spy.call_args_list[0]
@@ -603,7 +622,7 @@ class TestMessageQueueUser:
                 'message': 'no implementation for POST'
             },
         ]
-        user.request(request)
+        mq_parent.user.request(mq_parent, request)
 
         assert request_event_spy.call_count == 1
         _, kwargs = request_event_spy.call_args_list[0]
@@ -623,26 +642,26 @@ class TestMessageQueueUser:
             } for _ in range(3)
         ]
 
-        scenario.failure_exception = None
-        user.request(request)
+        mq_parent.user._scenario.failure_exception = None
+        mq_parent.user.request(mq_parent, request)
 
         assert request_event_spy.call_count == 1
         _, kwargs = request_event_spy.call_args_list[-1]
         assert kwargs['exception'] is not None
         request_event_spy.reset_mock()
 
-        scenario.failure_exception = StopUser
+        mq_parent.user._scenario.failure_exception = StopUser
         with pytest.raises(StopUser):
-            user.request(request)
+            mq_parent.user.request(mq_parent, request)
 
         assert request_event_spy.call_count == 1
         _, kwargs = request_event_spy.call_args_list[-1]
         assert kwargs['exception'] is not None
         request_event_spy.reset_mock()
 
-        scenario.failure_exception = RestartScenario
+        mq_parent.user._scenario.failure_exception = RestartScenario
         with pytest.raises(RestartScenario):
-            user.request(request)
+            mq_parent.user.request(mq_parent, request)
 
         assert request_event_spy.call_count == 1
         _, kwargs = request_event_spy.call_args_list[0]
@@ -673,7 +692,7 @@ class TestMessageQueueUser:
         request.method = RequestMethod.GET
         request.endpoint = 'queue:IFKTEST'
 
-        user.request(request)
+        mq_parent.user.request(mq_parent, request)
 
         assert send_json_spy.call_count == 1
         args, kwargs = send_json_spy.call_args_list[0]
@@ -684,7 +703,7 @@ class TestMessageQueueUser:
 
         # Test with specifying queue: prefix as endpoint
         request.endpoint = 'queue:IFKTEST'
-        user.request(request)
+        mq_parent.user.request(mq_parent, request)
         assert send_json_spy.call_count == 2
         args, kwargs = send_json_spy.call_args_list[-1]
         assert len(args) == 1
@@ -694,7 +713,7 @@ class TestMessageQueueUser:
 
         # Test specifying queue: prefix with expression
         request.endpoint = 'queue:IFKTEST2, expression:/class/student[marks>85]'
-        user.request(request)
+        mq_parent.user.request(mq_parent, request)
         assert send_json_spy.call_count == 3
         args, kwargs = send_json_spy.call_args_list[-1]
         assert len(args) == 1
@@ -704,7 +723,7 @@ class TestMessageQueueUser:
 
         # Test specifying queue: prefix with expression, and spacing
         request.endpoint = 'queue: IFKTEST2  , expression: /class/student[marks>85]'
-        user.request(request)
+        mq_parent.user.request(mq_parent, request)
         assert send_json_spy.call_count == 4
         args, kwargs = send_json_spy.call_args_list[-1]
         assert len(args) == 1
@@ -714,7 +733,7 @@ class TestMessageQueueUser:
 
         # Test specifying queue without prefix, with expression
         request.endpoint = 'queue:IFKTEST3, expression:/class/student[marks<55], max_message_size:13337'
-        user.request(request)
+        mq_parent.user.request(mq_parent, request)
         assert send_json_spy.call_count == 5
         args, kwargs = send_json_spy.call_args_list[-1]
         assert len(args) == 1
@@ -723,7 +742,7 @@ class TestMessageQueueUser:
         assert ctx['endpoint'] == request.endpoint
 
         request.endpoint = 'queue:IFKTEST3, max_message_size:444'
-        user.request(request)
+        mq_parent.user.request(mq_parent, request)
         assert send_json_spy.call_count == 6
         args, kwargs = send_json_spy.call_args_list[-1]
         assert len(args) == 1
@@ -734,14 +753,14 @@ class TestMessageQueueUser:
         # Test error when missing expression: prefix
         request.endpoint = 'queue:IFKTEST3, /class/student[marks<55]'
         with pytest.raises(StopUser):
-            user.request(request)
+            mq_parent.user.request(mq_parent, request)
 
         # Test with expression argument but wrong method
         request.endpoint = 'queue:IFKTEST3, expression:/class/student[marks<55]'
         request.method = RequestMethod.PUT
 
         with pytest.raises(StopUser):
-            user.request(request)
+            mq_parent.user.request(mq_parent, request)
 
         assert response_event_spy.call_count == 8
         assert send_json_spy.call_count == 6
@@ -755,7 +774,7 @@ class TestMessageQueueUser:
         request.method = RequestMethod.GET
 
         with pytest.raises(StopUser):
-            user.request(request)
+            mq_parent.user.request(mq_parent, request)
 
         assert response_event_spy.call_count == 9
         assert send_json_spy.call_count == 6
@@ -770,9 +789,7 @@ class TestMessageQueueUser:
 
         # Test queue / expression END
 
-    def test_send(self, mq_user: MqScenarioFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
-        [user, scenario, _] = mq_user
-
+    def test_send(self, mq_parent: GrizzlyScenario, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.users.messagequeue')
 
         response_connected: AsyncMessageResponse = {
@@ -781,7 +798,7 @@ class TestMessageQueueUser:
             'message': 'connected',
         }
 
-        user._context = {
+        mq_parent.user._context = {
             'auth': {
                 'username': None,
                 'password': None,
@@ -805,14 +822,14 @@ class TestMessageQueueUser:
             side_effect=[ZMQError] * 10,
         )
 
-        request_event_spy = mocker.spy(user.environment.events.request, 'fire')
+        request_event_spy = mocker.spy(mq_parent.user.environment.events.request, 'fire')
 
-        request = cast(RequestTask, scenario.tasks()[-1])
+        request = cast(RequestTask, mq_parent.user._scenario.tasks()[-1])
         request.endpoint = 'queue:TEST.QUEUE'
 
-        user.add_context(remote_variables)
+        mq_parent.user.add_context(remote_variables)
 
-        _, _, payload, _, _ = user.render(request)
+        _, _, payload, _, _ = mq_parent.user.render(request)
 
         assert payload is not None
 
@@ -831,9 +848,9 @@ class TestMessageQueueUser:
             ],
         )
 
-        user.on_start()
+        mq_parent.user.on_start()
 
-        user.request(request)
+        mq_parent.user.request(mq_parent, request)
 
         assert request_event_spy.call_count == 2
         _, kwargs = request_event_spy.call_args_list[0]
@@ -848,7 +865,7 @@ class TestMessageQueueUser:
 
         request_event_spy.reset_mock()
 
-        user.request(request)
+        mq_parent.user.request(mq_parent, request)
 
         assert request_event_spy.call_count == 1
         _, kwargs = request_event_spy.call_args_list[-1]
@@ -872,7 +889,7 @@ class TestMessageQueueUser:
             ],
         )
 
-        user.request(request)
+        mq_parent.user.request(mq_parent, request)
 
         assert request_event_spy.call_count == 1
         _, kwargs = request_event_spy.call_args_list[-1]
@@ -880,37 +897,37 @@ class TestMessageQueueUser:
         assert 'no implementation for POST' in str(kwargs['exception'])
         request_event_spy.reset_mock()
 
-        scenario.failure_exception = None
-        user.request(request)
+        mq_parent.user._scenario.failure_exception = None
+        mq_parent.user.request(mq_parent, request)
 
         assert request_event_spy.call_count == 1
         _, kwargs = request_event_spy.call_args_list[-1]
         assert kwargs['exception'] is not None
         request_event_spy.reset_mock()
 
-        scenario.failure_exception = StopUser
+        mq_parent.user._scenario.failure_exception = StopUser
         with pytest.raises(StopUser):
-            user.request(request)
+            mq_parent.user.request(mq_parent, request)
 
         assert request_event_spy.call_count == 1
         _, kwargs = request_event_spy.call_args_list[-1]
         assert kwargs['exception'] is not None
         request_event_spy.reset_mock()
 
-        scenario.failure_exception = RestartScenario
+        mq_parent.user._scenario.failure_exception = RestartScenario
         with pytest.raises(RestartScenario):
-            user.request(request)
+            mq_parent.user.request(mq_parent, request)
 
         assert request_event_spy.call_count == 1
         _, kwargs = request_event_spy.call_args_list[-1]
         assert kwargs['exception'] is not None
         request_event_spy.reset_mock()
 
-        request.scenario.failure_exception = None
+        mq_parent.user._scenario.failure_exception = None
         request.endpoint = 'sub:TEST.QUEUE'
 
         with pytest.raises(StopUser):
-            user.request(request)
+            mq_parent.user.request(mq_parent, request)
 
         assert request_event_spy.call_count == 1
         _, kwargs = request_event_spy.call_args_list[-1]
@@ -920,7 +937,7 @@ class TestMessageQueueUser:
 
         request.endpoint = 'queue:TEST.QUEUE, argument:False'
         with pytest.raises(StopUser):
-            user.request(request)
+            mq_parent.user.request(mq_parent, request)
 
         assert request_event_spy.call_count == 2
         _, kwargs = request_event_spy.call_args_list[-1]
@@ -930,7 +947,7 @@ class TestMessageQueueUser:
 
         request.endpoint = 'queue:TEST.QUEUE, expression:$.test.result'
         with pytest.raises(StopUser):
-            user.request(request)
+            mq_parent.user.request(mq_parent, request)
 
         assert request_event_spy.call_count == 3
         _, kwargs = request_event_spy.call_args_list[-1]

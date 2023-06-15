@@ -58,7 +58,7 @@ from grizzly.utils import safe_del
 from . import GrizzlyTask, GrizzlyMetaRequestTask, template, grizzlytask
 
 if TYPE_CHECKING:  # pragma: no cover
-    from grizzly.context import GrizzlyContextScenario, GrizzlyContext
+    from grizzly.context import GrizzlyContext
     from grizzly.scenarios import GrizzlyScenario
 
 
@@ -77,8 +77,8 @@ class UntilRequestTask(GrizzlyTask):
     wait: float
     expected_matches: int
 
-    def __init__(self, grizzly: 'GrizzlyContext', request: GrizzlyMetaRequestTask, condition: str, scenario: Optional['GrizzlyContextScenario'] = None) -> None:
-        super().__init__(scenario)
+    def __init__(self, grizzly: 'GrizzlyContext', request: GrizzlyMetaRequestTask, condition: str) -> None:
+        super().__init__()
 
         self.request = request
         self.condition = condition
@@ -122,7 +122,7 @@ class UntilRequestTask(GrizzlyTask):
 
         @grizzlytask
         def task(parent: 'GrizzlyScenario') -> Any:
-            task_name = f'{self.scenario.identifier} {self.request.name}, w={self.wait}s, r={self.retries}, em={self.expected_matches}'
+            task_name = f'{parent.user._scenario.identifier} {self.request.name}, w={self.wait}s, r={self.retries}, em={self.expected_matches}'
             condition_rendered = parent.render(self.condition)
             endpoint_rendered = parent.render(self.request.endpoint)
 
@@ -221,8 +221,8 @@ class UntilRequestTask(GrizzlyTask):
                     exception=exception,
                 )
 
-                if exception is not None and self.scenario.failure_exception is not None:
-                    raise self.scenario.failure_exception()
+                if exception is not None and parent.user._scenario.failure_exception is not None:
+                    raise parent.user._scenario.failure_exception()
 
         @task.on_start
         def on_start(parent: 'GrizzlyScenario') -> None:

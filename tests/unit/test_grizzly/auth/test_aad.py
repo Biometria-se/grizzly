@@ -25,9 +25,9 @@ from tests.fixtures import MockerFixture, GrizzlyFixture
 
 class TestAAD:
     def test_get_token(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
-        _, user, _ = grizzly_fixture(user_type=RestApiUser)
+        parent = grizzly_fixture(user_type=RestApiUser)
 
-        assert isinstance(user, RestApiUser)
+        assert isinstance(parent.user, RestApiUser)
 
         get_oauth_token_mock = mocker.patch(
             'grizzly.auth.aad.AAD.get_oauth_token',
@@ -39,14 +39,14 @@ class TestAAD:
             return_value=None,
         )
 
-        AAD.get_token(user, AuthMethod.CLIENT)
+        AAD.get_token(parent, parent.user, AuthMethod.CLIENT)
         get_oauth_authorization_mock.assert_not_called()
-        get_oauth_token_mock.assert_called_once_with(user)
+        get_oauth_token_mock.assert_called_once_with(parent, parent.user)
         get_oauth_token_mock.reset_mock()
 
-        AAD.get_token(user, AuthMethod.USER)
+        AAD.get_token(parent, parent.user, AuthMethod.USER)
         get_oauth_token_mock.assert_not_called()
-        get_oauth_authorization_mock.assert_called_once_with(user)
+        get_oauth_authorization_mock.assert_called_once_with(parent, parent.user)
         get_oauth_authorization_mock.reset_mock()
 
     @pytest.mark.skip(reason='needs real secrets')
@@ -54,12 +54,8 @@ class TestAAD:
         from grizzly.tasks.clients import HttpClientTask
         from grizzly.types import RequestDirection
 
-        _, user, scenario = grizzly_fixture(user_type=RestApiUser)
+        parent = grizzly_fixture(user_type=RestApiUser)
         grizzly = grizzly_fixture.grizzly
-
-        assert scenario is not None
-        scenario._user = user
-
         grizzly.state.variables['test_payload'] = 'none'
 
         task_factory = HttpClientTask(
@@ -68,7 +64,7 @@ class TestAAD:
             payload_variable='test_payload',
         )
 
-        user._context.update({
+        parent.user._context.update({
             'host': {
                 'auth': {
                     'user': {
@@ -83,12 +79,12 @@ class TestAAD:
 
         task = task_factory()
 
-        task.on_start(scenario)
+        task.on_start(parent)
 
         with caplog.at_level(logging.DEBUG):
-            task(scenario)
+            task(parent)
 
-        payload = user._context['variables'].get('test_payload', None)
+        payload = parent.user._context['variables'].get('test_payload', None)
         assert payload is not None
 
     @pytest.mark.skip(reason='needs real secrets')
@@ -96,12 +92,8 @@ class TestAAD:
         from grizzly.tasks.clients import HttpClientTask
         from grizzly.types import RequestDirection
 
-        _, user, scenario = grizzly_fixture(user_type=RestApiUser)
+        parent = grizzly_fixture(user_type=RestApiUser)
         grizzly = grizzly_fixture.grizzly
-
-        assert scenario is not None
-        scenario._user = user
-
         grizzly.state.variables['test_payload'] = 'none'
 
         task_factory = HttpClientTask(
@@ -110,7 +102,7 @@ class TestAAD:
             payload_variable='test_payload',
         )
 
-        user._context.update({
+        parent.user._context.update({
             'host': {
                 'auth': {
                     'provider': '',
@@ -129,23 +121,23 @@ class TestAAD:
 
         task = task_factory()
 
-        task.on_start(scenario)
+        task.on_start(parent)
 
         with caplog.at_level(logging.DEBUG):
-            task(scenario)
+            task(parent)
 
     @pytest.mark.parametrize('version,login_start', product(['v1.0', 'v2.0'], ['initialize_uri', 'redirect_uri']))
     def test_get_oauth_authorization(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, caplog: LogCaptureFixture, version: str, login_start: str) -> None:
-        _, user, _ = grizzly_fixture(user_type=RestApiUser)
+        parent = grizzly_fixture(user_type=RestApiUser)
 
-        assert isinstance(user, RestApiUser)
-        user.__class__.__name__ = f'{user.__class__.__name__}_001'
+        assert isinstance(parent.user, RestApiUser)
+        parent.user.__class__.__name__ = f'{parent.user.__class__.__name__}_001'
 
         fake_token = 'asdf'
 
         is_token_v2_0 = version == 'v2.0'
 
-        fire_spy = mocker.spy(user.environment.events.request, 'fire')
+        fire_spy = mocker.spy(parent.user.environment.events.request, 'fire')
         mocker.patch('grizzly.auth.aad.time_perf_counter', return_value=0.0)
         get_oauth_token_mock = mocker.patch.object(AAD, 'get_oauth_token', return_value=None)
 
@@ -280,12 +272,12 @@ class TestAAD:
                         else:
                             response.status_code = 200
 
-                    auth_user_context = user._context['auth']['user']
+                    auth_user_context = parent.user._context['auth']['user']
 
                     if login_start == 'redirect_uri':
                         redirect_uri_parsed = urlparse(auth_user_context['redirect_uri'])
                         if len(redirect_uri_parsed.netloc) == 0:
-                            redirect_uri = f"{user._context['host']}{auth_user_context['redirect_uri']}"
+                            redirect_uri = f"{parent.user._context['host']}{auth_user_context['redirect_uri']}"
                         else:
                             redirect_uri = auth_user_context['redirect_uri']
 
@@ -329,7 +321,7 @@ class TestAAD:
         if version != 'v1.0':
             provider_url = f'{provider_url}/{version}'
 
-        user._context = {
+        parent.user._context = {
             'host': 'https://www.example.com',
             'auth': {
                 'client': {
@@ -344,44 +336,44 @@ class TestAAD:
                 'provider': None,
             }
         }
-        user.host = cast(str, user._context['host'])
+        parent.user.host = cast(str, parent.user._context['host'])
 
         mock_request_session()
 
         # both initialize and provider uri set
-        cast(dict, user._context['auth'])['user'].update({'initialize_uri': auth_user_uri, 'redirect_uri': auth_user_uri})
+        cast(dict, parent.user._context['auth'])['user'].update({'initialize_uri': auth_user_uri, 'redirect_uri': auth_user_uri})
 
         with pytest.raises(AssertionError) as ae:
-            AAD.get_oauth_authorization(user)
+            AAD.get_oauth_authorization(parent, parent.user)
         assert str(ae.value) == 'both auth.user.initialize_uri and auth.user.redirect_uri is set'
 
         fire_spy.assert_not_called()
 
-        cast(dict, user._context['auth'])['user'].update({'initialize_uri': None, 'redirect_uri': None})
+        cast(dict, parent.user._context['auth'])['user'].update({'initialize_uri': None, 'redirect_uri': None})
 
-        cast(dict, user._context['auth'])['user'].update({login_start: auth_user_uri})
+        cast(dict, parent.user._context['auth'])['user'].update({login_start: auth_user_uri})
 
         if login_start == 'redirect_uri':
             # test when auth.provider is not set
             with pytest.raises(AssertionError) as ae:
-                AAD.get_oauth_authorization(user)
+                AAD.get_oauth_authorization(parent, parent.user)
             assert str(ae.value) == 'context variable auth.provider is not set'
 
             fire_spy.assert_not_called()
 
-            cast(GrizzlyAuthHttpContext, user._context['auth'])['provider'] = provider_url
+            cast(GrizzlyAuthHttpContext, parent.user._context['auth'])['provider'] = provider_url
 
         # test when login sequence returns bad request
         mock_request_session(Error.REQUEST_1_HTTP_STATUS)
 
         with pytest.raises(StopUser):
-            AAD.get_oauth_authorization(user)
+            AAD.get_oauth_authorization(parent, parent.user)
 
         fire_spy.assert_called_once_with(
             request_type='AUTH',
             response_time=0,
             name=f'001 AAD OAuth2 user token {version}',
-            context=user._context,
+            context=parent.user._context,
             response_length=0,
             response=None,
             exception=ANY,
@@ -396,13 +388,13 @@ class TestAAD:
         mock_request_session(Error.REQUEST_2_HTTP_STATUS)
 
         with pytest.raises(StopUser):
-            AAD.get_oauth_authorization(user)
+            AAD.get_oauth_authorization(parent, parent.user)
 
         fire_spy.assert_called_once_with(
             request_type='AUTH',
             response_time=0,
             name=f'001 AAD OAuth2 user token {version}',
-            context=user._context,
+            context=parent.user._context,
             response_length=0,
             response=None,
             exception=ANY,
@@ -416,13 +408,13 @@ class TestAAD:
         mock_request_session(Error.REQUEST_3_HTTP_STATUS)
 
         with pytest.raises(StopUser):
-            AAD.get_oauth_authorization(user)
+            AAD.get_oauth_authorization(parent, parent.user)
 
         fire_spy.assert_called_once_with(
             request_type='AUTH',
             response_time=0,
             name=f'001 AAD OAuth2 user token {version}',
-            context=user._context,
+            context=parent.user._context,
             response_length=0,
             response=None,
             exception=ANY,
@@ -437,13 +429,13 @@ class TestAAD:
 
         with caplog.at_level(logging.ERROR):
             with pytest.raises(StopUser):
-                AAD.get_oauth_authorization(user)
+                AAD.get_oauth_authorization(parent, parent.user)
 
         fire_spy.assert_called_once_with(
             request_type='AUTH',
             response_time=0,
             name=f'001 AAD OAuth2 user token {version}',
-            context=user._context,
+            context=parent.user._context,
             response_length=0,
             response=None,
             exception=ANY,
@@ -461,7 +453,7 @@ class TestAAD:
 
         with caplog.at_level(logging.ERROR):
             with pytest.raises(StopUser):
-                AAD.get_oauth_authorization(user)
+                AAD.get_oauth_authorization(parent, parent.user)
 
         expected_error_message = 'test-user@example.com requires MFA for login: fax = +46 1234'
 
@@ -469,7 +461,7 @@ class TestAAD:
             request_type='AUTH',
             response_time=0,
             name=f'001 AAD OAuth2 user token {version}',
-            context=user._context,
+            context=parent.user._context,
             response_length=0,
             response=None,
             exception=ANY,
@@ -486,15 +478,15 @@ class TestAAD:
         mock_request_session(Error.REQUEST_4_HTTP_STATUS)
 
         with pytest.raises(StopUser):
-            AAD.get_oauth_authorization(user)
+            AAD.get_oauth_authorization(parent, parent.user)
 
-        assert user.session_started is None
+        assert parent.user.session_started is None
 
         fire_spy.assert_called_once_with(
             request_type='AUTH',
             response_time=0,
             name=f'001 AAD OAuth2 user token {version}',
-            context=user._context,
+            context=parent.user._context,
             response_length=0,
             response=None,
             exception=ANY,
@@ -509,15 +501,15 @@ class TestAAD:
         mock_request_session(Error.REQUEST_4_HTTP_STATUS_CONFIG)
 
         with pytest.raises(StopUser):
-            AAD.get_oauth_authorization(user)
+            AAD.get_oauth_authorization(parent, parent.user)
 
-        assert user.session_started is None
+        assert parent.user.session_started is None
 
         fire_spy.assert_called_once_with(
             request_type='AUTH',
             response_time=0,
             name=f'001 AAD OAuth2 user token {version}',
-            context=user._context,
+            context=parent.user._context,
             response_length=0,
             response=None,
             exception=ANY,
@@ -531,13 +523,13 @@ class TestAAD:
         # test error handling when login sequence response doesn't contain expected payload
         mock_request_session(Error.REQUEST_1_NO_DOLLAR_CONFIG)
         with pytest.raises(StopUser):
-            AAD.get_oauth_authorization(user)
+            AAD.get_oauth_authorization(parent, parent.user)
 
         fire_spy.assert_called_once_with(
             request_type='AUTH',
             response_time=0,
             name=f'001 AAD OAuth2 user token {version}',
-            context=user._context,
+            context=parent.user._context,
             response_length=0,
             response=None,
             exception=ANY,
@@ -550,13 +542,13 @@ class TestAAD:
 
         mock_request_session(Error.REQUEST_1_MISSING_STATE)
         with pytest.raises(StopUser):
-            AAD.get_oauth_authorization(user)
+            AAD.get_oauth_authorization(parent, parent.user)
 
         fire_spy.assert_called_once_with(
             request_type='AUTH',
             response_time=0,
             name=f'001 AAD OAuth2 user token {version}',
-            context=user._context,
+            context=parent.user._context,
             response_length=0,
             response=None,
             exception=ANY,
@@ -569,13 +561,13 @@ class TestAAD:
 
         mock_request_session(Error.REQUEST_1_DOLLAR_CONFIG_ERROR)
         with pytest.raises(StopUser):
-            AAD.get_oauth_authorization(user)
+            AAD.get_oauth_authorization(parent, parent.user)
 
         fire_spy.assert_called_once_with(
             request_type='AUTH',
             response_time=0,
             name=f'001 AAD OAuth2 user token {version}',
-            context=user._context,
+            context=parent.user._context,
             response_length=0,
             response=None,
             exception=ANY,
@@ -588,13 +580,13 @@ class TestAAD:
 
         mock_request_session(Error.REQUEST_2_ERROR_MESSAGE)
         with pytest.raises(StopUser):
-            AAD.get_oauth_authorization(user)
+            AAD.get_oauth_authorization(parent, parent.user)
 
         fire_spy.assert_called_once_with(
             request_type='AUTH',
             response_time=0,
             name=f'001 AAD OAuth2 user token {version}',
-            context=user._context,
+            context=parent.user._context,
             response_length=0,
             response=None,
             exception=ANY,
@@ -608,7 +600,7 @@ class TestAAD:
         # successful login sequence
         mock_request_session()
 
-        user.session_started = session_started
+        parent.user.session_started = session_started
 
         expected_auth: Tuple[AuthType, str]
         if login_start == 'redirect_uri':
@@ -616,19 +608,19 @@ class TestAAD:
         else:
             expected_auth = (AuthType.COOKIE, f'auth={fake_token}',)
 
-        assert AAD.get_oauth_authorization(user) == expected_auth
+        assert AAD.get_oauth_authorization(parent, parent.user) == expected_auth
 
         if not is_token_v2_0 or login_start == 'initialize_uri':
             get_oauth_token_mock.assert_not_called()
         else:
-            get_oauth_token_mock.assert_called_once_with(user, (ANY, ANY,))
+            get_oauth_token_mock.assert_called_once_with(parent, parent.user, (ANY, ANY,))
             get_oauth_token_mock.reset_mock()
 
         fire_spy.assert_called_once_with(
             request_type='AUTH',
             response_time=0,
             name=f'001 AAD OAuth2 user token {version}',
-            context=user._context,
+            context=parent.user._context,
             response_length=0,
             response=None,
             exception=None,
@@ -638,15 +630,15 @@ class TestAAD:
         # test no host in redirect/initialize uri
         auth_user_uri = '/app/authenticated' if login_start == 'redirect_uri' else '/app/login'
 
-        cast(GrizzlyAuthHttpContextUser, cast(GrizzlyAuthHttpContext, user._context['auth'])['user'])[login_start] = auth_user_uri  # type: ignore
+        cast(GrizzlyAuthHttpContextUser, cast(GrizzlyAuthHttpContext, parent.user._context['auth'])['user'])[login_start] = auth_user_uri  # type: ignore
 
-        assert AAD.get_oauth_authorization(user) == expected_auth
+        assert AAD.get_oauth_authorization(parent, parent.user) == expected_auth
 
         fire_spy.assert_called_once_with(
             request_type='AUTH',
             response_time=0,
             name=f'001 AAD OAuth2 user token {version}',
-            context=user._context,
+            context=parent.user._context,
             response_length=0,
             response=None,
             exception=None,
@@ -656,13 +648,13 @@ class TestAAD:
         if login_start == 'initialize_uri':
             mock_request_session(Error.REQUEST_5_HTTP_STATUS)
             with pytest.raises(StopUser):
-                AAD.get_oauth_authorization(user)
+                AAD.get_oauth_authorization(parent, parent.user)
 
             fire_spy.assert_called_once_with(
                 request_type='AUTH',
                 response_time=0,
                 name=f'001 AAD OAuth2 user token {version}',
-                context=user._context,
+                context=parent.user._context,
                 response_length=0,
                 response=None,
                 exception=ANY,
@@ -675,13 +667,13 @@ class TestAAD:
 
             mock_request_session(Error.REQUEST_5_NO_COOKIE)
             with pytest.raises(StopUser):
-                AAD.get_oauth_authorization(user)
+                AAD.get_oauth_authorization(parent, parent.user)
 
             fire_spy.assert_called_once_with(
                 request_type='AUTH',
                 response_time=0,
                 name=f'001 AAD OAuth2 user token {version}',
-                context=user._context,
+                context=parent.user._context,
                 response_length=0,
                 response=None,
                 exception=ANY,
@@ -698,11 +690,11 @@ class TestAAD:
         'authorization_code::v2',
     ])
     def test_get_oauth_token(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, grant_type: str) -> None:
-        _, user, _ = grizzly_fixture(user_type=RestApiUser)
+        parent = grizzly_fixture(user_type=RestApiUser)
 
         grant_type, version = grant_type.split('::', 1)
 
-        user.__class__.__name__ = f'{user.__class__.__name__}_001'
+        parent.user.__class__.__name__ = f'{parent.user.__class__.__name__}_001'
 
         def mock_requests_post(payload: str, status_code: int) -> MagicMock:
             response = Response()
@@ -711,7 +703,7 @@ class TestAAD:
 
             return mocker.patch('grizzly.auth.aad.requests.Session.post', return_value=response)
 
-        assert isinstance(user, RestApiUser)
+        assert isinstance(parent.user, RestApiUser)
 
         provider_url = 'https://login.example.com/foobarinc/oauth2'
 
@@ -724,37 +716,37 @@ class TestAAD:
             if version == 'v2':
                 provider_url = f'{provider_url}/v2.0'
 
-        fire_spy = mocker.spy(user.environment.events.request, 'fire')
+        fire_spy = mocker.spy(parent.user.environment.events.request, 'fire')
 
-        safe_del(user._context, 'auth')
+        safe_del(parent.user._context, 'auth')
 
         with pytest.raises(AssertionError) as ae:
-            AAD.get_oauth_token(user, pkcs)
+            AAD.get_oauth_token(parent, parent.user, pkcs)
         assert str(ae.value) == 'context variable auth is not set'
 
-        user._context['auth'] = {}
+        parent.user._context['auth'] = {}
 
         with pytest.raises(AssertionError) as ae:
-            AAD.get_oauth_token(user, pkcs)
+            AAD.get_oauth_token(parent, parent.user, pkcs)
         assert str(ae.value) == 'context variable auth.provider is not set'
 
-        cast(GrizzlyAuthHttpContext, user._context['auth']).update({'provider': provider_url})
+        cast(GrizzlyAuthHttpContext, parent.user._context['auth']).update({'provider': provider_url})
 
         with pytest.raises(AssertionError) as ae:
-            AAD.get_oauth_token(user, pkcs)
+            AAD.get_oauth_token(parent, parent.user, pkcs)
         assert str(ae.value) == 'context variable auth.client is not set'
 
-        cast(GrizzlyAuthHttpContext, user._context['auth']).update({'client': {'id': None, 'secret': None, 'resource': None}})
+        cast(GrizzlyAuthHttpContext, parent.user._context['auth']).update({'client': {'id': None, 'secret': None, 'resource': None}})
 
         if grant_type == 'authorization_code':
             with pytest.raises(AssertionError) as ae:
-                AAD.get_oauth_token(user, pkcs)
+                AAD.get_oauth_token(parent, parent.user, pkcs)
             assert str(ae.value) == 'context variable auth.user is not set'
 
-            cast(GrizzlyAuthHttpContext, user._context['auth']).update({'user': {'username': None, 'password': None, 'redirect_uri': '/auth', 'initialize_uri': None}})
+            cast(GrizzlyAuthHttpContext, parent.user._context['auth']).update({'user': {'username': None, 'password': None, 'redirect_uri': '/auth', 'initialize_uri': None}})
 
-        user._context['host'] = user.host = 'https://example.com'
-        cast(GrizzlyAuthHttpContext, user._context['auth']).update({
+        parent.user._context['host'] = parent.user.host = 'https://example.com'
+        cast(GrizzlyAuthHttpContext, parent.user._context['auth']).update({
             'provider': provider_url,
             'client': {
                 'id': 'asdf',
@@ -768,10 +760,10 @@ class TestAAD:
 
         session_started = time()
 
-        assert user.session_started is None
+        assert parent.user.session_started is None
 
         with pytest.raises(StopUser):
-            AAD.get_oauth_token(user, pkcs)
+            AAD.get_oauth_token(parent, parent.user, pkcs)
 
         requests_mock.assert_called_once_with(f'{provider_url}/token', verify=True, data=ANY, headers=ANY, allow_redirects=(pkcs is None))
         _, kwargs = requests_mock.call_args_list[-1]
@@ -783,16 +775,15 @@ class TestAAD:
                 assert data['resource'] == 'asdf'
                 assert len(data) == 4
             else:
-                print(f'{data=}')
                 assert data['scope'] == 'asdf'
                 assert data['tenant'] == 'foobarinc'
                 assert len(data) == 5
         else:
-            assert data['redirect_uri'] == f'{user.host}/auth'
+            assert data['redirect_uri'] == f'{parent.user.host}/auth'
             assert data['code'] == pkcs[0]
             assert data['code_verifier'] == pkcs[1]
             assert len(data) == 5
-        assert user.session_started is None
+        assert parent.user.session_started is None
 
         if pkcs is not None:
             fire_spy.assert_not_called()
@@ -801,7 +792,7 @@ class TestAAD:
                 request_type='AUTH',
                 response_time=ANY,
                 name=f'001 AAD OAuth2 user token {version}.0',
-                context=user._context,
+                context=parent.user._context,
                 response=None,
                 exception=ANY,
                 response_length=len(payload.encode()),
@@ -814,19 +805,19 @@ class TestAAD:
 
         requests_mock.reset_mock()
 
-        user.session_started = session_started
-        user.headers.update({
+        parent.user.session_started = session_started
+        parent.user.headers.update({
             'Authorization': 'foobar',
             'Content-Type': 'plain/text',
             'Ocp-Apim-Subscription-Key': 'secret',
         })
-        user._context['verify_certificates'] = False
+        parent.user._context['verify_certificates'] = False
 
         requests_mock = mock_requests_post(jsondumps({token_name: 'asdf'}), 200)
 
-        assert AAD.get_oauth_token(user, pkcs) == (AuthType.HEADER, 'asdf',)
+        assert AAD.get_oauth_token(parent, parent.user, pkcs) == (AuthType.HEADER, 'asdf',)
 
-        assert user.session_started >= session_started
+        assert parent.user.session_started >= session_started
         requests_mock.assert_called_once_with(f'{provider_url}/token', verify=True, data=ANY, headers=ANY, allow_redirects=(pkcs is None))
         _, kwargs = requests_mock.call_args_list[-1]
         data = kwargs.get('data', None)
@@ -847,15 +838,15 @@ class TestAAD:
                 assert data['tenant'] == 'foobarinc'
                 assert len(data) == 5
         else:
-            assert data['redirect_uri'] == f'{user.host}/auth'
+            assert data['redirect_uri'] == f'{parent.user.host}/auth'
             assert data['code'] == pkcs[0]
             assert data['code_verifier'] == pkcs[1]
             assert len(data) == 5
             assert headers.get('Origin', None) == 'https://example.com'
             assert headers.get('Referer', None) == 'https://example.com'
 
-        cast(GrizzlyAuthHttpContext, user._context['auth']).update({'provider': None})
+        cast(GrizzlyAuthHttpContext, parent.user._context['auth']).update({'provider': None})
 
         with pytest.raises(AssertionError) as ae:
-            AAD.get_oauth_token(user, pkcs)
+            AAD.get_oauth_token(parent, parent.user, pkcs)
         assert str(ae.value) == 'context variable auth.provider is not set'

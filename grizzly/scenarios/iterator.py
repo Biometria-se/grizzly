@@ -84,7 +84,12 @@ class IteratorScenario(GrizzlyScenario):
                         step = 'unknown'
 
                     self.logger.debug(f'executing task {self.current_task_index+1} of {self.task_count}: {step}')
-                    self.execute_next_task()
+                    try:
+                        self.execute_next_task()
+                    except Exception as e:
+                        if not isinstance(e, StopScenario):
+                            self.logger.error(f'task {self.current_task_index+1} of {self.task_count}: {step}, failed: {e.__class__.__name__}')
+                        raise e
                 except RescheduleTaskImmediately:
                     pass
                 except RescheduleTask:
@@ -99,6 +104,8 @@ class IteratorScenario(GrizzlyScenario):
                     # move locust.user.sequential_task.SequentialTaskSet index pointer the number of tasks left until end, so it will start over
                     tasks_left = self.task_count - (self._task_index % self.task_count)
                     self._task_index += tasks_left
+                    self.logger.debug(f'{len(self._task_queue)} tasks in queue')
+                    self._task_queue.clear()  # we should remove any scheduled tasks when restarting
 
                     self.stats.log_error(None)
                     self.wait()
@@ -133,10 +140,22 @@ class IteratorScenario(GrizzlyScenario):
                         e = StopUser()
 
                     self.iteration_stop(has_error=has_error)
+
                     try:
                         self.on_stop()
                     except:
                         self.logger.error('on_stop failed', exc_info=True)
+
+                    # to avoid spawning of a new user, we should wait until spawning is complete
+                    if has_error:
+                        count = 0
+                        while not self.grizzly.state.spawning_complete:
+                            if count % 10 == 0:
+                                self.logger.debug('spawning not complete, wait')
+                                if count > 0:
+                                    count = 0
+                            gsleep(0.1)
+                            count += 1
 
                     raise e
                 else:

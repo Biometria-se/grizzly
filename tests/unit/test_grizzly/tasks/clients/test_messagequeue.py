@@ -428,13 +428,13 @@ class TestMessageQueueClientTask:
     def test_get(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture) -> None:
         noop_zmq('grizzly.tasks.clients.messagequeue')
 
-        _, _, scenario = grizzly_fixture(scenario_type=IteratorScenario)
+        parent = grizzly_fixture(scenario_type=IteratorScenario)
 
-        assert isinstance(scenario, IteratorScenario)
+        assert isinstance(parent, IteratorScenario)
 
-        scenario.grizzly.state.variables.update({'mq-client-var': 'none', 'mq-client-metadata': 'none'})
+        parent.grizzly.state.variables.update({'mq-client-var': 'none', 'mq-client-metadata': 'none'})
 
-        fire_spy = mocker.spy(scenario.user.environment.events.request, 'fire')
+        fire_spy = mocker.spy(parent.user.environment.events.request, 'fire')
 
         recv_json_mock = noop_zmq.get_mock('recv_json')
         send_json_mock = noop_zmq.get_mock('send_json')
@@ -455,17 +455,17 @@ class TestMessageQueueClientTask:
             messages: List[Any] = [{'success': True, 'message': 'hello there', 'worker': 'dddd-eeee-ffff-9999'}, ZMQAgain, None]
             recv_json_mock.side_effect = messages
 
-            task(scenario)
+            task(parent)
 
-            assert scenario.user._context['variables'].get('mq-client-var', None) is None
-            assert scenario.user._context['variables'].get('mq-client-metadata', None) is None
-            assert task_factory._worker.get(id(scenario.user), None) == 'dddd-eeee-ffff-9999'
+            assert parent.user._context['variables'].get('mq-client-var', None) is None
+            assert parent.user._context['variables'].get('mq-client-metadata', None) is None
+            assert task_factory._worker.get(id(parent.user), None) == 'dddd-eeee-ffff-9999'
             assert send_json_mock.call_count == 2
             args, kwargs = send_json_mock.call_args_list[-1]
             assert args == ({
                 'action': 'GET',
                 'worker': 'dddd-eeee-ffff-9999',
-                'client': id(scenario.user),
+                'client': id(parent.user),
                 'context': {
                     'endpoint': 'topic:INCOMING.MSG',
                 },
@@ -477,10 +477,10 @@ class TestMessageQueueClientTask:
             assert fire_spy.call_count == 1
             _, kwargs = fire_spy.call_args_list[-1]  # get
             assert kwargs.get('request_type', None) == 'CLTSK'
-            assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} MessageQueue<-topic:INCOMING.MSG'
+            assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} MessageQueue<-topic:INCOMING.MSG'
             assert kwargs.get('response_time', None) >= 0.0
             assert kwargs.get('response_length', None) == 0
-            assert kwargs.get('context', None) == scenario.user._context
+            assert kwargs.get('context', None) == parent.user._context
             exception = kwargs.get('exception', None)
             assert isinstance(exception, AsyncMessageError)
             assert str(exception) == 'no response'
@@ -493,16 +493,16 @@ class TestMessageQueueClientTask:
 
             task = task_factory()
 
-            task(scenario)
+            task(parent)
 
-            assert scenario.user._context['variables'].get('mq-client-var', None) is None
-            assert scenario.user._context['variables'].get('mq-client-metadata', None) is None
+            assert parent.user._context['variables'].get('mq-client-var', None) is None
+            assert parent.user._context['variables'].get('mq-client-metadata', None) is None
             assert send_json_mock.call_count == 3
             args, kwargs = send_json_mock.call_args_list[-1]
             assert args == ({
                 'action': 'GET',
                 'worker': 'dddd-eeee-ffff-9999',
-                'client': id(scenario.user),
+                'client': id(parent.user),
                 'context': {
                     'endpoint': 'topic:INCOMING.MSG, max_message_size:13337',
                 },
@@ -514,10 +514,10 @@ class TestMessageQueueClientTask:
             assert fire_spy.call_count == 2
             _, kwargs = fire_spy.call_args_list[-1]
             assert kwargs.get('request_type', None) == 'CLTSK'
-            assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} MessageQueue<-topic:INCOMING.MSG'
+            assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} MessageQueue<-topic:INCOMING.MSG'
             assert kwargs.get('response_time', None) >= 0.0
             assert kwargs.get('response_length', None) == 0
-            assert kwargs.get('context', None) == scenario.user._context
+            assert kwargs.get('context', None) == parent.user._context
             exception = kwargs.get('exception', None)
             assert isinstance(exception, AsyncMessageError)
             assert str(exception) == 'memory corruption'
@@ -525,20 +525,20 @@ class TestMessageQueueClientTask:
             messages = [{'success': True, 'payload': None}]
             recv_json_mock.side_effect = messages
 
-            task(scenario)
+            task(parent)
 
-            assert scenario.user._context['variables'].get('mq-client-var', None) is None
-            assert scenario.user._context['variables'].get('mq-client-metadata', None) is None
+            assert parent.user._context['variables'].get('mq-client-var', None) is None
+            assert parent.user._context['variables'].get('mq-client-metadata', None) is None
             assert send_json_mock.call_count == 4
             assert recv_json_mock.call_count == 5
 
             assert fire_spy.call_count == 3
             _, kwargs = fire_spy.call_args_list[-1]
             assert kwargs.get('request_type', None) == 'CLTSK'
-            assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} MessageQueue<-topic:INCOMING.MSG'
+            assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} MessageQueue<-topic:INCOMING.MSG'
             assert kwargs.get('response_time', None) >= 0.0
             assert kwargs.get('response_length', None) == 0
-            assert kwargs.get('context', None) == scenario.user._context
+            assert kwargs.get('context', None) == parent.user._context
             exception = kwargs.get('exception', None)
             assert isinstance(exception, RuntimeError)
             assert str(exception) == 'response did not contain any payload'
@@ -548,38 +548,38 @@ class TestMessageQueueClientTask:
             task_factory.name = 'mq-get-example'
             task_factory.metadata_variable = 'mq-client-metadata'
 
-            task(scenario)
+            task(parent)
 
-            assert scenario.user._context['variables'].get('mq-client-var', None) == '{"hello": "world", "foo": "bar"}'
-            assert scenario.user._context['variables'].get('mq-client-metadata', None) == '{"x-foo-bar": "test"}'
+            assert parent.user._context['variables'].get('mq-client-var', None) == '{"hello": "world", "foo": "bar"}'
+            assert parent.user._context['variables'].get('mq-client-metadata', None) == '{"x-foo-bar": "test"}'
             assert send_json_mock.call_count == 5
             assert recv_json_mock.call_count == 6
 
             assert fire_spy.call_count == 4
             _, kwargs = fire_spy.call_args_list[-1]
             assert kwargs.get('request_type', None) == 'CLTSK'
-            assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} mq-get-example'
+            assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} mq-get-example'
             assert kwargs.get('response_time', None) >= 0.0
             assert kwargs.get('response_length', None) == len(messages[0].get('payload', ''))
-            assert kwargs.get('context', None) == scenario.user._context
+            assert kwargs.get('context', None) == parent.user._context
             assert kwargs.get('exception', RuntimeError) is None
 
             async_message_request_mock = mocker.patch('grizzly.tasks.clients.messagequeue.async_message_request', side_effect=[AsyncMessageError('oooh nooo')])
-            scenario.user._scenario.failure_exception = RestartScenario
+            parent.user._scenario.failure_exception = RestartScenario
 
-            log_error_mock = mocker.patch.object(scenario.stats, 'log_error')
-            mocker.patch.object(scenario, 'on_start', return_value=None)
-            mocker.patch.object(scenario, 'wait', side_effect=[RuntimeError])
-            scenario.user.environment.catch_exceptions = False
+            log_error_mock = mocker.patch.object(parent.stats, 'log_error')
+            mocker.patch.object(parent, 'on_start', return_value=None)
+            mocker.patch.object(parent, 'wait', side_effect=[RuntimeError])
+            parent.user.environment.catch_exceptions = False
 
-            scenario.tasks.clear()
-            scenario._task_queue.clear()
-            scenario._task_queue.append(task)
-            scenario.task_count = 1
+            parent.tasks.clear()
+            parent._task_queue.clear()
+            parent._task_queue.append(task)
+            parent.task_count = 1
 
             with pytest.raises(RuntimeError):
                 with caplog.at_level(logging.INFO):
-                    scenario.run()
+                    parent.run()
 
             async_message_request_mock.assert_called_once()
             log_error_mock.assert_called_once_with(None)
@@ -593,11 +593,9 @@ class TestMessageQueueClientTask:
     def test_put(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture, tmp_path_factory: TempPathFactory) -> None:
         noop_zmq('grizzly.tasks.clients.messagequeue')
 
-        _, _, scenario = grizzly_fixture()
+        parent = grizzly_fixture()
 
-        assert scenario is not None
-
-        fire_spy = mocker.spy(scenario.user.environment.events.request, 'fire')
+        fire_spy = mocker.spy(parent.user.environment.events.request, 'fire')
         recv_json_mock = noop_zmq.get_mock('recv_json')
         send_json_mock = noop_zmq.get_mock('send_json')
 
@@ -635,9 +633,9 @@ class TestMessageQueueClientTask:
 
             task = task_factory()
 
-            task(scenario)
+            task(parent)
 
-            assert task_factory._worker.get(id(scenario.user), None) == 'dddd-eeee-ffff-9999'
+            assert task_factory._worker.get(id(parent.user), None) == 'dddd-eeee-ffff-9999'
 
             assert recv_json_mock.call_count == 2
             assert send_json_mock.call_count == 2
@@ -645,7 +643,7 @@ class TestMessageQueueClientTask:
             assert args == ({
                 'action': 'PUT',
                 'worker': 'dddd-eeee-ffff-9999',
-                'client': id(scenario.user),
+                'client': id(parent.user),
                 'context': {
                     'endpoint': 'queue:INCOMING.MSG',
                 },
@@ -656,10 +654,10 @@ class TestMessageQueueClientTask:
             assert fire_spy.call_count == 1
             _, kwargs = fire_spy.call_args_list[-1]
             assert kwargs.get('request_type', None) == 'CLTSK'
-            assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} MessageQueue->queue:INCOMING.MSG'
+            assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} MessageQueue->queue:INCOMING.MSG'
             assert kwargs.get('response_time', None) >= 0.0
             assert kwargs.get('response_length', None) == len(source)
-            assert kwargs.get('context', None) == scenario.user._context
+            assert kwargs.get('context', None) == parent.user._context
             assert kwargs.get('exception', RuntimeError) is None
 
             test_context = Path(task_factory._context_root)
@@ -671,7 +669,7 @@ class TestMessageQueueClientTask:
             recv_json_mock.side_effect = [{'success': True, 'payload': source_file.read_text()}]
             task_factory.name = 'mq-example-put'
 
-            task(scenario)
+            task(parent)
 
             assert recv_json_mock.call_count == 3
             assert send_json_mock.call_count == 3
@@ -679,7 +677,7 @@ class TestMessageQueueClientTask:
             assert args == ({
                 'action': 'PUT',
                 'worker': 'dddd-eeee-ffff-9999',
-                'client': id(scenario.user),
+                'client': id(parent.user),
                 'context': {
                     'endpoint': 'queue:INCOMING.MSG',
                 },
@@ -690,10 +688,10 @@ class TestMessageQueueClientTask:
             assert fire_spy.call_count == 2
             _, kwargs = fire_spy.call_args_list[-1]
             assert kwargs.get('request_type', None) == 'CLTSK'
-            assert kwargs.get('name', None) == f'{scenario.user._scenario.identifier} mq-example-put'
+            assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} mq-example-put'
             assert kwargs.get('response_time', None) >= 0.0
             assert kwargs.get('response_length', None) == len(source_file.read_text())
-            assert kwargs.get('context', None) == scenario.user._context
+            assert kwargs.get('context', None) == parent.user._context
             assert kwargs.get('exception', RuntimeError) is None
         finally:
             if zmq_context is not None:

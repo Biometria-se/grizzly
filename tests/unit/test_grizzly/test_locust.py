@@ -35,8 +35,8 @@ from grizzly.locust import (
 from grizzly.types import RequestDirection, RequestMethod, RequestType
 from grizzly.types.locust import Environment
 from grizzly.types.behave import Context, Scenario
-from grizzly.context import GrizzlyContext, GrizzlyContextScenario
-from grizzly.tasks import GrizzlyTask, LogMessageTask, RequestTask, WaitTask
+from grizzly.context import GrizzlyContext
+from grizzly.tasks import LogMessageTask, RequestTask, WaitTask
 from grizzly.tasks.clients import MessageQueueClientTask
 from grizzly.users import RestApiUser, MessageQueueUser
 from grizzly.scenarios import IteratorScenario
@@ -190,11 +190,10 @@ def test_setup_locust_scenarios(behave_fixture: BehaveFixture, noop_zmq: NoopZmq
         setup_locust_scenarios(grizzly)
 
     grizzly.scenario.user.class_name = 'RestApiUser'
-    user_classes, tasks, start_messagequeue_daemon = setup_locust_scenarios(grizzly)
+    user_classes, start_messagequeue_daemon = setup_locust_scenarios(grizzly)
 
     assert not start_messagequeue_daemon
     assert len(user_classes) == 1
-    assert len(tasks) == 3
 
     user_class = user_classes[-1]
     assert issubclass(user_class, (RestApiUser, ))
@@ -216,11 +215,10 @@ def test_setup_locust_scenarios(behave_fixture: BehaveFixture, noop_zmq: NoopZmq
     if pymqi.__name__ != 'grizzly_extras.dummy_pymqi':
         grizzly.scenario.user.class_name = 'MessageQueueUser'
         grizzly.scenario.context['host'] = 'mq://test.example.org?QueueManager=QM01&Channel=TEST.CHANNEL'
-        user_classes, tasks, start_messagequeue_daemon = setup_locust_scenarios(grizzly)
+        user_classes, start_messagequeue_daemon = setup_locust_scenarios(grizzly)
 
         assert start_messagequeue_daemon == set(['async-messaged'])
         assert len(user_classes) == 1
-        assert len(tasks) == 3
 
         user_class = user_classes[-1]
         assert issubclass(user_class, (MessageQueueUser, ))
@@ -236,11 +234,10 @@ def test_setup_locust_scenarios(behave_fixture: BehaveFixture, noop_zmq: NoopZmq
         grizzly.scenario.user.class_name = 'RestApiUser'
         grizzly.scenario.context['host'] = 'https://api.example.io'
         grizzly.scenario.tasks.add(MessageQueueClientTask(RequestDirection.FROM, 'mqs://username:password@mq.example.io/queue:INCOMING?QueueManager=QM01&Channel=TCP.IN'))
-        user_classes, tasks, start_messagequeue_daemon = setup_locust_scenarios(grizzly)
+        user_classes, start_messagequeue_daemon = setup_locust_scenarios(grizzly)
 
         assert start_messagequeue_daemon == set(['async-messaged'])
         assert len(user_classes) == 1
-        assert len(tasks) == 4
 
 
 @pytest.mark.parametrize('user_count, user_distribution', [
@@ -264,7 +261,7 @@ def test_setup_locust_scenarios_user_distribution(behave_fixture: BehaveFixture,
         grizzly.scenario.user.class_name = 'RestApiUser'
         grizzly.scenario.user.weight = distribution[index]
 
-    user_classes, _, _ = setup_locust_scenarios(grizzly)
+    user_classes, _ = setup_locust_scenarios(grizzly)
 
     for index, user_class in enumerate(user_classes):
         assert user_class.fixed_count == user_distribution[index]
@@ -383,6 +380,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
         )
 
     grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     user_classes: List[Type[User]] = []
     environment = Environment(
         user_classes=user_classes,
@@ -394,7 +392,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
     try:
         # event listeners for worker node
         mock_on_worker(True)
-        external_dependencies, message_handlers = setup_environment_listeners(behave, [])
+        external_dependencies, message_handlers = setup_environment_listeners(behave)
 
         assert len(environment.events.init._handlers) == 1
         assert len(environment.events.test_start._handlers) == 1
@@ -407,7 +405,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
         environment.events.spawning_complete._handlers = []  # grizzly handler should only append
         grizzly.setup.statistics_url = 'influxdb://influx.example.com/testdb'
 
-        external_dependencies, message_handlers = setup_environment_listeners(behave, [])
+        external_dependencies, message_handlers = setup_environment_listeners(behave)
 
         assert len(environment.events.init._handlers) == 2
         assert len(environment.events.test_start._handlers) == 1
@@ -427,19 +425,18 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
 
         task = RequestTask(RequestMethod.POST, 'test-post-1', '/api/v3/test/post/1')
         task.source = '{{ AtomicIntegerIncrementer.value }}, {{ test_id }}'
-        task.scenario = GrizzlyContextScenario(1)
-        task.scenario.name = 'test-scenario-1'
-        task.scenario.user.class_name = 'RestApiUser'
-        tasks: List[GrizzlyTask] = [task]
+        grizzly = cast(GrizzlyContext, behave.grizzly)
+        grizzly.scenario.tasks.clear()
+        grizzly.scenario.tasks.add(task)
 
         with pytest.raises(AssertionError) as ae:
-            setup_environment_listeners(behave, tasks)
+            setup_environment_listeners(behave)
         assert 'variables has been found in templates, but have not been declared: test_id' in str(ae)
 
         grizzly.state.variables['test_id'] = 'test-1'
         environment.events.spawning_complete._handlers = []
 
-        external_dependencies, message_handlers = setup_environment_listeners(behave, tasks)
+        external_dependencies, message_handlers = setup_environment_listeners(behave)
         assert len(environment.events.init._handlers) == 1
         assert len(environment.events.test_start._handlers) == 1
         assert len(environment.events.test_stop._handlers) == 1
@@ -452,7 +449,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
         grizzly.setup.statistics_url = 'influxdb://influx.example.com/testdb'
         environment.events.spawning_complete._handlers = []
 
-        external_dependencies, message_handlers = setup_environment_listeners(behave, tasks)
+        external_dependencies, message_handlers = setup_environment_listeners(behave)
         assert len(environment.events.init._handlers) == 2
         assert len(environment.events.test_start._handlers) == 1
         assert len(environment.events.test_stop._handlers) == 1
@@ -466,7 +463,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
         grizzly.scenario.validation.fail_ratio = 0.1
         environment.events.spawning_complete._handlers = []
 
-        external_dependencies, message_handlers = setup_environment_listeners(behave, tasks)
+        external_dependencies, message_handlers = setup_environment_listeners(behave)
         assert len(environment.events.init._handlers) == 2
         assert len(environment.events.test_start._handlers) == 1
         assert len(environment.events.test_stop._handlers) == 1
@@ -481,7 +478,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
         environment.events.spawning_complete._handlers = []
 
         # problems initializing testdata
-        def mocked_initialize_testdata(grizzly: GrizzlyContext, request_tasks: List[RequestTask]) -> Any:
+        def mocked_initialize_testdata(grizzly: GrizzlyContext) -> Any:
             raise TemplateError('failed to initialize testdata')
 
         mocker.patch(
@@ -490,7 +487,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
         )
 
         with pytest.raises(AssertionError) as ae:
-            setup_environment_listeners(behave, tasks)
+            setup_environment_listeners(behave)
         assert 'error parsing request payload: ' in str(ae)
     finally:
         try:

@@ -39,7 +39,7 @@ def test_atomiccsvwriter__base_type__(grizzly_fixture: GrizzlyFixture) -> None:
 
 
 def test_atomiccsvwriter_message_handler(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
-    env, _, _ = grizzly_fixture()
+    parent = grizzly_fixture()
 
     destination_file = grizzly_fixture.test_context / 'foobar.csv'
 
@@ -53,7 +53,7 @@ def test_atomiccsvwriter_message_handler(grizzly_fixture: GrizzlyFixture, mocker
         }
     }, node_id=None)
 
-    atomiccsvwriter_message_handler(env, message)
+    atomiccsvwriter_message_handler(parent.user.environment, message)
 
     assert destination_file.exists()
     assert destination_file.read_text() == 'foo,bar\nhello,world!\n'
@@ -66,7 +66,7 @@ def test_atomiccsvwriter_message_handler(grizzly_fixture: GrizzlyFixture, mocker
         }
     }, node_id=None)
 
-    atomiccsvwriter_message_handler(env, message)
+    atomiccsvwriter_message_handler(parent.user.environment, message)
 
     assert destination_file.read_text() == 'foo,bar\nhello,world!\nbar,foo\n'
 

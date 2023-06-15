@@ -56,9 +56,7 @@ class TestSetVariableTask:
         assert task_factory.variable_template == '{{ foobar }}'
 
     def test___call__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, cleanup: AtomicVariableCleanupFixture) -> None:
-        _, _, scenario = grizzly_fixture()
-
-        assert scenario is not None
+        parent = grizzly_fixture()
 
         try:
             # non-Atomic variable
@@ -66,15 +64,15 @@ class TestSetVariableTask:
 
             task = task_factory()
 
-            assert 'foobar' not in scenario.user._context['variables']
+            assert 'foobar' not in parent.user._context['variables']
 
-            scenario.user._context['variables'].update({'value': 'hello world!'})
+            parent.user._context['variables'].update({'value': 'hello world!'})
 
-            task(scenario)
+            task(parent)
 
-            assert scenario.user._context['variables'].get('foobar', None) == 'hello world!'
+            assert parent.user._context['variables'].get('foobar', None) == 'hello world!'
 
-            scenario.user._context['variables'].clear()
+            parent.user._context['variables'].clear()
 
             # settable Atomic variable
             set_value_mock = mocker.patch('grizzly.testdata.variables.csv_writer.AtomicCsvWriter.__setitem__', return_value=None)
@@ -82,12 +80,12 @@ class TestSetVariableTask:
             grizzly_fixture.grizzly.state.variables.update({'AtomicCsvWriter.output': 'output.csv | headers="foo,bar"'})
             GrizzlyVariables.initialize_variable(grizzly_fixture.grizzly, 'AtomicCsvWriter.output')
             task_factory_foo = SetVariableTask('AtomicCsvWriter.output', '{{ value }}')
-            scenario.user._context['variables'].update({'value': 'hello, world!'})
+            parent.user._context['variables'].update({'value': 'hello, world!'})
 
             task = task_factory_foo()
-            task(scenario)
+            task(parent)
 
             set_value_mock.assert_called_once_with('output', 'hello, world!')
-            assert 'AtomicCsvWriter.output.foo' not in scenario.user._context['variables']
+            assert 'AtomicCsvWriter.output.foo' not in parent.user._context['variables']
         finally:
             cleanup()

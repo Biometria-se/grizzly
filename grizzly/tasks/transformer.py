@@ -28,7 +28,7 @@ then have the request type `TRNSF`.
 * `variable` _str_ - name of variable to save value to, must have been intialized
 '''
 from time import perf_counter
-from typing import TYPE_CHECKING, List, Callable, Any, Type, Optional
+from typing import TYPE_CHECKING, List, Callable, Any, Type
 
 from grizzly_extras.transformer import Transformer, transformer, TransformerContentType, TransformerError
 
@@ -37,7 +37,7 @@ from grizzly.exceptions import TransformerLocustError
 from . import GrizzlyTask, template, grizzlytask
 
 if TYPE_CHECKING:  # pragma: no cover
-    from grizzly.context import GrizzlyContextScenario, GrizzlyContext
+    from grizzly.context import GrizzlyContext
     from grizzly.scenarios import GrizzlyScenario
 
 
@@ -58,9 +58,8 @@ class TransformerTask(GrizzlyTask):
         variable: str,
         content: str,
         content_type: TransformerContentType,
-        scenario: Optional['GrizzlyContextScenario'] = None,
     ) -> None:
-        super().__init__(scenario)
+        super().__init__()
 
         self.expression = expression
         self.variable = variable
@@ -113,14 +112,14 @@ class TransformerTask(GrizzlyTask):
                 response_time = int((perf_counter() - start) * 1000)
                 parent.user.environment.events.request.fire(
                     request_type='TRNSF',
-                    name=f'{self.scenario.identifier} Transformer=>{self.variable}',
+                    name=f'{parent.user._scenario.identifier} Transformer=>{self.variable}',
                     response_time=response_time,
                     response_length=response_length,
                     context=parent.user._context,
                     exception=exception,
                 )
 
-                if exception is not None and self.scenario.failure_exception is not None:
-                    raise self.scenario.failure_exception()
+                if exception is not None and parent.user._scenario.failure_exception is not None:
+                    raise parent.user._scenario.failure_exception()
 
         return task

@@ -73,7 +73,7 @@ Then post request "path/my_template.j2.xml" with name "FormPost" to endpoint "ex
 '''  # noqa: E501
 import json
 
-from typing import Dict, Optional, Any, Tuple, Union, cast
+from typing import Dict, Optional, Any, Tuple, Union, cast, TYPE_CHECKING
 from time import time
 from abc import ABCMeta
 
@@ -94,6 +94,10 @@ from . import logger
 
 from urllib3 import disable_warnings as urllib3_disable_warnings
 urllib3_disable_warnings()
+
+
+if TYPE_CHECKING:  # pargma: no cover
+    from grizzly.scenarios import GrizzlyScenario
 
 
 class RestApiUserMeta(UserMeta, ABCMeta):
@@ -184,7 +188,7 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
 
         return message
 
-    def async_request(self, request: RequestTask) -> GrizzlyResponse:
+    def async_request(self, parent: 'GrizzlyScenario', request: RequestTask) -> GrizzlyResponse:
         client = FastHttpSession(
             environment=self.environment,
             base_url=self.host,
@@ -195,13 +199,13 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
             network_timeout=60.0,
         )
 
-        return self._request(client, request)
+        return cast(GrizzlyResponse, self._request(parent, request, client))
 
-    def request(self, request: RequestTask) -> GrizzlyResponse:
-        return self._request(self.client, request)
+    def request(self, parent: 'GrizzlyScenario', request: RequestTask) -> GrizzlyResponse:
+        return cast(GrizzlyResponse, self._request(parent, request, self.client))
 
     @refresh_token(AAD)
-    def _request(self, client: Union[FastHttpSession, ResponseEventSession], request: RequestTask) -> GrizzlyResponse:
+    def _request(self, parent: 'GrizzlyScenario', request: RequestTask, client: Union[FastHttpSession, ResponseEventSession]) -> GrizzlyResponse:
         if request.method not in [RequestMethod.GET, RequestMethod.PUT, RequestMethod.POST]:
             raise NotImplementedError(f'{request.method.name} is not implemented for {self.__class__.__name__}')
 
@@ -229,7 +233,7 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
                 'verify': self._context.get('verify_certificates', True),
             })
 
-        name = f'{request.scenario.identifier} {request_name}'
+        name = f'{self._scenario.identifier} {request_name}'
 
         if payload is not None:
             if request.response.content_type == TransformerContentType.JSON:
@@ -280,8 +284,8 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
                     message = self.get_error_message(response)
                     response.failure(f'{response.status_code} not in {request.response.status_codes}: {message}')
 
-            if response._manual_result is not True and request.scenario.failure_exception is not None:
-                raise request.scenario.failure_exception()
+            if response._manual_result is not True and self._scenario.failure_exception is not None:
+                raise self._scenario.failure_exception()
 
             headers = dict(response.headers.items()) if response.headers not in [None, {}] else None
 

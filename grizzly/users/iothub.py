@@ -27,7 +27,7 @@ Then send request "test/blob.file" to endpoint "uploaded_blob_filename"
 ```
 '''
 
-from typing import Dict, Any, Tuple, Optional
+from typing import Dict, Any, Tuple, Optional, TYPE_CHECKING
 from urllib.parse import urlparse, parse_qs
 from time import perf_counter as time
 
@@ -41,6 +41,9 @@ from grizzly.utils import merge_dicts
 
 from .base import GrizzlyUser
 from . import logger
+
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.scenarios import GrizzlyScenario
 
 
 class IotHubUser(GrizzlyUser):
@@ -80,10 +83,10 @@ class IotHubUser(GrizzlyUser):
         self.client.disconnect()
         super().on_stop()
 
-    def request(self, request: RequestTask) -> GrizzlyResponse:
+    def request(self, parent: 'GrizzlyScenario', request: RequestTask) -> GrizzlyResponse:
         request_name, endpoint, payload, _, _ = self.render(request)
 
-        name = f'{request.scenario.identifier} {request_name}'
+        name = f'{self._scenario.identifier} {request_name}'
 
         exception: Optional[Exception] = None
         start_time = time()
@@ -135,7 +138,7 @@ class IotHubUser(GrizzlyUser):
                 logger.error(f'Failed to upload file "{filename}" to IoT hub', exc_info=exception)
                 if isinstance(exception, NotImplementedError):
                     raise StopUser()
-                elif request.scenario.failure_exception is not None:
-                    raise request.scenario.failure_exception()
+                elif self._scenario.failure_exception is not None:
+                    raise self._scenario.failure_exception()
 
             return {}, payload

@@ -77,23 +77,21 @@ class TestLoopTask:
 
     def test___call__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         mocker.patch('grizzly.tasks.loop.gsleep', autospec=True)
-        _, _, scenario = grizzly_fixture()
-
-        assert scenario is not None
+        parent = grizzly_fixture()
 
         grizzly = grizzly_fixture.grizzly
 
-        request_spy = mocker.spy(scenario.user.environment.events.request, 'fire')
+        request_spy = mocker.spy(parent.user.environment.events.request, 'fire')
 
-        scenario_context = GrizzlyContextScenario(3)
-        scenario_context.name = scenario_context.description = 'test scenario'
+        scenario_context = GrizzlyContextScenario(3, behave=grizzly_fixture.behave.create_scenario('test scenario'))
+        parent.user._scenario = scenario_context
 
-        grizzly.state.variables['foobar'] = scenario.user._context['variables']['foobar'] = 'none'
+        grizzly.state.variables['foobar'] = parent.user._context['variables']['foobar'] = 'none'
 
-        task_factory = LoopTask(grizzly, 'test', '["hello", "world"]', 'foobar', scenario_context)
+        task_factory = LoopTask(grizzly, 'test', '["hello", "world"]', 'foobar')
 
         for i in range(0, 3):
-            task_factory.add(TestTask(name=f'{{{{ foobar }}}}-test-{i}', scenario=scenario_context))
+            task_factory.add(TestTask(name=f'{{{{ foobar }}}}-test-{i}'))
 
         assert sorted(task_factory.get_templates()) == sorted([
             'test:{{ foobar }}-test-0',
@@ -111,7 +109,7 @@ class TestLoopTask:
         assert total_task___call___count == len(task_factory.tasks)
 
         # normal, static
-        task(scenario)
+        task(parent)
 
         assert request_spy.call_count == 7  # loop task + 3 tasks * 2 values
 
@@ -144,9 +142,9 @@ class TestLoopTask:
 
         # normal, variable input
         grizzly.state.variables['json_input'] = 'none'
-        scenario.user._context['variables']['json_input'] = '["foo", "bar"]'
+        parent.user._context['variables']['json_input'] = '["foo", "bar"]'
         task_factory.values = '{{ json_input }}'
-        task(scenario)
+        task(parent)
 
         assert request_spy.call_count == 7  # loop task + 3 tasks * 2 values
 
@@ -177,7 +175,7 @@ class TestLoopTask:
 
         request_spy.reset_mock()
         del grizzly.state.variables['json_input']
-        del scenario.user._context['variables']['json_input']
+        del parent.user._context['variables']['json_input']
 
         # not a valid json input
         task_factory.values = '"hello'
@@ -186,7 +184,7 @@ class TestLoopTask:
         task = task_factory()
 
         with pytest.raises(RestartScenario):
-            task(scenario)
+            task(parent)
 
         assert request_spy.call_count == 1
         _, kwargs = request_spy.call_args_list[-1]
@@ -207,7 +205,7 @@ class TestLoopTask:
         task = task_factory()
 
         with pytest.raises(RestartScenario):
-            task(scenario)
+            task(parent)
 
         assert request_spy.call_count == 1
         _, kwargs = request_spy.call_args_list[-1]
@@ -231,7 +229,7 @@ class TestLoopTask:
         task = task_factory()
 
         with pytest.raises(RestartScenario):
-            task(scenario)
+            task(parent)
 
         assert request_spy.call_count == 4
 
@@ -248,18 +246,16 @@ class TestLoopTask:
 
     def test_on_event(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         mocker.patch('grizzly.tasks.loop.gsleep', autospec=True)
-        _, _, scenario = grizzly_fixture()
-
-        assert scenario is not None
+        parent = grizzly_fixture()
 
         grizzly = grizzly_fixture.grizzly
 
-        scenario_context = GrizzlyContextScenario(3)
+        scenario_context = GrizzlyContextScenario(3, behave=grizzly_fixture.behave.create_scenario('test scenario'))
         scenario_context.name = scenario_context.description = 'test scenario'
 
-        grizzly.state.variables['foobar'] = scenario.user._context['variables']['foobar'] = 'none'
+        grizzly.state.variables['foobar'] = parent.user._context['variables']['foobar'] = 'none'
 
-        task_factory = LoopTask(grizzly, 'test', '[1, 2, 3, 4]', 'foobar', scenario_context)
+        task_factory = LoopTask(grizzly, 'test', '[1, 2, 3, 4]', 'foobar')
         task_factory.add(TestTask(name='test-1'))
         task_factory.add(TestTask(name='test-2'))
 
@@ -268,12 +264,12 @@ class TestLoopTask:
 
         task = task_factory()
 
-        task.on_start(scenario)
+        task.on_start(parent)
 
         assert on_start_mock.call_count == 2
         assert on_stop_mock.call_count == 0
 
-        task.on_stop(scenario)
+        task.on_stop(parent)
 
         assert on_start_mock.call_count == 2
         assert on_stop_mock.call_count == 2

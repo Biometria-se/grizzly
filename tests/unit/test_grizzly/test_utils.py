@@ -33,7 +33,7 @@ from grizzly.users.base import GrizzlyUser
 from grizzly.scenarios import IteratorScenario
 from grizzly_extras.async_message import AsyncMessageRequest
 
-from tests.fixtures import LocustFixture, BehaveFixture, GrizzlyFixture
+from tests.fixtures import BehaveFixture, GrizzlyFixture
 
 
 class TestModuleLoader:
@@ -46,21 +46,23 @@ class TestModuleLoader:
         with pytest.raises(AttributeError):
             ModuleLoader[GrizzlyUser].load('grizzly.users', class_name)
 
-    def test_load_user_class(self, locust_fixture: LocustFixture) -> None:
+    def test_load_user_class(self, behave_fixture: BehaveFixture) -> None:
         try:
             test_context = GrizzlyContext()
+            test_context.scenarios.create(behave_fixture.create_scenario('test scenario'))
             test_context.scenario.context['host'] = 'test'
             user_class_name = 'RestApiUser'
             for user_package in ['', 'grizzly.users.', 'grizzly.users.restapi.']:
                 user_class_name_value = f'{user_package}{user_class_name}'
                 user_class = cast(Type[GrizzlyUser], ModuleLoader[GrizzlyUser].load('grizzly.users', user_class_name_value))
+                user_class.__scenario__ = test_context.scenario
                 user_class.host = test_context.scenario.context['host']
                 assert user_class.__module__ == 'grizzly.users.restapi'
                 assert user_class.host == 'test'
                 assert hasattr(user_class, 'tasks')
 
                 # try to initialize it, without any token information
-                user_class_instance = user_class(locust_fixture.env)
+                user_class_instance = user_class(behave_fixture.locust.environment)
 
                 # with token context
                 test_context.scenario.context['token'] = {
@@ -69,7 +71,7 @@ class TestModuleLoader:
                     'url': 'http://test',
                     'resource': None,
                 }
-                user_class_instance = user_class(locust_fixture.env)
+                user_class_instance = user_class(behave_fixture.locust.environment)
 
                 # without token context
                 test_context.scenario.context['token'] = {
@@ -99,10 +101,8 @@ def test_fail_directly(behave_fixture: BehaveFixture) -> None:
     assert behave.config.verbose is True
 
 
-def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
-    scenario = GrizzlyContextScenario(1)
-    scenario.name = 'A scenario description'
-    scenario.description = scenario.name
+def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:
+    scenario = GrizzlyContextScenario(1, behave=behave_fixture.create_scenario('A scenario description'))
 
     with pytest.raises(ValueError) as ve:
         create_user_class_type(scenario)
@@ -130,7 +130,7 @@ def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
     user_class_type_1 = cast(Type[RestApiUser], user_class_type_1)
     assert user_class_type_1.__name__ == f'grizzly.users.RestApiUser_{scenario.identifier}'
     assert user_class_type_1.weight == 1
-    assert user_class_type_1._scenario is scenario
+    assert user_class_type_1.__scenario__ is scenario
     assert user_class_type_1.host == 'http://localhost:8000'
     assert user_class_type_1.__module__ == 'grizzly.users.restapi'
     assert user_class_type_1._context == {
@@ -152,7 +152,7 @@ def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
         },
         'metadata': None,
     }
-    user_type_1 = user_class_type_1(locust_fixture.env)
+    user_type_1 = user_class_type_1(behave_fixture.locust.environment)
 
     assert user_type_1.headers == {
         'Content-Type': 'application/json',
@@ -179,10 +179,9 @@ def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
         },
         'metadata': None,
     }
-    assert user_type_1._scenario is scenario
+    assert user_type_1.__scenario__ is scenario
 
-    scenario = GrizzlyContextScenario(1)
-    scenario.name = 'TestTestTest'
+    scenario = GrizzlyContextScenario(1, behave=behave_fixture.create_scenario('TestTestTest'))
     scenario.user.class_name = 'RestApiUser'
     scenario.context['metadata'] = {
         'Content-Type': 'application/xml',
@@ -210,7 +209,7 @@ def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
     user_class_type_2 = cast(Type[RestApiUser], user_class_type_2)
     assert user_class_type_2.__name__ == f'RestApiUser_{scenario.identifier}'
     assert user_class_type_2.weight == 1
-    assert user_class_type_2._scenario is scenario
+    assert user_class_type_2.__scenario__ is scenario
     assert user_class_type_2.host == 'http://localhost:8001'
     assert user_class_type_2.__module__ == 'grizzly.users.restapi'
     assert user_class_type_2._context == {
@@ -240,7 +239,7 @@ def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
         },
     }
 
-    user_type_2 = user_class_type_2(locust_fixture.env)
+    user_type_2 = user_class_type_2(behave_fixture.locust.environment)
     assert user_type_2.headers == {
         'Content-Type': 'application/xml',
         'x-grizzly-user': f'RestApiUser_{scenario.identifier}',
@@ -273,10 +272,9 @@ def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
             'Foo-Bar': 'hello world',
         },
     }
-    assert user_type_2._scenario is scenario
+    assert user_type_2.__scenario__ is scenario
 
-    scenario = GrizzlyContextScenario(1)
-    scenario.name = 'TestTestTest2'
+    scenario = GrizzlyContextScenario(1, behave=behave_fixture.create_scenario('TestTestTest2'))
     scenario.user.class_name = 'RestApiUser'
     scenario.context = {'test': {'value': 'hello world', 'description': 'simple text'}}
     user_class_type_3 = create_user_class_type(scenario, {'test': {'value': 1}})
@@ -286,7 +284,7 @@ def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
     assert user_class_type_3.__name__ == f'RestApiUser_{scenario.identifier}'
     assert user_class_type_3.weight == 1
     assert user_class_type_3.fixed_count == 0
-    assert user_class_type_3._scenario is scenario
+    assert user_class_type_3.__scenario__ is scenario
     assert user_class_type_3.host == 'http://localhost:8002'
     assert user_class_type_3.__module__ == 'grizzly.users.restapi'
     assert user_class_type_3._context == {
@@ -323,7 +321,7 @@ def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
     assert user_class_type_3.__name__ == f'RestApiUser_{scenario.identifier}'
     assert user_class_type_3.weight == 1
     assert user_class_type_3.fixed_count == 10
-    assert user_class_type_3._scenario is scenario
+    assert user_class_type_3.__scenario__ is scenario
     assert user_class_type_3.host == 'http://localhost:8002'
     assert user_class_type_3.__module__ == 'grizzly.users.restapi'
     assert user_class_type_3._context == {
@@ -351,15 +349,13 @@ def test_create_user_class_type(locust_fixture: LocustFixture) -> None:
     }
 
     with pytest.raises(AttributeError):
-        scenario = GrizzlyContextScenario(1)
-        scenario.name = 'A scenario description'
+        scenario = GrizzlyContextScenario(1, behave=behave_fixture.create_scenario('A scenario description'))
         scenario.user.class_name = 'DoNotExistInGrizzlyUsersUser'
         create_user_class_type(scenario)
 
 
-def test_create_scenario_class_type() -> None:
-    scenario = GrizzlyContextScenario(1)
-    scenario.name = 'A scenario description'
+def test_create_scenario_class_type(behave_fixture: BehaveFixture) -> None:
+    scenario = GrizzlyContextScenario(1, behave=behave_fixture.create_scenario('A scenario description'))
 
     with pytest.raises(ModuleNotFoundError) as mnfe:
         create_scenario_class_type('custom.tasks.CustomTasks', scenario)
@@ -377,8 +373,7 @@ def test_create_scenario_class_type() -> None:
     assert task_class_type_1.tasks[-1] is last_task_1
     assert last_task_1.__name__ == 'pace'
 
-    scenario = GrizzlyContextScenario(2)
-    scenario.name = 'TestTestTest'
+    scenario = GrizzlyContextScenario(2, behave=behave_fixture.create_scenario('TestTestTest'))
     scenario.pace = '2000'
     task_class_type_2 = create_scenario_class_type('IteratorScenario', scenario)
     assert issubclass(task_class_type_2, (IteratorScenario, TaskSet))
@@ -394,7 +389,7 @@ def test_create_scenario_class_type() -> None:
     assert task_class_type_1.tasks != task_class_type_2.tasks
 
     with pytest.raises(AttributeError):
-        scenario = GrizzlyContextScenario(3)
+        scenario = GrizzlyContextScenario(3, behave=behave_fixture.create_scenario('A scenario description'))
         scenario.name = 'A scenario description'
         create_scenario_class_type('DoesNotExistInGrizzlyScenariosModel', scenario)
 
@@ -617,9 +612,7 @@ EXPLANATION:
 
 
 def test_async_message_request_wrapper(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
-    _, _, scenario = grizzly_fixture()
-
-    assert scenario is not None
+    parent = grizzly_fixture()
 
     async_message_request_mock = mocker.patch('grizzly.utils.async_message_request', return_value=None)
     client_mock = mocker.MagicMock()
@@ -631,9 +624,9 @@ def test_async_message_request_wrapper(grizzly_fixture: GrizzlyFixture, mocker: 
         }
     }
 
-    async_message_request_wrapper(scenario, client_mock, request)
+    async_message_request_wrapper(parent, client_mock, request)
 
-    request.update({'client': id(scenario.user)})
+    request.update({'client': id(parent.user)})
 
     async_message_request_mock.assert_called_once_with(client_mock, request)
     async_message_request_mock.reset_mock()
@@ -647,17 +640,17 @@ def test_async_message_request_wrapper(grizzly_fixture: GrizzlyFixture, mocker: 
         }
     }
 
-    async_message_request_wrapper(scenario, client_mock, request)
+    async_message_request_wrapper(parent, client_mock, request)
 
-    async_message_request_mock.assert_called_once_with(client_mock, {'context': {'endpoint': 'hello !'}, 'client': id(scenario.user)})
+    async_message_request_mock.assert_called_once_with(client_mock, {'context': {'endpoint': 'hello !'}, 'client': id(parent.user)})
     async_message_request_mock.reset_mock()
 
     # template to render, variable set
-    scenario.user._context['variables'].update({'world': 'foobar'})
+    parent.user._context['variables'].update({'world': 'foobar'})
 
-    async_message_request_wrapper(scenario, client_mock, request)
+    async_message_request_wrapper(parent, client_mock, request)
 
-    async_message_request_mock.assert_called_once_with(client_mock, {'context': {'endpoint': 'hello foobar!'}, 'client': id(scenario.user)})
+    async_message_request_mock.assert_called_once_with(client_mock, {'context': {'endpoint': 'hello foobar!'}, 'client': id(parent.user)})
 
 
 def test_safe_del() -> None:

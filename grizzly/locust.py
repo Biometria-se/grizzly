@@ -21,7 +21,6 @@ from . import __version__, __locust_version__
 from .listeners import init, init_statistics_listener, quitting, validate_result, spawning_complete, locust_test_start, locust_test_stop
 from .testdata.utils import initialize_testdata
 from .context import GrizzlyContext
-from .tasks import GrizzlyTask
 from .utils import create_scenario_class_type, create_user_class_type
 from .types import RequestType, TestdataType
 from .types.locust import Environment, LocustRunner, MasterRunner, WorkerRunner, MessageHandler, Message
@@ -74,9 +73,8 @@ def on_local(context: Context) -> bool:
     return value
 
 
-def setup_locust_scenarios(grizzly: GrizzlyContext) -> Tuple[List[Type[User]], List[GrizzlyTask], Set[str]]:
+def setup_locust_scenarios(grizzly: GrizzlyContext) -> Tuple[List[Type[User]], Set[str]]:
     user_classes: List[Type[User]] = []
-    tasks: List[GrizzlyTask] = []
 
     scenarios = grizzly.scenarios()
 
@@ -125,7 +123,6 @@ def setup_locust_scenarios(grizzly: GrizzlyContext) -> Tuple[List[Type[User]], L
         scenario.name = scenario_type.__name__
         for task in scenario.tasks:
             scenario_type.populate(task)
-            tasks.append(task)
 
             dependencies = getattr(task, '__dependencies__', None)
             if dependencies is not None:
@@ -139,7 +136,7 @@ def setup_locust_scenarios(grizzly: GrizzlyContext) -> Tuple[List[Type[User]], L
 
         user_classes.append(user_class_type)
 
-    return user_classes, tasks, external_dependencies
+    return user_classes, external_dependencies
 
 
 def setup_resource_limits(context: Context) -> None:
@@ -161,7 +158,7 @@ def setup_resource_limits(context: Context) -> None:
             )
 
 
-def setup_environment_listeners(context: Context, tasks: List[GrizzlyTask]) -> Tuple[Set[str], Dict[str, MessageHandler]]:
+def setup_environment_listeners(context: Context) -> Tuple[Set[str], Dict[str, MessageHandler]]:
     grizzly = cast(GrizzlyContext, context.grizzly)
 
     environment = grizzly.state.locust.environment
@@ -179,7 +176,7 @@ def setup_environment_listeners(context: Context, tasks: List[GrizzlyTask]) -> T
 
     # initialize testdata
     try:
-        testdata, external_dependencies, message_handlers = initialize_testdata(grizzly, tasks)
+        testdata, external_dependencies, message_handlers = initialize_testdata(grizzly)
     except TemplateError as e:
         logger.error(e, exc_info=True)
         raise AssertionError(f'error parsing request payload: {e}') from e
@@ -340,10 +337,9 @@ def run(context: Context) -> int:
 
     external_processes: Dict[str, subprocess.Popen] = {}
 
-    user_classes, tasks, external_dependencies = setup_locust_scenarios(grizzly)
+    user_classes, external_dependencies = setup_locust_scenarios(grizzly)
 
     assert len(user_classes) > 0, 'no users specified in feature'
-    assert len(tasks) > 0, 'no tasks specified in feature'
 
     try:
         setup_resource_limits(context)
@@ -383,7 +379,7 @@ def run(context: Context) -> int:
 
         grizzly.state.locust = runner
 
-        variable_dependencies, message_handlers = setup_environment_listeners(context, tasks)
+        variable_dependencies, message_handlers = setup_environment_listeners(context)
         external_dependencies.update(variable_dependencies)
 
         environment.events.init.fire(environment=environment, runner=runner, web_ui=None)
@@ -441,7 +437,6 @@ def run(context: Context) -> int:
                 logger.info(f'registered callback for message type "{message_type}"')
 
             runner.register_message('client_aborted', grizzly_test_abort)
-            logger.info('registered callback for message type "client_aborted"')
 
         main_greenlet = runner.greenlet
 

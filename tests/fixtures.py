@@ -41,7 +41,7 @@ from grizzly.types import GrizzlyResponseContextManager, RequestMethod
 from grizzly.types.behave import Context as BehaveContext, Scenario, Step, Feature
 from grizzly.tasks import RequestTask
 from grizzly.testdata.variables import destroy_variables
-from grizzly.context import GrizzlyContext, GrizzlyContextScenario
+from grizzly.context import GrizzlyContext
 from grizzly.types.locust import Environment, LocustRunner
 
 from .helpers import TestUser, TestScenario, RequestSilentFailureEvent
@@ -85,7 +85,7 @@ class LocustFixture:
     _test_context_root: str
     _tmp_path_factory: TempPathFactory
 
-    env: Environment
+    environment: Environment
     runner: LocustRunner
 
     def __init__(self, tmp_path_factory: TempPathFactory) -> None:
@@ -97,8 +97,8 @@ class LocustFixture:
         self._test_context_root = path.dirname(test_context)
 
         environ['GRIZZLY_CONTEXT_ROOT'] = self._test_context_root
-        self.env = Environment()
-        self.runner = self.env.create_local_runner()
+        self.environment = Environment()
+        self.runner = self.environment.create_local_runner()
 
         return self
 
@@ -228,11 +228,11 @@ class ParamikoFixture:
 
 
 class BehaveFixture:
-    _locust_fixture: LocustFixture
+    locust: LocustFixture
     context: BehaveContext
 
     def __init__(self, locust_fixture: LocustFixture) -> None:
-        self._locust_fixture = locust_fixture
+        self.locust = locust_fixture
 
     @property
     def grizzly(self) -> GrizzlyContext:
@@ -257,7 +257,7 @@ class BehaveFixture:
         context.scenario.background = Background(filename=None, line=None, keyword='', steps=[context.step], name='')
         context._runner.step_registry = step_registry
         grizzly = GrizzlyContext()
-        grizzly.state.locust = self._locust_fixture.runner
+        grizzly.state.locust = self.locust.runner
         setattr(context, 'grizzly', grizzly)
 
         self.context = context
@@ -296,9 +296,11 @@ class RequestTaskFixture:
     relative_path: str
     request: RequestTask
     test_context: Path
+    behave_fixture: BehaveFixture
 
-    def __init__(self, tmp_path_factory: TempPathFactory) -> None:
+    def __init__(self, tmp_path_factory: TempPathFactory, behave_fixture: BehaveFixture) -> None:
         self._tmp_path_factory = tmp_path_factory
+        self.behave_fixture = behave_fixture
 
     def __enter__(self) -> 'RequestTaskFixture':
         self.test_context = self._tmp_path_factory.mktemp('example_payload') / 'requests'
@@ -310,13 +312,6 @@ class RequestTaskFixture:
 
         request = RequestTask(RequestMethod.POST, endpoint='/api/test', name='request_task')
         request.source = REQUEST_TASK_TEMPLATE_CONTENTS
-        request.scenario = GrizzlyContextScenario(1)
-        request.scenario.name = 'test-scenario'
-        request.scenario.user.class_name = 'TestUser'
-        request.scenario.context['host'] = 'http://example.com'
-        request.scenario.behave = None
-
-        request.scenario.tasks.add(request)
 
         self.context_root = request_path
         self.request = request
@@ -338,12 +333,11 @@ class RequestTaskFixture:
 class GrizzlyFixture:
     request_task: RequestTaskFixture
     grizzly: GrizzlyContext
-    behave: BehaveContext
-    locust_env: Environment
+    behave: BehaveFixture
 
     def __init__(self, request_task: RequestTaskFixture, behave_fixture: BehaveFixture) -> None:
         self.request_task = request_task
-        self.behave = behave_fixture.context
+        self.behave = behave_fixture
 
     @property
     def test_context(self) -> Path:
@@ -352,7 +346,11 @@ class GrizzlyFixture:
     def __enter__(self) -> 'GrizzlyFixture':
         environ['GRIZZLY_CONTEXT_ROOT'] = path.abspath(path.join(self.request_task.context_root, '..'))
         self.grizzly = GrizzlyContext()
-        self.grizzly.scenarios.append(self.request_task.request.scenario)
+        self.grizzly.scenarios.clear()
+        self.grizzly.scenarios.create(self.behave.create_scenario('test scenario'))
+        self.grizzly.scenario.user.class_name = 'TestUser'
+        self.grizzly.scenario.context['host'] = 'http://example.com'
+        self.grizzly.scenario.tasks.add(self.request_task.request)
 
         return self
 
@@ -362,35 +360,36 @@ class GrizzlyFixture:
         user_type: Optional[Type['GrizzlyUser']] = None,
         scenario_type: Optional[Type['GrizzlyScenario']] = None,
         no_tasks: Optional[bool] = False,
-    ) -> Tuple[Environment, 'GrizzlyUser', Optional['GrizzlyScenario']]:
+    ) -> 'GrizzlyScenario':
         if user_type is None:
             user_type = TestUser
 
         if scenario_type is None:
             scenario_type = TestScenario
 
-        self.locust_env = Environment(
+        self.behave.locust.environment = Environment(
             host=host,
             user_classes=[user_type],
         )
 
-        self.request_task.request.scenario.description = self.request_task.request.scenario.name
+        self.grizzly.scenario.user.class_name = user_type.__name__
+        self.grizzly.scenario.context['host'] = host
         self.request_task.request.name = scenario_type.__name__
 
+        user_type.__scenario__ = self.grizzly.scenario
         user_type.host = host
-        user_type._scenario = self.request_task.request.scenario
-        user = user_type(self.locust_env)
+        user = user_type(self.behave.locust.environment)
 
         if not no_tasks:
             user_type.tasks = [scenario_type]
-            scenario = scenario_type(parent=user)
         else:
             user_type.tasks = []
-            scenario = None
 
-        self.grizzly.state.locust = self.locust_env.create_local_runner()
+        scenario = scenario_type(parent=user)
 
-        return self.locust_env, user, scenario
+        self.grizzly.state.locust = self.behave.locust.environment.create_local_runner()
+
+        return scenario
 
     def __exit__(
         self,
@@ -836,6 +835,7 @@ def step_start_webserver(context: Context, port: int) -> None:
             grizzly_package = '.'
             if self.has_pymqi():
                 grizzly_package = f'{grizzly_package}[mq]'
+                self._env.update({'LD_LIBRARY_PATH': environ.get('LD_LIBRARY_PATH', '')})
 
             rc, output = run_command(
                 ['python3', '-m', 'pip', 'install', grizzly_package],

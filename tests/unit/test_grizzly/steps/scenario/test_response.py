@@ -107,7 +107,7 @@ def test_step_response_save_matches_metadata(grizzly_fixture: GrizzlyFixture) ->
 
 
 def test_step_response_save_matches_payload(grizzly_fixture: GrizzlyFixture) -> None:
-    behave = grizzly_fixture.behave
+    behave = grizzly_fixture.behave.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
     request = cast(RequestTask, grizzly.scenario.tasks()[0])
 
@@ -139,7 +139,7 @@ def test_step_response_save_matches_payload(grizzly_fixture: GrizzlyFixture) -> 
 
 
 def test_step_response_save_metadata(grizzly_fixture: GrizzlyFixture) -> None:
-    behave = grizzly_fixture.behave
+    behave = grizzly_fixture.behave.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
     request = cast(RequestTask, grizzly.scenario.tasks()[0])
 
@@ -171,7 +171,7 @@ def test_step_response_save_metadata(grizzly_fixture: GrizzlyFixture) -> None:
 
 
 def test_step_response_save_payload(grizzly_fixture: GrizzlyFixture) -> None:
-    behave = grizzly_fixture.behave
+    behave = grizzly_fixture.behave.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
     request = cast(RequestTask, grizzly.scenario.tasks()[0])
 
@@ -203,7 +203,7 @@ def test_step_response_save_payload(grizzly_fixture: GrizzlyFixture) -> None:
 
 
 def test_step_response_validate_metadata(grizzly_fixture: GrizzlyFixture) -> None:
-    behave = grizzly_fixture.behave
+    behave = grizzly_fixture.behave.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
     request = cast(RequestTask, grizzly.scenario.tasks()[0])
 
@@ -226,7 +226,7 @@ def test_step_response_validate_metadata(grizzly_fixture: GrizzlyFixture) -> Non
 
 
 def test_step_response_validate_payload(grizzly_fixture: GrizzlyFixture) -> None:
-    behave = grizzly_fixture.behave
+    behave = grizzly_fixture.behave.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
     request = cast(RequestTask, grizzly.scenario.tasks()[0])
 
@@ -248,6 +248,7 @@ def test_step_response_validate_payload(grizzly_fixture: GrizzlyFixture) -> None
 def test_step_response_allow_status_codes(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     with pytest.raises(AssertionError) as ve:
         step_response_allow_status_codes(behave, '-200')
     assert 'there are no requests in the scenario' in str(ve)
@@ -277,6 +278,7 @@ def test_step_response_allow_status_codes(behave_fixture: BehaveFixture) -> None
 def test_step_response_allow_status_codes_table(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     with pytest.raises(AssertionError) as ae:
         step_response_allow_status_codes_table(behave)
@@ -309,7 +311,6 @@ def test_step_response_allow_status_codes_table(behave_fixture: BehaveFixture) -
     assert 'data table does not have column "status"' in str(ae)
 
     request = RequestTask(RequestMethod.GET, name='no-code', endpoint='/api/test')
-    request.scenario = grizzly.scenario
     grizzly.scenario.tasks().insert(0, request)
 
     rows = []
@@ -342,7 +343,6 @@ def test_step_response_allow_status_codes_table(behave_fixture: BehaveFixture) -
     request = RequestTask(RequestMethod.GET, name='test-get', endpoint='/api/test')
     grizzly.scenario.tasks.add(request)
     request = RequestTask(RequestMethod.GET, name='no-code', endpoint='/api/test')
-    request.scenario = grizzly.scenario
     grizzly.scenario.tasks().insert(0, request)
 
     step_response_allow_status_codes_table(behave)
@@ -354,6 +354,7 @@ def test_step_response_allow_status_codes_table(behave_fixture: BehaveFixture) -
 def test_step_response_content_type(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     with pytest.raises(AssertionError) as ae:
         step_response_content_type(behave, TransformerContentType.JSON)

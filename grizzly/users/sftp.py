@@ -30,7 +30,7 @@ Then put request "test/blob.file" to endpoint "/pub/blobs"
 Then get request from endpoint "/pub/blobs/blob.file"
 ```
 '''
-from typing import Any, Dict, Tuple, Optional, Union
+from typing import Any, Dict, Tuple, Optional, Union, TYPE_CHECKING
 from urllib.parse import urlparse
 from time import perf_counter as time
 from os import path, environ, mkdir
@@ -44,6 +44,10 @@ from grizzly.clients import SftpClientSession
 from grizzly.tasks import RequestTask
 
 from .base import GrizzlyUser, FileRequests, ResponseHandler, RequestLogger
+
+
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.scenarios import GrizzlyScenario
 
 
 class SftpUser(ResponseHandler, RequestLogger, GrizzlyUser, FileRequests):
@@ -117,10 +121,10 @@ class SftpUser(ResponseHandler, RequestLogger, GrizzlyUser, FileRequests):
         self.session.__exit__(None, None, None)
         super().on_stop()
 
-    def request(self, request: RequestTask) -> GrizzlyResponse:
+    def request(self, parent: 'GrizzlyScenario', request: RequestTask) -> GrizzlyResponse:
         request_name, endpoint, payload, _, _ = self.render(request)
 
-        name = f'{request.scenario.identifier} {request_name}'
+        name = f'{self._scenario.identifier} {request_name}'
 
         exception: Optional[Exception] = None
         headers: Dict[str, Union[str, int]] = {}
@@ -182,7 +186,7 @@ class SftpUser(ResponseHandler, RequestLogger, GrizzlyUser, FileRequests):
             if exception is not None:
                 if isinstance(exception, NotImplementedError):
                     raise StopUser()
-                elif request.scenario.failure_exception is not None:
-                    raise request.scenario.failure_exception()
+                elif self._scenario.failure_exception is not None:
+                    raise self._scenario.failure_exception()
 
             return None, payload

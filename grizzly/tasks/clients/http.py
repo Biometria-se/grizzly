@@ -51,7 +51,6 @@ from grizzly_extras.arguments import split_value, parse_arguments
 
 from grizzly.types import GrizzlyResponse, RequestDirection, bool_type
 from grizzly.scenarios import GrizzlyScenario
-from grizzly.context import GrizzlyContextScenario
 from grizzly.auth import GrizzlyHttpAuthClient, refresh_token, AAD, GrizzlyHttpContext
 
 from . import client, ClientTask
@@ -65,7 +64,6 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
     host: str
 
     _context: GrizzlyHttpContext
-    parent: Optional[GrizzlyScenario]
 
     def __init__(
         self,
@@ -78,7 +76,6 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
         source: Optional[str] = None,
         destination: Optional[str] = None,
         text: Optional[str] = None,
-        scenario: Optional[GrizzlyContextScenario] = None,
     ) -> None:
         verify = True
 
@@ -101,7 +98,6 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
             metadata_variable=metadata_variable,
             source=source,
             destination=destination,
-            scenario=scenario,
             text=text,
         )
 
@@ -120,14 +116,11 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
             'metadata': None,
             'auth': None,
         }
-        self.parent = None
 
     def on_start(self, parent: GrizzlyScenario) -> None:
         super().on_start(parent)
 
         self.session_started = time()
-        self.environment = parent.user.environment
-        self.parent = parent
         metadata = self._context.get('metadata', None)
         if metadata is not None:
             self.headers.update(metadata)

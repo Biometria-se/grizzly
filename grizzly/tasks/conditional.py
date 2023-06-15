@@ -41,7 +41,6 @@ from . import GrizzlyTask, GrizzlyTaskWrapper, template, grizzlytask
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.scenarios import GrizzlyScenario
-    from grizzly.context import GrizzlyContextScenario
 
 
 @template('condition', 'tasks', 'name')
@@ -53,8 +52,8 @@ class ConditionalTask(GrizzlyTaskWrapper):
 
     _pointer: Optional[bool]
 
-    def __init__(self, name: str, condition: str, scenario: Optional['GrizzlyContextScenario'] = None) -> None:
-        super().__init__(scenario)
+    def __init__(self, name: str, condition: str) -> None:
+        super().__init__()
 
         self.name = name
         self.condition = condition
@@ -122,7 +121,7 @@ class ConditionalTask(GrizzlyTaskWrapper):
                 exception = e
             finally:
                 response_time = int((perf_counter() - start) * 1000)
-                name = f'{self.scenario.identifier} {self.name}: {condition_rendered} ({task_count})'
+                name = f'{parent.user._scenario.identifier} {self.name}: {condition_rendered} ({task_count})'
 
                 # do not log these exceptions if thrown from wrapped task, just log the error for this task
                 if not isinstance(exception, (StopUser, RestartScenario,)):
@@ -138,8 +137,8 @@ class ConditionalTask(GrizzlyTaskWrapper):
                     stats = parent.user.environment.stats.get(name, 'COND')
                     stats.log_error(None)
 
-                if exception is not None and self.scenario.failure_exception is not None:
-                    raise self.scenario.failure_exception()
+                if exception is not None and parent.user._scenario.failure_exception is not None:
+                    raise parent.user._scenario.failure_exception()
 
         @task.on_start
         def on_start(parent: 'GrizzlyScenario') -> None:

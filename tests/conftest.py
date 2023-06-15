@@ -64,9 +64,9 @@ def _behave_fixture(locust_fixture: LocustFixture) -> Generator[BehaveFixture, N
         yield fixture
 
 
-@pytest.mark.usefixtures('tmp_path_factory')
-def _request_task(tmp_path_factory: TempPathFactory) -> Generator[RequestTaskFixture, None, None]:
-    with RequestTaskFixture(tmp_path_factory) as fixture:
+@pytest.mark.usefixtures('tmp_path_factory', 'behave_fixture')
+def _request_task(tmp_path_factory: TempPathFactory, behave_fixture: BehaveFixture) -> Generator[RequestTaskFixture, None, None]:
+    with RequestTaskFixture(tmp_path_factory, behave_fixture) as fixture:
         yield fixture
 
 
