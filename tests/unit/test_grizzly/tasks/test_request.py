@@ -94,9 +94,7 @@ class TestRequestTask:
 
         assert request_spy.call_count == 1
         args, kwargs = request_spy.call_args_list[0]
-        assert args[0] is parent
-        assert args[1] is task_factory
-        assert len(args) == 2
+        assert args == (task_factory,)
         assert kwargs == {}
 
         # automagically create template if not set

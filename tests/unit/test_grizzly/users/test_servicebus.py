@@ -59,8 +59,7 @@ class TestServiceBusUser:
             assert say_hello_spy.call_count == 3
 
             for index, (args, _) in enumerate(say_hello_spy.call_args_list):
-                assert args[0] is scenario.tasks()[index + 1]
-                assert args[1] == cast(RequestTask, scenario.tasks()[index + 1]).endpoint
+                assert args == (scenario.tasks()[index + 1],)
         finally:
             setattr(ServiceBusUser, '_scenario', None)
             ServiceBusUser._context = {
@@ -161,7 +160,7 @@ class TestServiceBusUser:
             ServiceBusUser.__scenario__ = behave_fixture.grizzly.scenario
             ServiceBusUser.host = 'Endpoint=sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789='
             user = ServiceBusUser(environment=behave_fixture.locust.environment)
-            async_action_spy = mocker.patch.object(user, 'async_action')
+            request_context_spy = mocker.patch.object(user, 'request_context')
 
             task = RequestTask(RequestMethod.SEND, name='test-send', endpoint='queue:test-queue')
             scenario = GrizzlyContextScenario(1, behave=behave_fixture.create_scenario('test'))
@@ -170,35 +169,27 @@ class TestServiceBusUser:
 
             user.disconnect(task, task.endpoint)
 
-            assert async_action_spy.call_count == 0
+            assert request_context_spy.call_count == 0
 
             user.hellos = set(['sender=queue:test-queue'])
             user.disconnect(task, task.endpoint)
 
-            assert async_action_spy.call_count == 1
-            args, kwargs = async_action_spy.call_args_list[0]
-
-            assert len(args) == 3
-            assert len(kwargs) == 0
-            assert args[1] == {
-                'action': 'DISCONNECT',
-                'context': {
-                    'endpoint': 'queue:test-queue',
-                    'url': user.am_context['url'],
-                    'message_wait': None,
-                }
-            }
-            assert args[2] == 'sender=queue:test-queue'
-
-            assert async_action_spy.return_value.__enter__.call_count == 1
-            assert async_action_spy.return_value.__enter__.return_value.update.call_count == 1
-            args, kwargs = async_action_spy.return_value.__enter__.return_value.update.call_args_list[-1]
-
+            assert request_context_spy.call_count == 1
+            args, kwargs = request_context_spy.call_args_list[0]
             assert kwargs == {}
-            assert len(args) == 1
-            assert args[0].get('meta', False)
-            assert args[0].get('failure_exception', StopUser) is None
+            assert args == (
+                task,
+                {
+                    'action': 'DISCONNECT',
+                    'context': {
+                        'endpoint': 'queue:test-queue',
+                        'url': user.am_context['url'],
+                        'message_wait': None,
+                    }
+                },
+            )
 
+            assert request_context_spy.return_value.__enter__.call_count == 1
             assert user.hellos == set()
         finally:
             setattr(ServiceBusUser, '_scenario', None)
@@ -219,7 +210,7 @@ class TestServiceBusUser:
         user.on_start()
         assert user.hellos == set()
 
-        async_action_spy = mocker.patch('grizzly.users.servicebus.ServiceBusUser.async_action', autospec=True)
+        request_context_spy = mocker.patch('grizzly.users.servicebus.ServiceBusUser.request_context', autospec=True)
 
         user.hellos = set(['sender=queue:test-queue'])
 
@@ -230,129 +221,120 @@ class TestServiceBusUser:
 
         with caplog.at_level(logging.ERROR):
             with pytest.raises(StopUser):
-                user.say_hello(task, task.endpoint)
-        assert 'ServiceBusUser: cannot say hello for test-send when endpoint is a template' in caplog.text
+                user.say_hello(task)
+        assert 'cannot say hello for test-send when endpoint is a template' in caplog.text
         assert user.hellos == set(['sender=queue:test-queue'])
-        assert async_action_spy.call_count == 0
+        assert request_context_spy.call_count == 0
         caplog.clear()
 
-        user.say_hello(task, 'queue:test-queue')
+        task.endpoint = 'queue:test-queue'
+        user.say_hello(task)
 
         assert user.hellos == set(['sender=queue:test-queue'])
-        assert async_action_spy.call_count == 0
+        assert request_context_spy.call_count == 0
 
-        user.say_hello(task, 'topic:test-topic')
+        task.endpoint = 'topic:test-topic'
+        user.say_hello(task)
 
         assert user.hellos == set(['sender=queue:test-queue', 'sender=topic:test-topic'])
-        assert async_action_spy.call_count == 1
-        args, kwargs = async_action_spy.call_args_list[0]
 
-        assert len(args) == 4
-        assert len(kwargs) == 0
-        assert args[1] is task
-        assert args[2] == {
-            'action': 'HELLO',
-            'context': {
-                'endpoint': 'topic:test-topic',
-                'url': user.am_context['url'],
-                'message_wait': None,
-            }
-        }
-        assert args[3] == 'sender=topic:test-topic'
-        assert async_action_spy.return_value.__enter__.call_count == 1
-        assert async_action_spy.return_value.__enter__.return_value.update.call_count == 1
-        args, kwargs = async_action_spy.return_value.__enter__.return_value.update.call_args_list[-1]
+        request_context_spy.assert_called_once_with(
+            user,
+            task,
+            {
+                'action': 'HELLO',
+                'context': {
+                    'endpoint': 'topic:test-topic',
+                    'url': user.am_context['url'],
+                    'message_wait': None,
+                }
+            },
+        )
+        assert request_context_spy.return_value.__enter__.call_count == 1
 
-        assert kwargs == {}
-        assert len(args) == 1
-        assert args[0].get('meta', False)
-        assert args[0].get('failure_exception', StopUser) is None
+        request_context_spy.reset_mock()
 
         task = RequestTask(RequestMethod.RECEIVE, name='test-recv', endpoint='topic:test-topic, subscription:test-subscription')
         scenario.tasks.add(task)
 
-        user.say_hello(task, task.endpoint)
+        user.say_hello(task)
 
         assert user.hellos == set(['sender=queue:test-queue', 'sender=topic:test-topic', 'receiver=topic:test-topic, subscription:test-subscription'])
-        assert async_action_spy.call_count == 2
-        args, kwargs = async_action_spy.call_args_list[1]
-
-        assert len(args) == 4
-        assert len(kwargs) == 0
-        assert args[1] is task
-        assert args[2] == {
-            'action': 'HELLO',
-            'context': {
-                'endpoint': 'topic:test-topic, subscription:test-subscription',
-                'url': user.am_context['url'],
-                'message_wait': None,
-            }
-        }
-        assert args[3] == 'receiver=topic:test-topic, subscription:test-subscription'
+        request_context_spy.assert_called_once_with(
+            user,
+            task,
+            {
+                'action': 'HELLO',
+                'context': {
+                    'endpoint': 'topic:test-topic, subscription:test-subscription',
+                    'url': user.am_context['url'],
+                    'message_wait': None,
+                }
+            },
+        )
 
         # error handling
         task.endpoint = 'test-topic'
         with pytest.raises(RuntimeError) as re:
-            user.say_hello(task, task.endpoint)
+            user.say_hello(task)
         assert 'incorrect format in arguments: "test-topic"' in str(re)
 
         task.endpoint = 'subscription:test-subscription'
         with pytest.raises(RuntimeError) as re:
-            user.say_hello(task, task.endpoint)
+            user.say_hello(task)
         assert 'endpoint needs to be prefixed with queue: or topic:' in str(re)
 
         task.endpoint = 'topic:test-topic, queue:test-queue'
         with pytest.raises(RuntimeError) as re:
-            user.say_hello(task, task.endpoint)
+            user.say_hello(task)
         assert 'cannot specify both topic: and queue: in endpoint' in str(re)
 
         task.endpoint = 'queue:test-queue, subscription:test-subscription'
         with pytest.raises(RuntimeError) as re:
-            user.say_hello(task, task.endpoint)
+            user.say_hello(task)
         assert 'argument subscription is only allowed if endpoint is a topic' in str(re)
 
         task.endpoint = 'topic:test-topic, subscription:test-subscription, argument:False'
         with pytest.raises(RuntimeError) as re:
-            user.say_hello(task, task.endpoint)
+            user.say_hello(task)
         assert 'arguments argument is not supported' in str(re)
 
         task.endpoint = 'topic:test-topic'
         with pytest.raises(RuntimeError) as re:
-            user.say_hello(task, task.endpoint)
+            user.say_hello(task)
         assert 'endpoint needs to include subscription when receiving messages from a topic' in str(re)
 
         task.method = RequestMethod.SEND
         task.endpoint = 'topic:test-topic2, expression:$.test.result'
         with pytest.raises(RuntimeError) as re:
-            user.say_hello(task, task.endpoint)
+            user.say_hello(task)
         assert 'argument expression is only allowed when receiving messages' in str(re)
 
     def test_request(self, grizzly_fixture: GrizzlyFixture, noop_zmq: NoopZmqFixture, mocker: MockerFixture) -> None:
         noop_zmq('grizzly.users.servicebus')
 
-        parent = grizzly_fixture()
+        parent = grizzly_fixture(
+            user_type=ServiceBusUser,
+            host='sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=',
+        )
+
+        assert isinstance(parent.user, ServiceBusUser)
 
         grizzly = grizzly_fixture.grizzly
 
         grizzly.scenario.tasks.clear()
 
-        ServiceBusUser.__scenario__ = grizzly.scenario
-        ServiceBusUser.host = 'sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789='
-
-        user = ServiceBusUser(environment=grizzly_fixture.behave.locust.environment)
-        parent._user = user
-
-        user.on_start()
-        user.worker_id = 'asdf-asdf-asdf'
+        parent.user.on_start()
+        parent.user.worker_id = 'asdf-asdf-asdf'
 
         send_json_spy = noop_zmq.get_mock('send_json')
-        say_hello_spy = mocker.patch.object(user, 'say_hello', side_effect=[None] * 10)
+        say_hello_spy = mocker.patch.object(parent.user, 'say_hello', side_effect=[None] * 10)
         request_fire_spy = mocker.spy(parent.user.environment.events.request, 'fire')
-        response_event_fire_spy = mocker.spy(user.response_event, 'fire')
+        response_event_fire_spy = mocker.spy(parent.user.response_event, 'fire')
 
         def mock_recv_json(response: AsyncMessageResponse) -> None:
             mocker.patch.object(
-                user.zmq_client,
+                cast(ServiceBusUser, parent.user).zmq_client,
                 'recv_json',
                 side_effect=[ZMQAgain(), response],
             )
@@ -363,39 +345,39 @@ class TestServiceBusUser:
             'message': 'unknown error',
         })
 
-        scenario = GrizzlyContextScenario(1, behave=grizzly_fixture.behave.create_scenario('test'))
-        user._scenario = scenario
+        parent.user._scenario.tasks.clear()
 
         # unsupported request method
         task = RequestTask(RequestMethod.PUT, name='test-send', endpoint='queue:test-queue')
         task.source = 'hello'
-        scenario.tasks.add(task)
-        scenario.failure_exception = StopUser
-        mocker.patch.object(user.zmq_client, 'disconnect', side_effect=[TypeError])
+        parent.user._scenario.tasks.add(task)
+        parent.user._scenario.failure_exception = StopUser
+        mocker.patch.object(parent.user.zmq_client, 'disconnect', side_effect=[TypeError])
 
         with pytest.raises(StopUser):
-            user.request(parent, task)
+            parent.user.request(task)
 
         assert say_hello_spy.call_count == 1
         assert send_json_spy.call_count == 0
         assert request_fire_spy.call_count == 1
         assert response_event_fire_spy.call_count == 1
 
-        _, kwargs = response_event_fire_spy.call_args_list[0]
-        assert kwargs.get('name', None) == f'{scenario.identifier} {task.name}'
-        assert kwargs.get('request', None) is task
+        args, kwargs = response_event_fire_spy.call_args_list[0]
+        assert args == ()
+        assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} {task.name}'
+        assert isinstance(kwargs.get('request', None), RequestTask)
         metadata, payload = kwargs.get('context', ({'meta': True}, 'hello',))
         assert metadata is None
         assert payload is None
-        assert kwargs.get('user', None) is user
+        assert kwargs.get('user', None) is parent.user
         assert isinstance(kwargs.get('exception', None), NotImplementedError)
 
         _, kwargs = request_fire_spy.call_args_list[0]
         assert kwargs.get('request_type', None) == 'PUT'
-        assert kwargs.get('name', None) == f'{scenario.identifier} {task.name}'
+        assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} {task.name}'
         assert kwargs.get('response_time', None) >= 0.0
         assert kwargs.get('response_length', None) == 0
-        assert kwargs.get('context', None) == user._context
+        assert kwargs.get('context', None) == parent.user._context
         exception = kwargs.get('exception', None)
         assert isinstance(exception, NotImplementedError)
         assert 'no implementation for PUT requests' in str(exception)
@@ -403,30 +385,30 @@ class TestServiceBusUser:
         task.method = RequestMethod.SEND
 
         # unsuccessful response from async-messaged
-        scenario.failure_exception = None
+        parent.user._scenario.failure_exception = None
 
-        user.request(parent, task)
+        parent.user.request(task)
         assert say_hello_spy.call_count == 2
         assert send_json_spy.call_count == 1
         assert request_fire_spy.call_count == 2
         assert response_event_fire_spy.call_count == 2
 
         _, kwargs = response_event_fire_spy.call_args_list[1]
-        assert kwargs.get('name', None) == f'{scenario.identifier} {task.name}'
-        assert kwargs.get('request', None) is task
+        assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} {task.name}'
+        assert isinstance(kwargs.get('request', None), RequestTask)
 
         metadata, payload = kwargs.get('context', (None, None,))
         assert metadata is None
         assert payload is None
-        assert kwargs.get('user', None) is user
+        assert kwargs.get('user', None) is parent.user
         assert isinstance(kwargs.get('exception', None), AsyncMessageError)
 
         _, kwargs = request_fire_spy.call_args_list[1]
         assert kwargs.get('request_type', None) == 'SEND'
-        assert kwargs.get('name', None) == f'{scenario.identifier} {task.name}'
+        assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} {task.name}'
         assert kwargs.get('response_time', None) >= 0.0
         assert kwargs.get('response_length', None) == 0
-        assert kwargs.get('context', None) == user._context
+        assert kwargs.get('context', None) == parent.user._context
         exception = kwargs.get('exception', None)
         assert 'unknown error' in str(exception)
 
@@ -434,7 +416,7 @@ class TestServiceBusUser:
         assert kwargs == {}
         assert args == ({
             'worker': 'asdf-asdf-asdf',
-            'client': id(user),
+            'client': id(parent.user),
             'action': 'SEND',
             'payload': 'hello',
             'context': {
@@ -458,7 +440,7 @@ class TestServiceBusUser:
             'response_length': 133,
         })
 
-        metadata, payload = user.request(parent, task)
+        metadata, payload = parent.user.request(task)
         assert say_hello_spy.call_count == 3
         assert send_json_spy.call_count == 2
         assert request_fire_spy.call_count == 3
@@ -468,28 +450,28 @@ class TestServiceBusUser:
         assert payload == 'hello'
 
         _, kwargs = response_event_fire_spy.call_args_list[2]
-        assert kwargs.get('name', None) == f'{scenario.identifier} {task.name}'
-        assert kwargs.get('request', None) is task
+        assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} {task.name}'
+        assert isinstance(kwargs.get('request', None), RequestTask)
 
         metadata, payload = kwargs.get('context', (None, None,))
         assert metadata == {'meta': True}
         assert payload == 'hello'
-        assert kwargs.get('user', None) is user
+        assert kwargs.get('user', None) is parent.user
         assert kwargs.get('exception', '') is None
 
         _, kwargs = request_fire_spy.call_args_list[2]
         assert kwargs.get('request_type', None) == 'RECV'
-        assert kwargs.get('name', None) == f'{scenario.identifier} {task.name}'
+        assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} {task.name}'
         assert kwargs.get('response_time', None) >= 0.0
-        assert kwargs.get('response_length', None) == 133
-        assert kwargs.get('context', None) == user._context
+        assert kwargs.get('response_length', None) == 5  # is calculated by payload length now, and not what async-messaged responds with
+        assert kwargs.get('context', None) == parent.user._context
         assert kwargs.get('exception', '') is None
 
         args, kwargs = send_json_spy.call_args_list[1]
         assert kwargs == {}
         assert args == ({
             'worker': 'asdf-asdf-asdf',
-            'client': id(user),
+            'client': id(parent.user),
             'action': 'RECEIVE',
             'payload': None,
             'context': {
@@ -514,7 +496,7 @@ class TestServiceBusUser:
             'response_length': 133,
         })
 
-        metadata, payload = user.request(parent, task)
+        metadata, payload = parent.user.request(task)
         assert say_hello_spy.call_count == 4
         assert send_json_spy.call_count == 3
         assert request_fire_spy.call_count == 4
@@ -524,28 +506,28 @@ class TestServiceBusUser:
         assert payload == 'hello'
 
         _, kwargs = response_event_fire_spy.call_args_list[3]
-        assert kwargs.get('name', None) == f'{scenario.identifier} {task.name}'
-        assert kwargs.get('request', None) is task
+        assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} {task.name}'
+        assert isinstance(kwargs.get('request', None), RequestTask)
 
         metadata, payload = kwargs.get('context', (None, None,))
         assert metadata == {'meta': True}
         assert payload == 'hello'
-        assert kwargs.get('user', None) is user
+        assert kwargs.get('user', None) is parent.user
         assert kwargs.get('exception', '') is None
 
         _, kwargs = request_fire_spy.call_args_list[3]
         assert kwargs.get('request_type', None) == 'RECV'
-        assert kwargs.get('name', None) == f'{scenario.identifier} {task.name}'
+        assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} {task.name}'
         assert kwargs.get('response_time', None) >= 0.0
-        assert kwargs.get('response_length', None) == 133
-        assert kwargs.get('context', None) == user._context
+        assert kwargs.get('response_length', None) == 5
+        assert kwargs.get('context', None) == parent.user._context
         assert kwargs.get('exception', '') is None
 
         args, kwargs = send_json_spy.call_args_list[2]
         assert kwargs == {}
         assert args == ({
             'worker': 'asdf-asdf-asdf',
-            'client': id(user),
+            'client': id(parent.user),
             'action': 'RECEIVE',
             'payload': None,
             'context': {

@@ -46,6 +46,8 @@ class TestHttpClientTask:
         behave = grizzly_fixture.behave.context
         grizzly = cast(GrizzlyContext, behave.grizzly)
 
+        HttpClientTask.__scenario__ = grizzly.scenario
+
         with pytest.raises(AttributeError) as ae:
             HttpClientTask(RequestDirection.TO, 'http://example.org', payload_variable='test')
         assert 'HttpClientTask: variable argument is not applicable for direction TO' in str(ae.value)

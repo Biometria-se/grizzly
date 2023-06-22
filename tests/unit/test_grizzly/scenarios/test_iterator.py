@@ -4,6 +4,7 @@ from os import environ
 from typing import TYPE_CHECKING, Dict, Any, Optional, List
 from types import FunctionType
 from importlib import reload
+from unittest.mock import ANY
 
 import pytest
 
@@ -62,17 +63,33 @@ class TestIterationScenario:
         parent = grizzly_fixture(scenario_type=iterator.IteratorScenario)
         request = grizzly_fixture.request_task.request
         request.endpoint = '/api/v1/test'
+        request.source = None
+
+        request_spy = mocker.spy(parent.user.environment.events.request, 'fire')
+
         try:
             iterator.IteratorScenario.populate(request)
             assert isinstance(parent, iterator.IteratorScenario)
             assert len(parent.tasks) == 3
 
             task_method = parent.tasks[-2]
+            parent.user._scenario.failure_exception = StopUser
 
             assert callable(task_method)
-            with pytest.raises(RequestCalled) as e:
+            with pytest.raises(StopUser):
                 task_method(parent)
-            assert e.value.endpoint == '/api/v1/test' and e.value.request is request
+
+            request_spy.assert_called_once_with(
+                request_type='POST',
+                name='001 IteratorScenario',
+                response_time=ANY,
+                response_length=0,
+                context={'variables': {}, 'log_all_requests': False},
+                exception=ANY,
+            )
+            args, kwargs = request_spy.call_args_list[-1]
+            assert args == ()
+            assert isinstance(kwargs['exception'], RequestCalled)
 
             def generate_mocked_wait(sleep_time: float) -> None:
                 def mocked_wait(time: float) -> None:
@@ -896,7 +913,7 @@ class TestIterationScenario:
             task_1_on_start_spy.assert_not_called()
             task_2_on_start_spy.assert_not_called()
             prefetch_mock.assert_not_called()
-            assert scenario.user._scenario_state == ScenarioState.STOPPED
+            assert getattr(scenario.user, '_scenario_state', None) == ScenarioState.STOPPED
 
             environ['TESTDATA_PRODUCER_ADDRESS'] = 'tcp://localhost:5555'
 

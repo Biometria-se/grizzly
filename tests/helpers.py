@@ -7,6 +7,7 @@ import re
 from typing import Any, Dict, Optional, Tuple, List, Set, Callable, Generator, Union, Pattern
 from types import MethodType, TracebackType
 from pathlib import Path
+from copy import deepcopy
 
 from locust import task
 from locust.event import EventHook
@@ -17,7 +18,6 @@ from grizzly.types import GrizzlyResponse, RequestMethod
 from grizzly.testdata.variables import AtomicVariable
 from grizzly.tasks import RequestTask, GrizzlyTask, template, grizzlytask
 from grizzly.scenarios import GrizzlyScenario
-from grizzly.utils import fastdeepcopy
 
 
 class AtomicCustomVariable(AtomicVariable[str]):
@@ -59,7 +59,7 @@ class TestUser(GrizzlyUser):
     def config_property(self, value: Optional[str]) -> None:
         self._config_property = value
 
-    def request(self, parent: GrizzlyScenario, request: RequestTask) -> GrizzlyResponse:
+    def request_impl(self, request: RequestTask) -> GrizzlyResponse:
         raise RequestCalled(request)
 
 
@@ -69,7 +69,6 @@ class TestScenario(GrizzlyScenario):
     @task
     def task(self) -> None:
         self.user.request(
-            self,
             RequestTask(RequestMethod.POST, name='test', endpoint='payload.j2.json')
         )
 
@@ -104,7 +103,7 @@ class TestTask(GrizzlyTask):
                 name=f'TestTask: {self.name}',
                 response_time=13,
                 response_length=37,
-                context=fastdeepcopy(parent.user._context),
+                context=deepcopy(parent.user._context),
                 exception=None,
             )
             self.task_call_count += 1

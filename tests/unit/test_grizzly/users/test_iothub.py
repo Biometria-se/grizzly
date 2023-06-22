@@ -69,11 +69,11 @@ def iot_hub_parent(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> Gr
 class TestIotHubUser:
     @pytest.mark.usefixtures('iot_hub_parent')
     def test_on_start(self, iot_hub_parent: GrizzlyScenario) -> None:
-        assert not hasattr(iot_hub_parent.user, 'client')
+        assert not hasattr(iot_hub_parent.user, 'iot_client')
 
         iot_hub_parent.user.on_start()
 
-        assert hasattr(iot_hub_parent.user, 'client')
+        assert hasattr(iot_hub_parent.user, 'iot_client')
 
     @pytest.mark.usefixtures('iot_hub_parent')
     def test_on_stop(self, mocker: MockerFixture, iot_hub_parent: GrizzlyScenario) -> None:
@@ -81,7 +81,7 @@ class TestIotHubUser:
 
         iot_hub_parent.user.on_start()
 
-        on_stop_spy = mocker.patch.object(iot_hub_parent.user.client, 'disconnect', return_value=None)
+        on_stop_spy = mocker.patch.object(iot_hub_parent.user.iot_client, 'disconnect', return_value=None)
 
         iot_hub_parent.user.on_stop()
 
@@ -144,7 +144,7 @@ class TestIotHubUser:
             }
         }
 
-        metadata, payload = iot_hub_parent.user.request(iot_hub_parent, request)
+        metadata, payload = iot_hub_parent.user.request(request)
 
         assert payload is not None
         assert upload_blob.call_count == 1
@@ -170,13 +170,13 @@ class TestIotHubUser:
 
         request = cast(RequestTask, iot_hub_parent.user._scenario.tasks()[-1])
 
-        iot_hub_parent.user.request(iot_hub_parent, request)
+        iot_hub_parent.user.request(request)
 
         request_event = mocker.spy(iot_hub_parent.user.environment.events.request, 'fire')
 
         request.method = RequestMethod.RECEIVE
         with pytest.raises(StopUser):
-            iot_hub_parent.user.request(iot_hub_parent, request)
+            iot_hub_parent.user.request(request)
 
         assert request_event.call_count == 1
         _, kwargs = request_event.call_args_list[-1]
@@ -192,15 +192,15 @@ class TestIotHubUser:
 
         iot_hub_parent.user._scenario.failure_exception = None
         with pytest.raises(StopUser):
-            iot_hub_parent.user.request(iot_hub_parent, request)
+            iot_hub_parent.user.request(request)
 
         iot_hub_parent.user._scenario.failure_exception = StopUser
         with pytest.raises(StopUser):
-            iot_hub_parent.user.request(iot_hub_parent, request)
+            iot_hub_parent.user.request(request)
 
         iot_hub_parent.user._scenario.failure_exception = RestartScenario
         with pytest.raises(StopUser):
-            iot_hub_parent.user.request(iot_hub_parent, request)
+            iot_hub_parent.user.request(request)
 
         upload_blob = mocker.patch('azure.storage.blob._blob_client.BlobClient.upload_blob', side_effect=[RuntimeError('failed to upload blob')])
         notify_blob_upload_status.reset_mock()
@@ -208,7 +208,7 @@ class TestIotHubUser:
         request.method = RequestMethod.SEND
 
         with pytest.raises(RestartScenario):
-            iot_hub_parent.user.request(iot_hub_parent, request)
+            iot_hub_parent.user.request(request)
 
         assert notify_blob_upload_status.call_count == 1
         args, _ = notify_blob_upload_status.call_args_list[-1]

@@ -30,27 +30,22 @@ Then put request "test/blob.file" to endpoint "/pub/blobs"
 Then get request from endpoint "/pub/blobs/blob.file"
 ```
 '''
-from typing import Any, Dict, Tuple, Optional, Union, TYPE_CHECKING
+from typing import Any, Dict, Tuple, Optional
 from urllib.parse import urlparse
-from time import perf_counter as time
 from os import path, environ, mkdir
 
 from paramiko import SFTPClient
 
-from grizzly.types import RequestMethod, GrizzlyResponse, RequestType
-from grizzly.types.locust import Environment, StopUser
+from grizzly.types import RequestMethod, GrizzlyResponse
+from grizzly.types.locust import Environment
 from grizzly.utils import merge_dicts
 from grizzly.clients import SftpClientSession
 from grizzly.tasks import RequestTask
 
-from .base import GrizzlyUser, FileRequests, ResponseHandler, RequestLogger
+from .base import GrizzlyUser, FileRequests, ResponseHandler
 
 
-if TYPE_CHECKING:  # pragma: no cover
-    from grizzly.scenarios import GrizzlyScenario
-
-
-class SftpUser(ResponseHandler, RequestLogger, GrizzlyUser, FileRequests):
+class SftpUser(ResponseHandler, GrizzlyUser, FileRequests):
     _context: Dict[str, Any] = {
         'auth': {
             'username': None,
@@ -121,72 +116,30 @@ class SftpUser(ResponseHandler, RequestLogger, GrizzlyUser, FileRequests):
         self.session.__exit__(None, None, None)
         super().on_stop()
 
-    def request(self, parent: 'GrizzlyScenario', request: RequestTask) -> GrizzlyResponse:
-        request_name, endpoint, payload, _, _ = self.render(request)
-
-        name = f'{self._scenario.identifier} {request_name}'
-
-        exception: Optional[Exception] = None
-        headers: Dict[str, Union[str, int]] = {}
-        response_length = 0
-        start_time = time()
+    def request_impl(self, request: RequestTask) -> GrizzlyResponse:
+        payload: Optional[str] = None
 
         try:
-            def get_response_length(transferred: int, total: int) -> None:
-                nonlocal response_length
-                response_length = transferred
-
             if request.method == RequestMethod.PUT:
-                if payload is None:
-                    raise ValueError(f'{self.__class__.__name__}: request "{name}" does not have a payload, incorrect method specified')
+                if request.source is None:
+                    raise ValueError(f'{self.__class__.__name__}: request "{request.name}" does not have a payload, incorrect method specified')
 
-                payload = path.realpath(path.join(self._payload_root, payload))
-                self.session.put(payload, endpoint, get_response_length)
+                payload = path.realpath(path.join(self._payload_root, request.source))
+                self.session.put(payload, request.endpoint)
             elif request.method == RequestMethod.GET:
-                file_name = path.basename(endpoint)
+                file_name = path.basename(request.endpoint)
                 # @TODO: if endpoint is a directory, should we download all files in there?
-                self.session.get(endpoint, path.join(self._download_root, file_name), get_response_length)
+                payload = path.join(self._download_root, file_name)
+                self.session.get(request.endpoint, payload)
             else:
                 raise NotImplementedError(f'{self.__class__.__name__} has not implemented {request.method.name}')
-        except Exception as e:
-            exception = e
-        finally:
-            response_time = int((time() - start_time) * 1000)
+
             headers = {
                 'method': request.method.name.lower(),
-                'time': response_time,
                 'host': self.host or '',
-                'path': endpoint,
+                'path': request.endpoint,
             }
 
-            try:
-                self.response_event.fire(
-                    name=name,
-                    request=request,
-                    context=(
-                        headers,
-                        payload,
-                    ),
-                    user=self,
-                    exception=exception,
-                )
-            except Exception as e:
-                if exception is None:
-                    exception = e
-
-            self.environment.events.request.fire(
-                request_type=RequestType.from_method(request.method),
-                name=name,
-                response_time=response_time,
-                response_length=response_length,
-                context=self._context,
-                exception=exception,
-            )
-
-            if exception is not None:
-                if isinstance(exception, NotImplementedError):
-                    raise StopUser()
-                elif self._scenario.failure_exception is not None:
-                    raise self._scenario.failure_exception()
-
-            return None, payload
+            return (headers, payload,)
+        except:
+            raise

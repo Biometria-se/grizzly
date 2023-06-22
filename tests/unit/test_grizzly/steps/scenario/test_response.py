@@ -366,9 +366,9 @@ def test_step_response_content_type(behave_fixture: BehaveFixture) -> None:
         step_response_content_type(behave, TransformerContentType.JSON)
     assert 'Latest task in scenario is not a request' in str(ae)
 
-    request = RequestTask(RequestMethod.POST, 'test-request', endpoint='queue:INCOMMING.MESSAGE')
+    request: RequestTask = RequestTask(RequestMethod.POST, 'test-request', endpoint='queue:INCOMMING.MESSAGE')
 
-    assert request.response.content_type == TransformerContentType.UNDEFINED
+    assert getattr(request.response, 'content_type', None) == TransformerContentType.UNDEFINED
 
     grizzly.scenario.tasks.add(request)
 

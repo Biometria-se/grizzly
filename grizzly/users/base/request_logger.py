@@ -18,10 +18,10 @@ from grizzly.tasks import RequestTask
 from grizzly.utils import merge_dicts
 
 from .response_event import ResponseEvent
-from .grizzly_user import GrizzlyUser
+
 
 if TYPE_CHECKING:  # pragma: no cover
-    from grizzly.scenarios import GrizzlyScenario
+    from .grizzly_user import GrizzlyUser
 
 
 LOG_FILE_TEMPLATE = '''
@@ -45,7 +45,7 @@ payload:
 '''.strip()  # noqa: E501
 
 
-class RequestLogger(ResponseEvent, GrizzlyUser):
+class RequestLogger(ResponseEvent):
     abstract: bool = True
 
     log_dir: str
@@ -153,15 +153,12 @@ class RequestLogger(ResponseEvent, GrizzlyUser):
             },
         }
 
-    def request(self, parent: 'GrizzlyScenario', request: RequestTask) -> GrizzlyResponse:  # pragma: no cover
-        return None, None
-
     def request_logger(
         self,
         name: str,
         context: HandlerContextType,
         request: RequestTask,
-        user: GrizzlyUser,
+        user: 'GrizzlyUser',
         exception: Optional[Exception] = None,
         **kwargs: Dict[str, Any],
     ) -> None:

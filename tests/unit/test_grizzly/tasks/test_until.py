@@ -158,7 +158,7 @@ class TestUntilRequestTask:
         assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} test-request, w=100.0s, r=10, em=1'
         assert kwargs.get('response_time', None) == 153500
         assert kwargs.get('response_length', None) == 103
-        assert kwargs.get('context', None) == {'variables': {}}
+        assert kwargs.get('context', None) == {'variables': {}, 'log_all_requests': False}
         assert kwargs.get('exception', '') is None
 
         # -->
@@ -187,7 +187,7 @@ class TestUntilRequestTask:
         assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} test-request, w=100.0s, r=10, em=1'
         assert kwargs.get('response_time', None) == 12250
         assert kwargs.get('response_length', None) == 33
-        assert kwargs.get('context', None) == {'variables': {}}
+        assert kwargs.get('context', None) == {'variables': {}, 'log_all_requests': False}
         assert kwargs.get('exception', '') is None
         # <--
 
@@ -215,7 +215,7 @@ class TestUntilRequestTask:
         assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} test-request, w=10.0s, r=2, em=1'
         assert kwargs.get('response_time', None) == 12250
         assert kwargs.get('response_length', None) == 70
-        assert kwargs.get('context', None) == {'variables': {}}
+        assert kwargs.get('context', None) == {'variables': {}, 'log_all_requests': False}
         exception = kwargs.get('exception', None)
         assert exception is not None
         assert isinstance(exception, RuntimeError)
@@ -251,7 +251,7 @@ class TestUntilRequestTask:
         assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} test-request, w=10.0s, r=2, em=1'
         assert kwargs.get('response_time', None) == 1500
         assert kwargs.get('response_length', None) == 35
-        assert kwargs.get('context', None) == {'variables': {}}
+        assert kwargs.get('context', None) == {'variables': {}, 'log_all_requests': False}
         exception = kwargs.get('exception', None)
         assert exception is not None
         assert isinstance(exception, RuntimeError)
@@ -295,7 +295,7 @@ class TestUntilRequestTask:
         assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} test-request, w=4.0s, r=4, em=1'
         assert kwargs.get('response_time', None) == 800
         assert kwargs.get('response_length', None) == 103
-        assert kwargs.get('context', None) == {'variables': {}}
+        assert kwargs.get('context', None) == {'variables': {}, 'log_all_requests': False}
         assert kwargs.get('exception', '') is None
 
         return_value_object = {
@@ -344,7 +344,7 @@ class TestUntilRequestTask:
         assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} test-request, w=4.0s, r=4, em=3'
         assert kwargs.get('response_time', None) == 800
         assert kwargs.get('response_length', None) == 213
-        assert kwargs.get('context', None) == {'variables': {}}
+        assert kwargs.get('context', None) == {'variables': {}, 'log_all_requests': False}
         assert kwargs.get('exception', '') is None
 
         task_factory = UntilRequestTask(grizzly, meta_request_task, '$.list[?(@.count > 19)] | wait=4, expected_matches=4, retries=4')
@@ -372,7 +372,7 @@ class TestUntilRequestTask:
         assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} test-request, w=4.0s, r=4, em=4'
         assert kwargs.get('response_time', None) == 555
         assert kwargs.get('response_length', None) == 852
-        assert kwargs.get('context', None) == {'variables': {}}
+        assert kwargs.get('context', None) == {'variables': {}, 'log_all_requests': False}
         exception = kwargs.get('exception', None)
         assert isinstance(exception, RuntimeError)
         assert str(exception) == 'found 3 matching values for $.list[?(@.count > 19)] in payload'
@@ -392,7 +392,7 @@ class TestUntilRequestTask:
         assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} test-request, w=4.0s, r=4, em=2'
         assert kwargs.get('response_time', None) == 666
         assert kwargs.get('response_length', None) == 213
-        assert kwargs.get('context', None) == {'variables': {}}
+        assert kwargs.get('context', None) == {'variables': {}, 'log_all_requests': False}
         assert kwargs.get('exception', '') is None
 
         task_factory = UntilRequestTask(grizzly, meta_request_task, '$.list[?(@.count == 18)] | wait=4, expected_matches=1, retries=1')
@@ -409,7 +409,7 @@ class TestUntilRequestTask:
         assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} test-request, w=4.0s, r=1, em=1'
         assert kwargs.get('response_time', None) == 666
         assert kwargs.get('response_length', None) == 0
-        assert kwargs.get('context', None) == {'variables': {}}
+        assert kwargs.get('context', None) == {'variables': {}, 'log_all_requests': False}
         assert isinstance(kwargs.get('exception', ''), TransformerError)
 
         mocker.patch.object(parent.logger, 'error', side_effect=[RuntimeError, None])
@@ -424,7 +424,7 @@ class TestUntilRequestTask:
         assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} test-request, w=4.0s, r=1, em=1'
         assert kwargs.get('response_time', None) == 111
         assert kwargs.get('response_length', None) == 0
-        assert kwargs.get('context', None) == {'variables': {}}
+        assert kwargs.get('context', None) == {'variables': {}, 'log_all_requests': False}
         assert isinstance(kwargs.get('exception', ''), RuntimeError)
 
     @pytest.mark.parametrize(*parameterize)

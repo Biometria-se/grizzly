@@ -123,10 +123,9 @@ And metadata "filename" is "my_filename"
 '''
 import logging
 
-from typing import Dict, Any, Generator, Tuple, Optional, TYPE_CHECKING
+from typing import Dict, Any, Generator, Tuple, Optional
 from urllib.parse import urlparse, parse_qs, unquote
 from contextlib import contextmanager
-from time import perf_counter as time
 
 from zmq.sugar.constants import REQ as ZMQ_REQ
 import zmq.green as zmq
@@ -135,16 +134,12 @@ from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageReques
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
 
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestType
-from grizzly.types.locust import Environment, StopUser
+from grizzly.types.locust import Environment
 from grizzly.tasks import RequestTask
 from grizzly.utils import merge_dicts
+from grizzly.exceptions import StopScenario
 
-from .base import GrizzlyUser, ResponseHandler, RequestLogger
-from . import logger
-
-
-if TYPE_CHECKING:  # pragma: no cover
-    from grizzly.scenarios import GrizzlyScenario
+from .base import GrizzlyUser, ResponseHandler
 
 
 # no used here, but needed for sanity check
@@ -156,7 +151,7 @@ except:
     from grizzly_extras import dummy_pymqi as pymqi
 
 
-class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
+class MessageQueueUser(ResponseHandler, GrizzlyUser):
     _context: Dict[str, Any] = {
         'auth': {
             'username': None,
@@ -254,31 +249,28 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
         self.logger.debug('on_start called')
         super().on_start()
 
-        with self.action_context(None, {
-            'action': RequestType.CONNECT(),
-            'context': self.am_context
-        }, self.am_context['connection']) as action:
-            action.update({
-                'meta': True,
-                'failure_exception': StopUser,
-            })
-            self.zmq_client = self.zmq_context.socket(ZMQ_REQ)
-            self.zmq_client.connect(self.zmq_url)
+        try:
+            with self.request_context(None, {
+                'action': RequestType.CONNECT(),
+                'context': self.am_context
+            }):
+                self.zmq_client = self.zmq_context.socket(ZMQ_REQ)
+                self.zmq_client.connect(self.zmq_url)
+        except:
+            self.logger.error('on_start failed', exc_info=True)
+            raise StopScenario()
 
     def on_stop(self) -> None:
         self.logger.debug(f'on_stop called, {self.worker_id=}')
         if self.worker_id is None:
             return
 
-        with self.action_context(None, {
+        with self.request_context(None, {
             'action': RequestType.DISCONNECT(),
             'worker': self.worker_id,
             'context': self.am_context
-        }, self.am_context['connection']) as action:
-            action.update({
-                'meta': True,
-                'failure_exception': None,
-            })
+        }):
+            pass
 
         try:
             self.zmq_client.disconnect(self.zmq_url)
@@ -290,106 +282,37 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
         super().on_stop()
 
     @contextmanager
-    def action_context(self, request: Optional[RequestTask], am_request: AsyncMessageRequest, name: str) -> Generator[Dict[str, Any], None, None]:
-        exception: Optional[Exception] = None
-        action: Dict[str, Any] = {
-            'failure_exception': None,
-            'meta': False,
-            'payload': None,
+    def request_context(self, request: Optional[RequestTask], am_request: AsyncMessageRequest) -> Generator[Dict[str, Any], None, None]:
+        response: Optional[AsyncMessageResponse] = None
+        context: Dict[str, Any] = {
             'metadata': None,
+            'payload': None,
         }
 
-        if not name.startswith(f'{self._scenario.identifier} '):
-            name = f'{self._scenario.identifier} {name}'
+        yield context
+        response = async_message_request(self.zmq_client, am_request)
 
-        response: Optional[AsyncMessageResponse] = None
+        context.update({
+            'metadata': response.get('metadata', None),
+            'payload': response.get('payload', None),
+        })
 
-        start_time = time()
-        try:
-            yield action
-
-            response = async_message_request(self.zmq_client, am_request)
-        except Exception as e:
-            exception = e
-            self.logger.error(str(e), exc_info=True)
-        finally:
-            total_time = int((time() - start_time) * 1000)  # do not include event handling in request time
-
-            if response is not None:
-                if self.worker_id is None:
-                    self.worker_id = response['worker']
-                else:
-                    assert self.worker_id == response['worker'], f'worker changed from {self.worker_id} to {response["worker"]}'
-
-                mq_response_time = response.get('response_time', 0)
-
-                delta = total_time - mq_response_time
-                if delta > 100:  # @TODO: what is a suitable value?
-                    logger.warning(f'{self.__class__.__name__}: communicating with async-messaged took {delta} ms')
-            else:
-                response = {}
-
-            action['metadata'] = response.get('metadata', None)
-            action['payload'] = response.get('payload', None)
-
-            try:
-                if not action.get('meta', False):
-                    self.response_event.fire(
-                        name=name,
-                        request=request,
-                        context=(
-                            response.get('metadata', None),
-                            response.get('payload', None),
-                        ),
-                        user=self,
-                        exception=exception,
-                    )
-            except Exception as e:
-                if exception is None:
-                    exception = e
-            finally:
-                self.environment.events.request.fire(
-                    request_type=RequestType.from_string(am_request['action']),
-                    name=name,
-                    response_time=total_time,
-                    response_length=response.get('response_length', None) or 0,
-                    context=self._context,
-                    exception=exception,
-                )
-
-            failure_exception = action.get('failure_exception', None)
-
-            action = {
-                'payload': action['payload'],
-                'metadata': action['metadata'],
-            }
-
-            if exception is not None and failure_exception is not None:
-                raise failure_exception()
-
-    def request(self, parent: 'GrizzlyScenario', request: RequestTask) -> GrizzlyResponse:
-        request_name, endpoint, payload, _, metadata = self.render(request)
-
-        name = f'{self._scenario.identifier} {request_name}'
-
+    def request_impl(self, request: RequestTask) -> GrizzlyResponse:
         am_request: AsyncMessageRequest = {
             'action': request.method.name,
             'worker': self.worker_id,
             'client': id(self),
             'context': {
-                'endpoint': endpoint,
-                'metadata': metadata,
+                'endpoint': request.endpoint,
+                'metadata': request.metadata,
+                'content_type': request.response.content_type.name.lower(),
             },
-            'payload': payload,
+            'payload': request.source,
         }
 
-        am_request['context']['content_type'] = request.response.content_type.name.lower()
-
-        with self.action_context(request, am_request, name) as action:
-            action['failure_exception'] = StopUser
-
+        with self.request_context(request, am_request) as response:
             # Parse the endpoint to validate queue name / expression parts
-            arguments = parse_arguments(endpoint, ':')
+            arguments = parse_arguments(request.endpoint, ':')
 
             if 'queue' not in arguments:
                 raise RuntimeError('queue name must be prefixed with queue:')
@@ -401,6 +324,4 @@ class MessageQueueUser(ResponseHandler, RequestLogger, GrizzlyUser):
             if 'expression' in arguments and request.method.direction != RequestDirection.FROM:
                 raise RuntimeError('argument "expression" is not allowed when sending to an endpoint')
 
-            action['failure_exception'] = self._scenario.failure_exception
-
-        return action['metadata'], action['payload']
+        return (response['metadata'], response['payload'],)

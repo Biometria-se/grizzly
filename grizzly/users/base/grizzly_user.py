@@ -1,13 +1,13 @@
 import logging
 
 from os import environ, path
-from typing import TYPE_CHECKING, Any, Dict, Tuple, Optional, Set, cast
+from typing import TYPE_CHECKING, Any, Dict, Tuple, Optional, Set, cast, final
 from logging import Logger
 from abc import abstractmethod
 from json import dumps as jsondumps, loads as jsonloads
 from copy import copy
+from time import perf_counter
 
-from locust.user.users import User
 from locust.user.task import LOCUST_STATE_RUNNING
 
 from grizzly.types import GrizzlyResponse, RequestType, ScenarioState
@@ -15,22 +15,24 @@ from grizzly.types.locust import Environment, StopUser
 from grizzly.tasks import RequestTask
 from grizzly.utils import merge_dicts
 from grizzly.context import GrizzlyContext
+from grizzly.users.base import RequestLogger, AsyncRequests
+from grizzly.exceptions import ResponseHandlerError, TransformerLocustError
 
 from . import FileRequests
 
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContextScenario
-    from grizzly.scenarios import GrizzlyScenario
 
 
-class GrizzlyUser(User):
+class GrizzlyUser(RequestLogger):
     __dependencies__: Set[str] = set()
     __scenario__: 'GrizzlyContextScenario'  # reference to grizzly scenario this user is part of
 
     _context_root: str
     _context: Dict[str, Any] = {
         'variables': {},
+        'log_all_requests': False,
     }
     _scenario: 'GrizzlyContextScenario'  # copy of scenario for this user instance
 
@@ -86,60 +88,119 @@ class GrizzlyUser(User):
             return cast(bool, super().stop(force=force))
 
     @abstractmethod
-    def request(self, parent: 'GrizzlyScenario', request: RequestTask) -> GrizzlyResponse:
+    def request_impl(self, request: RequestTask) -> GrizzlyResponse:
         raise NotImplementedError(f'{self.__class__.__name__} has not implemented request')  # pragma: no cover
 
-    def render(self, request: RequestTask) -> Tuple[str, str, Optional[str], Optional[Dict[str, str]], Optional[Dict[str, str]]]:
-        scenario_name = f'{self._scenario.identifier} {request.name}'
+    @final
+    def request(self, request: RequestTask) -> GrizzlyResponse:
+        metadata: Optional[Dict[str, Any]] = None
+        payload: Optional[Any] = None
+        exception: Optional[Exception] = None
+        response_length = 0
+
+        start_time = perf_counter()
+
+        try:
+            request = self.render(request)
+
+            if isinstance(self, AsyncRequests) and request.async_request:
+                request_impl = self.async_request_impl  # pylint: disable=no-member
+            else:
+                request_impl = self.request_impl
+
+            metadata, payload = request_impl(request)
+        except Exception as e:
+            self.logger.error(f'request failed: {str(e) or e.__class__}', exc_info=self.grizzly.state.verbose)
+            exception = e
+        finally:
+            total_time = int((perf_counter() - start_time) * 1000)
+            response_length = len((payload or '').encode())
+
+            # execute response listeners
+            try:
+                self.response_event.fire(
+                    name=request.name,
+                    request=request,
+                    context=(
+                        metadata,
+                        payload,
+                    ),
+                    user=self,
+                    exception=exception,
+                )
+            except Exception as e:
+                if exception is None:
+                    exception = e
+
+            self.environment.events.request.fire(
+                request_type=RequestType.from_method(request.method),
+                name=request.name,
+                response_time=total_time,
+                response_length=response_length,
+                context=self._context,
+                exception=exception
+            )
+
+        # ...request handled
+        if exception is not None:
+            if (
+                isinstance(exception, (NotImplementedError, StopUser, KeyError, IndexError, AttributeError,))
+                and not isinstance(exception, (ResponseHandlerError, TransformerLocustError,))  # grizzly exceptions that inherits StopUser
+            ):
+                raise StopUser()
+            elif self._scenario.failure_exception is not None:
+                raise self._scenario.failure_exception()
+
+        return (metadata, payload,)
+
+    def render(self, request_template: RequestTask) -> RequestTask:
+        if request_template.__rendered__:
+            return request_template
+
+        request = copy(request_template)
 
         try:
             j2env = self.grizzly.state.jinja2
-            payload: Optional[str] = None
-            name = j2env.from_string(request.name).render(**self.context_variables)
-            scenario_name = f'{self._scenario.identifier} {name}'
-            endpoint = j2env.from_string(request.endpoint).render(**self.context_variables)
-            arguments: Optional[Dict[str, str]] = None
-            metadata: Optional[Dict[str, str]] = None
+            source: Optional[str] = None
+            name = j2env.from_string(request_template.name).render(**self.context_variables)
+            request.name = f'{self._scenario.identifier} {name}'
+            request.endpoint = j2env.from_string(request_template.endpoint).render(**self.context_variables)
 
-            if request.template is not None:
-                payload = request.template.render(**self.context_variables)
+            if request_template.template is not None:
+                source = request_template.template.render(**self.context_variables)
 
-                file = path.join(self._context_root, 'requests', payload)
+                file = path.join(self._context_root, 'requests', source)
 
                 if path.isfile(file):
                     if not isinstance(self, FileRequests):
                         with open(file, 'r') as fd:
-                            payload = fd.read()
+                            source = fd.read()
 
                         # nested template
-                        if '{{' in payload and '}}' in payload:
-                            payload = j2env.from_string(payload).render(**self.context_variables)
+                        if '{{' in source and '}}' in source:
+                            source = j2env.from_string(source).render(**self.context_variables)
                     else:
-                        file_name = path.basename(payload)
-                        if not endpoint.endswith(file_name):
-                            endpoint = f'{endpoint}/{file_name}'
+                        file_name = path.basename(source)
+                        if not request.endpoint.endswith(file_name):
+                            request.endpoint = f'{request.endpoint}/{file_name}'
 
-            if request.arguments is not None:
-                arguments_json = jsondumps(request.arguments)
+                request.source = source
+
+            if request_template.arguments is not None:
+                arguments_json = jsondumps(request_template.arguments)
                 rendered_json = j2env.from_string(arguments_json).render(**self.context_variables)
-                arguments = jsonloads(rendered_json)
+                request.arguments = jsonloads(rendered_json)
 
-            if request.metadata is not None:
-                metadata_json = jsondumps(request.metadata)
+            if request_template.metadata is not None:
+                metadata_json = jsondumps(request_template.metadata)
                 rendered_metadata = j2env.from_string(metadata_json).render(**self.context_variables)
-                metadata = jsonloads(rendered_metadata)
+                request.metadata = jsonloads(rendered_metadata)
 
-            return name, endpoint, payload, arguments, metadata
-        except Exception as exception:
-            self.logger.error(f'{exception=}, {request.name=}, {request.endpoint=}, {self.context_variables=}, {request.arguments=}, {request.metadata=}', exc_info=True)
-            self.environment.events.request.fire(
-                request_type=RequestType.from_method(request.method),
-                name=scenario_name,
-                response_time=0,
-                response_length=0,
-                context=self._context,
-                exception=exception,
-            )
+            request.__rendered__ = True
+
+            return request
+        except:
+            self.logger.error('failed to render request template', exc_info=True)
             raise StopUser()
 
     def context(self) -> Dict[str, Any]:

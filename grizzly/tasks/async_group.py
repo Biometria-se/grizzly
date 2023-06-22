@@ -58,6 +58,7 @@ class AsyncRequestGroupTask(GrizzlyTaskWrapper):
             raise ValueError(f'{self.__class__.__name__} only accepts RequestTask tasks, not {task.__class__.__name__}')
 
         task.name = f'{self.name}:{task.name}'
+        task.async_request = True
         self.tasks.append(task)
 
     def peek(self) -> List[GrizzlyTask]:
@@ -103,7 +104,7 @@ class AsyncRequestGroupTask(GrizzlyTaskWrapper):
                 )
 
                 for request in self.tasks:
-                    greenlet = gevent.spawn(parent.user.async_request, parent, request)
+                    greenlet = gevent.spawn(parent.user.request, request)
                     if debug_enabled:
                         greenlet.settrace(trace_green)
                     greenlets.append(greenlet)
@@ -113,7 +114,7 @@ class AsyncRequestGroupTask(GrizzlyTaskWrapper):
                 for greenlet in greenlets:
                     try:
                         _, payload = greenlet.get()
-                        response_length += len(payload) if payload is not None else 0
+                        response_length += len(payload.encode()) if payload is not None else 0
                     except Exception as e:
                         parent.user.logger.error(str(e), exc_info=True)
                         if exception is None:

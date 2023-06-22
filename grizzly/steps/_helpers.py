@@ -263,7 +263,7 @@ def normalize_step_name(step_name: str) -> str:
     return re.sub(r'"[^"]*"', '""', step_name)
 
 
-def get_task_client(endpoint: str) -> Type[ClientTask]:
+def get_task_client(grizzly: GrizzlyContext, endpoint: str) -> Type[ClientTask]:
     scheme = urlparse(endpoint).scheme
 
     assert scheme is not None and len(scheme) > 0, f'could not find scheme in "{endpoint}"'
@@ -271,6 +271,8 @@ def get_task_client(endpoint: str) -> Type[ClientTask]:
     task_client = client.available.get(scheme, None)
 
     assert task_client is not None, f'no client task registered for {scheme}'
+
+    task_client.__scenario__ = grizzly.scenario
 
     return task_client
 

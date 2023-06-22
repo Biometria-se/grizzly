@@ -16,6 +16,8 @@ def test_task_failing(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, ca
 
     @client('test')
     class TestTask(ClientTask):
+        __scenario__ = grizzly_fixture.grizzly.scenario
+
         def get(self, parent: GrizzlyScenario) -> GrizzlyResponse:
             with self.action(parent):
                 raise RuntimeError('failed get')

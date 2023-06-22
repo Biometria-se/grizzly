@@ -113,30 +113,33 @@ class TestLoopTask:
 
         assert request_spy.call_count == 7  # loop task + 3 tasks * 2 values
 
-        for i, (_, kwargs) in enumerate(request_spy.call_args_list[:3]):
+        for i, (args, kwargs) in enumerate(request_spy.call_args_list[:3]):
+            assert args == ()
             assert kwargs.get('request_type', None) == 'TSTSK'
             assert kwargs.get('name', None) == f'TestTask: test:{{{{ foobar }}}}-test-{i}'
             assert kwargs.get('response_time', None) == 13
             assert kwargs.get('response_length', None) == 37
             assert kwargs.get('exception', '') is None
-            assert kwargs.get('context', None) == {'variables': {'foobar': 'hello'}}
+            assert kwargs.get('context', None) == {'variables': {'foobar': 'hello'}, 'log_all_requests': False}
 
-        for i, (_, kwargs) in enumerate(request_spy.call_args_list[3:-1]):
+        for i, (args, kwargs) in enumerate(request_spy.call_args_list[3:-1]):
+            assert args == ()
             assert kwargs.get('request_type', None) == 'TSTSK'
             assert kwargs.get('name', None) == f'TestTask: test:{{{{ foobar }}}}-test-{i}'
             assert kwargs.get('response_time', None) == 13
             assert kwargs.get('response_length', None) == 37
             assert kwargs.get('exception', '') is None
-            assert kwargs.get('context', None) == {'variables': {'foobar': 'world'}}
+            assert kwargs.get('context', None) == {'variables': {'foobar': 'world'}, 'log_all_requests': False}
 
-        _, kwargs = request_spy.call_args_list[-1]
+        args, kwargs = request_spy.call_args_list[-1]
 
+        assert args == ()
         assert kwargs.get('request_type', None) == 'LOOP'
         assert kwargs.get('name', None) == '003 test (3)'
         assert kwargs.get('response_time', None) >= 0
         assert kwargs.get('response_length', None) == 2
         assert kwargs.get('exception', '') is None
-        assert kwargs.get('context', None) == {'variables': {'foobar': 'none'}}
+        assert kwargs.get('context', None) == {'variables': {'foobar': 'none'}, 'log_all_requests': False}
 
         request_spy.reset_mock()
 
@@ -148,30 +151,33 @@ class TestLoopTask:
 
         assert request_spy.call_count == 7  # loop task + 3 tasks * 2 values
 
-        for i, (_, kwargs) in enumerate(request_spy.call_args_list[:3]):
+        for i, (args, kwargs) in enumerate(request_spy.call_args_list[:3]):
+            assert args == ()
             assert kwargs.get('request_type', None) == 'TSTSK'
             assert kwargs.get('name', None) == f'TestTask: test:{{{{ foobar }}}}-test-{i}'
             assert kwargs.get('response_time', None) == 13
             assert kwargs.get('response_length', None) == 37
             assert kwargs.get('exception', '') is None
-            assert kwargs.get('context', None) == {'variables': {'foobar': 'foo', 'json_input': '["foo", "bar"]'}}
+            assert kwargs.get('context', None) == {'variables': {'foobar': 'foo', 'json_input': '["foo", "bar"]'}, 'log_all_requests': False}
 
-        for i, (_, kwargs) in enumerate(request_spy.call_args_list[3:-1]):
+        for i, (args, kwargs) in enumerate(request_spy.call_args_list[3:-1]):
+            assert args == ()
             assert kwargs.get('request_type', None) == 'TSTSK'
             assert kwargs.get('name', None) == f'TestTask: test:{{{{ foobar }}}}-test-{i}'
             assert kwargs.get('response_time', None) == 13
             assert kwargs.get('response_length', None) == 37
             assert kwargs.get('exception', '') is None
-            assert kwargs.get('context', None) == {'variables': {'foobar': 'bar', 'json_input': '["foo", "bar"]'}}
+            assert kwargs.get('context', None) == {'variables': {'foobar': 'bar', 'json_input': '["foo", "bar"]'}, 'log_all_requests': False}
 
-        _, kwargs = request_spy.call_args_list[-1]
+        args, kwargs = request_spy.call_args_list[-1]
 
+        assert args == ()
         assert kwargs.get('request_type', None) == 'LOOP'
         assert kwargs.get('name', None) == '003 test (3)'
         assert kwargs.get('response_time', None) >= 0
         assert kwargs.get('response_length', None) == 2
         assert kwargs.get('exception', '') is None
-        assert kwargs.get('context', None) == {'variables': {'foobar': 'none', 'json_input': '["foo", "bar"]'}}
+        assert kwargs.get('context', None) == {'variables': {'foobar': 'none', 'json_input': '["foo", "bar"]'}, 'log_all_requests': False}
 
         request_spy.reset_mock()
         del grizzly.state.variables['json_input']
@@ -187,12 +193,13 @@ class TestLoopTask:
             task(parent)
 
         assert request_spy.call_count == 1
-        _, kwargs = request_spy.call_args_list[-1]
+        args, kwargs = request_spy.call_args_list[-1]
+        assert args == ()
         assert kwargs.get('request_type', None) == 'LOOP'
         assert kwargs.get('name', None) == '003 test (3)'
         assert kwargs.get('response_time', None) >= 0
         assert kwargs.get('response_length', None) == 0
-        assert kwargs.get('context', None) == {'variables': {'foobar': 'none'}}
+        assert kwargs.get('context', None) == {'variables': {'foobar': 'none'}, 'log_all_requests': False}
         exception = kwargs.get('exception', None)
         assert isinstance(exception, JSONDecodeError)
         assert str(exception).startswith('Unterminated string starting at:')
@@ -208,12 +215,13 @@ class TestLoopTask:
             task(parent)
 
         assert request_spy.call_count == 1
-        _, kwargs = request_spy.call_args_list[-1]
+        args, kwargs = request_spy.call_args_list[-1]
+        assert args == ()
         assert kwargs.get('request_type', None) == 'LOOP'
         assert kwargs.get('name', None) == '003 test (3)'
         assert kwargs.get('response_time', None) >= 0
         assert kwargs.get('response_length', None) == 0
-        assert kwargs.get('context', None) == {'variables': {'foobar': 'none'}}
+        assert kwargs.get('context', None) == {'variables': {'foobar': 'none'}, 'log_all_requests': False}
         exception = kwargs.get('exception', None)
         assert str(exception) == '"{"hello": "world"}" is not a list'
 
@@ -233,13 +241,14 @@ class TestLoopTask:
 
         assert request_spy.call_count == 4
 
-        _, kwargs = request_spy.call_args_list[-1]
+        args, kwargs = request_spy.call_args_list[-1]
 
+        assert args == ()
         assert kwargs.get('request_type', None) == 'LOOP'
         assert kwargs.get('name', None) == '003 test (2)'
         assert kwargs.get('response_time', None) >= 0
         assert kwargs.get('response_length', None) == 2
-        assert kwargs.get('context', None) == {'variables': {'foobar': 'world'}}
+        assert kwargs.get('context', None) == {'variables': {'foobar': 'world'}, 'log_all_requests': False}
         exception = kwargs.get('exception', '')
         assert isinstance(exception, ValueError)
         assert str(exception) == 'error'

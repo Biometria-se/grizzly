@@ -178,7 +178,7 @@ class RequestType(Enum, AdvancedEnum, metaclass=MixedEnumMeta, init='alias _weig
 
 GrizzlyResponseContextManager = Union[RequestsResponseContextManager, FastResponseContextManager]
 
-GrizzlyResponse = Tuple[Optional[Dict[str, Any]], Optional[Any]]
+GrizzlyResponse = Tuple[Optional[Dict[str, Any]], Optional[str]]
 
 HandlerContextType = Union[GrizzlyResponseContextManager, GrizzlyResponse]
 

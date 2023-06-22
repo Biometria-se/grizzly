@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Tuple, TypedDict, Optional, Type, Literal, Union, Protocol, TypeVar, Callable, cast, TYPE_CHECKING
-from functools import wraps
+from typing import Any, Dict, Tuple, TypedDict, Optional, Type, Literal, Union, TypeVar, Callable, Generic, cast, TYPE_CHECKING
 from enum import Enum
 from time import time
 from importlib import import_module
 from urllib.parse import urlparse
 from abc import ABCMeta
+from functools import wraps
 
 from grizzly.types import GrizzlyResponse
 from grizzly.types.locust import Environment
@@ -19,7 +19,7 @@ except:
 
 
 if TYPE_CHECKING:  # pragma: no cover
-    from grizzly.scenarios import GrizzlyScenario
+    from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 
 
 class AuthMethod(Enum):
@@ -59,13 +59,18 @@ class GrizzlyHttpContext(TypedDict):
     auth: Optional[GrizzlyAuthHttpContext]
 
 
-class GrizzlyHttpAuthClient(metaclass=ABCMeta):
+P = ParamSpec('P')
+
+
+class GrizzlyHttpAuthClient(Generic[P], metaclass=ABCMeta):
     host: str
     environment: Environment
     headers: Dict[str, str]
     cookies: Dict[str, str]
     _context: GrizzlyHttpContext
     session_started: Optional[float]
+    grizzly: GrizzlyContext
+    _scenario: GrizzlyContextScenario
 
     def add_metadata(self, key: str, value: str) -> None:
         if self._context.get('metadata', None) is None:
@@ -74,19 +79,10 @@ class GrizzlyHttpAuthClient(metaclass=ABCMeta):
         cast(dict, self._context['metadata']).update({key: value})
 
 
-P = ParamSpec('P')
-F = TypeVar('F', bound=Callable[..., GrizzlyResponse])
+AuthenticatableFunc = TypeVar('AuthenticatableFunc', bound=Callable[..., GrizzlyResponse])
 
 
-class AuthenticatableFunc(Protocol[P]):
-    def __call__(self, parent: 'GrizzlyScenario', *args: P.args, **kwargs: P.kwargs) -> GrizzlyResponse:
-        ...
-
-    def __get__(self, *args: Any, **kwargs: Any) -> Any:
-        ...
-
-
-class refresh_token:
+class refresh_token(Generic[P]):
     impl: Type[RefreshToken]
 
     def __init__(self, impl: Union[Type[RefreshToken], str]) -> None:
@@ -104,22 +100,23 @@ class refresh_token:
 
         self.impl = cast(Type[RefreshToken], impl)
 
-    def __call__(self, func: F) -> AuthenticatableFunc[P]:
-        def render(parent: GrizzlyScenario, client: GrizzlyHttpAuthClient) -> None:
-            host = parent.render(client.host)
+    def __call__(self, func: AuthenticatableFunc) -> AuthenticatableFunc:
+        def render(client: GrizzlyHttpAuthClient) -> None:
+            variables = cast(Dict[str, Any], client._context.get('variables', {}))
+            host = client.grizzly.state.jinja2.from_string(client.host).render(**variables)
             parsed = urlparse(host)
+
             client.host = f'{parsed.scheme}://{parsed.netloc}'
 
-            client_context = parent.user._context.get(parsed.netloc, None)
+            client_context = client._context.get(parsed.netloc, None)
 
             # we have a host specific context that we should merge into current context
             if client_context is not None:
                 client._context = cast(GrizzlyHttpContext, merge_dicts(cast(dict, client._context), cast(dict, client_context)))
 
         @wraps(func)
-        def refresh_token(client: GrizzlyHttpAuthClient, parent: GrizzlyScenario, *args: P.args, **kwargs: P.kwargs) -> GrizzlyResponse:
-            if client._context.get('auth', None) is None:
-                render(parent, client)
+        def refresh_token(client: GrizzlyHttpAuthClient, *args: P.args, **kwargs: P.kwargs) -> GrizzlyResponse:
+            render(client)
 
             auth_context = client._context.get('auth', None)
 
@@ -161,7 +158,7 @@ class refresh_token:
 
                     # refresh token if session has been alive for at least refresh_time
                     if session_duration >= auth_context.get('refresh_time', 3000) or (client.headers.get('Authorization', None) is None and client.cookies == {}):
-                        auth_type, secret = self.impl.get_token(parent, client, auth_method)
+                        auth_type, secret = self.impl.get_token(client, auth_method)
                         client.session_started = time()
                         if auth_type == AuthType.HEADER:
                             client.headers.update({'Authorization': f'Bearer {secret}'})
@@ -174,25 +171,25 @@ class refresh_token:
 
             bound = func.__get__(client, client.__class__)
 
-            return cast(GrizzlyResponse, bound(parent, *args, **kwargs))
+            return cast(GrizzlyResponse, bound(*args, **kwargs))
 
-        return cast(AuthenticatableFunc[P], refresh_token)
+        return cast(AuthenticatableFunc, refresh_token)
 
 
 class RefreshToken(metaclass=ABCMeta):
     @classmethod
-    def get_token(cls, parent: GrizzlyScenario, client: GrizzlyHttpAuthClient, auth_method: Literal[AuthMethod.CLIENT, AuthMethod.USER]) -> Tuple[AuthType, str]:
+    def get_token(cls, client: GrizzlyHttpAuthClient, auth_method: Literal[AuthMethod.CLIENT, AuthMethod.USER]) -> Tuple[AuthType, str]:
         if auth_method == AuthMethod.CLIENT:
-            return cls.get_oauth_token(parent, client)
+            return cls.get_oauth_token(client)
         else:
-            return cls.get_oauth_authorization(parent, client)
+            return cls.get_oauth_authorization(client)
 
     @classmethod
-    def get_oauth_authorization(cls, parent: GrizzlyScenario, client: GrizzlyHttpAuthClient) -> Tuple[AuthType, str]:
+    def get_oauth_authorization(cls, client: GrizzlyHttpAuthClient) -> Tuple[AuthType, str]:
         raise NotImplementedError(f'{cls.__name__} has not implemented "get_oauth_authorization"')  # pragma: no cover
 
     @classmethod
-    def get_oauth_token(cls, parent: GrizzlyScenario, client: GrizzlyHttpAuthClient, pkcs: Optional[Tuple[str, str]] = None) -> Tuple[AuthType, str]:
+    def get_oauth_token(cls, client: GrizzlyHttpAuthClient, pkcs: Optional[Tuple[str, str]] = None) -> Tuple[AuthType, str]:
         raise NotImplementedError(f'{cls.__name__} has not implemented "get_oauth_token"')  # pragma: no cover
 
 
