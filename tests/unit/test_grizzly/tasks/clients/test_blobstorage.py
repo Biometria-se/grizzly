@@ -18,6 +18,7 @@ from tests.fixtures import BehaveFixture, GrizzlyFixture
 
 class TestBlobStorageClientTask:
     def test___init__(self, grizzly_fixture: GrizzlyFixture) -> None:
+        BlobStorageClientTask.__scenario__ = grizzly_fixture.grizzly.scenario
         with pytest.raises(AttributeError) as ae:
             BlobStorageClientTask(
                 RequestDirection.TO,
@@ -122,6 +123,8 @@ class TestBlobStorageClientTask:
         grizzly = cast(GrizzlyContext, behave.grizzly)
         grizzly.state.variables['test'] = 'none'
 
+        BlobStorageClientTask.__scenario__ = grizzly.scenario
+
         task_factory = BlobStorageClientTask(
             RequestDirection.FROM,
             'bs://my-storage?AccountKey=aaaabbb=&Container=my-container',
@@ -151,6 +154,8 @@ class TestBlobStorageClientTask:
                 'storage.account_key': 'aaaa+bbb/64=',
                 'storage.container': 'my-container',
             })
+
+            BlobStorageClientTask.__scenario__ = grizzly.scenario
 
             with pytest.raises(ValueError) as ve:
                 BlobStorageClientTask(

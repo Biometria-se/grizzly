@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Tuple, TypedDict, Optional, Type, Literal, Union, TypeVar, Callable, Generic, cast, TYPE_CHECKING
+from typing import Any, Dict, Tuple, Optional, Type, Literal, Union, TypeVar, Callable, Generic, cast, TYPE_CHECKING
 from enum import Enum
 from time import time
 from importlib import import_module
@@ -33,32 +33,6 @@ class AuthType(Enum):
     COOKIE = 2
 
 
-class GrizzlyAuthHttpContextUser(TypedDict):
-    username: Optional[str]
-    password: Optional[str]
-    redirect_uri: Optional[str]
-    initialize_uri: Optional[str]
-
-
-class GrizzlyAuthHttpContextClient(TypedDict):
-    id: Optional[str]
-    secret: Optional[str]
-    resource: Optional[str]
-
-
-class GrizzlyAuthHttpContext(TypedDict):
-    client: Optional[GrizzlyAuthHttpContextClient]
-    user: Optional[GrizzlyAuthHttpContextUser]
-    provider: Optional[str]
-    refresh_time: int
-
-
-class GrizzlyHttpContext(TypedDict):
-    verify_certificates: bool
-    metadata: Optional[Dict[str, str]]
-    auth: Optional[GrizzlyAuthHttpContext]
-
-
 P = ParamSpec('P')
 
 
@@ -67,7 +41,25 @@ class GrizzlyHttpAuthClient(Generic[P], metaclass=ABCMeta):
     environment: Environment
     headers: Dict[str, str]
     cookies: Dict[str, str]
-    _context: GrizzlyHttpContext
+    _context: Dict[str, Any] = {
+        'verify_certificates': True,
+        'auth': {
+            'refresh_time': 3000,
+            'provider': None,
+            'client': {
+                'id': None,
+                'secret': None,
+                'resource': None,
+            },
+            'user': {
+                'username': None,
+                'password': None,
+                'redirect_uri': None,
+                'initialize_uri': None,
+            },
+        },
+        'metadata': None,
+    }
     session_started: Optional[float]
     grizzly: GrizzlyContext
     _scenario: GrizzlyContextScenario
@@ -112,7 +104,7 @@ class refresh_token(Generic[P]):
 
             # we have a host specific context that we should merge into current context
             if client_context is not None:
-                client._context = cast(GrizzlyHttpContext, merge_dicts(cast(dict, client._context), cast(dict, client_context)))
+                client._context = merge_dicts(client._context, cast(dict, client_context))
 
         @wraps(func)
         def refresh_token(client: GrizzlyHttpAuthClient, *args: P.args, **kwargs: P.kwargs) -> GrizzlyResponse:

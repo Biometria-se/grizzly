@@ -29,19 +29,30 @@ def test_task_failing(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, ca
 
     assert isinstance(parent, IteratorScenario)
 
+    parent.user._context.update({'test': 'was here'})
+
     task_factory = TestTask(RequestDirection.FROM, 'test://foo.bar', 'dummy-stuff')
 
     task = task_factory()
 
+    assert task_factory._context.get('test', None) is None
     parent.user._scenario.failure_exception = StopUser
 
     with pytest.raises(StopUser):
         task(parent)
 
+    assert task_factory._context.get('test', None) == 'was here'
+
     parent.user._scenario.failure_exception = RestartScenario
+    parent.user._context.update({'test': 'is here', 'foo': 'bar'})
+
+    assert task_factory._context.get('foo', None) is None
 
     with pytest.raises(RestartScenario):
         task(parent)
+
+    assert parent.user._context.get('test', None) == 'is here'
+    assert parent.user._context.get('foo', None) == 'bar'
 
     parent.user._scenario.failure_exception = None
 

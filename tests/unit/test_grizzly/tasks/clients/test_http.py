@@ -26,7 +26,9 @@ class TestHttpClientTask:
         behave = grizzly_fixture.behave.context
         grizzly = cast(GrizzlyContext, behave.grizzly)
         grizzly.state.variables.update({'test_payload': 'none', 'test_metadata': 'none'})
+        parent.user._context.update({'test': 'was here'})
 
+        HttpClientTask.__scenario__ = grizzly.scenario
         task_factory = HttpClientTask(RequestDirection.FROM, 'http://example.org', payload_variable='test_payload', metadata_variable='test_metadata')
         task = task_factory()
 
@@ -36,11 +38,13 @@ class TestHttpClientTask:
         assert getattr(task_factory, 'environment', None) is None
         assert getattr(task_factory, 'session_started', None) is None
         assert task_factory.headers == {'x-grizzly-user': ANY}
+        assert task_factory._context.get('test', None) is None
 
         task.on_start(parent)
 
         assert getattr(task_factory, 'session_started', -1.0) >= 0.0
         assert task_factory.headers == {'x-grizzly-user': ANY, 'x-test-header': 'foobar'}
+        assert task_factory._context.get('test', None) == 'was here'
 
     def test_get(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
         behave = grizzly_fixture.behave.context
@@ -81,6 +85,7 @@ class TestHttpClientTask:
         assert 'HttpClientTask: payload variable is not set, but metadata variable is set' in str(ve)
 
         parent = grizzly_fixture()
+        parent.user._context.update({'test': 'was here'})
 
         request_fire_spy = mocker.spy(parent.user.environment.events.request, 'fire')
 
@@ -96,6 +101,7 @@ class TestHttpClientTask:
 
         assert parent.user._context['variables'].get('test_payload', None) is None
         assert parent.user._context['variables'].get('test_metadata', None) is None
+        assert task_factory._context.get('test', None) is None
 
         task_factory.name = 'test-1'
         response.status_code = 400
@@ -103,6 +109,7 @@ class TestHttpClientTask:
 
         task(parent)
 
+        assert task_factory._context.get('test', None) == 'was here'
         assert parent.user._context['variables'].get('test_payload', None) is None
         assert parent.user._context['variables'].get('test_metadata', None) is None
         assert requests_get_spy.call_count == 1
@@ -290,11 +297,16 @@ class TestHttpClientTask:
         assert str(nie.value) == 'HttpClientTask has not implemented support for step text'
 
     def test_put(self, grizzly_fixture: GrizzlyFixture) -> None:
+        HttpClientTask.__scenario__ = grizzly_fixture.grizzly.scenario
         task_factory = HttpClientTask(RequestDirection.TO, 'http://put.example.org', source='')
         task = task_factory()
 
         parent = grizzly_fixture()
+        parent.user._context.update({'test': 'was here'})
+
+        assert task_factory._context.get('test', None) is None
 
         with pytest.raises(NotImplementedError) as nie:
             task(parent)
         assert 'HttpClientTask has not implemented PUT' in str(nie.value)
+        assert task_factory._context.get('test', None) == 'was here'

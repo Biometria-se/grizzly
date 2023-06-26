@@ -20,7 +20,6 @@ from grizzly.types.locust import StopUser
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import RequestTask
 from grizzly.testdata.utils import transform
-from grizzly.auth import GrizzlyAuthHttpContext
 from grizzly_extras.transformer import TransformerContentType
 
 from tests.fixtures import MockerFixture, GrizzlyFixture
@@ -466,8 +465,8 @@ class TestRestApiUser:
         assert isinstance(parent.user, RestApiUser)
 
         assert 'test_context_variable' not in parent.user._context
-        assert cast(GrizzlyAuthHttpContext, parent.user._context['auth'])['provider'] is None
-        assert cast(GrizzlyAuthHttpContext, parent.user._context['auth'])['refresh_time'] == 3000
+        assert parent.user._context['auth']['provider'] is None
+        assert parent.user._context['auth']['refresh_time'] == 3000
 
         parent.user.add_context({'test_context_variable': 'value'})
 
@@ -475,8 +474,8 @@ class TestRestApiUser:
 
         parent.user.add_context({'auth': {'provider': 'http://auth.example.org'}})
 
-        assert cast(GrizzlyAuthHttpContext, parent.user._context['auth'])['provider'] == 'http://auth.example.org'
-        assert cast(GrizzlyAuthHttpContext, parent.user._context['auth'])['refresh_time'] == 3000
+        assert parent.user._context['auth']['provider'] == 'http://auth.example.org'
+        assert parent.user._context['auth']['refresh_time'] == 3000
 
         parent.user.headers['Authorization'] = 'Bearer asdfasdfasdf'
 

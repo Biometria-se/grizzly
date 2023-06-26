@@ -72,9 +72,12 @@ class TestUntilRequestTask:
     ) -> None:
         parent = grizzly_fixture()
 
-        meta_request_task = meta_request_task_type(*meta_args, **meta_kwargs)
-
         grizzly = grizzly_fixture.grizzly
+
+        if meta_request_task_type == HttpClientTask:
+            meta_request_task_type.__scenario__ = grizzly.scenario  # type: ignore
+
+        meta_request_task = meta_request_task_type(*meta_args, **meta_kwargs)
 
         def create_response(status: str) -> str:
             return jsondumps({
@@ -438,11 +441,14 @@ class TestUntilRequestTask:
     ) -> None:
         parent = grizzly_fixture()
 
+        grizzly = grizzly_fixture.grizzly
+
+        if meta_request_task_type == HttpClientTask:
+            meta_request_task_type.__scenario__ = grizzly.scenario  # type: ignore
+
         meta_request_task = meta_request_task_type(*meta_args, **meta_kwargs)
 
         on_start_spy = mocker.spy(meta_request_task, 'on_start')
-
-        grizzly = grizzly_fixture.grizzly
 
         task_factory = UntilRequestTask(grizzly, meta_request_task, "$.`this`[?status='ready'] | wait=100, retries=10")
         task = task_factory()
@@ -462,11 +468,14 @@ class TestUntilRequestTask:
     ) -> None:
         parent = grizzly_fixture()
 
+        grizzly = grizzly_fixture.grizzly
+
+        if meta_request_task_type == HttpClientTask:
+            meta_request_task_type.__scenario__ = grizzly.scenario  # type: ignore
+
         meta_request_task = meta_request_task_type(*meta_args, **meta_kwargs)
 
         on_stop_spy = mocker.spy(meta_request_task, 'on_stop')
-
-        grizzly = grizzly_fixture.grizzly
 
         task_factory = UntilRequestTask(grizzly, meta_request_task, "$.`this`[?status='ready'] | wait=100, retries=10")
         task = task_factory()

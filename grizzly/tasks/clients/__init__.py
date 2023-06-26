@@ -38,6 +38,7 @@ from grizzly.scenarios import GrizzlyScenario
 from grizzly.testdata.utils import resolve_variable
 from grizzly.users.base import RequestLogger
 from grizzly.tasks import GrizzlyMetaRequestTask, template, grizzlytask
+from grizzly.utils import merge_dicts
 
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -56,6 +57,7 @@ class ClientTask(GrizzlyMetaRequestTask):
         RequestDirection.FROM: '<-',
         RequestDirection.TO: '->',
     }
+    _context: Dict[str, Any] = {}
 
     host: str
     grizzly: GrizzlyContext
@@ -155,6 +157,7 @@ class ClientTask(GrizzlyMetaRequestTask):
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self._scenario = copy(self.__scenario__)
         self._scenario._tasks = self.__scenario__._tasks
+        self._context = merge_dicts(self.__class__._context, self._context)
 
     def on_start(self, parent: GrizzlyScenario) -> None:
         pass
@@ -192,15 +195,23 @@ class ClientTask(GrizzlyMetaRequestTask):
 
         @task.on_start
         def on_start(parent: GrizzlyScenario) -> None:
+            self._context = merge_dicts(parent.user._context, self._context)
             return self.on_start(parent)
 
         @task.on_stop
         def on_stop(parent: GrizzlyScenario) -> None:
+            self._context = merge_dicts(parent.user._context, self._context)
             return self.on_stop(parent)
 
         return task
 
     def execute(self, parent: GrizzlyScenario) -> GrizzlyResponse:
+        """
+        This method is sometimes called directly when wrapped in another task, so the grizzlytask-decorated method
+        above might not execute at all.
+        """
+        self._context = merge_dicts(parent.user._context, self._context)
+
         if self.direction == RequestDirection.FROM:
             return self.get(parent)
         else:

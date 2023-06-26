@@ -15,7 +15,7 @@ from requests.models import Response
 from requests.cookies import create_cookie
 from _pytest.logging import LogCaptureFixture
 
-from grizzly.auth import AuthMethod, AuthType, AAD, GrizzlyAuthHttpContext, GrizzlyAuthHttpContextUser
+from grizzly.auth import AuthMethod, AuthType, AAD
 from grizzly.users import RestApiUser
 from grizzly.types.locust import StopUser
 from grizzly.utils import safe_del
@@ -363,7 +363,7 @@ class TestAAD:
 
                 fire_spy.assert_not_called()
 
-                cast(GrizzlyAuthHttpContext, parent.user._context['auth'])['provider'] = provider_url
+                parent.user._context['auth']['provider'] = provider_url
 
             # test when login sequence returns bad request
             mock_request_session(Error.REQUEST_1_HTTP_STATUS)
@@ -631,7 +631,7 @@ class TestAAD:
             # test no host in redirect/initialize uri
             auth_user_uri = '/app/authenticated' if login_start == 'redirect_uri' else '/app/login'
 
-            cast(GrizzlyAuthHttpContextUser, cast(GrizzlyAuthHttpContext, parent.user._context['auth'])['user'])[login_start] = auth_user_uri  # type: ignore
+            parent.user._context['auth']['user'][login_start] = auth_user_uri
 
             assert AAD.get_oauth_authorization(parent.user) == expected_auth
 
@@ -735,23 +735,23 @@ class TestAAD:
                 AAD.get_oauth_token(parent.user, pkcs)
             assert str(ae.value) == 'context variable auth.provider is not set'
 
-            cast(GrizzlyAuthHttpContext, parent.user._context['auth']).update({'provider': provider_url})
+            parent.user._context['auth'].update({'provider': provider_url})
 
             with pytest.raises(AssertionError) as ae:
                 AAD.get_oauth_token(parent.user, pkcs)
             assert str(ae.value) == 'context variable auth.client is not set'
 
-            cast(GrizzlyAuthHttpContext, parent.user._context['auth']).update({'client': {'id': None, 'secret': None, 'resource': None}})
+            parent.user._context['auth'].update({'client': {'id': None, 'secret': None, 'resource': None}})
 
             if grant_type == 'authorization_code':
                 with pytest.raises(AssertionError) as ae:
                     AAD.get_oauth_token(parent.user, pkcs)
                 assert str(ae.value) == 'context variable auth.user is not set'
 
-                cast(GrizzlyAuthHttpContext, parent.user._context['auth']).update({'user': {'username': None, 'password': None, 'redirect_uri': '/auth', 'initialize_uri': None}})
+                parent.user._context['auth'].update({'user': {'username': None, 'password': None, 'redirect_uri': '/auth', 'initialize_uri': None}})
 
             parent.user._context['host'] = parent.user.host = 'https://example.com'
-            cast(GrizzlyAuthHttpContext, parent.user._context['auth']).update({
+            parent.user._context['auth'].update({
                 'provider': provider_url,
                 'client': {
                     'id': 'asdf',
@@ -850,7 +850,7 @@ class TestAAD:
                 assert headers.get('Origin', None) == 'https://example.com'
                 assert headers.get('Referer', None) == 'https://example.com'
 
-            cast(GrizzlyAuthHttpContext, parent.user._context['auth']).update({'provider': None})
+            parent.user._context['auth'].update({'provider': None})
 
             with pytest.raises(AssertionError) as ae:
                 AAD.get_oauth_token(parent.user, pkcs)

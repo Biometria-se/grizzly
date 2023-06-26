@@ -123,7 +123,7 @@ And metadata "filename" is "my_filename"
 '''
 import logging
 
-from typing import Dict, Any, Generator, Tuple, Optional
+from typing import Dict, Any, Generator, Tuple, Optional, cast
 from urllib.parse import urlparse, parse_qs, unquote
 from contextlib import contextmanager
 
@@ -252,7 +252,8 @@ class MessageQueueUser(ResponseHandler, GrizzlyUser):
         try:
             with self.request_context(None, {
                 'action': RequestType.CONNECT(),
-                'context': self.am_context
+                'client': id(self),
+                'context': self.am_context,
             }):
                 self.zmq_client = self.zmq_context.socket(ZMQ_REQ)
                 self.zmq_client.connect(self.zmq_url)
@@ -268,7 +269,8 @@ class MessageQueueUser(ResponseHandler, GrizzlyUser):
         with self.request_context(None, {
             'action': RequestType.DISCONNECT(),
             'worker': self.worker_id,
-            'context': self.am_context
+            'client': id(self),
+            'context': self.am_context,
         }):
             pass
 
@@ -298,15 +300,19 @@ class MessageQueueUser(ResponseHandler, GrizzlyUser):
         })
 
     def request_impl(self, request: RequestTask) -> GrizzlyResponse:
-        am_request: AsyncMessageRequest = {
-            'action': request.method.name,
-            'worker': self.worker_id,
-            'client': id(self),
-            'context': {
+        am_context = cast(AsyncMessageContext, merge_dicts(
+            cast(Dict[str, Any], self.am_context),
+            {
                 'endpoint': request.endpoint,
                 'metadata': request.metadata,
                 'content_type': request.response.content_type.name.lower(),
             },
+        ))
+        am_request: AsyncMessageRequest = {
+            'action': request.method.name,
+            'worker': self.worker_id,
+            'client': id(self),
+            'context': am_context,
             'payload': request.source,
         }
 

@@ -40,7 +40,7 @@ Then get "https://{{ url }}" with name "authenticated-get" and save response pay
 This will make any requests towards `www.example.com` to get a token from `http://login.example.com/oauth2` and use it in any
 requests towards `www.example.com`.
 '''
-from typing import Optional, Dict, Any, cast
+from typing import Optional, Dict, Any
 from json import dumps as jsondumps
 from time import time
 
@@ -51,7 +51,7 @@ from grizzly_extras.arguments import split_value, parse_arguments
 
 from grizzly.types import GrizzlyResponse, RequestDirection, bool_type
 from grizzly.scenarios import GrizzlyScenario
-from grizzly.auth import GrizzlyHttpAuthClient, refresh_token, AAD, GrizzlyHttpContext
+from grizzly.auth import GrizzlyHttpAuthClient, refresh_token, AAD
 from grizzly.utils import merge_dicts
 
 from . import client, ClientTask
@@ -64,7 +64,7 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
     session_started: Optional[float]
     host: str
 
-    _context: GrizzlyHttpContext
+    _context: Dict[str, Any]
 
     def __init__(
         self,
@@ -118,9 +118,8 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
             'auth': None,
         }
 
-        cast(Dict[str, Any], self._context).update({'host': self.host})
-
-        self._context = cast(GrizzlyHttpContext, merge_dicts(cast(Dict[str, Any], self._context), self._scenario.context))
+        self._context.update({'host': self.host})
+        self._context = merge_dicts(self._context, self._scenario.context)
 
     def on_start(self, parent: GrizzlyScenario) -> None:
         super().on_start(parent)
