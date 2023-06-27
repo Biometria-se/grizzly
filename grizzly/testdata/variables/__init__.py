@@ -1,4 +1,4 @@
-'''
+"""
 @anchor pydoc:grizzly.testdata.variables Variables
 This package contains special variables that can be used in a feature file and is synchronized between locust workers.
 
@@ -8,9 +8,9 @@ It is possible to implement custom testdata variables, the only requirement is t
 When initializing the variable, the full namespace has to be specified as `name` in the scenario {@pylink grizzly.steps.setup.step_setup_variable_value} step.
 
 There are examples of this in the {@link framework.example}.
-'''
-from abc import abstractmethod
-from typing import Generic, Optional, Callable, Set, Any, Tuple, Dict, TypeVar, Protocol, runtime_checkable
+"""
+from abc import abstractmethod, ABCMeta
+from typing import Generic, Optional, Callable, Set, Any, Tuple, Dict, TypeVar
 
 from gevent.lock import Semaphore, DummySemaphore
 
@@ -27,15 +27,15 @@ class AbstractAtomicClass:
     pass
 
 
-@runtime_checkable
-class AtomicVariablePersist(Protocol):
+class AtomicVariablePersist(metaclass=ABCMeta):
     arguments: Dict[str, Any] = {'persist': bool_type}
 
+    @abstractmethod
     def generate_initial_value(self, variable: str) -> str:
         ...
 
 
-class AtomicVariableSettable:
+class AtomicVariableSettable(metaclass=ABCMeta):
     __settable__ = True
 
     @abstractmethod

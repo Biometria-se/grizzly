@@ -122,7 +122,7 @@ def locust_test_start(grizzly: GrizzlyContext) -> Callable[[Environment, KwArg(D
 
 def locust_test_stop(**_kwargs: Dict[str, Any]) -> None:
     if producer is not None:
-        producer.reset()
+        producer.on_test_stop()
 
 
 def spawning_complete(grizzly: GrizzlyContext) -> Callable[[KwArg(Dict[str, Any])], None]:
