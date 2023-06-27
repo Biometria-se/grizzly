@@ -69,9 +69,8 @@ And set response content type to "application/xml"
 '''
 import logging
 
-from typing import Generator, Dict, Any, Tuple, Optional, Set, cast, TYPE_CHECKING
+from typing import Generator, Dict, Any, Tuple, Optional, Set, cast
 from urllib.parse import urlparse, parse_qs
-from time import perf_counter as time
 from contextlib import contextmanager
 
 from zmq.sugar.constants import REQ as ZMQ_REQ
@@ -85,15 +84,10 @@ from grizzly.types.locust import StopUser, Environment
 from grizzly.tasks import RequestTask
 from grizzly.utils import merge_dicts
 
-from .base import GrizzlyUser, ResponseHandler, RequestLogger
-from . import logger
+from .base import GrizzlyUser, ResponseHandler
 
 
-if TYPE_CHECKING:  # pargma: no cover
-    from grizzly.scenarios import GrizzlyScenario
-
-
-class ServiceBusUser(ResponseHandler, RequestLogger, GrizzlyUser):
+class ServiceBusUser(ResponseHandler, GrizzlyUser):
     _context: Dict[str, Any] = {
         'message': {
             'wait': None,
@@ -162,8 +156,7 @@ class ServiceBusUser(ResponseHandler, RequestLogger, GrizzlyUser):
             if not isinstance(task, RequestTask):
                 continue
 
-            endpoint = task.endpoint
-            self.say_hello(task, endpoint)
+            self.say_hello(task)
 
     def on_stop(self) -> None:
         if getattr(self, '_scenario', None) is not None:
@@ -178,15 +171,15 @@ class ServiceBusUser(ResponseHandler, RequestLogger, GrizzlyUser):
 
         super().on_stop()
 
-    def get_description(self, task: RequestTask, endpoint: str) -> str:
-        if ('{{' in endpoint and '}}' in endpoint) or '$conf' in endpoint or '$env' in endpoint:
-            logger.error(f'{self.__class__.__name__}: cannot say hello for {task.name} when endpoint is a template')
+    def get_description(self, task: RequestTask) -> str:
+        if ('{{' in task.endpoint and '}}' in task.endpoint) or '$conf' in task.endpoint or '$env' in task.endpoint:
+            self.logger.error(f'cannot say hello for {task.name} when endpoint is a template')
             raise StopUser()
 
         connection = 'sender' if task.method.direction == RequestDirection.TO else 'receiver'
 
         try:
-            arguments = parse_arguments(endpoint, ':')
+            arguments = parse_arguments(task.endpoint, ':')
         except ValueError as e:
             raise RuntimeError(str(e)) from e
         endpoint_arguments = dict(arguments)
@@ -201,7 +194,7 @@ class ServiceBusUser(ResponseHandler, RequestLogger, GrizzlyUser):
         return f'{connection}={cache_endpoint}'
 
     def disconnect(self, task: RequestTask, endpoint: str) -> None:
-        description = self.get_description(task, endpoint)
+        description = self.get_description(task)
 
         if description not in self.hellos:
             return
@@ -218,40 +211,32 @@ class ServiceBusUser(ResponseHandler, RequestLogger, GrizzlyUser):
             'context': context,
         }
 
-        with self.async_action(task, request, description) as metadata:
-            metadata.update({
-                'meta': True,
-                'failure_exception': None,
-            })
+        with self.request_context(task, request):
+            pass
 
         self.hellos.remove(description)
 
-    def say_hello(self, task: RequestTask, endpoint: str) -> None:
-        description = self.get_description(task, endpoint)
+    def say_hello(self, task: RequestTask) -> None:
+        description = self.get_description(task)
 
         if description in self.hellos:
             return
 
         _, cache_endpoint = description.split('=', 1)
 
-        arguments = parse_arguments(endpoint, ':')
+        arguments = parse_arguments(task.endpoint, ':')
 
-        context = cast(AsyncMessageContext, dict(self.am_context))
-        context.update({
+        request_context = cast(AsyncMessageContext, dict(self.am_context))
+        request_context.update({
             'endpoint': cache_endpoint,
         })
 
         request: AsyncMessageRequest = {
             'action': RequestType.HELLO.name,
-            'context': context,
+            'context': request_context,
         }
 
-        with self.async_action(task, request, description) as metadata:
-            metadata.update({
-                'meta': True,
-                'failure_exception': None,
-            })
-
+        with self.request_context(task, request) as context:
             if 'queue' not in arguments and 'topic' not in arguments:
                 raise RuntimeError('endpoint needs to be prefixed with queue: or topic:')
 
@@ -275,14 +260,13 @@ class ServiceBusUser(ResponseHandler, RequestLogger, GrizzlyUser):
             if task.method.direction == RequestDirection.TO and arguments.get('expression', None) is not None:
                 raise RuntimeError('argument expression is only allowed when receiving messages')
 
-            metadata['failure_exception'] = self._scenario.failure_exception
+            context['failure_exception'] = self._scenario.failure_exception
 
         self.hellos.add(description)
 
     @contextmanager
-    def async_action(self, task: RequestTask, request: AsyncMessageRequest, name: str) -> Generator[Dict[str, Any], None, None]:
-        if not name.startswith(f'{self._scenario.identifier} '):
-            name = f'{self._scenario.identifier} {name}'
+    def request_context(self, task: RequestTask, request: AsyncMessageRequest) -> Generator[Dict[str, Any], None, None]:
+        name = task.name
 
         if len(name) > 65:
             name = f'{name[:65]}...'
@@ -294,9 +278,7 @@ class ServiceBusUser(ResponseHandler, RequestLogger, GrizzlyUser):
 
         connection = 'sender' if task.method.direction == RequestDirection.TO else 'receiver'
         request['context'].update({'connection': connection})
-        action: Dict[str, Any] = {
-            'failure_exception': None,
-            'meta': False,
+        context: Dict[str, Any] = {
             'metadata': None,
             'payload': None,
         }
@@ -306,17 +288,17 @@ class ServiceBusUser(ResponseHandler, RequestLogger, GrizzlyUser):
         response: Optional[AsyncMessageResponse] = None
         exception: Optional[Exception] = None
 
-        start_time = time()
-
         try:
-            yield action
+            yield context
 
             response = async_message_request(self.zmq_client, request)
+            context.update({
+                'metadata': response.get('metadata', None),
+                'payload': response.get('payload', None),
+            })
         except Exception as e:
             exception = e
         finally:
-            response_time = int((time() - start_time) * 1000)
-
             if response is not None:
                 response_worker = response.get('worker', None)
                 if self.worker_id is None:
@@ -326,75 +308,23 @@ class ServiceBusUser(ResponseHandler, RequestLogger, GrizzlyUser):
             else:
                 response = {}
 
-            action['metadata'] = response.get('metadata', None)
-            action['payload'] = response.get('payload', None)
+            if exception is not None:
+                raise exception
 
-            try:
-                if not action.get('meta', False):
-                    self.response_event.fire(
-                        name=f'{self._scenario.identifier} {task.name}',
-                        request=task,
-                        context=(
-                            response.get('metadata', None),
-                            response.get('payload', None),
-                        ),
-                        user=self,
-                        exception=exception,
-                    )
-            except Exception as e:
-                if exception is None:
-                    exception = e
-            finally:
-                self.environment.events.request.fire(
-                    request_type=RequestType.from_method(task.method),
-                    name=name,
-                    response_time=response_time,
-                    response_length=(response or {}).get('response_length', None) or 0,
-                    context=self._context,
-                    exception=exception,
-                )
+    def request_impl(self, request: RequestTask) -> GrizzlyResponse:
+        self.say_hello(request)
 
-        is_meta = action.get('meta', False)
-
-        action = {
-            'metadata': action['metadata'],
-            'payload': action['payload'],
-        }
-
-        if exception is not None and not is_meta:
-            if isinstance(exception, NotImplementedError) or isinstance(self._scenario.failure_exception, StopUser):
-                try:
-                    self.zmq_client.disconnect(self.zmq_url)
-                except:
-                    pass
-
-            if isinstance(exception, NotImplementedError):
-                raise StopUser()
-            elif self._scenario.failure_exception is not None:
-                raise self._scenario.failure_exception()
-
-    def request(self, parent: 'GrizzlyScenario', request: RequestTask) -> GrizzlyResponse:
-        request_name, endpoint, payload, _, _ = self.render(request)
-
-        name = f'{self._scenario.identifier} {request_name}'
-
-        self.say_hello(request, endpoint)
-
-        context = cast(AsyncMessageContext, dict(self.am_context))
-        context['endpoint'] = endpoint
+        request_context = cast(AsyncMessageContext, dict(self.am_context))
+        request_context['endpoint'] = request.endpoint
 
         am_request: AsyncMessageRequest = {
             'action': request.method.name,
-            'context': context,
-            'payload': payload,
+            'context': request_context,
+            'payload': request.source,
         }
 
-        with self.async_action(request, am_request, name) as action:
-            action['failure_exception'] = StopUser
-
+        with self.request_context(request, am_request) as context:
             if request.method not in [RequestMethod.SEND, RequestMethod.RECEIVE]:
                 raise NotImplementedError(f'{self.__class__.__name__}: no implementation for {request.method.name} requests')
 
-            action['failure_exception'] = self._scenario.failure_exception
-
-        return action['metadata'], action['payload']
+        return (context['metadata'], context['payload'],)

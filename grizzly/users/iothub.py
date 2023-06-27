@@ -27,27 +27,22 @@ Then send request "test/blob.file" to endpoint "uploaded_blob_filename"
 ```
 '''
 
-from typing import Dict, Any, Tuple, Optional, TYPE_CHECKING
+from typing import Dict, Any, Tuple
 from urllib.parse import urlparse, parse_qs
-from time import perf_counter as time
 
 from azure.iot.device import IoTHubDeviceClient
 from azure.storage.blob import BlobClient
 
-from grizzly.types import RequestMethod, GrizzlyResponse, RequestType
-from grizzly.types.locust import Environment, StopUser
+from grizzly.types import RequestMethod, GrizzlyResponse
+from grizzly.types.locust import Environment
 from grizzly.tasks import RequestTask
 from grizzly.utils import merge_dicts
 
 from .base import GrizzlyUser
-from . import logger
-
-if TYPE_CHECKING:  # pragma: no cover
-    from grizzly.scenarios import GrizzlyScenario
 
 
 class IotHubUser(GrizzlyUser):
-    client: IoTHubDeviceClient
+    iot_client: IoTHubDeviceClient
     _context: Dict[str, Any] = {}
 
     def __init__(self, environment: Environment, *args: Tuple[Any], **kwargs: Dict[str, Any]) -> None:
@@ -77,25 +72,17 @@ class IotHubUser(GrizzlyUser):
 
     def on_start(self) -> None:
         super().on_start()
-        self.client = IoTHubDeviceClient.create_from_connection_string(self.host)
+        self.iot_client = IoTHubDeviceClient.create_from_connection_string(self.host)
 
     def on_stop(self) -> None:
-        self.client.disconnect()
+        self.iot_client.disconnect()
         super().on_stop()
 
-    def request(self, parent: 'GrizzlyScenario', request: RequestTask) -> GrizzlyResponse:
-        request_name, endpoint, payload, _, _ = self.render(request)
-
-        name = f'{self._scenario.identifier} {request_name}'
-
-        exception: Optional[Exception] = None
-        start_time = time()
-        response_length = 0
-
+    def request_impl(self, request: RequestTask) -> GrizzlyResponse:
         try:
-            filename = endpoint
+            filename = request.endpoint
 
-            storage_info = self.client.get_storage_info_for_blob(filename)
+            storage_info = self.iot_client.get_storage_info_for_blob(filename)
 
             if request.method not in [RequestMethod.SEND, RequestMethod.PUT]:
                 raise NotImplementedError(f'{self.__class__.__name__} has not implemented {request.method.name}')
@@ -108,37 +95,18 @@ class IotHubUser(GrizzlyUser):
             )
 
             with BlobClient.from_blob_url(sas_url) as blob_client:
-                blob_client.upload_blob(payload)
-                logger.debug(f'Uploaded blob to IoT hub, filename: {filename}, correlationId: {storage_info["correlationId"]}')
+                blob_client.upload_blob(request.source)
+                self.logger.debug(f'Uploaded blob to IoT hub, filename: {filename}, correlationId: {storage_info["correlationId"]}')
 
-            self.client.notify_blob_upload_status(
+            self.iot_client.notify_blob_upload_status(
                 storage_info['correlationId'], True, 200, f'OK: {filename}'
             )
-            response_length = len(payload or '')
-
+            return {}, request.source
         except Exception as e:
             if not isinstance(e, NotImplementedError):
-                self.client.notify_blob_upload_status(
+                self.iot_client.notify_blob_upload_status(
                     storage_info['correlationId'], False, 500, f'Failed: {filename}'
                 )
-            exception = e
+            self.logger.error(f'Failed to upload file "{filename}" to IoT hub', exc_info=e)
 
-        finally:
-            total_time = int((time() - start_time) * 1000)
-            self.environment.events.request.fire(
-                request_type=RequestType.from_method(request.method),
-                name=name,
-                response_time=total_time,
-                response_length=response_length,
-                context=self._context,
-                exception=exception
-            )
-
-            if exception is not None:
-                logger.error(f'Failed to upload file "{filename}" to IoT hub', exc_info=exception)
-                if isinstance(exception, NotImplementedError):
-                    raise StopUser()
-                elif self._scenario.failure_exception is not None:
-                    raise self._scenario.failure_exception()
-
-            return {}, payload
+            raise e

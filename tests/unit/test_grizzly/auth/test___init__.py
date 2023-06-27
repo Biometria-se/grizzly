@@ -6,7 +6,7 @@ import pytest
 
 from pytest_mock import MockerFixture
 
-from grizzly.auth import refresh_token, RefreshToken, AuthMethod, AuthType, GrizzlyHttpAuthClient, AuthenticatableFunc
+from grizzly.auth import refresh_token, RefreshToken, AuthMethod, AuthType, GrizzlyHttpAuthClient
 from grizzly.users import RestApiUser
 from grizzly.tasks import RequestTask
 from grizzly.tasks.clients import HttpClientTask
@@ -19,7 +19,7 @@ from tests.fixtures import GrizzlyFixture
 
 class DummyAuth(RefreshToken):
     @classmethod
-    def get_token(cls, parent: GrizzlyScenario, client: GrizzlyHttpAuthClient, auth_method: Literal[AuthMethod.CLIENT, AuthMethod.USER]) -> Tuple[AuthType, str]:
+    def get_token(cls, client: GrizzlyHttpAuthClient, auth_method: Literal[AuthMethod.CLIENT, AuthMethod.USER]) -> Tuple[AuthType, str]:
         return AuthType.HEADER, 'dummy'
 
 
@@ -50,19 +50,19 @@ def test_refresh_token_client(grizzly_fixture: GrizzlyFixture, mocker: MockerFix
     parent = grizzly_fixture(user_type=RestApiUser)
     assert isinstance(parent.user, RestApiUser)
 
-    decorator = refresh_token(DummyAuth)
+    decorator: refresh_token[DummyAuth] = refresh_token(DummyAuth)
     get_token_mock = mocker.spy(DummyAuth, 'get_token')
 
     auth_context = parent.user.context()['auth']
 
     assert auth_context['refresh_time'] == 3000
 
-    def request(self: 'RestApiUser', parent: GrizzlyScenario, *args: Any, **kwargs: Any) -> GrizzlyResponse:
+    def request(self: 'RestApiUser', request: RequestTask, *args: Any, **kwargs: Any) -> GrizzlyResponse:
         return None, None
 
     mocker.patch(
         'grizzly.users.restapi.RestApiUser.request',
-        decorator(cast(AuthenticatableFunc, request)),
+        decorator(request),
     )
 
     try:
@@ -74,7 +74,7 @@ def test_refresh_token_client(grizzly_fixture: GrizzlyFixture, mocker: MockerFix
         original_auth_context = cast(dict, parent.user._context['auth']).copy()
         parent.user._context['auth'] = None
 
-        parent.user.request(parent, request_task)
+        parent.user.request(request_task)
 
         get_token_mock.assert_not_called()
         assert parent.user._context['auth'] is None
@@ -90,7 +90,7 @@ def test_refresh_token_client(grizzly_fixture: GrizzlyFixture, mocker: MockerFix
         assert auth_client_context['secret'] is None
         assert auth_client_context['resource'] is None
 
-        parent.user.request(parent, request_task)
+        parent.user.request(request_task)
 
         get_token_mock.assert_not_called()
 
@@ -100,15 +100,15 @@ def test_refresh_token_client(grizzly_fixture: GrizzlyFixture, mocker: MockerFix
         auth_context['provider'] = 'http://login.example.com/oauth2'
 
         # session has not started
-        parent.user.request(parent, request_task)
+        parent.user.request(request_task)
         get_token_mock.assert_not_called()
 
         parent.user.session_started = time()
         safe_del(parent.user.headers, 'Authorization')
 
         # session is fresh, but no token set (first call)
-        parent.user.request(parent, request_task)
-        get_token_mock.assert_called_once_with(parent, parent.user, AuthMethod.CLIENT)
+        parent.user.request(request_task)
+        get_token_mock.assert_called_once_with(parent.user, AuthMethod.CLIENT)
         get_token_mock.reset_mock()
 
         assert parent.user.headers['Authorization'] == 'Bearer dummy'
@@ -117,14 +117,14 @@ def test_refresh_token_client(grizzly_fixture: GrizzlyFixture, mocker: MockerFix
         parent.user.session_started = time()
         parent.user.headers['Authorization'] = 'Bearer dummy'
 
-        parent.user.request(parent, request_task)
+        parent.user.request(request_task)
         get_token_mock.assert_not_called()
 
         # authorization is set, but it is time to refresh token
         parent.user.session_started = time() - (cast(int, auth_context['refresh_time']) + 1)
 
-        parent.user.request(parent, request_task)
-        get_token_mock.assert_called_once_with(parent, parent.user, AuthMethod.CLIENT)
+        parent.user.request(request_task)
+        get_token_mock.assert_called_once_with(parent.user, AuthMethod.CLIENT)
     finally:
         pass
 
@@ -140,19 +140,19 @@ def test_refresh_token_user(grizzly_fixture: GrizzlyFixture, mocker: MockerFixtu
     # use string instead of class
     refresh_token('AAD')
 
-    decorator = refresh_token('tests.unit.test_grizzly.auth.test___init__.DummyAuth')
+    decorator: refresh_token[DummyAuth] = refresh_token('tests.unit.test_grizzly.auth.test___init__.DummyAuth')
     get_token_mock = mocker.spy(DummyAuth, 'get_token')
 
     auth_context = parent.user.context()['auth']
 
     assert auth_context['refresh_time'] == 3000
 
-    def request(self: 'RestApiUser', parent: GrizzlyScenario, *args: Any, **kwargs: Any) -> GrizzlyResponse:
+    def request(self: 'RestApiUser', *args: Any, **kwargs: Any) -> GrizzlyResponse:
         return None, None
 
     mocker.patch(
         'grizzly.users.restapi.RestApiUser.request',
-        decorator(cast(AuthenticatableFunc, request)),
+        decorator(request),
     )
 
     try:
@@ -167,7 +167,7 @@ def test_refresh_token_user(grizzly_fixture: GrizzlyFixture, mocker: MockerFixtu
         assert auth_user_context['redirect_uri'] is None
         assert auth_context['provider'] is None
 
-        parent.user.request(parent, request_task)
+        parent.user.request(request_task)
         get_token_mock.assert_not_called()
 
         auth_context['client']['id'] = 'asdf'
@@ -178,29 +178,29 @@ def test_refresh_token_user(grizzly_fixture: GrizzlyFixture, mocker: MockerFixtu
         auth_context['provider'] = 'https://login.example.com/oauth2'
 
         # session has not started
-        parent.user.request(parent, request_task)
+        parent.user.request(request_task)
         get_token_mock.assert_not_called()
 
         parent.user.session_started = time()
         safe_del(parent.user.headers, 'Authorization')
 
         # session is fresh, but no token set (first call)
-        parent.user.request(parent, request_task)
-        get_token_mock.assert_called_once_with(parent, parent.user, AuthMethod.USER)
+        parent.user.request(request_task)
+        get_token_mock.assert_called_once_with(parent.user, AuthMethod.USER)
         get_token_mock.reset_mock()
         assert parent.user.headers['Authorization'] == 'Bearer dummy'
 
         # token is fresh and set, no refresh
         parent.user.session_started = time()
 
-        parent.user.request(parent, request_task)
+        parent.user.request(request_task)
         get_token_mock.assert_not_called()
 
         # authorization is set, but it is time to refresh token
         parent.user.session_started = time() - (cast(int, auth_context['refresh_time']) + 1)
 
-        parent.user.request(parent, request_task)
-        get_token_mock.assert_called_once_with(parent, parent.user, AuthMethod.USER)
+        parent.user.request(request_task)
+        get_token_mock.assert_called_once_with(parent.user, AuthMethod.USER)
         get_token_mock.reset_mock()
 
         # safe_del(user.headers, 'Authorization')
@@ -217,8 +217,8 @@ def test_refresh_token_user(grizzly_fixture: GrizzlyFixture, mocker: MockerFixtu
         }
 
         # new user in context, needs to get a new token
-        parent.user.request(parent, request_task)
-        get_token_mock.assert_called_once_with(parent, parent.user, AuthMethod.USER)
+        parent.user.request(request_task)
+        get_token_mock.assert_called_once_with(parent.user, AuthMethod.USER)
         assert parent.user.headers.get('Authorization', None) == 'Bearer dummy'
     finally:
         pass
@@ -229,7 +229,7 @@ def test_refresh_token_user_render(grizzly_fixture: GrizzlyFixture, mocker: Mock
     parent = grizzly_fixture(user_type=RestApiUser)
     assert isinstance(parent.user, RestApiUser)
 
-    decorator = refresh_token(DummyAuth)
+    decorator: refresh_token[DummyAuth] = refresh_token(DummyAuth)
     get_token_mock = mocker.spy(DummyAuth, 'get_token')
 
     def get(self: 'HttpClientTask', parent: GrizzlyScenario, *args: Any, **kwargs: Any) -> GrizzlyResponse:
@@ -237,7 +237,7 @@ def test_refresh_token_user_render(grizzly_fixture: GrizzlyFixture, mocker: Mock
 
     mocker.patch(
         'grizzly.tasks.clients.http.HttpClientTask.get',
-        decorator(cast(AuthenticatableFunc, get)),
+        decorator(get),
     )
 
     if '{{' in host and '}}' in host:
@@ -247,10 +247,11 @@ def test_refresh_token_user_render(grizzly_fixture: GrizzlyFixture, mocker: Mock
 
     grizzly = grizzly_fixture.grizzly
     grizzly.state.variables.update({'foobar': 'none', 'test_host': f'http://{rendered_host}'})
-    parent.user._context.update({'variables': {'test_host': f'http://{rendered_host}'}})
 
     # no auth in context
+    HttpClientTask.__scenario__ = grizzly.scenario
     client = HttpClientTask(RequestDirection.FROM, f'http://{host}/blob/file.txt', 'test', payload_variable='foobar')
+    cast(dict, client._context).update({'variables': {'test_host': f'http://{rendered_host}'}})
     client.on_start(parent)
 
     if rendered_host == host:
@@ -261,13 +262,13 @@ def test_refresh_token_user_render(grizzly_fixture: GrizzlyFixture, mocker: Mock
     client.get(parent)
 
     get_token_mock.assert_not_called()
-    assert client._context == {'verify_certificates': True, 'metadata': None, 'auth': None}
+    assert client._context == {'verify_certificates': True, 'metadata': None, 'auth': None, 'host': '', 'variables': {'test_host': f'http://{rendered_host}'}}
     assert client.host == f'http://{rendered_host}'
 
     get_token_mock.reset_mock()
 
     # auth in context
-    cast(dict, parent.user._context).update({
+    cast(dict, client._context).update({
         rendered_host: {
             'auth': {
                 'client': {
@@ -285,7 +286,7 @@ def test_refresh_token_user_render(grizzly_fixture: GrizzlyFixture, mocker: Mock
 
     client.get(parent)
 
-    get_token_mock.assert_called_once_with(parent, client, AuthMethod.USER)
+    get_token_mock.assert_called_once_with(client, AuthMethod.USER)
 
     actual_context = cast(dict, client._context.copy())
     safe_del(actual_context, rendered_host)
@@ -303,6 +304,10 @@ def test_refresh_token_user_render(grizzly_fixture: GrizzlyFixture, mocker: Mock
                 'redirect_uri': '/authenticated',
             },
             'provider': 'https://login.example.com/oauth2',
+        },
+        'host': '',
+        'variables': {
+            'test_host': f'http://{rendered_host}',
         },
     }
     assert client.headers == {'Authorization': 'Bearer dummy', 'x-grizzly-user': ANY}

@@ -74,7 +74,7 @@ def test_e2e_example(e2e_fixture: End2EndFixture) -> None:
         assert '003      1/1  passed   book api' in result
         assert '------|-----|--------|---------------|' in result
 
-        assert 'executing custom.User.request for get-cat-facts and /facts?limit=' in result
+        assert 'executing custom.User.request for 002 get-cat-facts and /facts?limit=' in result
 
         assert 'sending "client_server" from CLIENT' in result
         assert "received from CLIENT" in result

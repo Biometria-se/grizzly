@@ -113,11 +113,9 @@ class TestAsyncRequestGroup:
 
         assert spawn_mock.call_count == len(task_factory.tasks)
         args, _ = spawn_mock.call_args_list[0]
-        assert args[1] is parent
-        assert args[2] is task_factory.tasks[0]
+        assert args == (parent.user.request, task_factory.tasks[0],)
         args, _ = spawn_mock.call_args_list[1]
-        assert args[1] is parent
-        assert args[2] is task_factory.tasks[1]
+        assert args == (parent.user.request, task_factory.tasks[1],)
         assert settrace_mock.call_count == 0
 
         assert joinall_mock.call_count == 2

@@ -22,7 +22,7 @@ def test_e2e_step_task_request_text_with_name_to_endpoint(e2e_fixture: End2EndFi
 
         tasks.pop()  # remove dummy task added by fixture
 
-        assert len(tasks) == 5, f'{len(tasks)} != 5'
+        assert len(tasks) == 4, f'{len(tasks)} != 5'
 
         request = tasks[0]
         assert isinstance(request, RequestTask)
@@ -63,15 +63,6 @@ def test_e2e_step_task_request_text_with_name_to_endpoint(e2e_fixture: End2EndFi
         assert jsonloads(request.source) == {'test': 'send'}
         assert request.response.content_type == TransformerContentType.UNDEFINED
 
-        request = tasks[4]
-        assert isinstance(request, RequestTask)
-        assert request.method == RequestMethod.RECEIVE
-        assert request.name == 'test-receive'
-        assert request.endpoint == 'queue:receive-queue'
-        assert request.template is None
-        assert request.source is None
-        assert request.response.content_type == TransformerContentType.XML
-
     e2e_fixture.add_validator(validate_requests)
 
     feature_file = e2e_fixture.test_steps(
@@ -98,7 +89,6 @@ def test_e2e_step_task_request_text_with_name_to_endpoint(e2e_fixture: End2EndFi
                 }
                 """
             '''),
-            'Then receive request with name "test-receive" from endpoint "queue:receive-queue | content_type=xml"',
         ],
     )
 
@@ -109,8 +99,14 @@ def test_e2e_step_task_request_text_with_name_to_endpoint(e2e_fixture: End2EndFi
     assert rc == 1
 
     assert 'HOOK-ERROR in after_feature: RuntimeError: locust test failed' in result
-    assert 'NotImplementedError: RECEIVE is not implemented for RestApiUser_001' in result
-    assert 'NotImplementedError: SEND is not implemented for RestApiUser_001' in result
+    expected_parts = ['SEND 001 test-send: ', 'NotImplementedError(\'SEND is not implemented for RestApiUser_001\')']
+    if e2e_fixture._distributed:
+        expected_parts.insert(1, '"')
+        expected_parts.append('"')
+
+    expected = ''.join(expected_parts)
+
+    assert expected in result
 
 
 def test_e2e_step_task_request_file_with_name_endpoint(e2e_fixture: End2EndFixture) -> None:
@@ -189,7 +185,14 @@ def test_e2e_step_task_request_file_with_name_endpoint(e2e_fixture: End2EndFixtu
 
     assert rc == 1
     assert 'HOOK-ERROR in after_feature: RuntimeError: locust test failed' in result
-    assert 'NotImplementedError: SEND is not implemented for RestApiUser_001' in result
+    expected_parts = ['SEND 001 test-send: ', 'NotImplementedError(\'SEND is not implemented for RestApiUser_001\')']
+    if e2e_fixture._distributed:
+        expected_parts.insert(1, '"')
+        expected_parts.append('"')
+
+    expected = ''.join(expected_parts)
+
+    assert expected in result
 
 
 def test_e2e_step_task_request_file_with_name(e2e_fixture: End2EndFixture) -> None:

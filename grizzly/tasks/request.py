@@ -110,6 +110,7 @@ class RequestTaskResponse:
 
 @template('name', 'endpoint', 'source', 'arguments', 'metadata')
 class RequestTask(GrizzlyMetaRequestTask):
+    __rendered__: bool
     method: RequestMethod
     name: str
     endpoint: str
@@ -118,6 +119,7 @@ class RequestTask(GrizzlyMetaRequestTask):
     arguments: Optional[Dict[str, str]]
     metadata: Optional[Dict[str, str]]
     grizzly = GrizzlyContext()
+    async_request: bool
 
     response: RequestTaskResponse
 
@@ -129,11 +131,13 @@ class RequestTask(GrizzlyMetaRequestTask):
         self.endpoint = endpoint
         self.arguments = None
         self.metadata = None
+        self.async_request = False
 
         self._template = None
         self._source = source
 
         self.response = RequestTaskResponse()
+        self.__rendered__ = False
 
         content_type: TransformerContentType = TransformerContentType.UNDEFINED
 
@@ -182,9 +186,9 @@ class RequestTask(GrizzlyMetaRequestTask):
     def __call__(self) -> grizzlytask:
         @grizzlytask
         def task(parent: 'GrizzlyScenario') -> Any:
-            return parent.user.request(parent, self)
+            return parent.user.request(self)
 
         return task
 
     def execute(self, parent: 'GrizzlyScenario') -> GrizzlyResponse:
-        return parent.user.request(parent, self)
+        return parent.user.request(self)

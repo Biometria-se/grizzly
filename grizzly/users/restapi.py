@@ -73,7 +73,7 @@ Then post request "path/my_template.j2.xml" with name "FormPost" to endpoint "ex
 '''  # noqa: E501
 import json
 
-from typing import Dict, Optional, Any, Tuple, Union, cast, TYPE_CHECKING
+from typing import Dict, Optional, Any, Tuple, Union, cast
 from time import time
 from abc import ABCMeta
 
@@ -81,7 +81,7 @@ from locust.contrib.fasthttp import FastHttpSession
 
 from grizzly_extras.transformer import TransformerContentType
 
-from grizzly.types import GrizzlyResponse, RequestType, RequestMethod, GrizzlyResponseContextManager
+from grizzly.types import GrizzlyResponse, RequestMethod, RequestDirection, GrizzlyResponseContextManager
 from grizzly.types.locust import Environment, StopUser
 from grizzly.utils import merge_dicts, safe_del
 from grizzly.tasks import RequestTask
@@ -89,22 +89,17 @@ from grizzly.clients import ResponseEventSession
 from grizzly.auth import GrizzlyHttpAuthClient, AAD, refresh_token
 from locust.user.users import UserMeta
 
-from .base import RequestLogger, ResponseHandler, GrizzlyUser, HttpRequests, AsyncRequests
-from . import logger
+from .base import ResponseHandler, GrizzlyUser, HttpRequests, AsyncRequests
 
 from urllib3 import disable_warnings as urllib3_disable_warnings
 urllib3_disable_warnings()
-
-
-if TYPE_CHECKING:  # pargma: no cover
-    from grizzly.scenarios import GrizzlyScenario
 
 
 class RestApiUserMeta(UserMeta, ABCMeta):
     pass
 
 
-class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, AsyncRequests, GrizzlyHttpAuthClient, metaclass=RestApiUserMeta):  # type: ignore[misc]
+class RestApiUser(ResponseHandler, GrizzlyUser, HttpRequests, AsyncRequests, GrizzlyHttpAuthClient, metaclass=RestApiUserMeta):  # type: ignore[misc]
     session_started: Optional[float]
     headers: Dict[str, str]
     environment: Environment
@@ -164,7 +159,9 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
             return f'unknown response {type(response)}'
 
         if len(response.text) < 1:
-            if response.status_code == 401:
+            if response.status_code == 400:
+                message = 'bad request'
+            elif response.status_code == 401:
                 message = 'unauthorized'
             elif response.status_code == 403:
                 message = 'forbidden'
@@ -188,7 +185,7 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
 
         return message
 
-    def async_request(self, parent: 'GrizzlyScenario', request: RequestTask) -> GrizzlyResponse:
+    def async_request_impl(self, request: RequestTask) -> GrizzlyResponse:
         client = FastHttpSession(
             environment=self.environment,
             base_url=self.host,
@@ -199,83 +196,67 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
             network_timeout=60.0,
         )
 
-        return cast(GrizzlyResponse, self._request(parent, request, client))
+        return cast(GrizzlyResponse, self._request(request, client))
 
-    def request(self, parent: 'GrizzlyScenario', request: RequestTask) -> GrizzlyResponse:
-        return cast(GrizzlyResponse, self._request(parent, request, self.client))
+    def request_impl(self, request: RequestTask) -> GrizzlyResponse:
+        return cast(GrizzlyResponse, self._request(request, self.client))
 
     @refresh_token(AAD)
-    def _request(self, parent: 'GrizzlyScenario', request: RequestTask, client: Union[FastHttpSession, ResponseEventSession]) -> GrizzlyResponse:
+    def _request(self, request: RequestTask, client: Union[FastHttpSession, ResponseEventSession]) -> GrizzlyResponse:
         if request.method not in [RequestMethod.GET, RequestMethod.PUT, RequestMethod.POST]:
             raise NotImplementedError(f'{request.method.name} is not implemented for {self.__class__.__name__}')
 
         if request.response.content_type == TransformerContentType.UNDEFINED:
             request.response.content_type = TransformerContentType.JSON
         elif request.response.content_type == TransformerContentType.XML:
-            self.headers['Content-Type'] = 'application/xml'
+            self.headers.update({'Content-Type': 'application/xml'})
         elif request.response.content_type == TransformerContentType.MULTIPART_FORM_DATA:
-            if 'Content-Type' in self.headers:
-                del self.headers['Content-Type']
+            safe_del(self.headers, 'Content-Type')
 
-        request_name, endpoint, payload, arguments, metadata = self.render(request)
-
-        if metadata is not None:
-            self.headers.update(metadata)
+        if request.metadata is not None:
+            self.headers.update(request.metadata)
 
         parameters: Dict[str, Any] = {'headers': self.headers}
 
-        url = f'{self.host}{endpoint}'
+        url = f'{self.host}{request.endpoint}'
 
-        # only render endpoint once, so needs to be done here
         if isinstance(client, ResponseEventSession):
             parameters.update({
                 'request': request,
                 'verify': self._context.get('verify_certificates', True),
             })
 
-        name = f'{self._scenario.identifier} {request_name}'
-
-        if payload is not None:
+        if request.method.direction == RequestDirection.TO and request.source is not None:
             if request.response.content_type == TransformerContentType.JSON:
                 try:
-                    parameters['json'] = json.loads(payload)
-                except json.decoder.JSONDecodeError as exception:
-                    # so that locust treats it as a failure
-                    self.environment.events.request.fire(
-                        request_type=RequestType.from_method(request.method),
-                        name=name,
-                        response_time=0,
-                        response_length=0,
-                        context=self._context,
-                        exception=exception,
-                    )
-                    logger.error(f'{url}: failed to decode: {payload=}')
+                    parameters['json'] = json.loads(request.source)
+                except json.decoder.JSONDecodeError:
+                    self.logger.error(f'{url}: failed to decode: {request.source=}')
 
                     # this is a fundemental error, so we'll always stop the user
                     raise StopUser()
-            elif request.response.content_type == TransformerContentType.MULTIPART_FORM_DATA and arguments:
-                parameters['files'] = {arguments['multipart_form_data_name']: (arguments['multipart_form_data_filename'], payload)}
+            elif request.response.content_type == TransformerContentType.MULTIPART_FORM_DATA and request.arguments:
+                parameters['files'] = {request.arguments['multipart_form_data_name']: (request.arguments['multipart_form_data_filename'], request.source)}
             else:
-                parameters['data'] = bytes(payload, 'UTF-8')
+                parameters['data'] = request.source.encode('utf-8')
+
+        headers: Optional[Dict[str, str]] = None
+        payload: Optional[str] = None
 
         with client.request(
             method=request.method.name,
-            name=name,
+            name=request.name,
             url=url,
             catch_response=True,
             cookies=self.cookies,
             **parameters,
         ) as response:
+            # monkey patch, so we don't get two request events
+            response._report_request = lambda *args: None
+
             if not isinstance(client, ResponseEventSession):
                 # monkey patch in request body... not available otherwise
-                setattr(response, 'request_body', payload)
-
-                self.response_event.fire(
-                    name=name,
-                    request=request,
-                    context=response,
-                    user=self,
-                )
+                setattr(response, 'request_body', request.source)
 
             if response._manual_result is None:
                 if response.status_code in request.response.status_codes:
@@ -288,8 +269,14 @@ class RestApiUser(ResponseHandler, RequestLogger, GrizzlyUser, HttpRequests, Asy
                 raise self._scenario.failure_exception()
 
             headers = dict(response.headers.items()) if response.headers not in [None, {}] else None
+            payload = response.text
 
-            return headers, response.text
+        exception = response.request_meta.get('exception', None)
+
+        if exception is not None:
+            raise exception
+
+        return (headers, payload,)
 
     def add_context(self, context: Dict[str, Any]) -> None:
         # something change in auth context, we need to re-authenticate

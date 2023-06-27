@@ -18,6 +18,7 @@ class TestServiceBusClientTask:
     def test___init__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         context_mock = mocker.patch('grizzly.tasks.clients.servicebus.zmq.Context', autospec=True)
 
+        ServiceBusClientTask.__scenario__ = grizzly_fixture.grizzly.scenario
         task = ServiceBusClientTask(RequestDirection.FROM, 'sb://my-sbns.servicebus.windows.net/;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=', 'test')
 
         assert task.endpoint == 'sb://my-sbns.servicebus.windows.net/;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324='
@@ -174,6 +175,7 @@ class TestServiceBusClientTask:
         context_mock.reset_mock()
 
     def test_text(self, grizzly_fixture: GrizzlyFixture) -> None:
+        ServiceBusClientTask.__scenario__ = grizzly_fixture.grizzly.scenario
         task = ServiceBusClientTask(RequestDirection.FROM, 'sb://my-sbns.servicebus.windows.net/;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=', 'test')
 
         assert task.text is None
@@ -197,6 +199,7 @@ class TestServiceBusClientTask:
 
         grizzly_fixture.grizzly.state.configuration.update({'sbns.key.secret': 'fooBARfoo'})
 
+        ServiceBusClientTask.__scenario__ = grizzly_fixture.grizzly.scenario
         task = ServiceBusClientTask(
             RequestDirection.FROM,
             'sb://my-sbns.servicebus.windows.net/queue:my-queue;SharedAccessKeyName=AccessKey;SharedAccessKey=$conf::sbns.key.secret$',
@@ -229,6 +232,7 @@ class TestServiceBusClientTask:
 
         async_message_request_mock = mocker.patch('grizzly.utils.async_message_request')
 
+        ServiceBusClientTask.__scenario__ = grizzly_fixture.grizzly.scenario
         task = ServiceBusClientTask(
             RequestDirection.FROM,
             'sb://my-sbns.servicebus.windows.net/queue:my-queue;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=',
@@ -265,6 +269,7 @@ class TestServiceBusClientTask:
 
         async_message_request_mock = mocker.patch('grizzly.utils.async_message_request', return_value={'message': 'foobar!'})
 
+        ServiceBusClientTask.__scenario__ = grizzly_fixture.grizzly.scenario
         task = ServiceBusClientTask(
             RequestDirection.FROM,
             'sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:"my-subscription-{{ id }}";SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=',

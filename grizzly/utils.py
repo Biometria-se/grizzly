@@ -138,7 +138,10 @@ def merge_dicts(merged: Dict[str, Any], source: Dict[str, Any]) -> Dict[str, Any
                 and isinstance(source[k], Mapping)):
             merged[k] = merge_dicts(merged[k], source[k])
         else:
-            merged[k] = source[k]
+            value = source[k]
+            if value == 'None':
+                value = None
+            merged[k] = value
 
     return merged
 

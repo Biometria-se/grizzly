@@ -1,8 +1,11 @@
-from typing import cast, Dict, Any, Tuple, Callable, Type
+import json
+
+from typing import cast, Dict, Any, Callable
 from time import time
+from unittest.mock import ANY
 
 from locust.clients import ResponseContextManager
-from locust.contrib.fasthttp import FastHttpSession, ResponseContextManager as FastResponseContextManager, insecure_ssl_context_factory
+from locust.contrib.fasthttp import FastHttpSession, insecure_ssl_context_factory
 
 import pytest
 import gevent
@@ -12,18 +15,15 @@ from requests.models import Response
 
 from grizzly.users.restapi import RestApiUser
 from grizzly.users.base import AsyncRequests, RequestLogger, ResponseHandler, GrizzlyUser
-from grizzly.types import GrizzlyResponse, RequestMethod, GrizzlyResponseContextManager
+from grizzly.types import GrizzlyResponse, RequestMethod
 from grizzly.types.locust import StopUser
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import RequestTask
 from grizzly.testdata.utils import transform
-from grizzly.exceptions import RestartScenario
-from grizzly.auth import GrizzlyAuthHttpContext
-from grizzly.scenarios import GrizzlyScenario
 from grizzly_extras.transformer import TransformerContentType
 
-from tests.fixtures import ResponseContextManagerFixture, MockerFixture, GrizzlyFixture
-from tests.helpers import RequestEvent, ResultSuccess
+from tests.fixtures import MockerFixture, GrizzlyFixture
+from tests.helpers import RequestEvent
 
 
 class TestRestApiUser:
@@ -113,7 +113,7 @@ class TestRestApiUser:
 
             # user.get_oauth_authorization()
             request = RequestTask(RequestMethod.GET, name='test', endpoint='/api/test')
-            headers, body = parent.user.request(parent, request)
+            headers, body = parent.user.request(request)
             parent.logger.info(headers)
             parent.logger.info(body)
             parent.logger.info(fire.call_args_list)
@@ -126,6 +126,9 @@ class TestRestApiUser:
         response = Response()
         response._content = ''.encode('utf-8')
         response_context_manager = ResponseContextManager(response, RequestEvent(), {})
+
+        response.status_code = 400
+        assert parent.user.get_error_message(response_context_manager) == 'bad request'
 
         response.status_code = 401
         assert parent.user.get_error_message(response_context_manager) == 'unauthorized'
@@ -165,84 +168,79 @@ class TestRestApiUser:
 
         assert parent.user._context.get('verify_certificates', None)
 
-        parent.user.async_request(parent, request)
+        parent.user.async_request_impl(request)
 
         assert request_spy.call_count == 1
-        args, _ = request_spy.call_args_list[-1]
-        assert len(args) == 3
-        assert args[0] is parent
-        assert args[1] is request
-        assert isinstance(args[2], FastHttpSession)
-        assert args[2].environment is parent.user.environment
-        assert args[2].base_url == parent.user.host
-        assert args[2].user is parent.user
-        assert args[2].client.max_retries == 1
-        assert args[2].client.clientpool.client_args.get('connection_timeout', None) == 60.0
-        assert args[2].client.clientpool.client_args.get('network_timeout', None) == 60.0
-        assert args[2].client.clientpool.client_args.get('ssl_context_factory', None) is gevent.ssl.create_default_context  # pylint: disable=no-member
+        args, kwargs = request_spy.call_args_list[-1]
+        assert kwargs == {}
+        assert len(args) == 2
+        assert args[0] is request
+        assert isinstance(args[1], FastHttpSession)
+        assert args[1].environment is parent.user.environment
+        assert args[1].base_url == parent.user.host
+        assert args[1].user is parent.user
+        assert args[1].client.max_retries == 1
+        assert args[1].client.clientpool.client_args.get('connection_timeout', None) == 60.0
+        assert args[1].client.clientpool.client_args.get('network_timeout', None) == 60.0
+        assert args[1].client.clientpool.client_args.get('ssl_context_factory', None) is gevent.ssl.create_default_context  # pylint: disable=no-member
 
         parent.user._context['verify_certificates'] = False
 
-        parent.user.async_request(parent, request)
+        parent.user.async_request_impl(request)
 
         assert request_spy.call_count == 2
-        args, _ = request_spy.call_args_list[-1]
-        assert args[2].client.clientpool.client_args.get('ssl_context_factory', None) is insecure_ssl_context_factory
+        args, kwargs = request_spy.call_args_list[-1]
+        assert kwargs == {}
+        assert args[1].client.clientpool.client_args.get('ssl_context_factory', None) is insecure_ssl_context_factory
 
-    def test_request(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+    def test_request_impl(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         parent = grizzly_fixture(user_type=RestApiUser)
         assert isinstance(parent.user, RestApiUser)
 
         request = cast(RequestTask, parent.user._scenario.tasks()[-1])
+        request.source = 'hello'
 
         request_spy = mocker.patch.object(parent.user, '_request')
 
         assert parent.user._context.get('verify_certificates', None)
 
-        parent.user.request(parent, request)
+        parent.user.request_impl(request)
 
         assert request_spy.call_count == 1
         args, _ = request_spy.call_args_list[-1]
-        assert len(args) == 3
-        assert args[0] is parent
-        assert args[1] is request
-        assert args[2] is parent.user.client
+        assert len(args) == 2
+        assert args[0] is request
+        assert args[1] is parent.user.client
 
-        parent.user.request(parent, request)
+        parent.user.request(request)
 
-    @pytest.mark.parametrize('request_func', [RestApiUser.request, RestApiUser.async_request])
+    @pytest.mark.parametrize('request_func', [RestApiUser.request_impl, RestApiUser.async_request_impl])
     def test__request(
         self,
         grizzly_fixture: GrizzlyFixture,
         mocker: MockerFixture,
-        request_func: Callable[[RestApiUser, GrizzlyScenario, RequestTask], GrizzlyResponse],
-        response_context_manager_fixture: ResponseContextManagerFixture,
+        request_func: Callable[[RestApiUser, RequestTask], GrizzlyResponse],
     ) -> None:
         parent = grizzly_fixture(user_type=RestApiUser)
         assert isinstance(parent.user, RestApiUser)
 
-        class ClientRequestMock:
-            def __init__(self, status_code: int, user: GrizzlyUser, request_func: Callable[[RestApiUser, GrizzlyScenario, RequestTask], GrizzlyResponse]) -> None:
-                self.status_code = status_code
-                self.user = user
-                self.spy = mocker.spy(self, 'request')
+        assert parent.user.__class__.__name__ == 'RestApiUser'
 
-                if request_func is RestApiUser.request:
-                    namespace = 'grizzly.clients.ResponseEventSession.request'
-                else:
-                    namespace = 'grizzly.users.restapi.FastHttpSession.request'
+        is_async_request = request_func is RestApiUser.async_request_impl
 
-                mocker.patch(namespace, self.request)
+        request_event_spy = mocker.patch.object(parent.user.environment.events.request, 'fire')
+        response_magic = mocker.MagicMock()
 
-            def request(self, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> GrizzlyResponseContextManager:
-                cls_rcm = cast(Type[GrizzlyResponseContextManager], ResponseContextManager if request_func is RestApiUser.request else FastResponseContextManager)
-                return response_context_manager_fixture(cls_rcm, self.status_code, self.user.environment, response_body={}, **kwargs)  # type: ignore
+        if is_async_request:
+            request_spy = mocker.patch('locust.contrib.fasthttp.FastHttpSession.request', return_value=response_magic)
+        else:
+            request_spy = mocker.patch.object(parent.user.client, 'request', return_value=response_magic)
+
+        response_spy = response_magic.__enter__.return_value
+        response_spy.request_meta = {}
 
         request = cast(RequestTask, parent.user._scenario.tasks()[-1])
-
-        # missing template variables
-        with pytest.raises(StopUser):
-            request_func(parent.user, parent, request)
+        request.async_request = is_async_request
 
         remote_variables = {
             'variables': transform(GrizzlyContext(), {
@@ -253,160 +251,213 @@ class TestRestApiUser:
         }
 
         parent.user.add_context(remote_variables)
+        parent.user.host = 'http://test'
 
-        request_mock = ClientRequestMock(status_code=400, user=parent.user, request_func=request_func)
+        # incorrect method
+        request.method = RequestMethod.SEND
+
+        with pytest.raises(StopUser):
+            parent.user.request(request)
+
+        request_spy.assert_not_called()
+        request_event_spy.assert_called_once_with(
+            request_type='SEND',
+            name='001 TestScenario',
+            response_time=ANY,
+            response_length=0,
+            context=parent.user._context,
+            exception=ANY,
+        )
+
+        _, kwargs = request_event_spy.call_args_list[-1]
+        exception = kwargs.get('exception', None)
+        assert isinstance(exception, NotImplementedError)
+        assert str(exception) == 'SEND is not implemented for RestApiUser'
+
+        request_event_spy.reset_mock()
+
+        # request GET, 200
+        response_spy._manual_result = None
+        response_spy.status_code = 200
+        response_spy.text = '{"foo": "bar"}'
+        response_spy.headers = {'x-bar': 'foo'}
+        request.method = RequestMethod.GET
+
+        assert parent.user.request(request) == ({'x-bar': 'foo'}, '{"foo": "bar"}')
+
+        expected_parameters: Dict[str, Any] = {
+            'headers': parent.user.headers,
+        }
+
+        if not is_async_request:
+            expected_parameters.update({
+                'request': ANY,
+                'verify': parent.user._context.get('verify_certificates', True),
+            })
+
+        request_spy.assert_called_once_with(
+            method='GET',
+            name='001 TestScenario',
+            url='http://test/api/test',
+            catch_response=True,
+            cookies=parent.user.cookies,
+            **expected_parameters,
+        )
+
+        response_spy.success.assert_called_once_with()
+
+        response_spy.reset_mock()
+        request_spy.reset_mock()
+
+        # request GET, 400, StopUser, request.metadata populated
+        response_spy._manual_result = None
+        response_spy.status_code = 400
+        response_spy.text = ''
+        request.metadata = {'x-foo': 'bar'}
+        expected_parameters['headers'].update({'x-foo': 'bar'})
 
         parent.user._scenario.failure_exception = StopUser
 
-        # status_code != 200, stop_on_failure = True
         with pytest.raises(StopUser):
-            request_func(parent.user, parent, request)
+            parent.user.request(request)
 
-        assert request_mock.spy.call_count == 1
+        request_spy.assert_called_once_with(
+            method='GET',
+            name='001 TestScenario',
+            url='http://test/api/test',
+            catch_response=True,
+            cookies=parent.user.cookies,
+            **expected_parameters,
+        )
 
-        parent.user._scenario.failure_exception = RestartScenario
+        response_spy.success.assert_not_called()
+        response_spy.failure.assert_called_once_with(
+            '400 not in [200]: bad request'
+        )
 
-        # status_code != 200, stop_on_failure = True
-        with pytest.raises(RestartScenario):
-            request_func(parent.user, parent, request)
+        response_spy.reset_mock()
+        request_spy.reset_mock()
 
-        assert request_mock.spy.call_count == 2
-
-        request.response.add_status_code(400)
-
-        with pytest.raises(ResultSuccess):
-            request_func(parent.user, parent, request)
-
-        assert request_mock.spy.call_count == 3
-
-        request.response.add_status_code(-400)
+        # request GET, 404, no failure exception
+        response_spy.status_code = 404
+        response_spy.text = '{"error_description": "borked"}'
         parent.user._scenario.failure_exception = None
+        request.metadata = None
 
-        # status_code != 200, stop_on_failure = False
-        metadata, payload = request_func(parent.user, parent, request)
+        assert parent.user.request(request) == ({'x-bar': 'foo'}, '{"error_description": "borked"}')
 
-        assert request_mock.spy.call_count == 4
-        _, kwargs = request_mock.spy.call_args_list[-1]
-        assert kwargs.get('method', None) == request.method.name
-        assert kwargs.get('name', '').startswith(parent.user._scenario.identifier)
-        assert kwargs.get('catch_response', False)
-        assert kwargs.get('url', None) == f'{parent.user.host}{request.endpoint}'
+        request_spy.assert_called_once_with(
+            method='GET',
+            name='001 TestScenario',
+            url='http://test/api/test',
+            catch_response=True,
+            cookies=parent.user.cookies,
+            **expected_parameters,
+        )
 
-        if request_func is RestApiUser.request:
-            assert kwargs.get('request', None) is request
-            assert kwargs.get('verify', False)
+        response_spy.success.assert_not_called()
+        response_spy.failure.assert_called_once_with(
+            '404 not in [200]: borked'
+        )
 
-        assert metadata is None
-        assert payload == '{}'
+        request_spy.reset_mock()
+        response_spy.reset_mock()
 
-        request_mock = ClientRequestMock(status_code=200, user=parent.user, request_func=request_func)
+        # request POST, 200, json
+        request.method = RequestMethod.POST
+        response_spy.status_code = 200
+        response_spy.text = 'success'
 
-        parent.user._context['verify_certificates'] = False
+        assert parent.user.request(request) == ({'x-bar': 'foo'}, 'success')
 
-        request.response.add_status_code(-200)
-        request_func(parent.user, parent, request)
+        expected_source = parent.user.render(request).source
+        assert expected_source is not None
+        expected_source_json = json.loads(expected_source)
 
-        assert request_mock.spy.call_count == 1
-        _, kwargs = request_mock.spy.call_args_list[-1]
-        assert kwargs.get('method', None) == request.method.name
-        assert kwargs.get('name', '').startswith(parent.user._scenario.identifier)
-        assert kwargs.get('catch_response', False)
-        assert kwargs.get('url', None) == f'{parent.user.host}{request.endpoint}'
+        # this is done automagically for requests, but not for grequests
+        if not is_async_request:
+            response_spy.request_body = expected_source
 
-        if request_func is RestApiUser.request:
-            assert kwargs.get('request', None) is request
-            assert not kwargs.get('verify', True)
+        assert json.loads(response_spy.request_body) == expected_source_json
+        expected_parameters.update({'json': expected_source_json})
 
-        request.response.add_status_code(200)
+        request_spy.assert_called_once_with(
+            method='POST',
+            name='001 TestScenario',
+            url='http://test/api/test',
+            catch_response=True,
+            cookies=parent.user.cookies,
+            **expected_parameters,
+        )
 
-        # status_code == 200
-        with pytest.raises(ResultSuccess):
-            request_func(parent.user, parent, request)
+        response_spy.success.assert_called_once_with()
+        response_spy.failure.assert_not_called()
 
-        assert request_mock.spy.call_count == 2
+        response_spy.reset_mock()
+        request_spy.reset_mock()
 
-        # incorrect formated [json] payload
-        request.source = '{"hello: "world"}'
+        # request POST, invalid json
+        request.source = '{"hello}'
+        parent.user._scenario.failure_exception = None  # always stop for this error
 
         with pytest.raises(StopUser):
-            request_func(parent.user, parent, request)
+            parent.user.request(request)
 
-        assert request_mock.spy.call_count == 2
+        request_spy.assert_not_called()
+        response_spy.assert_not_called()
 
-        # unsupported request method
-        request.method = RequestMethod.RECEIVE
-
-        with pytest.raises(NotImplementedError):
-            request_func(parent.user, parent, request)
-
-        assert request_mock.spy.call_count == 2
-
-        # post XML
-        parent.user.host = 'http://localhost:1337'
-        request.method = RequestMethod.POST
-        request.endpoint = '/'
-        request.response.content_type = TransformerContentType.XML
-        request_mock = ClientRequestMock(status_code=200, user=parent.user, request_func=request_func)
-        request.response.add_status_code(200)
-        request.source = '<?xml version="1.0"?><example></example'
-
-        with pytest.raises(ResultSuccess):
-            request_func(parent.user, parent, request)
-
-        assert request_mock.spy.call_count == 1
-        _, kwargs = request_mock.spy.call_args_list[-1]
-        assert kwargs.get('method', None) == request.method.name
-        assert kwargs.get('name', '').startswith(parent.user._scenario.identifier)
-        assert kwargs.get('catch_response', False)
-        assert kwargs.get('url', None) == f'{parent.user.host}{request.endpoint}'
-        assert kwargs.get('data', None) == bytes(request.source, 'UTF-8')
-        assert 'headers' in kwargs
-        assert 'Content-Type' in kwargs['headers']
-        assert kwargs['headers']['Content-Type'] == 'application/xml'
-
-        # post multipart
-        parent.user.host = 'http://localhost:1337'
-        request.method = RequestMethod.POST
-        request.endpoint = '/'
-        request.arguments = {'multipart_form_data_name': 'input_name', 'multipart_form_data_filename': 'filename'}
+        # request PUT, 200, multipart form data
+        request.method = RequestMethod.PUT
+        del expected_parameters['json']
+        request.arguments = {
+            'multipart_form_data_name': 'foobar',
+            'multipart_form_data_filename': 'foobar.txt',
+        }
+        request.source = 'foobar'
         request.response.content_type = TransformerContentType.MULTIPART_FORM_DATA
-        request_mock = ClientRequestMock(status_code=200, user=parent.user, request_func=request_func)
-        request.response.add_status_code(200)
-        request.source = '<?xml version="1.0"?><example></example'
+        expected_parameters.update({
+            'files': {'foobar': ('foobar.txt', request.source,)}
+        })
 
-        with pytest.raises(ResultSuccess):
-            request_func(parent.user, parent, request)
+        assert parent.user.request(request) == ({'x-bar': 'foo'}, 'success')
 
-        assert request_mock.spy.call_count == 1
-        _, kwargs = request_mock.spy.call_args_list[-1]
-        assert kwargs.get('method', None) == request.method.name
-        assert kwargs.get('name', '').startswith(parent.user._scenario.identifier)
-        assert kwargs.get('catch_response', False)
-        assert kwargs.get('url', None) == f'{parent.user.host}{request.endpoint}'
+        request_spy.assert_called_once_with(
+            method='PUT',
+            name='001 TestScenario',
+            url='http://test/api/test',
+            catch_response=True,
+            cookies=parent.user.cookies,
+            **expected_parameters,
+        )
 
-        # post with metadata
-        parent.user.host = 'http://localhost:1337'
-        request.method = RequestMethod.POST
-        request.endpoint = '/'
-        request.arguments = None
-        request.metadata = {'my_header': 'value'}
-        request.response.content_type = TransformerContentType.JSON
-        request_mock = ClientRequestMock(status_code=200, user=parent.user, request_func=request_func)
-        request.response.add_status_code(200)
-        request.source = '{"alice": 1}'
+        response_spy.success.assert_called_once_with()
+        response_spy.failure.assert_not_called()
 
-        with pytest.raises(ResultSuccess):
-            request_func(parent.user, parent, request)
+        response_spy.reset_mock()
+        request_spy.reset_mock()
 
-        assert request_mock.spy.call_count == 1
-        _, kwargs = request_mock.spy.call_args_list[-1]
-        assert kwargs.get('method', None) == request.method.name
-        assert kwargs.get('name', '').startswith(parent.user._scenario.identifier)
-        assert kwargs.get('catch_response', False)
-        assert kwargs.get('url', None) == f'{parent.user.host}{request.endpoint}'
-        assert 'headers' in kwargs
-        assert 'my_header' in kwargs['headers']
-        assert kwargs['headers']['my_header'] == 'value'
+        # request PUT, data
+        request.response.content_type = TransformerContentType.XML
+        request.source = '<?xml version="1.0" encoding="utf-8"?><hello><foo/></hello>'
+        del expected_parameters['files']
+        expected_parameters.update({'data': request.source.encode('utf-8')})
+
+        assert parent.user.request(request) == ({'x-bar': 'foo'}, 'success')
+
+        request_spy.assert_called_once_with(
+            method='PUT',
+            name='001 TestScenario',
+            url='http://test/api/test',
+            catch_response=True,
+            cookies=parent.user.cookies,
+            **expected_parameters,
+        )
+
+        response_spy.success.assert_called_once_with()
+        response_spy.failure.assert_not_called()
+
+        response_spy.reset_mock()
+        request_spy.reset_mock()
 
     def test_add_context(self, grizzly_fixture: GrizzlyFixture) -> None:
         parent = grizzly_fixture(user_type=RestApiUser)
@@ -414,8 +465,8 @@ class TestRestApiUser:
         assert isinstance(parent.user, RestApiUser)
 
         assert 'test_context_variable' not in parent.user._context
-        assert cast(GrizzlyAuthHttpContext, parent.user._context['auth'])['provider'] is None
-        assert cast(GrizzlyAuthHttpContext, parent.user._context['auth'])['refresh_time'] == 3000
+        assert parent.user._context['auth']['provider'] is None
+        assert parent.user._context['auth']['refresh_time'] == 3000
 
         parent.user.add_context({'test_context_variable': 'value'})
 
@@ -423,8 +474,8 @@ class TestRestApiUser:
 
         parent.user.add_context({'auth': {'provider': 'http://auth.example.org'}})
 
-        assert cast(GrizzlyAuthHttpContext, parent.user._context['auth'])['provider'] == 'http://auth.example.org'
-        assert cast(GrizzlyAuthHttpContext, parent.user._context['auth'])['refresh_time'] == 3000
+        assert parent.user._context['auth']['provider'] == 'http://auth.example.org'
+        assert parent.user._context['auth']['refresh_time'] == 3000
 
         parent.user.headers['Authorization'] = 'Bearer asdfasdfasdf'
 

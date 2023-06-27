@@ -485,19 +485,19 @@ def test_normalize_step_name() -> None:
     assert expected == actual
 
 
-def test_get_task_client_error() -> None:
+def test_get_task_client_error(grizzly_fixture: GrizzlyFixture) -> None:
     with pytest.raises(AssertionError) as ae:
-        get_task_client('')
+        get_task_client(grizzly_fixture.grizzly, '')
     assert 'could not find scheme in ""' == str(ae.value)
 
     with pytest.raises(AssertionError) as ae:
-        get_task_client('obscure://obscure.example.io')
+        get_task_client(grizzly_fixture.grizzly, 'obscure://obscure.example.io')
     assert 'no client task registered for obscure' == str(ae.value)
 
 
 @pytest.mark.parametrize('test_scheme', client.available.keys())
-def test_get_task_client(test_scheme: str) -> None:
-    task_client = get_task_client(f'{test_scheme}://example.net')
+def test_get_task_client(grizzly_fixture: GrizzlyFixture, test_scheme: str) -> None:
+    task_client = get_task_client(grizzly_fixture.grizzly, f'{test_scheme}://example.net')
 
     assert task_client is not None
     assert issubclass(task_client, ClientTask)

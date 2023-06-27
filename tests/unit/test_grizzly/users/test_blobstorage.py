@@ -1,4 +1,3 @@
-import os
 import json
 
 from typing import cast
@@ -50,19 +49,19 @@ def blob_storage_parent(grizzly_fixture: GrizzlyFixture) -> GrizzlyScenario:
 class TestBlobStorageUser:
     @pytest.mark.usefixtures('blob_storage_parent')
     def test_on_start(self, blob_storage_parent: GrizzlyScenario) -> None:
-        assert not hasattr(blob_storage_parent.user, 'client')
+        assert not hasattr(blob_storage_parent.user, 'blob_client')
 
         blob_storage_parent.user.on_start()
 
-        assert hasattr(blob_storage_parent.user, 'client')
-        assert blob_storage_parent.user.client.account_name == 'my-storage'
+        assert hasattr(blob_storage_parent.user, 'blob_client')
+        assert blob_storage_parent.user.blob_client.account_name == 'my-storage'
 
     @pytest.mark.usefixtures('blob_storage_parent')
     def test_on_stop(self, mocker: MockerFixture, blob_storage_parent: GrizzlyScenario) -> None:
         assert isinstance(blob_storage_parent.user, BlobStorageUser)
         blob_storage_parent.user.on_start()
 
-        on_stop_spy = mocker.spy(blob_storage_parent.user.client, 'close')
+        on_stop_spy = mocker.spy(blob_storage_parent.user.blob_client, 'close')
 
         blob_storage_parent.user.on_stop()
 
@@ -109,7 +108,7 @@ class TestBlobStorageUser:
         }
         blob_storage_parent.user.add_context(remote_variables)
         request = cast(RequestTask, blob_storage_parent.user._scenario.tasks()[-1])
-        request.endpoint = 'some_container_name'
+        request.endpoint = 'some_container_name/file.txt'
 
         upload_blob = mocker.patch('azure.storage.blob._blob_service_client.BlobClient.upload_blob', autospec=True)
 
@@ -124,7 +123,7 @@ class TestBlobStorageUser:
             }
         }
 
-        metadata, payload = blob_storage_parent.user.request(blob_storage_parent, request)
+        metadata, payload = blob_storage_parent.user.request(request)
 
         assert payload is not None
         assert upload_blob.call_count == 1
@@ -138,18 +137,18 @@ class TestBlobStorageUser:
 
         json_payload = json.loads(payload)
         assert json_payload['result']['id'] == 'ID-31337'
-        assert blob_client.container_name == cast(RequestTask, blob_storage_parent.user._scenario.tasks()[-1]).endpoint
-        assert blob_client.blob_name == os.path.basename(request.name)
+        assert blob_client.container_name == 'some_container_name'
+        assert blob_client.blob_name == 'file.txt'
 
         request = cast(RequestTask, blob_storage_parent.user._scenario.tasks()[-1])
 
-        blob_storage_parent.user.request(blob_storage_parent, request)
+        blob_storage_parent.user.request(request)
 
         request_event = mocker.spy(blob_storage_parent.user.environment.events.request, 'fire')
 
         request.method = RequestMethod.RECEIVE
         with pytest.raises(StopUser):
-            blob_storage_parent.user.request(blob_storage_parent, request)
+            blob_storage_parent.user.request(request)
 
         assert request_event.call_count == 1
         _, kwargs = request_event.call_args_list[-1]
@@ -165,19 +164,19 @@ class TestBlobStorageUser:
 
         blob_storage_parent.user._scenario.failure_exception = None
         with pytest.raises(StopUser):
-            blob_storage_parent.user.request(blob_storage_parent, request)
+            blob_storage_parent.user.request(request)
 
         blob_storage_parent.user._scenario.failure_exception = StopUser
         with pytest.raises(StopUser):
-            blob_storage_parent.user.request(blob_storage_parent, request)
+            blob_storage_parent.user.request(request)
 
         blob_storage_parent.user._scenario.failure_exception = RestartScenario
         with pytest.raises(StopUser):
-            blob_storage_parent.user.request(blob_storage_parent, request)
+            blob_storage_parent.user.request(request)
 
         upload_blob = mocker.patch('azure.storage.blob._blob_service_client.BlobClient.upload_blob', side_effect=[RuntimeError('failed to upload blob')])
 
         request.method = RequestMethod.SEND
 
         with pytest.raises(RestartScenario):
-            blob_storage_parent.user.request(blob_storage_parent, request)
+            blob_storage_parent.user.request(request)

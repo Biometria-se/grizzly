@@ -51,7 +51,8 @@ from grizzly_extras.arguments import split_value, parse_arguments
 
 from grizzly.types import GrizzlyResponse, RequestDirection, bool_type
 from grizzly.scenarios import GrizzlyScenario
-from grizzly.auth import GrizzlyHttpAuthClient, refresh_token, AAD, GrizzlyHttpContext
+from grizzly.auth import GrizzlyHttpAuthClient, refresh_token, AAD
+from grizzly.utils import merge_dicts
 
 from . import client, ClientTask
 
@@ -63,7 +64,7 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
     session_started: Optional[float]
     host: str
 
-    _context: GrizzlyHttpContext
+    _context: Dict[str, Any]
 
     def __init__(
         self,
@@ -117,8 +118,13 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
             'auth': None,
         }
 
+        self._context.update({'host': self.host})
+        self._context = merge_dicts(self._context, self._scenario.context)
+
     def on_start(self, parent: GrizzlyScenario) -> None:
         super().on_start(parent)
+
+        self.environment = self.grizzly.state.locust.environment
 
         self.session_started = time()
         metadata = self._context.get('metadata', None)
