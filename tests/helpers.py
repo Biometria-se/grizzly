@@ -4,7 +4,7 @@ import os
 import stat
 import re
 
-from typing import Any, Dict, Optional, Tuple, List, Set, Callable, Generator, Union, Pattern
+from typing import Any, Dict, Optional, Tuple, List, Set, Callable, Generator, Union, Pattern, Type
 from types import MethodType, TracebackType
 from pathlib import Path
 from copy import deepcopy
@@ -116,6 +116,22 @@ class TestTask(GrizzlyTask):
         @task.on_stop
         def on_stop(parent: 'GrizzlyScenario') -> None:
             self.on_stop(parent)
+
+        return task
+
+
+class TestExceptionTask(GrizzlyTask):
+    __test__ = False
+
+    error_type: Type[Exception]
+
+    def __init__(self, error_type: Type[Exception]) -> None:
+        self.error_type = error_type
+
+    def __call__(self) -> grizzlytask:
+        @grizzlytask
+        def task(parent: 'GrizzlyScenario') -> Any:
+            raise self.error_type()
 
         return task
 

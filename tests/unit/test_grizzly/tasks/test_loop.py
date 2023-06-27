@@ -7,10 +7,10 @@ from pytest_mock import MockerFixture
 
 from grizzly.tasks import LoopTask, GrizzlyTask, grizzlytask
 from grizzly.context import GrizzlyContextScenario
-from grizzly.exceptions import RestartScenario
+from grizzly.exceptions import RestartScenario, StopUser
 
 from tests.fixtures import GrizzlyFixture
-from tests.helpers import TestTask
+from tests.helpers import TestTask, TestExceptionTask
 
 if TYPE_CHECKING:
     from grizzly.scenarios import GrizzlyScenario
@@ -252,6 +252,21 @@ class TestLoopTask:
         exception = kwargs.get('exception', '')
         assert isinstance(exception, ValueError)
         assert str(exception) == 'error'
+
+        request_spy.reset_mock()
+
+        # wrapped task throws scenario.failure_exception
+        for failure_exception in [RestartScenario, StopUser]:
+            scenario_context.failure_exception = failure_exception
+            task_factory.tasks = []
+            task_factory.add(TestExceptionTask(failure_exception))
+
+            task = task_factory()
+
+            with pytest.raises(failure_exception):
+                task(parent)
+
+            request_spy.assert_not_called()
 
     def test_on_event(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         mocker.patch('grizzly.tasks.loop.gsleep', autospec=True)
