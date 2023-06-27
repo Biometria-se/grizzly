@@ -274,7 +274,7 @@ class TestTestdataProducer:
 
             cleanup()
 
-    def test_reset(self, mocker: MockerFixture, cleanup: AtomicVariableCleanupFixture, grizzly_fixture: GrizzlyFixture, noop_zmq: NoopZmqFixture) -> None:
+    def test_on_stop(self, mocker: MockerFixture, cleanup: AtomicVariableCleanupFixture, grizzly_fixture: GrizzlyFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.testdata.communication')
 
         try:
@@ -284,7 +284,7 @@ class TestTestdataProducer:
                 'test-scenario-2': 5,
             }
 
-            producer.reset()
+            producer.on_test_stop()
 
             for scenario, count in producer.scenarios_iteration.items():
                 assert count == 0, f'iteration count for {scenario} was not reset'

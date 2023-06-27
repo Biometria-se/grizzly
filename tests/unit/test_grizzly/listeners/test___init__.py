@@ -304,7 +304,7 @@ def test_locust_test_stop(mocker: MockerFixture, listener_test_mocker: None, gri
         raise Running()
 
     mocker.patch(
-        'grizzly.testdata.communication.TestdataProducer.reset',
+        'grizzly.testdata.communication.TestdataProducer.on_test_stop',
         mocked_reset,
     )
     init_function = _init_testdata_producer(grizzly_fixture.grizzly, '1337', {})

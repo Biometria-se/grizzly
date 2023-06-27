@@ -116,6 +116,7 @@ class TestdataProducer:
     scenarios_iteration: Dict[str, int]
     testdata: TestdataType
     environment: Environment
+    has_persisted: bool
 
     def __init__(self, grizzly: 'GrizzlyContext', testdata: TestdataType, address: str = 'tcp://127.0.0.1:5555') -> None:
         self.grizzly = grizzly
@@ -132,16 +133,21 @@ class TestdataProducer:
         self.scenarios_iteration = {}
 
         self._stopping = False
+        self.has_persisted = False
 
         self.logger.debug(f'serving:\n{self.testdata}')
 
-    def reset(self) -> None:
-        self.logger.debug('reseting')
+    def on_test_stop(self) -> None:
+        self.logger.debug('test stopping')
         with self.semaphore:
+            self.persist_testdata()
             for scenario_name in self.scenarios_iteration.keys():
                 self.scenarios_iteration[scenario_name] = 0
 
     def persist_testdata(self) -> None:
+        if self.has_persisted:
+            return
+
         try:
             feature_file = environ.get('GRIZZLY_FEATURE_FILE', None)
             context_root = environ.get('GRIZZLY_CONTEXT_ROOT', None)
@@ -171,6 +177,7 @@ class TestdataProducer:
                 persist_file = persist_root / f'{Path(feature_file).stem}.json'
                 persist_file.write_text(jsondumps(variable_state, indent=2))
                 self.logger.info(f'wrote variables next initial values for {feature_file} to {persist_file}')
+                self.has_persisted = True
         except:
             self.logger.error('failed do persist variables next initial values', exc_info=True)
 
