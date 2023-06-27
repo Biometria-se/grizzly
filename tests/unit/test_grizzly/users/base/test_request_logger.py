@@ -1,5 +1,3 @@
-import shutil
-
 from os import environ, path, listdir, remove
 from typing import Generator, List, Callable, Type
 
@@ -14,29 +12,16 @@ from grizzly.users.base import RequestLogger, HttpRequests
 from grizzly.types import RequestMethod, GrizzlyResponseContextManager
 from grizzly.tasks import RequestTask
 
-from tests.fixtures import ResponseContextManagerFixture, BehaveFixture
+from tests.fixtures import ResponseContextManagerFixture, BehaveFixture, GrizzlyFixture
 
 
-@pytest.mark.usefixtures('behave_fixture')
 @pytest.fixture
-def request_logger(behave_fixture: BehaveFixture, tmp_path_factory: TempPathFactory) -> Generator[RequestLogger, None, None]:
-    test_context = tmp_path_factory.mktemp('test_context') / 'requests'
-    test_context_root = path.dirname(str(test_context))
-    environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
-
-    behave_fixture.grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
-
+def request_logger(grizzly_fixture: GrizzlyFixture, tmp_path_factory: TempPathFactory) -> Generator[RequestLogger, None, None]:
     try:
-        RequestLogger.host = 'https://example.org'
-        RequestLogger.__scenario__ = behave_fixture.grizzly.scenario
-        yield RequestLogger(behave_fixture.locust.environment)
+        RequestLogger.host = 'dummy://test'
+        yield RequestLogger(grizzly_fixture.behave.locust.environment)
     finally:
-        shutil.rmtree(test_context_root)
-
-        try:
-            del environ['GRIZZLY_CONTEXT_ROOT']
-        except KeyError:
-            pass
+        pass
 
 
 @pytest.fixture
@@ -71,8 +56,7 @@ class TestRequestLogger:
         assert not user._context.get('log_all_requests', None)
         assert len(user.response_event._handlers) == 1
 
-        RequestLogger.__scenario__ = behave_fixture.grizzly.scenario
-        RequestLogger.host = 'mq://example.org'
+        RequestLogger.host = 'dummy://test'
         user = RequestLogger(behave_fixture.locust.environment)
 
         assert len(user.response_event._handlers) == 1
@@ -109,12 +93,14 @@ class TestRequestLogger:
     @pytest.mark.parametrize('cls_rcm', [ResponseContextManager, FastResponseContextManager])
     def test_request_logger_http(
         self,
+        grizzly_fixture: GrizzlyFixture,
         request_logger: RequestLogger,
         get_log_files: Callable[[], List[str]],
         cls_rcm: Type[GrizzlyResponseContextManager],
         response_context_manager_fixture: ResponseContextManagerFixture,
         capsys: CaptureFixture,
     ) -> None:
+        parent = grizzly_fixture()
         request_logger.host = 'https://test.example.org'
         request = RequestTask(RequestMethod.POST, name='test-request', endpoint='/api/test')
         response = response_context_manager_fixture(cls_rcm, 200, name=request.name)  # type: ignore
@@ -122,7 +108,7 @@ class TestRequestLogger:
         assert get_log_files() == []
 
         # response status code == 200, don't do anything
-        request_logger.request_logger('test-request', response, request, request_logger)
+        request_logger.request_logger('test-request', response, request, parent.user)
         assert get_log_files() == []
 
         # response status code == 401, but is added as an allowed response code, don't do anything
@@ -131,11 +117,11 @@ class TestRequestLogger:
 
         response_context = request.response
         setattr(request, 'response', None)
-        request_logger.request_logger('test-request', response, request, request_logger)
+        request_logger.request_logger('test-request', response, request, parent.user)
 
         setattr(request, 'response', response_context)
 
-        request_logger.request_logger('test-request', response, request, request_logger)
+        request_logger.request_logger('test-request', response, request, parent.user)
 
         assert get_log_files() == []
 
@@ -145,7 +131,7 @@ class TestRequestLogger:
         response = response_context_manager_fixture(cls_rcm, 401, name=request.name)  # type: ignore
         del response.request_meta['response_time']
 
-        request_logger.request_logger('none-test', response, request, request_logger)
+        request_logger.request_logger('none-test', response, request, parent.user)
 
         log_files = get_log_files()
 
@@ -188,7 +174,7 @@ class TestRequestLogger:
             'response_time': 200,
         }
 
-        request_logger.request_logger(request.name, response, request, request_logger)
+        request_logger.request_logger(request.name, response, request, parent.user)
 
         log_files = get_log_files()
 
@@ -235,7 +221,7 @@ class TestRequestLogger:
             'response_time': 137.2111,
         }
 
-        request_logger.request_logger(request.name, response, request, request_logger)
+        request_logger.request_logger(request.name, response, request, parent.user)
 
         log_files = get_log_files()
 
@@ -268,19 +254,20 @@ test body str''' in log_file_contents
         remove(log_file)
 
     @pytest.mark.usefixtures('request_logger', 'get_log_files')
-    def test_handler_custom(self, request_logger: RequestLogger, get_log_files: Callable[[], List[str]]) -> None:
-        request_logger.host = 'mq://mq.example.org?QueueManager=QMGR01&Channel=SYS.CONN'
+    def test_handler_custom(self, grizzly_fixture: GrizzlyFixture, request_logger: RequestLogger, get_log_files: Callable[[], List[str]]) -> None:
+        parent = grizzly_fixture()
+        parent.user.host = 'mq://mq.example.org?QueueManager=QMGR01&Channel=SYS.CONN'
         request = RequestTask(RequestMethod.POST, name='test-request', endpoint='MSG.INCOMING')
 
         # pre sanity check
         assert get_log_files() == []
 
         # no exception, and do not log all requests
-        request_logger.request_logger('test-request', (None, '{}'), request, request_logger)
+        request_logger.request_logger('test-request', (None, '{}'), request, parent.user)
 
         assert get_log_files() == []
 
-        request_logger.request_logger('[test-request!', (None, '{}'), request, request_logger, Exception('error message'))
+        request_logger.request_logger('[test-request!', (None, '{}'), request, parent.user, Exception('error message'))
 
         log_files = get_log_files()
 
@@ -310,7 +297,7 @@ test body str''' in log_file_contents
                 'sent-by': 'grizzly',
             }, '<?xml encoding="UTF-8" version="1.0"?><test>value</test>'),
             request,
-            request_logger,
+            parent.user,
         )
 
         log_files = get_log_files()
@@ -351,7 +338,7 @@ payload:
                 'sent-by': 'grizzly',
             }, '<?xml encoding="UTF-8" version="1.0"?><test>value</test>'),
             request,
-            request_logger,
+            parent.user,
             Exception('error message'),
             locust_request_meta={
                 'response_time': 133.7,

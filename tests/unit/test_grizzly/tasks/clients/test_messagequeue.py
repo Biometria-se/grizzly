@@ -71,6 +71,7 @@ class TestMessageQueueClientTask:
 
         zmq_context: Optional[zmq.Context] = None
         try:
+            MessageQueueClientTask.__scenario__ = grizzly_fixture.grizzly.scenario
             task_factory = MessageQueueClientTask(RequestDirection.FROM, 'mqs://localhost:1')
             zmq_context = task_factory._zmq_context
 
@@ -124,6 +125,7 @@ class TestMessageQueueClientTask:
 
         zmq_context: Optional[zmq.Context] = None
         try:
+            MessageQueueClientTask.__scenario__ = grizzly_fixture.grizzly.scenario
             task_factory = MessageQueueClientTask(RequestDirection.FROM, (
                 'mqs://mq_username:mq_password@mq.example.com:1415/queue:INCOMING.MESSAGES?QueueManager=QM01&Channel=IN.CHAN'
                 '&wait=133&heartbeat=432&KeyFile=/tmp/mq_keys&SslCipher=NUL&CertLabel=something'
@@ -283,6 +285,7 @@ class TestMessageQueueClientTask:
 
         zmq_context: Optional[zmq.Context] = None
         try:
+            MessageQueueClientTask.__scenario__ = grizzly_fixture.grizzly.scenario
             task_factory = MessageQueueClientTask(
                 RequestDirection.FROM,
                 'mqs://mq_username:mq_password@mq.example.io/topic:INCOMING.MSG?QueueManager=QM01&Channel=TCP.IN',
@@ -313,6 +316,7 @@ class TestMessageQueueClientTask:
 
         zmq_context: Optional[zmq.Context] = None
         try:
+            MessageQueueClientTask.__scenario__ = grizzly_fixture.grizzly.scenario
             task_factory = MessageQueueClientTask(
                 RequestDirection.FROM,
                 'mqs://mq_username:mq_password@mq.example.io/topic:INCOMING.MSG?QueueManager=QM01&Channel=TCP.IN',
@@ -443,6 +447,7 @@ class TestMessageQueueClientTask:
 
         zmq_context: Optional[zmq.Context] = None
         try:
+            MessageQueueClientTask.__scenario__ = grizzly_fixture.grizzly.scenario
             task_factory = MessageQueueClientTask(
                 RequestDirection.FROM,
                 'mqs://mq_username:mq_password@mq.example.io/topic:INCOMING.MSG?QueueManager=QM01&Channel=TCP.IN',
@@ -601,6 +606,8 @@ class TestMessageQueueClientTask:
 
         zmq_context: Optional[zmq.Context] = None
         try:
+            MessageQueueClientTask.__scenario__ = grizzly_fixture.grizzly.scenario
+
             with pytest.raises(ValueError) as ve:
                 task_factory = MessageQueueClientTask(
                     RequestDirection.TO,

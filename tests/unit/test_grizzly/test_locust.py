@@ -233,6 +233,7 @@ def test_setup_locust_scenarios(behave_fixture: BehaveFixture, noop_zmq: NoopZmq
 
         grizzly.scenario.user.class_name = 'RestApiUser'
         grizzly.scenario.context['host'] = 'https://api.example.io'
+        MessageQueueClientTask.__scenario__ = grizzly.scenario
         grizzly.scenario.tasks.add(MessageQueueClientTask(RequestDirection.FROM, 'mqs://username:password@mq.example.io/queue:INCOMING?QueueManager=QM01&Channel=TCP.IN'))
         user_classes, start_messagequeue_daemon = setup_locust_scenarios(grizzly)
 

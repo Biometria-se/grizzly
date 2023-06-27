@@ -366,7 +366,7 @@ def step_task_client_get_endpoint_payload_metadata(context: Context, endpoint: s
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
 
-    grizzly.scenario.tasks.add(get_task_client(endpoint)(
+    grizzly.scenario.tasks.add(get_task_client(grizzly, endpoint)(
         RequestDirection.FROM,
         endpoint,
         name,
@@ -399,7 +399,7 @@ def step_task_client_get_endpoint_payload(context: Context, endpoint: str, name:
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
 
-    grizzly.scenario.tasks.add(get_task_client(endpoint)(
+    grizzly.scenario.tasks.add(get_task_client(grizzly, endpoint)(
         RequestDirection.FROM,
         endpoint,
         name,
@@ -432,7 +432,7 @@ def step_task_client_get_endpoint_until(context: Context, endpoint: str, name: s
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
 
-    client_request = get_task_client(endpoint)(
+    client_request = get_task_client(grizzly, endpoint)(
         RequestDirection.FROM,
         endpoint,
         name,
@@ -472,7 +472,7 @@ def step_task_client_put_endpoint_file_destination(context: Context, source: str
 
     grizzly = cast(GrizzlyContext, context.grizzly)
 
-    grizzly.scenario.tasks.add(get_task_client(endpoint)(
+    grizzly.scenario.tasks.add(get_task_client(grizzly, endpoint)(
         RequestDirection.TO,
         endpoint,
         name,
@@ -506,7 +506,7 @@ def step_task_client_put_endpoint_file(context: Context, source: str, endpoint: 
 
     grizzly = cast(GrizzlyContext, context.grizzly)
 
-    grizzly.scenario.tasks.add(get_task_client(endpoint)(
+    grizzly.scenario.tasks.add(get_task_client(grizzly, endpoint)(
         RequestDirection.TO,
         endpoint,
         name,

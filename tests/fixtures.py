@@ -351,6 +351,7 @@ class GrizzlyFixture:
         self.grizzly.scenario.user.class_name = 'TestUser'
         self.grizzly.scenario.context['host'] = 'http://example.com'
         self.grizzly.scenario.tasks.add(self.request_task.request)
+        self.grizzly.state.verbose = True
 
         return self
 
