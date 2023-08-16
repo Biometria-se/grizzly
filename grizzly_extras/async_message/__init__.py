@@ -15,7 +15,6 @@ from time import sleep, perf_counter
 import zmq.green as zmq
 
 from zmq.error import Again as ZMQAgain
-from zmq.sugar.constants import NOBLOCK as ZMQ_NOBLOCK
 from grizzly_extras.transformer import JsonBytesEncoder
 
 
@@ -216,7 +215,7 @@ def async_message_request(client: zmq.Socket, request: AsyncMessageRequest) -> A
         while True:
             start = perf_counter()
             try:
-                response = cast(AsyncMessageResponse, client.recv_json(flags=ZMQ_NOBLOCK))
+                response = cast(AsyncMessageResponse, client.recv_json(flags=zmq.NOBLOCK))
                 break
             except ZMQAgain:
                 sleep(0.1)

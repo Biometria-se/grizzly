@@ -73,8 +73,6 @@ from dataclasses import dataclass, field
 
 import zmq.green as zmq
 
-from zmq.sugar.constants import REQ as ZMQ_REQ, LINGER as ZMQ_LINGER
-
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
 from grizzly_extras.transformer import TransformerContentType
 from grizzly_extras.arguments import parse_arguments
@@ -203,7 +201,7 @@ class ServiceBusClientTask(ClientTask):
 
             state = State(
                 parent=parent,
-                client=cast(zmq.Socket, self._zmq_context.socket(ZMQ_REQ)),
+                client=cast(zmq.Socket, self._zmq_context.socket(zmq.REQ)),
                 context=context,
             )
             state.client.connect(self._zmq_url)
@@ -247,7 +245,7 @@ class ServiceBusClientTask(ClientTask):
 
         async_message_request_wrapper(parent, state.client, request)
 
-        state.client.setsockopt(ZMQ_LINGER, 0)
+        state.client.setsockopt(zmq.LINGER, 0)
         state.client.close()
 
         del self._state[parent]

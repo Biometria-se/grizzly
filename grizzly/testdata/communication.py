@@ -6,7 +6,6 @@ from pathlib import Path
 from json import dumps as jsondumps
 from itertools import chain
 
-from zmq.sugar.constants import NOBLOCK as ZMQ_NOBLOCK, REQ as ZMQ_REQ, REP as ZMQ_REP
 from zmq.error import ZMQError, Again as ZMQAgain
 import zmq.green as zmq
 
@@ -41,7 +40,7 @@ class TestdataConsumer:
         self.logger = logging.getLogger(f'{__name__}/{self.identifier}')
 
         self.context = zmq.Context()
-        self.socket = self.context.socket(ZMQ_REQ)
+        self.socket = self.context.socket(zmq.REQ)
         self.socket.connect(address)
         self.stopped = False
 
@@ -70,11 +69,12 @@ class TestdataConsumer:
         })
 
         self.logger.debug('waiting for response from producer')
+        message: Dict[str, Any]
 
         # loop and NOBLOCK needed when running in local mode, to let other gevent threads get time
         while True:
             try:
-                message = self.socket.recv_json(flags=ZMQ_NOBLOCK)
+                message = cast(Dict[str, Any], self.socket.recv_json(flags=zmq.NOBLOCK))
                 break
             except ZMQAgain:
                 gsleep(0.1)  # let other greenlets execute
@@ -128,7 +128,7 @@ class TestdataProducer:
         self.logger.debug(f'starting on {address}')
 
         self.context = zmq.Context()
-        self.socket = self.context.socket(ZMQ_REP)
+        self.socket = self.context.socket(zmq.REP)
         self.socket.bind(address)
         self.scenarios_iteration = {}
 
@@ -200,7 +200,7 @@ class TestdataProducer:
         try:
             while True:
                 try:
-                    recv = self.socket.recv_json(flags=ZMQ_NOBLOCK)
+                    recv = cast(Dict[str, Any], self.socket.recv_json(flags=zmq.NOBLOCK))
                     consumer_identifier = recv.get('identifier', '')
                     self.logger.debug(f'got request from consumer {consumer_identifier}')
 

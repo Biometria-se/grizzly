@@ -12,7 +12,6 @@ import gevent
 
 from _pytest.logging import LogCaptureFixture
 from pytest_mock import MockerFixture
-from zmq.sugar.constants import REQ as ZMQ_REQ
 from zmq.error import ZMQError, Again as ZMQAgain
 
 from grizzly.types.locust import StopUser
@@ -110,7 +109,7 @@ class TestTestdataProducer:
             producer_thread.start()
 
             context = zmq.Context()
-            with context.socket(ZMQ_REQ) as socket:
+            with context.socket(zmq.REQ) as socket:
                 socket.connect(address)
 
                 def get_message_from_producer() -> Dict[str, Any]:
@@ -122,7 +121,7 @@ class TestTestdataProducer:
 
                     gevent.sleep(0.1)
 
-                    message = socket.recv_json()
+                    message = cast(Dict[str, Any], socket.recv_json())
                     return message
 
                 message: Dict[str, Any] = get_message_from_producer()
@@ -242,7 +241,7 @@ class TestTestdataProducer:
             producer_thread.start()
 
             context = zmq.Context()
-            with context.socket(ZMQ_REQ) as socket:
+            with context.socket(zmq.REQ) as socket:
                 socket.connect(address)
 
                 def get_message_from_producer() -> Dict[str, Any]:
@@ -254,7 +253,7 @@ class TestTestdataProducer:
 
                     gevent.sleep(0.1)
 
-                    message = socket.recv_json()
+                    message = cast(Dict[str, Any], socket.recv_json())
                     return message
 
                 message: Dict[str, Any] = get_message_from_producer()

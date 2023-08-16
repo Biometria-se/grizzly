@@ -4,9 +4,9 @@ from shutil import rmtree
 from platform import node as hostname
 
 import pytest
+import zmq.green as zmq
 
 from zmq.error import Again as ZMQAgain
-from zmq.sugar.constants import NOBLOCK as ZMQ_NOBLOCK
 from pytest_mock import MockerFixture
 from _pytest.tmpdir import TempPathFactory
 from _pytest.capture import CaptureFixture
@@ -207,7 +207,7 @@ def test_async_message_request(mocker: MockerFixture) -> None:
     for i in range(2):
         args, kwargs = client_mock.recv_json.call_args_list[i]
         assert args == ()
-        assert kwargs == {'flags': ZMQ_NOBLOCK}
+        assert kwargs == {'flags': zmq.NOBLOCK}
 
     sleep_mock.reset_mock()
     client_mock.reset_mock()
@@ -222,7 +222,7 @@ def test_async_message_request(mocker: MockerFixture) -> None:
 
     sleep_mock.assert_not_called()
     client_mock.send_json.assert_called_once_with(request)
-    client_mock.recv_json.assert_called_once_with(flags=ZMQ_NOBLOCK)
+    client_mock.recv_json.assert_called_once_with(flags=zmq.NOBLOCK)
 
     # valid response
     client_mock.recv_json.return_value = {'success': True, 'worker': 'foo-bar-baz-foo', 'payload': 'yes'}

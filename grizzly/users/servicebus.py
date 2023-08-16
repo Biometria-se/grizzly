@@ -73,7 +73,6 @@ from typing import Generator, Dict, Any, Tuple, Optional, Set, cast
 from urllib.parse import urlparse, parse_qs
 from contextlib import contextmanager
 
-from zmq.sugar.constants import REQ as ZMQ_REQ
 import zmq.green as zmq
 
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageResponse, AsyncMessageRequest, async_message_request
@@ -149,7 +148,7 @@ class ServiceBusUser(ResponseHandler, GrizzlyUser):
     def on_start(self) -> None:
         super().on_start()
 
-        self.zmq_client = self.zmq_context.socket(ZMQ_REQ)
+        self.zmq_client = self.zmq_context.socket(zmq.REQ)
         self.zmq_client.connect(self.zmq_url)
 
         for task in self._scenario.tasks:

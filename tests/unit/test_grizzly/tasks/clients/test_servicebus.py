@@ -4,9 +4,9 @@ from typing import Dict, Any
 from json import dumps as jsondumps
 
 import pytest
+import zmq.green as zmq
 
 from _pytest.logging import LogCaptureFixture
-from zmq.sugar.constants import LINGER as ZMQ_LINGER
 from grizzly.tasks.clients import ServiceBusClientTask
 from grizzly.types import RequestDirection
 from grizzly_extras.async_message import AsyncMessageRequest
@@ -257,7 +257,7 @@ class TestServiceBusClientTask:
             'action': 'DISCONNECT',
             'context': state.context,
         })
-        client_mock.setsockopt.assert_called_once_with(ZMQ_LINGER, 0)
+        client_mock.setsockopt.assert_called_once_with(zmq.LINGER, 0)
         client_mock.close.assert_called_once_with()
 
         assert task._state == {}
