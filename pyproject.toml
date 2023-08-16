@@ -14,7 +14,7 @@ license = {text = 'MIT'}
 requires-python = ">=3.8"
 dependencies = [
     "locust >=2.16.0,<2.17.0",
-    "aenum >3.1.8,<3.1.13",
+    "aenum >3.1.13",
     "azure-core >=1.24.0,<2.0.0",
     "azure-servicebus >=7.6.0,<7.10.0",
     "azure-storage-blob >=12.9.0,<13.0.0",

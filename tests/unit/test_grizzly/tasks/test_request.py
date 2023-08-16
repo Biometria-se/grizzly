@@ -87,7 +87,7 @@ class TestRequestTask:
 
         parent = grizzly_fixture()
 
-        mocker.patch.object(parent.user, 'request', autospec=True)
+        mocker.patch.object(parent.user, 'request')
         request_spy = mocker.spy(parent.user, 'request')
 
         task(parent)

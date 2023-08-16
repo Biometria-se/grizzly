@@ -163,7 +163,7 @@ class TestAsyncMessageQueueHandler:
 
         handler.qmgr = None
 
-        mocker.patch.object(
+        pymqi_connect_with_options_spy = mocker.patch.object(
             pymqi.QueueManager,
             'connect_with_options',
             autospec=True,
@@ -171,7 +171,6 @@ class TestAsyncMessageQueueHandler:
 
         pymqi_sco_spy = mocker.spy(pymqi.SCO, '__init__')
         pymqi_cd_spy = mocker.spy(pymqi.CD, '__init__')
-        pymqi_connect_with_options_spy = mocker.spy(pymqi.QueueManager, 'connect_with_options')
 
         response = handlers[request['action']](handler, request)
 
@@ -201,7 +200,7 @@ class TestAsyncMessageQueueHandler:
 
         pymqi_sco_spy.reset_mock()
         pymqi_cd_spy.reset_mock()
-        pymqi_connect_with_options_spy.reset_mock()  # does not reset call count?!
+        pymqi_connect_with_options_spy.reset_mock()
         pymqi_cd_setitem_spy = mocker.spy(pymqi.CD, '__setitem__')
 
         request['context'].update({
@@ -234,7 +233,7 @@ class TestAsyncMessageQueueHandler:
         assert args[1] == 'SSLCipherSpec'
         assert args[2].decode().strip() == 'ECDHE_RSA_AES_256_GCM_SHA384'
 
-        assert pymqi_connect_with_options_spy.call_count == 2
+        assert pymqi_connect_with_options_spy.call_count == 1
         args, kwargs = pymqi_connect_with_options_spy.call_args_list[-1]
 
         assert args[0] is handler.qmgr
@@ -269,7 +268,7 @@ class TestAsyncMessageQueueHandler:
         assert args[1] == 'SSLCipherSpec'
         assert args[2].decode().strip() == 'rot13'
 
-        assert pymqi_connect_with_options_spy.call_count == 3
+        assert pymqi_connect_with_options_spy.call_count == 1
         args, kwargs = pymqi_connect_with_options_spy.call_args_list[-1]
 
         assert args[0] is handler.qmgr

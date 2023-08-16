@@ -75,12 +75,7 @@ class RequestDirection(PermutationEnum):
         return methods
 
 
-# Enum is needed for keeping mypy happy
-class MixedEnumMeta(AdvancedEnumType, EnumMeta):
-    pass
-
-
-class RequestMethod(Enum, AdvancedEnum, metaclass=MixedEnumMeta, settings=NoAlias):
+class RequestMethod(AdvancedEnum, settings=NoAlias):
     SEND = RequestDirection.TO
     POST = RequestDirection.TO
     PUT = RequestDirection.TO
@@ -107,7 +102,7 @@ class RequestMethod(Enum, AdvancedEnum, metaclass=MixedEnumMeta, settings=NoAlia
         return self.value
 
 
-class RequestType(Enum, AdvancedEnum, metaclass=MixedEnumMeta, init='alias _weight'):
+class RequestType(AdvancedEnum, init='alias _weight'):
     AUTH = ('AUTH', 0,)
     SCENARIO = ('SCEN', 1,)
     TESTDATA = ('TSTD', 2,)
