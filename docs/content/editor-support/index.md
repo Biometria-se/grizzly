@@ -1,3 +1,6 @@
+---
+title: Editor support
+---
 # Editor support
 
 It can be hard to remember all the step expressions by heart; that's why `grizzly-ls` exists! Which is a server implementation of LSP[^1], providing auto-complete of step expressions.

@@ -1,4 +1,7 @@
-@anchor framework.example
+---
+title: Example
+---
+@anchor framework.example Example
 # Example
 
 The directory `example/` is an working project that sends requests to public REST API endpoints, **please do not abuse these**.
