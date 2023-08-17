@@ -3,10 +3,10 @@ import logging
 from typing import cast
 
 import pytest
+import zmq.green as zmq
 
 from pytest_mock import MockerFixture
 from _pytest.logging import LogCaptureFixture
-from zmq.sugar.constants import REQ as ZMQ_REQ
 from zmq.error import Again as ZMQAgain
 
 from grizzly.users.base import GrizzlyUser, RequestLogger, ResponseHandler
@@ -41,7 +41,7 @@ class TestServiceBusUser:
             assert zmq_client_connect_spy.call_count == 1
             args, _ = zmq_client_connect_spy.call_args_list[0]
             assert args[0] == ServiceBusUser.zmq_url
-            assert user.zmq_client.type == ZMQ_REQ
+            assert user.zmq_client.type == zmq.REQ
             assert say_hello_spy.call_count == 0
 
             scenario = GrizzlyContextScenario(2, behave=behave_fixture.create_scenario('test'))
@@ -90,7 +90,7 @@ class TestServiceBusUser:
             assert zmq_client_disconnect_spy.call_count == 1
             args, _ = zmq_client_disconnect_spy.call_args_list[0]
             assert args[0] == ServiceBusUser.zmq_url
-            assert user.zmq_client.type == ZMQ_REQ
+            assert user.zmq_client.type == zmq.REQ
             assert disconnect_spy.call_count == 0
 
             scenario = GrizzlyContextScenario(2, behave=behave_fixture.create_scenario('test'))

@@ -80,7 +80,6 @@ from json import dumps as jsondumps
 import zmq.green as zmq
 
 from zmq.error import ZMQError
-from zmq.sugar.constants import REQ as ZMQ_REQ, LINGER as ZMQ_LINGER
 
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageResponse, AsyncMessageRequest, async_message_request
 
@@ -236,7 +235,7 @@ class MessageQueueClientTask(ClientTask):
         try:
             client = cast(
                 zmq.Socket,
-                self._zmq_context.socket(ZMQ_REQ),
+                self._zmq_context.socket(zmq.REQ),
             )
             client.connect(self._zmq_url)
 
@@ -246,7 +245,7 @@ class MessageQueueClientTask(ClientTask):
             raise
         finally:
             if client is not None:
-                client.setsockopt(ZMQ_LINGER, 0)
+                client.setsockopt(zmq.LINGER, 0)
                 client.close()
 
     def connect(self, client_id: int, client: zmq.Socket, meta: Dict[str, Any]) -> None:

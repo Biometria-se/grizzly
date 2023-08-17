@@ -37,11 +37,11 @@ class TestRequestType:
         assert RequestType.from_method(input) == expected
 
     @pytest.mark.parametrize('input,expected', [
-        (e.name, e.value[0],) for e in RequestType
+        (e.name, e.alias,) for e in RequestType
     ] + [
         (e.name, e.name,) for e in RequestMethod if getattr(RequestType, e.name, None) is None
     ] + [
-        (e.value[0], e.value[0],) for e in RequestType
+        (e.alias, e.alias,) for e in RequestType
     ])
     def test_from_string(self, input: str, expected: str) -> None:
         assert RequestType.from_string(input) == expected
@@ -103,7 +103,7 @@ class TestRequestMethod:
 
     def test_direction(self) -> None:
         for method in RequestMethod:
-            assert method.value == method.direction
+            assert method.value.wrapped == method.direction
             assert method in method.direction.methods
 
 

@@ -1,7 +1,7 @@
 ---
 title: Metadata
 ---
-@anchor command-line-interface.usage.metadata
+@anchor command-line-interface.usage.metadata Metadata
 # Metadata
 
 It is possible to add metadata in feature files that `grizzly-cli` will use. Metadata comments can be added anywhere in the feature file, but
@@ -22,7 +22,7 @@ have to remember all combinations in memory.
 ```
 
 No validation is done that an argument actually exists in the subparser, other than that `grizzly-cli` will fail with an argument error.
-Which is solved by checking {@link command-line-interface.usage} usage and correct the metadata comments.
+Which is solved by checking {@link command-line-interface.usage} and correct the metadata comments.
 
 ### Examples
 

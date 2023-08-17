@@ -1,8 +1,6 @@
-from enum import Enum, EnumMeta
+from enum import Enum
 from typing import Callable, Optional, Tuple, Any, Union, Dict, TypeVar, List, cast
 from mypy_extensions import KwArg, Arg
-
-from aenum import Enum as AdvancedEnum, NoAlias, EnumType as AdvancedEnumType
 
 from locust.clients import ResponseContextManager as RequestsResponseContextManager
 from locust.contrib.fasthttp import ResponseContextManager as FastResponseContextManager
@@ -75,25 +73,21 @@ class RequestDirection(PermutationEnum):
         return methods
 
 
-# Enum is needed for keeping mypy happy
-class MixedEnumMeta(AdvancedEnumType, EnumMeta):
-    pass
+class RequestDirectionWrapper:
+    wrapped: RequestDirection
+
+    def __init__(self, /, wrapped: RequestDirection) -> None:
+        self.wrapped = wrapped
 
 
-class RequestMethod(Enum, AdvancedEnum, metaclass=MixedEnumMeta, settings=NoAlias):
-    SEND = RequestDirection.TO
-    POST = RequestDirection.TO
-    PUT = RequestDirection.TO
-    RECEIVE = RequestDirection.FROM
-    GET = RequestDirection.FROM
+class RequestMethod(PermutationEnum):
+    __vector__ = (False, True,)
 
-    @classmethod
-    def get_vector(cls) -> Tuple[bool, bool]:
-        """
-        aenum.Enum has a definition of __getattr__ that makes it "impossible" to implement vector the same
-        was as for the enums that only inherits enum.Enum.
-        """
-        return (False, True,)
+    SEND = RequestDirectionWrapper(wrapped=RequestDirection.TO)
+    POST = RequestDirectionWrapper(wrapped=RequestDirection.TO)
+    PUT = RequestDirectionWrapper(wrapped=RequestDirection.TO)
+    RECEIVE = RequestDirectionWrapper(wrapped=RequestDirection.FROM)
+    GET = RequestDirectionWrapper(wrapped=RequestDirection.FROM)
 
     @classmethod
     def from_string(cls, value: str) -> 'RequestMethod':
@@ -104,10 +98,10 @@ class RequestMethod(Enum, AdvancedEnum, metaclass=MixedEnumMeta, settings=NoAlia
 
     @property
     def direction(self) -> RequestDirection:
-        return self.value
+        return cast(RequestDirection, self.value.wrapped)
 
 
-class RequestType(Enum, AdvancedEnum, metaclass=MixedEnumMeta, init='alias _weight'):
+class RequestType(Enum):
     AUTH = ('AUTH', 0,)
     SCENARIO = ('SCEN', 1,)
     TESTDATA = ('TSTD', 2,)
@@ -123,16 +117,29 @@ class RequestType(Enum, AdvancedEnum, metaclass=MixedEnumMeta, init='alias _weig
     SUBSCRIBE = ('SUB', None,)
     UNSUBSCRIBE = ('UNSUB', None,)
 
+    _value: str
+    _weight: Optional[int]
+
+    def __new__(cls, value: str, weight: Optional[int] = None) -> 'RequestType':
+        obj = object.__new__(cls)
+        obj._value = value
+        obj._weight = weight
+
+        return obj
+
     def __call__(self) -> str:
         return str(self)
 
     def __str__(self) -> str:
-        return cast(str, getattr(self, 'alias'))
+        return self.alias
 
     @property
     def weight(self) -> int:
-        weight = getattr(self, '_weight', None)
-        return cast(int, weight) if weight is not None else 10
+        return self._weight if self._weight is not None else 10
+
+    @property
+    def alias(self) -> str:
+        return self._value
 
     @classmethod
     def get_method_weight(cls, method: str) -> int:
@@ -148,13 +155,13 @@ class RequestType(Enum, AdvancedEnum, metaclass=MixedEnumMeta, init='alias _weig
     def from_method(cls, request_type: RequestMethod) -> str:
         method_name = cast(Optional[RequestType], getattr(cls, request_type.name, None))
         if method_name is not None:
-            return cast(str, method_name.alias)
+            return method_name.alias
 
         return request_type.name
 
     @classmethod
     def from_alias(cls, alias: str) -> 'RequestType':
-        for request_type in cls:
+        for request_type in cls.__iter__():
             if request_type.alias == alias:
                 return request_type
 
@@ -162,16 +169,16 @@ class RequestType(Enum, AdvancedEnum, metaclass=MixedEnumMeta, init='alias _weig
 
     @classmethod
     def from_string(cls, key: str) -> str:
-        attribute = cast(Optional[RequestType], getattr(cls, key, None))
-        if attribute is not None:
-            return cast(str, attribute.alias)
+        rt_attribute = cast(Optional[RequestType], getattr(cls, key, None))
+        if rt_attribute is not None:
+            return rt_attribute.alias
 
-        if key in [e.alias for e in cls]:
+        if key in [e.alias for e in cls.__iter__()]:
             return key
 
-        attribute = cast(Optional[RequestMethod], getattr(RequestMethod, key, None))
-        if attribute is not None:
-            return attribute.name
+        rm_attribute = cast(Optional[RequestMethod], getattr(RequestMethod, key, None))
+        if rm_attribute is not None:
+            return rm_attribute.name
 
         raise AttributeError(f'{key} does not exist')
 

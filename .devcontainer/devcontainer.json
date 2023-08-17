@@ -9,7 +9,7 @@
             // Update 'VARIANT' to pick a Python version: 3, 3.10, 3.9, 3.8, 3.7, 3.6
             // Append -bullseye or -buster to pin to an OS version.
             // Use -bullseye variants on local on arm64/Apple Silicon.
-            "VARIANT": "3.10",
+            "VARIANT": "3.11",
             // Options
             "INSTALL_NODE": "true",
             "NODE_VERSION": "lts/*"
@@ -20,20 +20,9 @@
             "settings": {
                 "python.defaultInterpreterPath": "/usr/local/bin/python",
                 "python.pythonPath": "/usr/local/bin/python",
-                "python.linting.enabled": true,
-                "python.linting.pylintEnabled": true,
-                "python.linting.flake8Enabled": true,
-                "python.linting.mypyEnabled": false,
-                "python.linting.pycodestyleEnabled": false,
-                "python.formatting.autopep8Path": "/usr/local/py-utils/bin/autopep8",
-                "python.formatting.blackPath": "/usr/local/py-utils/bin/black",
-                "python.formatting.yapfPath": "/usr/local/py-utils/bin/yapf",
-                "python.linting.banditPath": "/usr/local/py-utils/bin/bandit",
-                "python.linting.flake8Path": "flake8",
-                "python.linting.mypyPath": "mypy",
-                "python.linting.pycodestylePath": "/usr/local/py-utils/bin/pycodestyle",
-                "python.linting.pydocstylePath": "/usr/local/py-utils/bin/pydocstyle",
-                "python.linting.pylintPath": "pylint",
+                "pylint.path": ["pylint"],
+                "flake8.path": ["flake8"],
+                "mypy-type-checker.path": ["mypy"],
                 "python.languageServer": "Pylance",
                 "pythonTestExplorer.testFramework": "pytest",
                 "files.associations": {
@@ -59,6 +48,9 @@
             "extensions": [
                 "ms-python.python",
                 "ms-python.vscode-pylance",
+                "ms-python.pylint",
+                "ms-python.flake8",
+                "ms-python.mypy-type-checker",
                 "editorconfig.editorconfig",
                 "eamodio.gitlens",
                 "samuelcolvin.jinjahtml",
