@@ -291,8 +291,9 @@ class AAD(RefreshToken):
                     error = data['error']
                     raise RuntimeError(f'error response from {url}: code={error["code"]}, message={error["message"]}')
 
+                # update state with changed values
                 state['apiCanary'] = data['apiCanary']
-                assert state['sFT'] == data['FlowToken'], 'flow token between user auth request 1 and 2 differed'
+                state['sFT'] = data['FlowToken']
                 # // request 2 -->
 
                 # <!-- request 3
