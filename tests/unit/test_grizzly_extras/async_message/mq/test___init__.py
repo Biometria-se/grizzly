@@ -99,6 +99,7 @@ class TestAsyncMessageQueueHandler:
         }
 
         assert pymqi_qmgr_disconnect_spy.call_count == 1
+        assert handler.qmgr is None
 
     def test_queue_context(self, mocker: MockerFixture) -> None:
         handler = AsyncMessageQueueHandler(worker='asdf-asdf-asdf')
@@ -315,6 +316,9 @@ class TestAsyncMessageQueueHandler:
 
         handler = AsyncMessageQueueHandler(worker='asdf-asdf-asdf')
 
+        disconnect_mock = mocker.patch.object(handler, 'disconnect', return_value={})
+        connect_mock = mocker.patch.object(handler, 'connect', return_value={})
+
         handler_queue_context = mocker.spy(handler, 'queue_context')
 
         request: AsyncMessageRequest = {}
@@ -482,6 +486,52 @@ class TestAsyncMessageQueueHandler:
 
         assert mocked_qmgr_commit.call_count == 3
         assert mocked_qmgr_backout.call_count == 1
+
+        disconnect_mock.assert_not_called()
+        connect_mock.assert_not_called()
+
+        # throwing PYIFError, with non-matching error message
+        mocker.patch.object(
+            pymqi.Queue,
+            'get',
+            side_effect=[pymqi.PYIFError('foobar')]
+        )
+
+        with pytest.raises(AsyncMessageError) as mqe:
+            handler._request(request)
+
+        assert str(mqe.value) == 'PYMQI Error: foobar'
+        disconnect_mock.assert_not_called()
+        connect_mock.assert_not_called()
+
+        # disconnected during GET
+        mocker.patch.object(
+            pymqi.Queue,
+            'get',
+            side_effect=[
+                pymqi.PYIFError('not open'),
+                (
+                    b'RFH \x02\x00\x00\x00\xfc\x00\x00\x00"\x02\x00\x00\xb8\x04\x00\x00        \x00\x00\x00\x00\xb8\x04\x00\x00 \x00\x00\x00<mcd><Msd>jms_bytes</Msd></mcd> '
+                    b'P\x00\x00\x00<jms><Dst>queue:///TEST.QUEUE</Dst><Tms>1655406556138</Tms><Dlv>2</Dlv></jms>   \\\x00\x00\x00<usr><ContentEncoding>gzip</ContentEncoding>'
+                    b'<ContentLength dt=\'i8\'>32</ContentLength></usr> \x1f\x8b\x08\x00\xdc\x7f\xabb\x02\xff+I-.Q(H\xac\xcc\xc9OL\x01\x00\xe1=\x1d\xeb\x0c\x00\x00\x00'
+                ),
+            ]
+        )
+
+        response = handler._request(request)
+        assert mocked_qmgr_commit.call_count == 4
+        assert mocked_qmgr_backout.call_count == 3
+        assert response.get('payload', None) == 'test payload'
+        actual_metadata = Rfh2Encoder.create_md().get()
+        actual_metadata['MsgId'] = tohex(actual_metadata['MsgId'])
+        assert response.get('metadata', None) == actual_metadata
+        assert response.get('response_length', None) == len('test payload'.encode())
+
+        disconnect_mock.assert_called_once_with({})
+        connect_mock.assert_called_once_with(request)
+
+        disconnect_mock.reset_mock()
+        connect_mock.reset_mock()
 
     def test__request_with_expressions(self, mocker: MockerFixture) -> None:
         # Mocked representation of an pymqi Queue message

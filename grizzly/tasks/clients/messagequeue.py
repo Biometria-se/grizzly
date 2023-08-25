@@ -268,6 +268,12 @@ class MessageQueueClientTask(ClientTask):
         self._worker.update({client_id: response['worker']})
 
     def request(self, parent: GrizzlyScenario, request: AsyncMessageRequest) -> AsyncMessageResponse:
+        # always include full context in request
+        endpoint = request['context']['endpoint']
+        context = self.context.copy()
+        context.update({'endpoint': endpoint})
+        request.update({'context': context})
+
         with self.create_client() as client:
             client_id = id(parent.user)
             worker = self._worker.get(client_id, None)
