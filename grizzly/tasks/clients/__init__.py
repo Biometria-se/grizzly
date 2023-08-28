@@ -153,7 +153,12 @@ class ClientTask(GrizzlyMetaRequestTask):
 
         context_root = environ.get('GRIZZLY_CONTEXT_ROOT', None)
         assert context_root is not None, 'environment variable GRIZZLY_CONTEXT_ROOT is not set!'
+
         self.log_dir = Path(context_root) / 'logs'
+        log_dir = environ.get('GRIZZLY_LOG_DIR', None)
+        if log_dir is not None:
+            self.log_dir /= log_dir
+
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self._scenario = copy(self.__scenario__)
         self._scenario._tasks = self.__scenario__._tasks

@@ -60,8 +60,13 @@ class RequestLogger(ResponseEvent):
         self.response_event.add_listener(self.request_logger)
 
         self.log_dir = os.path.join(os.environ.get('GRIZZLY_CONTEXT_ROOT', '.'), 'logs')
+
+        log_dir = os.environ.get('GRIZZLY_LOG_DIR', None)
+        if log_dir is not None:
+            self.log_dir = os.path.join(self.log_dir, log_dir)
+
         if not os.path.exists(self.log_dir):
-            os.mkdir(self.log_dir)
+            os.makedirs(self.log_dir, exist_ok=True)
 
         self._context = merge_dicts(super().context(), RequestLogger._context)
 

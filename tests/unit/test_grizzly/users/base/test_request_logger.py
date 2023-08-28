@@ -5,6 +5,7 @@ import pytest
 
 from _pytest.tmpdir import TempPathFactory
 from _pytest.capture import CaptureFixture
+from _pytest.fixtures import SubRequest
 from locust.clients import ResponseContextManager
 from locust.contrib.fasthttp import ResponseContextManager as FastResponseContextManager
 
@@ -15,19 +16,29 @@ from grizzly.tasks import RequestTask
 from tests.fixtures import ResponseContextManagerFixture, BehaveFixture, GrizzlyFixture
 
 
-@pytest.fixture
-def request_logger(grizzly_fixture: GrizzlyFixture, tmp_path_factory: TempPathFactory) -> Generator[RequestLogger, None, None]:
+@pytest.fixture(params=[False, True,])
+def request_logger(request: SubRequest, grizzly_fixture: GrizzlyFixture, tmp_path_factory: TempPathFactory) -> Generator[RequestLogger, None, None]:
     try:
+        if request.param:
+            environ['GRIZZLY_LOG_DIR'] = 'foobar'
+
         RequestLogger.host = 'dummy://test'
         yield RequestLogger(grizzly_fixture.behave.locust.environment)
     finally:
-        pass
+        try:
+            del environ['GRIZZLY_LOG_DIR']
+        except:
+            pass
 
 
 @pytest.fixture
 def get_log_files() -> Callable[[], List[str]]:
     def wrapped() -> List[str]:
         logs_root = path.join(environ['GRIZZLY_CONTEXT_ROOT'], 'logs')
+        log_dir = environ.get('GRIZZLY_LOG_DIR', None)
+        if log_dir is not None:
+            logs_root = path.join(logs_root, log_dir)
+
         log_files = [
             path.join(logs_root, f)
             for f in listdir(logs_root)
@@ -40,27 +51,41 @@ def get_log_files() -> Callable[[], List[str]]:
 
 
 class TestRequestLogger:
-    def test___init__(self, behave_fixture: BehaveFixture) -> None:
-        assert not path.isdir(path.join(environ['GRIZZLY_CONTEXT_ROOT'], 'logs'))
+    @pytest.mark.parametrize('log_prefix', [False, True,])
+    def test___init__(self, behave_fixture: BehaveFixture, log_prefix: bool) -> None:
+        try:
+            assert not path.isdir(path.join(environ['GRIZZLY_CONTEXT_ROOT'], 'logs'))
 
-        behave_fixture.grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+            if log_prefix:
+                environ['GRIZZLY_LOG_DIR'] = 'asdf'
+                assert not path.isdir(path.join(environ['GRIZZLY_CONTEXT_ROOT'], 'logs', 'asdf'))
 
-        fake_user_type = type('FakeRequestLogger', (RequestLogger, HttpRequests,), {
-            'host': 'https://test.example.org',
-            '__scenario__': behave_fixture.grizzly.scenario,
-        })
+            behave_fixture.grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
-        user = fake_user_type(behave_fixture.locust.environment)
+            fake_user_type = type('FakeRequestLogger', (RequestLogger, HttpRequests,), {
+                'host': 'https://test.example.org',
+                '__scenario__': behave_fixture.grizzly.scenario,
+            })
 
-        assert path.isdir(path.join(environ['GRIZZLY_CONTEXT_ROOT'], 'logs'))
-        assert not user._context.get('log_all_requests', None)
-        assert len(user.response_event._handlers) == 1
+            user = fake_user_type(behave_fixture.locust.environment)
 
-        RequestLogger.host = 'dummy://test'
-        user = RequestLogger(behave_fixture.locust.environment)
+            assert path.isdir(path.join(environ['GRIZZLY_CONTEXT_ROOT'], 'logs'))
+            if log_prefix:
+                assert path.isdir(path.join(environ['GRIZZLY_CONTEXT_ROOT'], 'logs', 'asdf'))
 
-        assert len(user.response_event._handlers) == 1
-        assert user.client is None
+            assert not user._context.get('log_all_requests', None)
+            assert len(user.response_event._handlers) == 1
+
+            RequestLogger.host = 'dummy://test'
+            user = RequestLogger(behave_fixture.locust.environment)
+
+            assert len(user.response_event._handlers) == 1
+            assert user.client is None
+        finally:
+            try:
+                del environ['GRIZZLY_LOG_DIR']
+            except:
+                pass
 
     @pytest.mark.usefixtures('request_logger')
     def test_normalize(self, request_logger: RequestLogger) -> None:
