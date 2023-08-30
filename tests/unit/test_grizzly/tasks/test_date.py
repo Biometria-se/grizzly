@@ -154,3 +154,17 @@ class TestDateTask:
         task(parent)
 
         assert parent.user._context['variables']['date_variable'] == '07:20:00.123456+02:00'
+
+        task_factory = DateTask('date_variable', '{{ datetime.now() }} | format="ISO-8601:DateTime:ms:no-sep"')
+        task = task_factory()
+
+        task(parent)
+
+        assert parent.user._context['variables']['date_variable'] == '20220519T072000123456+02:00'
+
+        task_factory = DateTask('date_variable', '{{ datetime.now() }} | format="ISO-8601:DateTime:no-sep"')
+        task = task_factory()
+
+        task(parent)
+
+        assert parent.user._context['variables']['date_variable'] == '20220519T072000+02:00'
