@@ -70,6 +70,7 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
     @register(handlers, 'DISC')
     def disconnect(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
         self.close()
+        self.qmgr = None
 
         return {
             'message': 'disconnected',
@@ -293,64 +294,75 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
 
                 self.logger.info(f'executing {action} on {queue_name}')
                 start = time()
-                if action == 'PUT':
-                    request_payload = payload = request.get('payload', None)
-                    if self.header_type:
-                        if self.header_type == 'rfh2':
-                            rfh2_encoder = Rfh2Encoder(payload=cast(str, payload).encode(), queue_name=queue_name, metadata=metadata)
-                            request_payload = rfh2_encoder.get_message()
+
+                try:
+                    if action == 'PUT':
+                        request_payload = payload = request.get('payload', None)
+                        if self.header_type:
+                            if self.header_type == 'rfh2':
+                                rfh2_encoder = Rfh2Encoder(payload=cast(str, payload).encode(), queue_name=queue_name, metadata=metadata)
+                                request_payload = rfh2_encoder.get_message()
+                            else:
+                                raise AsyncMessageError(f'Invalid header_type: {self.header_type}')
+
+                        response_length = len(request_payload) if request_payload is not None else 0
+                        queue.put(request_payload, md)
+
+                    elif action == 'GET':
+                        payload = None
+
+                        if msg_id_to_fetch is not None:
+                            gmo = self._create_gmo()
+                            gmo.MatchOptions = pymqi.CMQC.MQMO_MATCH_MSG_ID
+                            md.MsgId = msg_id_to_fetch
                         else:
-                            raise AsyncMessageError(f'Invalid header_type: {self.header_type}')
+                            gmo = self._create_gmo(message_wait)
 
-                    response_length = len(request_payload) if request_payload is not None else 0
-                    queue.put(request_payload, md)
-
-                elif action == 'GET':
-                    payload = None
-
-                    if msg_id_to_fetch is not None:
-                        gmo = self._create_gmo()
-                        gmo.MatchOptions = pymqi.CMQC.MQMO_MATCH_MSG_ID
-                        md.MsgId = msg_id_to_fetch
-                    else:
-                        gmo = self._create_gmo(message_wait)
-
-                    try:
                         try:
-                            message = queue.get(max_message_size, md, gmo)
-                            payload = self._get_payload(message)
-                            response_length = len((payload or '').encode())
+                            try:
+                                message = queue.get(max_message_size, md, gmo)
+                                payload = self._get_payload(message)
+                                response_length = len((payload or '').encode())
 
-                            if response_length == 0:
-                                do_retry = True  # we should consume the empty message, not put it back on queue
-                                self.logger.warning('message with size 0 bytes consumed, get next message')
-                            elif retries > 0:
-                                self.logger.warning(f'got message after {retries} retries')
+                                if response_length == 0:
+                                    do_retry = True  # we should consume the empty message, not put it back on queue
+                                    self.logger.warning('message with size 0 bytes consumed, get next message')
+                                elif retries > 0:
+                                    self.logger.warning(f'got message after {retries} retries')
 
-                            self.qmgr.commit()
-                        except:
-                            self.qmgr.backout()
-                            raise
-                    except pymqi.MQMIError as e:
-                        if msg_id_to_fetch is not None and e.comp == pymqi.CMQC.MQCC_FAILED and e.reason == pymqi.CMQC.MQRC_NO_MSG_AVAILABLE:
-                            # Message disappeared, retry
-                            do_retry = True
-                        elif e.reason == pymqi.CMQC.MQRC_TRUNCATED_MSG_FAILED:
-                            original_length = getattr(e, 'original_length', None)
-                            self.logger.warning(f'got MQRC_TRUNCATED_MSG_FAILED while getting message, {retries=}, {original_length=}')
-                            if max_message_size is None:
-                                # Concurrency issue, retry
+                                self.qmgr.commit()
+                            except:
+                                self.qmgr.backout()
+                                raise
+                        except pymqi.MQMIError as e:
+                            if msg_id_to_fetch is not None and e.comp == pymqi.CMQC.MQCC_FAILED and e.reason == pymqi.CMQC.MQRC_NO_MSG_AVAILABLE:
+                                # Message disappeared, retry
+                                do_retry = True
+                            elif e.reason == pymqi.CMQC.MQRC_TRUNCATED_MSG_FAILED:
+                                original_length = getattr(e, 'original_length', None)
+                                self.logger.warning(f'got MQRC_TRUNCATED_MSG_FAILED while getting message, {retries=}, {original_length=}')
+                                if max_message_size is None:
+                                    # Concurrency issue, retry
+                                    do_retry = True
+                                else:
+                                    raise AsyncMessageError(f'message with size {original_length} bytes does not fit in message buffer of {max_message_size} bytes')
+                            elif e.reason == pymqi.CMQC.MQRC_BACKED_OUT:
+                                warning_message = ['got MQRC_BACKED_OUT while getting message', f'{retries=}']
+                                self.logger.warning(', '.join(warning_message))
                                 do_retry = True
                             else:
-                                raise AsyncMessageError(f'message with size {original_length} bytes does not fit in message buffer of {max_message_size} bytes')
-                        elif e.reason == pymqi.CMQC.MQRC_BACKED_OUT:
-                            warning_message = ['got MQRC_BACKED_OUT while getting message', f'{retries=}']
-                            self.logger.warning(', '.join(warning_message))
-                            do_retry = True
-                        else:
-                            # Some other error condition.
-                            self.logger.error(str(e), exc_info=True)
-                            raise AsyncMessageError(str(e))
+                                # Some other error condition.
+                                self.logger.error(str(e), exc_info=True)
+                                raise AsyncMessageError(str(e))
+                except pymqi.PYIFError as e:
+                    if e.error.strip() == 'not open':
+                        self.logger.warning('reconnecting to queue manager')
+                        self.disconnect({})
+                        self.connect(request)
+                        do_retry = True
+                    else:
+                        self.logger.error(str(e), exc_info=True)
+                        raise AsyncMessageError(str(e))
 
                 if do_retry:
                     retries += 1
