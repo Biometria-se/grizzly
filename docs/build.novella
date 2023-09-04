@@ -26,7 +26,7 @@ action "mkdocs-update-config" {
 
             return output
 
-        def config_nav_tasks = config['nav'][2]['Framework'][0]['Usage'][0]['Tasks']
+        def config_nav_tasks = config['nav'][3]['Framework'][0]['Usage'][0]['Tasks']
         def config_nav_tasks_clients = config_nav_tasks.pop()
         def tasks = Path.cwd() / '..' / 'grizzly' / 'tasks'
 
@@ -50,7 +50,7 @@ action "mkdocs-update-config" {
         config_nav_tasks_clients['Clients'] = nav_tasks_clients
         config_nav_tasks.append(config_nav_tasks_clients)
 
-        def config_nav_testdata = config['nav'][2]['Framework'][0]['Usage'][1]['Variables'][1]
+        def config_nav_testdata = config['nav'][3]['Framework'][0]['Usage'][1]['Variables'][1]
         def nav_testdata = []
         def variables = Path.cwd() / '..' / 'grizzly' / 'testdata' / 'variables'
         for variable in variables.iterdir():
@@ -61,7 +61,7 @@ action "mkdocs-update-config" {
                     nav_testdata.append({make_human_readable(variable.stem): 'framework/usage/variables/testdata/{}.md'.format(variable.stem)})
         config_nav_testdata['Testdata'] = nav_testdata
 
-        def config_nav_users = config['nav'][2]['Framework'][0]['Usage'][2]
+        def config_nav_users = config['nav'][3]['Framework'][0]['Usage'][2]
         def users = Path.cwd() / '..' / 'grizzly' / 'users'
         def nav_users = []
         for user in users.iterdir():
@@ -73,7 +73,7 @@ action "mkdocs-update-config" {
 
         config_nav_users['Load Users'] = nav_users
 
-        def config_nav_steps = config['nav'][2]['Framework'][0]['Usage'][3]['Steps']
+        def config_nav_steps = config['nav'][3]['Framework'][0]['Usage'][3]['Steps']
         def steps = Path.cwd() / '..' / 'grizzly' / 'steps'
         for step in steps.iterdir():
             if step.is_file() and (step.stem == '__init__' or not step.stem.startswith('_')):
