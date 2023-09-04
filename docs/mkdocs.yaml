@@ -1,6 +1,7 @@
 nav:
   - index.md
   - example.md
+  - code_of_conduct.md
   - Framework:
     - Usage:
       - Tasks:
