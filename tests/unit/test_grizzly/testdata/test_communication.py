@@ -108,14 +108,16 @@ class TestTestdataProducer:
             producer_thread = gevent.spawn(producer.run)
             producer_thread.start()
 
+            assert producer.keystore == {}
+
             context = zmq.Context()
             with context.socket(zmq.REQ) as socket:
                 socket.connect(address)
 
-                def get_message_from_producer() -> Dict[str, Any]:
+                def request_testdata() -> Dict[str, Any]:
                     message: Dict[str, Any] = {}
                     socket.send_json({
-                        'message': 'available',
+                        'message': 'testdata',
                         'scenario': grizzly.scenario.class_name,
                     })
 
@@ -124,7 +126,25 @@ class TestTestdataProducer:
                     message = cast(Dict[str, Any], socket.recv_json())
                     return message
 
-                message: Dict[str, Any] = get_message_from_producer()
+                def request_keystore(action: str, key: str, value: Optional[Any] = None) -> Dict[str, Any]:
+                    message: Dict[str, Any] = {}
+                    request = {
+                        'message': 'keystore',
+                        'action': action,
+                        'key': key,
+                    }
+
+                    if value is not None:
+                        request.update({'data': value})
+
+                    socket.send_json(request)
+
+                    gevent.sleep(0.1)
+
+                    message = cast(Dict[str, Any], socket.recv_json())
+                    return message
+
+                message: Dict[str, Any] = request_testdata()
                 assert message['action'] == 'consume'
                 data = message['data']
                 assert 'variables' in data
@@ -145,8 +165,17 @@ class TestTestdataProducer:
                 assert data['auth.user.username'] == 'value1'
                 assert data['auth.user.password'] == 'value2'
                 assert variables['tests.helpers.AtomicCustomVariable.foo'] == 'bar'
+                assert producer.keystore == {}
 
-                message = get_message_from_producer()
+                message = request_keystore('set', 'foobar', {'hello': 'world'})
+                assert message == {
+                    'message': 'keystore',
+                    'action': 'set',
+                    'key': 'foobar',
+                    'data': {'hello': 'world'},
+                }
+
+                message = request_testdata()
                 assert message['action'] == 'consume'
                 data = message['data']
                 assert 'variables' in data
@@ -163,7 +192,15 @@ class TestTestdataProducer:
                 assert data['auth.user.username'] == 'value3'
                 assert data['auth.user.password'] == 'value4'
 
-                message = get_message_from_producer()
+                message = request_keystore('get', 'foobar')
+                assert message == {
+                    'message': 'keystore',
+                    'action': 'get',
+                    'key': 'foobar',
+                    'data': {'hello': 'world'},
+                }
+
+                message = request_testdata()
                 assert message['action'] == 'stop'
                 assert 'data' not in message
 
@@ -181,6 +218,7 @@ class TestTestdataProducer:
                     actual_initial_values = json.loads(persist_file.read_text())
                     assert actual_initial_values == {
                         'AtomicIntegerIncrementer.value': '11 | step=5, persist=True',
+                        'grizzly::keystore': json.dumps({'foobar': {'hello': 'world'}}),
                     }
 
             if context is not None:
@@ -247,7 +285,7 @@ class TestTestdataProducer:
                 def get_message_from_producer() -> Dict[str, Any]:
                     message: Dict[str, Any] = {}
                     socket.send_json({
-                        'message': 'available',
+                        'message': 'testdata',
                         'scenario': grizzly.scenario.class_name,
                     })
 
@@ -313,9 +351,12 @@ class TestTestdataProducer:
 
             i['foobar']
             i['foobar']
+            actual_keystore = {'foo': ['hello', 'world'], 'bar': {'hello': 'world', 'foo': 'bar'}, 'hello': 'world'}
 
             with caplog.at_level(logging.DEBUG):
-                TestdataProducer(grizzly_fixture.grizzly, {'HelloWorld': {'AtomicIntegerIncrementer.foobar': i}}).stop()
+                producer = TestdataProducer(grizzly_fixture.grizzly, {'HelloWorld': {'AtomicIntegerIncrementer.foobar': i}})
+                producer.keystore.update(actual_keystore)
+                producer.stop()
 
             assert caplog.messages[-1] == f'wrote variables next initial values for features/test_run_with_variable_none.feature to {persistent_file}'
             assert caplog.messages[-2] == 'failed to stop'
@@ -325,21 +366,28 @@ class TestTestdataProducer:
             actual_persist_values = json.loads(persistent_file.read_text())
             assert actual_persist_values == {
                 'AtomicIntegerIncrementer.foobar': '3 | step=1, persist=True',
+                'grizzly::keystore': json.dumps(actual_keystore),
+
             }
 
             i['foobar']
 
             with caplog.at_level(logging.DEBUG):
-                TestdataProducer(grizzly_fixture.grizzly, {'HelloWorld': {'AtomicIntegerIncrementer.foobar': i}}).stop()
+                producer = TestdataProducer(grizzly_fixture.grizzly, {'HelloWorld': {'AtomicIntegerIncrementer.foobar': i}})
+                del producer.keystore['bar']
+                producer.stop()
 
             assert caplog.messages[-1] == f'wrote variables next initial values for features/test_run_with_variable_none.feature to {persistent_file}'
             assert caplog.messages[-2] == 'failed to stop'
 
             assert persistent_file.exists()
 
+            del actual_keystore['bar']
+
             actual_persist_values = json.loads(persistent_file.read_text())
             assert actual_persist_values == {
                 'AtomicIntegerIncrementer.foobar': '5 | step=1, persist=True',
+                'grizzly::keystore': json.dumps(actual_keystore),
             }
         finally:
             cleanup()
@@ -350,7 +398,7 @@ class TestTestdataProducer:
         noop_zmq('grizzly.testdata.communication')
 
         mocker.patch('grizzly.testdata.communication.zmq.Socket.recv_json', return_value={
-            'message': 'available',
+            'message': 'testdata',
             'identifier': 'test-consumer',
             'scenario': 'test',
         })
@@ -365,7 +413,6 @@ class TestTestdataProducer:
             with caplog.at_level(logging.DEBUG):
                 TestdataProducer(grizzly_fixture.grizzly, {}).run()
 
-            print(caplog.text)
             assert caplog.messages[-3] == "producing {'action': 'stop'} for consumer test-consumer"
             assert 'test data error, stop consumer test-consumer' in caplog.messages[-4]
             assert send_json_mock.call_count == 1
@@ -447,7 +494,7 @@ class TestTestdataConsumer:
                 }
             })
 
-            assert consumer.request('test') == {
+            assert consumer.testdata('test') == {
                 'auth': {
                     'user': {
                         'username': 'username',
@@ -468,7 +515,7 @@ class TestTestdataConsumer:
             }, 'stop')
 
             with caplog.at_level(logging.DEBUG):
-                assert consumer.request('test') is None
+                assert consumer.testdata('test') is None
             assert caplog.messages[-1] == 'received stop command'
 
             caplog.clear()
@@ -482,7 +529,7 @@ class TestTestdataConsumer:
 
             with caplog.at_level(logging.DEBUG):
                 with pytest.raises(StopUser):
-                    consumer.request('test')
+                    consumer.testdata('test')
             assert 'unknown action "asdf" received, stopping user' in caplog.text
 
             caplog.clear()
@@ -494,7 +541,7 @@ class TestTestdataConsumer:
                 }
             }, 'consume')
 
-            assert consumer.request('test') == {
+            assert consumer.testdata('test') == {
                 'variables': transform(grizzly, {
                     'AtomicIntegerIncrementer.messageID': 100,
                     'test': None,
@@ -534,7 +581,7 @@ class TestTestdataConsumer:
         parent = grizzly_fixture()
 
         with pytest.raises(ZMQAgain):
-            TestdataConsumer(parent, identifier='test').request('test')
+            TestdataConsumer(parent, identifier='test').testdata('test')
 
         assert gsleep_mock.call_count == 1
         args, _ = gsleep_mock.call_args_list[-1]
