@@ -147,6 +147,8 @@ class IteratorScenario(GrizzlyScenario):
                         self.logger.error('on_stop failed', exc_info=True)
 
                     # to avoid spawning of a new user, we should wait until spawning is complete
+                    # if we abort too soon, locust will see that there are too few users, and spawn
+                    # another one
                     if has_error:
                         count = 0
                         while not self.grizzly.state.spawning_complete:

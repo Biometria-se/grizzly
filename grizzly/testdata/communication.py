@@ -227,7 +227,7 @@ class TestdataProducer:
                 self.logger.info(f'feature file data persisted in {self._persist_file}')
                 self.has_persisted = True
         except:
-            self.logger.error('failed do persist feature file data', exc_info=True)
+            self.logger.error('failed to persist feature file data', exc_info=True)
 
     def stop(self) -> None:
         self._stopping = True
@@ -255,16 +255,18 @@ class TestdataProducer:
 
                     with self.semaphore:
                         if recv['message'] == 'keystore':
+                            response = recv
                             if recv['action'] == 'get':
-                                recv['data'] = self.keystore.get(recv['key'], None)
-                                response = recv
+                                response['data'] = self.keystore.get(recv['key'], None)
                             elif recv['action'] == 'set':
-                                key = recv.get('key', None)
-                                value = recv.get('data', None)
+                                key = response.get('key', None)
+                                value = response.get('data', None)
 
                                 if key is not None:
                                     self.keystore.update({key: value})
-                                response = recv
+                            else:
+                                self.logger.error(f'received unknown keystore action "{recv["action"]}"')
+                                response['data'] = None
                         elif recv['message'] == 'testdata':
                             response = {
                                 'action': 'stop',
@@ -335,8 +337,8 @@ class TestdataProducer:
                                 }
                                 self.logger.error(f'test data error, stop consumer {consumer_identifier}', exc_info=True)
                         else:
-                            self.logger.error(f'received unknown message "{recv["messsage"]}"')
-                            continue
+                            self.logger.error(f'received unknown message "{recv["message"]}"')
+                            response = {}
 
                         self.logger.debug(f'producing {response} for consumer {consumer_identifier}')
                         self.socket.send_json(response)
