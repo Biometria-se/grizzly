@@ -1,6 +1,6 @@
 import logging
 
-from typing import TYPE_CHECKING, Dict, Optional, Any, cast
+from typing import TYPE_CHECKING, Dict, Optional, Any, Union, cast
 from os import environ
 from pathlib import Path
 from json import dumps as jsondumps, loads as jsonloads
@@ -186,7 +186,7 @@ class TestdataProducer:
 
         if self._persist_file.exists():
             persist_content = jsonloads(self._persist_file.read_text())
-            self.keystore = jsonloads(persist_content.get('grizzly::keystore', {}))
+            self.keystore = persist_content.get('grizzly::keystore', {})
         else:
             self.keystore = {}
 
@@ -202,7 +202,7 @@ class TestdataProducer:
             return
 
         try:
-            variable_state: Dict[str, str] = {}
+            variable_state: Dict[str, Union[str, Dict[str, Any]]] = {}
 
             for testdata in self.testdata.values():
                 for key, variable in testdata.items():
@@ -218,7 +218,7 @@ class TestdataProducer:
                         continue
 
             if len(self.keystore) > 0:
-                variable_state.update({'grizzly::keystore': jsondumps(self.keystore)})
+                variable_state.update({'grizzly::keystore': self.keystore})
 
             # only write file if we actually have something to write
             if len(variable_state.keys()) > 0 and len(list(chain(*variable_state.values()))) > 0:

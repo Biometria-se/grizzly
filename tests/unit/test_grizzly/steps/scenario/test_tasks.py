@@ -8,7 +8,7 @@ from json import dumps as jsondumps
 from grizzly.context import GrizzlyContext
 from grizzly.types import RequestMethod, RequestDirection
 from grizzly.types.behave import Table, Row
-from grizzly.tasks import TransformerTask, LogMessageTask, WaitTask, TimerTask, TaskWaitTask, ConditionalTask
+from grizzly.tasks import TransformerTask, LogMessageTask, WaitTask, TimerTask, TaskWaitTask, ConditionalTask, KeystoreTask
 from grizzly.tasks.clients import HttpClientTask
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import  # noqa: F403
 
@@ -883,3 +883,97 @@ def test_step_task_loop(behave_fixture: BehaveFixture) -> None:
     with pytest.raises(AssertionError) as ae:
         step_task_loop_end(behave)
     assert str(ae.value) == 'there are no open loop, you need to create one before closing it'
+
+
+def test_step_task_keystore_get(behave_fixture: BehaveFixture) -> None:
+    behave = behave_fixture.context
+    grizzly = behave_fixture.grizzly
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+
+    grizzly.scenario.tasks.clear()
+
+    grizzly.state.variables.update({'foobar': 'none'})
+
+    step_task_keystore_get(behave, 'foobar', 'foobar')
+
+    task = grizzly.scenario.tasks()[-1]
+
+    assert isinstance(task, KeystoreTask)
+    assert task.key == 'foobar'
+    assert task.action == 'get'
+    assert task.action_context == 'foobar'
+    assert task.default_value is None
+
+
+def test_step_task_keystore_get_default(behave_fixture: BehaveFixture) -> None:
+    behave = behave_fixture.context
+    grizzly = behave_fixture.grizzly
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+
+    grizzly.scenario.tasks.clear()
+
+    grizzly.state.variables.update({'foobar': 'none'})
+
+    step_task_keystore_get_default(behave, 'barfoo', 'foobar', "{'hello': 'world'}")
+
+    task = grizzly.scenario.tasks()[-1]
+
+    assert isinstance(task, KeystoreTask)
+    assert task.key == 'barfoo'
+    assert task.action == 'get'
+    assert task.action_context == 'foobar'
+    assert task.default_value == {'hello': 'world'}
+
+    step_task_keystore_get_default(behave, 'barfoo', 'foobar', '"hello"')
+
+    task = grizzly.scenario.tasks()[-1]
+
+    assert isinstance(task, KeystoreTask)
+    assert task.key == 'barfoo'
+    assert task.action == 'get'
+    assert task.action_context == 'foobar'
+    assert task.default_value == 'hello'
+
+    step_task_keystore_get_default(behave, 'barfoo', 'foobar', "'hello'")
+
+    task = grizzly.scenario.tasks()[-1]
+
+    assert isinstance(task, KeystoreTask)
+    assert task.key == 'barfoo'
+    assert task.action == 'get'
+    assert task.action_context == 'foobar'
+    assert task.default_value == 'hello'
+
+    with pytest.raises(AssertionError) as ae:
+        step_task_keystore_get_default(behave, 'barfoo', 'foobar', 'hello')
+    assert str(ae.value) == '"hello" is not valid JSON'
+
+
+def test_step_task_keystore_set(behave_fixture: BehaveFixture) -> None:
+    behave = behave_fixture.context
+    grizzly = behave_fixture.grizzly
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+
+    grizzly.scenario.tasks.clear()
+
+    with pytest.raises(AssertionError) as ae:
+        step_task_keystore_set(behave, 'foobar', 'hello')
+    assert str(ae.value) == '"hello" is not valid JSON'
+
+    step_task_keystore_set(behave, 'foobar', "'hello'")
+
+    task = grizzly.scenario.tasks()[-1]
+
+    assert isinstance(task, KeystoreTask)
+    assert task.key == 'foobar'
+    assert task.action == 'set'
+    assert task.action_context == 'hello'
+
+    step_task_keystore_set(behave, 'foobar', "['hello', 'world']")
+
+    task = grizzly.scenario.tasks()[-1]
+
+    assert isinstance(task, KeystoreTask)
+    assert task.key == 'foobar'
+    assert task.action == 'set'
+    assert task.action_context == ['hello', 'world']

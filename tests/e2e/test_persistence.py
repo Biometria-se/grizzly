@@ -28,7 +28,10 @@ def test_e2e_persistence(e2e_fixture: End2EndFixture) -> None:
         else:
             raise AssertionError(f'unhandled scenario name "{feature.scenarios[0].name}"')
 
-        assert persistance.get('AtomicIntegerIncrementer.persistent', None) == f'{expected_value} | step=1, persist=True'
+        assert persistance == {
+            'AtomicIntegerIncrementer.persistent': f'{expected_value} | step=1, persist=True',
+            'grizzly::keystore': {'foobar': ['hello', '{{ AtomicIntegerIncrementer.persistent }}']}
+        }
 
     e2e_fixture.add_after_feature(after_feature)
 
@@ -45,9 +48,12 @@ def test_e2e_persistence(e2e_fixture: End2EndFixture) -> None:
     Scenario: run=1
         Given a user of type "RestApi" load testing "http://{e2e_fixture.host}"
         And repeat for "2" iterations
+        And value for variable "key_holder" is "none"
         And value for variable "AtomicIntegerIncrementer.persistent" is "1 | step=1, persist=True"
+        Then get "foobar" from keystore and save in variable "key_holder", with default value "['hello', '{{{{ AtomicIntegerIncrementer.persistent }}}}']"
         Then get request with name "get1" from endpoint "/api/echo?persistent={{{{ AtomicIntegerIncrementer.persistent }}}}"
         Then log message "persistent={{{{ AtomicIntegerIncrementer.persistent }}}}"
+        Then log message "foobar={{{{ key_holder }}}}"
     '''))
 
     rc, output = e2e_fixture.execute(feature_file)
@@ -56,7 +62,9 @@ def test_e2e_persistence(e2e_fixture: End2EndFixture) -> None:
 
     assert rc == 0
     assert 'persistent=1' in result
+    assert "foobar=['hello', '1']" in result
     assert 'persistent=2' in result
+    assert "foobar=['hello', '2']" in result
 
     with open(path.join(e2e_fixture.root, feature_file), 'r+') as fd:
         contents = fd.read()
@@ -73,4 +81,6 @@ def test_e2e_persistence(e2e_fixture: End2EndFixture) -> None:
 
     assert rc == 0
     assert 'persistent=3' in result
+    assert "foobar=['hello', '3']" in result
     assert 'persistent=4' in result
+    assert "foobar=['hello', '4']" in result

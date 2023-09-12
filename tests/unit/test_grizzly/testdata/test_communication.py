@@ -218,7 +218,7 @@ class TestTestdataProducer:
                     actual_initial_values = json.loads(persist_file.read_text())
                     assert actual_initial_values == {
                         'AtomicIntegerIncrementer.value': '11 | step=5, persist=True',
-                        'grizzly::keystore': json.dumps({'foobar': {'hello': 'world'}}),
+                        'grizzly::keystore': {'foobar': {'hello': 'world'}},
                     }
 
             if context is not None:
@@ -358,7 +358,7 @@ class TestTestdataProducer:
                 producer.keystore.update(actual_keystore)
                 producer.stop()
 
-            assert caplog.messages[-1] == f'wrote variables next initial values for features/test_run_with_variable_none.feature to {persistent_file}'
+            assert caplog.messages[-1] == f'feature file data persisted in {persistent_file}'
             assert caplog.messages[-2] == 'failed to stop'
 
             assert persistent_file.exists()
@@ -366,7 +366,7 @@ class TestTestdataProducer:
             actual_persist_values = json.loads(persistent_file.read_text())
             assert actual_persist_values == {
                 'AtomicIntegerIncrementer.foobar': '3 | step=1, persist=True',
-                'grizzly::keystore': json.dumps(actual_keystore),
+                'grizzly::keystore': actual_keystore,
 
             }
 
@@ -377,7 +377,7 @@ class TestTestdataProducer:
                 del producer.keystore['bar']
                 producer.stop()
 
-            assert caplog.messages[-1] == f'wrote variables next initial values for features/test_run_with_variable_none.feature to {persistent_file}'
+            assert caplog.messages[-1] == f'feature file data persisted in {persistent_file}'
             assert caplog.messages[-2] == 'failed to stop'
 
             assert persistent_file.exists()
@@ -387,7 +387,7 @@ class TestTestdataProducer:
             actual_persist_values = json.loads(persistent_file.read_text())
             assert actual_persist_values == {
                 'AtomicIntegerIncrementer.foobar': '5 | step=1, persist=True',
-                'grizzly::keystore': json.dumps(actual_keystore),
+                'grizzly::keystore': actual_keystore,
             }
         finally:
             cleanup()

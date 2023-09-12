@@ -204,7 +204,7 @@ class TestIterationScenario:
         parent.consumer = TestdataConsumer(parent, identifier='test')
 
         def mock_request(data: Optional[Dict[str, Any]]) -> None:
-            def request(self: 'TestdataConsumer', scenario: str) -> Optional[Dict[str, Any]]:
+            def testdata_request(self: 'TestdataConsumer', scenario: str) -> Optional[Dict[str, Any]]:
                 if data is None or data == {}:
                     return None
 
@@ -214,8 +214,8 @@ class TestIterationScenario:
                 return data
 
             mocker.patch(
-                'grizzly.testdata.communication.TestdataConsumer.request',
-                request,
+                'grizzly.testdata.communication.TestdataConsumer.testdata',
+                testdata_request,
             )
 
         mock_request(None)
@@ -788,7 +788,7 @@ class TestIterationScenario:
             scenario.on_start()  # create scenario.consumer, so we can patch request below
 
             # same as 1 iteration
-            mocker.patch.object(scenario.consumer, 'request', side_effect=[
+            mocker.patch.object(scenario.consumer, 'testdata', side_effect=[
                 {'variables': {'hello': 'world'}},
                 {'variables': {'foo': 'bar'}},
                 None,

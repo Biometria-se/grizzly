@@ -1,6 +1,7 @@
-from json import dumps as jsondumps
+from json import dumps as jsondumps, loads as jsonloads
 from typing import cast, List, Dict
 from textwrap import dedent
+from pathlib import Path
 
 from grizzly.context import GrizzlyContext
 from grizzly.types.behave import Context, Feature
@@ -1118,3 +1119,41 @@ def test_e2e_step_task_loop(e2e_fixture: End2EndFixture) -> None:
     assert 'loop_value=bar' in result
     assert 'loop_value=hello' in result
     assert 'loop_value=world' in result
+
+
+def test_e2e_step_task_keystore(e2e_fixture: End2EndFixture) -> None:
+    def validate_keystore_task(context: Context) -> None:
+        grizzly = cast(GrizzlyContext, context.grizzly)
+        grizzly.scenario.tasks().pop()  # remove dummy task
+
+        assert len(grizzly.scenario.tasks()) == 4
+
+    e2e_fixture.add_validator(validate_keystore_task)
+
+    feature_file = e2e_fixture.test_steps(
+        scenario=[
+            'And value for variable "foobar" is "none"',
+            'And value for variable "barfoo" is "none"',
+            'Then set "foobar" in keystore with value "[\'hello\', \'world\']"',
+            'Then get "foobar" from keystore and save in variable "foobar"',
+            'Then get "barfoo" from keystore and save in variable "barfoo", with default value "{\'hello\': \'world\'}"',
+            'Then log message "foobar={{ foobar }}, barfoo={{ barfoo }}"',
+        ]
+    )
+
+    rc, output = e2e_fixture.execute(feature_file)
+
+    assert rc == 0
+
+    result = ''.join(output)
+
+    assert "foobar=['hello', 'world'], barfoo={'hello': 'world'}" in result
+
+    persistent_file = e2e_fixture.root / 'features' / 'persistent' / f'{Path(feature_file).stem}.json'
+    assert persistent_file.exists()
+    assert jsonloads(persistent_file.read_text()) == {
+        'grizzly::keystore': {
+            'foobar': ['hello', 'world'],
+            'barfoo': {'hello': 'world'},
+        },
+    }
