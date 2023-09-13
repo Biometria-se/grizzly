@@ -16,7 +16,7 @@ from grizzly.tasks import RequestTask
 from grizzly.utils import merge_dicts
 from grizzly.context import GrizzlyContext
 from grizzly.users.base import RequestLogger, AsyncRequests
-from grizzly.exceptions import ResponseHandlerError, TransformerLocustError
+from grizzly.exceptions import ResponseHandlerError, TransformerLocustError, RestartScenario
 
 from . import FileRequests
 
@@ -117,20 +117,21 @@ class GrizzlyUser(RequestLogger):
             response_length = len((payload or '').encode())
 
             # execute response listeners
-            try:
-                self.response_event.fire(
-                    name=request.name,
-                    request=request,
-                    context=(
-                        metadata,
-                        payload,
-                    ),
-                    user=self,
-                    exception=exception,
-                )
-            except Exception as e:
-                if exception is None:
-                    exception = e
+            if not isinstance(exception, (RestartScenario, StopUser,)):
+                try:
+                    self.response_event.fire(
+                        name=request.name,
+                        request=request,
+                        context=(
+                            metadata,
+                            payload,
+                        ),
+                        user=self,
+                        exception=exception,
+                    )
+                except Exception as e:
+                    if exception is None:
+                        exception = e
 
             self.environment.events.request.fire(
                 request_type=RequestType.from_method(request.method),

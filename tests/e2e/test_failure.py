@@ -85,3 +85,7 @@ def test_e2e_failure(e2e_fixture: End2EndFixture) -> None:
 
     assert rc == 1
     assert "HOOK-ERROR in after_feature: RuntimeError: locust test failed" in ''.join(output)
+
+    log_files = list((e2e_fixture.root / 'features' / 'logs').glob('*.log'))
+
+    assert len(log_files) == 3
