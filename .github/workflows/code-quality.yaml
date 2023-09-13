@@ -142,6 +142,15 @@ jobs:
       with:
         version: '2.20.3'
 
+    - name: pre docker debug
+      id: pre-docker-debug
+      if: matrix.run_mode == 'dist'
+      run: |
+        docker version || true
+        docker container ls -a || true
+        ls -l /var/run/docker.sock || true
+        docker compose || true
+
     - name: ssh agent
       id: ssh-agent
       run: |
@@ -152,6 +161,15 @@ jobs:
       env:
         SSH_AUTH_SOCK: /tmp/ssh_auth_sock
       run: python -m pytest tests/e2e
+
+    - name: post docker debug
+      id: post-docker-debug
+      if: matrix.run_mode == 'dist' && always()
+      run: |
+        docker version || true
+        docker container ls -a || true
+        ls -l /var/run/docker.sock || true
+        docker compose || true
 
   pre-documentation-scripts:
     name: 'documentation / script inventory'
