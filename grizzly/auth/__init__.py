@@ -54,6 +54,7 @@ class GrizzlyHttpAuthClient(Generic[P], metaclass=ABCMeta):
             'user': {
                 'username': None,
                 'password': None,
+                'otp_secret': None,
                 'redirect_uri': None,
                 'initialize_uri': None,
             },

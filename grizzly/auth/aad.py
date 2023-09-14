@@ -9,9 +9,12 @@ from secrets import token_urlsafe
 from hashlib import sha256
 from base64 import urlsafe_b64encode
 from time import perf_counter as time_perf_counter
+from datetime import datetime
 from html.parser import HTMLParser
 
 import requests
+
+from pyotp import TOTP
 
 from grizzly.utils import safe_del
 from grizzly.types.locust import StopUser
@@ -360,10 +363,151 @@ class AAD(RefreshToken):
                 user_proofs = config.get('arrUserProofs', [])
 
                 if len(user_proofs) > 0:
-                    user_proof = user_proofs[0]
-                    error_message = f'{username_lowercase} requires MFA for login: {user_proof["authMethodId"]} = {user_proof["display"]}'
-                    logger.error(error_message)
-                    raise RuntimeError(error_message)
+                    otp_secret = auth_user_context.get('otp_secret', None)
+                    otp_user_proofs = [
+                        user_proof
+                        for user_proof in user_proofs
+                        if user_proof.get('authMethodId', None) == 'PhoneAppOTP' and 'SoftwareTokenBasedTOTP' in user_proof.get('phoneAppOtpTypes', [])
+                    ]
+
+                    if len(otp_user_proofs) != 1:
+                        user_proof = user_proofs[0]
+
+                        if otp_secret is None:
+                            error_message = f'{username_lowercase} requires MFA for login: {user_proof["authMethodId"]} = {user_proof["display"]}'
+                        else:
+                            error_message = f'{username_lowercase} requires software token based TOTP for MFA, but auth.user.otp_secret is not set'
+
+                        logger.error(error_message)
+
+                        raise RuntimeError(error_message)
+                    else:
+                        assert otp_secret is not None, f'{username_lowercase} requires TOTP for MFA, but auth.user.otp_secret is not set'
+
+                        # <!-- begin auth
+                        poll_start = int(datetime.utcnow().timestamp() * 1000)
+                        url = config['urlBeginAuth']
+
+                        headers = {
+                            'Canary': state['apiCanary'],
+                            'Client-Request-Id': state['correlationId'],
+                            'Hpgrequestid': state['x-ms-request-id'],
+                            'Hpgact': state['hpgact'],
+                            'Hpgid': state['hpgid'],
+                            'Origin': host,
+                            'Referer': referer,
+                        }
+
+                        payload = {
+                            'AuthMethodId': 'PhoneAppOTP',
+                            'Method': 'BeginAuth',
+                            'ctx': state['sCtx'],
+                            'flowToken': state['sFT'],
+                        }
+
+                        response = session.post(url, headers=headers, json=payload)
+                        total_response_length += int(response.headers.get('content-length', '0'))
+                        logger.debug(f'user auth request BeginAuth: {response.url} ({response.status_code})')
+
+                        if response.status_code != 200:
+                            raise RuntimeError(f'user auth request BeginAuth: {response.url} had unexpected status code {response.status_code}')
+
+                        payload = response.json()
+
+                        if not payload['Success']:
+                            error_message = f'error: {payload.get("ErrCode", -1)}, {payload.get("Message", "unknown")}'
+                            logger.error(error_message)
+                            raise RuntimeError(error_message)
+
+                        state.update({
+                            'sCtx': payload['Ctx'],
+                            'sFT': payload['FlowToken'],
+                            'correlationId': payload['CorrelationId'],
+                            'sessionId': payload['SessionId'],
+                            'x-ms-request-id': response.headers.get('X-Ms-Request-Id', state['x-ms-request-id']),
+                        })
+                        poll_end = int(datetime.utcnow().timestamp() * 1000)
+                        # // begin auth -->
+
+                        # <!-- end auth
+                        totp = TOTP(otp_secret)
+                        totp_code = totp.now()
+                        url = config['urlEndAuth']
+                        payload = {
+                            'AdditionalAuthData': totp_code,
+                            'AuthMethodId': 'PhoneAppOTP',
+                            'Ctx': state['sCtx'],
+                            'FlowToken': state['sFT'],
+                            'Method': 'EndAuth',
+                            'PollCount': 1,
+                            'SessionId': state['sessionId'],
+                        }
+
+                        response = session.post(url, headers=headers, json=payload)
+                        total_response_length += int(response.headers.get('content-length', '0'))
+                        logger.debug(f'user auth request EndAuth: {response.url} ({response.status_code})')
+
+                        if response.status_code != 200:
+                            raise RuntimeError(f'user auth request EndAuth: {response.url} had unexpected status code {response.status_code}')
+
+                        payload = response.json()
+
+                        if not payload['Success']:
+                            error_message = f'error: {payload.get("ErrCode", -1)}, {payload.get("Message", "unknown")}'
+                            logger.error(error_message)
+                            raise RuntimeError(error_message)
+
+                        state.update({
+                            'sCtx': payload['Ctx'],
+                            'sFT': payload['FlowToken'],
+                            'correlationId': payload['CorrelationId'],
+                            'sessionId': payload['SessionId'],
+                            'x-ms-request-id': response.headers.get('X-Ms-Request-Id', state['x-ms-request-id']),
+                        })
+                        # // end auth -->
+
+                        # <!-- process auth
+                        url = config['urlPost']
+
+                        headers = {
+                            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'Host': host,
+                            'Referer': referer,
+                            **headers_ua,
+                        }
+
+                        payload = {
+                            'type': 19,
+                            'GeneralVerify': False,
+                            'request': state['sCtx'],
+                            'mfaLastPollStart': poll_start,
+                            'mfaLastPollEnd': poll_end,
+                            'mfaAuthMethod': 'PhoneAppOTP',
+                            'otc': int(totp_code),
+                            'login': username_lowercase,
+                            'flowToken': state['sFT'],
+                            'hpgrequestid': state['x-ms-request-id'],
+                            'sacxt': '',
+                            'hideSmsInMfaProofs': False,
+                            'canary': state['canary'],
+                            'i19': 14798,
+                        }
+
+                        response = session.post(url, headers=headers, data=payload)
+                        total_response_length += int(response.headers.get('content-length', '0'))
+
+                        try:
+                            config = _parse_response_config(response)
+                            exception_message = config.get('strServiceExceptionMessage', None)
+
+                            if exception_message is not None and len(exception_message.strip()) > 0:
+                                raise RuntimeError(exception_message)
+                        except ValueError:
+                            pass
+
+                        config = update_state(state, response)
+                        # // process auth -->
                 # // request 3 -->
 
                 #  <!-- request 4
