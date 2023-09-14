@@ -376,7 +376,7 @@ class AAD(RefreshToken):
                         if otp_secret is None:
                             error_message = f'{username_lowercase} requires MFA for login: {user_proof["authMethodId"]} = {user_proof["display"]}'
                         else:
-                            error_message = f'{username_lowercase} requires software token based TOTP for MFA, but auth.user.otp_secret is not set'
+                            error_message = f'{username_lowercase} is assumed to use TOTP for MFA, but does not have that authentication method configured'
 
                         logger.error(error_message)
 
@@ -415,7 +415,7 @@ class AAD(RefreshToken):
                         payload = response.json()
 
                         if not payload['Success']:
-                            error_message = f'error: {payload.get("ErrCode", -1)}, {payload.get("Message", "unknown")}'
+                            error_message = f'user auth request BeginAuth: {payload.get("ErrCode", -1)} - {payload.get("Message", "unknown")}'
                             logger.error(error_message)
                             raise RuntimeError(error_message)
 
@@ -453,7 +453,7 @@ class AAD(RefreshToken):
                         payload = response.json()
 
                         if not payload['Success']:
-                            error_message = f'error: {payload.get("ErrCode", -1)}, {payload.get("Message", "unknown")}'
+                            error_message = f'user auth request EndAuth: {payload.get("ErrCode", -1)} - {payload.get("Message", "unknown")}'
                             logger.error(error_message)
                             raise RuntimeError(error_message)
 
@@ -496,6 +496,10 @@ class AAD(RefreshToken):
 
                         response = session.post(url, headers=headers, data=payload)
                         total_response_length += int(response.headers.get('content-length', '0'))
+                        logger.debug(f'user auth request EndAuth: {response.url} ({response.status_code})')
+
+                        if response.status_code != 200:
+                            raise RuntimeError(f'user auth request ProcessAuth: {response.url} had unexpected status code {response.status_code}')
 
                         try:
                             config = _parse_response_config(response)
@@ -503,7 +507,7 @@ class AAD(RefreshToken):
 
                             if exception_message is not None and len(exception_message.strip()) > 0:
                                 raise RuntimeError(exception_message)
-                        except ValueError:
+                        except ValueError:  # pragma: no cover
                             pass
 
                         config = update_state(state, response)
