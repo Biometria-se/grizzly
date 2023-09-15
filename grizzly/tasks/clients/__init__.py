@@ -86,8 +86,6 @@ class ClientTask(GrizzlyMetaRequestTask):
     ) -> None:
         super().__init__()
 
-        self.grizzly = GrizzlyContext()
-
         if text is not None:
             self.text = text
         else:

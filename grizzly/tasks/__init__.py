@@ -58,6 +58,8 @@ from inspect import getmro
 
 from grizzly_extras.transformer import TransformerContentType
 
+from grizzly.context import GrizzlyContext
+
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.types import GrizzlyResponse
     from grizzly.scenarios import GrizzlyScenario
@@ -140,9 +142,11 @@ class GrizzlyTask(ABC):
     _context_root: str
 
     step: str
+    grizzly: GrizzlyContext
 
     def __init__(self) -> None:
         self._context_root = environ.get('GRIZZLY_CONTEXT_ROOT', '.')
+        self.grizzly = GrizzlyContext()
 
     @abstractmethod
     def __call__(self) -> grizzlytask:
@@ -255,6 +259,7 @@ from .task_wait import TaskWaitTask
 from .conditional import ConditionalTask
 from .loop import LoopTask
 from .set_variable import SetVariableTask
+from .keystore import KeystoreTask
 
 
 __all__ = [
@@ -272,4 +277,5 @@ __all__ = [
     'ConditionalTask',
     'LoopTask',
     'SetVariableTask',
+    'KeystoreTask',
 ]
