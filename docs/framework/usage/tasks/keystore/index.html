@@ -9,10 +9,10 @@
       
       
       
-        <link rel="prev" href="../set_variable/">
+        <link rel="prev" href="../">
       
       
-        <link rel="next" href="../wait/">
+        <link rel="next" href="../timer/">
       
       
       <link rel="icon" href="../../../../assets/favicon.ico">
@@ -20,7 +20,7 @@
     
     
       
-        <title>Date - Grizzly</title>
+        <title>Keystore - Grizzly</title>
       
     
     
@@ -106,7 +106,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Date
+              Keystore
             
           </span>
         </div>
@@ -447,9 +447,27 @@
                 
   
   
+    
   
-    <li class="md-nav__item">
-      <a href="../keystore/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Keystore
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -458,6 +476,45 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#step-implementations" class="md-nav__link">
+    Step implementations
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#statistics" class="md-nav__link">
+    Statistics
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#arguments" class="md-nav__link">
+    Arguments
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -527,27 +584,9 @@
                 
   
   
-    
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Date
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../date/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -556,71 +595,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#step-implementations" class="md-nav__link">
-    Step implementations
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#arguments" class="md-nav__link">
-    Arguments
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#format" class="md-nav__link">
-    Format
-  </a>
-  
-    <nav class="md-nav" aria-label="Format">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#value" class="md-nav__link">
-    value
-  </a>
-  
-    <nav class="md-nav" aria-label="value">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#iso-8601" class="md-nav__link">
-    ISO-8601
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -2295,42 +2269,16 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#arguments" class="md-nav__link">
-    Arguments
+  <a href="#statistics" class="md-nav__link">
+    Statistics
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#format" class="md-nav__link">
-    Format
+  <a href="#arguments" class="md-nav__link">
+    Arguments
   </a>
-  
-    <nav class="md-nav" aria-label="Format">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#value" class="md-nav__link">
-    value
-  </a>
-  
-    <nav class="md-nav" aria-label="value">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#iso-8601" class="md-nav__link">
-    ISO-8601
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -2352,46 +2300,42 @@
   
 
 
-  <h1>Date</h1>
+  <h1>Keystore</h1>
 
-<p><a id="pydoc:grizzly.tasks.date"></a>
-This task parses a string representation of a date/time and allows transformation of it, such as specifying an offset or changing the format,
-and saves the result as a date/time string in an variable.</p>
+<p><a id="pydoc:grizzly.tasks.keystore"></a>
+This tasks sets and gets values from a distributed keystore. This makes is possible to share values between scenarios.</p>
+<p>Retreived (get) values are rendered before setting the variable.
+Stored (set) values are not rendered, so it is possible to store templates.</p>
+<p>The whole keystore is persistent, so anything stored will be loaded the next time the scenario runs.</p>
 <h2 id="step-implementations">Step implementations</h2>
 <ul>
-<li><a href="/grizzly/framework/usage/steps/scenario/tasks#pydoc:grizzly.steps.scenario.tasks.step_task_date">step_task_date</a></li>
+<li>
+<p><a href="/grizzly/framework/usage/steps/scenario/tasks#pydoc:grizzly.steps.scenario.tasks.step_task_keystore_get">step_task_keystore_get</a></p>
+</li>
+<li>
+<p><a href="/grizzly/framework/usage/steps/scenario/tasks#pydoc:grizzly.steps.scenario.tasks.step_task_keystore_get_default">step_task_keystore_get_default</a></p>
+</li>
+<li>
+<p><a href="/grizzly/framework/usage/steps/scenario/tasks#pydoc:grizzly.steps.scenario.tasks.step_task_keystore_set">step_task_keystore_set</a></p>
+</li>
 </ul>
+<h2 id="statistics">Statistics</h2>
+<p>This task only has request statistics entry, of type <code>KEYS</code>, if a key (without <code>default_value</code>) that does not have a value set is retrieved.</p>
 <h2 id="arguments">Arguments</h2>
 <ul>
 <li>
-<p><code>variable</code> <em>str</em> - name of, initialized, variable the parsed date should be saved in</p>
+<p><code>key</code> <em>str</em>: name of key in keystore</p>
 </li>
 <li>
-<p><code>value</code> <em>str</em> - value</p>
+<p><code>action</code> <em>Action</em>: literal <code>set</code> or <code>get</code></p>
+</li>
+<li>
+<p><code>action_context</code> <em>str | Any</em>: when <code>action</code> is <code>get</code> it must be a <code>str</code> (variable name), for <code>set</code> any goes (as long as it is json serializable and not <code>None</code>)</p>
+</li>
+<li>
+<p><code>default_value</code> <em>Any (Optional)</em>: used when <code>action</code> is <code>get</code> and <code>key</code> does not exist in the keystore</p>
 </li>
 </ul>
-<h2 id="format">Format</h2>
-<h3 id="value"><code>value</code></h3>
-<div class="highlight"><pre><span></span><code>&lt;date&gt; [| format=&lt;format&gt;][, timezone=&lt;timezone&gt;][, offset=&lt;offset&gt;]
-</code></pre></div>
-<ul>
-<li>
-<p><code>date</code> <em>str/datetime</em> - string representation of a date and/or time or a <code>datetime</code> object, e.g. <code>datetime.now()</code></p>
-</li>
-<li>
-<p><code>format</code> <em>str</em> - a python <a href="https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes"><code>strftime</code> format string</a> or <code>ISO-8601:[DateTime|Time][:ms][:no-sep]</code>, this argument is required</p>
-</li>
-<li>
-<p><code>timezone</code> <em>str</em> (optional) - a valid <a href="https://en.wikipedia.org/wiki/List_of_tz_database_time_zones">timezone name</a></p>
-</li>
-<li>
-<p><code>offset</code> <em>str</em> (optional) - a time span string describing the offset, Y = years, M = months, D = days, h = hours, m = minutes, s = seconds, e.g. <code>1Y-2M10D</code></p>
-</li>
-</ul>
-<h4 id="iso-8601"><code>ISO-8601</code></h4>
-<p>See <a href="https://en.wikipedia.org/wiki/ISO_8601">wikipedia ISO 8601</a> for information about the format. Specifying <code>DateTime</code> would result in "Date and time with the offset" and <code>Time</code> results in everything after "T"
-in the same example.</p>
-<p>In addition to this it is also possible to append milliseconds with <code>:ms</code> and remove all the seperators in the date and time with <code>:no-sep</code>.</p>
 
 
 
