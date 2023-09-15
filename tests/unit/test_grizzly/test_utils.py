@@ -146,6 +146,7 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:
             'user': {
                 'username': None,
                 'password': None,
+                'otp_secret': None,
                 'redirect_uri': None,
                 'initialize_uri': None,
             },
@@ -173,6 +174,7 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:
             'user': {
                 'username': None,
                 'password': None,
+                'otp_secret': None,
                 'redirect_uri': None,
                 'initialize_uri': None,
             },
@@ -229,6 +231,7 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:
             'user': {
                 'username': 'grizzly-user',
                 'password': None,
+                'otp_secret': None,
                 'redirect_uri': None,
                 'initialize_uri': None,
             },
@@ -263,6 +266,7 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:
             'user': {
                 'username': 'grizzly-user',
                 'password': None,
+                'otp_secret': None,
                 'redirect_uri': None,
                 'initialize_uri': None,
             },
@@ -304,6 +308,7 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:
             'user': {
                 'username': None,
                 'password': None,
+                'otp_secret': None,
                 'redirect_uri': None,
                 'initialize_uri': None,
             },
@@ -341,6 +346,7 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:
             'user': {
                 'username': None,
                 'password': None,
+                'otp_secret': None,
                 'redirect_uri': None,
                 'initialize_uri': None,
             },

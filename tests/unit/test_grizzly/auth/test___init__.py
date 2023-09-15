@@ -212,6 +212,7 @@ def test_refresh_token_user(grizzly_fixture: GrizzlyFixture, mocker: MockerFixtu
         assert auth_context.get('user', None) == {
             'username': 'alice@example.com',
             'password': 'HemligaArne',
+            'otp_secret': None,
             'redirect_uri': '/authenticated',
             'initialize_uri': None,
         }

@@ -51,6 +51,7 @@ class TestRestApiUser:
                 'user': {
                     'username': None,
                     'password': None,
+                    'otp_secret': None,
                     'redirect_uri': None,
                     'initialize_uri': None,
                 },
@@ -93,6 +94,7 @@ class TestRestApiUser:
                     'user': {
                         'username': '',
                         'password': '',
+                        'otp_secret': None,
                         'redirect_uri': '',
                         'response_mode': '',
                     },
