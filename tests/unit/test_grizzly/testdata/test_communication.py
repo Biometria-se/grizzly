@@ -2,7 +2,7 @@ import json
 import logging
 
 from os import path, mkdir, sep, environ
-from typing import Dict, Optional, Any, cast
+from typing import Dict, Optional, Any, Callable, cast
 from pathlib import Path
 
 import pytest
@@ -31,7 +31,6 @@ class TestTestdataProducer:
         behave_fixture: BehaveFixture,
         grizzly_fixture: GrizzlyFixture,
         cleanup: AtomicVariableCleanupFixture,
-        mocker: MockerFixture,
     ) -> None:
         producer: Optional[TestdataProducer] = None
         context: Optional[zmq.Context] = None
@@ -108,14 +107,16 @@ class TestTestdataProducer:
             producer_thread = gevent.spawn(producer.run)
             producer_thread.start()
 
+            assert producer.keystore == {}
+
             context = zmq.Context()
             with context.socket(zmq.REQ) as socket:
                 socket.connect(address)
 
-                def get_message_from_producer() -> Dict[str, Any]:
+                def request_testdata() -> Dict[str, Any]:
                     message: Dict[str, Any] = {}
                     socket.send_json({
-                        'message': 'available',
+                        'message': 'testdata',
                         'scenario': grizzly.scenario.class_name,
                     })
 
@@ -124,7 +125,25 @@ class TestTestdataProducer:
                     message = cast(Dict[str, Any], socket.recv_json())
                     return message
 
-                message: Dict[str, Any] = get_message_from_producer()
+                def request_keystore(action: str, key: str, value: Optional[Any] = None) -> Dict[str, Any]:
+                    message: Dict[str, Any] = {}
+                    request = {
+                        'message': 'keystore',
+                        'action': action,
+                        'key': key,
+                    }
+
+                    if value is not None:
+                        request.update({'data': value})
+
+                    socket.send_json(request)
+
+                    gevent.sleep(0.1)
+
+                    message = cast(Dict[str, Any], socket.recv_json())
+                    return message
+
+                message: Dict[str, Any] = request_testdata()
                 assert message['action'] == 'consume'
                 data = message['data']
                 assert 'variables' in data
@@ -145,8 +164,17 @@ class TestTestdataProducer:
                 assert data['auth.user.username'] == 'value1'
                 assert data['auth.user.password'] == 'value2'
                 assert variables['tests.helpers.AtomicCustomVariable.foo'] == 'bar'
+                assert producer.keystore == {}
 
-                message = get_message_from_producer()
+                message = request_keystore('set', 'foobar', {'hello': 'world'})
+                assert message == {
+                    'message': 'keystore',
+                    'action': 'set',
+                    'key': 'foobar',
+                    'data': {'hello': 'world'},
+                }
+
+                message = request_testdata()
                 assert message['action'] == 'consume'
                 data = message['data']
                 assert 'variables' in data
@@ -163,7 +191,15 @@ class TestTestdataProducer:
                 assert data['auth.user.username'] == 'value3'
                 assert data['auth.user.password'] == 'value4'
 
-                message = get_message_from_producer()
+                message = request_keystore('get', 'foobar')
+                assert message == {
+                    'message': 'keystore',
+                    'action': 'get',
+                    'key': 'foobar',
+                    'data': {'hello': 'world'},
+                }
+
+                message = request_testdata()
                 assert message['action'] == 'stop'
                 assert 'data' not in message
 
@@ -181,6 +217,7 @@ class TestTestdataProducer:
                     actual_initial_values = json.loads(persist_file.read_text())
                     assert actual_initial_values == {
                         'AtomicIntegerIncrementer.value': '11 | step=5, persist=True',
+                        'grizzly::keystore': {'foobar': {'hello': 'world'}},
                     }
 
             if context is not None:
@@ -247,7 +284,7 @@ class TestTestdataProducer:
                 def get_message_from_producer() -> Dict[str, Any]:
                     message: Dict[str, Any] = {}
                     socket.send_json({
-                        'message': 'available',
+                        'message': 'testdata',
                         'scenario': grizzly.scenario.class_name,
                     })
 
@@ -313,11 +350,14 @@ class TestTestdataProducer:
 
             i['foobar']
             i['foobar']
+            actual_keystore = {'foo': ['hello', 'world'], 'bar': {'hello': 'world', 'foo': 'bar'}, 'hello': 'world'}
 
             with caplog.at_level(logging.DEBUG):
-                TestdataProducer(grizzly_fixture.grizzly, {'HelloWorld': {'AtomicIntegerIncrementer.foobar': i}}).stop()
+                producer = TestdataProducer(grizzly_fixture.grizzly, {'HelloWorld': {'AtomicIntegerIncrementer.foobar': i}})
+                producer.keystore.update(actual_keystore)
+                producer.stop()
 
-            assert caplog.messages[-1] == f'wrote variables next initial values for features/test_run_with_variable_none.feature to {persistent_file}'
+            assert caplog.messages[-1] == f'feature file data persisted in {persistent_file}'
             assert caplog.messages[-2] == 'failed to stop'
 
             assert persistent_file.exists()
@@ -325,21 +365,28 @@ class TestTestdataProducer:
             actual_persist_values = json.loads(persistent_file.read_text())
             assert actual_persist_values == {
                 'AtomicIntegerIncrementer.foobar': '3 | step=1, persist=True',
+                'grizzly::keystore': actual_keystore,
+
             }
 
             i['foobar']
 
             with caplog.at_level(logging.DEBUG):
-                TestdataProducer(grizzly_fixture.grizzly, {'HelloWorld': {'AtomicIntegerIncrementer.foobar': i}}).stop()
+                producer = TestdataProducer(grizzly_fixture.grizzly, {'HelloWorld': {'AtomicIntegerIncrementer.foobar': i}})
+                del producer.keystore['bar']
+                producer.stop()
 
-            assert caplog.messages[-1] == f'wrote variables next initial values for features/test_run_with_variable_none.feature to {persistent_file}'
+            assert caplog.messages[-1] == f'feature file data persisted in {persistent_file}'
             assert caplog.messages[-2] == 'failed to stop'
 
             assert persistent_file.exists()
 
+            del actual_keystore['bar']
+
             actual_persist_values = json.loads(persistent_file.read_text())
             assert actual_persist_values == {
                 'AtomicIntegerIncrementer.foobar': '5 | step=1, persist=True',
+                'grizzly::keystore': actual_keystore,
             }
         finally:
             cleanup()
@@ -350,7 +397,7 @@ class TestTestdataProducer:
         noop_zmq('grizzly.testdata.communication')
 
         mocker.patch('grizzly.testdata.communication.zmq.Socket.recv_json', return_value={
-            'message': 'available',
+            'message': 'testdata',
             'identifier': 'test-consumer',
             'scenario': 'test',
         })
@@ -365,7 +412,6 @@ class TestTestdataProducer:
             with caplog.at_level(logging.DEBUG):
                 TestdataProducer(grizzly_fixture.grizzly, {}).run()
 
-            print(caplog.text)
             assert caplog.messages[-3] == "producing {'action': 'stop'} for consumer test-consumer"
             assert 'test data error, stop consumer test-consumer' in caplog.messages[-4]
             assert send_json_mock.call_count == 1
@@ -375,6 +421,79 @@ class TestTestdataProducer:
             assert kwargs == {}
         finally:
             cleanup()
+
+    def test_run_keystore(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture, noop_zmq: NoopZmqFixture, caplog: LogCaptureFixture) -> None:
+        noop_zmq('grizzly.testdata.communication')
+
+        context_root = Path(grizzly_fixture.request_task.context_root).parent
+
+        environ['GRIZZLY_FEATURE_FILE'] = 'features/test_run_with_variable_none.feature'
+        environ['GRIZZLY_CONTEXT'] = str(context_root)
+
+        def stop(_: Dict[str, Any]) -> None:
+            raise ZMQError()
+
+        send_json_mock = noop_zmq.get_mock('send_json')
+        send_json_mock.side_effect = stop
+
+        recv_json_mock = noop_zmq.get_mock('recv_json')
+
+        producer = TestdataProducer(grizzly_fixture.grizzly, {})
+        producer._stopping = True  # to mask error used for breaking out of loop
+        producer.keystore.update({'hello': 'world'})
+
+        recv_json_mock.return_value = {'message': 'keystore', 'action': 'get', 'key': 'hello'}
+
+        with caplog.at_level(logging.ERROR):
+            producer.run()
+        assert caplog.messages == []
+
+        send_json_mock.assert_called_once_with({
+            'message': 'keystore',
+            'action': 'get',
+            'key': 'hello',
+            'data': 'world',
+        })
+        send_json_mock.reset_mock()
+
+        producer.keystore.clear()
+
+        recv_json_mock.return_value = {'message': 'keystore', 'action': 'set', 'key': 'world', 'data': {'foo': 'bar'}}
+
+        with caplog.at_level(logging.ERROR):
+            producer.run()
+        assert caplog.messages == []
+
+        assert producer.keystore == {'world': {'foo': 'bar'}}
+
+        send_json_mock.assert_called_once_with({
+            'message': 'keystore',
+            'action': 'set',
+            'key': 'world',
+            'data': {'foo': 'bar'},
+        })
+        send_json_mock.reset_mock()
+
+        recv_json_mock.return_value = {'message': 'keystore', 'action': 'unknown'}
+
+        with caplog.at_level(logging.ERROR):
+            producer.run()
+        assert caplog.messages == ['received unknown keystore action "unknown"']
+        caplog.clear()
+
+        send_json_mock.assert_called_once_with({
+            'message': 'keystore',
+            'action': 'unknown',
+            'data': None,
+        })
+        send_json_mock.reset_mock()
+
+        recv_json_mock.return_value = {'message': 'unknown'}
+
+        with caplog.at_level(logging.ERROR):
+            producer.run()
+        assert caplog.messages == ['received unknown message "unknown"']
+        send_json_mock.assert_called_once_with({})
 
     def test_run_zmq_error(
         self, mocker: MockerFixture, cleanup: AtomicVariableCleanupFixture, grizzly_fixture: GrizzlyFixture, noop_zmq: NoopZmqFixture, caplog: LogCaptureFixture,
@@ -389,14 +508,47 @@ class TestTestdataProducer:
         try:
             with caplog.at_level(logging.ERROR):
                 TestdataProducer(grizzly_fixture.grizzly, {}).run()
-            print(caplog.text)
             assert caplog.messages[-1] == 'failed when waiting for consumers'
         finally:
             cleanup()
 
+    def test_persist_data_edge_cases(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture, noop_zmq: NoopZmqFixture, caplog: LogCaptureFixture) -> None:
+        noop_zmq('grizzly.testdata.communication')
+
+        context_root = Path(grizzly_fixture.request_task.context_root).parent
+
+        persistent_file = context_root / 'persistent' / 'test_run_with_variable_none.json'
+
+        environ['GRIZZLY_FEATURE_FILE'] = 'features/test_run_with_variable_none.feature'
+        environ['GRIZZLY_CONTEXT'] = str(context_root)
+
+        assert not persistent_file.exists()
+
+        producer = TestdataProducer(grizzly_fixture.grizzly, {'test': {'test': 'none'}})
+        producer.has_persisted = True
+
+        with caplog.at_level(logging.DEBUG):
+            producer.persist_data()
+
+        assert caplog.messages == []
+        assert not persistent_file.exists()
+
+        producer.has_persisted = False
+        producer.keystore = {'hello': 'world'}
+
+        mocker.patch('grizzly.testdata.communication.jsondumps', side_effect=[json.JSONDecodeError])
+
+        with caplog.at_level(logging.ERROR):
+            producer.persist_data()
+
+        assert caplog.messages == ['failed to persist feature file data']
+        assert not persistent_file.exists()
+
+        caplog.clear()
+
 
 class TestTestdataConsumer:
-    def test_request(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture, noop_zmq: NoopZmqFixture, caplog: LogCaptureFixture) -> None:
+    def test_testdata(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture, noop_zmq: NoopZmqFixture, caplog: LogCaptureFixture) -> None:
         noop_zmq('grizzly.testdata.communication')
 
         def mock_recv_json(data: Dict[str, Any], action: Optional[str] = 'consume') -> None:
@@ -447,7 +599,7 @@ class TestTestdataConsumer:
                 }
             })
 
-            assert consumer.request('test') == {
+            assert consumer.testdata('test') == {
                 'auth': {
                     'user': {
                         'username': 'username',
@@ -468,7 +620,7 @@ class TestTestdataConsumer:
             }, 'stop')
 
             with caplog.at_level(logging.DEBUG):
-                assert consumer.request('test') is None
+                assert consumer.testdata('test') is None
             assert caplog.messages[-1] == 'received stop command'
 
             caplog.clear()
@@ -482,7 +634,7 @@ class TestTestdataConsumer:
 
             with caplog.at_level(logging.DEBUG):
                 with pytest.raises(StopUser):
-                    consumer.request('test')
+                    consumer.testdata('test')
             assert 'unknown action "asdf" received, stopping user' in caplog.text
 
             caplog.clear()
@@ -494,7 +646,7 @@ class TestTestdataConsumer:
                 }
             }, 'consume')
 
-            assert consumer.request('test') == {
+            assert consumer.testdata('test') == {
                 'variables': transform(grizzly, {
                     'AtomicIntegerIncrementer.messageID': 100,
                     'test': None,
@@ -504,7 +656,7 @@ class TestTestdataConsumer:
             consumer.stop()
             assert consumer.context._instance is None
 
-    def test_request_stop_exception(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, caplog: LogCaptureFixture, grizzly_fixture: GrizzlyFixture) -> None:
+    def test_stop_exception(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, caplog: LogCaptureFixture, grizzly_fixture: GrizzlyFixture) -> None:
         noop_zmq('grizzly.testdata.communication')
 
         mocker.patch(
@@ -514,11 +666,22 @@ class TestTestdataConsumer:
 
         parent = grizzly_fixture()
 
+        consumer = TestdataConsumer(parent, identifier='test')
+
         with caplog.at_level(logging.DEBUG):
-            TestdataConsumer(parent, identifier='test').stop()
+            consumer.stop()
         assert caplog.messages[-1] == 'failed to stop'
 
-    def test_request_exception(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture) -> None:
+        assert consumer.stopped
+
+        caplog.clear()
+
+        with caplog.at_level(logging.DEBUG):
+            consumer.stop()
+
+        assert caplog.messages == []
+
+    def test_testdata_exception(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture) -> None:
         noop_zmq('grizzly.testdata.communication')
 
         mocker.patch(
@@ -533,9 +696,68 @@ class TestTestdataConsumer:
 
         parent = grizzly_fixture()
 
+        consumer = TestdataConsumer(parent, identifier='test')
+
         with pytest.raises(ZMQAgain):
-            TestdataConsumer(parent, identifier='test').request('test')
+            consumer.testdata('test')
 
         assert gsleep_mock.call_count == 1
         args, _ = gsleep_mock.call_args_list[-1]
         assert args[0] == 0.1
+
+        mocker.patch.object(consumer, '_request', return_value=None)
+
+        with caplog.at_level(logging.ERROR):
+            assert consumer.testdata('test') is None
+
+        assert caplog.messages == ['no testdata received']
+
+    def test_keystore_get_set(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture) -> None:
+        noop_zmq('grizzly.testdata.communication')
+        parent = grizzly_fixture()
+
+        consumer = TestdataConsumer(parent, identifier='test')
+
+        def echo(input: Dict[str, Any]) -> Dict[str, Any]:
+            return input
+
+        def echo_add_data(data: Any) -> Callable[[Dict[str, Any]], Dict[str, Any]]:
+            def wrapped(request: Dict[str, Any]) -> Dict[str, Any]:
+                response = request.copy()
+                response.update({'data': data})
+                return response
+
+            return wrapped
+
+        request_spy = mocker.patch.object(consumer, '_request', side_effect=echo)
+
+        assert consumer.keystore_get('hello') is None
+
+        request_spy.assert_called_once_with({
+            'action': 'get',
+            'key': 'hello',
+            'message': 'keystore',
+            'identifier': consumer.identifier,
+        })
+
+        request_spy = mocker.patch.object(consumer, '_request', side_effect=echo_add_data({'hello': 'world'}))
+
+        assert consumer.keystore_get('hello') == {'hello': 'world'}
+        request_spy.assert_called_once_with({
+            'action': 'get',
+            'key': 'hello',
+            'message': 'keystore',
+            'identifier': consumer.identifier,
+        })
+
+        request_spy = mocker.patch.object(consumer, '_request', side_effect=echo)
+
+        consumer.keystore_set('world', {'hello': 'world'})
+
+        request_spy.assert_called_once_with({
+            'action': 'set',
+            'key': 'world',
+            'message': 'keystore',
+            'identifier': consumer.identifier,
+            'data': {'hello': 'world'},
+        })

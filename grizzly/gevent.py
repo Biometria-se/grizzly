@@ -21,14 +21,21 @@ class GreenletWithExceptionCatching(Greenlet):
                 return func(*args, **kwargs)
             except Exception as exception:
                 self.wrap_exceptions(self.handle_exception)(exception)
-                return exception
+                return exception  # pragma: no cover
 
         return exception_handler
 
-    def spawn(self, func: Callable, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Greenlet:
-        func_wrap = self.wrap_exceptions(func)
-        return super().spawn(func_wrap, *args, **kwargs)
+    def spawn(self, func: Callable, *args: Any, **kwargs: Any) -> Greenlet:
+        return super().spawn(
+            self.wrap_exceptions(func),
+            *args,
+            **kwargs,
+        )
 
-    def spawn_later(self, seconds: int, func: Callable, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Greenlet:
-        func_wrap = self.wrap_exceptions(func)
-        return super().spawn_later(seconds, func_wrap, *args, **kwargs)
+    def spawn_later(self, seconds: int, func: Callable, *args: Any, **kwargs: Any) -> Greenlet:
+        return super().spawn_later(
+            seconds,
+            self.wrap_exceptions(func),
+            *args,
+            **kwargs,
+        )

@@ -751,6 +751,7 @@ def step_start_webserver(context: Context, port: int) -> None:
             'PATH': f'{str(virtual_env_path)}/bin:{path}',
             'VIRTUAL_ENV': str(virtual_env_path),
             'PYTHONPATH': environ.get('PYTHONPATH', '.'),
+            'HOME': environ.get('HOME', '/'),
         })
 
         for env_key in ['SSH_AUTH_SOCK', 'GRIZZLY_MOUNT_CONTEXT']:
@@ -1127,12 +1128,23 @@ def step_start_webserver(context: Context, port: int) -> None:
             )
 
             if rc != 0:
+                print('-' * 100)
 
                 if self._distributed:
+                    # get docker compose project
+                    validate_command = command[:2] + ['--validate-config'] + command[2:]
+                    _, output = run_command(
+                        validate_command,
+                        cwd=str(self.root),
+                        env=self._env,
+                    )
+                    print(''.join(output))
+                    print('-' * 100)
+
                     output = []
 
                     for container in ['master', 'worker']:
-                        command = ['docker', 'container', 'logs', f'{self.root.name}-{getuser()}-{container}-1']
+                        command = ['docker', 'container', 'logs', f'{project_name}-{getuser()}-{container}-1']
                         _, o = run_command(
                             command,
                             cwd=str(self.root),
@@ -1142,5 +1154,6 @@ def step_start_webserver(context: Context, port: int) -> None:
                         output += o
 
                 print(''.join(output))
+                print('-' * 100)
 
             return rc, output
