@@ -1,5 +1,7 @@
 # pylint: disable=line-too-long
-'''Communicates with HTTP and HTTPS, with built-in support for Azure authenticated endpoints.
+"""
+@anchor pydoc:grizzly.users.restapi RestAPI
+Communicates with HTTP and HTTPS, with built-in support for Azure authenticated endpoints.
 
 ## Request methods
 
@@ -34,30 +36,9 @@ And set context variable "auth.refresh_time" to "3500"
 
 ### Authentication
 
-#### Client secret
+See {@pylink grizzly.auth.aad}.
 
-``` gherkin
-Given a user of type "RestApi" load testing "https://api.example.com"
-And set context variable "auth.provider" to "<provider>"
-And set context variable "auth.client.id" to "<client id>"
-And set context variable "auth.client.secret" to "<client secret>"
-And set context variable "auth.client.resource" to "<resource url/guid>"
-```
-
-#### Username and password
-
-`auth.user.redirect_uri` needs to correspond to the endpoint that the client secret is registrered for.
-
-``` gherkin
-Given a user of type "RestApi" load testing "https://api.example.com"
-And set context variable "auth.provider" to "<provider>"
-And set context variable "auth.client.id" to "<client id>"
-And set context variable "auth.user.username" to "alice@example.onmicrosoft.com"
-And set context variable "auth.user.password" to "HemL1gaArn3!"
-And set context variable "auth.user.redirect_uri" to "/app-registrered-redirect-uri"
-```
-
-#### Multipart/form-data
+### Multipart/form-data
 
 RestApi supports posting of multipart/form-data content-type, and in that case additional arguments needs to be passed with the request:
 
@@ -70,7 +51,7 @@ Example:
 ``` gherkin
 Then post request "path/my_template.j2.xml" with name "FormPost" to endpoint "example.url.com | content_type=multipart/form-data, multipart_form_data_filename=my_filename, multipart_form_data_name=form_name"
 ```
-'''  # noqa: E501
+"""  # noqa: E501
 import json
 
 from typing import Dict, Optional, Any, Tuple, Union, cast
