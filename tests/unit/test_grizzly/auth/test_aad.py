@@ -7,6 +7,7 @@ from enum import Enum
 from unittest.mock import ANY, MagicMock
 from urllib.parse import urlparse
 from itertools import product
+from datetime import datetime
 
 import pytest
 import requests
@@ -147,19 +148,26 @@ class TestAAD:
                 get_oauth_token_mock.return_value = (AuthType.HEADER, fake_token,)
 
             class Error(Enum):
-                REQUEST_1_NO_DOLLAR_CONFIG = 0
-                REQUEST_1_DOLLAR_CONFIG_ERROR = 10
-                REQUEST_1_HTTP_STATUS = 1
-                REQUEST_2_HTTP_STATUS = 2
-                REQUEST_3_HTTP_STATUS = 3
-                REQUEST_4_HTTP_STATUS = 4
-                REQUEST_4_HTTP_STATUS_CONFIG = 9
-                REQUEST_2_ERROR_MESSAGE = 5
-                REQUEST_1_MISSING_STATE = 6
-                REQUEST_3_ERROR_MESSAGE = 7
-                REQUEST_3_MFA_REQUIRED = 8
-                REQUEST_5_HTTP_STATUS = 11
-                REQUEST_5_NO_COOKIE = 12
+                REQUEST_1_NO_DOLLAR_CONFIG = 100
+                REQUEST_1_HTTP_STATUS = 101
+                REQUEST_1_MISSING_STATE = 102
+                REQUEST_1_DOLLAR_CONFIG_ERROR = 103
+                REQUEST_2_HTTP_STATUS = 200
+                REQUEST_2_ERROR_MESSAGE = 201
+                REQUEST_3_HTTP_STATUS = 300
+                REQUEST_3_ERROR_MESSAGE = 301
+                REQUEST_3_MFA_REQUIRED = 302
+                REQUEST_3_MFA_TOPT = 330
+                REQUEST_3_MFA_BEGIN_AUTH_STATUS = 331
+                REQUEST_3_MFA_BEGIN_AUTH_FAILURE = 332
+                REQUEST_3_MFA_END_AUTH_STATUS = 341
+                REQUEST_3_MFA_END_AUTH_FAILURE = 342
+                REQUEST_3_MFA_PROCESS_AUTH_STATUS = 351
+                REQUEST_3_MFA_PROCESS_AUTH_FAILURE = 352
+                REQUEST_4_HTTP_STATUS = 400
+                REQUEST_4_HTTP_STATUS_CONFIG = 401
+                REQUEST_5_HTTP_STATUS = 500
+                REQUEST_5_NO_COOKIE = 501
 
             def mock_request_session(inject_error: Optional[Error] = None) -> None:
                 def request(self: 'requests.Session', method: str, url: str, name: Optional[str] = None, **kwargs: Dict[str, Any]) -> requests.Response:
@@ -250,12 +258,145 @@ class TestAAD:
                                     'display': '+46 1234',
                                 }]
                             })
+                        elif inject_error is not None and inject_error.value >= 330 and inject_error.value < 400:
+                            dollar_dict.update({
+                                'arrUserProofs': [{
+                                    'authMethodId': 'PhoneAppNotification',
+                                    'data': 'PhoneAppNotification',
+                                    'display': '+XX XXXXXXXXX',
+                                    'isDefault': True,
+                                    'isLocationAware': False,
+                                }, {
+                                    'authMethodId': 'PhoneAppOTP',
+                                    'data': 'PhoneAppOTP',
+                                    'display': '+XX XXXXXXXXX',
+                                    'isDefault': False,
+                                    'isLocationAware': False,
+                                    'phoneAppOtpTypes': ['MicrosoftAuthenticatorBasedTOTP', 'SoftwareTokenBasedTOTP'],
+                                }],
+                                'urlBeginAuth': 'https://test.nu/common/SAS/BeginAuth',
+                                'urlEndAuth': 'https://test.nu/common/SAS/EndAuth',
+                                'urlPost': 'https://test.nu/common/SAS/ProcessAuth',
+                            })
 
                         dollar_config = jsondumps(dollar_dict)
                         response._content = f'$Config={dollar_config};'.encode('utf-8')
                         response.headers['x-ms-request-id'] = 'aaaa-bbbb-cccc-dddd'
                         if inject_error == Error.REQUEST_3_HTTP_STATUS:
                             response.status_code = 400
+                    elif method == 'POST' and url.endswith('/common/SAS/BeginAuth'):
+                        headers = kwargs.get('headers', {})
+                        assert headers.get('Canary', None) is not None
+                        assert headers.get('Client-Request-Id', None) is not None
+                        assert headers.get('Hpgrequestid', None) is not None
+                        assert headers.get('Hpgact', None) is not None
+                        assert headers.get('Hpgid', None) is not None
+
+                        request_json = kwargs.get('json', {})
+                        assert request_json.get('AuthMethodId', None) == 'PhoneAppOTP'
+                        assert request_json.get('Method', None) == 'BeginAuth'
+                        assert request_json.get('ctx', None) is not None
+                        assert request_json.get('flowToken', None) is not None
+
+                        response_json = {
+                            'Success': True,
+                            'ResultValue': 'Success',
+                            'Message': None,
+                            'AuthMethod': 'PhoneAppOTP',
+                            'ErrCode': 0,
+                            'Retry': False,
+                            'FlowToken': request_json.get('flowToken', None),
+                            'Ctx': request_json.get('ctx', None),
+                            'SessionId': headers.get('Hpgrequestid', None),
+                            'CorrelationId': headers.get('Client-Request-Id', None),
+                            'Timestamp': datetime.utcnow().isoformat(),
+                            'Entropy': 0,
+                            'ReselectUIOption': 0,
+                        }
+
+                        if inject_error == Error.REQUEST_3_MFA_BEGIN_AUTH_FAILURE:
+                            response_json.update({
+                                'Success': False,
+                                'ResultValue': 'Failure',
+                                'Message': 'some error, probably',
+                                'ErrCode': 1337,
+                            })
+
+                        response._content = jsondumps(response_json).encode('utf-8')
+                        response.headers['x-ms-request-id'] = 'aaaa-bbbb-cccc-dddd'
+
+                        if inject_error == Error.REQUEST_3_MFA_BEGIN_AUTH_STATUS:
+                            response.status_code = 400
+                    elif method == 'POST' and url.endswith('/common/SAS/EndAuth'):
+                        headers = kwargs.get('headers', {})
+                        assert headers.get('Canary', None) is not None
+                        assert headers.get('Client-Request-Id', None) is not None
+                        assert headers.get('Hpgrequestid', None) is not None
+                        assert headers.get('Hpgact', None) is not None
+                        assert headers.get('Hpgid', None) is not None
+
+                        request_json = kwargs.get('json', {})
+                        assert request_json.get('AdditionalAuthData', None) is not None
+                        assert request_json.get('AuthMethodId', None) == 'PhoneAppOTP'
+                        assert request_json.get('Ctx', None) is not None
+                        assert request_json.get('FlowToken', None) is not None
+                        assert request_json.get('Method', None) == 'EndAuth'
+                        assert request_json.get('PollCount', None) == 1
+                        assert request_json.get('SessionId', None) is not None
+
+                        response_json = {
+                            'Success': True,
+                            'ResultValue': 'Success',
+                            'Message': None,
+                            'AuthMethodId': 'PhoneAppOTP',
+                            'ErrCode': 0,
+                            'Retry': False,
+                            'FlowToken': request_json.get('FlowToken', None),
+                            'Ctx': request_json.get('Ctx', None),
+                            'SessionId': headers.get('Hpgrequestid', None),
+                            'CorrelationId': headers.get('Client-Request-Id', None),
+                            'Timestamp': datetime.utcnow().isoformat(),
+                            'Entropy': 0,
+                            'ReselectUIOption': 0,
+                        }
+
+                        if inject_error == Error.REQUEST_3_MFA_END_AUTH_FAILURE:
+                            response_json.update({
+                                'Success': False,
+                                'ResultValue': 'Failure',
+                                'Message': 'some error, for sure',
+                                'ErrCode': 7331,
+                            })
+
+                        response._content = jsondumps(response_json).encode('utf-8')
+                        response.headers['x-ms-request-id'] = 'aaaa-bbbb-cccc-dddd'
+
+                        if inject_error == Error.REQUEST_3_MFA_END_AUTH_STATUS:
+                            response.status_code = 400
+                    elif method == 'POST' and url.endswith('/common/SAS/ProcessAuth'):
+                        dollar_dict = {
+                            'hpgact': 1800,
+                            'hpgid': 11,
+                            'sFT': 'xxxxxxxxxxxxxxxxxxx',
+                            'sCtx': 'yyyyyyyyyyyyyyyyyyy',
+                            'apiCanary': 'zzzzzzzzzzzzzzzzzz',
+                            'canary': 'canary=1:1',
+                            'correlationId': 'aa-bb-cc',
+                            'sessionId': 'session-a-b-c',
+                            'country': 'SE',
+                            'urlGetCredentialType': 'https://test.nu/GetCredentialType?mkt=en-US',
+                            'urlPost': '/kmsi',
+                        }
+
+                        if inject_error == Error.REQUEST_3_MFA_PROCESS_AUTH_FAILURE:
+                            dollar_dict.update({'strServiceExceptionMessage': 'service failure'})
+
+                        dollar_config = jsondumps(dollar_dict)
+                        response._content = f'$Config={dollar_config};'.encode('utf-8')
+                        response.headers['x-ms-request-id'] = 'aaaa-bbbb-cccc-dddd'
+
+                        if inject_error == Error.REQUEST_3_MFA_PROCESS_AUTH_STATUS:
+                            response.status_code = 500
                     elif method == 'POST' and url.endswith('/kmsi'):
                         if inject_error == Error.REQUEST_4_HTTP_STATUS:
                             if login_start == 'redirect_uri':
@@ -476,6 +617,34 @@ class TestAAD:
             assert caplog.messages[-1] == expected_error_message
             caplog.clear()
 
+            parent.user._context['auth']['user']['otp_secret'] = 'abcdefghij'
+
+            with caplog.at_level(logging.ERROR):
+                with pytest.raises(StopUser):
+                    AAD.get_oauth_authorization(parent.user)
+
+            expected_error_message = 'test-user@example.com is assumed to use TOTP for MFA, but does not have that authentication method configured'
+
+            fire_spy.assert_called_once_with(
+                request_type='AUTH',
+                response_time=0,
+                name=f'001 AAD OAuth2 user token {version}',
+                context=parent.user._context,
+                response_length=0,
+                response=None,
+                exception=ANY,
+            )
+            _, kwargs = fire_spy.call_args_list[-1]
+            exception = kwargs.get('exception', None)
+            assert isinstance(exception, RuntimeError)
+            assert str(exception) == expected_error_message
+            fire_spy.reset_mock()
+
+            assert caplog.messages[-1] == expected_error_message
+            caplog.clear()
+
+            parent.user._context['auth']['user']['otp_secret'] = None
+
             mock_request_session(Error.REQUEST_4_HTTP_STATUS)
 
             with pytest.raises(StopUser):
@@ -684,6 +853,213 @@ class TestAAD:
                 assert isinstance(exception, RuntimeError)
                 assert str(exception) == 'did not find AAD cookie in authorization flow response session'
                 fire_spy.reset_mock()
+
+            get_oauth_token_mock.reset_mock()
+
+            # <!-- OTP
+            # auth.user.otp_secret not set
+            mock_request_session(Error.REQUEST_3_MFA_TOPT)
+
+            parent.user._context['auth']['user']['otp_secret'] = None
+
+            parent.user.session_started = session_started
+
+            if login_start == 'redirect_uri':
+                expected_auth = (AuthType.HEADER, fake_token,)
+            else:
+                expected_auth = (AuthType.COOKIE, f'auth={fake_token}',)
+
+            with caplog.at_level(logging.ERROR):
+                with pytest.raises(StopUser):
+                    AAD.get_oauth_authorization(parent.user)
+
+            fire_spy.assert_called_once_with(
+                request_type='AUTH',
+                response_time=0,
+                name=f'001 AAD OAuth2 user token {version}',
+                context=parent.user._context,
+                response_length=0,
+                response=None,
+                exception=ANY,
+            )
+            _, kwargs = fire_spy.call_args_list[-1]
+            exception = kwargs.get('exception', None)
+            assert isinstance(exception, AssertionError)
+            assert str(exception) == 'test-user@example.com requires TOTP for MFA, but auth.user.otp_secret is not set'
+            fire_spy.reset_mock()
+
+            # LC_ALL=C tr -dc 'A-Z2-7' </dev/urandom | head -c 16; echo
+            parent.user._context['auth']['user']['otp_secret'] = '466FCZN2PQZTGOEJ'
+
+            # BeginAuth, response status
+            mock_request_session(Error.REQUEST_3_MFA_BEGIN_AUTH_STATUS)
+
+            with caplog.at_level(logging.ERROR):
+                with pytest.raises(StopUser):
+                    AAD.get_oauth_authorization(parent.user)
+
+            fire_spy.assert_called_once_with(
+                request_type='AUTH',
+                response_time=0,
+                name=f'001 AAD OAuth2 user token {version}',
+                context=parent.user._context,
+                response_length=0,
+                response=None,
+                exception=ANY,
+            )
+            _, kwargs = fire_spy.call_args_list[-1]
+            exception = kwargs.get('exception', None)
+            assert isinstance(exception, RuntimeError)
+            assert str(exception) == 'user auth request BeginAuth: https://test.nu/common/SAS/BeginAuth had unexpected status code 400'
+            fire_spy.reset_mock()
+
+            # BeginAuth, payload failure
+            mock_request_session(Error.REQUEST_3_MFA_BEGIN_AUTH_FAILURE)
+
+            expected_error_message = 'user auth request BeginAuth: 1337 - some error, probably'
+
+            with caplog.at_level(logging.ERROR):
+                with pytest.raises(StopUser):
+                    AAD.get_oauth_authorization(parent.user)
+
+            fire_spy.assert_called_once_with(
+                request_type='AUTH',
+                response_time=0,
+                name=f'001 AAD OAuth2 user token {version}',
+                context=parent.user._context,
+                response_length=0,
+                response=None,
+                exception=ANY,
+            )
+            _, kwargs = fire_spy.call_args_list[-1]
+            exception = kwargs.get('exception', None)
+            assert isinstance(exception, RuntimeError)
+            assert str(exception) == expected_error_message
+            fire_spy.reset_mock()
+
+            assert caplog.messages[-1] == expected_error_message
+            caplog.clear()
+
+            # EndAuth, response status
+            mock_request_session(Error.REQUEST_3_MFA_END_AUTH_STATUS)
+
+            with caplog.at_level(logging.ERROR):
+                with pytest.raises(StopUser):
+                    AAD.get_oauth_authorization(parent.user)
+
+            fire_spy.assert_called_once_with(
+                request_type='AUTH',
+                response_time=0,
+                name=f'001 AAD OAuth2 user token {version}',
+                context=parent.user._context,
+                response_length=0,
+                response=None,
+                exception=ANY,
+            )
+            _, kwargs = fire_spy.call_args_list[-1]
+            exception = kwargs.get('exception', None)
+            assert isinstance(exception, RuntimeError)
+            assert str(exception) == 'user auth request EndAuth: https://test.nu/common/SAS/EndAuth had unexpected status code 400'
+            fire_spy.reset_mock()
+
+            # EndAuth, payload failure
+            mock_request_session(Error.REQUEST_3_MFA_END_AUTH_FAILURE)
+
+            expected_error_message = 'user auth request EndAuth: 7331 - some error, for sure'
+
+            with caplog.at_level(logging.ERROR):
+                with pytest.raises(StopUser):
+                    AAD.get_oauth_authorization(parent.user)
+
+            fire_spy.assert_called_once_with(
+                request_type='AUTH',
+                response_time=0,
+                name=f'001 AAD OAuth2 user token {version}',
+                context=parent.user._context,
+                response_length=0,
+                response=None,
+                exception=ANY,
+            )
+            _, kwargs = fire_spy.call_args_list[-1]
+            exception = kwargs.get('exception', None)
+            assert isinstance(exception, RuntimeError)
+            assert str(exception) == expected_error_message
+            fire_spy.reset_mock()
+
+            assert caplog.messages[-1] == expected_error_message
+            caplog.clear()
+
+            # ProcessAuth, response status
+            mock_request_session(Error.REQUEST_3_MFA_PROCESS_AUTH_STATUS)
+
+            with caplog.at_level(logging.ERROR):
+                with pytest.raises(StopUser):
+                    AAD.get_oauth_authorization(parent.user)
+
+            fire_spy.assert_called_once_with(
+                request_type='AUTH',
+                response_time=0,
+                name=f'001 AAD OAuth2 user token {version}',
+                context=parent.user._context,
+                response_length=0,
+                response=None,
+                exception=ANY,
+            )
+            _, kwargs = fire_spy.call_args_list[-1]
+            exception = kwargs.get('exception', None)
+            assert isinstance(exception, RuntimeError)
+            assert str(exception) == 'user auth request ProcessAuth: https://test.nu/common/SAS/ProcessAuth had unexpected status code 500'
+            fire_spy.reset_mock()
+
+            # ProcessAuth, payload failure
+            mock_request_session(Error.REQUEST_3_MFA_PROCESS_AUTH_FAILURE)
+
+            expected_error_message = 'service failure'
+
+            with caplog.at_level(logging.ERROR):
+                with pytest.raises(StopUser):
+                    AAD.get_oauth_authorization(parent.user)
+
+            fire_spy.assert_called_once_with(
+                request_type='AUTH',
+                response_time=0,
+                name=f'001 AAD OAuth2 user token {version}',
+                context=parent.user._context,
+                response_length=0,
+                response=None,
+                exception=ANY,
+            )
+            _, kwargs = fire_spy.call_args_list[-1]
+            exception = kwargs.get('exception', None)
+            assert isinstance(exception, RuntimeError)
+            assert str(exception) == expected_error_message
+            fire_spy.reset_mock()
+
+            assert caplog.messages[-1] == expected_error_message
+            caplog.clear()
+
+            # Successful MFA flow
+            mock_request_session(Error.REQUEST_3_MFA_TOPT)
+
+            assert AAD.get_oauth_authorization(parent.user) == expected_auth
+
+            if not is_token_v2_0 or login_start == 'initialize_uri':
+                get_oauth_token_mock.assert_not_called()
+            else:
+                get_oauth_token_mock.assert_called_once_with(parent.user, (ANY, ANY,))
+                get_oauth_token_mock.reset_mock()
+
+            fire_spy.assert_called_once_with(
+                request_type='AUTH',
+                response_time=0,
+                name=f'001 AAD OAuth2 user token {version}',
+                context=parent.user._context,
+                response_length=0,
+                response=None,
+                exception=None,
+            )
+            fire_spy.reset_mock()
+            # // OTP -->
         finally:
             parent.user.__class__.__name__ = original_class_name
 

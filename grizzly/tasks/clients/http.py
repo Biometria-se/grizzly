@@ -39,6 +39,8 @@ Then get "https://{{ url }}" with name "authenticated-get" and save response pay
 
 This will make any requests towards `www.example.com` to get a token from `http://login.example.com/oauth2` and use it in any
 requests towards `www.example.com`.
+
+For more details, see {@pylink grizzly.auth.aad}.
 '''
 from typing import Optional, Dict, Any
 from json import dumps as jsondumps

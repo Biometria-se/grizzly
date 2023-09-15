@@ -31,7 +31,8 @@ dependencies = [
     "pyzmq >=22.2.1,!=23.0.0",
     "PyYAML >=6.0.1,<7.0.0",
     "setproctitle >=1.2.2",
-    "tzdata >=2022.1"
+    "tzdata >=2022.1",
+    "pyotp >=2.9.0,<3.0.0"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
