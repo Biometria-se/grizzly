@@ -47,7 +47,7 @@ class TestResponseHandlerAction:
         handler = TestResponseHandlerAction.Dummy('$.', '.*')
         assert handler.expression == '$.'
         assert handler.match_with == '.*'
-        assert handler.expected_matches == 1
+        assert handler.expected_matches == '1'
 
         with pytest.raises(NotImplementedError) as nie:
             handler((TransformerContentType.JSON, None,), user)
@@ -80,11 +80,12 @@ class TestResponseHandlerAction:
             }]
         }
 
-        handler = TestResponseHandlerAction.Dummy('$.hello[?world="bar"].foo', '.*', 2, as_json=True)
+        user._context['variables']['count'] = '2'
+        handler = TestResponseHandlerAction.Dummy('$.hello[?world="bar"].foo', '.*', '{{ count }}', as_json=True)
         match, _, _ = handler.get_match((TransformerContentType.JSON, response, ), user)
         assert match == '["1", "2"]'
 
-        handler = TestResponseHandlerAction.Dummy('$.hello[?world="bar"].foo', '.*', 2, as_json=False)
+        handler = TestResponseHandlerAction.Dummy('$.hello[?world="bar"].foo', '.*', '2', as_json=False)
         match, _, _ = handler.get_match((TransformerContentType.JSON, response, ), user)
         assert match == '1\n2'
 
@@ -97,7 +98,7 @@ class TestValidationHandlerAction:
         assert not handler.condition
         assert handler.expression == '$.hello.world'
         assert handler.match_with == 'foo'
-        assert handler.expected_matches == 1
+        assert handler.expected_matches == '1'
 
     def test___call___true(self, grizzly_fixture: GrizzlyFixture) -> None:
         TestUser.__scenario__ = grizzly_fixture.grizzly.scenario
@@ -444,7 +445,7 @@ class TestSaveHandlerAction:
         assert handler.variable == 'foobar'
         assert handler.expression == '$.hello.world'
         assert handler.match_with == 'foo'
-        assert handler.expected_matches == 1
+        assert handler.expected_matches == '1'
 
     def test___call__(self, grizzly_fixture: GrizzlyFixture) -> None:
         TestUser.__scenario__ = grizzly_fixture.grizzly.scenario
@@ -615,11 +616,13 @@ class TestSaveHandlerAction:
             300,
         ]
 
+        user._context['variables']['count'] = '-1'
+
         handler = SaveHandlerAction(
             'test_list',
             expression='$.test[?hello="world"].value',
             match_with='.*',
-            expected_matches=-1,
+            expected_matches='{{ count }}',
             as_json=True,
         )
 

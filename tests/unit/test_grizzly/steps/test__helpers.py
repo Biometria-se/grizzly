@@ -369,7 +369,7 @@ def test_add_save_handler(behave_fixture: BehaveFixture, locust_fixture: LocustF
         handler = task.response.handlers.payload[-1]
 
         assert handler.expression == '$.test.value'
-        assert handler.expected_matches == 100
+        assert handler.expected_matches == '100'
         assert not handler.as_json
 
         add_save_handler(grizzly, ResponseTarget.PAYLOAD, '$.test.value | expected_matches=-1, as_json=True', '.*', 'test')
@@ -379,7 +379,7 @@ def test_add_save_handler(behave_fixture: BehaveFixture, locust_fixture: LocustF
         handler = task.response.handlers.payload[-1]
 
         assert handler.expression == '$.test.value'
-        assert handler.expected_matches == -1
+        assert handler.expected_matches == '-1'
         assert handler.as_json
 
         with pytest.raises(ValueError) as ve:
