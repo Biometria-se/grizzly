@@ -197,10 +197,10 @@ def _add_response_handler(
         if len(unsupported_arguments) > 0:
             raise ValueError(f'unsupported arguments {", ".join(unsupported_arguments)}')
 
-        expected_matches = int(arguments.get('expected_matches', '1'))
+        expected_matches = arguments.get('expected_matches', '1')
         as_json = True if arguments.get('as_json', 'False') == 'True' else False
     else:
-        expected_matches = 1
+        expected_matches = '1'
         as_json = False
 
     # latest request

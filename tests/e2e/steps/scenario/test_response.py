@@ -42,7 +42,7 @@ def test_e2e_step_response_save_matches(e2e_fixture: End2EndFixture) -> None:
             assert handler.variable == f'tmp_{index}', f'{handler.variable} != tmp_{index}'
             assert handler.expression == f'{{{{ expression_{index} }}}}', f'{handler.expression} != {{{{ expression_{index} }}}}'
             assert handler.match_with == 'foo.*$', f'{handler.match_with} != foo.*$'
-            assert handler.expected_matches == 1, f'{handler.expected_matches} != 1'
+            assert handler.expected_matches == '1', f'{handler.expected_matches} != 1'
 
     table: List[Dict[str, str]] = []
     scenario: List[str] = []
@@ -112,7 +112,7 @@ def test_e2e_step_response_save(e2e_fixture: End2EndFixture) -> None:
             assert handler.variable == f'tmp_{index}', f'{handler.variable} != tmp_{index}'
             assert handler.expression == f'$.`this`.{attr_name}', f'{handler.expression} != $.`this`.{attr_name}'
             assert handler.match_with == '.*', f'{handler.match_with} != .*'
-            assert handler.expected_matches == 1, f'{handler.expected_matches} != 1'
+            assert handler.expected_matches == f'{{{{ expected_matches_{index} }}}}', f'{handler.expected_matches} != 1'
 
     table: List[Dict[str, str]] = []
     scenario: List[str] = []
@@ -127,10 +127,11 @@ def test_e2e_step_response_save(e2e_fixture: End2EndFixture) -> None:
 
         scenario += [
             f'Given value for variable "tmp_{index}" is "none"',
+            f'And value for variable "expected_matches_{index}" is "1"',
             f'Then get request with name "{target.name.lower()}-handler" from endpoint "/api/echo?foobar=foo | content_type=json"',
             'And metadata "foobar" is "foobar"',
-            f'Then save response {target.name.lower()} "$.`this`.{attr_name} | expected_matches=1" in variable "tmp_{index}"',
-            f'Then log message "tmp_{index}={{{{ tmp_{index} }}}}"',
+            f'Then save response {target.name.lower()} "$.`this`.{attr_name} | expected_matches=\'{{{{ expected_matches_{index} }}}}\'" in variable "tmp_{index}"',
+            f'Then log message "expected_matches_{index}={{{{ expected_matches_{index} }}}}, tmp_{index}={{{{ tmp_{index} }}}}"',
         ]
 
         index += 2
@@ -207,7 +208,7 @@ def test_e2e_step_response_validate(e2e_fixture: End2EndFixture) -> None:
 
             assert handler.expression == '$.hello.world', f'{handler.expression} != $.hello.world'
             assert handler.match_with == 'foo[bar]?', f'{handler.match_with} != foo[bar]?'
-            assert handler.expected_matches == 1, f'{handler.expected_matches} != 1'
+            assert handler.expected_matches == '1', f'{handler.expected_matches} != 1'
 
     table: List[Dict[str, str]] = []
     scenario: List[str] = []
