@@ -17,7 +17,7 @@ from .response_event import ResponseEvent
 class ResponseHandlerAction(ABC):
     grizzly = GrizzlyContext()
 
-    def __init__(self, /, expression: str, match_with: str, expected_matches: int = 1, as_json: bool = False) -> None:
+    def __init__(self, /, expression: str, match_with: str, expected_matches: str = '1', as_json: bool = False) -> None:
         self.expression = expression
         self.match_with = match_with
         self.expected_matches = expected_matches
@@ -49,19 +49,20 @@ class ResponseHandlerAction(ABC):
         '''
         input_content_type, input_payload = input_context
         j2env = self.grizzly.state.jinja2
-        interpolated_expression = j2env.from_string(self.expression).render(user.context_variables)
-        interpolated_match_with = j2env.from_string(self.match_with).render(user.context_variables)
+        rendered_expression = j2env.from_string(self.expression).render(user.context_variables)
+        rendered_match_with = j2env.from_string(self.match_with).render(user.context_variables)
+        rendered_expected_matches = int(j2env.from_string(self.expected_matches).render(user.context_variables))
 
         try:
             transform = transformer.available.get(input_content_type, None)
             if transform is None:
                 raise TypeError(f'could not find a transformer for {input_content_type.name}')
 
-            if not transform.validate(interpolated_expression):
-                raise TypeError(f'"{interpolated_expression}" is not a valid expression for {input_content_type.name}')
+            if not transform.validate(rendered_expression):
+                raise TypeError(f'"{rendered_expression}" is not a valid expression for {input_content_type.name}')
 
-            input_get_values = transform.parser(interpolated_expression)
-            match_get_values = PlainTransformer.parser(interpolated_match_with)
+            input_get_values = transform.parser(rendered_expression)
+            match_get_values = PlainTransformer.parser(rendered_match_with)
 
             values = input_get_values(input_payload)
 
@@ -84,14 +85,14 @@ class ResponseHandlerAction(ABC):
 
         number_of_matches = len(matches)
 
-        if self.expected_matches == -1 and number_of_matches < 1:
-            user.logger.error(f'"{interpolated_expression}": "{interpolated_match_with}" matched no values')
+        if rendered_expected_matches == -1 and number_of_matches < 1:
+            user.logger.error(f'"{rendered_expression}": "{rendered_match_with}" matched no values')
             match = None
-        elif self.expected_matches > -1 and number_of_matches != self.expected_matches:
-            if number_of_matches < self.expected_matches and not condition:
-                user.logger.error(f'"{interpolated_expression}": "{interpolated_match_with}" matched too few values: "{values}"')
-            elif number_of_matches > self.expected_matches:
-                user.logger.error(f'"{interpolated_expression}": "{interpolated_match_with}" matched too many values: "{values}"')
+        elif rendered_expected_matches > -1 and number_of_matches != rendered_expected_matches:
+            if number_of_matches < rendered_expected_matches and not condition:
+                user.logger.error(f'"{rendered_expression}": "{rendered_match_with}" matched too few values: "{values}"')
+            elif number_of_matches > rendered_expected_matches:
+                user.logger.error(f'"{rendered_expression}": "{rendered_match_with}" matched too many values: "{values}"')
 
             match = None
         else:
@@ -106,11 +107,11 @@ class ResponseHandlerAction(ABC):
                 else:
                     match = '\n'.join(matches)
 
-        return match, interpolated_expression, interpolated_match_with
+        return match, rendered_expression, rendered_match_with
 
 
 class ValidationHandlerAction(ResponseHandlerAction):
-    def __init__(self, condition: bool, /, expression: str, match_with: str, expected_matches: int = 1, as_json: bool = False) -> None:
+    def __init__(self, condition: bool, /, expression: str, match_with: str, expected_matches: str = '1', as_json: bool = False) -> None:
         super().__init__(
             expression=expression,
             match_with=match_with,
@@ -139,7 +140,7 @@ class ValidationHandlerAction(ResponseHandlerAction):
 
 
 class SaveHandlerAction(ResponseHandlerAction):
-    def __init__(self, variable: str, /, expression: str, match_with: str, expected_matches: int = 1, as_json: bool = False) -> None:
+    def __init__(self, variable: str, /, expression: str, match_with: str, expected_matches: str = '1', as_json: bool = False) -> None:
         super().__init__(
             expression=expression,
             match_with=match_with,
