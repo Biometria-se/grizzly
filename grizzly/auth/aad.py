@@ -232,6 +232,7 @@ class AAD(RefreshToken):
 
         initialize_uri = auth_user_context.get('initialize_uri', None)
         redirect_uri = auth_user_context.get('redirect_uri', None)
+        provider_url: Optional[str] = None
 
         assert initialize_uri is None or redirect_uri is None, 'both auth.user.initialize_uri and auth.user.redirect_uri is set'
 
@@ -331,7 +332,7 @@ class AAD(RefreshToken):
 
                     is_token_v2_0 = 'v2.0' in response.url
 
-                logger.debug(f'user auth request 1: {response.url} ({response.status_code})')
+                logger.debug(f'user auth request 1: {response.url} ({response.status_code}), {is_token_v2_0=}, {provider_url=}, {initialize_uri=}, {redirect_uri=}')
                 total_response_length += int(response.headers.get('content-length', '0'))
 
                 if response.status_code != 200:
@@ -339,12 +340,14 @@ class AAD(RefreshToken):
 
                 referer = response.url
 
-                config = update_state(state, response)
+                config = _parse_response_config(response)
 
                 exception_message = config.get('strServiceExceptionMessage', None)
 
                 if exception_message is not None and len(exception_message.strip()) > 0:
                     raise RuntimeError(exception_message)
+
+                config = update_state(state, response)
                 # // request 1 -->
 
                 # <!-- request 2
@@ -457,12 +460,14 @@ class AAD(RefreshToken):
                 if response.status_code != 200:
                     raise RuntimeError(f'user auth request 3: {response.url} had unexpected status code {response.status_code}')
 
-                config = update_state(state, response)
+                config = _parse_response_config(response)
 
                 exception_message = config.get('strServiceExceptionMessage', None)
 
                 if exception_message is not None and len(exception_message.strip()) > 0:
                     raise RuntimeError(exception_message)
+
+                config = update_state(state, response)
 
                 user_proofs = config.get('arrUserProofs', [])
 
