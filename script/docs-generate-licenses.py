@@ -2,7 +2,7 @@
 
 import sys
 
-from typing import List, Optional, Dict
+from typing import List, Dict
 from os import path
 from json import loads as jsonloads
 from io import StringIO
@@ -105,38 +105,15 @@ def generate_license_table() -> List[str]:
 
 
 def generate_native_dependencies_section() -> List[str]:
-    with open(path.join(REPO_ROOT, '.devcontainer', 'Dockerfile')) as fd:
-        contents = fd.readlines()
-
-    mq_version: Optional[str] = None
-    mq_url: str
-
-    for line in contents:
-        if mq_version is None and line.startswith('ENV MQ_VERSION'):
-            _, mq_version, _ = line.split('"')
-            continue
-
-        if 'public.dhe.ibm.com' in line:
-            _, mq_url, _ = line.strip().split(' ', 2)
-
-        if 'mcr.microsoft.com' in line:
-            break
-
-    if mq_version is None:
-        print('!! unable to find ENV MQ_VERSION in .devcontainer/Dockerfile')
-        sys.exit(1)
-
-    mq_url = mq_url.replace('${MQ_VERSION}', mq_version)
-
-    section = f'''
+    section = '''
 ### Native dependencies
 
 Container images (both grizzly runtime and Microsoft Visual Code devcontainer) contains dependencies from
-[IBM MQ Redistributable Components](https://www.ibm.com/docs/en/ibm-mq/9.2?topic=information-mq-redistributable-components).
+[IBM MQ Redistributable Components](https://www.ibm.com/docs/en/ibm-mq/9.3?topic=information-mq-redistributable-components).
 
 The redistributable license terms may be found in the relevant IBM MQ Program license agreement, which may be found at the
 [IBM Software License Agreements](https://www.ibm.com/software/sla/sladb.nsf/search/) website, or in `licenses/` directory
-in the [archive]({mq_url}).
+in the [archive](https://ibm.biz/IBM-MQC-Redist-LinuxX64targz).
 '''
 
     return [f'{row.strip()}\n' for row in section.strip().split('\n')]

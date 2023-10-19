@@ -65,7 +65,7 @@ from grizzly_extras.arguments import parse_arguments, split_value, unquote
 
 from grizzly.types import GrizzlyResponse, RequestMethod
 
-from . import GrizzlyMetaRequestTask, template, grizzlytask  # pylint: disable=unused-import
+from . import GrizzlyMetaRequestTask, template as task_template, grizzlytask  # pylint: disable=unused-import
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.scenarios import GrizzlyScenario
@@ -107,7 +107,7 @@ class RequestTaskResponse:
                 self.status_codes.pop(index)
 
 
-@template('name', 'endpoint', 'source', 'arguments', 'metadata')
+@task_template('name', 'endpoint', 'source', 'arguments', 'metadata')
 class RequestTask(GrizzlyMetaRequestTask):
     __rendered__: bool
     method: RequestMethod
