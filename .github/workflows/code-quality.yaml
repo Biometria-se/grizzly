@@ -248,6 +248,10 @@ jobs:
       working-directory: ./docs/_build
       run: find . -type f -name '*.html' | xargs -- grep -nHE '@TODO' | awk 'BEGIN{rc=0} !/^$/ {rc=1; print} END{exit rc}'
 
+    - name: check for unclosed code blocks
+      working-directory: ./docs/_build
+      run: for file in $(find . -type f -name '*.md'); do awk 'BEGIN{count=0} /```/ {count+=1} END{if (count % 2 != 0) { print FILENAME ", contains uneven number of code-block markers"; exit 1;}}' $file || break; done
+
   release-quality:
     name: releasable
     runs-on: 'ubuntu-latest'

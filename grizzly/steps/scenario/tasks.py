@@ -882,6 +882,7 @@ def step_task_keystore_get_default(context: Context, key: str, variable: str, de
     ``` gherkin
     And value for variable "foobar" is "none"
     Then get "foobar" from keystore and save in variable "foobar", with default value "{'hello': 'world'}"
+    ```
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
     if "'" in default_value:
@@ -905,6 +906,7 @@ def step_task_keystore_get(context: Context, key: str, variable: str) -> None:
     ``` gherkin
     And value for variable "foobar" is "none"
     Then get "foobar" from keystore and save in variable "foobar"
+    ```
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
     grizzly.scenario.tasks.add(KeystoreTask(key, 'get', variable))
