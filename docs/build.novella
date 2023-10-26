@@ -1,7 +1,7 @@
 from pathlib import Path
 from grizzly_extras.novella import mkdocs_update_config, preprocess_markdown_update_with_header_levels, generate_dynamic_pages
 
-template "mkdocs"
+template "grizzly-mkdocs"
 
 action "mkdocs-update-config" {
     site_name = "Grizzly"
@@ -26,7 +26,6 @@ action "preprocess-markdown" {
     }
 
     use "pydoc"
-    use "grizzly_extras.novella.GrizzlyMarkdownProcessor"
 }
 
 do
