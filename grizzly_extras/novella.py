@@ -1,12 +1,13 @@
+from __future__ import annotations
 import logging
 import re
 
-from typing import Any, Dict, List, Union, Optional, NamedTuple, Callable, Match, cast
+from typing import Any, Dict, List, Union, Optional, NamedTuple, Callable, Match, Generator, cast
 from pathlib import Path
 from enum import Enum
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from tokenize import tokenize, TokenInfo, TokenError
-from token import OP, STRING
+from token import OP, STRING, NAME
 from io import BytesIO
 from ast import literal_eval
 
@@ -76,15 +77,19 @@ class MarkdownAstType(Enum):
     CODE_BLOCK = 'block_code'
     BLANK_LINE = 'blank_line'
     INLINE_HTML = 'inline_html'
+    BLOCK_HTML = 'block_html'
     LINK = 'link'
     STRONG = 'strong'
     LIST = 'list'
     IMAGE = 'image'
     CODEPSPAN = 'codespan'
     BLOCK_QUOTE = 'block_quote'
+    LIST_ITEM = 'list_item'
+
+    NONE = None
 
     @classmethod
-    def from_value(cls, value: str) -> 'MarkdownAstType':
+    def from_value(cls, value: str) -> MarkdownAstType:
         for enum_value in cls:
             if enum_value.value == value:
                 return enum_value
@@ -92,14 +97,31 @@ class MarkdownAstType(Enum):
         raise ValueError(f'"{value}" is not a valid value of {cls.__name__}')
 
 
+NO_CHILD: Dict[str, Any] = {'type': None, 'raw': None}
+
+
 @dataclass
 class MarkdownAstNode:
     ast: Dict[str, Any]
     index: int
 
+    _first_child: Optional[MarkdownAstNode] = field(init=False, default=None)
+    keep: bool = field(init=False, default=True)
+    condition: Optional[Callable[[MarkdownAstNode], bool]] = field(init=False, default=None)
+
     @property
-    def first_child(self) -> 'MarkdownAstNode':
-        return MarkdownAstNode(self.ast.get('children', [{}])[0], self.index)
+    def first_child(self) -> MarkdownAstNode:
+        if self._first_child is None:
+            for child_node in self.ast.get('children', [NO_CHILD]):
+                child = MarkdownAstNode(child_node, self.index)
+                if child.type != MarkdownAstType.BLANK_LINE:
+                    self._first_child = child
+                    break
+
+            if self._first_child is None:
+                self._first_child = MarkdownAstNode(NO_CHILD, self.index)
+
+        return self._first_child
 
     @property
     def type(self) -> MarkdownAstType:
@@ -113,14 +135,6 @@ class MarkdownAstNode:
 class MarkdownHeading(NamedTuple):
     text: str
     level: int
-
-
-class Continue(Exception):
-    pass
-
-
-class Break(Exception):
-    pass
 
 
 def make_human_readable(input: str) -> str:
@@ -304,17 +318,25 @@ class GrizzlyMarkdownInlineParser(InlineParser):
 class GrizzlyMarkdown:
     _markdown: mistune.Markdown
     _document: MarkdownFile
-    _ast_tree: List[Dict[str, Any]]
+    _ast_tree_original: List[Dict[str, Any]]
+    _ast_tree_modified: List[Dict[str, Any]]
     _index: int
+    ignore_until: Optional[Callable[[MarkdownAstNode], bool]]
 
     def __init__(self, markdown: mistune.Markdown, document: MarkdownFile) -> None:
         self._markdown = markdown
         self._document = document
         self._index = 0
+        self.ignore_until = None
 
     @classmethod
     def _is_anchor(cls, value: str) -> bool:
-        return value.startswith('@anchor')
+        tokens = [token for token in cls._get_tokens(value) if token.type in [OP, NAME, STRING]]
+
+        try:
+            return tokens[0].type == OP and tokens[0].string == '<' and tokens[1].type == NAME and tokens[1].string == 'a' and tokens[-1].type == OP and tokens[-1].string == '>'
+        except IndexError:
+            return False
 
     @classmethod
     def _get_header(cls, node: MarkdownAstNode) -> MarkdownHeading:
@@ -324,24 +346,18 @@ class GrizzlyMarkdown:
         return MarkdownHeading(text, level)
 
     @property
-    def node(self) -> MarkdownAstNode:
-        return MarkdownAstNode(self._ast_tree[self._index], self._index)
+    def index(self) -> int:
+        return self._index
 
-    @property
-    def next_node(self) -> MarkdownAstNode:
-        try:
-            return MarkdownAstNode(self._ast_tree[self._index + 1], self._index + 1)
-        except IndexError:
-            raise Break(self.node)
-
-    def get_node(self, index: int) -> MarkdownAstNode:
-        return MarkdownAstNode(self._ast_tree[index], index)
+    @index.setter
+    def index(self, value: int) -> None:
+        self._index = value
 
     def get_code_block(self, start_node: MarkdownAstNode) -> str:
         code_block = ''
 
-        for index in range(start_node.index + 1, len(self._ast_tree)):
-            node = MarkdownAstNode(self._ast_tree[index], index)
+        for index in range(start_node.index + 1, len(self._ast_tree_original)):
+            node = MarkdownAstNode(self._ast_tree_original[index], index)
 
             if node.type == MarkdownAstType.CODE_BLOCK and node.raw is not None:
                 code_block = node.raw
@@ -362,10 +378,6 @@ class GrizzlyMarkdown:
                 raise
 
         return tokens
-
-    def _remove(self, condition: Callable[[MarkdownAstNode], bool]) -> None:
-        while condition(self.next_node):
-            self._index += 1
 
     @classmethod
     def get_step_expression_from_code_block(cls, code_block: str) -> Optional[str]:
@@ -390,65 +402,102 @@ class GrizzlyMarkdown:
 
         return None
 
-    def _process_content(self, content: str) -> str:
-        self._ast_tree = self._markdown(content)
-        ast_modified: List[Dict[str, Any]] = []
+    def to_ast(self, content: str) -> List[Dict[str, Any]]:
+        return cast(List[Dict[str, Any]], self._markdown(content))
 
-        import json
-
-        if '<condition>' in content:
-            Path('ast.txt').write_text(json.dumps(self._ast_tree, indent=2))
-
-        # logger.info(f'analyzing {len(self._ast_tree)} nodes')
-        while self._index < len(self._ast_tree):
-            try:
-                if self.node.raw is not None and 'condition' in self.node.raw:
-                    print(self.node.ast)
-
-                if self.node.type == MarkdownAstType.PARAGRAPH:
-                    if not self.node.first_child.type == MarkdownAstType.TEXT:
-                        raise Continue()
-
-                    text = self.node.first_child.raw
-
-                    if text is None:
-                        raise Continue()
-
-                    if self._is_anchor(text):
-                        if not self.next_node.type == MarkdownAstType.HEADER:
-                            raise Continue()
-
-                        header = self._get_header(self.next_node)
-
-                        # remove all text under "Class " headers
-                        if header.level == 2 and header.text.startswith('Class '):
-                            def condition(node: MarkdownAstNode) -> bool:
-                                return not node.type == MarkdownAstType.PARAGRAPH and not node.type == MarkdownAstType.HEADER
-
-                            self._remove(condition)
-
-                            raise Continue()
-
-                        # rewrite
-                        code_block = self.get_code_block(self.next_node)
-                        ast_modified.append(self.node.ast)
-                        new_header = self.get_step_expression_from_code_block(code_block)
-
-                        if new_header is not None:
-                            ast_modified.extend(self._markdown(f'{"#" * header.level} {new_header}'))
-            except Continue:
+    def next(self) -> Generator[MarkdownAstNode, None, None]:
+        for index, node_ast in enumerate(self._ast_tree_original):
+            if index < self.index:
                 continue
-            except Break:
+
+            node = MarkdownAstNode(node_ast, index)
+
+            if self.ignore_until is not None:
+                if not self.ignore_until(node):
+                    self.ignore_until = None
+                continue
+
+            self.index = index
+
+            if node.type == MarkdownAstType.BLANK_LINE:
+                self._ast_tree_modified.append(node.ast)
+                continue
+
+            yield node
+
+            if node.keep:
+                self._ast_tree_modified.append(node.ast)
+
+    def peek(self) -> MarkdownAstNode:
+        for index in range(self.index + 1, len(self._ast_tree_original)):
+            node = MarkdownAstNode(self._ast_tree_original[index], self.index + index)
+
+            if node.type != MarkdownAstType.BLANK_LINE:
+                return node
+
+        return MarkdownAstNode(self._ast_tree_original[self.index + 1], self.index + 1)
+
+    def _process_content(self, content: str) -> str:
+        self._ast_tree_original = self.to_ast(content)
+        self._ast_tree_modified: List[Dict[str, Any]] = []
+
+        move_forward = False
+
+        for node in self.next():
+            if not move_forward:
+                if node.type != MarkdownAstType.PARAGRAPH:
+                    continue
+
+                if node.first_child.type != MarkdownAstType.INLINE_HTML:
+                    continue
+
+                text = node.first_child.raw
+
+                if text is None:
+                    continue
+
+                if not self._is_anchor(text):
+                    continue
+
+                next_node = self.peek()
+                if next_node.type != MarkdownAstType.HEADER:
+                    continue
+
+                move_forward = True
+                continue
+            else:
+                move_forward = False
+                header = self._get_header(node)
+
+                # no class documentation, and any methods under it
+                if header.text.startswith('Class '):
+                    def condition(node: MarkdownAstNode) -> bool:
+                        return True
+                    node.keep = False
+                    self.ignore_until = condition
+                    continue
+
+        # remove orphan stuff that might be left in the end
+        index: int
+
+        for index, node_ast in enumerate(reversed(self._ast_tree_modified)):
+            node = MarkdownAstNode(node_ast, -(index - 1))
+
+            if (
+                not node.type == MarkdownAstType.BLANK_LINE
+                and not (
+                    node.type == MarkdownAstType.PARAGRAPH
+                    and node.first_child.type == MarkdownAstType.INLINE_HTML
+                    and self._is_anchor(node.first_child.raw or '')
+                )
+            ):
                 break
-            except IndexError:
-                pass
-            finally:
-                ast_modified.append(self.node.ast)
-                self._index += 1
+
+        self._ast_tree_modified = self._ast_tree_modified[:node.index]
 
         renderer = MarkdownRenderer()
 
-        content = cast(str, renderer(ast_modified, state=BlockState()))
+        content = cast(str, renderer(self._ast_tree_modified, state=BlockState()))
 
         return content
 
@@ -485,4 +534,7 @@ if __name__ == '__main__':
 
     markdown_file = MarkdownFile(Path.cwd() / 'in.md', Path.cwd() / 'out.md', file.read_text())
 
-    GrizzlyMarkdown(markdown=mistune.create_markdown(renderer='ast'), document=markdown_file)()
+    w = GrizzlyMarkdown(markdown=mistune.create_markdown(renderer='ast'), document=markdown_file)
+    w()
+    # import json
+    # print(json.dumps(w.to_ast(file.read_text()), indent=2))
