@@ -19,9 +19,9 @@ def step_task_request_text_with_name_endpoint(context: Context, method: RequestM
     Creates an instance of the {@pylink grizzly.tasks.request} task, where optional payload is defined directly in the feature file.
     See {@pylink grizzly.tasks.request} task documentation for more information about arguments.
 
-    * If `method` in the expression is `get` or `receive`; the `direction` **must** be `from`.
+    * If `Method` in the expression is `get` or `receive`; the `direction` **must** be `from`.
 
-    * If `method` in the expression is `post`, `pust`, or `send`; the `direction` **must** be `to`, and payload defined in the feature file.
+    * If `Method` in the expression is `post`, `pust`, or `send`; the `direction` **must** be `to`, and payload defined in the feature file.
 
     Example:
 
@@ -50,7 +50,7 @@ def step_task_request_text_with_name_endpoint(context: Context, method: RequestM
     ```
 
     Args:
-        method (Method): type of request, either "from" or "to"
+        method (Method): type of request, either of type "from" or "to"
         name (str): name of the requests in logs, can contain variables
         direction (RequestDirection): one of `to` or `from` depending on the value of `method`
         endpoint (str): URI relative to `host` in the scenario, can contain variables and in certain cases `user_class_name` specific parameters

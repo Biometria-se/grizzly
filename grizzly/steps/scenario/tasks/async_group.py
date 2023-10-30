@@ -43,8 +43,8 @@ def step_task_async_group_start(context: Context, name: str) -> None:
 @then(u'close async request group')
 def step_task_async_group_close(context: Context) -> None:
     """
-    Closes the instance created in {@pylink grizzly.steps.scenario.tasks.step_task_async_group_start}, and adds the {@pylink grizzly.tasks.async_group} task to the list of tasks
-    that the scenario is going to execute.
+    Closes the instance created in {@pylink grizzly.steps.scenario.tasks.async_group.step_task_async_group_start}, and adds the {@pylink grizzly.tasks.async_group}
+    task to the list of tasks that the scenario is going to execute.
 
     See {@pylink grizzly.tasks.async_group} task documentation for more information.
 

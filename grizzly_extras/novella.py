@@ -2,7 +2,7 @@ from __future__ import annotations
 import logging
 import re
 
-from typing import Any, Dict, List, Union, Optional, NamedTuple, Callable, Match, Generator, cast
+from typing import Any, Dict, List, Union, Optional, NamedTuple, Callable, Match, Generator, Tuple, cast
 from pathlib import Path
 from enum import Enum
 from dataclasses import dataclass, field
@@ -164,11 +164,14 @@ def make_human_readable(input: str) -> str:
     return output
 
 
-def _create_nav_node(target: List[Union[str, Dict[str, str]]], path: str, node: Path) -> None:
+def _create_nav_node(target: List[Union[str, Dict[str, str]]], path: str, node: Path, with_index: bool = True) -> None:
     if not (node.is_file() and (node.stem == '__init__' or not node.stem.startswith('_'))):
         return
 
     if node.stem == '__init__':
+        if not with_index:
+            return
+
         target.insert(0, f'{path}/index.md')
     else:
         target.append({make_human_readable(node.stem): f'{path}/{node.stem}.md'})
@@ -227,6 +230,13 @@ def mkdocs_update_config(config: Dict[str, Any]) -> None:
         _create_nav_node(nav_steps_scenario, 'framework/usage/steps/scenario', step)
 
     config_nav_steps_scenario['Scenario'] = nav_steps_scenario
+
+    steps_scenario_tasks = steps_scenario / 'tasks'
+    nav_steps_scenario_tasks: List[Union[str, Dict[str, str]]] = []
+    for task in steps_scenario_tasks.iterdir():
+        _create_nav_node(nav_steps_scenario_tasks, 'framework/usage/steps/scenario/tasks', task, with_index=False)
+
+    config_nav_steps_scenario['Scenario'].append({'Tasks': nav_steps_scenario_tasks})
 
 
 def preprocess_markdown_update_with_header_levels(processor: MarkdownPreprocessor, levels: Dict[str, int]) -> None:
@@ -287,6 +297,11 @@ def generate_dynamic_pages(directory: Path) -> None:
     output_path = directory / 'content' / 'framework' / 'usage' / 'steps' / 'scenario'
     for step in steps_scenario.iterdir():
         _generate_dynamic_page(step, output_path, 'Steps / Scenario', 'grizzly.steps.scenario')
+
+    steps_scenario_tasks = steps_scenario / 'tasks'
+    output_path = directory / 'content' / 'framework' / 'usage' / 'steps' / 'scenario' / 'tasks'
+    for task in steps_scenario_tasks.iterdir():
+        _generate_dynamic_page(task, output_path, 'Steps / Scenario / Tasks', 'grizzly.steps.scenario.tasks')
 
     users = root / 'grizzly' / 'users'
     output_path = directory / 'content' / 'framework' / 'usage' / 'load-users'
@@ -392,11 +407,12 @@ class GrizzlyMarkdown:
         return tokens
 
     @classmethod
-    def get_step_expression_from_code_block(cls, code_block: str) -> Optional[str]:
+    def get_step_expression_from_code_block(cls, code_block: str) -> Optional[Tuple[str, str]]:
         tokens = cls._get_tokens(code_block)
 
         for index, token in enumerate(tokens):
             if token.type == OP and token.string == '@':
+                step_type = tokens[index + 1].string
                 future_index = index + 2
                 future_token = tokens[future_index]
 
@@ -408,7 +424,7 @@ class GrizzlyMarkdown:
                 while not (future_token.type == OP and future_token.string == ')') and future_index < len(tokens):
                     future_token = tokens[future_index]
                     if future_token.type == STRING:
-                        return cast(Optional[str], literal_eval(future_token.string))
+                        return (step_type, cast(str, literal_eval(future_token.string)),)
 
                     future_index += 1
 
@@ -438,7 +454,7 @@ class GrizzlyMarkdown:
             yield node
 
             if node.keep:
-                self._ast_tree_modified.append(node.ast)
+                self._ast_tree_modified.insert(node.index, node.ast)
 
     def peek(self) -> MarkdownAstNode:
         for index in range(self.index + 1, len(self._ast_tree_original)):
@@ -570,18 +586,23 @@ class GrizzlyMarkdown:
                     if code_block is None:
                         continue
 
-                    header_new = self.get_step_expression_from_code_block(code_block)
+                    step = self.get_step_expression_from_code_block(code_block)
 
-                    if header_new is not None:
-                        custom_type_pattern = re.compile(r'\{([^:\}]+):([A-Z][^\}]+)\}')
-                        native_type_pattern = re.compile(r'\{([^:\}]+):([a-z][^\}]*?)\}')
-                        if re.findall(custom_type_pattern, header_new):
-                            header_new = re.sub(custom_type_pattern, r'{\2}', header_new)
-
-                        if re.findall(native_type_pattern, header_new):
-                            header_new = re.sub(native_type_pattern, r'{\1}', header_new)
+                    if step is not None:
+                        step_type, step_expression = step
+                        _, _, header_new = header.text.split('_', 2)
+                        header_new = f'{step_type.capitalize()} {header_new.replace("_", " ")}'
 
                         node.ast.update({'children': [{'type': 'text', 'raw': header_new}]})
+                        self._ast_tree_modified.append({
+                            'type': MarkdownAstType.BLOCK_CODE.value,
+                            'raw': f'{step_type.capitalize()} {step_expression}',
+                            'style': 'fenced',
+                            'marker': '```',
+                            'attrs': {
+                                'info': 'gherkin',
+                            }
+                        })
 
         # remove orphan stuff that might be left in the end
         last_node: Optional[MarkdownAstNode] = None
