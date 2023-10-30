@@ -1,4 +1,4 @@
-'''Put files to Azure Blob Storage.
+"""Put files to Azure Blob Storage.
 
 ## Request methods
 
@@ -11,7 +11,7 @@ Supports the following request methods:
 
 Format of `host` is the following:
 
-``` plain
+```plain
 [DefaultEndpointsProtocol=]https;EndpointSuffix=<hostname>;AccountName=<account name>;AccountKey=<account key>
 ```
 
@@ -22,11 +22,11 @@ is either `name` or based on the file name of `source`.
 
 Example of how to use it in a scenario:
 
-``` gherkin
+```gherkin
 Given a user of type "BlobStorage" load testing "DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=examplestorage;AccountKey=xxxyyyyzzz=="
 Then send request "test/blob.file" to endpoint "azure-blobstorage-container-name"
 ```
-'''
+"""
 import os
 
 from typing import Dict, Any, Tuple

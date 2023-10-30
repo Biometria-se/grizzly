@@ -12,7 +12,7 @@ def step_utils_fail(context: Context) -> None:
     """Force a failed scenario. Can be useful when writing a new scenario. The scenario will fail before `locust` has started, so only when
     the scenario is setup.
 
-    ``` gherkin
+    ```gherkin
     Then fail
     ```
     """

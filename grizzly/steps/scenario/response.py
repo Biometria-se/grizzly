@@ -50,7 +50,7 @@ def step_response_save_matches(context: Context, target: ResponseTarget, express
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     # only token is matched and saved in TOKEN, by using regexp match groups
     And value for variable "TOKEN" is "none"
     Then save response metadata "$.Authentication" that matches "Bearer (.*)$" in variabel "TOKEN"
@@ -93,7 +93,7 @@ def step_response_save(context: Context, target: ResponseTarget, expression: str
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     Then save response metadata "$.Authentication" in variable "HEADER_AUTHENTICATION"
 
     Then save response payload "$.Result.ShipmentId" in variable "ShipmentId"
@@ -115,7 +115,7 @@ def step_response_validate(context: Context, target: ResponseTarget, expression:
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     And restart scenario on failure
     When response metadata "$.['content-type']" is not ".*application/json.*" fail request
     When response metadata "$.['x-test-command']" is "abort" fail request
@@ -145,7 +145,7 @@ def step_response_allow_status_codes(context: Context, status_list: str) -> None
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     Then get request with name "test-get-1" from endpoint "/api/test"
     And allow response status "200,302"
 
@@ -182,7 +182,7 @@ def step_response_allow_status_codes_table(context: Context) -> None:
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     Then get request with name "test-get-1" from endpoint "/api/test"
     Then get request with name "test-get-2" from endpoint "/api/test"
     And allow response status
@@ -227,7 +227,7 @@ def step_response_content_type(context: Context, content_type: TransformerConten
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     And set response content type to "json"
     And set response content type to "application/json"
     And set response content type to "xml"

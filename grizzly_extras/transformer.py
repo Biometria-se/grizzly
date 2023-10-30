@@ -1,8 +1,8 @@
-'''
+"""
 @anchor pydoc:grizzly_extras.transformer Transformer
 This modules contains the means to transform a raw string to format that is possible to easy search
 for attributes and their value in.
-'''
+"""
 import re
 
 from abc import ABCMeta

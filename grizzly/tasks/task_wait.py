@@ -1,4 +1,4 @@
-'''
+"""
 @anchor pydoc:grizzly.tasks.task_wait Task Wait
 This task sets the wait time between tasks in a scenario.
 
@@ -25,7 +25,7 @@ This task does not have any request statistics entries.
 * `min_time` _float_ - minimum time to wait
 
 * `max_time` _float_ (optional) - maximum time to wait
-'''
+"""
 from typing import TYPE_CHECKING, Optional, Any
 
 from locust import between, constant

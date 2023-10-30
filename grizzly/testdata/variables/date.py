@@ -1,4 +1,4 @@
-'''
+"""
 @anchor pydoc:grizzly.testdata.variables.date Date
 This variable is used to format and use dates.
 
@@ -15,19 +15,19 @@ at the time of access.
 
 ## Example
 
-``` gherkin
+```gherkin
 And value for variable "AtomicDate.arrival" is "now | format='%Y-%m-%dT%H:%M:%S.000Z', timezone=UTC"
 ```
 
 This can then be used in a template:
 
-``` json
+```json
 {
     "arrival": "{{ AtomicDate.arrival }}",
     "location": "Port of Shanghai"
 }
 ```
-'''
+"""
 from typing import Union, Dict, Any, List, Type, Optional, cast
 from datetime import datetime
 
@@ -37,8 +37,7 @@ from dateutil.relativedelta import relativedelta
 try:
     from zoneinfo import ZoneInfo, ZoneInfoNotFoundError  # pylint: disable=import-error
 except ImportError:
-    # pyright: reportMissingImports=false
-    from backports.zoneinfo import ZoneInfo, ZoneInfoNotFoundError  # type: ignore[no-redef]  # pylint: disable=import-error
+    from backports.zoneinfo import ZoneInfo, ZoneInfoNotFoundError  # type: ignore[no-redef]  # pylint: disable=import-error  # pyright: ignore[reportMissingImports]
 
 from grizzly_extras.arguments import split_value, parse_arguments
 

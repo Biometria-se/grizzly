@@ -7,7 +7,7 @@ This package contains all step implementations needed to write a feature file th
 A feature is described by using [Gherkin](https://cucumber.io/docs/gherkin/reference/). These expressions is then used by `grizzly` to configure and
 start `locust`, which takes care of generating the load.
 
-``` gherkin
+```gherkin
 Feature: description of the test
     Background: steps that are common for all (if there is multiple) scenarios
         Given ...

@@ -1,4 +1,4 @@
-'''
+"""
 @anchor pydoc:grizzly.tasks.request Request
 This task calls the `request` method of a `grizzly.users` implementation.
 
@@ -38,7 +38,7 @@ Executions of this task will be visible in `locust` request statistics with requ
 
 All arguments will be removed from `endpoint` before creating the task instance.
 
-``` plain
+```plain
 <endpoint> [| content_type=<content_type>]
 ```
 
@@ -48,15 +48,14 @@ All arguments will be removed from `endpoint` before creating the task instance.
 
 Specifying MIME/content type as an argument to `endpoint` is the same as using {@pylink grizzly.steps.scenario.response.step_response_content_type}.
 
-``` gherkin
+```gherkin
 Then put request "test/request.j2.json" with name "test-put" to endpoint "/api/test | content_type=json"
 
 # same as
 Then put request "test/request.j2.json" with name "test-put" to endpoint "/api/test"
 And set response content type to "application/json"
 ```
-
-'''
+"""
 from typing import TYPE_CHECKING, Dict, List, Optional, Any
 
 from jinja2.environment import Template

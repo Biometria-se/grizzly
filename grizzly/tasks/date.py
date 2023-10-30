@@ -19,7 +19,7 @@ and saves the result as a date/time string in an variable.
 
 ### `value`
 
-``` plain
+```plain
 <date> [| format=<format>][, timezone=<timezone>][, offset=<offset>]
 ```
 

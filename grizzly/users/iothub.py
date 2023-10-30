@@ -1,4 +1,4 @@
-'''Put files to Azure IoT hub.
+"""Put files to Azure IoT hub.
 
 ## Request methods
 
@@ -11,7 +11,7 @@ Supports the following request methods:
 
 Format of `host` is the following:
 
-``` plain
+```plain
 HostName=<hostname>;DeviceId=<device key>;SharedAccessKey=<access key>
 ```
 
@@ -21,11 +21,11 @@ HostName=<hostname>;DeviceId=<device key>;SharedAccessKey=<access key>
 
 Example of how to use it in a scenario:
 
-``` gherkin
+```gherkin
 Given a user of type "IotHub" load testing "HostName=my_iot_host_name;DeviceId=my_device;SharedAccessKey=xxxyyyyzzz=="
 Then send request "test/blob.file" to endpoint "uploaded_blob_filename"
 ```
-'''
+"""
 
 from typing import Dict, Any, Tuple
 from urllib.parse import urlparse, parse_qs

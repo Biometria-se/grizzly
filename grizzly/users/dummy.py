@@ -1,4 +1,4 @@
-'''Does nothing.
+"""Does nothing.
 
 Can be used with any tasks except {@pylink grizzly.tasks.request}.
 
@@ -10,10 +10,10 @@ Format of `host` can be anything.
 
 Example of how to use it in a scenario:
 
-``` gherkin
+```gherkin
 Given a user of type "Dummy" load testing "/dev/null"
 ```
-'''
+"""
 from typing import Any, Dict, Tuple
 
 from grizzly.types import GrizzlyResponse

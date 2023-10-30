@@ -1,4 +1,4 @@
-'''
+"""
 @anchor pydoc:grizzly.tasks.timer Timer
 This task "wraps" a group of other tasks, that might not have any requests and hence no statistics, to measure
 how long time they took. Request content length for this task in the scenario is number of tasks between starting and
@@ -22,7 +22,7 @@ run.
 ## Arguments
 
 * `name` _str_ - name of the timer
-'''
+"""
 from typing import TYPE_CHECKING, Any
 from hashlib import sha1
 from time import perf_counter

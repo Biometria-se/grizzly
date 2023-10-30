@@ -1,4 +1,4 @@
-'''
+"""
 @anchor pydoc:grizzly.tasks.transformer Transformer
 This task transforms a variable value to a document of correct type, so an expression can be used to extract
 values from the document to be used in another variable.
@@ -26,7 +26,7 @@ then have the request type `TRNSF`.
 * `expression` _str_ - JSON- or XPath expression to extract specific values in `contents`
 
 * `variable` _str_ - name of variable to save value to, must have been intialized
-'''
+"""
 from time import perf_counter
 from typing import TYPE_CHECKING, List, Callable, Any, Type
 

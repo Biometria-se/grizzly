@@ -1,4 +1,4 @@
-'''
+"""
 @anchor pydoc:grizzly.tasks.clients.http HTTP
 This task performs a HTTP request to a specified endpoint.
 
@@ -25,7 +25,7 @@ Only supports `RequestDirection.FROM`.
 To enable authentication for `HttpClientTask` the `auth` context tree has to be correctly set. This is done by using
 {@pylink grizzly.steps.scenario.setup.step_setup_set_context_variable} where the branches are prefixed with `<host>/`, e.g.:
 
-``` gherkin
+```gherkin
 And value for variable "foobar" is "none"
 And value for variable "url" is "https://www.example.com/api/test"
 And set context variable "www.example.com/auth.user.username" to "bob"
@@ -41,7 +41,7 @@ This will make any requests towards `www.example.com` to get a token from `http:
 requests towards `www.example.com`.
 
 For more details, see {@pylink grizzly.auth.aad}.
-'''
+"""
 from typing import Optional, Dict, Any
 from json import dumps as jsondumps
 from time import time

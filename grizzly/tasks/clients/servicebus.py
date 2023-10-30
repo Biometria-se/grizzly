@@ -27,7 +27,7 @@
 
 Value of this is basically the "Connection String" from Azure (without `Endpoint=` prefix), with some additional information.
 
-``` plain
+```plain
 sb://<sbns resource name>.servicebus.windows.net/[queue:<queue name>|topic:<topic name>[/subscription:<subscription name>]][/expression:<expression>];SharedAccessKeyName=<policy name>;SharedAccessKey=<access key>[#[Consume=<consume>][&][MessageWait=<wait>][&][ContentType<content type>]]
 ```
 

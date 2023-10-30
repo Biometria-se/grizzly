@@ -1,4 +1,4 @@
-'''
+"""
 @anchor pydoc:grizzly.testdata.variables.directory_contents Directory Contents
 This variable provides a list of files in the specified directory.
 
@@ -15,7 +15,7 @@ Relative path of a directory under `requests/`.
 
 With the following directory structure:
 
-``` plain
+```plain
 .
 └── requests
     └── files
@@ -26,13 +26,13 @@ With the following directory structure:
         └── file5.bin
 ```
 
-``` gherkin
+```gherkin
 And value for variable "AtomicDirectoryContents.files" is "files/ | repeat=True, random=False"
 And put request "{{ AtomicDirectoryContents.files }}" with name "put-file" to endpoint "/tmp"
 ```
 
 First request will provide `file1.bin`, second `file2.bin` etc.
-'''
+"""
 import os
 
 from typing import Dict, List, Any, Type, Optional, cast

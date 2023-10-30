@@ -1,4 +1,4 @@
-'''
+"""
 @anchor pydoc:grizzly.tasks.set_variable Set variable
 This task sets a testdata variable during runtime.
 
@@ -15,7 +15,7 @@ This task does not have any request statistics entries.
 * `variable` _str_ - name of the variable that should be set
 
 * `value` _value_ - value of the variable being set, must be a template
-'''
+"""
 from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Optional, MutableMapping, Type, cast
 

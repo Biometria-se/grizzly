@@ -1,4 +1,4 @@
-'''
+"""
 @anchor pydoc:grizzly.testdata.variables.integer_incrementer Integer Incrementer
 This variable provides an unique integer each time it is accessed.
 
@@ -16,14 +16,14 @@ The first value of an integer that is going to be used.
 
 ## Example
 
-``` gherkin title="example.feature"
+```gherkin title="example.feature"
 And value for variable "AtomicIntegerIncrementer.unique_id" is "100 | step=10"
 And value for variable "AtomicIntegerIncrementer.persistent" is "10 | step=5, persist=True"
 ```
 
 This can then be used in a template:
 
-``` json
+```json
 {
     "id": {{ AtomicIntegerIncrementer.unique_id }}
 }
@@ -73,7 +73,7 @@ value `35 | step=5, persist=True` will be read from the file and override what i
     3. `35`
 
     4. ...
-'''
+"""
 from typing import Union, Dict, Any, Type, Optional, cast
 
 from grizzly_extras.arguments import split_value, parse_arguments

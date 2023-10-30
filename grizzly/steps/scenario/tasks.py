@@ -40,7 +40,7 @@ def step_task_request_with_name_endpoint_until(context: Context, method: Request
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     Then get request with name "test-get" from endpoint "/api/test | content_type=json" until "$.`this`[?success==true]"
     Then receive request with name "test-receive" from endpoint "queue:receive-queue | content_type=xml" until "/header/success[. == 'True']"
     ```
@@ -86,7 +86,7 @@ def step_task_request_text_with_name_endpoint(context: Context, method: RequestM
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     Then post request with name "test-post" to endpoint "/api/test"
         \"\"\"
         {
@@ -138,7 +138,7 @@ def step_task_request_file_with_name_endpoint(context: Context, method: RequestM
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     Then send request "test/request.j2.json" with name "test-send" to endpoint "queue:receive-queue"
     Then post request "test/request.j2.json" with name "test-post" to endpoint "/api/test"
     Then put request "test/request.j2.json" with name "test-put" to endpoint "/api/test"
@@ -166,7 +166,7 @@ def step_task_request_file_with_name(context: Context, method: RequestMethod, so
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     Then post request "test/request1.j2.json" with name "test-post1" to endpoint "/api/test"
     Then post request "test/request2.j2.json" with name "test-post2"
 
@@ -198,7 +198,7 @@ def step_task_request_text_with_name(context: Context, method: RequestMethod, na
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     # example-1
     Then post request with name "test-post-1" to endpoint "/api/test"
         \"\"\"
@@ -259,7 +259,7 @@ def step_task_wait_seconds(context: Context, wait_time_expression: str) -> None:
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     And ask for value of variable "wait_time"
     And wait "1.5..2.5" seconds between tasks
     ...
@@ -296,7 +296,7 @@ def step_task_log_message(context: Context, message: str) -> None:
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     And log message "context_variable='{{ context_variable }}'
     ```
 
@@ -318,7 +318,7 @@ def step_task_transform(context: Context, content: str, content_type: Transforme
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     And value for variable "document_id" is "None"
     And value for variable "document_title" is "None"
     And value for variable "document" is "{\"document\": {\"id\": \"DOCUMENT_8843-1\", \"title\": \"TPM Report 2021\"}}"
@@ -355,7 +355,7 @@ def step_task_client_get_endpoint_payload_metadata(context: Context, endpoint: s
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     Then get "https://www.example.org/example.json" with name "example-1" and save response payload in "example_openapi" and metadata in "example_metadata"
     Then get "http://{{ endpoint }}" with name "example-2" and save response payload in "endpoint_result" and metadata in "result_metadata"
     ```
@@ -389,7 +389,7 @@ def step_task_client_get_endpoint_payload(context: Context, endpoint: str, name:
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     Then get "https://www.example.org/example.json" with name "example-1" and save response payload in "example_openapi"
     Then get "http://{{ endpoint }}" with name "example-2" and save response payload in "endpoint_result"
     ```
@@ -422,7 +422,7 @@ def step_task_client_get_endpoint_until(context: Context, endpoint: str, name: s
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     Then get "https://www.example.org/example.json" with name "example-1" until "$.response[status='Success']
     Then get "http://{{ endpoint }}" with name "example-2" until "//*[@status='Success']"
     ```
@@ -459,7 +459,7 @@ def step_task_client_put_endpoint_file_destination(context: Context, source: str
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     Then put "test-file.json" to "bs://my-storage?AccountKey=aaaabbb=&Container=my-container" with name "upload-file" as "uploaded-test-file.json"
     ```
 
@@ -494,7 +494,7 @@ def step_task_client_put_endpoint_file(context: Context, source: str, endpoint: 
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     Then put "test-file.json" to "bs://my-storage?AccountKey=aaaabbb=&Container=my-container" with name "upload-file"
     ```
 
@@ -529,7 +529,7 @@ def step_task_date(context: Context, value: str, variable: str) -> None:
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     ...
     And value for variable "date1" is "none"
     And value for variable "date2" is "none"
@@ -564,7 +564,7 @@ def step_task_async_group_start(context: Context, name: str) -> None:
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     Given an async request group with name "async-group-1"
     Then post request with name "test-post-2" to endpoint "/api/test"
         \"\"\"
@@ -596,7 +596,7 @@ def step_task_async_group_close(context: Context) -> None:
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     Given an async request group with name "async-group-1"
     Then post request with name "test-post-2" to endpoint "/api/test"
         \"\"\"
@@ -630,7 +630,7 @@ def step_task_timer_start(context: Context, name: str) -> None:
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     Then start timer with name "parsing-xml"
     ...
     And stop timer with name "parsing-xml"
@@ -657,7 +657,7 @@ def step_task_timer_stop(context: Context, name: str) -> None:
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     Then start timer with name "parsing-xml"
     ...
     And stop timer with name "parsing-xml"
@@ -683,7 +683,7 @@ def step_task_wait_between(context: Context, min_time: float, max_time: float) -
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     And wait "1.4..1.7" seconds between tasks
     # wait between 1.4 and 1.7 seconds
     Then get request with name "test-get-1" from endpoint "..."
@@ -714,7 +714,7 @@ def step_task_wait_constant(context: Context, time: float) -> None:
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     And wait "1.4" seconds between tasks
     # wait 1.4 seconds
     Then get request with name "test-get-1" from endpoint "..."
@@ -742,7 +742,7 @@ def step_task_conditional_if(context: Context, condition: str, name: str) -> Non
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     When condition "{{ value | int > 0 }}" with name "value-conditional" is true, execute these tasks
     Then get request with name "get-when-true" from endpoint "/api/true"
     Then parse date "2022-01-17 12:21:37 | timezone=UTC, format="%Y-%m-%dT%H:%M:%S.%f", offset=1D" and save in variable "date1"
@@ -772,7 +772,7 @@ def step_task_conditional_else(context: Context) -> None:
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     When condition "{{ value | int > 0 }}" with name "value-conditional" is true, execute these tasks
     Then get request with name "get-when-true" from endpoint "/api/true"
     Then parse date "2022-01-17 12:21:37 | timezone=UTC, format="%Y-%m-%dT%H:%M:%S.%f", offset=1D" and save in variable "date1"
@@ -798,7 +798,7 @@ def step_task_conditional_end(context: Context) -> None:
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     When condition "{{ value | int > 0 }}" with name "value-conditional" is true, execute these tasks
     Then get request with name "get-when-true" from endpoint "/api/true"
     Then parse date "2022-01-17 12:21:37 | timezone=UTC, format="%Y-%m-%dT%H:%M:%S.%f", offset=1D" and save in variable "date1"
@@ -826,7 +826,7 @@ def step_task_loop_start(context: Context, values: str, variable: str, name: str
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     Then loop "{{ loop_values }}" as variable "loop_value" with name "test-loop"
     Then log message "loop_value={{ loop_value }}"
     Then end loop
@@ -854,7 +854,7 @@ def step_task_loop_end(context: Context) -> None:
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     Then loop "{{ loop_values }}" as variable "loop_value" with name "test-loop"
     Then log message "loop_value={{ loop_value }}"
     Then end loop
@@ -879,7 +879,7 @@ def step_task_keystore_get_default(context: Context, key: str, variable: str, de
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     And value for variable "foobar" is "none"
     Then get "foobar" from keystore and save in variable "foobar", with default value "{'hello': 'world'}"
     ```
@@ -903,7 +903,7 @@ def step_task_keystore_get(context: Context, key: str, variable: str) -> None:
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     And value for variable "foobar" is "none"
     Then get "foobar" from keystore and save in variable "foobar"
     ```
@@ -921,7 +921,7 @@ def step_task_keystore_set(context: Context, key: str, value: str) -> None:
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     And value for variable "foobar" is "{'hello': 'world'}"
     Then set "foobar" in keystore with value "{{ foobar }}"
     ```

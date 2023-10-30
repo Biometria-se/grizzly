@@ -1,4 +1,4 @@
-'''
+"""
 @anchor pydoc:grizzly.testdata.variables.csv_writer CSV Writer
 This variable writes to a CSV file.
 
@@ -17,13 +17,12 @@ Value is the path, relative to `requests/`, of an file ending with `.csv`.
 
 ## Example
 
-``` gherkin
+```gherkin
 And value for variable "AtomicCsvWriter.output" is "output.csv | headers='foo,bar'"
 ...
 And value for variable "AtomicCsvWriter.output" is "{{ foo_value }}, {{ bar_value }}"
 ```
-
-'''
+"""
 import os
 
 from typing import Dict, Any, Type, Optional, cast

@@ -1,4 +1,4 @@
-'''
+"""
 @anchor pydoc:grizzly.tasks.wait Wait
 This task executes a `gevent.sleep` and is used to manually create delays between steps in a scenario.
 
@@ -9,7 +9,7 @@ This task executes a `gevent.sleep` and is used to manually create delays betwee
 ## Arguments
 
 * `time_expression` _str_ - float as string or a {@pydocfractions of seconds to excplicitly sleep in the scenario
-'''
+"""
 from typing import TYPE_CHECKING, Any
 
 from gevent import sleep as gsleep

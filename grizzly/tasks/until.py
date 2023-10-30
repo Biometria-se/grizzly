@@ -27,7 +27,7 @@ ordinary {@pylink grizzly.tasks.request} or {@pylink grizzly.tasks.clients} task
 
 ### `condition`
 
-``` plain
+```plain
 <expression> [| [retries=<retries>][, wait=<wait>][, expected_matches=<expected_matches>]]
 ```
 
@@ -38,7 +38,6 @@ ordinary {@pylink grizzly.tasks.request} or {@pylink grizzly.tasks.clients} task
 * `wait` _float_ (optional) - number of seconds to wait between retries (default `1.0`)
 
 * `expected_matches` _int_ (optional): number of matches that the expression should match (default `1`)
-
 """
 import json
 import logging
