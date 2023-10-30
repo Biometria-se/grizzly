@@ -46,7 +46,7 @@ def step_task_request_with_name_endpoint_until(context: Context, method: Request
     ```
 
     Args:
-        method (RequestMethod): type of request
+        method (Method): type of "from" request
         name (str): name of the requests in logs, can contain variables
         direction (RequestDirection): one of `to` or `from` depending on the value of `method`
         endpoint (str): URI relative to `host` in the scenario, can contain variables and in certain cases `user_class_name` specific parameters
@@ -111,7 +111,7 @@ def step_task_request_text_with_name_endpoint(context: Context, method: RequestM
     ```
 
     Args:
-        method (RequestMethod): type of request
+        method (Method): type of request, either "from" or "to"
         name (str): name of the requests in logs, can contain variables
         direction (RequestDirection): one of `to` or `from` depending on the value of `method`
         endpoint (str): URI relative to `host` in the scenario, can contain variables and in certain cases `user_class_name` specific parameters
@@ -145,7 +145,7 @@ def step_task_request_file_with_name_endpoint(context: Context, method: RequestM
     ```
 
     Args:
-        method (RequestMethod): type of request
+        method (Method): type of "to" request
         source (str): path to a template file relative to the directory `requests/`, which **must** exist in the directory the feature file is located
         name (str): name of the requests in logs, can contain variables
         endpoint (str): URI relative to `host` in the scenario, can contain variables and in certain cases `user_class_name` specific parameters
@@ -176,7 +176,7 @@ def step_task_request_file_with_name(context: Context, method: RequestMethod, so
     ```
 
     Args:
-        method (RequestMethod): type of request
+        method (Method): type of "to" request
         source (str): path to a template file relative to the directory `requests/`, which **must** exist in the directory the feature file is located
         name (str): name of the requests in logs, can contain variables
     """
@@ -237,7 +237,7 @@ def step_task_request_text_with_name(context: Context, method: RequestMethod, na
     ```
 
     Args:
-        method (RequestMethod): type of request
+        method (Method): type of request, either "from" or "to"
         name (str): name of the requests in logs, can contain variables
     """
 

@@ -73,7 +73,7 @@ def step_response_save_matches(context: Context, target: ResponseTarget, express
     ```
 
     Args:
-        target (enum): "metadata" or "payload", depending on which part of the response should be used
+        target (ResponseTarget): `metadata` or `payload`, depending on which part of the response should be used
         expression (str): JSON path or XPath expression for finding the property
         match_with (str): static value or a regular expression
         variable (str): name of the already initialized variable to save the value in
@@ -102,7 +102,7 @@ def step_response_save(context: Context, target: ResponseTarget, expression: str
     ```
 
     Args:
-        target (enum): "metadata" or "payload", depending on which part of the response should be used
+        target (ResponseTarget): `metadata` or `payload`, depending on which part of the response should be used
         expression (str): JSON path or XPath expression for finding the property
         variable (str): name of the already initialized variable to save the value in
     """
@@ -128,7 +128,7 @@ def step_response_validate(context: Context, target: ResponseTarget, expression:
     ```
 
     Args:
-        target (enum): "metadata" or "payload", depending on which part of the response should be used
+        target (ResponseTarget): `metadata` or `payload`, depending on which part of the response should be used
         expression (str): JSON path or XPath expression for finding the property
         condition (enum): "is" or "is not" depending on negative or postive matching
         match_with (str): static value or a regular expression
@@ -237,7 +237,7 @@ def step_response_content_type(context: Context, content_type: TransformerConten
     ```
 
     Args:
-        content_type (TransformerContentType): expected content type of response
+        content_type (ContentType): expected content type of response
     """
 
     assert content_type != TransformerContentType.UNDEFINED, 'It is not allowed to set UNDEFINED with this step'

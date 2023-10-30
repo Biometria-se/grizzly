@@ -74,10 +74,11 @@ class MarkdownAstType(Enum):
     TEXT = 'text'
     PARAGRAPH = 'paragraph'
     HEADER = 'heading'
-    CODE_BLOCK = 'block_code'
     BLANK_LINE = 'blank_line'
     INLINE_HTML = 'inline_html'
     BLOCK_HTML = 'block_html'
+    BLOCK_TEXT = 'block_text'
+    BLOCK_CODE = 'block_code'
     LINK = 'link'
     STRONG = 'strong'
     LIST = 'list'
@@ -85,6 +86,8 @@ class MarkdownAstType(Enum):
     CODEPSPAN = 'codespan'
     BLOCK_QUOTE = 'block_quote'
     LIST_ITEM = 'list_item'
+    SOFTBREAK = 'softbreak'
+    EMPHASIS = 'emphasis'
 
     NONE = None
 
@@ -122,6 +125,11 @@ class MarkdownAstNode:
                 self._first_child = MarkdownAstNode(NO_CHILD, self.index)
 
         return self._first_child
+
+    def get_child(self, index: int) -> MarkdownAstNode:
+        child_node = self.ast.get('children', [])[index]
+
+        return MarkdownAstNode(child_node, self.index)
 
     @property
     def type(self) -> MarkdownAstType:
@@ -353,15 +361,19 @@ class GrizzlyMarkdown:
     def index(self, value: int) -> None:
         self._index = value
 
-    def get_code_block(self, start_node: MarkdownAstNode) -> str:
-        code_block = ''
+    def get_code_block(self, start_node: MarkdownAstNode) -> Optional[str]:
+        code_block: Optional[str] = None
 
         for index in range(start_node.index + 1, len(self._ast_tree_original)):
             node = MarkdownAstNode(self._ast_tree_original[index], index)
 
-            if node.type == MarkdownAstType.CODE_BLOCK and node.raw is not None:
+            # do not look beyond next header
+            if node.type == MarkdownAstType.HEADER:
+                break
+
+            if node.type == MarkdownAstType.BLOCK_CODE and node.raw is not None:
                 code_block = node.raw
-                self.index = index
+                self.index = index + 1
                 break
 
         return code_block
@@ -407,10 +419,10 @@ class GrizzlyMarkdown:
 
     def next(self) -> Generator[MarkdownAstNode, None, None]:
         for index, node_ast in enumerate(self._ast_tree_original):
+            node = MarkdownAstNode(node_ast, index)
+
             if index < self.index:
                 continue
-
-            node = MarkdownAstNode(node_ast, index)
 
             if self.ignore_until is not None:
                 if not self.ignore_until(node):
@@ -437,13 +449,86 @@ class GrizzlyMarkdown:
 
         return MarkdownAstNode(self._ast_tree_original[self.index + 1], self.index + 1)
 
+    @classmethod
+    def ast_reformat_block_code(cls, node: MarkdownAstNode) -> MarkdownAstNode:
+        if node.type == MarkdownAstType.BLOCK_CODE and node.raw is not None and node.raw.startswith('```'):
+            style = node.ast.get('style', 'indent')
+            if style == 'indent':
+                indent = '    '
+            else:
+                indent = ''
+            code_lines = [f'{indent}{line}' for line in node.raw.splitlines()]
+            raw = '\n'.join(code_lines[1:-1])
+            marker = code_lines[-1].strip()
+            _, info = code_lines[0].split(marker, 1)
+            node.ast = {
+                'type': 'block_code',
+                'raw': raw,
+                'style': 'indent',
+                'marker': f'{indent}{marker}',
+                'attrs': {
+                    'info': info.strip(),
+                },
+            }
+
+        return node
+
+    @classmethod
+    def ast_reformat_admonitions(cls, node: MarkdownAstNode) -> MarkdownAstNode:
+        if node.type == MarkdownAstType.PARAGRAPH and (node.first_child.raw or '').startswith('!!!'):
+            indent_next = False
+            for index, child_ast in enumerate(node.ast.get('children', [])):
+                if index == 0:
+                    continue
+
+                child = MarkdownAstNode(child_ast, node.index)
+                if child.type == MarkdownAstType.SOFTBREAK:
+                    indent_next = True
+                    continue
+
+                if indent_next and child.type == MarkdownAstType.TEXT and child.raw is not None:
+                    child.ast['raw'] = f'    {child.raw}'
+                    node.ast['children'][index] = child.ast
+                    indent_next = False
+
+        return node
+
+    @classmethod
+    def ast_reformat_recursive(cls, node: MarkdownAstNode, func: Callable[[MarkdownAstNode], MarkdownAstNode]) -> MarkdownAstNode:
+        node = func(node)
+        for i, child_ast in enumerate(node.ast.get('children', [])):
+            child = func(MarkdownAstNode(child_ast, node.index))
+
+            for j, grand_child_ast in enumerate(child.ast.get('children', [])):
+                grand_child = func(MarkdownAstNode(grand_child_ast, node.index))
+
+                if grand_child.ast != grand_child_ast:
+                    child.ast['children'][j] = grand_child.ast
+
+            if child.ast != child_ast:
+                node.ast['children'][i] = child.ast
+
+        return node
+
     def _process_content(self, content: str) -> str:
         self._ast_tree_original = self.to_ast(content)
         self._ast_tree_modified: List[Dict[str, Any]] = []
 
+        single_docstring_class = content.count('## Class ') <= 1
+
         move_forward = False
 
         for node in self.next():
+            # <!-- work around for indented code blocks
+            # mkdocs material `===` messes up ast parser, let's trick the renderer
+            # so it works
+            node = self.ast_reformat_recursive(node, self.ast_reformat_block_code)
+            # // -->
+
+            # <!-- workaround for admonitions (!!!)
+            node = self.ast_reformat_recursive(node, self.ast_reformat_admonitions)
+            # // -->
+
             if not move_forward:
                 if node.type != MarkdownAstType.PARAGRAPH:
                     continue
@@ -471,17 +556,38 @@ class GrizzlyMarkdown:
 
                 # no class documentation, and any methods under it
                 if header.text.startswith('Class '):
-                    def condition(node: MarkdownAstNode) -> bool:
-                        return True
-                    node.keep = False
-                    self.ignore_until = condition
-                    continue
+                    if single_docstring_class:
+                        def condition(_: MarkdownAstNode) -> bool:
+                            return True
+
+                        node.keep = False
+                        self.ignore_until = condition
+                        continue
+
+                # rewrite headers for step implementation, replace function name with step expression
+                if header.text.startswith('step'):
+                    code_block = self.get_code_block(node)
+                    if code_block is None:
+                        continue
+
+                    header_new = self.get_step_expression_from_code_block(code_block)
+
+                    if header_new is not None:
+                        custom_type_pattern = re.compile(r'\{([^:\}]+):([A-Z][^\}]+)\}')
+                        native_type_pattern = re.compile(r'\{([^:\}]+):([a-z][^\}]*?)\}')
+                        if re.findall(custom_type_pattern, header_new):
+                            header_new = re.sub(custom_type_pattern, r'{\2}', header_new)
+
+                        if re.findall(native_type_pattern, header_new):
+                            header_new = re.sub(native_type_pattern, r'{\1}', header_new)
+
+                        node.ast.update({'children': [{'type': 'text', 'raw': header_new}]})
 
         # remove orphan stuff that might be left in the end
-        index: int
+        last_node: Optional[MarkdownAstNode] = None
 
         for index, node_ast in enumerate(reversed(self._ast_tree_modified)):
-            node = MarkdownAstNode(node_ast, -(index - 1))
+            node = MarkdownAstNode(node_ast, -index)
 
             if (
                 not node.type == MarkdownAstType.BLANK_LINE
@@ -491,9 +597,11 @@ class GrizzlyMarkdown:
                     and self._is_anchor(node.first_child.raw or '')
                 )
             ):
+                last_node = node
                 break
 
-        self._ast_tree_modified = self._ast_tree_modified[:node.index]
+        if last_node is not None and last_node.index < 0:
+            self._ast_tree_modified = self._ast_tree_modified[:last_node.index]
 
         renderer = MarkdownRenderer()
 

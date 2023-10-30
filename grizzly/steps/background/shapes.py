@@ -1,7 +1,7 @@
-'''
+"""
 @anchor pydoc:grizzly.steps.background.shapes Shapes
 This module contains step implementations that describes how the load for all scenarios in a feature will look like.
-'''
+"""
 from typing import Any, Dict, cast
 
 import parse
@@ -27,7 +27,7 @@ register_type(
 
 @given(u'"{value}" {grammar:UserGramaticalNumber}')
 def step_shapes_user_count(context: Context, value: str, **kwargs: Dict[str, Any]) -> None:
-    '''Set number of users that will generate load.
+    """Set number of users that will generate load.
 
     ``` gherkin
     Given "5" users
@@ -37,7 +37,8 @@ def step_shapes_user_count(context: Context, value: str, **kwargs: Dict[str, Any
 
     Args:
         user_count (int): Number of users locust should create
-    '''
+        grammar (UserGramaticalNumber): one of `user`, `users`
+    """
     grizzly = cast(GrizzlyContext, context.grizzly)
     assert value[0] != '$', 'this expression does not support $conf or $env variables'
     user_count = max(int(round(float(resolve_variable(grizzly, value)), 0)), 1)
@@ -55,7 +56,7 @@ def step_shapes_user_count(context: Context, value: str, **kwargs: Dict[str, Any
 
 @given(u'spawn rate is "{value}" {grammar:UserGramaticalNumber} per second')
 def step_shapes_spawn_rate(context: Context, value: str, **kwargs: Dict[str, Any]) -> None:
-    '''Set rate in which locust shall swarm new user instances.
+    """Set rate in which locust shall swarm new user instances.
 
     ``` gherkin
     And spawn rate is "5" users per second
@@ -65,7 +66,8 @@ def step_shapes_spawn_rate(context: Context, value: str, **kwargs: Dict[str, Any
 
     Args:
         spawn_rate (float): number of users per second
-    '''
+        grammar (UserGramaticalNumber): one of `user`, `users`
+    """
     assert isinstance(value, str), f'{value} is not a string'
     assert value[0] != '$', 'this expression does not support $conf or $env variables'
     grizzly = cast(GrizzlyContext, context.grizzly)
