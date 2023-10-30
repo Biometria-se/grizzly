@@ -12,9 +12,9 @@ random wait between (and including) `min_time` and `max_time` between tasks.
 
 ## Step implementations
 
-* {@pylink grizzly.steps.scenario.tasks.step_task_wait_constant}
+* {@pylink grizzly.steps.scenario.tasks.wait_between.step_task_wait_constant}
 
-* {@pylink grizzly.steps.scenario.tasks.step_task_wait_between}
+* {@pylink grizzly.steps.scenario.tasks.wait_between.step_task_wait_between}
 
 ## Statistics
 
@@ -36,7 +36,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from grizzly.scenarios import GrizzlyScenario
 
 
-class TaskWaitTask(GrizzlyTask):
+class WaitBetweenTask(GrizzlyTask):
     min_time: float
     max_time: Optional[float]
 

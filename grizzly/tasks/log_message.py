@@ -5,7 +5,7 @@ This task calls the `grizzly` logger to print a log message at level `INFO`. It 
 
 ## Step implementations
 
-* {@pylink grizzly.steps.scenario.tasks.step_task_log_message}
+* {@pylink grizzly.steps.scenario.tasks.log_message.step_task_log_message}
 
 ## Statistics
 

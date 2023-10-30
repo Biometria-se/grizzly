@@ -12,11 +12,11 @@ The {@pylink grizzly.steps.scenario.tasks.step_task_conditional_else} step expre
 
 ## Step implementations
 
-* {@pylink grizzly.steps.scenario.tasks.step_task_conditional_if}
+* {@pylink grizzly.steps.scenario.tasks.conditional.step_task_conditional_if}
 
-* {@pylink grizzly.steps.scenario.tasks.step_task_conditional_else} (optional)
+* {@pylink grizzly.steps.scenario.tasks.conditional.step_task_conditional_else} (optional)
 
-* {@pylink grizzly.steps.scenario.tasks.step_task_conditional_end}
+* {@pylink grizzly.steps.scenario.tasks.conditional.step_task_conditional_end}
 
 ## Statistics
 

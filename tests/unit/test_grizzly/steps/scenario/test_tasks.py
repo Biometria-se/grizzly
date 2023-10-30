@@ -8,7 +8,7 @@ from json import dumps as jsondumps
 from grizzly.context import GrizzlyContext
 from grizzly.types import RequestMethod, RequestDirection
 from grizzly.types.behave import Table, Row
-from grizzly.tasks import TransformerTask, LogMessageTask, WaitTask, TimerTask, TaskWaitTask, ConditionalTask, KeystoreTask
+from grizzly.tasks import TransformerTask, LogMessageTask, ExplicitWaitTask, TimerTask, WaitBetweenTask, ConditionalTask, KeystoreTask
 from grizzly.tasks.clients import HttpClientTask
 from grizzly.steps import *  # pylint: disable=unused-wildcard-import  # noqa: F403
 
@@ -241,7 +241,7 @@ def test_step_task_wait_seconds(behave_fixture: BehaveFixture) -> None:
     step_task_wait_seconds(behave, '1.337')
 
     task = grizzly.scenario.tasks()[-1]
-    assert isinstance(task, WaitTask)
+    assert isinstance(task, ExplicitWaitTask)
     assert task.time_expression == '1.337'
 
     grizzly.state.variables['wait_time'] = '126'
@@ -249,7 +249,7 @@ def test_step_task_wait_seconds(behave_fixture: BehaveFixture) -> None:
     step_task_wait_seconds(behave, '{{ wait_time }}')
 
     task = grizzly.scenario.tasks()[-1]
-    assert isinstance(task, WaitTask)
+    assert isinstance(task, ExplicitWaitTask)
     assert task.time_expression == '{{ wait_time }}'
 
 
@@ -726,7 +726,7 @@ def test_step_task_request_wait_between(behave_fixture: BehaveFixture) -> None:
 
     assert len(grizzly.scenario.tasks()) == 1
 
-    task = cast(TaskWaitTask, grizzly.scenario.tasks()[-1])
+    task = cast(WaitBetweenTask, grizzly.scenario.tasks()[-1])
     assert task.min_time == 1.4
     assert task.max_time == 1.7
 
@@ -734,7 +734,7 @@ def test_step_task_request_wait_between(behave_fixture: BehaveFixture) -> None:
 
     assert len(grizzly.scenario.tasks()) == 2
 
-    task = cast(TaskWaitTask, grizzly.scenario.tasks()[-1])
+    task = cast(WaitBetweenTask, grizzly.scenario.tasks()[-1])
     assert task.min_time == 20
     assert task.max_time == 30
 
@@ -750,7 +750,7 @@ def test_step_task_wait_constant(behave_fixture: BehaveFixture) -> None:
 
     assert len(grizzly.scenario.tasks()) == 1
 
-    task = cast(TaskWaitTask, grizzly.scenario.tasks()[-1])
+    task = cast(WaitBetweenTask, grizzly.scenario.tasks()[-1])
     assert task.min_time == 10
     assert task.max_time is None
 

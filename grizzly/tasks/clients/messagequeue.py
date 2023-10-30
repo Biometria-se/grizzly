@@ -12,11 +12,11 @@ pip3 install grizzly-loadtester[mq]
 
 ## Step implementations
 
-* {@pylink grizzly.steps.scenario.tasks.step_task_client_get_endpoint_payload}
+* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_get_endpoint_payload}
 
-* {@pylink grizzly.steps.scenario.tasks.step_task_client_get_endpoint_payload_metadata}
+* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_get_endpoint_payload_metadata}
 
-* {@pylink grizzly.steps.scenario.tasks.step_task_client_put_endpoint_file}
+* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_put_endpoint_file}
 
 ## Arguments
 

@@ -6,7 +6,7 @@ Only supports `RequestDirection.TO`.
 
 ## Step implementations
 
-* {@pylink grizzly.steps.scenario.tasks.step_task_client_put_endpoint_file_destination}
+* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_put_endpoint_file_destination}
 
 ## Arguments
 

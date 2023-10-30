@@ -9,9 +9,9 @@ and logs the "response time" in the `locust` statistics.
 
 ## Step implementations
 
-* {@pylink grizzly.steps.scenario.tasks.step_task_timer_start}
+* {@pylink grizzly.steps.scenario.tasks.timer.step_task_timer_start}
 
-* {@pylink grizzly.steps.scenario.tasks.step_task_timer_stop}
+* {@pylink grizzly.steps.scenario.tasks.timer.step_task_timer_stop}
 
 ## Statistics
 

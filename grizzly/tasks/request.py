@@ -10,13 +10,13 @@ steps is going to be used.
 
 ## Step implementations
 
-* {@pylink grizzly.steps.scenario.tasks.step_task_request_text_with_name_endpoint}
+* {@pylink grizzly.steps.scenario.tasks.request.step_task_request_text_with_name_endpoint}
 
-* {@pylink grizzly.steps.scenario.tasks.step_task_request_file_with_name_endpoint}
+* {@pylink grizzly.steps.scenario.tasks.request.step_task_request_file_with_name_endpoint}
 
-* {@pylink grizzly.steps.scenario.tasks.step_task_request_file_with_name}
+* {@pylink grizzly.steps.scenario.tasks.request.step_task_request_file_with_name}
 
-* {@pylink grizzly.steps.scenario.tasks.step_task_request_text_with_name}
+* {@pylink grizzly.steps.scenario.tasks.request.step_task_request_text_with_name}
 
 ## Statistics
 

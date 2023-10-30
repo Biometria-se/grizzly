@@ -7,9 +7,9 @@ will be wrapped in this instance and executed for all values in the provided lis
 
 ## Step implementations
 
-* {@pylink grizzly.steps.scenario.tasks.step_task_loop_start}
+* {@pylink grizzly.steps.scenario.tasks.loop.step_task_loop_start}
 
-* {@pylink grizzly.steps.scenario.tasks.step_task_loop_end}
+* {@pylink grizzly.steps.scenario.tasks.loop.step_task_loop_end}
 
 ## Statistics
 

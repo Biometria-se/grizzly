@@ -5,9 +5,9 @@ payload returned for the request.
 
 ## Step implementations
 
-* {@pylink grizzly.steps.scenario.tasks.step_task_request_with_name_endpoint_until}
+* {@pylink grizzly.steps.scenario.tasks.until.step_task_request_with_name_endpoint_until}
 
-* {@pylink grizzly.steps.scenario.tasks.step_task_client_get_endpoint_until}
+* {@pylink grizzly.steps.scenario.tasks.until.step_task_client_get_endpoint_until}
 
 ## Statistics
 

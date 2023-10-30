@@ -2,17 +2,17 @@ import pytest
 
 from pytest_mock import MockerFixture
 
-from grizzly.tasks import WaitTask
+from grizzly.tasks import ExplicitWaitTask
 from grizzly.exceptions import StopUser
 
 from tests.fixtures import GrizzlyFixture
 
 
-class TestWaitTask:
+class TestExplicitWaitTask:
     def test(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
         parent = grizzly_fixture()
 
-        task_factory = WaitTask(time_expression='1.0')
+        task_factory = ExplicitWaitTask(time_expression='1.0')
 
         assert task_factory.time_expression == '1.0'
         assert task_factory.__template_attributes__ == {'time_expression'}
@@ -20,8 +20,8 @@ class TestWaitTask:
 
         assert callable(task)
 
-        import grizzly.tasks.wait
-        gsleep_spy = mocker.patch.object(grizzly.tasks.wait, 'gsleep', autospec=True)
+        import grizzly.tasks.wait_explicit
+        gsleep_spy = mocker.patch.object(grizzly.tasks.wait_explicit, 'gsleep', autospec=True)
         request_fire_spy = mocker.spy(parent.user.environment.events.request, 'fire')
 
         task(parent)

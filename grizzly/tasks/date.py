@@ -7,7 +7,7 @@ and saves the result as a date/time string in an variable.
 
 ## Step implementations
 
-* {@pylink grizzly.steps.scenario.tasks.step_task_date}
+* {@pylink grizzly.steps.scenario.tasks.date.step_task_date}
 
 ## Arguments
 

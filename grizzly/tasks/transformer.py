@@ -10,7 +10,7 @@ Instances of this task is created with the step expression:
 
 ## Step implementations
 
-* {@pylink grizzly.steps.scenario.tasks.step_task_transform}
+* {@pylink grizzly.steps.scenario.tasks.transformer.step_task_transform}
 
 ## Statistics
 
