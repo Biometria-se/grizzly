@@ -215,7 +215,7 @@ def test_e2e_step_setup_message_type_callback(
 
     feature_file = e2e_fixture.test_steps(
         background=[
-            f'And add callback "steps.helpers.message_callback" for message type "{message_type}" from {from_node} to {to_node}',
+            f'And register callback "steps.helpers.message_callback" for message type "{message_type}" from {from_node} to {to_node}',
         ],
         identifier=message_type,
     )

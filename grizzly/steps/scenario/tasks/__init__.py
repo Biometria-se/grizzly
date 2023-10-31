@@ -5,10 +5,10 @@ from .date import *
 from .keystore import *
 from .log_message import *
 from .loop import *
+from .until import *  # needs to be fore .request
 from .request import *
 from .timer import *
 from .transform import *
-from .until import *
 from .wait_between import *
 from .wait_explicit import *
 

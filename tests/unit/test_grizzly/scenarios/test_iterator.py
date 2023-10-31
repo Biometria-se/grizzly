@@ -96,7 +96,7 @@ class TestIterationScenario:
                     assert sleep_time == time
 
                 mocker.patch(
-                    'grizzly.tasks.wait.gsleep',
+                    'grizzly.tasks.wait_explicit.gsleep',
                     mocked_wait,
                 )
 
