@@ -2,7 +2,7 @@
 @anchor pydoc:grizzly.tasks.loop Loop
 This task executes the wraped tasks for all values in provided list.
 
-All task created between {@pylink grizzly.steps.scenario.tasks.step_task_loop_start} and {@pylink grizzly.steps.scenario.tasks.step_task_loop_end}
+All task created between {@pylink grizzly.steps.scenario.tasks.loop.step_task_loop_start} and {@pylink grizzly.steps.scenario.tasks.loop.step_task_loop_end}
 will be wrapped in this instance and executed for all values in the provided list (must be in JSON format).
 
 ## Step implementations

@@ -1,5 +1,5 @@
 """
-@anchor pydoc:grizzly.tasks.task_wait Task Wait
+@anchor pydoc:grizzly.tasks.wait_between Wait Between
 This task sets the wait time between tasks in a scenario.
 
 The default is to wait `0` seconds between each task.
@@ -12,9 +12,9 @@ random wait between (and including) `min_time` and `max_time` between tasks.
 
 ## Step implementations
 
-* {@pylink grizzly.steps.scenario.tasks.wait_between.step_task_wait_constant}
+* {@pylink grizzly.steps.scenario.tasks.wait_between.step_task_wait_between_constant}
 
-* {@pylink grizzly.steps.scenario.tasks.wait_between.step_task_wait_between}
+* {@pylink grizzly.steps.scenario.tasks.wait_between.step_task_wait_between_random}
 
 ## Statistics
 

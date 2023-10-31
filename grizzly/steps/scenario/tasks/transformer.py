@@ -1,5 +1,5 @@
 """
-This module contains step implementations for the {@pylink grizzly.tasks.transform} task.
+This module contains step implementations for the {@pylink grizzly.tasks.transformer} task.
 """
 from typing import cast
 

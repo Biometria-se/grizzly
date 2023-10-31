@@ -39,7 +39,7 @@ def step_task_loop_start(context: Context, values: str, variable: str, name: str
 @then(u'end loop')
 def step_task_loop_end(context: Context) -> None:
     """
-    Closes the {@pylink grizzly.tasks.loop} task created by {@pylink grizzly.steps.scenario.tasks.step_task_loop_start}.
+    Closes the {@pylink grizzly.tasks.loop} task created by {@pylink grizzly.steps.scenario.tasks.loop.step_task_loop_start}.
     This means that any following tasks specified will not be part of the loop.
 
     See {@pylink grizzly.tasks.loop} task documentation for more information.

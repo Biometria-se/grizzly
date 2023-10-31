@@ -10,7 +10,7 @@ from grizzly.tasks import ExplicitWaitTask
 
 
 @then(u'wait for "{wait_time_expression}" seconds')
-def step_task_wait_seconds(context: Context, wait_time_expression: str) -> None:
+def step_task_wait_explicit(context: Context, wait_time_expression: str) -> None:
     """
     Creates an instace of the {@pylink grizzly.tasks.wait_explicit} task. The scenario will wait the specified time (seconds) in
     additional to the wait time specified by {@pylink grizzly.tasks.wait_between}.

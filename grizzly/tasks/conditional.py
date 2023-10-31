@@ -4,10 +4,11 @@ This task executes one or more other tasks based on `condition`.
 
 This is useful when a set of tasks should be executed if `condition` is `True`, and another set of tasks if `condition` is `False`.
 
-All tasks created between {@pylink grizzly.steps.scenario.tasks.step_task_conditional_if} and {@pylink grizzly.steps.scenario.tasks.step_task_conditional_end}
-will be wrapped in this instance and executed conditionally. If the task has its own `name` attribute, it will be prefixed with this tasks `name`.
+All tasks created between {@pylink grizzly.steps.scenario.tasks.conditional.step_task_conditional_if} and
+{@pylink grizzly.steps.scenario.tasks.conditional.step_task_conditional_end} will be wrapped in this instance and executed conditionally.
+If the task has its own `name` attribute, it will be prefixed with this tasks `name`.
 
-The {@pylink grizzly.steps.scenario.tasks.step_task_conditional_else} step expression is optional, if not used no additional tasks will be executed if
+The {@pylink grizzly.steps.scenario.tasks.conditional.step_task_conditional_else} step expression is optional, if not used no additional tasks will be executed if
 `condition` is false.
 
 ## Step implementations

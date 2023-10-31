@@ -8,7 +8,7 @@ from .loop import *
 from .until import *  # needs to be fore .request
 from .request import *
 from .timer import *
-from .transform import *
+from .transformer import *
 from .wait_between import *
 from .wait_explicit import *
 

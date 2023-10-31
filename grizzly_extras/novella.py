@@ -31,7 +31,7 @@ from mistune.core import BlockState, InlineState
 logger = logging.getLogger('grizzly.novella')
 
 
-class GrizzlyMkdocsTemplate(MkdocsTemplate):
+class GrizzlyMkdocsTemplate(MkdocsTemplate):  # pragma: no cover
     def define_pipeline(self, context: NovellaContext) -> None:
         context.option("serve", description="Use mkdocs serve", flag=True)
         context.option("port", description="The port to serve under", default="8000")
@@ -51,13 +51,13 @@ class GrizzlyMkdocsTemplate(MkdocsTemplate):
 
         preprocessor = cast(MarkdownPreprocessorAction, context.do('preprocess-markdown', name='preprocess-markdown'))
         preprocessor.path = self.content_directory
-        preprocessor.use('grizzly')
+        preprocessor.use('grizzly')  # <-- diff compared to MkdocsTemplate.define_pipeline
 
         def configure_anchor(anchor: AnchorTagProcessor) -> None:
             anchor.flavor = MkDocsFlavor(cast('str | None', context.options['base-url']) or self.base_url or '')
 
         context.delay(lambda: preprocessor.preprocessor('anchor', cast(Any, configure_anchor)))
-        context.delay(lambda: preprocessor.preprocessor('grizzly'))
+        context.delay(lambda: preprocessor.preprocessor('grizzly'))  # <!-- diff compared to MkdocsTemplate.define_pipeline
 
         def configure_run(run: RunAction) -> None:
             run.args = ['mkdocs']
@@ -92,7 +92,7 @@ class MarkdownAstType(Enum):
     NONE = None
 
     @classmethod
-    def from_value(cls, value: str) -> MarkdownAstType:
+    def from_value(cls, value: Optional[str]) -> MarkdownAstType:
         for enum_value in cls:
             if enum_value.value == value:
                 return enum_value
@@ -110,7 +110,6 @@ class MarkdownAstNode:
 
     _first_child: Optional[MarkdownAstNode] = field(init=False, default=None)
     keep: bool = field(init=False, default=True)
-    condition: Optional[Callable[[MarkdownAstNode], bool]] = field(init=False, default=None)
 
     @property
     def first_child(self) -> MarkdownAstNode:
@@ -127,7 +126,7 @@ class MarkdownAstNode:
         return self._first_child
 
     def get_child(self, index: int) -> MarkdownAstNode:
-        child_node = self.ast.get('children', [])[index]
+        child_node = self.ast.get('children', [NO_CHILD])[index]
 
         return MarkdownAstNode(child_node, self.index)
 
@@ -177,7 +176,7 @@ def _create_nav_node(target: List[Union[str, Dict[str, str]]], path: str, node: 
         target.append({make_human_readable(node.stem): f'{path}/{node.stem}.md'})
 
 
-def mkdocs_update_config(config: Dict[str, Any]) -> None:
+def mkdocs_update_config(config: Dict[str, Any]) -> None:  # pragma: no cover
     root = Path.cwd().parent
     config_nav_tasks = config['nav'][3]['Framework'][0]['Usage'][0]['Tasks']
     config_nav_tasks_clients = config_nav_tasks.pop()
@@ -239,7 +238,7 @@ def mkdocs_update_config(config: Dict[str, Any]) -> None:
     config_nav_steps_scenario['Scenario'].append({'Tasks': nav_steps_scenario_tasks})
 
 
-def preprocess_markdown_update_with_header_levels(processor: MarkdownPreprocessor, levels: Dict[str, int]) -> None:
+def preprocess_markdown_update_with_header_levels(processor: MarkdownPreprocessor, levels: Dict[str, int]) -> None:  # pragma: no cover
     if isinstance(processor, PydocTagPreprocessor) and isinstance(processor._renderer, PydocMarkdownRenderer):
         processor._renderer.header_level_by_type.update(levels)
 
@@ -265,7 +264,7 @@ title: {title}
 ''')
 
 
-def generate_dynamic_pages(directory: Path) -> None:
+def generate_dynamic_pages(directory: Path) -> None:  # pragma: no cover
     root = Path.cwd().parent
 
     tasks = root / 'grizzly' / 'tasks'
@@ -332,6 +331,8 @@ class GrizzlyMarkdownInlineParser(InlineParser):
                 if code.startswith(' ') and code.endswith(' '):
                     code = code[1:-1]
             state.append_token({'type': 'codespan', 'raw': code})
+            #                                               ^
+            # only diff compared tomistune.inline_parser.InlineParser.parse_codespan
             return end_pos
         else:
             state.append_token({'type': 'text', 'raw': marker})
@@ -474,8 +475,12 @@ class GrizzlyMarkdown:
             else:
                 indent = ''
             code_lines = [f'{indent}{line}' for line in node.raw.splitlines()]
-            raw = '\n'.join(code_lines[1:-1])
-            marker = code_lines[-1].strip()
+            marker = code_lines[-1].strip()[-3:]
+            if code_lines[-1].strip() != marker:
+                raw = '\n'.join(code_lines[1:])
+                raw = raw[:-3]
+            else:
+                raw = '\n'.join(code_lines[1:-1])
             _, info = code_lines[0].split(marker, 1)
             node.ast = {
                 'type': 'block_code',
@@ -654,16 +659,3 @@ class GrizzlyMarkdownProcessor(MarkdownPreprocessor):
     def process_files(self, files: MarkdownFiles) -> None:
         for file in files:
             GrizzlyMarkdown(self._markdown, file)()
-
-
-if __name__ == '__main__':
-    file = Path('debug.md')
-
-    assert file.exists()
-
-    markdown_file = MarkdownFile(Path.cwd() / 'in.md', Path.cwd() / 'out.md', file.read_text())
-
-    w = GrizzlyMarkdown(markdown=mistune.create_markdown(renderer='ast'), document=markdown_file)
-    w()
-    # import json
-    # print(json.dumps(w.to_ast(file.read_text()), indent=2))

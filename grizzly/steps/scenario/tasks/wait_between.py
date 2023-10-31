@@ -9,7 +9,7 @@ from grizzly.tasks import WaitBetweenTask
 
 
 @given(u'wait "{min_time:g}..{max_time:g}" seconds between tasks')
-def step_task_wait_between(context: Context, min_time: float, max_time: float) -> None:
+def step_task_wait_between_random(context: Context, min_time: float, max_time: float) -> None:
     """
     Creates an instance of the {@pylink grizzly.tasks.wait_between} task. Sets number of, randomly, seconds the {@pylink grizzly.users}
     will wait between executing each task.
@@ -40,7 +40,7 @@ def step_task_wait_between(context: Context, min_time: float, max_time: float) -
 
 
 @given(u'wait "{time:g}" seconds between tasks')
-def step_task_wait_constant(context: Context, time: float) -> None:
+def step_task_wait_between_constant(context: Context, time: float) -> None:
     """
     Creates an instance of the {@pylink grizzly.tasks.wait_between} task. Sets number of, constant, seconds the {@pylink grizzly.users}
     will wait between executing each task.
