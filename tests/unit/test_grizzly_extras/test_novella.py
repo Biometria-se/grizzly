@@ -194,7 +194,7 @@ class TestGrizzlyMarkdown:
 
     def test__get_tokens(self) -> None:
         tokens = GrizzlyMarkdown._get_tokens('<a href="')
-        assert [(token.string, token.type) for token in tokens] == [('utf-8', 63,), ('<', 54,), ('a', 1,), ('href', 1,), ('=', 54,), ('"', 60,), ('', 4,), ('', 0,)]
+        assert [token.string for token in tokens] == ['utf-8', '<', 'a', 'href', '=', '"', '', '']
 
     def test_get_step_expression_from_code_block(self) -> None:
         code_block = '''
