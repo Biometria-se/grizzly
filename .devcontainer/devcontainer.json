@@ -60,7 +60,8 @@
                 "silverbulleters.gherkin-autocomplete",
                 "matangover.mypy",
                 "redhat.vscode-yaml",
-                "ms-vscode.live-server"
+                "ms-vscode.live-server",
+                "charliermarsh.ruff"
             ]
         }
     },
