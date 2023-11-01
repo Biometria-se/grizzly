@@ -1,5 +1,4 @@
-"""
-@anchor pydoc:grizzly.users Load User
+"""@anchor pydoc:grizzly.users Load User
 This package contains implementation for different type of endpoints and protocols.
 
 These implementations are the basis for how to communicate with the system under test.
@@ -13,13 +12,13 @@ There are examples of this in the {@link framework.example}.
 """
 
 
-from .restapi import RestApiUser
+from .blobstorage import BlobStorageUser
+from .dummy import DummyUser
+from .iothub import IotHubUser
 from .messagequeue import MessageQueueUser
+from .restapi import RestApiUser
 from .servicebus import ServiceBusUser
 from .sftp import SftpUser
-from .blobstorage import BlobStorageUser
-from .iothub import IotHubUser
-from .dummy import DummyUser
 
 __all__ = [
     'RestApiUser',

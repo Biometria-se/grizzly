@@ -7,7 +7,8 @@ from json import loads as jsonloads, JSONDecodeError
 
 from grizzly.types import RequestDirection, RequestMethod
 from grizzly.types.behave import Context, register_type, then, given, when
-from grizzly.steps._helpers import add_request_task, get_task_client, is_template
+from grizzly.utils import is_template
+from grizzly.steps._helpers import add_request_task, get_task_client
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import (
     LogMessageTask,

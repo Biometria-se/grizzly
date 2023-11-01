@@ -1,34 +1,39 @@
-import sys
+"""Locust glue that starts a load test based on conditions specified in the feature file."""
+from __future__ import annotations
+
 import logging
 import subprocess
-
-from typing import Any, NoReturn, Optional, Callable, List, Tuple, Set, Dict, Type, cast
-from os import environ
-from signal import SIGTERM, SIGINT, Signals
-from socket import error as SocketError
+import sys
+from dataclasses import dataclass
 from math import ceil
 from operator import itemgetter
+from os import environ
+from signal import SIGINT, SIGTERM, Signals
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, NoReturn, Optional, Set, Tuple, Type, cast
 
 import gevent
-
-from locust import stats as lstats, events
+from jinja2.exceptions import TemplateError
+from locust import events
+from locust import stats as lstats
 from locust.log import setup_logging
 from locust.util.timespan import parse_timespan
-from locust.user.users import User
-from jinja2.exceptions import TemplateError
 
-from . import __version__, __locust_version__
-from .listeners import init, init_statistics_listener, quitting, validate_result, spawning_complete, locust_test_start, locust_test_stop
-from .testdata.utils import initialize_testdata
+from . import __locust_version__, __version__
 from .context import GrizzlyContext
-from .utils import create_scenario_class_type, create_user_class_type
+from .listeners import init, init_statistics_listener, locust_test_start, locust_test_stop, quitting, spawning_complete, validate_result
+from .testdata.utils import initialize_testdata
 from .types import RequestType, TestdataType
-from .types.locust import Environment, LocustRunner, MasterRunner, WorkerRunner, MessageHandler, Message
 from .types.behave import Context, Status
+from .types.locust import Environment, LocustRunner, MasterRunner, Message, MessageHandler, WorkerRunner
+from .utils import create_scenario_class_type, create_user_class_type
 
 __all__ = [
     'stats_logger',
 ]
+
+
+if TYPE_CHECKING:
+    from locust.user.users import User
 
 
 unhandled_greenlet_exception: bool = False
@@ -42,8 +47,9 @@ stats_logger = logging.getLogger('locust.stats_logger')
 
 def greenlet_exception_logger(logger: logging.Logger, level: int = logging.CRITICAL) -> Callable[[gevent.Greenlet], None]:
     def exception_handler(greenlet: gevent.Greenlet) -> None:
-        global unhandled_greenlet_exception
-        logger.log(level, f'unhandled exception in greenlet: {greenlet}: {greenlet.value}', exc_info=True)
+        global unhandled_greenlet_exception  # noqa: PLW0603
+        message = f'unhandled exception in greenlet: {greenlet}: {greenlet.value}'
+        logger.log(level, message, exc_info=True)
         unhandled_greenlet_exception = True
 
     return exception_handler
@@ -78,7 +84,9 @@ def setup_locust_scenarios(grizzly: GrizzlyContext) -> Tuple[List[Type[User]], S
 
     scenarios = grizzly.scenarios()
 
-    assert len(scenarios) > 0, 'no scenarios in feature'
+    if not len(scenarios) > 0:
+        message = 'no scenarios in feature'
+        raise AssertionError(message)
 
     external_dependencies: Set[str] = set()
     distribution: Dict[str, int] = {}
@@ -88,16 +96,18 @@ def setup_locust_scenarios(grizzly: GrizzlyContext) -> Tuple[List[Type[User]], S
         user_count = ceil(grizzly.setup.user_count * (scenario.user.weight / total_weight))
         distribution[scenario.name] = user_count
 
-    total_user_count = sum([user_count for user_count in distribution.values()])
+    total_user_count = sum(distribution.values())
     user_overflow = total_user_count - grizzly.setup.user_count
 
-    assert len(distribution.keys()) <= grizzly.setup.user_count, f"increase the number in step 'Given \"{grizzly.setup.user_count}\" users' to at least {len(distribution.keys())}"
+    if not len(distribution.keys()) <= grizzly.setup.user_count:
+        message = f"increase the number in step 'Given \"{grizzly.setup.user_count}\" users' to at least {len(distribution.keys())}"
+        raise AssertionError(message)
 
     if user_overflow < 0:
-        logger.warning(f'there should be {grizzly.setup.user_count} users, but there will only be {total_user_count} users spawned')
+        logger.warning('there should be %d users, but there will only be %d users spawned', grizzly.setup.user_count, total_user_count)
 
     while user_overflow > 0:
-        for scenario_name in dict(sorted(distribution.items(), key=lambda d: d[1], reverse=True)).keys():
+        for scenario_name in dict(sorted(distribution.items(), key=lambda d: d[1], reverse=True)):
             if distribution[scenario_name] <= 1:
                 continue
 
@@ -109,8 +119,12 @@ def setup_locust_scenarios(grizzly: GrizzlyContext) -> Tuple[List[Type[User]], S
 
     for scenario in scenarios:
         # Given a user of type "" load testing ""
-        assert 'host' in scenario.context, f'variable "host" is not found in the context for {scenario.name}'
-        assert len(scenario.tasks) > 0, f'no tasks has been added to {scenario.name}'
+        if 'host' not in scenario.context:
+            message = f'variable "host" is not found in the context for {scenario.name}'
+            raise AssertionError(message)
+        if not len(scenario.tasks) > 0:
+            message = f'no tasks has been added to {scenario.name}'
+            raise AssertionError(message)
 
         fixed_count = distribution.get(scenario.name, None)
         user_class_type = create_user_class_type(scenario, grizzly.setup.global_context, fixed_count=fixed_count)
@@ -129,11 +143,15 @@ def setup_locust_scenarios(grizzly: GrizzlyContext) -> Tuple[List[Type[User]], S
                 external_dependencies.update(dependencies)
 
         logger.debug(
-            f'{user_class_type.__name__}/{scenario_type.__name__}: tasks={len(scenario.tasks)}, weight={user_class_type.weight}, fixed_count={user_class_type.fixed_count}'
+            '%s/%s: tasks=%d, weight=%d, fixed_count=%d',
+            user_class_type.__name__,
+            scenario_type.__name__,
+            len(scenario.tasks),
+            user_class_type.weight,
+            user_class_type.fixed_count,
         )
 
-        setattr(user_class_type, 'tasks', [scenario_type])
-
+        user_class_type.tasks = [scenario_type]
         user_classes.append(user_class_type)
 
     return user_classes, external_dependencies
@@ -151,10 +169,10 @@ def setup_resource_limits(context: Context) -> None:
         except (ValueError, OSError):
             logger.warning(
                 (
-                    f"system open file limit '{current_open_file_limit}' is below minimum setting '{minimum_open_file_limit}'. "
+                    "system open file limit '%d' is below minimum setting '%d'. "
                     "it's not high enough for load testing, and the OS didn't allow locust to increase it by itself. "
                     "see https://github.com/locustio/locust/wiki/Installation#increasing-maximum-number-of-open-files-limit for more info."
-                )
+                ), current_open_file_limit, minimum_open_file_limit,
             )
 
 
@@ -178,8 +196,9 @@ def setup_environment_listeners(context: Context) -> Tuple[Set[str], Dict[str, M
     try:
         testdata, external_dependencies, message_handlers = initialize_testdata(grizzly)
     except TemplateError as e:
-        logger.error(e, exc_info=True)
-        raise AssertionError(f'error parsing request payload: {e}') from e
+        message = f'error parsing request payload: {e}'
+        logger.exception(message)
+        raise AssertionError(message) from e
 
     if not on_worker(context):
         validate_results = False
@@ -190,7 +209,7 @@ def setup_environment_listeners(context: Context) -> Tuple[Set[str], Dict[str, M
             if validate_results:
                 break
 
-        logger.debug(f'{validate_results=}')
+        logger.debug('validate_results=%r', validate_results)
 
         if validate_results:
             environment.events.quitting.add_listener(validate_result(grizzly))
@@ -276,39 +295,43 @@ def print_scenario_summary(grizzly: GrizzlyContext) -> None:
     print(separator)
 
 
-def grizzly_test_abort(environment: Environment, msg: Message, **kwargs: Dict[str, Any]) -> None:
-    global abort_test
+def grizzly_test_abort(*_args: Any, **_kwargs: Any) -> None:
+    global abort_test  # noqa: PLW0603
 
     if not abort_test:
         abort_test = True
 
+def shutdown_external_processes(processes: Dict[str, subprocess.Popen], greenlet: Optional[gevent.Greenlet]) -> None:
+    global watch_running_external_processes_greenlet  # noqa: PLW0602
 
-def run(context: Context) -> int:
-    def shutdown_external_processes(processes: Dict[str, subprocess.Popen]) -> None:
-        if len(processes) > 0:
-            if watch_running_external_processes_greenlet is not None:
-                watch_running_external_processes_greenlet.kill(block=False)
+    if len(processes) < 1:
+        return
 
-            stop_method = 'killing' if abort_test else 'stopping'
+    if greenlet is not None:
+        greenlet.kill(block=False)
 
-            for dependency, process in processes.items():
-                logger.info(f'{stop_method} {dependency}')
-                if sys.platform == 'win32':
-                    from signal import CTRL_BREAK_EVENT  # pylint: disable=no-name-in-module
-                    process.send_signal(CTRL_BREAK_EVENT)
-                else:
-                    process.terminate()
+    stop_method = 'killing' if abort_test else 'stopping'
 
-                if not abort_test:
-                    process.wait()
-                else:
-                    process.kill()
-                    process.returncode = 1
+    for dependency, process in processes.items():
+        logger.info('%s %s', stop_method, dependency)
+        if sys.platform == 'win32':
+            from signal import CTRL_BREAK_EVENT  # pylint: disable=no-name-in-module
+            process.send_signal(CTRL_BREAK_EVENT)
+        else:
+            process.terminate()
 
-                logger.debug(f'{process.returncode=}')
+        if not abort_test:
+            process.wait()
+        else:
+            process.kill()
+            process.returncode = 1
 
-            processes.clear()
+        logger.debug('process.returncode=%d', process.returncode)
 
+    processes.clear()
+
+
+def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
     grizzly = cast(GrizzlyContext, context.grizzly)
 
     log_level = 'DEBUG' if context.config.verbose else grizzly.setup.log_level
@@ -339,7 +362,9 @@ def run(context: Context) -> int:
 
     user_classes, external_dependencies = setup_locust_scenarios(grizzly)
 
-    assert len(user_classes) > 0, 'no users specified in feature'
+    if not len(user_classes) > 0:
+        message = 'no users specified in feature'
+        raise AssertionError(message)
 
     try:
         setup_resource_limits(context)
@@ -360,19 +385,19 @@ def run(context: Context) -> int:
                 master_bind_host=host,
                 master_bind_port=port,
             )
-            logger.debug(f'started master runner: {host}:{port}')
+            logger.debug('started master runner: %s:%d', host, port)
         elif on_worker(context):
             try:
                 host = context.config.userdata.get('master-host', 'master')
                 port = context.config.userdata.get('master-port', 5557)
-                logger.debug(f'trying to connect to locust master: {host}:{port}')
+                logger.debug('trying to connect to locust master: %s:%d', host, port)
                 runner = environment.create_worker_runner(
                     host,
                     port,
                 )
-                logger.debug(f'connected to locust master: {host}:{port}')
-            except SocketError as e:
-                logger.error('failed to connect to the locust master: %s', e)
+                logger.debug('connected to locust master: %s:%d', host, port)
+            except OSError:
+                logger.exception('failed to connect to locust master at %s:%d', host, port)
                 return 1
         else:
             runner = environment.create_local_runner()
@@ -401,7 +426,7 @@ def run(context: Context) -> int:
                 parameters.update({'preexec_fn': preexec})
 
             for external_dependency in external_dependencies:
-                logger.info(f'starting {external_dependency}')
+                logger.info('starting %s', external_dependency)
                 external_processes.update({external_dependency: subprocess.Popen(
                     [external_dependency],
                     env=env,
@@ -419,7 +444,7 @@ def run(context: Context) -> int:
                         _processes = processes.copy()
                         for dependency, process in _processes.items():
                             if process.poll() is not None:
-                                logger.error(f'{dependency} is not running, restarting')
+                                logger.error('%s is not running, restarting', dependency)
                                 raise SystemExit(1)
 
                         gevent.sleep(10.0)
@@ -434,7 +459,7 @@ def run(context: Context) -> int:
         if not isinstance(runner, WorkerRunner):
             for message_type, callback in message_handlers.items():
                 grizzly.state.locust.register_message(message_type, callback)
-                logger.info(f'registered callback for message type "{message_type}"')
+                logger.info('registered callback for message type "%s"', message_type)
 
             runner.register_message('client_aborted', grizzly_test_abort)
 
@@ -446,11 +471,12 @@ def run(context: Context) -> int:
             try:
                 run_time = parse_timespan(grizzly.setup.timespan)
             except ValueError:
-                logger.error(f'invalid timespan "{grizzly.setup.timespan}" expected: 20, 20s, 3m, 2h, 1h20m, 3h30m10s, etc.')
+                logger.exception('invalid timespan "%s" expected: 20, 20s, 3m, 2h, 1h20m, 3h30m10s, etc.', grizzly.setup.timespan)
                 return 1
 
         stats_printer_greenlet: Optional[gevent.Greenlet] = None
 
+        @dataclass
         class LocustOption:
             headless: bool
             num_users: int
@@ -459,33 +485,35 @@ def run(context: Context) -> int:
             exclude_tags: List[str]
             enable_rebalancing: bool
 
-        setattr(environment, 'parsed_options', LocustOption())
-        setattr(environment.parsed_options, 'headless', True)
-        setattr(environment.parsed_options, 'num_users', grizzly.setup.user_count)
-        setattr(environment.parsed_options, 'spawn_rate', grizzly.setup.spawn_rate)
-        setattr(environment.parsed_options, 'tags', [])
-        setattr(environment.parsed_options, 'exclude_tags', [])
-        setattr(environment.parsed_options, 'enable_rebalancing', False)
+        environment.parsed_options = LocustOption(
+            headless=True,
+            num_users=grizzly.setup.user_count,
+            spawn_rate=grizzly.setup.spawn_rate,
+            tags=[],
+            exclude_tags=[],
+            enable_rebalancing=False,
+        )
 
         if isinstance(runner, MasterRunner):
             expected_workers = int(context.config.userdata.get('expected-workers', 1))
-            if grizzly.setup.user_count is not None:
-                assert expected_workers <= grizzly.setup.user_count, (
+            if grizzly.setup.user_count is not None and not expected_workers <= grizzly.setup.user_count:
+                message =(
                     f'there are more workers ({expected_workers}) than users ({grizzly.setup.user_count}), which is not supported'
                 )
+                raise AssertionError(message)
 
             while len(runner.clients.ready) < expected_workers:
                 logger.debug(
-                    f'waiting for workers to be ready, {len(runner.clients.ready)} of {expected_workers}'
+                    'waiting for workers to be ready, %d of %d', len(runner.clients.ready), expected_workers,
                 )
                 gevent.sleep(1)
 
             logger.info(
-                f'all {expected_workers} workers have connected and are ready'
+                'all %d workers have connected and are ready', expected_workers,
             )
 
         if not isinstance(runner, WorkerRunner):
-            logger.info(f'starting locust-{__locust_version__} via grizzly-{__version__}')
+            logger.info('starting locust-%s via grizzly-%s', __locust_version__, __version__)
             runner.start(grizzly.setup.user_count, grizzly.setup.spawn_rate)
 
             stats_printer_greenlet = gevent.spawn(grizzly_stats_printer(environment.stats))
@@ -499,7 +527,7 @@ def run(context: Context) -> int:
             gevent.spawn_later(run_time, timelimit_stop).link_exception(greenlet_exception_handler)
 
         if run_time is not None:
-            logger.info(f'run time limit set to {run_time} seconds')
+            logger.info('run time limit set to %d seconds', run_time)
             spawn_run_time_limit_greenlet()
 
         gevent.spawn(lstats.stats_history, environment.runner)
@@ -508,7 +536,7 @@ def run(context: Context) -> int:
             lstats.CSV_STATS_INTERVAL_SEC = csv_interval
             lstats.CSV_STATS_FLUSH_INTERVAL_SEC = csv_flush_interval
             stats_csv_writer = lstats.StatsCSVFileWriter(
-                environment, lstats.PERCENTILES_TO_REPORT, csv_prefix, True
+                environment, lstats.PERCENTILES_TO_REPORT, csv_prefix, full_history=True,
             )
             gevent.spawn(stats_csv_writer.stats_writer).link_exception(greenlet_exception_handler)
 
@@ -521,10 +549,10 @@ def run(context: Context) -> int:
                     gevent.sleep(1.0)
                     count += 1
                     if count % 10 == 0:
-                        logger.debug(f'{runner.user_count=}, {runner.user_classes_count=}')
+                        logger.debug('runner.user_count=%d, runner.user_classes_count=%d', runner.user_count, runner.user_classes_count)
                         count = 0
 
-                logger.info(f'{runner.user_count=}, quit {runner.__class__.__name__}, {abort_test=}')
+                logger.info('runner.user_count=%d, quit %s, abort_test=%r', runner.user_count, runner.__class__.__name__, abort_test)
                 # has already been fired if abort_test = True
                 if not abort_test:
                     runner.environment.events.quitting.fire(environment=runner.environment, reverse=True)
@@ -559,8 +587,8 @@ def run(context: Context) -> int:
             def spawning_complete() -> bool:
                 if isinstance(runner, MasterRunner):
                     return runner.spawning_completed
-                else:
-                    return grizzly.state.spawning_complete
+
+                return grizzly.state.spawning_complete
 
             while not spawning_complete():
                 logger.debug('spawning not completed...')
@@ -581,21 +609,17 @@ def run(context: Context) -> int:
                 signame = 'UNKNOWN'
 
             def wrapper() -> None:
-                global abort_test
+                global abort_test  # noqa: PLW0603
                 if abort_test:
                     return
 
-                logger.info(f'handling signal {signame} ({signum})')
+                logger.info('handling signal %s (%d)', signame, signum)
                 abort_test = True
                 if isinstance(runner, WorkerRunner):
                     runner._send_stats()
                     runner.client.send(Message('client_aborted', None, runner.client_id))
 
                 runner.environment.events.quitting.fire(environment=runner.environment, reverse=True, abort=True)
-
-                # master will quit when all workers has stopped
-                # if not isinstance(runner, MasterRunner):
-                #    runner.quit()
 
             return wrapper
 
@@ -605,8 +629,6 @@ def run(context: Context) -> int:
         try:
             main_greenlet.join()
             logger.debug('main greenlet finished')
-        except KeyboardInterrupt as e:
-            raise e
         finally:
             if abort_test:
                 code = SIGTERM.value
@@ -619,9 +641,9 @@ def run(context: Context) -> int:
             else:
                 code = 0
 
-            return code
+        return code
     finally:
-        shutdown_external_processes(external_processes)
+        shutdown_external_processes(external_processes, watch_running_external_processes_greenlet)
 
 
 def _grizzly_sort_stats(stats: lstats.RequestStats) -> List[Tuple[str, str, int]]:
@@ -642,7 +664,7 @@ def _grizzly_sort_stats(stats: lstats.RequestStats) -> List[Tuple[str, str, int]
                 scenario_keys.append(key[:2])
 
             scenario_sorted_keys += sorted([
-                (name, method, RequestType.get_method_weight(method), ) for name, method in scenario_keys
+                (name, method, RequestType.get_method_weight(method)) for name, method in scenario_keys
             ], key=itemgetter(2, 0))
             scenario_keys.clear()
 
@@ -661,16 +683,17 @@ def grizzly_stats_printer(stats: lstats.RequestStats) -> Callable[[], NoReturn]:
     return _grizzly_stats_printer
 
 
-def grizzly_print_stats(stats: lstats.RequestStats, current: bool = True, grizzly_style: bool = True) -> None:
+def grizzly_print_stats(stats: lstats.RequestStats, *, current: bool = True, grizzly_style: bool = True) -> None:
     if not grizzly_style:
         lstats.print_stats(stats, current=current)
         return
 
     name_column_width = (lstats.STATS_NAME_WIDTH - lstats.STATS_TYPE_WIDTH) + 4  # saved characters by compacting other columns
-    stats_logger.info(
+    row = (
         ("%-" + str(lstats.STATS_TYPE_WIDTH) + "s %-" + str(name_column_width) + "s %7s %12s |%7s %7s %7s%7s | %7s %11s")
         % ("Type", "Name", "# reqs", "# fails", "Avg", "Min", "Max", "Med", "req/s", "failures/s")
     )
+    stats_logger.info(row)
     separator = f'{"-" * lstats.STATS_TYPE_WIDTH}|{"-" * (name_column_width)}|{"-" * 7}|{"-" * 13}|{"-" * 7}|{"-" * 7}|{"-" * 7}|{"-" * 7}|{"-" * 8}|{"-" * 11}'
     stats_logger.info(separator)
 
@@ -685,20 +708,21 @@ def grizzly_print_stats(stats: lstats.RequestStats, current: bool = True, grizzl
     stats_logger.info('')
 
 
-def grizzly_print_percentile_stats(stats: lstats.RequestStats, grizzly_style: bool = True) -> None:
+def grizzly_print_percentile_stats(stats: lstats.RequestStats, *, grizzly_style: bool = True) -> None:
     if not grizzly_style:
         lstats.print_percentile_stats(stats)
         return
 
     stats_logger.info('Response time percentiles (approximated)')
-    headers = ('Type', 'Name') + tuple(lstats.get_readable_percentiles(lstats.PERCENTILES_TO_REPORT)) + ('# reqs',)
-    stats_logger.info(
+    headers = ('Type', 'Name', *tuple(lstats.get_readable_percentiles(lstats.PERCENTILES_TO_REPORT)), '# reqs')
+    row = (
         (
-            f'%-{str(lstats.STATS_TYPE_WIDTH)}s %-{str(lstats.STATS_NAME_WIDTH)}s %8s '
+            f'%-{lstats.STATS_TYPE_WIDTH}s %-{lstats.STATS_NAME_WIDTH}s %8s '
             f'{" ".join(["%6s"] * len(lstats.PERCENTILES_TO_REPORT))}'
         )
         % headers
     )
+    stats_logger.info(row)
     separator = (
         f'{"-" * lstats.STATS_TYPE_WIDTH}|{"-" * lstats.STATS_NAME_WIDTH}|{"-" * 8}|{("-" * 6 + "|") * len(lstats.PERCENTILES_TO_REPORT)}'
     )[:-1]

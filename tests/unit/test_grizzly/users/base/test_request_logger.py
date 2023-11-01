@@ -89,9 +89,9 @@ class TestRequestLogger:
 
     @pytest.mark.usefixtures('request_logger')
     def test_normalize(self, request_logger: RequestLogger) -> None:
-        assert request_logger.normalize('test') == 'test'
-        assert request_logger.normalize('Hello World!') == 'Hello-World'
-        assert request_logger.normalize('[does]this-look* <strange>!') == 'doesthis-look-strange'
+        assert request_logger._normalize('test') == 'test'
+        assert request_logger._normalize('Hello World!') == 'Hello-World'
+        assert request_logger._normalize('[does]this-look* <strange>!') == 'doesthis-look-strange'
 
     @pytest.mark.usefixtures('request_logger')
     def test__remove_secrets_attribute(self, request_logger: RequestLogger) -> None:

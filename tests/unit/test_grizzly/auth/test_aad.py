@@ -464,7 +464,7 @@ class TestAAD:
             if version != 'v1.0':
                 provider_url = f'{provider_url}/{version}'
 
-            parent.user._context = {
+            parent.user.__class__._context = {
                 'host': 'https://www.example.com',
                 'auth': {
                     'client': {

@@ -9,9 +9,9 @@ import parse
 from grizzly_extras.text import permutation
 
 from grizzly.types.behave import Context, given, register_type
+from grizzly.utils import is_template
 from grizzly.context import GrizzlyContext
 from grizzly.testdata.utils import resolve_variable
-from grizzly.steps._helpers import is_template
 
 
 @parse.with_pattern(r'(user[s]?)')

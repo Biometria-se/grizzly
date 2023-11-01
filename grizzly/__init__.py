@@ -1,8 +1,10 @@
+"""Any import from a grizzly module should intialize version (grizzly and locust) variables."""
 from gevent import monkey
 
 monkey.patch_all()
 
-from importlib.metadata import version, PackageNotFoundError
+from importlib.metadata import PackageNotFoundError, version
+
 from .__version__ import __version__
 
 try:

@@ -24,7 +24,6 @@ from grizzly.steps._helpers import (
     get_task_client,
     normalize_step_name,
     _add_response_handler,
-    is_template,
 )
 from grizzly.tasks.clients import ClientTask, client
 from grizzly.exceptions import ResponseHandlerError
@@ -501,10 +500,3 @@ def test_get_task_client(grizzly_fixture: GrizzlyFixture, test_scheme: str) -> N
 
     assert task_client is not None
     assert issubclass(task_client, ClientTask)
-
-
-def test_is_template() -> None:
-    assert is_template('{{ hello_world }}')
-    assert not is_template('{{ hello_world')
-    assert not is_template('hello_world }}')
-    assert is_template('is {{ this }} really a template?')

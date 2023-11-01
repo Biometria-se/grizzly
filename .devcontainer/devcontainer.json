@@ -20,8 +20,6 @@
             "settings": {
                 "python.defaultInterpreterPath": "/usr/local/bin/python",
                 "python.pythonPath": "/usr/local/bin/python",
-                "pylint.path": ["pylint"],
-                "flake8.path": ["flake8"],
                 "mypy-type-checker.path": ["mypy"],
                 "python.languageServer": "Pylance",
                 "pythonTestExplorer.testFramework": "pytest",
@@ -48,8 +46,6 @@
             "extensions": [
                 "ms-python.python",
                 "ms-python.vscode-pylance",
-                "ms-python.pylint",
-                "ms-python.flake8",
                 "ms-python.mypy-type-checker",
                 "editorconfig.editorconfig",
                 "eamodio.gitlens",

@@ -1,4 +1,4 @@
-'''Send and receive messages on Azure Service Bus queues and topics.
+"""Send and receive messages on Azure Service Bus queues and topics.
 
 !!! note
     If `message.wait` is not set, `azure.servicebus` will wait until there is a message available, and hence block the scenario.
@@ -25,7 +25,7 @@ Supports the following request methods:
 
 Format of `host` is the following:
 
-``` plain
+```plain
 [Endpoint=]sb://<hostname>/;SharedAccessKeyName=<shared key name>;SharedAccessKey=<shared key>
 ```
 
@@ -43,7 +43,7 @@ receiving messages. See example below.
 
 Example of how to use it in a scenario:
 
-``` gherkin
+```gherkin
 Given a user of type "ServiceBus" load testing "sb://sb.example.com/;SharedAccessKeyName=authorization-key;SharedAccessKey=c2VjcmV0LXN0dWZm"
 And set context variable "message.wait" to "5"
 Then send request "queue-send" to endpoint "queue:shared-queue"
@@ -58,7 +58,7 @@ When specifying an expression, the messages on the endpoint is first peeked on. 
 endpoint. If no matching messages was found when peeking, it is repeated again after a slight delay, up until the specified `message.wait` seconds has
 elapsed. To use expressions, a content type must be specified for the request, e.g. `application/xml`.
 
-``` gherkin
+```gherkin
 Given a user of type "ServiceBus" load testing "sb://sb.example.com/;SharedAccessKeyName=authorization-key;SharedAccessKey=c2VjcmV0LXN0dWZm"
 And set context variable "message.wait" to "5"
 Then receive request "queue-recv" from endpoint "queue:shared-queue, expression:$.document[?(@.name=='TPM report')].id"
@@ -66,34 +66,36 @@ And set response content type to "application/json"
 Then receive request "topic-recv" from endpoint "topic:shared-topic, subscription:my-subscription, expression:/documents/document[@name='TPM Report']/id/text()"
 And set response content type to "application/xml"
 ```
-'''
-import logging
+"""
+from __future__ import annotations
 
-from typing import Generator, Dict, Any, Tuple, Optional, Set, cast
-from urllib.parse import urlparse, parse_qs
-from contextlib import contextmanager
+import logging
+from contextlib import contextmanager, suppress
+from typing import Any, ClassVar, Dict, Generator, Optional, Set, cast
+from urllib.parse import parse_qs, urlparse
 
 import zmq.green as zmq
 
-from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageResponse, AsyncMessageRequest, async_message_request
-from grizzly_extras.arguments import parse_arguments, get_unsupported_arguments
-
-from grizzly.types import RequestMethod, RequestDirection, GrizzlyResponse, RequestType
-from grizzly.types.locust import StopUser, Environment
 from grizzly.tasks import RequestTask
-from grizzly.utils import merge_dicts
+from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod, RequestType
+from grizzly.types.locust import Environment, StopUser
+from grizzly.utils import is_template, merge_dicts
+from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
+from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse, async_message_request
 
 from .base import GrizzlyUser, ResponseHandler
 
+MAX_LENGTH = 65
+
 
 class ServiceBusUser(ResponseHandler, GrizzlyUser):
-    _context: Dict[str, Any] = {
+    __dependencies__: ClassVar[Set[str]] = {'async-messaged'}
+
+    _context: Dict[str, Any] = {  # noqa: RUF012
         'message': {
             'wait': None,
-        }
+        },
     }
-
-    __dependencies__ = set(['async-messaged'])
 
     am_context: AsyncMessageContext
     worker_id: Optional[str]
@@ -102,7 +104,7 @@ class ServiceBusUser(ResponseHandler, GrizzlyUser):
     zmq_url = 'tcp://127.0.0.1:5554'
     hellos: Set[str]
 
-    def __init__(self, environment: Environment, *args: Tuple[Any], **kwargs: Dict[str, Any]) -> None:
+    def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
         super().__init__(environment, *args, **kwargs)
 
         if not self.host.startswith('Endpoint='):
@@ -118,24 +120,28 @@ class ServiceBusUser(ResponseHandler, GrizzlyUser):
         parsed = urlparse(conn_str)
 
         if parsed.scheme != 'sb':
-            raise ValueError(f'{self.__class__.__name__}: "{parsed.scheme}" is not a supported scheme')
+            message = f'{self.__class__.__name__}: "{parsed.scheme}" is not a supported scheme'
+            raise ValueError(message)
 
         if parsed.query == '':
-            raise ValueError(f'{self.__class__.__name__}: SharedAccessKeyName and SharedAccessKey must be in the query string')
+            message = f'{self.__class__.__name__}: SharedAccessKeyName and SharedAccessKey must be in the query string'
+            raise ValueError(message)
 
         params = parse_qs(parsed.query)
 
         if 'SharedAccessKeyName' not in params:
-            raise ValueError(f'{self.__class__.__name__}: SharedAccessKeyName must be in the query string')
+            message = f'{self.__class__.__name__}: SharedAccessKeyName must be in the query string'
+            raise ValueError(message)
 
         if 'SharedAccessKey' not in params:
-            raise ValueError(f'{self.__class__.__name__}: SharedAccessKey must be in the query string')
+            message = f'{self.__class__.__name__}: SharedAccessKey must be in the query string'
+            raise ValueError(message)
 
         self._context = merge_dicts(super().context(), self.__class__._context)
 
         self.am_context = {
             'url': self.host[9:],
-            'message_wait': self._context.get('message', {}).get('wait', None)
+            'message_wait': self._context.get('message', {}).get('wait', None),
         }
 
         # silence uamqp loggers
@@ -146,6 +152,7 @@ class ServiceBusUser(ResponseHandler, GrizzlyUser):
         self.worker_id = None
 
     def on_start(self) -> None:
+        """Connect and introduce user to async-messaged when test starts."""
         super().on_start()
 
         self.zmq_client = self.zmq_context.socket(zmq.REQ)
@@ -158,22 +165,23 @@ class ServiceBusUser(ResponseHandler, GrizzlyUser):
             self.say_hello(task)
 
     def on_stop(self) -> None:
+        """Disconnect from async-messaged when test stops."""
         if getattr(self, '_scenario', None) is not None:
             for task in self._scenario.tasks:
                 if not isinstance(task, RequestTask):
                     continue
 
-                endpoint = task.endpoint
-                self.disconnect(task, endpoint)
+                self.disconnect(task)
 
         self.zmq_client.disconnect(self.zmq_url)
 
         super().on_stop()
 
     def get_description(self, task: RequestTask) -> str:
-        if ('{{' in task.endpoint and '}}' in task.endpoint) or '$conf' in task.endpoint or '$env' in task.endpoint:
-            self.logger.error(f'cannot say hello for {task.name} when endpoint is a template')
-            raise StopUser()
+        """Create the description for a request task."""
+        if is_template(task.endpoint) or '$conf' in task.endpoint or '$env' in task.endpoint:
+            self.logger.error('cannot say hello for %s when endpoint is a template', task.name)
+            raise StopUser
 
         connection = 'sender' if task.method.direction == RequestDirection.TO else 'receiver'
 
@@ -183,16 +191,15 @@ class ServiceBusUser(ResponseHandler, GrizzlyUser):
             raise RuntimeError(str(e)) from e
         endpoint_arguments = dict(arguments)
 
-        try:
+        with suppress(Exception):
             del endpoint_arguments['expression']
-        except:
-            pass
 
         cache_endpoint = ', '.join([f'{key}:{value}' for key, value in endpoint_arguments.items()])
 
         return f'{connection}={cache_endpoint}'
 
-    def disconnect(self, task: RequestTask, endpoint: str) -> None:
+    def disconnect(self, task: RequestTask) -> None:
+        """Disconnect any queue manager that async-messaged has connected to for this task."""
         description = self.get_description(task)
 
         if description not in self.hellos:
@@ -216,6 +223,7 @@ class ServiceBusUser(ResponseHandler, GrizzlyUser):
         self.hellos.remove(description)
 
     def say_hello(self, task: RequestTask) -> None:
+        """Connect to the queue manager this task wants to communicate with in async-messaged."""
         description = self.get_description(task)
 
         if description in self.hellos:
@@ -237,27 +245,33 @@ class ServiceBusUser(ResponseHandler, GrizzlyUser):
 
         with self.request_context(task, request) as context:
             if 'queue' not in arguments and 'topic' not in arguments:
-                raise RuntimeError('endpoint needs to be prefixed with queue: or topic:')
+                message = 'endpoint needs to be prefixed with queue: or topic:'
+                raise RuntimeError(message)
 
             if 'queue' in arguments and 'topic' in arguments:
-                raise RuntimeError('cannot specify both topic: and queue: in endpoint')
+                message = 'cannot specify both topic: and queue: in endpoint'
+                raise RuntimeError(message)
 
             endpoint_type = 'topic' if 'topic' in arguments else 'queue'
 
             if len(arguments) > 1:
                 if endpoint_type != 'topic' and 'subscription' in arguments:
-                    raise RuntimeError('argument subscription is only allowed if endpoint is a topic')
+                    message = 'argument subscription is only allowed if endpoint is a topic'
+                    raise RuntimeError(message)
 
                 unsupported_arguments = get_unsupported_arguments(['topic', 'queue', 'subscription', 'expression'], arguments)
 
                 if len(unsupported_arguments) > 0:
-                    raise RuntimeError(f'arguments {", ".join(unsupported_arguments)} is not supported')
+                    message = f'arguments {", ".join(unsupported_arguments)} is not supported'
+                    raise RuntimeError(message)
 
             if endpoint_type == 'topic' and arguments.get('subscription', None) is None and task.method.direction == RequestDirection.FROM:
-                raise RuntimeError('endpoint needs to include subscription when receiving messages from a topic')
+                message = 'endpoint needs to include subscription when receiving messages from a topic'
+                raise RuntimeError(message)
 
             if task.method.direction == RequestDirection.TO and arguments.get('expression', None) is not None:
-                raise RuntimeError('argument expression is only allowed when receiving messages')
+                message = 'argument expression is only allowed when receiving messages'
+                raise RuntimeError(message)
 
             context['failure_exception'] = self._scenario.failure_exception
 
@@ -265,10 +279,11 @@ class ServiceBusUser(ResponseHandler, GrizzlyUser):
 
     @contextmanager
     def request_context(self, task: RequestTask, request: AsyncMessageRequest) -> Generator[Dict[str, Any], None, None]:
+        """Wrap all requests towards async-messaged to generically handle requests and responses."""
         name = task.name
 
-        if len(name) > 65:
-            name = f'{name[:65]}...'
+        if len(name) > MAX_LENGTH:
+            name = f'{name[:MAX_LENGTH]}...'
 
         request.update({
             'worker': self.worker_id,
@@ -303,7 +318,9 @@ class ServiceBusUser(ResponseHandler, GrizzlyUser):
                 if self.worker_id is None:
                     self.worker_id = response_worker
 
-                assert self.worker_id == response_worker
+                if self.worker_id != response_worker:
+                    message = 'unexpected worker id in response'
+                    raise AssertionError(message)
             else:
                 response = {}
 
@@ -311,6 +328,7 @@ class ServiceBusUser(ResponseHandler, GrizzlyUser):
                 raise exception
 
     def request_impl(self, request: RequestTask) -> GrizzlyResponse:
+        """Perform a Serivce Bus request based on request task."""
         self.say_hello(request)
 
         request_context = cast(AsyncMessageContext, dict(self.am_context))
@@ -324,6 +342,7 @@ class ServiceBusUser(ResponseHandler, GrizzlyUser):
 
         with self.request_context(request, am_request) as context:
             if request.method not in [RequestMethod.SEND, RequestMethod.RECEIVE]:
-                raise NotImplementedError(f'{self.__class__.__name__}: no implementation for {request.method.name} requests')
+                message = f'{self.__class__.__name__}: no implementation for {request.method.name} requests'
+                raise NotImplementedError(message)
 
-        return (context['metadata'], context['payload'],)
+        return (context['metadata'], context['payload'])

@@ -167,12 +167,12 @@ class TestServiceBusUser:
             scenario.tasks.add(task)
             user._scenario = scenario
 
-            user.disconnect(task, task.endpoint)
+            user.disconnect(task)
 
             assert request_context_spy.call_count == 0
 
             user.hellos = set(['sender=queue:test-queue'])
-            user.disconnect(task, task.endpoint)
+            user.disconnect(task)
 
             assert request_context_spy.call_count == 1
             args, kwargs = request_context_spy.call_args_list[0]

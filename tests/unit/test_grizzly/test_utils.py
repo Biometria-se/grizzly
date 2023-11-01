@@ -23,6 +23,7 @@ from grizzly.utils import (
     check_mq_client_logs,
     async_message_request_wrapper,
     safe_del,
+    is_template,
 )
 from grizzly.types import RequestMethod
 from grizzly.types.behave import Context
@@ -673,3 +674,10 @@ def test_safe_del() -> None:
 
     safe_del(struct, 'hello')
     assert struct == {}
+
+
+def test_is_template() -> None:
+    assert is_template('{{ hello_world }}')
+    assert not is_template('{{ hello_world')
+    assert not is_template('hello_world }}')
+    assert is_template('is {{ this }} really a template?')

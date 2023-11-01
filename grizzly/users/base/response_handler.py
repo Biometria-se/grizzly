@@ -1,23 +1,30 @@
-from typing import Any, Dict, Tuple, Optional, List, cast
+"""Abstract load user that handles responses."""
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from json import dumps as jsondumps
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, cast
 
-from grizzly_extras.transformer import transformer, TransformerError, PlainTransformer, TransformerContentType
+from locust.clients import ResponseContextManager as RequestsResponseContextManager
+from locust.contrib.fasthttp import ResponseContextManager as FastResponseContextManager
 
-from grizzly.types import HandlerContextType, GrizzlyResponseContextManager, GrizzlyResponse
-from grizzly.types.locust import Environment
-from grizzly.tasks import RequestTask
-from grizzly.exceptions import ResponseHandlerError, TransformerLocustError
 from grizzly.context import GrizzlyContext
+from grizzly.exceptions import ResponseHandlerError, TransformerLocustError
+from grizzly.types import GrizzlyResponse, GrizzlyResponseContextManager, HandlerContextType
+from grizzly_extras.transformer import PlainTransformer, TransformerContentType, TransformerError, transformer
 
-from .grizzly_user import GrizzlyUser
 from .response_event import ResponseEvent
 
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.tasks import RequestTask
+    from grizzly.types.locust import Environment
+
+    from .grizzly_user import GrizzlyUser
 
 class ResponseHandlerAction(ABC):
     grizzly = GrizzlyContext()
 
-    def __init__(self, /, expression: str, match_with: str, expected_matches: str = '1', as_json: bool = False) -> None:
+    def __init__(self, /, expression: str, match_with: str, expected_matches: str = '1', *, as_json: bool = False) -> None:
         self.expression = expression
         self.match_with = match_with
         self.expected_matches = expected_matches
@@ -30,15 +37,18 @@ class ResponseHandlerAction(ABC):
         user: GrizzlyUser,
         response: Optional[GrizzlyResponseContextManager] = None,
     ) -> None:
-        raise NotImplementedError(f'{self.__class__.__name__} has not implemented __call__')  # pragma: no cover
+        """Execute handler."""
+        message = f'{self.__class__.__name__} has not implemented __call__'
+        raise NotImplementedError(message)  # pragma: no cover
 
     def get_match(
         self,
         input_context: Tuple[TransformerContentType, Any],
         user: GrizzlyUser,
-        condition: bool = False
+        *,
+        condition: bool = False,
     ) -> Tuple[Optional[str], str, str]:
-        '''Contains common logic for both save and validation handlers.
+        """Contains common logic for both save and validation handlers.
 
         Args:
             input_context (Tuple[TransformerContentType, Any]): content type and transformed payload
@@ -46,7 +56,7 @@ class ResponseHandlerAction(ABC):
             match_with (str): regular expression that the extracted value must match
             user (ContextVariablesUser): user that executed task (request)
             condition (bool): used by validation handler for negative matching
-        '''
+        """
         input_content_type, input_payload = input_context
         j2env = self.grizzly.state.jinja2
         rendered_expression = j2env.from_string(self.expression).render(user.context_variables)
@@ -56,10 +66,12 @@ class ResponseHandlerAction(ABC):
         try:
             transform = transformer.available.get(input_content_type, None)
             if transform is None:
-                raise TypeError(f'could not find a transformer for {input_content_type.name}')
+                message = f'could not find a transformer for {input_content_type.name}'
+                raise TypeError(message)
 
             if not transform.validate(rendered_expression):
-                raise TypeError(f'"{rendered_expression}" is not a valid expression for {input_content_type.name}')
+                message = f'"{rendered_expression}" is not a valid expression for {input_content_type.name}'
+                raise TypeError(message)
 
             input_get_values = transform.parser(rendered_expression)
             match_get_values = PlainTransformer.parser(rendered_match_with)
@@ -86,32 +98,30 @@ class ResponseHandlerAction(ABC):
         number_of_matches = len(matches)
 
         if rendered_expected_matches == -1 and number_of_matches < 1:
-            user.logger.error(f'"{rendered_expression}": "{rendered_match_with}" matched no values')
+            user.logger.error('"%s": "%s" matched no values', rendered_expression, rendered_match_with)
             match = None
         elif rendered_expected_matches > -1 and number_of_matches != rendered_expected_matches:
             if number_of_matches < rendered_expected_matches and not condition:
-                user.logger.error(f'"{rendered_expression}": "{rendered_match_with}" matched too few values: "{values}"')
+                user.logger.error('"%s": "%s" matched too few values: "%r"', rendered_expression, rendered_match_with, values)
             elif number_of_matches > rendered_expected_matches:
-                user.logger.error(f'"{rendered_expression}": "{rendered_match_with}" matched too many values: "{values}"')
+                user.logger.error('"%s": "%s" matched too many values: "%r"', rendered_expression, rendered_match_with, values)
 
             match = None
-        else:
-            if number_of_matches == 1:
-                match = matches[0]
+        elif number_of_matches == 1:
+            match = matches[0]
 
-                if self.as_json:
-                    match = jsondumps([match])
-            else:
-                if self.as_json:
-                    match = jsondumps(matches)
-                else:
-                    match = '\n'.join(matches)
+            if self.as_json:
+                match = jsondumps([match])
+        elif self.as_json:
+            match = jsondumps(matches)
+        else:
+            match = '\n'.join(matches)
 
         return match, rendered_expression, rendered_match_with
 
 
 class ValidationHandlerAction(ResponseHandlerAction):
-    def __init__(self, condition: bool, /, expression: str, match_with: str, expected_matches: str = '1', as_json: bool = False) -> None:
+    def __init__(self, /, expression: str, match_with: str, expected_matches: str = '1', *, condition: bool, as_json: bool = False) -> None:
         super().__init__(
             expression=expression,
             match_with=match_with,
@@ -127,7 +137,8 @@ class ValidationHandlerAction(ResponseHandlerAction):
         user: GrizzlyUser,
         response: Optional[GrizzlyResponseContextManager] = None,
     ) -> None:
-        match, expression, match_with = self.get_match(input_context, user, self.condition)
+        """Run validation of response."""
+        match, expression, match_with = self.get_match(input_context, user, condition=self.condition)
 
         result = match is not None if self.condition is True else match is None
 
@@ -140,7 +151,7 @@ class ValidationHandlerAction(ResponseHandlerAction):
 
 
 class SaveHandlerAction(ResponseHandlerAction):
-    def __init__(self, variable: str, /, expression: str, match_with: str, expected_matches: str = '1', as_json: bool = False) -> None:
+    def __init__(self, variable: str, /, expression: str, match_with: str, expected_matches: str = '1', *, as_json: bool = False) -> None:
         super().__init__(
             expression=expression,
             match_with=match_with,
@@ -156,6 +167,7 @@ class SaveHandlerAction(ResponseHandlerAction):
         user: GrizzlyUser,
         response: Optional[GrizzlyResponseContextManager] = None,
     ) -> None:
+        """Run expression and save value from response."""
         match, expression, _ = self.get_match(input_context, user)
 
         user.set_context_variable(self.variable, match)
@@ -171,19 +183,20 @@ class SaveHandlerAction(ResponseHandlerAction):
 class ResponseHandler(ResponseEvent):
     abstract: bool = True
 
-    def __init__(self, environment: Environment, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+    def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
         super().__init__(environment, *args, **kwargs)
 
         self.response_event.add_listener(self.response_handler)
 
     def response_handler(
         self,
-        name: str,
+        _: str,
         context: HandlerContextType,
         request: RequestTask,
         user: GrizzlyUser,
-        **kwargs: Dict[str, Any],
+        **_kwargs: Any,
     ) -> None:
+        """Handle `response_event` when fired."""
         if getattr(request, 'response', None) is None:
             return
 
@@ -196,9 +209,9 @@ class ResponseHandler(ResponseEvent):
         response_metadata: Optional[Dict[str, Any]]
         response_payload: Optional[str]
 
-        if isinstance(context, getattr(GrizzlyResponseContextManager, '__args__')):
+        if isinstance(context, (RequestsResponseContextManager, FastResponseContextManager)):
             response_payload = context.text
-            response_metadata = dict(context.headers)
+            response_metadata = dict(context.headers or {})
             response_context = context
         else:
             response_metadata, response_payload = cast(GrizzlyResponse, context)
@@ -211,7 +224,8 @@ class ResponseHandler(ResponseEvent):
                 if impl is not None:
                     response_payload = impl.transform(response_payload or '')
                 else:
-                    raise TransformerError(f'failed to transform: {response_payload} with content type {request.response.content_type.name}')
+                    message = f'failed to transform: {response_payload} with content type {request.response.content_type.name}'
+                    raise TransformerError(message)
             except TransformerError as e:
                 if response_context is not None:
                     response_context.failure(e.message)

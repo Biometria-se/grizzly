@@ -1,31 +1,35 @@
-import os
+"""Abstract load user that handles logging request and responses."""
+from __future__ import annotations
+
 import json
-import unicodedata
 import re
 import traceback
-
-from typing import Dict, Any, Tuple, Optional, Union, cast, TYPE_CHECKING
+import unicodedata
 from datetime import datetime, timedelta
+from os import environ
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Dict, Optional, Union, cast
 from urllib.parse import urlparse, urlunparse
 
 from jinja2 import Template
-from requests import Response as RequestResponse
-from grizzly_extras.transformer import JsonBytesEncoder
+from locust.clients import ResponseContextManager as RequestsResponseContextManager
+from locust.contrib.fasthttp import ResponseContextManager as FastResponseContextManager
 
-from grizzly.types import GrizzlyResponse, HandlerContextType, RequestDirection, GrizzlyResponseContextManager
-from grizzly.types.locust import Environment
-from grizzly.tasks import RequestTask
+from grizzly.types import GrizzlyResponse, GrizzlyResponseContextManager, HandlerContextType, RequestDirection
 from grizzly.utils import merge_dicts
+from grizzly_extras.transformer import JsonBytesEncoder
 
 from .response_event import ResponseEvent
 
-
 if TYPE_CHECKING:  # pragma: no cover
+    from requests import Response as RequestResponse
+
+    from grizzly.tasks import RequestTask
+    from grizzly.types.locust import Environment
+
     from .grizzly_user import GrizzlyUser
 
-
-LOG_FILE_TEMPLATE = '''
-[{{ request["time"] }}] -> {{ method }}{% if request["url"] != None %} {{ request["url"] }}{% endif %}:
+LOG_FILE_TEMPLATE = """[{{ request["time"] }}] -> {{ method }}{% if request["url"] != None %} {{ request["url"] }}{% endif %}:
 metadata:
 {{ request["metadata"] if request["metadata"] != None else '<empty>' }}
 
@@ -42,43 +46,42 @@ payload:
 
 {{ stacktrace }}
 {%- endif %}
-'''.strip()  # noqa: E501
+"""  # noqa: E501
 
 
 class RequestLogger(ResponseEvent):
     abstract: bool = True
 
-    log_dir: str
+    log_dir: Path
 
-    _context: Dict[str, Any] = {
+    _context: Dict[str, Any] = {  # noqa: RUF012
         'log_all_requests': False,
     }
 
-    def __init__(self, environment: Environment, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+    def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
         super().__init__(environment, *args, **kwargs)
 
         self.response_event.add_listener(self.request_logger)
 
-        self.log_dir = os.path.join(os.environ.get('GRIZZLY_CONTEXT_ROOT', '.'), 'logs')
+        self.log_dir = Path(environ.get('GRIZZLY_CONTEXT_ROOT', '.')) / 'logs'
 
-        log_dir = os.environ.get('GRIZZLY_LOG_DIR', None)
-        if log_dir is not None:
-            self.log_dir = os.path.join(self.log_dir, log_dir)
+        log_dir_path = environ.get('GRIZZLY_LOG_DIR', None)
+        if log_dir_path is not None:
+            self.log_dir = self.log_dir / log_dir_path
 
-        if not os.path.exists(self.log_dir):
-            os.makedirs(self.log_dir, exist_ok=True)
+        self.log_dir.mkdir(parents=True, exist_ok=True)
 
-        self._context = merge_dicts(super().context(), RequestLogger._context)
+        self._context = merge_dicts(super().context(), self.__class__._context)
 
     @classmethod
-    def normalize(cls, value: str) -> str:
+    def _normalize(cls, value: str) -> str:
         value = unicodedata.normalize('NFKD', str(value)).encode('ascii', 'ignore').decode('ascii')
         value = re.sub(r'[^\w\s-]', '', value)
 
         return re.sub(r'[-\s]+', '-', value).strip('-_')
 
     @classmethod
-    def _remove_secrets_attribute(self, contents: Optional[Any]) -> Optional[Any]:
+    def _remove_secrets_attribute(cls, contents: Optional[Any]) -> Optional[Any]:
         if not isinstance(contents, dict):
             return contents
 
@@ -89,7 +92,7 @@ class RequestLogger(ResponseEvent):
         return contents
 
     @classmethod
-    def get_http_user_data(cls, response: Union[GrizzlyResponseContextManager, RequestResponse]) -> Dict[str, Dict[str, Any]]:
+    def _get_http_user_data(cls, response: Union[GrizzlyResponseContextManager, RequestResponse]) -> Dict[str, Dict[str, Any]]:
         request_headers: Optional[Dict[str, Any]] = None
         request_body: Optional[str] = None
 
@@ -109,7 +112,7 @@ class RequestLogger(ResponseEvent):
                 if len(response_body.strip()) < 1:
                     response_body = None
 
-        response_headers = {key: value for key, value in cast(Dict[str, Any], response.headers).items()} if len(response.headers or {}) > 0 else None
+        response_headers = dict(cast(Dict[str, Any], response.headers).items()) if len(response.headers or {}) > 0 else None
 
         request = response.request
 
@@ -121,13 +124,13 @@ class RequestLogger(ResponseEvent):
             else:
                 request_body = None
 
-            request_headers = {key: value for key, value in request.headers.items()} if len(request.headers or {}) > 0 else None
+            request_headers = dict(request.headers.items()) if len(request.headers or {}) > 0 else None
 
             if request_body is not None:
                 try:
                     request_body = json.dumps(
                         cls._remove_secrets_attribute(
-                            json.loads(request_body)
+                            json.loads(request_body),
                         ),
                         indent=2,
                     )
@@ -158,19 +161,85 @@ class RequestLogger(ResponseEvent):
             },
         }
 
+    @classmethod
+    def _get_grizzly_response_user_data(
+        cls,
+        user: GrizzlyUser,
+        request: RequestTask,
+        context: HandlerContextType,
+        exception: Optional[Exception],
+        kwargs: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        variables: Dict[str, Any] = {}
+        parsed = urlparse(user.host or '')
+        sep = ''
+        if (len(parsed.path) > 0 and parsed.path[-1] != '/' and request.endpoint[0] != '/') or (parsed.path == '' and request.endpoint[0] != '/'):
+            sep = '/'
+
+        parsed = parsed._replace(path=f'{parsed.path}{sep}{request.endpoint}')
+        url = urlunparse(parsed)
+
+        variables['request'].update({
+            'url': url,
+        })
+
+        def unpack_context(response: HandlerContextType) -> GrizzlyResponse:
+            if not isinstance(response, tuple):
+                message = f'{type(response)} is not a GrizzlyResponse'
+                raise TypeError(message)
+
+            return cast(GrizzlyResponse, response)
+
+        if request.method.direction == RequestDirection.TO:
+            request_metadata: Optional[Dict[str, Any]]
+            request_metadata, request_payload = unpack_context(context)
+
+            variables['request'].update({
+                'metadata': request_metadata,
+                'payload': request_payload,
+            })
+        elif request.method.direction == RequestDirection.FROM:
+            response_metadata: Optional[Dict[str, Any]]
+            response_metadata, response_payload = unpack_context(context)
+
+            variables['response'].update({
+                'metadata': response_metadata,
+                'payload': response_payload,
+            })
+
+        locust_request_meta = kwargs.get('locust_request_meta', None)
+        if locust_request_meta is not None:
+            variables['response']['time'] = locust_request_meta['response_time']
+
+        if exception is not None:
+            variables['stacktrace'] = ''.join(traceback.format_exception(
+                type(exception),
+                value=exception,
+                tb=exception.__traceback__,
+            ))
+
+        variables['response']['status'] = 'ERROR' if exception is not None else 'OK'
+
+        return variables
+
     def request_logger(
         self,
         name: str,
         context: HandlerContextType,
         request: RequestTask,
-        user: 'GrizzlyUser',
+        user: GrizzlyUser,
         exception: Optional[Exception] = None,
         **kwargs: Dict[str, Any],
     ) -> None:
+        """Handle `response_event` when fired."""
         if getattr(request, 'response', None) is None:
             return
 
-        successful_request = context.status_code in request.response.status_codes if isinstance(context, getattr(GrizzlyResponseContextManager, '__args__')) else exception is None
+        successful_request = (
+            context.status_code in request.response.status_codes
+            if isinstance(context, (RequestsResponseContextManager, FastResponseContextManager))
+            else exception is None
+        )
 
         if successful_request and not self._context.get('log_all_requests', False):
             return
@@ -196,56 +265,10 @@ class RequestLogger(ResponseEvent):
             },
         }
 
-        if isinstance(context, getattr(GrizzlyResponseContextManager, '__args__')):
-            variables.update(self.get_http_user_data(context))
+        if isinstance(context, (RequestsResponseContextManager, FastResponseContextManager)):
+            variables.update(self._get_http_user_data(context))
         else:
-            parsed = urlparse(user.host or '')
-            sep = ''
-            if (len(parsed.path) > 0 and parsed.path[-1] != '/' and request.endpoint[0] != '/') or (parsed.path == '' and request.endpoint[0] != '/'):
-                sep = '/'
-
-            parsed = parsed._replace(path=f'{parsed.path}{sep}{request.endpoint}')
-            url = urlunparse(parsed)
-
-            variables['request'].update({
-                'url': url,
-            })
-
-            def unpack_context(response: HandlerContextType) -> GrizzlyResponse:
-                if not isinstance(response, tuple):
-                    raise ValueError(f'{type(response)} is not a GrizzlyResponse')
-
-                return cast(GrizzlyResponse, response)
-
-            if request.method.direction == RequestDirection.TO:
-                request_metadata: Optional[Dict[str, Any]]
-                request_metadata, request_payload = unpack_context(context)
-
-                variables['request'].update({
-                    'metadata': request_metadata,
-                    'payload': request_payload,
-                })
-            elif request.method.direction == RequestDirection.FROM:
-                response_metadata: Optional[Dict[str, Any]]
-                response_metadata, response_payload = unpack_context(context)
-
-                variables['response'].update({
-                    'metadata': response_metadata,
-                    'payload': response_payload,
-                })
-
-            locust_request_meta = kwargs.get('locust_request_meta', None)
-            if locust_request_meta is not None:
-                variables['response']['time'] = locust_request_meta['response_time']
-
-            if exception is not None:
-                variables['stacktrace'] = ''.join(traceback.format_exception(
-                    type(exception),
-                    value=exception,
-                    tb=exception.__traceback__,
-                ))
-
-            variables['response']['status'] = 'ERROR' if exception is not None else 'OK'
+            variables = self._get_grizzly_response_user_data(user, request, context, exception, kwargs)
 
         response_time = variables['response'].get('time', None)
         if response_time is not None:
@@ -265,10 +288,10 @@ class RequestLogger(ResponseEvent):
             if variables[v]['time'] is None:
                 variables[v]['time'] = f'{log_date}*'
 
-        name = self.normalize(name)
+        name = self._normalize(name)
 
         log_name = f'{name}.{log_date.strftime("%Y%m%dT%H%M%S%f")}.log'
         contents = Template(LOG_FILE_TEMPLATE).render(**variables)
 
-        with open(os.path.join(self.log_dir, log_name), 'w') as fd:
-            fd.write(contents)
+        log_file = self.log_dir / log_name
+        log_file.write_text(contents)

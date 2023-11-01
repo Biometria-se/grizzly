@@ -1,4 +1,4 @@
-'''Get and put messages on with IBM MQ queues.
+"""Get and put messages on with IBM MQ queues.
 
 User is based on `pymqi` for communicating with IBM MQ. However `pymqi` uses native libraries which `gevent` (used by `locust`) cannot patch,
 which causes any calls in `pymqi` to block the rest of `locust`. To get around this, the user implementation communicates with a stand-alone
@@ -19,14 +19,14 @@ Supports the following request methods:
 
 Format of `host` is the following:
 
-``` plain
+```plain
 mq://<hostname>:<port>/?QueueManager=<queue manager name>&Channel=<channel name>
 ```
 
 `endpoint` in the request is the name of an MQ queue. This can also be combined with an expression, if
 a specific message is to be retrieved from the queue. The format of endpoint is:
 
-``` plain
+```plain
 queue:<queue_name>[, expression:<expression>][, max_message_size:<max_message_size>]
 ```
 
@@ -39,10 +39,11 @@ the specified size, the message will be rejected by the client and will eventual
 
 Example of how to use it in a scenario:
 
-``` gherkin
+```gherkin
 Given a user of type "MessageQueue" load testing "mq://mq.example.com/?QueueManager=QM01&Channel=SRVCONN01"
 Then put request "test/queue-message.j2.json" with name "queue-message" to endpoint "queue:INCOMING.MESSAGES"
 ```
+
 ### Get message
 
 Default behavior is to fail directly if there is no message on the queue. If the request should wait until a message is available,
@@ -51,7 +52,7 @@ set the time it should wait with `message.wait` (seconds) context variable.
 To keep the connection alive during longer waiting periods, a heartbeat interval can be configured using the
 `connection.heartbeat_interval` (seconds) context variable (default 300).
 
-``` gherkin
+```gherkin
 Given a user of type "MessageQueue" load testing "mq://mq.example.com/?QueueManager=QM01&Channel=SRVCONN01"
 And set context variable "message.wait" to "5"
 Then get request with name "get-queue-message" from endpoint "queue:INCOMING.MESSAGES"
@@ -66,7 +67,7 @@ later consumed from the queue. If no matching message was found during browsing,
 up until the specified `message.wait` seconds has elapsed. To use expressions, a content type must be specified for the get
 request, e.g. `application/xml`:
 
-``` gherkin
+```gherkin
 Given a user of type "MessageQueue" load testing "mq://mq.example.com/?QueueManager=QM01&Channel=SRVCONN01"
 And set context variable "message.wait" to "5"
 Then get request with name "get-specific-queue-message" from endpoint "queue:INCOMING.MESSAGES, expression: //document[@id='abc123']"
@@ -77,7 +78,7 @@ And set response content type to "application/xml"
 
 #### Username and password
 
-``` gherkin
+```gherkin
 Given a user of type "MessageQueue" load testing "mq://mqm:admin@mq.example.com/?QueueManager=QM01&Channel=SRVCONN01"
 And set context variable "auth.username" to "<username>"
 And set context variable "auth.password" to "<password>"
@@ -88,7 +89,7 @@ And set context variable "auth.password" to "<password>"
 A [key repository](https://www.ibm.com/docs/en/ibm-mq/7.5?topic=wstulws-setting-up-key-repository-unix-linux-windows-systems)
 (3 files; `.kdb`, `.rdb` and `.sth`) for the user is needed, and is specified with `auth.key_file` excluding the file extension.
 
-``` gherkin
+```gherkin
 Given a user of type "MessageQueue" load testing "mq://mqm:admin@mq.example.com/?QueueManager=QM01&Channel=SRVCONN01"
 And set context variable "auth.username" to "<username>"
 And set context variable "auth.password" to "<password>"
@@ -105,7 +106,7 @@ Basic support exist for [RFH2](https://www.ibm.com/docs/en/ibm-mq/7.5?topic=2-ov
 compressed messages. When receiving messages, the RFH2 is automatically detected and (somewhat) supported. If RFH2 should be
 added when sending messages, with gzip compression, the context variable `message.header_type` should be set to `RFH2`:
 
-``` gherkin
+```gherkin
 Given a user of type "MessageQueue" load testing "mq://mq.example.com/?QueueManager=QM01&Channel=SRVCONN01"
 And set context variable "message.header_type" to "rfh2"
 Then put request "test/queue-message.j2.json" with name "gzipped-message" to endpoint "queue:GZIPPED.MESSAGES"
@@ -116,30 +117,31 @@ to `None` or omit setting the context variable at all.
 
 To set a user value in the RFH2 header of the message, set `metadata` after the request, e.g.:
 
-``` gherkin
+```gherkin
 Then put request "test/queue-message.j2.json" with name "gzipped-message" to endpoint "queue:GZIPPED.MESSAGES"
 And metadata "filename" is "my_filename"
 ```
-'''
-import logging
+"""
+from __future__ import annotations
 
-from typing import Dict, Any, Generator, Tuple, Optional, cast
-from urllib.parse import urlparse, parse_qs, unquote
-from contextlib import contextmanager
+import logging
+from contextlib import contextmanager, suppress
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, Generator, Optional, Set, cast
+from urllib.parse import parse_qs, unquote, urlparse
 
 import zmq.green as zmq
 
-from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse, async_message_request
-from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
-
-from grizzly.types import GrizzlyResponse, RequestDirection, RequestType
-from grizzly.types.locust import Environment
-from grizzly.tasks import RequestTask
-from grizzly.utils import merge_dicts
 from grizzly.exceptions import StopScenario
+from grizzly.types import GrizzlyResponse, RequestDirection, RequestType
+from grizzly.utils import merge_dicts
+from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
+from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse, async_message_request
 
 from .base import GrizzlyUser, ResponseHandler
 
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.tasks import RequestTask
+    from grizzly.types.locust import Environment
 
 # no used here, but needed for sanity check
 try:
@@ -151,7 +153,9 @@ except:
 
 
 class MessageQueueUser(ResponseHandler, GrizzlyUser):
-    _context: Dict[str, Any] = {
+    __dependencies__: ClassVar[Set[str]] = {'async-messaged'}
+
+    _context: Dict[str, Any] = {  # noqa: RUF012
         'auth': {
             'username': None,
             'password': None,
@@ -165,15 +169,13 @@ class MessageQueueUser(ResponseHandler, GrizzlyUser):
         },
     }
 
-    __dependencies__ = set(['async-messaged'])
-
     am_context: AsyncMessageContext
     worker_id: Optional[str]
     zmq_context = zmq.Context()
     zmq_client: zmq.Socket
     zmq_url = 'tcp://127.0.0.1:5554'
 
-    def __init__(self, environment: Environment, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+    def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
         if pymqi.__name__ == 'grizzly_extras.dummy_pymqi':
             pymqi.raise_for_error(self.__class__)
 
@@ -183,16 +185,20 @@ class MessageQueueUser(ResponseHandler, GrizzlyUser):
         parsed = urlparse(self.host or '')
 
         if parsed.scheme != 'mq':
-            raise ValueError(f'"{parsed.scheme}" is not a supported scheme for {self.__class__.__name__}')
+            message = f'"{parsed.scheme}" is not a supported scheme for {self.__class__.__name__}'
+            raise ValueError(message)
 
         if parsed.hostname is None or len(parsed.hostname) < 1:
-            raise ValueError(f'{self.__class__.__name__}: hostname is not specified in {self.host}')
+            message = f'{self.__class__.__name__}: hostname is not specified in {self.host}'
+            raise ValueError(message)
 
         if parsed.username is not None or parsed.password is not None:
-            raise ValueError(f'{self.__class__.__name__}: username and password should be set via context variables "auth.username" and "auth.password"')
+            message = f'{self.__class__.__name__}: username and password should be set via context variables "auth.username" and "auth.password"'
+            raise ValueError(message)
 
         if parsed.query == '':
-            raise ValueError(f'{self.__class__.__name__} needs QueueManager and Channel in the query string')
+            message = f'{self.__class__.__name__} needs QueueManager and Channel in the query string'
+            raise ValueError(message)
 
         port = parsed.port or 1414
 
@@ -204,10 +210,12 @@ class MessageQueueUser(ResponseHandler, GrizzlyUser):
         params = parse_qs(parsed.query)
 
         if 'QueueManager' not in params:
-            raise ValueError(f'{self.__class__.__name__} needs QueueManager in the query string')
+            message = f'{self.__class__.__name__} needs QueueManager in the query string'
+            raise ValueError(message)
 
         if 'Channel' not in params:
-            raise ValueError(f'{self.__class__.__name__} needs Channel in the query string')
+            message = f'{self.__class__.__name__} needs Channel in the query string'
+            raise ValueError(message)
 
         self.am_context.update({
             'queue_manager': unquote(params['QueueManager'][0]),
@@ -223,8 +231,10 @@ class MessageQueueUser(ResponseHandler, GrizzlyUser):
         header_type = message_context.get('header_type', None) or 'none'
         header_type = header_type.lower()
         if header_type not in ['rfh2', 'none']:
-            raise ValueError(f'{self.__class__.__name__} unsupported value for header_type: "{header_type}", supported ones are "None" and "RFH2"')
-        elif header_type == 'none':
+            message = f'{self.__class__.__name__} unsupported value for header_type: "{header_type}", supported ones are "None" and "RFH2"'
+            raise ValueError(message)
+
+        if header_type == 'none':
             header_type = None
 
         self.am_context.update({
@@ -245,27 +255,29 @@ class MessageQueueUser(ResponseHandler, GrizzlyUser):
             logging.getLogger(uamqp_logger_name).setLevel(logging.ERROR)
 
     def on_start(self) -> None:
+        """Connect to async-messaged when user starts."""
         self.logger.debug('on_start called')
         super().on_start()
 
         try:
-            with self.request_context(None, {
+            with self._request_context({
                 'action': RequestType.CONNECT(),
                 'client': id(self),
                 'context': self.am_context,
             }):
                 self.zmq_client = self.zmq_context.socket(zmq.REQ)
                 self.zmq_client.connect(self.zmq_url)
-        except:
-            self.logger.error('on_start failed', exc_info=True)
-            raise StopScenario()
+        except Exception as e:
+            self.logger.exception('on_start failed')
+            raise StopScenario from e
 
     def on_stop(self) -> None:
-        self.logger.debug(f'on_stop called, {self.worker_id=}')
+        """Disconnect from async-messaged when user stops."""
+        self.logger.debug('on_stop called, worker_id=%s', self.worker_id)
         if self.worker_id is None:
             return
 
-        with self.request_context(None, {
+        with self._request_context({
             'action': RequestType.DISCONNECT(),
             'worker': self.worker_id,
             'client': id(self),
@@ -273,17 +285,15 @@ class MessageQueueUser(ResponseHandler, GrizzlyUser):
         }):
             pass
 
-        try:
+        with suppress(Exception):
             self.zmq_client.disconnect(self.zmq_url)
-        except:
-            pass
 
         self.worker_id = None
 
         super().on_stop()
 
     @contextmanager
-    def request_context(self, request: Optional[RequestTask], am_request: AsyncMessageRequest) -> Generator[Dict[str, Any], None, None]:
+    def _request_context(self, am_request: AsyncMessageRequest) -> Generator[Dict[str, Any], None, None]:
         response: Optional[AsyncMessageResponse] = None
         context: Dict[str, Any] = {
             'metadata': None,
@@ -299,6 +309,7 @@ class MessageQueueUser(ResponseHandler, GrizzlyUser):
         })
 
     def request_impl(self, request: RequestTask) -> GrizzlyResponse:
+        """Execute request task via async-messaged."""
         am_context = cast(AsyncMessageContext, merge_dicts(
             cast(Dict[str, Any], self.am_context),
             {
@@ -315,18 +326,21 @@ class MessageQueueUser(ResponseHandler, GrizzlyUser):
             'payload': request.source,
         }
 
-        with self.request_context(request, am_request) as response:
+        with self._request_context(am_request) as response:
             # Parse the endpoint to validate queue name / expression parts
             arguments = parse_arguments(request.endpoint, ':')
 
             if 'queue' not in arguments:
-                raise RuntimeError('queue name must be prefixed with queue:')
+                message = 'queue name must be prefixed with queue:'
+                raise RuntimeError(message)
 
             unsupported_arguments = get_unsupported_arguments(['queue', 'expression', 'max_message_size'], arguments)
             if len(unsupported_arguments) > 0:
-                raise RuntimeError(f'arguments {", ".join(unsupported_arguments)} is not supported')
+                message = f'arguments {", ".join(unsupported_arguments)} is not supported'
+                raise RuntimeError(message)
 
             if 'expression' in arguments and request.method.direction != RequestDirection.FROM:
-                raise RuntimeError('argument "expression" is not allowed when sending to an endpoint')
+                message = 'argument "expression" is not allowed when sending to an endpoint'
+                raise RuntimeError(message)
 
-        return (response['metadata'], response['payload'],)
+        return (response['metadata'], response['payload'])

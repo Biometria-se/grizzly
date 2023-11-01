@@ -236,7 +236,7 @@ def _add_response_handler(
             raise ValueError('condition is not set')
 
         handler = ValidationHandlerAction(
-            condition,
+            condition=condition,
             expression=expression,
             match_with=match_with,
             expected_matches=expected_matches,
@@ -275,7 +275,3 @@ def get_task_client(grizzly: GrizzlyContext, endpoint: str) -> Type[ClientTask]:
     task_client.__scenario__ = grizzly.scenario
 
     return task_client
-
-
-def is_template(text: str) -> bool:
-    return '{{' in text and '}}' in text

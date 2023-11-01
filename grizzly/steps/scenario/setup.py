@@ -13,7 +13,7 @@ from grizzly.utils import merge_dicts
 from grizzly.exceptions import RestartScenario
 from grizzly.tasks import RequestTask, GrizzlyTask
 from grizzly.auth import GrizzlyHttpAuthClient
-from grizzly.steps._helpers import is_template
+from grizzly.utils import is_template
 
 
 @parse.with_pattern(r'(iteration[s]?)')

@@ -1,4 +1,4 @@
-'''Put files to Azure Blob Storage.
+"""Put files to Azure Blob Storage.
 
 ## Request methods
 
@@ -11,7 +11,7 @@ Supports the following request methods:
 
 Format of `host` is the following:
 
-``` plain
+```plain
 [DefaultEndpointsProtocol=]https;EndpointSuffix=<hostname>;AccountName=<account name>;AccountKey=<account key>
 ```
 
@@ -22,36 +22,38 @@ is either `name` or based on the file name of `source`.
 
 Example of how to use it in a scenario:
 
-``` gherkin
+```gherkin
 Given a user of type "BlobStorage" load testing "DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=examplestorage;AccountKey=xxxyyyyzzz=="
 Then send request "test/blob.file" to endpoint "azure-blobstorage-container-name"
 ```
-'''
-import os
+"""
+from __future__ import annotations
 
-from typing import Dict, Any, Tuple
-from urllib.parse import urlparse, parse_qs
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
+from urllib.parse import parse_qs, urlparse
 
 from azure.storage.blob import BlobServiceClient
 
-from grizzly.types import RequestMethod, GrizzlyResponse
-from grizzly.types.locust import Environment
-from grizzly.tasks import RequestTask
+from grizzly.types import GrizzlyResponse, RequestMethod
 from grizzly.utils import merge_dicts
 
 from .base import GrizzlyUser
 
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.tasks import RequestTask
+    from grizzly.types.locust import Environment
+
 
 class BlobStorageUser(GrizzlyUser):
     blob_client: BlobServiceClient
-    _context: Dict[str, Any] = {}
 
-    def __init__(self, environment: Environment, *args: Tuple[Any], **kwargs: Dict[str, Any]) -> None:
+    def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
         super().__init__(environment, *args, **kwargs)
 
         conn_str: str = self.host
         if conn_str.startswith('DefaultEndpointsProtocol='):
-            conn_str = conn_str[25:]  # pylint: disable=unsubscriptable-object
+            conn_str = conn_str[25:]
 
         # Replace semicolon separators between parameters to ? and & and massage it to make it "urlparse-compliant"
         # for validation
@@ -60,42 +62,50 @@ class BlobStorageUser(GrizzlyUser):
         parsed = urlparse(conn_str)
 
         if parsed.scheme != 'https':
-            raise ValueError(f'"{parsed.scheme}" is not supported for {self.__class__.__name__}')
+            message = f'"{parsed.scheme}" is not supported for {self.__class__.__name__}'
+            raise ValueError(message)
 
         if parsed.query == '':
-            raise ValueError(f'{self.__class__.__name__} needs AccountName and AccountKey in the query string')
+            message = f'{self.__class__.__name__} needs AccountName and AccountKey in the query string'
+            raise ValueError(message)
 
         params = parse_qs(parsed.query)
         if 'AccountName' not in params:
-            raise ValueError(f'{self.__class__.__name__} needs AccountName in the query string')
+            message = f'{self.__class__.__name__} needs AccountName in the query string'
+            raise ValueError(message)
 
         if 'AccountKey' not in params:
-            raise ValueError(f'{self.__class__.__name__} needs AccountKey in the query string')
+            message = f'{self.__class__.__name__} needs AccountKey in the query string'
+            raise ValueError(message)
 
         self._context = merge_dicts(super().context(), self.__class__._context)
 
     def on_start(self) -> None:
+        """Create blob storage client when user starts."""
         super().on_start()
         self.blob_client = BlobServiceClient.from_connection_string(conn_str=self.host)
 
     def on_stop(self) -> None:
+        """Disconnect blob storage client when user stops."""
         self.blob_client.close()
         super().on_stop()
 
     def request_impl(self, request: RequestTask) -> GrizzlyResponse:
-        blob = os.path.basename(request.endpoint)
+        """Perform a blob storage request based on request task."""
+        blob = Path(request.endpoint).name
         container = request.endpoint
         print(f'{request.endpoint=}, {container=}, {blob=}')
 
         if container.endswith(blob):
-            container = os.path.dirname(container)
+            container = str(Path(container).parent)
         else:
-            blob = self.normalize(request.name)
+            blob = self._normalize(request.name)
 
         with self.blob_client.get_blob_client(container=container, blob=blob) as blob_client:
             if request.method in [RequestMethod.SEND, RequestMethod.PUT]:
                 blob_client.upload_blob(request.source)
             else:  # pragma: no cover
-                raise NotImplementedError(f'{self.__class__.__name__} has not implemented {request.method.name}')
+                message = f'{self.__class__.__name__} has not implemented {request.method.name}'
+                raise NotImplementedError(message)
 
         return {}, request.source

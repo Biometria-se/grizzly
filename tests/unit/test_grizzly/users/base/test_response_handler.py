@@ -92,7 +92,7 @@ class TestResponseHandlerAction:
 
 class TestValidationHandlerAction:
     def test___init__(self) -> None:
-        handler = ValidationHandlerAction(False, expression='$.hello.world', match_with='foo')
+        handler = ValidationHandlerAction(condition=False, expression='$.hello.world', match_with='foo')
 
         assert issubclass(handler.__class__, ResponseHandlerAction)
         assert not handler.condition
@@ -113,7 +113,7 @@ class TestValidationHandlerAction:
             response_context_manager._entered = True
 
             handler = ValidationHandlerAction(
-                True,
+                condition=True,
                 expression='$.test.value',
                 match_with='test',
             )
@@ -129,7 +129,7 @@ class TestValidationHandlerAction:
 
             # regexp match expression value
             handler = ValidationHandlerAction(
-                True,
+                condition=True,
                 expression='$.test.value',
                 match_with='.*(test)$',
             )
@@ -139,7 +139,7 @@ class TestValidationHandlerAction:
 
             # ony allows 1 match per expression
             handler = ValidationHandlerAction(
-                True,
+                condition=True,
                 expression='$.test[*].value',
                 match_with='.*(test)$',
             )

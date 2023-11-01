@@ -6,8 +6,7 @@ from grizzly.context import GrizzlyContext
 from grizzly.testdata.utils import resolve_variable
 from grizzly.testdata import GrizzlyVariables
 from grizzly.tasks import SetVariableTask
-
-from ._helpers import is_template
+from grizzly.utils import is_template
 
 
 @then(u'ask for value of variable "{name}"')

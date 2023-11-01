@@ -266,7 +266,7 @@ class ClientTask(GrizzlyMetaRequestTask):
                 )
 
             if exception is not None or parent.user._scenario.context.get('log_all_requests', False):
-                log_name = RequestLogger.normalize(name)
+                log_name = RequestLogger._normalize(name)
                 log_date = datetime.now()
                 log_file = self.log_dir / f'{log_name}.{log_date.strftime("%Y%m%dT%H%M%S%f")}.log'
 

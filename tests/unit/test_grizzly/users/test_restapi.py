@@ -130,35 +130,35 @@ class TestRestApiUser:
         response_context_manager = ResponseContextManager(response, RequestEvent(), {})
 
         response.status_code = 400
-        assert parent.user.get_error_message(response_context_manager) == 'bad request'
+        assert parent.user._get_error_message(response_context_manager) == 'bad request'
 
         response.status_code = 401
-        assert parent.user.get_error_message(response_context_manager) == 'unauthorized'
+        assert parent.user._get_error_message(response_context_manager) == 'unauthorized'
 
         response.status_code = 403
-        assert parent.user.get_error_message(response_context_manager) == 'forbidden'
+        assert parent.user._get_error_message(response_context_manager) == 'forbidden'
 
         response.status_code = 404
-        assert parent.user.get_error_message(response_context_manager) == 'not found'
+        assert parent.user._get_error_message(response_context_manager) == 'not found'
 
         response.status_code = 405
-        assert parent.user.get_error_message(response_context_manager) == 'unknown'
+        assert parent.user._get_error_message(response_context_manager) == 'unknown'
 
         response._content = 'just a simple string'.encode('utf-8')
-        assert parent.user.get_error_message(response_context_manager) == 'just a simple string'
+        assert parent.user._get_error_message(response_context_manager) == 'just a simple string'
 
         response._content = '{"Message": "message\\nproperty\\\\nthat is multiline"}'.encode('utf-8')
-        assert parent.user.get_error_message(response_context_manager) == 'message property'
+        assert parent.user._get_error_message(response_context_manager) == 'message property'
 
         response._content = '{"error_description": "error description\\r\\nthat is multiline"}'.encode('utf-8')
-        assert parent.user.get_error_message(response_context_manager) == 'error description'
+        assert parent.user._get_error_message(response_context_manager) == 'error description'
 
         response._content = '{"success": false}'.encode('utf-8')
-        assert parent.user.get_error_message(response_context_manager) == '{"success": false}'
+        assert parent.user._get_error_message(response_context_manager) == '{"success": false}'
 
         text_mock = mocker.patch('requests.models.Response.text', new_callable=mocker.PropertyMock)
         text_mock.return_value = None
-        assert parent.user.get_error_message(response_context_manager) == "unknown response <class 'locust.clients.ResponseContextManager'>"
+        assert parent.user._get_error_message(response_context_manager) == "unknown response <class 'locust.clients.ResponseContextManager'>"
 
     def test_async_request(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         parent = grizzly_fixture(user_type=RestApiUser)

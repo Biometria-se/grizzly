@@ -1,10 +1,10 @@
+"""Locust types frequently used in grizzly."""
 from typing import Callable, Union
 
-from locust.runners import MasterRunner, WorkerRunner, LocalRunner
 from locust.env import Environment
+from locust.exception import CatchResponseError, LocustError, StopUser
 from locust.rpc.protocol import Message
-from locust.exception import StopUser, LocustError, CatchResponseError
-
+from locust.runners import LocalRunner, MasterRunner, WorkerRunner
 
 MessageHandler = Callable[[Environment, Message], None]
 
