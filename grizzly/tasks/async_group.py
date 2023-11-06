@@ -8,9 +8,9 @@ Enable `gevent` debugging for this task by running with argument `--verbose` and
 
 ## Step implementations
 
-* {@pylink grizzly.steps.scenario.tasks.step_task_async_group_start}
+* {@pylink grizzly.steps.scenario.tasks.async_group.step_task_async_group_start}
 
-* {@pylink grizzly.steps.scenario.tasks.step_task_async_group_close}
+* {@pylink grizzly.steps.scenario.tasks.async_group.step_task_async_group_close}
 
 Requests are added to the group with the same step implementations as {@pylink grizzly.tasks.request} task.
 

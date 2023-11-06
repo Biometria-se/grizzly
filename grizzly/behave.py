@@ -166,7 +166,7 @@ def before_scenario(context: Context, scenario: Scenario, *_args: Any, **_kwargs
         if matched_step is None:
             continue
 
-        if not in_correct_section(matched_step.func, ['grizzly.steps.scenario', 'grizzly.steps']):
+        if not in_correct_section(matched_step.func, ['grizzly.steps.scenario', 'grizzly.steps.scenario.tasks', 'grizzly.steps']):
             # to get a nicer error message, the step should fail before it's executed, see before_step hook
             setattr(step, IN_CORRECT_SECTION_ATTRIBUTE, 'incorrect')
 

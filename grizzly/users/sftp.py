@@ -14,7 +14,7 @@ Supports the following request methods:
 
 Format of `host` is the following:
 
-``` plain
+```plain
 sftp://<host>[:<port>]
 ```
 
@@ -22,7 +22,7 @@ sftp://<host>[:<port>]
 
 Example of how to use it in a scenario:
 
-``` gherkin
+```gherkin
 Given a user of type "Sftp" load testing "sftp://sftp.example.com"
 And set context variable "auth.username" to "bob"
 And set context variable "auth.password" to "great-scott-42-file-bar"

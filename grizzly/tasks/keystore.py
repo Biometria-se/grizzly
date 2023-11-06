@@ -9,11 +9,11 @@ The whole keystore is persistent, so anything stored will be loaded the next tim
 
 ## Step implementations
 
-* {@pylink grizzly.steps.scenario.tasks.step_task_keystore_get}
+* {@pylink grizzly.steps.scenario.tasks.keystore.step_task_keystore_get}
 
-* {@pylink grizzly.steps.scenario.tasks.step_task_keystore_get_default}
+* {@pylink grizzly.steps.scenario.tasks.keystore.step_task_keystore_get_default}
 
-* {@pylink grizzly.steps.scenario.tasks.step_task_keystore_set}
+* {@pylink grizzly.steps.scenario.tasks.keystore.step_task_keystore_set}
 
 ## Statistics
 

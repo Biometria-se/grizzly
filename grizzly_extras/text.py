@@ -8,7 +8,7 @@ class permutation:
     Decorator used to annotate `parse` methods that are not using {@pylink grizzly_extras.text.PermutationEnum} as a base.
     This could be for example parse methods that uses regular expressions via `parse.with_pattern`.
 
-    ``` python
+    ```python
     import parse
 
     from behave import register_type
@@ -56,7 +56,7 @@ class PermutationEnum(Enum, metaclass=PermutationMeta):
 
     Consider the following `Enum`, being mapped to a custom `parse` type named `FruitType`:
 
-    ``` python
+    ```python
     from behave import register_type
 
 
@@ -82,7 +82,7 @@ class PermutationEnum(Enum, metaclass=PermutationMeta):
 
     When permutated, it will only produce one step expression and all instances of the variable in the expression will have been replaced with nothing.
 
-    ``` gherkin
+    ```gherkin
     Then I want to eat a "{fruit:FruitType}"  # -->
 
     Then I want to eat a ""
@@ -98,7 +98,7 @@ class PermutationEnum(Enum, metaclass=PermutationMeta):
 
     When permutated, it will produce the number of step expressions as values in the enum.
 
-    ``` gherkin
+    ```gherkin
     Then I want to eat a {fruit:FruitType}  # -->
 
     Then I want to eat a banana
@@ -112,7 +112,7 @@ class PermutationEnum(Enum, metaclass=PermutationMeta):
 
     When permutated, combination of all enum values will be produced, if the variable type occurs the same number of times as values in the enum.
 
-    ``` gherkin
+    ```gherkin
     Then I want to eat a {fruit1:FruitType}, a {fruit2:FruitType} and a {fruit3:FruitType}  # -->
 
     Then I want to eat a banana, a apple and a orange
@@ -122,7 +122,7 @@ class PermutationEnum(Enum, metaclass=PermutationMeta):
 
     Variable occurs `2..N` times in the expression, and should produce more than one combination of the step expression.
 
-    ``` gherkin
+    ```gherkin
     Then I want to eat a {fruit1:FruitType}, a {fruit2:FruitType} and a {fruit3:FruitType}  # -->
 
     Then I want to eat a banana, a apple and a orange

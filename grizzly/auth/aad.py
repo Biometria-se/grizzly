@@ -19,7 +19,7 @@ There are two ways to get an token, see below.
 
 Using client secret for an app registration.
 
-``` gherkin
+```gherkin
 Given a user of type "RestApi" load testing "https://api.example.com"
 And set context variable "auth.provider" to "<provider>"
 And set context variable "auth.client.id" to "<client id>"
@@ -33,7 +33,7 @@ Using a username and password, with optional MFA authentication.
 
 `auth.user.redirect_uri` needs to correspond to the endpoint that the client secret is registrered for.
 
-``` gherkin
+```gherkin
 Given a user of type "RestApi" load testing "https://api.example.com"
 And set context variable "auth.provider" to "<provider>"
 And set context variable "auth.client.id" to "<client id>"
@@ -86,13 +86,11 @@ If the user is required to have a MFA method, support for software based TOTP to
 
 The user now have software based TOTP tokens as MFA method.
 
-
-
 #### Example
 
 In addition to the "Username and password" example, the context variable `auth.user.otp_secret` must also be set.
 
-``` gherkin
+```gherkin
 Given a user of type "RestApi" load testing "https://api.example.com"
 And set context variable "auth.provider" to "<provider>"
 And set context variable "auth.client.id" to "<client id>"

@@ -2,7 +2,7 @@ Feature: grizzly example
   Background: common configuration
     Given "3" users
     And spawn rate is "1" user per second
-    And add callback "steps.custom.callback_client_server" for message type "client_server" from client to server
+    And register callback "steps.custom.callback_client_server" for message type "client_server" from client to server
 
   Scenario: dog facts api
     Given a user of type "RestApi" load testing "$conf::facts.dog.host$"

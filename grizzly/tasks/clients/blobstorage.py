@@ -1,4 +1,4 @@
-'''This task performs Azure Blob Storage put operations to a specified endpoint.
+"""This task performs Azure Blob Storage put operations to a specified endpoint.
 
 This is useful if the scenario is another user type than `BlobStorageUser`, but the scenario still requires an action towards a blob container.
 
@@ -6,7 +6,7 @@ Only supports `RequestDirection.TO`.
 
 ## Step implementations
 
-* {@pylink grizzly.steps.scenario.tasks.step_task_client_put_endpoint_file_destination}
+* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_put_endpoint_file_destination}
 
 ## Arguments
 
@@ -24,7 +24,7 @@ Only supports `RequestDirection.TO`.
 
 ### `endpoint`
 
-``` plain
+```plain
 bs[s]://<AccountName>?AccountKey=<AccountKey>&Container=<Container>[&Overwrite=<bool>]
 ```
 
@@ -39,7 +39,7 @@ bs[s]://<AccountName>?AccountKey=<AccountKey>&Container=<Container>[&Overwrite=<
 ### `destination`
 
 The MIME type of an uploaded file will automagically be guessed based on the [rendered] destination file extension.
-'''
+"""
 import logging
 
 from typing import Optional, List, cast

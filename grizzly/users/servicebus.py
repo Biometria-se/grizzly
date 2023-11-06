@@ -32,7 +32,7 @@ Format of `host` is the following:
 `endpoint` in the request must have the prefix `queue:` or `topic:` followed by the name of the targeted
 type. When receiving messages from a topic, the argument `subscription:` is mandatory. The format of endpoint is:
 
-``` plain
+```plain
 [queue|topic]:<endpoint name>[, subscription:<subscription name>][, expression:<expression>]
 ```
 

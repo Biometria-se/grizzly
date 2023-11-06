@@ -26,7 +26,7 @@ from grizzly.context import (
 )
 
 from grizzly.types import MessageDirection, RequestMethod
-from grizzly.tasks import LogMessageTask, RequestTask, WaitTask, AsyncRequestGroupTask, LoopTask, ConditionalTask
+from grizzly.tasks import LogMessageTask, RequestTask, ExplicitWaitTask, AsyncRequestGroupTask, LoopTask, ConditionalTask
 
 
 from tests.helpers import TestTask, get_property_decorated_attributes
@@ -349,7 +349,7 @@ class TestGrizzlyContextScenario:
         scenario.tasks.add(second_request)
         assert scenario.tasks() == [request, second_request]
 
-        wait_task = WaitTask(time_expression='1.337')
+        wait_task = ExplicitWaitTask(time_expression='1.337')
         scenario.tasks.add(wait_task)
         assert scenario.tasks() == [request, second_request, wait_task]
 

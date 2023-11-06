@@ -1,4 +1,4 @@
-'''
+"""
 @anchor pydoc:grizzly.testdata.variables.csv_reader CSV Reader
 This variable reads a CSV file and provides a new row from the CSV file each time it is accessed.
 
@@ -15,29 +15,27 @@ Value is the path, relative to `requests/`, of an file ending with `.csv`.
 
 ## Example
 
-`requests/example.csv`:
-
-``` plain
+```plain title="requests/example.csv"
 username,password
 bob1,some-password
 alice1,some-other-password
 bob2,password
 ```
 
-``` gherkin
+```gherkin
 And value for variable "AtomicCsvReader.example" is "example.csv | random=False, repeat=True"
 Then post request with name "authenticate" to endpoint "/api/v1/authenticate"
-  """
+  \"\"\"
   {
       "username": "{{ AtomicCsvReader.example.username }}",
       "password": "{{ AtomicCsvReader.example.password }}"
   }
-  """
+  \"\"\"
 ```
 
 First request the payload will be:
 
-``` json
+```json
 {
     "username": "bob1",
     "password": "some-password"
@@ -46,7 +44,7 @@ First request the payload will be:
 
 Second request:
 
-``` json
+```json
 {
     "username": "alice1",
     "password": "some-other-password"
@@ -54,7 +52,7 @@ Second request:
 ```
 
 etc.
-'''
+"""
 import os
 
 from typing import Dict, List, Any, Type, Optional, cast

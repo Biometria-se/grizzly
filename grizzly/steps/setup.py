@@ -12,7 +12,7 @@ from grizzly.utils import is_template
 @then(u'ask for value of variable "{name}"')
 @given(u'ask for value of variable "{name}"')
 def step_setup_variable_value_ask(context: Context, name: str) -> None:
-    '''This step is used to indicate for `grizzly-cli` that it should ask for an initial value for the variable.
+    """This step is used to indicate for `grizzly-cli` that it should ask for an initial value for the variable.
     It will then inject the value into the locust runtime environment, and in this step read it and insert it
     into the locust context which grizzly will use to setup locust.
 
@@ -21,13 +21,13 @@ def step_setup_variable_value_ask(context: Context, name: str) -> None:
 
     Use this step for variables that should have different initial values for each run of the feature.
 
-    ``` gherkin
+    ```gherkin
     And ask for value for variable "AtomicIntegerIncrementer.messageID"
     ```
 
     Args:
         name (str): variable name used in templates
-    '''
+    """
     grizzly = cast(GrizzlyContext, context.grizzly)
 
     value = environ.get(f'TESTDATA_VARIABLE_{name}', None)
@@ -42,7 +42,7 @@ def step_setup_variable_value_ask(context: Context, name: str) -> None:
 
 @given(u'value for variable "{name}" is "{value}"')
 def step_setup_variable_value(context: Context, name: str, value: str) -> None:
-    '''Use this step to initialize a variable that should have the same [start] value for every run of
+    """Use this step to initialize a variable that should have the same [start] value for every run of
     the scenario. If this step is used for a variable that has already been initialized, it is assumed that the value will change during runtime
     so instead a {@pylink grizzly.tasks.set_variable} task will be added instead. The {@pylink grizzly.testdata.variables} must have implemented
     support for being settable.
@@ -64,7 +64,7 @@ def step_setup_variable_value(context: Context, name: str, value: str) -> None:
 
     Example:
 
-    ``` gherkin title="example.feature"
+    ```gherkin title="example.feature"
     Feature:
         Background:
             And ask for value of variable "messageID"
@@ -84,7 +84,7 @@ def step_setup_variable_value(context: Context, name: str, value: str) -> None:
     Args:
         name (str): variable name
         value (Any): initial value
-    '''
+    """
     grizzly = cast(GrizzlyContext, context.grizzly)
 
     module_name, variable_type, variable_name, _ = GrizzlyVariables.get_variable_spec(name)

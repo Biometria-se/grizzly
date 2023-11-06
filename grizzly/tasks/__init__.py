@@ -258,11 +258,11 @@ from .log_message import LogMessageTask
 from .loop import LoopTask
 from .request import RequestTask, RequestTaskHandlers, RequestTaskResponse
 from .set_variable import SetVariableTask
-from .task_wait import TaskWaitTask
 from .timer import TimerTask
 from .transformer import TransformerTask
 from .until import UntilRequestTask
-from .wait import WaitTask
+from .wait_between import WaitBetweenTask
+from .wait_explicit import ExplicitWaitTask
 
 from .async_group import AsyncRequestGroupTask
 
@@ -271,13 +271,13 @@ __all__ = [
     'RequestTaskResponse',
     'RequestTask',
     'LogMessageTask',
-    'WaitTask',
+    'ExplicitWaitTask',
     'TransformerTask',
     'UntilRequestTask',
     'DateTask',
     'AsyncRequestGroupTask',
     'TimerTask',
-    'TaskWaitTask',
+    'WaitBetweenTask',
     'ConditionalTask',
     'LoopTask',
     'SetVariableTask',
