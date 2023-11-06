@@ -1,6 +1,6 @@
-'''
+"""
 @anchor pydoc:grizzly.steps.background.setup Setup
-This module contains step implementations that configures the load test scenario with parameters applicable for all scenarios.'''
+This module contains step implementations that configures the load test scenario with parameters applicable for all scenarios."""
 import parse
 
 from urllib.parse import urlparse
@@ -31,25 +31,25 @@ register_type(
 
 @given(u'save statistics to "{url}"')
 def step_setup_save_statistics(context: Context, url: str) -> None:
-    '''Sets an URL where locust statistics should be sent.
+    """Sets an URL where locust statistics should be sent.
 
     It has support for InfluxDB and Azure Application Insights endpoints.
 
     For InfluxDB the following format **must** be used:
 
-    ``` plain
+    ```plain
     influxdb://[<username>:<password>@]<hostname>[:<port>]/<database>?TargetEnviroment=<target environment>[&Testplan=<test plan>]
     [&TargetEnvironment=<target environment>][&ProfileName=<profile name>][&Description=<description>]
     ```
 
     For Azure Application Insights the following format **must** be used:
 
-    ``` plain
+    ```plain
     insights://?InstrumentationKey=<instrumentation key>&IngestionEndpoint=<ingestion endpoint>[&Testplan=<test plan>]
     insights://<ingestion endpoint>/?InstrumentationKey=<instrumentation key>[&Testplan=<test plan>]
     ```
 
-    ``` gherkin
+    ```gherkin
     And save statistics to "influxdb://grizzly:secret-password@influx.example.com/grizzly-statistics"
     And save statistics to "insights://?IngestionEndpoint=https://insights.example.com&Testplan=grizzly-statistics&InstrumentationKey=asdfasdfasdf="
     And save statistics to "insights://insights.example.com/?Testplan=grizzly-statistics&InstrumentationKey=asdfasdfasdf="
@@ -58,7 +58,7 @@ def step_setup_save_statistics(context: Context, url: str) -> None:
 
     Args:
         url (str): URL for statistics endpoint
-    '''
+    """
     grizzly = cast(GrizzlyContext, context.grizzly)
     url = cast(str, resolve_variable(grizzly, url))
     parsed = urlparse(url)
@@ -70,17 +70,17 @@ def step_setup_save_statistics(context: Context, url: str) -> None:
 
 @given(u'log level is "{log_level}"')
 def step_setup_log_level(context: Context, log_level: str) -> None:
-    '''Configure log level for `grizzly`.
+    """Configure log level for `grizzly`.
 
     Default value is `INFO`, by changing to `DEBUG` there is more information what `grizzly` is doing behind the curtains.
 
-    ``` gherkin
+    ```gherkin
     And log level is "DEBUG"
     ```
 
     Args:
-        log_level (str): allowed values `INFO`, `DEBUG`, `WARNING` och `ERROR`
-    '''
+        log_level (str): one of `INFO`, `DEBUG`, `WARNING`, `ERROR`
+    """
     assert log_level in ['INFO', 'DEBUG', 'WARNING', 'ERROR'], f'log level {log_level} is not supported'
     grizzly = cast(GrizzlyContext, context.grizzly)
     grizzly.setup.log_level = log_level
@@ -88,23 +88,23 @@ def step_setup_log_level(context: Context, log_level: str) -> None:
 
 @given(u'run for maximum "{timespan}"')
 def step_setup_run_time(context: Context, timespan: str) -> None:
-    '''Configures the time period a headless test should run for.
+    """Configures the time period a headless test should run for.
     If available test data is infinite, the test will run forever if this step is not used.
 
-    ``` gherkin
+    ```gherkin
     And run for maximum "1h"
     ```
 
     Args:
         timespan (str): description of how long the test should run for, e.g. 10s, 1h, 40m etc.
-    '''
+    """
     grizzly = cast(GrizzlyContext, context.grizzly)
     grizzly.setup.timespan = timespan
 
 
 @given(u'set global context variable "{variable}" to "{value}"')
 def step_setup_set_global_context_variable(context: Context, variable: str, value: str) -> None:
-    '''Create a global variable in the context. Depending on which type of user a scenario is configured for, different variables
+    """Create a global variable in the context. Depending on which type of user a scenario is configured for, different variables
     are available. Check `grizzly.users` documentation for which context variables are available for each user.
 
     This step can be used if the feature file has multiple scenarios and all of them have the same context variables.
@@ -114,7 +114,7 @@ def step_setup_set_global_context_variable(context: Context, variable: str, valu
 
     E.g. `token.url` and `token/URL` results in:
 
-    ``` json
+    ```json
     {
         'token': {
             'url': '<value>'
@@ -126,7 +126,7 @@ def step_setup_set_global_context_variable(context: Context, variable: str, valu
 
     E.g. `Client ID` results in `client_id`.
 
-    ``` gherkin
+    ```gherkin
     And set global context variable "token.url" to "http://example.com/api/auth"
     And set global context variable "token/client_id" to "aaaa-bbbb-cccc-dddd"
     And set global context variable "token/client secret" to "aasdfasdfasdf=="
@@ -139,7 +139,7 @@ def step_setup_set_global_context_variable(context: Context, variable: str, valu
     Data type of values will be guessed, if not explicitly specified by the type of variable used (`Atomic*`). E.g. the last two
     examples above will result in:
 
-    ``` json
+    ```json
     {
         'validate_certificates': False,
         'run_id': 13
@@ -149,15 +149,32 @@ def step_setup_set_global_context_variable(context: Context, variable: str, valu
     Args:
         variable (str): variable name, as used in templates
         value (str): variable value
-    '''
+    """
     grizzly = cast(GrizzlyContext, context.grizzly)
     context_variable = create_context_variable(grizzly, variable, value)
 
     grizzly.setup.global_context = merge_dicts(grizzly.setup.global_context, context_variable)
 
 
-@given(u'add callback "{callback_name}" for message type "{message_type}" from {from_node:MessageDirection} to {to_node:MessageDirection}')
+@given(u'register callback "{callback_name}" for message type "{message_type}" from {from_node:MessageDirection} to {to_node:MessageDirection}')
 def step_setup_message_type_callback(context: Context, callback_name: str, message_type: str, from_node: str, to_node: str) -> None:
+    """Register a custom callback function for a custom message type, that should be sent from client/server to client/server (exclusive).
+
+    ```python title="steps/custom.py"
+    def my_custom_callback(env: Environment, msg: Message) -> None:
+        print(msg)
+    ```
+
+    ```gherkin
+    Given register callback "steps.custom.my_custom_callback" for message type "custom_msg" from client to server
+    ```
+
+    Args:
+        callback_name (str): full namespace and method name to the callback function
+        message_type (str): unique name of the message
+        from_node (MessageDirection): server or client, exclusive
+        to_node (MessageDirection): client or server, exclusive
+    """
     grizzly = cast(GrizzlyContext, context.grizzly)
 
     assert from_node != to_node, f'cannot register message handler that sends from {from_node} and is received at {to_node}'

@@ -7,7 +7,7 @@ and saves the result as a date/time string in an variable.
 
 ## Step implementations
 
-* {@pylink grizzly.steps.scenario.tasks.step_task_date}
+* {@pylink grizzly.steps.scenario.tasks.date.step_task_date}
 
 ## Arguments
 
@@ -19,11 +19,11 @@ and saves the result as a date/time string in an variable.
 
 ### `value`
 
-``` plain
+```plain
 <date> [| format=<format>][, timezone=<timezone>][, offset=<offset>]
 ```
 
-* `date` _str/datetime_ - string representation of a date and/or time or a `datetime` object, e.g. `datetime.now()`
+* `date` _str | datetime_ - string representation of a date and/or time or a `datetime` object, e.g. `datetime.now()`
 
 * `format` _str_ - a python [`strftime` format string](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes) or `ISO-8601:[DateTime|Time][:ms][:no-sep]`, this argument is required
 

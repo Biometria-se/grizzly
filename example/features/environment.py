@@ -26,14 +26,14 @@ def touppercase(value: str) -> str:
 def before_scenario(
     context: Context, scenario: Scenario, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]
 ) -> None:
-    '''
+    """
     Overloads before_scenario from grizzly, to set "stop_on_failure" for all scenarios.
     This would be the same as having the following step for all Scenario in a Feature:
 
-    ``` gherkin
+    ```gherkin
     And stop on first on first failure
     ```
-    '''
+    """
     grizzly_before_scenario(context, scenario, *args, **kwargs)
 
     grizzly = cast(GrizzlyContext, context.grizzly)

@@ -1,4 +1,4 @@
-'''
+"""
 Borrowed from:
 https://github.com/SvenskaSpel/locust-plugins/blob/master/locust_plugins/appinsights_listener.py
 
@@ -6,7 +6,7 @@ Minor changes, mainly related to adding typing, and also how InstrumentationKey 
 
 Example kusko question to get response time:
 
-``` kusko
+```kusko
 traces
 | extend response_time = todouble(customDimensions["response_time"]),
 response_length = toint(customDimensions["response_length"]),
@@ -17,7 +17,7 @@ endpoint = tostring(customDimensions["endpoint"])
 | project timestamp, endpoint, response_time, response_length, spawn_rate, thread_count
 | render timechart;
 ```
-'''
+"""
 import logging
 
 from typing import Dict, Any, Optional

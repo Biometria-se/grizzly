@@ -15,7 +15,7 @@ Supports the following request methods:
 
 Format of `host` is the following:
 
-``` plain
+```plain
 http[s]://<hostname>
 ```
 
@@ -23,14 +23,14 @@ http[s]://<hostname>
 
 Example on how to use it in a scenario:
 
-``` gherkin
+```gherkin
 Given a user of type "RestApi" load testing "https://api.example.com"
 Then post request "test/request.j2.json" to endpoint "/api/test"
 Then get request from endpoint "/api/test"
 ```
 
 To change how often the token should be refreshed, default is 3000 seconds:
-``` gherkin
+```gherkin
 And set context variable "auth.refresh_time" to "3500"
 ```
 
@@ -48,7 +48,7 @@ RestApi supports posting of multipart/form-data content-type, and in that case a
 
 Example:
 
-``` gherkin
+```gherkin
 Then post request "path/my_template.j2.xml" with name "FormPost" to endpoint "example.url.com | content_type=multipart/form-data, multipart_form_data_filename=my_filename, multipart_form_data_name=form_name"
 ```
 """  # noqa: E501

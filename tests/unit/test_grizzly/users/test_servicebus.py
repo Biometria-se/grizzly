@@ -13,7 +13,7 @@ from grizzly.users.base import GrizzlyUser, RequestLogger, ResponseHandler
 from grizzly.users.servicebus import ServiceBusUser
 from grizzly.types import RequestMethod
 from grizzly.types.locust import StopUser
-from grizzly.tasks import RequestTask, WaitTask
+from grizzly.tasks import RequestTask, ExplicitWaitTask
 from grizzly.context import GrizzlyContextScenario
 from grizzly_extras.async_message import AsyncMessageResponse, AsyncMessageError
 from grizzly_extras.transformer import TransformerContentType
@@ -47,7 +47,7 @@ class TestServiceBusUser:
             scenario = GrizzlyContextScenario(2, behave=behave_fixture.create_scenario('test'))
             scenario.user.class_name = 'ServiceBusUser'
 
-            scenario.tasks.add(WaitTask(time_expression='1.54'))
+            scenario.tasks.add(ExplicitWaitTask(time_expression='1.54'))
             scenario.tasks.add(RequestTask(RequestMethod.SEND, name='test-send', endpoint='{{ endpoint }}'))
             scenario.tasks.add(RequestTask(RequestMethod.RECEIVE, name='test-receive', endpoint='queue:test-queue'))
             scenario.tasks.add(RequestTask(RequestMethod.SEND, name='test-send', endpoint='topic:test-topic'))
@@ -96,7 +96,7 @@ class TestServiceBusUser:
             scenario = GrizzlyContextScenario(2, behave=behave_fixture.create_scenario('test'))
             scenario.user.class_name = 'ServiceBusUser'
 
-            scenario.tasks.add(WaitTask(time_expression='1.54'))
+            scenario.tasks.add(ExplicitWaitTask(time_expression='1.54'))
             scenario.tasks.add(RequestTask(RequestMethod.SEND, name='test-send', endpoint='{{ endpoint }}'))
             scenario.tasks.add(RequestTask(RequestMethod.RECEIVE, name='test-receive', endpoint='queue:test-queue'))
             scenario.tasks.add(RequestTask(RequestMethod.SEND, name='test-send', endpoint='topic:test-topic'))

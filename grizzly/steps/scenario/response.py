@@ -50,7 +50,7 @@ def step_response_save_matches(context: Context, target: ResponseTarget, express
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     # only token is matched and saved in TOKEN, by using regexp match groups
     And value for variable "TOKEN" is "none"
     Then save response metadata "$.Authentication" that matches "Bearer (.*)$" in variabel "TOKEN"
@@ -73,7 +73,7 @@ def step_response_save_matches(context: Context, target: ResponseTarget, express
     ```
 
     Args:
-        target (enum): "metadata" or "payload", depending on which part of the response should be used
+        target (ResponseTarget): `metadata` or `payload`, depending on which part of the response should be used
         expression (str): JSON path or XPath expression for finding the property
         match_with (str): static value or a regular expression
         variable (str): name of the already initialized variable to save the value in
@@ -93,7 +93,7 @@ def step_response_save(context: Context, target: ResponseTarget, expression: str
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     Then save response metadata "$.Authentication" in variable "HEADER_AUTHENTICATION"
 
     Then save response payload "$.Result.ShipmentId" in variable "ShipmentId"
@@ -102,7 +102,7 @@ def step_response_save(context: Context, target: ResponseTarget, expression: str
     ```
 
     Args:
-        target (enum): "metadata" or "payload", depending on which part of the response should be used
+        target (ResponseTarget): `metadata` or `payload`, depending on which part of the response should be used
         expression (str): JSON path or XPath expression for finding the property
         variable (str): name of the already initialized variable to save the value in
     """
@@ -115,7 +115,7 @@ def step_response_validate(context: Context, target: ResponseTarget, expression:
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     And restart scenario on failure
     When response metadata "$.['content-type']" is not ".*application/json.*" fail request
     When response metadata "$.['x-test-command']" is "abort" fail request
@@ -128,7 +128,7 @@ def step_response_validate(context: Context, target: ResponseTarget, expression:
     ```
 
     Args:
-        target (enum): "metadata" or "payload", depending on which part of the response should be used
+        target (ResponseTarget): `metadata` or `payload`, depending on which part of the response should be used
         expression (str): JSON path or XPath expression for finding the property
         condition (enum): "is" or "is not" depending on negative or postive matching
         match_with (str): static value or a regular expression
@@ -145,7 +145,7 @@ def step_response_allow_status_codes(context: Context, status_list: str) -> None
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     Then get request with name "test-get-1" from endpoint "/api/test"
     And allow response status "200,302"
 
@@ -182,7 +182,7 @@ def step_response_allow_status_codes_table(context: Context) -> None:
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     Then get request with name "test-get-1" from endpoint "/api/test"
     Then get request with name "test-get-2" from endpoint "/api/test"
     And allow response status
@@ -227,7 +227,7 @@ def step_response_content_type(context: Context, content_type: TransformerConten
 
     Example:
 
-    ``` gherkin
+    ```gherkin
     And set response content type to "json"
     And set response content type to "application/json"
     And set response content type to "xml"
@@ -237,7 +237,7 @@ def step_response_content_type(context: Context, content_type: TransformerConten
     ```
 
     Args:
-        content_type (TransformerContentType): expected content type of response
+        content_type (ContentType): expected content type of response
     """
 
     assert content_type != TransformerContentType.UNDEFINED, 'It is not allowed to set UNDEFINED with this step'

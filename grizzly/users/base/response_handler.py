@@ -38,7 +38,7 @@ class ResponseHandlerAction(ABC):
         user: GrizzlyUser,
         condition: bool = False
     ) -> Tuple[Optional[str], str, str]:
-        '''Contains common logic for both save and validation handlers.
+        """Contains common logic for both save and validation handlers.
 
         Args:
             input_context (Tuple[TransformerContentType, Any]): content type and transformed payload
@@ -46,7 +46,7 @@ class ResponseHandlerAction(ABC):
             match_with (str): regular expression that the extracted value must match
             user (ContextVariablesUser): user that executed task (request)
             condition (bool): used by validation handler for negative matching
-        '''
+        """
         input_content_type, input_payload = input_context
         j2env = self.grizzly.state.jinja2
         rendered_expression = j2env.from_string(self.expression).render(user.context_variables)

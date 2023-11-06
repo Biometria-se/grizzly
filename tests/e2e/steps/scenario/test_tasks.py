@@ -312,7 +312,7 @@ def test_e2e_step_task_request_text_with_name(e2e_fixture: End2EndFixture) -> No
 
 def test_e2e_step_task_wait_seconds(e2e_fixture: End2EndFixture) -> None:
     def validate_task_wait(context: Context) -> None:
-        from grizzly.tasks import WaitTask
+        from grizzly.tasks import ExplicitWaitTask
         grizzly = cast(GrizzlyContext, context.grizzly)
 
         tasks = grizzly.scenario.tasks()
@@ -321,15 +321,15 @@ def test_e2e_step_task_wait_seconds(e2e_fixture: End2EndFixture) -> None:
         assert len(tasks) == 3
 
         task = tasks[0]
-        assert isinstance(task, WaitTask)
+        assert isinstance(task, ExplicitWaitTask)
         assert task.time_expression == '13.37'
 
         task = tasks[1]
-        assert isinstance(task, WaitTask)
+        assert isinstance(task, ExplicitWaitTask)
         assert task.time_expression == '0.123'
 
         task = tasks[2]
-        assert isinstance(task, WaitTask)
+        assert isinstance(task, ExplicitWaitTask)
         assert task.time_expression == '{{ wait_time }}'
 
     e2e_fixture.add_validator(validate_task_wait)
@@ -980,7 +980,7 @@ def test_e2e_step_task_timer_start_and_stop(e2e_fixture: End2EndFixture) -> None
 
 def test_e2e_step_task_request_wait(e2e_fixture: End2EndFixture) -> None:
     def validate_request_wait(context: Context) -> None:
-        from grizzly.tasks import TaskWaitTask
+        from grizzly.tasks import WaitBetweenTask
         grizzly = cast(GrizzlyContext, context.grizzly)
 
         grizzly.scenario.tasks().pop()  # remove dummy
@@ -989,25 +989,25 @@ def test_e2e_step_task_request_wait(e2e_fixture: End2EndFixture) -> None:
 
         task = grizzly.scenario.tasks()[0]
 
-        assert isinstance(task, TaskWaitTask), f'{type(task)} is not expected TaskWaitTask'
+        assert isinstance(task, WaitBetweenTask), f'{type(task)} is not expected TaskWaitTask'
         assert task.min_time == 15
         assert task.max_time == 18
 
         task = grizzly.scenario.tasks()[1]
 
-        assert isinstance(task, TaskWaitTask), f'{type(task)} is not expected TaskWaitTask'
+        assert isinstance(task, WaitBetweenTask), f'{type(task)} is not expected TaskWaitTask'
         assert task.min_time == 1.4
         assert task.max_time == 1.7
 
         task = grizzly.scenario.tasks()[2]
 
-        assert isinstance(task, TaskWaitTask), f'{type(task)} is not expected TaskWaitTask'
+        assert isinstance(task, WaitBetweenTask), f'{type(task)} is not expected TaskWaitTask'
         assert task.min_time == 15
         assert task.max_time is None
 
         task = grizzly.scenario.tasks()[3]
 
-        assert isinstance(task, TaskWaitTask), f'{type(task)} is not expected TaskWaitTask'
+        assert isinstance(task, WaitBetweenTask), f'{type(task)} is not expected TaskWaitTask'
         assert task.min_time == 1.4
         assert task.max_time is None
 

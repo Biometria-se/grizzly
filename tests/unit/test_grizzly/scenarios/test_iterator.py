@@ -18,7 +18,7 @@ from locust.exception import StopUser, InterruptTaskSet, RescheduleTask, Resched
 from grizzly.scenarios import iterator
 from grizzly.testdata.communication import TestdataConsumer
 from grizzly.testdata.utils import transform
-from grizzly.tasks import WaitTask, LogMessageTask, grizzlytask
+from grizzly.tasks import ExplicitWaitTask, LogMessageTask, grizzlytask
 from grizzly.exceptions import RestartScenario, StopScenario
 from grizzly.types import ScenarioState
 from grizzly.testdata.utils import templatingfilter
@@ -96,12 +96,12 @@ class TestIterationScenario:
                     assert sleep_time == time
 
                 mocker.patch(
-                    'grizzly.tasks.wait.gsleep',
+                    'grizzly.tasks.wait_explicit.gsleep',
                     mocked_wait,
                 )
 
             generate_mocked_wait(1.5)
-            iterator.IteratorScenario.populate(WaitTask(time_expression='1.5'))
+            iterator.IteratorScenario.populate(ExplicitWaitTask(time_expression='1.5'))
             assert len(parent.tasks) == 4
 
             task_method = parent.tasks[-2]

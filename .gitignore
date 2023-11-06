@@ -26,5 +26,5 @@ docs/licenses/*
 docs/changelog/*
 docs/cli.md
 docs/_site
-docs/_build
+docs/_build*
 grizzly/__version__.py

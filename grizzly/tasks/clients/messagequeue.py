@@ -1,22 +1,22 @@
 # pylint: disable=line-too-long
-'''This task performs IBM MQM get and put opertions to a specified queue or topic.
+"""This task performs IBM MQM get and put opertions to a specified queue or topic.
 
 This is useful if the scenario is another user type than `MessageQueueUser`, but the scenario still requires an action towards an MQ server.
 Use {@pylink grizzly.tasks.transformer} task to extract specific parts of the message.
 
 Grizzly *must* have been installed with the extra `mq` package and native IBM MQ libraries must be installed for being able to use this variable:
 
-``` plain
+```plain
 pip3 install grizzly-loadtester[mq]
 ```
 
 ## Step implementations
 
-* {@pylink grizzly.steps.scenario.tasks.step_task_client_get_endpoint_payload}
+* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_get_endpoint_payload}
 
-* {@pylink grizzly.steps.scenario.tasks.step_task_client_get_endpoint_payload_metadata}
+* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_get_endpoint_payload_metadata}
 
-* {@pylink grizzly.steps.scenario.tasks.step_task_client_put_endpoint_file}
+* {@pylink grizzly.steps.scenario.tasks.clients.step_task_client_put_endpoint_file}
 
 ## Arguments
 
@@ -34,7 +34,7 @@ pip3 install grizzly-loadtester[mq]
 
 ### `endpoint`
 
-``` plain
+```plain
 mq[s]://<username>:<password>@]<hostname>[:<port>]/<endpoint>?QueueManager=<queue manager>&Channel=<channel>[&wait=<wait>][&heartbeat=<heartbeat>][&KeyFile=<key repo path>[&SslCipher=<ssl cipher>][&CertLabel=<certificate label>]][&HeaderType=<header type>][&MaxMessageSize=<number of bytes>]
 ```
 
@@ -69,7 +69,7 @@ All variables in the endpoint have support for {@link framework.usage.variables.
 * `HeaderType` _str_ (optional) - header type, can be `RFH2` for sending gzip compressed messages using RFH2 header, default `None`
 
 * `MaxMessageSize` _int_ (optional) - maximum number of bytes a message can be for the client to accept it, default is `None` which implies that the client will throw `MQRC_TRUNCATED_MSG_FAILED`, adjust buffer and try again.
-'''  # noqa: E501
+"""  # noqa: E501
 from contextlib import contextmanager
 from typing import Optional, Dict, Any, Generator, List, cast
 from urllib.parse import urlparse, parse_qs, unquote

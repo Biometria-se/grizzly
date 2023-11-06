@@ -1,15 +1,15 @@
-'''
-@anchor pydoc:grizzly.tasks.wait Wait
+"""
+@anchor pydoc:grizzly.tasks.wait_explicit Explicit Wait
 This task executes a `gevent.sleep` and is used to manually create delays between steps in a scenario.
 
 ## Step implementations
 
-* {@pylink grizzly.steps.scenario.tasks.step_task_wait_seconds}
+* {@pylink grizzly.steps.scenario.tasks.wait_explicit.step_task_wait_explicit}
 
 ## Arguments
 
-* `time_expression` _str_ - float as string or a {@pydocfractions of seconds to excplicitly sleep in the scenario
-'''
+* `time_expression` _str_ - float as string or a fractions of seconds to excplicitly sleep in the scenario, supports {@link framework.usage.variables.templating}
+"""
 from typing import TYPE_CHECKING, Any
 
 from gevent import sleep as gsleep
@@ -23,7 +23,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 @template('time_expression')
-class WaitTask(GrizzlyTask):
+class ExplicitWaitTask(GrizzlyTask):
     time_expression: str
 
     def __init__(self, time_expression: str) -> None:

@@ -37,11 +37,12 @@ main() {
     esac
 
     >&2 echo "-- installing grizzly-${pypi_suffix}"
-    if ! python -m pip install --no-cache-dir grizzly-loadtester-${pypi_suffix}[dev] 2>&1 > /tmp/grizzly-cli-install.log; then
-        cat /tmp/grizzly-cli-install.log
+    if ! python -m pip install --no-cache-dir grizzly-loadtester-${pypi_suffix}[dev] &> /tmp/grizzly-${pypi_suffix}-install.log; then
+        >&2 echo "!! failed:"
+        >&2 cat /tmp/grizzly-${pypi_suffix}-install.log
     fi
 
-    rm -rf /tmp/grizzly-cli-install.log || true
+    rm -rf /tmp/grizzly-${pypi_suffix}-install.log || true
 
     case "${what}" in
         --usage)

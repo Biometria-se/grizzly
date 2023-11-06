@@ -17,7 +17,7 @@ have to remember all combinations in memory.
 
 ### Format
 
-``` gherkin
+```gherkin
 # grizzly-cli <[sub]parser> <argument>
 ```
 
@@ -28,7 +28,7 @@ Which is solved by checking {@link command-line-interface.usage} and correct the
 
 E.g., the `run` subparser is used by both `dist` and `local`, so when specifying an metadata comment for `run` arguments it should be:
 
-``` gherkin title="example.feature"
+```gherkin title="example.feature"
 # grizzly-cli run --verbose
 Feature: Example Feature
   Scenario: Example Scenario
@@ -37,7 +37,7 @@ Feature: Example Feature
 
 This means that executing `example.feature` either in mode `local` or `dist`, the argument `--verbose` will be injected unless already manually specified.
 
-``` plain
+```plain
 grizzly-cli local run example.feature -> grizzly-cli local run example.feature --verbose
 grizzly-cli dist run example.feature -> grizzly-cli dist run example.feature --verbose
 ```
@@ -45,13 +45,13 @@ grizzly-cli dist run example.feature -> grizzly-cli dist run example.feature --v
 If metadata comments adds arguments for a subparser that is not used when executing the feature file the following message will be seen when executing
 `grizzly-cli`:
 
-``` plain
+```plain
 ?? ignoring <arguments>
 ```
 
 Given the following feature file:
 
-``` gherkin title="example-dist.feature"
+```gherkin title="example-dist.feature"
 # grizzly-cli dist --health-retries 999
 # grizzly-cli dist --workers 6
 # grizzly-cli run --verbose
@@ -62,7 +62,7 @@ Feature: Example Feature
 
 When executed with `grizzly-cli local run example-dist.feature`, the output will contain:
 
-``` plain
+```plain
 ?? ignoring dist --health-retries 999
 ?? ignoring dist --workers 6
 ```
@@ -77,7 +77,7 @@ This is useful to remind the user about manual steps och checks that should be d
 
 ### Format
 
-``` gherkin
+```gherkin
 # grizzly-cli:notice <message>
 ```
 
@@ -85,7 +85,7 @@ Everything after `# grizzly-cli:notice ` (notice the space) will be displayed in
 
 ### Examples
 
-``` gherkin title="example.feature"
+```gherkin title="example.feature"
 # grizzly-cli:notice have you piped the fork in a loop?
 Feature: Example Feature
   Scenario: Example Scenario
@@ -94,9 +94,8 @@ Feature: Example Feature
 
 Running `example.feature` will in additional to the normal `grizzly-cli` input/output also trigger the following prompt:
 
-``` plain
+```plain
 have you piped the fork in a loop? [y/n]
 ```
 
 If `run` argument `-y/--yes` is provided, it will only print the message and not ask for confirmation.
-

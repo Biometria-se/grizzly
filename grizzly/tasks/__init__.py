@@ -1,4 +1,4 @@
-'''
+"""
 @anchor pydoc:grizzly.tasks Tasks
 Tasks are functionality that is executed by `locust` at run time as they are specified in the feature file.
 
@@ -48,7 +48,7 @@ def step_run_testtask(context: Context) -> None:
 ```
 
 There are examples of this in the {@link framework.example}.
-'''
+"""
 from __future__ import annotations
 from abc import ABC, ABCMeta, abstractmethod
 from typing import TYPE_CHECKING, Any, Callable, List, Type, Set, Optional, Union, overload, cast
@@ -248,14 +248,14 @@ class template:
 
 
 from .request import RequestTask, RequestTaskHandlers, RequestTaskResponse
-from .wait import WaitTask
+from .wait_explicit import ExplicitWaitTask
 from .log_message import LogMessageTask
 from .transformer import TransformerTask
 from .until import UntilRequestTask
 from .date import DateTask
 from .async_group import AsyncRequestGroupTask
 from .timer import TimerTask
-from .task_wait import TaskWaitTask
+from .wait_between import WaitBetweenTask
 from .conditional import ConditionalTask
 from .loop import LoopTask
 from .set_variable import SetVariableTask
@@ -267,13 +267,13 @@ __all__ = [
     'RequestTaskResponse',
     'RequestTask',
     'LogMessageTask',
-    'WaitTask',
+    'ExplicitWaitTask',
     'TransformerTask',
     'UntilRequestTask',
     'DateTask',
     'AsyncRequestGroupTask',
     'TimerTask',
-    'TaskWaitTask',
+    'WaitBetweenTask',
     'ConditionalTask',
     'LoopTask',
     'SetVariableTask',
