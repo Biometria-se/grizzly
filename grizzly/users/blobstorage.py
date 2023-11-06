@@ -94,7 +94,6 @@ class BlobStorageUser(GrizzlyUser):
         """Perform a blob storage request based on request task."""
         blob = Path(request.endpoint).name
         container = request.endpoint
-        print(f'{request.endpoint=}, {container=}, {blob=}')
 
         if container.endswith(blob):
             container = str(Path(container).parent)

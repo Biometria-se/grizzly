@@ -5,7 +5,8 @@ from typing import cast
 
 from grizzly.types import RequestDirection
 from grizzly.types.behave import Context, then
-from grizzly.steps._helpers import get_task_client, is_template
+from grizzly.steps._helpers import get_task_client
+from grizzly.utils import is_template
 from grizzly.context import GrizzlyContext
 
 

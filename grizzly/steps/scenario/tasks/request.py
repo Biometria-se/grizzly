@@ -3,7 +3,8 @@ This module contains step implementations that creates requests executed by the 
 in the scenario.
 """
 from grizzly.types import RequestDirection, RequestMethod
-from grizzly.steps._helpers import add_request_task, is_template
+from grizzly.steps._helpers import add_request_task
+from grizzly.utils import is_template
 from grizzly.types.behave import Context, then, register_type
 
 

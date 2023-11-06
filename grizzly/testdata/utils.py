@@ -47,14 +47,10 @@ def initialize_testdata(grizzly: GrizzlyContext) -> Tuple[TestdataType, Set[str]
 
     # check except between declared variables and variables found in templates
     missing_in_templates = [variable for variable in declared_variables if variable not in found_variables]
-    if len(missing_in_templates) > 0:
-        message = f'variables has been declared, but cannot be found in templates: {",".join(missing_in_templates)}'
-        raise AssertionError(message)
+    assert len(missing_in_templates) == 0, f'variables has been declared, but cannot be found in templates: {",".join(missing_in_templates)}'
 
     missing_declarations = [variable for variable in found_variables if variable not in declared_variables]
-    if len(missing_declarations) > 0:
-        message = f'variables has been found in templates, but have not been declared: {",".join(missing_declarations)}'
-        raise AssertionError(message)
+    assert len(missing_declarations) == 0, f'variables has been found in templates, but have not been declared: {",".join(missing_declarations)}'
 
     initialized_datatypes: Dict[str, Any] = {}
     external_dependencies: Set[str] = set()
@@ -182,9 +178,7 @@ def _resolve_template(grizzly: GrizzlyContext, value: str) -> str:
     template_variables = find_undeclared_variables(template_parsed)
 
     for template_variable in template_variables:
-        if template_variable not in grizzly.state.variables:
-            message = f'value contained variable "{template_variable}" which has not been declared'
-            raise AssertionError(message)
+        assert template_variable in grizzly.state.variables, f'value contained variable "{template_variable}" which has not been declared'
 
     return template.render(**grizzly.state.variables)
 
@@ -198,14 +192,10 @@ def _resolve_dollar_path(grizzly: GrizzlyContext, value: str) -> str:
         variable_name = match.group(2)
 
         if match_type == 'conf':
-            if variable_name not in grizzly.state.configuration:
-                message = f'configuration variable "{variable_name}" is not set'
-                raise AssertionError(message)
+            assert variable_name in grizzly.state.configuration, f'configuration variable "{variable_name}" is not set'
             variable_value = grizzly.state.configuration[variable_name]
         elif match_type == 'env':
-            if variable_name not in environ:
-                message = f'environment variable "{variable_name}" is not set'
-                raise AssertionError(message)
+            assert variable_name in environ, f'environment variable "{variable_name}" is not set'
             variable_value = environ.get(variable_name, None)
 
         if not isinstance(variable_value, str):

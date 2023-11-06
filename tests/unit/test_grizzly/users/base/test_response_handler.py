@@ -160,7 +160,7 @@ class TestValidationHandlerAction:
             response_context_manager._manual_result = None
 
             handler = ValidationHandlerAction(
-                True,
+                condition=True,
                 expression='$.[*]',
                 match_with='STTO_31337',
             )
@@ -206,7 +206,7 @@ class TestValidationHandlerAction:
             # 1 match in multiple values (list)
             user.set_context_variable('format', 'XML')
             handler = ValidationHandlerAction(
-                True,
+                condition=True,
                 expression='$.*..GlossSeeAlso[*]',
                 match_with='{{ format }}',
             )
@@ -228,7 +228,7 @@ class TestValidationHandlerAction:
             # no match in multiple values (list)
             user.set_context_variable('format', 'yaml')
             handler = ValidationHandlerAction(
-                True,
+                condition=True,
                 expression='$.*..GlossSeeAlso[*]',
                 match_with='{{ format | uppercase }}',
             )
@@ -238,7 +238,7 @@ class TestValidationHandlerAction:
             user.set_context_variable('property', 'TITLE')
             user.set_context_variable('regexp', '.*ary$')
             handler = ValidationHandlerAction(
-                True,
+                condition=True,
                 expression='$.glossary.{{ property | lowercase }}',
                 match_with='{{ regexp }}',
             )
@@ -247,7 +247,7 @@ class TestValidationHandlerAction:
             response_context_manager._manual_result = None
 
             handler = ValidationHandlerAction(
-                True,
+                condition=True,
                 expression='$..Additional[?addtitle="test1"].addvalue',
                 match_with='.*world$',
             )
@@ -256,7 +256,7 @@ class TestValidationHandlerAction:
             response_context_manager._manual_result = None
 
             handler = ValidationHandlerAction(
-                True,
+                condition=True,
                 expression='$.`this`',
                 match_with='False',
             )
@@ -285,7 +285,7 @@ class TestValidationHandlerAction:
         response_context_manager = ResponseContextManager(response, grizzly_fixture.behave.locust.environment.events.request, {})
         response_context_manager._entered = True
 
-        handler = ValidationHandlerAction(False, expression='$.test.value', match_with='test')
+        handler = ValidationHandlerAction(condition=False, expression='$.test.value', match_with='test')
 
         # match fixed string expression
         handler((TransformerContentType.JSON, {'test': {'value': 'test'}}), user, response_context_manager)
@@ -300,7 +300,7 @@ class TestValidationHandlerAction:
         user.set_context_variable('expression', '$.test.value')
         user.set_context_variable('value', 'test')
         handler = ValidationHandlerAction(
-            False,
+            condition=False,
             expression='{{ expression }}',
             match_with='.*({{ value }})$',
         )
@@ -309,7 +309,7 @@ class TestValidationHandlerAction:
 
         # ony allows 1 match per expression
         handler = ValidationHandlerAction(
-            False,
+            condition=False,
             expression='$.test[*].value',
             match_with='.*(test)$',
         )
@@ -330,7 +330,7 @@ class TestValidationHandlerAction:
         assert response_context_manager._manual_result is None
 
         handler = ValidationHandlerAction(
-            False,
+            condition=False,
             expression='$.[*]',
             match_with='ID_31337',
         )
@@ -374,7 +374,7 @@ class TestValidationHandlerAction:
 
         # 1 match in multiple values (list)
         handler = ValidationHandlerAction(
-            False,
+            condition=False,
             expression='$.*..GlossSeeAlso[*]',
             match_with='XML',
         )
@@ -383,7 +383,7 @@ class TestValidationHandlerAction:
 
         # no match in multiple values (list)
         handler = ValidationHandlerAction(
-            False,
+            condition=False,
             expression='$.*..GlossSeeAlso[*]',
             match_with='YAML',
         )
@@ -392,7 +392,7 @@ class TestValidationHandlerAction:
         response_context_manager._manual_result = None
 
         handler = ValidationHandlerAction(
-            False,
+            condition=False,
             expression='$.glossary.title',
             match_with='.*ary$',
         )
@@ -400,7 +400,7 @@ class TestValidationHandlerAction:
         assert response_context_manager._manual_result is None
 
         handler = ValidationHandlerAction(
-            False,
+            condition=False,
             expression='$..Additional[?addtitle="test2"].addvalue',
             match_with='.*stuff$',
         )
@@ -408,7 +408,7 @@ class TestValidationHandlerAction:
         assert response_context_manager._manual_result is None
 
         handler = ValidationHandlerAction(
-            False,
+            condition=False,
             expression='$.`this`',
             match_with='False',
         )

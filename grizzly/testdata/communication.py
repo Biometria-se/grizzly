@@ -185,10 +185,8 @@ class TestdataProducer:
 
         feature_file = environ.get('GRIZZLY_FEATURE_FILE', None)
         context_root = environ.get('GRIZZLY_CONTEXT_ROOT', None)
-        if feature_file is None:
-            raise AssertionError
-        if context_root is None:
-            raise AssertionError
+        assert feature_file is not None
+        assert context_root is not None
 
         persist_root = Path(context_root) / 'persistent'
         self._persist_file = persist_root / f'{Path(feature_file).stem}.json'

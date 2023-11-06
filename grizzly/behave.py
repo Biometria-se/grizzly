@@ -184,31 +184,20 @@ def after_scenario(context: Context, *_args: Any, **_kwargs: Any) -> None:
     if not grizzly.state.background_section_done:
         grizzly.state.background_section_done = True
 
-    if grizzly.scenario.tasks.tmp.async_group is not None:
-        message = f'async request group "{grizzly.scenario.tasks.tmp.async_group.name}" has not been closed'
-        raise AssertionError(message)
-
-    if grizzly.scenario.tasks.tmp.loop is not None:
-        message = f'loop task "{grizzly.scenario.tasks.tmp.loop.name}" has not been closed'
-        raise AssertionError(message)
+    assert grizzly.scenario.tasks.tmp.async_group is None, f'async request group "{grizzly.scenario.tasks.tmp.async_group.name}" has not been closed'
+    assert grizzly.scenario.tasks.tmp.loop is None, f'loop task "{grizzly.scenario.tasks.tmp.loop.name}" has not been closed'
 
     open_timers = {name: timer for name, timer in grizzly.scenario.tasks.tmp.timers.items() if timer is not None}
-    if len(open_timers) > 0:
-        message = f'timers {", ".join(open_timers.keys())} has not been closed'
-        raise AssertionError(message)
+    assert not len(open_timers) > 0, f'timers {", ".join(open_timers.keys())} has not been closed'
 
-    if grizzly.scenario.tasks.tmp.conditional is not None:
-        message = f'conditional "{grizzly.scenario.tasks.tmp.conditional.name}" has not been closed'
-        raise AssertionError(message)
+    assert grizzly.scenario.tasks.tmp.conditional is None, f'conditional "{grizzly.scenario.tasks.tmp.conditional.name}" has not been closed'
 
 
 def before_step(context: Context, step: Step, *_args: Any, **_kwargs: Any) -> None:
     """Grizzly functionality executed before each step in the current scenario."""
     # fail step if it's a @backgroundsection decorated step implementation, see before_scenario hook
     with fail_direct(context):
-        if getattr(step, 'location_status', '') == 'incorrect':
-            message = 'Step is in the incorrect section'
-            raise AssertionError(message)
+        assert getattr(step, 'location_status', '') != 'incorrect', 'Step is in the incorrect section'
 
     # add current step to context, used else where
     context.step = step

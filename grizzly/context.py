@@ -161,18 +161,12 @@ def stackproperty(func: StackedFuncType) -> property:
         instance = getattr(self, attr_name, None)
 
         if value is None:
-            if instance is None:
-                message = f'{func.__name__} is not in stack'
-                raise AssertionError(message)
+            assert instance is not None, f'{func.__name__} is not in stack'
             pointer = self.__stack__[-1]
-            if not isinstance(pointer, instance.__class__):
-                message = f'{func.__name__} is not last in stack'
-                raise AssertionError(message)
+            assert isinstance(pointer, instance.__class__), f'{func.__name__} is not last in stack'
             self.__stack__.pop()
         elif value is not None:
-            if instance is not None:
-                message = f'{func.__name__} is already in stack'
-                raise AssertionError(message)
+            assert instance is None, f'{func.__name__} is already in stack'
             self.__stack__.append(value)
 
         setattr(self, attr_name, value)

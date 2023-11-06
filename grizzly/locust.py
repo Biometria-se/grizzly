@@ -84,9 +84,7 @@ def setup_locust_scenarios(grizzly: GrizzlyContext) -> Tuple[List[Type[User]], S
 
     scenarios = grizzly.scenarios()
 
-    if not len(scenarios) > 0:
-        message = 'no scenarios in feature'
-        raise AssertionError(message)
+    assert len(scenarios) > 0, 'no scenarios in feature'
 
     external_dependencies: Set[str] = set()
     distribution: Dict[str, int] = {}
@@ -99,9 +97,7 @@ def setup_locust_scenarios(grizzly: GrizzlyContext) -> Tuple[List[Type[User]], S
     total_user_count = sum(distribution.values())
     user_overflow = total_user_count - grizzly.setup.user_count
 
-    if not len(distribution.keys()) <= grizzly.setup.user_count:
-        message = f"increase the number in step 'Given \"{grizzly.setup.user_count}\" users' to at least {len(distribution.keys())}"
-        raise AssertionError(message)
+    assert len(distribution.keys()) <= grizzly.setup.user_count, f"increase the number in step 'Given \"{grizzly.setup.user_count}\" users' to at least {len(distribution.keys())}"
 
     if user_overflow < 0:
         logger.warning('there should be %d users, but there will only be %d users spawned', grizzly.setup.user_count, total_user_count)
@@ -119,12 +115,8 @@ def setup_locust_scenarios(grizzly: GrizzlyContext) -> Tuple[List[Type[User]], S
 
     for scenario in scenarios:
         # Given a user of type "" load testing ""
-        if 'host' not in scenario.context:
-            message = f'variable "host" is not found in the context for {scenario.name}'
-            raise AssertionError(message)
-        if not len(scenario.tasks) > 0:
-            message = f'no tasks has been added to {scenario.name}'
-            raise AssertionError(message)
+        assert 'host' in scenario.context, f'variable "host" is not found in the context for {scenario.name}'
+        assert len(scenario.tasks) > 0, f'no tasks has been added to {scenario.name}'
 
         fixed_count = distribution.get(scenario.name, None)
         user_class_type = create_user_class_type(scenario, grizzly.setup.global_context, fixed_count=fixed_count)
@@ -362,9 +354,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
 
     user_classes, external_dependencies = setup_locust_scenarios(grizzly)
 
-    if not len(user_classes) > 0:
-        message = 'no users specified in feature'
-        raise AssertionError(message)
+    assert len(user_classes) > 0, 'no users specified in feature'
 
     try:
         setup_resource_limits(context)
@@ -496,11 +486,8 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
 
         if isinstance(runner, MasterRunner):
             expected_workers = int(context.config.userdata.get('expected-workers', 1))
-            if grizzly.setup.user_count is not None and not expected_workers <= grizzly.setup.user_count:
-                message =(
-                    f'there are more workers ({expected_workers}) than users ({grizzly.setup.user_count}), which is not supported'
-                )
-                raise AssertionError(message)
+            if grizzly.setup.user_count is not None:
+                assert expected_workers <= grizzly.setup.user_count, f'there are more workers ({expected_workers}) than users ({grizzly.setup.user_count}), which is not supported'
 
             while len(runner.clients.ready) < expected_workers:
                 logger.debug(

@@ -3,7 +3,7 @@ This module contains step implementations for the {@pylink grizzly.tasks.wait_ex
 """
 from typing import cast
 
-from grizzly.steps._helpers import is_template
+from grizzly.utils import is_template
 from grizzly.types.behave import Context, then
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import ExplicitWaitTask
