@@ -93,7 +93,7 @@ class BlobStorageUser(ResponseHandler, GrizzlyUser):
 
         with self.blob_client.get_blob_client(container=container, blob=blob) as blob_client:
             if request.method in [RequestMethod.SEND, RequestMethod.PUT]:
-                blob_client.upload_blob(request.source)
+                blob_client.upload_blob(request.source, overwrite=True)
             elif request.method in [RequestMethod.RECEIVE, RequestMethod.GET]:
                 downloader = blob_client.download_blob()
                 request.source = downloader.readall().decode('utf-8')
