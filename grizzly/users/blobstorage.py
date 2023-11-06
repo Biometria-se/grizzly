@@ -85,7 +85,7 @@ class BlobStorageUser(GrizzlyUser):
     def request_impl(self, request: RequestTask) -> GrizzlyResponse:
         blob = os.path.basename(request.endpoint)
         container = request.endpoint
-        print(f'{request.endpoint=}, {container=}, {blob=}')
+        headers: Dict[str, Any] = {}
 
         if container.endswith(blob):
             container = os.path.dirname(container)
@@ -95,7 +95,11 @@ class BlobStorageUser(GrizzlyUser):
         with self.blob_client.get_blob_client(container=container, blob=blob) as blob_client:
             if request.method in [RequestMethod.SEND, RequestMethod.PUT]:
                 blob_client.upload_blob(request.source)
+            elif request.method in [RequestMethod.RECEIVE, RequestMethod.GET]:
+                downloader = blob_client.download_blob()
+                request.source = downloader.readall()
+                headers = blob_client.get_blob_properties().metadata
             else:  # pragma: no cover
                 raise NotImplementedError(f'{self.__class__.__name__} has not implemented {request.method.name}')
 
-        return {}, request.source
+        return headers, request.source
