@@ -39,10 +39,10 @@ from grizzly.types.locust import Environment
 from grizzly.tasks import RequestTask
 from grizzly.utils import merge_dicts
 
-from .base import GrizzlyUser
+from .base import GrizzlyUser, ResponseHandler
 
 
-class BlobStorageUser(GrizzlyUser):
+class BlobStorageUser(ResponseHandler, GrizzlyUser):
     blob_client: BlobServiceClient
     _context: Dict[str, Any] = {}
 
@@ -55,7 +55,7 @@ class BlobStorageUser(GrizzlyUser):
 
         # Replace semicolon separators between parameters to ? and & and massage it to make it "urlparse-compliant"
         # for validation
-        conn_str = conn_str.replace(';EndpointSuffix=', '://', 1).replace(';', '/?', 1).replace(';', '&')
+        conn_str = conn_str.replace(';', '://?', 1).replace(';', '&')
 
         parsed = urlparse(conn_str)
 
@@ -85,7 +85,6 @@ class BlobStorageUser(GrizzlyUser):
     def request_impl(self, request: RequestTask) -> GrizzlyResponse:
         blob = os.path.basename(request.endpoint)
         container = request.endpoint
-        headers: Dict[str, Any] = {}
 
         if container.endswith(blob):
             container = os.path.dirname(container)
@@ -97,9 +96,11 @@ class BlobStorageUser(GrizzlyUser):
                 blob_client.upload_blob(request.source)
             elif request.method in [RequestMethod.RECEIVE, RequestMethod.GET]:
                 downloader = blob_client.download_blob()
-                request.source = downloader.readall()
-                headers = blob_client.get_blob_properties().metadata
+                request.source = downloader.readall().decode('utf-8')
             else:  # pragma: no cover
                 raise NotImplementedError(f'{self.__class__.__name__} has not implemented {request.method.name}')
+
+        properties = blob_client.get_blob_properties()
+        headers = {key: value for key, value in properties.items()}
 
         return headers, request.source
