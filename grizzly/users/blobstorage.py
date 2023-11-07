@@ -6,6 +6,8 @@ Supports the following request methods:
 
 * send
 * put
+* receive
+* put
 
 ## Format
 
@@ -34,7 +36,7 @@ from urllib.parse import urlparse, parse_qs
 
 from azure.storage.blob import BlobServiceClient
 
-from grizzly.types import RequestMethod, GrizzlyResponse
+from grizzly.types import RequestMethod, GrizzlyResponse, RequestDirection
 from grizzly.types.locust import Environment
 from grizzly.tasks import RequestTask
 from grizzly.utils import merge_dicts
@@ -62,9 +64,6 @@ class BlobStorageUser(ResponseHandler, GrizzlyUser):
         if parsed.scheme != 'https':
             raise ValueError(f'"{parsed.scheme}" is not supported for {self.__class__.__name__}')
 
-        if parsed.query == '':
-            raise ValueError(f'{self.__class__.__name__} needs AccountName and AccountKey in the query string')
-
         params = parse_qs(parsed.query)
         if 'AccountName' not in params:
             raise ValueError(f'{self.__class__.__name__} needs AccountName in the query string')
@@ -91,14 +90,15 @@ class BlobStorageUser(ResponseHandler, GrizzlyUser):
         else:
             blob = self.normalize(request.name)
 
+        if request.method not in [RequestMethod.SEND, RequestMethod.PUT, RequestMethod.RECEIVE, RequestMethod.GET]:
+            raise NotImplementedError(f'{self.__class__.__name__} has not implemented {request.method.name}')
+
         with self.blob_client.get_blob_client(container=container, blob=blob) as blob_client:
-            if request.method in [RequestMethod.SEND, RequestMethod.PUT]:
+            if request.method.direction == RequestDirection.TO:
                 blob_client.upload_blob(request.source, overwrite=True)
-            elif request.method in [RequestMethod.RECEIVE, RequestMethod.GET]:
+            else:
                 downloader = blob_client.download_blob()
                 request.source = downloader.readall().decode('utf-8')
-            else:  # pragma: no cover
-                raise NotImplementedError(f'{self.__class__.__name__} has not implemented {request.method.name}')
 
         properties = blob_client.get_blob_properties()
         headers = {key: value for key, value in properties.items()}
