@@ -6,6 +6,8 @@ Supports the following request methods:
 
 * send
 * put
+* receive
+* put
 
 ## Format
 
@@ -35,17 +37,17 @@ from urllib.parse import parse_qs, urlparse
 
 from azure.storage.blob import BlobServiceClient
 
-from grizzly.types import GrizzlyResponse, RequestMethod
+from grizzly.types import RequestMethod, GrizzlyResponse, RequestDirection
 from grizzly.utils import merge_dicts
 
-from .base import GrizzlyUser
+from .base import GrizzlyUser, ResponseHandler
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.tasks import RequestTask
     from grizzly.types.locust import Environment
 
 
-class BlobStorageUser(GrizzlyUser):
+class BlobStorageUser(ResponseHandler, GrizzlyUser):
     blob_client: BlobServiceClient
 
     def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
@@ -57,16 +59,12 @@ class BlobStorageUser(GrizzlyUser):
 
         # Replace semicolon separators between parameters to ? and & and massage it to make it "urlparse-compliant"
         # for validation
-        conn_str = conn_str.replace(';EndpointSuffix=', '://', 1).replace(';', '/?', 1).replace(';', '&')
+        conn_str = conn_str.replace(';', '://?', 1).replace(';', '&')
 
         parsed = urlparse(conn_str)
 
         if parsed.scheme != 'https':
             message = f'"{parsed.scheme}" is not supported for {self.__class__.__name__}'
-            raise ValueError(message)
-
-        if parsed.query == '':
-            message = f'{self.__class__.__name__} needs AccountName and AccountKey in the query string'
             raise ValueError(message)
 
         params = parse_qs(parsed.query)
@@ -100,11 +98,17 @@ class BlobStorageUser(GrizzlyUser):
         else:
             blob = self._normalize(request.name)
 
-        with self.blob_client.get_blob_client(container=container, blob=blob) as blob_client:
-            if request.method in [RequestMethod.SEND, RequestMethod.PUT]:
-                blob_client.upload_blob(request.source)
-            else:  # pragma: no cover
-                message = f'{self.__class__.__name__} has not implemented {request.method.name}'
-                raise NotImplementedError(message)
+        if request.method not in [RequestMethod.SEND, RequestMethod.PUT, RequestMethod.RECEIVE, RequestMethod.GET]:
+            raise NotImplementedError(f'{self.__class__.__name__} has not implemented {request.method.name}')
 
-        return {}, request.source
+        with self.blob_client.get_blob_client(container=container, blob=blob) as blob_client:
+            if request.method.direction == RequestDirection.TO:
+                blob_client.upload_blob(request.source, overwrite=True)
+            else:
+                downloader = blob_client.download_blob()
+                request.source = downloader.readall().decode('utf-8')
+
+        properties = blob_client.get_blob_properties()
+        headers = {key: value for key, value in properties.items()}
+
+        return headers, request.source
