@@ -24,7 +24,7 @@ class AsyncRequests:
 
 from .request_logger import RequestLogger  # noqa: I001
 
-from .grizzly_user import GrizzlyUser
+from .grizzly_user import GrizzlyUser, GrizzlyUserMeta, grizzlycontext
 from .response_event import ResponseEvent
 from .response_handler import ResponseHandler
 
@@ -34,4 +34,6 @@ __all__ = [
     'RequestLogger',
     'ResponseHandler',
     'GrizzlyUser',
+    'GrizzlyUserMeta',
+    'grizzlycontext',
 ]

@@ -54,7 +54,7 @@ from abc import ABC, ABCMeta, abstractmethod
 from inspect import getmro
 from os import environ
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, List, Optional, Set, Type, Union, cast, overload
+from typing import TYPE_CHECKING, Any, Callable, List, Optional, Set, Type, Union, cast, overload
 
 from grizzly.context import GrizzlyContext
 from grizzly.utils import is_template
@@ -136,7 +136,7 @@ class grizzlytask:
 
 
 class GrizzlyTask(ABC):
-    __template_attributes__: ClassVar[Set[str]] = set()
+    __template_attributes__: Set[str] = set()
 
     _context_root: str
 

@@ -79,23 +79,22 @@ import zmq.green as zmq
 from grizzly.tasks import RequestTask
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod, RequestType
 from grizzly.types.locust import Environment, StopUser
-from grizzly.utils import is_template, merge_dicts
+from grizzly.utils import is_template
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse, async_message_request
 
-from .base import GrizzlyUser, ResponseHandler
+from .base import GrizzlyUser, ResponseHandler, grizzlycontext
 
 MAX_LENGTH = 65
 
 
+@grizzlycontext(context={
+    'message': {
+        'wait': None,
+    },
+})
 class ServiceBusUser(ResponseHandler, GrizzlyUser):
     __dependencies__: ClassVar[Set[str]] = {'async-messaged'}
-
-    _context: Dict[str, Any] = {  # noqa: RUF012
-        'message': {
-            'wait': None,
-        },
-    }
 
     am_context: AsyncMessageContext
     worker_id: Optional[str]
@@ -136,8 +135,6 @@ class ServiceBusUser(ResponseHandler, GrizzlyUser):
         if 'SharedAccessKey' not in params:
             message = f'{self.__class__.__name__}: SharedAccessKey must be in the query string'
             raise ValueError(message)
-
-        self._context = merge_dicts(super().context(), self.__class__._context)
 
         self.am_context = {
             'url': self.host[9:],

@@ -105,23 +105,20 @@ def test_fail_directly(behave_fixture: BehaveFixture) -> None:
 def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:
     scenario = GrizzlyContextScenario(1, behave=behave_fixture.create_scenario('A scenario description'))
 
-    with pytest.raises(ValueError) as ve:
+    with pytest.raises(ValueError, match='scenario A scenario description does not have a user type set'):
         create_user_class_type(scenario)
-    assert 'scenario A scenario description does not have a user type set' in str(ve)
 
     user_orig = scenario.user
     delattr(scenario, 'user')
 
-    with pytest.raises(ValueError) as ve:
+    with pytest.raises(ValueError, match='scenario A scenario description has not set a user'):
         create_user_class_type(scenario)
-    assert 'scenario A scenario description has not set a user' in str(ve)
 
-    setattr(scenario, 'user', user_orig)
+    scenario.user = user_orig
 
     scenario.user.class_name = 'custom.users.CustomUser'
-    with pytest.raises(ModuleNotFoundError) as mnfe:
+    with pytest.raises(ModuleNotFoundError, match="No module named 'custom'"):
         create_user_class_type(scenario)
-    assert "No module named 'custom'" in str(mnfe)
 
     scenario.user.class_name = 'grizzly.users.RestApiUser'
     user_class_type_1 = create_user_class_type(scenario)
@@ -134,7 +131,9 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:
     assert user_class_type_1.__scenario__ is scenario
     assert user_class_type_1.host == 'http://localhost:8000'
     assert user_class_type_1.__module__ == 'grizzly.users.restapi'
-    assert user_class_type_1._context == {
+    assert user_class_type_1.__context__ == {
+        'log_all_requests': False,
+        'variables': {},
         'verify_certificates': True,
         'auth': {
             'refresh_time': 3000,
@@ -160,6 +159,7 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:
         'Content-Type': 'application/json',
         'x-grizzly-user': f'grizzly.users.RestApiUser_{scenario.identifier}',
     }
+
     assert user_type_1.context() == {
         'log_all_requests': False,
         'variables': {},
@@ -215,8 +215,9 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:
     assert user_class_type_2.__scenario__ is scenario
     assert user_class_type_2.host == 'http://localhost:8001'
     assert user_class_type_2.__module__ == 'grizzly.users.restapi'
-    assert user_class_type_2._context == {
+    assert user_class_type_2.__context__ == {
         'log_all_requests': True,
+        'variables': {},
         'test': {
             'value': 1,
         },
@@ -292,7 +293,9 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:
     assert user_class_type_3.__scenario__ is scenario
     assert user_class_type_3.host == 'http://localhost:8002'
     assert user_class_type_3.__module__ == 'grizzly.users.restapi'
-    assert user_class_type_3._context == {
+    assert user_class_type_3.__context__ == {
+        'log_all_requests': False,
+        'variables': {},
         'test': {
             'value': 'hello world',
             'description': 'simple text',
@@ -330,7 +333,9 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:
     assert user_class_type_3.__scenario__ is scenario
     assert user_class_type_3.host == 'http://localhost:8002'
     assert user_class_type_3.__module__ == 'grizzly.users.restapi'
-    assert user_class_type_3._context == {
+    assert user_class_type_3.__context__ == {
+        'log_all_requests': False,
+        'variables': {},
         'test': {
             'value': 'hello world',
             'description': 'simple text',

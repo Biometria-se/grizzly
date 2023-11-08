@@ -77,9 +77,6 @@ def fail_direct(context: Context) -> Generator[None, None, None]:
 
 def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Optional[Dict[str, Any]] = None, fixed_count: Optional[int] = None) -> Type[GrizzlyUser]:
     """Create a unique (name wise) class, that locust will use to create user instances."""
-    if global_context is None:
-        global_context = {}
-
     if not hasattr(scenario, 'user') or scenario.user is None:
         message = f'scenario {scenario.description} has not set a user'
         raise ValueError(message)
@@ -99,8 +96,8 @@ def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Opt
 
     context: Dict[str, Any] = {}
     contexts: List[Dict[str, Any]] = [
-        base_user_class_type._context,
-        global_context,
+        base_user_class_type.__context__,
+        global_context or {},
         scenario.context,
     ]
 
@@ -118,7 +115,7 @@ def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Opt
         '__module__': base_user_class_type.__module__,
         '__dependencies__': base_user_class_type.__dependencies__,
         '__scenario__': scenario,
-        '_context': context,
+        '__context__': context,
         **distribution,
     })
 
@@ -146,12 +143,15 @@ def merge_dicts(merged: Dict[str, Any], source: Dict[str, Any]) -> Dict[str, Any
     source = deepcopy(source)
 
     for key in source:
-        if (key in merged and isinstance(merged[key], dict)
-                and isinstance(source[key], Mapping)):
+        if (
+            key in merged
+            and isinstance(merged[key], dict)
+            and isinstance(source[key], Mapping)
+        ):
             merged[key] = merge_dicts(merged[key], source[key])
         else:
             value = source[key]
-            if value == 'None':
+            if isinstance(value, str) and value.lower() == 'none':
                 value = None
             merged[key] = value
 
@@ -259,10 +259,9 @@ def check_mq_client_logs(context: Context) -> None:
                     if time_date < started:
                         continue
                 except ParserError:
-                    logger.exception('"%s" is not a valid date', time_str, exc_info=context.config.verbose)
+                    logger.exception('"%s" is not a valid date', time_str)
                     continue
                 except ValueError:
-                    logger.exception('failed parsing "%s"', time_str, exc_info=context.config.verbose)
                     continue
 
                 while not line.startswith('AMQ'):

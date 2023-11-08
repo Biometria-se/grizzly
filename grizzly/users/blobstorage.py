@@ -37,16 +37,16 @@ from urllib.parse import parse_qs, urlparse
 
 from azure.storage.blob import BlobServiceClient
 
-from grizzly.types import RequestMethod, GrizzlyResponse, RequestDirection
-from grizzly.utils import merge_dicts
+from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod
 
-from .base import GrizzlyUser, ResponseHandler
+from .base import GrizzlyUser, ResponseHandler, grizzlycontext
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.tasks import RequestTask
     from grizzly.types.locust import Environment
 
 
+@grizzlycontext(context={})
 class BlobStorageUser(ResponseHandler, GrizzlyUser):
     blob_client: BlobServiceClient
 
@@ -76,8 +76,6 @@ class BlobStorageUser(ResponseHandler, GrizzlyUser):
             message = f'{self.__class__.__name__} needs AccountKey in the query string'
             raise ValueError(message)
 
-        self._context = merge_dicts(super().context(), self.__class__._context)
-
     def on_start(self) -> None:
         """Create blob storage client when user starts."""
         super().on_start()
@@ -99,7 +97,8 @@ class BlobStorageUser(ResponseHandler, GrizzlyUser):
             blob = self._normalize(request.name)
 
         if request.method not in [RequestMethod.SEND, RequestMethod.PUT, RequestMethod.RECEIVE, RequestMethod.GET]:
-            raise NotImplementedError(f'{self.__class__.__name__} has not implemented {request.method.name}')
+            message = f'{self.__class__.__name__} has not implemented {request.method.name}'
+            raise NotImplementedError(message)
 
         with self.blob_client.get_blob_client(container=container, blob=blob) as blob_client:
             if request.method.direction == RequestDirection.TO:
@@ -109,6 +108,6 @@ class BlobStorageUser(ResponseHandler, GrizzlyUser):
                 request.source = downloader.readall().decode('utf-8')
 
         properties = blob_client.get_blob_properties()
-        headers = {key: value for key, value in properties.items()}
+        headers = dict(properties.items())
 
         return headers, request.source

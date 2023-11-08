@@ -424,20 +424,17 @@ class TestAAD:
                             else:
                                 redirect_uri = auth_user_context['redirect_uri']
 
-                            if is_token_v2_0:
-                                token_name = 'code'
-                            else:
-                                token_name = 'id_token'
+                            token_name = 'code' if is_token_v2_0 else 'id_token'
 
                             response.headers['Location'] = f'{redirect_uri}#{token_name}={fake_token}'
                         elif inject_error != Error.REQUEST_4_HTTP_STATUS_CONFIG:
-                            response._content = f'''<form action="https://www.example.com/app/login/signin-oidc" method="post">
+                            response._content = f"""<form action="https://www.example.com/app/login/signin-oidc" method="post">
                                 <input type="hidden" name="id_token" value="{fake_token}"/>
                                 <input type="hidden" name="client_info" value="0000aaaa1111bbbb"/>
                                 <input type="hidden" name="state" value="1111bbbb2222cccc"/>
                                 <input type="hidden" name="session_state" value="2222cccc3333dddd"/>
                             </form>
-                            '''.encode('utf-8')
+                            """.encode()
                     elif method == 'POST' and url.endswith('/signin-oidc'):
                         if inject_error == Error.REQUEST_5_HTTP_STATUS:
                             response.status_code = 500
@@ -455,16 +452,13 @@ class TestAAD:
 
             session_started = time()
 
-            if login_start == 'redirect_uri':
-                auth_user_uri = 'http://www.example.com/app/authenticated'
-            else:
-                auth_user_uri = 'http://www.example.com/app/login'
+            auth_user_uri = 'http://www.example.com/app/authenticated' if login_start == 'redirect_uri' else 'http://www.example.com/app/login'
 
             provider_url = 'https://login.example.com/oauth2'
             if version != 'v1.0':
                 provider_url = f'{provider_url}/{version}'
 
-            parent.user.__class__._context = {
+            parent.user._context = {
                 'host': 'https://www.example.com',
                 'auth': {
                     'client': {
@@ -477,7 +471,7 @@ class TestAAD:
                         'initialize_uri': None,
                     },
                     'provider': None,
-                }
+                },
             }
             parent.user.host = cast(str, parent.user._context['host'])
 

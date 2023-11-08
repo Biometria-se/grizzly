@@ -294,8 +294,6 @@ def grizzly_test_abort(*_args: Any, **_kwargs: Any) -> None:
         abort_test = True
 
 def shutdown_external_processes(processes: Dict[str, subprocess.Popen], greenlet: Optional[gevent.Greenlet]) -> None:
-    global watch_running_external_processes_greenlet  # noqa: PLW0602
-
     if len(processes) < 1:
         return
 
@@ -350,6 +348,8 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
 
     greenlet_exception_handler = greenlet_exception_logger(logger)
 
+    watch_running_external_processes_greenlet: Optional[gevent.Greenlet] = None
+
     external_processes: Dict[str, subprocess.Popen] = {}
 
     user_classes, external_dependencies = setup_locust_scenarios(grizzly)
@@ -398,7 +398,6 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
         external_dependencies.update(variable_dependencies)
 
         environment.events.init.fire(environment=environment, runner=runner, web_ui=None)
-        watch_running_external_processes_greenlet: Optional[gevent.Greenlet] = None
 
         if not on_master(context) and len(external_dependencies) > 0:
             env = environ.copy()

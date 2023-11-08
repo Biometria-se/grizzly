@@ -1,5 +1,4 @@
-"""
-@anchor pydoc:grizzly.tasks.clients.http HTTP
+"""@anchor pydoc:grizzly.tasks.clients.http HTTP
 This task performs a HTTP request to a specified endpoint.
 
 This is useful if the scenario is using a non-HTTP user or a request to a URL other than the one under testing is needed, e.g. for testdata.
@@ -42,21 +41,24 @@ requests towards `www.example.com`.
 
 For more details, see {@pylink grizzly.auth.aad}.
 """
-from typing import Optional, Dict, Any
+from __future__ import annotations
+
 from json import dumps as jsondumps
 from time import time
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 import requests
-
 from locust.exception import CatchResponseError
-from grizzly_extras.arguments import split_value, parse_arguments
 
+from grizzly.auth import AAD, GrizzlyHttpAuthClient, refresh_token
 from grizzly.types import GrizzlyResponse, RequestDirection, bool_type
-from grizzly.scenarios import GrizzlyScenario
-from grizzly.auth import GrizzlyHttpAuthClient, refresh_token, AAD
 from grizzly.utils import merge_dicts
+from grizzly_extras.arguments import parse_arguments, split_value
 
-from . import client, ClientTask
+from . import ClientTask, client
+
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.scenarios import GrizzlyScenario
 
 
 @client('http', 'https')
@@ -65,8 +67,6 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
     headers: Dict[str, str]
     session_started: Optional[float]
     host: str
-
-    _context: Dict[str, Any]
 
     def __init__(
         self,
@@ -114,14 +114,14 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
             self.arguments = {'verify': verify}
 
         self.session_started = None
-        self._context = {
+        self.__class__._context = {
             'verify_certificates': verify,
             'metadata': None,
             'auth': None,
         }
 
-        self._context.update({'host': self.host})
-        self._context = merge_dicts(self._context, self._scenario.context)
+        self.__class__._context.update({'host': self.host})
+        self.__class__._context = merge_dicts(self.__class__._context, self._scenario.context)
 
     def on_start(self, parent: GrizzlyScenario) -> None:
         super().on_start(parent)
@@ -144,7 +144,7 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
                 'payload': None,
             }})
 
-            response = requests.get(url, headers=self.headers, cookies=self.cookies, **self.arguments)
+            response = requests.get(url, headers=self.headers, cookies=self.cookies, timeout=30, **self.arguments)
 
             payload = response.text
             metadata = dict(response.headers)
@@ -152,8 +152,9 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
             exception: Optional[Exception] = None
 
             if response.status_code != 200 or response.url != url:
-                parent.logger.error(f'{response.url} returned {response.status_code}')
-                exception = CatchResponseError(f'{response.status_code} not in [200]: {payload}')
+                parent.logger.error('%s returned %d', response.url, response.status_code)
+                message = f'{response.status_code} not in [200]: {payload}'
+                exception = CatchResponseError(message)
             else:
                 if self.payload_variable is not None:
                     parent.user._context['variables'][self.payload_variable] = payload
@@ -161,7 +162,7 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
                 if self.metadata_variable is not None:
                     parent.user._context['variables'][self.metadata_variable] = jsondumps(metadata)
 
-            meta['response_length'] = len(payload.encode('utf-8'))
+            meta['response_length'] = len(payload.encode())
 
             meta.update({
                 'response': {
@@ -175,5 +176,6 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
 
             return metadata, payload
 
-    def put(self, parent: GrizzlyScenario) -> GrizzlyResponse:
-        raise NotImplementedError(f'{self.__class__.__name__} has not implemented PUT')  # pragma: no cover
+    def put(self, _: GrizzlyScenario) -> GrizzlyResponse:
+        message = f'{self.__class__.__name__} has not implemented PUT'
+        raise NotImplementedError(message)

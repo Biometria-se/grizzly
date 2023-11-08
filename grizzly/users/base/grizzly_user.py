@@ -3,16 +3,17 @@ from __future__ import annotations
 
 import logging
 from abc import abstractmethod
-from copy import copy
+from copy import copy, deepcopy
 from json import dumps as jsondumps
 from json import loads as jsonloads
 from logging import Logger
 from os import environ
 from pathlib import Path
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, Optional, Set, cast, final
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, Optional, Set, Type, TypeVar, cast, final
 
 from locust.user.task import LOCUST_STATE_RUNNING
+from locust.user.users import UserMeta
 
 from grizzly.context import GrizzlyContext
 from grizzly.exceptions import ResponseHandlerError, RestartScenario, TransformerLocustError
@@ -23,22 +24,39 @@ from grizzly.utils import merge_dicts
 
 from . import FileRequests
 
+T = TypeVar('T', bound=UserMeta)
+
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContextScenario
     from grizzly.tasks import RequestTask
 
 
-class GrizzlyUser(RequestLogger):
+class GrizzlyUserMeta(UserMeta):
+    pass
+
+
+class grizzlycontext:
+    context: Dict[str, Any]
+
+    def __init__(self, *, context: Dict[str, Any]) -> None:
+        self.context = context
+
+    def __call__(self, cls: Type[GrizzlyUser]) -> Type[GrizzlyUser]:
+        """Hello."""
+        cls.__context__ = merge_dicts(cls.__context__, self.context)
+
+        return cls
+
+
+@grizzlycontext(context={'log_all_requests': False, 'variables': {}})
+class GrizzlyUser(RequestLogger, metaclass=GrizzlyUserMeta):
     __dependencies__: ClassVar[Set[str]] = set()
     __scenario__: GrizzlyContextScenario  # reference to grizzly scenario this user is part of
+    __context__: ClassVar[Dict[str, Any]] = {}
 
+    _context: Dict[str, Any]
     _context_root: Path
-    _context: Dict[str, Any] = {  # noqa: RUF012
-        'variables': {},
-        'log_all_requests': False,
-    }
     _scenario: GrizzlyContextScenario  # copy of scenario for this user instance
-
     _scenario_state: Optional[ScenarioState]
 
     logger: Logger
@@ -53,13 +71,14 @@ class GrizzlyUser(RequestLogger):
         super().__init__(environment, *args, **kwargs)
 
         self._context_root = Path(environ.get('GRIZZLY_CONTEXT_ROOT', '.'))
-        self.__class__._context = merge_dicts({}, GrizzlyUser._context)
-        self.logger = logging.getLogger(f'{self.__class__.__name__}/{id(self)}')
+        self._context = deepcopy(self.__class__.__context__)
         self._scenario_state = None
-        self.abort = False
         self._scenario = copy(self.__scenario__)
         # these are not copied, and we can share reference
         self._scenario._tasks = self.__scenario__._tasks
+
+        self.logger = logging.getLogger(f'{self.__class__.__name__}/{id(self)}')
+        self.abort = False
 
         environment.events.quitting.add_listener(self.on_quitting)
 

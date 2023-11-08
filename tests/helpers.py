@@ -1,23 +1,26 @@
-import inspect
-import subprocess
-import os
-import stat
-import re
+"""Useful helper stuff for tests."""
+from __future__ import annotations
 
-from typing import Any, Dict, Optional, Tuple, List, Set, Callable, Generator, Union, Pattern, Type
-from types import MethodType, TracebackType
-from pathlib import Path
+import inspect
+import os
+import re
+import stat
+import subprocess
+from abc import ABCMeta
 from copy import deepcopy
+from pathlib import Path
+from types import MethodType, TracebackType
+from typing import Any, Callable, Dict, Generator, List, Optional, Pattern, Set, Tuple, Type, Union
 
 from locust import task
 from locust.event import EventHook
 
-from grizzly.users.base import GrizzlyUser
-from grizzly.types.locust import Message, Environment
-from grizzly.types import GrizzlyResponse, RequestMethod
-from grizzly.testdata.variables import AtomicVariable
-from grizzly.tasks import RequestTask, GrizzlyTask, template, grizzlytask
 from grizzly.scenarios import GrizzlyScenario
+from grizzly.tasks import GrizzlyTask, RequestTask, grizzlytask, template
+from grizzly.testdata.variables import AtomicVariable
+from grizzly.types import GrizzlyResponse, RequestMethod
+from grizzly.types.locust import Environment, Message
+from grizzly.users.base import GrizzlyUser
 
 
 class AtomicCustomVariable(AtomicVariable[str]):
@@ -25,6 +28,27 @@ class AtomicCustomVariable(AtomicVariable[str]):
 
 
 message_callback_not_a_method = True
+
+
+def ANY(*cls: Type, message: Optional[str] = None) -> object:  # noqa: N802
+    """Compare equal to everything, as long as it is of the same type."""
+    class WrappedAny(metaclass=ABCMeta):  # noqa: B024
+        def __eq__(self, other: object) -> bool:
+            return isinstance(other, cls) and (message is None or (message is not None and str(other) == message))
+
+        def __ne__(self, other: object) -> bool:
+            return not self.__eq__(other)
+
+        def __neq__(self, other: object) -> bool:
+            return self.__ne__(other)
+
+        def __repr__(self) -> str:
+            return f'<ANY({cls})>'
+
+    for c in cls:
+        WrappedAny.register(c)
+
+    return WrappedAny()
 
 
 def message_callback(environment: Environment, msg: Message) -> None:

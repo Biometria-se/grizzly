@@ -137,7 +137,7 @@ from grizzly.utils import merge_dicts
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse, async_message_request
 
-from .base import GrizzlyUser, ResponseHandler
+from .base import GrizzlyUser, ResponseHandler, grizzlycontext
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.tasks import RequestTask
@@ -152,22 +152,21 @@ except:
     from grizzly_extras import dummy_pymqi as pymqi
 
 
+@grizzlycontext(context={
+    'auth': {
+        'username': None,
+        'password': None,
+        'key_file': None,
+        'cert_label': None,
+        'ssl_cipher': None,
+    },
+    'message': {
+        'wait': None,
+        'header_type': None,
+    },
+})
 class MessageQueueUser(ResponseHandler, GrizzlyUser):
     __dependencies__: ClassVar[Set[str]] = {'async-messaged'}
-
-    _context: Dict[str, Any] = {  # noqa: RUF012
-        'auth': {
-            'username': None,
-            'password': None,
-            'key_file': None,
-            'cert_label': None,
-            'ssl_cipher': None,
-        },
-        'message': {
-            'wait': None,
-            'header_type': None,
-        },
-    }
 
     am_context: AsyncMessageContext
     worker_id: Optional[str]
@@ -221,9 +220,6 @@ class MessageQueueUser(ResponseHandler, GrizzlyUser):
             'queue_manager': unquote(params['QueueManager'][0]),
             'channel': unquote(params['Channel'][0]),
         })
-
-        # Get configuration values from context
-        self._context = merge_dicts(super().context(), self.__class__._context)
 
         auth_context = self._context.get('auth', {})
         username = auth_context.get('username', None)

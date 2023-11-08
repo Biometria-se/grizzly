@@ -1,26 +1,28 @@
+"""@anchor pydoc:grizzly.steps.background.setup Setup
+This module contains step implementations that configures the load test scenario with parameters applicable for all scenarios.
 """
-@anchor pydoc:grizzly.steps.background.setup Setup
-This module contains step implementations that configures the load test scenario with parameters applicable for all scenarios."""
-import parse
+from __future__ import annotations
 
-from urllib.parse import urlparse
-from typing import cast
 from importlib import import_module
 from inspect import signature
+from typing import cast
+from urllib.parse import urlparse
 
-from grizzly_extras.text import permutation
+import parse
 
-from grizzly.types.locust import Environment, Message
-from grizzly.types.behave import Context, given, register_type
-from grizzly.types import MessageDirection
 from grizzly.context import GrizzlyContext
-from grizzly.utils import merge_dicts
 from grizzly.testdata.utils import create_context_variable, resolve_variable
+from grizzly.types import MessageDirection
+from grizzly.types.behave import Context, given, register_type
+from grizzly.types.locust import Environment, Message
+from grizzly.utils import merge_dicts
+from grizzly_extras.text import permutation
 
 
 @parse.with_pattern(r'(client|server)', regex_group_count=1)
-@permutation(vector=(True, True,))
+@permutation(vector=(True, True))
 def parse_message_direction(text: str) -> str:
+    """Allow only "client" or "server"."""
     return text.strip()
 
 
@@ -29,9 +31,9 @@ register_type(
 )
 
 
-@given(u'save statistics to "{url}"')
+@given('save statistics to "{url}"')
 def step_setup_save_statistics(context: Context, url: str) -> None:
-    """Sets an URL where locust statistics should be sent.
+    """Set an URL where locust statistics should be sent.
 
     It has support for InfluxDB and Azure Application Insights endpoints.
 
@@ -68,7 +70,7 @@ def step_setup_save_statistics(context: Context, url: str) -> None:
     grizzly.setup.statistics_url = url
 
 
-@given(u'log level is "{log_level}"')
+@given('log level is "{log_level}"')
 def step_setup_log_level(context: Context, log_level: str) -> None:
     """Configure log level for `grizzly`.
 
@@ -86,9 +88,9 @@ def step_setup_log_level(context: Context, log_level: str) -> None:
     grizzly.setup.log_level = log_level
 
 
-@given(u'run for maximum "{timespan}"')
+@given('run for maximum "{timespan}"')
 def step_setup_run_time(context: Context, timespan: str) -> None:
-    """Configures the time period a headless test should run for.
+    """Configure the time period a headless test should run for.
     If available test data is infinite, the test will run forever if this step is not used.
 
     ```gherkin
@@ -102,7 +104,7 @@ def step_setup_run_time(context: Context, timespan: str) -> None:
     grizzly.setup.timespan = timespan
 
 
-@given(u'set global context variable "{variable}" to "{value}"')
+@given('set global context variable "{variable}" to "{value}"')
 def step_setup_set_global_context_variable(context: Context, variable: str, value: str) -> None:
     """Create a global variable in the context. Depending on which type of user a scenario is configured for, different variables
     are available. Check `grizzly.users` documentation for which context variables are available for each user.
@@ -156,7 +158,7 @@ def step_setup_set_global_context_variable(context: Context, variable: str, valu
     grizzly.setup.global_context = merge_dicts(grizzly.setup.global_context, context_variable)
 
 
-@given(u'register callback "{callback_name}" for message type "{message_type}" from {from_node:MessageDirection} to {to_node:MessageDirection}')
+@given('register callback "{callback_name}" for message type "{message_type}" from {from_node:MessageDirection} to {to_node:MessageDirection}')
 def step_setup_message_type_callback(context: Context, callback_name: str, message_type: str, from_node: str, to_node: str) -> None:
     """Register a custom callback function for a custom message type, that should be sent from client/server to client/server (exclusive).
 
@@ -186,7 +188,8 @@ def step_setup_message_type_callback(context: Context, callback_name: str, messa
     try:
         module = import_module(module_name)
     except ModuleNotFoundError as e:
-        raise AssertionError(f'no module named {e.name}')
+        message = f'no module named {e.name}'
+        raise AssertionError(message) from e
 
     callback = getattr(module, callback_name, None)
 
@@ -200,10 +203,10 @@ def step_setup_message_type_callback(context: Context, callback_name: str, messa
     correct_signature = (
         len(parameter_names) >= 2
         and parameter_names[0] == 'environment'
-        and issubclass(parameters['environment'].annotation, Environment)
+        and parameters['environment'].annotation == 'Environment'
         and parameter_names[1] == 'msg'
-        and issubclass(parameters['msg'].annotation, Message)
-        and method_signature.return_annotation is None
+        and parameters['msg'].annotation == 'Message'
+        and method_signature.return_annotation == 'None'
     )
 
     assert correct_signature, f'{module_name}.{callback_name} does not have grizzly.types.MessageCallback method signature: {method_signature}'

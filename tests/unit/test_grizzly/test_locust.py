@@ -633,7 +633,7 @@ def test_run_worker(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
     assert run(behave) == 1
     capture = capsys.readouterr()
 
-    assert 'failed to connect to the locust master' in capture.err
+    assert 'failed to connect to locust master at ' in capture.err
 
     assert messagequeue_process_spy.call_count == 0
 

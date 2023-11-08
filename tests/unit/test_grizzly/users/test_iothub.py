@@ -1,24 +1,27 @@
+"""Unit tests for grizzly.users.iothub."""
+from __future__ import annotations
+
 import json
-from typing import Any, Tuple, cast
+from typing import TYPE_CHECKING, Any, Tuple, cast
 
 import pytest
-
-from azure.storage.blob._blob_client import BlobClient
 from azure.iot.device import IoTHubDeviceClient
+from azure.storage.blob._blob_client import BlobClient
 
-from pytest_mock import MockerFixture
-
-from grizzly.types.locust import Environment, StopUser
-from grizzly.users.iothub import IotHubUser
-from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContextScenario
+from grizzly.exceptions import RestartScenario
 from grizzly.tasks import RequestTask
 from grizzly.testdata.utils import transform
-from grizzly.exceptions import RestartScenario
-from grizzly.scenarios import GrizzlyScenario
+from grizzly.types import RequestMethod
+from grizzly.types.locust import Environment, StopUser
+from grizzly.users.iothub import IotHubUser
+from tests.helpers import ANY
 
-from tests.fixtures import GrizzlyFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from pytest_mock import MockerFixture
 
+    from grizzly.scenarios import GrizzlyScenario
+    from tests.fixtures import GrizzlyFixture
 
 CONNECTION_STRING = 'HostName=some.hostname.nu;DeviceId=my_device;SharedAccessKey=xxxyyyzzz='
 
@@ -29,26 +32,29 @@ class MockedIotHubDeviceClient(IoTHubDeviceClient):
     def __init__(self, conn_str: str) -> None:
         self.conn_str = conn_str
 
-    def get_storage_info_for_blob(self, blob_name: Any) -> Any:
+    def get_storage_info_for_blob(self, _: Any) -> Any:
+        """Mock storage information for a blob."""
         return {
             'hostName': 'some_host',
             'containerName': 'some_container',
             'blobName': 'some_blob',
             'sasToken': 'some_sas_token',
-            'correlationId': 'correlation_id'
+            'correlationId': 'correlation_id',
         }
 
 
-@pytest.fixture
+@pytest.fixture()
 def iot_hub_parent(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> GrizzlyScenario:
-    def mocked_create_from_connection_string(connection_string: Any, **kwargs: Any) -> IoTHubDeviceClient:
+    def mocked_create_from_connection_string(connection_string: Any, **_kwargs: Any) -> IoTHubDeviceClient:
         return MockedIotHubDeviceClient(connection_string)
 
     mocker.patch('azure.iot.device.IoTHubDeviceClient.create_from_connection_string', mocked_create_from_connection_string)
 
+    test_cls = type('IotHubTestUser', (IotHubUser, ), {})
+
     parent = grizzly_fixture(
         CONNECTION_STRING,
-        IotHubUser,
+        test_cls,
     )
 
     request = grizzly_fixture.request_task.request
@@ -88,33 +94,31 @@ class TestIotHubUser:
         assert on_stop_spy.call_count == 1
 
     @pytest.mark.usefixtures('iot_hub_parent')
-    def test_create(self, iot_hub_parent: GrizzlyScenario) -> None:
-        assert isinstance(iot_hub_parent.user, IotHubUser)
+    def test_create(self, grizzly_fixture: GrizzlyFixture) -> None:
+        test_cls = type('IotHubTestUser', (IotHubUser, ), {'__scenario__': grizzly_fixture.grizzly.scenario})
+        environment = grizzly_fixture.grizzly.state.locust.environment
 
-        iot_hub_parent.user.on_start()
+        assert issubclass(test_cls, IotHubUser)
 
-        IotHubUser.host = 'PostName=my_iot_host_name;DeviceId=my_device;SharedAccessKey=xxxyyyyzzz=='
-        with pytest.raises(ValueError) as e:
-            IotHubUser(iot_hub_parent.user.environment)
-        assert 'host needs to start with "HostName="' in str(e)
+        test_cls.host = 'PostName=my_iot_host_name;DeviceId=my_device;SharedAccessKey=xxxyyyyzzz=='
+        with pytest.raises(ValueError, match='host needs to start with "HostName="'):
+            test_cls(environment)
 
-        IotHubUser.host = 'HostName=my_iot_host_name'
-        with pytest.raises(ValueError) as e:
-            IotHubUser(iot_hub_parent.user.environment)
-        assert 'needs DeviceId and SharedAccessKey in the query string' in str(e)
+        test_cls.host = 'HostName=my_iot_host_name'
+        with pytest.raises(ValueError, match='needs DeviceId and SharedAccessKey in the query string'):
+            test_cls(environment)
 
-        IotHubUser.host = 'HostName=my_iot_host_name;SharedAccessKey=xxxyyyyzzz=='
-        with pytest.raises(ValueError) as e:
-            IotHubUser(iot_hub_parent.user.environment)
-        assert 'needs DeviceId in the query string' in str(e)
+        test_cls.host = 'HostName=my_iot_host_name;SharedAccessKey=xxxyyyyzzz=='
+        with pytest.raises(ValueError, match='needs DeviceId in the query string'):
+            test_cls(environment)
 
-        IotHubUser.host = 'HostName=my_iot_host_name;DeviceId=my_device'
-        with pytest.raises(ValueError) as e:
-            IotHubUser(iot_hub_parent.user.environment)
-        assert 'needs SharedAccessKey in the query string' in str(e)
+        test_cls.host = 'HostName=my_iot_host_name;DeviceId=my_device'
+        with pytest.raises(ValueError, match='needs SharedAccessKey in the query string'):
+            test_cls(environment)
 
     @pytest.mark.usefixtures('iot_hub_parent')
     def test_send(self, iot_hub_parent: GrizzlyScenario, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
+        assert isinstance(iot_hub_parent.user, IotHubUser)
         iot_hub_parent.user.on_start()
 
         grizzly = grizzly_fixture.grizzly
@@ -140,8 +144,8 @@ class TestIotHubUser:
                 'variable': '137',
                 'item': {
                     'description': 'this is just a description',
-                }
-            }
+                },
+            },
         }
 
         metadata, payload = iot_hub_parent.user.request(request)
@@ -161,12 +165,13 @@ class TestIotHubUser:
         assert blob_client.container_name == 'some_container'
         assert blob_client.blob_name == 'some_blobsome_sas_token'
 
-        assert notify_blob_upload_status.call_count == 1
-        args, _ = notify_blob_upload_status.call_args_list[-1]
-        assert len(args) == 5
-        assert args[1] == 'correlation_id'
-        assert args[2] is True
-        assert args[3] == 200
+        notify_blob_upload_status.assert_called_once_with(
+            iot_hub_parent.user.iot_client,
+            correlation_id='correlation_id',
+            is_success=True,
+            status_code=200,
+            status_description='OK: not_relevant',
+        )
 
         request = cast(RequestTask, iot_hub_parent.user._scenario.tasks()[-1])
 
@@ -178,17 +183,14 @@ class TestIotHubUser:
         with pytest.raises(StopUser):
             iot_hub_parent.user.request(request)
 
-        assert request_event.call_count == 1
-        _, kwargs = request_event.call_args_list[-1]
-
-        assert kwargs.get('request_type', None) == 'RECV'
-        assert kwargs.get('name', None) == f'{iot_hub_parent.user._scenario.identifier} {request.name}'
-        assert kwargs.get('response_time', -1) > -1
-        assert kwargs.get('response_length', None) == 0
-        assert kwargs.get('context', None) is iot_hub_parent.user._context
-        exception = kwargs.get('exception', None)
-        assert isinstance(exception, NotImplementedError)
-        assert 'has not implemented RECEIVE' in str(exception)
+        request_event.assert_called_once_with(
+            request_type='RECV',
+            name=f'{iot_hub_parent.user._scenario.identifier} {request.name}',
+            response_time=ANY(int),
+            response_length=0,
+            context=iot_hub_parent.user._context,
+            exception=ANY(NotImplementedError, message='IotHubTestUser has not implemented RECEIVE'),
+        )
 
         iot_hub_parent.user._scenario.failure_exception = None
         with pytest.raises(StopUser):
@@ -210,9 +212,10 @@ class TestIotHubUser:
         with pytest.raises(RestartScenario):
             iot_hub_parent.user.request(request)
 
-        assert notify_blob_upload_status.call_count == 1
-        args, _ = notify_blob_upload_status.call_args_list[-1]
-        assert len(args) == 5
-        assert args[1] == 'correlation_id'
-        assert args[2] is False
-        assert args[3] == 500
+        notify_blob_upload_status.assert_called_once_with(
+            iot_hub_parent.user.iot_client,
+            correlation_id='correlation_id',
+            is_success=False,
+            status_code=500,
+            status_description='Failed: not_relevant',
+        )

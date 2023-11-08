@@ -352,6 +352,7 @@ class TestTestdataProducer:
             i['foobar']
             actual_keystore = {'foo': ['hello', 'world'], 'bar': {'hello': 'world', 'foo': 'bar'}, 'hello': 'world'}
 
+            print('--------------')
             with caplog.at_level(logging.DEBUG):
                 producer = TestdataProducer(grizzly_fixture.grizzly, {'HelloWorld': {'AtomicIntegerIncrementer.foobar': i}})
                 producer.keystore.update(actual_keystore)

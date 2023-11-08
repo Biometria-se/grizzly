@@ -1,17 +1,14 @@
 import logging
-
 from os import environ
 from pathlib import Path
 
 import pytest
-
 from _pytest.logging import LogCaptureFixture
 
+from grizzly.exceptions import RestartScenario, StopUser
 from grizzly.scenarios import GrizzlyScenario, IteratorScenario
 from grizzly.tasks.clients import ClientTask, client
 from grizzly.types import GrizzlyResponse, RequestDirection
-from grizzly.exceptions import StopUser, RestartScenario
-
 from tests.fixtures import GrizzlyFixture, MockerFixture
 
 
@@ -24,9 +21,10 @@ def test_task_failing(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, ca
 
             def get(self, parent: GrizzlyScenario) -> GrizzlyResponse:
                 with self.action(parent):
-                    raise RuntimeError('failed get')
+                    message = 'failed get'
+                    raise RuntimeError(message)
 
-            def put(self, parent: GrizzlyScenario) -> GrizzlyResponse:
+            def put(self, _: GrizzlyScenario) -> GrizzlyResponse:
                 return None, 'put'
 
         if log_prefix:
@@ -83,9 +81,8 @@ def test_task_failing(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, ca
         parent._task_queue.append(task)
         parent.task_count = 1
 
-        with pytest.raises(NotImplementedError):
-            with caplog.at_level(logging.INFO):
-                parent.run()
+        with pytest.raises(NotImplementedError), caplog.at_level(logging.INFO):
+            parent.run()
 
         log_error_mock.assert_called_once_with(None)
 

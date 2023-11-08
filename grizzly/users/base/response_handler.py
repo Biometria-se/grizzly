@@ -190,7 +190,7 @@ class ResponseHandler(ResponseEvent):
 
     def response_handler(
         self,
-        _: str,
+        name: str,  # noqa: ARG002
         context: HandlerContextType,
         request: RequestTask,
         user: GrizzlyUser,

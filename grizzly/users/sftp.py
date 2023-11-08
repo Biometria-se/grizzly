@@ -39,9 +39,8 @@ from urllib.parse import urlparse
 
 from grizzly.clients import SftpClientSession
 from grizzly.types import GrizzlyResponse, RequestMethod
-from grizzly.utils import merge_dicts
 
-from .base import FileRequests, GrizzlyUser, ResponseHandler
+from .base import FileRequests, GrizzlyUser, ResponseHandler, grizzlycontext
 
 if TYPE_CHECKING:  # pragma: no cover
     from paramiko import SFTPClient
@@ -50,6 +49,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from grizzly.types.locust import Environment
 
 
+@grizzlycontext(context={'auth': {'username': None, 'password': None, 'key_file': None}})
 class SftpUser(ResponseHandler, GrizzlyUser, FileRequests):
     _auth_context: Dict[str, Any]
 
@@ -64,8 +64,6 @@ class SftpUser(ResponseHandler, GrizzlyUser, FileRequests):
 
     def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
         super().__init__(environment, *args, **kwargs)
-
-        self.__class__._context = merge_dicts(super().context(), {'auth': {'username': None, 'password': None, 'key_file': None}})
 
         self._payload_root = Path(environ.get('GRIZZLY_CONTEXT_ROOT', '.')) / 'requests'
         self._download_root = self._payload_root / 'download'

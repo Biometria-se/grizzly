@@ -59,17 +59,16 @@ from typing import TYPE_CHECKING, Any, Dict, Optional, Union, cast
 
 import requests
 from locust.contrib.fasthttp import FastHttpSession
-from locust.user.users import UserMeta
 from urllib3 import disable_warnings as urllib3_disable_warnings
 
 from grizzly.auth import AAD, GrizzlyHttpAuthClient, refresh_token
 from grizzly.clients import ResponseEventSession
 from grizzly.types import GrizzlyResponse, GrizzlyResponseContextManager, RequestDirection, RequestMethod
 from grizzly.types.locust import Environment, StopUser
-from grizzly.utils import merge_dicts, safe_del
+from grizzly.utils import safe_del
 from grizzly_extras.transformer import TransformerContentType
 
-from .base import AsyncRequests, GrizzlyUser, HttpRequests, ResponseHandler
+from .base import AsyncRequests, GrizzlyUser, GrizzlyUserMeta, HttpRequests, ResponseHandler, grizzlycontext
 
 urllib3_disable_warnings()
 
@@ -78,35 +77,34 @@ if TYPE_CHECKING:  # pragma: no cover
     from grizzly.tasks import RequestTask
 
 
-class RestApiUserMeta(UserMeta, ABCMeta):
+class RestApiUserMeta(GrizzlyUserMeta, ABCMeta):
     pass
 
 
+@grizzlycontext(context={
+    'verify_certificates': True,
+    'auth': {
+        'refresh_time': 3000,
+        'provider': None,
+        'client': {
+            'id': None,
+            'secret': None,
+            'resource': None,
+        },
+        'user': {
+            'username': None,
+            'password': None,
+            'otp_secret': None,
+            'redirect_uri': None,
+            'initialize_uri': None,
+        },
+    },
+    'metadata': None,
+})
 class RestApiUser(ResponseHandler, GrizzlyUser, HttpRequests, AsyncRequests, GrizzlyHttpAuthClient, metaclass=RestApiUserMeta):  # type: ignore[misc]
     session_started: Optional[float]
     headers: Dict[str, str]
     environment: Environment
-
-    _context: Dict[str, Any] = {  # noqa: RUF012
-        'verify_certificates': True,
-        'auth': {
-            'refresh_time': 3000,
-            'provider': None,
-            'client': {
-                'id': None,
-                'secret': None,
-                'resource': None,
-            },
-            'user': {
-                'username': None,
-                'password': None,
-                'otp_secret': None,
-                'redirect_uri': None,
-                'initialize_uri': None,
-            },
-        },
-        'metadata': None,
-    }
 
     def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
         super().__init__(environment, *args, **kwargs)
@@ -117,13 +115,6 @@ class RestApiUser(ResponseHandler, GrizzlyUser, HttpRequests, AsyncRequests, Gri
         }
 
         self.session_started = None
-        self._context = merge_dicts(
-            super().context(),
-            # this is needed since we create a new class with this class as sub class, context will be messed up otherwise
-            # in other words, don't use RestApiUser._context. This should only be used in classes which are direct created
-            # in grizzly
-            self.__class__._context,
-        )
 
         metadata = self._context.get('metadata', None)
         if metadata is not None:
@@ -144,8 +135,8 @@ class RestApiUser(ResponseHandler, GrizzlyUser, HttpRequests, AsyncRequests, Gri
             return f'unknown response {type(response)}'
 
         if len(response.text) < 1:
-            text = requests.status_codes._codes.get(response.status_code, ('unknown'))  # type: ignore[attr-defined]
-            message = str(text[0])
+            text = requests.status_codes._codes.get(response.status_code, ('unknown', None))  # type: ignore[attr-defined]
+            message = str(text[0]).replace('_', ' ')
         else:
             try:
                 payload = json.loads(response.text)

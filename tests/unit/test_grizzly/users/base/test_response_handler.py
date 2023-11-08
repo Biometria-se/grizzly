@@ -1,42 +1,48 @@
+"""Unit tests for grizzly.users.base.response_handler."""
+from __future__ import annotations
+
 from abc import ABC
-from json import dumps as jsondumps, loads as jsonloads
-from typing import TYPE_CHECKING, Tuple, Any, Optional
+from contextlib import suppress
+from json import dumps as jsondumps
+from json import loads as jsonloads
+from typing import TYPE_CHECKING, Any, Optional, Tuple
 
 import pytest
-
-from lxml import etree as XML
-from pytest_mock import MockerFixture
-
-from locust.event import EventHook
-from locust.clients import ResponseContextManager
-from requests.models import Response
 from jinja2.filters import FILTERS
+from locust.clients import ResponseContextManager
+from locust.event import EventHook
+from lxml import etree as XML  # noqa: N812
+from requests.models import Response
 
 from grizzly.clients import ResponseEventSession
-from grizzly.users.base import HttpRequests, ResponseEvent
-from grizzly.users.base.response_handler import ResponseHandler, ValidationHandlerAction, SaveHandlerAction, ResponseHandlerAction
 from grizzly.exceptions import ResponseHandlerError, RestartScenario
-from grizzly.types import RequestMethod
-from grizzly.types.locust import LocustError, CatchResponseError, StopUser
 from grizzly.tasks import RequestTask
-from grizzly_extras.transformer import TransformerContentType
 from grizzly.testdata.utils import templatingfilter
+from grizzly.types import RequestMethod
+from grizzly.types.locust import CatchResponseError, LocustError, StopUser
+from grizzly.users.base import HttpRequests, ResponseEvent
+from grizzly.users.base.response_handler import ResponseHandler, ResponseHandlerAction, SaveHandlerAction, ValidationHandlerAction
+from grizzly_extras.transformer import TransformerContentType
+from tests.helpers import ANY, TestUser
 
-from tests.fixtures import LocustFixture, GrizzlyFixture
-from tests.helpers import TestUser
+if TYPE_CHECKING:  # pragma: no cover
+    from pytest_mock import MockerFixture
 
-if TYPE_CHECKING:
     from grizzly.users.base import GrizzlyUser
+    from tests.fixtures import GrizzlyFixture, LocustFixture
 
 
 class TestResponseHandlerAction:
     class Dummy(ResponseHandlerAction):
+        """Dummy response handler action."""
+
         def __call__(
             self,
             input_context: Tuple[TransformerContentType, Any],
-            user: 'GrizzlyUser',
+            user: GrizzlyUser,
             response: Optional[ResponseContextManager] = None,
         ) -> None:
+            """Use super-class implementation."""
             super().__call__(input_context, user, response)
 
     def test___init__(self, grizzly_fixture: GrizzlyFixture) -> None:
@@ -82,11 +88,11 @@ class TestResponseHandlerAction:
 
         user._context['variables']['count'] = '2'
         handler = TestResponseHandlerAction.Dummy('$.hello[?world="bar"].foo', '.*', '{{ count }}', as_json=True)
-        match, _, _ = handler.get_match((TransformerContentType.JSON, response, ), user)
+        match, _, _ = handler.get_match((TransformerContentType.JSON, response), user)
         assert match == '["1", "2"]'
 
         handler = TestResponseHandlerAction.Dummy('$.hello[?world="bar"].foo', '.*', '2', as_json=False)
-        match, _, _ = handler.get_match((TransformerContentType.JSON, response, ), user)
+        match, _, _ = handler.get_match((TransformerContentType.JSON, response), user)
         assert match == '1\n2'
 
 
@@ -107,7 +113,7 @@ class TestValidationHandlerAction:
 
         try:
             response = Response()
-            response._content = '{}'.encode('utf-8')
+            response._content = b'{}'
             response.status_code = 200
             response_context_manager = ResponseContextManager(response, grizzly_fixture.behave.locust.environment.events.request, {})
             response_context_manager._entered = True
@@ -196,11 +202,11 @@ class TestValidationHandlerAction:
                                         'addtitle': 'test2',
                                         'addvalue': 'good stuff',
                                     },
-                                ]
-                            }
-                        }
-                    }
-                }
+                                ],
+                            },
+                        },
+                    },
+                },
             }
 
             # 1 match in multiple values (list)
@@ -268,10 +274,8 @@ class TestValidationHandlerAction:
             response_context_manager._manual_result = None
         finally:
             for filter_name in ['uppercase', 'lowercase']:
-                try:
+                with suppress(KeyError):
                     del FILTERS[filter_name]
-                except:
-                    pass
 
             assert user._context['variables'] is not TestUser(grizzly_fixture.behave.locust.environment)._context['variables']
 
@@ -280,7 +284,7 @@ class TestValidationHandlerAction:
         TestUser.host = 'http://example.io'
         user = TestUser(grizzly_fixture.behave.locust.environment)
         response = Response()
-        response._content = '{}'.encode('utf-8')
+        response._content = b'{}'
         response.status_code = 200
         response_context_manager = ResponseContextManager(response, grizzly_fixture.behave.locust.environment.events.request, {})
         response_context_manager._entered = True
@@ -365,11 +369,11 @@ class TestValidationHandlerAction:
                                     'addtitle': 'test2',
                                     'addvalue': 'good stuff',
                                 },
-                            ]
-                        }
-                    }
-                }
-            }
+                            ],
+                        },
+                    },
+                },
+            },
         }
 
         # 1 match in multiple values (list)
@@ -452,7 +456,7 @@ class TestSaveHandlerAction:
         TestUser.host = 'http://example.com'
         user = TestUser(grizzly_fixture.behave.locust.environment)
         response = Response()
-        response._content = '{}'.encode('utf-8')
+        response._content = b'{}'
         response.status_code = 200
         response_context_manager = ResponseContextManager(response, grizzly_fixture.behave.locust.environment.events.request, {})
         response_context_manager._entered = True
@@ -460,13 +464,11 @@ class TestSaveHandlerAction:
         assert 'test' not in user.context_variables
 
         handler = SaveHandlerAction('test', expression='.*', match_with='.*')
-        with pytest.raises(TypeError) as te:
+        with pytest.raises(TypeError, match='could not find a transformer for UNDEFINED'):
             handler((TransformerContentType.UNDEFINED, {'test': {'value': 'test'}}), user, response_context_manager)
-        assert 'could not find a transformer for UNDEFINED' in str(te)
 
-        with pytest.raises(TypeError) as te:
+        with pytest.raises(TypeError, match='is not a valid expression'):
             handler((TransformerContentType.JSON, {'test': {'value': 'test'}}), user, response_context_manager)
-        assert 'is not a valid expression' in str(te)
 
         handler = SaveHandlerAction('test', expression='$.test.value', match_with='.*')
 
@@ -552,8 +554,8 @@ class TestSaveHandlerAction:
                             'prop42',
                             300,
                         ],
-                    }
-                }
+                    },
+                },
             ),
             user,
             response_context_manager,
@@ -601,8 +603,8 @@ class TestSaveHandlerAction:
                             'prop42',
                             300,
                         ],
-                    }
-                }
+                    },
+                },
             ),
             user,
             response_context_manager,
@@ -634,9 +636,9 @@ class TestSaveHandlerAction:
                         {
                             'hello': 'world',
                             'value': 'prop41',
-                        }
+                        },
                     ],
-                }
+                },
             ),
             user,
             response_context_manager,
@@ -661,7 +663,7 @@ class TestSaveHandlerAction:
                             'value': 'prop42',
                         },
                     ],
-                }
+                },
             ),
             user,
             response_context_manager,
@@ -676,12 +678,13 @@ class TestSaveHandlerAction:
 
 class TestResponseHandler:
     def test___init__(self, locust_fixture: LocustFixture) -> None:
-        ResponseHandler.host = None
+        test_cls = type('ResponseHandlerTest', (ResponseHandler, ), {'host': None})
+        assert issubclass(test_cls, ResponseHandler)
 
         with pytest.raises(LocustError):
-            ResponseHandler(locust_fixture.environment)
+            test_cls(locust_fixture.environment)
 
-        fake_user_type = type('FakeResponseHandlerUser', (ResponseHandler, HttpRequests, ), {
+        fake_user_type = type('FakeResponseHandlerUser', (ResponseHandler, HttpRequests), {
             'host': '',
         })
 
@@ -692,15 +695,18 @@ class TestResponseHandler:
         assert isinstance(user.response_event, EventHook)
         assert len(user.response_event._handlers) == 1
 
-        ResponseHandler.host = ''
-        user = ResponseHandler(locust_fixture.environment)
+        test_cls.host = ''
+        user = test_cls(locust_fixture.environment)
         assert user.client is None
         assert isinstance(user.response_event, EventHook)
         assert len(user.response_event._handlers) == 1
 
     def test_response_handler_response_context(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
-        ResponseHandler.host = TestUser.host = 'http://example.com'
-        user = ResponseHandler(grizzly_fixture.behave.locust.environment)
+        test_cls = type('ResponseHandlerTest', (ResponseHandler, ), {'host': None})
+        assert issubclass(test_cls, ResponseHandler)
+
+        test_cls.host = TestUser.host = 'http://example.com'
+        user = test_cls(grizzly_fixture.behave.locust.environment)
         TestUser.__scenario__ = grizzly_fixture.grizzly.scenario
         test_user = TestUser(grizzly_fixture.behave.locust.environment)
 
@@ -715,7 +721,7 @@ class TestResponseHandler:
 
         # edge scenario -- from RestApiUser and *_token calls, they don't have a RequestTask
         original_response = request.response
-        setattr(request, 'response', None)
+        setattr(request, 'response', None)  # noqa: B010
 
         user.response_handler('test', response_context_manager, request, test_user)
 
@@ -727,14 +733,14 @@ class TestResponseHandler:
         # no handler called
         user.response_handler('test', response_context_manager, request, test_user)
 
-        assert request_event.call_count == 0
+        request_event.assert_not_called()
 
         # payload handler called
         request.response.handlers.add_payload(payload_handler)
         request.response.content_type = TransformerContentType.JSON
         user.response_handler('test', response_context_manager, request, test_user)
 
-        assert metadata_handler.call_count == 0
+        metadata_handler.assert_not_called()
         payload_handler.assert_called_once_with((TransformerContentType.JSON, {}), test_user, response_context_manager)
         request.response.handlers.payload.clear()
         payload_handler.reset_mock()
@@ -743,13 +749,13 @@ class TestResponseHandler:
         request.response.handlers.add_metadata(metadata_handler)
         user.response_handler('test', response_context_manager, request, test_user)
 
-        assert payload_handler.call_count == 0
+        payload_handler.assert_not_called()
         metadata_handler.assert_called_once_with((TransformerContentType.JSON, {}), test_user, response_context_manager)
         metadata_handler.reset_mock()
         request.response.handlers.metadata.clear()
 
         # invalid json content in payload
-        response._content = '{"test: "value"}'.encode('utf-8')
+        response._content = b'{"test: "value"}'
         response_context_manager = ResponseContextManager(response, None, {})
         response_context_manager._entered = True
         mocker.patch.object(response_context_manager, '_request_event', autospec=True)
@@ -759,44 +765,50 @@ class TestResponseHandler:
 
         user.response_handler('test', response_context_manager, request, test_user)
 
-        assert payload_handler.call_count == 0
-        assert metadata_handler.call_count == 0
+        payload_handler.assert_not_called()
+        metadata_handler.assert_not_called()
         assert isinstance(getattr(response_context_manager, '_manual_result', None), CatchResponseError)
         assert 'failed to transform' in str(response_context_manager._manual_result)
         request.response.handlers.payload.clear()
 
         # XML in response
-        response._content = '''<?xml version="1.0" encoding="UTF-8"?>
+        response._content = b"""<?xml version="1.0" encoding="UTF-8"?>
         <test>
             value
-        </test>'''.encode('utf-8')
+        </test>"""
 
         request.response.content_type = TransformerContentType.XML
         request.response.handlers.add_payload(payload_handler)
         user.response_handler('test', response_context_manager, request, test_user)
 
-        assert payload_handler.call_count == 1
-        ((call_content_type, call_payload), call_user, call_context, ), _ = payload_handler.call_args_list[0]
-        assert call_content_type == TransformerContentType.XML
-        assert isinstance(call_payload, XML._Element)
-        assert call_user is test_user
-        assert call_context is response_context_manager
+        payload_handler.assert_called_once_with(
+            (TransformerContentType.XML, ANY(XML._Element)),
+            test_user,
+            response_context_manager,
+        )
+        payload_handler.reset_mock()
 
         request.response.content_type = TransformerContentType.XML
-        response._content = '''<?xml encoding="UTF-8"?>
+        response._content = b"""<?xml encoding="UTF-8"?>
         <test>
             value
-        </test>'''.encode('utf-8')
+        </test>"""
 
         user.response_handler('test', response_context_manager, request, test_user)
-        assert payload_handler.call_count == 1
+        payload_handler.assert_not_called()
         assert isinstance(getattr(response_context_manager, '_manual_result', None), CatchResponseError)
         assert 'failed to transform' in str(response_context_manager._manual_result)
 
-    def test_response_handler_custom_response(self, mocker: MockerFixture, locust_fixture: LocustFixture) -> None:
-        ResponseHandler.host = TestUser.host = 'http://example.com'
-        user = ResponseHandler(locust_fixture.environment)
-        test_user = TestUser(locust_fixture.environment)
+    def test_response_handler_custom_response(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
+        test_cls = type('ResponseHandlerTest', (ResponseHandler, ), {'host': None})
+        assert issubclass(test_cls, ResponseHandler)
+
+        environment = grizzly_fixture.grizzly.state.locust.environment
+
+        test_cls.host = TestUser.host = 'http://example.com'
+        user = test_cls(environment)
+        TestUser.__scenario__ = grizzly_fixture.grizzly.scenario
+        test_user = TestUser(environment)
 
         request = RequestTask(RequestMethod.POST, name='test-request', endpoint='/api/v2/test')
 
@@ -826,24 +838,22 @@ class TestResponseHandler:
         # invalid json content in payload
         request.response.handlers.add_payload(payload_handler)
 
-        with pytest.raises(ResponseHandlerError) as e:
+        with pytest.raises(ResponseHandlerError, match='failed to transform'):
             user.response_handler('test', (None, '{"test: "value"'), request, test_user)
-        assert 'failed to transform' in str(e)
-        assert payload_handler.call_count == 0
+
+        payload_handler.assert_not_called()
 
         request.response.content_type = TransformerContentType.JSON
-        with pytest.raises(ResponseHandlerError) as e:
+        with pytest.raises(ResponseHandlerError, match='failed to transform input as JSON'):
             user.response_handler('test', (None, '{"test: "value"'), request, test_user)
-        assert 'failed to transform input as JSON' in str(e)
 
         request.response.content_type = TransformerContentType.XML
-        with pytest.raises(ResponseHandlerError) as e:
+        with pytest.raises(ResponseHandlerError, match='failed to transform input as XML'):
             user.response_handler('test', ({}, '{"test": "value"}'), request, test_user)
-        assert 'failed to transform input as XML' in str(e)
 
         request.response.content_type = TransformerContentType.PLAIN
         user.response_handler('test', ({}, '{"test": "value"}'), request, test_user)
-        assert payload_handler.call_count == 1
+        payload_handler.assert_called_once()
         payload_handler.reset_mock()
 
         # XML input
@@ -852,31 +862,31 @@ class TestResponseHandler:
             'test',
             (
                 None,
-                '''<?xml version="1.0" encoding="UTF-8"?>
+                """<?xml version="1.0" encoding="UTF-8"?>
                 <test>
                     value
-                </test>''',
+                </test>""",
             ),
             request,
             test_user,
         )
 
-        assert payload_handler.call_count == 1
-        ((call_content_type, call_payload), call_user, call_context, ), _ = payload_handler.call_args_list[0]
-        assert call_content_type == TransformerContentType.XML
-        assert isinstance(call_payload, XML._Element)
-        assert call_user is test_user
-        assert call_context is None
+        payload_handler.assert_called_once_with(
+            (TransformerContentType.XML, ANY(XML._Element)),
+            test_user,
+            None,
+        )
+        payload_handler.reset_mock()
 
-        with pytest.raises(ResponseHandlerError):
+        with pytest.raises(ResponseHandlerError, match='failed to transform input as XML: Malformed'):
             user.response_handler(
                 'test',
                 (
                     None,
-                    '''<?xml encoding="UTF-8"?>
+                    """<?xml encoding="UTF-8"?>
                     <test>
                         value
-                    </test>''',
+                    </test>""",
                 ),
                 request,
                 test_user,
@@ -884,19 +894,16 @@ class TestResponseHandler:
 
         request.response.content_type = TransformerContentType.UNDEFINED
 
-        with pytest.raises(ResponseHandlerError) as rhe:
+        with pytest.raises(ResponseHandlerError, match='failed to transform:'):
             user.response_handler(
                 'test',
                 (
                     None,
-                    '''<?xml version="1.0" encoding="UTF-8"?>
+                    """<?xml version="1.0" encoding="UTF-8"?>
                     <test>
                         value
-                    </test>''',
+                    </test>""",
                 ),
                 request,
                 test_user,
             )
-        assert rhe.value.message is not None
-        assert rhe.value.message.startswith('failed to transform: <?xml version=')
-        assert rhe.value.message.endswith('</test> with content type UNDEFINED')

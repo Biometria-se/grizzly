@@ -28,7 +28,7 @@ Then send request "test/blob.file" to endpoint "uploaded_blob_filename"
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, Tuple
+from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs, urlparse
 
 from azure.iot.device import IoTHubDeviceClient
@@ -37,17 +37,18 @@ from azure.storage.blob import BlobClient
 from grizzly.types import GrizzlyResponse, RequestMethod
 from grizzly.utils import merge_dicts
 
-from .base import GrizzlyUser
+from .base import GrizzlyUser, grizzlycontext
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.tasks import RequestTask
     from grizzly.types.locust import Environment
 
 
+@grizzlycontext(context={})
 class IotHubUser(GrizzlyUser):
     iot_client: IoTHubDeviceClient
 
-    def __init__(self, environment: Environment, *args: Tuple[Any], **kwargs: Dict[str, Any]) -> None:
+    def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
         super().__init__(environment, *args, **kwargs)
 
         conn_str = self.host
@@ -74,8 +75,6 @@ class IotHubUser(GrizzlyUser):
             message = f'{self.__class__.__name__} needs SharedAccessKey in the query string'
             raise ValueError(message)
 
-        self._context = merge_dicts(super().context(), self.__class__._context)
-
     def on_start(self) -> None:
         """Create Iot Hub device client when user starts."""
         super().on_start()
@@ -88,14 +87,14 @@ class IotHubUser(GrizzlyUser):
 
     def request_impl(self, request: RequestTask) -> GrizzlyResponse:
         """Perform a IoT Hub request based on request task."""
+        if request.method not in [RequestMethod.SEND, RequestMethod.PUT]:
+            message = f'{self.__class__.__name__} has not implemented {request.method.name}'
+            raise NotImplementedError(message)
+
         try:
             filename = request.endpoint
 
             storage_info = self.iot_client.get_storage_info_for_blob(filename)
-
-            if request.method not in [RequestMethod.SEND, RequestMethod.PUT]:
-                message = f'{self.__class__.__name__} has not implemented {request.method.name}'
-                raise NotImplementedError(message)
 
             sas_url = 'https://{}/{}/{}{}'.format(
                 storage_info['hostName'],
@@ -114,14 +113,13 @@ class IotHubUser(GrizzlyUser):
                 status_code=200,
                 status_description=f'OK: {filename}',
             )
-        except Exception as e:
-            if not isinstance(e, NotImplementedError):
-                self.iot_client.notify_blob_upload_status(
-                    correlation_id=storage_info['correlationId'],
-                    is_success=False,
-                    status_code=500,
-                    status_description=f'Failed: {filename}',
-                )
+        except Exception:
+            self.iot_client.notify_blob_upload_status(
+                correlation_id=storage_info['correlationId'],
+                is_success=False,
+                status_code=500,
+                status_description=f'Failed: {filename}',
+            )
             self.logger.exception('failed to upload file "%s" to IoT hub', filename)
 
             raise

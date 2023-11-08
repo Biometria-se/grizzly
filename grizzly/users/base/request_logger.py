@@ -16,7 +16,6 @@ from locust.clients import ResponseContextManager as RequestsResponseContextMana
 from locust.contrib.fasthttp import ResponseContextManager as FastResponseContextManager
 
 from grizzly.types import GrizzlyResponse, GrizzlyResponseContextManager, HandlerContextType, RequestDirection
-from grizzly.utils import merge_dicts
 from grizzly_extras.transformer import JsonBytesEncoder
 
 from .response_event import ResponseEvent
@@ -52,11 +51,9 @@ payload:
 class RequestLogger(ResponseEvent):
     abstract: bool = True
 
-    log_dir: Path
+    _context: Dict[str, Any]
 
-    _context: Dict[str, Any] = {  # noqa: RUF012
-        'log_all_requests': False,
-    }
+    log_dir: Path
 
     def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
         super().__init__(environment, *args, **kwargs)
@@ -70,8 +67,6 @@ class RequestLogger(ResponseEvent):
             self.log_dir = self.log_dir / log_dir_path
 
         self.log_dir.mkdir(parents=True, exist_ok=True)
-
-        self._context = merge_dicts(super().context(), self.__class__._context)
 
     @classmethod
     def _normalize(cls, value: str) -> str:
@@ -170,7 +165,6 @@ class RequestLogger(ResponseEvent):
         exception: Optional[Exception],
         kwargs: Dict[str, Any],
     ) -> Dict[str, Any]:
-        variables: Dict[str, Any] = {}
         parsed = urlparse(user.host or '')
         sep = ''
         if (len(parsed.path) > 0 and parsed.path[-1] != '/' and request.endpoint[0] != '/') or (parsed.path == '' and request.endpoint[0] != '/'):
@@ -179,10 +173,6 @@ class RequestLogger(ResponseEvent):
         parsed = parsed._replace(path=f'{parsed.path}{sep}{request.endpoint}')
         url = urlunparse(parsed)
 
-        variables['request'].update({
-            'url': url,
-        })
-
         def unpack_context(response: HandlerContextType) -> GrizzlyResponse:
             if not isinstance(response, tuple):
                 message = f'{type(response)} is not a GrizzlyResponse'
@@ -190,37 +180,43 @@ class RequestLogger(ResponseEvent):
 
             return cast(GrizzlyResponse, response)
 
-        if request.method.direction == RequestDirection.TO:
-            request_metadata: Optional[Dict[str, Any]]
-            request_metadata, request_payload = unpack_context(context)
+        request_metadata: Optional[Dict[str, Any]] = None
+        request_payload: Optional[str] = None
+        response_metadata: Optional[Dict[str, Any]] = None
+        response_payload: Optional[str] = None
 
-            variables['request'].update({
-                'metadata': request_metadata,
-                'payload': request_payload,
-            })
+        if request.method.direction == RequestDirection.TO:
+            request_metadata, request_payload = unpack_context(context)
         elif request.method.direction == RequestDirection.FROM:
-            response_metadata: Optional[Dict[str, Any]]
             response_metadata, response_payload = unpack_context(context)
 
-            variables['response'].update({
-                'metadata': response_metadata,
-                'payload': response_payload,
-            })
+        response_time = kwargs.get('locust_request_meta', {}).get('response_time', None)
 
-        locust_request_meta = kwargs.get('locust_request_meta', None)
-        if locust_request_meta is not None:
-            variables['response']['time'] = locust_request_meta['response_time']
-
+        stacktrace: Optional[str] = None
         if exception is not None:
-            variables['stacktrace'] = ''.join(traceback.format_exception(
+            stacktrace = ''.join(traceback.format_exception(
                 type(exception),
                 value=exception,
                 tb=exception.__traceback__,
             ))
 
-        variables['response']['status'] = 'ERROR' if exception is not None else 'OK'
-
-        return variables
+        return {
+            'stacktrace': stacktrace,
+            'request': {
+                'time': None,
+                'duration': None,
+                'url': url,
+                'metadata': request_metadata,
+                'payload': request_payload,
+            },
+            'response': {
+                'time': response_time,
+                'url': None,
+                'metadata': response_metadata,
+                'payload': response_payload,
+                'status': 'ERROR' if exception is not None else 'OK',
+            },
+        }
 
     def request_logger(
         self,
@@ -241,7 +237,7 @@ class RequestLogger(ResponseEvent):
             else exception is None
         )
 
-        if successful_request and not self._context.get('log_all_requests', False):
+        if successful_request and not self.context().get('log_all_requests', False):
             return
 
         log_date = datetime.now()
@@ -268,7 +264,7 @@ class RequestLogger(ResponseEvent):
         if isinstance(context, (RequestsResponseContextManager, FastResponseContextManager)):
             variables.update(self._get_http_user_data(context))
         else:
-            variables = self._get_grizzly_response_user_data(user, request, context, exception, kwargs)
+            variables.update(self._get_grizzly_response_user_data(user, request, context, exception, kwargs))
 
         response_time = variables['response'].get('time', None)
         if response_time is not None:

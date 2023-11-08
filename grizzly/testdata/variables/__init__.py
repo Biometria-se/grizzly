@@ -1,5 +1,4 @@
-"""
-@anchor pydoc:grizzly.testdata.variables Variables
+"""@anchor pydoc:grizzly.testdata.variables Variables
 This package contains special variables that can be used in a feature file and is synchronized between locust workers.
 
 ## Custom
@@ -9,18 +8,21 @@ When initializing the variable, the full namespace has to be specified as `name`
 
 There are examples of this in the {@link framework.example}.
 """
-from abc import abstractmethod, ABCMeta
-from typing import Generic, Optional, Callable, Set, Any, Tuple, Dict, TypeVar
+from __future__ import annotations
 
-from gevent.lock import Semaphore, DummySemaphore
+from abc import ABCMeta, abstractmethod
+from typing import TYPE_CHECKING, Any, Callable, Dict, Generic, Optional, Set, Tuple, TypeVar
 
-from grizzly.types import bool_type
-from grizzly.types.locust import MessageHandler
+from gevent.lock import DummySemaphore, Semaphore
 
 from grizzly.context import GrizzlyContext
-
+from grizzly.types import bool_type
 
 T = TypeVar('T')
+
+
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.types.locust import MessageHandler
 
 
 class AbstractAtomicClass:

@@ -1,34 +1,37 @@
-from os import environ, path, listdir, remove
-from typing import Generator, List, Callable, Type
+from __future__ import annotations
+
+from contextlib import suppress
+from os import environ, listdir, path, remove
+from typing import Callable, Generator, List, Type
+from collections import namedtuple
 
 import pytest
-
-from _pytest.tmpdir import TempPathFactory
 from _pytest.capture import CaptureFixture
 from _pytest.fixtures import SubRequest
+from _pytest.tmpdir import TempPathFactory
 from locust.clients import ResponseContextManager
 from locust.contrib.fasthttp import ResponseContextManager as FastResponseContextManager
 
-from grizzly.users.base import RequestLogger, HttpRequests
-from grizzly.types import RequestMethod, GrizzlyResponseContextManager
 from grizzly.tasks import RequestTask
+from grizzly.types import GrizzlyResponseContextManager, RequestMethod
+from grizzly.users.base import HttpRequests, RequestLogger, GrizzlyUser
+from tests.fixtures import BehaveFixture, GrizzlyFixture, ResponseContextManagerFixture
 
-from tests.fixtures import ResponseContextManagerFixture, BehaveFixture, GrizzlyFixture
 
-
-@pytest.fixture(params=[False, True,])
+@pytest.fixture(params=[False, True])
 def request_logger(request: SubRequest, grizzly_fixture: GrizzlyFixture, tmp_path_factory: TempPathFactory) -> Generator[RequestLogger, None, None]:
     try:
         if request.param:
             environ['GRIZZLY_LOG_DIR'] = 'foobar'
 
-        RequestLogger.host = 'dummy://test'
-        yield RequestLogger(grizzly_fixture.behave.locust.environment)
+        grizzly_fixture.grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test'))
+
+        cls = type('FakeRequestLogger', (GrizzlyUser, RequestLogger), {'host': 'dummy://test', '__scenario__': grizzly_fixture.grizzly.scenario, '_tasks': []})
+
+        yield cls(grizzly_fixture.behave.locust.environment)
     finally:
-        try:
+        with suppress(KeyError):
             del environ['GRIZZLY_LOG_DIR']
-        except:
-            pass
 
 
 @pytest.fixture
@@ -62,7 +65,7 @@ class TestRequestLogger:
 
             behave_fixture.grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
-            fake_user_type = type('FakeRequestLogger', (RequestLogger, HttpRequests,), {
+            fake_user_type = type('FakeRequestLogger', (GrizzlyUser, RequestLogger, HttpRequests), {
                 'host': 'https://test.example.org',
                 '__scenario__': behave_fixture.grizzly.scenario,
             })
@@ -73,7 +76,7 @@ class TestRequestLogger:
             if log_prefix:
                 assert path.isdir(path.join(environ['GRIZZLY_CONTEXT_ROOT'], 'logs', 'asdf'))
 
-            assert not user._context.get('log_all_requests', None)
+            assert not user.context().get('log_all_requests', True)
             assert len(user.response_event._handlers) == 1
 
             RequestLogger.host = 'dummy://test'
@@ -82,10 +85,8 @@ class TestRequestLogger:
             assert len(user.response_event._handlers) == 1
             assert user.client is None
         finally:
-            try:
+            with suppress(KeyError):
                 del environ['GRIZZLY_LOG_DIR']
-            except:
-                pass
 
     @pytest.mark.usefixtures('request_logger')
     def test_normalize(self, request_logger: RequestLogger) -> None:
@@ -209,8 +210,6 @@ class TestRequestLogger:
 
         with open(log_file) as fd:
             log_file_contents = fd.read()
-
-            print(log_file_contents)
 
             assert log_file_contents.count('None') == 0
             assert log_file_contents.count('[]') == 0

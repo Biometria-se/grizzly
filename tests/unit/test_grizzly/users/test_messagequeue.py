@@ -1,35 +1,35 @@
+from __future__ import annotations
+
 import subprocess
 import sys
-
-from typing import Dict, Tuple, Any, cast, Optional
 from os import environ
+from typing import Any, Dict, Optional, Tuple, cast
+from unittest.mock import ANY
 
 try:
     import pymqi
 except:
     from grizzly_extras import dummy_pymqi as pymqi
 
-from zmq.error import ZMQError, Again as ZMQAgain
 import pytest
-
 from pytest_mock import MockerFixture
+from zmq.error import Again as ZMQAgain
+from zmq.error import ZMQError
 
-from grizzly.users.messagequeue import MessageQueueUser
-from grizzly.users.base import RequestLogger, ResponseHandler
-from grizzly.types import RequestMethod, ResponseTarget
-from grizzly.types.locust import Environment, StopUser
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
+from grizzly.exceptions import ResponseHandlerError, RestartScenario, StopScenario
+from grizzly.scenarios import GrizzlyScenario, IteratorScenario
+from grizzly.steps._helpers import add_save_handler
 from grizzly.tasks import RequestTask
 from grizzly.testdata import GrizzlyVariables
 from grizzly.testdata.utils import transform
-from grizzly.exceptions import ResponseHandlerError, RestartScenario
-from grizzly.steps._helpers import add_save_handler
-from grizzly.scenarios import IteratorScenario, GrizzlyScenario
-from grizzly.exceptions import StopScenario
+from grizzly.types import RequestMethod, ResponseTarget
+from grizzly.types.locust import Environment, StopUser
+from grizzly.users.base import RequestLogger, ResponseHandler
+from grizzly.users.messagequeue import MessageQueueUser
 from grizzly_extras.async_message import AsyncMessageResponse
 from grizzly_extras.transformer import TransformerContentType
-
-from tests.fixtures import GrizzlyFixture, NoopZmqFixture, BehaveFixture
+from tests.fixtures import BehaveFixture, GrizzlyFixture, NoopZmqFixture
 
 MqScenarioFixture = Tuple[MessageQueueUser, GrizzlyContextScenario, Environment]
 
@@ -106,40 +106,29 @@ class TestMessageQueueUser:
         MessageQueueUser.__scenario__ = behave_fixture.grizzly.scenario
         MessageQueueUser.host = 'mq://mq.example.com:1337/?QueueManager=QMGR01&Channel=Kanal1'
         user = MessageQueueUser(behave_fixture.locust.environment)
+        connect_mock = noop_zmq.get_mock('zmq.Socket.connect')
 
         assert not hasattr(user, 'zmq_client')
 
-        request_context_spy = mocker.patch.object(user, 'request_context', return_value=mocker.MagicMock())
+        request_context_spy = mocker.patch.object(user, '_request_context', return_value=mocker.MagicMock())
 
         user.on_start()
 
-        assert request_context_spy.call_count == 1
-        args, kwargs = request_context_spy.call_args_list[-1]
-
-        assert kwargs == {}
-        assert len(args) == 2
-        assert args[0] is None
-        assert args[1].get('action', None) == 'CONN'
-        assert args[1].get('context', None) == user.am_context
-
-        assert request_context_spy.return_value.__enter__.call_count == 1
+        request_context_spy.assert_called_once_with({'action': 'CONN', 'client': id(user), 'context': user.am_context})
+        request_context_spy.return_value.__enter__.assert_called_once_with()
         request_context_spy.return_value.__enter__.return_value.update.assert_not_called()
-
-        connect_mock = noop_zmq.get_mock('zmq.Socket.connect')
-        assert connect_mock.call_count == 1
-        args, kwargs = connect_mock.call_args_list[-1]
-        assert kwargs == {}
-        assert args == (user.zmq_url,)
+        connect_mock.assert_called_once_with(user.zmq_url)
 
     def test_on_stop(self, behave_fixture: BehaveFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.users.messagequeue')
+        disconnect_mock = noop_zmq.get_mock('zmq.Socket.disconnect')
 
         behave_fixture.grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
         MessageQueueUser.__scenario__ = behave_fixture.grizzly.scenario
         MessageQueueUser.host = 'mq://mq.example.com:1337/?QueueManager=QMGR01&Channel=Kanal1'
         user = MessageQueueUser(behave_fixture.locust.environment)
-        request_context_spy = mocker.patch.object(user, 'request_context', return_value=mocker.MagicMock())
+        request_context_spy = mocker.patch.object(user, '_request_context', return_value=mocker.MagicMock())
 
         user.on_start()
 
@@ -153,24 +142,10 @@ class TestMessageQueueUser:
 
         user.on_stop()
 
-        assert request_context_spy.call_count == 1
-        args, kwargs = request_context_spy.call_args_list[-1]
-
-        assert kwargs == {}
-        assert len(args) == 2
-        assert args[0] is None
-        assert args[1].get('action', None) == 'DISC'
-        assert args[1].get('context', None) == user.am_context
-
-        assert request_context_spy.return_value.__enter__.call_count == 1
+        request_context_spy.assert_called_once_with({'action': 'DISC', 'worker': 'foobar', 'client': id(user), 'context': user.am_context})
+        request_context_spy.return_value.__enter__.assert_called_once_with()
         request_context_spy.return_value.__enter__.return_value.update.assert_not_called()
-
-        disconnect_mock = noop_zmq.get_mock('zmq.Socket.disconnect')
-        assert disconnect_mock.call_count == 1
-        args, kwargs = disconnect_mock.call_args_list[-1]
-        assert kwargs == {}
-        assert len(args) == 1
-        assert args[0] == user.zmq_url
+        disconnect_mock.assert_called_once_with(user.zmq_url)
 
     def test_create(self, behave_fixture: BehaveFixture) -> None:
         behave_fixture.grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
@@ -178,34 +153,28 @@ class TestMessageQueueUser:
 
         try:
             MessageQueueUser.host = 'http://mq.example.com:1337'
-            with pytest.raises(ValueError) as e:
+            with pytest.raises(ValueError, match='is not a supported scheme for MessageQueueUser'):
                 MessageQueueUser(environment=behave_fixture.locust.environment)
-            assert 'is not a supported scheme for MessageQueueUser' in str(e)
 
             MessageQueueUser.host = 'mq://mq.example.com:1337'
-            with pytest.raises(ValueError) as e:
+            with pytest.raises(ValueError, match='needs QueueManager and Channel in the query string'):
                 MessageQueueUser(environment=behave_fixture.locust.environment)
-            assert 'needs QueueManager and Channel in the query string' in str(e)
 
             MessageQueueUser.host = 'mq://:1337'
-            with pytest.raises(ValueError) as e:
+            with pytest.raises(ValueError, match='hostname is not specified'):
                 MessageQueueUser(environment=behave_fixture.locust.environment)
-            assert 'hostname is not specified in' in str(e)
 
             MessageQueueUser.host = 'mq://mq.example.com:1337/?Channel=Kanal1'
-            with pytest.raises(ValueError) as e:
+            with pytest.raises(ValueError, match='needs QueueManager in the query string'):
                 MessageQueueUser(environment=behave_fixture.locust.environment)
-            assert 'needs QueueManager in the query string' in str(e)
 
             MessageQueueUser.host = 'mq://mq.example.com:1337/?QueueManager=QMGR01'
-            with pytest.raises(ValueError) as e:
+            with pytest.raises(ValueError, match='needs Channel in the query string'):
                 MessageQueueUser(environment=behave_fixture.locust.environment)
-            assert 'needs Channel in the query string' in str(e)
 
             MessageQueueUser.host = 'mq://username:password@mq.example.com?Channel=Kanal1&QueueManager=QMGR01'
-            with pytest.raises(ValueError) as e:
+            with pytest.raises(ValueError, match='username and password should be set via context'):
                 MessageQueueUser(environment=behave_fixture.locust.environment)
-            assert 'username and password should be set via context' in str(e)
 
             # Test default port and ssl_cipher
             MessageQueueUser.host = 'mq://mq.example.com?Channel=Kanal1&QueueManager=QMGR01'
@@ -213,7 +182,7 @@ class TestMessageQueueUser:
             assert user.am_context.get('connection', None) == 'mq.example.com(1414)'
             assert user.am_context.get('ssl_cipher', None) == 'ECDHE_RSA_AES_256_GCM_SHA384'
 
-            MessageQueueUser._context['auth'] = {
+            MessageQueueUser.__context__['auth'] = {
                 'username': 'syrsa',
                 'password': 'hemligaarne',
                 'key_file': '/my/key',
@@ -231,37 +200,36 @@ class TestMessageQueueUser:
             assert user.am_context.get('ssl_cipher', None) == 'rot13'
             assert user.am_context.get('cert_label', None) == 'some_label'
 
-            MessageQueueUser._context['auth']['cert_label'] = None
+            MessageQueueUser.__context__['auth']['cert_label'] = None
 
             user = MessageQueueUser(environment=behave_fixture.locust.environment)
 
             assert user.am_context.get('cert_label', None) == 'syrsa'
 
-            MessageQueueUser._context['message']['wait'] = 5
+            MessageQueueUser.__context__['message']['wait'] = 5
 
             user = MessageQueueUser(environment=behave_fixture.locust.environment)
             assert user.am_context.get('message_wait', None) == 5
-            assert issubclass(user.__class__, (RequestLogger, ResponseHandler,))
+            assert issubclass(user.__class__, (RequestLogger, ResponseHandler))
 
-            MessageQueueUser._context['message']['header_type'] = 'RFH2'
+            MessageQueueUser.__context__['message']['header_type'] = 'RFH2'
 
             user = MessageQueueUser(environment=behave_fixture.locust.environment)
             assert user.am_context.get('header_type', None) == 'rfh2'
-            assert issubclass(user.__class__, (RequestLogger, ResponseHandler,))
+            assert issubclass(user.__class__, (RequestLogger, ResponseHandler))
 
-            MessageQueueUser._context['message']['header_type'] = 'None'
+            MessageQueueUser.__context__['message']['header_type'] = 'None'
 
             user = MessageQueueUser(environment=behave_fixture.locust.environment)
             assert user.am_context.get('header_type', None) is None
             assert issubclass(user.__class__, (RequestLogger, ResponseHandler,))
 
-            MessageQueueUser._context['message']['header_type'] = 'wrong'
-            with pytest.raises(ValueError) as e:
+            MessageQueueUser.__context__['message']['header_type'] = 'wrong'
+            with pytest.raises(ValueError, match='unsupported value for header_type: "wrong"') as e:
                 MessageQueueUser(environment=behave_fixture.locust.environment)
-            assert 'unsupported value for header_type: "wrong"' in str(e)
 
         finally:
-            MessageQueueUser._context = {
+            MessageQueueUser.__context__ = {
                 'auth': {
                     'username': None,
                     'password': None,
@@ -272,7 +240,7 @@ class TestMessageQueueUser:
             }
 
     def test_on_start__action_conn_error(self, behave_fixture: BehaveFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
-        def mocked_zmq_connect(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Any:
+        def mocked_zmq_connect(*_args: Any, **_kwargs: Any) -> Any:
             raise ZMQError(msg='error connecting')
 
         noop_zmq('grizzly.users.messagequeue')
@@ -284,9 +252,7 @@ class TestMessageQueueUser:
 
         scenario = GrizzlyContextScenario(3, behave=behave_fixture.create_scenario('test scenario'))
 
-        def mocked_request_fire(*args: Tuple[Any, ...], **_kwargs: Dict[str, Any]) -> None:
-            # ehm, mypy thinks that _kwargs has type dict[str, Dict[str, Any]]
-            kwargs = cast(Dict[str, Any], _kwargs)
+        def mocked_request_fire(*_args: Any, **kwargs: Any) -> None:
             properties = list(kwargs.keys())
             # self.environment.events.request.fire
             if properties == ['request_type', 'name', 'response_time', 'response_length', 'context', 'exception']:
@@ -374,8 +340,8 @@ class TestMessageQueueUser:
                     'password': None,
                     'key_file': None,
                     'cert_label': None,
-                    'ssl_cipher': None
-                }
+                    'ssl_cipher': None,
+                },
             }
 
     @pytest.mark.skip(reason='needs real credentials and host etc.')
@@ -402,8 +368,8 @@ class TestMessageQueueUser:
                     'password': self.real_stuff['password'],
                     'key_file': self.real_stuff['key_file'],
                     'cert_label': None,
-                    'ssl_cipher': None
-                }
+                    'ssl_cipher': None,
+                },
             }
 
             request = RequestTask(RequestMethod.PUT, name='test-put', endpoint=self.real_stuff['endpoint'])
@@ -425,14 +391,14 @@ class TestMessageQueueUser:
                     print(out)
                 except Exception as e:
                     print(e)
-            MessageQueueUser._context = {
+            MessageQueueUser.__context__ = {
                 'auth': {
                     'username': None,
                     'password': None,
                     'key_file': None,
                     'cert_label': None,
-                    'ssl_cipher': None
-                }
+                    'ssl_cipher': None,
+                },
             }
 
     def test_get(self, grizzly_fixture: GrizzlyFixture, mq_parent: GrizzlyScenario, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
@@ -459,7 +425,7 @@ class TestMessageQueueUser:
                 'response_time': -1337,  # fake so message queue daemon response time is a huge chunk
                 'metadata': pymqi.MD().get(),
                 'payload': test_payload,
-            }
+            },
         ]
 
         mq_parent.user._context = {
@@ -469,7 +435,7 @@ class TestMessageQueueUser:
                 'key_file': None,
                 'cert_label': None,
                 'ssl_cipher': None,
-            }
+            },
         }
 
         remote_variables = {
@@ -501,21 +467,22 @@ class TestMessageQueueUser:
 
         metadata, payload = mq_parent.user.request(request)
 
-        assert request_event_spy.call_count == 1
+        request_event_spy.assert_called_once_with(
+            request_type='GET',
+            exception=None,
+            response_length=len(test_payload.encode()),
+            context=mq_parent.user._context,
+            name='001 TestScenario',
+            response_time=ANY,
+        )
 
-        _, kwargs = request_event_spy.call_args_list[0]
-        assert kwargs['request_type'] == 'GET'
-        assert kwargs['exception'] is None
-        assert kwargs['response_length'] == len(test_payload.encode())
-
-        assert response_event_spy.call_count == 1
-        _, kwargs = response_event_spy.call_args_list[0]
-        actual_request = kwargs.get('request', None)
-        assert actual_request.name == f'{mq_parent.user._scenario.identifier} {request.name}'
-        assert actual_request.endpoint == request.endpoint
-        assert actual_request.source == request.source
-        assert kwargs['context'] == (pymqi.MD().get(), test_payload)
-        assert kwargs['user'] is mq_parent.user
+        response_event_spy.assert_called_once_with(
+            request=ANY,
+            context=(pymqi.MD().get(), test_payload),
+            user=mq_parent.user,
+            exception=None,
+            name='001 TestScenario',
+        )
 
         assert payload == test_payload
         assert metadata == pymqi.MD().get()
@@ -542,29 +509,36 @@ class TestMessageQueueUser:
         mq_parent.user.request(request)
 
         assert mq_parent.user.context_variables['payload_variable'] == ''
-        assert request_event_spy.call_count == 1
-        args, kwargs = request_event_spy.call_args_list[0]
-        assert args == ()
-        assert kwargs['request_type'] == 'GET'
-        print()
-        print(kwargs)
+        request_event_spy.assert_called_once_with(
+            request_type='GET',
+            exception=ANY,
+            response_length=len(test_payload.encode()),
+            context=mq_parent.user._context,
+            name='001 TestScenario',
+            response_time=ANY,
+        )
+        _, kwargs = request_event_spy.call_args_list[0]
         assert isinstance(kwargs['exception'], ResponseHandlerError)
 
-        assert response_event_spy.call_count == 1
+        response_event_spy.assert_called_once_with(
+            request=ANY,
+            user=mq_parent.user,
+            context=(pymqi.MD().get(), test_payload),
+            name='001 TestScenario',
+            exception=None,
+        )
         _, kwargs = response_event_spy.call_args_list[0]
         actual_request = kwargs.get('request', None)
         assert actual_request.name == f'{mq_parent.user._scenario.identifier} {request.name}'
         assert actual_request.endpoint == request.endpoint
         assert actual_request.source == request.source
-        assert kwargs['user'] is mq_parent.user
-        assert kwargs['context'] == (pymqi.MD().get(), test_payload,)
 
         request_event_spy.reset_mock()
         response_event_spy.reset_mock()
 
-        test_payload = '''{
+        test_payload = """{
             "test": "payload_variable value"
-        }'''
+        }"""
 
         noop_zmq.get_mock('zmq.Socket.recv_json').side_effect = [
             ZMQAgain,
@@ -583,10 +557,16 @@ class TestMessageQueueUser:
 
         assert mq_parent.user.context_variables['payload_variable'] == 'payload_variable value'
 
-        assert request_event_spy.call_count == 1
-        _, kwargs = request_event_spy.call_args_list[0]
-        assert kwargs['exception'] is None
-        assert response_event_spy.call_count == 1
+        request_event_spy.assert_called_once_with(
+            request_type='GET',
+            exception=None,
+            response_length=len(test_payload.encode()),
+            context=mq_parent.user._context,
+            name='001 TestScenario',
+            response_time=ANY,
+        )
+
+        response_event_spy.assert_called_once()
 
         request.response.handlers.payload.clear()
 
@@ -595,9 +575,15 @@ class TestMessageQueueUser:
 
         mq_parent.user.request(request)
 
-        assert request_event_spy.call_count == 1
-        _, kwargs = request_event_spy.call_args_list[0]
-        assert kwargs['exception'] is not None
+        request_event_spy.assert_called_once_with(
+            request_type='GET',
+            exception=ANY,
+            response_length=0,
+            context=mq_parent.user._context,
+            name='001 TestScenario',
+            response_time=ANY,
+        )
+
         request_event_spy.reset_mock()
 
         request.method = RequestMethod.POST
@@ -615,7 +601,15 @@ class TestMessageQueueUser:
         ]
         mq_parent.user.request(request)
 
-        assert request_event_spy.call_count == 1
+        request_event_spy.assert_called_once_with(
+            request_type='POST',
+            exception=ANY,
+            response_length=0,
+            context=mq_parent.user._context,
+            name='001 TestScenario',
+            response_time=ANY,
+        )
+
         _, kwargs = request_event_spy.call_args_list[0]
         assert kwargs['exception'] is not None
         assert 'no implementation for POST' in str(kwargs['exception'])

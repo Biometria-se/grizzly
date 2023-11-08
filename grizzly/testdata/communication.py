@@ -215,7 +215,7 @@ class TestdataProducer:
 
             for testdata in self.testdata.values():
                 for key, variable in testdata.items():
-                    if '.' not in key or variable != '__on_consumer__':
+                    if '.' not in key or variable == '__on_consumer__':
                         continue
 
                     with suppress(Exception):

@@ -257,7 +257,7 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
 
 
 @pytest.mark.parametrize('as_async', [False, True])
-def test_add_save_handler(behave_fixture: BehaveFixture, locust_fixture: LocustFixture, as_async: bool) -> None:
+def test_add_save_handler(behave_fixture: BehaveFixture, locust_fixture: LocustFixture, *, as_async: bool) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
     scenario = GrizzlyContextScenario(index=2, behave=behave_fixture.create_scenario('test scenario'))

@@ -1,5 +1,4 @@
-"""
-@anchor pydoc:grizzly.tasks.clients Clients
+"""@anchor pydoc:grizzly.tasks.clients Clients
 Client tasks is functionality that is executed by locust and is registred to an URL scheme.
 These tasks is used to make a request to another host than the scenario is actually load testing.
 
@@ -15,49 +14,47 @@ If `endpoint` is a template variable which includes the scheme, the scheme for t
 correct `grizzly.tasks.client` implementation is used. The additional scheme will be removed when the request is
 performed.
 """
+from __future__ import annotations
+
 import logging
 import traceback
-
 from abc import abstractmethod
-from typing import Dict, Generator, Type, List, Any, Optional, cast, final, TYPE_CHECKING
 from contextlib import contextmanager
-from time import perf_counter as time
-from urllib.parse import urlparse, unquote
-from pathlib import Path
-from os import environ
-from json import dumps as jsondumps
-from datetime import datetime
 from copy import copy
+from datetime import datetime
+from json import dumps as jsondumps
+from os import environ
+from pathlib import Path
+from time import perf_counter as time
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, Generator, List, Optional, Type, cast, final
+from urllib.parse import unquote, urlparse
 
-from grizzly_extras.transformer import TransformerContentType
-from grizzly_extras.arguments import split_value, parse_arguments
-
-from grizzly.types import RequestType, RequestDirection, GrizzlyResponse
-from grizzly.context import GrizzlyContext
-from grizzly.scenarios import GrizzlyScenario
+from grizzly.tasks import GrizzlyMetaRequestTask, grizzlytask, template
 from grizzly.testdata.utils import resolve_variable
+from grizzly.types import GrizzlyResponse, RequestDirection, RequestType
 from grizzly.users.base import RequestLogger
-from grizzly.tasks import GrizzlyMetaRequestTask, template, grizzlytask
 from grizzly.utils import merge_dicts
-
+from grizzly_extras.arguments import parse_arguments, split_value
+from grizzly_extras.transformer import TransformerContentType
 
 if TYPE_CHECKING:  # pragma: no cover
-    from grizzly.context import GrizzlyContextScenario
+    from grizzly.context import GrizzlyContext, GrizzlyContextScenario
+    from grizzly.scenarios import GrizzlyScenario
 
 
 # see https://github.com/python/mypy/issues/5374
 @template('endpoint', 'destination', 'source', 'name', 'variable_template')
 class ClientTask(GrizzlyMetaRequestTask):
-    __scenario__: 'GrizzlyContextScenario'
-    _scenario: 'GrizzlyContextScenario'
+    __scenario__: GrizzlyContextScenario
+    _scenario: GrizzlyContextScenario
     _schemes: List[str]
     _scheme: str
     _short_name: str
-    _direction_arrow: Dict[RequestDirection, str] = {
+    _direction_arrow: ClassVar[Dict[RequestDirection, str]] = {
         RequestDirection.FROM: '<-',
         RequestDirection.TO: '->',
     }
-    _context: Dict[str, Any] = {}
+    _context: ClassVar[Dict[str, Any]] = {}
 
     host: str
     grizzly: GrizzlyContext
@@ -103,7 +100,8 @@ class ClientTask(GrizzlyMetaRequestTask):
             pass
 
         if parsed.scheme not in self._schemes:
-            raise AttributeError(f'{self.__class__.__name__}: "{parsed.scheme}" is not supported, must be one of {", ".join(self._schemes)}')
+            message = f'{self.__class__.__name__}: "{parsed.scheme}" is not supported, must be one of {", ".join(self._schemes)}'
+            raise AttributeError(message)
 
         self._scheme = parsed.scheme
 
@@ -130,22 +128,28 @@ class ClientTask(GrizzlyMetaRequestTask):
         self.host = endpoint
 
         if self.payload_variable is not None and self.direction != RequestDirection.FROM:
-            raise AttributeError(f'{self.__class__.__name__}: variable argument is not applicable for direction {self.direction.name}')
+            message = f'{self.__class__.__name__}: variable argument is not applicable for direction {self.direction.name}'
+            raise AttributeError(message)
 
         if self.source is not None and self.direction != RequestDirection.TO:
-            raise AttributeError(f'{self.__class__.__name__}: source argument is not applicable for direction {self.direction.name}')
+            message = f'{self.__class__.__name__}: source argument is not applicable for direction {self.direction.name}'
+            raise AttributeError(message)
 
         if self.payload_variable is not None and self.payload_variable not in self.grizzly.state.variables:
-            raise ValueError(f'{self.__class__.__name__}: variable {self.payload_variable} has not been initialized')
+            message = f'{self.__class__.__name__}: variable {self.payload_variable} has not been initialized'
+            raise ValueError(message)
 
         if self.metadata_variable is not None and self.metadata_variable not in self.grizzly.state.variables:
-            raise ValueError(f'{self.__class__.__name__}: variable {self.metadata_variable} has not been initialized')
+            message = f'{self.__class__.__name__}: variable {self.metadata_variable} has not been initialized'
+            raise ValueError(message)
 
         if self.payload_variable is None and self.metadata_variable is not None:
-            raise ValueError(f'{self.__class__.__name__}: payload variable is not set, but metadata variable is set')
+            message = f'{self.__class__.__name__}: payload variable is not set, but metadata variable is set'
+            raise ValueError(message)
 
         if self.source is None and self.direction == RequestDirection.TO:
-            raise ValueError(f'{self.__class__.__name__}: source must be set for direction {self.direction.name}')
+            message = f'{self.__class__.__name__}: source must be set for direction {self.direction.name}'
+            raise ValueError(message)
 
         self._short_name = self.__class__.__name__.replace('ClientTask', '')
 
@@ -160,7 +164,7 @@ class ClientTask(GrizzlyMetaRequestTask):
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self._scenario = copy(self.__scenario__)
         self._scenario._tasks = self.__scenario__._tasks
-        self._context = merge_dicts(self.__class__._context, self._context)
+        self.__class__._context = merge_dicts(self.__class__._context, self._context)
 
     def on_start(self, parent: GrizzlyScenario) -> None:
         pass
@@ -172,8 +176,9 @@ class ClientTask(GrizzlyMetaRequestTask):
     def text_fget(self) -> Optional[str]:
         return self._text
 
-    def text_fset(self, value: str) -> None:
-        raise NotImplementedError(f'{self.__class__.__name__} has not implemented support for step text')  # pragma: no cover
+    def text_fset(self, _: str) -> None:
+        message = f'{self.__class__.__name__} has not implemented support for step text'
+        raise NotImplementedError(message)  # pragma: no cover
 
     text = property(text_fget, text_fset)
     # EOW
@@ -193,43 +198,42 @@ class ClientTask(GrizzlyMetaRequestTask):
     @final
     def __call__(self) -> grizzlytask:
         @grizzlytask
-        def task(parent: 'GrizzlyScenario') -> GrizzlyResponse:
+        def task(parent: GrizzlyScenario) -> GrizzlyResponse:
             return self.execute(parent)
 
         @task.on_start
         def on_start(parent: GrizzlyScenario) -> None:
-            self._context = merge_dicts(parent.user._context, self._context)
+            self.__class__._context = merge_dicts(parent.user._context, self._context)
             return self.on_start(parent)
 
         @task.on_stop
         def on_stop(parent: GrizzlyScenario) -> None:
-            self._context = merge_dicts(parent.user._context, self._context)
+            self.__class__._context = merge_dicts(parent.user._context, self._context)
             return self.on_stop(parent)
 
         return task
 
     def execute(self, parent: GrizzlyScenario) -> GrizzlyResponse:
-        """
-        This method is sometimes called directly when wrapped in another task, so the grizzlytask-decorated method
-        above might not execute at all.
-        """
-        self._context = merge_dicts(parent.user._context, self._context)
+        """Execute correct method depending on the direction on the request. When wrapped in another task, the @grizzlytask decorated method above will not be called."""
+        self.__class__._context = merge_dicts(parent.user._context, self.__class__._context)
 
         if self.direction == RequestDirection.FROM:
             return self.get(parent)
-        else:
-            return self.put(parent)
+
+        return self.put(parent)
 
     @abstractmethod
-    def get(self, parent: GrizzlyScenario) -> GrizzlyResponse:
-        raise NotImplementedError(f'{self.__class__.__name__} has not implemented GET')  # pragma: no cover
+    def get(self, parent: GrizzlyScenario) -> GrizzlyResponse:  # pragma: no cover
+        message = f'{self.__class__.__name__} has not implemented GET'
+        raise NotImplementedError(message)
 
     @abstractmethod
-    def put(self, parent: GrizzlyScenario) -> GrizzlyResponse:
-        raise NotImplementedError(f'{self.__class__.__name__} has not implemented PUT')  # pragma: no cover
+    def put(self, parent: GrizzlyScenario) -> GrizzlyResponse:  # pragma: no cover
+        message = f'{self.__class__.__name__} has not implemented PUT'
+        raise NotImplementedError(message)
 
     @contextmanager
-    def action(self, parent: GrizzlyScenario, action: Optional[str] = None, suppress: bool = False) -> Generator[Dict[str, Any], None, None]:
+    def action(self, parent: GrizzlyScenario, action: Optional[str] = None, *, suppress: bool = False) -> Generator[Dict[str, Any], None, None]:
         exception: Optional[Exception] = None
         response_length = 0
         start_time = time()
@@ -239,7 +243,7 @@ class ClientTask(GrizzlyMetaRequestTask):
             # get metadata back from actual implementation
             yield meta
         except Exception as e:
-            parent.logger.error(f'{self.__class__.__name__}: {str(e)}', exc_info=True)
+            parent.logger.exception('%s:', self.__class__.__name__)
             exception = e
         finally:
             if self.name is None:
@@ -288,10 +292,10 @@ class ClientTask(GrizzlyMetaRequestTask):
                 log_file.write_text(jsondumps(request_log, indent=2))
 
             if exception is not None and parent.user._scenario.failure_exception is not None:
-                parent.logger.error(f'{self.__class__.__name__} raising {parent.user._scenario.failure_exception}')
-                raise parent.user._scenario.failure_exception()
+                parent.logger.error('%s raising %s', self.__class__.__name__, parent.user._scenario.failure_exception)
+                raise parent.user._scenario.failure_exception
             elif exception is not None:
-                parent.logger.warning(f'{self.__class__.__name__} ignoring {exception}')
+                parent.logger.warning('%s ignoring %s', self.__class__.__name__, exception)
 
 
 class client:
@@ -314,11 +318,10 @@ class client:
 
 logger = logging.getLogger(__name__)
 
-from .http import HttpClientTask
 from .blobstorage import BlobStorageClientTask
+from .http import HttpClientTask
 from .messagequeue import MessageQueueClientTask
 from .servicebus import ServiceBusClientTask
-
 
 __all__ = [
     'HttpClientTask',

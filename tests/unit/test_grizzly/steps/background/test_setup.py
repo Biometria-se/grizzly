@@ -1,17 +1,18 @@
-import pytest
+from __future__ import annotations
 
+import re
 from os import environ
 from typing import cast
-
 from urllib.parse import urlparse
 
+import pytest
 from parse import compile
-from grizzly.steps import *  # pylint: disable=unused-wildcard-import  # noqa: F403
+
 from grizzly.context import GrizzlyContext
 from grizzly.exceptions import RestartScenario
+from grizzly.steps import *  # pylint: disable=unused-wildcard-import  # noqa: F403
 from grizzly.types import MessageDirection
 from grizzly.types.locust import StopUser
-
 from tests.fixtures import BehaveFixture
 
 
@@ -323,32 +324,26 @@ def test_step_setup_message_type_callback(behave_fixture: BehaveFixture) -> None
 
     assert grizzly.setup.locust.messages == {}
 
-    with pytest.raises(AssertionError) as ae:
+    with pytest.raises(AssertionError, match='cannot register message handler that sends from server and is received at server'):
         step_setup_message_type_callback(behave_fixture.context, 'foobar.method', 'foo_message', 'server', 'server')
-    assert str(ae.value) == 'cannot register message handler that sends from server and is received at server'
 
-    with pytest.raises(AssertionError) as ae:
+    with pytest.raises(AssertionError, match='cannot register message handler that sends from client and is received at client'):
         step_setup_message_type_callback(behave_fixture.context, 'foobar.method', 'foo_message', 'client', 'client')
-    assert str(ae.value) == 'cannot register message handler that sends from client and is received at client'
 
-    with pytest.raises(AssertionError) as ae:
+    with pytest.raises(AssertionError, match='no module named foobar'):
         step_setup_message_type_callback(behave_fixture.context, 'foobar.method', 'foo_message', 'server', 'client')
-    assert str(ae.value) == 'no module named foobar'
 
-    with pytest.raises(AssertionError) as ae:
+    with pytest.raises(AssertionError, match='module tests.helpers has no method message_callback_does_not_exist'):
         step_setup_message_type_callback(behave_fixture.context, 'tests.helpers.message_callback_does_not_exist', 'foo_message', 'server', 'client')
-    assert str(ae.value) == 'module tests.helpers has no method message_callback_does_not_exist'
 
-    with pytest.raises(AssertionError) as ae:
+    with pytest.raises(AssertionError, match='tests.helpers.message_callback_not_a_method is not a method'):
         step_setup_message_type_callback(behave_fixture.context, 'tests.helpers.message_callback_not_a_method', 'foo_message', 'server', 'client')
-    assert str(ae.value) == 'tests.helpers.message_callback_not_a_method is not a method'
 
-    with pytest.raises(AssertionError) as ae:
+    with pytest.raises(AssertionError, match=re.escape((
+        "tests.helpers.message_callback_incorrect_sig does not have grizzly.types.MessageCallback method signature: (msg: 'Message', "
+        "environment: 'Environment') -> 'Message'"
+    ))):
         step_setup_message_type_callback(behave_fixture.context, 'tests.helpers.message_callback_incorrect_sig', 'foo_message', 'server', 'client')
-    assert str(ae.value) == (
-        'tests.helpers.message_callback_incorrect_sig does not have grizzly.types.MessageCallback method signature: (msg: locust.rpc.protocol.Message, '
-        'environment: locust.env.Environment) -> locust.rpc.protocol.Message'
-    )
 
     step_setup_message_type_callback(behave_fixture.context, 'tests.helpers.message_callback', 'foo_message', 'server', 'client')
 
@@ -357,5 +352,5 @@ def test_step_setup_message_type_callback(behave_fixture: BehaveFixture) -> None
     assert grizzly.setup.locust.messages == {
         MessageDirection.SERVER_CLIENT: {
             'foo_message': message_callback,
-        }
+        },
     }

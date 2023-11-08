@@ -1,12 +1,15 @@
-from typing import TYPE_CHECKING, Type, Any, Optional, Callable, List, Tuple, Set, Dict, cast
+"""Core functionality of grizzly testdata."""
+from __future__ import annotations
+
 from importlib import import_module
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set, Tuple, Type, cast
 
 from grizzly.types import GrizzlyVariableType
-from grizzly.types.locust import MessageHandler
-
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContext
+    from grizzly.types.locust import MessageHandler
+
     from .variables import AtomicVariable
 
 
@@ -17,7 +20,7 @@ __all__ = [
 
 class GrizzlyVariables(dict):
     @classmethod
-    def load_variable(cls, module_name: str, class_name: str) -> Type['AtomicVariable']:
+    def load_variable(cls, module_name: str, class_name: str) -> Type[AtomicVariable]:
         if module_name not in globals():
             module = import_module(module_name)
             globals()[class_name] = getattr(module, class_name)
@@ -46,29 +49,28 @@ class GrizzlyVariables(dict):
             if variable_type is None:
                 namespace.append(part)
                 continue
-            elif variable_name is None:
+
+            if variable_name is None:
                 variable_name = part
                 continue
-            else:
-                sub_variable_names.append(part)
 
-        if len(namespace) == 0:
-            module_name = 'grizzly.testdata.variables'
-        else:
-            module_name = '.'.join(namespace)
+            sub_variable_names.append(part)
+
+        module_name = 'grizzly.testdata.variables' if len(namespace) == 0 else '.'.join(namespace)
 
         sub_variable_name = '.'.join(sub_variable_names) if len(sub_variable_names) > 0 else None
 
         return module_name, variable_type, cast(str, variable_name), sub_variable_name
 
     @classmethod
-    def initialize_variable(cls, grizzly: 'GrizzlyContext', name: str) -> Tuple[Any, Set[str], Dict[str, MessageHandler]]:
+    def initialize_variable(cls, grizzly: GrizzlyContext, name: str) -> Tuple[Any, Set[str], Dict[str, MessageHandler]]:
         external_dependencies: Set[str] = set()
         message_handler: Dict[str, MessageHandler] = {}
 
         default_value = grizzly.state.variables.get(name, None)
         if default_value is None:
-            raise ValueError(f'variable "{name}" has not been declared')
+            message = f'variable "{name}" has not been declared'
+            raise ValueError(message)
 
         module_name, variable_type, variable_name, _ = cls.get_variable_spec(name)
 
@@ -83,7 +85,8 @@ class GrizzlyVariables(dict):
                 try:
                     value = variable(variable_name, default_value)
                 except ValueError as e:
-                    raise ValueError(f'{name}: {default_value=}, exception={str(e)}') from e
+                    message = f'{name}: {default_value=}, exception={e!s}'
+                    raise ValueError(message) from e
         else:
             value = default_value
 
@@ -101,25 +104,21 @@ class GrizzlyVariables(dict):
             check_value = check_value[1:]
 
         if check_value.isdecimal():
-            if float(value) % 1 == 0:
-                if value.startswith('0'):
-                    casted_value = str(value)
-                else:
-                    casted_value = int(float(value))
-            else:
-                casted_value = float(value)
+            casted_value = (str(value) if value.startswith('0') else int(float(value))) if float(value) % 1 == 0 else float(value)
         elif value.lower() in ['true', 'false']:
             casted_value = value.lower() == 'true'
         else:
             casted_value = str(value)
             if casted_value[0] in ['"', "'"]:
                 if casted_value[0] != casted_value[-1] and casted_value.count(casted_value[0]) % 2 != 0:
-                    raise ValueError(f'{value} is incorrectly quoted')
+                    message = f'{value} is incorrectly quoted'
+                    raise ValueError(message)
 
                 if casted_value[0] == casted_value[-1]:
                     casted_value = casted_value[1:-1]
             elif casted_value[-1] in ['"', "'"] and casted_value[-1] != casted_value[0] and casted_value.count(casted_value[-1]) % 2 != 0:
-                raise ValueError(f'{value} is incorrectly quoted')
+                message = f'{value} is incorrectly quoted'
+                raise ValueError(message)
 
         return casted_value
 
@@ -135,10 +134,7 @@ class GrizzlyVariables(dict):
                 pass
 
         if isinstance(value, str):
-            if caster is None:
-                value = self.guess_datatype(value)
-            else:
-                value = caster(value)
+            value = self.guess_datatype(value) if caster is None else caster(value)
         elif caster is not None:
             value = caster(value)
 

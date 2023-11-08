@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from .base import GrizzlyUser
+from .base import GrizzlyUser, grizzlycontext
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.tasks import RequestTask
@@ -26,6 +26,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from grizzly.types.locust import Environment
 
 
+@grizzlycontext(context={})
 class DummyUser(GrizzlyUser):
     def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
         super().__init__(environment, *args, **kwargs)

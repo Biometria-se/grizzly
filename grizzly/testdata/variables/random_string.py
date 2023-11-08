@@ -1,5 +1,4 @@
-"""
-@anchor pydoc:grizzly.testdata.variables.random_string Random String
+"""@anchor pydoc:grizzly.testdata.variables.random_string Random String
 This variable generates a specified number of unique strings, based on a string format pattern.
 
 The list is pre-populated to ensure that each string is unique.
@@ -35,21 +34,24 @@ This can then be used in a template:
 
 `AtomicRandomString.registration_plate_number` will then be a string in the format `[A-Z][A-Z]Z[0-9][0-9]0` and there will be `100` unique values for disposal.
 """
-from typing import Dict, List, Any, Callable, Optional, Set, Type, cast
-from random import randint, choice
+from __future__ import annotations
+
+from random import choice, randint
 from string import ascii_letters
+from typing import Any, Callable, Dict, List, Optional, Set, Type, cast
 from uuid import uuid4
 
-from grizzly_extras.arguments import split_value, parse_arguments
-
 from grizzly.types import bool_type, int_rounded_float_type
+from grizzly_extras.arguments import parse_arguments, split_value
 
 from . import AtomicVariable
 
 
 def atomicrandomstring__base_type__(value: str) -> str:
+    """Validate values that `AtomicRandomString` can be set with."""
     if len(value) < 1:
-        raise ValueError('AtomicRandomString: no string pattern specified')
+        message = 'AtomicRandomString: no string pattern specified'
+        raise ValueError(message)
 
     if '|' in value:
         string_pattern, string_arguments = split_value(value)
@@ -57,13 +59,15 @@ def atomicrandomstring__base_type__(value: str) -> str:
         try:
             arguments = parse_arguments(string_arguments)
         except ValueError as e:
-            raise ValueError(f'AtomicRandomString: {str(e)}') from e
+            message = f'AtomicRandomString: {e!s}'
+            raise ValueError(message) from e
 
         for argument, v in arguments.items():
             if argument not in AtomicRandomString.arguments:
-                raise ValueError(f'AtomicRandomString: argument {argument} is not allowed')
-            else:
-                AtomicRandomString.arguments[argument](v)
+                message = f'AtomicRandomString: argument {argument} is not allowed'
+                raise ValueError(message)
+
+            AtomicRandomString.arguments[argument](v)
 
         value = f'{string_pattern} | {string_arguments}'
     else:
@@ -72,10 +76,12 @@ def atomicrandomstring__base_type__(value: str) -> str:
     generators = AtomicRandomString.get_generators(string_pattern)
 
     if len(generators) < 1:
-        raise ValueError('AtomicRandomString: specified string pattern does not contain any generators')
+        message = 'AtomicRandomString: specified string pattern does not contain any generators'
+        raise ValueError(message)
 
     if '%g' in string_pattern and string_pattern.count('%') != 1:
-        raise ValueError('AtomicRandomString: %g cannot be combined with other formats')
+        message = 'AtomicRandomString: %g cannot be combined with other formats'
+        raise ValueError(message)
 
     return value
 

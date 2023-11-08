@@ -63,7 +63,7 @@ class TestRestApiUser:
             'x-grizzly-user': parent.user.__class__.__name__,
         }
 
-        RestApiUser._context['metadata'] = {'foo': 'bar'}
+        RestApiUser.__context__['metadata'] = {'foo': 'bar'}
 
         user = RestApiUser(parent.user.environment)
 
@@ -108,7 +108,7 @@ class TestRestApiUser:
             parent.user.headers.update({
                 'Ocp-Apim-Subscription-Key': '',
             })
-            parent.user.host = cast(dict, parent.user._context)['host']
+            parent.user.host = cast(dict, parent.user.__context__)['host']
             parent.user.session_started = time()
 
             fire = mocker.spy(parent.user.environment.events.request, 'fire')
@@ -126,7 +126,7 @@ class TestRestApiUser:
         assert isinstance(parent.user, RestApiUser)
 
         response = Response()
-        response._content = ''.encode('utf-8')
+        response._content = b''
         response_context_manager = ResponseContextManager(response, RequestEvent(), {})
 
         response.status_code = 400
@@ -142,18 +142,21 @@ class TestRestApiUser:
         assert parent.user._get_error_message(response_context_manager) == 'not found'
 
         response.status_code = 405
+        assert parent.user._get_error_message(response_context_manager) == 'method not allowed'
+
+        response.status_code = 999
         assert parent.user._get_error_message(response_context_manager) == 'unknown'
 
-        response._content = 'just a simple string'.encode('utf-8')
+        response._content = b'just a simple string'
         assert parent.user._get_error_message(response_context_manager) == 'just a simple string'
 
-        response._content = '{"Message": "message\\nproperty\\\\nthat is multiline"}'.encode('utf-8')
+        response._content = b'{"Message": "message\\nproperty\\\\nthat is multiline"}'
         assert parent.user._get_error_message(response_context_manager) == 'message property'
 
-        response._content = '{"error_description": "error description\\r\\nthat is multiline"}'.encode('utf-8')
+        response._content = b'{"error_description": "error description\\r\\nthat is multiline"}'
         assert parent.user._get_error_message(response_context_manager) == 'error description'
 
-        response._content = '{"success": false}'.encode('utf-8')
+        response._content = b'{"success": false}'
         assert parent.user._get_error_message(response_context_manager) == '{"success": false}'
 
         text_mock = mocker.patch('requests.models.Response.text', new_callable=mocker.PropertyMock)

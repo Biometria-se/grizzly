@@ -1,8 +1,8 @@
 from typing import cast
 from json import dumps as jsondumps, loads as jsonloads
-from unittest.mock import ANY
 from itertools import cycle
 from os import environ
+from contextlib import suppress
 
 import pytest
 
@@ -18,6 +18,7 @@ from grizzly.types import RequestDirection
 from grizzly.types.locust import StopUser, CatchResponseError
 
 from tests.fixtures import GrizzlyFixture
+from tests.helpers import ANY
 
 
 class TestHttpClientTask:
@@ -38,41 +39,36 @@ class TestHttpClientTask:
         assert getattr(task_factory, 'parent', None) is None
         assert getattr(task_factory, 'environment', None) is None
         assert getattr(task_factory, 'session_started', None) is None
-        assert task_factory.headers == {'x-grizzly-user': ANY}
+        assert task_factory.headers == {'x-grizzly-user': ANY(str)}
         assert task_factory._context.get('test', None) is None
 
         task.on_start(parent)
 
         assert getattr(task_factory, 'session_started', -1.0) >= 0.0
-        assert task_factory.headers == {'x-grizzly-user': ANY, 'x-test-header': 'foobar'}
+        assert task_factory.headers == {'x-grizzly-user': ANY(str), 'x-test-header': 'foobar'}
         assert task_factory._context.get('test', None) == 'was here'
 
-    @pytest.mark.parametrize('log_prefix', [False, True,])
-    def test_get(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture, log_prefix: bool) -> None:
+    @pytest.mark.parametrize('log_prefix', [False, True])
+    def test_get(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture, *, log_prefix: bool) -> None:
         try:
             if log_prefix:
                 environ['GRIZZLY_LOG_DIR'] = 'foobar'
 
             behave = grizzly_fixture.behave.context
             grizzly = cast(GrizzlyContext, behave.grizzly)
+            test_cls = type('HttpClientTestTask', (HttpClientTask, ), {'__scenario__': grizzly.scenario})
 
-            HttpClientTask.__scenario__ = grizzly.scenario
+            with pytest.raises(AttributeError, match='HttpClientTestTask: variable argument is not applicable for direction TO') as ae:
+                test_cls(RequestDirection.TO, 'http://example.org', payload_variable='test')
 
-            with pytest.raises(AttributeError) as ae:
-                HttpClientTask(RequestDirection.TO, 'http://example.org', payload_variable='test')
-            assert 'HttpClientTask: variable argument is not applicable for direction TO' in str(ae.value)
+            with pytest.raises(AttributeError, match='HttpClientTestTask: source argument is not applicable for direction FROM') as ae:
+                test_cls(RequestDirection.FROM, 'http://example.org', source='test')
 
-            with pytest.raises(AttributeError) as ae:
-                HttpClientTask(RequestDirection.FROM, 'http://example.org', source='test')
-            assert 'HttpClientTask: source argument is not applicable for direction FROM' in str(ae.value)
+            with pytest.raises(ValueError, match='HttpClientTestTask: variable test has not been initialized') as ve:
+                test_cls(RequestDirection.FROM, 'http://example.org', payload_variable='test')
 
-            with pytest.raises(ValueError) as ve:
-                HttpClientTask(RequestDirection.FROM, 'http://example.org', payload_variable='test')
-            assert 'HttpClientTask: variable test has not been initialized' in str(ve)
-
-            with pytest.raises(ValueError) as ve:
-                HttpClientTask(RequestDirection.FROM, 'http://example.org', payload_variable=None, metadata_variable='test')
-            assert 'HttpClientTask: variable test has not been initialized' in str(ve)
+            with pytest.raises(ValueError, match='HttpClientTestTask: variable test has not been initialized') as ve:
+                test_cls(RequestDirection.FROM, 'http://example.org', payload_variable=None, metadata_variable='test')
 
             response = Response()
             response.url = 'http://example.org'
@@ -86,9 +82,8 @@ class TestHttpClientTask:
 
             grizzly.state.variables.update({'test': 'none'})
 
-            with pytest.raises(ValueError) as ve:
-                HttpClientTask(RequestDirection.FROM, 'http://example.org', payload_variable=None, metadata_variable='test')
-            assert 'HttpClientTask: payload variable is not set, but metadata variable is set' in str(ve)
+            with pytest.raises(ValueError, match='HttpClientTestTask: payload variable is not set, but metadata variable is set'):
+                test_cls(RequestDirection.FROM, 'http://example.org', payload_variable=None, metadata_variable='test')
 
             parent = grizzly_fixture()
             parent.user._context.update({'test': 'was here'})
@@ -97,7 +92,7 @@ class TestHttpClientTask:
 
             grizzly.state.variables.update({'test_payload': 'none', 'test_metadata': 'none'})
 
-            task_factory = HttpClientTask(RequestDirection.FROM, 'http://example.org', payload_variable='test_payload', metadata_variable='test_metadata')
+            task_factory = test_cls(RequestDirection.FROM, 'http://example.org', payload_variable='test_payload', metadata_variable='test_metadata')
             assert task_factory.arguments == {}
             assert task_factory.__template_attributes__ == {'endpoint', 'destination', 'source', 'name', 'variable_template'}
 
@@ -118,23 +113,23 @@ class TestHttpClientTask:
             assert task_factory._context.get('test', None) == 'was here'
             assert parent.user._context['variables'].get('test_payload', None) is None
             assert parent.user._context['variables'].get('test_metadata', None) is None
-            assert requests_get_spy.call_count == 1
-            args, kwargs = requests_get_spy.call_args_list[-1]
-            assert args[0] == 'http://example.org'
-            assert len(kwargs) == 2
-            assert kwargs.get('headers', {}).get('x-grizzly-user', None).startswith('HttpClientTask::')
-            assert kwargs.get('cookies', None) == {}
+            requests_get_spy.assert_called_once_with(
+                'http://example.org',
+                headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}'},
+                cookies={},
+                timeout=30,
+            )
+            requests_get_spy.reset_mock()
 
-            assert request_fire_spy.call_count == 1
-            _, kwargs = request_fire_spy.call_args_list[-1]
-            assert kwargs.get('request_type', None) == 'CLTSK'
-            assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} test-1'
-            assert kwargs.get('response_time', None) >= 0.0
-            assert kwargs.get('response_length') == len(jsondumps({'hello': 'world'}))
-            assert kwargs.get('context', None) is parent.user._context
-            exception = kwargs.get('exception', None)
-            assert isinstance(exception, CatchResponseError)
-            assert str(exception) == '400 not in [200]: {"hello": "world"}'
+            request_fire_spy.assert_called_once_with(
+                request_type='CLTSK',
+                name=f'{parent.user._scenario.identifier} test-1',
+                response_time=ANY(float, int),
+                response_length=len(jsondumps({'hello': 'world'}).encode()),
+                context=parent.user._context,
+                exception=ANY(CatchResponseError, message='400 not in [200]: {"hello": "world"}'),
+            )
+            request_fire_spy.reset_mock()
 
             request_logs = list(task_factory.log_dir.rglob('**/*'))
             assert len(request_logs) == 1
@@ -143,14 +138,21 @@ class TestHttpClientTask:
             assert request_log.parent.name == parent_name
 
             log_entry = jsonloads(request_log.read_text())
-            assert log_entry.get('request', {}).get('time', None) >= 0.0
-            assert log_entry.get('request', {}).get('url', None) == 'http://example.org'
-            assert log_entry.get('request', {}).get('metadata', None) is not None
-            assert log_entry.get('request', {}).get('payload', '') is None
-            assert log_entry.get('response', {}).get('url', None) == 'http://example.org'
-            assert log_entry.get('response', {}).get('metadata', None) == {'x-foo-bar': 'test'}
-            assert log_entry.get('response', {}).get('payload', None) is not None
-            assert log_entry.get('response', {}).get('status', None) == 400
+            assert log_entry == {
+                'stacktrace': ANY(list),
+                'request': {
+                    'time': ANY(float, int),
+                    'url': 'http://example.org',
+                    'metadata': ANY(dict),
+                    'payload': None,
+                },
+                'response': {
+                    'url': 'http://example.org',
+                    'metadata': {'x-foo-bar': 'test'},
+                    'payload': ANY(str),
+                    'status': 400,
+                },
+            }
 
             parent.user._context['variables']['test'] = None
             response.status_code = 200
@@ -159,21 +161,24 @@ class TestHttpClientTask:
             task(parent)
 
             assert parent.user._context['variables'].get('test', '') is None  # not set
-            assert requests_get_spy.call_count == 2
-            args, kwargs = requests_get_spy.call_args_list[-1]
-            assert args[0] == 'http://example.org'
-            assert len(kwargs) == 2
-            assert kwargs.get('headers', {}).get('x-grizzly-user', None).startswith('HttpClientTask::')
-            assert kwargs.get('cookies', None) == {}
+            requests_get_spy.assert_called_once_with(
+                'http://example.org',
+                headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}'},
+                cookies={},
+                timeout=30,
+            )
+            requests_get_spy.reset_mock()
 
-            assert request_fire_spy.call_count == 2
-            _, kwargs = request_fire_spy.call_args_list[-1]
-            assert kwargs.get('request_type', None) == 'CLTSK'
-            assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} test-2'
-            assert kwargs.get('response_time', None) >= 0.0
-            assert kwargs.get('response_length') == 0
-            assert kwargs.get('context', None) is parent.user._context
-            assert isinstance(kwargs.get('exception', None), RuntimeError)
+            request_fire_spy.assert_called_once_with(
+                request_type='CLTSK',
+                name=f'{parent.user._scenario.identifier} test-2',
+                response_time=ANY(int, float),
+                response_length=0,
+                context=parent.user._context,
+                exception=ANY(RuntimeError),
+            )
+            request_fire_spy.reset_mock()
+
             assert len(list(task_factory.log_dir.rglob('**/*'))) == 2
 
             parent.user._scenario.failure_exception = StopUser
@@ -185,30 +190,35 @@ class TestHttpClientTask:
             parent.user._scenario.failure_exception = RestartScenario
             task_factory.name = 'test-4'
 
+            requests_get_spy.reset_mock()
+            request_fire_spy.reset_mock()
+
             with pytest.raises(RestartScenario):
                 task(parent)
 
             assert parent.user._context['variables'].get('test', '') is None  # not set
-            assert requests_get_spy.call_count == 4
-            args, kwargs = requests_get_spy.call_args_list[-1]
-            assert args[0] == 'http://example.org'
-            assert len(kwargs) == 2
-            assert kwargs.get('headers', {}).get('x-grizzly-user', None).startswith('HttpClientTask::')
-            assert kwargs.get('cookies', None) == {}
+            requests_get_spy.assert_called_once_with(
+                'http://example.org',
+                headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}'},
+                cookies={},
+                timeout=30,
+            )
+            requests_get_spy.reset_mock()
 
-            assert request_fire_spy.call_count == 4
-            _, kwargs = request_fire_spy.call_args_list[-1]
-            assert kwargs.get('request_type', None) == 'CLTSK'
-            assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} test-4'
-            assert kwargs.get('response_time', None) >= 0.0
-            assert kwargs.get('response_length') == 0
-            assert kwargs.get('context', None) is parent.user._context
-            assert isinstance(kwargs.get('exception', None), RuntimeError)
+            request_fire_spy.assert_called_once_with(
+                request_type='CLTSK',
+                name=f'{parent.user._scenario.identifier} test-4',
+                response_time=ANY(int, float),
+                response_length=0,
+                context=parent.user._context,
+                exception=ANY(RuntimeError),
+            )
+            request_fire_spy.reset_mock()
             assert len(list(task_factory.log_dir.rglob('**/*'))) == 4
 
             parent.user._scenario.failure_exception = None
 
-            task_factory = HttpClientTask(RequestDirection.FROM, 'http://example.org', 'http-get', payload_variable='test')
+            task_factory = test_cls(RequestDirection.FROM, 'http://example.org', 'http-get', payload_variable='test')
             task = task_factory()
             assert task_factory.arguments == {}
             assert task_factory.content_type == TransformerContentType.UNDEFINED
@@ -216,26 +226,28 @@ class TestHttpClientTask:
             task(parent)
 
             assert parent.user._context['variables'].get('test', '') is None  # not set
-            assert requests_get_spy.call_count == 5
-            args, kwargs = requests_get_spy.call_args_list[-1]
-            assert args[0] == 'http://example.org'
-            assert len(kwargs) == 2
-            assert kwargs.get('headers', {}).get('x-grizzly-user', None).startswith('HttpClientTask::')
-            assert kwargs.get('cookies', None) == {}
+            requests_get_spy.assert_called_once_with(
+                'http://example.org',
+                headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}'},
+                cookies={},
+                timeout=30,
+            )
+            requests_get_spy.reset_mock()
 
-            assert request_fire_spy.call_count == 5
-            _, kwargs = request_fire_spy.call_args_list[-1]
-            assert kwargs.get('request_type', None) == 'CLTSK'
-            assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} http-get'
-            assert kwargs.get('response_time', None) >= 0.0
-            assert kwargs.get('response_length') == 0
-            assert kwargs.get('context', None) is parent.user._context
-            assert isinstance(kwargs.get('exception', None), RuntimeError)
+            request_fire_spy.assert_called_once_with(
+                request_type='CLTSK',
+                name=f'{parent.user._scenario.identifier} http-get',
+                response_time=ANY(int, float),
+                response_length=0,
+                context=parent.user._context,
+                exception=ANY(RuntimeError),
+            )
+            request_fire_spy.reset_mock()
             assert len(list(task_factory.log_dir.rglob('**/*'))) == 5
 
             grizzly.state.configuration['test.host'] = 'https://example.org'
 
-            task_factory = HttpClientTask(RequestDirection.FROM, 'https://$conf::test.host$/api/test', 'http-env-get', payload_variable='test')
+            task_factory = test_cls(RequestDirection.FROM, 'https://$conf::test.host$/api/test', 'http-env-get', payload_variable='test')
             assert task_factory.arguments == {'verify': True}
             assert task_factory.content_type == TransformerContentType.UNDEFINED
             task = task_factory()
@@ -244,19 +256,20 @@ class TestHttpClientTask:
 
             task(parent)
 
-            assert requests_get_spy.call_count == 6
-            args, kwargs = requests_get_spy.call_args_list[-1]
-            assert args[0] == 'https://example.org/api/test'
-            assert len(kwargs) == 3
-            assert kwargs.get('verify', None)
-            assert kwargs.get('headers', {}).get('x-grizzly-user', None).startswith('HttpClientTask::')
-            assert kwargs.get('cookies', None) == {}
-
-            print(list(task_factory.log_dir.rglob('**/*')))
+            requests_get_spy.assert_called_once_with(
+                'https://example.org/api/test',
+                verify=True,
+                headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}'},
+                cookies={},
+                timeout=30,
+            )
+            requests_get_spy.reset_mock()
+            request_fire_spy.assert_called_once()
+            request_fire_spy.reset_mock()
 
             assert len(list(task_factory.log_dir.rglob('**/*'))) == 5
 
-            task_factory = HttpClientTask(RequestDirection.FROM, 'https://$conf::test.host$/api/test | verify=False, content_type=json', 'http-env-get-1', payload_variable='test')
+            task_factory = test_cls(RequestDirection.FROM, 'https://$conf::test.host$/api/test | verify=False, content_type=json', 'http-env-get-1', payload_variable='test')
             task = task_factory()
             assert task_factory.arguments == {'verify': False}
             assert task_factory.content_type == TransformerContentType.JSON
@@ -264,17 +277,20 @@ class TestHttpClientTask:
 
             task(parent)
 
-            assert requests_get_spy.call_count == 7
-            args, kwargs = requests_get_spy.call_args_list[-1]
-            assert args[0] == 'https://example.org/api/test'
-            assert len(kwargs) == 3
-            assert not kwargs.get('verify', None)
-            assert kwargs.get('headers', {}).get('x-grizzly-user', None).startswith('HttpClientTask::')
-            assert kwargs.get('cookies', None) == {}
-            assert request_fire_spy.call_count == 7
+            requests_get_spy.assert_called_once_with(
+                'https://example.org/api/test',
+                verify=False,
+                headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}'},
+                cookies={},
+                timeout=30,
+            )
+            requests_get_spy.reset_mock()
+            request_fire_spy.assert_called_once()
+            request_fire_spy.reset_mock()
+
             assert len(list(task_factory.log_dir.rglob('**/*'))) == 5
 
-            task_factory = HttpClientTask(RequestDirection.FROM, 'https://$conf::test.host$/api/test | verify=True, content_type=json', 'http-env-get-2', payload_variable='test')
+            task_factory = test_cls(RequestDirection.FROM, 'https://$conf::test.host$/api/test | verify=True, content_type=json', 'http-env-get-2', payload_variable='test')
             task = task_factory()
             assert task_factory.arguments == {'verify': True}
             assert task_factory.content_type == TransformerContentType.JSON
@@ -288,37 +304,33 @@ class TestHttpClientTask:
 
             task(parent)
 
-            assert requests_get_spy.call_count == 8
-            args, kwargs = requests_get_spy.call_args_list[-1]
-            assert args[0] == 'https://example.org/api/test'
-            assert len(kwargs) == 3
-            assert kwargs.get('verify', None)
-            headers = kwargs.get('headers', {})
-            assert headers.get('x-grizzly-user', None).startswith('HttpClientTask::')
-            assert headers.get('x-test-header', None) == 'foobar'
-            assert kwargs.get('cookies', None) == {}
-            assert request_fire_spy.call_count == 8
-            args, kwargs = request_fire_spy.call_args_list[-1]
+            requests_get_spy.assert_called_once_with(
+                'https://example.org/api/test',
+                verify=True,
+                headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}', 'x-test-header': 'foobar'},
+                cookies={},
+                timeout=30,
+            )
+            requests_get_spy.reset_mock()
+            request_fire_spy.assert_called_once()
+            request_fire_spy.reset_mock()
             assert len(list(task_factory.log_dir.rglob('**/*'))) == 6
 
-            with pytest.raises(NotImplementedError) as nie:
-                HttpClientTask(
+            with pytest.raises(NotImplementedError, match='HttpClientTestTask has not implemented support for step text') as nie:
+                test_cls(
                     RequestDirection.FROM,
                     'https://$conf::test.host$/api/test | verify=True, content_type=json',
                     'http-env-get-2',
                     payload_variable='test',
                     text='foobar',
                 )
-            assert str(nie.value) == 'HttpClientTask has not implemented support for step text'
         finally:
-            try:
+            with suppress(KeyError):
                 del environ['GRIZZLY_LOG_DIR']
-            except:
-                pass
 
     def test_put(self, grizzly_fixture: GrizzlyFixture) -> None:
-        HttpClientTask.__scenario__ = grizzly_fixture.grizzly.scenario
-        task_factory = HttpClientTask(RequestDirection.TO, 'http://put.example.org', source='')
+        test_cls = type('HttpClientTestTask', (HttpClientTask, ), {'__scenario__': grizzly_fixture.grizzly.scenario})
+        task_factory = test_cls(RequestDirection.TO, 'http://put.example.org', source='')
         task = task_factory()
 
         parent = grizzly_fixture()
@@ -328,5 +340,5 @@ class TestHttpClientTask:
 
         with pytest.raises(NotImplementedError) as nie:
             task(parent)
-        assert 'HttpClientTask has not implemented PUT' in str(nie.value)
+        assert 'HttpClientTestTask has not implemented PUT' in str(nie.value)
         assert task_factory._context.get('test', None) == 'was here'
