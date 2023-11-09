@@ -1,5 +1,4 @@
-"""
-@anchor pydoc:grizzly.testdata.variables.csv_reader CSV Reader
+"""@anchor pydoc:grizzly.testdata.variables.csv_reader CSV Reader
 This variable reads a CSV file and provides a new row from the CSV file each time it is accessed.
 
 The CSV files **must** have headers for each column, since these are used to reference the value.
@@ -53,21 +52,24 @@ Second request:
 
 etc.
 """
-import os
+from __future__ import annotations
 
-from typing import Dict, List, Any, Type, Optional, cast
+from contextlib import suppress
 from csv import DictReader
-from random import randint
-
-from grizzly_extras.arguments import split_value, parse_arguments
+from os import environ
+from pathlib import Path
+from secrets import randbelow
+from typing import Any, ClassVar, Dict, List, Optional, Type, cast
 
 from grizzly.types import bool_type
+from grizzly_extras.arguments import parse_arguments, split_value
 
 from . import AtomicVariable
 
 
 def atomiccsvreader__base_type__(value: str) -> str:
-    grizzly_context_requests = os.path.join(os.environ.get('GRIZZLY_CONTEXT_ROOT', ''), 'requests')
+    """Validate values that `AtomicCsvReader` can be initialized with."""
+    grizzly_context_requests = Path(environ.get('GRIZZLY_CONTEXT_ROOT', '')) / 'requests'
 
     if '|' in value:
         csv_file, csv_arguments = split_value(value)
@@ -75,25 +77,29 @@ def atomiccsvreader__base_type__(value: str) -> str:
         try:
             arguments = parse_arguments(csv_arguments)
         except ValueError as e:
-            raise ValueError(f'AtomicCsvReader: {str(e)}') from e
+            message = f'AtomicCsvReader: {e!s}'
+            raise ValueError(message) from e
 
         for argument, value in arguments.items():
             if argument not in AtomicCsvReader.arguments:
-                raise ValueError(f'AtomicCsvReader: argument {argument} is not allowed')
-            else:
-                AtomicCsvReader.arguments[argument](value)
+                message = f'AtomicCsvReader: argument {argument} is not allowed'
+                raise ValueError(message)
+
+            AtomicCsvReader.arguments[argument](value)
 
         value = f'{csv_file} | {csv_arguments}'
     else:
         csv_file = value
 
-    path = os.path.join(grizzly_context_requests, csv_file)
+    path = grizzly_context_requests / csv_file
 
-    if not path.endswith('.csv'):
-        raise ValueError(f'AtomicCsvReader: {csv_file} must be a CSV file with file extension .csv')
+    if path.suffix != '.csv':
+        message = f'AtomicCsvReader: {csv_file} must be a CSV file with file extension .csv'
+        raise ValueError(message)
 
-    if not os.path.isfile(path):
-        raise ValueError(f'AtomicCsvReader: {csv_file} is not a file in {grizzly_context_requests}')
+    if not path.is_file():
+        message = f'AtomicCsvReader: {csv_file} is not a file in {grizzly_context_requests!s}'
+        raise ValueError(message)
 
     return value
 
@@ -104,13 +110,14 @@ class AtomicCsvReader(AtomicVariable[Dict[str, Any]]):
 
     _rows: Dict[str, List[Dict[str, Any]]]
     _settings: Dict[str, Dict[str, Any]]
-    context_root: str
-    arguments: Dict[str, Any] = {'repeat': bool_type, 'random': bool_type}
+    context_root: Path
+    arguments: ClassVar[Dict[str, Any]] = {'repeat': bool_type, 'random': bool_type}
 
-    def __init__(self, variable: str, value: str, outer_lock: bool = False) -> None:
-        with self.semaphore(outer_lock):
+    def __init__(self, variable: str, value: str, *, outer_lock: bool = False) -> None:
+        with self.semaphore(outer=outer_lock):
             if variable.count('.') != 0:
-                raise ValueError(f'{self.__class__.__name__}.{variable} is not a valid CSV source name, must be: {self.__class__.__name__}.<name>')
+                message = f'{self.__class__.__name__}.{variable} is not a valid CSV source name, must be: {self.__class__.__name__}.<name>'
+                raise ValueError(message)
 
             safe_value = self.__class__.__base_type__(value)
 
@@ -137,22 +144,21 @@ class AtomicCsvReader(AtomicVariable[Dict[str, Any]]):
 
                 return
 
-            self.context_root = os.path.join(os.environ.get('GRIZZLY_CONTEXT_ROOT', ''), 'requests')
+            self.context_root = Path(environ.get('GRIZZLY_CONTEXT_ROOT', '')) / 'requests'
             self._rows = {variable: self._create_row_queue(csv_file)}
             self._settings = {variable: settings}
             self.__initialized = True
 
     def _create_row_queue(self, value: str) -> List[Dict[str, Any]]:
-        queue: List[Dict[str, Any]] = []
+        input_file = self.context_root / value
 
-        with open(os.path.join(self.context_root, value)) as fd:
+        with input_file.open() as fd:
             reader = DictReader(fd)
-            queue = [cast(Dict[str, Any], row) for row in reader]
-
-        return queue
+            return [cast(Dict[str, Any], row) for row in reader]
 
     @classmethod
-    def clear(cls: Type['AtomicCsvReader']) -> None:
+    def clear(cls: Type[AtomicCsvReader]) -> None:
+        """Clear all instatiated variables."""
         super().clear()
 
         instance = cast(AtomicCsvReader, cls.get())
@@ -163,6 +169,7 @@ class AtomicCsvReader(AtomicVariable[Dict[str, Any]]):
             del instance._settings[variable]
 
     def __getitem__(self, variable: str) -> Optional[Dict[str, Any]]:
+        """Get variable value."""
         with self.semaphore():
             column: Optional[str] = None
 
@@ -173,8 +180,8 @@ class AtomicCsvReader(AtomicVariable[Dict[str, Any]]):
                 settings = self._settings[variable]
 
                 if settings['random'] is True:
-                    roof = len(self._rows[variable]) - 1
-                    index = randint(0, roof)
+                    roof = len(self._rows[variable])
+                    index = randbelow(roof)
                 else:
                     index = 0
 
@@ -188,25 +195,23 @@ class AtomicCsvReader(AtomicVariable[Dict[str, Any]]):
             if column is not None:
                 if column not in row:
                     self._rows[variable].insert(0, row)
-                    raise ValueError(f'{self.__class__.__name__}.{variable}: {column} does not exists')
+                    message = f'{self.__class__.__name__}.{variable}: {column} does not exists'
+                    raise ValueError(message)
                 value = row[column]
                 row = {column: value}
 
             return row
 
     def __delitem__(self, variable: str) -> None:
+        """Remove variable."""
         with self.semaphore():
             if '.' in variable:
                 [variable, _] = variable.rsplit('.', 1)
 
-            try:
+            with suppress(KeyError):
                 del self._rows[variable]
-            except KeyError:
-                pass
 
-            try:
+            with suppress(KeyError):
                 del self._settings[variable]
-            except KeyError:
-                pass
 
             super().__delitem__(variable)

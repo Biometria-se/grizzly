@@ -1,5 +1,4 @@
-"""
-@anchor pydoc:grizzly.testdata.variables.random_integer Random Integer
+"""@anchor pydoc:grizzly.testdata.variables.random_integer Random Integer
 This variable provides an random integer between specified interval.
 
 ## Format
@@ -25,28 +24,35 @@ This can then be used in a template:
 
 `AtomicRandomInteger.weight` will then be anything between, and including, `10` and `30`.
 """
-from typing import Type, Dict, cast
-from random import randint
+from __future__ import annotations
+
+from contextlib import suppress
+from secrets import choice
+from typing import Dict, Type, cast
 
 from . import AtomicVariable
 
 
 def atomicrandominteger__base_type__(value: str) -> str:
+    """Validate values that `AtomicRandomInteger` can be set with."""
     if '..' not in value:
-        raise ValueError(f'AtomicRandomInteger: {value} is not a valid value format, must be: "a..b"')
+        message = f'AtomicRandomInteger: {value} is not a valid value format, must be: "a..b"'
+        raise ValueError(message)
 
-    range = [v for v in value.split('..', 1)]
+    values = list(value.split('..', 1))
 
-    for v in range:
-        try:
+    try:
+        for v in values:
             str(int(v))
-        except ValueError as e:
-            raise ValueError(f'AtomicRandomInteger: {v} is not a valid integer') from e
+    except ValueError as e:
+        message = f'AtomicRandomInteger: {v} is not a valid integer'
+        raise ValueError(message) from e
 
-    minimum, maximum = [int(v) for v in range]
+    minimum, maximum = (int(v) for v in values)
 
     if minimum > maximum:
-        raise ValueError('AtomicRandomInteger: first value needs to be less than second value')
+        message = 'AtomicRandomInteger: first value needs to be less than second value'
+        raise ValueError(message)
 
     return value
 
@@ -56,10 +62,10 @@ class AtomicRandomInteger(AtomicVariable[int]):
     __initialized: bool = False
     _max: Dict[str, int]
 
-    def __init__(self, variable: str, value: str, outer_lock: bool = False) -> None:
-        with self.semaphore(outer_lock):
+    def __init__(self, variable: str, value: str, *, outer_lock: bool = False) -> None:
+        with self.semaphore(outer=outer_lock):
             safe_value = self.__class__.__base_type__(value)
-            minimum, maximum = [int(v) for v in safe_value.split('..', 1)]
+            minimum, maximum = (int(v) for v in safe_value.split('..', 1))
 
             super().__init__(variable, minimum, outer_lock=True)
 
@@ -73,7 +79,8 @@ class AtomicRandomInteger(AtomicVariable[int]):
             self.__initialized = True
 
     @classmethod
-    def clear(cls: Type['AtomicRandomInteger']) -> None:
+    def clear(cls: Type[AtomicRandomInteger]) -> None:
+        """Clear all instatiated variables."""
         super().clear()
 
         instance = cast(AtomicRandomInteger, cls.get())
@@ -82,17 +89,17 @@ class AtomicRandomInteger(AtomicVariable[int]):
             del instance._max[variable]
 
     def __getitem__(self, variable: str) -> int:
+        """Get variable value."""
         with self.semaphore():
             minimum = cast(int, self._get_value(variable))
             maximum = self._max[variable]
 
-            return randint(minimum, maximum)
+            return choice(range(minimum, maximum))
 
     def __delitem__(self, variable: str) -> None:
+        """Remove variable."""
         with self.semaphore():
-            try:
+            with suppress(KeyError):
                 del self._max[variable]
-            except KeyError:
-                pass
 
             super().__delitem__(variable)

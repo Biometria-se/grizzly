@@ -224,10 +224,10 @@ class TestGrizzlyVariables:
     def test_AtomicDate(self, cleanup: AtomicVariableCleanupFixture) -> None:
         try:
             t = GrizzlyVariables()
-            with pytest.raises(ValueError):
+            with pytest.raises(TypeError, match='is not a string'):
                 t['AtomicDate.test1'] = 1337
 
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match='Unknown string format: hello'):
                 t['AtomicDate.test6'] = 'hello'
 
             t['AtomicDate.test2'] = '2021-03-29'
@@ -242,10 +242,10 @@ class TestGrizzlyVariables:
             assert isinstance(t['AtomicDate.test4'], str)
             assert t['AtomicDate.test4'] == 'now | format="%Y-%m-%d"'
 
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match='Unknown string format: asdf'):
                 t['AtomicDate.test5'] = 'asdf|format="%Y-%m-%d"'
 
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match='incorrect format in arguments: ""'):
                 t['AtomicDate.test6'] = 'now|'
 
             t['AtomicDate.test7'] = 'now | format="%Y-%m-%dT%H:%M:%S.000Z"'
@@ -256,16 +256,16 @@ class TestGrizzlyVariables:
         try:
             t = GrizzlyVariables()
 
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match='10 is not a valid value format, must be: "a..b"'):
                 t['AtomicRandomInteger.test1'] = '10'
 
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match='1.17 is not a valid integer'):
                 t['AtomicRandomInteger.test2'] = '1.17..5.0'
 
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match='1.0 is not a valid integer'):
                 t['AtomicRandomInteger.test5'] = '1.0..3.5'
 
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match='first value needs to be less than second value'):
                 t['AtomicRandomInteger.test3'] = '100..10'
 
             t['AtomicRandomInteger.test4'] = '1..10'
@@ -274,13 +274,13 @@ class TestGrizzlyVariables:
         finally:
             cleanup()
 
-    @pytest.mark.parametrize('input,expected', [
-        ('variable', (None, None, 'variable', None,),),
-        ('AtomicIntegerIncrementer.foo', ('grizzly.testdata.variables', 'AtomicIntegerIncrementer', 'foo', None,),),
-        ('AtomicCsvReader.users.username', ('grizzly.testdata.variables', 'AtomicCsvReader', 'users', 'username',),),
-        ('tests.helpers.AtomicCustomVariable.hello', ('tests.helpers', 'AtomicCustomVariable', 'hello', None,),),
-        ('tests.helpers.AtomicCustomVariable.foo.bar', ('tests.helpers', 'AtomicCustomVariable', 'foo', 'bar',),),
-        ('a.custom.struct', (None, None, 'a.custom.struct', None,),),
+    @pytest.mark.parametrize(('input', 'expected'), [
+        ('variable', (None, None, 'variable', None)),
+        ('AtomicIntegerIncrementer.foo', ('grizzly.testdata.variables', 'AtomicIntegerIncrementer', 'foo', None)),
+        ('AtomicCsvReader.users.username', ('grizzly.testdata.variables', 'AtomicCsvReader', 'users', 'username')),
+        ('tests.helpers.AtomicCustomVariable.hello', ('tests.helpers', 'AtomicCustomVariable', 'hello', None)),
+        ('tests.helpers.AtomicCustomVariable.foo.bar', ('tests.helpers', 'AtomicCustomVariable', 'foo', 'bar')),
+        ('a.custom.struct', (None, None, 'a.custom.struct', None)),
     ])
     def test_get_variable_spec(self, input: str, expected: Tuple[Optional[str], Optional[str], str, Optional[str]]) -> None:
         assert GrizzlyVariables.get_variable_spec(input) == expected
