@@ -45,7 +45,7 @@ if TYPE_CHECKING:  # pragma: no cover
 # see https://github.com/python/mypy/issues/5374
 @template('endpoint', 'destination', 'source', 'name', 'variable_template')
 class ClientTask(GrizzlyMetaRequestTask):
-    __scenario__: GrizzlyContextScenario
+    __scenario__: ClassVar[GrizzlyContextScenario]
     _scenario: GrizzlyContextScenario
     _schemes: List[str]
     _scheme: str
@@ -69,7 +69,7 @@ class ClientTask(GrizzlyMetaRequestTask):
 
     log_dir: Path
 
-    def __init__(
+    def __init__(  # noqa: PLR0915
         self,
         direction: RequestDirection,
         endpoint: str,
@@ -299,7 +299,7 @@ class ClientTask(GrizzlyMetaRequestTask):
 
 
 class client:
-    available: Dict[str, Type[ClientTask]] = {}
+    available: ClassVar[Dict[str, Type[ClientTask]]] = {}
     schemes: List[str]
 
     def __init__(self, scheme: str, *additional_schemes: str) -> None:

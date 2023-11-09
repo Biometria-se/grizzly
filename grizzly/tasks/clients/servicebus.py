@@ -1,5 +1,5 @@
-# pylint: disable=line-too-long
-"""This task performs Azure SerciceBus operations to a specified endpoint.
+"""@anchor pydoc:grizzly.tasks.clients.servicebus Service Bus
+This task performs Azure SerciceBus operations to a specified endpoint.
 
 ## Step implementations
 
@@ -63,26 +63,29 @@ Fragment:
 
 * `<content type>` _str_ - content type of response payload, should be used in combination with `<expression>`
 """  # noqa: E501
-from typing import Optional, Dict, cast
-from urllib.parse import urlparse, parse_qs
-from platform import node as hostname
-from pathlib import Path
-from textwrap import dedent
-from json import dumps as jsondumps
+from __future__ import annotations
+
 from dataclasses import dataclass, field
+from json import dumps as jsondumps
+from pathlib import Path
+from platform import node as hostname
+from textwrap import dedent
+from typing import TYPE_CHECKING, ClassVar, Dict, Optional, Set, cast
+from urllib.parse import parse_qs, urlparse
 
 import zmq.green as zmq
 
-from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
-from grizzly_extras.transformer import TransformerContentType
-from grizzly_extras.arguments import parse_arguments
-
-from grizzly.types import GrizzlyResponse, RequestDirection, RequestType
-from grizzly.scenarios import GrizzlyScenario
 from grizzly.tasks import template
+from grizzly.types import GrizzlyResponse, RequestDirection, RequestType
 from grizzly.utils import async_message_request_wrapper
+from grizzly_extras.arguments import parse_arguments
+from grizzly_extras.transformer import TransformerContentType
 
-from . import client, ClientTask, logger  # pylint: disable=unused-import
+from . import ClientTask, client, logger
+
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.scenarios import GrizzlyScenario
+    from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
 
 
 @dataclass
@@ -95,10 +98,12 @@ class State:
 
     @property
     def parent_id(self) -> int:
+        """Generate parent object instance unique ID."""
         return id(self.parent.user)
 
     @property
     def first_response(self) -> Optional[AsyncMessageResponse]:
+        """Return first response this task got."""
         return self._first_response
 
     @first_response.setter
@@ -111,7 +116,7 @@ class State:
 @template('context')
 @client('sb')
 class ServiceBusClientTask(ClientTask):
-    __dependencies__ = set(['async-messaged'])
+    __dependencies__: ClassVar[Set[str]] = {'async-messaged'}
 
     _zmq_url = 'tcp://127.0.0.1:5554'
     _zmq_context: zmq.Context
@@ -155,20 +160,19 @@ class ServiceBusClientTask(ClientTask):
             message_wait: Optional[int] = int(parameters.get('MessageWait', ['0'])[0])
             if message_wait is not None and message_wait < 1:
                 message_wait = None
-        except ValueError:
-            raise ValueError('MessageWait parameter in endpoint fragment is not a valid integer')
+        except ValueError as e:
+            message = 'MessageWait parameter in endpoint fragment is not a valid integer'
+            raise ValueError(message) from e
 
         consume_fragment = parameters.get('Consume', ['False'])[0]
         if consume_fragment not in ['True', 'False']:
-            raise ValueError('Consume parameter in endpoint fragment is not a valid boolean')
+            message = 'Consume parameter in endpoint fragment is not a valid boolean'
+            raise ValueError(message)
 
         consume = consume_fragment == 'True'
 
         content_type_fragment = parameters.get('ContentType', None)
-        if content_type_fragment is not None:
-            content_type = TransformerContentType.from_string(content_type_fragment[0]).name
-        else:
-            content_type = None
+        content_type = TransformerContentType.from_string(content_type_fragment[0]).name if content_type_fragment is not None else None
 
         context_endpoint = parsed.path[1:].replace('/', ', ')
 
@@ -187,7 +191,7 @@ class ServiceBusClientTask(ClientTask):
 
         self._state = {}
 
-    def get_state(self, parent: 'GrizzlyScenario') -> State:
+    def get_state(self, parent: GrizzlyScenario) -> State:
         state = self._state.get(parent, None)
 
         if state is None:
@@ -209,7 +213,7 @@ class ServiceBusClientTask(ClientTask):
 
         return state
 
-    @ClientTask.text.setter  # type: ignore
+    @ClientTask.text.setter
     def text(self, value: str) -> None:
         self._text = dedent(value).strip()
 

@@ -128,7 +128,6 @@ class AtomicDirectoryContents(AtomicVariable[str]):
 
     @classmethod
     def clear(cls: Type[AtomicDirectoryContents]) -> None:
-        """Clear all instatiated variables."""
         super().clear()
 
         instance = cast(AtomicDirectoryContents, cls.get())
@@ -150,7 +149,6 @@ class AtomicDirectoryContents(AtomicVariable[str]):
         return queue
 
     def __getitem__(self, variable: str) -> Optional[str]:
-        """Get variable value."""
         with self.semaphore():
             self._get_value(variable)
 
@@ -173,7 +171,6 @@ class AtomicDirectoryContents(AtomicVariable[str]):
                 return value
 
     def __delitem__(self, variable: str) -> None:
-        """Remove variable."""
         with self.semaphore():
             with suppress(KeyError):
                 del self._files[variable]

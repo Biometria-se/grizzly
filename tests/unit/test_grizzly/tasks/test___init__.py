@@ -1,24 +1,29 @@
+"""Unit tests for grizzly.tasks."""
+from __future__ import annotations
+
+from contextlib import suppress
 from os import environ
-from typing import Any, Dict, List, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Tuple
 
 import pytest
 
-from pytest_mock import MockerFixture
-
-from grizzly.tasks import (
-    GrizzlyTask,
-    LoopTask,
-    ConditionalTask,
-    RequestTask,
-    AsyncRequestGroupTask,
-    template,
-    grizzlytask,
-)
-from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContextScenario
 from grizzly.scenarios import GrizzlyScenario, IteratorScenario
+from grizzly.tasks import (
+    AsyncRequestGroupTask,
+    ConditionalTask,
+    GrizzlyTask,
+    LoopTask,
+    RequestTask,
+    grizzlytask,
+    template,
+)
+from grizzly.types import RequestMethod
 
-from tests.fixtures import GrizzlyFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from pytest_mock import MockerFixture
+
+    from tests.fixtures import GrizzlyFixture
 
 
 @template('string_template', 'list_template', 'dict_template')
@@ -37,17 +42,15 @@ class DummyTask(GrizzlyTask):
         }
 
     def __call__(self) -> grizzlytask:
-        raise NotImplementedError(f'{self.__class__.__name__} has not been implemented')
+        message = f'{self.__class__.__name__} has not been implemented'
+        raise NotImplementedError(message)
 
 
-def on_func(parent: GrizzlyScenario) -> Any:
-    """
-    hello world
-    """
-    pass
+def on_func(_: GrizzlyScenario) -> Any:
+    """Hello world."""
 
 
-def on_event(parent: GrizzlyScenario) -> None:
+def on_event(_: GrizzlyScenario) -> None:
     pass
 
 
@@ -57,7 +60,7 @@ class Testgrizzlytask:
 
         assert task._task is on_func
         assert task.__doc__ is not None
-        assert task.__doc__.strip() == 'hello world'
+        assert task.__doc__.strip() == 'Hello world.'
 
     def test___call__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         parent = grizzly_fixture()
@@ -117,10 +120,8 @@ class Testgrizzlytask:
 
 class TestGrizzlyTask:
     def test___init__(self) -> None:
-        try:
+        with suppress(KeyError):
             del environ['GRIZZLY_CONTEXT_ROOT']
-        except KeyError:
-            pass
 
         task = DummyTask()
 
@@ -133,17 +134,14 @@ class TestGrizzlyTask:
 
             assert task._context_root == 'foo bar!'
         finally:
-            try:
+            with suppress(KeyError):
                 del environ['GRIZZLY_CONTEXT_ROOT']
-            except KeyError:
-                pass
 
     def test___call__(self) -> None:
         task = DummyTask()
 
-        with pytest.raises(NotImplementedError) as nie:
+        with pytest.raises(NotImplementedError, match='DummyTask has not been implemented'):
             task()
-        assert 'DummyTask has not been implemented' == str(nie.value)
 
     def test_get_templates(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
         task = DummyTask()
@@ -171,11 +169,11 @@ class TestGrizzlyTask:
         # conditional -> loop -> request
         conditional_factory = ConditionalTask('conditional-{{ conditional_name }}', '{{ value | int > 0 }}')
 
-        conditional_factory.switch(True)
+        conditional_factory.switch(pointer=True)
 
-        loop_factory = LoopTask(grizzly, 'loop-{{ loop_name }}', '["hello", "world"]', 'endpoint_suffix')
+        loop_factory = LoopTask('loop-{{ loop_name }}', '["hello", "world"]', 'endpoint_suffix')
 
-        for i in range(0, 3):
+        for i in range(3):
             loop_factory.add(RequestTask(RequestMethod.GET, name=f'test-{i}', endpoint='/api/test/{{ endpoint_suffix }}', source=None))
 
         conditional_factory.add(loop_factory)
@@ -192,11 +190,11 @@ class TestGrizzlyTask:
         # loop -> conditional -> request
         conditional_factory = ConditionalTask('conditional-{{ conditional_name }}', '{{ value | int > 0 }}')
 
-        conditional_factory.switch(True)
+        conditional_factory.switch(pointer=True)
 
-        loop_factory = LoopTask(grizzly, 'loop-{{ loop_name }}', '["hello", "world"]', 'endpoint_suffix')
+        loop_factory = LoopTask('loop-{{ loop_name }}', '["hello", "world"]', 'endpoint_suffix')
 
-        for i in range(0, 3):
+        for i in range(3):
             conditional_factory.add(RequestTask(RequestMethod.GET, name=f'test-{i}', endpoint='/api/test/{{ endpoint_suffix }}', source=None))
 
         loop_factory.add(conditional_factory)
@@ -213,13 +211,13 @@ class TestGrizzlyTask:
         # conditional -> loop -> async group -> request
         conditional_factory = ConditionalTask('conditional-{{ conditional_name }}', '{{ value | int > 0 }}')
 
-        conditional_factory.switch(False)
+        conditional_factory.switch(pointer=False)
 
-        loop_factory = LoopTask(grizzly, 'loop-{{ loop_name }}', '["hello", "world"]', 'endpoint_suffix')
+        loop_factory = LoopTask('loop-{{ loop_name }}', '["hello", "world"]', 'endpoint_suffix')
 
         async_group_factory = AsyncRequestGroupTask('async-{{ async_name }}')
 
-        for i in range(0, 3):
+        for i in range(3):
             async_group_factory.add(RequestTask(
                 RequestMethod.GET,
                 name=f'request-{i}-{{{{ request_name }}}}',

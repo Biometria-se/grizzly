@@ -1,5 +1,4 @@
-"""
-@anchor pydoc:grizzly.tasks.request Request
+"""@anchor pydoc:grizzly.tasks.request Request
 This task calls the `request` method of a `grizzly.users` implementation.
 
 This is the most essential task in `grizzly`, it defines requests that the specified load user is going to execute
@@ -56,33 +55,36 @@ Then put request "test/request.j2.json" with name "test-put" to endpoint "/api/t
 And set response content type to "application/json"
 ```
 """
-from typing import TYPE_CHECKING, Dict, List, Optional, Any
+from __future__ import annotations
 
-from jinja2.environment import Template
-from grizzly_extras.transformer import TransformerContentType
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
+
 from grizzly_extras.arguments import parse_arguments, split_value, unquote
+from grizzly_extras.transformer import TransformerContentType
 
-from grizzly.types import GrizzlyResponse, RequestMethod
-
-from . import GrizzlyMetaRequestTask, template as task_template, grizzlytask  # pylint: disable=unused-import
+from . import GrizzlyMetaRequestTask, grizzlytask  # pylint: disable=unused-import
+from . import template as task_template
 
 if TYPE_CHECKING:  # pragma: no cover
+    from jinja2.environment import Template
+
     from grizzly.scenarios import GrizzlyScenario
+    from grizzly.types import GrizzlyResponse, RequestMethod
     from grizzly.users.base.response_handler import ResponseHandlerAction
 
 
 class RequestTaskHandlers:
-    metadata: List['ResponseHandlerAction']
-    payload: List['ResponseHandlerAction']
+    metadata: List[ResponseHandlerAction]
+    payload: List[ResponseHandlerAction]
 
     def __init__(self) -> None:
         self.metadata = []
         self.payload = []
 
-    def add_metadata(self, handler: 'ResponseHandlerAction') -> None:
+    def add_metadata(self, handler: ResponseHandlerAction) -> None:
         self.metadata.append(handler)
 
-    def add_payload(self, handler: 'ResponseHandlerAction') -> None:
+    def add_payload(self, handler: ResponseHandlerAction) -> None:
         self.payload.append(handler)
 
 
@@ -146,9 +148,15 @@ class RequestTask(GrizzlyMetaRequestTask):
                 content_type = TransformerContentType.from_string(unquote(self.arguments['content_type']))
                 del self.arguments['content_type']
 
-                if content_type == TransformerContentType.MULTIPART_FORM_DATA and \
-                   ('multipart_form_data_name' not in self.arguments or 'multipart_form_data_filename' not in self.arguments):
-                    raise ValueError(f'Content type multipart/form-data requires endpoint arguments multipart_form_data_name and multipart_form_data_filename: {self.endpoint}')
+                if (
+                    content_type == TransformerContentType.MULTIPART_FORM_DATA
+                    and (
+                        'multipart_form_data_name' not in self.arguments
+                        or 'multipart_form_data_filename' not in self.arguments
+                    )
+                ):
+                    message = f'Content type multipart/form-data requires endpoint arguments multipart_form_data_name and multipart_form_data_filename: {self.endpoint}'
+                    raise ValueError(message)
 
             self.endpoint = value
 
@@ -161,11 +169,13 @@ class RequestTask(GrizzlyMetaRequestTask):
 
     @source.setter
     def source(self, value: Optional[str]) -> None:
+        """Reset template if source is changed."""
         self._template = None
         self._source = value
 
     @property
     def template(self) -> Optional[Template]:
+        """Get template, or if it doesn't exist create it."""
         if self._source is None:
             return None
 
@@ -175,6 +185,7 @@ class RequestTask(GrizzlyMetaRequestTask):
         return self._template
 
     def add_metadata(self, key: str, value: str) -> None:
+        """Add new metadata key value, where default value of metadata is None, it must be initialized as a dict."""
         if self.metadata is None:
             self.metadata = {key: value}
         else:
@@ -182,10 +193,10 @@ class RequestTask(GrizzlyMetaRequestTask):
 
     def __call__(self) -> grizzlytask:
         @grizzlytask
-        def task(parent: 'GrizzlyScenario') -> Any:
+        def task(parent: GrizzlyScenario) -> Any:
             return parent.user.request(self)
 
         return task
 
-    def execute(self, parent: 'GrizzlyScenario') -> GrizzlyResponse:
+    def execute(self, parent: GrizzlyScenario) -> GrizzlyResponse:
         return parent.user.request(self)

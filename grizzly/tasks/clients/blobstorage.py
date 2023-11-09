@@ -1,4 +1,5 @@
-"""This task performs Azure Blob Storage put operations to a specified endpoint.
+"""@anchor pydoc:grizzly.tasks.clients.blobstorage Blob Storage
+This task performs Azure Blob Storage put operations to a specified endpoint.
 
 This is useful if the scenario is another user type than `BlobStorageUser`, but the scenario still requires an action towards a blob container.
 
@@ -40,19 +41,22 @@ bs[s]://<AccountName>?AccountKey=<AccountKey>&Container=<Container>[&Overwrite=<
 
 The MIME type of an uploaded file will automagically be guessed based on the [rendered] destination file extension.
 """
-import logging
+from __future__ import annotations
 
-from typing import Optional, List, cast
-from urllib.parse import urlparse, parse_qs, quote
-from pathlib import Path
+import logging
 from mimetypes import guess_type as mimetype_guess
+from pathlib import Path
+from typing import TYPE_CHECKING, List, Optional, cast
+from urllib.parse import parse_qs, quote, urlparse
 
 from azure.storage.blob import BlobServiceClient, ContentSettings
 
-from grizzly.types import RequestDirection, GrizzlyResponse, bool_type
-from grizzly.scenarios import GrizzlyScenario
+from grizzly.types import GrizzlyResponse, RequestDirection, bool_type
 
-from . import client, ClientTask
+from . import ClientTask, client
+
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.scenarios import GrizzlyScenario
 
 # disable verbose INFO logging
 azure_logger = logging.getLogger('azure.core.pipeline.policies.http_logging_policy')
@@ -97,7 +101,8 @@ class BlobStorageClientTask(ClientTask):
         self._endpoints_protocol = 'http' if self._scheme == 'bs' else 'https'
 
         if parsed.netloc is None or len(parsed.netloc) < 1:
-            raise ValueError(f'{self.__class__.__name__}: could not find account name in {self.endpoint}')
+            message = f'{self.__class__.__name__}: could not find account name in {self.endpoint}'
+            raise ValueError(message)
 
         # See urllib/parse.py:771-774, explicit + characters are replaced with white space,
         # AccountKey could contain explicit + characters, so we must quote them first.
@@ -110,10 +115,12 @@ class BlobStorageClientTask(ClientTask):
         parameters = parse_qs('&'.join(parsed_query))
 
         if 'AccountKey' not in parameters:
-            raise ValueError(f'{self.__class__.__name__}: could not find AccountKey in {self.endpoint}')
+            message = f'{self.__class__.__name__}: could not find AccountKey in {self.endpoint}'
+            raise ValueError(message)
 
         if 'Container' not in parameters:
-            raise ValueError(f'{self.__class__.__name__}: could not find Container in {self.endpoint}')
+            message = f'{self.__class__.__name__}: could not find Container in {self.endpoint}'
+            raise ValueError(message)
 
         self.account_name = parsed.netloc
         self.account_key = parameters['AccountKey'][0]
@@ -127,18 +134,17 @@ class BlobStorageClientTask(ClientTask):
 
     @property
     def connection_string(self) -> str:
+        """Construct azure-style connection string."""
         return f'DefaultEndpointsProtocol={self._endpoints_protocol};AccountName={self.account_name};AccountKey={self.account_key};EndpointSuffix=core.windows.net'
 
-    def get(self, parent: GrizzlyScenario) -> GrizzlyResponse:
-        raise NotImplementedError(f'{self.__class__.__name__} has not implemented GET')  # pragma: no cover
+    def get(self, _: GrizzlyScenario) -> GrizzlyResponse:  # pragma: no cover
+        message = f'{self.__class__.__name__} has not implemented GET'
+        raise NotImplementedError(message)
 
     def put(self, parent: GrizzlyScenario) -> GrizzlyResponse:
         source = parent.render(cast(str, self.source))
 
-        if self.destination is not None:
-            destination = parent.render(self.destination)
-        else:
-            destination = Path(source).name
+        destination = parent.render(self.destination) if self.destination is not None else Path(source).name
 
         content_type, _ = mimetype_guess(destination)
 

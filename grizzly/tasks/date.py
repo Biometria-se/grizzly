@@ -1,6 +1,4 @@
-# pylint: disable=line-too-long
-"""
-@anchor pydoc:grizzly.tasks.date Date
+"""@anchor pydoc:grizzly.tasks.date Date
 This task parses a string representation of a date/time and allows transformation of it, such as specifying an offset or changing the format,
 and saves the result as a date/time string in an variable.
 
@@ -38,9 +36,10 @@ in the same example.
 
 In addition to this it is also possible to append milliseconds with `:ms` and remove all the seperators in the date and time with `:no-sep`.
 """  # noqa: E501
-# pylint: enable=line-too-long
-from typing import TYPE_CHECKING, Dict, Any, Optional, cast
+from __future__ import annotations
+
 from datetime import datetime
+from typing import TYPE_CHECKING, Any, Dict, Optional, cast
 
 try:
     from zoneinfo import ZoneInfo, ZoneInfoNotFoundError  # pylint: disable=import-error
@@ -48,14 +47,14 @@ except ImportError:
     # pyright: ignoreReportMissingImports
     from backports.zoneinfo import ZoneInfo, ZoneInfoNotFoundError  # type: ignore[no-redef]  # pylint: disable=import-error
 
-from dateutil.parser import ParserError, parse as dateparser
+from dateutil.parser import ParserError
+from dateutil.parser import parse as dateparser
 from dateutil.relativedelta import relativedelta
 
-from grizzly_extras.arguments import get_unsupported_arguments, split_value, parse_arguments
-
 from grizzly.utils import parse_timespan
+from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments, split_value
 
-from . import GrizzlyTask, template, grizzlytask
+from . import GrizzlyTask, grizzlytask, template
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.scenarios import GrizzlyScenario
@@ -80,14 +79,16 @@ class DateTask(GrizzlyTask):
             unsupported_arguments = get_unsupported_arguments(['format', 'timezone', 'offset'], self.arguments)
 
             if len(unsupported_arguments) > 0:
-                raise ValueError(f'unsupported arguments {", ".join(unsupported_arguments)}')
+                message = f'unsupported arguments {", ".join(unsupported_arguments)}'
+                raise ValueError(message)
         else:
-            raise ValueError('no arguments specified')
+            message = 'no arguments specified'
+            raise ValueError(message)
 
     def __call__(self) -> grizzlytask:
         @grizzlytask
-        def task(parent: 'GrizzlyScenario') -> Any:
-            value_rendered = parent.render(self.value, dict(datetime=datetime))
+        def task(parent: GrizzlyScenario) -> Any:
+            value_rendered = parent.render(self.value, {'datetime': datetime})
 
             arguments_rendered: Dict[str, str] = {}
 
@@ -99,7 +100,8 @@ class DateTask(GrizzlyTask):
             try:
                 date_value = dateparser(value_rendered)
             except ParserError as e:
-                raise ValueError(f'"{value_rendered}" is not a valid datetime string') from e
+                message = f'"{value_rendered}" is not a valid datetime string'
+                raise ValueError(message) from e
 
             offset = self.arguments.get('offset', None)
             if offset is not None:
@@ -114,7 +116,8 @@ class DateTask(GrizzlyTask):
                 try:
                     timezone = ZoneInfo(timezone_argument)
                 except ZoneInfoNotFoundError as e:
-                    raise ValueError(f'"{timezone_argument}" is not a valid time zone') from e
+                    message = f'"{timezone_argument}" is not a valid time zone'
+                    raise ValueError(message) from e
 
             date_format = cast(str, self.arguments.get('format', '%Y-%m-%d %H:%M:%S'))
 

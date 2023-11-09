@@ -125,7 +125,6 @@ class RestApiUser(ResponseHandler, GrizzlyUser, HttpRequests, AsyncRequests, Gri
         self.cookies = {}
 
     def on_start(self) -> None:
-        """Start a session timer when this user starts."""
         super().on_start()
 
         self.session_started = time()

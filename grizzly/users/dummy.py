@@ -32,5 +32,4 @@ class DummyUser(GrizzlyUser):
         super().__init__(environment, *args, **kwargs)
 
     def request_impl(self, _: RequestTask) -> GrizzlyResponse:
-        """Do nothing."""
         return None, None

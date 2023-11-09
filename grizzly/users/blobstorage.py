@@ -77,17 +77,14 @@ class BlobStorageUser(ResponseHandler, GrizzlyUser):
             raise ValueError(message)
 
     def on_start(self) -> None:
-        """Create blob storage client when user starts."""
         super().on_start()
         self.blob_client = BlobServiceClient.from_connection_string(conn_str=self.host)
 
     def on_stop(self) -> None:
-        """Disconnect blob storage client when user stops."""
         self.blob_client.close()
         super().on_stop()
 
     def request_impl(self, request: RequestTask) -> GrizzlyResponse:
-        """Perform a blob storage request based on request task."""
         blob = Path(request.endpoint).name
         container = request.endpoint
 

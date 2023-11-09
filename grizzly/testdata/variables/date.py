@@ -48,7 +48,7 @@ from grizzly_extras.arguments import parse_arguments, split_value
 from . import AtomicVariable
 
 
-def atomicdate__base_type__(value: str) -> str:
+def atomicdate__base_type__(value: str) -> str:  # noqa: PLR0912
     """Validate values that `AtomicDate` can be initialized with."""
     if not isinstance(value, str):
         message = f'AtomicDate: {value} ({type(value)}) is not a string'  # type: ignore[unreachable]
@@ -158,7 +158,6 @@ class AtomicDate(AtomicVariable[Union[str, datetime]]):
 
     @classmethod
     def clear(cls: Type[AtomicDate]) -> None:
-        """Clear all instatiated variables."""
         super().clear()
 
         instance = cast(AtomicDate, cls.get())
@@ -167,7 +166,6 @@ class AtomicDate(AtomicVariable[Union[str, datetime]]):
             del instance._settings[variable]
 
     def __getitem__(self, variable: str) -> Optional[str]:
-        """Get variable value."""
         with self.semaphore():
             value = self._get_value(variable)
 
@@ -191,7 +189,6 @@ class AtomicDate(AtomicVariable[Union[str, datetime]]):
             ).strftime(self._settings[variable]['format'])
 
     def __delitem__(self, variable: str) -> None:
-        """Remove variable."""
         with self.semaphore():
             with suppress(KeyError):
                 del self._settings[variable]

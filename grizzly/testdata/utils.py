@@ -150,7 +150,7 @@ def _objectify(testdata: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def create_context_variable(grizzly: GrizzlyContext, variable: str, value: str) -> Dict[str, Any]:
-    """Create a variable as acontext variable. Handles other separators than `.`."""
+    """Create a variable as a context variable. Handles other separators than `.`."""
     if is_template(value):
         grizzly.scenario.orphan_templates.append(value)
 

@@ -1,19 +1,22 @@
-from typing import TYPE_CHECKING, Any, cast
+"""Unit tests for grizzly.tasks.loop."""
+from __future__ import annotations
+
+from copy import deepcopy
 from json import JSONDecodeError
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
-from pytest_mock import MockerFixture
-
-from grizzly.tasks import LoopTask, GrizzlyTask, grizzlytask
 from grizzly.context import GrizzlyContextScenario
 from grizzly.exceptions import RestartScenario, StopUser
-
-from tests.fixtures import GrizzlyFixture
-from tests.helpers import TestTask, TestExceptionTask
+from grizzly.tasks import GrizzlyTask, LoopTask, grizzlytask
+from tests.helpers import ANY, TestExceptionTask, TestTask
 
 if TYPE_CHECKING:
+    from pytest_mock import MockerFixture
+
     from grizzly.scenarios import GrizzlyScenario
+    from tests.fixtures import GrizzlyFixture
 
 
 class TestErrorTask(TestTask):
@@ -21,11 +24,12 @@ class TestErrorTask(TestTask):
         super_task = super().__call__()
 
         @grizzlytask
-        def task(parent: 'GrizzlyScenario') -> Any:
+        def task(parent: GrizzlyScenario) -> Any:
             if self.task_call_count > 0:
-                raise ValueError('error')
-            else:
-                super_task(parent)
+                msg = 'error'
+                raise ValueError(msg)
+
+            super_task(parent)
 
         return task
 
@@ -34,12 +38,11 @@ class TestLoopTask:
     def test___init__(self, grizzly_fixture: GrizzlyFixture) -> None:
         grizzly = grizzly_fixture.grizzly
 
-        with pytest.raises(ValueError) as ve:
-            LoopTask(grizzly=grizzly, name='test', values='["hello", "world"]', variable='asdf')
-        assert str(ve.value) == 'LoopTask: asdf has not been initialized'
+        with pytest.raises(ValueError, match='LoopTask: asdf has not been initialized'):
+            LoopTask(name='test', values='["hello", "world"]', variable='asdf')
 
         grizzly.state.variables['asdf'] = 'none'
-        task_factory = LoopTask(grizzly=grizzly, name='test', values='["hello", "world"]', variable='asdf')
+        task_factory = LoopTask(name='test', values='["hello", "world"]', variable='asdf')
 
         assert task_factory.name == 'test'
         assert task_factory.values == '["hello", "world"]'
@@ -50,7 +53,7 @@ class TestLoopTask:
         grizzly = grizzly_fixture.grizzly
         grizzly.state.variables['foobar'] = 'none'
 
-        task_factory = LoopTask(grizzly=grizzly, name='test', values='["hello", "world"]', variable='foobar')
+        task_factory = LoopTask(name='test', values='["hello", "world"]', variable='foobar')
 
         assert len(task_factory.tasks) == 0
 
@@ -75,7 +78,7 @@ class TestLoopTask:
         assert isinstance(tasks[2], TestTask)
         assert tasks[2].name == 'test:test-2'
 
-    def test___call__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+    def test___call__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:  # noqa: PLR0915
         mocker.patch('grizzly.tasks.loop.gsleep', autospec=True)
         parent = grizzly_fixture()
 
@@ -88,9 +91,9 @@ class TestLoopTask:
 
         grizzly.state.variables['foobar'] = parent.user._context['variables']['foobar'] = 'none'
 
-        task_factory = LoopTask(grizzly, 'test', '["hello", "world"]', 'foobar')
+        task_factory = LoopTask('test', '["hello", "world"]', 'foobar')
 
-        for i in range(0, 3):
+        for i in range(3):
             task_factory.add(TestTask(name=f'{{{{ foobar }}}}-test-{i}'))
 
         assert sorted(task_factory.get_templates()) == sorted([
@@ -113,33 +116,44 @@ class TestLoopTask:
 
         assert request_spy.call_count == 7  # loop task + 3 tasks * 2 values
 
+        actual_context = deepcopy(parent.user._context)
+        actual_context['variables'].update({'foobar': 'hello'})
+
         for i, (args, kwargs) in enumerate(request_spy.call_args_list[:3]):
             assert args == ()
-            assert kwargs.get('request_type', None) == 'TSTSK'
-            assert kwargs.get('name', None) == f'TestTask: test:{{{{ foobar }}}}-test-{i}'
-            assert kwargs.get('response_time', None) == 13
-            assert kwargs.get('response_length', None) == 37
-            assert kwargs.get('exception', '') is None
-            assert kwargs.get('context', None) == {'variables': {'foobar': 'hello'}, 'log_all_requests': False}
+            assert kwargs == {
+                'request_type': 'TSTSK',
+                'name': f'TestTask: test:{{{{ foobar }}}}-test-{i}',
+                'response_time': 13,
+                'response_length': 37,
+                'exception': None,
+                'context': actual_context,
+            }
+
+        actual_context['variables'].update({'foobar': 'world'})
 
         for i, (args, kwargs) in enumerate(request_spy.call_args_list[3:-1]):
             assert args == ()
-            assert kwargs.get('request_type', None) == 'TSTSK'
-            assert kwargs.get('name', None) == f'TestTask: test:{{{{ foobar }}}}-test-{i}'
-            assert kwargs.get('response_time', None) == 13
-            assert kwargs.get('response_length', None) == 37
-            assert kwargs.get('exception', '') is None
-            assert kwargs.get('context', None) == {'variables': {'foobar': 'world'}, 'log_all_requests': False}
+            assert kwargs == {
+                'request_type': 'TSTSK',
+                'name': f'TestTask: test:{{{{ foobar }}}}-test-{i}',
+                'response_time': 13,
+                'response_length': 37,
+                'exception': None,
+                'context': actual_context,
+            }
 
         args, kwargs = request_spy.call_args_list[-1]
 
         assert args == ()
-        assert kwargs.get('request_type', None) == 'LOOP'
-        assert kwargs.get('name', None) == '003 test (3)'
-        assert kwargs.get('response_time', None) >= 0
-        assert kwargs.get('response_length', None) == 2
-        assert kwargs.get('exception', '') is None
-        assert kwargs.get('context', None) == {'variables': {'foobar': 'none'}, 'log_all_requests': False}
+        assert kwargs == {
+            'request_type': 'LOOP',
+            'name': '003 test (3)',
+            'response_time': ANY(int),
+            'response_length': 2,
+            'exception': None,
+            'context': parent.user._context,
+        }
 
         request_spy.reset_mock()
 
@@ -151,33 +165,44 @@ class TestLoopTask:
 
         assert request_spy.call_count == 7  # loop task + 3 tasks * 2 values
 
+        actual_context = deepcopy(parent.user._context)
+        actual_context['variables'].update({'foobar': 'foo'})
+
         for i, (args, kwargs) in enumerate(request_spy.call_args_list[:3]):
             assert args == ()
-            assert kwargs.get('request_type', None) == 'TSTSK'
-            assert kwargs.get('name', None) == f'TestTask: test:{{{{ foobar }}}}-test-{i}'
-            assert kwargs.get('response_time', None) == 13
-            assert kwargs.get('response_length', None) == 37
-            assert kwargs.get('exception', '') is None
-            assert kwargs.get('context', None) == {'variables': {'foobar': 'foo', 'json_input': '["foo", "bar"]'}, 'log_all_requests': False}
+            assert kwargs == {
+                'request_type': 'TSTSK',
+                'name': f'TestTask: test:{{{{ foobar }}}}-test-{i}',
+                'response_time': 13,
+                'response_length': 37,
+                'exception': None,
+                'context': actual_context,
+            }
+
+        actual_context['variables'].update({'foobar': 'bar'})
 
         for i, (args, kwargs) in enumerate(request_spy.call_args_list[3:-1]):
             assert args == ()
-            assert kwargs.get('request_type', None) == 'TSTSK'
-            assert kwargs.get('name', None) == f'TestTask: test:{{{{ foobar }}}}-test-{i}'
-            assert kwargs.get('response_time', None) == 13
-            assert kwargs.get('response_length', None) == 37
-            assert kwargs.get('exception', '') is None
-            assert kwargs.get('context', None) == {'variables': {'foobar': 'bar', 'json_input': '["foo", "bar"]'}, 'log_all_requests': False}
+            assert kwargs == {
+                'request_type': 'TSTSK',
+                'name': f'TestTask: test:{{{{ foobar }}}}-test-{i}',
+                'response_time': 13,
+                'response_length': 37,
+                'exception': None,
+                'context': actual_context,
+            }
 
         args, kwargs = request_spy.call_args_list[-1]
 
         assert args == ()
-        assert kwargs.get('request_type', None) == 'LOOP'
-        assert kwargs.get('name', None) == '003 test (3)'
-        assert kwargs.get('response_time', None) >= 0
-        assert kwargs.get('response_length', None) == 2
-        assert kwargs.get('exception', '') is None
-        assert kwargs.get('context', None) == {'variables': {'foobar': 'none', 'json_input': '["foo", "bar"]'}, 'log_all_requests': False}
+        assert kwargs == {
+            'request_type': 'LOOP',
+            'name': '003 test (3)',
+            'response_time': ANY(int),
+            'response_length': 2,
+            'exception': None,
+            'context': parent.user._context,
+        }
 
         request_spy.reset_mock()
         del grizzly.state.variables['json_input']
@@ -192,18 +217,14 @@ class TestLoopTask:
         with pytest.raises(RestartScenario):
             task(parent)
 
-        assert request_spy.call_count == 1
-        args, kwargs = request_spy.call_args_list[-1]
-        assert args == ()
-        assert kwargs.get('request_type', None) == 'LOOP'
-        assert kwargs.get('name', None) == '003 test (3)'
-        assert kwargs.get('response_time', None) >= 0
-        assert kwargs.get('response_length', None) == 0
-        assert kwargs.get('context', None) == {'variables': {'foobar': 'none'}, 'log_all_requests': False}
-        exception = kwargs.get('exception', None)
-        assert isinstance(exception, JSONDecodeError)
-        assert str(exception).startswith('Unterminated string starting at:')
-
+        request_spy.assert_called_once_with(
+            request_type='LOOP',
+            name='003 test (3)',
+            response_time=ANY(int),
+            response_length=0,
+            context=parent.user._context,
+            exception=ANY(JSONDecodeError, message='Unterminated string starting at:'),
+        )
         request_spy.reset_mock()
 
         # valid json, but not a list
@@ -214,17 +235,14 @@ class TestLoopTask:
         with pytest.raises(RestartScenario):
             task(parent)
 
-        assert request_spy.call_count == 1
-        args, kwargs = request_spy.call_args_list[-1]
-        assert args == ()
-        assert kwargs.get('request_type', None) == 'LOOP'
-        assert kwargs.get('name', None) == '003 test (3)'
-        assert kwargs.get('response_time', None) >= 0
-        assert kwargs.get('response_length', None) == 0
-        assert kwargs.get('context', None) == {'variables': {'foobar': 'none'}, 'log_all_requests': False}
-        exception = kwargs.get('exception', None)
-        assert str(exception) == '"{"hello": "world"}" is not a list'
-
+        request_spy.assert_called_once_with(
+            request_type='LOOP',
+            name='003 test (3)',
+            response_time=ANY(int),
+            response_length=0,
+            context=parent.user._context,
+            exception=ANY(TypeError, message='"{"hello": "world"}" is not a list'),
+        )
         request_spy.reset_mock()
 
         # error in wrapped task
@@ -244,14 +262,14 @@ class TestLoopTask:
         args, kwargs = request_spy.call_args_list[-1]
 
         assert args == ()
-        assert kwargs.get('request_type', None) == 'LOOP'
-        assert kwargs.get('name', None) == '003 test (2)'
-        assert kwargs.get('response_time', None) >= 0
-        assert kwargs.get('response_length', None) == 2
-        assert kwargs.get('context', None) == {'variables': {'foobar': 'world'}, 'log_all_requests': False}
-        exception = kwargs.get('exception', '')
-        assert isinstance(exception, ValueError)
-        assert str(exception) == 'error'
+        assert kwargs == {
+            'request_type': 'LOOP',
+            'name': '003 test (2)',
+            'response_time': ANY(int),
+            'response_length': 2,
+            'context': parent.user._context,
+            'exception': ANY(ValueError, message='error'),
+        }
 
         request_spy.reset_mock()
 
@@ -279,7 +297,7 @@ class TestLoopTask:
 
         grizzly.state.variables['foobar'] = parent.user._context['variables']['foobar'] = 'none'
 
-        task_factory = LoopTask(grizzly, 'test', '[1, 2, 3, 4]', 'foobar')
+        task_factory = LoopTask('test', '[1, 2, 3, 4]', 'foobar')
         task_factory.add(TestTask(name='test-1'))
         task_factory.add(TestTask(name='test-2'))
 

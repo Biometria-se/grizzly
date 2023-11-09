@@ -172,7 +172,6 @@ class AtomicRandomString(AtomicVariable[str]):
 
     @classmethod
     def clear(cls: Type[AtomicRandomString]) -> None:
-        """Clear all instatiated variables."""
         super().clear()
 
         instance = cast(AtomicRandomString, cls.get())
@@ -182,7 +181,6 @@ class AtomicRandomString(AtomicVariable[str]):
             del instance._strings[variable]
 
     def __getitem__(self, variable: str) -> Optional[str]:
-        """Get variable value."""
         with self.semaphore():
             self._get_value(variable)
 
@@ -192,7 +190,6 @@ class AtomicRandomString(AtomicVariable[str]):
                 return None
 
     def __delitem__(self, variable: str) -> None:
-        """Remove variable."""
         with self.semaphore():
             with suppress(KeyError):
                 del self._strings[variable]

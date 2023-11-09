@@ -107,18 +107,15 @@ class SftpUser(ResponseHandler, GrizzlyUser, FileRequests):
             raise ValueError(message)
 
     def on_start(self) -> None:
-        """Create session when test starts."""
         super().on_start()
         self.sftp_client = SftpClientSession(self.host, self.port)
         self.session = self.sftp_client.session(**self._context['auth']).__enter__()
 
     def on_stop(self) -> None:
-        """Close session when test stops."""
         self.session.__exit__(None, None, None)
         super().on_stop()
 
     def request_impl(self, request: RequestTask) -> GrizzlyResponse:
-        """Execute SFTP request based on a request task."""
         payload: Optional[str] = None
 
         if request.method == RequestMethod.PUT:

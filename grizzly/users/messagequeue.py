@@ -251,7 +251,6 @@ class MessageQueueUser(ResponseHandler, GrizzlyUser):
             logging.getLogger(uamqp_logger_name).setLevel(logging.ERROR)
 
     def on_start(self) -> None:
-        """Connect to async-messaged when user starts."""
         self.logger.debug('on_start called')
         super().on_start()
 
@@ -268,7 +267,6 @@ class MessageQueueUser(ResponseHandler, GrizzlyUser):
             raise StopScenario from e
 
     def on_stop(self) -> None:
-        """Disconnect from async-messaged when user stops."""
         self.logger.debug('on_stop called, worker_id=%s', self.worker_id)
         if self.worker_id is None:
             return
@@ -305,7 +303,6 @@ class MessageQueueUser(ResponseHandler, GrizzlyUser):
         })
 
     def request_impl(self, request: RequestTask) -> GrizzlyResponse:
-        """Execute request task via async-messaged."""
         am_context = cast(AsyncMessageContext, merge_dicts(
             cast(Dict[str, Any], self.am_context),
             {

@@ -158,7 +158,6 @@ class AtomicCsvReader(AtomicVariable[Dict[str, Any]]):
 
     @classmethod
     def clear(cls: Type[AtomicCsvReader]) -> None:
-        """Clear all instatiated variables."""
         super().clear()
 
         instance = cast(AtomicCsvReader, cls.get())
@@ -169,7 +168,6 @@ class AtomicCsvReader(AtomicVariable[Dict[str, Any]]):
             del instance._settings[variable]
 
     def __getitem__(self, variable: str) -> Optional[Dict[str, Any]]:
-        """Get variable value."""
         with self.semaphore():
             column: Optional[str] = None
 
@@ -203,7 +201,6 @@ class AtomicCsvReader(AtomicVariable[Dict[str, Any]]):
             return row
 
     def __delitem__(self, variable: str) -> None:
-        """Remove variable."""
         with self.semaphore():
             if '.' in variable:
                 [variable, _] = variable.rsplit('.', 1)

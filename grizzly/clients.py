@@ -36,7 +36,7 @@ class ResponseEventSession(HttpSession):
 
         self.event_hook = EventHook()
 
-    def request(  # type: ignore  # noqa: PGH003, PLR0913
+    def request(  # type: ignore  # noqa: PGH003
         self,
         method: str,
         url: str,
@@ -89,7 +89,6 @@ class SftpClientSession:
         self._client = None
 
     def close(self) -> None:
-        """Close open SFTP client, transport and reset session related properties."""
         if self._client is not None:
             try:
                 self._client.close()
@@ -108,7 +107,6 @@ class SftpClientSession:
 
     @contextmanager
     def session(self, username: str, password: str, key_file: Optional[str] = None) -> Generator[SFTPClient, None, None]:
-        """Create an SFTP session."""
         try:
             # there's no client, or username has changed -- create new client
             if self._client is None or username != self.username:

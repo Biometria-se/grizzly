@@ -1,57 +1,64 @@
-import inspect
-import socket
-import re
+"""Fixtures used in tests."""
+from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Union, Callable, Any, Literal, List, Tuple, Type, Dict, cast
-from types import TracebackType
-from unittest.mock import MagicMock
-from urllib.parse import urlparse
-from mypy_extensions import VarArg, KwArg
-from os import environ, path
-from shutil import rmtree
-from json import dumps as jsondumps
-from pathlib import Path
-from textwrap import dedent, indent
-from hashlib import sha1
-from getpass import getuser
+import inspect
+import re
+import socket
+from contextlib import nullcontext, suppress
 from cProfile import Profile
-from contextlib import nullcontext
+from getpass import getuser
+from hashlib import sha1
+from json import dumps as jsondumps
+from os import environ, path
+from pathlib import Path
+from shutil import rmtree
 from tempfile import NamedTemporaryFile
+from textwrap import dedent, indent
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Literal, Optional, Tuple, Type, Union, cast
+from urllib.parse import urlparse
 
 import yaml
-
-from locust.clients import ResponseContextManager
-from locust.contrib.fasthttp import FastResponse, FastRequest
-from geventhttpclient.header import Headers
-from geventhttpclient.response import HTTPSocketPoolResponse
-from _pytest.tmpdir import TempPathFactory
-from pytest_mock.plugin import MockerFixture
-from paramiko.transport import Transport
-from paramiko.channel import Channel
-from paramiko.sftp import BaseSFTP
-from paramiko.sftp_client import SFTPClient
 from behave.configuration import Configuration
-from behave.step_registry import registry as step_registry
 from behave.model import Background
 from behave.runner import Runner as BehaveRunner
-from requests.models import CaseInsensitiveDict, Response, PreparedRequest
+from behave.step_registry import registry as step_registry
+from geventhttpclient.header import Headers
+from geventhttpclient.response import HTTPSocketPoolResponse
 from jinja2.filters import FILTERS
+from locust.clients import ResponseContextManager
+from locust.contrib.fasthttp import FastRequest, FastResponse
+from paramiko.channel import Channel
+from paramiko.sftp_client import SFTPClient
+from pytest_mock.plugin import MockerFixture
+from requests.models import CaseInsensitiveDict, PreparedRequest, Response
 
-from grizzly.types import GrizzlyResponseContextManager, RequestMethod
-from grizzly.types.behave import Context as BehaveContext, Scenario, Step, Feature
+from grizzly.context import GrizzlyContext
 from grizzly.tasks import RequestTask
 from grizzly.testdata.variables import destroy_variables
-from grizzly.context import GrizzlyContext
+from grizzly.types import GrizzlyResponseContextManager, RequestMethod
+from grizzly.types.behave import Context as BehaveContext
+from grizzly.types.behave import Feature, Scenario, Step
 from grizzly.types.locust import Environment, LocustRunner
 
-from .helpers import TestUser, TestScenario, RequestSilentFailureEvent
-from .helpers import onerror, run_command
-from .webserver import Webserver
-
+from .helpers import RequestSilentFailureEvent, TestScenario, TestUser, onerror, run_command
 
 if TYPE_CHECKING:
-    from grizzly.users.base import GrizzlyUser
+    from types import TracebackType
+    from unittest.mock import MagicMock
+
+    from _pytest.tmpdir import TempPathFactory
+    from mypy_extensions import KwArg, VarArg
+    from paramiko.sftp import BaseSFTP
+    from paramiko.transport import Transport
+
     from grizzly.scenarios import GrizzlyScenario
+    from grizzly.users.base import GrizzlyUser
+
+    from .webserver import Webserver
+    try:
+        from typing import Self
+    except ModuleNotFoundError:
+        from typing_extensions import Self
 
 
 __all__ = [
@@ -68,21 +75,17 @@ __all__ = [
 
 class AtomicVariableCleanupFixture:
     def __call__(self) -> None:
-        try:
+        with suppress(Exception):
             GrizzlyContext.destroy()
-        except:
-            pass
 
         destroy_variables()
 
-        try:
+        with suppress(KeyError):
             del environ['GRIZZLY_CONTEXT_ROOT']
-        except KeyError:
-            pass
 
 
 class LocustFixture:
-    _test_context_root: str
+    _test_context_root: Path
     _tmp_path_factory: TempPathFactory
 
     environment: Environment
@@ -91,12 +94,12 @@ class LocustFixture:
     def __init__(self, tmp_path_factory: TempPathFactory) -> None:
         self._tmp_path_factory = tmp_path_factory
 
-    def __enter__(self) -> 'LocustFixture':
+    def __enter__(self) -> Self:
         test_context = self._tmp_path_factory.mktemp('test_context') / 'requests'
         test_context.mkdir()
-        self._test_context_root = path.dirname(test_context)
+        self._test_context_root = test_context.parent
 
-        environ['GRIZZLY_CONTEXT_ROOT'] = self._test_context_root
+        environ['GRIZZLY_CONTEXT_ROOT'] = str(self._test_context_root)
         self.environment = Environment()
         self.runner = self.environment.create_local_runner()
 
@@ -108,10 +111,8 @@ class LocustFixture:
         exc: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> Literal[True]:
-        try:
+        with suppress(KeyError):
             del environ['GRIZZLY_CONTEXT_ROOT']
-        except KeyError:
-            pass
 
         rmtree(self._test_context_root)
 
@@ -127,46 +128,46 @@ class ParamikoFixture:
     def __call__(self) -> None:
         # unable to import socket.AddressFamily and socket.SocketKind ?!
         def _socket_getaddrinfo(
-            hostname: Union[bytearray, bytes, str, None], port: Union[str, int, None], addrfamily: int, kind: int
+            hostname: Union[bytearray, bytes, str, None], port: Union[str, int, None], addrfamily: int, kind: int,  # noqa: ARG001
         ) -> List[Tuple[int, int, Optional[int], Optional[str], Optional[Tuple[str, int]]]]:
-            return [(socket.AF_INET, socket.SOCK_STREAM, None, None, None, )]
+            return [(socket.AF_INET, socket.SOCK_STREAM, None, None, None)]
 
-        def _socket_connect(self: socket.socket, address: Any) -> None:
+        def _socket_connect(self: socket.socket, address: Any) -> None:  # noqa: ARG001
             pass
 
-        def _start_client(transport: Transport, event: Optional[Any] = None, timeout: Optional[Any] = None) -> None:
+        def _start_client(transport: Transport, event: Optional[Any] = None, timeout: Optional[Any] = None) -> None:  # noqa: ARG001
             transport.active = True
 
-        def _auth_password(transport: Transport, username: str, password: Optional[str], event: Optional[Any] = None, fallback: Optional[bool] = True) -> List[str]:
+        def _auth_password(transport: Transport, username: str, password: Optional[str], event: Optional[Any] = None, fallback: Optional[bool] = True) -> List[str]:  # noqa: ARG001, FBT002
             return []
 
-        def _is_authenticated(transport: Transport) -> Literal[True]:
+        def _is_authenticated(transport: Transport) -> Literal[True]:  # noqa: ARG001
             return True
 
-        def __send_version(base_sftp: BaseSFTP) -> str:
+        def __send_version(base_sftp: BaseSFTP) -> str:  # noqa: ARG001
             return '2.0-grizzly'
 
-        def _open_session(transport: Transport, window_size: Optional[int] = None, max_packet_size: Optional[int] = None, timeout: Optional[int] = None) -> Channel:
+        def _open_session(transport: Transport, window_size: Optional[int] = None, max_packet_size: Optional[int] = None, timeout: Optional[int] = None) -> Channel:  # noqa: ARG001
             return Channel(1)
 
-        def _from_transport(transport: Transport, window_size: Optional[int] = None, max_packet_size: Optional[int] = None) -> SFTPClient:
+        def _from_transport(transport: Transport, window_size: Optional[int] = None, max_packet_size: Optional[int] = None) -> SFTPClient:  # noqa: ARG001
             channel = _open_session(transport)
-            setattr(channel, 'transport', transport)
+            channel.transport = transport
 
             return SFTPClient(channel)
 
-        def _sftpclient_close(sftp_client: SFTPClient) -> None:
+        def _sftpclient_close(sftp_client: SFTPClient) -> None:  # noqa: ARG001
             pass
 
-        def _transport_close(transport: Transport) -> None:
+        def _transport_close(transport: Transport) -> None:  # noqa: ARG001
             pass
 
-        def _get(sftp_client: SFTPClient, remotepath: str, localpath: str, callback: Optional[Callable[[VarArg(Any), KwArg(Any)], None]] = None) -> None:
+        def _get(sftp_client: SFTPClient, remotepath: str, localpath: str, callback: Optional[Callable[[VarArg(Any), KwArg(Any)], None]] = None) -> None:  # noqa: ARG001
             if callback is not None:
                 callback(100, 1000)
 
         def _put(
-            sftp_client: SFTPClient, localpath: str, remotepath: str, callback: Optional[Callable[[VarArg(Any), KwArg(Any)], None]] = None, confirm: Optional[bool] = True,
+            sftp_client: SFTPClient, localpath: str, remotepath: str, callback: Optional[Callable[[VarArg(Any), KwArg(Any)], None]] = None, confirm: Optional[bool] = True,  # noqa: ARG001, FBT002
         ) -> None:
             if callback is not None:
                 callback(100, 1000)
@@ -241,15 +242,15 @@ class BehaveFixture:
     def create_scenario(self, name: str) -> Scenario:
         return Scenario(filename=None, line=None, keyword='', name=name)
 
-    def __enter__(self) -> 'BehaveFixture':
+    def __enter__(self) -> Self:
         runner = BehaveRunner(
             config=Configuration(
                 command_args=[],
                 load_config=False,
-            )
+            ),
         )
         context = BehaveContext(runner)
-        setattr(context, '_runner', runner)  # to weakref
+        context._runner = runner
         context.config.base_dir = '.'
         context.scenario = Scenario(filename=None, line=None, keyword='', name='')
         context.step = Step(filename=None, line=None, keyword='', step_type='step', name='')
@@ -258,7 +259,7 @@ class BehaveFixture:
         context._runner.step_registry = step_registry
         grizzly = GrizzlyContext()
         grizzly.state.locust = self.locust.runner
-        setattr(context, 'grizzly', grizzly)
+        context.grizzly = grizzly
 
         self.context = context
 
@@ -270,10 +271,8 @@ class BehaveFixture:
         exc: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> Literal[True]:
-        try:
+        with suppress(ValueError):
             GrizzlyContext.destroy()
-        except ValueError:
-            pass
 
         return True
 
@@ -302,13 +301,13 @@ class RequestTaskFixture:
         self._tmp_path_factory = tmp_path_factory
         self.behave_fixture = behave_fixture
 
-    def __enter__(self) -> 'RequestTaskFixture':
+    def __enter__(self) -> Self:
         self.test_context = self._tmp_path_factory.mktemp('example_payload') / 'requests'
         self.test_context.mkdir()
         request_file = self.test_context / 'payload.j2.json'
         request_file.touch()
         request_file.write_text(REQUEST_TASK_TEMPLATE_CONTENTS)
-        request_path = path.dirname(str(request_file))
+        request_path = str(request_file.parent)
 
         request = RequestTask(RequestMethod.POST, endpoint='/api/test', name='request_task')
         request.source = REQUEST_TASK_TEMPLATE_CONTENTS
@@ -325,7 +324,7 @@ class RequestTaskFixture:
         exc: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> Literal[True]:
-        rmtree(path.dirname(self.context_root))
+        rmtree(Path(self.context_root).parent)
 
         return True
 
@@ -343,7 +342,7 @@ class GrizzlyFixture:
     def test_context(self) -> Path:
         return self.request_task.test_context
 
-    def __enter__(self) -> 'GrizzlyFixture':
+    def __enter__(self) -> Self:
         environ['GRIZZLY_CONTEXT_ROOT'] = path.abspath(path.join(self.request_task.context_root, '..'))
         self.grizzly = GrizzlyContext()
         self.grizzly.scenarios.clear()
@@ -358,10 +357,11 @@ class GrizzlyFixture:
     def __call__(
         self,
         host: str = '',
-        user_type: Optional[Type['GrizzlyUser']] = None,
-        scenario_type: Optional[Type['GrizzlyScenario']] = None,
+        user_type: Optional[Type[GrizzlyUser]] = None,
+        scenario_type: Optional[Type[GrizzlyScenario]] = None,
+        *,
         no_tasks: Optional[bool] = False,
-    ) -> 'GrizzlyScenario':
+    ) -> GrizzlyScenario:
         if user_type is None:
             user_type = TestUser
 
@@ -398,15 +398,11 @@ class GrizzlyFixture:
         exc: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> Literal[True]:
-        try:
+        with suppress(KeyError):
             del environ['GRIZZLY_CONTEXT_ROOT']
-        except KeyError:
-            pass
 
-        try:
+        with suppress(Exception):
             GrizzlyContext.destroy()
-        except:
-            pass
 
         # clean up filters, since we might've added custom ones
         filter_keys = reversed(list(FILTERS.keys()))
@@ -414,17 +410,15 @@ class GrizzlyFixture:
             if key == 'tojson':
                 break
 
-            try:
+            with suppress(KeyError):
                 del FILTERS[key]
-            except:
-                pass
 
         return True
 
 
 class ResponseContextManagerFixture:
     # borrowed from geventhttpclient.client._build_request
-    def _build_request(self, method: str, request_url: str, body: Optional[str] = '', headers: Optional[Dict[str, Any]] = None) -> str:
+    def _build_request(self, method: str, request_url: str, body: Optional[str] = '', headers: Optional[Dict[str, Any]] = None) -> str:  # noqa: ARG002
         parsed = urlparse(request_url)
 
         request = method + ' ' + parsed.path + ' HTTP/1.1\r\n'
@@ -435,7 +429,7 @@ class ResponseContextManagerFixture:
 
         return request
 
-    def __call__(
+    def __call__(  # noqa: C901
         self,
         cls_rcm: Type[GrizzlyResponseContextManager],
         status_code: int,
@@ -450,10 +444,7 @@ class ResponseContextManagerFixture:
     ) -> GrizzlyResponseContextManager:
         name = kwargs['name']
         event: Any
-        if environment is not None:
-            event = RequestSilentFailureEvent(False)
-        else:
-            event = None
+        event = RequestSilentFailureEvent(custom=False) if environment is not None else None
 
         if cls_rcm is ResponseContextManager:
             response = Response()
@@ -522,7 +513,7 @@ class ResponseContextManagerFixture:
                 response._cached_content = None
 
             if request_body is not None:
-                setattr(response, 'request_body', request_body)
+                response.request_body = request_body
 
             if environment is not None:
                 environment.events.request = event
@@ -575,7 +566,7 @@ class NoopZmqFixture:
                 self._mocks.update({target: self._mocker.patch(
                     f'{prefix}.{target}',
                 )})
-            except AttributeError as e:
+            except AttributeError as e:  # noqa: PERF203
                 if 'gsleep' in str(e):
                     continue
 
@@ -593,7 +584,8 @@ class NoopZmqFixture:
             if last_part == attr:
                 return mock
 
-        raise AttributeError(f'no mocks for {attr}')
+        message = f'no mocks for {attr}'
+        raise AttributeError(message)
 
 
 BehaveKeyword = Literal['Then', 'Given', 'And', 'When']
@@ -618,10 +610,8 @@ class End2EndValidator:
     def expression(self) -> str:
         lines: List[str] = [f'Then run validator {self.name}_{self.implementation.__name__}']
         if self.table is not None and len(self.table) > 0:
-            lines.append(f'  | {" | ".join([key for key in self.table[0].keys()])} |')
-
-            for row in self.table:
-                lines.append(f'  | {" | ".join([value for value in row.values()])} |')
+            lines.append(f'  | {" | ".join(list(self.table[0].keys()))} |')
+            lines.extend([f'  | {" | ".join(list(row.values()))} |' for row in self.table])
 
         return '\n'.join(lines)
 
@@ -631,16 +621,16 @@ class End2EndValidator:
         source_lines[0] = dedent(source_lines[0].replace('def ', f'def {self.name}_'))
         source = '\n'.join(source_lines)
 
-        return f'''@then(u'run validator {self.name}_{self.implementation.__name__}')
+        return f"""@then(u'run validator {self.name}_{self.implementation.__name__}')
 def {self.name}_{self.implementation.__name__}_wrapper(context: Context) -> None:
     {dedent(source)}
     if on_local(context) or on_worker(context):
         {self.name}_{self.implementation.__name__}(context)
-'''
+"""
 
 
 class End2EndFixture:
-    step_start_webserver = '''
+    step_start_webserver = """
 
 @then(u'start webserver on master port "{{port:d}}"')
 def step_start_webserver(context: Context, port: int) -> None:
@@ -657,7 +647,7 @@ def step_start_webserver(context: Context, port: int) -> None:
 
     webserver = w.Webserver(port)
     webserver.start()
-'''
+"""
 
     _tmp_path_factory: TempPathFactory
     _env: Dict[str, str]
@@ -677,7 +667,7 @@ def step_start_webserver(context: Context, port: int) -> None:
     webserver: Webserver
     profile: Optional[Profile]
 
-    def __init__(self, tmp_path_factory: TempPathFactory, webserver: Webserver, distributed: bool) -> None:
+    def __init__(self, tmp_path_factory: TempPathFactory, webserver: Webserver, *, distributed: bool) -> None:
         self.test_tmp_dir = (Path(__file__) / '..' / '..' / '.pytest_tmp').resolve()
         self._tmp_path_factory_basetemp = tmp_path_factory._basetemp
         self.webserver = webserver
@@ -697,7 +687,8 @@ def step_start_webserver(context: Context, port: int) -> None:
     @property
     def root(self) -> Path:
         if self._root is None:
-            raise AttributeError('root is not set')
+            message = 'root is not set'
+            raise AttributeError(message)
 
         return self._root
 
@@ -707,10 +698,7 @@ def step_start_webserver(context: Context, port: int) -> None:
 
     @property
     def host(self) -> str:
-        if self._distributed:
-            hostname = 'master'
-        else:
-            hostname = 'localhost'
+        hostname = 'master' if self._distributed else 'localhost'
 
         return f'{hostname}:{self.webserver.port}'
 
@@ -722,7 +710,7 @@ def step_start_webserver(context: Context, port: int) -> None:
 
         return self._has_pymqi
 
-    def __enter__(self) -> 'End2EndFixture':
+    def __enter__(self) -> Self:  # noqa: PLR0912, PLR0915
         if environ.get('PROFILE', None) is not None:
             self.profile = Profile()
             self.profile.enable()
@@ -748,7 +736,7 @@ def step_start_webserver(context: Context, port: int) -> None:
         path = environ.get('PATH', '')
 
         self._env.update({
-            'PATH': f'{str(virtual_env_path)}/bin:{path}',
+            'PATH': f'{virtual_env_path!s}/bin:{path}',
             'VIRTUAL_ENV': str(virtual_env_path),
             'PYTHONPATH': environ.get('PYTHONPATH', '.'),
             'HOME': environ.get('HOME', '/'),
@@ -792,7 +780,7 @@ def step_start_webserver(context: Context, port: int) -> None:
         (self._root / 'features' / f'{project_name}.feature').unlink()
 
         # create base test-project ... steps.py
-        with open(self.root / 'features' / 'steps' / 'steps.py', 'w') as fd:
+        with (self.root / 'features' / 'steps' / 'steps.py').open('w') as fd:
             fd.write('from importlib import import_module\n')
             fd.write('from typing import cast, Callable, Any\n\n')
             fd.write('from grizzly.types.behave import Context, then\n')
@@ -804,16 +792,16 @@ def step_start_webserver(context: Context, port: int) -> None:
 
         if self._distributed:
             # rewrite test requirements.txt to point to local code
-            with open(f'{self.root}/requirements.txt', 'r+') as fd:
+            with (self.root / 'requirements.txt').open('r+') as fd:
                 fd.truncate(0)
                 fd.flush()
                 fd.write('grizzly-loadtester\n')
 
-            with open(self.root / 'features' / 'steps' / 'steps.py', 'a') as fd:
+            with (self.root / 'features' / 'steps' / 'steps.py').open('a') as fd:
                 fd.write(
                     self.step_start_webserver.format(
                         str(self.root).replace(str(self.root), '/srv/grizzly'),
-                    )
+                    ),
                 )
 
             # create steps/webserver.py
@@ -882,10 +870,8 @@ def step_start_webserver(context: Context, port: int) -> None:
                     print(''.join(output))
 
             if not self.keep_files:
-                try:
+                with suppress(AttributeError):
                     rmtree(self.root.parent, onerror=onerror)
-                except AttributeError:
-                    pass
             else:
                 print(self._root)
 
@@ -948,18 +934,15 @@ def step_start_webserver(context: Context, port: int) -> None:
         if add_spawn_rate_step and not add_user_count_step:
             background.append('And spawn rate is "1" user per second')
 
-        if self._distributed and not any([step.strip().startswith('Then start webserver on master port') for step in background]):
+        if self._distributed and not any(step.strip().startswith('Then start webserver on master port') for step in background):
             background.append(f'Then start webserver on master port "{self.webserver.port}"')
 
         contents.append('  Background: common configuration')
-        for step in background:
-            contents.append(f'    {step}')
-
+        contents.extend([f'    {step}' for step in background])
         contents.append('')
 
         contents.append(f'  Scenario: {callee}')
-        for step in scenario or []:
-            contents.append(f'    {step}')
+        contents.extend([f'    {step}' for step in scenario or []])
         contents.append('    Then log message "dummy"\n')
 
         return self.create_feature(
@@ -968,12 +951,12 @@ def step_start_webserver(context: Context, port: int) -> None:
             identifier=identifier,
         )
 
-    def create_feature(self, contents: str, name: Optional[str] = None, identifier: Optional[str] = None) -> str:
+    def create_feature(self, contents: str, name: Optional[str] = None, identifier: Optional[str] = None) -> str:  # noqa: C901, PLR0915
         if name is None:
             name = inspect.stack()[1].function
 
         if identifier is not None:
-            identifier = sha1(identifier.encode()).hexdigest()[:8]
+            identifier = sha1(identifier.encode()).hexdigest()[:8]  # noqa: S324
             name = f'{name}_{identifier}'
 
         feature_lines = contents.strip().split('\n')
@@ -997,7 +980,7 @@ def step_start_webserver(context: Context, port: int) -> None:
                     validators = self._validators.get(scenario, self._validators.get(None, None))
                     if validators is not None:
                         for validator in validators:
-                            nr += offset
+                            nr += offset  # noqa: PLW2901
                             validator_expression = indent(f'{validator.expression}', prefix=indentation * 2)
                             index = nr
                             while modified_feature_lines[index].strip() == '' or 'Scenario:' in modified_feature_lines[index]:
@@ -1017,17 +1000,16 @@ def step_start_webserver(context: Context, port: int) -> None:
         contents = '\n'.join(modified_feature_lines)
 
         # write feature file
-        with open(self.root / 'features' / f'{name}.feature', 'w+') as fd:
+        with (self.root / 'features' / f'{name}.feature').open('w+') as fd:
             fd.write(contents)
 
         feature_file_name = fd.name.replace(f'{self.root}/', '')
 
         # cache current step implementations
-        with open(steps_file, 'r') as fd:
-            steps_impl = fd.read()
+        steps_impl = steps_file.read_text()
 
         # add step implementations
-        with open(steps_file, 'a') as fd:
+        with steps_file.open('a') as fd:
             added_validators: List[str] = []
             for validators in self._validators.values():
                 for validator in validators:
@@ -1039,18 +1021,18 @@ def step_start_webserver(context: Context, port: int) -> None:
             added_validators = []
 
         # add after_feature hook, always write all of 'em
-        with open(environment_file, 'w') as fd:
+        with environment_file.open('w') as fd:
             fd.write('from typing import Any, Tuple, Dict, cast\n\n')
             fd.write('from grizzly.types.behave import Context, Feature\n')
             fd.write('from grizzly.context import GrizzlyContext\n')
-            fd.write((
+            fd.write(
                 'from grizzly.behave import before_feature as grizzly_before_feature, '
-                'after_feature as grizzly_after_feature, before_scenario, after_scenario, before_step\n\n'
-            ))
+                'after_feature as grizzly_after_feature, before_scenario, after_scenario, before_step\n\n',
+            )
 
             fd.write('def before_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:\n')
             if len(self._before_features) > 0:
-                for feature_name in self._before_features.keys():
+                for feature_name in self._before_features:
                     fd.write(f'    if feature.name == "{feature_name}":\n')
                     fd.write(f'        {feature_name}_before_feature(context, feature)\n\n')
             fd.write('    grizzly_before_feature(context, feature)\n\n')
@@ -1065,7 +1047,7 @@ def step_start_webserver(context: Context, port: int) -> None:
             fd.write('def after_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:\n')
             fd.write('    grizzly_after_feature(context, feature)\n\n')
             if len(self._after_features) > 0:
-                for feature_name in self._after_features.keys():
+                for feature_name in self._after_features:
                     fd.write(f'    if feature.name == "{feature_name}":\n')
                     fd.write(f'        {feature_name}_after_feature(context, feature)\n\n')
 
@@ -1090,7 +1072,7 @@ def step_start_webserver(context: Context, port: int) -> None:
     ) -> Tuple[int, List[str]]:
         env_conf_fd: Any
         if env_conf is not None:
-            prefix = path.basename(feature_file).replace('.feature', '')
+            prefix = Path(feature_file).stem
             env_conf_fd = NamedTemporaryFile(delete=not self.keep_files, prefix=prefix, suffix='.yaml', dir=(self.root / 'environments'))
         else:
             env_conf_fd = nullcontext()

@@ -34,7 +34,6 @@ IN_CORRECT_SECTION_ATTRIBUTE = 'location_status'
 
 
 def before_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: Any) -> None:
-    """Grizzly functionality executed before each feature."""
     # identify as grizzly, instead of behave
     proc.setproctitle('grizzly')
 
@@ -92,7 +91,6 @@ def after_feature_master(return_code: int, status: Optional[Status], context: Co
     return return_code
 
 def after_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: Any) -> None:
-    """Grizzly functionality executed after each feature."""
     return_code: int
     cause: str
 
@@ -142,7 +140,6 @@ def after_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: An
 
 
 def before_scenario(context: Context, scenario: Scenario, *_args: Any, **_kwargs: Any) -> None:
-    """Grizzly functionality executed before each scenario in feature."""
     grizzly = cast(GrizzlyContext, context.grizzly)
 
     if grizzly.state.background_section_done:
@@ -177,7 +174,6 @@ def before_scenario(context: Context, scenario: Scenario, *_args: Any, **_kwargs
 
 
 def after_scenario(context: Context, *_args: Any, **_kwargs: Any) -> None:
-    """Grizzly functionality executed after each scenario in the feature."""
     grizzly = cast(GrizzlyContext, context.grizzly)
 
     # first scenario is done, do not process background for any (possible) other scenarios
@@ -194,7 +190,6 @@ def after_scenario(context: Context, *_args: Any, **_kwargs: Any) -> None:
 
 
 def before_step(context: Context, step: Step, *_args: Any, **_kwargs: Any) -> None:
-    """Grizzly functionality executed before each step in the current scenario."""
     # fail step if it's a @backgroundsection decorated step implementation, see before_scenario hook
     with fail_direct(context):
         assert getattr(step, 'location_status', '') != 'incorrect', 'Step is in the incorrect section'
@@ -204,7 +199,6 @@ def before_step(context: Context, step: Step, *_args: Any, **_kwargs: Any) -> No
 
 
 def after_step(context: Context, step: Step, *_args: Any, **_kwargs: Any) -> None:
-    """Grizzly funcionality executed after each step in the current scenario."""
     # grizzly does not have any functionality that should run after every step, but added for
     # clarity of what can be overloaded
     grizzly = cast(GrizzlyContext, context.grizzly)

@@ -212,7 +212,7 @@ TestdataType = Dict[str, Dict[str, Any]]
 
 GrizzlyVariableType = Union[str, float, int, bool]
 
-MessageCallback = Callable[[Arg(Environment, 'environment'), Arg(Message, 'msg'), KwArg(Dict[str, Any])], None]
+MessageCallback = Callable[[Arg(Environment, 'environment'), Arg(Message, 'msg'), KwArg(Any)], None]
 
 WrappedFunc = TypeVar('WrappedFunc', bound=Callable[..., Any])
 

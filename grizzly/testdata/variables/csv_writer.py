@@ -139,7 +139,6 @@ class AtomicCsvWriter(AtomicVariable[str], AtomicVariableSettable):
 
     @classmethod
     def clear(cls: Type[AtomicCsvWriter]) -> None:
-        """Clear all instatiated variables."""
         super().clear()
 
         instance = cast(AtomicCsvWriter, cls.get())
@@ -149,7 +148,6 @@ class AtomicCsvWriter(AtomicVariable[str], AtomicVariableSettable):
             del instance._settings[variable]
 
     def __getitem__(self, variable: str) -> Optional[str]:  # pragma: no cover
-        """Get variable value."""
         message = f'{self.__class__.__name__} has not implemented "__getitem__"'
         raise NotImplementedError(message)
 

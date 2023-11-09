@@ -27,7 +27,7 @@ class GreenletWithExceptionCatching(Greenlet):
         def exception_handler(*args: Any, **kwargs: Any) -> Any:
             try:
                 return func(*args, **kwargs)
-            except Exception as exception:  # noqa: BLE001
+            except Exception as exception:
                 self.wrap_exceptions(self.handle_exception)(exception)
                 return exception  # pragma: no cover
 

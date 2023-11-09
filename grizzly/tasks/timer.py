@@ -1,5 +1,4 @@
-"""
-@anchor pydoc:grizzly.tasks.timer Timer
+"""@anchor pydoc:grizzly.tasks.timer Timer
 This task "wraps" a group of other tasks, that might not have any requests and hence no statistics, to measure
 how long time they took. Request content length for this task in the scenario is number of tasks between starting and
 stopping the timer.
@@ -23,9 +22,11 @@ run.
 
 * `name` _str_ - name of the timer
 """
-from typing import TYPE_CHECKING, Any
+from __future__ import annotations
+
 from hashlib import sha1
 from time import perf_counter
+from typing import TYPE_CHECKING, Any
 
 from . import GrizzlyTask, grizzlytask
 
@@ -40,15 +41,14 @@ class TimerTask(GrizzlyTask):
     def __init__(self, name: str) -> None:
         super().__init__()
 
-        name_hash = sha1(f'timer-{name}'.encode('utf-8')).hexdigest()[:8]
+        name_hash = sha1(f'timer-{name}'.encode()).hexdigest()[:8]  # noqa: S324
 
         self.name = name
         self.variable = f'{name_hash}::{name}'
 
     def __call__(self) -> grizzlytask:
-
         @grizzlytask
-        def task(parent: 'GrizzlyScenario') -> Any:
+        def task(parent: GrizzlyScenario) -> Any:
             name = f'{parent.user._scenario.identifier} {self.name}'
             variable = parent.user._context['variables'].get(self.variable, None)
 

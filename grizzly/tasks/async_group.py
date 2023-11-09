@@ -1,5 +1,4 @@
-"""
-@anchor pydoc:grizzly.tasks.async_group Async Group
+"""@anchor pydoc:grizzly.tasks.async_group Async Group
 This task runs all requests in the group asynchronously.
 
 The name of requests added to the group will be prefixed with async group `<name>:`
@@ -24,20 +23,20 @@ where `<n>` is the number of requests in the group. Each request in the group wi
 
 * `name` (str): name of the group of asynchronously requests
 """
-import logging
-import inspect
+from __future__ import annotations
 
+import inspect
+import logging
 from os import environ
+from time import perf_counter as time_perf_counter
+from typing import TYPE_CHECKING, Any, List, Optional, Tuple
 
 import gevent
-
-from typing import TYPE_CHECKING, Any, List, Optional, Tuple
-from time import perf_counter as time_perf_counter
 
 from grizzly.types import RequestType
 from grizzly.users.base import AsyncRequests
 
-from . import GrizzlyTask, GrizzlyTaskWrapper, RequestTask, template, grizzlytask
+from . import GrizzlyTask, GrizzlyTaskWrapper, RequestTask, grizzlytask, template
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.scenarios import GrizzlyScenario
@@ -55,7 +54,8 @@ class AsyncRequestGroupTask(GrizzlyTaskWrapper):
 
     def add(self, task: GrizzlyTask) -> None:
         if not isinstance(task, RequestTask):
-            raise ValueError(f'{self.__class__.__name__} only accepts RequestTask tasks, not {task.__class__.__name__}')
+            message = f'{self.__class__.__name__} only accepts RequestTask tasks, not {task.__class__.__name__}'
+            raise TypeError(message)
 
         task.name = f'{self.name}:{task.name}'
         task.async_request = True
@@ -64,11 +64,12 @@ class AsyncRequestGroupTask(GrizzlyTaskWrapper):
     def peek(self) -> List[GrizzlyTask]:
         return self.tasks
 
-    def __call__(self) -> grizzlytask:
+    def __call__(self) -> grizzlytask:  # noqa: C901
         @grizzlytask
-        def task(parent: 'GrizzlyScenario') -> Any:
+        def task(parent: GrizzlyScenario) -> Any:  # noqa: C901
             if not isinstance(parent.user, AsyncRequests):
-                raise NotImplementedError(f'{parent.user.__class__.__name__} does not inherit AsyncRequests')  # pragma: no cover
+                message = f'{parent.user.__class__.__name__} does not inherit AsyncRequests'
+                raise NotImplementedError(message)  # pragma: no cover
 
             exception: Optional[Exception] = None
             response_length = 0
@@ -80,16 +81,16 @@ class AsyncRequestGroupTask(GrizzlyTaskWrapper):
                     return
 
                 if event == 'switch':
-                    parent.user.logger.debug(f'from {src} switch to {target}')
+                    parent.user.logger.debug('from %r switch to %r', src, target)
                 elif event == 'throw':
-                    parent.user.logger.debug(f'from {src} throw exception to {target}')
+                    parent.user.logger.debug('from %r throw exception to %r', src, target)
 
                 if src.gr_frame:
                     tracebacks = inspect.getouterframes(src.gr_frame)
                     buff = []
                     for traceback in tracebacks:
                         srcfile, lineno, func_name, codesample = traceback[1:-1]
-                        trace_line = f'''File "{srcfile}", line {lineno}, in {func_name}\n{"".join(codesample or [])} '''
+                        trace_line = f"""File "{srcfile}", line {lineno}, in {func_name}\n{"".join(codesample or [])} """
                         buff.append(trace_line)
 
                     parent.user.logger.debug(''.join(buff))
@@ -115,8 +116,8 @@ class AsyncRequestGroupTask(GrizzlyTaskWrapper):
                     try:
                         _, payload = greenlet.get()
                         response_length += len(payload.encode()) if payload is not None else 0
-                    except Exception as e:
-                        parent.user.logger.error(str(e), exc_info=True)
+                    except Exception as e:  # noqa: PERF203
+                        parent.user.logger.exception('async request failed')
                         if exception is None:
                             exception = e
             except Exception as e:
@@ -136,6 +137,6 @@ class AsyncRequestGroupTask(GrizzlyTaskWrapper):
                 )
 
                 if exception is not None and parent.user._scenario.failure_exception is not None:
-                    raise parent.user._scenario.failure_exception()
+                    raise parent.user._scenario.failure_exception from exception
 
         return task

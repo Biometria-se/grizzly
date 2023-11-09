@@ -50,7 +50,6 @@ class TestdataConsumer:
         self.logger.debug('conntected to producer at %s', address)
 
     def stop(self) -> None:
-        """Stop testdata consumer."""
         if self.stopped:
             return
 
@@ -65,7 +64,6 @@ class TestdataConsumer:
             gsleep(0.1)
 
     def testdata(self, scenario: str) -> Optional[Dict[str, Any]]:
-        """Send a request for new testdata to producer."""
         request = {
             'message': 'testdata',
             'identifier': self.identifier,
@@ -103,7 +101,6 @@ class TestdataConsumer:
         return cast(Dict[str, Any], data)
 
     def keystore_get(self, key: str) -> Optional[Any]:
-        """Get a value from keystore on producer."""
         request = {
             'action': 'get',
             'key': key,
@@ -114,7 +111,6 @@ class TestdataConsumer:
         return (response or {}).get('data', None)
 
     def keystore_set(self, key: str, value: Any) -> None:
-        """Set a value in keystore on producer."""
         request = {
             'action': 'set',
             'key': key,
@@ -198,7 +194,6 @@ class TestdataProducer:
             self.keystore = {}
 
     def on_test_stop(self) -> None:
-        """Execute when test is stopping."""
         self.logger.debug('test stopping')
         with self.semaphore:
             self.persist_data()
@@ -206,7 +201,6 @@ class TestdataProducer:
                 self.scenarios_iteration[scenario_name] = 0
 
     def persist_data(self) -> None:
-        """Dump testdata values to file."""
         if self.has_persisted:
             return
 
@@ -239,7 +233,6 @@ class TestdataProducer:
             self.logger.exception('failed to persist feature file data')
 
     def stop(self) -> None:
-        """Stop testdata producer."""
         self._stopping = True
         self.logger.debug('stopping producer')
         try:
@@ -345,7 +338,6 @@ class TestdataProducer:
         return response
 
     def run(self) -> None:
-        """Listen to requests, until test is ended or stopped."""
         self.logger.debug('start producing...')
         try:
             while True:

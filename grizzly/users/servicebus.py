@@ -149,7 +149,6 @@ class ServiceBusUser(ResponseHandler, GrizzlyUser):
         self.worker_id = None
 
     def on_start(self) -> None:
-        """Connect and introduce user to async-messaged when test starts."""
         super().on_start()
 
         self.zmq_client = self.zmq_context.socket(zmq.REQ)
@@ -162,7 +161,6 @@ class ServiceBusUser(ResponseHandler, GrizzlyUser):
             self.say_hello(task)
 
     def on_stop(self) -> None:
-        """Disconnect from async-messaged when test stops."""
         if getattr(self, '_scenario', None) is not None:
             for task in self._scenario.tasks:
                 if not isinstance(task, RequestTask):
@@ -175,7 +173,6 @@ class ServiceBusUser(ResponseHandler, GrizzlyUser):
         super().on_stop()
 
     def get_description(self, task: RequestTask) -> str:
-        """Create the description for a request task."""
         if is_template(task.endpoint) or '$conf' in task.endpoint or '$env' in task.endpoint:
             self.logger.error('cannot say hello for %s when endpoint is a template', task.name)
             raise StopUser
@@ -196,7 +193,6 @@ class ServiceBusUser(ResponseHandler, GrizzlyUser):
         return f'{connection}={cache_endpoint}'
 
     def disconnect(self, task: RequestTask) -> None:
-        """Disconnect any queue manager that async-messaged has connected to for this task."""
         description = self.get_description(task)
 
         if description not in self.hellos:
@@ -220,7 +216,6 @@ class ServiceBusUser(ResponseHandler, GrizzlyUser):
         self.hellos.remove(description)
 
     def say_hello(self, task: RequestTask) -> None:
-        """Connect to the queue manager this task wants to communicate with in async-messaged."""
         description = self.get_description(task)
 
         if description in self.hellos:
@@ -276,7 +271,6 @@ class ServiceBusUser(ResponseHandler, GrizzlyUser):
 
     @contextmanager
     def request_context(self, task: RequestTask, request: AsyncMessageRequest) -> Generator[Dict[str, Any], None, None]:
-        """Wrap all requests towards async-messaged to generically handle requests and responses."""
         name = task.name
 
         if len(name) > MAX_LENGTH:
@@ -325,7 +319,6 @@ class ServiceBusUser(ResponseHandler, GrizzlyUser):
                 raise exception
 
     def request_impl(self, request: RequestTask) -> GrizzlyResponse:
-        """Perform a Serivce Bus request based on request task."""
         self.say_hello(request)
 
         request_context = cast(AsyncMessageContext, dict(self.am_context))

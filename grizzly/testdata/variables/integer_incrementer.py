@@ -173,7 +173,6 @@ class AtomicIntegerIncrementer(AtomicVariable[int], AtomicVariablePersist):
 
     @classmethod
     def clear(cls: Type[AtomicIntegerIncrementer]) -> None:
-        """Clear all instatiated variables."""
         super().clear()
 
         instance = cast(AtomicIntegerIncrementer, cls.get())
@@ -182,7 +181,6 @@ class AtomicIntegerIncrementer(AtomicVariable[int], AtomicVariablePersist):
             del instance._steps[variable]
 
     def __getitem__(self, variable: str) -> Optional[int]:
-        """Get variable value."""
         with self.semaphore():
             value = self._get_value(variable)
 
@@ -192,7 +190,6 @@ class AtomicIntegerIncrementer(AtomicVariable[int], AtomicVariablePersist):
             return value
 
     def __delitem__(self, variable: str) -> None:
-        """Remove variable."""
         with self.semaphore():
             with suppress(KeyError):
                 del self._steps[variable]

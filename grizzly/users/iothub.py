@@ -35,7 +35,6 @@ from azure.iot.device import IoTHubDeviceClient
 from azure.storage.blob import BlobClient
 
 from grizzly.types import GrizzlyResponse, RequestMethod
-from grizzly.utils import merge_dicts
 
 from .base import GrizzlyUser, grizzlycontext
 
@@ -76,17 +75,14 @@ class IotHubUser(GrizzlyUser):
             raise ValueError(message)
 
     def on_start(self) -> None:
-        """Create Iot Hub device client when user starts."""
         super().on_start()
         self.iot_client = IoTHubDeviceClient.create_from_connection_string(self.host)
 
     def on_stop(self) -> None:
-        """Disconnect from Iot Hub device client when user stops."""
         self.iot_client.disconnect()
         super().on_stop()
 
     def request_impl(self, request: RequestTask) -> GrizzlyResponse:
-        """Perform a IoT Hub request based on request task."""
         if request.method not in [RequestMethod.SEND, RequestMethod.PUT]:
             message = f'{self.__class__.__name__} has not implemented {request.method.name}'
             raise NotImplementedError(message)

@@ -1,5 +1,4 @@
-"""
-@anchor pydoc:grizzly.tasks.transformer Transformer
+"""@anchor pydoc:grizzly.tasks.transformer Transformer
 This task transforms a variable value to a document of correct type, so an expression can be used to extract
 values from the document to be used in another variable.
 
@@ -27,17 +26,17 @@ then have the request type `TRNSF`.
 
 * `variable` _str_ - name of variable to save value to, must have been intialized
 """
-from time import perf_counter
-from typing import TYPE_CHECKING, List, Callable, Any, Type
+from __future__ import annotations
 
-from grizzly_extras.transformer import Transformer, transformer, TransformerContentType, TransformerError
+from time import perf_counter
+from typing import TYPE_CHECKING, Any, Callable, List, Type
 
 from grizzly.exceptions import TransformerLocustError
+from grizzly_extras.transformer import Transformer, TransformerContentType, TransformerError, transformer
 
-from . import GrizzlyTask, template, grizzlytask
+from . import GrizzlyTask, grizzlytask, template
 
 if TYPE_CHECKING:  # pragma: no cover
-    from grizzly.context import GrizzlyContext
     from grizzly.scenarios import GrizzlyScenario
 
 
@@ -53,7 +52,6 @@ class TransformerTask(GrizzlyTask):
 
     def __init__(
         self,
-        grizzly: 'GrizzlyContext',
         expression: str,
         variable: str,
         content: str,
@@ -66,24 +64,27 @@ class TransformerTask(GrizzlyTask):
         self.content = content
         self.content_type = content_type
 
-        if self.variable not in grizzly.state.variables:
-            raise ValueError(f'{self.__class__.__name__}: {self.variable} has not been initialized')
+        if self.variable not in self.grizzly.state.variables:
+            message = f'{self.__class__.__name__}: {self.variable} has not been initialized'
+            raise ValueError(message)
 
         _transformer = transformer.available.get(self.content_type, None)
 
         if _transformer is None:
-            raise ValueError(f'{self.__class__.__name__}: could not find a transformer for {self.content_type.name}')
+            message = f'{self.__class__.__name__}: could not find a transformer for {self.content_type.name}'
+            raise ValueError(message)
 
         self._transformer = _transformer
 
         if not self._transformer.validate(self.expression):
-            raise ValueError(f'{self.__class__.__name__}: {self.expression} is not a valid expression for {self.content_type.name}')
+            message = f'{self.__class__.__name__}: {self.expression} is not a valid expression for {self.content_type.name}'
+            raise ValueError(message)
 
-        setattr(self, '_parser', self._transformer.parser(self.expression))
+        self._parser = self._transformer.parser(self.expression)
 
     def __call__(self) -> grizzlytask:
         @grizzlytask
-        def task(parent: 'GrizzlyScenario') -> Any:
+        def task(parent: GrizzlyScenario) -> Any:
             start = perf_counter()
             response_length = 0
 
@@ -94,16 +95,18 @@ class TransformerTask(GrizzlyTask):
                 try:
                     content = self._transformer.transform(content_raw)
                 except TransformerError as e:
-                    parent.logger.error(f'failed to transform as {self.content_type.name}: {content_raw}')
-                    raise TransformerLocustError(f'failed to transform {self.content_type.name}') from e
+                    message = f'failed to transform {self.content_type.name}'
+                    parent.logger.exception('%s: %s', message, content_raw)
+                    raise TransformerLocustError(message) from e
 
                 values = self._parser(content)
 
                 number_of_values = len(values)
 
                 if number_of_values < 1:
-                    parent.logger.error(f'"{self.expression}" returned {number_of_values} matches for: {content_raw}')
-                    raise RuntimeError(f'"{self.expression}" returned {number_of_values} matches')
+                    message = f'"{self.expression}" returned {number_of_values} matches'
+                    parent.logger.error('%s: %s', message, content_raw)
+                    raise RuntimeError(message)
 
                 value = '\n'.join(values)
 
@@ -120,6 +123,6 @@ class TransformerTask(GrizzlyTask):
                 )
 
                 if exception is not None and parent.user._scenario.failure_exception is not None:
-                    raise parent.user._scenario.failure_exception()
+                    raise parent.user._scenario.failure_exception from exception
 
         return task

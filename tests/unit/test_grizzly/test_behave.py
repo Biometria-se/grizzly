@@ -1,40 +1,42 @@
+"""Unit tests for grizzly.behave."""
+from __future__ import annotations
+
 import subprocess
 import sys
-
-from os import environ
-from typing import Any, Tuple, Dict, Optional, cast
-from time import perf_counter
-from json import dumps as jsondumps
-from shutil import rmtree
+from contextlib import suppress
 from datetime import datetime
+from json import dumps as jsondumps
+from os import environ
+from shutil import rmtree
+from time import perf_counter
+from typing import TYPE_CHECKING, Any, Optional, cast
 
 import pytest
-
-from _pytest.tmpdir import TempPathFactory
-from _pytest.capture import CaptureFixture
-from pytest_mock import MockerFixture
-from behave.runner import Runner
 from behave.configuration import Configuration
+from behave.runner import Runner
 
-from grizzly.types.behave import Context, Feature, Step, Status
-from grizzly.behave import before_feature, after_feature, before_scenario, after_scenario, before_step, after_step
+from grizzly.behave import after_feature, after_scenario, after_step, before_feature, before_scenario, before_step
 from grizzly.context import GrizzlyContext
-from grizzly.steps.setup import step_setup_variable_value_ask as step_both
 from grizzly.steps.background.setup import step_setup_save_statistics as step_background
 from grizzly.steps.scenario.setup import step_setup_iterations as step_scenario
-from grizzly.tasks import AsyncRequestGroupTask, TimerTask, ConditionalTask, LoopTask, LogMessageTask
+from grizzly.steps.setup import step_setup_variable_value_ask as step_both
+from grizzly.tasks import AsyncRequestGroupTask, ConditionalTask, LogMessageTask, LoopTask, TimerTask
 from grizzly.types import RequestType
-
-from tests.fixtures import BehaveFixture, GrizzlyFixture
+from grizzly.types.behave import Context, Feature, Status, Step
 from tests.helpers import onerror
+
+if TYPE_CHECKING:  # pragma: no cover
+    from _pytest.capture import CaptureFixture
+    from _pytest.tmpdir import TempPathFactory
+    from pytest_mock import MockerFixture
+
+    from tests.fixtures import BehaveFixture, GrizzlyFixture
 
 
 def test_behave_no_pymqi_dependencies() -> None:
     env = environ.copy()
-    try:
+    with suppress(KeyError):
         del env['LD_LIBRARY_PATH']
-    except KeyError:
-        pass
 
     env['PYTHONPATH'] = '.'
 
@@ -64,10 +66,8 @@ def test_before_feature(behave_fixture: BehaveFixture, tmp_path_factory: TempPat
 
     behave = behave_fixture.context
     for key in ['GRIZZLY_CONTEXT_ROOT', 'GRIZZLY_FEATURE_FILE']:
-        try:
+        with suppress(KeyError):
             del environ[key]
-        except:
-            pass
 
     try:
         context = Context(
@@ -76,8 +76,8 @@ def test_before_feature(behave_fixture: BehaveFixture, tmp_path_factory: TempPat
                     command_args=[],
                     load_config=False,
                     base_dir=str(context_root),
-                )
-            )
+                ),
+            ),
         )
         feature = Feature('test.feature', None, '', '', scenarios=[behave.scenario])
 
@@ -122,15 +122,13 @@ def test_before_feature(behave_fixture: BehaveFixture, tmp_path_factory: TempPat
         }
     finally:
         for key in ['GRIZZLY_CONTEXT_ROOT', 'GRIZZLY_FEATURE_FILE']:
-            try:
+            with suppress(KeyError):
                 del environ[key]
-            except:
-                pass
 
         rmtree(context_root, onerror=onerror)
 
 
-def test_after_feature(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, capsys: CaptureFixture) -> None:
+def test_after_feature(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, capsys: CaptureFixture) -> None:  # noqa: PLR0915
     behave = grizzly_fixture.behave.context
     grizzly = grizzly_fixture.grizzly
     feature = Feature(None, None, '', '', scenarios=[behave.scenario])
@@ -139,15 +137,14 @@ def test_after_feature(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, c
 
     locustrun_mock = mocker.patch(
         'grizzly.behave.locustrun',
-        return_value=0
+        return_value=0,
     )
 
     # do not start locust if feature failed
     feature.set_status(Status.failed)
 
-    with pytest.raises(RuntimeError) as re:
+    with pytest.raises(RuntimeError, match='failed to prepare locust test'):
         after_feature(behave, feature)
-    assert str(re.value) == 'failed to prepare locust test'
 
     locustrun_mock.assert_not_called()
 
@@ -169,9 +166,8 @@ def test_after_feature(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, c
     grizzly.scenarios.create(behave.scenario)
     grizzly.scenario.description = behave.scenario.name
 
-    with pytest.raises(RuntimeError) as re:
+    with pytest.raises(RuntimeError, match='locust test failed'):
         after_feature(behave, feature)
-    assert str(re.value) == 'locust test failed'
 
     locustrun_mock.assert_called_once_with(behave)
     locustrun_mock.reset_mock()
@@ -188,9 +184,8 @@ def test_after_feature(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, c
     grizzly.state.locust.environment.stats.log_error(RequestType.SCENARIO(), '001 test', 'error error')
     grizzly.state.locust.environment.stats.log_error(RequestType.SCENARIO(), '002 test', 'error error')
 
-    with pytest.raises(RuntimeError) as re:
+    with pytest.raises(RuntimeError, match='locust test failed'):
         after_feature(behave, feature)
-    assert str(re.value) == 'locust test failed'
 
     locustrun_mock.assert_called_once_with(behave)
     locustrun_mock.reset_mock()
@@ -201,9 +196,8 @@ def test_after_feature(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, c
     grizzly.state.locust.environment.stats.log_error(RequestType.UNTIL(), '001 until', 'error error')
     grizzly.state.locust.environment.stats.log_error('GET', '001 get', 'foobared')
 
-    with pytest.raises(RuntimeError) as re:
+    with pytest.raises(RuntimeError, match='locust test failed'):
         after_feature(behave, feature)
-    assert str(re.value) == 'locust test failed'
 
     locustrun_mock.assert_called_once_with(behave)
     locustrun_mock.reset_mock()
@@ -212,9 +206,8 @@ def test_after_feature(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, c
     feature.set_status(Status.passed)
     locustrun_mock.return_value = 123
 
-    with pytest.raises(RuntimeError) as re:
+    with pytest.raises(RuntimeError, match='locust test failed'):
         after_feature(behave, feature)
-    assert str(re.value) == 'locust test failed'
 
     capture = capsys.readouterr()
 
@@ -240,7 +233,7 @@ def test_before_scenario(behave_fixture: BehaveFixture, mocker: MockerFixture) -
         def step_local(self) -> None:
             pass
 
-    def find_match(step: Step, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> Optional[MatchedStep]:
+    def find_match(step: Step, *_args: Any, **_kwargs: Any) -> Optional[MatchedStep]:
         if step is None:
             return None
 
@@ -304,18 +297,16 @@ def test_after_scenario(behave_fixture: BehaveFixture) -> None:
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     grizzly.scenario.tasks.tmp.async_group = AsyncRequestGroupTask(name='test-async-1')
 
-    with pytest.raises(AssertionError) as ae:
+    with pytest.raises(AssertionError, match='async request group "test-async-1" has not been closed'):
         after_scenario(behave)
-    assert str(ae.value) == 'async request group "test-async-1" has not been closed'
 
     grizzly.scenario.tasks.tmp.async_group = None
 
     grizzly.scenario.tasks.tmp.timers['test-timer-1'] = TimerTask('test-timer-1')
     grizzly.scenario.tasks.tmp.timers['test-timer-2'] = TimerTask('test-timer-2')
 
-    with pytest.raises(AssertionError) as ae:
+    with pytest.raises(AssertionError, match='timers test-timer-1, test-timer-2 has not been closed'):
         after_scenario(behave)
-    assert str(ae.value) == 'timers test-timer-1, test-timer-2 has not been closed'
 
     grizzly.scenario.tasks.tmp.timers.clear()
 
@@ -324,18 +315,16 @@ def test_after_scenario(behave_fixture: BehaveFixture) -> None:
         condition='{{ value | int > 0 }}',
     )
 
-    with pytest.raises(AssertionError) as ae:
+    with pytest.raises(AssertionError, match='conditional "test-conditional-1" has not been closed'):
         after_scenario(behave)
-    assert str(ae.value) == 'conditional "test-conditional-1" has not been closed'
 
     grizzly.scenario.tasks.tmp.conditional = None
     grizzly.state.background_section_done = False
     grizzly.state.variables['foobar'] = 'none'
-    grizzly.scenario.tasks.tmp.loop = LoopTask(grizzly, name='test-loop', values='["hello", "world"]', variable='foobar')
+    grizzly.scenario.tasks.tmp.loop = LoopTask(name='test-loop', values='["hello", "world"]', variable='foobar')
 
-    with pytest.raises(AssertionError) as ae:
+    with pytest.raises(AssertionError, match='loop task "test-loop" has not been closed'):
         after_scenario(behave)
-    assert str(ae.value) == 'loop task "test-loop" has not been closed'
 
     grizzly.scenario.tasks.tmp.loop = None
     grizzly.state.background_section_done = False
@@ -358,16 +347,18 @@ def test_before_step(behave_fixture: BehaveFixture) -> None:
 
     before_step(behave, step)
 
+    attr_name = 'location_status'
+
     assert behave.step is step
 
-    setattr(step, 'location_status', 'incorrect')
+    setattr(step, attr_name, 'incorrect')
 
     with pytest.raises(AssertionError):
         before_step(behave, step)
 
-    setattr(step, 'location_status', 'incorrect')
+    setattr(step, attr_name, 'incorrect')
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError, match='Step is in the incorrect section'):
         before_step(behave, step)
 
 

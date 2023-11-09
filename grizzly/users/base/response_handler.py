@@ -36,10 +36,9 @@ class ResponseHandlerAction(ABC):
         input_context: Tuple[TransformerContentType, Any],
         user: GrizzlyUser,
         response: Optional[GrizzlyResponseContextManager] = None,
-    ) -> None:
-        """Execute handler."""
+    ) -> None:  # pragma: no cover
         message = f'{self.__class__.__name__} has not implemented __call__'
-        raise NotImplementedError(message)  # pragma: no cover
+        raise NotImplementedError(message)
 
     def get_match(
         self,
@@ -137,7 +136,6 @@ class ValidationHandlerAction(ResponseHandlerAction):
         user: GrizzlyUser,
         response: Optional[GrizzlyResponseContextManager] = None,
     ) -> None:
-        """Run validation of response."""
         match, expression, match_with = self.get_match(input_context, user, condition=self.condition)
 
         result = match is not None if self.condition is True else match is None
@@ -167,7 +165,6 @@ class SaveHandlerAction(ResponseHandlerAction):
         user: GrizzlyUser,
         response: Optional[GrizzlyResponseContextManager] = None,
     ) -> None:
-        """Run expression and save value from response."""
         match, expression, _ = self.get_match(input_context, user)
 
         user.set_context_variable(self.variable, match)
@@ -196,7 +193,6 @@ class ResponseHandler(ResponseEvent):
         user: GrizzlyUser,
         **_kwargs: Any,
     ) -> None:
-        """Handle `response_event` when fired."""
         if getattr(request, 'response', None) is None:
             return
 

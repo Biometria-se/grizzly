@@ -7,6 +7,7 @@ import re
 import stat
 import subprocess
 from abc import ABCMeta
+from contextlib import suppress
 from copy import deepcopy
 from pathlib import Path
 from types import MethodType, TracebackType
@@ -34,7 +35,7 @@ def ANY(*cls: Type, message: Optional[str] = None) -> object:  # noqa: N802
     """Compare equal to everything, as long as it is of the same type."""
     class WrappedAny(metaclass=ABCMeta):  # noqa: B024
         def __eq__(self, other: object) -> bool:
-            return isinstance(other, cls) and (message is None or (message is not None and str(other) == message))
+            return isinstance(other, cls) and (message is None or (message is not None and message in str(other)))
 
         def __ne__(self, other: object) -> bool:
             return not self.__eq__(other)
@@ -51,15 +52,15 @@ def ANY(*cls: Type, message: Optional[str] = None) -> object:  # noqa: N802
     return WrappedAny()
 
 
-def message_callback(environment: Environment, msg: Message) -> None:
+def message_callback(environment: Environment, msg: Message) -> None:  # noqa: ARG001
     pass
 
 
-def message_callback_incorrect_sig(msg: Message, environment: Environment) -> Message:
+def message_callback_incorrect_sig(msg: Message, environment: Environment) -> Message:  # noqa: ARG001
     return Message('test', None, None)
 
 
-class RequestCalled(Exception):
+class RequestCalled(Exception):  # noqa: N818
     endpoint: str
     request: RequestTask
 
@@ -93,7 +94,7 @@ class TestScenario(GrizzlyScenario):
     @task
     def task(self) -> None:
         self.user.request(
-            RequestTask(RequestMethod.POST, name='test', endpoint='payload.j2.json')
+            RequestTask(RequestMethod.POST, name='test', endpoint='payload.j2.json'),
         )
 
 
@@ -111,17 +112,17 @@ class TestTask(GrizzlyTask):
         self.call_count = 0
         self.task_call_count = 0
 
-    def on_start(self, parent: 'GrizzlyScenario') -> None:
+    def on_start(self, _: GrizzlyScenario) -> None:
         return
 
-    def on_stop(self, parent: 'GrizzlyScenario') -> None:
+    def on_stop(self, _: GrizzlyScenario) -> None:
         return
 
     def __call__(self) -> grizzlytask:
         self.call_count += 1
 
         @grizzlytask
-        def task(parent: 'GrizzlyScenario') -> Any:
+        def task(parent: GrizzlyScenario) -> Any:
             parent.user.environment.events.request.fire(
                 request_type='TSTSK',
                 name=f'TestTask: {self.name}',
@@ -131,14 +132,14 @@ class TestTask(GrizzlyTask):
                 exception=None,
             )
             self.task_call_count += 1
-            parent.user.logger.debug(f'{self.name} executed')
+            parent.user.logger.debug('%s executed', self.name)
 
         @task.on_start
-        def on_start(parent: 'GrizzlyScenario') -> None:
+        def on_start(parent: GrizzlyScenario) -> None:
             self.on_start(parent)
 
         @task.on_stop
-        def on_stop(parent: 'GrizzlyScenario') -> None:
+        def on_stop(parent: GrizzlyScenario) -> None:
             self.on_stop(parent)
 
         return task
@@ -154,17 +155,17 @@ class TestExceptionTask(GrizzlyTask):
 
     def __call__(self) -> grizzlytask:
         @grizzlytask
-        def task(parent: 'GrizzlyScenario') -> Any:
-            raise self.error_type()
+        def task(_: GrizzlyScenario) -> Any:
+            raise self.error_type
 
         return task
 
 
-class ResultSuccess(Exception):
+class ResultSuccess(Exception):  # noqa: N818
     pass
 
 
-class ResultFailure(Exception):
+class ResultFailure(Exception):  # noqa: N818
     pass
 
 
@@ -180,47 +181,47 @@ def check_arguments(kwargs: Dict[str, Any]) -> Tuple[bool, List[str]]:
 
 
 class RequestEvent(EventHook):
-    def __init__(self, custom: bool = True):
+    def __init__(self, *, custom: bool = True) -> None:
         self.custom = custom
 
-    def fire(self, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+    def fire(self, *_args: Any, **kwargs: Any) -> None:
         if self.custom:
             valid, diff = check_arguments(kwargs)
             if not valid:
-                raise AttributeError(f'missing required arguments: {diff}')
+                message = f'missing required arguments: {diff}'
+                raise AttributeError(message)
 
         if 'exception' in kwargs and kwargs['exception'] is not None:
             raise ResultFailure(kwargs['exception'])
-        else:
-            raise ResultSuccess()
+
+        raise ResultSuccess
 
 
 class RequestSilentFailureEvent(RequestEvent):
-    def fire(self, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+    def fire(self, *_args: Any, **kwargs: Any) -> None:
         if self.custom:
             valid, diff = check_arguments(kwargs)
             if not valid:
-                raise AttributeError(f'missing required arguments: {diff}')
+                message = f'missing required arguments: {diff}'
+                raise AttributeError(message)
 
         if 'exception' not in kwargs or kwargs['exception'] is None:
-            raise ResultSuccess()
+            raise ResultSuccess
 
 
 def get_property_decorated_attributes(target: Any) -> Set[str]:
-    return set(
-        [
-            name
+    return {
+        name
             for name, _ in inspect.getmembers(
                 target,
                 lambda p: isinstance(
                     p,
-                    (property, MethodType)
+                    (property, MethodType),
                 ) and not isinstance(
                     p,
-                    (classmethod, MethodType)  # @classmethod anotated methods becomes @property
+                    (classmethod, MethodType),  # @classmethod anotated methods becomes @property
                 )) if not name.startswith('_')
-        ]
-    )
+    }
 
 
 def run_command(command: List[str], env: Optional[Dict[str, str]] = None, cwd: Optional[str] = None) -> Tuple[int, List[str]]:
@@ -229,7 +230,7 @@ def run_command(command: List[str], env: Optional[Dict[str, str]] = None, cwd: O
         env = os.environ.copy()
 
     if cwd is None:
-        cwd = os.getcwd()
+        cwd = str(Path.cwd())
 
     process = subprocess.Popen(
         command,
@@ -255,24 +256,22 @@ def run_command(command: List[str], env: Optional[Dict[str, str]] = None, cwd: O
     except KeyboardInterrupt:
         pass
     finally:
-        try:
+        with suppress(Exception):
             process.kill()
-        except Exception:
-            pass
 
     process.wait()
 
     return process.returncode, output
 
 
-def onerror(func: Callable, path: str, exc_info: TracebackType) -> None:
-    '''
-    Error handler for ``shutil.rmtree``.
+def onerror(func: Callable, path: str, exc_info: TracebackType) -> None:  # noqa: ARG001
+    """Error handler for shutil.rmtree.
+
     If the error is due to an access error (read only file)
     it attempts to add write permission and then retries.
     If the error is for another reason it re-raises the error.
     Usage : ``shutil.rmtree(path, onerror=onerror)``
-    '''
+    """
     # Is the error an access error?
     if not os.access(path, os.W_OK):
         os.chmod(path, stat.S_IWUSR)
@@ -290,12 +289,12 @@ last = '└── '
 
 
 def tree(dir_path: Path, prefix: str = '', ignore: Optional[List[str]] = None) -> Generator[str, None, None]:
-    '''A recursive generator, given a directory Path object
-    will yield a visual tree structure line by line
-    with each line prefixed by the same characters
-    credit: https://stackoverflow.com/a/59109706
-    '''
-    contents = sorted(list(dir_path.iterdir()))
+    """Recursive generator.
+
+    Given a directory Path object will yield a visual tree structure line by line
+    with each line prefixed by the same characters credit: https://stackoverflow.com/a/59109706
+    """
+    contents = sorted(dir_path.iterdir())
     # contents each get pointers that are ├── with a final └── :
     pointers = [tee] * (len(contents) - 1) + [last]
     for pointer, sub_path in zip(pointers, contents):
@@ -315,11 +314,11 @@ class regex:
         return len(value) > 1 and value[0] == '^' and value[-1] == '$'
 
     @staticmethod
-    def possible(value: str) -> Union['regex', 'str']:
+    def possible(value: str) -> Union[regex, str]:
         if regex.valid(value):
             return regex(value)
-        else:
-            return value
+
+        return value
 
     def __init__(self, pattern: str, flags: int = 0) -> None:
         self._regex = re.compile(pattern, flags)

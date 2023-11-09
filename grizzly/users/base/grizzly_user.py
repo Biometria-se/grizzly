@@ -42,7 +42,6 @@ class grizzlycontext:
         self.context = context
 
     def __call__(self, cls: Type[GrizzlyUser]) -> Type[GrizzlyUser]:
-        """Hello."""
         cls.__context__ = merge_dicts(cls.__context__, self.context)
 
         return cls
@@ -83,14 +82,12 @@ class GrizzlyUser(RequestLogger, metaclass=GrizzlyUserMeta):
         environment.events.quitting.add_listener(self.on_quitting)
 
     def on_quitting(self, *_args: Any, **kwargs: Any) -> None:
-        """Update user attribute when locust is quitting."""
         # if it already has been called with True, do not change it back to False
         if not self.abort:
             self.abort = cast(bool, kwargs.get('abort', False))
 
     @property
     def scenario_state(self) -> Optional[ScenarioState]:
-        """Read-only access to scenario state."""
         return self._scenario_state
 
     @scenario_state.setter
@@ -114,10 +111,9 @@ class GrizzlyUser(RequestLogger, metaclass=GrizzlyUserMeta):
         return cast(bool, super().stop(force=force))
 
     @abstractmethod
-    def request_impl(self, request: RequestTask) -> GrizzlyResponse:
-        """Implement request for this specific user."""
+    def request_impl(self, request: RequestTask) -> GrizzlyResponse:  # pragma: no cover
         message = f'{self.__class__.__name__} has not implemented request'
-        raise NotImplementedError(message)  # pragma: no cover
+        raise NotImplementedError(message)
 
     @final
     def request(self, request: RequestTask) -> GrizzlyResponse:
@@ -233,15 +229,12 @@ class GrizzlyUser(RequestLogger, metaclass=GrizzlyUserMeta):
             return request
 
     def context(self) -> Dict[str, Any]:
-        """Overload locust user context with grizzly context."""
         return self._context
 
     def add_context(self, context: Dict[str, Any]) -> None:
-        """Update user context with changes for a new source context."""
         self._context = merge_dicts(self._context, context)
 
     def set_context_variable(self, variable: str, value: Any) -> None:
-        """Set a new value in the context."""
         old_value = self._context['variables'].get(variable, None)
         self._context['variables'][variable] = value
         message = f'context {variable=}, value={old_value} -> {value}'
@@ -249,5 +242,4 @@ class GrizzlyUser(RequestLogger, metaclass=GrizzlyUserMeta):
 
     @property
     def context_variables(self) -> Dict[str, Any]:
-        """Return only variables from context."""
         return cast(Dict[str, Any], self._context.get('variables', {}))

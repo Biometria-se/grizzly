@@ -1,5 +1,4 @@
-"""
-@anchor pydoc:grizzly.tasks.log_message Log Message
+"""@anchor pydoc:grizzly.tasks.log_message Log Message
 This task calls the `grizzly` logger to print a log message at level `INFO`. It can be used to visualize values for
 {@link framework.usage.variables.templating} variables.
 
@@ -15,9 +14,11 @@ This task does not have any request statistics entries.
 
 * `message` _str_ - message to log at `INFO` level, can be a template
 """
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Any
 
-from . import GrizzlyTask, template, grizzlytask
+from . import GrizzlyTask, grizzlytask, template
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.scenarios import GrizzlyScenario
@@ -34,7 +35,7 @@ class LogMessageTask(GrizzlyTask):
 
     def __call__(self) -> grizzlytask:
         @grizzlytask
-        def task(parent: 'GrizzlyScenario') -> Any:
+        def task(parent: GrizzlyScenario) -> Any:
             message = parent.render(self.message)
             parent.logger.info(message)
 

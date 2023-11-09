@@ -1,5 +1,4 @@
-"""
-@anchor pydoc:grizzly.tasks.wait_between Wait Between
+"""@anchor pydoc:grizzly.tasks.wait_between Wait Between
 This task sets the wait time between tasks in a scenario.
 
 The default is to wait `0` seconds between each task.
@@ -26,7 +25,9 @@ This task does not have any request statistics entries.
 
 * `max_time` _float_ (optional) - maximum time to wait
 """
-from typing import TYPE_CHECKING, Optional, Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Optional
 
 from locust import between, constant
 
@@ -48,14 +49,11 @@ class WaitBetweenTask(GrizzlyTask):
 
     def __call__(self) -> grizzlytask:
         @grizzlytask
-        def task(parent: 'GrizzlyScenario') -> Any:
-            if self.max_time is None:
-                wait_time = constant(self.min_time)
-            else:
-                wait_time = between(self.min_time, self.max_time)
+        def task(parent: GrizzlyScenario) -> Any:
+            wait_time = constant(self.min_time) if self.max_time is None else between(self.min_time, self.max_time)
 
             bound_wait_time = wait_time.__get__(parent.user, parent.user.__class__)
 
-            setattr(parent.user, 'wait_time', bound_wait_time)
+            parent.user.wait_time = bound_wait_time
 
         return task
