@@ -1,19 +1,21 @@
-from typing import cast
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, cast
 
 import pytest
-
 from parse import compile
 
 from grizzly.context import GrizzlyContext
-from grizzly.steps import *  # pylint: disable=unused-wildcard-import  # noqa: F403
+from grizzly.steps import *
 
-from tests.fixtures import BehaveFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from tests.fixtures import BehaveFixture
 
 
 def test_parse_user_gramatical_number() -> None:
     p = compile(
         'we have {user:d} {user_number:UserGramaticalNumber}',
-        extra_types=dict(UserGramaticalNumber=parse_user_gramatical_number),
+        extra_types={'UserGramaticalNumber': parse_user_gramatical_number},
     )
 
     assert parse_user_gramatical_number.__vector__ == (False, True,)

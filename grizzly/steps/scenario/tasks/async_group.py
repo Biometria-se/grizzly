@@ -1,23 +1,22 @@
-"""
-This module contains step implementations for the {@pylink grizzly.tasks.async_group} task.
-"""
+"""Module contains step implementations for the {@pylink grizzly.tasks.async_group} task."""
+from __future__ import annotations
+
 from typing import cast
 
-from grizzly.types.behave import Context, then, given
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import AsyncRequestGroupTask
+from grizzly.types.behave import Context, given, then
 
 
-@given(u'an async request group with name "{name}"')
+@given('an async request group with name "{name}"')
 def step_task_async_group_start(context: Context, name: str) -> None:
-    """
-    Creates an instance of the {@pylink grizzly.tasks.async_group} task. All {@pylink grizzly.tasks.request} tasks created after this step will be added to the
-    request group, until the group is closed.
+    """Create an instance of the {@pylink grizzly.tasks.async_group} task.
+
+    All {@pylink grizzly.tasks.request} tasks created after this step will be added to the request group, until the group is closed.
 
     See {@pylink grizzly.tasks.async_group} task documentation for more information.
 
     Example:
-
     ```gherkin
     Given an async request group with name "async-group-1"
     Then post request with name "test-post-2" to endpoint "/api/test"
@@ -40,16 +39,15 @@ def step_task_async_group_start(context: Context, name: str) -> None:
     grizzly.scenario.tasks.tmp.async_group = AsyncRequestGroupTask(name=name)
 
 
-@then(u'close async request group')
+@then('close async request group')
 def step_task_async_group_close(context: Context) -> None:
-    """
-    Closes the instance created in {@pylink grizzly.steps.scenario.tasks.async_group.step_task_async_group_start}, and adds the {@pylink grizzly.tasks.async_group}
-    task to the list of tasks that the scenario is going to execute.
+    """Close the instance created in {@pylink grizzly.steps.scenario.tasks.async_group.step_task_async_group_start}.
+
+    Add the {@pylink grizzly.tasks.async_group} task to the list of tasks that the scenario is going to execute.
 
     See {@pylink grizzly.tasks.async_group} task documentation for more information.
 
     Example:
-
     ```gherkin
     Given an async request group with name "async-group-1"
     Then post request with name "test-post-2" to endpoint "/api/test"

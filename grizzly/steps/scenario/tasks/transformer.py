@@ -15,8 +15,10 @@ register_type(
 
 @then('parse "{content}" as "{content_type:ContentType}" and save value of "{expression}" in variable "{variable}"')
 def step_task_transform(context: Context, content: str, content_type: TransformerContentType, expression: str, variable: str) -> None:
-    """Create an instance of the {@pylink grizzly.tasks.transformer} task. Transforms the specified `content` with `content_type` to an
-    object that an transformer can extract information from with the specified `expression`.
+    """Create an instance of the {@pylink grizzly.tasks.transformer} task.
+
+    Transforms the specified `content` with `content_type` to an object that an transformer can extract information from
+    with the specified `expression`.
 
     See {@pylink grizzly.tasks.transformer} task documentation for more information about the task.
 

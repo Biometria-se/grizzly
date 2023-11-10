@@ -1,24 +1,24 @@
-"""
-This module contains step implementations for the {@pylink grizzly.tasks.wait_explicit} task.
-"""
+"""Module contains step implementations for the {@pylink grizzly.tasks.wait_explicit} task."""
+from __future__ import annotations
+
 from typing import cast
 
-from grizzly.utils import is_template
-from grizzly.types.behave import Context, then
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import ExplicitWaitTask
+from grizzly.types.behave import Context, then
+from grizzly.utils import is_template
 
 
-@then(u'wait for "{wait_time_expression}" seconds')
+@then('wait for "{wait_time_expression}" seconds')
 def step_task_wait_explicit(context: Context, wait_time_expression: str) -> None:
-    """
-    Creates an instace of the {@pylink grizzly.tasks.wait_explicit} task. The scenario will wait the specified time (seconds) in
-    additional to the wait time specified by {@pylink grizzly.tasks.wait_between}.
+    """Create an instace of the {@pylink grizzly.tasks.wait_explicit} task.
+
+    The scenario will wait the specified time (seconds) in additional to the wait time specified
+    by {@pylink grizzly.tasks.wait_between}.
 
     See {@pylink grizzly.tasks.wait_explicit} task documentation for more information about the task.
 
     Example:
-
     ```gherkin
     And ask for value of variable "wait_time"
     And wait "1.5..2.5" seconds between tasks
@@ -39,7 +39,8 @@ def step_task_wait_explicit(context: Context, wait_time_expression: str) -> None
     if not is_template(wait_time_expression):
         try:
             assert float(wait_time_expression) > 0.0, 'wait time cannot be less than 0.0 seconds'
-        except ValueError:
-            raise AssertionError(f'"{wait_time_expression}" is not a template nor a float')
+        except ValueError as e:
+            message = f'"{wait_time_expression}" is not a template nor a float'
+            raise AssertionError(message) from e
 
     grizzly.scenario.tasks.add(ExplicitWaitTask(time_expression=wait_time_expression))

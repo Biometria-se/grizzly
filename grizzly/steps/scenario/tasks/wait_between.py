@@ -1,23 +1,22 @@
-"""
-This module contains step implementations for the {@pylink grizzly.tasks.wait_between} task.
-"""
+"""Module contains step implementations for the {@pylink grizzly.tasks.wait_between} task."""
+from __future__ import annotations
+
 from typing import cast
 
-from grizzly.types.behave import Context, given
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import WaitBetweenTask
+from grizzly.types.behave import Context, given
 
 
-@given(u'wait "{min_time:g}..{max_time:g}" seconds between tasks')
+@given('wait "{min_time:g}..{max_time:g}" seconds between tasks')
 def step_task_wait_between_random(context: Context, min_time: float, max_time: float) -> None:
-    """
-    Creates an instance of the {@pylink grizzly.tasks.wait_between} task. Sets number of, randomly, seconds the {@pylink grizzly.users}
-    will wait between executing each task.
+    """Create an instance of the {@pylink grizzly.tasks.wait_between} task.
+
+    Set number of, randomly, seconds the {@pylink grizzly.users} will wait between executing each task.
 
     See {@pylink grizzly.tasks.wait_between} task documentation for more information.
 
     Example:
-
     ```gherkin
     And wait "1.4..1.7" seconds between tasks
     # wait between 1.4 and 1.7 seconds
@@ -39,16 +38,15 @@ def step_task_wait_between_random(context: Context, min_time: float, max_time: f
     grizzly.scenario.tasks.add(WaitBetweenTask(min_time=min_time, max_time=max_time))
 
 
-@given(u'wait "{time:g}" seconds between tasks')
+@given('wait "{time:g}" seconds between tasks')
 def step_task_wait_between_constant(context: Context, time: float) -> None:
-    """
-    Creates an instance of the {@pylink grizzly.tasks.wait_between} task. Sets number of, constant, seconds the {@pylink grizzly.users}
-    will wait between executing each task.
+    """Create an instance of the {@pylink grizzly.tasks.wait_between} task.
+
+    Set number of, constant, seconds the {@pylink grizzly.users} will wait between executing each task.
 
     See {@pylink grizzly.tasks.wait_between} task documentation for more information.
 
     Example:
-
     ```gherkin
     And wait "1.4" seconds between tasks
     # wait 1.4 seconds

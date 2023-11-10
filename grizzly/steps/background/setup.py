@@ -1,6 +1,4 @@
-"""@anchor pydoc:grizzly.steps.background.setup Setup
-This module contains step implementations that configures the load test scenario with parameters applicable for all scenarios.
-"""
+"""Module contains step implementations that configures the load test scenario with parameters applicable for all scenarios."""
 from __future__ import annotations
 
 from importlib import import_module
@@ -14,7 +12,6 @@ from grizzly.context import GrizzlyContext
 from grizzly.testdata.utils import create_context_variable, resolve_variable
 from grizzly.types import MessageDirection
 from grizzly.types.behave import Context, given, register_type
-from grizzly.types.locust import Environment, Message
 from grizzly.utils import merge_dicts
 from grizzly_extras.text import permutation
 
@@ -51,6 +48,7 @@ def step_setup_save_statistics(context: Context, url: str) -> None:
     insights://<ingestion endpoint>/?InstrumentationKey=<instrumentation key>[&Testplan=<test plan>]
     ```
 
+    Example:
     ```gherkin
     And save statistics to "influxdb://grizzly:secret-password@influx.example.com/grizzly-statistics"
     And save statistics to "insights://?IngestionEndpoint=https://insights.example.com&Testplan=grizzly-statistics&InstrumentationKey=asdfasdfasdf="
@@ -76,6 +74,7 @@ def step_setup_log_level(context: Context, log_level: str) -> None:
 
     Default value is `INFO`, by changing to `DEBUG` there is more information what `grizzly` is doing behind the curtains.
 
+    Example:
     ```gherkin
     And log level is "DEBUG"
     ```
@@ -91,8 +90,10 @@ def step_setup_log_level(context: Context, log_level: str) -> None:
 @given('run for maximum "{timespan}"')
 def step_setup_run_time(context: Context, timespan: str) -> None:
     """Configure the time period a headless test should run for.
+
     If available test data is infinite, the test will run forever if this step is not used.
 
+    Example:
     ```gherkin
     And run for maximum "1h"
     ```
@@ -106,8 +107,10 @@ def step_setup_run_time(context: Context, timespan: str) -> None:
 
 @given('set global context variable "{variable}" to "{value}"')
 def step_setup_set_global_context_variable(context: Context, variable: str, value: str) -> None:
-    """Create a global variable in the context. Depending on which type of user a scenario is configured for, different variables
-    are available. Check `grizzly.users` documentation for which context variables are available for each user.
+    """Create a global variable in the context.
+
+    Depending on which type of user a scenario is configured for, different variables are available.
+    Check {@pylink grizzly.users} documentation for which context variables are available for each user.
 
     This step can be used if the feature file has multiple scenarios and all of them have the same context variables.
 
@@ -128,6 +131,7 @@ def step_setup_set_global_context_variable(context: Context, variable: str, valu
 
     E.g. `Client ID` results in `client_id`.
 
+    Example:
     ```gherkin
     And set global context variable "token.url" to "http://example.com/api/auth"
     And set global context variable "token/client_id" to "aaaa-bbbb-cccc-dddd"

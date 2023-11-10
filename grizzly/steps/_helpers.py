@@ -1,23 +1,25 @@
-import re
-import json
-import os
-import logging
+from __future__ import annotations
 
-from typing import Optional, List, Tuple, Dict, Type, cast
+import json
+import logging
+import re
+from pathlib import Path
+from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Type, cast
 from urllib.parse import urlparse
 
 import jinja2 as j2
 
-from grizzly_extras.transformer import TransformerContentType
-from grizzly_extras.arguments import split_value, parse_arguments, get_unsupported_arguments
-
-from grizzly.types import RequestMethod, ResponseTarget, ResponseAction
-from grizzly.types.behave import Context, Row
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import RequestTask
-from grizzly.tasks.clients import client, ClientTask
+from grizzly.tasks.clients import ClientTask, client
 from grizzly.testdata.utils import resolve_variable
-from grizzly.users.base.response_handler import ResponseHandlerAction, ValidationHandlerAction, SaveHandlerAction
+from grizzly.types import RequestMethod, ResponseAction, ResponseTarget
+from grizzly.users.base.response_handler import ResponseHandlerAction, SaveHandlerAction, ValidationHandlerAction
+from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments, split_value
+from grizzly_extras.transformer import TransformerContentType
+
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.types.behave import Context, Row
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +45,7 @@ def _create_request_task(
     substitutes: Optional[Dict[str, str]] = None,
     content_type: Optional[TransformerContentType] = None,
 ) -> RequestTask:
-    path = os.path.join(base_dir, 'requests')
+    path = Path(base_dir) / 'requests'
     j2env = j2.Environment(
         autoescape=False,
         loader=j2.FileSystemLoader(path),
@@ -51,37 +53,34 @@ def _create_request_task(
 
     template: Optional[j2.Template] = None
 
-    try:
-        if source is not None:
-            possible_file = os.path.join(path, source)
-            # minify json files, to increase performance when jinja creates template
-            if os.path.isfile(possible_file):
-                with open(possible_file, 'r') as fd:
-                    try:
-                        source = json.dumps(json.load(fd))
-                        raise RuntimeError()
-                    except json.decoder.JSONDecodeError:
-                        # not json contents, so do not minify
-                        pass
-
-            template = j2env.get_template(source)
-            if name is None:
-                name = source.replace('.j2.json', '')
-
-            with open(os.path.join(path, source), 'r') as fd:
-                source = fd.read()
-    except (j2.exceptions.TemplateNotFound, RuntimeError):
-        if source is not None:
-            template = j2env.from_string(source)
-
-        if name is None:
-            name = '<unknown>'
-
     if source is not None:
+        original_source = source
+
+        try:
+            possible_file = path / source
+            if possible_file.is_file():
+                with possible_file.open() as fd:
+                    try:
+                        # minify json files, to increase performance when jinja creates template
+                        source = json.dumps(json.load(fd))
+                    except json.decoder.JSONDecodeError:
+                        # not json, so just use it as is
+                        fd.seek(0)
+                        source = fd.read()
+
+                template = j2env.get_template(source)
+
+        except j2.exceptions.TemplateNotFound:
+            if name is None:
+                name = original_source.replace(''.join(Path(original_source).suffixes), '')
+
         for key, value in (substitutes or {}).items():
             source = source.replace(f'{{{{ {key} }}}}', value)
 
-    request = RequestTask(method, name=cast(str, name), endpoint=endpoint)
+    if name is None:
+        name = '<unknown>'
+
+    request = RequestTask(method, name=name, endpoint=endpoint)
     request._source = source
     request._template = template
     if content_type is not None:
@@ -101,6 +100,7 @@ def add_request_task(
     source: Optional[str] = None,
     name: Optional[str] = None,
     endpoint: Optional[str] = None,
+    *,
     in_scenario: Optional[bool] = True,
 ) -> List[Tuple[RequestTask, Dict[str, str]]]:
     grizzly = cast(GrizzlyContext, context.grizzly)
@@ -115,30 +115,31 @@ def add_request_task(
     if endpoint is not None and ('$env::' in endpoint or '$conf::' in endpoint):
         endpoint = cast(str, resolve_variable(grizzly, endpoint, guess_datatype=False, only_grizzly=True))
 
-    if context.table is not None:
-        table = context.table
-    else:
-        table = [None]
+    table = context.table if context.table is not None else [None]
 
     for row in table:
         if endpoint is None:
             if scenario_tasks_count == 0:
-                raise ValueError('no endpoint specified')
+                message = 'no endpoint specified'
+                raise ValueError(message)
 
             last_request = grizzly.scenario.tasks()[-1]
 
             if not isinstance(last_request, RequestTask):
-                raise ValueError('previous task was not a request')
+                message = 'previous task was not a request'
+                raise ValueError(message)
 
             if last_request.method != method:
-                raise ValueError('can not use endpoint from previous request, it has different method')
+                message = 'cannot use endpoint from previous request, it has a different request method'
+                raise ValueError(message)
 
             endpoint = last_request.endpoint
             content_type = last_request.response.content_type
         else:
             parsed = urlparse(endpoint)
             if len(parsed.netloc) > 0:
-                raise ValueError(f'endpoints should only contain path relative to {grizzly.scenario.context["host"]}')
+                message = f'endpoints should only contain path relative to {grizzly.scenario.context["host"]}'
+                raise ValueError(message)
 
         orig_endpoint = endpoint
         orig_name = name
@@ -166,12 +167,12 @@ def add_request_task(
         if in_scenario:
             grizzly.scenario.tasks.add(request_task)
         else:
-            request_tasks.append((request_task, substitutes,))
+            request_tasks.append((request_task, substitutes))
 
     return request_tasks
 
 
-def _add_response_handler(
+def _add_response_handler(  # noqa: C901, PLR0912
     grizzly: GrizzlyContext,
     target: ResponseTarget,
     action: ResponseAction,
@@ -181,13 +182,16 @@ def _add_response_handler(
     condition: Optional[bool] = None,
 ) -> None:
     if variable is not None and variable not in grizzly.state.variables:
-        raise ValueError(f'variable "{variable}" has not been declared')
+        message = f'variable "{variable}" has not been declared'
+        raise ValueError(message)
 
     if not len(grizzly.scenario.tasks()) > 0:
-        raise ValueError('no request source has been added!')
+        message = 'no request source has been added!'
+        raise ValueError(message)
 
     if len(expression) < 1:
-        raise ValueError('expression is empty')
+        message = 'expression is empty'
+        raise ValueError(message)
 
     if '|' in expression:
         expression, expression_arguments = split_value(expression)
@@ -195,10 +199,11 @@ def _add_response_handler(
         unsupported_arguments = get_unsupported_arguments(['expected_matches', 'as_json'], arguments)
 
         if len(unsupported_arguments) > 0:
-            raise ValueError(f'unsupported arguments {", ".join(unsupported_arguments)}')
+            message = f'unsupported arguments {", ".join(unsupported_arguments)}'
+            raise ValueError(message)
 
         expected_matches = arguments.get('expected_matches', '1')
-        as_json = True if arguments.get('as_json', 'False') == 'True' else False
+        as_json = arguments.get('as_json', 'False') == 'True'
     else:
         expected_matches = '1'
         as_json = False
@@ -207,10 +212,12 @@ def _add_response_handler(
     request = grizzly.scenario.tasks()[-1]
 
     if not isinstance(request, RequestTask):
-        raise ValueError('latest task was not a request')
+        message = 'latest task was not a request'
+        raise TypeError(message)
 
     if request.response.content_type == TransformerContentType.UNDEFINED:
-        raise ValueError('content type is not set for latest request')
+        message = 'content type is not set for latest request'
+        raise ValueError(message)
 
     if '{{' in match_with and '}}' in match_with:
         grizzly.scenario.orphan_templates.append(match_with)
@@ -222,7 +229,8 @@ def _add_response_handler(
 
     if action == ResponseAction.SAVE:
         if variable is None:
-            raise ValueError('variable is not set')
+            message = 'variable is not set'
+            raise ValueError(message)
 
         handler = SaveHandlerAction(
             variable,
@@ -233,7 +241,8 @@ def _add_response_handler(
         )
     elif action == ResponseAction.VALIDATE:
         if condition is None:
-            raise ValueError('condition is not set')
+            message = 'condition is not set'
+            raise ValueError(message)
 
         handler = ValidationHandlerAction(
             condition=condition,
@@ -255,7 +264,7 @@ def add_save_handler(grizzly: GrizzlyContext, target: ResponseTarget, expression
     _add_response_handler(grizzly, target, ResponseAction.SAVE, expression=expression, match_with=match_with, variable=variable)
 
 
-def add_validation_handler(grizzly: GrizzlyContext, target: ResponseTarget, expression: str, match_with: str, condition: bool) -> None:
+def add_validation_handler(grizzly: GrizzlyContext, target: ResponseTarget, expression: str, match_with: str, *, condition: bool) -> None:
     _add_response_handler(grizzly, target, ResponseAction.VALIDATE, expression=expression, match_with=match_with, condition=condition)
 
 
@@ -266,7 +275,9 @@ def normalize_step_name(step_name: str) -> str:
 def get_task_client(grizzly: GrizzlyContext, endpoint: str) -> Type[ClientTask]:
     scheme = urlparse(endpoint).scheme
 
-    assert scheme is not None and len(scheme) > 0, f'could not find scheme in "{endpoint}"'
+    if not (scheme is not None and len(scheme) > 0):
+        message = f'could not find scheme in "{endpoint}"'
+        raise AssertionError(message)
 
     task_client = client.available.get(scheme, None)
 

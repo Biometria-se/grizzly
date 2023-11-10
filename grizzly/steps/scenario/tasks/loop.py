@@ -11,6 +11,7 @@ from grizzly.types.behave import Context, then
 @then('loop "{values}" as variable "{variable}" with name "{name}"')
 def step_task_loop_start(context: Context, values: str, variable: str, name: str) -> None:
     """Create an instance of the {@pylink grizzly.tasks.loop} tasks which executes all wrapped tasks with a value from the list `values`.
+
     `values` **must** be a valid JSON list and supports {@link framework.usage.variables.templating}.
 
     See {@pylink grizzly.tasks.loop} task documentation for more information.
@@ -36,6 +37,7 @@ def step_task_loop_start(context: Context, values: str, variable: str, name: str
 @then('end loop')
 def step_task_loop_end(context: Context) -> None:
     """Close the {@pylink grizzly.tasks.loop} task created by {@pylink grizzly.steps.scenario.tasks.loop.step_task_loop_start}.
+
     This means that any following tasks specified will not be part of the loop.
 
     See {@pylink grizzly.tasks.loop} task documentation for more information.

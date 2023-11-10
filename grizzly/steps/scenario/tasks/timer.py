@@ -1,23 +1,22 @@
-"""
-This module contains step implementations for the {@pylink grizzly.tasks.timer} task.
-"""
+"""Module contains step implementations for the {@pylink grizzly.tasks.timer} task."""
+from __future__ import annotations
+
 from typing import cast
 
-from grizzly.types.behave import Context, then
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import TimerTask
+from grizzly.types.behave import Context, then
 
 
-@then(u'start timer with name "{name}"')
+@then('start timer with name "{name}"')
 def step_task_timer_start(context: Context, name: str) -> None:
-    """
-    Creates an instance of the {@pylink grizzly.tasks.timer} task. Starts a timer to measure the "request time" for all tasks between
-    the start and stop of the timer.
+    """Create an instance of the {@pylink grizzly.tasks.timer} task.
+
+    Starts a timer to measure the "request time" for all tasks between the start and stop of the timer.
 
     See {@pylink grizzly.tasks.timer} task documentation for more information.
 
     Example:
-
     ```gherkin
     Then start timer with name "parsing-xml"
     ...
@@ -36,15 +35,13 @@ def step_task_timer_start(context: Context, name: str) -> None:
     grizzly.scenario.tasks.add(task)
 
 
-@then(u'stop timer with name "{name}"')
+@then('stop timer with name "{name}"')
 def step_task_timer_stop(context: Context, name: str) -> None:
-    """
-    Adds the instance created by {@pylink grizzly.steps.scenario.tasks.timer.step_task_timer_start} to the list of scenario tasks.
+    """Add the instance created by {@pylink grizzly.steps.scenario.tasks.timer.step_task_timer_start} to the list of scenario tasks.
 
     See {@pylink grizzly.tasks.timer} task documentation for more information.
 
     Example:
-
     ```gherkin
     Then start timer with name "parsing-xml"
     ...

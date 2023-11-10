@@ -1,17 +1,17 @@
-"""
-@anchor pydoc:grizzly.steps.scenario.results Results
-This module contains step implementations that validates the total response results for all {@pylink grizzly.tasks} in a scenario, based on
+"""Module contains step implementations that validates the total response results for all {@pylink grizzly.tasks} in a scenario, based on
 locust statistics like response time and failures.
 """
+from __future__ import annotations
+
 from typing import cast
 
-from grizzly.types.behave import Context, when
 from grizzly.context import GrizzlyContext, GrizzlyContextScenarioResponseTimePercentile
+from grizzly.types.behave import Context, when
 
 
-@when(u'fail ratio is greater than "{fail_ratio:d}"% fail scenario')
+@when('fail ratio is greater than "{fail_ratio:d}"% fail scenario')
 def step_results_fail_ratio(context: Context, fail_ratio: int) -> None:
-    """Sets how many percentages of requests that are allowed to fail before the whole scenario will be set as failed.
+    """Set how many percentages of requests that are allowed to fail before the whole scenario will be set as failed.
 
     This step cannot be used in combination with:
 
@@ -22,7 +22,6 @@ def step_results_fail_ratio(context: Context, fail_ratio: int) -> None:
     Default behavior is not to validate the result for a scenario based on failed requests.
 
     Example:
-
     ```gherkin
     When fail ratio is greater than "8"% fail scenario
     ```
@@ -35,15 +34,14 @@ def step_results_fail_ratio(context: Context, fail_ratio: int) -> None:
     grizzly.scenario.validation.fail_ratio = fail_ratio / 100.0
 
 
-@when(u'average response time is greater than "{avg_response_time:d}" milliseconds fail scenario')
+@when('average response time is greater than "{avg_response_time:d}" milliseconds fail scenario')
 def step_results_avg_response_time(context: Context, avg_response_time: int) -> None:
-    """Sets the average response time (milliseconds) that all requests in a scenario must be below
+    """Set the average response time (milliseconds) that all requests in a scenario must be below
     for it to pass.
 
     Default behavior is not to validate the result for a scenario based on average response time.
 
     Example:
-
     ```gherkin
     When average response time is greater than "200" milliseconds fail scenario
     ```
@@ -55,14 +53,13 @@ def step_results_avg_response_time(context: Context, avg_response_time: int) -> 
     grizzly.scenario.validation.avg_response_time = avg_response_time
 
 
-@when(u'response time percentile "{percentile:d}"% is greater than "{response_time:d}" milliseconds fail scenario')
+@when('response time percentile "{percentile:d}"% is greater than "{response_time:d}" milliseconds fail scenario')
 def step_results_response_time_percentile(context: Context, percentile: float, response_time: int) -> None:
-    """Sets the response time that a specified percentile of the requests needs to be below for the scenario to pass.
+    """Set the response time that a specified percentile of the requests needs to be below for the scenario to pass.
 
     Default behavior is not to validate the result for a scenario based on percetile response times.
 
     Example:
-
     ```gherkin
     When response time percentile "95"% is greater than "200" milliseconds fail scenario
     ```

@@ -1,6 +1,4 @@
-"""@anchor pydoc:grizzly.steps.scenario.tasks.until Until steps
-This module contains step implementations for the {@pylink grizzly.tasks.until} task.
-"""
+"""Module contains step implementations for the {@pylink grizzly.tasks.until} task."""
 from __future__ import annotations
 
 from typing import cast
@@ -56,8 +54,10 @@ def step_task_request_with_name_endpoint_until(context: Context, method: Request
 @then('get "{endpoint}" with name "{name}" until "{condition}"')
 def step_task_client_get_endpoint_until(context: Context, endpoint: str, name: str, condition: str) -> None:
     """Create an instance of a {@pylink grizzly.tasks.clients} task, actual implementation of the task is determined
-    based on the URL scheme specified in `endpoint`. Gets information, repeated from another host or endpoint than the scenario
-    is load testing until the response matches `expression`.
+    based on the URL scheme specified in `endpoint`.
+
+    Gets information, repeated from another host or endpoint than the scenario is load testing until the response
+    matches `expression`.
 
     See {@pylink grizzly.tasks.clients} task documentation for more information about client tasks.
 
