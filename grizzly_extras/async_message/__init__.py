@@ -1,22 +1,22 @@
+from __future__ import annotations
+
 import logging
 import sys
-
 from abc import ABC, abstractmethod
-from typing import Optional, Dict, Any, TypedDict, Callable, List, cast, final
+from datetime import datetime
+from io import StringIO
+from json import dumps as jsondumps
 from os import environ, path
 from platform import node as hostname
-from json import dumps as jsondumps
-from time import monotonic as time
-from io import StringIO
 from threading import Lock
-from datetime import datetime
-from time import sleep, perf_counter
+from time import monotonic as time
+from time import perf_counter, sleep
+from typing import Any, Callable, Dict, List, Optional, TypedDict, cast, final
 
 import zmq.green as zmq
-
 from zmq.error import Again as ZMQAgain
-from grizzly_extras.transformer import JsonBytesEncoder
 
+from grizzly_extras.transformer import JsonBytesEncoder
 
 __all__: List[str] = []
 
@@ -62,21 +62,24 @@ class ThreadLogger:
 
             self._logger = logger
 
-    def _log(self, level: int, message: str, exc_info: Optional[bool] = False) -> None:
+    def _log(self, level: int, message: str, *args: Any, exc_info: Optional[bool] = False, **kwargs: Any) -> None:
         with self._lock:
-            self._logger.log(level, message, exc_info=exc_info)
+            self._logger.log(level, message, *args, exc_info=exc_info, **kwargs)
 
-    def debug(self, message: str) -> None:
-        self._log(logging.DEBUG, message)
+    def debug(self, message: str, *args: Any) -> None:
+        self._log(logging.DEBUG, message, *args)
 
-    def info(self, message: str) -> None:
-        self._log(logging.INFO, message)
+    def info(self, message: str, *args: Any) -> None:
+        self._log(logging.INFO, message, *args)
 
-    def error(self, message: str, exc_info: Optional[bool] = False) -> None:
+    def error(self, message: str, *, exc_info: Optional[bool] = False) -> None:
         self._log(logging.ERROR, message, exc_info=exc_info)
 
-    def warning(self, message: str) -> None:
-        self._log(logging.WARNING, message)
+    def warning(self, message: str, *args: Any) -> None:
+        self._log(logging.WARNING, message, *args)
+
+    def exception(self, message: str, *args: Any, exc_info: bool = True, **kwargs: Any) -> None:
+        self._log(logging.ERROR, message, *args, exc_info=exc_info, **kwargs)
 
 
 class AsyncMessageContext(TypedDict, total=False):
@@ -120,7 +123,7 @@ class AsyncMessageError(Exception):
     pass
 
 
-class AsyncMessageAbort(Exception):
+class AsyncMessageAbort(Exception):  # noqa: N818
     pass
 
 
