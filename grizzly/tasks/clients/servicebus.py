@@ -204,7 +204,6 @@ class ServiceBusClientTask(ClientTask):
                 endpoint_arguments['subscription'] = f'{quote}{subscription}_{id(parent.user)}{quote}'
                 context['endpoint'] = ', '.join([f'{key}:{value}' for key, value in endpoint_arguments.items()])
 
-
             state = State(
                 parent=parent,
                 client=cast(zmq.Socket, self._zmq_context.socket(zmq.REQ)),
