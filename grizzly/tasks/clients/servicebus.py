@@ -193,11 +193,17 @@ class ServiceBusClientTask(ClientTask):
         if state is None:
             context = self.context.copy()
             # add id of user as suffix to subscription name, to make it unique
-            endpoint_arguments = parse_arguments(context['endpoint'], separator=':')
+            endpoint_arguments = parse_arguments(context['endpoint'], separator=':', unquote=False)
 
             if 'subscription' in endpoint_arguments:
-                endpoint_arguments['subscription'] = f'{endpoint_arguments["subscription"]}_{id(parent.user)}'
+                subscription = endpoint_arguments['subscription']
+                quote = ''
+                if subscription[0] in ['"', "'"] and subscription[-1] == subscription[0]:
+                    quote = subscription[0]
+                    subscription = subscription[1:-1]
+                endpoint_arguments['subscription'] = f'{quote}{subscription}_{id(parent.user)}{quote}'
                 context['endpoint'] = ', '.join([f'{key}:{value}' for key, value in endpoint_arguments.items()])
+
 
             state = State(
                 parent=parent,
