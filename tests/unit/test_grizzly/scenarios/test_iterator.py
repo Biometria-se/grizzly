@@ -898,7 +898,7 @@ class TestIterationScenario:
             task_2 = scenario.tasks[-2]
 
             assert isinstance(task_1, grizzlytask)
-            assert isinstance(task_2, grizzlytask)
+            assert isinstance(task_2, grizzlytask)  # type: ignore[unreachable]
             assert task_1 is not task_2
             assert task_1._on_stop is None
             assert task_2._on_stop is None
@@ -962,7 +962,7 @@ class TestIterationScenario:
             task_2 = scenario.tasks[-2]
 
             assert isinstance(task_1, grizzlytask)
-            assert isinstance(task_2, grizzlytask)
+            assert isinstance(task_2, grizzlytask)  # type: ignore[unreachable]
             assert task_1 is not task_2
 
             task_1_on_stop_spy = mocker.spy(task_1, '_on_stop')

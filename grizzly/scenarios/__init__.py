@@ -79,7 +79,7 @@ class GrizzlyScenario(SequentialTaskSet):
 
         for task in self.tasks:
             if isinstance(task, grizzlytask):
-                task.on_start(self)
+                task.on_start(self)  # type: ignore[unreachable]
 
     def on_stop(self) -> None:
         """
@@ -88,7 +88,7 @@ class GrizzlyScenario(SequentialTaskSet):
         """
         for task in self.tasks:
             if isinstance(task, grizzlytask):
-                try:
+                try:  # type: ignore[unreachable]
                     task.on_stop(self)
                 except Exception as e:
                     self.logger.error(f'on_stop: {str(e)}', exc_info=True)

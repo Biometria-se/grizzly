@@ -65,13 +65,14 @@ Fragment:
 """  # noqa: E501
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from json import dumps as jsondumps
 from pathlib import Path
 from platform import node as hostname
 from textwrap import dedent
 from typing import TYPE_CHECKING, ClassVar, Dict, Optional, Set, cast
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, quote_plus, unquote_plus, urlparse
 
 import zmq.green as zmq
 
@@ -147,6 +148,15 @@ class ServiceBusClientTask(ClientTask):
             text=text,
         )
 
+        # expression can contain characters which are not URL safe, e.g. ?
+        # so we need to quote it first to make sure it does not mess up the URL parsing
+        match = re.search(r'expression:(.*?)(\/|;)', self.endpoint)
+
+        if match:
+            expression = quote_plus(match.group(1))
+            eoe = match.group(2)
+            self.endpoint = re.sub(r'expression:(.*?)(\/|;)', f'expression:{expression}{eoe}', self.endpoint)
+
         url = self.endpoint.replace(';', '?', 1).replace(';', '&')
 
         parsed = urlparse(url)
@@ -175,6 +185,17 @@ class ServiceBusClientTask(ClientTask):
         content_type = TransformerContentType.from_string(content_type_fragment[0]).name if content_type_fragment is not None else None
 
         context_endpoint = parsed.path[1:].replace('/', ', ')
+
+        # unquote expression, if specified, now that we have constructed everything everything basaed on the URL
+        try:
+            endpoint_arguments = parse_arguments(context_endpoint, separator=':', unquote=False)
+            expression = endpoint_arguments.get('expression', None)
+            if expression is not None:
+                endpoint_arguments.update({'expression': unquote_plus(expression)})
+                context_endpoint = ', '.join([f'{key}:{value}' for key, value in endpoint_arguments.items()])
+        except ValueError as e:
+            if 'incorrect format in arguments: ""' not in str(e):
+                raise
 
         connection = 'receiver' if direction == RequestDirection.FROM else 'sender'
 

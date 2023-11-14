@@ -69,7 +69,7 @@ class TestServiceBusClientTask:
         task = ServiceBusClientTask(
             RequestDirection.FROM,
             (
-                'sb://$conf::sbns.host$/topic:my-topic/subscription:my-subscription-{{ id }}/expression:$.hello.world'
+                'sb://$conf::sbns.host$/topic:my-topic/subscription:"my-subscription-{{ id }}"/expression:$.hello.world'
                 ';SharedAccessKeyName=$conf::sbns.key.name$;SharedAccessKey=$conf::sbns.key.secret$#Consume=True&MessageWait=300&ContentType=json'
             ),
             'test',
@@ -81,7 +81,7 @@ class TestServiceBusClientTask:
         assert task.context == {
             'url': task.endpoint,
             'connection': 'receiver',
-            'endpoint': 'topic:my-topic, subscription:my-subscription-{{ id }}, expression:$.hello.world',
+            'endpoint': 'topic:my-topic, subscription:"my-subscription-{{ id }}", expression:$.hello.world',
             'consume': True,
             'message_wait': 300,
             'content_type': 'JSON'
@@ -91,7 +91,7 @@ class TestServiceBusClientTask:
         assert task.metadata_variable is None
         assert task.source is None
         assert task._state == {}
-        assert sorted(task.get_templates()) == sorted(['topic:my-topic, subscription:my-subscription-{{ id }}, expression:$.hello.world', '{{ foobar }}'])
+        assert sorted(task.get_templates()) == sorted(['topic:my-topic, subscription:"my-subscription-{{ id }}", expression:$.hello.world', '{{ foobar }}'])
         context_mock.assert_called_once_with()
         context_mock.reset_mock()
 
@@ -100,7 +100,7 @@ class TestServiceBusClientTask:
         task = ServiceBusClientTask(
             RequestDirection.FROM,
             (
-                'sb://$conf::sbns.host$/topic:my-topic/subscription:my-subscription-{{ id }}/expression:$.hello.world'
+                'sb://$conf::sbns.host$/topic:my-topic/subscription:"my-subscription-{{ id }}"/expression:$.hello.world'
                 ';SharedAccessKeyName=$conf::sbns.key.name$;SharedAccessKey=$conf::sbns.key.secret$#Consume=True&MessageWait=300&ContentType=json'
             ),
             'test',
@@ -113,7 +113,7 @@ class TestServiceBusClientTask:
         assert task.context == {
             'url': task.endpoint,
             'connection': 'receiver',
-            'endpoint': 'topic:my-topic, subscription:my-subscription-{{ id }}, expression:$.hello.world',
+            'endpoint': 'topic:my-topic, subscription:"my-subscription-{{ id }}", expression:$.hello.world',
             'consume': True,
             'message_wait': 300,
             'content_type': 'JSON'
@@ -123,7 +123,7 @@ class TestServiceBusClientTask:
         assert task.metadata_variable == 'barfoo'
         assert task.source is None
         assert task._state == {}
-        assert sorted(task.get_templates()) == sorted(['topic:my-topic, subscription:my-subscription-{{ id }}, expression:$.hello.world', '{{ foobar }} {{ barfoo }}'])
+        assert sorted(task.get_templates()) == sorted(['topic:my-topic, subscription:"my-subscription-{{ id }}", expression:$.hello.world', '{{ foobar }} {{ barfoo }}'])
         context_mock.assert_called_once_with()
         context_mock.reset_mock()
 
@@ -328,6 +328,45 @@ class TestServiceBusClientTask:
                 'url': expected_context['url'],
                 'connection': 'receiver',
                 'endpoint': f"topic:my-topic, subscription:'my-subscription-baz-bar-foo_{id(parent.user)}', expression:'$.`this`[bar='foo' && bar='foo']'",
+                'message_wait': None,
+                'consume': False,
+            },
+            'payload': '1=1',
+        })
+
+        async_message_request_mock.reset_mock()
+        caplog.clear()
+
+        task = ServiceBusClientTask(
+            RequestDirection.FROM,
+            (
+                "sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:'my-subscription-{{ id }}'/"
+                "expression:'$.`this`[?bar='foo' & bar='foo']';SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324="
+            ),  # noqa: Q003
+            'test',
+        )
+        task._text = '1=1'
+
+        state = task.get_state(parent)
+
+        state.worker = 'foo-bar-baz'
+        state.client = client_mock
+
+        expected_context = state.context.copy()
+        expected_context['endpoint'] = expected_context['endpoint'].replace('{{ id }}', 'baz-bar-foo')
+
+        with caplog.at_level(logging.INFO):
+            task.subscribe(parent)
+
+        assert caplog.messages == ['foobar!']
+        async_message_request_mock.assert_called_once_with(client_mock, {
+            'worker': 'foo-bar-baz',
+            'client': state.parent_id,
+            'action': 'SUBSCRIBE',
+            'context': {
+                'url': expected_context['url'],
+                'connection': 'receiver',
+                'endpoint': f"topic:my-topic, subscription:'my-subscription-baz-bar-foo_{id(parent.user)}', expression:'$.`this`[?bar='foo' & bar='foo']'",
                 'message_wait': None,
                 'consume': False,
             },
