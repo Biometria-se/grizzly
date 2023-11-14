@@ -63,8 +63,9 @@ Fragment:
 
 * `<content type>` _str_ - content type of response payload, should be used in combination with `<expression>`
 """  # noqa: E501
+import re
 from typing import Optional, Dict, cast
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, quote_plus, unquote_plus
 from platform import node as hostname
 from pathlib import Path
 from textwrap import dedent
@@ -142,6 +143,15 @@ class ServiceBusClientTask(ClientTask):
             text=text,
         )
 
+        # expression can contain characters which are not URL safe, e.g. ?
+        # so we need to quote it first to make sure it does not mess up the URL parsing
+        match = re.search(r'expression:(.*?)(\/|;)', self.endpoint)
+
+        if match:
+            expression = quote_plus(match.group(1))
+            eoe = match.group(2)
+            self.endpoint = re.sub(r'expression:(.*?)(\/|;)', f'expression:{expression}{eoe}', self.endpoint)
+
         url = self.endpoint.replace(';', '?', 1).replace(';', '&')
 
         parsed = urlparse(url)
@@ -172,6 +182,17 @@ class ServiceBusClientTask(ClientTask):
 
         context_endpoint = parsed.path[1:].replace('/', ', ')
 
+        # unquote expression, if specified, now that we have constructed everything everything basaed on the URL
+        try:
+            endpoint_arguments = parse_arguments(context_endpoint, separator=':', unquote=False)
+            expression = endpoint_arguments.get('expression', None)
+            if expression is not None:
+                endpoint_arguments.update({'expression': unquote_plus(expression)})
+                context_endpoint = ', '.join([f'{key}:{value}' for key, value in endpoint_arguments.items()])
+        except ValueError as e:
+            if 'incorrect format in arguments: ""' not in str(e):
+                raise
+
         connection = 'receiver' if direction == RequestDirection.FROM else 'sender'
 
         self.context = {
@@ -193,10 +214,15 @@ class ServiceBusClientTask(ClientTask):
         if state is None:
             context = self.context.copy()
             # add id of user as suffix to subscription name, to make it unique
-            endpoint_arguments = parse_arguments(context['endpoint'], separator=':')
+            endpoint_arguments = parse_arguments(context['endpoint'], separator=':', unquote=False)
 
             if 'subscription' in endpoint_arguments:
-                endpoint_arguments['subscription'] = f'{endpoint_arguments["subscription"]}_{id(parent.user)}'
+                subscription = endpoint_arguments['subscription']
+                quote = ''
+                if subscription[0] in ['"', "'"] and subscription[-1] == subscription[0]:
+                    quote = subscription[0]
+                    subscription = subscription[1:-1]
+                endpoint_arguments['subscription'] = f'{quote}{subscription}_{id(parent.user)}{quote}'
                 context['endpoint'] = ', '.join([f'{key}:{value}' for key, value in endpoint_arguments.items()])
 
             state = State(

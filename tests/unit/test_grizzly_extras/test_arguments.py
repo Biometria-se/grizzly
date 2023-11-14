@@ -147,3 +147,10 @@ def test_parse_arguments(separator: str) -> None:
         'value2': '=',
         'value3': '%',
     }
+
+    arguments = parse_arguments(f"expression{separator}'$.`this`[?hello='world' & world=2]', foo{separator}bar", separator, unquote=False)
+
+    assert arguments == {
+        'expression': "'$.`this`[?hello='world' & world=2]'",
+        'foo': 'bar',
+    }
