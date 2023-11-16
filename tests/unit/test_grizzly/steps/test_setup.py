@@ -4,7 +4,7 @@ from typing import cast
 import pytest
 
 from grizzly.context import GrizzlyContext
-from grizzly.steps import *  # pylint: disable=unused-wildcard-import  # noqa: F403
+from grizzly.steps import *
 from grizzly.tasks import SetVariableTask
 
 from tests.fixtures import BehaveFixture, MockerFixture

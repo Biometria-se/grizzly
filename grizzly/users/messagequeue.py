@@ -147,7 +147,7 @@ if TYPE_CHECKING:  # pragma: no cover
 try:
     # do not fail grizzly if ibm mq dependencies are missing, some might
     # not be interested in MessageQueueUser.
-    import pymqi  # pylint: disable=unused-import
+    import pymqi
 except:
     from grizzly_extras import dummy_pymqi as pymqi
 

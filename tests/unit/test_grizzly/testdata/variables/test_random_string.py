@@ -135,7 +135,6 @@ class TestAtomicRandomString:
 
             def func1() -> None:
                 for _ in range(num_iterations):
-                    # pylint: disable=pointless-statement
                     value = t['greenlet_var']
                     assert value is not None, f'iteration {_}'
                     assert value not in values

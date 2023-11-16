@@ -84,8 +84,8 @@ class TestAtomicCsvReader:
             csvrow = instance['test1']
             assert csvrow is not None
             assert isinstance(csvrow, dict)
-            assert 'header11' in csvrow  # pylint: disable=unsupported-membership-test
-            assert csvrow['header11'] == 'value111'  # pylint: disable=unsubscriptable-object
+            assert 'header11' in csvrow
+            assert csvrow['header11'] == 'value111'
             assert len(instance._rows['test1']) == 0
 
             csvrow = instance['test1']
@@ -98,8 +98,8 @@ class TestAtomicCsvReader:
             assert csvrow is not None
             assert len(csvrow.keys()) == 1
             assert len(instance._rows['test2']) == 1
-            assert 'header22' in csvrow  # pylint: disable=unsupported-membership-test
-            assert csvrow['header22'] == 'value212'  # pylint: disable=unsubscriptable-object
+            assert 'header22' in csvrow
+            assert csvrow['header22'] == 'value212'
 
             csvrow = instance['test2']
             assert csvrow is not None

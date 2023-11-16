@@ -305,7 +305,7 @@ def shutdown_external_processes(processes: Dict[str, subprocess.Popen], greenlet
     for dependency, process in processes.items():
         logger.info('%s %s', stop_method, dependency)
         if sys.platform == 'win32':
-            from signal import CTRL_BREAK_EVENT  # pylint: disable=no-name-in-module
+            from signal import CTRL_BREAK_EVENT
             process.send_signal(CTRL_BREAK_EVENT)
         else:
             process.terminate()

@@ -1,7 +1,7 @@
 from typing import cast
 
 from grizzly.context import GrizzlyContext
-from grizzly.steps import *  # pylint: disable=unused-wildcard-import  # noqa: F403
+from grizzly.steps import *
 
 from tests.fixtures import BehaveFixture
 

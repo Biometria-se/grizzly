@@ -277,7 +277,7 @@ def onerror(func: Callable, path: str, exc_info: TracebackType) -> None:  # noqa
         os.chmod(path, stat.S_IWUSR)
         func(path)
     else:
-        raise  # pylint: disable=misplaced-bare-raise
+        raise
 
 
 # prefix components:

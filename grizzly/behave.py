@@ -24,7 +24,7 @@ from .utils import check_mq_client_logs, fail_direct, in_correct_section
 logger = logging.getLogger(__name__)
 
 try:
-    import pymqi  # pylint: disable=unused-import
+    import pymqi
 except ModuleNotFoundError:
     from grizzly_extras import dummy_pymqi as pymqi
 

@@ -91,7 +91,6 @@ class TestAtomicDate:
             del t['actual']
 
             with pytest.raises(AttributeError):
-                # pylint: disable=pointless-statement
                 t['actual']
 
             value = expected.strftime('%Y-%m-%d %H:%M:%S.%f')

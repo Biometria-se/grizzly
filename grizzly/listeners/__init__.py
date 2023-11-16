@@ -32,7 +32,6 @@ logger = logging.getLogger(__name__)
 
 
 def _init_testdata_producer(grizzly: GrizzlyContext, port: str, testdata: TestdataType) -> Callable[[], None]:
-    # pylint: disable=global-statement
     def gtestdata_producer() -> None:
         global producer  # noqa: PLW0603
         producer_address = f'tcp://0.0.0.0:{port}'

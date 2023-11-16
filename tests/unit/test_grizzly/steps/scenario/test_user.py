@@ -3,7 +3,7 @@ from os import environ
 
 import pytest
 
-from grizzly.steps import *  # pylint: disable=unused-wildcard-import  # noqa: F403
+from grizzly.steps import *
 from grizzly.context import GrizzlyContext
 
 from tests.fixtures import BehaveFixture

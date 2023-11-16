@@ -8,7 +8,7 @@ from grizzly.context import GrizzlyContext
 from grizzly.types import RequestMethod, ResponseTarget
 from grizzly.types.behave import Table, Row
 from grizzly.tasks import RequestTask, ExplicitWaitTask
-from grizzly.steps import *  # pylint: disable=unused-wildcard-import  # noqa: F403
+from grizzly.steps import *
 
 from grizzly_extras.transformer import TransformerContentType
 

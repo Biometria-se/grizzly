@@ -190,7 +190,7 @@ class TestRestApiUser:
         assert args[1].client.max_retries == 1
         assert args[1].client.clientpool.client_args.get('connection_timeout', None) == 60.0
         assert args[1].client.clientpool.client_args.get('network_timeout', None) == 60.0
-        assert args[1].client.clientpool.client_args.get('ssl_context_factory', None) is gevent.ssl.create_default_context  # pylint: disable=no-member
+        assert args[1].client.clientpool.client_args.get('ssl_context_factory', None) is gevent.ssl.create_default_context
 
         parent.user._context['verify_certificates'] = False
 

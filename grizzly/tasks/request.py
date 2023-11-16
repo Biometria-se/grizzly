@@ -62,7 +62,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from grizzly_extras.arguments import parse_arguments, split_value, unquote
 from grizzly_extras.transformer import TransformerContentType
 
-from . import GrizzlyMetaRequestTask, grizzlytask  # pylint: disable=unused-import
+from . import GrizzlyMetaRequestTask, grizzlytask
 from . import template as task_template
 
 if TYPE_CHECKING:  # pragma: no cover
