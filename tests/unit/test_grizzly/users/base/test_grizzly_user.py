@@ -1,27 +1,29 @@
-import shutil
-import logging
+"""Unit tests for grizzly.users.base.grizzly_user."""
+from __future__ import annotations
 
-from typing import cast
-from os import environ, path
+import logging
+import shutil
 from json import loads as jsonloads
-from unittest.mock import ANY
+from os import environ, path
+from typing import TYPE_CHECKING, cast
 
 import pytest
-
-from _pytest.tmpdir import TempPathFactory
-from _pytest.logging import LogCaptureFixture
-from pytest_mock import MockerFixture
 from jinja2.filters import FILTERS
 
-from grizzly.users.base import GrizzlyUser, FileRequests
-from grizzly.types import GrizzlyResponse, RequestMethod, ScenarioState
-from grizzly.types.locust import StopUser
-from grizzly.context import GrizzlyContextScenario, GrizzlyContext
+from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 from grizzly.tasks import RequestTask
 from grizzly.testdata.utils import templatingfilter
+from grizzly.types import GrizzlyResponse, RequestMethod, ScenarioState
+from grizzly.types.locust import StopUser
+from grizzly.users.base import FileRequests, GrizzlyUser
+from tests.helpers import ANY
 
-from tests.fixtures import BehaveFixture, GrizzlyFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from _pytest.logging import LogCaptureFixture
+    from _pytest.tmpdir import TempPathFactory
+    from pytest_mock import MockerFixture
 
+    from tests.fixtures import BehaveFixture, GrizzlyFixture
 
 logging.getLogger().setLevel(logging.CRITICAL)
 
@@ -29,8 +31,9 @@ logging.getLogger().setLevel(logging.CRITICAL)
 class DummyGrizzlyUser(GrizzlyUser):
     host: str = 'http://example.com'
 
-    def request_impl(self, request: RequestTask) -> GrizzlyResponse:
-        raise NotImplementedError(f'{self.__class__.__name__} has not implemented request')
+    def request_impl(self, _request: RequestTask) -> GrizzlyResponse:
+        message = f'{self.__class__.__name__} has not implemented request'
+        raise NotImplementedError(message)
 
 
 class TestGrizzlyUser:
@@ -148,7 +151,7 @@ class TestGrizzlyUser:
         test_context.mkdir(parents=True)
         test_file = test_context / 'payload.j2.json'
         test_file.touch()
-        test_file.write_text('''
+        test_file.write_text("""
         {
             "MeasureResult": {
                 "ID": {{ messageID }},
@@ -156,14 +159,14 @@ class TestGrizzlyUser:
                 "value": "{{ value }}"
             }
         }
-        ''')
+        """)
 
         test_file_context = path.dirname(
             path.dirname(
                 path.dirname(
-                    str(test_file)
-                )
-            )
+                    str(test_file),
+                ),
+            ),
         )
         environ['GRIZZLY_CONTEXT_ROOT'] = test_file_context
 
@@ -215,15 +218,11 @@ class TestGrizzlyUser:
         request_spy.assert_called_once_with(
             request_type='GET',
             name='001 test',
-            response_time=ANY,
+            response_time=ANY(int),
             response_length=0,
-            context={'variables': {}, 'log_all_requests': False},
-            exception=ANY,
+            context={'host': '', 'variables': {}, 'log_all_requests': False},
+            exception=ANY(NotImplementedError, message='tests.unit.test_grizzly.users.base.test_grizzly_user.DummyGrizzlyUser_001 has not implemented request'),
         )
-        _, kwargs = request_spy.call_args_list[-1]
-        exception = kwargs.get('exception', None)
-        assert isinstance(exception, NotImplementedError)
-        assert str(exception) == 'DummyGrizzlyUser has not implemented request'
 
     def test_context(self, behave_fixture: BehaveFixture) -> None:
         behave_fixture.grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))

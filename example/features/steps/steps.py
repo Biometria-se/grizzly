@@ -1,19 +1,25 @@
-from typing import cast
+# noqa: D100, INP001
+from __future__ import annotations
 
-from behave.runner import Context
-from behave import given, then  # pylint: disable=no-name-in-module
+from typing import TYPE_CHECKING, cast
 
-from grizzly.steps import *  # pylint: disable=unused-wildcard-import  # noqa: F401
+from behave import given, then
+from custom import Task
+
 from grizzly.context import GrizzlyContext
-from grizzly.utils import merge_dicts
+from grizzly.steps import *
 from grizzly.testdata.utils import create_context_variable
+from grizzly.utils import merge_dicts
 
-from custom import Task  # pylint: disable=import-error
+if TYPE_CHECKING:  # pragma: no cover
+    from behave.runner import Context
 
 
-@given(u'also log successful requests')
+@given('also log successful requests')
 def step_log_all_requests(context: Context) -> None:
-    """This step does the same as:
+    """Step to explicit enable request logging.
+
+    This step does the same as:
 
     ```gherkin
     And set context variable "log_all_requests" to "True"
@@ -30,9 +36,11 @@ def step_log_all_requests(context: Context) -> None:
     grizzly.scenario.context = merge_dicts(grizzly.scenario.context, context_variable)
 
 
-@then(u'send message "{data}"')
+@then('send message "{data}"')
 def step_send_message(context: Context, data: str) -> None:
-    """This step adds task steps.custom.Task to the scenario, which sends a message of type
+    """Step to send a message.
+
+    This step adds task steps.custom.Task to the scenario, which sends a message of type
     "example_message" from the server to the client, which will trigger the callback registered
     in `before_feature` in the projects `environment.py`.
     """

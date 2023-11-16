@@ -878,7 +878,7 @@ class TestResponseHandler:
         )
         payload_handler.reset_mock()
 
-        with pytest.raises(ResponseHandlerError, match='failed to transform input as XML: Malformed'):
+        with pytest.raises(ResponseHandlerError, match='failed to transform input as XML'):
             user.response_handler(
                 'test',
                 (

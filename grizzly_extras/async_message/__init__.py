@@ -1,3 +1,4 @@
+"""Core async-message functionality."""
 from __future__ import annotations
 
 import logging
@@ -6,7 +7,8 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from io import StringIO
 from json import dumps as jsondumps
-from os import environ, path
+from os import environ
+from pathlib import Path
 from platform import node as hostname
 from threading import Lock
 from time import monotonic as time
@@ -56,7 +58,7 @@ class ThreadLogger:
             if grizzly_context_root is not None:
                 if ThreadLogger._destination is None:
                     ThreadLogger._destination = f'async-messaged.{hostname()}.{datetime.now().strftime("%Y%m%dT%H%M%S%f")}.log'
-                file_handler = logging.FileHandler(path.join(grizzly_context_root, 'logs', ThreadLogger._destination))
+                file_handler = logging.FileHandler(Path(grizzly_context_root) / 'logs' / ThreadLogger._destination)
                 file_handler.setFormatter(formatter)
                 logger.addHandler(file_handler)
 
@@ -142,12 +144,14 @@ class AsyncMessageHandler(ABC):
             logging.getLogger(uamqp_logger_name).setLevel(logging.ERROR)
 
     @abstractmethod
-    def get_handler(self, action: str) -> Optional['AsyncMessageRequestHandler']:
-        raise NotImplementedError(f'{self.__class__.__name__}: get_handler is not implemented')  # pragma: no cover
+    def get_handler(self, action: str) -> Optional[AsyncMessageRequestHandler]:
+        message = f'{self.__class__.__name__}: get_handler is not implemented'
+        raise NotImplementedError(message)  # pragma: no cover
 
     @abstractmethod
     def close(self) -> None:
-        raise NotImplementedError(f'{self.__class__.__name__}: close is not implemented')  # pragma: no cover
+        message = f'{self.__class__.__name__}: close is not implemented'
+        raise NotImplementedError(message)  # pragma: no cover
 
     @final
     def handle(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
@@ -156,24 +160,26 @@ class AsyncMessageHandler(ABC):
         try:
             action = request.get('action', None)
             if action is None:
-                raise RuntimeError('no action in request')
+                message = 'no action in request'
+                raise RuntimeError(message)
 
             request_handler = self.get_handler(action)
-            self.logger.debug(f'handling {action}, request=\n{jsondumps(request, indent=2, cls=JsonBytesEncoder)}')
+            self.logger.debug('handling %s, request=\n%s', action, jsondumps(request, indent=2, cls=JsonBytesEncoder))
 
             response: AsyncMessageResponse
 
             if request_handler is None:
-                raise AsyncMessageError(f'no implementation for {action}')
+                message = f'no implementation for {action}'
+                raise AsyncMessageError(message)
 
             response = request_handler(self, request)
             response['success'] = True
         except Exception as e:
             response = {
                 'success': False,
-                'message': f'{action or "UNKNOWN"}: {e.__class__.__name__}="{str(e)}"',
+                'message': f'{action or "UNKNOWN"}: {e.__class__.__name__}="{e!s}"',
             }
-            self.logger.error(f'{action or "UNKNOWN"}: {e.__class__.__name__}="{str(e)}"', exc_info=True)
+            self.logger.exception('%s: %s="%s"', action or 'UNKNOWN', e.__class__.__name__, str(e))  # noqa: TRY401
         finally:
             total_time = int((time() - start_time) * 1000)
             response.update({
@@ -181,9 +187,9 @@ class AsyncMessageHandler(ABC):
                 'response_time': total_time,
             })
 
-            self.logger.debug(f'handled {action}, response=\n{jsondumps(response, indent=2, cls=JsonBytesEncoder)}')
+            self.logger.debug('handled %s, response=\n%s', action, jsondumps(response, indent=2, cls=JsonBytesEncoder))
 
-            return response
+        return response
 
 
 AsyncMessageRequestHandler = Callable[[AsyncMessageHandler, AsyncMessageRequest], AsyncMessageResponse]
@@ -191,20 +197,16 @@ InferredAsyncMessageRequestHandler = Callable[[Any, AsyncMessageRequest], AsyncM
 
 
 LRU_READY = '\x01'
-SPLITTER_FRAME = ''.encode()
+SPLITTER_FRAME = b''
 
 
 def register(handlers: Dict[str, AsyncMessageRequestHandler], action: str, *actions: str) -> Callable[[InferredAsyncMessageRequestHandler], InferredAsyncMessageRequestHandler]:
     def decorator(func: InferredAsyncMessageRequestHandler) -> InferredAsyncMessageRequestHandler:
-        # mypy: type AsyncServiceBus (that inherits AsyncMessageHandler) is not of type
-        # AsyncMessageHandler or Union[AsyncServiceBus, AsyncMessageQueue]
-        # this is a workaround of python/mypys, sometimes, stupid type handling...
-        typed_func = cast(AsyncMessageRequestHandler, func)
         for a in (action, *actions):
             if a in handlers:
                 continue
 
-            handlers.update({a: typed_func})
+            handlers.update({a: func})
 
         return func
 
@@ -215,27 +217,31 @@ def async_message_request(client: zmq.Socket, request: AsyncMessageRequest) -> A
     try:
         client.send_json(request)
 
+        response: Optional[AsyncMessageResponse] = None
+
         while True:
             start = perf_counter()
             try:
-                response = cast(AsyncMessageResponse, client.recv_json(flags=zmq.NOBLOCK))
+                response = cast(Optional[AsyncMessageResponse], client.recv_json(flags=zmq.NOBLOCK))
                 break
             except ZMQAgain:
                 sleep(0.1)
             delta = perf_counter() - start
             if delta > 1.0:
-                logger.debug(f'async_message_request::recv_json took {delta} seconds')
+                logger.debug('async_message_request::recv_json took %f seconds', delta)
 
         if response is None:
-            raise AsyncMessageError('no response')
+            msg = 'no response'
+            raise AsyncMessageError(msg)
 
         message = response.get('message', None)
 
         if not response['success']:
             raise AsyncMessageError(message)
 
-        return response
     except Exception as e:
-        if not isinstance(e, (AsyncMessageError, AsyncMessageAbort,)):
-            logger.error(f'failed to send {request=}', exc_info=True)
+        if not isinstance(e, (AsyncMessageError, AsyncMessageAbort)):
+            logger.exception('failed to send request=%r', request)
         raise
+    else:
+        return response

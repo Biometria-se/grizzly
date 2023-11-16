@@ -2,8 +2,7 @@
 from __future__ import annotations
 
 from importlib import import_module
-from inspect import signature
-from typing import cast
+from typing import cast, get_type_hints
 from urllib.parse import urlparse
 
 import parse
@@ -12,6 +11,7 @@ from grizzly.context import GrizzlyContext
 from grizzly.testdata.utils import create_context_variable, resolve_variable
 from grizzly.types import MessageDirection
 from grizzly.types.behave import Context, given, register_type
+from grizzly.types.locust import Environment, Message
 from grizzly.utils import merge_dicts
 from grizzly_extras.text import permutation
 
@@ -200,19 +200,12 @@ def step_setup_message_type_callback(context: Context, callback_name: str, messa
     assert callback is not None, f'module {module_name} has no method {callback_name}'
     assert callable(callback), f'{module_name}.{callback_name} is not a method'
 
-    method_signature = signature(callback)
-    parameters = method_signature.parameters
-    parameter_names = list(method_signature.parameters.keys())
+    method_signature = get_type_hints(callback)
 
-    correct_signature = (
-        len(parameter_names) >= 2
-        and parameter_names[0] == 'environment'
-        and parameters['environment'].annotation == 'Environment'
-        and parameter_names[1] == 'msg'
-        and parameters['msg'].annotation == 'Message'
-        and method_signature.return_annotation == 'None'
-    )
-
-    assert correct_signature, f'{module_name}.{callback_name} does not have grizzly.types.MessageCallback method signature: {method_signature}'
+    assert method_signature == {
+        'environment': Environment,
+        'msg': Message,
+        'return': None.__class__,
+    }, f'{module_name}.{callback_name} does not have grizzly.types.MessageCallback method signature: {method_signature}'
 
     grizzly.setup.locust.messages.register(message_direction, message_type, callback)

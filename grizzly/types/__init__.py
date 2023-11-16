@@ -13,6 +13,22 @@ from grizzly_extras.text import PermutationEnum
 
 from .locust import Environment
 
+try:
+    from typing import Self
+except ModuleNotFoundError:
+    from typing_extensions import Self
+
+try:
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+except ImportError:
+    from backports.zoneinfo import ZoneInfo, ZoneInfoNotFoundError  # type: ignore[no-redef]  # pyright: ignore[reportMissingImports]
+
+__all__ = [
+    'Self',
+    'ZoneInfo',
+    'ZoneInfoNotFoundError',
+]
+
 
 class MessageDirection(PermutationEnum):
     __vector__ = (True, True)

@@ -50,11 +50,9 @@ def iot_hub_parent(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> Gr
 
     mocker.patch('azure.iot.device.IoTHubDeviceClient.create_from_connection_string', mocked_create_from_connection_string)
 
-    test_cls = type('IotHubTestUser', (IotHubUser, ), {})
-
     parent = grizzly_fixture(
         CONNECTION_STRING,
-        test_cls,
+        IotHubUser,
     )
 
     request = grizzly_fixture.request_task.request
@@ -189,7 +187,7 @@ class TestIotHubUser:
             response_time=ANY(int),
             response_length=0,
             context=iot_hub_parent.user._context,
-            exception=ANY(NotImplementedError, message='IotHubTestUser has not implemented RECEIVE'),
+            exception=ANY(NotImplementedError, message=f'{iot_hub_parent.user.__class__.__name__} has not implemented RECEIVE'),
         )
 
         iot_hub_parent.user._scenario.failure_exception = None

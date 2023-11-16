@@ -225,7 +225,7 @@ class RequestLogger(ResponseEvent):
         request: RequestTask,
         user: GrizzlyUser,
         exception: Optional[Exception] = None,
-        **kwargs: Dict[str, Any],
+        **kwargs: Any,
     ) -> None:
         """Handle `response_event` when fired."""
         if getattr(request, 'response', None) is None:

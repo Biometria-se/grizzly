@@ -1,14 +1,17 @@
-import inspect
+"""End-to-end test cases for grizzly.steps.background.setup."""
+from __future__ import annotations
 
-from typing import cast, Dict, Any, List
+import inspect
+from typing import TYPE_CHECKING, Any, Dict, List, cast
 
 import pytest
 
-from grizzly.types.behave import Context
 from grizzly.context import GrizzlyContext
-
-from tests.fixtures import End2EndFixture
 from tests.helpers import message_callback
+
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.types.behave import Context
+    from tests.fixtures import End2EndFixture
 
 
 @pytest.mark.parametrize('url', [
@@ -23,15 +26,15 @@ def test_e2e_step_setup_save_statistics(e2e_fixture: End2EndFixture, url: str) -
                 'username': 'grizzly',
                 'password': 'password',
                 'database': 'grizzly-statistics',
-            }
-        }
+            },
+        },
     }
 
     url = url.replace('localhost', e2e_fixture.host)
 
     def validator(context: Context) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
-        data = list(context.table)[0].as_dict()
+        data = next(iter(context.table)).as_dict()
 
         test_url = data.pop('url')
 
@@ -72,7 +75,7 @@ def test_e2e_step_setup_save_statistics(e2e_fixture: End2EndFixture, url: str) -
 def test_e2e_step_setup_log_level(e2e_fixture: End2EndFixture, level: str) -> None:
     def validator(context: Context) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
-        data = list(context.table)[0].as_dict()
+        data = next(iter(context.table)).as_dict()
 
         test_level = data.pop('level')
 
@@ -104,7 +107,7 @@ def test_e2e_step_setup_log_level(e2e_fixture: End2EndFixture, level: str) -> No
 def test_e2e_step_setup_run_time(e2e_fixture: End2EndFixture, timespan: str) -> None:
     def validator(context: Context) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
-        data = list(context.table)[0].as_dict()
+        data = next(iter(context.table)).as_dict()
 
         timespan = data.pop('timespan')
 
@@ -128,17 +131,17 @@ def test_e2e_step_setup_run_time(e2e_fixture: End2EndFixture, timespan: str) -> 
     assert rc == 0
 
 
-@pytest.mark.parametrize('name,value,expected', [
-    ('token.url', 'http://localhost/api/auth', '{"token": {"url": "http://localhost/api/auth"}}',),
-    ('token/client id', 'aaaa-bbbb-cccc-dddd', '{"token": {"client_id": "aaaa-bbbb-cccc-dddd"}}',),
-    ('log_all_requests', 'True', '{"log_all_requests": true}',),
-    ('run_id', '13', '{"run_id": 13}',),
+@pytest.mark.parametrize(('name', 'value', 'expected'), [
+    ('token.url', 'http://localhost/api/auth', '{"token": {"url": "http://localhost/api/auth"}}'),
+    ('token/client id', 'aaaa-bbbb-cccc-dddd', '{"token": {"client_id": "aaaa-bbbb-cccc-dddd"}}'),
+    ('log_all_requests', 'True', '{"log_all_requests": true}'),
+    ('run_id', '13', '{"run_id": 13}'),
 ])
 def test_e2e_step_setup_global_context_variable(e2e_fixture: End2EndFixture, name: str, value: str, expected: str) -> None:
     def validator(context: Context) -> None:
         from json import loads as jsonloads
         grizzly = cast(GrizzlyContext, context.grizzly)
-        data = list(context.table)[0].as_dict()
+        data = next(iter(context.table)).as_dict()
 
         global_context = jsonloads(data['expected'])
         global_context['hello'] = {'world': 'foobar'}
@@ -171,9 +174,9 @@ def test_e2e_step_setup_global_context_variable(e2e_fixture: End2EndFixture, nam
     assert rc == 0
 
 
-@pytest.mark.parametrize('from_node,to_node,message_type', [
-    ('server', 'client', 'server_to_client',),
-    ('client', 'server', 'client_to_server',),
+@pytest.mark.parametrize(('from_node', 'to_node', 'message_type'), [
+    ('server', 'client', 'server_to_client'),
+    ('client', 'server', 'client_to_server'),
 ])
 def test_e2e_step_setup_message_type_callback(
     e2e_fixture: End2EndFixture,
@@ -184,27 +187,26 @@ def test_e2e_step_setup_message_type_callback(
     def validator(context: Context) -> None:
         from grizzly.types import MessageDirection
         grizzly = cast(GrizzlyContext, context.grizzly)
-        data = list(context.table)[0].as_dict()
+        data = next(iter(context.table)).as_dict()
 
         direction = MessageDirection.from_string(data['direction'])
         message_type = data['message_type']
 
-        from steps.helpers import message_callback  # type: ignore  # pylint: disable=import-error
+        from steps.helpers import message_callback  # type: ignore  # noqa: PGH003
 
         assert grizzly.setup.locust.messages == {
             direction: {
                 message_type: message_callback,
-            }
+            },
         }
 
         grizzly.setup.locust.messages.clear()
 
-    with open(e2e_fixture.root / 'features' / 'steps' / 'helpers.py', 'w+') as fd:
-        source = inspect.getsource(message_callback)
-        fd.write(f'''from grizzly.types.locust import Message, Environment
+    source = inspect.getsource(message_callback)
+    (e2e_fixture.root / 'features' / 'steps' / 'helpers.py').write_text(f"""from grizzly.types.locust import Message, Environment
 
 {source}
-''')
+""")
 
     table: List[Dict[str, str]] = [{
         'direction': f'{from_node}_{to_node}',

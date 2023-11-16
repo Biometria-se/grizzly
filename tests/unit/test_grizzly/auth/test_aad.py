@@ -1,27 +1,30 @@
-import logging
+"""Unit tests for grizzly.auth.aad."""
+from __future__ import annotations
 
-from typing import Any, Dict, Optional, Tuple, cast
-from time import time
-from json import dumps as jsondumps
+import logging
+from datetime import datetime
 from enum import Enum
+from itertools import product
+from json import dumps as jsondumps
+from time import time
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, cast
 from unittest.mock import ANY, MagicMock
 from urllib.parse import urlparse
-from itertools import product
-from datetime import datetime
 
 import pytest
-import requests
-
-from requests.models import Response
 from requests.cookies import create_cookie
-from _pytest.logging import LogCaptureFixture
+from requests.models import Response
 
-from grizzly.auth import AuthMethod, AuthType, AAD
-from grizzly.users import RestApiUser
+from grizzly.auth import AAD, AuthMethod, AuthType
 from grizzly.types.locust import StopUser
+from grizzly.users import RestApiUser
 from grizzly.utils import safe_del
 
-from tests.fixtures import MockerFixture, GrizzlyFixture
+if TYPE_CHECKING:  # pragma: no cover
+    import requests
+    from _pytest.logging import LogCaptureFixture
+
+    from tests.fixtures import GrizzlyFixture, MockerFixture
 
 
 class TestAAD:
@@ -127,16 +130,14 @@ class TestAAD:
         with caplog.at_level(logging.DEBUG):
             task(parent)
 
-    @pytest.mark.parametrize('version,login_start', product(['v1.0', 'v2.0'], ['initialize_uri', 'redirect_uri']))
-    def test_get_oauth_authorization(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, caplog: LogCaptureFixture, version: str, login_start: str) -> None:
+    @pytest.mark.parametrize(('version', 'login_start'), product(['v1.0', 'v2.0'], ['initialize_uri', 'redirect_uri']))
+    def test_get_oauth_authorization(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, caplog: LogCaptureFixture, version: str, login_start: str) -> None:  # noqa: PLR0915, C901
         parent = grizzly_fixture(user_type=RestApiUser)
 
         assert isinstance(parent.user, RestApiUser)
         original_class_name = parent.user.__class__.__name__
         try:
-            parent.user.__class__.__name__ = f'{parent.user.__class__.__name__}_001'
-
-            fake_token = 'asdf'
+            fake_token = 'asdf'  # noqa: S105
 
             is_token_v2_0 = version == 'v2.0'
 
@@ -563,9 +564,8 @@ class TestAAD:
 
             mock_request_session(Error.REQUEST_3_ERROR_MESSAGE)
 
-            with caplog.at_level(logging.ERROR):
-                with pytest.raises(StopUser):
-                    AAD.get_oauth_authorization(parent.user)
+            with caplog.at_level(logging.ERROR), pytest.raises(StopUser):
+                AAD.get_oauth_authorization(parent.user)
 
             fire_spy.assert_called_once_with(
                 request_type='AUTH',
@@ -587,9 +587,8 @@ class TestAAD:
 
             mock_request_session(Error.REQUEST_3_MFA_REQUIRED)
 
-            with caplog.at_level(logging.ERROR):
-                with pytest.raises(StopUser):
-                    AAD.get_oauth_authorization(parent.user)
+            with caplog.at_level(logging.ERROR), pytest.raises(StopUser):
+                AAD.get_oauth_authorization(parent.user)
 
             expected_error_message = 'test-user@example.com requires MFA for login: fax = +46 1234'
 
@@ -613,9 +612,8 @@ class TestAAD:
 
             parent.user._context['auth']['user']['otp_secret'] = 'abcdefghij'
 
-            with caplog.at_level(logging.ERROR):
-                with pytest.raises(StopUser):
-                    AAD.get_oauth_authorization(parent.user)
+            with caplog.at_level(logging.ERROR), pytest.raises(StopUser):
+                AAD.get_oauth_authorization(parent.user)
 
             expected_error_message = 'test-user@example.com is assumed to use TOTP for MFA, but does not have that authentication method configured'
 

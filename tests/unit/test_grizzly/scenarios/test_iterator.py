@@ -1,48 +1,45 @@
-import logging
+"""Unit tests for grizzly.scenarios.iterator."""
+from __future__ import annotations
 
+import logging
+from contextlib import suppress
 from os import environ
-from typing import TYPE_CHECKING, Dict, Any, Optional, List
 from types import FunctionType
-from importlib import reload
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 from unittest.mock import ANY
 
 import pytest
-
-from _pytest.logging import LogCaptureFixture
-from pytest_mock import MockerFixture
-
-from locust.user.task import LOCUST_STATE_STOPPING, LOCUST_STATE_RUNNING
+from locust.exception import InterruptTaskSet, RescheduleTask, RescheduleTaskImmediately, StopUser
 from locust.user.sequential_taskset import SequentialTaskSet
-from locust.exception import StopUser, InterruptTaskSet, RescheduleTask, RescheduleTaskImmediately
+from locust.user.task import LOCUST_STATE_RUNNING, LOCUST_STATE_STOPPING
 
-from grizzly.scenarios import iterator
-from grizzly.testdata.communication import TestdataConsumer
-from grizzly.testdata.utils import transform
-from grizzly.tasks import ExplicitWaitTask, LogMessageTask, grizzlytask
 from grizzly.exceptions import RestartScenario, StopScenario
+from grizzly.scenarios import IteratorScenario
+from grizzly.tasks import ExplicitWaitTask, LogMessageTask, grizzlytask
+from grizzly.testdata.communication import TestdataConsumer
+from grizzly.testdata.utils import templatingfilter, transform
 from grizzly.types import ScenarioState
-from grizzly.testdata.utils import templatingfilter
-
-from tests.fixtures import GrizzlyFixture
 from tests.helpers import RequestCalled, TestTask, regex
 
-
 if TYPE_CHECKING:
+    from _pytest.logging import LogCaptureFixture
+    from pytest_mock import MockerFixture
+
     from grizzly.scenarios import GrizzlyScenario
+    from tests.fixtures import GrizzlyFixture
 
 
 class TestIterationScenario:
     def test_initialize(self, grizzly_fixture: GrizzlyFixture) -> None:
-        reload(iterator)
-        parent = grizzly_fixture(scenario_type=iterator.IteratorScenario)
-        assert isinstance(parent, iterator.IteratorScenario)
+        parent = grizzly_fixture(scenario_type=IteratorScenario)
+        assert isinstance(parent, IteratorScenario)
         assert issubclass(parent.__class__, SequentialTaskSet)
         assert parent.pace_time is None
 
     def test_render(self, grizzly_fixture: GrizzlyFixture) -> None:
-        parent = grizzly_fixture(scenario_type=iterator.IteratorScenario)
+        parent = grizzly_fixture(scenario_type=IteratorScenario)
 
-        assert isinstance(parent, iterator.IteratorScenario)
+        assert isinstance(parent, IteratorScenario)
 
         @templatingfilter
         def sarcasm(value: str) -> str:
@@ -59,93 +56,87 @@ class TestIterationScenario:
         assert parent.render('how {{ are }} we {{ doing | sarcasm }} today', variables={'doing': 'bar'}) == 'how foo we BaR today'
 
     def test_populate(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
-        reload(iterator)
-        parent = grizzly_fixture(scenario_type=iterator.IteratorScenario)
+        parent = grizzly_fixture(scenario_type=IteratorScenario)
         request = grizzly_fixture.request_task.request
         request.endpoint = '/api/v1/test'
         request.source = None
 
         request_spy = mocker.spy(parent.user.environment.events.request, 'fire')
 
-        try:
-            iterator.IteratorScenario.populate(request)
-            assert isinstance(parent, iterator.IteratorScenario)
-            assert len(parent.tasks) == 3
+        parent.__class__.populate(request)
+        assert isinstance(parent, IteratorScenario)
+        assert len(parent.tasks) == 3
 
-            task_method = parent.tasks[-2]
-            parent.user._scenario.failure_exception = StopUser
+        task_method = parent.tasks[-2]
+        parent.user._scenario.failure_exception = StopUser
 
-            assert callable(task_method)
-            with pytest.raises(StopUser):
-                task_method(parent)
+        assert callable(task_method)
+        with pytest.raises(StopUser):
+            task_method(parent)
 
-            request_spy.assert_called_once_with(
-                request_type='POST',
-                name='001 IteratorScenario',
-                response_time=ANY,
-                response_length=0,
-                context={'variables': {}, 'log_all_requests': False},
-                exception=ANY,
+        request_spy.assert_called_once_with(
+            request_type='POST',
+            name='001 IteratorScenario',
+            response_time=ANY,
+            response_length=0,
+            context={'variables': {}, 'log_all_requests': False, 'host': ''},
+            exception=ANY,
+        )
+        args, kwargs = request_spy.call_args_list[-1]
+        assert args == ()
+        assert isinstance(kwargs['exception'], RequestCalled)
+
+        def generate_mocked_wait(sleep_time: float) -> None:
+            def mocked_wait(time: float) -> None:
+                assert sleep_time == time
+
+            mocker.patch(
+                'grizzly.tasks.wait_explicit.gsleep',
+                mocked_wait,
             )
-            args, kwargs = request_spy.call_args_list[-1]
-            assert args == ()
-            assert isinstance(kwargs['exception'], RequestCalled)
 
-            def generate_mocked_wait(sleep_time: float) -> None:
-                def mocked_wait(time: float) -> None:
-                    assert sleep_time == time
+        generate_mocked_wait(1.5)
+        parent.__class__.populate(ExplicitWaitTask(time_expression='1.5'))
+        assert len(parent.tasks) == 4
 
-                mocker.patch(
-                    'grizzly.tasks.wait_explicit.gsleep',
-                    mocked_wait,
-                )
+        task_method = parent.tasks[-2]
+        assert callable(task_method)
+        task_method(parent)
 
-            generate_mocked_wait(1.5)
-            iterator.IteratorScenario.populate(ExplicitWaitTask(time_expression='1.5'))
-            assert len(parent.tasks) == 4
+        parent.__class__.populate(LogMessageTask(message='hello {{ world }}'))
+        assert len(parent.tasks) == 5
 
-            task_method = parent.tasks[-2]
-            assert callable(task_method)
-            task_method(parent)
+        logger_spy = mocker.spy(parent.logger, 'info')
 
-            iterator.IteratorScenario.populate(LogMessageTask(message='hello {{ world }}'))
-            assert len(parent.tasks) == 5
+        task_method = parent.tasks[-2]
+        assert callable(task_method)
+        task_method(parent)
 
-            logger_spy = mocker.spy(parent.logger, 'info')
+        assert logger_spy.call_count == 1
+        args, _ = logger_spy.call_args_list[0]
+        assert args[0] == 'hello '
 
-            task_method = parent.tasks[-2]
-            assert callable(task_method)
-            task_method(parent)
+        parent.user.set_context_variable('world', 'world!')
 
-            assert logger_spy.call_count == 1
-            args, _ = logger_spy.call_args_list[0]
-            assert args[0] == 'hello '
+        task_method(parent)
 
-            parent.user.set_context_variable('world', 'world!')
+        assert logger_spy.call_count == 2
+        args, _ = logger_spy.call_args_list[1]
+        assert args[0] == 'hello world!'
 
-            task_method(parent)
+        first_task = parent.tasks[0]
+        assert isinstance(first_task, FunctionType)
+        assert first_task.__name__ == 'iterator'
 
-            assert logger_spy.call_count == 2
-            args, _ = logger_spy.call_args_list[1]
-            assert args[0] == 'hello world!'
-
-            first_task = parent.tasks[0]
-            assert isinstance(first_task, FunctionType)
-            assert first_task.__name__ == 'iterator'
-
-            last_task = parent.tasks[-1]
-            assert isinstance(last_task, FunctionType)
-            assert last_task.__name__ == 'pace'
-        finally:
-            reload(iterator)
+        last_task = parent.tasks[-1]
+        assert isinstance(last_task, FunctionType)
+        assert last_task.__name__ == 'pace'
 
     def test_on_event_handlers(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
-        reload(iterator)
-
         try:
-            parent = grizzly_fixture(scenario_type=iterator.IteratorScenario)
+            parent = grizzly_fixture(scenario_type=IteratorScenario)
 
-            def TestdataConsumer__init__(self: 'TestdataConsumer', scenario: 'GrizzlyScenario', address: str, identifier: str) -> None:
+            def TestdataConsumer__init__(self: TestdataConsumer, scenario: GrizzlyScenario, address: str, identifier: str) -> None:  # noqa: N802, ARG001
                 pass
 
             mocker.patch(
@@ -153,8 +144,8 @@ class TestIterationScenario:
                 TestdataConsumer__init__,
             )
 
-            def TestdataConsumer_on_stop(self: 'TestdataConsumer') -> None:
-                raise StopUser()
+            def TestdataConsumer_on_stop(self: TestdataConsumer) -> None:  # noqa: N802, ARG001
+                raise StopUser
 
             mocker.patch(
                 'grizzly.testdata.communication.TestdataConsumer.stop',
@@ -175,16 +166,13 @@ class TestIterationScenario:
             with pytest.raises(StopUser):
                 parent.on_stop()
         finally:
-            try:
+            with suppress(KeyError):
                 del environ['TESTDATA_PRODUCER_ADDRESS']
-            except KeyError:
-                pass
 
     def test_prefetch(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
-        reload(iterator)
-        parent = grizzly_fixture(scenario_type=iterator.IteratorScenario)
+        parent = grizzly_fixture(scenario_type=IteratorScenario)
 
-        assert isinstance(parent, iterator.IteratorScenario)
+        assert isinstance(parent, IteratorScenario)
 
         iterator_mock = mocker.patch.object(parent, 'iterator', return_value=None)
 
@@ -193,18 +181,17 @@ class TestIterationScenario:
         iterator_mock.assert_called_once_with(prefetch=True)
 
     def test_iterator(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
-        reload(iterator)
-        parent = grizzly_fixture(scenario_type=iterator.IteratorScenario)
+        parent = grizzly_fixture(scenario_type=IteratorScenario)
 
         grizzly = grizzly_fixture.grizzly
 
-        assert isinstance(parent, iterator.IteratorScenario)
-        assert not getattr(parent, '_prefetch', True)
+        assert isinstance(parent, IteratorScenario)
+        assert not parent._prefetch
 
         parent.consumer = TestdataConsumer(parent, identifier='test')
 
         def mock_request(data: Optional[Dict[str, Any]]) -> None:
-            def testdata_request(self: 'TestdataConsumer', scenario: str) -> Optional[Dict[str, Any]]:
+            def testdata_request(self: TestdataConsumer, scenario: str) -> Optional[Dict[str, Any]]:  # noqa: ARG001
                 if data is None or data == {}:
                     return None
 
@@ -273,11 +260,10 @@ class TestIterationScenario:
         assert parent.user.context_variables['AtomicCsvReader'].test.header2 == 'value4'
         assert not getattr(parent, '_prefetch', True)
 
-    def test_pace(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
-        reload(iterator)
-        parent = grizzly_fixture(scenario_type=iterator.IteratorScenario)
+    def test_pace(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:  # noqa: PLR0915
+        parent = grizzly_fixture(scenario_type=IteratorScenario)
 
-        assert isinstance(parent, iterator.IteratorScenario)
+        assert isinstance(parent, IteratorScenario)
 
         perf_counter_spy = mocker.patch('grizzly.scenarios.iterator.perf_counter', return_value=1000)
         request_spy = mocker.spy(parent.user.environment.events.request, 'fire')
@@ -297,7 +283,7 @@ class TestIterationScenario:
         gsleep_spy.reset_mock()
 
         # invalid float for pace_time
-        parent.pace_time = 'asdf'
+        parent.__class__.pace_time = 'asdf'
         with pytest.raises(StopUser):
             parent.pace()
 
@@ -319,7 +305,7 @@ class TestIterationScenario:
 
         # iteration time < specified pace
         parent.start = 12.26
-        parent.pace_time = '3000'
+        parent.__class__.pace_time = '3000'
         perf_counter_spy = mocker.patch('grizzly.scenarios.iterator.perf_counter', side_effect=[13.37, 14.48])
 
         parent.pace()
@@ -344,7 +330,7 @@ class TestIterationScenario:
         gsleep_spy.reset_mock()
 
         # iteration time > specified pace
-        parent.pace_time = '500'
+        parent.__class__.pace_time = '500'
         perf_counter_spy = mocker.patch('grizzly.scenarios.iterator.perf_counter', side_effect=[13.37, 14.48])
 
         parent.pace()
@@ -367,7 +353,7 @@ class TestIterationScenario:
         gsleep_spy.reset_mock()
 
         # templating, no value
-        parent.pace_time = '{{ foobar }}'
+        parent.__class__.pace_time = '{{ foobar }}'
         perf_counter_spy = mocker.patch('grizzly.scenarios.iterator.perf_counter', side_effect=[13.37, 14.48])
 
         with pytest.raises(StopUser):
@@ -392,7 +378,7 @@ class TestIterationScenario:
         # iteration time < specified pace, variable
         parent.user._context['variables'].update({'pace': '3000'})
         parent.start = 12.26
-        parent.pace_time = '{{ pace }}'
+        parent.__class__.pace_time = '{{ pace }}'
         perf_counter_spy = mocker.patch('grizzly.scenarios.iterator.perf_counter', side_effect=[13.37, 14.48])
 
         parent.pace()
@@ -418,7 +404,7 @@ class TestIterationScenario:
 
         # iteration time > specified pace, templating
         parent.user._context['variables'].update({'pace': '500'})
-        parent.pace_time = '{{ pace }}'
+        parent.__class__.pace_time = '{{ pace }}'
         perf_counter_spy = mocker.patch('grizzly.scenarios.iterator.perf_counter', side_effect=[13.37, 14.48])
 
         parent.pace()
@@ -441,9 +427,8 @@ class TestIterationScenario:
         gsleep_spy.reset_mock()
 
     def test_iteration_stop(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
-        reload(iterator)
-        parent = grizzly_fixture(scenario_type=iterator.IteratorScenario)
-        assert isinstance(parent, iterator.IteratorScenario)
+        parent = grizzly_fixture(scenario_type=IteratorScenario)
+        assert isinstance(parent, IteratorScenario)
 
         stats_log_mock = mocker.patch.object(parent.stats, 'log', return_value=None)
         stats_log_error_mock = mocker.patch.object(parent.stats, 'log_error', return_value=None)
@@ -484,17 +469,16 @@ class TestIterationScenario:
         assert stats_log_error_mock.call_count == 1
 
     def test_wait(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
-        reload(iterator)
-        parent = grizzly_fixture(scenario_type=iterator.IteratorScenario)
+        parent = grizzly_fixture(scenario_type=IteratorScenario)
 
-        assert isinstance(parent, iterator.IteratorScenario)
+        assert isinstance(parent, IteratorScenario)
 
         wait_mocked = mocker.patch('grizzly.scenarios.iterator.GrizzlyScenario.wait', return_value=None)
         sleep_mocked = mocker.patch.object(parent, '_sleep', return_value=None)
 
         parent.user._scenario_state = ScenarioState.STOPPING
         parent.user._state = LOCUST_STATE_STOPPING
-        parent.task_count = 10
+        parent.__class__.task_count = 10
         parent.current_task_index = 3
 
         with caplog.at_level(logging.DEBUG):
@@ -529,11 +513,10 @@ class TestIterationScenario:
         assert wait_mocked.call_count == 2
         assert len(caplog.messages) == 0
 
-    def test_run(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
-        reload(iterator)
-        parent = grizzly_fixture(scenario_type=iterator.IteratorScenario)
+    def test_run(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:  # noqa: PLR0915
+        parent = grizzly_fixture(scenario_type=IteratorScenario)
 
-        assert isinstance(parent, iterator.IteratorScenario)
+        assert isinstance(parent, IteratorScenario)
 
         # always assume that spawning is complete in unit test
         parent.grizzly.state.spawning_complete = True
@@ -551,8 +534,8 @@ class TestIterationScenario:
             side_effect=side_effects,
         )
 
-        mocker.patch.object(parent, 'tasks', [f'task-{index}' for index in range(0, 10)])
-        parent.task_count = len(parent.tasks)
+        mocker.patch.object(parent, 'tasks', [f'task-{index}' for index in range(10)])
+        parent.__class__.task_count = len(parent.tasks)
 
         schedule_task = mocker.patch.object(parent, 'schedule_task', autospec=True)
         get_next_task = mocker.patch.object(parent, 'get_next_task', autospec=True)
@@ -684,9 +667,8 @@ class TestIterationScenario:
 
         get_next_task = mocker.patch.object(parent, 'get_next_task', side_effect=[RuntimeError, StopUser])
 
-        with caplog.at_level(logging.ERROR):
-            with pytest.raises(StopUser):
-                parent.run()
+        with caplog.at_level(logging.ERROR), pytest.raises(StopUser):
+            parent.run()
 
         assert wait.call_count == 1
         assert get_next_task.call_count == 2
@@ -697,7 +679,8 @@ class TestIterationScenario:
         assert kwargs.get('user_instance', None) is parent.user
         assert isinstance(kwargs.get('exception', None), RuntimeError)
         assert kwargs.get('tb', None) is not None
-        assert 'ERROR' in caplog.text and 'IteratorScenario' in caplog.text
+        assert 'ERROR' in caplog.text
+        assert 'IteratorScenario' in caplog.text
         assert 'Traceback (most recent call last):' in caplog.text
 
         # problems in on_start
@@ -715,9 +698,8 @@ class TestIterationScenario:
         on_stop.side_effect = [RuntimeError]
         get_next_task.side_effect = [InterruptTaskSet(reschedule=False)]
 
-        with caplog.at_level(logging.ERROR):
-            with pytest.raises(RescheduleTask):
-                parent.run()
+        with caplog.at_level(logging.ERROR), pytest.raises(RescheduleTask):
+            parent.run()
 
         on_stop.assert_called_once_with()
         assert caplog.messages == ['on_stop failed']
@@ -730,31 +712,30 @@ class TestIterationScenario:
         on_stop.side_effect = [RuntimeError]
         get_next_task.side_effect = [StopScenario]
 
-        with caplog.at_level(logging.ERROR):
-            with pytest.raises(StopUser):
-                parent.run()
+        with caplog.at_level(logging.ERROR), pytest.raises(StopUser):
+            parent.run()
 
         on_stop.assert_called_once_with()
         assert caplog.messages == ['on_stop failed']
         caplog.clear()
 
     def test_run_tasks(self, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture, mocker: MockerFixture) -> None:
-        reload(iterator)
-
         class TestErrorTask(TestTask):
             def __call__(self) -> grizzlytask:
                 @grizzlytask
-                def task(parent: 'GrizzlyScenario') -> Any:
-                    parent.user.logger.debug(f'{self.name} executed')
+                def task(parent: GrizzlyScenario) -> Any:
+                    parent.user.logger.debug('%s executed', self.name)
 
                     if parent.user._context.get('variables', {}).get('foo', None) is None:
-                        raise RestartScenario()
-                    else:
-                        parent.user.stop()
+                        raise RestartScenario
+
+                    parent.user.stop()
 
                 return task
 
-        parent = grizzly_fixture()
+        parent = grizzly_fixture(scenario_type=IteratorScenario)
+
+        assert isinstance(parent, IteratorScenario)
 
         mocker.patch('grizzly.scenarios.iterator.gsleep', return_value=None)
 
@@ -763,22 +744,22 @@ class TestIterationScenario:
             for i in range(1, 6):
                 name = f'test-task-{i}'
                 parent.user._scenario.tasks.behave_steps.update({i + 1: name})
-                iterator.IteratorScenario.populate(TestTask(name=name))
+                parent.__class__.populate(TestTask(name=name))
 
-            iterator.IteratorScenario.populate(TestErrorTask(name='test-error-task-1'))
+            parent.__class__.populate(TestErrorTask(name='test-error-task-1'))
             parent.user._scenario.tasks.behave_steps.update({7: 'test-error-task-1'})
 
             for i in range(6, 11):
                 name = f'test-task-{i}'
                 parent.user._scenario.tasks.behave_steps.update({i + 2: name})
-                iterator.IteratorScenario.populate(TestTask(name=name))
+                parent.__class__.populate(TestTask(name=name))
 
-            scenario = iterator.IteratorScenario(parent.user)
-            scenario.pace_time = '10000'
+            scenario = parent.__class__(parent.user)
+            scenario.__class__.pace_time = '10000'
             mocker.patch.object(scenario, 'prefetch', return_value=None)
 
-            assert scenario.task_count == 13
-            assert len(scenario.tasks) == 13
+            assert parent.task_count == 13
+            assert len(parent.tasks) == 13
 
             mocker.patch('grizzly.scenarios.TestdataConsumer.__init__', return_value=None)
             mocker.patch('grizzly.scenarios.TestdataConsumer.stop', return_value=None)
@@ -795,9 +776,8 @@ class TestIterationScenario:
             ])
             mocker.patch.object(scenario, 'on_start', return_value=None)
 
-            with caplog.at_level(logging.DEBUG):
-                with pytest.raises(StopUser):
-                    scenario.run()
+            with caplog.at_level(logging.DEBUG), pytest.raises(StopUser):
+                scenario.run()
 
             expected_messages = [
                 'executing task 1 of 13: iterator',  # IteratorScenario.iterator()
@@ -851,7 +831,7 @@ class TestIterationScenario:
                 r'^keeping pace by sleeping [0-9\.]+ milliseconds$',
                 "okay, I'm done with my running tasks now",
                 'scenario state=ScenarioState.STOPPING -> ScenarioState.STOPPED',
-                "self.user._scenario_state=<ScenarioState.STOPPED: 1>, self.user._state='stopping', e=StopUser()",
+                "scenario_state=STOPPED, user_state=stopping, exception=StopUser()",
             ]
 
             assert len(caplog.messages) == len(expected_messages)
@@ -861,35 +841,31 @@ class TestIterationScenario:
                 assert actual == expected
 
         finally:
-            try:
+            with suppress(KeyError):
                 del environ['TESTDATA_PRODUCER_ADDRESS']
-            except:
-                pass
-
-            reload(iterator)
 
     def test_on_start(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
-        reload(iterator)
+        parent = grizzly_fixture(scenario_type=IteratorScenario)
 
-        parent = grizzly_fixture()
+        assert isinstance(parent, IteratorScenario)
 
         class TestOnStartTask(TestTask):
             def __call__(self) -> grizzlytask:
                 @grizzlytask
-                def task(parent: 'GrizzlyScenario') -> Any:
+                def task(_: GrizzlyScenario) -> Any:
                     pass
 
                 @task.on_start
-                def on_start(parent: 'GrizzlyScenario') -> None:
+                def on_start(_: GrizzlyScenario) -> None:
                     pass
 
                 return task
 
-        iterator.IteratorScenario.populate(TestOnStartTask(name='test-on-task-1'))
-        iterator.IteratorScenario.populate(TestOnStartTask(name='test-on-task-2'))
+        parent.__class__.populate(TestOnStartTask(name='test-on-task-1'))
+        parent.__class__.populate(TestOnStartTask(name='test-on-task-2'))
 
         try:
-            scenario = iterator.IteratorScenario(parent.user)
+            scenario = parent.__class__(parent.user)
 
             testdata_consumer_mock = mocker.patch('grizzly.scenarios.TestdataConsumer.__init__', return_value=None)
             prefetch_mock = mocker.patch.object(scenario, 'prefetch', return_value=None)
@@ -925,55 +901,48 @@ class TestIterationScenario:
             task_2_on_start_spy.assert_called_once_with(scenario)
             prefetch_mock.assert_called_once_with()
         finally:
-            try:
+            with suppress(KeyError):
                 del environ['TESTDATA_PRODUCER_ADDRESS']
-            except:
-                pass
-
-            reload(iterator)
 
     def test_on_stop(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
-        reload(iterator)
+        parent = grizzly_fixture(scenario_type=IteratorScenario)
 
-        parent = grizzly_fixture()
+        assert isinstance(parent, IteratorScenario)
 
         class TestOnStopTask(TestTask):
             def __call__(self) -> grizzlytask:
                 @grizzlytask
-                def task(parent: 'GrizzlyScenario') -> Any:
+                def task(_: GrizzlyScenario) -> Any:
                     pass
 
                 @task.on_stop
-                def on_stop(parent: 'GrizzlyScenario') -> None:
+                def on_stop(_: GrizzlyScenario) -> None:
                     pass
 
                 return task
 
-        iterator.IteratorScenario.populate(TestOnStopTask(name='test-on-task-1'))
-        iterator.IteratorScenario.populate(TestOnStopTask(name='test-on-task-2'))
+        parent.__class__.populate(TestOnStopTask(name='test-on-task-1'))
+        parent.__class__.populate(TestOnStopTask(name='test-on-task-2'))
 
-        try:
-            scenario = iterator.IteratorScenario(parent.user)
+        scenario = parent.__class__(parent.user)
 
-            testdata_consumer_mock = mocker.MagicMock()
-            scenario.consumer = testdata_consumer_mock
+        testdata_consumer_mock = mocker.MagicMock()
+        scenario.consumer = testdata_consumer_mock
 
-            task_1 = scenario.tasks[-3]
-            task_2 = scenario.tasks[-2]
+        task_1 = scenario.tasks[-3]
+        task_2 = scenario.tasks[-2]
 
-            assert isinstance(task_1, grizzlytask)
-            assert isinstance(task_2, grizzlytask)  # type: ignore[unreachable]
-            assert task_1 is not task_2
+        assert isinstance(task_1, grizzlytask)
+        assert isinstance(task_2, grizzlytask)  # type: ignore[unreachable]
+        assert task_1 is not task_2
 
-            task_1_on_stop_spy = mocker.spy(task_1, '_on_stop')
-            task_2_on_stop_spy = mocker.spy(task_2, '_on_stop')
-            scenario.user.scenario_state = ScenarioState.RUNNING
+        task_1_on_stop_spy = mocker.spy(task_1, '_on_stop')
+        task_2_on_stop_spy = mocker.spy(task_2, '_on_stop')
+        scenario.user.scenario_state = ScenarioState.RUNNING
 
-            scenario.on_stop()
+        scenario.on_stop()
 
-            assert scenario.user._scenario_state == ScenarioState.STOPPED
-            assert testdata_consumer_mock.stop.call_count == 1
-            task_1_on_stop_spy.assert_called_once_with(scenario)
-            task_2_on_stop_spy.assert_called_once_with(scenario)
-        finally:
-            reload(iterator)
+        assert scenario.user._scenario_state == ScenarioState.STOPPED
+        assert testdata_consumer_mock.stop.call_count == 1
+        task_1_on_stop_spy.assert_called_once_with(scenario)
+        task_2_on_stop_spy.assert_called_once_with(scenario)

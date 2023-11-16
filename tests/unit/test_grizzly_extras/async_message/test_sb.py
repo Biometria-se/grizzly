@@ -1,16 +1,20 @@
-from typing import cast
+"""Unit tests for grizzly_extras.async_message.sb."""
+from __future__ import annotations
+
+from itertools import cycle
 from json import dumps as jsondumps
+from typing import TYPE_CHECKING, cast
 
 import pytest
-
-from pytest_mock import MockerFixture
-
-from azure.servicebus import ServiceBusMessage, TransportType, ServiceBusClient, ServiceBusSender, ServiceBusReceiver
 from azure.core.exceptions import ResourceExistsError, ResourceNotFoundError
+from azure.servicebus import ServiceBusClient, ServiceBusMessage, ServiceBusReceiver, ServiceBusSender, TransportType
 
 from grizzly_extras.arguments import parse_arguments
 from grizzly_extras.async_message import AsyncMessageError, AsyncMessageRequest
 from grizzly_extras.async_message.sb import AsyncServiceBusHandler
+
+if TYPE_CHECKING:  # pragma: no cover
+    from pytest_mock import MockerFixture
 
 
 class TestAsyncServiceBusHandler:
@@ -539,13 +543,13 @@ class TestAsyncServiceBusHandler:
         assert handler._sender_cache.get('queue:test-queue', None) is not None
         assert handler._receiver_cache.get('topic:test-topic, subscription:test-subscription', None) is not None
 
-    def test_request(self, mocker: MockerFixture) -> None:
+    def test_request(self, mocker: MockerFixture) -> None:  # noqa: PLR0915
         from grizzly_extras.async_message.sb import handlers
 
         handler = AsyncServiceBusHandler(worker='asdf-asdf-asdf')
         sender_instance_mock = mocker.patch.object(handler, 'get_sender_instance')
         receiver_instance_mock = mocker.patch.object(handler, 'get_receiver_instance')
-        mocker.patch('grizzly_extras.async_message.sb.perf_counter', side_effect=[0, 11, 0, 11, 0, 11, 0, 11, 0, 11])
+        mocker.patch('grizzly_extras.async_message.sb.perf_counter', side_effect=cycle([0, 11]))
 
         request: AsyncMessageRequest = {
             'action': 'SEND',
@@ -556,7 +560,7 @@ class TestAsyncServiceBusHandler:
                 f'{request["context"]["connection"]}={request["context"]["endpoint"]}': handler.get_endpoint_arguments(
                     request['context']['connection'],
                     request['context']['endpoint'],
-                )
+                ),
             })
 
             endpoint = request['context']['endpoint']
@@ -575,6 +579,7 @@ class TestAsyncServiceBusHandler:
         # sender request
         request = {
             'action': 'SEND',
+            'client': id(handler),
             'context': {
                 'message_wait': 10,
                 'url': 'sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=',
@@ -583,29 +588,25 @@ class TestAsyncServiceBusHandler:
             },
         }
 
-        with pytest.raises(AsyncMessageError) as ame:
+        with pytest.raises(AsyncMessageError, match='"asdf" is not a valid value for context.connection'):
             handlers[request['action']](handler, request)
-        assert '"asdf" is not a valid value for context.connection'
 
         request['context']['connection'] = 'sender'
 
-        with pytest.raises(AsyncMessageError) as ame:
+        with pytest.raises(AsyncMessageError, match='no HELLO received for queue:test-queue'):
             handlers[request['action']](handler, request)
-        assert 'no HELLO received for queue:test-queue' in str(ame)
 
         setup_handler(handler, request)
 
-        with pytest.raises(AsyncMessageError) as ame:
+        with pytest.raises(AsyncMessageError, match='no payload'):
             handlers[request['action']](handler, request)
-        assert 'no payload' in str(ame)
 
         request['payload'] = 'grizzly <3 service bus'
 
         sender_instance_mock.return_value.send_messages.side_effect = [RuntimeError('unknown error')]
 
-        with pytest.raises(AsyncMessageError) as ame:
+        with pytest.raises(AsyncMessageError, match='failed to send message: unknown error'):
             handlers[request['action']](handler, request)
-        assert 'failed to send message: unknown error' in str(ame)
 
         sender_instance_mock.reset_mock(return_value=True, side_effect=True)
         setup_handler(handler, request)
@@ -633,20 +634,22 @@ class TestAsyncServiceBusHandler:
 
         setup_handler(handler, request)
 
-        with pytest.raises(AsyncMessageError) as ame:
+        with pytest.raises(AsyncMessageError, match='payload not allowed'):
             handlers[request['action']](handler, request)
-        assert 'payload not allowed' in str(ame)
 
         del request['payload']
 
         received_message = ServiceBusMessage('grizzly >3 service bus')
         receiver_instance_mock.return_value.__iter__.side_effect = [StopIteration, iter([received_message])]
 
-        with pytest.raises(AsyncMessageError) as ame:
+        handler.logger.info('-'* 10)
+        print(f'{receiver_instance_mock.return_value.__iter__.side_effect=}')
+        with pytest.raises(AsyncMessageError, match='no messages on topic:test-topic, subscription:test-subscription within 10 seconds'):
             handlers[request['action']](handler, request)
-        assert str(ame.value) == 'no messages on topic:test-topic, subscription:test-subscription within 10 seconds'
         assert receiver_instance_mock.return_value.__iter__.call_count == 1
         assert receiver_instance_mock.return_value.complete_message.call_count == 0
+        print(f'{receiver_instance_mock.return_value.__iter__.side_effect=}')
+        handler.logger.info('-'* 10)
 
         response = handlers[request['action']](handler, request)
 
@@ -760,9 +763,8 @@ class TestAsyncServiceBusHandler:
 
         endpoint_backup = request['context']['endpoint']
         request['context']['endpoint'] = 'queue:test-queue, expression:"//document[@name="test-document"]"'
-        with pytest.raises(AsyncMessageError) as ame:
+        with pytest.raises(AsyncMessageError, match=r'JsonTransformer: unable to parse with ".*": not a valid expression'):
             handlers[request['action']](handler, request)
-        assert 'JsonTransformer: unable to parse "//document[@name="test-document"]": JsonTransformer: not a valid expression' in str(ame)
 
         request['context']['endpoint'] = endpoint_backup
 
@@ -778,7 +780,7 @@ class TestAsyncServiceBusHandler:
 
         assert receiver_instance_mock.return_value.abandon_message.call_count == 3
 
-        setattr(handler, 'from_message', from_message)
+        setattr(handler, 'from_message', from_message)  # noqa: B010
 
         message3 = ServiceBusMessage(jsondumps({
             'document': {

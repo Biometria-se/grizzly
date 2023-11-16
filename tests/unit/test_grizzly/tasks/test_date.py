@@ -22,10 +22,10 @@ class TestDateTask:
             DateTask('date_variable', '2022-01-17 | asdf=True')
         assert 'unsupported arguments asdf' in str(ve)
 
-        task_factory = DateTask('date_variable', '{{ datetime.now() }} | offset=-1D, timezone="{{ timezone }}", format="%Y-%m-%d"')
+        task_factory = DateTask('date_variable', '{{ datetime.now() }} | offset=-1D10m, timezone="{{ timezone }}", format="%Y-%m-%d"')
 
         assert task_factory.value == '{{ datetime.now() }}'
-        assert task_factory.arguments.get('offset', None) == '-1D'
+        assert task_factory.arguments.get('offset', None) == '-1D10m'
         assert task_factory.arguments.get('timezone', None) == '{{ timezone }}'
         assert task_factory.arguments.get('format', None) == '%Y-%m-%d'
         assert task_factory.__template_attributes__ == {'value', 'arguments'}
@@ -45,11 +45,11 @@ class TestDateTask:
 
         assert parent is not None
 
-        task_factory = DateTask('date_variable', '2022-01-17 10:37:01 | offset=-1D')
+        task_factory = DateTask('date_variable', '2022-01-17 10:37:01 | offset=-1D10m')
         task = task_factory()
         task(parent)
 
-        assert parent.user._context['variables']['date_variable'] == '2022-01-16 10:37:01'
+        assert parent.user._context['variables']['date_variable'] == '2022-01-16 10:47:01'
 
         task_factory = DateTask('date_variable', '2022-01-17 10:37:01 | offset=-22Y-1D, timezone=UTC')
         task = task_factory()

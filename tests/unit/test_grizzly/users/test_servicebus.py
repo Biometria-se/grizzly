@@ -275,18 +275,14 @@ class TestServiceBusUser:
         with pytest.raises(RuntimeError, match='argument expression is only allowed when receiving messages'):
             user.say_hello(task)
 
-    def test_request(self, grizzly_fixture: GrizzlyFixture, noop_zmq: NoopZmqFixture, mocker: MockerFixture) -> None:
+    def test_request(self, grizzly_fixture: GrizzlyFixture, noop_zmq: NoopZmqFixture, mocker: MockerFixture) -> None:  # noqa: PLR0915
         noop_zmq('grizzly.users.servicebus')
 
         grizzly_fixture.grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test scenario'))
         grizzly = grizzly_fixture.grizzly
 
-        test_cls = type('ServiceBusTestUser', (ServiceBusUser, ), {'__scenario__': grizzly.scenario, 'host': None})
-
-        assert issubclass(test_cls, ServiceBusUser)
-
         parent = grizzly_fixture(
-            user_type=test_cls,
+            user_type=ServiceBusUser,
             host='sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=',
         )
 
@@ -335,7 +331,7 @@ class TestServiceBusUser:
             request=ANY(RequestTask),
             context=(None, None),
             user=parent.user,
-            exception=ANY(NotImplementedError, message='ServiceBusTestUser: no implementation for PUT requests'),
+            exception=ANY(NotImplementedError, message='ServiceBusUser_002: no implementation for PUT requests'),
         )
         response_event_fire_spy.reset_mock()
         request_fire_spy.assert_called_once_with(
@@ -344,7 +340,7 @@ class TestServiceBusUser:
             response_time=ANY(int),
             response_length=0,
             context=parent.user._context,
-            exception=ANY(NotImplementedError, message='ServiceBusTestUser: no implementation for PUT requests'),
+            exception=ANY(NotImplementedError, message='ServiceBusUser_002: no implementation for PUT requests'),
         )
         request_fire_spy.reset_mock()
 

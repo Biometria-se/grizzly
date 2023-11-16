@@ -109,8 +109,9 @@ class TestInfluxDb:
                 query,
             )
 
-            def logger_debug(handler: logging.Handler, msg: str) -> None:
-                assert msg == f'query: select {",".join(columns)} from "{table}";'
+            def logger_debug(_handler: logging.Handler, msg: str, query: str) -> None:
+                assert msg == 'query: %s'
+                assert query == f'select {",".join(columns)} from "{table}";'  # noqa: S608
 
             mocker.patch(
                 'logging.Logger.debug',
@@ -132,8 +133,12 @@ class TestInfluxDb:
 
         influx = InfluxDb('https://influx.example.com', 1337, 'testdb').connect()
 
-        def logger_debug(logger: logging.Logger, msg: str) -> None:
-            assert msg == f'successfully wrote 0 points to {influx.database}@{influx.host}:{influx.port}'
+        def logger_debug(_logger: logging.Logger, msg: str, count: int, database: str, host: str, port: int) -> None:
+            assert count == 0
+            assert database == influx.database
+            assert host == influx.host
+            assert port == influx.port
+            assert msg == 'successfully wrote %d points to %s@%s:%d'
 
         mocker.patch(
             'logging.Logger.debug',
@@ -424,11 +429,11 @@ class TestInfluxDbListener:
             del os.environ['TESTDATA_VARIABLE_TEST2']
 
     @pytest.mark.usefixtures('patch_influxdblistener')
-    def test_request(self, locust_fixture: LocustFixture, patch_influxdblistener: Callable[[], None], mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
+    def test_request(self, locust_fixture: LocustFixture, patch_influxdblistener: Callable[[], None], mocker: MockerFixture) -> None:
         patch_influxdblistener()
 
         def generate_logger_call(
-            request_type: str, name: str, response_time: float, response_length: int, exception: Optional[Any] = None
+            request_type: str, name: str, response_time: float, response_length: int, exception: Optional[Any] = None,
         ) -> Callable[[logging.Handler, str], None]:
             result = 'Success' if exception is None else 'Failure'
             expected_message = f'{result}: {request_type} {name} Response time: {int(round(response_time, 0))}'
@@ -436,8 +441,8 @@ class TestInfluxDbListener:
             if exception is not None:
                 expected_message = f'{expected_message} Exception: {str(exception)}'
 
-            def logger_call(self: logging.Handler, msg: str) -> None:
-                assert msg == expected_message
+            def logger_call(self: logging.Handler, msg: str, *args: Any, **_kwargs: Any) -> None:
+                assert msg % args == expected_message
 
             return logger_call
 
@@ -455,8 +460,8 @@ class TestInfluxDbListener:
         assert len(listener._events) == 1
 
         mocker.patch(
-            'logging.Logger.error',
-            generate_logger_call('POST', '/api/v2/test', 555.37, 137, CatchResponseError('request failed'))
+            'logging.Logger.exception',
+            generate_logger_call('POST', '/api/v2/test', 555.37, 137, CatchResponseError('request failed')),
         )
 
         listener.request('POST', '/api/v2/test', 555.37, 137, CatchResponseError('request failed'))

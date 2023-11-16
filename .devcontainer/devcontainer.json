@@ -57,7 +57,8 @@
                 "matangover.mypy",
                 "redhat.vscode-yaml",
                 "ms-vscode.live-server",
-                "charliermarsh.ruff"
+                "charliermarsh.ruff",
+                "oderwat.indent-rainbow"
             ]
         }
     },

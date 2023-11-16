@@ -1,7 +1,7 @@
 """Module contains step implementations that setup the load test scenario with parameters that is going to be used in the scenario they are defined in."""
 from __future__ import annotations
 
-from typing import Optional, cast
+from typing import Any, Optional, cast
 
 import parse
 
@@ -60,7 +60,7 @@ def step_setup_set_context_variable(context: Context, variable: str, value: str)
 
 
 @given('repeat for "{value}" {iteration_number:IterationGramaticalNumber}')
-def step_setup_iterations(context: Context, value: str, iteration_number: str) -> None:
+def step_setup_iterations(context: Context, value: str, *_args: Any, **_kwargs: Any) -> None:
     """Set how many iterations of the {@pylink grizzly.tasks} in the scenario should execute.
 
     Default value is `1`. A value of `0` means to run until all test data is consumed, or that the (optional) specified
@@ -233,7 +233,7 @@ def step_setup_metadata(context: Context, key: str, value: str) -> None:
     if len(tasks) > 0:
         previous_task = tasks[-1]
 
-    if isinstance(previous_task, (RequestTask, GrizzlyHttpAuthClient,)):
+    if isinstance(previous_task, (RequestTask, GrizzlyHttpAuthClient)):
         previous_task.add_metadata(key, value)
     else:
         if grizzly.scenario.context.get('metadata', None) is None:

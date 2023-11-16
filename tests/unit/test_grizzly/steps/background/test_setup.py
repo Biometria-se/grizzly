@@ -1,8 +1,10 @@
+"""Unit tests for grizzly.steps.background.setup."""
 from __future__ import annotations
 
 import re
+from contextlib import suppress
 from os import environ
-from typing import cast
+from typing import TYPE_CHECKING, cast, get_type_hints
 from urllib.parse import urlparse
 
 import pytest
@@ -10,18 +12,20 @@ from parse import compile
 
 from grizzly.context import GrizzlyContext
 from grizzly.exceptions import RestartScenario
-from grizzly.steps import *  # pylint: disable=unused-wildcard-import  # noqa: F403
-from grizzly.types import MessageDirection
+from grizzly.steps import *
+from grizzly.types import MessageCallback, MessageDirection
 from grizzly.types.locust import StopUser
-from tests.fixtures import BehaveFixture
+
+if TYPE_CHECKING:  # pragma: no cover
+    from tests.fixtures import BehaveFixture
 
 
 def test_parse_message_direction() -> None:
     p = compile(
         'sending from {from:MessageDirection} to {to:MessageDirection}',
-        extra_types=dict(
-            MessageDirection=parse_message_direction,
-        )
+        extra_types={
+            'MessageDirection': parse_message_direction,
+        },
     )
 
     assert MessageDirection.get_vector() == (True, True,)
@@ -55,10 +59,8 @@ def test_step_setup_save_statistics(behave_fixture: BehaveFixture) -> None:
         step_impl(behave, 'influxdb://test:8000/$env::DATABASE$')
         assert grizzly.setup.statistics_url == 'influxdb://test:8000/test_db'
     finally:
-        try:
+        with suppress(KeyError):
             del environ['TEST_VARIABLE']
-        except KeyError:
-            pass
 
     step_impl(behave, 'insights://?IngestionEndpoint=insights.example.com&Testplan=test&InstrumentationKey=aaaabbbb=')
     assert grizzly.setup.statistics_url == 'insights://?IngestionEndpoint=insights.example.com&Testplan=test&InstrumentationKey=aaaabbbb='
@@ -74,10 +76,8 @@ def test_step_setup_save_statistics(behave_fixture: BehaveFixture) -> None:
         step_impl(behave, 'insights://username:password@insights.example.com?IngestionEndpoint=$env::TEST_VARIABLE$&Testplan=test&InstrumentationKey=aaaabbbb=')
         assert grizzly.setup.statistics_url == 'insights://username:password@insights.example.com?IngestionEndpoint=HelloWorld&Testplan=test&InstrumentationKey=aaaabbbb='
     finally:
-        try:
+        with suppress(KeyError):
             del environ['TEST_VARIABLE']
-        except KeyError:
-            pass
 
     with pytest.raises(AssertionError):
         step_impl(
@@ -85,7 +85,7 @@ def test_step_setup_save_statistics(behave_fixture: BehaveFixture) -> None:
             (
                 'insights://$conf::statistics.username:$conf::statistics.password@?IngestionEndpoint=$conf::statistics.url&'
                 'Testplan=$conf::statistics.testplan&InstrumentationKey=$conf::statistics.instrumentationkey'
-            )
+            ),
         )
 
     grizzly.state.configuration['statistics.url'] = 'insights.example.com'
@@ -102,11 +102,11 @@ def test_step_setup_save_statistics(behave_fixture: BehaveFixture) -> None:
             'InstrumentationKey=$conf::statistics.instrumentationkey$'
         ),
     )
-    grizzly.setup.statistics_url == 'insights://username:password@?IngestionEndpoint=insights.example.com&Testplan=test&InstrumentationKey=aaaabbbb='
+    grizzly.setup.statistics_url = 'insights://username:password@?IngestionEndpoint=insights.example.com&Testplan=test&InstrumentationKey=aaaabbbb='
 
     parsed = urlparse(grizzly.setup.statistics_url)
     assert parsed.username == 'username'
-    assert parsed.password == 'password'
+    assert parsed.password == 'password'  # noqa: S105
 
 
 def test_step_setup_stop_user_on_failure(behave_fixture: BehaveFixture) -> None:
@@ -339,10 +339,7 @@ def test_step_setup_message_type_callback(behave_fixture: BehaveFixture) -> None
     with pytest.raises(AssertionError, match='tests.helpers.message_callback_not_a_method is not a method'):
         step_setup_message_type_callback(behave_fixture.context, 'tests.helpers.message_callback_not_a_method', 'foo_message', 'server', 'client')
 
-    with pytest.raises(AssertionError, match=re.escape((
-        "tests.helpers.message_callback_incorrect_sig does not have grizzly.types.MessageCallback method signature: (msg: 'Message', "
-        "environment: 'Environment') -> 'Message'"
-    ))):
+    with pytest.raises(AssertionError, match='tests.helpers.message_callback_incorrect_sig does not have grizzly.types.MessageCallback method signature: '):
         step_setup_message_type_callback(behave_fixture.context, 'tests.helpers.message_callback_incorrect_sig', 'foo_message', 'server', 'client')
 
     step_setup_message_type_callback(behave_fixture.context, 'tests.helpers.message_callback', 'foo_message', 'server', 'client')

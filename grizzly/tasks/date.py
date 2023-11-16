@@ -41,16 +41,11 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Dict, Optional, cast
 
-try:
-    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError  # pylint: disable=import-error
-except ImportError:
-    # pyright: ignoreReportMissingImports
-    from backports.zoneinfo import ZoneInfo, ZoneInfoNotFoundError  # type: ignore[no-redef]  # pylint: disable=import-error
-
 from dateutil.parser import ParserError
 from dateutil.parser import parse as dateparser
 from dateutil.relativedelta import relativedelta
 
+from grizzly.types import ZoneInfo, ZoneInfoNotFoundError
 from grizzly.utils import parse_timespan
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments, split_value
 

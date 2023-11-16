@@ -1,4 +1,5 @@
 import logging
+from contextlib import suppress
 from os import environ
 from pathlib import Path
 
@@ -79,7 +80,7 @@ def test_task_failing(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, ca
         parent.tasks.clear()
         parent._task_queue.clear()
         parent._task_queue.append(task)
-        parent.task_count = 1
+        parent.__class__.task_count = 1
 
         with pytest.raises(NotImplementedError), caplog.at_level(logging.INFO):
             parent.run()
@@ -88,7 +89,5 @@ def test_task_failing(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, ca
 
         assert 'restarting scenario' in '\n'.join(caplog.messages)
     finally:
-        try:
+        with suppress(KeyError):
             del environ['GRIZZLY_LOG_DIR']
-        except:
-            pass

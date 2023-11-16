@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import logging
 from os import environ
-from pathlib import Path
 from typing import TYPE_CHECKING, List, cast
 from unittest.mock import MagicMock
 
@@ -76,7 +75,7 @@ class TestAsyncRequestGroup:
         requests = cast(List[RequestTask], task_factory.tasks)
         task = task_factory()
 
-        with pytest.raises(NotImplementedError, match='TestUser does not inherit AsyncRequests'):
+        with pytest.raises(NotImplementedError, match='tests.helpers.TestUser_001 does not inherit AsyncRequests'):
             task(parent)
 
         parent = grizzly_fixture(user_type=RestApiUser)

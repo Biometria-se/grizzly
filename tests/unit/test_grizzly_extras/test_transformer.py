@@ -1,27 +1,43 @@
-from typing import List, Any, Dict
-from json import dumps as jsondumps, loads as jsonloads
+"""Unit tests for grizzly_extras.transformer."""
+from __future__ import annotations
+
+from json import dumps as jsondumps
+from json import loads as jsonloads
 from json.decoder import JSONDecodeError
+from typing import TYPE_CHECKING, Any, Callable, Dict, List
 
 import pytest
-
-from lxml import etree as XML
-from pytest_mock import MockerFixture
+from lxml import etree as XML  # noqa: N812
 
 from grizzly_extras.transformer import (
-    JsonTransformer,
-    Transformer,
-    XmlTransformer,
-    PlainTransformer,
-    transformer,
     JsonBytesEncoder,
+    JsonTransformer,
+    PlainTransformer,
+    Transformer,
     TransformerContentType,
+    XmlTransformer,
+    transformer,
 )
+
+if TYPE_CHECKING:  # pragma: no cover
+    from pytest_mock import MockerFixture
 
 
 class TestTransformer:
     def test_abstract_class(self) -> None:
         class DummyTransformer(Transformer):
-            pass
+            @classmethod
+            def transform(cls, raw: str) -> Any:
+                return super().transform(raw)
+
+            @classmethod
+            def validate(cls, expression: str) -> bool:
+                return super().validate(expression)
+
+            @classmethod
+            def parser(cls, expression: str) -> Callable[[Any], List[str]]:
+                return super().parser(expression)
+
 
         with pytest.raises(NotImplementedError):
             DummyTransformer.transform('{}')
@@ -47,9 +63,8 @@ class Testtransformer:
             assert t.content_type == content_type
             transformers.append(t)
 
-        with pytest.raises(ValueError) as ve:
+        with pytest.raises(ValueError, match='it is not allowed to register a transformer of type UNDEFINED'):
             transformer(TransformerContentType.UNDEFINED)
-        assert 'it is not allowed to register a transformer of type UNDEFINED' in str(ve)
 
         for index, current in enumerate(transformers, start=1):
             previous = transformers[index - 1]
@@ -58,12 +73,16 @@ class Testtransformer:
     def test___call__(self, mocker: MockerFixture) -> None:
         class DummyTransformer(Transformer):
             @classmethod
-            def transform(cls, raw: str) -> Any:
+            def transform(cls, _raw: str) -> Any:
                 return None
 
             @classmethod
-            def validate(cls, expression: str) -> bool:
+            def validate(cls, _expression: str) -> bool:
                 return True
+
+            @classmethod
+            def parser(cls, expression: str) -> Callable[[Any], List[str]]:
+                return super().parser(expression)
 
         transform_spy = mocker.spy(DummyTransformer, 'transform')
         transform_spy.side_effect = [None, None, None, (TransformerContentType.JSON, {'test': 'value'}), (TransformerContentType.UNDEFINED, {'test': 'value'})]
@@ -90,7 +109,7 @@ class Testtransformer:
 
 class TestJsonTransformer:
     def test_transform(self) -> None:
-        unwrapped = JsonTransformer.__wrapped_transform__  # type: ignore
+        unwrapped = JsonTransformer.__wrapped_transform__
         assert unwrapped('{}') == {}
 
         assert JsonTransformer.transform('{}') == {}
@@ -104,7 +123,7 @@ class TestJsonTransformer:
         assert not JsonTransformer.validate('$.')
         assert not JsonTransformer.validate('.test.something')
 
-    def test_parser(self) -> None:
+    def test_parser(self) -> None:  # noqa: PLR0915
         get_values = JsonTransformer.parser('$.test.value')
         assert callable(get_values)
 
@@ -119,13 +138,13 @@ class TestJsonTransformer:
         assert len(actual) == 2
         assert ['test1', 'test2'] == actual
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=r'JsonTransformer: unable to parse with ".*": not a valid expression'):
             JsonTransformer.parser('$......asdf')
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=r'JsonTransformer: unable to parse with ".*": not a valid expression'):
             JsonTransformer.parser('test')
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=r'JsonTransformer: unable to parse with ".*": not a valid expression'):
             JsonTransformer.parser('$.')
 
         example: Dict[str, Any] = {
@@ -154,11 +173,11 @@ class TestJsonTransformer:
                                     'addtitle': 'test2',
                                     'addvalue': 'good stuff',
                                 },
-                            ]
-                        }
-                    }
-                }
-            }
+                            ],
+                        },
+                    },
+                },
+            },
         }
 
         get_values = JsonTransformer.parser('$.glossary.GlossDiv.GlossList.GlossEntry.Abbrev')
@@ -196,7 +215,7 @@ class TestJsonTransformer:
         assert actual == ['hello world']
 
         get_values = JsonTransformer.parser('$.`this`')
-        actual = get_values(False)
+        actual = get_values(False)  # noqa: FBT003
         assert len(actual) == 1
         assert actual == ['False']
 
@@ -214,27 +233,27 @@ class TestJsonTransformer:
 
 class TestXmlTransformer:
     def test_transform(self) -> None:
-        unwrapped = XmlTransformer.__wrapped_transform__  # type: ignore
+        unwrapped = XmlTransformer.__wrapped_transform__
         transformed = unwrapped(
-            '''<?xml version="1.0" encoding="UTF-8"?>
+            """<?xml version="1.0" encoding="UTF-8"?>
             <test>
                 value
-            </test>'''
+            </test>""",
         )
 
         assert isinstance(transformed, XML._Element)
 
         with pytest.raises(XML.ParseError):
             unwrapped(
-                '''<?xml version="1.0" encoding="UTF-8"?>
+                """<?xml version="1.0" encoding="UTF-8"?>
                 <test:test>
                     value
-                </test:test>'''
+                </test:test>""",
             )
 
         with pytest.raises(XML.XMLSyntaxError):
             unwrapped(
-                '{"test": "value"}'
+                '{"test": "value"}',
             )
 
     def test_validate(self) -> None:
@@ -247,14 +266,14 @@ class TestXmlTransformer:
         assert not XmlTransformer.validate('//*[[@id="react-root"]/section')
 
     def test_parser(self) -> None:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=r'XmlTransformer: unable to parse ".*": invalid expression'):
             XmlTransformer.parser('/hello/')
 
         input_payload = XmlTransformer.transform(
-            '''<?xml version="1.0" encoding="UTF-8"?>
+            """<?xml version="1.0" encoding="UTF-8"?>
             <test>
                 value
-            </test>'''
+            </test>""",
         )
         get_values = XmlTransformer.parser('/test/text()')
         assert callable(get_values)
@@ -263,7 +282,7 @@ class TestXmlTransformer:
         assert actual[0] == 'value'
 
         input_payload = XmlTransformer.transform(
-            '''<?xml version="1.0" encoding="UTF-8"?>
+            """<?xml version="1.0" encoding="UTF-8"?>
             <parent>
                 <child id="1337">
                     some text
@@ -271,7 +290,7 @@ class TestXmlTransformer:
                 <child id="1338">
                     some other text
                 </child>
-            </parent>'''
+            </parent>""",
         )
         actual = get_values(input_payload)
         assert len(actual) == 0
@@ -282,7 +301,7 @@ class TestXmlTransformer:
         assert actual == ['some text', 'some other text']
 
         # example is a stripped down version of https://data.cityofnewyork.us/api/views/825b-niea/rows.xml?accessType=DOWNLOAD
-        example = '''<?xml version="1.0" encoding="UTF-8"?>
+        example = """<?xml version="1.0" encoding="UTF-8"?>
         <response>
             <row>
                 <row
@@ -377,7 +396,7 @@ class TestXmlTransformer:
                     <level_1_1>2550</level_1_1>
                 </row>
             </row>
-        </response>'''
+        </response>"""
 
         input_payload = XmlTransformer.transform(example)
 
@@ -389,7 +408,7 @@ class TestXmlTransformer:
         actual = get_values(input_payload)
         assert actual == ['521', '671', '2550']
 
-        example = '''<?xml version="1.0" encoding="UTF-8"?>
+        example = """<?xml version="1.0" encoding="UTF-8"?>
         <documents>
             <document>
                 <header>
@@ -400,7 +419,7 @@ class TestXmlTransformer:
                     <pages>241</pages>
                 </header>
             </document>
-        </documents>'''
+        </documents>"""
 
         input_payload = XmlTransformer.transform(example)
 
@@ -408,7 +427,7 @@ class TestXmlTransformer:
         actual = get_values(input_payload)
         assert actual == ['<header><id>DOCUMENT_1337-3</id><type>application/docx</type><author>Douglas Adams</author><published>2021-11-01</published><pages>241</pages></header>']
 
-        example = '''<?xml version="1.0" encoding="utf-8"?>
+        example = """<?xml version="1.0" encoding="utf-8"?>
 <root xmlns:foo="http://www.foo.org/" xmlns:bar="http://www.bar.org">
   <actors>
     <actor id="7">Christian Bale</actor>
@@ -420,7 +439,7 @@ class TestXmlTransformer:
     <foo:singer id="11">B.B. King</foo:singer>
     <foo:singer id="12">Ray Charles</foo:singer>
   </foo:singers>
-</root>'''
+</root>"""
 
         input_payload = XmlTransformer.transform(example)
 
@@ -439,7 +458,7 @@ class TestXmlTransformer:
 
 class TestPlainTransformer:
     def test_transform(self) -> None:
-        unwrapped = PlainTransformer.__wrapped_transform__  # type: ignore
+        unwrapped = PlainTransformer.__wrapped_transform__
 
         transformed = unwrapped('plain text')
 
@@ -458,23 +477,23 @@ class TestPlainTransformer:
         assert len(actual) == 1
         assert actual[0] == 'asdf'
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match='PlainTransformer: only expressions that has zero or one match group is allowed'):
             PlainTransformer.parser('///(test1)(test2)///')
 
         match_value = PlainTransformer.parser('///(test1)///')
         actual = match_value('///test1///')
         assert len(actual) == 1
-        assert 'test1' == actual[0]
+        assert actual[0] == 'test1'
 
         match_value = PlainTransformer.parser('.*used to.*')
         actual = match_value('A meta-markup language, used to create markup languages such as DocBook.')
         assert len(actual) == 1
-        assert 'A meta-markup language, used to create markup languages such as DocBook.' == actual[0]
+        assert actual[0] == 'A meta-markup language, used to create markup languages such as DocBook.'
 
         match_value = PlainTransformer.parser('.*(used to).*')
         actual = match_value('A meta-markup language, used to create markup languages such as DocBook.')
         assert len(actual) == 1
-        assert 'used to' == actual[0]
+        assert actual[0] == 'used to'
 
         match_value = PlainTransformer.parser('.*(used to).*')
         assert match_value('test test test test') == []
@@ -482,7 +501,7 @@ class TestPlainTransformer:
         match_value = PlainTransformer.parser('[)hello')
         actual = match_value('[)hello')
         assert len(actual) == 1
-        assert '[)hello' == actual[0]
+        assert actual[0] == '[)hello'
         assert match_value('hello') == []
 
 

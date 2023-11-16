@@ -1,11 +1,16 @@
+"""@anchor pydoc:grizzly_extras.text
+Utilities related to handling text.
+"""
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import Tuple, Optional, Callable, Any
 from enum import Enum, EnumMeta
+from typing import Any, Callable, Optional, Tuple
 
 
 class permutation:
-    """
-    Decorator used to annotate `parse` methods that are not using {@pylink grizzly_extras.text.PermutationEnum} as a base.
+    """Decorator used to annotate `parse` methods that are not using {@pylink grizzly_extras.text.PermutationEnum} as a base.
+
     This could be for example parse methods that uses regular expressions via `parse.with_pattern`.
 
     ```python
@@ -26,13 +31,14 @@ class permutation:
 
     See {@pylink grizzly_extras.text.PermutationEnum.__vector__} for an explanation of possible values and their meaning.
     """
+
     vector: Optional[Tuple[bool, bool]]
 
     def __init__(self, *, vector: Optional[Tuple[bool, bool]]) -> None:
         self.vector = vector
 
     def __call__(self, func: Callable[[str], Any]) -> Callable[[str], Any]:
-        setattr(func, '__vector__', self.vector)
+        setattr(func, '__vector__', self.vector)  # noqa: B010
 
         return func
 
@@ -42,8 +48,7 @@ class PermutationMeta(ABC, EnumMeta):
 
 
 class PermutationEnum(Enum, metaclass=PermutationMeta):
-    """
-    Interface class for getting `__vector__` value from the class that inherits it.
+    """Interface class for getting `__vector__` value from the class that inherits it.
 
     All objects used to represent possible values in step expressions and that has a registered custom `parse` type *should*
     inherit this class and set appropiate `__vector__` values and make an implementation of `from_string`. This is so
@@ -138,4 +143,5 @@ class PermutationEnum(Enum, metaclass=PermutationMeta):
     @classmethod
     @abstractmethod
     def from_string(cls, value: str) -> Enum:
-        raise NotImplementedError(f'{cls.__name__} has not implemented `from_string`')  # pragma: no cover
+        message = f'{cls.__name__} has not implemented `from_string`'
+        raise NotImplementedError(message)  # pragma: no cover

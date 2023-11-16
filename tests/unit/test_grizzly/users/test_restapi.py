@@ -1,29 +1,31 @@
-import json
+"""Unit tests for grizzly.users.restapi."""
+from __future__ import annotations
 
-from typing import cast, Dict, Any, Callable
+import json
 from time import time
+from typing import TYPE_CHECKING, Any, Callable, Dict, cast
 from unittest.mock import ANY
 
+import gevent
+import pytest
 from locust.clients import ResponseContextManager
 from locust.contrib.fasthttp import FastHttpSession, insecure_ssl_context_factory
-
-import pytest
-import gevent
-
-from _pytest.logging import LogCaptureFixture
 from requests.models import Response
 
-from grizzly.users.restapi import RestApiUser
-from grizzly.users.base import AsyncRequests, RequestLogger, ResponseHandler, GrizzlyUser
-from grizzly.types import GrizzlyResponse, RequestMethod
-from grizzly.types.locust import StopUser
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import RequestTask
 from grizzly.testdata.utils import transform
+from grizzly.types import GrizzlyResponse, RequestMethod
+from grizzly.types.locust import StopUser
+from grizzly.users.base import AsyncRequests, GrizzlyUser, RequestLogger, ResponseHandler
+from grizzly.users.restapi import RestApiUser
 from grizzly_extras.transformer import TransformerContentType
-
-from tests.fixtures import MockerFixture, GrizzlyFixture
 from tests.helpers import RequestEvent
+
+if TYPE_CHECKING:  # pragma: no cover
+    from _pytest.logging import LogCaptureFixture
+
+    from tests.fixtures import GrizzlyFixture, MockerFixture
 
 
 class TestRestApiUser:
@@ -37,6 +39,7 @@ class TestRestApiUser:
         assert issubclass(parent.user.__class__, AsyncRequests)
         assert parent.user.host == 'http://example.net'
         assert parent.user._context == {
+            'host': 'http://example.net',
             'variables': {},
             'log_all_requests': False,
             'verify_certificates': True,
@@ -63,9 +66,9 @@ class TestRestApiUser:
             'x-grizzly-user': parent.user.__class__.__name__,
         }
 
-        RestApiUser.__context__['metadata'] = {'foo': 'bar'}
+        parent.user.__class__.__context__['metadata'] = {'foo': 'bar'}
 
-        user = RestApiUser(parent.user.environment)
+        user = parent.user.__class__(parent.user.environment)
 
         assert user.headers.get('foo', None) == 'bar'
 
@@ -229,7 +232,7 @@ class TestRestApiUser:
         parent = grizzly_fixture(user_type=RestApiUser)
         assert isinstance(parent.user, RestApiUser)
 
-        assert parent.user.__class__.__name__ == 'RestApiUser'
+        assert parent.user.__class__.__name__ == f'RestApiUser_{parent.user._scenario.identifier}'
 
         is_async_request = request_func is RestApiUser.async_request_impl
 
@@ -277,7 +280,7 @@ class TestRestApiUser:
         _, kwargs = request_event_spy.call_args_list[-1]
         exception = kwargs.get('exception', None)
         assert isinstance(exception, NotImplementedError)
-        assert str(exception) == 'SEND is not implemented for RestApiUser'
+        assert str(exception) == f'SEND is not implemented for RestApiUser_{parent.user._scenario.identifier}'
 
         request_event_spy.reset_mock()
 

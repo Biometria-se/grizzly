@@ -27,7 +27,7 @@ from grizzly_extras.transformer import TransformerContentType
 
 
 @parse.with_pattern(r'is( not)?', regex_group_count=1)
-@permutation(vector=(False, True,))
+@permutation(vector=(False, True))
 def parse_condition(text: str) -> bool:
     return text is not None and text.strip() == 'is'
 

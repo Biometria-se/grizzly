@@ -604,11 +604,10 @@ class TestMessageQueueClientTask:
             parent.tasks.clear()
             parent._task_queue.clear()
             parent._task_queue.append(task)
-            parent.task_count = 1
+            parent.__class__.task_count = 1
 
-            with pytest.raises(RuntimeError):
-                with caplog.at_level(logging.INFO):
-                    parent.run()
+            with pytest.raises(RuntimeError), caplog.at_level(logging.INFO):
+                parent.run()
 
             async_message_request_mock.assert_called_once()
             log_error_mock.assert_called_once_with(None)

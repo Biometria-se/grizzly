@@ -1,6 +1,6 @@
-"""
-Borrowed from:
-https://github.com/SvenskaSpel/locust-plugins/blob/master/locust_plugins/appinsights_listener.py
+"""@anchor pydoc:grizzly.listeners.appinsights Application Insights
+This listener is based on the great work made by
+[Svenska Spel and their Application Insights listener](https://github.com/SvenskaSpel/locust-plugins/blob/master/locust_plugins/appinsights_listener.py).
 
 Minor changes, mainly related to adding typing, and also how InstrumentationKey is handled.
 
@@ -18,9 +18,10 @@ endpoint = tostring(customDimensions["endpoint"])
 | render timechart;
 ```
 """
-import logging
+from __future__ import annotations
 
-from typing import Dict, Any, Optional
+import logging
+from typing import Any, Dict, Optional
 from urllib.parse import parse_qs, urlparse
 
 from opencensus.ext.azure.log_exporter import AzureLogHandler
@@ -31,7 +32,7 @@ stdlogger = logging.getLogger(__name__)
 
 
 class ApplicationInsightsListener:
-    def __init__(self, environment: Environment, url: str, propagate_logs: bool = True) -> None:
+    def __init__(self, environment: Environment, url: str, *, propagate_logs: bool = True) -> None:
         url = url.replace(';', '&')
         parsed = urlparse(url)
         params = parse_qs(parsed.query)
@@ -62,7 +63,7 @@ class ApplicationInsightsListener:
         response_time: Any,
         response_length: int,
         exception: Optional[Any] = None,
-        **_kwargs: Dict[str, Any],
+        **_kwargs: Any,
     ) -> None:
         try:
             result = 'Success' if exception is None else 'Failure'
@@ -75,20 +76,18 @@ class ApplicationInsightsListener:
             )
 
             message_to_log = '{}: {} {} Response time: {} Number of Threads: {}'.format(
-                result, str(request_type), str(name), str(response_time), custom_dimensions['thread_count']
+                result, str(request_type), str(name), str(response_time), custom_dimensions['thread_count'],
             )
 
             if exception is not None:
-                message_to_log = '{} Exception: {}'.format(
-                    message_to_log, str(exception),
-                )
+                message_to_log = f'{message_to_log} Exception: {exception!r}'
 
             self.logger.info(message_to_log, extra={'custom_dimensions': custom_dimensions})
         except:
-            stdlogger.error(f'failed to write metric for "{request_type} {name}"')
+            stdlogger.error('failed to write metric for "%s %s"', request_type, name)  # noqa: TRY400
 
     def _create_custom_dimensions_dict(
-        self, method: str, result: str, response_time: int, response_length: int, endpoint: str, exception: Optional[Any] = None
+        self, method: str, result: str, response_time: int, response_length: int, endpoint: str, exception: Optional[Any] = None,
     ) -> Dict[str, Any]:
         custom_dimensions = self._safe_return_runner_values()
 
@@ -113,7 +112,7 @@ class ApplicationInsightsListener:
             runner = self.environment.runner
 
             if runner is None:
-                raise ValueError()
+                raise ValueError
 
             try:
                 thread_count = str(runner.user_count)
@@ -130,13 +129,12 @@ class ApplicationInsightsListener:
             runner_values['target_user_count'] = target_user_count
 
             try:
-                if isinstance(runner, MasterRunner):
-                    spawn_rate = str(runner.spawn_rate)
-                else:
-                    spawn_rate = ''
+                spawn_rate = str(runner.spawn_rate) if isinstance(runner, MasterRunner) else ''
             except Exception:  # pragma: no cover
                 spawn_rate = ''
 
             runner_values['spawn_rate'] = spawn_rate
-        finally:
-            return runner_values
+        except:  # noqa: S110
+            pass
+
+        return runner_values

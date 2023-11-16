@@ -85,13 +85,7 @@ def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Opt
         message = f'scenario {scenario.description} does not have a user type set'
         raise ValueError(message)
 
-    if scenario.user.class_name.count('.') > 0:
-        module, user_class_name = scenario.user.class_name.rsplit('.', 1)
-    else:
-        module = 'grizzly.users'
-        user_class_name = scenario.user.class_name
-
-    base_user_class_type = cast(Type['GrizzlyUser'], ModuleLoader['GrizzlyUser'].load(module, user_class_name))
+    base_user_class_type = cast(Type['GrizzlyUser'], ModuleLoader['GrizzlyUser'].load('grizzly.users', scenario.user.class_name))
     user_class_name = f'{scenario.user.class_name}_{scenario.identifier}'
 
     context: Dict[str, Any] = {}

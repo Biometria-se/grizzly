@@ -5,7 +5,7 @@ import logging
 from dataclasses import dataclass, field
 from os import environ
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Type, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Type, Union, cast
 
 import yaml
 from jinja2 import Environment
@@ -220,7 +220,7 @@ class GrizzlyContextTasks(List['GrizzlyTask']):
     _tmp: GrizzlyContextTasksTmp
     behave_steps: Dict[int, str]
 
-    def __init__(self, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
         self._tmp = GrizzlyContextTasksTmp()

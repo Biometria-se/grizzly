@@ -37,11 +37,7 @@ from dateutil.parser import ParserError
 from dateutil.parser import parse as dateparse
 from dateutil.relativedelta import relativedelta
 
-try:
-    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
-except ImportError:
-    from backports.zoneinfo import ZoneInfo, ZoneInfoNotFoundError  # type: ignore[no-redef]  # pyright: ignore[reportMissingImports]
-
+from grizzly.types import ZoneInfo, ZoneInfoNotFoundError
 from grizzly.utils import parse_timespan
 from grizzly_extras.arguments import parse_arguments, split_value
 

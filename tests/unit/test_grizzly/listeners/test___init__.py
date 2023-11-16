@@ -483,13 +483,15 @@ def test_grizzly_worker_quit_non_worker(locust_fixture: LocustFixture, caplog: L
     environment = locust_fixture.environment
     environment.runner = LocalRunner(environment=environment)
 
+    message = Message(message_type='test', data=None, node_id=None)
+
     with caplog.at_level(logging.DEBUG):
         with pytest.raises(SystemExit) as se:
-            grizzly_worker_quit(environment, Message(message_type='test', data=None, node_id=None))
+            grizzly_worker_quit(environment, message)
         assert se.value.code == 1
 
     assert len(caplog.messages) == 2
-    assert caplog.messages[0] == 'received message grizzly_worker_quit'
+    assert caplog.messages[0] == f'received message grizzly_worker_quit: msg={message!r}'
     assert caplog.messages[1] == 'received grizzly_worker_quit message on a non WorkerRunner?!'
 
 
@@ -515,7 +517,7 @@ def test_grizzly_worker_quit_worker(listener_test_mocker: None, locust_fixture: 
     log_messages = list(filter(lambda m: 'CPU usage' not in m, caplog.messages))
 
     assert len(log_messages) == 1
-    assert log_messages[0] == 'received message grizzly_worker_quit'
+    assert log_messages[0] == f'received message grizzly_worker_quit: msg={message!r}'
     caplog.clear()
 
     runner_stop_mock.assert_called_once()
@@ -538,7 +540,7 @@ def test_grizzly_worker_quit_worker(listener_test_mocker: None, locust_fixture: 
     log_messages = list(filter(lambda m: 'CPU usage' not in m, caplog.messages))
 
     assert len(log_messages) == 1
-    assert log_messages[0] == 'received message grizzly_worker_quit'
+    assert log_messages[0] == f'received message grizzly_worker_quit: msg={message!r}'
     caplog.clear()
 
     environment.process_exit_code = None
@@ -552,5 +554,5 @@ def test_grizzly_worker_quit_worker(listener_test_mocker: None, locust_fixture: 
     log_messages = list(filter(lambda m: 'CPU usage' not in m, caplog.messages))
 
     assert len(log_messages) == 1
-    assert log_messages[0] == 'received message grizzly_worker_quit'
+    assert log_messages[0] == f'received message grizzly_worker_quit: msg={message!r}'
     caplog.clear()

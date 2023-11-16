@@ -1,16 +1,18 @@
+"""@anchor pydoc:grizzly.auth
+Core logic for handling different implementations for authorization.
+"""
 from __future__ import annotations
 
-from typing import Any, Dict, Tuple, Optional, Type, Literal, Union, TypeVar, Callable, Generic, cast, TYPE_CHECKING
+from abc import ABCMeta, abstractmethod
 from enum import Enum
-from time import time
-from importlib import import_module
-from urllib.parse import urlparse
-from abc import ABCMeta
 from functools import wraps
+from importlib import import_module
+from time import time
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Dict, Generic, Literal, Optional, Tuple, Type, TypeVar, Union, cast
+from urllib.parse import urlparse
 
 from grizzly.types import GrizzlyResponse
-from grizzly.types.locust import Environment
-from grizzly.utils import safe_del, merge_dicts
+from grizzly.utils import merge_dicts, safe_del
 
 try:
     from typing import ParamSpec
@@ -20,6 +22,7 @@ except:
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContext, GrizzlyContextScenario
+    from grizzly.types.locust import Environment
 
 
 class AuthMethod(Enum):
@@ -41,7 +44,7 @@ class GrizzlyHttpAuthClient(Generic[P], metaclass=ABCMeta):
     environment: Environment
     headers: Dict[str, str]
     cookies: Dict[str, str]
-    _context: Dict[str, Any] = {
+    __context__: ClassVar[Dict[str, Any]] = {
         'verify_certificates': True,
         'auth': {
             'refresh_time': 3000,
@@ -64,6 +67,7 @@ class GrizzlyHttpAuthClient(Generic[P], metaclass=ABCMeta):
     session_started: Optional[float]
     grizzly: GrizzlyContext
     _scenario: GrizzlyContextScenario
+    _context: Dict[str, Any]
 
     def add_metadata(self, key: str, value: str) -> None:
         if self._context.get('metadata', None) is None:
@@ -174,16 +178,20 @@ class RefreshToken(metaclass=ABCMeta):
     def get_token(cls, client: GrizzlyHttpAuthClient, auth_method: Literal[AuthMethod.CLIENT, AuthMethod.USER]) -> Tuple[AuthType, str]:
         if auth_method == AuthMethod.CLIENT:
             return cls.get_oauth_token(client)
-        else:
-            return cls.get_oauth_authorization(client)
+
+        return cls.get_oauth_authorization(client)
 
     @classmethod
-    def get_oauth_authorization(cls, client: GrizzlyHttpAuthClient) -> Tuple[AuthType, str]:
-        raise NotImplementedError(f'{cls.__name__} has not implemented "get_oauth_authorization"')  # pragma: no cover
+    @abstractmethod
+    def get_oauth_authorization(cls, client: GrizzlyHttpAuthClient) -> Tuple[AuthType, str]:  # pragma: no cover
+        message = f'{cls.__name__} has not implemented "get_oauth_authorization"'
+        raise NotImplementedError(message)
 
     @classmethod
-    def get_oauth_token(cls, client: GrizzlyHttpAuthClient, pkcs: Optional[Tuple[str, str]] = None) -> Tuple[AuthType, str]:
-        raise NotImplementedError(f'{cls.__name__} has not implemented "get_oauth_token"')  # pragma: no cover
+    @abstractmethod
+    def get_oauth_token(cls, client: GrizzlyHttpAuthClient, pkcs: Optional[Tuple[str, str]] = None) -> Tuple[AuthType, str]:  # pragma: no cover
+        message = f'{cls.__name__} has not implemented "get_oauth_token"'
+        raise NotImplementedError(message)
 
 
 from .aad import AAD

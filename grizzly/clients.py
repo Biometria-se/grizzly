@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any, Dict, Generator, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Any, Dict, Generator, Optional, cast
 
 from locust.clients import HttpSession, ResponseContextManager
 from locust.event import EventHook
@@ -29,8 +29,8 @@ class ResponseEventSession(HttpSession):
         request_event: EventHook,
         user: Optional[User] = None,
         pool_manager: Optional[PoolManager] = None,
-        *args: Tuple[Any, ...],
-        **kwargs: Dict[str, Any],
+        *args: Any,
+        **kwargs: Any,
     ) -> None:
         super().__init__(base_url, request_event, user, *args, pool_manager=pool_manager, **kwargs)
 
@@ -44,7 +44,7 @@ class ResponseEventSession(HttpSession):
         catch_response: bool = False,  # noqa: FBT001, FBT002
         context: Optional[Dict[str, Any]] = None,
         request: Optional[RequestTask] = None,
-        **kwargs: Dict[str, Any],
+        **kwargs: Any,
     ) -> ResponseContextManager:
         """Override HttpSession.request to be able to fire grizzly specific event."""
         if context is None:

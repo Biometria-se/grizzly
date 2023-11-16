@@ -39,6 +39,7 @@ from grizzly.types import GrizzlyResponseContextManager, RequestMethod
 from grizzly.types.behave import Context as BehaveContext
 from grizzly.types.behave import Feature, Scenario, Step
 from grizzly.types.locust import Environment, LocustRunner
+from grizzly.utils import create_scenario_class_type, create_user_class_type
 
 from .helpers import RequestSilentFailureEvent, TestScenario, TestUser, onerror, run_command
 
@@ -365,19 +366,25 @@ class GrizzlyFixture:
         if user_type is None:
             user_type = TestUser
 
+        user_class_name = user_type.__name__ if user_type.__module__.startswith('grizzly.users') else f'{user_type.__module__}.{user_type.__name__}'
+
         if scenario_type is None:
             scenario_type = TestScenario
+
+        scenario_class_name = scenario_type.__name__ if scenario_type.__module__ == 'grizzly.scenarios' else f'{scenario_type.__module__}.{scenario_type.__name__}'
+
+        self.grizzly.scenario.user.class_name = user_class_name
+        self.grizzly.scenario.context['host'] = host
+        self.request_task.request.name = scenario_type.__name__
+
+        scenario_type = create_scenario_class_type(scenario_class_name, self.grizzly.scenario)
+        user_type = create_user_class_type(self.grizzly.scenario)
 
         self.behave.locust.environment = Environment(
             host=host,
             user_classes=[user_type],
         )
 
-        self.grizzly.scenario.user.class_name = user_type.__name__
-        self.grizzly.scenario.context['host'] = host
-        self.request_task.request.name = scenario_type.__name__
-
-        user_type.__scenario__ = self.grizzly.scenario
         user_type.host = host
         user = user_type(self.behave.locust.environment)
 

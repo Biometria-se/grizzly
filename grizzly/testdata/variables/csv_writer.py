@@ -81,8 +81,10 @@ def atomiccsvwriter__base_type__(value: str) -> str:
     return value
 
 
-def atomiccsvwriter_message_handler(_environment: Environment, msg: Message, **_kwargs: Dict[str, Any]) -> None:
-    """Handle CSV write messages."""
+def atomiccsvwriter_message_handler(environment: Environment, msg: Message, **_kwargs: Any) -> None:  # noqa: ARG001
+    """Receive messages containing CSV data.
+    Write the data to a CSV file.
+    """
     with AtomicCsvWriter.semaphore():
         data = cast(dict, msg.data)
         destination_file = cast(str, data['destination'])

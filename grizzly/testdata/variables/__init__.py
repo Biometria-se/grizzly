@@ -61,7 +61,6 @@ class AtomicVariable(Generic[T], AbstractAtomicClass):
     arguments: ClassVar[Dict[str, Any]] = {}
     grizzly: GrizzlyContext
 
-    @classmethod
     def __new__(cls, *_args: Any, **_kwargs: Any) -> AtomicVariable[T]:
         if AbstractAtomicClass in cls.__bases__:
             message = f"Can't instantiate abstract class {cls.__name__}"

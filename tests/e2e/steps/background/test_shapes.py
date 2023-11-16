@@ -1,11 +1,17 @@
-from typing import cast, List, Dict, Optional
+"""End-to-end tests for grizzly.steps.background.shapes."""
+from __future__ import annotations
+
+from contextlib import suppress
+from typing import TYPE_CHECKING, Dict, List, Optional, cast
 
 import pytest
 
-from grizzly.types.behave import Context
 from grizzly.context import GrizzlyContext
+from grizzly.utils import is_template
 
-from tests.fixtures import End2EndFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.types.behave import Context
+    from tests.fixtures import End2EndFixture
 
 
 @pytest.mark.parametrize('count', [
@@ -14,7 +20,7 @@ from tests.fixtures import End2EndFixture
 def test_e2e_step_shapes_user_count(e2e_fixture: End2EndFixture, count: str) -> None:
     def validator(context: Context) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
-        data = list(context.table)[0].as_dict()
+        data = next(iter(context.table)).as_dict()
 
         user_count = int(data['user_count'].replace('{{ user_count }}', '10'))
 
@@ -23,27 +29,26 @@ def test_e2e_step_shapes_user_count(e2e_fixture: End2EndFixture, count: str) -> 
     table: List[Dict[str, str]] = [
         {
             'user_count': str(count),
-        }
+        },
     ]
 
     suffix = 's'
-    try:
+    with suppress(Exception):
         if int(count) <= 1:
             suffix = ''
-    except:
-        pass
 
     e2e_fixture.add_validator(validator, table=table)
 
     background: List[str] = []
     testdata: Optional[Dict[str, str]] = None
 
-    if '{{' in count and '}}' in count:
+    if is_template(count):
         background.append('Then ask for value of variable "user_count"')
         testdata = {'user_count': '10'}
 
     feature_file = e2e_fixture.test_steps(
-        background=background + [
+        background=[
+            *background,
             f'Given "{count}" user{suffix}',
         ],
         scenario=[
