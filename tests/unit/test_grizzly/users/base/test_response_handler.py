@@ -23,7 +23,7 @@ from grizzly.types.locust import CatchResponseError, LocustError, StopUser
 from grizzly.users.base import HttpRequests, ResponseEvent
 from grizzly.users.base.response_handler import ResponseHandler, ResponseHandlerAction, SaveHandlerAction, ValidationHandlerAction
 from grizzly_extras.transformer import TransformerContentType
-from tests.helpers import ANY, TestUser
+from tests.helpers import ANY, JSON_EXAMPLE, TestUser
 
 if TYPE_CHECKING:  # pragma: no cover
     from pytest_mock import MockerFixture
@@ -55,9 +55,8 @@ class TestResponseHandlerAction:
         assert handler.match_with == '.*'
         assert handler.expected_matches == '1'
 
-        with pytest.raises(NotImplementedError) as nie:
-            handler((TransformerContentType.JSON, None,), user)
-        assert str(nie.value) == 'Dummy has not implemented __call__'
+        with pytest.raises(NotImplementedError, match='Dummy has not implemented __call__'):
+            handler((TransformerContentType.JSON, None), user)
 
     def test_get_matches(self, grizzly_fixture: GrizzlyFixture) -> None:
         TestUser.__scenario__ = grizzly_fixture.grizzly.scenario
@@ -65,13 +64,11 @@ class TestResponseHandlerAction:
         user = TestUser(grizzly_fixture.behave.locust.environment)
         handler = TestResponseHandlerAction.Dummy('//hello/world', '.*')
 
-        with pytest.raises(TypeError) as te:
-            handler.get_match((TransformerContentType.UNDEFINED, None, ), user)
-        assert str(te.value) == 'could not find a transformer for UNDEFINED'
+        with pytest.raises(TypeError, match='could not find a transformer for UNDEFINED'):
+            handler.get_match((TransformerContentType.UNDEFINED, None), user)
 
-        with pytest.raises(TypeError) as te:
-            handler.get_match((TransformerContentType.JSON, None, ), user)
-        assert str(te.value) == '"//hello/world" is not a valid expression for JSON'
+        with pytest.raises(TypeError, match=r'".*" is not a valid expression for JSON'):
+            handler.get_match((TransformerContentType.JSON, None), user)
 
         response = {
             'hello': [{
@@ -83,7 +80,7 @@ class TestResponseHandlerAction:
             }, {
                 'world': 'bar',
                 'foo': 2,
-            }]
+            }],
         }
 
         user._context['variables']['count'] = '2'
@@ -106,7 +103,7 @@ class TestValidationHandlerAction:
         assert handler.match_with == 'foo'
         assert handler.expected_matches == '1'
 
-    def test___call___true(self, grizzly_fixture: GrizzlyFixture) -> None:
+    def test___call___true(self, grizzly_fixture: GrizzlyFixture) -> None:  # noqa: PLR0915
         TestUser.__scenario__ = grizzly_fixture.grizzly.scenario
         TestUser.host = 'http://example.net'
         user = TestUser(grizzly_fixture.behave.locust.environment)
@@ -176,39 +173,6 @@ class TestValidationHandlerAction:
             assert isinstance(getattr(response_context_manager, '_manual_result', None), ResponseHandlerError)
             response_context_manager._manual_result = None
 
-            example = {
-                'glossary': {
-                    'title': 'example glossary',
-                    'GlossDiv': {
-                        'title': 'S',
-                        'GlossList': {
-                            'GlossEntry': {
-                                'ID': 'SGML',
-                                'SortAs': 'SGML',
-                                'GlossTerm': 'Standard Generalized Markup Language',
-                                'Acronym': 'SGML',
-                                'Abbrev': 'ISO 8879:1986',
-                                'GlossDef': {
-                                    'para': 'A meta-markup language, used to create markup languages such as DocBook.',
-                                    'GlossSeeAlso': ['GML', 'XML']
-                                },
-                                'GlossSee': 'markup',
-                                'Additional': [
-                                    {
-                                        'addtitle': 'test1',
-                                        'addvalue': 'hello world',
-                                    },
-                                    {
-                                        'addtitle': 'test2',
-                                        'addvalue': 'good stuff',
-                                    },
-                                ],
-                            },
-                        },
-                    },
-                },
-            }
-
             # 1 match in multiple values (list)
             user.set_context_variable('format', 'XML')
             handler = ValidationHandlerAction(
@@ -216,12 +180,12 @@ class TestValidationHandlerAction:
                 expression='$.*..GlossSeeAlso[*]',
                 match_with='{{ format }}',
             )
-            handler((TransformerContentType.JSON, example), user, response_context_manager)
+            handler((TransformerContentType.JSON, JSON_EXAMPLE), user, response_context_manager)
             assert isinstance(getattr(response_context_manager, '_manual_result', None), ResponseHandlerError)
             response_context_manager._manual_result = None
 
             with pytest.raises(ResponseHandlerError):
-                handler((TransformerContentType.JSON, example), user, None)
+                handler((TransformerContentType.JSON, JSON_EXAMPLE), user, None)
 
             @templatingfilter
             def uppercase(value: str) -> str:
@@ -238,7 +202,7 @@ class TestValidationHandlerAction:
                 expression='$.*..GlossSeeAlso[*]',
                 match_with='{{ format | uppercase }}',
             )
-            handler((TransformerContentType.JSON, example), user, response_context_manager)
+            handler((TransformerContentType.JSON, JSON_EXAMPLE), user, response_context_manager)
             assert response_context_manager._manual_result is None
 
             user.set_context_variable('property', 'TITLE')
@@ -248,7 +212,7 @@ class TestValidationHandlerAction:
                 expression='$.glossary.{{ property | lowercase }}',
                 match_with='{{ regexp }}',
             )
-            handler((TransformerContentType.JSON, example), user, response_context_manager)
+            handler((TransformerContentType.JSON, JSON_EXAMPLE), user, response_context_manager)
             assert isinstance(getattr(response_context_manager, '_manual_result', None), ResponseHandlerError)
             response_context_manager._manual_result = None
 
@@ -257,7 +221,7 @@ class TestValidationHandlerAction:
                 expression='$..Additional[?addtitle="test1"].addvalue',
                 match_with='.*world$',
             )
-            handler((TransformerContentType.JSON, example), user, response_context_manager)
+            handler((TransformerContentType.JSON, JSON_EXAMPLE), user, response_context_manager)
             assert isinstance(getattr(response_context_manager, '_manual_result', None), ResponseHandlerError)
             response_context_manager._manual_result = None
 
@@ -279,7 +243,7 @@ class TestValidationHandlerAction:
 
             assert user._context['variables'] is not TestUser(grizzly_fixture.behave.locust.environment)._context['variables']
 
-    def test___call___false(self, grizzly_fixture: GrizzlyFixture) -> None:
+    def test___call___false(self, grizzly_fixture: GrizzlyFixture) -> None:  # noqa: PLR0915
         TestUser.__scenario__ = grizzly_fixture.grizzly.scenario
         TestUser.host = 'http://example.io'
         user = TestUser(grizzly_fixture.behave.locust.environment)
@@ -343,46 +307,13 @@ class TestValidationHandlerAction:
         handler((TransformerContentType.JSON, ['ID_1337', 'ID_31337', 'ID_73313']), user, response_context_manager)
         assert response_context_manager._manual_result is None
 
-        example = {
-            'glossary': {
-                'title': 'example glossary',
-                'GlossDiv': {
-                    'title': 'S',
-                    'GlossList': {
-                        'GlossEntry': {
-                            'ID': 'SGML',
-                            'SortAs': 'SGML',
-                            'GlossTerm': 'Standard Generalized Markup Language',
-                            'Acronym': 'SGML',
-                            'Abbrev': 'ISO 8879:1986',
-                            'GlossDef': {
-                                'para': 'A meta-markup language, used to create markup languages such as DocBook.',
-                                'GlossSeeAlso': ['GML', 'XML']
-                            },
-                            'GlossSee': 'markup',
-                            'Additional': [
-                                {
-                                    'addtitle': 'test1',
-                                    'addvalue': 'hello world',
-                                },
-                                {
-                                    'addtitle': 'test2',
-                                    'addvalue': 'good stuff',
-                                },
-                            ],
-                        },
-                    },
-                },
-            },
-        }
-
         # 1 match in multiple values (list)
         handler = ValidationHandlerAction(
             condition=False,
             expression='$.*..GlossSeeAlso[*]',
             match_with='XML',
         )
-        handler((TransformerContentType.JSON, example), user, response_context_manager)
+        handler((TransformerContentType.JSON, JSON_EXAMPLE), user, response_context_manager)
         assert response_context_manager._manual_result is None
 
         # no match in multiple values (list)
@@ -391,7 +322,7 @@ class TestValidationHandlerAction:
             expression='$.*..GlossSeeAlso[*]',
             match_with='YAML',
         )
-        handler((TransformerContentType.JSON, example), user, response_context_manager)
+        handler((TransformerContentType.JSON, JSON_EXAMPLE), user, response_context_manager)
         assert getattr(response_context_manager, '_manual_result', None) is not None
         response_context_manager._manual_result = None
 
@@ -400,7 +331,7 @@ class TestValidationHandlerAction:
             expression='$.glossary.title',
             match_with='.*ary$',
         )
-        handler((TransformerContentType.JSON, example), user, response_context_manager)
+        handler((TransformerContentType.JSON, JSON_EXAMPLE), user, response_context_manager)
         assert response_context_manager._manual_result is None
 
         handler = ValidationHandlerAction(
@@ -408,7 +339,7 @@ class TestValidationHandlerAction:
             expression='$..Additional[?addtitle="test2"].addvalue',
             match_with='.*stuff$',
         )
-        handler((TransformerContentType.JSON, example), user, response_context_manager)
+        handler((TransformerContentType.JSON, JSON_EXAMPLE), user, response_context_manager)
         assert response_context_manager._manual_result is None
 
         handler = ValidationHandlerAction(
@@ -422,7 +353,7 @@ class TestValidationHandlerAction:
 
         user._scenario.failure_exception = None
 
-        with pytest.raises(ResponseHandlerError):
+        with pytest.raises(ResponseHandlerError, match=r'".*?": "False" was None'):
             handler((TransformerContentType.JSON, True), user, None)
 
         user._scenario.failure_exception = StopUser
@@ -451,7 +382,7 @@ class TestSaveHandlerAction:
         assert handler.match_with == 'foo'
         assert handler.expected_matches == '1'
 
-    def test___call__(self, grizzly_fixture: GrizzlyFixture) -> None:
+    def test___call__(self, grizzly_fixture: GrizzlyFixture) -> None:  # noqa: PLR0915
         TestUser.__scenario__ = grizzly_fixture.grizzly.scenario
         TestUser.host = 'http://example.com'
         user = TestUser(grizzly_fixture.behave.locust.environment)
@@ -701,7 +632,7 @@ class TestResponseHandler:
         assert isinstance(user.response_event, EventHook)
         assert len(user.response_event._handlers) == 1
 
-    def test_response_handler_response_context(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
+    def test_response_handler_response_context(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:  # noqa: PLR0915
         test_cls = type('ResponseHandlerTest', (ResponseHandler, ), {'host': None})
         assert issubclass(test_cls, ResponseHandler)
 

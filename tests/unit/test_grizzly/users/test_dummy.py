@@ -1,9 +1,15 @@
-from grizzly.users.base import GrizzlyUser
-from grizzly.users import DummyUser
+"""Unit tests for grizzly.users.dummy."""
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from grizzly.tasks import RequestTask
 from grizzly.types import RequestMethod
+from grizzly.users import DummyUser
+from grizzly.users.base import GrizzlyUser
 
-from tests.fixtures import GrizzlyFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from tests.fixtures import GrizzlyFixture
 
 
 class TestDummyUser:
@@ -20,6 +26,6 @@ class TestDummyUser:
         user = DummyUser(grizzly_fixture.behave.locust.environment)
 
         for method in RequestMethod:
-            assert user.request(RequestTask(method, 'dummy', '/api/what/ever')) == (None, None,)
+            assert user.request(RequestTask(method, 'dummy', '/api/what/ever')) == (None, None)
 
         assert user._scenario is not DummyUser.__scenario__

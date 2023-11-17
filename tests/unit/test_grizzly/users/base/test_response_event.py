@@ -17,7 +17,7 @@ from tests.helpers import TestUser
 if TYPE_CHECKING:  # pragma: no cover
     from locust.user.users import User
 
-    from tests.fixtures import LocustFixture, GrizzlyFixture
+    from tests.fixtures import GrizzlyFixture, LocustFixture
 
 
 class TestResponseEvent:
@@ -35,8 +35,8 @@ class TestResponseEvent:
         assert getattr(user, 'client', '') is None
         assert len(user.response_event._handlers) == 0
 
-        fake_user_type = type('FakeResponseEventUser', (ResponseEvent, HttpRequests,), {
-            'host': 'https://example.org'
+        fake_user_type = type('FakeResponseEventUser', (ResponseEvent, HttpRequests), {
+            'host': 'https://example.org',
         })
 
         user = fake_user_type(locust_fixture.environment)

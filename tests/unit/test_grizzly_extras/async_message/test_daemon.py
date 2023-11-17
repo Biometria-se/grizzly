@@ -1,34 +1,39 @@
-from typing import List, Any, Dict, Tuple, cast
-from json import dumps as jsondumps
-from signal import SIGINT
+"""Unit tests of grizzly_extras.async_message.daemon."""
+from __future__ import annotations
+
 from importlib import reload
 from itertools import cycle
+from json import dumps as jsondumps
+from signal import SIGINT
+from typing import TYPE_CHECKING, Any, List, cast
 
 import pytest
 import zmq
 
-from _pytest.capture import CaptureFixture
-from pytest_mock.plugin import MockerFixture
+from grizzly_extras.async_message.daemon import main, router, signal_handler, worker
 
-from grizzly_extras.async_message import AsyncMessageRequest, AsyncMessageResponse
-from grizzly_extras.async_message.daemon import router, worker, main, signal_handler
+if TYPE_CHECKING:  # pragma: no cover
+    from _pytest.capture import CaptureFixture
+    from pytest_mock.plugin import MockerFixture
+
+    from grizzly_extras.async_message import AsyncMessageRequest, AsyncMessageResponse
 
 
 def test_signal_handler() -> None:
-    import grizzly_extras.async_message.daemon as daemon
+    from grizzly_extras.async_message import daemon
 
-    assert not getattr(daemon, 'abort')
+    assert not getattr(daemon, 'abort')  # noqa: B009
 
     signal_handler(SIGINT, None)
 
-    assert getattr(daemon, 'abort')
+    assert daemon.abort
 
     reload(daemon)
 
 
-@pytest.mark.parametrize('scheme,implementation', [
-    ('mq', 'AsyncMessageQueueHandler',),
-    ('sb', 'AsyncServiceBusHandler',),
+@pytest.mark.parametrize(('scheme', 'implementation'), [
+    ('mq', 'AsyncMessageQueueHandler'),
+    ('sb', 'AsyncServiceBusHandler'),
 ])
 def test_worker(mocker: MockerFixture, capsys: CaptureFixture, scheme: str, implementation: str) -> None:
     context_mock = mocker.MagicMock()
@@ -63,32 +68,34 @@ def test_worker(mocker: MockerFixture, capsys: CaptureFixture, scheme: str, impl
     with pytest.raises(StopAsyncIteration):
         worker(context_mock, 'ID-12345')
 
-    assert worker_mock.send_multipart.call_count == 1
-    args, _ = worker_mock.send_multipart.call_args_list[0]
-    actual_response_proto = args[0]
-    assert actual_response_proto[0] == b'ID-54321'
-    assert actual_response_proto[-1] == jsondumps({
-        'worker': 'ID-12345',
-        'response_time': 0,
-        'success': False,
-        'message': 'got ID-54321, expected ID-12345',
-    }).encode()
+    worker_mock.send_multipart.assert_called_once_with([
+        b'ID-54321',
+        b'',
+        jsondumps({
+            'worker': 'ID-12345',
+            'response_time': 0,
+            'success': False,
+            'message': 'got ID-54321, expected ID-12345',
+        }).encode(),
+    ])
+    worker_mock.send_multipart.reset_mock()
 
     mock_recv_multipart({'worker': 'ID-12345', 'context': {'url': 'http://www.example.com'}})
 
     with pytest.raises(StopAsyncIteration):
         worker(context_mock, 'ID-12345')
 
-    assert worker_mock.send_multipart.call_count == 2
-    args, _ = worker_mock.send_multipart.call_args_list[1]
-    actual_response_proto = args[0]
-    assert actual_response_proto[0] == b'ID-12345'
-    assert actual_response_proto[-1] == jsondumps({
-        'worker': 'ID-12345',
-        'response_time': 0,
-        'success': False,
-        'message': 'integration for http:// is not implemented',
-    }).encode()
+    worker_mock.send_multipart.assert_called_once_with([
+        b'ID-12345',
+        b'',
+        jsondumps({
+            'worker': 'ID-12345',
+            'response_time': 0,
+            'success': False,
+            'message': 'integration for http:// is not implemented',
+        }).encode(),
+    ])
+    worker_mock.send_multipart.reset_mock()
 
     integration_spy = mocker.patch(
         f'grizzly_extras.async_message.{scheme}.{implementation}.__init__',
@@ -109,27 +116,28 @@ def test_worker(mocker: MockerFixture, capsys: CaptureFixture, scheme: str, impl
     with pytest.raises(StopAsyncIteration):
         worker(context_mock, 'ID-12345')
 
-    assert integration_spy.call_count == 1
-    args, _ = integration_spy.call_args_list[0]
-    assert args[0] == 'ID-12345'
+    integration_spy.assert_called_once_with('ID-12345')
+    integration_spy.reset_mock()
 
-    assert worker_mock.send_multipart.call_count == 3
-    args, _ = worker_mock.send_multipart.call_args_list[2]
-    actual_response_proto = args[0]
-    assert actual_response_proto[0] == b'ID-12345'
-    assert actual_response_proto[-1] == jsondumps({
-        'worker': 'ID-12345',
-        'success': True,
-        'payload': 'hello world',
-        'metadata': {
-            'some': 'metadata',
-        },
-        'response_time': 439,
-    }).encode()
+    worker_mock.send_multipart.assert_called_once_with([
+        b'ID-12345',
+        b'',
+        jsondumps({
+            'worker': 'ID-12345',
+            'success': True,
+            'payload': 'hello world',
+            'metadata': {
+                'some': 'metadata',
+            },
+            'response_time': 439,
+        }).encode(),
+    ])
+    worker_mock.send_multipart.reset_mock()
 
-    import grizzly_extras.async_message.daemon as daemon
 
-    def hack(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+    from grizzly_extras.async_message import daemon
+
+    def hack(*_args: Any, **_kwargs: Any) -> None:
         daemon.abort = True
 
     worker_mock.send_multipart = hack
@@ -155,7 +163,7 @@ def test_worker(mocker: MockerFixture, capsys: CaptureFixture, scheme: str, impl
 
     reload(daemon)
 
-    assert integration_close_spy.call_count == 1
+    integration_close_spy.assert_called_once_with()
 
     capture = capsys.readouterr()
 
@@ -174,7 +182,6 @@ def test_router(mocker: MockerFixture, capsys: CaptureFixture) -> None:
 
     poller_mock = mocker.MagicMock()
     create_poller_mock = mocker.patch('zmq.green.Poller.__new__', return_value=poller_mock)
-    # poller_mock.poll.return_value = {frontend_mock: zmq.POLLIN, backend_mock: zmq.POLLIN}
     poller_mock.poll.side_effect = [RuntimeError]
     thread_mock = mocker.patch('grizzly_extras.async_message.daemon.Thread')
 
@@ -212,12 +219,12 @@ def test_router(mocker: MockerFixture, capsys: CaptureFixture) -> None:
     assert poller_mock.register.call_count == 2
     args, kwargs = poller_mock.register.call_args_list[0]
     assert kwargs == {}
-    assert args == (frontend_mock, zmq.POLLIN,)
+    assert args == (frontend_mock, zmq.POLLIN)
     args, kwargs = poller_mock.register.call_args_list[1]
     assert kwargs == {}
-    assert args == (backend_mock, zmq.POLLIN,)
+    assert args == (backend_mock, zmq.POLLIN)
 
-    thread_mock.assert_called_once_with(target=worker, args=(context_mock, 'foobar',))
+    thread_mock.assert_called_once_with(target=worker, args=(context_mock, 'foobar'))
 
 
 def test_main(mocker: MockerFixture) -> None:

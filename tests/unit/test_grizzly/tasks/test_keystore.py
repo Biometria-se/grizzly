@@ -1,24 +1,26 @@
-from typing import cast
-from unittest.mock import ANY
+"""Unit tests of grizzly.tasks.keystore."""
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, cast
 
 import pytest
 
-from grizzly.tasks import KeystoreTask
 from grizzly.context import GrizzlyContext
 from grizzly.exceptions import RestartScenario
+from grizzly.tasks import KeystoreTask
+from tests.helpers import ANY
 
-from tests.fixtures import GrizzlyFixture, MockerFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from tests.fixtures import GrizzlyFixture, MockerFixture
 
 
 class TestKeystoreTask:
     def test___init__(self, grizzly_fixture: GrizzlyFixture) -> None:
-        with pytest.raises(AssertionError) as ae:
+        with pytest.raises(AssertionError, match='action context for get must be a string'):
             KeystoreTask('foobar', 'get', None)
-        assert str(ae.value) == 'action context for get must be a string'
 
-        with pytest.raises(AssertionError) as ae:
+        with pytest.raises(AssertionError, match='foobar has not been initialized'):
             KeystoreTask('foobar', 'get', 'foobar')
-        assert str(ae.value) == 'foobar has not been initialized'
 
         grizzly_fixture.grizzly.state.variables.update({'foobar': 'none'})
 
@@ -36,9 +38,8 @@ class TestKeystoreTask:
         assert task.action_context == 'foobar'
         assert task.default_value == ['hello', 'world']
 
-        with pytest.raises(AssertionError) as ae:
+        with pytest.raises(AssertionError, match='action context for set cannot be None'):
             KeystoreTask('foobar', 'set', None)
-        assert str(ae.value) == 'action context for set cannot be None'
 
         task = KeystoreTask('foobar', 'set', {'hello': 'world'})
 
@@ -47,9 +48,8 @@ class TestKeystoreTask:
         assert task.action_context == {'hello': 'world'}
         assert task.default_value is None
 
-        with pytest.raises(AssertionError) as ae:
-            KeystoreTask('foobar', 'unknown', None)  # type: ignore
-        assert str(ae.value) == 'unknown is not a valid action'
+        with pytest.raises(AssertionError, match='unknown is not a valid action'):
+            KeystoreTask('foobar', 'unknown', None)  # type: ignore[arg-type]
 
     def test___call___get(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         behave = grizzly_fixture.behave.context
@@ -60,12 +60,12 @@ class TestKeystoreTask:
         assert parent is not None
 
         consumer_mock = mocker.MagicMock()
-        setattr(parent, 'consumer', consumer_mock)
+        parent.consumer = consumer_mock
 
         grizzly.state.variables.update({'foobar': 'none'})
 
         # key does not exist in keystore
-        setattr(parent.consumer.keystore_get, 'return_value', None)
+        setattr(parent.consumer.keystore_get, 'return_value', None)  # noqa: B010
         request_spy = mocker.spy(parent.user.environment.events.request, 'fire')
 
         task_factory = KeystoreTask('foobar', 'get', 'foobar')
@@ -84,18 +84,12 @@ class TestKeystoreTask:
             response_time=0,
             response_length=1,
             context=parent.user._context,
-            exception=ANY,
+            exception=ANY(RuntimeError, message='key foobar does not exist in keystore'),
         )
-
-        _, kwargs = request_spy.call_args_list[-1]
-        actual_exception = kwargs.get('exception', None)
-        assert isinstance(actual_exception, RuntimeError)
-        assert str(actual_exception) == 'key foobar does not exist in keystore'
-
         request_spy.reset_mock()
 
         # key exist in keystore
-        setattr(parent.consumer.keystore_get, 'return_value', ['hello', 'world'])
+        setattr(parent.consumer.keystore_get, 'return_value', ['hello', 'world'])  # noqa: B010
 
         task(parent)
 
@@ -104,7 +98,7 @@ class TestKeystoreTask:
         assert parent.user._context['variables'].get('foobar', None) == ['hello', 'world']
 
         # key does not exist in keystore, but has a default value
-        setattr(parent.consumer.keystore_get, 'return_value', None)
+        setattr(parent.consumer.keystore_get, 'return_value', None)  # noqa: B010
 
         task_factory = KeystoreTask('foobar', 'get', 'foobar', {'hello': 'world'})
         assert task_factory.default_value is not None
@@ -122,7 +116,7 @@ class TestKeystoreTask:
         assert parent is not None
 
         consumer_mock = mocker.MagicMock()
-        setattr(parent, 'consumer', consumer_mock)
+        setattr(parent, 'consumer', consumer_mock)  # noqa: B010
 
         task_factory = KeystoreTask('foobar', 'set', {'hello': '{{ world }}'})
         task = task_factory()

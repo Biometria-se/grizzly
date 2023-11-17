@@ -24,7 +24,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 parameterize = ('meta_request_task_type,meta_args,meta_kwargs', [
     (RequestTask, (RequestMethod.GET,), {'name': 'test-request', 'endpoint': '/api/test | content_type=json'}),
-    (HttpClientTask, (RequestDirection.FROM, 'https://example.io/test | content_type=json', 'test-request',), {}),
+    (HttpClientTask, (RequestDirection.FROM, 'https://example.io/test | content_type=json', 'test-request'), {}),
 ])
 
 
@@ -307,7 +307,7 @@ class TestUntilRequestTask:
                 'value': 'third',
             }, {
                 'count': 21,
-                'value': 'fourth'
+                'value': 'fourth',
             }, {
                 'count': 22,
                 'value': 'fifth',
@@ -389,7 +389,7 @@ class TestUntilRequestTask:
 
         task_factory = UntilRequestTask(meta_request_task, '$.list[?(@.count == 18)] | wait=4, expected_matches=1, retries=1')
         task = task_factory()
-        request_spy.return_value = ({}, None,)
+        request_spy.return_value = ({}, None)
         parent.user._scenario.failure_exception = None
 
         task(parent)

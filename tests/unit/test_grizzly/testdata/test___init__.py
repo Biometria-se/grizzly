@@ -1,16 +1,21 @@
-from typing import Tuple, Optional
-from os import environ, path, mkdir
+"""Unit tests of grizzly.testdata."""
+from __future__ import annotations
+
+from contextlib import suppress
+from os import environ
 from shutil import rmtree
+from typing import TYPE_CHECKING, Optional, Tuple
 
 import pytest
 
-from _pytest.tmpdir import TempPathFactory
-
+from grizzly.context import GrizzlyContext
 from grizzly.testdata import GrizzlyVariables
 from grizzly.testdata.variables import AtomicCsvReader, AtomicIntegerIncrementer
-from grizzly.context import GrizzlyContext
 
-from tests.fixtures import AtomicVariableCleanupFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from _pytest.tmpdir import TempPathFactory
+
+    from tests.fixtures import AtomicVariableCleanupFixture
 
 
 class TestGrizzlyVariables:
@@ -99,7 +104,7 @@ class TestGrizzlyVariables:
         assert isinstance(t['test11'], bool)
         assert t.__getitem__('test11') is False
 
-    def test_AtomicIntegerIncrementer(self, cleanup: AtomicVariableCleanupFixture) -> None:
+    def test_atomic_integer_incrementer(self, cleanup: AtomicVariableCleanupFixture) -> None:
         try:
             t = GrizzlyVariables()
             t['AtomicIntegerIncrementer.test1'] = 1337
@@ -119,7 +124,7 @@ class TestGrizzlyVariables:
             t['AtomicIntegerIncrementer.test5'] = '1.337'
             assert t['AtomicIntegerIncrementer.test5'] == '1'
 
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match='"hello" is not a valid initial value'):
                 t['AtomicIntegerIncrementer.test6'] = 'hello'
 
             t['AtomicIntegerIncrementer.test7'] = '1337 | step=10'
@@ -137,33 +142,31 @@ class TestGrizzlyVariables:
         finally:
             cleanup()
 
-    def test_AtomicDirectoryContents(self, cleanup: AtomicVariableCleanupFixture, tmp_path_factory: TempPathFactory) -> None:
+    def test_atomic_directory_contents(self, cleanup: AtomicVariableCleanupFixture, tmp_path_factory: TempPathFactory) -> None:
         test_context = tmp_path_factory.mktemp('test_context') / 'requests'
         test_context.mkdir()
-        test_context_root = path.dirname(test_context)
+        test_context_root = test_context.parent.as_posix()
         environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
 
         try:
             t = GrizzlyVariables()
 
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match='is not a directory in'):
                 t['AtomicDirectoryContents.test1'] = 'doesnotexist/'
 
-            with open(path.join(test_context, 'notadirectory'), 'w') as fd:
-                fd.write('test')
-                fd.flush()
+            (test_context / 'notadirectory').write_text('test')
 
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match='is not a directory in'):
                 t['AtomicDirectoryContents.test2'] = 'notadirectory'
 
-            mkdir(path.join(test_context, 'adirectory'))
+            (test_context / 'adirectory').mkdir()
 
             t['AtomicDirectoryContents.test3'] = 'adirectory'
 
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match='asdf is not a valid boolean'):
                 t['AtomicDirectoryContents.test4'] = 'adirectory | repeat=asdf'
 
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match='argument prefix is not allowed'):
                 t['AtomicDirectoryContents.test4'] = 'adirectory | repeat=True, prefix="test-"'
 
             t['AtomicDirectoryContents.test4'] = 'adirectory | repeat=True'
@@ -177,51 +180,47 @@ class TestGrizzlyVariables:
             t['AtomicDirectoryContents.test7'] = 'adirectory|repeat=True, random=True'
             assert t['AtomicDirectoryContents.test7'] == 'adirectory | repeat=True, random=True'
         finally:
-            try:
+            with suppress(KeyError):
                 del environ['GRIZZLY_CONTEXT_ROOT']
-            except:
-                pass
 
             rmtree(test_context_root)
             cleanup()
 
-    def test_AtomicCsvReader(self, cleanup: AtomicVariableCleanupFixture, tmp_path_factory: TempPathFactory) -> None:
+    def test_atomic_csv_reader(self, cleanup: AtomicVariableCleanupFixture, tmp_path_factory: TempPathFactory) -> None:
         test_context = tmp_path_factory.mktemp('test_context') / 'requests'
         test_context.mkdir()
-        test_context_root = path.dirname(test_context)
+        test_context_root = test_context.parent.as_posix()
         environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
 
-        with open(path.join(test_context, 'test.csv'), 'w') as fd:
-            fd.write('header1,header2\n')
-            fd.write('value1,value2\n')
-            fd.flush()
+        (test_context / 'test.csv').write_text("""header1,header2
+header1,header2
+value1,value2
+""")
 
         try:
             t = GrizzlyVariables()
 
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match='is not a file in'):
                 t['AtomicCsvReader.test'] = 'doesnotexist.csv'
 
             t['AtomicCsvReader.test'] = 'test.csv'
 
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match='asdf is not a valid boolean'):
                 t['AtomicCsvReader.test2'] = 'test.csv | repeat=asdf'
 
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match='argument suffix is not allowed'):
                 t['AtomicCsvReader.test2'] = 'test.csv | repeat=True, suffix=True'
 
             t['AtomicCsvReader.test2'] = 'test.csv|repeat=True'
             assert t['AtomicCsvReader.test2'] == 'test.csv | repeat=True'
         finally:
-            try:
+            with suppress(KeyError):
                 del environ['GRIZZLY_CONTEXT_ROOT']
-            except:
-                pass
 
             rmtree(test_context_root)
             cleanup()
 
-    def test_AtomicDate(self, cleanup: AtomicVariableCleanupFixture) -> None:
+    def test_atomic_date(self, cleanup: AtomicVariableCleanupFixture) -> None:
         try:
             t = GrizzlyVariables()
             with pytest.raises(TypeError, match='is not a string'):
@@ -252,7 +251,7 @@ class TestGrizzlyVariables:
         finally:
             cleanup()
 
-    def test_AtomicRandomInteger(self, cleanup: AtomicVariableCleanupFixture) -> None:
+    def test_atomic_random_integer(self, cleanup: AtomicVariableCleanupFixture) -> None:
         try:
             t = GrizzlyVariables()
 
@@ -274,7 +273,7 @@ class TestGrizzlyVariables:
         finally:
             cleanup()
 
-    @pytest.mark.parametrize(('input', 'expected'), [
+    @pytest.mark.parametrize(('value', 'expected'), [
         ('variable', (None, None, 'variable', None)),
         ('AtomicIntegerIncrementer.foo', ('grizzly.testdata.variables', 'AtomicIntegerIncrementer', 'foo', None)),
         ('AtomicCsvReader.users.username', ('grizzly.testdata.variables', 'AtomicCsvReader', 'users', 'username')),
@@ -282,41 +281,38 @@ class TestGrizzlyVariables:
         ('tests.helpers.AtomicCustomVariable.foo.bar', ('tests.helpers', 'AtomicCustomVariable', 'foo', 'bar')),
         ('a.custom.struct', (None, None, 'a.custom.struct', None)),
     ])
-    def test_get_variable_spec(self, input: str, expected: Tuple[Optional[str], Optional[str], str, Optional[str]]) -> None:
-        assert GrizzlyVariables.get_variable_spec(input) == expected
+    def test_get_variable_spec(self, value: str, expected: Tuple[Optional[str], Optional[str], str, Optional[str]]) -> None:
+        assert GrizzlyVariables.get_variable_spec(value) == expected
 
     class Test_initialize_variable:
+        """Unit tests of grizzly.testdata.initialize_variable."""
+
         def test_static(self, cleanup: AtomicVariableCleanupFixture) -> None:
             try:
                 grizzly = GrizzlyContext()
                 variable_name = 'test'
 
-                with pytest.raises(ValueError) as ve:
+                with pytest.raises(ValueError, match=f'variable "{variable_name}" has not been declared'):
                     GrizzlyVariables.initialize_variable(grizzly, variable_name)
-                assert str(ve.value) == f'variable "{variable_name}" has not been declared'
 
                 grizzly.state.variables[variable_name] = 1337
-                value, _, _ = GrizzlyVariables.initialize_variable(grizzly, variable_name)
-                assert value == 1337
+                assert GrizzlyVariables.initialize_variable(grizzly, variable_name) == (1337, set(), {})
 
                 grizzly.state.variables[variable_name] = '1337'
-                value, _, _ = GrizzlyVariables.initialize_variable(grizzly, variable_name)
-                assert value == 1337
+                assert GrizzlyVariables.initialize_variable(grizzly, variable_name) == (1337, set(), {})
 
                 grizzly.state.variables[variable_name] = "'1337'"
-                value, _, _ = GrizzlyVariables.initialize_variable(grizzly, variable_name)
-                assert value == '1337'
+                assert GrizzlyVariables.initialize_variable(grizzly, variable_name) == ('1337', set(), {})
             finally:
                 cleanup()
 
-        def test_AtomicIntegerIncrementer(self, cleanup: AtomicVariableCleanupFixture) -> None:
+        def test_atomic_integer_incrementer(self, cleanup: AtomicVariableCleanupFixture) -> None:
             try:
                 grizzly = GrizzlyContext()
 
                 variable_name = 'AtomicIntegerIncrementer.test'
-                with pytest.raises(ValueError) as ve:
+                with pytest.raises(ValueError, match=f'variable "{variable_name}" has not been declared'):
                     GrizzlyVariables.initialize_variable(grizzly, variable_name)
-                assert str(ve.value) == f'variable "{variable_name}" has not been declared'
 
                 grizzly.state.variables[variable_name] = 1337
                 value, external_dependencies, message_handlers = GrizzlyVariables.initialize_variable(grizzly, variable_name)
@@ -358,17 +354,16 @@ class TestGrizzlyVariables:
             finally:
                 cleanup()
 
-        def test_AtomicCsvReader(self, cleanup: AtomicVariableCleanupFixture, tmp_path_factory: TempPathFactory) -> None:
+        def test_atomic_csv_reader(self, cleanup: AtomicVariableCleanupFixture, tmp_path_factory: TempPathFactory) -> None:
             test_context = tmp_path_factory.mktemp('test_context') / 'requests'
             test_context.mkdir()
-            test_context_root = path.dirname(test_context)
+            test_context_root = test_context.parent.as_posix()
             environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
 
-            with open(path.join(test_context, 'test.csv'), 'w') as fd:
-                fd.write('header1,header2\n')
-                fd.write('value1,value2\n')
-                fd.write('value3,value4\n')
-                fd.flush()
+            (test_context / 'test.csv').write_text("""header1,header2
+value1,value2
+value3,value4
+""")
             try:
                 grizzly = GrizzlyContext()
                 variable_name = 'AtomicCsvReader.test'
@@ -384,10 +379,8 @@ class TestGrizzlyVariables:
                 assert value['test'] == {'header1': 'value3', 'header2': 'value4'}
                 assert value['test'] is None
             finally:
-                try:
+                with suppress(KeyError):
                     del environ['GRIZZLY_CONTEXT_ROOT']
-                except:
-                    pass
 
                 rmtree(test_context_root)
                 cleanup()

@@ -4,7 +4,6 @@ from __future__ import annotations
 import json
 from time import time
 from typing import TYPE_CHECKING, Any, Callable, Dict, cast
-from unittest.mock import ANY
 
 import gevent
 import pytest
@@ -20,7 +19,7 @@ from grizzly.types.locust import StopUser
 from grizzly.users.base import AsyncRequests, GrizzlyUser, RequestLogger, ResponseHandler
 from grizzly.users.restapi import RestApiUser
 from grizzly_extras.transformer import TransformerContentType
-from tests.helpers import RequestEvent
+from tests.helpers import ANY, RequestEvent
 
 if TYPE_CHECKING:  # pragma: no cover
     from _pytest.logging import LogCaptureFixture
@@ -106,7 +105,7 @@ class TestRestApiUser:
                 'verify_certificates': False,
                 'metadata': {
                     'Ocp-Apim-Subscription-Key': '',
-                }
+                },
             }
             parent.user.headers.update({
                 'Ocp-Apim-Subscription-Key': '',
@@ -116,13 +115,12 @@ class TestRestApiUser:
 
             fire = mocker.spy(parent.user.environment.events.request, 'fire')
 
-            # user.get_oauth_authorization()
             request = RequestTask(RequestMethod.GET, name='test', endpoint='/api/test')
             headers, body = parent.user.request(request)
             parent.logger.info(headers)
             parent.logger.info(body)
             parent.logger.info(fire.call_args_list)
-            assert 0
+            assert 0  # noqa: PT015
 
     def test_get_error_message(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         parent = grizzly_fixture(user_type=RestApiUser)
@@ -223,7 +221,7 @@ class TestRestApiUser:
         parent.user.request(request)
 
     @pytest.mark.parametrize('request_func', [RestApiUser.request_impl, RestApiUser.async_request_impl])
-    def test__request(
+    def test__request(  # noqa: PLR0915
         self,
         grizzly_fixture: GrizzlyFixture,
         mocker: MockerFixture,
@@ -271,17 +269,11 @@ class TestRestApiUser:
         request_event_spy.assert_called_once_with(
             request_type='SEND',
             name='001 TestScenario',
-            response_time=ANY,
+            response_time=ANY(int),
             response_length=0,
             context=parent.user._context,
-            exception=ANY,
+            exception=ANY(NotImplementedError, message=f'SEND is not implemented for RestApiUser_{parent.user._scenario.identifier}'),
         )
-
-        _, kwargs = request_event_spy.call_args_list[-1]
-        exception = kwargs.get('exception', None)
-        assert isinstance(exception, NotImplementedError)
-        assert str(exception) == f'SEND is not implemented for RestApiUser_{parent.user._scenario.identifier}'
-
         request_event_spy.reset_mock()
 
         # request GET, 200
@@ -299,7 +291,7 @@ class TestRestApiUser:
 
         if not is_async_request:
             expected_parameters.update({
-                'request': ANY,
+                'request': ANY(RequestTask),
                 'verify': parent.user._context.get('verify_certificates', True),
             })
 
@@ -340,7 +332,7 @@ class TestRestApiUser:
 
         response_spy.success.assert_not_called()
         response_spy.failure.assert_called_once_with(
-            '400 not in [200]: bad request'
+            '400 not in [200]: bad request',
         )
 
         response_spy.reset_mock()
@@ -365,7 +357,7 @@ class TestRestApiUser:
 
         response_spy.success.assert_not_called()
         response_spy.failure.assert_called_once_with(
-            '404 not in [200]: borked'
+            '404 not in [200]: borked',
         )
 
         request_spy.reset_mock()
@@ -424,7 +416,7 @@ class TestRestApiUser:
         request.source = 'foobar'
         request.response.content_type = TransformerContentType.MULTIPART_FORM_DATA
         expected_parameters.update({
-            'files': {'foobar': ('foobar.txt', request.source,)}
+            'files': {'foobar': ('foobar.txt', request.source)},
         })
 
         assert parent.user.request(request) == ({'x-bar': 'foo'}, 'success')

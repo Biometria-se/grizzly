@@ -1,23 +1,31 @@
-import time
-import xml.etree.ElementTree as ET
+"""Unit test of grizzly_extras.async_message.mq.rfh2."""
+from __future__ import annotations
 
+import time
+import xml.etree.ElementTree as XML  # noqa: N814
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import pytest
 
-from pytest_mock.plugin import MockerFixture
-
+from grizzly.types import ZoneInfo
 from grizzly_extras.async_message.mq import Rfh2Decoder, Rfh2Encoder
 
-rfh2_msg = b'RFH \x02\x00\x00\x00\xfc\x00\x00\x00"\x02\x00\x00\xb8\x04\x00\x00        \x00\x00\x00\x00\xb8\x04\x00\x00 \x00\x00\x00<mcd><Msd>jms_bytes</Msd></mcd> ' \
-           b'P\x00\x00\x00<jms><Dst>queue:///TEST.QUEUE</Dst><Tms>1655406556138</Tms><Dlv>2</Dlv></jms>   \\\x00\x00\x00<usr><ContentEncoding>gzip</ContentEncoding>' \
-           b'<ContentLength dt=\'i8\'>32</ContentLength></usr> \x1f\x8b\x08\x00\xdc\x7f\xabb\x02\xff+I-.Q(H\xac\xcc\xc9OL\x01\x00\xe1=\x1d\xeb\x0c\x00\x00\x00'
+if TYPE_CHECKING:  # pragma: no cover
+    from pytest_mock.plugin import MockerFixture
+
+rfh2_msg = (
+    b'RFH \x02\x00\x00\x00\xfc\x00\x00\x00"\x02\x00\x00\xb8\x04\x00\x00        \x00\x00\x00\x00\xb8\x04\x00\x00 \x00\x00\x00<mcd><Msd>jms_bytes</Msd></mcd> '
+    b'P\x00\x00\x00<jms><Dst>queue:///TEST.QUEUE</Dst><Tms>1655406556138</Tms><Dlv>2</Dlv></jms>   \\\x00\x00\x00<usr><ContentEncoding>gzip</ContentEncoding>'
+    b'<ContentLength dt=\'i8\'>32</ContentLength></usr> \x1f\x8b\x08\x00\xdc\x7f\xabb\x02\xff+I-.Q(H\xac\xcc\xc9OL\x01\x00\xe1=\x1d\xeb\x0c\x00\x00\x00'
+)
 # with header
-rfh2_msg2 = b'RFH \x02\x00\x00\x00\x1c\x01\x00\x00"\x02\x00\x00\xb8\x04\x00\x00        \x00\x00\x00\x00\xb8\x04\x00\x00 \x00\x00\x00<mcd><Msd>jms_bytes</Msd></mcd> ' \
-            b'P\x00\x00\x00<jms><Dst>queue:///OTHERQUEUE</Dst><Tms>1234567890123</Tms><Dlv>2</Dlv></jms>   |\x00\x00\x00<usr><some_name>some_value</some_name>' \
-            b'<ContentEncoding>gzip</ContentEncoding><ContentLength dt=\'i8\'>32</ContentLength></usr>' \
-            b'\x1f\x8b\x08\x00\xbb54c\x02\xff+I-.Q(H\xac\xcc\xc9OL\x01\x00\xe1=\x1d\xeb\x0c\x00\x00\x00'
+rfh2_msg2 = (
+    b'RFH \x02\x00\x00\x00\x1c\x01\x00\x00"\x02\x00\x00\xb8\x04\x00\x00        \x00\x00\x00\x00\xb8\x04\x00\x00 \x00\x00\x00<mcd><Msd>jms_bytes</Msd></mcd> '
+    b'P\x00\x00\x00<jms><Dst>queue:///OTHERQUEUE</Dst><Tms>1234567890123</Tms><Dlv>2</Dlv></jms>   |\x00\x00\x00<usr><some_name>some_value</some_name>'
+    b'<ContentEncoding>gzip</ContentEncoding><ContentLength dt=\'i8\'>32</ContentLength></usr>'
+    b'\x1f\x8b\x08\x00\xbb54c\x02\xff+I-.Q(H\xac\xcc\xc9OL\x01\x00\xe1=\x1d\xeb\x0c\x00\x00\x00'
+)
 
 
 class TestRfh2Decoder:
@@ -33,17 +41,16 @@ class TestRfh2Decoder:
         assert d.name_values == rfh2_msg[36:252]
         assert d.payload == rfh2_msg[252:]
 
-        with pytest.raises(ValueError) as ve:
+        with pytest.raises(ValueError, match='Failed to parse RFH2 header'):
             Rfh2Decoder(rfh2_msg[0:10])
-        assert 'Failed to parse RFH2 header' in str(ve)
 
     def test__parse_name_values(self) -> None:
         # test normal flow
         d = Rfh2Decoder(rfh2_msg)
         assert len(d.name_value_parts) == 3
-        assert ET.tostring(d.name_value_parts[0], encoding='unicode', method='xml').endswith('<mcd><Msd>jms_bytes</Msd></mcd>')
-        assert ET.tostring(d.name_value_parts[1], encoding='unicode', method='xml').endswith('<jms><Dst>queue:///TEST.QUEUE</Dst><Tms>1655406556138</Tms><Dlv>2</Dlv></jms>')
-        assert ET.tostring(d.name_value_parts[2], encoding='unicode', method='xml')\
+        assert XML.tostring(d.name_value_parts[0], encoding='unicode', method='xml').endswith('<mcd><Msd>jms_bytes</Msd></mcd>')
+        assert XML.tostring(d.name_value_parts[1], encoding='unicode', method='xml').endswith('<jms><Dst>queue:///TEST.QUEUE</Dst><Tms>1655406556138</Tms><Dlv>2</Dlv></jms>')
+        assert XML.tostring(d.name_value_parts[2], encoding='unicode', method='xml')\
             .endswith('<usr><ContentEncoding>gzip</ContentEncoding><ContentLength dt="i8">32</ContentLength></usr>')
 
         # test maxpos == -1
@@ -54,18 +61,19 @@ class TestRfh2Decoder:
         # test too short name values
         d = Rfh2Decoder(rfh2_msg)
         d.name_values = d.name_values[0:4]
-        with pytest.raises(ValueError) as ve:
+        with pytest.raises(ValueError, match='Failed to parse RFH2 name values'):
             d._parse_name_values()
-        assert 'Failed to parse RFH2 name values' in str(ve)
 
         # test invalid name value tags
         d = Rfh2Decoder(rfh2_msg)
-        d.name_values = b' \x00\x00\x00<mcd><Msd>jms_bytes</Msd></mcd> ' \
-                        b'P\x00\x00\x00<jms><Dst>queue:///TEST.QUEUE</Dst><Tms>1655406556138</Tms><Dlv>2</Dlv></jXX>   \\\x00\x00\x00<usr><ContentEncoding>gzip</ContentEncoding>' \
-                        b'<ContentLength dt=\'i8\'>32</ContentLength></usr> \x1f\x8b\x08\x00\xdc\x7f\xabb\x02\xff+I-.Q(H\xac\xcc\xc9OL\x01\x00\xe1=\x1d\xeb\x0c\x00\x00\x00'
-        with pytest.raises(ValueError) as ve:
+        d.name_values = (
+            b' \x00\x00\x00<mcd><Msd>jms_bytes</Msd></mcd> '
+            b'P\x00\x00\x00<jms><Dst>queue:///TEST.QUEUE</Dst><Tms>1655406556138</Tms><Dlv>2</Dlv></jXX>   \\\x00\x00\x00<usr><ContentEncoding>gzip</ContentEncoding>'
+            b'<ContentLength dt=\'i8\'>32</ContentLength></usr> \x1f\x8b\x08\x00\xdc\x7f\xabb\x02\xff+I-.Q(H\xac\xcc\xc9OL\x01\x00\xe1=\x1d\xeb\x0c\x00\x00\x00'
+        )
+
+        with pytest.raises(ValueError, match='Failed to parse RFH2 name values'):
             d._parse_name_values()
-        assert 'Failed to parse RFH2 name values' in str(ve)
 
     def test__get_usr_encoding(self) -> None:
         # test normal flow
@@ -77,16 +85,20 @@ class TestRfh2Decoder:
         assert d._get_usr_encoding() is None
 
         # test no encoding element
-        no_enc = b'RFH \x02\x00\x00\x00\xfc\x00\x00\x00"\x02\x00\x00\xb8\x04\x00\x00        \x00\x00\x00\x00\xb8\x04\x00\x00 \x00\x00\x00<mcd><Msd>jms_bytes</Msd></mcd> ' \
-                 b'P\x00\x00\x00<jms><Dst>queue:///TEST.QUEUE</Dst><Tms>1655406556138</Tms><Dlv>2</Dlv></jms>   \\\x00\x00\x00<usr><ZontentEncoding>gzip</ZontentEncoding>' \
-                 b'<ContentLength dt=\'i8\'>32</ContentLength></usr> \x1f\x8b\x08\x00\xdc\x7f\xabb\x02\xff+I-.Q(H\xac\xcc\xc9OL\x01\x00\xe1=\x1d\xeb\x0c\x00\x00\x00'
+        no_enc = (
+            b'RFH \x02\x00\x00\x00\xfc\x00\x00\x00"\x02\x00\x00\xb8\x04\x00\x00        \x00\x00\x00\x00\xb8\x04\x00\x00 \x00\x00\x00<mcd><Msd>jms_bytes</Msd></mcd> '
+            b'P\x00\x00\x00<jms><Dst>queue:///TEST.QUEUE</Dst><Tms>1655406556138</Tms><Dlv>2</Dlv></jms>   \\\x00\x00\x00<usr><ZontentEncoding>gzip</ZontentEncoding>'
+            b'<ContentLength dt=\'i8\'>32</ContentLength></usr> \x1f\x8b\x08\x00\xdc\x7f\xabb\x02\xff+I-.Q(H\xac\xcc\xc9OL\x01\x00\xe1=\x1d\xeb\x0c\x00\x00\x00'
+        )
         d = Rfh2Decoder(no_enc)
         assert d._get_usr_encoding() is None
 
         # test no usr element
-        no_enc = b'RFH \x02\x00\x00\x00\xfc\x00\x00\x00"\x02\x00\x00\xb8\x04\x00\x00        \x00\x00\x00\x00\xb8\x04\x00\x00 \x00\x00\x00<mcd><Msd>jms_bytes</Msd></mcd> ' \
-                 b'P\x00\x00\x00<jms><Dst>queue:///TEST.QUEUE</Dst><Tms>1655406556138</Tms><Dlv>2</Dlv></jms>   \\\x00\x00\x00<uzr><ContentEncoding>gzip</ContentEncoding>' \
-                 b'<ContentLength dt=\'i8\'>32</ContentLength></uzr> \x1f\x8b\x08\x00\xdc\x7f\xabb\x02\xff+I-.Q(H\xac\xcc\xc9OL\x01\x00\xe1=\x1d\xeb\x0c\x00\x00\x00'
+        no_enc = (
+            b'RFH \x02\x00\x00\x00\xfc\x00\x00\x00"\x02\x00\x00\xb8\x04\x00\x00        \x00\x00\x00\x00\xb8\x04\x00\x00 \x00\x00\x00<mcd><Msd>jms_bytes</Msd></mcd> '
+            b'P\x00\x00\x00<jms><Dst>queue:///TEST.QUEUE</Dst><Tms>1655406556138</Tms><Dlv>2</Dlv></jms>   \\\x00\x00\x00<uzr><ContentEncoding>gzip</ContentEncoding>'
+            b'<ContentLength dt=\'i8\'>32</ContentLength></uzr> \x1f\x8b\x08\x00\xdc\x7f\xabb\x02\xff+I-.Q(H\xac\xcc\xc9OL\x01\x00\xe1=\x1d\xeb\x0c\x00\x00\x00'
+        )
         d = Rfh2Decoder(no_enc)
         assert d._get_usr_encoding() is None
 
@@ -97,7 +109,7 @@ class TestRfh2Decoder:
         assert payload == 'test payload'
 
         # test with non-gzip encoding
-        def mocked_get_usr_encoding(p: Rfh2Decoder) -> Optional[str]:
+        def mocked_get_usr_encoding(_: Rfh2Decoder) -> Optional[str]:
             return 'vulcan'
 
         mocker.patch.object(
@@ -111,25 +123,24 @@ class TestRfh2Decoder:
 class TestRfh2Encoder:
     def test___init__(self) -> None:
         # test normal flow
-        Rfh2Encoder('test payload'.encode(), queue_name='DUMMYQ')
+        Rfh2Encoder(b'test payload', queue_name='DUMMYQ')
 
         # test invalid encoding
-        with pytest.raises(NotImplementedError) as nie:
-            Rfh2Encoder('test payload'.encode(), queue_name='DUMMYQ', encoding='wrong')
-        assert 'Only gzip encoding is implemented' in str(nie)
+        with pytest.raises(NotImplementedError, match='Only gzip encoding is implemented'):
+            Rfh2Encoder(b'test payload', queue_name='DUMMYQ', encoding='wrong')
 
     def test__build_payload(self) -> None:
-        e = Rfh2Encoder('test payload'.encode(), queue_name='TEST.QUEUE', tstamp='1655406556138')
+        e = Rfh2Encoder(b'test payload', queue_name='TEST.QUEUE', tstamp='1655406556138')
         # gzip seem to vary, just compare the first bytes
         assert e.payload[0:4] == rfh2_msg[252:256]
 
     def test__build_name_values(self) -> None:
         # test normal flow
-        e = Rfh2Encoder('test payload'.encode(), queue_name='TEST.QUEUE', tstamp='1655406556138')
+        e = Rfh2Encoder(b'test payload', queue_name='TEST.QUEUE', tstamp='1655406556138')
         assert e.name_values == rfh2_msg[36:252]
 
         # test encoding other queue name and timestamp
-        e = Rfh2Encoder('test payload'.encode(), queue_name='OTHERQUEUE', tstamp='1234567890123')
+        e = Rfh2Encoder(b'test payload', queue_name='OTHERQUEUE', tstamp='1234567890123')
         assert e.name_values[59:69] == b'OTHERQUEUE'
         assert e.name_values[80:93] == b'1234567890123'
 
@@ -140,37 +151,37 @@ class TestRfh2Encoder:
 
         # test generating timestamp
         tstamp_before = str(round(time.time() * 1000))
-        datetime_before = datetime.fromtimestamp(int(tstamp_before) / 1000)
-        e = Rfh2Encoder('test payload'.encode(), queue_name='OTHERQUEUE')
+        datetime_before = datetime.fromtimestamp(int(tstamp_before) / 1000, tz=ZoneInfo('UTC'))
+        e = Rfh2Encoder(b'test payload', queue_name='OTHERQUEUE')
         generated_tstamp = e.name_values[80:93].decode('utf-8')
-        generated_datetime = datetime.fromtimestamp(int(generated_tstamp) / 1000)
+        generated_datetime = datetime.fromtimestamp(int(generated_tstamp) / 1000, tz=ZoneInfo('UTC'))
         assert generated_datetime >= datetime_before
         assert generated_datetime - timedelta(hours=1) < datetime_before
 
         # test metadata/headers
-        e = Rfh2Encoder('test payload'.encode(), queue_name='OTHERQUEUE', tstamp='1234567890123', metadata={'some_name': 'some_value'})
+        e = Rfh2Encoder(b'test payload', queue_name='OTHERQUEUE', tstamp='1234567890123', metadata={'some_name': 'some_value'})
         assert e.name_values == rfh2_msg2[36:284]
 
     def test__build_header(self) -> None:
-        e = Rfh2Encoder('test payload'.encode(), queue_name='TEST.QUEUE', tstamp='1655406556138')
+        e = Rfh2Encoder(b'test payload', queue_name='TEST.QUEUE', tstamp='1655406556138')
         assert e.header == rfh2_msg[0:36]
 
     def test_get_message(self) -> None:
-        e = Rfh2Encoder('test payload'.encode(), queue_name='TEST.QUEUE', tstamp='1655406556138')
+        e = Rfh2Encoder(b'test payload', queue_name='TEST.QUEUE', tstamp='1655406556138')
         msg = e.get_message()
         # check up until gzip compression data
         assert msg[0:252] == rfh2_msg[0:252]
 
     def test_encode_decode(self) -> None:
-        src_payload = 'test payload'
-        e = Rfh2Encoder(src_payload.encode(), queue_name='TEST.QUEUE', tstamp='1655406556138')
+        src_payload = b'test payload'
+        e = Rfh2Encoder(src_payload, queue_name='TEST.QUEUE', tstamp='1655406556138')
         msg = e.get_message()
         d = Rfh2Decoder(msg)
-        assert d.get_payload().decode() == src_payload
+        assert d.get_payload() == src_payload
 
     def test_encode_decode_metadata(self) -> None:
-        src_payload = 'test payload'
-        e = Rfh2Encoder(src_payload.encode(), queue_name='TEST.QUEUE', tstamp='1655406556138', metadata={'some_key': 'some_value'})
+        src_payload = b'test payload'
+        e = Rfh2Encoder(src_payload, queue_name='TEST.QUEUE', tstamp='1655406556138', metadata={'some_key': 'some_value'})
         msg = e.get_message()
         d = Rfh2Decoder(msg)
-        assert d.get_payload().decode() == src_payload
+        assert d.get_payload() == src_payload

@@ -4,7 +4,8 @@ from __future__ import annotations
 from contextlib import suppress
 from json import dumps as jsondumps
 from json import loads as jsonloads
-from os import environ, mkdir, path, sep
+from os import environ, sep
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, cast
 
 import pytest
@@ -120,19 +121,16 @@ def test_initialize_testdata_with_payload_context(grizzly_fixture: GrizzlyFixtur
     try:
         grizzly = grizzly_fixture.grizzly
         parent = grizzly_fixture()
-        context_root = grizzly_fixture.request_task.context_root
+        context_root = Path(grizzly_fixture.request_task.context_root)
         request = grizzly_fixture.request_task.request
-        mkdir(path.join(context_root, 'adirectory'))
+        (context_root / 'adirectory').mkdir()
         for index in range(1, 3):
-            with open(path.join(context_root, 'adirectory', f'file{index}.txt'), 'w') as fd:
-                fd.write(f'file{index}.txt\n')
-                fd.flush()
+            (context_root / 'adirectory' / f'file{index}.txt').write_text(f'file{index}.txt\n')
 
-        with open(path.join(context_root, 'test.csv'), 'w') as fd:
-            fd.write('header1,header2\n')
-            fd.write('value1,value2\n')
-            fd.write('value3,value4\n')
-            fd.flush()
+        (context_root / 'test.csv').write_text("""header1,header2
+value1,value2
+value3,value4
+""")
 
         assert request.source is not None
         source = jsonloads(request.source)
@@ -178,7 +176,7 @@ def test_initialize_testdata_with_payload_context(grizzly_fixture: GrizzlyFixtur
 
         assert data['AtomicCsvReader.test.header1']['test'] == {'header1': 'value1', 'header2': 'value2'}
         assert data['AtomicCsvReader.test.header2']['test']['header2'] == 'value4'
-        with pytest.raises(TypeError):
+        with pytest.raises(TypeError, match="'NoneType' object is not subscriptable"):
             assert data['AtomicCsvReader.test.header1']['test']['header1'] is None
         assert data['AtomicCsvReader.test.header2']['test'] is None
         assert data['AtomicCsvReader.test.header1']['test'] is None
@@ -218,11 +216,7 @@ def test_create_context_variable() -> None:
             },
         }
 
-        with pytest.raises(AssertionError) as ae:
-            create_context_variable(grizzly, 'test.value', '$env::HELLO_WORLD$')
-        assert str(ae.value) == 'environment variable "HELLO_WORLD" is not set'
-
-        with pytest.raises(AssertionError):
+        with pytest.raises(AssertionError, match='environment variable "HELLO_WORLD" is not set'):
             create_context_variable(grizzly, 'test.value', '$env::HELLO_WORLD$')
 
         environ['HELLO_WORLD'] = 'environment variable value'
@@ -246,7 +240,7 @@ def test_create_context_variable() -> None:
             },
         }
 
-        with pytest.raises(AssertionError):
+        with pytest.raises(AssertionError, match='configuration variable "test.auth.user.username" is not set'):
             create_context_variable(grizzly, 'test.value', '$conf::test.auth.user.username$')
 
         grizzly.state.configuration['test.auth.user.username'] = 'username'
@@ -295,7 +289,7 @@ def test_resolve_variable(grizzly_fixture: GrizzlyFixture) -> None:  # noqa: PLR
 
     try:
         assert 'test' not in grizzly.state.variables
-        with pytest.raises(AssertionError):
+        with pytest.raises(AssertionError, match='value contained variable "test" which has not been declared'):
             resolve_variable(grizzly, '{{ test }}')
 
         grizzly.state.variables['test'] = 'some value'
@@ -366,7 +360,6 @@ def test_resolve_variable(grizzly_fixture: GrizzlyFixture) -> None:  # noqa: PLR
         grizzly.state.variables['lowercase_value'] = 'foobar'
 
         assert resolve_variable(grizzly, 'hello {{ lowercase_value | testuppercase }}!') == 'hello FOOBAR!'
-
     finally:
         with suppress(KeyError):
             del environ['HELLO_WORLD']

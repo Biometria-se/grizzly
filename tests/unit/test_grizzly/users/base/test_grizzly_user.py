@@ -2,9 +2,10 @@
 from __future__ import annotations
 
 import logging
-import shutil
+from contextlib import suppress
 from json import loads as jsonloads
-from os import environ, path
+from os import environ
+from shutil import rmtree
 from typing import TYPE_CHECKING, cast
 
 import pytest
@@ -37,13 +38,12 @@ class DummyGrizzlyUser(GrizzlyUser):
 
 
 class TestGrizzlyUser:
-    def test_render(self, behave_fixture: BehaveFixture, tmp_path_factory: TempPathFactory) -> None:
+    def test_render(self, behave_fixture: BehaveFixture, tmp_path_factory: TempPathFactory) -> None:  # noqa: PLR0915
         test_context = tmp_path_factory.mktemp('renderer_test') / 'requests'
         test_context.mkdir()
         test_file = test_context / 'blobfile.txt'
         test_file.touch()
-        test_file_context = path.dirname(path.dirname(str(test_file)))
-        environ['GRIZZLY_CONTEXT_ROOT'] = test_file_context
+        environ['GRIZZLY_CONTEXT_ROOT'] = str(test_context.parent)
 
         grizzly = cast(GrizzlyContext, behave_fixture.context.grizzly)
         grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
@@ -116,7 +116,7 @@ class TestGrizzlyUser:
 
             user_type = type(
                 'ContextVariablesUserFileRequest',
-                (GrizzlyUser, FileRequests, ),
+                (GrizzlyUser, FileRequests),
                 {
                     'host': 'http://example.io',
                     '__scenario__': grizzly.scenario,
@@ -125,10 +125,10 @@ class TestGrizzlyUser:
             user = user_type(behave_fixture.locust.environment)
             assert issubclass(user.__class__, (FileRequests,))
 
-            template.source = f'{str(test_file)}'
-            template.endpoint = '/tmp'
+            template.source = f'{test_file.as_posix()}'
+            template.endpoint = '/home/anon'
             request = user.render(template)
-            assert request.endpoint == '/tmp/blobfile.txt'
+            assert request.endpoint == '/home/anon/blobfile.txt'
 
             template = RequestTask(RequestMethod.POST, name='test', endpoint='/api/test | my_argument="{{ argument_variable | uppercase }}"')
             user.set_context_variable('argument_variable', 'argument variable value')
@@ -141,9 +141,12 @@ class TestGrizzlyUser:
             assert request.arguments == {'my_argument': 'ARGUMENT VARIABLE VALUE'}
             assert request.metadata is None
         finally:
-            del FILTERS['uppercase']
-            shutil.rmtree(test_file_context)
-            del environ['GRIZZLY_CONTEXT_ROOT']
+            with suppress(KeyError):
+                del FILTERS['uppercase']
+            rmtree(test_context)
+
+            with suppress(KeyError):
+                del environ['GRIZZLY_CONTEXT_ROOT']
 
     @pytest.mark.usefixtures('locust_fixture')
     def test_render_nested(self, behave_fixture: BehaveFixture, tmp_path_factory: TempPathFactory) -> None:
@@ -161,14 +164,7 @@ class TestGrizzlyUser:
         }
         """)
 
-        test_file_context = path.dirname(
-            path.dirname(
-                path.dirname(
-                    str(test_file),
-                ),
-            ),
-        )
-        environ['GRIZZLY_CONTEXT_ROOT'] = test_file_context
+        environ['GRIZZLY_CONTEXT_ROOT'] = str(test_context.parent.parent)
 
         grizzly = cast(GrizzlyContext, behave_fixture.context.grizzly)
 
@@ -187,7 +183,7 @@ class TestGrizzlyUser:
                     'value': 'test-value',
                     'messageID': 1337,
                     'file_path': 'test/payload.j2.json',
-                }
+                },
             })
 
             request = user.render(template)
@@ -203,8 +199,9 @@ class TestGrizzlyUser:
             assert data['MeasureResult']['name'] == user.context_variables['name']
             assert data['MeasureResult']['value'] == user.context_variables['value']
         finally:
-            shutil.rmtree(test_file_context)
-            del environ['GRIZZLY_CONTEXT_ROOT']
+            rmtree(test_context.parent.parent)
+            with suppress(KeyError):
+                del environ['GRIZZLY_CONTEXT_ROOT']
 
     def test_request(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         parent = grizzly_fixture(user_type=DummyGrizzlyUser)

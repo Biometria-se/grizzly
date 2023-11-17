@@ -147,7 +147,7 @@ class TestSftpUser:
         session_spy.assert_not_called()
         session_spy.__exit__.assert_called_once_with(None, None, None)
 
-    def test_request(self, grizzly_fixture: GrizzlyFixture, paramiko_fixture: ParamikoFixture, tmp_path_factory: TempPathFactory, mocker: MockerFixture) -> None:
+    def test_request(self, grizzly_fixture: GrizzlyFixture, paramiko_fixture: ParamikoFixture, tmp_path_factory: TempPathFactory, mocker: MockerFixture) -> None:  # noqa: PLR0915
         paramiko_fixture()
 
         grizzly = grizzly_fixture.grizzly

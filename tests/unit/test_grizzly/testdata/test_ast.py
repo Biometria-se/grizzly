@@ -1,12 +1,17 @@
-from typing import cast
-from json import loads as jsonloads, dumps as jsondumps
+"""Unit tests of grizzly.testdata.ast."""
+from __future__ import annotations
 
+from json import dumps as jsondumps
+from json import loads as jsonloads
+from typing import TYPE_CHECKING, cast
+
+from grizzly.context import GrizzlyContext, GrizzlyContextScenario
+from grizzly.tasks import LogMessageTask, RequestTask
 from grizzly.testdata.ast import _parse_templates, get_template_variables
 from grizzly.types import RequestMethod
-from grizzly.context import GrizzlyContextScenario, GrizzlyContext
-from grizzly.tasks import RequestTask, LogMessageTask
 
-from tests.fixtures import RequestTaskFixture, BehaveFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from tests.fixtures import BehaveFixture, RequestTaskFixture
 
 
 def test__parse_template(request_task: RequestTaskFixture) -> None:
@@ -15,13 +20,15 @@ def test__parse_template(request_task: RequestTaskFixture) -> None:
     assert request.source is not None
 
     source = jsonloads(request.source)
-    source['result']['CsvRowValue1'] = '{{ AtomicCsvReader.test.header1 }}'
-    source['result']['CsvRowValue2'] = '{{ AtomicCsvReader.test.header2 }}'
-    source['result']['File'] = '{{ AtomicDirectoryContents.test }}'
-    source['result']['TestSubString'] = '{{ a_sub_string[:3] }}'
-    source['result']['TestString'] = '{{ a_string }}'
-    source['result']['FooBar'] = '{{ (AtomicIntegerIncrementer.file_number | int) }}'
-    source['result']['Expression'] = '{{ expression == "True" }}'
+    source['result'].update({
+        'CsvRowValue1': '{{ AtomicCsvReader.test.header1 }}',
+        'CsvRowValue2': '{{ AtomicCsvReader.test.header2 }}',
+        'File': '{{ AtomicDirectoryContents.test }}',
+        'TestSubString': '{{ a_sub_string[:3] }}',
+        'TestString': '{{ a_string }}',
+        'FooBar': '{{ (AtomicIntegerIncrementer.file_number | int) }}',
+        'Expression': '{{ expression == "True" }}',
+    })
 
     request.source = jsondumps(source)
     scenario = GrizzlyContextScenario(1, behave=request_task.behave_fixture.create_scenario('TestScenario'))
@@ -116,7 +123,7 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture) -> None:
             'FooBar_10': '{{ datetime.now() }}',
             'FooBar_11': '{{ value110 if value111 is divisibleby value112 }}',
             'FooBar_12': '{{ value120 if not value121 or (value122 and value123) else value124 }}',
-        }
+        },
     }
 
     request.source = jsondumps(source)
@@ -154,26 +161,26 @@ def test_get_template_variables(behave_fixture: BehaveFixture) -> None:
     grizzly.scenario.context['host'] = 'http://test.nu'
     grizzly.scenario.user.class_name = 'TestUser'
     grizzly.scenario.tasks.add(
-        RequestTask(RequestMethod.POST, name='Test POST request', endpoint='/api/test/post')
+        RequestTask(RequestMethod.POST, name='Test POST request', endpoint='/api/test/post'),
     )
     task = cast(RequestTask, grizzly.scenario.tasks()[-1])
     task.source = '{{ AtomicRandomString.test }}'
 
     grizzly.scenario.tasks.add(
-        RequestTask(RequestMethod.GET, name='{{ env }} GET request', endpoint='/api/{{ env }}/get')
+        RequestTask(RequestMethod.GET, name='{{ env }} GET request', endpoint='/api/{{ env }}/get'),
     )
     task = cast(RequestTask, grizzly.scenario.tasks()[-1])
     task.source = '{{ AtomicIntegerIncrementer.test }}'
 
     grizzly.scenario.tasks.add(
-        LogMessageTask(message='{{ foo }}')
+        LogMessageTask(message='{{ foo }}'),
     )
 
     grizzly.scenario.orphan_templates.append('{{ foobar }}')
 
     variables = get_template_variables(grizzly)
 
-    expected_scenario_name = '_'.join([grizzly.scenario.name, grizzly.scenario.identifier])
+    expected_scenario_name = f'{grizzly.scenario.name}_{grizzly.scenario.identifier}'
 
     assert grizzly.scenario.class_name == expected_scenario_name
     assert variables == {

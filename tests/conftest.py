@@ -1,26 +1,29 @@
-from typing import Generator, List
+"""Configuration of pytest."""
+from __future__ import annotations
+
 from os import environ
+from typing import TYPE_CHECKING, Generator, List
 
 import pytest
 
-from _pytest.tmpdir import TempPathFactory
-from _pytest.config import Config
-from _pytest.fixtures import SubRequest
-
-from pytest_mock.plugin import MockerFixture
-
 from .fixtures import (
     AtomicVariableCleanupFixture,
+    BehaveFixture,
     End2EndFixture,
+    GrizzlyFixture,
     LocustFixture,
     NoopZmqFixture,
     ParamikoFixture,
-    BehaveFixture,
     RequestTaskFixture,
-    GrizzlyFixture,
     ResponseContextManagerFixture,
 )
 from .webserver import Webserver
+
+if TYPE_CHECKING:  # pragma: no cover
+    from _pytest.config import Config
+    from _pytest.fixtures import SubRequest
+    from _pytest.tmpdir import TempPathFactory
+    from pytest_mock.plugin import MockerFixture
 
 E2E_RUN_MODE = environ.get('E2E_RUN_MODE', 'local')
 E2E_RUN_DIST = environ.get('E2E_RUN_DIST', 'False').lower() == 'True'.lower()

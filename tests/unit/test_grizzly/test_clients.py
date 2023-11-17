@@ -1,28 +1,33 @@
+"""Unit tests of grizzly.clients."""
+from __future__ import annotations
+
 import gevent.monkey
+
 gevent.monkey.patch_all()
 
-from typing import Any, Dict, Optional, Callable, Union, Tuple
 from json import dumps as jsondumps
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, Union
 
 import pytest
-
-from pytest_mock import MockerFixture
-from requests.models import Response
+from behave.model import Scenario
 from locust.clients import ResponseContextManager
 from locust.event import EventHook
-from paramiko.transport import Transport
 from paramiko.sftp_client import SFTPClient
-from behave.model import Scenario
+from paramiko.transport import Transport
+from requests.models import Response
 
 from grizzly.clients import ResponseEventSession, SftpClientSession
-from grizzly.types import RequestMethod
-from grizzly.types.locust import StopUser
 from grizzly.context import GrizzlyContextScenario
 from grizzly.tasks import RequestTask
-from grizzly.users.base import GrizzlyUser
-
-from tests.fixtures import ParamikoFixture
+from grizzly.types import RequestMethod
+from grizzly.types.locust import StopUser
 from tests.helpers import RequestEvent
+
+if TYPE_CHECKING:  # pragma: no cover
+    from pytest_mock import MockerFixture
+
+    from grizzly.users.base import GrizzlyUser
+    from tests.fixtures import ParamikoFixture
 
 
 class TestResponseEventSession:
@@ -35,14 +40,9 @@ class TestResponseEventSession:
     def test_request(self, mocker: MockerFixture) -> None:
         def mock_request(payload: Dict[str, Any], status_code: int = 200) -> None:
             def request(
-                self: 'ResponseEventSession',
-                method: str,
-                url: str,
-                data: Dict[str, Any],
-                name: Optional[str] = None,
-                catch_response: Optional[bool] = False,
-                context: Optional[Dict[str, Any]] = None,
-                **kwargs: Dict[str, Any],
+                _: ResponseEventSession,
+                *_args: Any,
+                **_kwargs: Any,
             ) -> ResponseContextManager:
                 response = Response()
                 response._content = jsondumps(payload).encode('utf-8')
@@ -68,9 +68,9 @@ class TestResponseEventSession:
             [str, Union[ResponseContextManager, Tuple[Dict[str, Any], str]], Optional[RequestTask], GrizzlyUser],
             None,
         ]:
-            def wrapped(name: str, context: Union[ResponseContextManager, Tuple[Dict[str, Any], str]], request: Optional[RequestTask], user: GrizzlyUser) -> None:
+            def wrapped(name: str, context: Union[ResponseContextManager, Tuple[Dict[str, Any], str]], request: Optional[RequestTask], user: GrizzlyUser) -> None:  # noqa: ARG001
                 if expected_request is request:
-                    raise HandlerCalled()  # one of few exceptions which event handler lets through
+                    raise HandlerCalled  # one of few exceptions which event handler lets through
 
             return wrapped
 
@@ -97,6 +97,7 @@ class TestResponseEventSession:
 
 class TestSftpClientSession:
     def test(self, paramiko_fixture: ParamikoFixture, mocker: MockerFixture) -> None:
+        # ruff: noqa: B009
         paramiko_fixture()
 
         context = SftpClientSession('example.org', 1337)
@@ -109,9 +110,8 @@ class TestSftpClientSession:
         assert getattr(context, '_client') is None
         assert getattr(context, '_transport') is None
 
-        with pytest.raises(NotImplementedError):
-            with context.session('username', 'password', '~/.ssh/id_rsa'):
-                pass
+        with pytest.raises(NotImplementedError, match='private key authentication is not supported'), context.session('username', 'password', '~/.ssh/id_rsa'):
+            pass
 
         assert context.host == 'example.org'
         assert context.port == 1337
@@ -149,7 +149,7 @@ class TestSftpClientSession:
         assert getattr(context, '_transport') is None
         assert getattr(context, 'username') is None
 
-        def _from_transport(transport: Transport, window_size: Optional[int] = None, max_packet_size: Optional[int] = None) -> Optional[SFTPClient]:
+        def _from_transport(transport: Transport, window_size: Optional[int] = None, max_packet_size: Optional[int] = None) -> Optional[SFTPClient]:  # noqa: ARG001
             return None
 
         mocker.patch(
@@ -157,7 +157,5 @@ class TestSftpClientSession:
             _from_transport,
         )
 
-        with pytest.raises(RuntimeError) as e:
-            with context.session('test-user', 'password') as session:
-                pass
-        assert 'there is no client' in str(e)
+        with pytest.raises(RuntimeError, match='there is no client'), context.session('test-user', 'password') as session:
+            pass

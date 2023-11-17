@@ -16,15 +16,10 @@ import zmq.green as zmq
 from zmq.error import Again as ZMQAgain
 
 from grizzly.tasks.clients import MessageQueueClientTask
-from grizzly.types import RequestDirection
+from grizzly.types import RequestDirection, pymqi
 from grizzly.scenarios import IteratorScenario
 from grizzly.exceptions import RestartScenario
 from grizzly_extras.async_message import AsyncMessageError
-
-try:
-    import pymqi
-except:
-    from grizzly_extras import dummy_pymqi as pymqi
 
 from tests.fixtures import GrizzlyFixture, NoopZmqFixture
 

@@ -118,8 +118,8 @@ class TestBlobStorageUser:
                 'variable': '137',
                 'item': {
                     'description': 'this is just a description',
-                }
-            }
+                },
+            },
         }
 
         assert isinstance(blob_storage_parent.user, BlobStorageUser)
@@ -180,8 +180,8 @@ class TestBlobStorageUser:
                 'variable': '137',
                 'item': {
                     'description': 'this is just a description',
-                }
-            }
+                },
+            },
         }
 
         download_blob.return_value.readall.return_value = json.dumps(expected_payload, indent=4).encode('utf-8')

@@ -1,10 +1,16 @@
+"""Unit tests of grizzly.tasks.set_variable."""
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import pytest
 
 from grizzly.tasks import SetVariableTask
-from grizzly.testdata.variables import AtomicCsvWriter
 from grizzly.testdata import GrizzlyVariables
+from grizzly.testdata.variables import AtomicCsvWriter
 
-from tests.fixtures import GrizzlyFixture, AtomicVariableCleanupFixture, MockerFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from tests.fixtures import AtomicVariableCleanupFixture, GrizzlyFixture, MockerFixture
 
 
 class TestSetVariableTask:
@@ -22,16 +28,14 @@ class TestSetVariableTask:
             assert sorted(task_factory.get_templates()) == sorted(['{{ foobar }}', '{{ hello }}'])
 
             # Atomic variable, not settable
-            with pytest.raises(AttributeError) as ae:
+            with pytest.raises(AttributeError, match=r'grizzly\.testdata\.variables\.AtomicIntegerIncrementer is not settable'):
                 SetVariableTask('AtomicIntegerIncrementer.id', '{{ value }}')
-            assert str(ae.value) == 'grizzly.testdata.variables.AtomicIntegerIncrementer is not settable'
 
             grizzly_fixture.grizzly.state.variables.update({'AtomicIntegerIncrementer.id': 1})
             GrizzlyVariables.initialize_variable(grizzly_fixture.grizzly, 'AtomicIntegerIncrementer.id')
 
-            with pytest.raises(AttributeError) as ae:
+            with pytest.raises(AttributeError, match=r'grizzly\.testdata\.variables\.AtomicIntegerIncrementer is not settable'):
                 SetVariableTask('AtomicIntegerIncrementer.id', '{{ value }}')
-            assert str(ae.value) == 'grizzly.testdata.variables.AtomicIntegerIncrementer is not settable'
 
             # Atomic variable, settable
             grizzly_fixture.grizzly.state.variables.update({'AtomicCsvWriter.output': 'output.csv | headers="foo,bar"'})

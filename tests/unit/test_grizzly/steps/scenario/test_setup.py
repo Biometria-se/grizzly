@@ -1,28 +1,32 @@
-from typing import cast
+"""Unit tests for grizzly.steps.scenario.setup."""
+from __future__ import annotations
 
+from contextlib import suppress
 from os import environ
+from typing import TYPE_CHECKING, cast
 
 import pytest
-
 from parse import compile
-from pytest_mock import MockerFixture
 
 from grizzly.context import GrizzlyContext
 from grizzly.steps import *
-from grizzly.testdata import GrizzlyVariables, GrizzlyVariableType
 from grizzly.tasks.clients import HttpClientTask
+from grizzly.testdata import GrizzlyVariables, GrizzlyVariableType
 from grizzly.types import RequestDirection, RequestMethod
 
-from tests.fixtures import BehaveFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from pytest_mock import MockerFixture
+
+    from tests.fixtures import BehaveFixture
 
 
 def test_parse_iteration_gramatical_number() -> None:
     p = compile(
         'run for {iteration:d} {iteration_number:IterationGramaticalNumber}',
-        extra_types=dict(IterationGramaticalNumber=parse_iteration_gramatical_number),
+        extra_types={'IterationGramaticalNumber': parse_iteration_gramatical_number},
     )
 
-    assert parse_iteration_gramatical_number.__vector__ == (False, True,)
+    assert parse_iteration_gramatical_number.__vector__ == (False, True)
 
     assert p.parse('run for 1 iteration')['iteration_number'] == 'iteration'
     assert p.parse('run for 10 iterations')['iteration_number'] == 'iterations'
@@ -235,10 +239,8 @@ def test_step_setup_iterations(behave_fixture: BehaveFixture) -> None:
         step_setup_iterations(behave, '$env::ITERATIONS$', 'iteration')
         assert grizzly.scenario.iterations == 1337
     finally:
-        try:
+        with suppress(KeyError):
             del environ['ITERATIONS']
-        except KeyError:
-            pass
 
     grizzly.state.configuration['test.iterations'] = 13
     step_setup_iterations(behave, '$conf::test.iterations$', 'iterations')

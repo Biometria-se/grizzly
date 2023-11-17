@@ -4,7 +4,7 @@ from __future__ import annotations
 from json import dumps as jsondumps
 from json import loads as jsonloads
 from json.decoder import JSONDecodeError
-from typing import TYPE_CHECKING, Any, Callable, Dict, List
+from typing import TYPE_CHECKING, Any, Callable, List
 
 import pytest
 from lxml import etree as XML  # noqa: N812
@@ -18,6 +18,7 @@ from grizzly_extras.transformer import (
     XmlTransformer,
     transformer,
 )
+from tests.helpers import JSON_EXAMPLE
 
 if TYPE_CHECKING:  # pragma: no cover
     from pytest_mock import MockerFixture
@@ -53,7 +54,7 @@ class Testtransformer:
     def test___init__(self) -> None:
         transformers: List[transformer] = []
 
-        assert TransformerContentType.get_vector() == (False, True, )
+        assert TransformerContentType.get_vector() == (False, True)
 
         for content_type in TransformerContentType:
             if content_type == TransformerContentType.UNDEFINED:
@@ -147,70 +148,37 @@ class TestJsonTransformer:
         with pytest.raises(ValueError, match=r'JsonTransformer: unable to parse with ".*": not a valid expression'):
             JsonTransformer.parser('$.')
 
-        example: Dict[str, Any] = {
-            'glossary': {
-                'title': 'example glossary',
-                'GlossDiv': {
-                    'title': 'S',
-                    'GlossList': {
-                        'GlossEntry': {
-                            'ID': 'SGML',
-                            'SortAs': 'SGML',
-                            'GlossTerm': 'Standard Generalized Markup Language',
-                            'Acronym': 'SGML',
-                            'Abbrev': 'ISO 8879:1986',
-                            'GlossDef': {
-                                'para': 'A meta-markup language, used to create markup languages such as DocBook.',
-                                'GlossSeeAlso': ['GML', 'XML']
-                            },
-                            'GlossSee': 'markup',
-                            'Additional': [
-                                {
-                                    'addtitle': 'test1',
-                                    'addvalue': 'hello world',
-                                },
-                                {
-                                    'addtitle': 'test2',
-                                    'addvalue': 'good stuff',
-                                },
-                            ],
-                        },
-                    },
-                },
-            },
-        }
-
         get_values = JsonTransformer.parser('$.glossary.GlossDiv.GlossList.GlossEntry.Abbrev')
-        actual = get_values(example)
+        actual = get_values(JSON_EXAMPLE)
         assert len(actual) == 1
         assert ['ISO 8879:1986'] == actual
 
         get_values = JsonTransformer.parser('$.glossary.title=="example glossary"')
-        actual = get_values(example)
+        actual = get_values(JSON_EXAMPLE)
         assert ['example glossary'] == actual
 
         get_values = JsonTransformer.parser("$.glossary.title=='template glossary'")
-        actual = get_values(example)
+        actual = get_values(JSON_EXAMPLE)
         assert [] == actual
 
         get_values = JsonTransformer.parser('$.*..title')
-        actual = get_values(example)
+        actual = get_values(JSON_EXAMPLE)
         assert len(actual) == 2
         assert ['example glossary', 'S'] == actual
 
         get_values = JsonTransformer.parser('$.*..GlossSeeAlso')
-        actual = get_values(example)
+        actual = get_values(JSON_EXAMPLE)
         assert len(actual) == 1
         assert ['["GML", "XML"]'] == actual
         assert jsonloads(actual[0]) == ['GML', 'XML']
 
         get_values = JsonTransformer.parser('$.*..GlossSeeAlso[*]')
-        actual = get_values(example)
+        actual = get_values(JSON_EXAMPLE)
         assert len(actual) == 2
         assert ['GML', 'XML'] == actual
 
         get_values = JsonTransformer.parser('$..Additional[?addtitle="test1"].addvalue')
-        actual = get_values(example)
+        actual = get_values(JSON_EXAMPLE)
         assert len(actual) == 1
         assert actual == ['hello world']
 

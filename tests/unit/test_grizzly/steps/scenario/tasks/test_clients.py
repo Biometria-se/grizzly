@@ -10,13 +10,8 @@ from grizzly.steps import (
 )
 from grizzly.context import GrizzlyContext
 from grizzly.tasks.clients import HttpClientTask
+from grizzly.types import pymqi
 from tests.fixtures import BehaveFixture
-
-
-try:
-    import pymqi
-except:
-    from grizzly_extras import dummy_pymqi as pymqi
 
 
 def test_step_task_client_get_endpoint_payload_metadata(behave_fixture: BehaveFixture) -> None:

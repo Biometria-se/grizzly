@@ -171,7 +171,7 @@ class TestServiceBusUser:
         request_context_spy.return_value.__enter__.assert_called_once_with()
         assert user.hellos == set()
 
-    def test_say_hello(self, noop_zmq: NoopZmqFixture, behave_fixture: BehaveFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
+    def test_say_hello(self, noop_zmq: NoopZmqFixture, behave_fixture: BehaveFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:  # noqa: PLR0915
         noop_zmq('grizzly.users.servicebus')
         behave_fixture.grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
         test_cls = type('ServiceBusTestUser', (ServiceBusUser, ), {'__scenario__': behave_fixture.grizzly.scenario, 'host': None})
@@ -194,17 +194,18 @@ class TestServiceBusUser:
         user._scenario = scenario
 
         with caplog.at_level(logging.ERROR), pytest.raises(StopUser):
-                user.say_hello(task)
+            user.say_hello(task)
+
         assert 'cannot say hello for test-send when endpoint is a template' in caplog.text
         assert user.hellos == {'sender=queue:test-queue'}
-        assert request_context_spy.call_count == 0
+        request_context_spy.assert_not_called()
         caplog.clear()
 
         task.endpoint = 'queue:test-queue'
         user.say_hello(task)
 
         assert user.hellos == {'sender=queue:test-queue'}
-        assert request_context_spy.call_count == 0
+        request_context_spy.assert_not_called()
 
         task.endpoint = 'topic:test-topic'
         user.say_hello(task)

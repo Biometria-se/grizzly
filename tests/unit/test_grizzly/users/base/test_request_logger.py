@@ -1,25 +1,28 @@
+"""Unit tests of grizzly.users.base.request_logger."""
 from __future__ import annotations
 
 from contextlib import suppress
-from os import environ, listdir, path, remove
-from typing import Callable, Generator, List, Type
-from collections import namedtuple
+from os import environ
+from pathlib import Path
+from typing import TYPE_CHECKING, Callable, Generator, List, Type
 
 import pytest
-from _pytest.capture import CaptureFixture
-from _pytest.fixtures import SubRequest
-from _pytest.tmpdir import TempPathFactory
 from locust.clients import ResponseContextManager
 from locust.contrib.fasthttp import ResponseContextManager as FastResponseContextManager
 
 from grizzly.tasks import RequestTask
 from grizzly.types import GrizzlyResponseContextManager, RequestMethod
-from grizzly.users.base import HttpRequests, RequestLogger, GrizzlyUser
-from tests.fixtures import BehaveFixture, GrizzlyFixture, ResponseContextManagerFixture
+from grizzly.users.base import GrizzlyUser, HttpRequests, RequestLogger
+
+if TYPE_CHECKING:  # pragma: no cover
+    from _pytest.capture import CaptureFixture
+    from _pytest.fixtures import SubRequest
+
+    from tests.fixtures import BehaveFixture, GrizzlyFixture, ResponseContextManagerFixture
 
 
 @pytest.fixture(params=[False, True])
-def request_logger(request: SubRequest, grizzly_fixture: GrizzlyFixture, tmp_path_factory: TempPathFactory) -> Generator[RequestLogger, None, None]:
+def request_logger(request: SubRequest, grizzly_fixture: GrizzlyFixture) -> Generator[RequestLogger, None, None]:
     try:
         if request.param:
             environ['GRIZZLY_LOG_DIR'] = 'foobar'
@@ -34,34 +37,30 @@ def request_logger(request: SubRequest, grizzly_fixture: GrizzlyFixture, tmp_pat
             del environ['GRIZZLY_LOG_DIR']
 
 
-@pytest.fixture
-def get_log_files() -> Callable[[], List[str]]:
-    def wrapped() -> List[str]:
-        logs_root = path.join(environ['GRIZZLY_CONTEXT_ROOT'], 'logs')
+@pytest.fixture()
+def get_log_files() -> Callable[[], List[Path]]:
+    def wrapped() -> List[Path]:
+        logs_root = Path(environ['GRIZZLY_CONTEXT_ROOT']) / 'logs'
         log_dir = environ.get('GRIZZLY_LOG_DIR', None)
         if log_dir is not None:
-            logs_root = path.join(logs_root, log_dir)
+            logs_root = logs_root / log_dir
 
-        log_files = [
-            path.join(logs_root, f)
-            for f in listdir(logs_root)
-            if path.isfile(path.join(logs_root, f)) and f.endswith('.log')
-        ]
+        return list(logs_root.glob('*.log'))
 
-        return log_files
 
     return wrapped
 
 
 class TestRequestLogger:
-    @pytest.mark.parametrize('log_prefix', [False, True,])
-    def test___init__(self, behave_fixture: BehaveFixture, log_prefix: bool) -> None:
+    @pytest.mark.parametrize('log_prefix', [False, True])
+    def test___init__(self, behave_fixture: BehaveFixture, *, log_prefix: bool) -> None:
         try:
-            assert not path.isdir(path.join(environ['GRIZZLY_CONTEXT_ROOT'], 'logs'))
-
+            log_root = Path(environ['GRIZZLY_CONTEXT_ROOT']) / 'logs'
             if log_prefix:
                 environ['GRIZZLY_LOG_DIR'] = 'asdf'
-                assert not path.isdir(path.join(environ['GRIZZLY_CONTEXT_ROOT'], 'logs', 'asdf'))
+                log_root = log_root / 'asdf'
+
+            assert not log_root.exists()
 
             behave_fixture.grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
@@ -72,9 +71,7 @@ class TestRequestLogger:
 
             user = fake_user_type(behave_fixture.locust.environment)
 
-            assert path.isdir(path.join(environ['GRIZZLY_CONTEXT_ROOT'], 'logs'))
-            if log_prefix:
-                assert path.isdir(path.join(environ['GRIZZLY_CONTEXT_ROOT'], 'logs', 'asdf'))
+            assert log_root.is_dir()
 
             assert not user.context().get('log_all_requests', True)
             assert len(user.response_event._handlers) == 1
@@ -112,16 +109,16 @@ class TestRequestLogger:
 
         assert request_logger._remove_secrets_attribute({'contents': 'test value'}) == {'contents': 'test value'}
         assert request_logger._remove_secrets_attribute(None) is None
-        assert request_logger._remove_secrets_attribute(True) is True
+        assert request_logger._remove_secrets_attribute(True) is True  # noqa: FBT003
         assert request_logger._remove_secrets_attribute('hello world') == 'hello world'
 
     @pytest.mark.usefixtures('request_logger', 'get_log_files')
     @pytest.mark.parametrize('cls_rcm', [ResponseContextManager, FastResponseContextManager])
-    def test_request_logger_http(
+    def test_request_logger_http(  # noqa: PLR0915
         self,
         grizzly_fixture: GrizzlyFixture,
         request_logger: RequestLogger,
-        get_log_files: Callable[[], List[str]],
+        get_log_files: Callable[[], List[Path]],
         cls_rcm: Type[GrizzlyResponseContextManager],
         response_context_manager_fixture: ResponseContextManagerFixture,
         capsys: CaptureFixture,
@@ -129,7 +126,7 @@ class TestRequestLogger:
         parent = grizzly_fixture()
         request_logger.host = 'https://test.example.org'
         request = RequestTask(RequestMethod.POST, name='test-request', endpoint='/api/test')
-        response = response_context_manager_fixture(cls_rcm, 200, name=request.name)  # type: ignore
+        response = response_context_manager_fixture(cls_rcm, 200, name=request.name)  # type: ignore[arg-type]
 
         assert get_log_files() == []
 
@@ -138,14 +135,14 @@ class TestRequestLogger:
         assert get_log_files() == []
 
         # response status code == 401, but is added as an allowed response code, don't do anything
-        response = response_context_manager_fixture(cls_rcm, 401, name=request.name)  # type: ignore
+        response = response_context_manager_fixture(cls_rcm, 401, name=request.name)  # type: ignore[arg-type]
         request.response.add_status_code(401)
 
         response_context = request.response
-        setattr(request, 'response', None)
+        setattr(request, 'response', None)  # noqa: B010
         request_logger.request_logger('test-request', response, request, parent.user)
 
-        setattr(request, 'response', response_context)
+        setattr(request, 'response', response_context)  # noqa: B010
 
         request_logger.request_logger('test-request', response, request, parent.user)
 
@@ -154,7 +151,7 @@ class TestRequestLogger:
         # log request, name not set, byte body
         request_logger._context['log_all_requests'] = True
         request.response.status_codes = [200]
-        response = response_context_manager_fixture(cls_rcm, 401, name=request.name)  # type: ignore
+        response = response_context_manager_fixture(cls_rcm, 401, name=request.name)  # type: ignore[arg-type]
         del response.request_meta['response_time']
 
         request_logger.request_logger('none-test', response, request, parent.user)
@@ -163,13 +160,11 @@ class TestRequestLogger:
 
         assert len(log_files) == 1
         log_file = log_files[-1]
-        assert path.basename(log_file).startswith('none-test')
+        assert log_file.stem.startswith('none-test')
 
-        with open(log_file) as fd:
-            log_file_contents = fd.read()
+        log_file_contents = log_file.read_text()
 
-            print(log_file_contents)
-
+        try:
             assert '-> POST:' in log_file_contents
             assert '<- status=401' in log_file_contents
             assert log_file_contents.count('<empty>') == 4
@@ -179,8 +174,8 @@ class TestRequestLogger:
             assert log_file_contents.count('] <- ') == 1
             assert log_file_contents.count('None') == 0
             assert log_file_contents.count('[]') == 0
-
-        remove(log_file)
+        finally:
+            log_file.unlink()
         capsys.readouterr()
 
         # log failed request (400 - bad request) with locust meta data
@@ -193,7 +188,7 @@ class TestRequestLogger:
             request_headers={},
             response_body={"test": "contents"},
             url='https://test.example.org/api/v1/test',
-            name=request.name,  # type: ignore
+            name=request.name,  # type: ignore[arg-type]
         )
         request.name = 'test-log-file'
         response.request_meta = {
@@ -206,20 +201,20 @@ class TestRequestLogger:
 
         assert len(log_files) == 1
         log_file = log_files[-1]
-        assert path.basename(log_file).startswith('test-log-file')
+        assert log_file.stem.startswith('test-log-file')
 
-        with open(log_file) as fd:
-            log_file_contents = fd.read()
+        log_file_contents = log_file.read_text()
 
+        try:
             assert log_file_contents.count('None') == 0
             assert log_file_contents.count('[]') == 0
             assert 'GET https://test.example.org/api/v1/test' in log_file_contents
             assert '<- https://test.example.org/api/v1/test (200.00 ms) status=400' in log_file_contents
-            assert '''{
+            assert """{
   "test": "contents"
-}''' in log_file_contents
-
-        remove(log_file)
+}""" in log_file_contents
+        finally:
+            log_file.unlink()
         capsys.readouterr()
 
         # log failed request (400 - bad request) with locust meta data
@@ -239,7 +234,7 @@ class TestRequestLogger:
                 'Content-Length': '1337',
             },
             url='https://test.example.org/api/v1/test',
-            name=request.name,  # type: ignore
+            name=request.name,  # type: ignore[arg-type]
         )
         response.request_meta = {
             'response_time': 137.2111,
@@ -251,34 +246,32 @@ class TestRequestLogger:
 
         assert len(log_files) == 1
         log_file = log_files[-1]
-        assert path.basename(log_file).startswith('test-log-file2')
+        assert log_file.stem.startswith('test-log-file2')
 
-        with open(log_file) as fd:
-            log_file_contents = fd.read()
+        log_file_contents = log_file.read_text()
 
-            print(log_file_contents)
-
+        try:
             assert log_file_contents.count('None') == 0
             assert log_file_contents.count('[]') == 0
 
             assert '<- https://test.example.org/api/v1/test (137.21 ms) status=400' in log_file_contents
             assert 'PUT https://test.example.org/api/v1/test' in log_file_contents
-            assert '''payload:
-test body str''' in log_file_contents
-            assert '''metadata:
+            assert """payload:
+test body str""" in log_file_contents
+            assert """metadata:
 {
   "Content-Type": "application/json",
   "Content-Length": "1337"
-}'''.lower() in log_file_contents.lower()
-            assert '''metadata:
+}""".lower() in log_file_contents.lower()
+            assert """metadata:
 {
   "x-cookie": "asdfasdfasdf"
-}''' in log_file_contents
-
-        remove(log_file)
+}""" in log_file_contents
+        finally:
+            log_file.unlink()
 
     @pytest.mark.usefixtures('request_logger', 'get_log_files')
-    def test_handler_custom(self, grizzly_fixture: GrizzlyFixture, request_logger: RequestLogger, get_log_files: Callable[[], List[str]]) -> None:
+    def test_handler_custom(self, grizzly_fixture: GrizzlyFixture, request_logger: RequestLogger, get_log_files: Callable[[], List[Path]]) -> None:
         parent = grizzly_fixture()
         parent.user.host = 'mq://mq.example.org?QueueManager=QMGR01&Channel=SYS.CONN'
         request = RequestTask(RequestMethod.POST, name='test-request', endpoint='MSG.INCOMING')
@@ -298,18 +291,18 @@ test body str''' in log_file_contents
         assert len(log_files) == 1
         log_file = log_files[-1]
 
-        assert path.basename(log_file).startswith('test-request.')
+        assert log_file.stem.startswith('test-request')
 
-        with open(log_file) as fd:
-            log_file_contents = fd.read()
+        log_file_contents = log_file.read_text()
 
+        try:
             assert log_file_contents.count('<empty>') == 3
             assert log_file_contents.count('{}') == 1
             assert '-> POST mq://mq.example.org/MSG.INCOMING?QueueManager=QMGR01&Channel=SYS.CONN:' in log_file_contents
             assert '<- status=ERROR:' in log_file_contents
             assert 'Exception: error message' in log_file_contents
-
-        remove(log_file)
+        finally:
+            log_file.unlink()
 
         request_logger._context['log_all_requests'] = True
         request.method = RequestMethod.PUT
@@ -328,19 +321,19 @@ test body str''' in log_file_contents
         assert len(log_files) == 1
         log_file = log_files[-1]
 
-        with open(log_file) as fd:
-            log_file_contents = fd.read()
+        log_file_contents = log_file.read_text()
 
+        try:
             # check response section
-            assert '''<- status=OK:
+            assert """<- status=OK:
 metadata:
 <empty>
 
 payload:
-<empty>''' in log_file_contents
+<empty>""" in log_file_contents
 
             # check request section
-            assert '''-> PUT mq://mq.example.org/MSG.INCOMING?QueueManager=QMGR01&Channel=SYS.CONN:
+            assert """-> PUT mq://mq.example.org/MSG.INCOMING?QueueManager=QMGR01&Channel=SYS.CONN:
 metadata:
 {
   "x-bus-message": "yes",
@@ -348,9 +341,9 @@ metadata:
 }
 
 payload:
-<?xml encoding="UTF-8" version="1.0"?><test>value</test>''' in log_file_contents
-
-        remove(log_file)
+<?xml encoding="UTF-8" version="1.0"?><test>value</test>""" in log_file_contents
+        finally:
+            log_file.unlink()
 
         request_logger._context['log_all_requests'] = False
         request.method = RequestMethod.GET
@@ -366,18 +359,18 @@ payload:
             Exception('error message'),
             locust_request_meta={
                 'response_time': 133.7,
-            }
+            },
         )
 
         log_files = get_log_files()
         assert len(log_files) == 1
         log_file = log_files[-1]
 
-        with open(log_file) as fd:
-            log_file_contents = fd.read()
+        log_file_contents = log_file.read_text()
 
+        try:
             # check response section
-            assert '''<- (133.70 ms) status=ERROR:
+            assert """<- (133.70 ms) status=ERROR:
 metadata:
 {
   "x-bus-message": "yes",
@@ -387,14 +380,14 @@ metadata:
 payload:
 <?xml encoding="UTF-8" version="1.0"?><test>value</test>
 
-Exception: error message''' in log_file_contents
+Exception: error message""" in log_file_contents
 
             # check request section
-            assert '''-> GET mq://mq.example.org/MSG.INCOMING?QueueManager=QMGR01&Channel=SYS.CONN:
+            assert """-> GET mq://mq.example.org/MSG.INCOMING?QueueManager=QMGR01&Channel=SYS.CONN:
 metadata:
 <empty>
 
 payload:
-<empty>''' in log_file_contents
-
-        remove(log_file)
+<empty>""" in log_file_contents
+        finally:
+            log_file.unlink()

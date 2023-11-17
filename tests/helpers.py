@@ -44,7 +44,10 @@ def ANY(*cls: Type, message: Optional[str] = None) -> object:  # noqa: N802
             return self.__ne__(other)
 
         def __repr__(self) -> str:
-            return f'<ANY({cls})>'
+            if message is None:
+                return f'<ANY({cls})>'
+
+            return f"<ANY({cls}, message='{message}')"
 
     for c in cls:
         WrappedAny.register(c)
@@ -272,9 +275,10 @@ def onerror(func: Callable, path: str, exc_info: TracebackType) -> None:  # noqa
     If the error is for another reason it re-raises the error.
     Usage : ``shutil.rmtree(path, onerror=onerror)``
     """
+    _path = Path(path)
     # Is the error an access error?
-    if not os.access(path, os.W_OK):
-        os.chmod(path, stat.S_IWUSR)
+    if not os.access(_path, os.W_OK):
+        _path.chmod(stat.S_IWUSR)
         func(path)
     else:
         raise
@@ -328,3 +332,37 @@ class regex:
 
     def __repr__(self) -> str:
         return self._regex.pattern
+
+
+JSON_EXAMPLE = {
+    'glossary': {
+        'title': 'example glossary',
+        'GlossDiv': {
+            'title': 'S',
+            'GlossList': {
+                'GlossEntry': {
+                    'ID': 'SGML',
+                    'SortAs': 'SGML',
+                    'GlossTerm': 'Standard Generalized Markup Language',
+                    'Acronym': 'SGML',
+                    'Abbrev': 'ISO 8879:1986',
+                    'GlossDef': {
+                        'para': 'A meta-markup language, used to create markup languages such as DocBook.',
+                        'GlossSeeAlso': ['GML', 'XML'],
+                    },
+                    'GlossSee': 'markup',
+                    'Additional': [
+                        {
+                            'addtitle': 'test1',
+                            'addvalue': 'hello world',
+                        },
+                        {
+                            'addtitle': 'test2',
+                            'addvalue': 'good stuff',
+                        },
+                    ],
+                },
+            },
+        },
+    },
+}

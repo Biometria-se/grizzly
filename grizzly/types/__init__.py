@@ -23,10 +23,17 @@ try:
 except ImportError:
     from backports.zoneinfo import ZoneInfo, ZoneInfoNotFoundError  # type: ignore[no-redef]  # pyright: ignore[reportMissingImports]
 
+try:
+    import pymqi
+except:
+    from grizzly_extras import dummy_pymqi as pymqi
+
+
 __all__ = [
     'Self',
     'ZoneInfo',
     'ZoneInfoNotFoundError',
+    'pymqi',
 ]
 
 

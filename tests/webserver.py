@@ -1,18 +1,24 @@
-import csv
-import logging
-import json
+"""Webserver used for end-to-end tests."""
+from __future__ import annotations
 
-from typing import Dict, Any, Optional, Type, Literal, cast
-from types import TracebackType
-from time import perf_counter
+import csv
+import json
+import logging
 from pathlib import Path
+from time import perf_counter
+from typing import TYPE_CHECKING, Any, Dict, Literal, Optional, Type, cast
 
 import gevent
-
+from flask import Flask, jsonify, request
+from flask import Request as FlaskRequest
+from flask import Response as FlaskResponse
 from gevent.pywsgi import WSGIServer
-
-from flask import Flask, request, jsonify, Response as FlaskResponse, Request as FlaskRequest
 from werkzeug.datastructures import Headers as FlaskHeaders
+
+if TYPE_CHECKING:  # pragma: no cover
+    from types import TracebackType
+
+    from grizzly.types import Self
 
 logger = logging.getLogger('webserver')
 
@@ -47,8 +53,8 @@ def app_get_cat_fact() -> FlaskResponse:
 
 @app.route('/books/<book>.json')
 def app_get_book(book: str) -> FlaskResponse:
-    logger.debug(f'/books/{book}.json called, {root_dir=}')
-    with open(f'{root_dir}/requests/books/books.csv', 'r') as fd:
+    logger.debug('/books/%s.json called, root_dir=%s', book, root_dir)
+    with (root_dir / 'requests' / 'books' / 'books.csv').open() as fd:
         reader = csv.DictReader(fd)
         for row in reader:
             if row['book'] == book:
@@ -57,7 +63,7 @@ def app_get_book(book: str) -> FlaskResponse:
                     'isbn_10': [row['isbn_10']] * 2,
                     'authors': [
                         {'key': '/author/' + row['author'].replace(' ', '_').strip() + '|' + row['isbn_10'].strip()},
-                    ]
+                    ],
                 })
 
     response = jsonify({'success': False})
@@ -68,16 +74,16 @@ def app_get_book(book: str) -> FlaskResponse:
 
 @app.route('/author/<author_key>.json')
 def app_get_author(author_key: str) -> FlaskResponse:
-    logger.debug(f'route /author/{author_key}.json called')
+    logger.debug('route /author/%s.json called', author_key)
     name, _ = author_key.rsplit('|', 1)
 
     return jsonify({
-        'name': name.replace('_', ' ')
+        'name': name.replace('_', ' '),
     })
 
 
 def get_headers(request: FlaskRequest) -> FlaskHeaders:
-    return FlaskHeaders({key: value for key, value in request.headers.items() if not key.lower() == 'content-length'})
+    return FlaskHeaders({key: value for key, value in request.headers.items() if key.lower() != 'content-length'})
 
 
 @app.route('/api/statuscode/<statuscode>')
@@ -179,7 +185,7 @@ def app_until_attribute(attribute: str) -> FlaskResponse:
     if as_array is not None:
         json_result = [json_result]
 
-    logger.debug(f'sending {json.dumps(json_result)} to {x_grizzly_user}')
+    logger.debug('sending %r to %s', json.dumps(json_result), x_grizzly_user)
 
     response = jsonify(json_result)
     response.status_code = status_code
@@ -196,7 +202,7 @@ def app_oauth2_authorize() -> FlaskResponse:
 def app_oauth2_token() -> FlaskResponse:
     form = request.form
 
-    logger.debug(f'/oauth2/token called with {form=}')
+    logger.debug('/oauth2/token called with form=%r', form)
 
     if auth_expected is None:
         response = jsonify({'error_description': 'not setup for authentication'})
@@ -230,7 +236,7 @@ class Webserver:
             app,
             log=None,
         )
-        logger.debug(f'created webserver on port {port}')
+        logger.debug('created webserver on port %d', port)
 
     @property
     def port(self) -> int:
@@ -242,7 +248,7 @@ class Webserver:
 
     @auth.setter
     def auth(self, value: Optional[Dict[str, Any]]) -> None:
-        global auth_expected
+        global auth_expected  # noqa: PLW0603
         auth_expected = value
 
     @property
@@ -252,9 +258,9 @@ class Webserver:
     def start(self) -> None:
         self._greenlet = gevent.spawn(lambda: self._web_server.serve_forever())
         gevent.sleep(0.01)
-        logger.debug(f'started webserver on port {self.port}')
+        logger.debug('started webserver on port %d', self.port)
 
-    def __enter__(self) -> 'Webserver':
+    def __enter__(self) -> Self:
         self.start()
 
         return self
@@ -268,7 +274,7 @@ class Webserver:
         self._web_server.stop_accepting()
         self._web_server.stop()
 
-        logger.debug(f'stopped webserver on port {self.port}')
+        logger.debug('stopped webserver on port %d', self.port)
 
         return True
 

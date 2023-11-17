@@ -1,14 +1,20 @@
-from gevent import Greenlet, getcurrent
+"""Unit tests of grizzly.gevent."""
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import pytest
+from gevent import Greenlet, getcurrent
 
 from grizzly.gevent import GreenletWithExceptionCatching
 
-from tests.fixtures import MockerFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from tests.fixtures import MockerFixture
 
 
 def func(a: str, i: int) -> None:
-    raise RuntimeError(f'func error, {a=}, {i=}')
+    msg = f'func error, {a=}, {i=}'
+    raise RuntimeError(msg)
 
 
 class TestGreenletWithExceptionCatching:
@@ -29,12 +35,11 @@ class TestGreenletWithExceptionCatching:
         g = GreenletWithExceptionCatching()
         wrap_exceptions_spy = mocker.spy(g, 'wrap_exceptions')
 
-        with pytest.raises(RuntimeError) as re:
+        with pytest.raises(RuntimeError, match="func error, a='hello', i=1"):  # noqa: PT012
             func_g = g.spawn(func, 'hello', i=1)
             wrap_exceptions_spy.assert_called_once_with(func)
             wrap_exceptions_spy.reset_mock()
             func_g.join()
-        assert str(re.value) == "func error, a='hello', i=1"
 
         wrap_exceptions_spy.assert_called_once_with(g.handle_exception)
 
@@ -42,11 +47,10 @@ class TestGreenletWithExceptionCatching:
         g = GreenletWithExceptionCatching()
         wrap_exceptions_spy = mocker.spy(g, 'wrap_exceptions')
 
-        with pytest.raises(RuntimeError) as re:
+        with pytest.raises(RuntimeError, match="func error, a='foobar', i=1337"):  # noqa: PT012
             func_g = g.spawn_later(1, func, 'foobar', i=1337)
             wrap_exceptions_spy.assert_called_once_with(func)
             wrap_exceptions_spy.reset_mock()
             func_g.join()
-        assert str(re.value) == "func error, a='foobar', i=1337"
 
         wrap_exceptions_spy.assert_called_once_with(g.handle_exception)
