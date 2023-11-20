@@ -21,7 +21,7 @@ from grizzly.testdata.utils import templatingfilter, transform
 from grizzly.types import ScenarioState
 from tests.helpers import RequestCalled, TestTask, regex
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from _pytest.logging import LogCaptureFixture
     from pytest_mock import MockerFixture
 

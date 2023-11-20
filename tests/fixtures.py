@@ -43,7 +43,7 @@ from grizzly.utils import create_scenario_class_type, create_user_class_type
 
 from .helpers import RequestSilentFailureEvent, TestScenario, TestUser, onerror, run_command
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from types import TracebackType
     from unittest.mock import MagicMock
 

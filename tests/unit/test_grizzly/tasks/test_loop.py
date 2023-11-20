@@ -12,7 +12,7 @@ from grizzly.exceptions import RestartScenario, StopUser
 from grizzly.tasks import GrizzlyTask, LoopTask, grizzlytask
 from tests.helpers import ANY, TestExceptionTask, TestTask
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from pytest_mock import MockerFixture
 
     from grizzly.scenarios import GrizzlyScenario

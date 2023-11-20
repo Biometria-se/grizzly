@@ -5,7 +5,6 @@ from typing import Any, cast
 from behave.model import Scenario
 from behave.runner import Context
 
-# pylint: disable=unused-import
 from grizzly.behave import (  # noqa: F401
     after_feature,
     after_scenario,
