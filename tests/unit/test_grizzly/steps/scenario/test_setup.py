@@ -351,6 +351,7 @@ def test_step_setup_metadata(behave_fixture: BehaveFixture) -> None:
     assert request.metadata == {'new_header': 'new_value'}
 
     grizzly.state.variables.update({'test_payload': 'none', 'test_metadata': 'none'})
+    HttpClientTask.__scenario__ = grizzly.scenario
     task_factory = HttpClientTask(RequestDirection.FROM, 'http://example.org', payload_variable='test_payload', metadata_variable='test_metadata')
 
     grizzly.scenario.tasks.add(task_factory)

@@ -1,9 +1,13 @@
-from typing import cast
+"""End-to-end tests of grizzly.steps.scenario.results."""
+from __future__ import annotations
 
-from grizzly.types.behave import Context
+from typing import TYPE_CHECKING, cast
+
 from grizzly.context import GrizzlyContext
 
-from tests.fixtures import End2EndFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.types.behave import Context
+    from tests.fixtures import End2EndFixture
 
 
 def test_e2e_step_results_fail_ratio(e2e_fixture: End2EndFixture) -> None:

@@ -1,14 +1,19 @@
+"""End-to-end tests of grizzly.tasks.keystore."""
+from __future__ import annotations
+
 from textwrap import dedent
+from typing import TYPE_CHECKING
 
-from grizzly.types.behave import Context, Feature
-
-from tests.fixtures import End2EndFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.types.behave import Context, Feature
+    from tests.fixtures import End2EndFixture
 
 
 def test_e2e_keystore(e2e_fixture: End2EndFixture) -> None:
     def after_feature(context: Context, feature: Feature) -> None:
-        from pathlib import Path
         from json import loads as jsonloads
+        from pathlib import Path
+
         from grizzly.locust import on_worker
 
         if on_worker(context):
@@ -24,17 +29,14 @@ def test_e2e_keystore(e2e_fixture: End2EndFixture) -> None:
             'grizzly::keystore': {
                 'foobar::set': 'hello',
                 'foobar::get::default': {'hello': 'world'},
-            }
+            },
         }
 
     e2e_fixture.add_after_feature(after_feature)
 
-    if e2e_fixture._distributed:
-        start_webserver_step = f'Then start webserver on master port "{e2e_fixture.webserver.port}"\n'
-    else:
-        start_webserver_step = ''
+    start_webserver_step = f'Then start webserver on master port "{e2e_fixture.webserver.port}"\n' if e2e_fixture._distributed else ''
 
-    feature_file = e2e_fixture.create_feature(dedent(f'''Feature: test persistence
+    feature_file = e2e_fixture.create_feature(dedent(f"""Feature: test persistence
     Background: common configuration
         Given "2" users
         And spawn rate is "2" user per second
@@ -56,7 +58,7 @@ def test_e2e_keystore(e2e_fixture: End2EndFixture) -> None:
         Then get "foobar::set" from keystore and save in variable "key_holder_2"
         Then get "foobar::get::default" from keystore and save in variable "key_holder_3"
         Then log message "key_holder_2={{{{ key_holder_2 }}}}, key_holder_3={{{{ key_holder_3 }}}}"
-    '''))
+    """))
 
     rc, output = e2e_fixture.execute(feature_file)
 

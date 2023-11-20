@@ -138,7 +138,7 @@ class InfluxDbListener:
 
         params = parse_qs(parsed.query)
 
-        assert 'Testplan' in params, f'Testplan not found in {parsed.query}'
+        assert 'Testplan' in params, f'Testplan was not found in {parsed.query}'
         self._testplan = unquote(params['Testplan'][0])
         self._target_environment = unquote(params['TargetEnvironment'][0]) if 'TargetEnvironment' in params else None
         self.environment = environment

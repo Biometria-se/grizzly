@@ -1,10 +1,14 @@
-from typing import cast
+"""Unit tests of grizzly.steps.scenario.tasks.log_message."""
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, cast
 
 from grizzly.context import GrizzlyContext
-from grizzly.tasks import LogMessageTask
 from grizzly.steps import step_task_log_message
+from grizzly.tasks import LogMessageTask
 
-from tests.fixtures import BehaveFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from tests.fixtures import BehaveFixture
 
 
 def test_step_task_log_message(behave_fixture: BehaveFixture) -> None:

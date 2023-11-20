@@ -1,10 +1,9 @@
 """Unit tests for grizzly.steps.background.setup."""
 from __future__ import annotations
 
-import re
 from contextlib import suppress
 from os import environ
-from typing import TYPE_CHECKING, cast, get_type_hints
+from typing import TYPE_CHECKING, cast
 from urllib.parse import urlparse
 
 import pytest
@@ -13,7 +12,7 @@ from parse import compile
 from grizzly.context import GrizzlyContext
 from grizzly.exceptions import RestartScenario
 from grizzly.steps import *
-from grizzly.types import MessageCallback, MessageDirection
+from grizzly.types import MessageDirection
 from grizzly.types.locust import StopUser
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -28,8 +27,8 @@ def test_parse_message_direction() -> None:
         },
     )
 
-    assert MessageDirection.get_vector() == (True, True,)
-    assert parse_message_direction.__vector__ == (True, True,)
+    assert MessageDirection.get_vector() == (True, True)
+    assert parse_message_direction.__vector__ == (True, True)
 
     result = p.parse('sending from server to client')
     message_direction = MessageDirection.from_string(f'{result["from"]}_{result["to"]}')
@@ -45,14 +44,14 @@ def test_step_setup_save_statistics(behave_fixture: BehaveFixture) -> None:
     grizzly = cast(GrizzlyContext, behave_fixture.context.grizzly)
     step_impl = step_setup_save_statistics
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError, match='"https" is not a supported scheme'):
         step_impl(behave, 'https://test:8000')
 
     step_impl(behave, 'influxdb://test:8000/test_db')
     assert grizzly.setup.statistics_url == 'influxdb://test:8000/test_db'
 
     try:
-        with pytest.raises(AssertionError):
+        with pytest.raises(AssertionError, match='environment variable "DATABASE" is not set'):
             step_impl(behave, 'influxdb://test:8000/$env::DATABASE$')
 
         environ['DATABASE'] = 'test_db'
@@ -66,7 +65,7 @@ def test_step_setup_save_statistics(behave_fixture: BehaveFixture) -> None:
     assert grizzly.setup.statistics_url == 'insights://?IngestionEndpoint=insights.example.com&Testplan=test&InstrumentationKey=aaaabbbb='
 
     try:
-        with pytest.raises(AssertionError):
+        with pytest.raises(AssertionError, match='environment variable "TEST_VARIABLE" is not set'):
             step_impl(behave, 'insights://?IngestionEndpoint=$env::TEST_VARIABLE$&Testplan=test&InstrumentationKey=aaaabbbb=')
         environ['TEST_VARIABLE'] = 'HelloWorld'
 
@@ -79,12 +78,12 @@ def test_step_setup_save_statistics(behave_fixture: BehaveFixture) -> None:
         with suppress(KeyError):
             del environ['TEST_VARIABLE']
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError, match='configuration variable "statistics.username" is not set'):
         step_impl(
             behave,
             (
-                'insights://$conf::statistics.username:$conf::statistics.password@?IngestionEndpoint=$conf::statistics.url&'
-                'Testplan=$conf::statistics.testplan&InstrumentationKey=$conf::statistics.instrumentationkey'
+                'insights://$conf::statistics.username$:$conf::statistics.password$@?IngestionEndpoint=$conf::statistics.url$&'
+                'Testplan=$conf::statistics.testplan$&InstrumentationKey=$conf::statistics.instrumentationkey$'
             ),
         )
 
@@ -144,20 +143,12 @@ def test_step_setup_log_level(behave_fixture: BehaveFixture) -> None:
 
     assert grizzly.setup.log_level == 'INFO'
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError, match='log level WARN is not supported'):
         step_impl(behave, 'WARN')
 
-    step_impl(behave, 'DEBUG')
-    assert grizzly.setup.log_level == 'DEBUG'
-
-    step_impl(behave, 'WARNING')
-    assert grizzly.setup.log_level == 'WARNING'
-
-    step_impl(behave, 'ERROR')
-    assert grizzly.setup.log_level == 'ERROR'
-
-    step_impl(behave, 'INFO')
-    assert grizzly.setup.log_level == 'INFO'
+    for log_level in ['DEBUG', 'WARNING', 'ERROR', 'INFO']:
+        step_impl(behave, log_level)
+        assert grizzly.setup.log_level == log_level
 
 
 def test_step_setup_run_time(behave_fixture: BehaveFixture) -> None:

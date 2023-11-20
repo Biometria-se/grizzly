@@ -46,10 +46,10 @@ def test_parse_arguments(separator: str) -> None:
     with pytest.raises(ValueError, match='incorrect format in arguments:'):
         parse_arguments(f'arg1{separator}test arg2{separator}value', separator)
 
-    with pytest.raises(ValueError, match='incorrect format in arguments:'):
+    with pytest.raises(ValueError, match='incorrect format for arguments:'):
         parse_arguments(f'args1{separator}test,', separator)
 
-    with pytest.raises(ValueError, match='incorrect format in arguments:'):
+    with pytest.raises(ValueError, match='incorrect format for argument:'):
         parse_arguments(f'args1{separator}test,arg2', separator)
 
     with pytest.raises(ValueError, match='no quotes or spaces allowed in argument names'):

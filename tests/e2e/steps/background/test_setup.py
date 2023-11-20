@@ -49,7 +49,7 @@ def test_e2e_step_setup_save_statistics(e2e_fixture: End2EndFixture, url: str) -
             'statistics.username': env_conf['configuration']['statistics']['username'],
             'statistics.password': env_conf['configuration']['statistics']['password'],
             'statistics.database': env_conf['configuration']['statistics']['database'],
-        }
+        },
     ]
 
     e2e_fixture.add_validator(validator, table=table)
@@ -121,7 +121,7 @@ def test_e2e_step_setup_run_time(e2e_fixture: End2EndFixture, timespan: str) -> 
 
     feature_file = e2e_fixture.test_steps(
         background=[
-            f'And run for maximum "{timespan}"'
+            f'And run for maximum "{timespan}"',
         ],
         identifier=timespan,
     )

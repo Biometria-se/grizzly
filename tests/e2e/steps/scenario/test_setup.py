@@ -1,31 +1,37 @@
-import textwrap
+"""End-to-end tests of grizzly.steps.scenario.setup."""
+from __future__ import annotations
 
-from typing import cast, List, Dict, Any
+import textwrap
+from contextlib import suppress
+from typing import TYPE_CHECKING, Any, Dict, List, cast
 
 import pytest
 
-from grizzly.types.behave import Context, Feature
 from grizzly.context import GrizzlyContext
 
-from tests.fixtures import End2EndFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.types.behave import Context, Feature
+    from tests.fixtures import End2EndFixture
 
 
 def test_e2e_step_setup_set_context_variable(e2e_fixture: End2EndFixture) -> None:
     testdata = [
-        ('token.url', 'http://example.com/api/auth', '{"token": {"url": "http://example.com/api/auth"}}',),
-        ('token/client id', 'aaaa-bbbb-cccc-dddd', '{"token": {"client_id": "aaaa-bbbb-cccc-dddd"}}',),
-        ('log_all_requests', 'True', '{"log_all_requests": true}',),
-        ('run_id', '13', '{"run_id": 13}',),
+        ('token.url', 'http://example.com/api/auth', '{"token": {"url": "http://example.com/api/auth"}}'),
+        ('token/client id', 'aaaa-bbbb-cccc-dddd', '{"token": {"client_id": "aaaa-bbbb-cccc-dddd"}}'),
+        ('log_all_requests', 'True', '{"log_all_requests": true}'),
+        ('run_id', '13', '{"run_id": 13}'),
         ('www.example.com/auth.user.username', 'bob', '{"www.example.com": {"auth": {"user": {"username": "bob"}}}}'),
     ]
 
     def validate_context_variable(context: Context) -> None:
+        from contextlib import suppress
         from json import loads as jsonloads
+
         from grizzly.utils import merge_dicts
 
         grizzly = cast(GrizzlyContext, context.grizzly)
         expected_total: Dict[str, Any] = {}
-        first_row = list(context.table)[0].as_dict()
+        first_row = next(iter(context.table)).as_dict()
         expected_host = first_row['expected']
 
         for row in list(context.table)[1:]:
@@ -43,12 +49,10 @@ def test_e2e_step_setup_set_context_variable(e2e_fixture: End2EndFixture) -> Non
 
         actual = grizzly.scenario.context.copy()
 
-        try:
+        with suppress(KeyError):
             del actual['host']
-        except KeyError:
-            pass
 
-        assert actual == expected_total, f'{str(actual)} != {str(expected)}'
+        assert actual == expected_total, f'{actual!s} != {expected!s}'
         assert grizzly.scenario.context.get('host', None) == f'http://{expected_host}'  # added by fixture
 
     table: List[Dict[str, str]] = [{'expected': e2e_fixture.host}]
@@ -61,7 +65,8 @@ def test_e2e_step_setup_set_context_variable(e2e_fixture: End2EndFixture) -> Non
     e2e_fixture.add_validator(validate_context_variable, table=table)
 
     feature_file = e2e_fixture.test_steps(
-        scenario=scenario + [
+        scenario=[
+            *scenario,
             'And set context variable "hello.world" to "foobar"',
             'And set context variable "token/client_secret" to "something"',
         ],
@@ -80,7 +85,7 @@ def test_e2e_step_setup_set_context_variable(e2e_fixture: End2EndFixture) -> Non
 def test_e2e_step_setup_iterations(e2e_fixture: End2EndFixture, iterations: str) -> None:
     def validate_iterations(context: Context) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
-        data = list(context.table)[0].as_dict()
+        data = next(iter(context.table)).as_dict()
 
         iterations = int(data['iterations'].replace('{{ leveranser * 0.25 }}', '25'))
 
@@ -91,11 +96,9 @@ def test_e2e_step_setup_iterations(e2e_fixture: End2EndFixture, iterations: str)
     }]
 
     suffix = 's'
-    try:
+    with suppress(Exception):
         if int(iterations) <= 1:
             suffix = ''
-    except:
-        pass
 
     e2e_fixture.add_validator(validate_iterations, table=table)
 
@@ -119,13 +122,15 @@ def test_e2e_step_setup_iterations(e2e_fixture: End2EndFixture, iterations: str)
 @pytest.mark.parametrize('pace', ['2000', '{{ pace }}'])
 def test_e2e_step_setup_pace(e2e_fixture: End2EndFixture, pace: str) -> None:
     def validate_iterations(context: Context) -> None:
+        from grizzly.utils import is_template
+
         grizzly = cast(GrizzlyContext, context.grizzly)
-        data = list(context.table)[0].as_dict()
+        data = next(iter(context.table)).as_dict()
         pace = data['pace']
 
         assert grizzly.scenario.pace == pace, f'{grizzly.scenario.pace} != {pace}'
 
-        if '{{' in pace:
+        if is_template(pace):
             assert grizzly.scenario.orphan_templates == [pace], f'{pace} not in {grizzly.scenario.orphan_templates}'
 
     table: List[Dict[str, str]] = [{
@@ -176,22 +181,22 @@ def test_e2e_step_variable_value(e2e_fixture: End2EndFixture) -> None:
     e2e_fixture.add_validator(validate_variable_value)
 
     def before_feature(context: Context, feature: Feature) -> None:
-        from pathlib import Path
         from json import dumps as jsondumps
+        from pathlib import Path
 
         context_root = Path(context.config.base_dir)
         persist_root = context_root / 'persistent'
         persist_root.mkdir(exist_ok=True)
         persist_file = persist_root / f'{Path(feature.filename).stem}.json'
         persist_file.write_text(jsondumps({
-            'AtomicIntegerIncrementer.persistent': '10 | step=13, persist=True'
+            'AtomicIntegerIncrementer.persistent': '10 | step=13, persist=True',
         }))
 
     e2e_fixture.add_before_feature(before_feature)
 
     def after_feature(context: Context, feature: Feature) -> None:
-        from pathlib import Path
         from json import loads as jsonloads
+        from pathlib import Path
 
         context_root = Path(context.config.base_dir)
 
@@ -242,7 +247,7 @@ def test_e2e_step_set_variable_alias(e2e_fixture: End2EndFixture) -> None:
         alias_username = alias.get('AtomicCsvReader.users.username', None)
         assert alias_username == 'auth.user.username', f'{alias_username} != auth.user.username'
         alias_password = alias.get('AtomicCsvReader.users.password', None)
-        assert alias_password == 'auth.user.password', f'{alias_password} != auth.user.password'
+        assert alias_password == 'auth.user.password', f'{alias_password} != auth.user.password'  # noqa: S105
         variable = grizzly.state.variables.get('AtomicCsvReader.users', None)
         assert variable == 'users.csv | repeat=True', f'{variable} != users.csv | repeat=True'
 
@@ -259,8 +264,8 @@ def test_e2e_step_set_variable_alias(e2e_fixture: End2EndFixture) -> None:
     )
 
     (e2e_fixture.root / 'features' / 'requests' / 'users.csv').write_text(textwrap.dedent(
-        '''username,password
-grizzly,secret'''
+        """username,password
+grizzly,secret""",
     ))
 
     rc, output = e2e_fixture.execute(feature_file)
@@ -283,7 +288,7 @@ def test_e2e_step_setup_log_all_requests(e2e_fixture: End2EndFixture) -> None:
     feature_file = e2e_fixture.test_steps(
         scenario=[
             'And log all requests',
-        ]
+        ],
     )
 
     rc, _ = e2e_fixture.execute(feature_file)
@@ -304,7 +309,7 @@ def test_e2e_step_setup_stop_user_on_failure(e2e_fixture: End2EndFixture) -> Non
     feature_file = e2e_fixture.test_steps(
         scenario=[
             'And stop user on failure',
-        ]
+        ],
     )
 
     rc, _ = e2e_fixture.execute(feature_file)
@@ -325,7 +330,7 @@ def test_e2e_step_setup_restart_scenario_on_failure(e2e_fixture: End2EndFixture)
     feature_file = e2e_fixture.test_steps(
         scenario=[
             'And restart scenario on failure',
-        ]
+        ],
     )
 
     rc, _ = e2e_fixture.execute(feature_file)
@@ -343,7 +348,7 @@ def test_e2e_setup_metadata(e2e_fixture: End2EndFixture) -> None:
             'Content-Type': 'application/xml',
             'Ocp-Apim-Subscription-Key': '9asdf00asdf00adsf034',
             'nested': 10,
-        }, f'unexpected metadata: {str(metadata)}'
+        }, f'unexpected metadata: {metadata!s}'
 
     e2e_fixture.add_validator(validate_metadata)
 

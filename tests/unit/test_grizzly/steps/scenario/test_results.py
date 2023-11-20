@@ -1,9 +1,13 @@
-from typing import cast
+"""Unit tests of grizzly.steps.scenario.results."""
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, cast
 
 from grizzly.context import GrizzlyContext
 from grizzly.steps import *
 
-from tests.fixtures import BehaveFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from tests.fixtures import BehaveFixture
 
 
 def test_step_results_fail_ratio(behave_fixture: BehaveFixture) -> None:

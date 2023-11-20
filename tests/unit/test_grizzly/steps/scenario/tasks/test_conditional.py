@@ -1,21 +1,25 @@
-from typing import cast
+"""Unit tests of grizzly.steps.scenario.tasks.conditional."""
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, cast
 
 import pytest
 
-from grizzly.types import RequestMethod, RequestDirection
-from grizzly.tasks import ConditionalTask
 from grizzly.steps import (
-    step_task_conditional_if,
-    step_task_conditional_end,
+    step_task_async_group_close,
+    step_task_async_group_start,
     step_task_conditional_else,
-    step_task_wait_between_constant,
+    step_task_conditional_end,
+    step_task_conditional_if,
     step_task_log_message,
     step_task_request_text_with_name_endpoint,
-    step_task_async_group_start,
-    step_task_async_group_close,
+    step_task_wait_between_constant,
 )
+from grizzly.tasks import ConditionalTask
+from grizzly.types import RequestDirection, RequestMethod
 
-from tests.fixtures import BehaveFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from tests.fixtures import BehaveFixture
 
 
 def test_step_task_conditional_if(behave_fixture: BehaveFixture) -> None:
@@ -43,9 +47,8 @@ def test_step_task_conditional_if(behave_fixture: BehaveFixture) -> None:
     assert list(grizzly.scenario.tasks.tmp.conditional.tasks.keys()) == [True]
     assert len(grizzly.scenario.tasks.tmp.conditional.tasks[True]) == 4
 
-    with pytest.raises(AssertionError) as ae:
+    with pytest.raises(AssertionError, match='cannot create a new conditional while "conditional-1" is still open'):
         step_task_conditional_if(behave, '{{ value | int == 20 }}', 'conditional-2')
-    assert str(ae.value) == 'cannot create a new conditional while "conditional-1" is still open'
 
 
 def test_step_task_conditional_else(behave_fixture: BehaveFixture) -> None:
@@ -55,9 +58,8 @@ def test_step_task_conditional_else(behave_fixture: BehaveFixture) -> None:
 
     assert getattr(grizzly.scenario.tasks.tmp, 'conditional', '') is None
 
-    with pytest.raises(AssertionError) as ae:
+    with pytest.raises(AssertionError, match='there are no open conditional, you need to create one first'):
         step_task_conditional_else(behave)
-    assert str(ae.value) == 'there are no open conditional, you need to create one first'
 
     test_step_task_conditional_if(behave_fixture)
 
@@ -83,9 +85,8 @@ def test_step_task_conditional_end(behave_fixture: BehaveFixture) -> None:
 
     assert getattr(grizzly.scenario.tasks.tmp, 'conditional', '') is None
 
-    with pytest.raises(AssertionError) as ae:
+    with pytest.raises(AssertionError, match='there are no open conditional, you need to create one before closing it'):
         step_task_conditional_end(behave)
-    assert str(ae.value) == 'there are no open conditional, you need to create one before closing it'
 
     test_step_task_conditional_else(behave_fixture)
 

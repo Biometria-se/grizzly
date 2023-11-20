@@ -1,5 +1,8 @@
+"""Unit tests of grizzly.steps.setup."""
+from __future__ import annotations
+
 from os import environ
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import pytest
 
@@ -7,7 +10,8 @@ from grizzly.context import GrizzlyContext
 from grizzly.steps import *
 from grizzly.tasks import SetVariableTask
 
-from tests.fixtures import BehaveFixture, MockerFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from tests.fixtures import BehaveFixture, MockerFixture
 
 
 def test_step_setup_variable_value_ask(behave_fixture: BehaveFixture) -> None:
@@ -19,7 +23,7 @@ def test_step_setup_variable_value_ask(behave_fixture: BehaveFixture) -> None:
         assert f'TESTDATA_VARIABLE_{name}' not in environ
         assert name not in grizzly.state.variables
 
-        with pytest.raises(AssertionError):
+        with pytest.raises(AssertionError, match='variable "AtomicIntegerIncrementer.messageID" does not have a value'):
             step_setup_variable_value_ask(behave, name)
 
         assert name not in grizzly.state.variables
@@ -30,21 +34,20 @@ def test_step_setup_variable_value_ask(behave_fixture: BehaveFixture) -> None:
 
         assert int(grizzly.state.variables.get(name, None)) == 1337
 
-        with pytest.raises(AssertionError):
+        with pytest.raises(AssertionError, match='variable "AtomicIntegerIncrementer.messageID" has already been set'):
             step_setup_variable_value_ask(behave, name)
 
         environ['TESTDATA_VARIABLE_INCORRECT_QUOTED'] = '"incorrectly_quoted\''
 
-        with pytest.raises(AssertionError) as e:
+        with pytest.raises(AssertionError, match='incorrectly quoted'):
             step_setup_variable_value_ask(behave, 'INCORRECT_QUOTED')
-        assert 'incorrectly quoted' in str(e)
     finally:
-        for key in environ.keys():
+        for key in environ:
             if key.startswith('TESTDATA_VARIABLE_'):
                 del environ[key]
 
 
-def test_step_setup_variable_value(behave_fixture: BehaveFixture, mocker: MockerFixture) -> None:
+def test_step_setup_variable_value(behave_fixture: BehaveFixture, mocker: MockerFixture) -> None:  # noqa: PLR0915
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
@@ -71,16 +74,15 @@ def test_step_setup_variable_value(behave_fixture: BehaveFixture, mocker: Mocker
     step_setup_variable_value(behave, 'AtomicDate.test', '2021-04-13')
     assert grizzly.state.variables['AtomicDate.test'] == '2021-04-13'
 
-    with pytest.raises(AssertionError) as ae:
+    with pytest.raises(AssertionError, match='value contained variable "value" which has not been declared'):
         step_setup_variable_value(behave, 'dynamic_variable_value', '{{ value }}')
-    assert str(ae.value) == 'value contained variable "value" which has not been declared'
 
     grizzly.state.variables['value'] = 'hello world!'
     step_setup_variable_value(behave, 'dynamic_variable_value', '{{ value }}')
 
     assert grizzly.state.variables['dynamic_variable_value'] == 'hello world!'
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError, match=r'"error\' is incorrectly quoted'):
         step_setup_variable_value(behave, 'incorrectly_quoted', '"error\'')
 
     grizzly.state.persistent.update({'AtomicIntegerIncrementer.persistent': '10 | step=10, persist=True'})
@@ -109,9 +111,8 @@ def test_step_setup_variable_value(behave_fixture: BehaveFixture, mocker: Mocker
     assert task.variable == 'AtomicCsvWriter.output.bar'
     assert task.value == '{{ bar_value }}'
 
-    with pytest.raises(AssertionError) as ae:
+    with pytest.raises(AssertionError, match="No module named 'custom'"):
         step_setup_variable_value(behave, 'custom.variable.AtomicFooBar.value.foo', 'hello')
-    assert str(ae.value) == "No module named 'custom'"
 
     assert len(grizzly.scenario.tasks()) == 2
 

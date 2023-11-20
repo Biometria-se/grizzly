@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 
-import sys
-import subprocess
 import argparse
+import subprocess
+import sys
+from pathlib import Path
 
-from os import path, getcwd
 from packaging.version import Version
 
 
@@ -14,7 +14,7 @@ def _parse_arguments() -> argparse.Namespace:
     parser.add_argument(
         '--from-directory',
         type=str,
-        default=getcwd(),
+        default=Path.cwd(),
         required=False,
     )
 
@@ -25,14 +25,14 @@ def main() -> int:
     args = _parse_arguments()
 
     git_toplevel_dir = subprocess.check_output(
-        ['git', 'rev-parse', '--show-toplevel'],
+        ['git', 'rev-parse', '--show-toplevel'],  # noqa: S607
         cwd=args.from_directory,
     ).decode('utf-8').strip()
 
-    github_project_name = path.basename(git_toplevel_dir)
+    github_project_name = Path(git_toplevel_dir).name
 
     output = subprocess.check_output(
-        ['git', 'tag'],
+        ['git', 'tag'],  # noqa: S607
         cwd=args.from_directory,
     ).decode('utf-8').strip()
 
@@ -41,11 +41,11 @@ def main() -> int:
         tags.sort(reverse=True, key=Version)
 
     for index, previous_tag in enumerate(tags[1:], start=1):
-        previous_tag = f'v{previous_tag}'
+        previous_tag = f'v{previous_tag}'  # noqa: PLW2901
         current_tag = f'v{tags[index - 1]}'
         print(f'{github_project_name}: generating changelog for {current_tag} <- {previous_tag}', file=sys.stderr)
 
-        output = subprocess.check_output([
+        output = subprocess.check_output([  # noqa: S607
             'git',
             'log',
             f"{previous_tag}...{current_tag}",

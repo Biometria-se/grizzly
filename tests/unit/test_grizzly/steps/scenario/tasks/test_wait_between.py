@@ -1,8 +1,13 @@
-from typing import cast
+"""Unit tests of grizzly.steps.scenario.tasks.wait_between."""
+from __future__ import annotations
 
+from typing import TYPE_CHECKING, cast
+
+from grizzly.steps import step_task_wait_between_constant, step_task_wait_between_random
 from grizzly.tasks import WaitBetweenTask
-from grizzly.steps import step_task_wait_between_random, step_task_wait_between_constant
-from tests.fixtures import BehaveFixture
+
+if TYPE_CHECKING:  # pragma: no cover
+    from tests.fixtures import BehaveFixture
 
 
 def test_step_task_wait_between_random(behave_fixture: BehaveFixture) -> None:

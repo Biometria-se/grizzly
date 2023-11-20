@@ -47,12 +47,33 @@ def ANY(*cls: Type, message: Optional[str] = None) -> object:  # noqa: N802
             if message is None:
                 return f'<ANY({cls})>'
 
-            return f"<ANY({cls}, message='{message}')"
+            return f"<ANY({cls}, message='{message}')>"
 
     for c in cls:
         WrappedAny.register(c)
 
     return WrappedAny()
+
+def SOME(cls: Type, **values: Any) -> object:  # noqa: N802
+    class WrappedSome:
+        def __eq__(self, other: object) -> bool:
+            if issubclass(cls, dict):
+                return isinstance(other, cls) and all(other.get(attr) == value for attr, value in values.items())
+
+            return isinstance(other, cls) and all(getattr(other, attr) == value for attr, value in values.items())
+
+        def __ne__(self, other: object) -> bool:
+            return not self.__eq__(other)
+
+        def __neq__(self, other: object) -> bool:
+            return self.__ne__(other)
+
+        def __repr__(self) -> str:
+            info = ', '.join([f"{key}={value}" for key, value in values.items()])
+            return f'<SOME({cls}, {info})>'
+
+
+    return WrappedSome()
 
 
 def message_callback(environment: Environment, msg: Message) -> None:  # noqa: ARG001

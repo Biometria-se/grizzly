@@ -43,7 +43,7 @@ class TestServiceBusClientTask:
             RequestDirection.TO,
             'sb://my-sbns.servicebus.windows.net/queue:my-queue;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=',
             'test',
-            source='hello world!'
+            source='hello world!',
         )
 
         assert task.endpoint == 'sb://my-sbns.servicebus.windows.net/;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324='
@@ -84,7 +84,7 @@ class TestServiceBusClientTask:
             'endpoint': 'topic:my-topic, subscription:"my-subscription-{{ id }}", expression:$.hello.world',
             'consume': True,
             'message_wait': 300,
-            'content_type': 'JSON'
+            'content_type': 'JSON',
         }
         assert task.text == 'foobar'
         assert task.payload_variable == 'foobar'
@@ -116,7 +116,7 @@ class TestServiceBusClientTask:
             'endpoint': 'topic:my-topic, subscription:"my-subscription-{{ id }}", expression:$.hello.world',
             'consume': True,
             'message_wait': 300,
-            'content_type': 'JSON'
+            'content_type': 'JSON',
         }
         assert task.text == 'foobar'
         assert task.payload_variable == 'foobar'
@@ -303,7 +303,10 @@ class TestServiceBusClientTask:
 
         task = ServiceBusClientTask(
             RequestDirection.FROM,
-            "sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:'my-subscription-{{ id }}'/expression:'$.`this`[bar='foo' && bar='foo']';SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=",  # noqa: Q003
+            (
+                "sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:'my-subscription-{{ id }}'/expression:'$.`this`[bar='foo' && bar='foo']';"
+                "SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324="
+            ),
             'test',
         )
         task._text = '1=1'
@@ -342,7 +345,7 @@ class TestServiceBusClientTask:
             (
                 "sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:'my-subscription-{{ id }}'/"
                 "expression:'$.`this`[?bar='foo' & bar='foo']';SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324="
-            ),  # noqa: Q003
+            ),
             'test',
         )
         task._text = '1=1'
@@ -545,7 +548,7 @@ class TestServiceBusClientTask:
         # no variables
         task.payload_variable = None
 
-        assert task.get(parent) == (None, 'foobar',)
+        assert task.get(parent) == (None, 'foobar')
 
         request_mock.assert_called_once_with(state.parent, {
             'action': 'RECEIVE',
@@ -577,7 +580,7 @@ class TestServiceBusClientTask:
         task.metadata_variable = 'bazfoo'
         request_mock = mocker.patch.object(task, 'request', return_value={'metadata': {'x-foo-bar': 'hello'}, 'payload': 'foobar'})
 
-        assert task.get(parent) == ({'x-foo-bar': 'hello'}, 'foobar',)
+        assert task.get(parent) == ({'x-foo-bar': 'hello'}, 'foobar')
 
         request_mock.assert_called_once_with(state.parent, {
             'action': 'RECEIVE',
@@ -607,7 +610,7 @@ class TestServiceBusClientTask:
         request_mock = mocker.patch.object(task, 'request', return_value={'metadata': None, 'payload': 'foobar'})
 
         # inline source, no file
-        assert task.put(scenario) == (None, 'foobar',)
+        assert task.put(scenario) == (None, 'foobar')
 
         request_mock.assert_called_once_with(state.parent, {
             'action': 'SEND',
@@ -622,7 +625,7 @@ class TestServiceBusClientTask:
         task.source = '{{ foobar }}'
         scenario.user._context['variables'].update({'foobar': 'hello world'})
 
-        assert task.put(scenario) == (None, 'foobar',)
+        assert task.put(scenario) == (None, 'foobar')
 
         request_mock.assert_called_once_with(state.parent, {
             'action': 'SEND',
@@ -654,7 +657,7 @@ class TestServiceBusClientTask:
         (grizzly_fixture.test_context / 'source.j2.json').write_text('{{ foobar }}')
         task.source = '{{ filename }}'
 
-        assert task.put(scenario) == (None, 'foobar',)
+        assert task.put(scenario) == (None, 'foobar')
 
         request_mock.assert_called_once_with(state.parent, {
             'action': 'SEND',

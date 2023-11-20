@@ -1,17 +1,21 @@
-from typing import Optional
+"""End-to-end test of example/."""
+from __future__ import annotations
+
 from pathlib import Path
 from shutil import copytree
+from typing import TYPE_CHECKING, Optional
 
 import yaml
 
-from tests.fixtures import End2EndFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from tests.fixtures import End2EndFixture
 
 
-def test_e2e_example(e2e_fixture: End2EndFixture) -> None:
+def test_e2e_example(e2e_fixture: End2EndFixture) -> None:  # noqa: PLR0915
     try:
         result: Optional[str] = None
 
-        with open('example/environments/example.yaml') as env_yaml_file:
+        with Path('example/environments/example.yaml').open() as env_yaml_file:
             env_conf = yaml.full_load(env_yaml_file)
 
             for name in ['dog', 'cat', 'book']:
@@ -23,9 +27,9 @@ def test_e2e_example(e2e_fixture: End2EndFixture) -> None:
             example_root = e2e_fixture.root.parent / 'test-example'
             copytree(source, example_root, dirs_exist_ok=True)
 
-            with open(Path(example_root) / 'features' / 'steps' / 'steps.py', 'a') as fd:
+            with (Path(example_root) / 'features' / 'steps' / 'steps.py').open('a') as fd:
                 fd.write(
-                    e2e_fixture.step_start_webserver.format('/srv/grizzly')
+                    e2e_fixture.step_start_webserver.format('/srv/grizzly'),
                 )
 
             # create steps/webserver.py
@@ -42,7 +46,7 @@ def test_e2e_example(e2e_fixture: End2EndFixture) -> None:
             # should go last in "Background"-section
             feature_file_contents.insert(index - 1, f'    Then start webserver on master port "{e2e_fixture.webserver.port}"')
 
-            with open(feature_file, 'w') as fd:
+            with Path(feature_file).open('w') as fd:
                 fd.truncate(0)
                 fd.write('\n'.join(feature_file_contents))
         else:

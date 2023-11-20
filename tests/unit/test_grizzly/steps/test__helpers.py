@@ -255,7 +255,7 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
 
 
 @pytest.mark.parametrize('as_async', [False, True])
-def test_add_save_handler(behave_fixture: BehaveFixture, locust_fixture: LocustFixture, *, as_async: bool) -> None:
+def test_add_save_handler(behave_fixture: BehaveFixture, locust_fixture: LocustFixture, *, as_async: bool) -> None:  # noqa: PLR0915
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
     scenario = GrizzlyContextScenario(index=2, behave=behave_fixture.create_scenario('test scenario'))
@@ -266,7 +266,7 @@ def test_add_save_handler(behave_fixture: BehaveFixture, locust_fixture: LocustF
     user = TestUser(locust_fixture.environment)
 
     response = Response()
-    response._content = '{}'.encode('utf-8')
+    response._content = b'{}'
     response.status_code = 200
     response_context_manager = ResponseContextManager(response, None, None)
     response_context_manager._entered = True
@@ -280,7 +280,7 @@ def test_add_save_handler(behave_fixture: BehaveFixture, locust_fixture: LocustF
     assert len(user.context_variables) == 0
 
     # not preceeded by a request source
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match='variable "test-variable" has not been declared'):
         add_save_handler(grizzly, ResponseTarget.METADATA, '$.test.value', 'test', 'test-variable')
 
     assert len(user.context_variables) == 0
@@ -292,10 +292,10 @@ def test_add_save_handler(behave_fixture: BehaveFixture, locust_fixture: LocustF
 
     task = cast(RequestTask, tasks[0])
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match='variable "test-variable" has not been declared'):
         add_save_handler(grizzly, ResponseTarget.METADATA, '', 'test', 'test-variable')
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match='variable "test-variable-metadata" has not been declared'):
         add_save_handler(grizzly, ResponseTarget.METADATA, '$.test.value', '.*', 'test-variable-metadata')
 
     try:
@@ -307,7 +307,7 @@ def test_add_save_handler(behave_fixture: BehaveFixture, locust_fixture: LocustF
     finally:
         del grizzly.state.variables['test-variable-metadata']
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match='variable "test-variable-payload" has not been declared'):
         add_save_handler(grizzly, ResponseTarget.PAYLOAD, '$.test.value', '.*', 'test-variable-payload')
 
     try:
@@ -319,8 +319,8 @@ def test_add_save_handler(behave_fixture: BehaveFixture, locust_fixture: LocustF
     finally:
         del grizzly.state.variables['test-variable-payload']
 
-    metadata_handler = list(task.response.handlers.metadata)[0]
-    payload_handler = list(task.response.handlers.payload)[0]
+    metadata_handler = next(iter(task.response.handlers.metadata))
+    payload_handler = next(iter(task.response.handlers.payload))
 
     metadata_handler((TransformerContentType.JSON, {'test': {'value': 'metadata'}}), user, response_context_manager)
     assert response_context_manager._manual_result is None
@@ -378,22 +378,20 @@ def test_add_save_handler(behave_fixture: BehaveFixture, locust_fixture: LocustF
         assert handler.expected_matches == '-1'
         assert handler.as_json
 
-        with pytest.raises(ValueError) as ve:
+        with pytest.raises(ValueError, match='unsupported arguments foobar, hello'):
             add_save_handler(grizzly, ResponseTarget.PAYLOAD, '$.test.value | expected_matches=100, foobar=False, hello=world', '.*', 'test')
-        assert str(ve.value) == 'unsupported arguments foobar, hello'
 
         cast(RequestTask, tasks[-1]).response.content_type = TransformerContentType.UNDEFINED
 
-        with pytest.raises(ValueError) as ve:
+        with pytest.raises(ValueError, match='content type is not set for latest request'):
             add_save_handler(grizzly, ResponseTarget.PAYLOAD, '$.test.value | expected_matches=100', '.*', 'test')
-        assert str(ve.value) == 'content type is not set for latest request'
 
     finally:
         del grizzly.state.variables['test']
 
 
 @pytest.mark.parametrize('as_async', [False, True])
-def test_add_validation_handler(behave_fixture: BehaveFixture, locust_fixture: LocustFixture, as_async: bool) -> None:
+def test_add_validation_handler(behave_fixture: BehaveFixture, locust_fixture: LocustFixture, *, as_async: bool) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
     scenario = GrizzlyContextScenario(index=1, behave=behave_fixture.create_scenario('test scenario'))
@@ -404,7 +402,7 @@ def test_add_validation_handler(behave_fixture: BehaveFixture, locust_fixture: L
     user = TestUser(locust_fixture.environment)
 
     response = Response()
-    response._content = '{}'.encode('utf-8')
+    response._content = b'{}'
     response.status_code = 200
     response_context_manager = ResponseContextManager(response, None, None)
     response_context_manager._entered = True
@@ -416,7 +414,7 @@ def test_add_validation_handler(behave_fixture: BehaveFixture, locust_fixture: L
     assert len(tasks) == 0
 
     # not preceeded by a request source
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match='no request source has been added!'):
         add_validation_handler(grizzly, ResponseTarget.METADATA, '$.test.value', 'test', condition=False)
 
     # add request source
@@ -425,7 +423,7 @@ def test_add_validation_handler(behave_fixture: BehaveFixture, locust_fixture: L
     assert len(tasks) == 1
 
     # empty expression, fail
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match='expression is empty'):
         add_validation_handler(grizzly, ResponseTarget.METADATA, '', 'test', condition=False)
 
     # add metadata response handler
@@ -440,8 +438,8 @@ def test_add_validation_handler(behave_fixture: BehaveFixture, locust_fixture: L
     assert len(task.response.handlers.metadata) == 1
     assert len(task.response.handlers.payload) == 1
 
-    metadata_handler = list(task.response.handlers.metadata)[0]
-    payload_handler = list(task.response.handlers.payload)[0]
+    metadata_handler = next(iter(task.response.handlers.metadata))
+    payload_handler = next(iter(task.response.handlers.payload))
 
     # test that they validates
     metadata_handler((TransformerContentType.JSON, {'test': {'value': 'test'}}), user, response_context_manager)
@@ -469,9 +467,8 @@ def test_add_validation_handler(behave_fixture: BehaveFixture, locust_fixture: L
         assert response_context_manager._manual_result is None
 
     # add_validation_handler calling _add_response_handler incorrectly
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(ValueError, match='condition is not set'):
         _add_response_handler(grizzly, ResponseTarget.PAYLOAD, ResponseAction.VALIDATE, '$.test', 'value', condition=None)
-    assert 'condition is not set' in str(e)
 
 
 def test_normalize_step_name() -> None:
@@ -482,13 +479,11 @@ def test_normalize_step_name() -> None:
 
 
 def test_get_task_client_error(grizzly_fixture: GrizzlyFixture) -> None:
-    with pytest.raises(AssertionError) as ae:
+    with pytest.raises(AssertionError, match='could not find scheme in ""'):
         get_task_client(grizzly_fixture.grizzly, '')
-    assert 'could not find scheme in ""' == str(ae.value)
 
-    with pytest.raises(AssertionError) as ae:
+    with pytest.raises(AssertionError, match='no client task registered for obscure'):
         get_task_client(grizzly_fixture.grizzly, 'obscure://obscure.example.io')
-    assert 'no client task registered for obscure' == str(ae.value)
 
 
 @pytest.mark.parametrize('test_scheme', client.available.keys())

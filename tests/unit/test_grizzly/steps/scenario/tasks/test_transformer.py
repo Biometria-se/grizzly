@@ -1,14 +1,18 @@
-from typing import cast
+"""Unit tests of grizzly.steps.scenario.tasks.transformer."""
+from __future__ import annotations
+
 from json import dumps as jsondumps
+from typing import TYPE_CHECKING, cast
 
 import pytest
 
 from grizzly.context import GrizzlyContext
-from grizzly.tasks import TransformerTask
 from grizzly.steps import step_task_transform
+from grizzly.tasks import TransformerTask
 from grizzly_extras.transformer import TransformerContentType
 
-from tests.fixtures import BehaveFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from tests.fixtures import BehaveFixture
 
 
 def test_step_task_transform_json(behave_fixture: BehaveFixture) -> None:
@@ -16,7 +20,7 @@ def test_step_task_transform_json(behave_fixture: BehaveFixture) -> None:
     grizzly = cast(GrizzlyContext, behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
-    with pytest.raises(ValueError) as ve:
+    with pytest.raises(ValueError, match='TransformerTask: document_id has not been initialized'):
         step_task_transform(
             behave,
             jsondumps({
@@ -29,7 +33,6 @@ def test_step_task_transform_json(behave_fixture: BehaveFixture) -> None:
             '$.document.id',
             'document_id',
         )
-    assert 'TransformerTask: document_id has not been initialized' in str(ve)
 
     grizzly.state.variables['document_id'] = 'None'
     step_task_transform(
@@ -82,30 +85,29 @@ def test_step_task_transform_xml(behave_fixture: BehaveFixture) -> None:
     grizzly = cast(GrizzlyContext, behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
-    with pytest.raises(ValueError) as ve:
+    with pytest.raises(ValueError, match='TransformerTask: document_id has not been initialized'):
         step_task_transform(
             behave,
-            '''<?xml version="1.0" encoding="utf-8"?>
+            """<?xml version="1.0" encoding="utf-8"?>
 <document>
     <id>DOCUMENT_8483-1</id>
     <title>TPM Report 2022</title>
 </document>
-            ''',
+            """,
             TransformerContentType.XML,
             '/document/id/text()',
             'document_id',
         )
-    assert 'TransformerTask: document_id has not been initialized' in str(ve)
 
     grizzly.state.variables['document_id'] = 'None'
     step_task_transform(
         behave,
-        '''<?xml version="1.0" encoding="utf-8"?>
+        """<?xml version="1.0" encoding="utf-8"?>
 <document>
     <id>DOCUMENT_8483-1</id>
     <title>TPM Report 2022</title>
 </document>
-        ''',
+        """,
         TransformerContentType.XML,
         '/document/id/text()',
         'document_id',
@@ -121,12 +123,12 @@ def test_step_task_transform_xml(behave_fixture: BehaveFixture) -> None:
 
     step_task_transform(
         behave,
-        '''<?xml version="1.0" encoding="utf-8"?>
+        """<?xml version="1.0" encoding="utf-8"?>
 <document>
     <id>DOCUMENT_8483-1</id>
     <title>TPM Report {{ year }}</title>
 </document>
-        ''',
+        """,
         TransformerContentType.XML,
         '/document/id/text()',
         'document_id',
@@ -135,9 +137,9 @@ def test_step_task_transform_xml(behave_fixture: BehaveFixture) -> None:
     templates = grizzly.scenario.tasks()[-1].get_templates()
 
     assert len(templates) == 1
-    assert templates[-1] == '''<?xml version="1.0" encoding="utf-8"?>
+    assert templates[-1] == """<?xml version="1.0" encoding="utf-8"?>
 <document>
     <id>DOCUMENT_8483-1</id>
     <title>TPM Report {{ year }}</title>
 </document>
-        '''
+        """

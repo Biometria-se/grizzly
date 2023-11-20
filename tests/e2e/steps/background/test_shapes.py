@@ -68,7 +68,7 @@ def test_e2e_step_shapes_user_count(e2e_fixture: End2EndFixture, count: str) -> 
 def test_e2e_step_shapes_spawn_rate(e2e_fixture: End2EndFixture, rate: str) -> None:
     def validator(context: Context) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
-        data = list(context.table)[0].as_dict()
+        data = next(iter(context.table)).as_dict()
 
         spawn_rate = float(data['spawn_rate'].replace('{{ spawn_rate }}', '0.01'))
 
@@ -77,7 +77,7 @@ def test_e2e_step_shapes_spawn_rate(e2e_fixture: End2EndFixture, rate: str) -> N
     table: List[Dict[str, str]] = [
         {
             'spawn_rate': str(rate),
-        }
+        },
     ]
 
     e2e_fixture.add_validator(validator, table=table)
@@ -90,7 +90,8 @@ def test_e2e_step_shapes_spawn_rate(e2e_fixture: End2EndFixture, rate: str) -> N
         testdata = {'spawn_rate': '0.001'}
 
     feature_file = e2e_fixture.test_steps(
-        background=background + [
+        background=[
+            *background,
             f'Given spawn rate is "{rate}" users per second',
         ],
         identifier=rate,

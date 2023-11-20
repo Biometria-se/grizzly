@@ -1,19 +1,23 @@
-from typing import List, cast
+"""End-to-end tests of grizzly.auth.aad."""
+from __future__ import annotations
+
 from textwrap import dedent
+from typing import TYPE_CHECKING, Any, List, cast
 
 import pytest
 
-from grizzly.types.behave import Context, Feature
 from grizzly.context import GrizzlyContext
 
-from tests.fixtures import End2EndFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.types.behave import Context
+    from tests.fixtures import End2EndFixture
 
 
 def test_e2e_auth(e2e_fixture: End2EndFixture) -> None:
     if e2e_fixture._distributed:
         pytest.skip('telling the webserver what to expected auth-wise is not as simple when running dist, compare to running local')
 
-    def after_feature(context: Context, feature: Feature) -> None:
+    def after_feature(context: Context, *_args: Any, **_kwargs: Any) -> None:
         from grizzly.locust import on_master
         if on_master(context):
             return
@@ -23,14 +27,14 @@ def test_e2e_auth(e2e_fixture: End2EndFixture) -> None:
         stats = grizzly.state.locust.environment.stats
 
         expectations = [
-            ('001 AAD OAuth2 user token v1.0', 'AUTH', 0, 1,),
-            ('001 RestApi auth', 'SCEN', 0, 1,),
-            ('001 RestApi auth', 'TSTD', 0, 1,),
-            ('001 restapi-echo', 'GET', 0, 1,),
-            ('002 AAD OAuth2 user token v1.0', 'AUTH', 0, 1,),
-            ('002 HttpClientTask auth', 'SCEN', 0, 1,),
-            ('002 HttpClientTask auth', 'TSTD', 0, 1,),
-            ('002 httpclient-echo', 'CLTSK', 0, 1,),
+            ('001 AAD OAuth2 user token v1.0', 'AUTH', 0, 1),
+            ('001 RestApi auth', 'SCEN', 0, 1),
+            ('001 RestApi auth', 'TSTD', 0, 1),
+            ('001 restapi-echo', 'GET', 0, 1),
+            ('002 AAD OAuth2 user token v1.0', 'AUTH', 0, 1),
+            ('002 HttpClientTask auth', 'SCEN', 0, 1),
+            ('002 HttpClientTask auth', 'TSTD', 0, 1),
+            ('002 httpclient-echo', 'CLTSK', 0, 1),
         ]
 
         for name, method, expected_num_failures, expected_num_requests in expectations:
@@ -49,7 +53,7 @@ def test_e2e_auth(e2e_fixture: End2EndFixture) -> None:
         'token': 'foobar',
         'headers': {
             'x-subscription': 'foobar',
-        }
+        },
     }
 
     def add_metadata() -> str:
@@ -63,7 +67,7 @@ def test_e2e_auth(e2e_fixture: End2EndFixture) -> None:
         return '\n'.join(steps)
 
     try:
-        feature_file = e2e_fixture.create_feature(dedent(f'''Feature: test auth
+        feature_file = e2e_fixture.create_feature(dedent(f"""Feature: test auth
         Background: common configuration
             Given "2" users
             And spawn rate is "2" users per second
@@ -85,7 +89,7 @@ def test_e2e_auth(e2e_fixture: End2EndFixture) -> None:
             And repeat for "1" iterations
             Then get "http://{e2e_fixture.host}/api/echo" with name "httpclient-echo" and save response payload in "foobar"
             {add_metadata()}
-        '''))
+        """))
 
         rc, _ = e2e_fixture.execute(feature_file)
 

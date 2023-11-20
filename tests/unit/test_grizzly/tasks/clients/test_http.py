@@ -1,24 +1,29 @@
-from typing import cast
-from json import dumps as jsondumps, loads as jsonloads
-from itertools import cycle
-from os import environ
+"""Unit tests of grizzly.tasks.clients.http."""
+from __future__ import annotations
+
 from contextlib import suppress
+from itertools import cycle
+from json import dumps as jsondumps
+from json import loads as jsonloads
+from os import environ
+from typing import TYPE_CHECKING, cast
 
 import pytest
-
-from pytest_mock import MockerFixture
 from requests import Response
 from requests.structures import CaseInsensitiveDict
 
-from grizzly_extras.transformer import TransformerContentType
 from grizzly.context import GrizzlyContext
-from grizzly.tasks.clients import HttpClientTask
 from grizzly.exceptions import RestartScenario
+from grizzly.tasks.clients import HttpClientTask
 from grizzly.types import RequestDirection
-from grizzly.types.locust import StopUser, CatchResponseError
-
-from tests.fixtures import GrizzlyFixture
+from grizzly.types.locust import CatchResponseError, StopUser
+from grizzly_extras.transformer import TransformerContentType
 from tests.helpers import ANY
+
+if TYPE_CHECKING:  # pragma: no cover
+    from pytest_mock import MockerFixture
+
+    from tests.fixtures import GrizzlyFixture
 
 
 class TestHttpClientTask:
@@ -49,7 +54,7 @@ class TestHttpClientTask:
         assert task_factory._context.get('test', None) == 'was here'
 
     @pytest.mark.parametrize('log_prefix', [False, True])
-    def test_get(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture, *, log_prefix: bool) -> None:
+    def test_get(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture, *, log_prefix: bool) -> None:  # noqa: PLR0915
         try:
             if log_prefix:
                 environ['GRIZZLY_LOG_DIR'] = 'foobar'
@@ -58,16 +63,16 @@ class TestHttpClientTask:
             grizzly = cast(GrizzlyContext, behave.grizzly)
             test_cls = type('HttpClientTestTask', (HttpClientTask, ), {'__scenario__': grizzly.scenario})
 
-            with pytest.raises(AttributeError, match='HttpClientTestTask: variable argument is not applicable for direction TO') as ae:
+            with pytest.raises(AttributeError, match='HttpClientTestTask: variable argument is not applicable for direction TO'):
                 test_cls(RequestDirection.TO, 'http://example.org', payload_variable='test')
 
-            with pytest.raises(AttributeError, match='HttpClientTestTask: source argument is not applicable for direction FROM') as ae:
+            with pytest.raises(AttributeError, match='HttpClientTestTask: source argument is not applicable for direction FROM'):
                 test_cls(RequestDirection.FROM, 'http://example.org', source='test')
 
-            with pytest.raises(ValueError, match='HttpClientTestTask: variable test has not been initialized') as ve:
+            with pytest.raises(ValueError, match='HttpClientTestTask: variable test has not been initialized'):
                 test_cls(RequestDirection.FROM, 'http://example.org', payload_variable='test')
 
-            with pytest.raises(ValueError, match='HttpClientTestTask: variable test has not been initialized') as ve:
+            with pytest.raises(ValueError, match='HttpClientTestTask: variable test has not been initialized'):
                 test_cls(RequestDirection.FROM, 'http://example.org', payload_variable=None, metadata_variable='test')
 
             response = Response()
@@ -77,7 +82,7 @@ class TestHttpClientTask:
 
             requests_get_spy = mocker.patch(
                 'grizzly.tasks.clients.http.requests.get',
-                side_effect=[response, RuntimeError, RuntimeError, RuntimeError, RuntimeError, response, response, response, response]
+                side_effect=[response, RuntimeError, RuntimeError, RuntimeError, RuntimeError, response, response, response, response],
             )
 
             grizzly.state.variables.update({'test': 'none'})
@@ -100,8 +105,7 @@ class TestHttpClientTask:
 
             assert callable(task)
 
-            assert parent.user._context['variables'].get('test_payload', None) is None
-            assert parent.user._context['variables'].get('test_metadata', None) is None
+            assert parent.user._context['variables'] == {}
             assert task_factory._context.get('test', None) is None
 
             task_factory.name = 'test-1'
@@ -111,8 +115,7 @@ class TestHttpClientTask:
             task(parent)
 
             assert task_factory._context.get('test', None) == 'was here'
-            assert parent.user._context['variables'].get('test_payload', None) is None
-            assert parent.user._context['variables'].get('test_metadata', None) is None
+            assert parent.user._context['variables'] == {}
             requests_get_spy.assert_called_once_with(
                 'http://example.org',
                 headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}'},
@@ -316,7 +319,7 @@ class TestHttpClientTask:
             request_fire_spy.reset_mock()
             assert len(list(task_factory.log_dir.rglob('**/*'))) == 6
 
-            with pytest.raises(NotImplementedError, match='HttpClientTestTask has not implemented support for step text') as nie:
+            with pytest.raises(NotImplementedError, match='HttpClientTestTask has not implemented support for step text'):
                 test_cls(
                     RequestDirection.FROM,
                     'https://$conf::test.host$/api/test | verify=True, content_type=json',

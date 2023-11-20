@@ -88,7 +88,7 @@ class TestDateTask:
 
         task_factory.arguments.update({'offset': None, 'timezone': 'DisneyWorld/Ankeborg'})
 
-        with pytest.raises(ValueError, match=r'"DisnetWorld\/Ankeborg" is not a valid time zone'):
+        with pytest.raises(ValueError, match='"DisneyWorld/Ankeborg" is not a valid time zone'):
             task(parent)
 
         task_factory = DateTask('date_variable', 'asdf | timezone=UTC, offset=-22Y2M3D, format="%-d/%-m %y %H:%M:%S"')

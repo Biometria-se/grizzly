@@ -1,36 +1,32 @@
-import logging
+"""Unit tests of grizzly.listeners.appinsights."""
+from __future__ import annotations
 
-from typing import Callable, Dict, Any, Optional
+import logging
+from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
 
 import pytest
-
-from opencensus.ext.azure.log_exporter import AzureLogHandler
-from pytest_mock import MockerFixture
-from _pytest.logging import LogCaptureFixture
 
 from grizzly.listeners.appinsights import ApplicationInsightsListener
 from grizzly.types.locust import CatchResponseError
 
-from tests.fixtures import LocustFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from _pytest.logging import LogCaptureFixture
+    from pytest_mock import MockerFixture
+
+    from tests.fixtures import LocustFixture
 
 
-@pytest.fixture
+@pytest.fixture()
 def patch_azureloghandler(mocker: MockerFixture) -> Callable[[], None]:
     def wrapper() -> None:
-        def AzureLogHandler__init__(self: AzureLogHandler, connection_string: str) -> None:
-            pass
-
         mocker.patch(
             'opencensus.ext.azure.log_exporter.AzureLogHandler.__init__',
-            AzureLogHandler__init__,
+            return_value=None,
         )
-
-        def AzureLogHandler_flush(self: AzureLogHandler) -> None:
-            pass
 
         mocker.patch(
             'opencensus.ext.azure.log_exporter.BaseLogHandler.flush',
-            AzureLogHandler_flush,
+            return_value=None,
         )
 
     return wrapper
@@ -44,13 +40,11 @@ class TestAppInsightsListener:
         # fire_deprecated_request_handlers is already an internal event handler for the request event
         assert len(locust_fixture.environment.events.request._handlers) == 1
 
-        with pytest.raises(AssertionError) as ae:
+        with pytest.raises(AssertionError, match='IngestionEndpoint was neither set as the hostname or in the query string'):
             ApplicationInsightsListener(locust_fixture.environment, '?')
-        assert 'IngestionEndpoint was neither set as the hostname or in the query string' in str(ae)
 
-        with pytest.raises(AssertionError) as ae:
+        with pytest.raises(AssertionError, match='InstrumentationKey not found in'):
             ApplicationInsightsListener(locust_fixture.environment, '?IngestionEndpoint=insights.test.com')
-        assert 'InstrumentationKey not found in' in str(ae)
 
         try:
             listener = ApplicationInsightsListener(locust_fixture.environment, '?IngestionEndpoint=insights.test.com&InstrumentationKey=asdfasdfasdfasdf')
@@ -75,15 +69,15 @@ class TestAppInsightsListener:
         patch_azureloghandler()
 
         def generate_logger_info(
-            request_type: str, name: str, response_time: float, response_length: int, exception: Optional[Any] = None
+            request_type: str, name: str, response_time: float, response_length: int, exception: Optional[Any] = None,
         ) -> Callable[[logging.Handler, str, Dict[str, Any]], None]:
             result = 'Success' if exception is None else 'Failure'
             expected_message = f'{result}: {request_type} {name} Response time: {int(round(response_time, 0))} Number of Threads: {""}'
 
             if exception is not None:
-                expected_message = f'{expected_message} Exception: {str(exception)}'
+                expected_message = f'{expected_message} Exception: {exception!s}'
 
-            def logger_info(self: logging.Handler, msg: str, extra: Dict[str, Any]) -> None:
+            def logger_info(_: logging.Handler, msg: str, extra: Dict[str, Any]) -> None:
                 assert msg == expected_message
                 assert extra is not None
                 custom_dimensions = extra.get('custom_dimensions', None)
@@ -127,23 +121,24 @@ class TestAppInsightsListener:
             listener = ApplicationInsightsListener(locust_fixture.environment, 'https://insights.test.com?InstrumentationKey=asdfasdfasdfasdf')
 
             expected_keys = [
-                'thread_count', 'target_user_count', 'spawn_rate', 'method', 'result', 'response_time', 'response_length', 'endpoint', 'testplan', 'exception'
+                'thread_count', 'target_user_count', 'spawn_rate', 'method', 'result', 'response_time', 'response_length', 'endpoint', 'testplan', 'exception',
             ]
 
             custom_dimensions = listener._create_custom_dimensions_dict('GET', 'Success', 133, 200, '/api/v1/test')
 
-            for key in custom_dimensions.keys():
-                assert key in expected_keys
-
-            for key in expected_keys:
-                assert key in custom_dimensions
-
-            assert custom_dimensions.get('method', None) == 'GET'
-            assert custom_dimensions.get('result', None) == 'Success'
-            assert custom_dimensions.get('response_time', None) == 133
-            assert custom_dimensions.get('response_length', None) == 200
-            assert custom_dimensions.get('endpoint', None) == '/api/v1/test'
-            assert custom_dimensions.get('testplan', None) == 'appinsightstestplan'
+            assert sorted(expected_keys) == sorted(custom_dimensions.keys())
+            assert custom_dimensions == {
+                'method': 'GET',
+                'result': 'Success',
+                'response_time': 133,
+                'response_length': 200,
+                'endpoint': '/api/v1/test',
+                'testplan': 'appinsightstestplan',
+                'exception': 'None',
+                'spawn_rate': '',
+                'target_user_count': '0',
+                'thread_count': '0',
+            }
         finally:
             locust_fixture.environment.events.request._handlers.pop()
 
@@ -157,11 +152,7 @@ class TestAppInsightsListener:
 
             runner_values = listener._safe_return_runner_values()
 
-            for key in runner_values.keys():
-                assert key in expected_keys
-
-            for key in expected_keys:
-                assert key in runner_values
+            assert sorted(runner_values.keys()) == sorted(expected_keys)
 
             assert runner_values.get('thread_count', None) == '0'
             assert runner_values.get('target_user_count', None) == '0'

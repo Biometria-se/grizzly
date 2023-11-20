@@ -1,12 +1,17 @@
-from typing import cast
+"""Unit tests of grizzly.steps.scenario.user."""
+from __future__ import annotations
+
+from contextlib import suppress
 from os import environ
+from typing import TYPE_CHECKING, cast
 
 import pytest
 
-from grizzly.steps import *
 from grizzly.context import GrizzlyContext
+from grizzly.steps import *
 
-from tests.fixtures import BehaveFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from tests.fixtures import BehaveFixture
 
 
 def test_step_user_type(behave_fixture: BehaveFixture) -> None:
@@ -41,10 +46,8 @@ def test_step_user_type(behave_fixture: BehaveFixture) -> None:
         step_user_type(behave, 'RestApi', '$env::TARGET_HOST$')
         assert grizzly.scenario.context['host'] == 'http://host.docker.internal'
     finally:
-        try:
+        with suppress(KeyError):
             del environ['TARGET_HOST']
-        except KeyError:
-            pass
 
     grizzly.state.configuration['target.host'] = 'http://conf.example.io'
     step_user_type(behave, 'RestApi', '$conf::target.host$')
@@ -72,13 +75,13 @@ def test_step_user_type_with_weight(behave_fixture: BehaveFixture) -> None:
     assert grizzly.scenario.user.weight == 2
     assert grizzly.scenario.context['host'] == 'http://localhost:8000'
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError, match='weight value -1 resolved to -1, which is not valid'):
         step_user_type_with_weight(behave, 'RestApi', '-1', 'http://localhost:8000')
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError, match='weight value 0 resolved to 0, which is not valid'):
         step_user_type_with_weight(behave, 'RestApi', '0', 'http://localhost:8000')
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError, match='value contained variable "weight" which has not been declared'):
         step_user_type_with_weight(behave, 'RestApi', '{{ weight }}', 'http://localhost:8000')
 
     grizzly.state.variables['weight'] = 3
@@ -86,5 +89,5 @@ def test_step_user_type_with_weight(behave_fixture: BehaveFixture) -> None:
     assert grizzly.scenario.user.weight == 3
 
     grizzly.state.variables['weight'] = 0
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError, match='weight value {{ weight }} resolved to 0, which is not valid'):
         step_user_type_with_weight(behave, 'RestApi', '{{ weight }}', 'http://localhost:8000')

@@ -1,36 +1,37 @@
+"""Unit tests of grizzly.tasks.clients.messagequeue."""
+from __future__ import annotations
+
+import logging
 import subprocess
 import sys
-import logging
-
+from contextlib import suppress
 from os import environ
-from typing import Optional, Dict, Any, List
 from pathlib import Path
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 import pytest
-
-from _pytest.tmpdir import TempPathFactory
-from _pytest.logging import LogCaptureFixture
-from pytest_mock import MockerFixture
-
 import zmq.green as zmq
 from zmq.error import Again as ZMQAgain
 
+from grizzly.exceptions import RestartScenario
+from grizzly.scenarios import IteratorScenario
 from grizzly.tasks.clients import MessageQueueClientTask
 from grizzly.types import RequestDirection, pymqi
-from grizzly.scenarios import IteratorScenario
-from grizzly.exceptions import RestartScenario
 from grizzly_extras.async_message import AsyncMessageError
+from tests.helpers import ANY
 
-from tests.fixtures import GrizzlyFixture, NoopZmqFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from _pytest.logging import LogCaptureFixture
+    from pytest_mock import MockerFixture
+
+    from tests.fixtures import GrizzlyFixture, NoopZmqFixture
 
 
 class TestMessageQueueClientTaskNoPymqi:
     def test_no_pymqi_dependencies(self) -> None:
         env = environ.copy()
-        try:
+        with suppress(KeyError):
             del env['LD_LIBRARY_PATH']
-        except KeyError:
-            pass
 
         env['PYTHONPATH'] = '.'
 
@@ -107,9 +108,8 @@ class TestMessageQueueClientTask:
             assert task_factory.source is None
             assert not hasattr(task_factory, 'scenario')
 
-            with pytest.raises(NotImplementedError) as nie:
+            with pytest.raises(NotImplementedError, match='MessageQueueClientTask has not implemented support for step text'):
                 MessageQueueClientTask(RequestDirection.FROM, 'mqs://localhost:1', 'messagequeue-request', text='foobar')
-            assert str(nie.value) == 'MessageQueueClientTask has not implemented support for step text'
         finally:
             if zmq_context is not None:
                 zmq_context.destroy()
@@ -137,7 +137,7 @@ class TestMessageQueueClientTask:
                 'channel': 'IN.CHAN',
                 'username': 'mq_username',
                 'password': 'mq_password',
-                'key_file': '/tmp/mq_keys',
+                'key_file': '/tmp/mq_keys',  # noqa: S108
                 'cert_label': 'something',
                 'ssl_cipher': 'NUL',
                 'message_wait': 133,
@@ -146,34 +146,28 @@ class TestMessageQueueClientTask:
             }
 
             task_factory.endpoint = 'https://mq.example.com'
-            with pytest.raises(ValueError) as ve:
+            with pytest.raises(ValueError, match='MessageQueueClientTask: "https" is not a supported scheme for endpoint'):
                 task_factory.create_context()
-            assert str(ve.value) == 'MessageQueueClientTask: "https" is not a supported scheme for endpoint'
 
             task_factory.endpoint = 'mqs:///'
-            with pytest.raises(ValueError) as ve:
+            with pytest.raises(ValueError, match='MessageQueueClientTask: hostname not specified in "mqs:///"'):
                 task_factory.create_context()
-            assert str(ve.value) == 'MessageQueueClientTask: hostname not specified in "mqs:///"'
 
             task_factory.endpoint = 'mq://mq.example.io'
-            with pytest.raises(ValueError) as ve:
+            with pytest.raises(ValueError, match='MessageQueueClientTask: no valid path component found in "mq://mq.example.io"'):
                 task_factory.create_context()
-            assert str(ve.value) == 'MessageQueueClientTask: no valid path component found in "mq://mq.example.io"'
 
             task_factory.endpoint = 'mqs://mq.example.io/topic:INCOMING.MSG'
-            with pytest.raises(ValueError) as ve:
+            with pytest.raises(ValueError, match='MessageQueueClientTask: QueueManager and Channel must be specified in the query string of "mqs://mq.example.io/topic:INCOMING.MSG"'):
                 task_factory.create_context()
-            assert str(ve.value) == 'MessageQueueClientTask: QueueManager and Channel must be specified in the query string of "mqs://mq.example.io/topic:INCOMING.MSG"'
 
             task_factory.endpoint = 'mqs://mq.example.io/topic:INCOMING.MSG?Channel=TCP.IN'
-            with pytest.raises(ValueError) as ve:
+            with pytest.raises(ValueError, match='MessageQueueClientTask: QueueManager must be specified in the query string'):
                 task_factory.create_context()
-            assert str(ve.value) == 'MessageQueueClientTask: QueueManager must be specified in the query string'
 
             task_factory.endpoint = 'mqs://mq.example.io/topic:INCOMING.MSG?QueueManager=QM01'
-            with pytest.raises(ValueError) as ve:
+            with pytest.raises(ValueError, match='MessageQueueClientTask: Channel must be specified in the query string'):
                 task_factory.create_context()
-            assert str(ve.value) == 'MessageQueueClientTask: Channel must be specified in the query string'
 
             task_factory.endpoint = 'mq://mq.example.io/topic:INCOMING.MSG?QueueManager=QM01&Channel=TCP.IN'
             task_factory.create_context()
@@ -201,7 +195,7 @@ class TestMessageQueueClientTask:
                 'channel': 'TCP.IN',
                 'username': None,
                 'password': None,
-                'key_file': '/tmp/mq_keys',
+                'key_file': '/tmp/mq_keys',  # noqa: S108
                 'cert_label': None,
                 'ssl_cipher': 'ECDHE_RSA_AES_256_GCM_SHA384',
                 'message_wait': None,
@@ -306,7 +300,7 @@ class TestMessageQueueClientTask:
             if zmq_context is not None:
                 zmq_context.destroy()
 
-    def test_connect(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
+    def test_connect(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:  # noqa: PLR0915
         noop_zmq('grizzly.tasks.clients.messagequeue')
 
         zmq_context: Optional[zmq.Context] = None
@@ -324,16 +318,13 @@ class TestMessageQueueClientTask:
                 recv_json_mock.side_effect = [ZMQAgain, None]
 
                 meta: Dict[str, Any] = {}
-                with pytest.raises(AsyncMessageError) as ame:
+                with pytest.raises(AsyncMessageError, match='no response'):
                     task_factory.connect(111111, client, meta)
-                assert str(ame.value) == 'no response'
                 assert meta.get('response_length', None) == 0
                 assert meta.get('action', None) == 'topic:INCOMING.MSG'
                 assert meta.get('direction', None) == '<->'
 
-                assert send_json_mock.call_count == 1
-                args, kwargs = send_json_mock.call_args_list[-1]
-                assert args == ({
+                send_json_mock.assert_called_once_with({
                     'action': 'CONN',
                     'client': 111111,
                     'context': {
@@ -350,8 +341,7 @@ class TestMessageQueueClientTask:
                         'heartbeat_interval': None,
                         'header_type': None,
                     },
-                },)
-                assert kwargs == {}
+                })
                 assert recv_json_mock.call_count == 2
                 _, kwargs = recv_json_mock.call_args_list[-1]
                 assert kwargs.get('flags', None) == zmq.NOBLOCK
@@ -360,9 +350,8 @@ class TestMessageQueueClientTask:
                 message = {'success': False, 'message': 'unknown error yo'}
                 recv_json_mock.side_effect = [message]
 
-                with pytest.raises(AsyncMessageError) as ame:
+                with pytest.raises(AsyncMessageError, match='unknown error yo'):
                     task_factory.connect(222222, client, meta)
-                assert str(ame.value) == 'unknown error yo'
 
                 assert send_json_mock.call_count == 2
                 assert recv_json_mock.call_count == 3
@@ -398,10 +387,8 @@ class TestMessageQueueClientTask:
 
                 task_factory.connect(444444, client, meta)
 
-                assert send_json_mock.call_count == 1
-                assert recv_json_mock.call_count == 1
-                args, kwargs = send_json_mock.call_args_list[-1]
-                assert args == ({
+                recv_json_mock.assert_called_once()
+                send_json_mock.assert_called_once_with({
                     'action': 'CONN',
                     'client': 444444,
                     'context': {
@@ -418,13 +405,12 @@ class TestMessageQueueClientTask:
                         'heartbeat_interval': None,
                         'header_type': 'rfh2',
                     },
-                },)
-                assert kwargs == {}
+                })
         finally:
             if zmq_context is not None:
                 zmq_context.destroy()
 
-    def test_get(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture) -> None:
+    def test_get(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture) -> None:  # noqa: PLR0915
         noop_zmq('grizzly.tasks.clients.messagequeue')
 
         parent = grizzly_fixture(scenario_type=IteratorScenario)
@@ -484,18 +470,18 @@ class TestMessageQueueClientTask:
                 'payload': None,
             },)
             assert kwargs == {}
+            send_json_mock.reset_mock()
             assert recv_json_mock.call_count == 3
 
-            assert fire_spy.call_count == 1
-            _, kwargs = fire_spy.call_args_list[-1]  # get
-            assert kwargs.get('request_type', None) == 'CLTSK'
-            assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} MessageQueue<-topic:INCOMING.MSG'
-            assert kwargs.get('response_time', None) >= 0.0
-            assert kwargs.get('response_length', None) == 0
-            assert kwargs.get('context', None) == parent.user._context
-            exception = kwargs.get('exception', None)
-            assert isinstance(exception, AsyncMessageError)
-            assert str(exception) == 'no response'
+            fire_spy.assert_called_once_with(
+                request_type='CLTSK',
+                name=f'{parent.user._scenario.identifier} MessageQueue<-topic:INCOMING.MSG',
+                response_time=ANY(int),
+                response_length=0,
+                context=parent.user._context,
+                exception=ANY(AsyncMessageError, message='no response'),
+            )
+            fire_spy.reset_mock()
 
             messages = [{'success': False, 'message': 'memory corruption'}]
             recv_json_mock.side_effect = messages
@@ -509,9 +495,7 @@ class TestMessageQueueClientTask:
 
             assert parent.user._context['variables'].get('mq-client-var', None) is None
             assert parent.user._context['variables'].get('mq-client-metadata', None) is None
-            assert send_json_mock.call_count == 3
-            args, kwargs = send_json_mock.call_args_list[-1]
-            assert args == ({
+            send_json_mock.assert_called_once_with({
                 'action': 'GET',
                 'worker': 'dddd-eeee-ffff-9999',
                 'client': id(parent.user),
@@ -531,20 +515,19 @@ class TestMessageQueueClientTask:
                     'endpoint': 'topic:INCOMING.MSG, max_message_size:13337',
                 },
                 'payload': None,
-            },)
-            assert kwargs == {}
+            })
+            send_json_mock.reset_mock()
             assert recv_json_mock.call_count == 4
 
-            assert fire_spy.call_count == 2
-            _, kwargs = fire_spy.call_args_list[-1]
-            assert kwargs.get('request_type', None) == 'CLTSK'
-            assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} MessageQueue<-topic:INCOMING.MSG'
-            assert kwargs.get('response_time', None) >= 0.0
-            assert kwargs.get('response_length', None) == 0
-            assert kwargs.get('context', None) == parent.user._context
-            exception = kwargs.get('exception', None)
-            assert isinstance(exception, AsyncMessageError)
-            assert str(exception) == 'memory corruption'
+            fire_spy.assert_called_once_with(
+                request_type='CLTSK',
+                name=f'{parent.user._scenario.identifier} MessageQueue<-topic:INCOMING.MSG',
+                response_time=ANY(int),
+                response_length=0,
+                context=parent.user._context,
+                exception=ANY(AsyncMessageError, message='memory corruption'),
+            )
+            fire_spy.reset_mock()
 
             messages = [{'success': True, 'payload': None}]
             recv_json_mock.side_effect = messages
@@ -553,19 +536,19 @@ class TestMessageQueueClientTask:
 
             assert parent.user._context['variables'].get('mq-client-var', None) is None
             assert parent.user._context['variables'].get('mq-client-metadata', None) is None
-            assert send_json_mock.call_count == 4
+            assert send_json_mock.call_count == 1
+            send_json_mock.reset_mock()
             assert recv_json_mock.call_count == 5
 
-            assert fire_spy.call_count == 3
-            _, kwargs = fire_spy.call_args_list[-1]
-            assert kwargs.get('request_type', None) == 'CLTSK'
-            assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} MessageQueue<-topic:INCOMING.MSG'
-            assert kwargs.get('response_time', None) >= 0.0
-            assert kwargs.get('response_length', None) == 0
-            assert kwargs.get('context', None) == parent.user._context
-            exception = kwargs.get('exception', None)
-            assert isinstance(exception, RuntimeError)
-            assert str(exception) == 'response did not contain any payload'
+            fire_spy.assert_called_once_with(
+                request_type='CLTSK',
+                name=f'{parent.user._scenario.identifier} MessageQueue<-topic:INCOMING.MSG',
+                response_time=ANY(int),
+                response_length=0,
+                context=parent.user._context,
+                exception=ANY(RuntimeError, message='response did not contain any payload'),
+            )
+            fire_spy.reset_mock()
 
             messages = [{'success': True, 'payload': '{"hello": "world", "foo": "bar"}', 'metadata': {'x-foo-bar': 'test'}}]
             recv_json_mock.side_effect = messages
@@ -576,17 +559,19 @@ class TestMessageQueueClientTask:
 
             assert parent.user._context['variables'].get('mq-client-var', None) == '{"hello": "world", "foo": "bar"}'
             assert parent.user._context['variables'].get('mq-client-metadata', None) == '{"x-foo-bar": "test"}'
-            assert send_json_mock.call_count == 5
+            assert send_json_mock.call_count == 1
+            send_json_mock.reset_mock()
             assert recv_json_mock.call_count == 6
 
-            assert fire_spy.call_count == 4
-            _, kwargs = fire_spy.call_args_list[-1]
-            assert kwargs.get('request_type', None) == 'CLTSK'
-            assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} mq-get-example'
-            assert kwargs.get('response_time', None) >= 0.0
-            assert kwargs.get('response_length', None) == len(messages[0].get('payload', ''))
-            assert kwargs.get('context', None) == parent.user._context
-            assert kwargs.get('exception', RuntimeError) is None
+            fire_spy.assert_called_once_with(
+                request_type='CLTSK',
+                name=f'{parent.user._scenario.identifier} mq-get-example',
+                response_time=ANY(int),
+                response_length=32,
+                context=parent.user._context,
+                exception=None,
+            )
+            fire_spy.reset_mock()
 
             async_message_request_mock = mocker.patch('grizzly.tasks.clients.messagequeue.async_message_request', side_effect=[AsyncMessageError('oooh nooo')])
             parent.user._scenario.failure_exception = RestartScenario
@@ -613,7 +598,7 @@ class TestMessageQueueClientTask:
             if zmq_context is not None:
                 zmq_context.destroy()
 
-    def test_put(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture, tmp_path_factory: TempPathFactory) -> None:
+    def test_put(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture) -> None:
         noop_zmq('grizzly.tasks.clients.messagequeue')
 
         parent = grizzly_fixture()
@@ -626,25 +611,23 @@ class TestMessageQueueClientTask:
         try:
             MessageQueueClientTask.__scenario__ = grizzly_fixture.grizzly.scenario
 
-            with pytest.raises(ValueError) as ve:
+            with pytest.raises(ValueError, match='MessageQueueClientTask: source must be set for direction TO'):
                 task_factory = MessageQueueClientTask(
                     RequestDirection.TO,
                     'mqs://mq_username:mq_password@mq.example.io/topic:INCOMING.MSG?QueueManager=QM01&Channel=TCP.IN',
                     source=None,
                     destination=None,
                 )
-            assert str(ve.value) == 'MessageQueueClientTask: source must be set for direction TO'
 
             source = 'tests/source.json'
 
-            with pytest.raises(ValueError) as ve:
+            with pytest.raises(ValueError, match='MessageQueueClientTask: destination is not allowed'):
                 task_factory = MessageQueueClientTask(
                     RequestDirection.TO,
                     'mqs://mq_username:mq_password@mq.example.io/topic:INCOMING.MSG?QueueManager=QM01&Channel=TCP.IN',
                     source=source,
                     destination='destination-source.json',
                 )
-            assert str(ve.value) == 'MessageQueueClientTask: destination is not allowed'
 
             task_factory = MessageQueueClientTask(
                 RequestDirection.TO,
@@ -687,31 +670,31 @@ class TestMessageQueueClientTask:
                 'payload': source,
             },)
             assert kwargs == {}
+            send_json_mock.reset_mock()
 
-            assert fire_spy.call_count == 1
-            _, kwargs = fire_spy.call_args_list[-1]
-            assert kwargs.get('request_type', None) == 'CLTSK'
-            assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} MessageQueue->queue:INCOMING.MSG'
-            assert kwargs.get('response_time', None) >= 0.0
-            assert kwargs.get('response_length', None) == len(source)
-            assert kwargs.get('context', None) == parent.user._context
-            assert kwargs.get('exception', RuntimeError) is None
+            fire_spy.assert_called_once_with(
+                request_type='CLTSK',
+                name=f'{parent.user._scenario.identifier} MessageQueue->queue:INCOMING.MSG',
+                response_time=ANY(int),
+                response_length=len(source.encode()),
+                context=parent.user._context,
+                exception=None,
+            )
+            fire_spy.reset_mock()
 
             test_context = Path(task_factory._context_root)
             (test_context / 'requests' / 'tests').mkdir(exist_ok=True)
             source_file = test_context / 'requests' / 'tests' / 'source.json'
-            source_file.write_text('''{
+            source_file.write_text("""{
     "hello": "world!"
-}''')
+}""")
             recv_json_mock.side_effect = [{'success': True, 'payload': source_file.read_text()}]
             task_factory.name = 'mq-example-put'
 
             task(parent)
 
             assert recv_json_mock.call_count == 3
-            assert send_json_mock.call_count == 3
-            args, kwargs = send_json_mock.call_args_list[-1]
-            assert args == ({
+            send_json_mock.assert_called_once_with({
                 'action': 'PUT',
                 'worker': 'dddd-eeee-ffff-9999',
                 'client': id(parent.user),
@@ -731,17 +714,17 @@ class TestMessageQueueClientTask:
                     'endpoint': 'queue:INCOMING.MSG',
                 },
                 'payload': source_file.read_text(),
-            },)
-            assert kwargs == {}
+            })
+            send_json_mock.reset_mock()
 
-            assert fire_spy.call_count == 2
-            _, kwargs = fire_spy.call_args_list[-1]
-            assert kwargs.get('request_type', None) == 'CLTSK'
-            assert kwargs.get('name', None) == f'{parent.user._scenario.identifier} mq-example-put'
-            assert kwargs.get('response_time', None) >= 0.0
-            assert kwargs.get('response_length', None) == len(source_file.read_text())
-            assert kwargs.get('context', None) == parent.user._context
-            assert kwargs.get('exception', RuntimeError) is None
+            fire_spy.assert_called_once_with(
+                request_type='CLTSK',
+                name=f'{parent.user._scenario.identifier} mq-example-put',
+                response_time=ANY(int),
+                response_length=len(source_file.read_text().encode()),
+                context=parent.user._context,
+                exception=None,
+            )
         finally:
             if zmq_context is not None:
                 zmq_context.destroy()

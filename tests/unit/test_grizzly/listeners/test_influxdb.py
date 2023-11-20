@@ -1,26 +1,30 @@
-import socket
-import os
-import logging
+"""Unit tests of grizzly.listeners.influxdb."""
+from __future__ import annotations
 
-from typing import Callable, Any, Dict, Optional, Tuple, List
+import logging
+import os
+import socket
+from datetime import datetime, timezone
 from json import dumps as jsondumps
 from platform import node as get_hostname
-from datetime import datetime, timezone
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
 
 import pytest
-
-from pytest_mock import MockerFixture
-from _pytest.logging import LogCaptureFixture
-from influxdb.client import InfluxDBClient
 from influxdb.exceptions import InfluxDBClientError
 
-from grizzly.listeners.influxdb import InfluxDbError, InfluxDbListener, InfluxDb
+from grizzly.listeners.influxdb import InfluxDb, InfluxDbError, InfluxDbListener
 from grizzly.types.locust import CatchResponseError
+from tests.helpers import ANY
 
-from tests.fixtures import LocustFixture, GrizzlyFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from _pytest.logging import LogCaptureFixture
+    from influxdb.client import InfluxDBClient
+    from pytest_mock import MockerFixture
+
+    from tests.fixtures import GrizzlyFixture, LocustFixture
 
 
-@pytest.fixture
+@pytest.fixture()
 def patch_influxdblistener(mocker: MockerFixture) -> Callable[[], None]:
     def wrapper() -> None:
         mocker.patch(
@@ -28,7 +32,7 @@ def patch_influxdblistener(mocker: MockerFixture) -> Callable[[], None]:
             return_value=None,
         )
 
-        def influxdbclient_connect(instance: InfluxDb, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> InfluxDb:
+        def influxdbclient_connect(instance: InfluxDb, *_args: Any, **_kwargs: Any) -> InfluxDb:
             return instance
 
         mocker.patch(
@@ -48,12 +52,12 @@ class TestInfluxDb:
         assert client.username is None
         assert client.password is None
 
-        client = InfluxDb('https://influx.example.com', 8888, 'testdb', 'test-user', 'password')
+        client = InfluxDb('https://influx.example.com', 8888, 'testdb', 'test-user', 'secret!')
         assert client.host == 'https://influx.example.com'
         assert client.port == 8888
         assert client.database == 'testdb'
         assert client.username == 'test-user'
-        assert client.password == 'password'
+        assert client.password == 'secret!'  # noqa: S105
 
     def test_connect(self) -> None:
         client = InfluxDb('https://influx.example.com', 1337, 'testdb')
@@ -68,7 +72,7 @@ class TestInfluxDb:
     def test___exit__(self, mocker: MockerFixture) -> None:
         influx = InfluxDb('https://influx.example.com', 1337, 'testdb').connect()
 
-        def noop___exit__(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+        def noop___exit__(*_args: Any, **_kwargs: Any) -> None:
             pass
 
         mocker.patch(
@@ -84,10 +88,9 @@ class TestInfluxDb:
         with pytest.raises(InfluxDbError):
             influx.__exit__(InfluxDbError, InfluxDbError(), None)
 
-        with pytest.raises(InfluxDbError) as e:
-            exception = InfluxDBClientError('{"error": "failure"}', 400)
+        exception = InfluxDBClientError('{"error": "failure"}', 400)
+        with pytest.raises(InfluxDbError, match='400: failure'):
             influx.__exit__(InfluxDBClientError, exception, None)
-        assert '400: failure' in str(e)
 
     def test_read(self, mocker: MockerFixture) -> None:
         class ResultContainer:
@@ -96,7 +99,7 @@ class TestInfluxDb:
         influx = InfluxDb('https://influx.example.com', 1337, 'testdb').connect()
 
         def test_query(table: str, columns: List[str]) -> None:
-            def query(instance: InfluxDBClient, q: str) -> ResultContainer:
+            def query(_instance: InfluxDBClient, _query: str) -> ResultContainer:
                 results = ResultContainer()
                 results.raw = {
                     'series': [{key: 'test' for key in columns}],
@@ -150,7 +153,7 @@ class TestInfluxDb:
         def generate_write_error(content: Dict[str, Any], code: Optional[int] = 500) -> None:
             raw_content = jsondumps(content)
 
-            def write_error(instance: InfluxDBClient, values: List[Dict[str, Any]]) -> None:
+            def write_error(_instance: InfluxDBClient, _values: List[Dict[str, Any]]) -> None:
                 raise InfluxDBClientError(raw_content, code)
 
             mocker.patch(
@@ -159,35 +162,29 @@ class TestInfluxDb:
             )
 
         generate_write_error({}, None)
-        with pytest.raises(InfluxDbError) as e:
+        with pytest.raises(InfluxDbError, match='<unknown>'):
             influx.write([])
-        assert '<unknown>' in str(e)
 
         generate_write_error({'error': 'test-failure'}, 400)
-        with pytest.raises(InfluxDbError) as e:
+        with pytest.raises(InfluxDbError, match='400: test-failure'):
             influx.write([])
-        assert '400: test-failure' in str(e)
 
         generate_write_error({'message': 'not found'}, 404)
-        with pytest.raises(InfluxDbError) as e:
+        with pytest.raises(InfluxDbError, match='404: not found'):
             influx.write([])
-        assert '404: not found' in str(e)
 
 
 class TestInfluxDbListener:
     @pytest.mark.usefixtures('patch_influxdblistener')
     def test___init__(self, locust_fixture: LocustFixture, patch_influxdblistener: Callable[[], None]) -> None:
-        with pytest.raises(AssertionError) as ae:
+        with pytest.raises(AssertionError, match='hostname not found in'):
             InfluxDbListener(locust_fixture.environment, '')
-        assert 'hostname not found in' in str(ae)
 
-        with pytest.raises(AssertionError) as ae:
+        with pytest.raises(AssertionError, match='database was not found in'):
             InfluxDbListener(locust_fixture.environment, 'https://influx.test.com')
-        assert 'database was not found in' in str(ae)
 
-        with pytest.raises(AssertionError) as ae:
+        with pytest.raises(AssertionError, match='Testplan was not found in'):
             InfluxDbListener(locust_fixture.environment, 'https://influx.test.com/testdb')
-        assert 'Testplan not found in' in str(ae)
 
         patch_influxdblistener()
 
@@ -238,7 +235,7 @@ class TestInfluxDbListener:
         mocker.patch(
             'grizzly.listeners.influxdb.InfluxDbListener.finished',
             new_callable=mocker.PropertyMock,
-            side_effect=[False, True, True] + [False, False, False, True, True],
+            side_effect=[False, True, True, False, False, False, True, True],
         )
 
         listener = InfluxDbListener(
@@ -250,21 +247,20 @@ class TestInfluxDbListener:
 
         listener.run_user_count()
 
-        assert write_spy.call_count == 0
-        assert gsleep_spy.call_count == 0
+        write_spy.assert_not_called()
+        gsleep_spy.assert_not_called()
 
         listener.run_user_count()
 
-        assert gsleep_spy.call_count == 1
-        args, _ = gsleep_spy.call_args_list[-1]
-        assert args[0] == 5.0
+        gsleep_spy.assert_called_once_with(5.0)
+        gsleep_spy.reset_mock()
 
         assert write_spy.call_count == 2
-        for i in range(0, 2):
+        for i in range(2):
             args, _ = write_spy.call_args_list[i]
             assert len(args) == 1
             assert len(args[0]) == 2
-            for j in range(0, 2):
+            for j in range(2):
                 assert args[0][j].get('measurement', None) == 'user_count'
                 assert args[0][j].get('tags', None) == {
                     'testplan': 'unittest-plan',
@@ -284,12 +280,9 @@ class TestInfluxDbListener:
             'https://influx.test.com:1337/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
         )
 
-        def gsleep(time: float) -> None:
-            raise RuntimeError('gsleep was called')
-
         mocker.patch(
             'gevent.sleep',
-            gsleep,
+            side_effect=RuntimeError('gsleep was called'),
         )
         try:
             listener._events = []
@@ -300,11 +293,12 @@ class TestInfluxDbListener:
         finally:
             listener._finished = False
 
-        def write(client: InfluxDb, events: List[Dict[str, Any]]) -> None:
+        def write(_: InfluxDb, events: List[Dict[str, Any]]) -> None:
             assert len(events) == 1
             event = events[-1]
             assert event.get('measurement', None) == 'request'
             assert event.get('tags', None) == {
+                'hostname': ANY(str),
                 'name': '/api/v1/test',
                 'method': 'GET',
                 'result': 'Success',
@@ -314,14 +308,14 @@ class TestInfluxDbListener:
             assert event.get('fields', None) == {
                 'response_time': 133.7,
                 'exception': None,
+                'request_finished': ANY(str),
+                'request_started': ANY(str),
             }
 
         mocker.patch(
             'grizzly.listeners.influxdb.InfluxDb.write',
             write,
         )
-
-        print(f'{listener.finished=}')
 
         listener._log_request('GET', '/api/v1/test', 'Success', {'response_time': 133.7}, None)
         assert len(listener._events) == 1
@@ -340,7 +334,7 @@ class TestInfluxDbListener:
 
         datetime_mock = mocker.patch(
             'grizzly.listeners.influxdb.datetime',
-            side_effect=lambda *args, **kwargs: datetime(*args, **kwargs)
+            side_effect=lambda *args, **kwargs: datetime(*args, **kwargs),  # noqa: DTZ001
         )
         datetime_mock.now.return_value = expected_datetime
 
@@ -359,12 +353,7 @@ class TestInfluxDbListener:
 
         event = listener._events[-1]
 
-        for key in event.keys():
-            assert key in expected_keys
-
-        for key in expected_keys:
-            assert key in event
-
+        assert sorted(expected_keys) == sorted(event.keys())
         assert event.get('measurement', None) == 'request'
         assert event.get('tags', None) == {
             'name': 'Request: /api/v1/test',
@@ -386,7 +375,7 @@ class TestInfluxDbListener:
 
             class ClassWithNoRepr:
                 def __repr__(self) -> str:
-                    raise AttributeError()
+                    raise AttributeError
 
             import inspect
 
@@ -433,15 +422,15 @@ class TestInfluxDbListener:
         patch_influxdblistener()
 
         def generate_logger_call(
-            request_type: str, name: str, response_time: float, response_length: int, exception: Optional[Any] = None,
+            request_type: str, name: str, response_time: float, response_length: int, exception: Optional[Any] = None,  # noqa: ARG001
         ) -> Callable[[logging.Handler, str], None]:
             result = 'Success' if exception is None else 'Failure'
             expected_message = f'{result}: {request_type} {name} Response time: {int(round(response_time, 0))}'
 
             if exception is not None:
-                expected_message = f'{expected_message} Exception: {str(exception)}'
+                expected_message = f'{expected_message} Exception: {exception!s}'
 
-            def logger_call(self: logging.Handler, msg: str, *args: Any, **_kwargs: Any) -> None:
+            def logger_call(_self: logging.Handler, msg: str, *args: Any, **_kwargs: Any) -> None:
                 assert msg % args == expected_message
 
             return logger_call
@@ -453,7 +442,7 @@ class TestInfluxDbListener:
 
         mocker.patch(
             'logging.Logger.debug',
-            generate_logger_call('GET', '/api/v1/test', 133.7, 200, None)
+            generate_logger_call('GET', '/api/v1/test', 133.7, 200, None),
         )
 
         listener.request('GET', '/api/v1/test', 133.7, 200, None)
@@ -493,11 +482,7 @@ class TestInfluxDbListener:
 
         metrics = listener._create_metrics(1337, -1)
 
-        for key in metrics.keys():
-            assert key in expected_keys
-
-        for key in expected_keys:
-            assert key in metrics
+        assert sorted(expected_keys) == sorted(metrics.keys())
 
         assert metrics.get('response_time', None) == 1337
         assert metrics.get('response_length', 100) is None

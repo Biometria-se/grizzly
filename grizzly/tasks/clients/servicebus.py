@@ -239,7 +239,7 @@ class ServiceBusClientTask(ClientTask):
 
         return state
 
-    @ClientTask.text.setter
+    @ClientTask.text.setter  # type: ignore[has-type]
     def text(self, value: str) -> None:
         self._text = dedent(value).strip()
 

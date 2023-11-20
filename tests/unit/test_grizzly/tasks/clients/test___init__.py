@@ -1,20 +1,27 @@
+"""Unit tests of grizzly.tasks.clients."""
+from __future__ import annotations
+
 import logging
 from contextlib import suppress
 from os import environ
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
-from _pytest.logging import LogCaptureFixture
 
 from grizzly.exceptions import RestartScenario, StopUser
 from grizzly.scenarios import GrizzlyScenario, IteratorScenario
 from grizzly.tasks.clients import ClientTask, client
 from grizzly.types import GrizzlyResponse, RequestDirection
-from tests.fixtures import GrizzlyFixture, MockerFixture
+
+if TYPE_CHECKING:  # pragma: no cover
+    from _pytest.logging import LogCaptureFixture
+
+    from tests.fixtures import GrizzlyFixture, MockerFixture
 
 
-@pytest.mark.parametrize('log_prefix', [False, True,])
-def test_task_failing(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, caplog: LogCaptureFixture, log_prefix: bool) -> None:
+@pytest.mark.parametrize('log_prefix', [False, True])
+def test_task_failing(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, caplog: LogCaptureFixture, *, log_prefix: bool) -> None:
     try:
         @client('test')
         class TestClientTask(ClientTask):

@@ -9,7 +9,7 @@ from cProfile import Profile
 from getpass import getuser
 from hashlib import sha1
 from json import dumps as jsondumps
-from os import environ, path
+from os import environ
 from pathlib import Path
 from shutil import rmtree
 from tempfile import NamedTemporaryFile
@@ -344,7 +344,7 @@ class GrizzlyFixture:
         return self.request_task.test_context
 
     def __enter__(self) -> Self:
-        environ['GRIZZLY_CONTEXT_ROOT'] = path.abspath(path.join(self.request_task.context_root, '..'))
+        environ['GRIZZLY_CONTEXT_ROOT'] = Path(self.request_task.context_root).parent.as_posix()
         self.grizzly = GrizzlyContext()
         self.grizzly.scenarios.clear()
         self.grizzly.scenarios.create(self.behave.create_scenario('test scenario'))
