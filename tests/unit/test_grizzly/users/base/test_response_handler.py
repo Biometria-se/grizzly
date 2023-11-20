@@ -184,7 +184,7 @@ class TestValidationHandlerAction:
             assert isinstance(getattr(response_context_manager, '_manual_result', None), ResponseHandlerError)
             response_context_manager._manual_result = None
 
-            with pytest.raises(ResponseHandlerError):
+            with pytest.raises(ResponseHandlerError, match='"XML" was XML'):
                 handler((TransformerContentType.JSON, JSON_EXAMPLE), user, None)
 
             @templatingfilter
@@ -612,7 +612,7 @@ class TestResponseHandler:
         test_cls = type('ResponseHandlerTest', (ResponseHandler, ), {'host': None})
         assert issubclass(test_cls, ResponseHandler)
 
-        with pytest.raises(LocustError):
+        with pytest.raises(LocustError, match='You must specify the base host'):
             test_cls(locust_fixture.environment)
 
         fake_user_type = type('FakeResponseHandlerUser', (ResponseHandler, HttpRequests), {

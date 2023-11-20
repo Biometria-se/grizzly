@@ -40,13 +40,13 @@ class TestTransformer:
                 return super().parser(expression)
 
 
-        with pytest.raises(NotImplementedError):
+        with pytest.raises(NotImplementedError, match='has not implemented transform'):
             DummyTransformer.transform('{}')
 
-        with pytest.raises(NotImplementedError):
+        with pytest.raises(NotImplementedError, match='has not implemented validate'):
             DummyTransformer.validate('')
 
-        with pytest.raises(NotImplementedError):
+        with pytest.raises(NotImplementedError, match='has not implemented parse'):
             DummyTransformer.parser('')
 
 
@@ -115,7 +115,7 @@ class TestJsonTransformer:
 
         assert JsonTransformer.transform('{}') == {}
 
-        with pytest.raises(JSONDecodeError):
+        with pytest.raises(JSONDecodeError, match='Expecting property name enclosed in double quotes'):
             unwrapped('{')
 
     def test_validate(self) -> None:
@@ -211,7 +211,7 @@ class TestXmlTransformer:
 
         assert isinstance(transformed, XML._Element)
 
-        with pytest.raises(XML.ParseError):
+        with pytest.raises(XML.ParseError, match='Namespace prefix test on test is not defined'):
             unwrapped(
                 """<?xml version="1.0" encoding="UTF-8"?>
                 <test:test>
@@ -219,7 +219,7 @@ class TestXmlTransformer:
                 </test:test>""",
             )
 
-        with pytest.raises(XML.XMLSyntaxError):
+        with pytest.raises(XML.XMLSyntaxError, match='Start tag expected'):
             unwrapped(
                 '{"test": "value"}',
             )
@@ -489,5 +489,5 @@ class TestJsonBytesEncoder:
             'empty': None,
         }, cls=JsonBytesEncoder) == '{"hello": "world", "invalid": "\\u00e9 char", "value": "something", "test": false, "int": 1, "empty": null}'
 
-        with pytest.raises(TypeError):
+        with pytest.raises(TypeError, match='is not JSON serializable'):
             encoder.default(None)

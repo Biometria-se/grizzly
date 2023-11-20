@@ -373,9 +373,8 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
 def test_create_scenario_class_type(behave_fixture: BehaveFixture) -> None:
     scenario = GrizzlyContextScenario(1, behave=behave_fixture.create_scenario('A scenario description'))
 
-    with pytest.raises(ModuleNotFoundError) as mnfe:
+    with pytest.raises(ModuleNotFoundError, match="No module named 'custom'"):
         create_scenario_class_type('custom.tasks.CustomTasks', scenario)
-    assert "No module named 'custom'" in str(mnfe)
 
     task_class_type_1 = create_scenario_class_type('grizzly.scenarios.IteratorScenario', scenario)
 

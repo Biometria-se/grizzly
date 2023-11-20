@@ -42,7 +42,7 @@ class TestAsyncMessageHandler:
 
         assert handler.worker == 'ID-12345'
 
-        with pytest.raises(NotImplementedError):
+        with pytest.raises(NotImplementedError, match='get_handler is not implemented'):
             handler.get_handler('TEST')
 
     def test_handle(self, mocker: MockerFixture) -> None:
@@ -193,9 +193,8 @@ def test_async_message_request(mocker: MockerFixture) -> None:
         'action': 'HELLO',
     }
 
-    with pytest.raises(AsyncMessageError) as re:
+    with pytest.raises(AsyncMessageError, match='no response'):
         async_message_request(client_mock, request)
-    assert str(re.value) == 'no response'
 
     sleep_mock.assert_called_once_with(0.1)
     client_mock.send_json.assert_called_once_with(request)
@@ -213,9 +212,8 @@ def test_async_message_request(mocker: MockerFixture) -> None:
     client_mock.recv_json.side_effect = None
     client_mock.recv_json.return_value = {'success': False, 'message': 'error! error! error!'}
 
-    with pytest.raises(AsyncMessageError) as re:
+    with pytest.raises(AsyncMessageError, match='error! error! error!'):
         async_message_request(client_mock, request)
-    assert str(re.value) == 'error! error! error!'
 
     sleep_mock.assert_not_called()
     client_mock.send_json.assert_called_once_with(request)

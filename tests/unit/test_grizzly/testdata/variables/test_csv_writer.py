@@ -118,9 +118,8 @@ class TestAtomicCsvWriter:
         try:
             u = AtomicCsvWriter('foobar', 'output.csv | headers="bar,foo", overwrite=True')
 
-            with pytest.raises(NotImplementedError) as nie:
+            with pytest.raises(NotImplementedError, match='AtomicCsvWriter has not implemented "__getitem__"'):
                 _ = u['foobar']
-            assert str(nie.value) == 'AtomicCsvWriter has not implemented "__getitem__"'
         finally:
             cleanup()
 

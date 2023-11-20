@@ -33,7 +33,7 @@ def test_step_user_type(behave_fixture: BehaveFixture) -> None:
     assert grizzly.scenario.user.class_name == 'ServiceBusUser'
     assert grizzly.scenario.context['host'] == 'http://localhost:8000'
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError, match='value contained variable "host" which has not been declared'):
         step_user_type(behave, 'RestApi', '{{ host }}')
 
     grizzly.state.variables['host'] = 'http://example.io:1337'

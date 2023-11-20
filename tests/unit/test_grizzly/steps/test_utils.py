@@ -12,5 +12,5 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 def test_step_utils_fail(behave_fixture: BehaveFixture) -> None:
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError, match=''):
         step_utils_fail(behave_fixture.context)

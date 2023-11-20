@@ -341,7 +341,6 @@ class TestHttpClientTask:
 
         assert task_factory._context.get('test', None) is None
 
-        with pytest.raises(NotImplementedError) as nie:
+        with pytest.raises(NotImplementedError, match='HttpClientTestTask has not implemented PUT'):
             task(parent)
-        assert 'HttpClientTestTask has not implemented PUT' in str(nie.value)
         assert task_factory._context.get('test', None) == 'was here'

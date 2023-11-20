@@ -707,9 +707,8 @@ def test_run_master(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
 
     mock_on_node(master=True, worker=False)
 
-    with pytest.raises(AssertionError) as ae:
+    with pytest.raises(AssertionError, match=r'there are more workers \(3\) than users \(2\), which is not supported'):
         run(behave)
-    assert str(ae.value) == 'there are more workers (3) than users (2), which is not supported'
 
     assert messagequeue_process_spy.call_count == 0
 

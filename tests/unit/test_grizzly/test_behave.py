@@ -353,11 +353,6 @@ def test_before_step(behave_fixture: BehaveFixture) -> None:
 
     setattr(step, attr_name, 'incorrect')
 
-    with pytest.raises(AssertionError):
-        before_step(behave, step)
-
-    setattr(step, attr_name, 'incorrect')
-
     with pytest.raises(AssertionError, match='Step is in the incorrect section'):
         before_step(behave, step)
 

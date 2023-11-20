@@ -27,9 +27,8 @@ class TestGreenletWithExceptionCatching:
     def test_handle_exception(self) -> None:
         g = GreenletWithExceptionCatching()
 
-        with pytest.raises(RuntimeError) as re:
+        with pytest.raises(RuntimeError, match='error'):
             g.handle_exception(RuntimeError('error'))
-        assert str(re.value) == 'error'
 
     def test_spawn(self, mocker: MockerFixture) -> None:
         g = GreenletWithExceptionCatching()

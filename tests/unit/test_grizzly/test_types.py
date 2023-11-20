@@ -49,9 +49,8 @@ class TestRequestType:
     def test_from_string(self, value: str, expected: str) -> None:
         assert RequestType.from_string(value) == expected
 
-        with pytest.raises(AttributeError) as ae:
+        with pytest.raises(AttributeError, match='foobar does not exist'):
             RequestType.from_string('foobar')
-        assert str(ae.value) == 'foobar does not exist'
 
     @pytest.mark.parametrize('value', list(RequestType))
     def test___call___and___str__(self, value: RequestType) -> None:

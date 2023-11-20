@@ -92,7 +92,7 @@ class TestAtomicDate:
             del t['actual']
             del t['actual']
 
-            with pytest.raises(AttributeError):
+            with pytest.raises(AttributeError, match='AtomicDate object has no attribute "actual"'):
                 t['actual']
 
             value = expected.strftime('%Y-%m-%d %H:%M:%S.%f')

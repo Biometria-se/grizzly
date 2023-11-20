@@ -902,9 +902,8 @@ class TestAsyncMessageQueueHandler:
 
         from grizzly_extras.async_message.mq import handlers
 
-        with pytest.raises(AsyncMessageError) as mqe:
+        with pytest.raises(AsyncMessageError, match='payload not allowed'):
             handlers[request['action']](handler, request)
-        assert 'payload not allowed' in str(mqe)
 
         request['payload'] = None
 
