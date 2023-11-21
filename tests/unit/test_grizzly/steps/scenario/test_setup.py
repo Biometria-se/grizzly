@@ -1,28 +1,32 @@
-from typing import cast
+"""Unit tests for grizzly.steps.scenario.setup."""
+from __future__ import annotations
 
+from contextlib import suppress
 from os import environ
+from typing import TYPE_CHECKING, cast
 
 import pytest
-
 from parse import compile
-from pytest_mock import MockerFixture
 
 from grizzly.context import GrizzlyContext
-from grizzly.steps import *  # pylint: disable=unused-wildcard-import  # noqa: F403
-from grizzly.testdata import GrizzlyVariables, GrizzlyVariableType
+from grizzly.steps import *
 from grizzly.tasks.clients import HttpClientTask
+from grizzly.testdata import GrizzlyVariables, GrizzlyVariableType
 from grizzly.types import RequestDirection, RequestMethod
 
-from tests.fixtures import BehaveFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from pytest_mock import MockerFixture
+
+    from tests.fixtures import BehaveFixture
 
 
 def test_parse_iteration_gramatical_number() -> None:
     p = compile(
         'run for {iteration:d} {iteration_number:IterationGramaticalNumber}',
-        extra_types=dict(IterationGramaticalNumber=parse_iteration_gramatical_number),
+        extra_types={'IterationGramaticalNumber': parse_iteration_gramatical_number},
     )
 
-    assert parse_iteration_gramatical_number.__vector__ == (False, True,)
+    assert parse_iteration_gramatical_number.__vector__ == (False, True)
 
     assert p.parse('run for 1 iteration')['iteration_number'] == 'iteration'
     assert p.parse('run for 10 iterations')['iteration_number'] == 'iterations'
@@ -208,7 +212,7 @@ def test_step_setup_iterations(behave_fixture: BehaveFixture) -> None:
     step_setup_iterations(behave, '1', 'iteration')
     assert grizzly.scenario.iterations == 1
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError, match='value contained variable "iterations" which has not been declared'):
         step_setup_iterations(behave, '{{ iterations }}', 'iteration')
 
     grizzly.state.variables['iterations'] = 100
@@ -235,10 +239,8 @@ def test_step_setup_iterations(behave_fixture: BehaveFixture) -> None:
         step_setup_iterations(behave, '$env::ITERATIONS$', 'iteration')
         assert grizzly.scenario.iterations == 1337
     finally:
-        try:
+        with suppress(KeyError):
             del environ['ITERATIONS']
-        except KeyError:
-            pass
 
     grizzly.state.configuration['test.iterations'] = 13
     step_setup_iterations(behave, '$conf::test.iterations$', 'iterations')
@@ -257,9 +259,8 @@ def test_step_setup_pace(behave_fixture: BehaveFixture) -> None:
     assert len(grizzly.scenario.orphan_templates) == 0
     assert grizzly.scenario.pace == '2000'
 
-    with pytest.raises(AssertionError) as ae:
+    with pytest.raises(AssertionError, match='"asdf" is neither a template or a number'):
         step_setup_pace(behave, 'asdf')
-    assert str(ae.value) == '"asdf" is neither a template or a number'
 
     step_setup_pace(behave, '{{ pace }}')
 
@@ -273,7 +274,7 @@ def test_step_setup_set_variable_alias(behave_fixture: BehaveFixture, mocker: Mo
 
     assert grizzly.state.alias == {}
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError, match='variable AtomicIntegerIncrementer.test has not been declared'):
         step_setup_set_variable_alias(behave, 'auth.refresh_time', 'AtomicIntegerIncrementer.test')
 
     step_setup_variable_value(behave, 'AtomicIntegerIncrementer.test', '1337')
@@ -281,7 +282,7 @@ def test_step_setup_set_variable_alias(behave_fixture: BehaveFixture, mocker: Mo
 
     assert grizzly.state.alias.get('AtomicIntegerIncrementer.test', None) == 'auth.refresh_time'
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError, match='alias for variable AtomicIntegerIncrementer.test already exists: auth.refresh_time'):
         step_setup_set_variable_alias(behave, 'auth.refresh_time', 'AtomicIntegerIncrementer.test')
 
     def setitem(self: GrizzlyVariables, key: str, value: GrizzlyVariableType) -> None:
@@ -292,13 +293,13 @@ def test_step_setup_set_variable_alias(behave_fixture: BehaveFixture, mocker: Mo
         setitem,
     )
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError, match='variable AtomicCsvReader.users has not been declared'):
         step_setup_set_variable_alias(behave, 'auth.user.username', 'AtomicCsvReader.users.username')
 
     step_setup_variable_value(behave, 'AtomicCsvReader.users', 'users.csv')
     step_setup_set_variable_alias(behave, 'auth.user.username', 'AtomicCsvReader.users.username')
 
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError, match='alias for variable AtomicCsvReader.users.username already exists: auth.user.username'):
         step_setup_set_variable_alias(behave, 'auth.user.username', 'AtomicCsvReader.users.username')
 
 
@@ -349,6 +350,7 @@ def test_step_setup_metadata(behave_fixture: BehaveFixture) -> None:
     assert request.metadata == {'new_header': 'new_value'}
 
     grizzly.state.variables.update({'test_payload': 'none', 'test_metadata': 'none'})
+    HttpClientTask.__scenario__ = grizzly.scenario
     task_factory = HttpClientTask(RequestDirection.FROM, 'http://example.org', payload_variable='test_payload', metadata_variable='test_metadata')
 
     grizzly.scenario.tasks.add(task_factory)

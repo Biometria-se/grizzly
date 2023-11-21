@@ -1,25 +1,29 @@
-from typing import cast, List, Dict
-from random import randint
+"""End-to-end tests of grizzly.steps.scenario.user."""
+from __future__ import annotations
+
+from secrets import choice
+from typing import TYPE_CHECKING, Dict, List, cast
 
 import pytest
 
 from grizzly.context import GrizzlyContext
-from grizzly.types.behave import Context
 
-from tests.fixtures import End2EndFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.types.behave import Context
+    from tests.fixtures import End2EndFixture
 
 
-@pytest.mark.parametrize('user_type,host,expected_rc', [
-    ('RestApi', 'https://localhost/api', 0,),
-    ('MessageQueueUser', 'mq://localhost/?QueueManager=QMGR01&Channel=Channel01', 1,),
-    ('ServiceBus', 'sb://localhost/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=', 0,),
-    ('BlobStorageUser', 'DefaultEndpointsProtocol=https;EndpointSuffix=localhost;AccountName=examplestorage;AccountKey=xxxyyyyzzz==', 0,),
-    ('Sftp', 'sftp://localhost', 1,),
+@pytest.mark.parametrize(('user_type', 'host', 'expected_rc'), [
+    ('RestApi', 'https://localhost/api', 0),
+    ('MessageQueueUser', 'mq://localhost/?QueueManager=QMGR01&Channel=Channel01', 1),
+    ('ServiceBus', 'sb://localhost/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=', 0),
+    ('BlobStorageUser', 'DefaultEndpointsProtocol=https;EndpointSuffix=localhost;AccountName=examplestorage;AccountKey=xxxyyyyzzz==', 0),
+    ('Sftp', 'sftp://localhost', 1),
 ])
 def test_e2e_step_user_type_with_weight(e2e_fixture: End2EndFixture, user_type: str, host: str, expected_rc: int) -> None:
     def validate_user_type(context: Context) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
-        data = list(context.table)[0].as_dict()
+        data = next(iter(context.table)).as_dict()
 
         expected_weight = int(data['weight'])
         expected_user_type = data['user_type']
@@ -38,7 +42,7 @@ def test_e2e_step_user_type_with_weight(e2e_fixture: End2EndFixture, user_type: 
 
     host = host.replace('localhost', e2e_fixture.host)
 
-    weight = randint(1, 100)
+    weight = choice(range(1, 100))
 
     table: List[Dict[str, str]] = [{
         'user_type': user_type,
@@ -62,17 +66,17 @@ def test_e2e_step_user_type_with_weight(e2e_fixture: End2EndFixture, user_type: 
     assert rc == expected_rc
 
 
-@pytest.mark.parametrize('user_type,host,expected_rc', [
-    ('RestApi', 'https://localhost/api', 0,),
-    ('MessageQueueUser', 'mq://localhost/?QueueManager=QMGR01&Channel=Channel01', 1,),
-    ('ServiceBus', 'sb://localhost/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=', 0,),
-    ('BlobStorageUser', 'DefaultEndpointsProtocol=https;EndpointSuffix=localhost;AccountName=examplestorage;AccountKey=xxxyyyyzzz==', 0,),
-    ('Sftp', 'sftp://localhost', 1,),
+@pytest.mark.parametrize(('user_type', 'host', 'expected_rc'), [
+    ('RestApi', 'https://localhost/api', 0),
+    ('MessageQueueUser', 'mq://localhost/?QueueManager=QMGR01&Channel=Channel01', 1),
+    ('ServiceBus', 'sb://localhost/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=', 0),
+    ('BlobStorageUser', 'DefaultEndpointsProtocol=https;EndpointSuffix=localhost;AccountName=examplestorage;AccountKey=xxxyyyyzzz==', 0),
+    ('Sftp', 'sftp://localhost', 1),
 ])
 def test_e2e_step_user_type(e2e_fixture: End2EndFixture, user_type: str, host: str, expected_rc: int) -> None:
     def validate_user_type(context: Context) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
-        data = list(context.table)[0].as_dict()
+        data = next(iter(context.table)).as_dict()
 
         expected_user_type = data['user_type']
         expected_host = data['host']

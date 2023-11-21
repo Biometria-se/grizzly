@@ -43,6 +43,7 @@ Example of how to use it in a scenario:
 Given a user of type "MessageQueue" load testing "mq://mq.example.com/?QueueManager=QM01&Channel=SRVCONN01"
 Then put request "test/queue-message.j2.json" with name "queue-message" to endpoint "queue:INCOMING.MESSAGES"
 ```
+
 ### Get message
 
 Default behavior is to fail directly if there is no message on the queue. If the request should wait until a message is available,
@@ -121,51 +122,51 @@ Then put request "test/queue-message.j2.json" with name "gzipped-message" to end
 And metadata "filename" is "my_filename"
 ```
 """
-import logging
+from __future__ import annotations
 
-from typing import Dict, Any, Generator, Tuple, Optional, cast
-from urllib.parse import urlparse, parse_qs, unquote
-from contextlib import contextmanager
+import logging
+from contextlib import contextmanager, suppress
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, Generator, Optional, Set, cast
+from urllib.parse import parse_qs, unquote, urlparse
 
 import zmq.green as zmq
 
-from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse, async_message_request
-from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
-
-from grizzly.types import GrizzlyResponse, RequestDirection, RequestType
-from grizzly.types.locust import Environment
-from grizzly.tasks import RequestTask
-from grizzly.utils import merge_dicts
 from grizzly.exceptions import StopScenario
+from grizzly.types import GrizzlyResponse, RequestDirection, RequestType
+from grizzly.utils import merge_dicts
+from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
+from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse, async_message_request
 
-from .base import GrizzlyUser, ResponseHandler
+from .base import GrizzlyUser, ResponseHandler, grizzlycontext
 
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.tasks import RequestTask
+    from grizzly.types.locust import Environment
 
 # no used here, but needed for sanity check
 try:
     # do not fail grizzly if ibm mq dependencies are missing, some might
     # not be interested in MessageQueueUser.
-    import pymqi  # pylint: disable=unused-import
+    import pymqi
 except:
     from grizzly_extras import dummy_pymqi as pymqi
 
 
+@grizzlycontext(context={
+    'auth': {
+        'username': None,
+        'password': None,
+        'key_file': None,
+        'cert_label': None,
+        'ssl_cipher': None,
+    },
+    'message': {
+        'wait': None,
+        'header_type': None,
+    },
+})
 class MessageQueueUser(ResponseHandler, GrizzlyUser):
-    _context: Dict[str, Any] = {
-        'auth': {
-            'username': None,
-            'password': None,
-            'key_file': None,
-            'cert_label': None,
-            'ssl_cipher': None,
-        },
-        'message': {
-            'wait': None,
-            'header_type': None,
-        },
-    }
-
-    __dependencies__ = set(['async-messaged'])
+    __dependencies__: ClassVar[Set[str]] = {'async-messaged'}
 
     am_context: AsyncMessageContext
     worker_id: Optional[str]
@@ -173,7 +174,7 @@ class MessageQueueUser(ResponseHandler, GrizzlyUser):
     zmq_client: zmq.Socket
     zmq_url = 'tcp://127.0.0.1:5554'
 
-    def __init__(self, environment: Environment, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+    def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
         if pymqi.__name__ == 'grizzly_extras.dummy_pymqi':
             pymqi.raise_for_error(self.__class__)
 
@@ -183,16 +184,20 @@ class MessageQueueUser(ResponseHandler, GrizzlyUser):
         parsed = urlparse(self.host or '')
 
         if parsed.scheme != 'mq':
-            raise ValueError(f'"{parsed.scheme}" is not a supported scheme for {self.__class__.__name__}')
+            message = f'"{parsed.scheme}" is not a supported scheme for {self.__class__.__name__}'
+            raise ValueError(message)
 
         if parsed.hostname is None or len(parsed.hostname) < 1:
-            raise ValueError(f'{self.__class__.__name__}: hostname is not specified in {self.host}')
+            message = f'{self.__class__.__name__}: hostname is not specified in {self.host}'
+            raise ValueError(message)
 
         if parsed.username is not None or parsed.password is not None:
-            raise ValueError(f'{self.__class__.__name__}: username and password should be set via context variables "auth.username" and "auth.password"')
+            message = f'{self.__class__.__name__}: username and password should be set via context variables "auth.username" and "auth.password"'
+            raise ValueError(message)
 
         if parsed.query == '':
-            raise ValueError(f'{self.__class__.__name__} needs QueueManager and Channel in the query string')
+            message = f'{self.__class__.__name__} needs QueueManager and Channel in the query string'
+            raise ValueError(message)
 
         port = parsed.port or 1414
 
@@ -204,18 +209,17 @@ class MessageQueueUser(ResponseHandler, GrizzlyUser):
         params = parse_qs(parsed.query)
 
         if 'QueueManager' not in params:
-            raise ValueError(f'{self.__class__.__name__} needs QueueManager in the query string')
+            message = f'{self.__class__.__name__} needs QueueManager in the query string'
+            raise ValueError(message)
 
         if 'Channel' not in params:
-            raise ValueError(f'{self.__class__.__name__} needs Channel in the query string')
+            message = f'{self.__class__.__name__} needs Channel in the query string'
+            raise ValueError(message)
 
         self.am_context.update({
             'queue_manager': unquote(params['QueueManager'][0]),
             'channel': unquote(params['Channel'][0]),
         })
-
-        # Get configuration values from context
-        self._context = merge_dicts(super().context(), self.__class__._context)
 
         auth_context = self._context.get('auth', {})
         username = auth_context.get('username', None)
@@ -223,8 +227,10 @@ class MessageQueueUser(ResponseHandler, GrizzlyUser):
         header_type = message_context.get('header_type', None) or 'none'
         header_type = header_type.lower()
         if header_type not in ['rfh2', 'none']:
-            raise ValueError(f'{self.__class__.__name__} unsupported value for header_type: "{header_type}", supported ones are "None" and "RFH2"')
-        elif header_type == 'none':
+            message = f'{self.__class__.__name__} unsupported value for header_type: "{header_type}", supported ones are "None" and "RFH2"'
+            raise ValueError(message)
+
+        if header_type == 'none':
             header_type = None
 
         self.am_context.update({
@@ -249,23 +255,23 @@ class MessageQueueUser(ResponseHandler, GrizzlyUser):
         super().on_start()
 
         try:
-            with self.request_context(None, {
+            with self._request_context({
                 'action': RequestType.CONNECT(),
                 'client': id(self),
                 'context': self.am_context,
             }):
                 self.zmq_client = self.zmq_context.socket(zmq.REQ)
                 self.zmq_client.connect(self.zmq_url)
-        except:
-            self.logger.error('on_start failed', exc_info=True)
-            raise StopScenario()
+        except Exception as e:
+            self.logger.exception('on_start failed')
+            raise StopScenario from e
 
     def on_stop(self) -> None:
-        self.logger.debug(f'on_stop called, {self.worker_id=}')
+        self.logger.debug('on_stop called, worker_id=%s', self.worker_id)
         if self.worker_id is None:
             return
 
-        with self.request_context(None, {
+        with self._request_context({
             'action': RequestType.DISCONNECT(),
             'worker': self.worker_id,
             'client': id(self),
@@ -273,17 +279,15 @@ class MessageQueueUser(ResponseHandler, GrizzlyUser):
         }):
             pass
 
-        try:
+        with suppress(Exception):
             self.zmq_client.disconnect(self.zmq_url)
-        except:
-            pass
 
         self.worker_id = None
 
         super().on_stop()
 
     @contextmanager
-    def request_context(self, request: Optional[RequestTask], am_request: AsyncMessageRequest) -> Generator[Dict[str, Any], None, None]:
+    def _request_context(self, am_request: AsyncMessageRequest) -> Generator[Dict[str, Any], None, None]:
         response: Optional[AsyncMessageResponse] = None
         context: Dict[str, Any] = {
             'metadata': None,
@@ -315,18 +319,21 @@ class MessageQueueUser(ResponseHandler, GrizzlyUser):
             'payload': request.source,
         }
 
-        with self.request_context(request, am_request) as response:
+        with self._request_context(am_request) as response:
             # Parse the endpoint to validate queue name / expression parts
             arguments = parse_arguments(request.endpoint, ':')
 
             if 'queue' not in arguments:
-                raise RuntimeError('queue name must be prefixed with queue:')
+                message = 'queue name must be prefixed with queue:'
+                raise RuntimeError(message)
 
             unsupported_arguments = get_unsupported_arguments(['queue', 'expression', 'max_message_size'], arguments)
             if len(unsupported_arguments) > 0:
-                raise RuntimeError(f'arguments {", ".join(unsupported_arguments)} is not supported')
+                message = f'arguments {", ".join(unsupported_arguments)} is not supported'
+                raise RuntimeError(message)
 
             if 'expression' in arguments and request.method.direction != RequestDirection.FROM:
-                raise RuntimeError('argument "expression" is not allowed when sending to an endpoint')
+                message = 'argument "expression" is not allowed when sending to an endpoint'
+                raise RuntimeError(message)
 
-        return (response['metadata'], response['payload'],)
+        return (response['metadata'], response['payload'])

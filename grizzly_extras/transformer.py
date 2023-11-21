@@ -1,18 +1,20 @@
-"""
-@anchor pydoc:grizzly_extras.transformer Transformer
+"""@anchor pydoc:grizzly_extras.transformer Transformer
 This modules contains the means to transform a raw string to format that is possible to easy search
 for attributes and their value in.
 """
-import re
+from __future__ import annotations
 
-from abc import ABCMeta
-from typing import Optional, Any, Dict, Type, List, Callable
-from functools import wraps
-from json import loads as jsonloads, dumps as jsondumps, JSONEncoder
+import re
+from abc import ABCMeta, abstractmethod
 from enum import auto
+from functools import wraps
+from json import JSONEncoder
+from json import dumps as jsondumps
+from json import loads as jsonloads
+from typing import Any, Callable, ClassVar, Dict, List, Optional, Type
 
 from jsonpath_ng.ext import parse as jsonpath_parse
-from lxml import etree as XML
+from lxml import etree as XML  # noqa: N812
 
 from .text import PermutationEnum
 
@@ -25,7 +27,7 @@ class TransformerError(Exception):
 
 
 class TransformerContentType(PermutationEnum):
-    __vector__ = (False, True, )
+    __vector__ = (False, True)
 
     UNDEFINED = 0
     JSON = auto()
@@ -34,40 +36,53 @@ class TransformerContentType(PermutationEnum):
     MULTIPART_FORM_DATA = auto()
 
     @classmethod
-    def from_string(cls, value: str) -> 'TransformerContentType':
+    def from_string(cls, value: str) -> TransformerContentType:
         if value.lower().strip() in ['application/json', 'json']:
             return TransformerContentType.JSON
-        elif value.lower().strip() in ['application/xml', 'xml']:
+
+        if value.lower().strip() in ['application/xml', 'xml']:
             return TransformerContentType.XML
-        elif value.lower().strip() in ['text/plain', 'plain']:
+
+        if value.lower().strip() in ['text/plain', 'plain']:
             return TransformerContentType.PLAIN
-        elif value.lower().strip() == 'multipart/form-data':
+
+        if value.lower().strip() == 'multipart/form-data':
             return TransformerContentType.MULTIPART_FORM_DATA
-        else:
-            raise ValueError(f'"{value}" is an unknown response content type')
+
+        message = f'"{value}" is an unknown response content type'
+        raise ValueError(message)
 
 
-class Transformer(ABCMeta):
-    @classmethod
-    def transform(cls, raw: str) -> Any:
-        raise NotImplementedError(f'{cls.__name__} has not implemented transform')  # pragma: no cover
-
-    @classmethod
-    def validate(cls, expression: str) -> bool:
-        raise NotImplementedError(f'{cls.__name__} has not implemented validate')  # pragma: no cover
+class Transformer(metaclass=ABCMeta):
+    __wrapped_transform__: ClassVar[Callable[[str], Any]]
 
     @classmethod
-    def parser(cls, expression: str) -> Callable[[Any], List[str]]:
-        raise NotImplementedError(f'{cls.__name__} has not implemented parse')  # pragma: no cover
+    @abstractmethod
+    def transform(cls, raw: str) -> Any:  # pragma: no cover
+        message = f'{cls.__name__} has not implemented transform'
+        raise NotImplementedError(message)
+
+    @classmethod
+    @abstractmethod
+    def validate(cls, expression: str) -> bool:  # pragma: no cover
+        message = f'{cls.__name__} has not implemented validate'
+        raise NotImplementedError(message)  # pragma: no cover
+
+    @classmethod
+    @abstractmethod
+    def parser(cls, expression: str) -> Callable[[Any], List[str]]:  # pragma: no cover
+        message = f'{cls.__name__} has not implemented parse'
+        raise NotImplementedError(message)
 
 
 class transformer:
     content_type: TransformerContentType
-    available: Dict[TransformerContentType, Type[Transformer]] = {}
+    available: ClassVar[Dict[TransformerContentType, Type[Transformer]]] = {}
 
     def __init__(self, content_type: TransformerContentType) -> None:
         if content_type == TransformerContentType.UNDEFINED:
-            raise ValueError('it is not allowed to register a transformer of type UNDEFINED')
+            message = 'it is not allowed to register a transformer of type UNDEFINED'
+            raise ValueError(message)
 
         self.content_type = content_type
 
@@ -80,10 +95,11 @@ class transformer:
             try:
                 return impl_transform(raw)
             except Exception as e:
-                raise TransformerError(f'failed to transform input as {content_type_name}: {str(e)}') from e
+                message = f'failed to transform input as {content_type_name}: {e!s}'
+                raise TransformerError(message) from e
 
-        setattr(impl, '__wrapped_transform__', impl_transform)
-        setattr(impl, 'transform', wrapped_transform)
+        impl.__wrapped_transform__ = impl_transform
+        setattr(impl, 'transform', wrapped_transform)  # noqa: B010
 
         if self.content_type not in transformer.available:
             transformer.available.update({self.content_type: impl})
@@ -121,7 +137,8 @@ class JsonTransformer(Transformer):
                 expected = expected.strip('"\'')
 
             if not cls.validate(expression):
-                raise RuntimeError(f'{cls.__name__}: not a valid expression')
+                message = 'not a valid expression'
+                raise RuntimeError(message)
 
             jsonpath = jsonpath_parse(expression)
 
@@ -131,19 +148,17 @@ class JsonTransformer(Transformer):
                     if m is None or m.value is None:
                         continue
 
-                    if isinstance(m.value, (dict, list, )):
-                        value = jsondumps(m.value)
-                    else:
-                        value = str(m.value)
+                    value = jsondumps(m.value) if isinstance(m.value, (dict, list)) else str(m.value)
 
                     if expected is None or expected == value:
                         values.append(value)
 
                 return values
-
-            return _parser
         except Exception as e:
-            raise ValueError(f'{cls.__name__}: unable to parse "{expression}": {str(e)}') from e
+            message = f'{cls.__name__}: unable to parse with "{expression}": {e!s}'
+            raise ValueError(message) from e
+        else:
+            return _parser
 
 
 @transformer(TransformerContentType.XML)
@@ -152,7 +167,7 @@ class XmlTransformer(Transformer):
 
     @classmethod
     def transform(cls, raw: str) -> Any:
-        document = XML.XML(raw.encode('utf-8'), parser=cls._parser)
+        document = XML.XML(raw.encode(), parser=cls._parser)
 
         # remove namespaces, which makes it easier to use XPath...
         for element in document.getiterator():
@@ -171,8 +186,8 @@ class XmlTransformer(Transformer):
             valid = True
         except:
             valid = False
-        finally:
-            return valid
+
+        return valid
 
     @classmethod
     def parser(cls, expression: str) -> Callable[[Any], List[str]]:
@@ -185,21 +200,20 @@ class XmlTransformer(Transformer):
                     for match in xmlpath(input_payload):
                         if match is not None:
                             value: str
-                            if isinstance(match, XML._Element):
-                                value = XML.tostring(match, with_tail=False).decode('utf-8')
-                            else:
-                                value = str(match).strip()
+                            value = XML.tostring(match, with_tail=False).decode() if isinstance(match, XML._Element) else str(match).strip()
 
                             if len(value) > 0:
                                 values.append(value)
 
                     return values
-
-                return get_values
             except XML.XPathSyntaxError as e:
-                raise RuntimeError(f'{cls.__name__}: not a valid expression: {str(e)}') from e
+                message = str(e).lower()
+                raise RuntimeError(message) from e
+            else:
+                return get_values
         except Exception as e:
-            raise ValueError(f'{cls.__name__}: unable to parse "{expression}": {str(e)}') from e
+            message = f'{cls.__name__}: unable to parse "{expression}": {e!s}'
+            raise ValueError(message) from e
 
 
 @transformer(TransformerContentType.PLAIN)
@@ -209,29 +223,32 @@ class PlainTransformer(Transformer):
         return raw
 
     @classmethod
-    def validate(cls, expression: str) -> bool:
+    def validate(cls, _expression: str) -> bool:
         # everything is a valid expression when it comes to plain transformer...
         return True
 
     @classmethod
     def parser(cls, expression: str) -> Callable[[Any], List[str]]:
+        get_values_impl: Callable[[Any], List[str]]
+
         try:
             strict_expression = expression
             if len(strict_expression) > 1:
-                if not strict_expression[0] == '^':
+                if strict_expression[0] != '^':
                     strict_expression = f'^{strict_expression}'
-                if not strict_expression[-1] == '$':
+                if strict_expression[-1] != '$':
                     strict_expression = f'{strict_expression}$'
 
             pattern = re.compile(strict_expression)
 
             if pattern.groups < 0 or pattern.groups > 1:
-                raise ValueError(f'{cls.__name__}: only expressions that has zero or one match group is allowed')
+                message = f'{cls.__name__}: only expressions that has zero or one match group is allowed'
+                raise ValueError(message)
 
             def get_values(input_payload: Any) -> List[str]:
                 return re.findall(pattern, input_payload)
 
-            return get_values
+            get_values_impl = get_values
         except re.error:
             def get_values(input_payload: Any) -> List[str]:
                 matches: List[str] = []
@@ -240,7 +257,9 @@ class PlainTransformer(Transformer):
 
                 return matches
 
-            return get_values
+            get_values_impl = get_values
+
+        return get_values_impl
 
 
 class JsonBytesEncoder(JSONEncoder):

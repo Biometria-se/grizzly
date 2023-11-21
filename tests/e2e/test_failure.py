@@ -1,14 +1,18 @@
-from textwrap import dedent
-from typing import cast
+"""End-to-end tests of how scenarios are handled on failures."""
+from __future__ import annotations
 
-from grizzly.types.behave import Context, Feature
+from textwrap import dedent
+from typing import TYPE_CHECKING, Any, cast
+
 from grizzly.context import GrizzlyContext
 
-from tests.fixtures import End2EndFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.types.behave import Context
+    from tests.fixtures import End2EndFixture
 
 
 def test_e2e_failure(e2e_fixture: End2EndFixture) -> None:
-    def after_feature(context: Context, feature: Feature) -> None:
+    def after_feature(context: Context, *_args: Any, **_kwargs: Any) -> None:
         from grizzly.locust import on_master
         if on_master(context):
             return
@@ -19,22 +23,22 @@ def test_e2e_failure(e2e_fixture: End2EndFixture) -> None:
 
         expectations = [
             # failure exception is StopUser, abort user/scenario when there's a failure
-            ('001 stop user', 'SCEN', 1, 1,),
-            ('001 stop user', 'TSTD', 0, 1,),
-            ('001 stop-get1', 'GET', 0, 1,),
-            ('001 stop-get2', 'GET', 1, 1,),
+            ('001 stop user', 'SCEN', 1, 1),
+            ('001 stop user', 'TSTD', 0, 1),
+            ('001 stop-get1', 'GET', 0, 1),
+            ('001 stop-get2', 'GET', 1, 1),
             # failure exception is RestartScenario, do not run steps after the failing step, restart from task 0
-            ('002 restart scenario', 'SCEN', 1, 2,),
-            ('002 restart scenario', 'TSTD', 0, 2,),
-            ('002 restart-get1', 'GET', 0, 2,),
-            ('002 restart-get2', 'GET', 1, 2,),
-            ('002 restart-get3', 'GET', 0, 1,),
+            ('002 restart scenario', 'SCEN', 1, 2),
+            ('002 restart scenario', 'TSTD', 0, 2),
+            ('002 restart-get1', 'GET', 0, 2),
+            ('002 restart-get2', 'GET', 1, 2),
+            ('002 restart-get3', 'GET', 0, 1),
             # failure exception is None, just continue
-            ('003 default', 'SCEN', 0, 2,),
-            ('003 default', 'TSTD', 0, 2,),
-            ('003 default-get1', 'GET', 0, 2,),
-            ('003 default-get2', 'GET', 1, 2,),
-            ('003 default-get3', 'GET', 0, 2,),
+            ('003 default', 'SCEN', 0, 2),
+            ('003 default', 'TSTD', 0, 2),
+            ('003 default-get1', 'GET', 0, 2),
+            ('003 default-get2', 'GET', 1, 2),
+            ('003 default-get3', 'GET', 0, 2),
         ]
 
         for name, method, expected_num_failures, expected_num_requests in expectations:
@@ -44,12 +48,9 @@ def test_e2e_failure(e2e_fixture: End2EndFixture) -> None:
 
     e2e_fixture.add_after_feature(after_feature)
 
-    if e2e_fixture._distributed:
-        start_webserver_step = f'Then start webserver on master port "{e2e_fixture.webserver.port}"\n'
-    else:
-        start_webserver_step = ''
+    start_webserver_step = f'Then start webserver on master port "{e2e_fixture.webserver.port}"\n' if e2e_fixture._distributed else ''
 
-    feature_file = e2e_fixture.create_feature(dedent(f'''Feature: test failure
+    feature_file = e2e_fixture.create_feature(dedent(f"""Feature: test failure
     Background: common configuration
         Given "3" users
         And spawn rate is "3" user per second
@@ -79,7 +80,7 @@ def test_e2e_failure(e2e_fixture: End2EndFixture) -> None:
         Then get request with name "default-get2" from endpoint "/api/until/hello?nth=2&wrong=foobar&right=world | content_type=json"
         When response payload "$.hello" is not "world" fail request
         Then get request with name "default-get3" from endpoint "/api/echo"
-    '''))
+    """))
 
     rc, output = e2e_fixture.execute(feature_file)
 

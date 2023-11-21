@@ -1,5 +1,4 @@
-"""
-@anchor pydoc:grizzly.tasks.keystore Keystore task
+"""@anchor pydoc:grizzly.tasks.keystore Keystore task
 This tasks sets and gets values from a distributed keystore. This makes is possible to share values between scenarios.
 
 Retreived (get) values are rendered before setting the variable.
@@ -30,8 +29,10 @@ This task only has request statistics entry, of type `KEYS`, if a key (without `
 * `default_value` _Any (Optional)_: used when `action` is `get` and `key` does not exist in the keystore
 """
 from __future__ import annotations
-from typing import Any, Literal, Optional, Union, TYPE_CHECKING, cast
-from json import loads as jsonloads, dumps as jsondumps
+
+from json import dumps as jsondumps
+from json import loads as jsonloads
+from typing import TYPE_CHECKING, Any, Literal, Optional, Union, cast, get_args
 
 from . import GrizzlyTask, grizzlytask, template
 
@@ -56,13 +57,13 @@ class KeystoreTask(GrizzlyTask):
         self.action_context = action_context
         self.default_value = default_value
 
+        assert self.action in get_args(Action), f'{self.action} is not a valid action'
+
         if self.action == 'get':
             assert isinstance(self.action_context, str), 'action context for get must be a string'
             assert action_context in self.grizzly.state.variables, f'{action_context} has not been initialized'
-        elif self.action == 'set':
+        else:  # == 'set'
             assert self.action_context is not None, 'action context for set cannot be None'
-        else:
-            raise AssertionError(f'{self.action} is not a valid action')
 
     def __call__(self) -> grizzlytask:
         @grizzlytask
@@ -78,14 +79,15 @@ class KeystoreTask(GrizzlyTask):
                     if value is not None:
                         parent.user._context['variables'][self.action_context] = jsonloads(parent.render(jsondumps(value)))
                     else:
-                        raise RuntimeError(f'key {self.key} does not exist in keystore')
+                        message = f'key {self.key} does not exist in keystore'
+                        raise RuntimeError(message)
                 elif self.action == 'set':
                     # do not render set values, might want it to be a template
                     parent.consumer.keystore_set(self.key, self.action_context)
                 else:  # pragma: no cover
                     pass
             except Exception as e:
-                parent.user.logger.error(str(e))
+                parent.user.logger.exception('keystore action %s failed', self.action)
                 parent.user.environment.events.request.fire(
                     request_type='KEYS',
                     name=f'{parent.user._scenario.identifier} {self.key}',
@@ -96,6 +98,6 @@ class KeystoreTask(GrizzlyTask):
                 )
 
                 if parent.user._scenario.failure_exception is not None:
-                    raise parent.user._scenario.failure_exception()
+                    raise parent.user._scenario.failure_exception from e
 
         return task

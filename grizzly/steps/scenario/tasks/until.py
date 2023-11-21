@@ -1,27 +1,26 @@
-"""
+"""@anchor pydoc:grizzly.steps.scenario.tasks.until Until
 This module contains step implementations for the {@pylink grizzly.tasks.until} task.
 """
+from __future__ import annotations
+
 from typing import cast
 
-from grizzly.types.behave import Context, then, register_type
-from grizzly.types import RequestDirection, RequestMethod
-from grizzly.steps._helpers import add_request_task, get_task_client
 from grizzly.context import GrizzlyContext
+from grizzly.steps._helpers import add_request_task, get_task_client
 from grizzly.tasks import UntilRequestTask
-
+from grizzly.types import RequestDirection, RequestMethod
+from grizzly.types.behave import Context, register_type, then
 
 register_type(
     Method=RequestMethod.from_string,
 )
 
 
-@then(u'{method:Method} request with name "{name}" from endpoint "{endpoint}" until "{condition}"')
+@then('{method:Method} request with name "{name}" from endpoint "{endpoint}" until "{condition}"')
 def step_task_request_with_name_endpoint_until(context: Context, method: RequestMethod, name: str, endpoint: str, condition: str) -> None:
-    """
-    Creates an instance of the {@pylink grizzly.tasks.until} task, see task documentation for more information.
+    """Create an instance of the {@pylink grizzly.tasks.until} task, see task documentation for more information.
 
     Example:
-
     ```gherkin
     Then get request with name "test-get" from endpoint "/api/test | content_type=json" until "$.`this`[?success==true]"
     Then receive request with name "test-receive" from endpoint "queue:receive-queue | content_type=xml" until "/header/success[. == 'True']"
@@ -34,7 +33,6 @@ def step_task_request_with_name_endpoint_until(context: Context, method: Request
         endpoint (str): URI relative to `host` in the scenario, can contain variables and in certain cases `user_class_name` specific parameters
         condition (str): JSON or XPath expression for specific value in response payload
     """
-
     assert method.direction == RequestDirection.FROM, 'this step is only valid for request methods with direction FROM'
     assert context.text is None, 'this step does not have support for step text'
 
@@ -50,23 +48,22 @@ def step_task_request_with_name_endpoint_until(context: Context, method: Request
             condition_rendered = condition_rendered.replace(f'{{{{ {key} }}}}', value)
 
         grizzly.scenario.tasks.add(UntilRequestTask(
-            grizzly,
             request=request_task,
             condition=condition_rendered,
         ))
 
 
-@then(u'get "{endpoint}" with name "{name}" until "{condition}"')
+@then('get "{endpoint}" with name "{name}" until "{condition}"')
 def step_task_client_get_endpoint_until(context: Context, endpoint: str, name: str, condition: str) -> None:
-    """
-    Creates an instance of a {@pylink grizzly.tasks.clients} task, actual implementation of the task is determined
-    based on the URL scheme specified in `endpoint`. Gets information, repeated from another host or endpoint than the scenario
-    is load testing until the response matches `expression`.
+    """Create an instance of a {@pylink grizzly.tasks.clients} task, actual implementation of the task is determined
+    based on the URL scheme specified in `endpoint`.
+
+    Gets information, repeated from another host or endpoint than the scenario is load testing until the response
+    matches `expression`.
 
     See {@pylink grizzly.tasks.clients} task documentation for more information about client tasks.
 
     Example:
-
     ```gherkin
     Then get "https://www.example.org/example.json" with name "example-1" until "$.response[status='Success']
     Then get "http://{{ endpoint }}" with name "example-2" until "//*[@status='Success']"
@@ -87,7 +84,6 @@ def step_task_client_get_endpoint_until(context: Context, endpoint: str, name: s
     )
 
     grizzly.scenario.tasks.add(UntilRequestTask(
-        grizzly,
         request=client_request,
         condition=condition,
     ))

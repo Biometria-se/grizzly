@@ -1,5 +1,4 @@
-"""
-@anchor pydoc:grizzly.tasks.loop Loop
+"""@anchor pydoc:grizzly.tasks.loop Loop
 This task executes the wraped tasks for all values in provided list.
 
 All task created between {@pylink grizzly.steps.scenario.tasks.loop.step_task_loop_start} and {@pylink grizzly.steps.scenario.tasks.loop.step_task_loop_end}
@@ -24,17 +23,18 @@ is the number of wrapped tasks. Each wrapped task will have its own entry in the
 
 * `variable` _str_: name of variable that a value from `input_list` will be accessible in
 """
-from typing import TYPE_CHECKING, Any, List, Optional
-from time import perf_counter
+from __future__ import annotations
+
 from json import loads as jsonloads
+from time import perf_counter
+from typing import TYPE_CHECKING, Any, List, Optional
 
 from gevent import sleep as gsleep
 
-from . import GrizzlyTask, GrizzlyTaskWrapper, template, grizzlytask
+from . import GrizzlyTask, GrizzlyTaskWrapper, grizzlytask, template
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.scenarios import GrizzlyScenario
-    from grizzly.context import GrizzlyContext
 
 
 @template('values', 'tasks')
@@ -45,7 +45,7 @@ class LoopTask(GrizzlyTaskWrapper):
     values: str
     variable: str
 
-    def __init__(self, grizzly: 'GrizzlyContext', name: str, values: str, variable: str) -> None:
+    def __init__(self, name: str, values: str, variable: str) -> None:
         super().__init__()
 
         self.name = name
@@ -54,13 +54,14 @@ class LoopTask(GrizzlyTaskWrapper):
 
         self.tasks = []
 
-        if self.variable not in grizzly.state.variables:
-            raise ValueError(f'{self.__class__.__name__}: {self.variable} has not been initialized')
+        if self.variable not in self.grizzly.state.variables:
+            message = f'{self.__class__.__name__}: {self.variable} has not been initialized'
+            raise ValueError(message)
 
     def add(self, task: GrizzlyTask) -> None:
         task_name = getattr(task, 'name', None)
-        if task_name is not None:
-            setattr(task, 'name', f'{self.name}:{task_name}')
+        if task_name is not None and hasattr(task, 'name'):
+            task.name = f'{self.name}:{task_name}'
         self.tasks.append(task)
 
     def peek(self) -> List[GrizzlyTask]:
@@ -70,7 +71,7 @@ class LoopTask(GrizzlyTaskWrapper):
         tasks = [task() for task in self.tasks]
 
         @grizzlytask
-        def task(parent: 'GrizzlyScenario') -> Any:
+        def task(parent: GrizzlyScenario) -> Any:
             orig_value = parent.user._context['variables'].get(self.variable, None)
             start = perf_counter()
             exception: Optional[Exception] = None
@@ -81,7 +82,8 @@ class LoopTask(GrizzlyTaskWrapper):
                 values = jsonloads(parent.render(self.values))
 
                 if not isinstance(values, list):
-                    raise RuntimeError(f'"{self.values}" is not a list')
+                    message = f'"{self.values}" is not a list'
+                    raise TypeError(message)
 
                 response_length = len(values)
 
@@ -100,26 +102,26 @@ class LoopTask(GrizzlyTaskWrapper):
 
                 if exception is not None and parent.user._scenario.failure_exception is not None and isinstance(exception, parent.user._scenario.failure_exception):
                     raise exception
-                else:
-                    parent.user.environment.events.request.fire(
-                        request_type='LOOP',
-                        name=f'{parent.user._scenario.identifier} {self.name} ({task_count})',
-                        response_time=response_time,
-                        response_length=response_length,
-                        context=parent.user._context,
-                        exception=exception,
-                    )
 
-                    if exception is not None and parent.user._scenario.failure_exception is not None:
-                        raise parent.user._scenario.failure_exception()
+                parent.user.environment.events.request.fire(
+                    request_type='LOOP',
+                    name=f'{parent.user._scenario.identifier} {self.name} ({task_count})',
+                    response_time=response_time,
+                    response_length=response_length,
+                    context=parent.user._context,
+                    exception=exception,
+                )
+
+                if exception is not None and parent.user._scenario.failure_exception is not None:
+                    raise parent.user._scenario.failure_exception
 
         @task.on_start
-        def on_start(parent: 'GrizzlyScenario') -> None:
+        def on_start(parent: GrizzlyScenario) -> None:
             for task in tasks:
                 task.on_start(parent)
 
         @task.on_stop
-        def on_stop(parent: 'GrizzlyScenario') -> None:
+        def on_stop(parent: GrizzlyScenario) -> None:
             for task in tasks:
                 task.on_stop(parent)
 

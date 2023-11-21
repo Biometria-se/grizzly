@@ -1,33 +1,37 @@
-from typing import cast
+"""Unit tests of grizzly.tasks.date."""
+from __future__ import annotations
+
 from datetime import datetime
+from typing import TYPE_CHECKING, cast
 
 import pytest
-
-from pytest_mock import MockerFixture
 from dateutil.parser import parse as dateparser
 
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import DateTask
 
-from tests.fixtures import GrizzlyFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from pytest_mock import MockerFixture
+
+    from tests.fixtures import GrizzlyFixture
 
 
 class TestDateTask:
     def test___init__(self) -> None:
-        with pytest.raises(ValueError) as ve:
+        with pytest.raises(ValueError, match='no arguments specified'):
             DateTask('date_variable', '2022-01-17')
-        assert 'no arguments specified' in str(ve)
 
-        with pytest.raises(ValueError) as ve:
+        with pytest.raises(ValueError, match='unsupported arguments asdf'):
             DateTask('date_variable', '2022-01-17 | asdf=True')
-        assert 'unsupported arguments asdf' in str(ve)
 
-        task_factory = DateTask('date_variable', '{{ datetime.now() }} | offset=-1D, timezone="{{ timezone }}", format="%Y-%m-%d"')
+        task_factory = DateTask('date_variable', '{{ datetime.now() }} | offset=-1D10m, timezone="{{ timezone }}", format="%Y-%m-%d"')
 
         assert task_factory.value == '{{ datetime.now() }}'
-        assert task_factory.arguments.get('offset', None) == '-1D'
-        assert task_factory.arguments.get('timezone', None) == '{{ timezone }}'
-        assert task_factory.arguments.get('format', None) == '%Y-%m-%d'
+        assert task_factory.arguments == {
+            'offset': '-1D10m',
+            'timezone': '{{ timezone }}',
+            'format': '%Y-%m-%d',
+        }
         assert task_factory.__template_attributes__ == {'value', 'arguments'}
         templates = sorted(task_factory.get_templates())
         assert len(templates) == 2
@@ -36,7 +40,7 @@ class TestDateTask:
             '{{ timezone }}',
         ])
 
-    def test___call__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+    def test___call__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:  # noqa: PLR0915
         behave = grizzly_fixture.behave.context
         grizzly = cast(GrizzlyContext, behave.grizzly)
         grizzly.state.variables.update({'date_variable': 'none'})
@@ -45,11 +49,11 @@ class TestDateTask:
 
         assert parent is not None
 
-        task_factory = DateTask('date_variable', '2022-01-17 10:37:01 | offset=-1D')
+        task_factory = DateTask('date_variable', '2022-01-17 10:37:01 | offset=-1D10m')
         task = task_factory()
         task(parent)
 
-        assert parent.user._context['variables']['date_variable'] == '2022-01-16 10:37:01'
+        assert parent.user._context['variables']['date_variable'] == '2022-01-16 10:47:01'
 
         task_factory = DateTask('date_variable', '2022-01-17 10:37:01 | offset=-22Y-1D, timezone=UTC')
         task = task_factory()
@@ -79,22 +83,19 @@ class TestDateTask:
 
         task_factory.arguments['offset'] = 'asdf'
 
-        with pytest.raises(ValueError) as ve:
+        with pytest.raises(ValueError, match='invalid time span format'):
             task(parent)
-        assert 'invalid time span format' in str(ve)
 
         task_factory.arguments.update({'offset': None, 'timezone': 'DisneyWorld/Ankeborg'})
 
-        with pytest.raises(ValueError) as ve:
+        with pytest.raises(ValueError, match='"DisneyWorld/Ankeborg" is not a valid time zone'):
             task(parent)
-        assert '"DisneyWorld/Ankeborg" is not a valid time zone' in str(ve)
 
         task_factory = DateTask('date_variable', 'asdf | timezone=UTC, offset=-22Y2M3D, format="%-d/%-m %y %H:%M:%S"')
         task = task_factory()
 
-        with pytest.raises(ValueError) as ve:
+        with pytest.raises(ValueError, match='"asdf" is not a valid datetime string'):
             task(parent)
-        assert '"asdf" is not a valid datetime string' in str(ve)
 
         task_factory = DateTask('date_variable', '{{ datetime.now().strftime("%Y") }} | timezone=UTC, format=%Y')
         task = task_factory()
@@ -120,7 +121,7 @@ class TestDateTask:
 
         datetime_mock = mocker.patch(
             'grizzly.tasks.date.datetime',
-            side_effect=lambda *args, **kwargs: datetime(*args, **kwargs)
+            side_effect=lambda *args, **kwargs: datetime(*args, **kwargs),  # noqa: DTZ001
         )
         datetime_mock.now.return_value = expected_datetime
 

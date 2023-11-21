@@ -1,5 +1,4 @@
-"""
-@anchor pydoc:grizzly.testdata.variables.csv_writer CSV Writer
+"""@anchor pydoc:grizzly.testdata.variables.csv_writer CSV Writer
 This variable writes to a CSV file.
 
 The CSV files **must** have headers for each column, since these are used to reference the value.
@@ -23,67 +22,80 @@ And value for variable "AtomicCsvWriter.output" is "output.csv | headers='foo,ba
 And value for variable "AtomicCsvWriter.output" is "{{ foo_value }}, {{ bar_value }}"
 ```
 """
-import os
+from __future__ import annotations
 
-from typing import Dict, Any, Type, Optional, cast
 from csv import DictWriter
+from os import environ
 from pathlib import Path
-
-from grizzly_extras.arguments import split_value, parse_arguments
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, Optional, Type, cast
 
 from grizzly.types import bool_type, list_type
-from grizzly.types.locust import Environment, Message, MasterRunner
+from grizzly.types.locust import Environment, MasterRunner, Message
+from grizzly_extras.arguments import parse_arguments, split_value
 
 from . import AtomicVariable, AtomicVariableSettable
 
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.types.locust import MessageHandler
+
 
 def atomiccsvwriter__base_type__(value: str) -> str:
-    grizzly_context_requests = os.path.join(os.environ.get('GRIZZLY_CONTEXT_ROOT', ''), 'requests')
+    """Validate values that `AtomicCsvWriter` can be initialized with."""
+    grizzly_context_requests = Path(environ.get('GRIZZLY_CONTEXT_ROOT', '')) / 'requests'
 
     if '|' not in value:
-        raise ValueError('AtomicCsvWriter: arguments are required')
+        message = 'AtomicCsvWriter: arguments are required'
+        raise ValueError(message)
 
     csv_file, csv_arguments = split_value(value)
 
     try:
         arguments = parse_arguments(csv_arguments)
     except ValueError as e:
-        raise ValueError(f'AtomicCsvWriter: {str(e)}') from e
+        message = f'AtomicCsvWriter: {e!s}'
+        raise ValueError(message) from e
 
     for argument, value in arguments.items():
         if argument not in AtomicCsvWriter.arguments:
-            raise ValueError(f'AtomicCsvWriter: argument {argument} is not allowed')
-        else:
-            AtomicCsvWriter.arguments[argument](value)
+            message = f'AtomicCsvWriter: argument {argument} is not allowed'
+            raise ValueError(message)
+
+        AtomicCsvWriter.arguments[argument](value)
 
     if 'headers' not in arguments:
-        raise ValueError('AtomicCsvWriter: argument headers is required')
+        message = 'AtomicCsvWriter: argument headers is required'
+        raise ValueError(message)
 
     value = f'{csv_file} | {csv_arguments}'
 
-    path = os.path.join(grizzly_context_requests, csv_file)
+    path = grizzly_context_requests / csv_file
 
-    if not path.endswith('.csv'):
-        raise ValueError(f'AtomicCsvWriter: {csv_file} must be a CSV file with file extension .csv')
+    if path.suffix != '.csv':
+        message = f'AtomicCsvWriter: {csv_file} must be a CSV file with file extension .csv'
+        raise ValueError(message)
 
-    if os.path.exists(path) and not arguments.get('overwrite', False):
-        raise ValueError(f'AtomicCsvWriter: {csv_file} already exists, remove or add argument overwrite=True')
+    if path.exists() and not arguments.get('overwrite', False):
+        message = f'AtomicCsvWriter: {csv_file} already exists, remove existing file or add argument overwrite=True'
+        raise ValueError(message)
 
     return value
 
 
-def atomiccsvwriter_message_handler(environment: Environment, msg: Message, **kwargs: Dict[str, Any]) -> None:
+def atomiccsvwriter_message_handler(environment: Environment, msg: Message, **_kwargs: Any) -> None:  # noqa: ARG001
+    """Receive messages containing CSV data.
+    Write the data to a CSV file.
+    """
     with AtomicCsvWriter.semaphore():
         data = cast(dict, msg.data)
-        destination_file = data['destination']
+        destination_file = cast(str, data['destination'])
         headers = list(data['row'].keys())
-        context_root = os.path.join(os.environ.get('GRIZZLY_CONTEXT_ROOT', ''), 'requests')
+        context_root = Path(environ.get('GRIZZLY_CONTEXT_ROOT', '')) / 'requests'
 
-        output_path = Path(context_root) / destination_file
+        output_path = context_root / destination_file
 
         exists = output_path.exists()
 
-        with open(output_path, 'a+', newline='') as csv_file:
+        with output_path.open('a+', newline='') as csv_file:
             writer = DictWriter(csv_file, fieldnames=headers)
             if not exists:
                 writer.writeheader()
@@ -94,15 +106,16 @@ def atomiccsvwriter_message_handler(environment: Environment, msg: Message, **kw
 class AtomicCsvWriter(AtomicVariable[str], AtomicVariableSettable):
     __base_type__ = atomiccsvwriter__base_type__
     __initialized: bool = False
-    __message_handlers__ = {'atomiccsvwriter': atomiccsvwriter_message_handler}
+    __message_handlers__: ClassVar[Dict[str, MessageHandler]] = {'atomiccsvwriter': atomiccsvwriter_message_handler}
 
     _settings: Dict[str, Dict[str, Any]]
-    arguments: Dict[str, Any] = {'headers': list_type, 'overwrite': bool_type}
+    arguments: ClassVar[Dict[str, Any]] = {'headers': list_type, 'overwrite': bool_type}
 
-    def __init__(self, variable: str, value: str, outer_lock: bool = False) -> None:
-        with self.semaphore(outer_lock):
+    def __init__(self, variable: str, value: str, *, outer_lock: bool = False) -> None:
+        with self.semaphore(outer=outer_lock):
             if variable.count('.') != 0:
-                raise ValueError(f'{self.__class__.__name__}.{variable} is not a valid CSV destination name, must be: {self.__class__.__name__}.<name>')
+                message = f'{self.__class__.__name__}.{variable} is not a valid CSV destination name, must be: {self.__class__.__name__}.<name>'
+                raise ValueError(message)
 
             safe_value = self.__class__.__base_type__(value)
 
@@ -127,7 +140,7 @@ class AtomicCsvWriter(AtomicVariable[str], AtomicVariableSettable):
             self.__initialized = True
 
     @classmethod
-    def clear(cls: Type['AtomicCsvWriter']) -> None:
+    def clear(cls: Type[AtomicCsvWriter]) -> None:
         super().clear()
 
         instance = cast(AtomicCsvWriter, cls.get())
@@ -136,15 +149,18 @@ class AtomicCsvWriter(AtomicVariable[str], AtomicVariableSettable):
         for variable in variables:
             del instance._settings[variable]
 
-    def __getitem__(self, variable: str) -> Optional[str]:
-        raise NotImplementedError(f'{self.__class__.__name__} has not implemented "__getitem__"')  # pragma: no cover
+    def __getitem__(self, variable: str) -> Optional[str]:  # pragma: no cover
+        message = f'{self.__class__.__name__} has not implemented "__getitem__"'
+        raise NotImplementedError(message)
 
     def __setitem__(self, variable: str, value: Optional[str]) -> None:
+        """Set/write CSV row, by sending a message to master."""
         if value is None or isinstance(self.grizzly.state.locust, MasterRunner):
             return
 
         if variable not in self._settings:
-            raise ValueError(f'{self.__class__.__name__}.{variable} is not a valid reference')
+            message = f'{self.__class__.__name__}.{variable} is not a valid reference'
+            raise ValueError(message)
 
         values = [v.strip() for v in value.split(',')]
 
@@ -154,14 +170,11 @@ class AtomicCsvWriter(AtomicVariable[str], AtomicVariableSettable):
 
         if values_count != header_count:
             delta = values_count - header_count
-            if delta < 0:
-                diff_text = 'less'
-            else:
-                diff_text = 'more'
+            diff_text = 'less' if delta < 0 else 'more'
+            message = f'{self.__class__.__name__}.{variable}: {diff_text} values ({values_count}) than headers ({header_count})'
+            raise ValueError(message)
 
-            raise ValueError(f'{self.__class__.__name__}.{variable}: {diff_text} values ({values_count}) than headers ({header_count})')
-
-        buffer = {key: value for key, value in zip(headers, values)}
+        buffer = dict(zip(headers, values))
 
         # values for all headers set, flush to file
         data = {

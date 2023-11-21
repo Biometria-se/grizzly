@@ -1,3 +1,8 @@
+"""Dummy pymqi interface implementation.
+This is used if `pymqi` is not installed, to get around typing errors.
+"""
+from __future__ import annotations
+
 from typing import Type
 
 
@@ -18,4 +23,5 @@ class QueueManager:
 
 
 def raise_for_error(cls: Type[object]) -> None:
-    raise NotImplementedError(f'{cls.__name__} could not import pymqi, have you installed IBM MQ dependencies?')
+    message = f'{cls.__name__} could not import pymqi, have you installed IBM MQ dependencies?'
+    raise NotImplementedError(message)

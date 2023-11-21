@@ -1,10 +1,15 @@
-from textwrap import dedent
+"""End-to-end test of grizzly variables."""
+from __future__ import annotations
 
-from tests.fixtures import End2EndFixture
+from textwrap import dedent
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:  # pragma: no cover
+    from tests.fixtures import End2EndFixture
 
 
 def test_e2e_variables(e2e_fixture: End2EndFixture) -> None:
-    feature_file = e2e_fixture.create_feature(dedent('''Feature: variables
+    feature_file = e2e_fixture.create_feature(dedent("""Feature: variables
     Background: common configuration
         Given "2" users
         And spawn rate is "2" users per second
@@ -23,7 +28,7 @@ def test_e2e_variables(e2e_fixture: End2EndFixture) -> None:
 
         Then log message "scenario_2={{ scenario_2 }}"
         Then log message "background_variable={{ background_variable }}"
-    '''))
+    """))
 
     rc, output = e2e_fixture.execute(feature_file)
 

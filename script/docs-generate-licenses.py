@@ -1,20 +1,19 @@
 #!/usr/bin/env python3
+from __future__ import annotations
 
 import sys
-
-from typing import List, Dict
-from os import path
-from json import loads as jsonloads
 from io import StringIO
+from json import loads as jsonloads
+from pathlib import Path
+from typing import Dict, List
 
 import requests
-
 from piplicenses import CustomNamespace, FormatArg, FromArg, OrderArg, create_output_string
 from pytablewriter import MarkdownTableWriter
 
 URL_MAP: Dict[str, str] = {}
 
-REPO_ROOT = path.realpath(path.join(path.dirname(__file__), '..'))
+REPO_ROOT = Path(__file__).parent.parent.resolve()
 
 
 def generate_license_table() -> List[str]:
@@ -41,17 +40,18 @@ def generate_license_table() -> List[str]:
 
     table_contents: List[List[str]] = []
 
-    for license in licenses:
-        name = license['Name']
+    for license_struct in licenses:
+        name = license_struct['Name']
         if name.startswith('grizzly-') or name in ['pkg-resources']:
             continue
 
-        if license['URL'] == 'UNKNOWN':
+        if license_struct['URL'] == 'UNKNOWN':
             try:
-                response = requests.get(f'https://pypi.org/pypi/{name}/json')
+                response = requests.get(f'https://pypi.org/pypi/{name}/json', timeout=10)
 
                 if response.status_code != 200:
-                    raise ValueError(f'{response.url} returned {response.status_code}')
+                    message = f'{response.url} returned {response.status_code}'
+                    raise ValueError(message)
 
                 result = jsonloads(response.text)
 
@@ -75,19 +75,20 @@ def generate_license_table() -> List[str]:
                 )
 
                 if url is None:
-                    raise ValueError(f'no URL found on {response.url} or in static map')
+                    message = f'no URL found on {response.url} or in static map'
+                    raise ValueError(message)
 
-                license['URL'] = url
+                license_struct['URL'] = url
             except Exception as e:
-                print(f'!! you need to find an url for package "{name}": {str(e)}', file=sys.stderr)
+                print(f'!! you need to find an url for package "{name}": {e!s}', file=sys.stderr)
                 sys.exit(1)
 
-        name = f'[{name}]({license["URL"]})'
+        name = f'[{name}]({license_struct["URL"]})'
 
         table_contents.append([
             name,
-            license['Version'],
-            license['License'],
+            license_struct['Version'],
+            license_struct['License'],
         ])
 
     writer = MarkdownTableWriter(
@@ -99,13 +100,12 @@ def generate_license_table() -> List[str]:
     writer.stream = StringIO()
     writer.write_table()
 
-    license_table = ['### Python dependencies\n'] + [f'{row}\n' for row in writer.stream.getvalue().strip().split('\n')]
+    return ['### Python dependencies\n'] + [f'{row}\n' for row in writer.stream.getvalue().strip().split('\n')]
 
-    return license_table
 
 
 def generate_native_dependencies_section() -> List[str]:
-    section = '''
+    section = """
 ### Native dependencies
 
 Container images (both grizzly runtime and Microsoft Visual Code devcontainer) contains dependencies from
@@ -114,19 +114,18 @@ Container images (both grizzly runtime and Microsoft Visual Code devcontainer) c
 The redistributable license terms may be found in the relevant IBM MQ Program license agreement, which may be found at the
 [IBM Software License Agreements](https://www.ibm.com/software/sla/sladb.nsf/search/) website, or in `licenses/` directory
 in the [archive](https://ibm.biz/IBM-MQC-Redist-LinuxX64targz).
-'''
+"""
 
     return [f'{row.strip()}\n' for row in section.strip().split('\n')]
 
 
 def main() -> int:
-    with open(path.join(REPO_ROOT, 'LICENSE.md')) as fd:
-        contents = fd.readlines()
+    contents = (REPO_ROOT / 'LICENSE.md').read_text().splitlines()
 
     license_table = generate_license_table()
     native_dependencies = generate_native_dependencies_section()
     contents[0] = f'#{contents[0]}'
-    license_contents = contents + ['\n', '## Third party licenses\n', '\n'] + license_table + ['\n'] + native_dependencies
+    license_contents = [*contents, '\n', '## Third party licenses\n', '\n', *license_table, '\n', *native_dependencies]
 
     print(''.join(license_contents))
 

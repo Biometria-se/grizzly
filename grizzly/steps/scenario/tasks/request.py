@@ -1,11 +1,13 @@
-"""
+"""@anchor pydoc:grizzly.steps.scenario.tasks.request Request
 This module contains step implementations that creates requests executed by the {@pylink grizzly.users}
 in the scenario.
 """
-from grizzly.types import RequestDirection, RequestMethod
-from grizzly.steps._helpers import add_request_task, is_template
-from grizzly.types.behave import Context, then, register_type
+from __future__ import annotations
 
+from grizzly.steps._helpers import add_request_task
+from grizzly.types import RequestDirection, RequestMethod
+from grizzly.types.behave import Context, register_type, then
+from grizzly.utils import is_template
 
 register_type(
     Direction=RequestDirection.from_string,
@@ -13,10 +15,10 @@ register_type(
 )
 
 
-@then(u'{method:Method} request with name "{name}" {direction:Direction} endpoint "{endpoint}"')
+@then('{method:Method} request with name "{name}" {direction:Direction} endpoint "{endpoint}"')
 def step_task_request_text_with_name_endpoint(context: Context, method: RequestMethod, name: str, direction: RequestDirection, endpoint: str) -> None:
-    """
-    Creates an instance of the {@pylink grizzly.tasks.request} task, where optional payload is defined directly in the feature file.
+    """Create an instance of the {@pylink grizzly.tasks.request} task, where optional payload is defined directly in the feature file.
+
     See {@pylink grizzly.tasks.request} task documentation for more information about arguments.
 
     * If `Method` in the expression is `get` or `receive`; the `direction` **must** be `from`.
@@ -24,7 +26,6 @@ def step_task_request_text_with_name_endpoint(context: Context, method: RequestM
     * If `Method` in the expression is `post`, `pust`, or `send`; the `direction` **must** be `to`, and payload defined in the feature file.
 
     Example:
-
     ```gherkin
     Then post request with name "test-post" to endpoint "/api/test"
         \"\"\"
@@ -55,7 +56,6 @@ def step_task_request_text_with_name_endpoint(context: Context, method: RequestM
         direction (RequestDirection): one of `to` or `from` depending on the value of `method`
         endpoint (str): URI relative to `host` in the scenario, can contain variables and in certain cases `user_class_name` specific parameters
     """
-
     assert isinstance(direction, RequestDirection), 'invalid direction specified in expression'
 
     if method.direction == RequestDirection.FROM:
@@ -68,15 +68,13 @@ def step_task_request_text_with_name_endpoint(context: Context, method: RequestM
     add_request_task(context, method=method, source=context.text, name=name, endpoint=endpoint)
 
 
-@then(u'{method:Method} request "{source}" with name "{name}" to endpoint "{endpoint}"')
+@then('{method:Method} request "{source}" with name "{name}" to endpoint "{endpoint}"')
 def step_task_request_file_with_name_endpoint(context: Context, method: RequestMethod, source: str, name: str, endpoint: str) -> None:
-    """
-    Creates an instance of the {@pylink grizzly.tasks.request} task, where the payload is defined in a template file.
+    """Create an instance of the {@pylink grizzly.tasks.request} task, where the payload is defined in a template file.
 
     See {@pylink grizzly.tasks.request} task documentation for more information about arguments.
 
     Example:
-
     ```gherkin
     Then send request "test/request.j2.json" with name "test-send" to endpoint "queue:receive-queue"
     Then post request "test/request.j2.json" with name "test-post" to endpoint "/api/test"
@@ -95,16 +93,14 @@ def step_task_request_file_with_name_endpoint(context: Context, method: RequestM
     add_request_task(context, method=method, source=source, name=name, endpoint=endpoint)
 
 
-@then(u'{method:Method} request "{source}" with name "{name}"')
+@then('{method:Method} request "{source}" with name "{name}"')
 def step_task_request_file_with_name(context: Context, method: RequestMethod, source: str, name: str) -> None:
-    """
-    Creates an instance of the {@pylink grizzly.tasks.request} task, with the same `endpoint` as the previous Request task, where the
+    """Create an instance of the {@pylink grizzly.tasks.request} task, with the same `endpoint` as the previous Request task, where the
     payload is defined in a template file.
 
     See {@pylink grizzly.tasks.request} task documentation for more information about arguments.
 
     Example:
-
     ```gherkin
     Then post request "test/request1.j2.json" with name "test-post1" to endpoint "/api/test"
     Then post request "test/request2.j2.json" with name "test-post2"
@@ -125,10 +121,9 @@ def step_task_request_file_with_name(context: Context, method: RequestMethod, so
     add_request_task(context, method=method, source=source, name=name)
 
 
-@then(u'{method:Method} request with name "{name}"')
+@then('{method:Method} request with name "{name}"')
 def step_task_request_text_with_name(context: Context, method: RequestMethod, name: str) -> None:
-    """
-    Creates an instance of the {@pylink grizzly.tasks.request} task, where optional payload is defined directly in the feature file.
+    """Create an instance of the {@pylink grizzly.tasks.request} task, where optional payload is defined directly in the feature file.
 
     See {@pylink grizzly.tasks.request} task documentation for more information about arguments.
 
@@ -136,7 +131,6 @@ def step_task_request_text_with_name(context: Context, method: RequestMethod, na
     This step is useful if `method` and `endpoint` are the same as previous request, but the payload should be different.
 
     Example:
-
     ```gherkin
     # example-1
     Then post request with name "test-post-1" to endpoint "/api/test"
@@ -179,7 +173,6 @@ def step_task_request_text_with_name(context: Context, method: RequestMethod, na
         method (Method): type of request, either "from" or "to"
         name (str): name of the requests in logs, can contain variables
     """
-
     if method.direction == RequestDirection.FROM:
         assert context.text is None, f'Step text is not allowed for {method.name}'
     elif method.direction == RequestDirection.TO:

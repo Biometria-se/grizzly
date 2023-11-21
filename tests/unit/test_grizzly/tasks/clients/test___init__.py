@@ -1,22 +1,27 @@
-import logging
+"""Unit tests of grizzly.tasks.clients."""
+from __future__ import annotations
 
+import logging
+from contextlib import suppress
 from os import environ
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
-from _pytest.logging import LogCaptureFixture
-
+from grizzly.exceptions import RestartScenario, StopUser
 from grizzly.scenarios import GrizzlyScenario, IteratorScenario
 from grizzly.tasks.clients import ClientTask, client
 from grizzly.types import GrizzlyResponse, RequestDirection
-from grizzly.exceptions import StopUser, RestartScenario
 
-from tests.fixtures import GrizzlyFixture, MockerFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from _pytest.logging import LogCaptureFixture
+
+    from tests.fixtures import GrizzlyFixture, MockerFixture
 
 
-@pytest.mark.parametrize('log_prefix', [False, True,])
-def test_task_failing(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, caplog: LogCaptureFixture, log_prefix: bool) -> None:
+@pytest.mark.parametrize('log_prefix', [False, True])
+def test_task_failing(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, caplog: LogCaptureFixture, *, log_prefix: bool) -> None:
     try:
         @client('test')
         class TestClientTask(ClientTask):
@@ -24,9 +29,10 @@ def test_task_failing(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, ca
 
             def get(self, parent: GrizzlyScenario) -> GrizzlyResponse:
                 with self.action(parent):
-                    raise RuntimeError('failed get')
+                    message = 'failed get'
+                    raise RuntimeError(message)
 
-            def put(self, parent: GrizzlyScenario) -> GrizzlyResponse:
+            def put(self, _: GrizzlyScenario) -> GrizzlyResponse:
                 return None, 'put'
 
         if log_prefix:
@@ -81,17 +87,14 @@ def test_task_failing(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, ca
         parent.tasks.clear()
         parent._task_queue.clear()
         parent._task_queue.append(task)
-        parent.task_count = 1
+        parent.__class__.task_count = 1
 
-        with pytest.raises(NotImplementedError):
-            with caplog.at_level(logging.INFO):
-                parent.run()
+        with pytest.raises(NotImplementedError), caplog.at_level(logging.INFO):
+            parent.run()
 
         log_error_mock.assert_called_once_with(None)
 
         assert 'restarting scenario' in '\n'.join(caplog.messages)
     finally:
-        try:
+        with suppress(KeyError):
             del environ['GRIZZLY_LOG_DIR']
-        except:
-            pass

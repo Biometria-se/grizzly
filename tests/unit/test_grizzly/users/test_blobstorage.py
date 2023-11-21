@@ -1,31 +1,32 @@
-import json
+"""Unit tests for grizzly.users.blobstorage."""
+from __future__ import annotations
 
-from typing import cast
+import json
+from typing import TYPE_CHECKING, cast
 from unittest.mock import ANY
 
 import pytest
-
 from azure.storage.blob._blob_client import BlobClient
 
-from pytest_mock import MockerFixture
-
-from grizzly.types.locust import StopUser
-from grizzly.users.blobstorage import BlobStorageUser
-from grizzly.users.base.grizzly_user import GrizzlyUser
-from grizzly.types import RequestMethod
 from grizzly.context import GrizzlyContextScenario
+from grizzly.exceptions import RestartScenario
 from grizzly.tasks import RequestTask
 from grizzly.testdata.utils import transform
-from grizzly.exceptions import RestartScenario
-from grizzly.scenarios import GrizzlyScenario
+from grizzly.types import RequestMethod
+from grizzly.types.locust import StopUser
+from grizzly.users.base.grizzly_user import GrizzlyUser
+from grizzly.users.blobstorage import BlobStorageUser
 
-from tests.fixtures import GrizzlyFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from pytest_mock import MockerFixture
 
+    from grizzly.scenarios import GrizzlyScenario
+    from tests.fixtures import GrizzlyFixture
 
 CONNECTION_STRING = 'DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=my-storage;AccountKey=xxxyyyyzzz=='
 
 
-@pytest.fixture
+@pytest.fixture()
 def blob_storage_parent(grizzly_fixture: GrizzlyFixture) -> GrizzlyScenario:
     parent = grizzly_fixture(
         CONNECTION_STRING,
@@ -74,25 +75,21 @@ class TestBlobStorageUser:
         assert issubclass(blob_storage_parent.user.__class__, GrizzlyUser)
         blob_storage_parent.user.on_start()
 
-        BlobStorageUser.host = 'DefaultEndpointsProtocol=http;EndpointSuffix=core.windows.net;AccountName=my-storage;AccountKey=xxxyyyyzzz=='
-        with pytest.raises(ValueError) as e:
-            BlobStorageUser(blob_storage_parent.user.environment)
-        assert 'is not supported for BlobStorageUser' in str(e)
+        blob_storage_parent.user.__class__.host = 'DefaultEndpointsProtocol=http;EndpointSuffix=core.windows.net;AccountName=my-storage;AccountKey=xxxyyyyzzz=='
+        with pytest.raises(ValueError, match='is not supported for BlobStorageUser'):
+            blob_storage_parent.user.__class__(blob_storage_parent.user.environment)
 
-        BlobStorageUser.host = 'DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net'
-        with pytest.raises(ValueError) as e:
-            BlobStorageUser(blob_storage_parent.user.environment)
-        assert 'BlobStorageUser needs AccountName in the query string' in str(e)
+        blob_storage_parent.user.__class__.host = 'DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net'
+        with pytest.raises(ValueError, match='needs AccountName in the query string'):
+            blob_storage_parent.user.__class__(blob_storage_parent.user.environment)
 
-        BlobStorageUser.host = 'DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountKey=xxxyyyyzzz=='
-        with pytest.raises(ValueError) as e:
-            BlobStorageUser(blob_storage_parent.user.environment)
-        assert 'BlobStorageUser needs AccountName in the query string' in str(e)
+        blob_storage_parent.user.__class__.host = 'DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountKey=xxxyyyyzzz=='
+        with pytest.raises(ValueError, match='needs AccountName in the query string'):
+            blob_storage_parent.user.__class__(blob_storage_parent.user.environment)
 
-        BlobStorageUser.host = 'DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=my-storage'
-        with pytest.raises(ValueError) as e:
-            BlobStorageUser(blob_storage_parent.user.environment)
-        assert 'BlobStorageUser needs AccountKey in the query string' in str(e)
+        blob_storage_parent.user.__class__.host = 'DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=my-storage'
+        with pytest.raises(ValueError, match='needs AccountKey in the query string'):
+            blob_storage_parent.user.__class__(blob_storage_parent.user.environment)
 
     @pytest.mark.usefixtures('blob_storage_parent')
     def test_send(self, blob_storage_parent: GrizzlyScenario, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
@@ -121,8 +118,8 @@ class TestBlobStorageUser:
                 'variable': '137',
                 'item': {
                     'description': 'this is just a description',
-                }
-            }
+                },
+            },
         }
 
         assert isinstance(blob_storage_parent.user, BlobStorageUser)
@@ -183,8 +180,8 @@ class TestBlobStorageUser:
                 'variable': '137',
                 'item': {
                     'description': 'this is just a description',
-                }
-            }
+                },
+            },
         }
 
         download_blob.return_value.readall.return_value = json.dumps(expected_payload, indent=4).encode('utf-8')

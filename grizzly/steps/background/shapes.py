@@ -1,21 +1,21 @@
-"""
-@anchor pydoc:grizzly.steps.background.shapes Shapes
+"""@anchor pydoc:grizzly.steps.background.shapes Shapes
 This module contains step implementations that describes how the load for all scenarios in a feature will look like.
 """
-from typing import Any, Dict, cast
+from __future__ import annotations
+
+from typing import Any, cast
 
 import parse
 
-from grizzly_extras.text import permutation
-
-from grizzly.types.behave import Context, given, register_type
 from grizzly.context import GrizzlyContext
 from grizzly.testdata.utils import resolve_variable
-from grizzly.steps._helpers import is_template
+from grizzly.types.behave import Context, given, register_type
+from grizzly.utils import is_template
+from grizzly_extras.text import permutation
 
 
 @parse.with_pattern(r'(user[s]?)')
-@permutation(vector=(False, True,))
+@permutation(vector=(False, True))
 def parse_user_gramatical_number(text: str) -> str:
     return text.strip()
 
@@ -25,10 +25,11 @@ register_type(
 )
 
 
-@given(u'"{value}" {grammar:UserGramaticalNumber}')
-def step_shapes_user_count(context: Context, value: str, **kwargs: Dict[str, Any]) -> None:
+@given('"{value}" {grammar:UserGramaticalNumber}')
+def step_shapes_user_count(context: Context, value: str, **_kwargs: Any) -> None:
     """Set number of users that will generate load.
 
+    Example:
     ```gherkin
     Given "5" users
     Given "1" user
@@ -54,10 +55,11 @@ def step_shapes_user_count(context: Context, value: str, **kwargs: Dict[str, Any
     grizzly.setup.user_count = user_count
 
 
-@given(u'spawn rate is "{value}" {grammar:UserGramaticalNumber} per second')
-def step_shapes_spawn_rate(context: Context, value: str, **kwargs: Dict[str, Any]) -> None:
+@given('spawn rate is "{value}" {grammar:UserGramaticalNumber} per second')
+def step_shapes_spawn_rate(context: Context, value: str, **_kwargs: Any) -> None:
     """Set rate in which locust shall swarm new user instances.
 
+    Example:
     ```gherkin
     And spawn rate is "5" users per second
     And spawn rate is "1" user per second

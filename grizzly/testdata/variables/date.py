@@ -1,5 +1,4 @@
-"""
-@anchor pydoc:grizzly.testdata.variables.date Date
+"""@anchor pydoc:grizzly.testdata.variables.date Date
 This variable is used to format and use dates.
 
 ## Format
@@ -28,26 +27,28 @@ This can then be used in a template:
 }
 ```
 """
-from typing import Union, Dict, Any, List, Type, Optional, cast
-from datetime import datetime
+from __future__ import annotations
 
-from dateutil.parser import ParserError, parse as dateparse
+from contextlib import suppress
+from datetime import datetime
+from typing import Any, ClassVar, Dict, Optional, Set, Type, Union, cast
+
+from dateutil.parser import ParserError
+from dateutil.parser import parse as dateparse
 from dateutil.relativedelta import relativedelta
 
-try:
-    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError  # pylint: disable=import-error
-except ImportError:
-    from backports.zoneinfo import ZoneInfo, ZoneInfoNotFoundError  # type: ignore[no-redef]  # pylint: disable=import-error  # pyright: ignore[reportMissingImports]
-
-from grizzly_extras.arguments import split_value, parse_arguments
-
+from grizzly.types import ZoneInfo, ZoneInfoNotFoundError
 from grizzly.utils import parse_timespan
+from grizzly_extras.arguments import parse_arguments, split_value
+
 from . import AtomicVariable
 
 
-def atomicdate__base_type__(value: str) -> str:
+def atomicdate__base_type__(value: str) -> str:  # noqa: PLR0912
+    """Validate values that `AtomicDate` can be initialized with."""
     if not isinstance(value, str):
-        raise ValueError(f'AtomicDate: {value} ({type(value)}) is not a string')
+        message = f'AtomicDate: {value} ({type(value)}) is not a string'  # type: ignore[unreachable]
+        raise TypeError(message)
 
     if '|' in value:
         date_value, date_arguments = split_value(value)
@@ -55,20 +56,24 @@ def atomicdate__base_type__(value: str) -> str:
         try:
             arguments = parse_arguments(date_arguments)
         except ValueError as e:
-            raise ValueError(f'AtomicDate: {str(e)}') from e
+            message = f'AtomicDate: {e!s}'
+            raise ValueError(message) from e
 
-        for argument in arguments.keys():
+        for argument in arguments:
             if argument not in AtomicDate.arguments:
-                raise ValueError(f'AtomicDate: argument {argument} is not allowed')
+                message = f'AtomicDate: argument {argument} is not allowed'
+                raise ValueError(message)
 
         if 'format' not in arguments:
-            raise ValueError(f'AtomicDate: date format is not specified: "{value}"')
+            message = f'AtomicDate: date format is not specified: "{value}"'
+            raise ValueError(message)
 
         if 'timezone' in arguments:
             try:
                 ZoneInfo(arguments['timezone'])
-            except ZoneInfoNotFoundError:
-                raise ValueError(f'AtomicDate: unknown timezone "{arguments["timezone"]}"')
+            except ZoneInfoNotFoundError as e:
+                message = f'AtomicDate: unknown timezone "{arguments["timezone"]}"'
+                raise ValueError(message) from e
 
         if 'offset' in arguments:
             parse_timespan(arguments['offset'])
@@ -82,27 +87,29 @@ def atomicdate__base_type__(value: str) -> str:
 
     try:
         dateparse(date_value)
-
-        return value
     except (TypeError, ParserError) as e:
-        raise ValueError(f'AtomicDate: {str(e)}') from e
+        message = f'AtomicDate: {e!s}'
+        raise ValueError(message) from e
+    else:
+        return value
 
 
 class AtomicDate(AtomicVariable[Union[str, datetime]]):
     __base_type__ = atomicdate__base_type__
     __initialized: bool = False
     _settings: Dict[str, Dict[str, Any]]
-    arguments: Dict[str, Any] = {'format': str, 'timezone': str, 'offset': int}
+    arguments: ClassVar[Dict[str, Any]] = {'format': str, 'timezone': str, 'offset': int}
 
-    _special_variables: List[str] = ['now']
+    _special_variables: ClassVar[Set[str]] = {'now'}
 
     def __init__(
         self,
         variable: str,
         value: str,
-        outer_lock: bool = False
+        *,
+        outer_lock: bool = False,
     ) -> None:
-        with self.semaphore(outer_lock):
+        with self.semaphore(outer=outer_lock):
             initial_value: str
             timezone: Optional[ZoneInfo] = None
             date_format = '%Y-%m-%d %H:%M:%S'
@@ -133,10 +140,7 @@ class AtomicDate(AtomicVariable[Union[str, datetime]]):
 
             date_value: Union[str, datetime]
 
-            if initial_value is None or len(initial_value) < 1 or initial_value == 'now':
-                date_value = 'now'
-            else:
-                date_value = dateparse(initial_value)
+            date_value = 'now' if initial_value is None or len(initial_value) < 1 or initial_value == 'now' else dateparse(initial_value)
 
             super().__init__(variable, date_value, outer_lock=True)
 
@@ -149,7 +153,7 @@ class AtomicDate(AtomicVariable[Union[str, datetime]]):
             self.__initialized = True
 
     @classmethod
-    def clear(cls: Type['AtomicDate']) -> None:
+    def clear(cls: Type[AtomicDate]) -> None:
         super().clear()
 
         instance = cast(AtomicDate, cls.get())
@@ -168,7 +172,8 @@ class AtomicDate(AtomicVariable[Union[str, datetime]]):
             elif isinstance(value, datetime):
                 date_value = value
             else:
-                raise ValueError(f'{self.__class__.__name__}.{variable} was incorrectly initialized with "{value}"')
+                message = f'{self.__class__.__name__}.{variable} was incorrectly initialized with "{value}"'
+                raise ValueError(message)
 
             offset = self._settings[variable]['offset']
 
@@ -181,9 +186,7 @@ class AtomicDate(AtomicVariable[Union[str, datetime]]):
 
     def __delitem__(self, variable: str) -> None:
         with self.semaphore():
-            try:
+            with suppress(KeyError):
                 del self._settings[variable]
-            except KeyError:
-                pass
 
             super().__delitem__(variable)

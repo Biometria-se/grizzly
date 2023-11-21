@@ -1,5 +1,4 @@
-"""
-@anchor pydoc:grizzly.steps.scenario.response Response
+"""@anchor pydoc:grizzly.steps.scenario.response Response
 This module contains step implementations that handles {@pylink grizzly.tasks.request} responses.
 
 ## Arguments
@@ -13,22 +12,23 @@ Valid for: {@pylink grizzly.steps.scenario.response.step_response_save_matches},
 
 * `as_json` _bool_ (optional): always return matches as a JSON list, by default if there's a single match it will be returned as a string (default: `False`)
 """
-import parse
+from __future__ import annotations
 
 from typing import cast
 
-from grizzly_extras.transformer import TransformerContentType
-from grizzly_extras.text import permutation
+import parse
 
-from grizzly.types import ResponseTarget
-from grizzly.types.behave import Context, when, then, register_type
 from grizzly.context import GrizzlyContext
+from grizzly.steps._helpers import add_request_task_response_status_codes, add_save_handler, add_validation_handler
 from grizzly.tasks import RequestTask
-from grizzly.steps._helpers import add_save_handler, add_validation_handler, add_request_task_response_status_codes
+from grizzly.types import ResponseTarget
+from grizzly.types.behave import Context, register_type, then, when
+from grizzly_extras.text import permutation
+from grizzly_extras.transformer import TransformerContentType
 
 
 @parse.with_pattern(r'is( not)?', regex_group_count=1)
-@permutation(vector=(False, True,))
+@permutation(vector=(False, True))
 def parse_condition(text: str) -> bool:
     return text is not None and text.strip() == 'is'
 
@@ -40,7 +40,7 @@ register_type(
 )
 
 
-@then(u'save response {target:ResponseTarget} "{expression}" that matches "{match_with}" in variable "{variable}"')
+@then('save response {target:ResponseTarget} "{expression}" that matches "{match_with}" in variable "{variable}"')
 def step_response_save_matches(context: Context, target: ResponseTarget, expression: str, match_with: str, variable: str) -> None:
     """Save specified parts of a response, either from meta data (header) or payload (body), in a variable.
 
@@ -49,7 +49,6 @@ def step_response_save_matches(context: Context, target: ResponseTarget, express
     The {@pylink grizzly.tasks.request} task preceded by this step will fail if the specified `expression` has no or more than one match.
 
     Example:
-
     ```gherkin
     # only token is matched and saved in TOKEN, by using regexp match groups
     And value for variable "TOKEN" is "none"
@@ -81,7 +80,7 @@ def step_response_save_matches(context: Context, target: ResponseTarget, express
     add_save_handler(cast(GrizzlyContext, context.grizzly), target, expression, match_with, variable)
 
 
-@then(u'save response {target:ResponseTarget} "{expression}" in variable "{variable}"')
+@then('save response {target:ResponseTarget} "{expression}" in variable "{variable}"')
 def step_response_save(context: Context, target: ResponseTarget, expression: str, variable: str) -> None:
     """Save metadata (header) or payload (body) value from a response in a variable.
 
@@ -92,7 +91,6 @@ def step_response_save(context: Context, target: ResponseTarget, expression: str
     The {@pylink grizzly.tasks.request} task preceded by this step will fail if the specified `expression` has no or more than one match.
 
     Example:
-
     ```gherkin
     Then save response metadata "$.Authentication" in variable "HEADER_AUTHENTICATION"
 
@@ -109,12 +107,11 @@ def step_response_save(context: Context, target: ResponseTarget, expression: str
     add_save_handler(cast(GrizzlyContext, context.grizzly), target, expression, '.*', variable)
 
 
-@when(u'response {target:ResponseTarget} "{expression}" {condition:Condition} "{match_with}" fail request')
-def step_response_validate(context: Context, target: ResponseTarget, expression: str, condition: bool, match_with: str) -> None:
-    """Fails the request based on the value of a response meta data (header) or payload (body).
+@when('response {target:ResponseTarget} "{expression}" {condition:Condition} "{match_with}" fail request')
+def step_response_validate(context: Context, target: ResponseTarget, expression: str, condition: bool, match_with: str) -> None:  # noqa: FBT001
+    """Fail a request based on the value of a response meta data (header) or payload (body).
 
     Example:
-
     ```gherkin
     And restart scenario on failure
     When response metadata "$.['content-type']" is not ".*application/json.*" fail request
@@ -133,10 +130,10 @@ def step_response_validate(context: Context, target: ResponseTarget, expression:
         condition (enum): "is" or "is not" depending on negative or postive matching
         match_with (str): static value or a regular expression
     """
-    add_validation_handler(cast(GrizzlyContext, context.grizzly), target, expression, match_with, condition)
+    add_validation_handler(cast(GrizzlyContext, context.grizzly), target, expression, match_with, condition=condition)
 
 
-@then(u'allow response status codes "{status_list}"')
+@then('allow response status codes "{status_list}"')
 def step_response_allow_status_codes(context: Context, status_list: str) -> None:
     """Set allowed response status codes for the latest defined request in the scenario.
 
@@ -144,7 +141,6 @@ def step_response_allow_status_codes(context: Context, status_list: str) -> None
     it will be removed from the list of allowed response status codes.
 
     Example:
-
     ```gherkin
     Then get request with name "test-get-1" from endpoint "/api/test"
     And allow response status "200,302"
@@ -166,7 +162,7 @@ def step_response_allow_status_codes(context: Context, status_list: str) -> None
     add_request_task_response_status_codes(request, status_list)
 
 
-@then(u'allow response status codes')
+@then('allow response status codes')
 def step_response_allow_status_codes_table(context: Context) -> None:
     """Set allowed response status codes for the latest defined requests based on a data table.
 
@@ -181,7 +177,6 @@ def step_response_allow_status_codes_table(context: Context) -> None:
     The table **must** have the column header `status`.
 
     Example:
-
     ```gherkin
     Then get request with name "test-get-1" from endpoint "/api/test"
     Then get request with name "test-get-2" from endpoint "/api/test"
@@ -208,17 +203,18 @@ def step_response_allow_status_codes_table(context: Context) -> None:
     index = -1
     rows = list(reversed(list(context.table)))
 
-    for row in rows:
-        try:
+    try:
+        for row in rows:
             request = tasks[index]
             assert isinstance(request, RequestTask), f'task at index {index} is not a request'
             index -= 1
             add_request_task_response_status_codes(request, row['status'])
-        except KeyError:
-            raise AssertionError('data table does not have column "status"')
+    except KeyError as e:
+        message = 'data table does not have column "status"'
+        raise AssertionError(message) from e
 
 
-@then(u'set response content type to "{content_type:ContentType}"')
+@then('set response content type to "{content_type:ContentType}"')
 def step_response_content_type(context: Context, content_type: TransformerContentType) -> None:
     """Set the content type of a response, instead of guessing it.
 
@@ -226,7 +222,6 @@ def step_response_content_type(context: Context, content_type: TransformerConten
     the scenario, and is valid only for the latest defined request.
 
     Example:
-
     ```gherkin
     And set response content type to "json"
     And set response content type to "application/json"
@@ -239,7 +234,6 @@ def step_response_content_type(context: Context, content_type: TransformerConten
     Args:
         content_type (ContentType): expected content type of response
     """
-
     assert content_type != TransformerContentType.UNDEFINED, 'It is not allowed to set UNDEFINED with this step'
 
     grizzly = cast(GrizzlyContext, context.grizzly)

@@ -1,15 +1,19 @@
+"""End-to-end tests of grizzly persistent variables."""
+from __future__ import annotations
+
 from textwrap import dedent
-from os import path
+from typing import TYPE_CHECKING
 
-from grizzly.types.behave import Context, Feature
-
-from tests.fixtures import End2EndFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.types.behave import Context, Feature
+    from tests.fixtures import End2EndFixture
 
 
 def test_e2e_persistence(e2e_fixture: End2EndFixture) -> None:
     def after_feature(context: Context, feature: Feature) -> None:
-        from pathlib import Path
         from json import loads as jsonloads
+        from pathlib import Path
+
         from grizzly.locust import on_worker
 
         if on_worker(context):
@@ -26,21 +30,19 @@ def test_e2e_persistence(e2e_fixture: End2EndFixture) -> None:
         elif feature.scenarios[0].name.strip() == 'run=2':
             expected_value = 5
         else:
-            raise AssertionError(f'unhandled scenario name "{feature.scenarios[0].name}"')
+            msg = f'unhandled scenario name "{feature.scenarios[0].name}"'
+            raise AssertionError(msg)
 
         assert persistance == {
             'AtomicIntegerIncrementer.persistent': f'{expected_value} | step=1, persist=True',
-            'grizzly::keystore': {'foobar': ['hello', '{{ AtomicIntegerIncrementer.persistent }}']}
+            'grizzly::keystore': {'foobar': ['hello', '{{ AtomicIntegerIncrementer.persistent }}']},
         }
 
     e2e_fixture.add_after_feature(after_feature)
 
-    if e2e_fixture._distributed:
-        start_webserver_step = f'Then start webserver on master port "{e2e_fixture.webserver.port}"\n'
-    else:
-        start_webserver_step = ''
+    start_webserver_step = f'Then start webserver on master port "{e2e_fixture.webserver.port}"\n' if e2e_fixture._distributed else ''
 
-    feature_file = e2e_fixture.create_feature(dedent(f'''Feature: test persistence
+    feature_file = e2e_fixture.create_feature(dedent(f"""Feature: test persistence
     Background: common configuration
         Given "1" users
         And spawn rate is "1" user per second
@@ -54,7 +56,7 @@ def test_e2e_persistence(e2e_fixture: End2EndFixture) -> None:
         Then get request with name "get1" from endpoint "/api/echo?persistent={{{{ AtomicIntegerIncrementer.persistent }}}}"
         Then log message "persistent={{{{ AtomicIntegerIncrementer.persistent }}}}"
         Then log message "foobar={{{{ key_holder }}}}"
-    '''))
+    """))
 
     rc, output = e2e_fixture.execute(feature_file)
 
@@ -66,14 +68,10 @@ def test_e2e_persistence(e2e_fixture: End2EndFixture) -> None:
     assert 'persistent=2' in result
     assert "foobar=['hello', '2']" in result
 
-    with open(path.join(e2e_fixture.root, feature_file), 'r+') as fd:
-        contents = fd.read()
-        fd.truncate(0)
-
+    actual_feature_file = e2e_fixture.root / feature_file
+    contents = actual_feature_file.read_text()
     contents = contents.replace('Scenario: run=1', 'Scenario: run=2')
-
-    with open(path.join(e2e_fixture.root, feature_file), 'w') as fd:
-        fd.write(contents)
+    actual_feature_file.write_text(contents)
 
     rc, output = e2e_fixture.execute(feature_file)
 

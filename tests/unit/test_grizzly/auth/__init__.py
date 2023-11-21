@@ -1,0 +1,1 @@
+"""Commence initialization of module."""

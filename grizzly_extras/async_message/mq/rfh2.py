@@ -1,6 +1,9 @@
+"""Logic for handling IBM MQ RFH2 headers."""
+from __future__ import annotations
+
 import gzip
 import time
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as XML  # noqa: N814
 from struct import pack, unpack
 from typing import Dict, List, Optional
 
@@ -17,16 +20,17 @@ RFH2_VERSION = 2
 RFH2_HEADER_LENGTH = 36
 
 
-class Rfh2Decoder():
+class Rfh2Decoder:
     @classmethod
     def is_rfh2(cls, message: bytes) -> bool:
         try:
             parts = unpack('<4c l', message[0:8])
             struc_id = b''.join(list(parts[0:4])).decode('ascii')
             version = parts[4]
-            return struc_id == RFH2_STRUC_ID and version == RFH2_VERSION
         except:
             return False
+        else:
+            return struc_id == RFH2_STRUC_ID and version == RFH2_VERSION
 
     def __init__(self, message: bytes) -> None:
         self._parse_header(message)
@@ -35,23 +39,29 @@ class Rfh2Decoder():
     def _parse_header(self, message: bytes) -> None:
         try:
             parts = unpack('<4c l l l l 8c l l', message[0:RFH2_HEADER_LENGTH])
-            # Only "struc_length" is needed/used right now, the rest is
-            # kept commented out, for any future need :)
-            # struc_id = b''.join(list(parts[0:4])).decode('ascii')
-            # version = parts[4]
+            """
+            Only "struc_length" is needed/used right now, the rest is
+            kept commented out, for any future need :)
+            struc_id = b''.join(list(parts[0:4])).decode('ascii')
+            version = parts[4]
+            """
             struc_length = parts[5]
-            # encoding = parts[6]
-            # charset = parts[7]
-            # fmt = b''.join(list(parts[8:16])).decode('ascii')
-            # flags = parts[16]
-            # name_value_ccsid = parts[17]
+
+            """
+            encoding = parts[6]
+            charset = parts[7]
+            fmt = b''.join(list(parts[8:16])).decode('ascii')
+            flags = parts[16]
+            name_value_ccsid = parts[17]
+            """
             self.name_values = message[RFH2_HEADER_LENGTH:struc_length]
             self.payload = message[RFH2_HEADER_LENGTH + len(self.name_values):]
         except Exception as e:
-            raise ValueError('Failed to parse RFH2 header', e)
+            msg = 'Failed to parse RFH2 header'
+            raise ValueError(msg) from e
 
     def _parse_name_values(self) -> None:
-        self.name_value_parts: List[ET.Element] = []
+        self.name_value_parts: List[XML.Element] = []
         pos = 0
         maxpos = len(self.name_values) - 1
         if maxpos == -1:
@@ -61,10 +71,11 @@ class Rfh2Decoder():
                 part_length = unpack('<l', self.name_values[pos:pos + 4])[0]
                 pos += 4
                 part = self.name_values[pos:pos + part_length].decode('utf-8')
-                self.name_value_parts.append(ET.fromstring(part))
+                self.name_value_parts.append(XML.fromstring(part))
                 pos += part_length
         except Exception as e:
-            raise ValueError('Failed to parse RFH2 name values', e)
+            msg = 'Failed to parse RFH2 name values'
+            raise ValueError(msg) from e
 
     def _get_usr_encoding(self) -> Optional[str]:
         if len(self.name_value_parts) == 0:
@@ -84,7 +95,7 @@ class Rfh2Decoder():
         return self.payload
 
 
-class Rfh2Encoder():
+class Rfh2Encoder:
     CCSID = 1208
     ENCODING = 546
     PADDING_MULTIPLE = 4
@@ -94,14 +105,15 @@ class Rfh2Encoder():
     @classmethod
     def create_md(cls) -> pymqi.MD:
         md = pymqi.MD()
-        md.Format = 'MQHRF2  '.encode()
+        md.Format = b'MQHRF2  '
         md.CodedCharSetId = Rfh2Encoder.CCSID
         md.Encoding = Rfh2Encoder.ENCODING
         return md
 
     def __init__(self, payload: bytes, queue_name: str, encoding: str = 'gzip', tstamp: Optional[str] = None, metadata: Optional[Dict[str, str]] = None) -> None:
         if encoding != 'gzip':
-            raise NotImplementedError('Only gzip encoding is implemented')
+            msg = 'Only gzip encoding is implemented'
+            raise NotImplementedError(msg)
         self.queue_name = queue_name
         self.content_encoding = encoding
         self.tstamp = tstamp
@@ -119,10 +131,7 @@ class Rfh2Encoder():
         padding_multiple = Rfh2Encoder.PADDING_MULTIPLE
         self.name_values = bytearray()
         content_length = len(self.payload)
-        if self.tstamp is None:
-            tstamp = str(round(time.time() * 1000))
-        else:
-            tstamp = self.tstamp
+        tstamp = str(round(time.time() * 1000)) if self.tstamp is None else self.tstamp
         metadata_headers = ''.join([f'<{key}>{value}</{key}>' for key, value in (self.metadata or {}).items()])
         name_values_txt = [
             "<mcd><Msd>jms_bytes</Msd></mcd>",
@@ -135,7 +144,7 @@ class Rfh2Encoder():
             # pad with spaces to get length to a multiple of 4
             if value_len % padding_multiple != 0:
                 padding_length = padding_multiple - value_len % padding_multiple
-                value = value + ' ' * padding_length
+                value = value + ' ' * padding_length  # noqa: PLW2901
 
             name_value = value.encode()
             name_value_length = len(name_value)
@@ -149,15 +158,17 @@ class Rfh2Encoder():
         fmt = Rfh2Encoder.FMT_NONE
         flags = Rfh2Encoder.FLAGS
         name_value_ccsid = Rfh2Encoder.CCSID
-        self.header = pack('<4s l l l l 8s l l',
-                           RFH2_STRUC_ID.encode(),
-                           RFH2_VERSION,
-                           struc_length,
-                           encoding,
-                           charset,
-                           fmt.encode(),
-                           flags,
-                           name_value_ccsid)
+        self.header = pack(
+            '<4s l l l l 8s l l',
+            RFH2_STRUC_ID.encode(),
+            RFH2_VERSION,
+            struc_length,
+            encoding,
+            charset,
+            fmt.encode(),
+            flags,
+            name_value_ccsid,
+        )
 
     def get_message(self) -> bytes:
         message = bytearray()

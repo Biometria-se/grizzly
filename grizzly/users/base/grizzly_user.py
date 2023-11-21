@@ -1,41 +1,61 @@
-import logging
+"""Base class for all Grizzly load user implementations."""
+from __future__ import annotations
 
-from os import environ, path
-from typing import TYPE_CHECKING, Any, Dict, Tuple, Optional, Set, cast, final
-from logging import Logger
+import logging
 from abc import abstractmethod
-from json import dumps as jsondumps, loads as jsonloads
-from copy import copy
+from copy import copy, deepcopy
+from json import dumps as jsondumps
+from json import loads as jsonloads
+from logging import Logger
+from os import environ
+from pathlib import Path
 from time import perf_counter
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, Optional, Set, Type, TypeVar, cast, final
 
 from locust.user.task import LOCUST_STATE_RUNNING
+from locust.user.users import UserMeta
 
+from grizzly.context import GrizzlyContext
+from grizzly.exceptions import ResponseHandlerError, RestartScenario, TransformerLocustError
 from grizzly.types import GrizzlyResponse, RequestType, ScenarioState
 from grizzly.types.locust import Environment, StopUser
-from grizzly.tasks import RequestTask
+from grizzly.users.base import AsyncRequests, RequestLogger
 from grizzly.utils import merge_dicts
-from grizzly.context import GrizzlyContext
-from grizzly.users.base import RequestLogger, AsyncRequests
-from grizzly.exceptions import ResponseHandlerError, TransformerLocustError, RestartScenario
 
 from . import FileRequests
 
+T = TypeVar('T', bound=UserMeta)
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContextScenario
+    from grizzly.tasks import RequestTask
 
 
-class GrizzlyUser(RequestLogger):
-    __dependencies__: Set[str] = set()
-    __scenario__: 'GrizzlyContextScenario'  # reference to grizzly scenario this user is part of
+class GrizzlyUserMeta(UserMeta):
+    pass
 
-    _context_root: str
-    _context: Dict[str, Any] = {
-        'variables': {},
-        'log_all_requests': False,
-    }
-    _scenario: 'GrizzlyContextScenario'  # copy of scenario for this user instance
 
+class grizzlycontext:
+    context: Dict[str, Any]
+
+    def __init__(self, *, context: Dict[str, Any]) -> None:
+        self.context = context
+
+    def __call__(self, cls: Type[GrizzlyUser]) -> Type[GrizzlyUser]:
+        cls.__context__ = merge_dicts(cls.__context__, self.context)
+
+        return cls
+
+
+@grizzlycontext(context={'log_all_requests': False, 'variables': {}})
+class GrizzlyUser(RequestLogger, metaclass=GrizzlyUserMeta):
+    __dependencies__: ClassVar[Set[str]] = set()
+    __scenario__: GrizzlyContextScenario  # reference to grizzly scenario this user is part of
+    __context__: ClassVar[Dict[str, Any]] = {}
+
+    _context: Dict[str, Any]
+    _context_root: Path
+    _scenario: GrizzlyContextScenario  # copy of scenario for this user instance
     _scenario_state: Optional[ScenarioState]
 
     logger: Logger
@@ -46,23 +66,22 @@ class GrizzlyUser(RequestLogger):
     environment: Environment
     grizzly = GrizzlyContext()
 
-    def __init__(self, environment: Environment, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+    def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
         super().__init__(environment, *args, **kwargs)
 
-        self._context_root = environ.get('GRIZZLY_CONTEXT_ROOT', '.')
-        self._context = merge_dicts({}, GrizzlyUser._context)
-        self.logger = logging.getLogger(f'{self.__class__.__name__}/{id(self)}')
+        self._context_root = Path(environ.get('GRIZZLY_CONTEXT_ROOT', '.'))
+        self._context = deepcopy(self.__class__.__context__)
         self._scenario_state = None
-        self.abort = False
         self._scenario = copy(self.__scenario__)
         # these are not copied, and we can share reference
         self._scenario._tasks = self.__scenario__._tasks
 
+        self.logger = logging.getLogger(f'{self.__class__.__name__}/{id(self)}')
+        self.abort = False
+
         environment.events.quitting.add_listener(self.on_quitting)
 
-        assert self.host is not None, f'{self.__class__.__name__} must have host set'
-
-    def on_quitting(self, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+    def on_quitting(self, *_args: Any, **kwargs: Any) -> None:
         # if it already has been called with True, do not change it back to False
         if not self.abort:
             self.abort = cast(bool, kwargs.get('abort', False))
@@ -76,23 +95,29 @@ class GrizzlyUser(RequestLogger):
         old_state = self._scenario_state
         if old_state != value:
             self._scenario_state = value
-            self.logger.debug(f'scenario state={old_state} -> {value}')
+            message = f'scenario state={old_state} -> {value}'
+            self.logger.debug(message)
 
-    def stop(self, force: bool = False) -> bool:
+    def stop(self, force: bool = False) -> bool:  # noqa: FBT001, FBT002
+        """Stop user.
+        Make sure to stop gracefully, so that tasks that are currently executing have the chance to finish.
+        """
         if not force and not self.abort:
             self.logger.debug('stop scenarios before stopping user')
             self.scenario_state = ScenarioState.STOPPING
             self._state = LOCUST_STATE_RUNNING
             return False
-        else:
-            return cast(bool, super().stop(force=force))
+
+        return cast(bool, super().stop(force=force))
 
     @abstractmethod
-    def request_impl(self, request: RequestTask) -> GrizzlyResponse:
-        raise NotImplementedError(f'{self.__class__.__name__} has not implemented request')  # pragma: no cover
+    def request_impl(self, request: RequestTask) -> GrizzlyResponse:  # pragma: no cover
+        message = f'{self.__class__.__name__} has not implemented request'
+        raise NotImplementedError(message)
 
     @final
     def request(self, request: RequestTask) -> GrizzlyResponse:
+        """Perform a request and handle all the common logic that should execute before and after a user request."""
         metadata: Optional[Dict[str, Any]] = None
         payload: Optional[Any] = None
         exception: Optional[Exception] = None
@@ -103,21 +128,19 @@ class GrizzlyUser(RequestLogger):
         try:
             request = self.render(request)
 
-            if isinstance(self, AsyncRequests) and request.async_request:
-                request_impl = self.async_request_impl  # pylint: disable=no-member
-            else:
-                request_impl = self.request_impl
+            request_impl = self.async_request_impl if isinstance(self, AsyncRequests) and request.async_request else self.request_impl
 
             metadata, payload = request_impl(request)
         except Exception as e:
-            self.logger.error(f'request failed: {str(e) or e.__class__}', exc_info=self.grizzly.state.verbose)
+            message = f'request failed: {str(e) or e.__class__}'
+            self.logger.exception(message)
             exception = e
         finally:
             total_time = int((perf_counter() - start_time) * 1000)
             response_length = len((payload or '').encode())
 
             # execute response listeners
-            if not isinstance(exception, (RestartScenario, StopUser,)):
+            if not isinstance(exception, (RestartScenario, StopUser)):
                 try:
                     self.response_event.fire(
                         name=request.name,
@@ -139,22 +162,23 @@ class GrizzlyUser(RequestLogger):
                 response_time=total_time,
                 response_length=response_length,
                 context=self._context,
-                exception=exception
+                exception=exception,
             )
 
         # ...request handled
         if exception is not None:
             if (
-                isinstance(exception, (NotImplementedError, StopUser, KeyError, IndexError, AttributeError,))
-                and not isinstance(exception, (ResponseHandlerError, TransformerLocustError,))  # grizzly exceptions that inherits StopUser
+                isinstance(exception, (NotImplementedError, StopUser, KeyError, IndexError, AttributeError))
+                and not isinstance(exception, (ResponseHandlerError, TransformerLocustError))  # grizzly exceptions that inherits StopUser
             ):
-                raise StopUser()
-            elif self._scenario.failure_exception is not None:
-                raise self._scenario.failure_exception()
+                raise StopUser
+            elif self._scenario.failure_exception is not None:  # noqa: RET506
+                raise self._scenario.failure_exception
 
-        return (metadata, payload,)
+        return (metadata, payload)
 
     def render(self, request_template: RequestTask) -> RequestTask:
+        """Create a copy of the specified request task, where all possible template values is rendered with the values from current context."""
         if request_template.__rendered__:
             return request_template
 
@@ -170,18 +194,17 @@ class GrizzlyUser(RequestLogger):
             if request_template.template is not None:
                 source = request_template.template.render(**self.context_variables)
 
-                file = path.join(self._context_root, 'requests', source)
+                file = self._context_root / 'requests' / source
 
-                if path.isfile(file):
+                if file.is_file():
                     if not isinstance(self, FileRequests):
-                        with open(file, 'r') as fd:
-                            source = fd.read()
+                        source = file.read_text()
 
                         # nested template
                         if '{{' in source and '}}' in source:
                             source = j2env.from_string(source).render(**self.context_variables)
                     else:
-                        file_name = path.basename(source)
+                        file_name = file.name
                         if not request.endpoint.endswith(file_name):
                             request.endpoint = f'{request.endpoint}/{file_name}'
 
@@ -198,11 +221,12 @@ class GrizzlyUser(RequestLogger):
                 request.metadata = jsonloads(rendered_metadata)
 
             request.__rendered__ = True
-
+        except Exception as e:
+            message = 'failed to render request template'
+            self.logger.exception(message)
+            raise StopUser from e
+        else:
             return request
-        except:
-            self.logger.error('failed to render request template', exc_info=True)
-            raise StopUser()
 
     def context(self) -> Dict[str, Any]:
         return self._context
@@ -213,7 +237,8 @@ class GrizzlyUser(RequestLogger):
     def set_context_variable(self, variable: str, value: Any) -> None:
         old_value = self._context['variables'].get(variable, None)
         self._context['variables'][variable] = value
-        self.logger.debug(f'context {variable=}, value={old_value} -> {value}')
+        message = f'context {variable=}, value={old_value} -> {value}'
+        self.logger.debug(message)
 
     @property
     def context_variables(self) -> Dict[str, Any]:

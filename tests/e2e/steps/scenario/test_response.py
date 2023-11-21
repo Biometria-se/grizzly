@@ -1,16 +1,19 @@
-from typing import cast, Dict, List
-from itertools import product
+"""End-to-end tests of grizzly.steps.scenario.response."""
+from __future__ import annotations
 
-from grizzly.types.behave import Context
+from itertools import product
+from typing import TYPE_CHECKING, Any, Dict, List, cast
+
 from grizzly.context import GrizzlyContext
 from grizzly.types import ResponseTarget
-from grizzly.types.behave import Feature
 
-from tests.fixtures import End2EndFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.types.behave import Context
+    from tests.fixtures import End2EndFixture
 
 
 def test_e2e_step_response_save_matches(e2e_fixture: End2EndFixture) -> None:
-    targets = [target for target in ResponseTarget]
+    targets = list(ResponseTarget)
 
     def validator(context: Context) -> None:
         from grizzly.tasks import RequestTask
@@ -49,10 +52,7 @@ def test_e2e_step_response_save_matches(e2e_fixture: End2EndFixture) -> None:
 
     index = 0
     for target in targets:
-        if target == ResponseTarget.METADATA:
-            attr_name = 'Foobar'
-        else:
-            attr_name = 'foobar'
+        attr_name = 'Foobar' if target == ResponseTarget.METADATA else 'foobar'
 
         table.append({'target': target.name.lower(), 'index': str(index), 'attr_name': attr_name})
 
@@ -81,7 +81,7 @@ def test_e2e_step_response_save_matches(e2e_fixture: End2EndFixture) -> None:
 
 
 def test_e2e_step_response_save(e2e_fixture: End2EndFixture) -> None:
-    targets = [target for target in ResponseTarget]
+    targets = list(ResponseTarget)
 
     def validator(context: Context) -> None:
         from grizzly.tasks import RequestTask
@@ -119,10 +119,7 @@ def test_e2e_step_response_save(e2e_fixture: End2EndFixture) -> None:
 
     index = 0
     for target in targets:
-        if target == ResponseTarget.METADATA:
-            attr_name = 'Foobar'
-        else:
-            attr_name = 'foobar'
+        attr_name = 'Foobar' if target == ResponseTarget.METADATA else 'foobar'
         table.append({'target': target.name.lower(), 'index': str(index), 'attr_name': attr_name})
 
         scenario += [
@@ -153,7 +150,7 @@ def test_e2e_step_response_save(e2e_fixture: End2EndFixture) -> None:
 def test_e2e_step_response_validate(e2e_fixture: End2EndFixture) -> None:
     parameterize = list(product(ResponseTarget, ['is', 'is not']))
 
-    def after_feature(context: Context, feature: Feature) -> None:
+    def after_feature(context: Context, *_args: Any, **_kwargs: Any) -> None:
         from grizzly.locust import on_master
 
         if on_master(context):
@@ -163,8 +160,8 @@ def test_e2e_step_response_validate(e2e_fixture: End2EndFixture) -> None:
         stats = grizzly.state.locust.environment.stats
 
         expectations = [
-            ('GET', '001 metadata-handler', 2, 1,),
-            ('GET', '001 payload-handler', 2, 1,),
+            ('GET', '001 metadata-handler', 2, 1),
+            ('GET', '001 payload-handler', 2, 1),
         ]
 
         for method, name, expected_num_requests, expected_num_failures in expectations:
@@ -295,12 +292,12 @@ def test_e2e_step_allow_status_codes_table(e2e_fixture: End2EndFixture) -> None:
         request = grizzly.scenario.tasks()[-1]
         assert isinstance(request, RequestTask), f'{request.__class__.__name__} != RequestTask'
         assert request.name == 'test-get-2', f'{request.name} != test-get-2'
-        assert request.response.status_codes == [404], f'{str(request.response.status_codes)} != [404]'
+        assert request.response.status_codes == [404], f'{request.response.status_codes!r} != [404]'
 
         request = grizzly.scenario.tasks()[-2]
         assert isinstance(request, RequestTask), f'{request.__class__.__name__} != RequestTask'
         assert request.name == 'test-get-1', f'{request.name} != test-get-1'
-        assert request.response.status_codes == [200, 302], f'{str(request.response.status_codes)} != [200, 302]'
+        assert request.response.status_codes == [200, 302], f'{request.response.status_codes!s} != [200, 302]'
 
     e2e_fixture.add_validator(
         validator,
@@ -310,11 +307,11 @@ def test_e2e_step_allow_status_codes_table(e2e_fixture: End2EndFixture) -> None:
         scenario=[
             'Then get request with name "test-get-1" from endpoint "/api/statuscode/302"',
             'Then get request with name "test-get-2" from endpoint "/api/statuscode/404"',
-            '''And allow response status codes
+            """And allow response status codes
       | status   |
       | 200, 302 |
       | -200,404 |
-''',
+""",
         ],
     )
 

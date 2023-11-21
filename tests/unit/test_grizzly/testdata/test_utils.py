@@ -1,28 +1,34 @@
-from os import path, environ, mkdir, sep
-from typing import Dict, Any, cast
-from json import dumps as jsondumps, loads as jsonloads
+"""Unit tests for grizzly.testdata.utils."""
+from __future__ import annotations
+
+from contextlib import suppress
+from json import dumps as jsondumps
+from json import loads as jsonloads
+from os import environ, sep
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Dict, cast
 
 import pytest
-
-from pytest_mock import MockerFixture
-from _pytest.logging import LogCaptureFixture
 from jinja2.filters import FILTERS
 
-from grizzly.types.behave import Scenario
 from grizzly.context import GrizzlyContext
-from grizzly.tasks import LogMessageTask, DateTask, TransformerTask, UntilRequestTask, ConditionalTask
-from grizzly.testdata.variables.csv_writer import atomiccsvwriter_message_handler
+from grizzly.tasks import ConditionalTask, DateTask, LogMessageTask, TransformerTask, UntilRequestTask
 from grizzly.testdata.utils import (
-    initialize_testdata,
-    create_context_variable,
-    resolve_variable,
     _objectify,
-    transform,
+    create_context_variable,
+    initialize_testdata,
+    resolve_variable,
     templatingfilter,
+    transform,
 )
+from grizzly.testdata.variables.csv_writer import atomiccsvwriter_message_handler
+from grizzly.types.behave import Scenario
 from grizzly_extras.transformer import TransformerContentType
 
-from tests.fixtures import BehaveFixture, AtomicVariableCleanupFixture, GrizzlyFixture, RequestTaskFixture, NoopZmqFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from _pytest.logging import LogCaptureFixture
+
+    from tests.fixtures import AtomicVariableCleanupFixture, BehaveFixture, GrizzlyFixture, NoopZmqFixture, RequestTaskFixture
 
 
 def test_initialize_testdata_no_tasks(grizzly_fixture: GrizzlyFixture) -> None:
@@ -68,14 +74,13 @@ def test_initialize_testdata_with_tasks(
         grizzly.scenario.tasks.add(LogMessageTask(message='{{ message }}'))
         grizzly.scenario.tasks.add(DateTask(variable='date_task', value='{{ date_task_date }} | timezone="{{ timezone }}", offset="-{{ days }}D"'))
         grizzly.scenario.tasks.add(TransformerTask(
-            grizzly,
             expression='$.expression',
             variable='transformer_task',
             content='hello this is the {{ content }}!',
             content_type=TransformerContentType.JSON,
         ))
         request.content_type = TransformerContentType.JSON
-        grizzly.scenario.tasks.add(UntilRequestTask(grizzly, request=request, condition='{{ condition }}'))
+        grizzly.scenario.tasks.add(UntilRequestTask(request=request, condition='{{ condition }}'))
         grizzly.scenario.tasks.add(ConditionalTask(name='conditional-1', condition='{{ value | int > 5 }}'))
         grizzly.scenario.tasks.add(ConditionalTask(name='conditional-1', condition='{{ AtomicIntegerIncrementer.value | int > 5 }}'))
         grizzly.scenario.tasks.add(LogMessageTask(message='transformer_task={{ transformer_task }}'))
@@ -89,7 +94,6 @@ def test_initialize_testdata_with_tasks(
         assert scenario_name in testdata
         variables = testdata[scenario_name]
         assert len(variables) == 15
-        print(sorted(variables.keys()))
         assert sorted(variables.keys()) == sorted([
             'AtomicDate.now',
             'AtomicIntegerIncrementer.messageID',
@@ -111,25 +115,22 @@ def test_initialize_testdata_with_tasks(
         cleanup()
 
 
-def test_initialize_testdata_with_payload_context(grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture, noop_zmq: NoopZmqFixture) -> None:
+def test_initialize_testdata_with_payload_context(grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture, noop_zmq: NoopZmqFixture) -> None:  # noqa: PLR0915
     noop_zmq('grizzly.testdata.communication')
 
     try:
         grizzly = grizzly_fixture.grizzly
         parent = grizzly_fixture()
-        context_root = grizzly_fixture.request_task.context_root
+        context_root = Path(grizzly_fixture.request_task.context_root)
         request = grizzly_fixture.request_task.request
-        mkdir(path.join(context_root, 'adirectory'))
+        (context_root / 'adirectory').mkdir()
         for index in range(1, 3):
-            with open(path.join(context_root, 'adirectory', f'file{index}.txt'), 'w') as fd:
-                fd.write(f'file{index}.txt\n')
-                fd.flush()
+            (context_root / 'adirectory' / f'file{index}.txt').write_text(f'file{index}.txt\n')
 
-        with open(path.join(context_root, 'test.csv'), 'w') as fd:
-            fd.write('header1,header2\n')
-            fd.write('value1,value2\n')
-            fd.write('value3,value4\n')
-            fd.flush()
+        (context_root / 'test.csv').write_text("""header1,header2
+value1,value2
+value3,value4
+""")
 
         assert request.source is not None
         source = jsonloads(request.source)
@@ -149,7 +150,7 @@ def test_initialize_testdata_with_payload_context(grizzly_fixture: GrizzlyFixtur
         grizzly.scenario.context['host'] = 'http://test.nu'
         grizzly.scenario.iterations = 2
 
-        # hackish, to get around them not being used in any template when doing it barebone.
+        # get around them not being used in any template when doing it barebone.
         grizzly.scenario.orphan_templates.append('{{ AtomicCsvWriter.output.foo }}')
 
         request.source = jsondumps(source)
@@ -175,7 +176,7 @@ def test_initialize_testdata_with_payload_context(grizzly_fixture: GrizzlyFixtur
 
         assert data['AtomicCsvReader.test.header1']['test'] == {'header1': 'value1', 'header2': 'value2'}
         assert data['AtomicCsvReader.test.header2']['test']['header2'] == 'value4'
-        with pytest.raises(TypeError):
+        with pytest.raises(TypeError, match="'NoneType' object is not subscriptable"):
             assert data['AtomicCsvReader.test.header1']['test']['header1'] is None
         assert data['AtomicCsvReader.test.header2']['test'] is None
         assert data['AtomicCsvReader.test.header1']['test'] is None
@@ -194,70 +195,66 @@ def test_create_context_variable() -> None:
         assert create_context_variable(grizzly, 'test.value', '1') == {
             'test': {
                 'value': 1,
-            }
+            },
         }
 
         assert create_context_variable(grizzly, 'test.value', 'trUe') == {
             'test': {
                 'value': True,
-            }
+            },
         }
 
         assert create_context_variable(grizzly, 'test.value', 'AZURE') == {
             'test': {
                 'value': 'AZURE',
-            }
+            },
         }
 
         assert create_context_variable(grizzly, 'test.value', 'HOST') == {
             'test': {
-                'value': 'HOST'
-            }
+                'value': 'HOST',
+            },
         }
 
-        with pytest.raises(AssertionError) as ae:
-            create_context_variable(grizzly, 'test.value', '$env::HELLO_WORLD$')
-        assert str(ae.value) == 'environment variable "HELLO_WORLD" is not set'
-
-        with pytest.raises(AssertionError):
+        with pytest.raises(AssertionError, match='environment variable "HELLO_WORLD" is not set'):
             create_context_variable(grizzly, 'test.value', '$env::HELLO_WORLD$')
 
         environ['HELLO_WORLD'] = 'environment variable value'
         assert create_context_variable(grizzly, 'test.value', '$env::HELLO_WORLD$') == {
             'test': {
                 'value': 'environment variable value',
-            }
+            },
         }
 
         environ['HELLO_WORLD'] = 'true'
         assert create_context_variable(grizzly, 'test.value', '$env::HELLO_WORLD$') == {
             'test': {
                 'value': True,
-            }
+            },
         }
 
         environ['HELLO_WORLD'] = '1337'
         assert create_context_variable(grizzly, 'test.value', '$env::HELLO_WORLD$') == {
             'test': {
                 'value': 1337,
-            }
+            },
         }
 
-        with pytest.raises(AssertionError):
+        with pytest.raises(AssertionError, match='configuration variable "test.auth.user.username" is not set'):
             create_context_variable(grizzly, 'test.value', '$conf::test.auth.user.username$')
 
         grizzly.state.configuration['test.auth.user.username'] = 'username'
         assert create_context_variable(grizzly, 'test.value', '$conf::test.auth.user.username$') == {
             'test': {
                 'value': 'username',
-            }
+            },
         }
 
         grizzly.state.configuration['test.auth.refresh_time'] = 3000
         assert create_context_variable(grizzly, 'test.value', '$conf::test.auth.refresh_time$') == {
             'test': {
                 'value': 3000,
-            }
+            },
         }
 
         assert create_context_variable(grizzly, 'www.example.com/auth.user.username', 'bob') == {
@@ -283,18 +280,16 @@ def test_create_context_variable() -> None:
         }
     finally:
         GrizzlyContext.destroy()
-        try:
+        with suppress(KeyError):
             del environ['HELLO_WORLD']
-        except KeyError:
-            pass
 
 
-def test_resolve_variable(grizzly_fixture: GrizzlyFixture) -> None:
+def test_resolve_variable(grizzly_fixture: GrizzlyFixture) -> None:  # noqa: PLR0915
     grizzly = grizzly_fixture.grizzly
 
     try:
         assert 'test' not in grizzly.state.variables
-        with pytest.raises(AssertionError):
+        with pytest.raises(AssertionError, match='value contained variable "test" which has not been declared'):
             resolve_variable(grizzly, '{{ test }}')
 
         grizzly.state.variables['test'] = 'some value'
@@ -310,13 +305,13 @@ def test_resolve_variable(grizzly_fixture: GrizzlyFixture) -> None:
         assert resolve_variable(grizzly, "'static' value") == "'static' value"
         assert resolve_variable(grizzly, "static 'value'") == "static 'value'"
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match='is incorrectly quoted'):
             resolve_variable(grizzly, "'static value\"")
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match='is incorrectly quoted'):
             resolve_variable(grizzly, "static 'value\"")
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match='is incorrectly quoted'):
             resolve_variable(grizzly, "'static\" value")
 
         grizzly.state.variables['number'] = 100
@@ -324,13 +319,11 @@ def test_resolve_variable(grizzly_fixture: GrizzlyFixture) -> None:
 
         assert resolve_variable(grizzly, '{{ (number * 0.25 * 0.2) | int }}') == 5
 
-        with pytest.raises(ValueError) as ve:
+        with pytest.raises(ValueError, match='is not a correctly specified templating variable, variables must match'):
             resolve_variable(grizzly, '$env::HELLO_WORLD')
-        assert str(ve.value) == '"$env::HELLO_WORLD" is not a correctly specified templating variable, variables must match "$(conf|env)::<variable name>$"'
 
-        with pytest.raises(AssertionError) as ae:
+        with pytest.raises(AssertionError, match='environment variable "HELLO_WORLD" is not set'):
             resolve_variable(grizzly, '$env::HELLO_WORLD$')
-        assert str(ae.value) == 'environment variable "HELLO_WORLD" is not set'
 
         environ['HELLO_WORLD'] = 'first environment variable!'
 
@@ -339,13 +332,11 @@ def test_resolve_variable(grizzly_fixture: GrizzlyFixture) -> None:
         environ['HELLO_WORLD'] = 'first "environment" variable!'
         assert resolve_variable(grizzly, '$env::HELLO_WORLD$') == 'first "environment" variable!'
 
-        with pytest.raises(ValueError) as ve:
+        with pytest.raises(ValueError, match='is not a correctly specified templating variable, variables must match'):
             resolve_variable(grizzly, '$conf::sut.host')
-        assert str(ve.value) == '"$conf::sut.host" is not a correctly specified templating variable, variables must match "$(conf|env)::<variable name>$"'
 
-        with pytest.raises(AssertionError) as ae:
+        with pytest.raises(AssertionError, match='configuration variable "sut.host" is not set'):
             resolve_variable(grizzly, '$conf::sut.host$')
-        assert str(ae.value) == 'configuration variable "sut.host" is not set'
 
         grizzly.state.configuration['sut.host'] = 'http://host.docker.internal:8003'
         grizzly.state.configuration['sut.path'] = '/hello/world'
@@ -369,12 +360,9 @@ def test_resolve_variable(grizzly_fixture: GrizzlyFixture) -> None:
         grizzly.state.variables['lowercase_value'] = 'foobar'
 
         assert resolve_variable(grizzly, 'hello {{ lowercase_value | testuppercase }}!') == 'hello FOOBAR!'
-
     finally:
-        try:
+        with suppress(KeyError):
             del environ['HELLO_WORLD']
-        except KeyError:
-            pass
 
 
 def test__objectify() -> None:
@@ -387,63 +375,53 @@ def test__objectify() -> None:
             'input': {
                 'test1': 'hello',
                 'test2': 'world!',
-            }
+            },
         },
         'Test': {
             'test1': {
                 'test2': {
                     'test3': 'value',
-                }
-            }
+                },
+            },
         },
         'tests': {
             'helpers': {
                 'AtomicCustomVariable': {
                     'hello': 'world',
                     'foo': 'bar',
-                }
-            }
-        }
+                },
+            },
+        },
     }
 
     obj = _objectify(testdata)
 
-    assert (
-        obj['AtomicIntegerIncrementer'].__module__ == 'grizzly.testdata.utils'
-        and obj['AtomicIntegerIncrementer'].__class__.__name__ == 'Testdata'
-    )
-    assert getattr(obj['AtomicIntegerIncrementer'], 'test') == 1337
+    assert obj['AtomicIntegerIncrementer'].__module__ == 'grizzly.testdata.utils'
+    assert obj['AtomicIntegerIncrementer'].__class__.__name__ == 'Testdata'
+    assert obj['AtomicIntegerIncrementer'].test == 1337
     assert isinstance(obj['test'], int)
     assert obj['test'] == 1338
-    assert (
-        obj['AtomicCsvReader'].__module__ == 'grizzly.testdata.utils'
-        and obj['AtomicCsvReader'].__class__.__name__ == 'Testdata'
-    )
+    assert obj['AtomicCsvReader'].__module__ == 'grizzly.testdata.utils'
+    assert obj['AtomicCsvReader'].__class__.__name__ == 'Testdata'
+
     atomiccsvrow_input = getattr(obj['AtomicCsvReader'], 'input', None)
     assert atomiccsvrow_input is not None
-    assert (
-        atomiccsvrow_input.__module__ == 'grizzly.testdata.utils'
-        and atomiccsvrow_input.__class__.__name__ == 'Testdata'
-    )
+    assert atomiccsvrow_input.__module__ == 'grizzly.testdata.utils'
+    assert atomiccsvrow_input.__class__.__name__ == 'Testdata'
     assert getattr(atomiccsvrow_input, 'test1', None) == 'hello'
     assert getattr(atomiccsvrow_input, 'test2', None) == 'world!'
 
-    assert (
-        obj['Test'].__module__ == 'grizzly.testdata.utils'
-        and obj['Test'].__class__.__name__ == 'Testdata'
-    )
+    assert obj['Test'].__module__ == 'grizzly.testdata.utils'
+    assert obj['Test'].__class__.__name__ == 'Testdata'
+
     test = getattr(obj['Test'], 'test1', None)
     assert test is not None
-    assert (
-        test.__module__ == 'grizzly.testdata.utils'
-        and test.__class__.__name__ == 'Testdata'
-    )
+    assert test.__module__ == 'grizzly.testdata.utils'
+    assert test.__class__.__name__ == 'Testdata'
     test = getattr(test, 'test2', None)
     assert test is not None
-    assert (
-        test.__module__ == 'grizzly.testdata.utils'
-        and test.__class__.__name__ == 'Testdata'
-    )
+    assert test.__module__ == 'grizzly.testdata.utils'
+    assert test.__class__.__name__ == 'Testdata'
     test = getattr(test, 'test3', None)
     assert test is not None
     assert isinstance(test, str)
@@ -486,7 +464,7 @@ def test_transform_no_objectify(grizzly_fixture: GrizzlyFixture) -> None:
     }
 
 
-def test_transform(behave_fixture: BehaveFixture, noop_zmq: NoopZmqFixture, cleanup: AtomicVariableCleanupFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
+def test_transform(behave_fixture: BehaveFixture, cleanup: AtomicVariableCleanupFixture, caplog: LogCaptureFixture) -> None:
     behave = behave_fixture.context
 
     try:
@@ -505,39 +483,27 @@ def test_transform(behave_fixture: BehaveFixture, noop_zmq: NoopZmqFixture, clea
 
         obj = transform(grizzly, data)
 
-        assert (
-            obj['AtomicIntegerIncrementer'].__module__ == 'grizzly.testdata.utils'
-            and obj['AtomicIntegerIncrementer'].__class__.__name__ == 'Testdata'
-        )
+        assert obj['AtomicIntegerIncrementer'].__module__ == 'grizzly.testdata.utils'
+        assert obj['AtomicIntegerIncrementer'].__class__.__name__ == 'Testdata'
         assert getattr(obj['AtomicIntegerIncrementer'], 'test', None) == 1337
         assert isinstance(obj['test'], int)
         assert obj['test'] == 1338
-        assert (
-            obj['AtomicCsvReader'].__module__ == 'grizzly.testdata.utils'
-            and obj['AtomicCsvReader'].__class__.__name__ == 'Testdata'
-        )
-        assert (
-            obj['AtomicCsvReader'].input.__module__ == 'grizzly.testdata.utils'
-            and obj['AtomicCsvReader'].input.__class__.__name__ == 'Testdata'
-        )
+        assert obj['AtomicCsvReader'].__module__ == 'grizzly.testdata.utils'
+        assert obj['AtomicCsvReader'].__class__.__name__ == 'Testdata'
+        assert obj['AtomicCsvReader'].input.__module__ == 'grizzly.testdata.utils'
+        assert obj['AtomicCsvReader'].input.__class__.__name__ == 'Testdata'
         assert getattr(obj['AtomicCsvReader'].input, 'test1', None) == 'hello'
         assert getattr(obj['AtomicCsvReader'].input, 'test2', None) == 'world!'
-        assert (
-            obj['Test'].__module__ == 'grizzly.testdata.utils'
-            and obj['Test'].__class__.__name__ == 'Testdata'
-        )
+        assert obj['Test'].__module__ == 'grizzly.testdata.utils'
+        assert obj['Test'].__class__.__name__ == 'Testdata'
         test = getattr(obj['Test'], 'test1', None)
         assert test is not None
-        assert (
-            test.__module__ == 'grizzly.testdata.utils'
-            and test.__class__.__name__ == 'Testdata'
-        )
+        assert test.__module__ == 'grizzly.testdata.utils'
+        assert test.__class__.__name__ == 'Testdata'
         test = getattr(test, 'test2', None)
         assert test is not None
-        assert (
-            test.__module__ == 'grizzly.testdata.utils'
-            and test.__class__.__name__ == 'Testdata'
-        )
+        assert test.__module__ == 'grizzly.testdata.utils'
+        assert test.__class__.__name__ == 'Testdata'
         test = getattr(test, 'test3', None)
         assert test is not None
         assert isinstance(test, str)
@@ -573,10 +539,9 @@ def test_templatingfilter(grizzly_fixture: GrizzlyFixture) -> None:
         return value.upper()
 
     uc = _testuppercase
-    setattr(uc, '__name__', 'testuppercase')
+    uc.__name__ = 'testuppercase'
 
-    with pytest.raises(AssertionError) as ae:
+    with pytest.raises(AssertionError, match='testuppercase is already registered as a filter'):
         templatingfilter(uc)
-    assert str(ae.value) == 'testuppercase is already registered as a filter'
 
     assert FILTERS.get('testuppercase', None) is testuppercase

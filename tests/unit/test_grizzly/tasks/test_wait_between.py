@@ -1,9 +1,15 @@
-import pytest
+"""Unit tests of grizzly.tasks.wait_between."""
+from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+import pytest
 from locust.exception import MissingWaitTimeError
+
 from grizzly.tasks import WaitBetweenTask
 
-from tests.fixtures import GrizzlyFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from tests.fixtures import GrizzlyFixture
 
 
 class TestWaitBetweenTask:
@@ -32,7 +38,8 @@ class TestWaitBetweenTask:
         task(parent)
 
         wait_time = parent.wait_time()
-        assert wait_time >= 1.0 and wait_time <= 12.0
+        assert wait_time >= 1.0
+        assert wait_time <= 12.0
 
         task = WaitBetweenTask(13.0)()
 

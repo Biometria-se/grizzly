@@ -1,32 +1,34 @@
+"""@anchor pydoc:grizzly_extras.novella
+This module contains logic which is used by novella, mainly in `grizzly/docs/novella.build`.
+"""
 from __future__ import annotations
+
 import logging
 import re
-
-from typing import Any, Dict, List, Union, Optional, NamedTuple, Callable, Match, Generator, Tuple, cast
-from pathlib import Path
-from enum import Enum
-from dataclasses import dataclass, field
-from tokenize import tokenize, TokenInfo, TokenError
-from token import OP, STRING, NAME
-from io import BytesIO
 from ast import literal_eval
+from dataclasses import dataclass, field
+from enum import Enum
+from io import BytesIO
+from pathlib import Path
+from token import NAME, OP, STRING
+from tokenize import TokenError, TokenInfo, tokenize
+from typing import TYPE_CHECKING, Any, Callable, Dict, Generator, List, Match, NamedTuple, Optional, Tuple, Union, cast
 
 import frontmatter
 import mistune
-
-from novella.markdown.preprocessor import MarkdownPreprocessor, MarkdownFiles, MarkdownFile
-from novella.novella import NovellaContext
-from novella.templates.mkdocs import MkdocsTemplate, MkdocsUpdateConfigAction
-from novella.markdown.flavor import MkDocsFlavor
-from novella.action import CopyFilesAction, RunAction
-from novella.markdown.tags.anchor import AnchorTagProcessor
-from novella.markdown.preprocessor import MarkdownPreprocessorAction
-from pydoc_markdown.novella.preprocessor import PydocTagPreprocessor
-from pydoc_markdown.contrib.renderers.markdown import MarkdownRenderer as PydocMarkdownRenderer
-from mistune.renderers.markdown import MarkdownRenderer
-from mistune.inline_parser import InlineParser
 from mistune.core import BlockState, InlineState
+from mistune.inline_parser import InlineParser
+from mistune.renderers.markdown import MarkdownRenderer
+from novella.action import CopyFilesAction, RunAction
+from novella.markdown.flavor import MkDocsFlavor
+from novella.markdown.preprocessor import MarkdownFile, MarkdownFiles, MarkdownPreprocessor, MarkdownPreprocessorAction
+from novella.templates.mkdocs import MkdocsTemplate, MkdocsUpdateConfigAction
+from pydoc_markdown.contrib.renderers.markdown import MarkdownRenderer as PydocMarkdownRenderer
+from pydoc_markdown.novella.preprocessor import PydocTagPreprocessor
 
+if TYPE_CHECKING:  # pragma: no cover
+    from novella.markdown.tags.anchor import AnchorTagProcessor
+    from novella.novella import NovellaContext
 
 logger = logging.getLogger('grizzly.novella')
 
@@ -97,7 +99,8 @@ class MarkdownAstType(Enum):
             if enum_value.value == value:
                 return enum_value
 
-        raise ValueError(f'"{value}" is not a valid value of {cls.__name__}')
+        message = f'"{value}" is not a valid value of {cls.__name__}'
+        raise ValueError(message)
 
 
 NO_CHILD: Dict[str, Any] = {'type': None, 'raw': None}
@@ -110,6 +113,7 @@ class MarkdownAstNode:
 
     _first_child: Optional[MarkdownAstNode] = field(init=False, default=None)
     keep: bool = field(init=False, default=True)
+    after: List[MarkdownAstNode] = field(init=False, default_factory=list)
 
     @property
     def first_child(self) -> MarkdownAstNode:
@@ -131,7 +135,7 @@ class MarkdownAstNode:
         return MarkdownAstNode(child_node, self.index)
 
     @property
-    def type(self) -> MarkdownAstType:
+    def type(self) -> MarkdownAstType:  # noqa: A003
         return MarkdownAstType.from_value(self.ast.get('type', None))
 
     @property
@@ -144,11 +148,8 @@ class MarkdownHeading(NamedTuple):
     level: int
 
 
-def make_human_readable(input: str) -> str:
-    words: List[str] = []
-
-    for word in input.split('_'):
-        words.append(word.capitalize())
+def make_human_readable(text: str) -> str:
+    words: List[str] = [word.capitalize() for word in text.split('_')]
 
     output = ' '.join(words)
 
@@ -156,14 +157,14 @@ def make_human_readable(input: str) -> str:
         output = output.replace(word.capitalize(), word.upper())
         output = output.replace(word, word.upper())
 
-    to_replace = dict(Iot='IoT', hub='Hub')
+    to_replace = {'Iot': 'IoT', 'hub': 'Hub'}
     for value, replace_value in to_replace.items():
         output = output.replace(value, replace_value)
 
     return output
 
 
-def _create_nav_node(target: List[Union[str, Dict[str, str]]], path: str, node: Path, with_index: bool = True) -> None:
+def _create_nav_node(target: List[Union[str, Dict[str, str]]], path: str, node: Path, *, with_index: bool = True) -> None:
     if not (node.is_file() and (node.stem == '__init__' or not node.stem.startswith('_'))):
         return
 
@@ -257,11 +258,11 @@ def _generate_dynamic_page(input_file: Path, output_path: Path, title: str, name
     file = output_path / f'{filename}.md'
     file.parent.mkdir(parents=True, exist_ok=True)
     if not file.exists():
-        file.write_text(f'''---
+        file.write_text(f"""---
 title: {title}
 ---
 @pydoc {namespace}
-''')
+""")
 
 
 def generate_dynamic_pages(directory: Path) -> None:  # pragma: no cover
@@ -310,9 +311,8 @@ def generate_dynamic_pages(directory: Path) -> None:  # pragma: no cover
 
 class GrizzlyMarkdownInlineParser(InlineParser):
     def parse_codespan(self, match: Match, state: InlineState) -> int:
-        """
-        Default `mistune.inline_parser.InlineParser.parse_codespan` escapes code, which messes
-        things up, it will escape some character to their HTML entity representation, which will be literal
+        """`mistune.inline_parser.InlineParser.parse_codespan` escapes code.
+        This messes things up, it will escape some character to their HTML entity representation, which will be literal
         when rendering as HTML (& -> &amp; etc.).
         """
         marker = match.group(0)
@@ -327,16 +327,15 @@ class GrizzlyMarkdownInlineParser(InlineParser):
             code = m.group(1)
             # Line endings are treated like spaces
             code = code.replace('\n', ' ')
-            if len(code.strip()):
-                if code.startswith(' ') and code.endswith(' '):
-                    code = code[1:-1]
+            if len(code.strip()) and code.startswith(' ') and code.endswith(' '):
+                code = code[1:-1]
             state.append_token({'type': 'codespan', 'raw': code})
             #                                               ^
             # only diff compared tomistune.inline_parser.InlineParser.parse_codespan
             return end_pos
-        else:
-            state.append_token({'type': 'text', 'raw': marker})
-            return pos
+
+        state.append_token({'type': 'text', 'raw': marker})
+        return pos
 
 
 class GrizzlyMarkdown:
@@ -346,12 +345,18 @@ class GrizzlyMarkdown:
     _ast_tree_modified: List[Dict[str, Any]]
     _index: int
     ignore_until: Optional[Callable[[MarkdownAstNode], bool]]
+    offset: int
+    debug: bool
 
-    def __init__(self, markdown: mistune.Markdown, document: MarkdownFile) -> None:
+    def __init__(self, markdown: mistune.Markdown, document: MarkdownFile, *, debug: bool = False) -> None:
+        self.debug = debug
         self._markdown = markdown
         self._document = document
         self._index = 0
         self.ignore_until = None
+        self.offset = 0
+        if self.debug:
+            print(f'{document.path=}')
 
     @classmethod
     def _is_anchor(cls, value: str) -> bool:
@@ -375,12 +380,14 @@ class GrizzlyMarkdown:
 
     @index.setter
     def index(self, value: int) -> None:
+        if self.debug:
+            print(f'%% index: {self._index} -> {value}')
         self._index = value
 
     def get_code_block(self, start_node: MarkdownAstNode) -> Optional[str]:
         code_block: Optional[str] = None
 
-        for index in range(start_node.index + 1, len(self._ast_tree_original)):
+        for index in range(start_node.index + 1 - self.offset, len(self._ast_tree_original)):
             node = MarkdownAstNode(self._ast_tree_original[index], index)
 
             # do not look beyond next header
@@ -400,7 +407,7 @@ class GrizzlyMarkdown:
 
         try:
             for token in tokenize(BytesIO(text.encode('utf8')).readline):
-                tokens.append(token)
+                tokens.append(token)  # noqa: PERF402
         except TokenError as e:
             if 'EOF in multi-line statement' not in str(e):
                 raise
@@ -425,7 +432,7 @@ class GrizzlyMarkdown:
                 while not (future_token.type == OP and future_token.string == ')') and future_index < len(tokens):
                     future_token = tokens[future_index]
                     if future_token.type == STRING:
-                        return (step_type, cast(str, literal_eval(future_token.string)),)
+                        return (step_type, cast(str, literal_eval(future_token.string)))
 
                     future_index += 1
 
@@ -434,11 +441,13 @@ class GrizzlyMarkdown:
     def to_ast(self, content: str) -> List[Dict[str, Any]]:
         return cast(List[Dict[str, Any]], self._markdown(content))
 
-    def next(self) -> Generator[MarkdownAstNode, None, None]:
+    def next(self) -> Generator[MarkdownAstNode, None, None]:  # noqa: A003
         for index, node_ast in enumerate(self._ast_tree_original):
-            node = MarkdownAstNode(node_ast, index)
+            node = MarkdownAstNode(node_ast, index + self.offset)
 
             if index < self.index:
+                if self.debug:
+                    print(f'$$ {index=}, {self.index=} ignoring')
                 continue
 
             if self.ignore_until is not None:
@@ -457,6 +466,10 @@ class GrizzlyMarkdown:
             if node.keep:
                 self._ast_tree_modified.insert(node.index, node.ast)
 
+                for after_node in node.after:
+                    self.offset += 1
+                    self._ast_tree_modified.insert(node.index + self.offset, after_node.ast)
+
     def peek(self) -> MarkdownAstNode:
         for index in range(self.index + 1, len(self._ast_tree_original)):
             node = MarkdownAstNode(self._ast_tree_original[index], self.index + index)
@@ -470,10 +483,7 @@ class GrizzlyMarkdown:
     def ast_reformat_block_code(cls, node: MarkdownAstNode) -> MarkdownAstNode:
         if node.type == MarkdownAstType.BLOCK_CODE and node.raw is not None and node.raw.startswith('```'):
             style = node.ast.get('style', 'indent')
-            if style == 'indent':
-                indent = '    '
-            else:
-                indent = ''
+            indent = '    ' if style == 'indent' else ''
             code_lines = [f'{indent}{line}' for line in node.raw.splitlines()]
             marker = code_lines[-1].strip()[-3:]
             if code_lines[-1].strip() != marker:
@@ -531,7 +541,7 @@ class GrizzlyMarkdown:
 
         return node
 
-    def _process_content(self, content: str) -> str:
+    def _process_content(self, content: str) -> str:  # noqa: C901, PLR0915, PLR0912
         self._ast_tree_original = self.to_ast(content)
         self._ast_tree_modified: List[Dict[str, Any]] = []
 
@@ -539,11 +549,13 @@ class GrizzlyMarkdown:
 
         move_forward = False
 
-        for node in self.next():
+        for node_candidate in self.next():
+            if self.debug:
+                print(f'{move_forward=}')
             # <!-- work around for indented code blocks
             # mkdocs material `===` messes up ast parser, let's trick the renderer
             # so it works
-            node = self.ast_reformat_recursive(node, self.ast_reformat_block_code)
+            node = self.ast_reformat_recursive(node_candidate, self.ast_reformat_block_code)
             # // -->
 
             # <!-- workaround for admonitions (!!!)
@@ -551,6 +563,9 @@ class GrizzlyMarkdown:
             # // -->
 
             if not move_forward:
+                if self.debug:
+                    print(f'!! {node=}')
+
                 if node.type != MarkdownAstType.PARAGRAPH:
                     continue
 
@@ -571,43 +586,53 @@ class GrizzlyMarkdown:
 
                 move_forward = True
                 continue
-            else:
-                move_forward = False
-                header = self._get_header(node)
 
-                # no class documentation, and any methods under it
-                if header.text.startswith('Class '):
-                    if single_docstring_class:
-                        def condition(_: MarkdownAstNode) -> bool:
-                            return True
+            move_forward = False
+            header = self._get_header(node)
+            if self.debug:
+                print(f'{header.text=}')
 
-                        node.keep = False
-                        self.ignore_until = condition
-                        continue
+            # no class documentation, and any methods under it
+            if header.text.startswith('Class ') and single_docstring_class:
+                def condition(_: MarkdownAstNode) -> bool:
+                    return True
 
-                # rewrite headers for step implementation, replace function name with step expression
-                if header.text.startswith('step'):
-                    code_block = self.get_code_block(node)
-                    if code_block is None:
-                        continue
+                node.keep = False
+                self.ignore_until = condition
+                continue
 
-                    step = self.get_step_expression_from_code_block(code_block)
+            # rewrite headers for step implementation, replace function name with step expression
+            if header.text.startswith('step'):
+                code_block = self.get_code_block(node)
+                if code_block is None:
+                    continue
 
-                    if step is not None:
-                        step_type, step_expression = step
-                        _, _, header_new = header.text.split('_', 2)
-                        header_new = f'{step_type.capitalize()} {header_new.replace("_", " ")}'
+                if self.debug:
+                    print(f'{code_block=}')
 
-                        node.ast.update({'children': [{'type': 'text', 'raw': header_new}]})
-                        self._ast_tree_modified.append({
-                            'type': MarkdownAstType.BLOCK_CODE.value,
-                            'raw': f'{step_type.capitalize()} {step_expression}',
-                            'style': 'fenced',
-                            'marker': '```',
-                            'attrs': {
-                                'info': 'gherkin',
-                            }
-                        })
+                step = self.get_step_expression_from_code_block(code_block)
+
+                if step is not None:
+                    step_type, step_expression = step
+                    _, _, header_new = header.text.split('_', 2)
+                    header_new = f'{step_type.capitalize()} {header_new.replace("_", " ")}'
+
+                    if self.debug:
+                        print(f'{step_type=}, {step_expression=}')
+                        print(f'{header_new=}')
+
+                    node.ast.update({'children': [{'type': 'text', 'raw': header_new}]})
+                    node.after.append(MarkdownAstNode({
+                        'type': MarkdownAstType.BLOCK_CODE.value,
+                        'raw': f'{step_type.capitalize()} {step_expression}',
+                        'style': 'fenced',
+                        'marker': '```',
+                        'attrs': {
+                            'info': 'gherkin',
+                        },
+                    }, node.index))
+                elif self.debug:
+                    print(f'## unable to get step from {code_block=}')
 
         # remove orphan stuff that might be left in the end
         last_node: Optional[MarkdownAstNode] = None
@@ -616,7 +641,7 @@ class GrizzlyMarkdown:
             node = MarkdownAstNode(node_ast, -index)
 
             if (
-                not node.type == MarkdownAstType.BLANK_LINE
+                node.type != MarkdownAstType.BLANK_LINE
                 and not (
                     node.type == MarkdownAstType.PARAGRAPH
                     and node.first_child.type == MarkdownAstType.INLINE_HTML
@@ -631,9 +656,7 @@ class GrizzlyMarkdown:
 
         renderer = MarkdownRenderer()
 
-        content = cast(str, renderer(self._ast_tree_modified, state=BlockState()))
-
-        return content
+        return cast(str, renderer(self._ast_tree_modified, state=BlockState()))
 
     def __call__(self) -> None:
         content = self._document.content
@@ -658,4 +681,4 @@ class GrizzlyMarkdownProcessor(MarkdownPreprocessor):
 
     def process_files(self, files: MarkdownFiles) -> None:
         for file in files:
-            GrizzlyMarkdown(self._markdown, file)()
+            GrizzlyMarkdown(self._markdown, file, debug=False)()

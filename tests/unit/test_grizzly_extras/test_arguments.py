@@ -1,13 +1,16 @@
+"""Unit tests of grizzly_extras.arguments."""
+from __future__ import annotations
+
 import pytest
 
-from grizzly_extras.arguments import split_value, get_unsupported_arguments, parse_arguments, unquote
+from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments, split_value, unquote
 
 
 @pytest.mark.parametrize('separator', ['|', ', '])
 def test_split_value(separator: str) -> None:
-    assert split_value(f'hello world  {separator} foo bar', separator) == ('hello world', 'foo bar',)
+    assert split_value(f'hello world  {separator} foo bar', separator) == ('hello world', 'foo bar')
     assert split_value(
-        f'hello {separator} world {separator} foo {separator} bar', separator
+        f'hello {separator} world {separator} foo {separator} bar', separator,
     ) == (
         'hello', f'world {separator} foo {separator} bar',
     )
@@ -37,53 +40,41 @@ def test_unquote() -> None:
 
 @pytest.mark.parametrize('separator', ['=', ':', '%'])
 def test_parse_arguments(separator: str) -> None:
-    with pytest.raises(ValueError) as ve:
+    with pytest.raises(ValueError, match='incorrect format in arguments:'):
         parse_arguments('argument', separator)
-    assert 'incorrect format in arguments:' in str(ve)
 
-    with pytest.raises(ValueError) as ve:
+    with pytest.raises(ValueError, match='incorrect format in arguments:'):
         parse_arguments(f'arg1{separator}test arg2{separator}value', separator)
-    assert 'incorrect format in arguments:' in str(ve)
 
-    with pytest.raises(ValueError) as ve:
+    with pytest.raises(ValueError, match='incorrect format for arguments:'):
         parse_arguments(f'args1{separator}test,', separator)
-    assert 'incorrect format for arguments:' in str(ve)
 
-    with pytest.raises(ValueError) as ve:
+    with pytest.raises(ValueError, match='incorrect format for argument:'):
         parse_arguments(f'args1{separator}test,arg2', separator)
-    assert 'incorrect format for argument:' in str(ve)
 
-    with pytest.raises(ValueError) as ve:
+    with pytest.raises(ValueError, match='no quotes or spaces allowed in argument names'):
         parse_arguments(f'"test"{separator}value', separator)
-    assert 'no quotes or spaces allowed in argument names' in str(ve)
 
-    with pytest.raises(ValueError) as ve:
+    with pytest.raises(ValueError, match='no quotes or spaces allowed in argument names'):
         parse_arguments(f"'test'{separator}value", separator)
-    assert 'no quotes or spaces allowed in argument names' in str(ve)
 
-    with pytest.raises(ValueError) as ve:
+    with pytest.raises(ValueError, match='no quotes or spaces allowed in argument names'):
         parse_arguments(f'test variable{separator}value', separator)
-    assert 'no quotes or spaces allowed in argument names' in str(ve)
 
-    with pytest.raises(ValueError) as ve:
+    with pytest.raises(ValueError, match='value is incorrectly quoted'):
         parse_arguments(f'arg{separator}"value\'', separator)
-    assert 'value is incorrectly quoted' in str(ve)
 
-    with pytest.raises(ValueError) as ve:
+    with pytest.raises(ValueError, match='value is incorrectly quoted'):
         parse_arguments(f"arg{separator}'value\"", separator)
-    assert 'value is incorrectly quoted' in str(ve)
 
-    with pytest.raises(ValueError) as ve:
+    with pytest.raises(ValueError, match='value is incorrectly quoted'):
         parse_arguments(f'arg{separator}value"', separator)
-    assert 'value is incorrectly quoted' in str(ve)
 
-    with pytest.raises(ValueError) as ve:
+    with pytest.raises(ValueError, match='value is incorrectly quoted'):
         parse_arguments(f"arg{separator}value'", separator)
-    assert 'value is incorrectly quoted' in str(ve)
 
-    with pytest.raises(ValueError) as ve:
+    with pytest.raises(ValueError, match='value needs to be quoted'):
         parse_arguments(f'arg{separator}test value', separator)
-    assert 'value needs to be quoted' in str(ve)
 
     arguments = parse_arguments(f'arg1{separator}testvalue1, arg2{separator}"test value 2"', separator)
 
@@ -98,17 +89,14 @@ def test_parse_arguments(separator: str) -> None:
         'arg1': '$.expression=="{{ value }}"',
     }
 
-    with pytest.raises(ValueError) as ve:
+    with pytest.raises(ValueError, match='incorrect format in arguments: '):
         parse_arguments(f'url{separator}http://www.example.com?query_string{separator}value', separator)
-    assert 'incorrect format in arguments: ' in str(ve)
 
-    with pytest.raises(ValueError) as ve:
+    with pytest.raises(ValueError, match='incorrect format in arguments: '):
         parse_arguments(f'url{separator}"http://www.example.com?query_string{separator}value', separator)
-    assert 'incorrect format in arguments: ' in str(ve)
 
-    with pytest.raises(ValueError) as ve:
+    with pytest.raises(ValueError, match='incorrect format in arguments: '):
         parse_arguments(f"url{separator}'http://www.example.com?query_string{separator}value", separator)
-    assert 'incorrect format in arguments: ' in str(ve)
 
     arguments = parse_arguments(f"url{separator}'http://www.example.com?query_string{separator}value', argument{separator}False", separator)
     assert arguments == {

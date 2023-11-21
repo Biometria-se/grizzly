@@ -1,14 +1,18 @@
-from typing import Dict, cast
-from textwrap import dedent
+"""End-to-end tests of grizzly.tasks.until."""
+from __future__ import annotations
 
-from grizzly.types.behave import Context, Feature
+from textwrap import dedent
+from typing import TYPE_CHECKING, Any, Dict, cast
+
 from grizzly.context import GrizzlyContext
 
-from tests.fixtures import End2EndFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.types.behave import Context
+    from tests.fixtures import End2EndFixture
 
 
 def test_e2e_until(e2e_fixture: End2EndFixture) -> None:
-    def after_feature(context: Context, feature: Feature) -> None:
+    def after_feature(context: Context, *_args: Any, **_kwargs: Any) -> None:
         from grizzly.locust import on_master
         if on_master(context):
             return
@@ -18,14 +22,14 @@ def test_e2e_until(e2e_fixture: End2EndFixture) -> None:
         stats = grizzly.state.locust.environment.stats
 
         expectations = [
-            ('001 RequestTask', 'SCEN', 0, 1,),
-            ('001 RequestTask', 'TSTD', 0, 1,),
-            ('001 request-task', 'GET', 1, 2,),
-            ('001 request-task, w=1.0s, r=2, em=1', 'UNTL', 0, 1,),
-            ('002 HttpClientTask', 'SCEN', 0, 1,),
-            ('002 HttpClientTask', 'TSTD', 0, 1,),
-            ('002 http-client-task, w=1.0s, r=3, em=1', 'UNTL', 0, 1,),
-            ('002 http-client-task', 'CLTSK', 1, 2,),
+            ('001 RequestTask', 'SCEN', 0, 1),
+            ('001 RequestTask', 'TSTD', 0, 1),
+            ('001 request-task', 'GET', 1, 2),
+            ('001 request-task, w=1.0s, r=2, em=1', 'UNTL', 0, 1),
+            ('002 HttpClientTask', 'SCEN', 0, 1),
+            ('002 HttpClientTask', 'TSTD', 0, 1),
+            ('002 http-client-task, w=1.0s, r=3, em=1', 'UNTL', 0, 1),
+            ('002 http-client-task', 'CLTSK', 1, 2),
         ]
 
         assert len(stats.errors) == 0, f'expected 0 logged errors, got {len(stats.errors)}'
@@ -37,20 +41,17 @@ def test_e2e_until(e2e_fixture: End2EndFixture) -> None:
 
     e2e_fixture.add_after_feature(after_feature)
 
-    if e2e_fixture._distributed:
-        start_webserver_step = f'Then start webserver on master port "{e2e_fixture.webserver.port}"\n\n'
-    else:
-        start_webserver_step = ''
+    start_webserver_step = f'Then start webserver on master port "{e2e_fixture.webserver.port}"\n\n' if e2e_fixture._distributed else ''
 
     env_conf: Dict[str, Dict[str, Dict[str, str]]] = {
         'configuration': {
             'test': {
-                'host': f'http://{e2e_fixture.host}'
-            }
-        }
+                'host': f'http://{e2e_fixture.host}',
+            },
+        },
     }
 
-    feature_file = e2e_fixture.create_feature(dedent(f'''Feature: UntilRequestTask
+    feature_file = e2e_fixture.create_feature(dedent(f"""Feature: UntilRequestTask
     Background: common configuration
         Given "2" users
         And spawn rate is "2" user per second
@@ -67,7 +68,7 @@ def test_e2e_until(e2e_fixture: End2EndFixture) -> None:
         And repeat for "1" iteration
         And stop user on failure
         Then get "http://$conf::test.host$/api/until/foofoo?nth=2&wrong=foobar&right=world&as_array=true | content_type=json" with name "http-client-task" until "$.`this`[?foofoo="world"] | retries=3, expected_matches=1"
-    '''))  # noqa: E501
+    """))  # noqa: E501
 
     rc, _ = e2e_fixture.execute(feature_file, env_conf=env_conf)
 

@@ -1,14 +1,19 @@
-import logging
+"""Unit tests of grizzly.tasks.log_message."""
+from __future__ import annotations
 
-from _pytest.logging import LogCaptureFixture
+import logging
+from typing import TYPE_CHECKING
 
 from grizzly.tasks import LogMessageTask
 
-from tests.fixtures import GrizzlyFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from _pytest.logging import LogCaptureFixture
+
+    from tests.fixtures import GrizzlyFixture
 
 
 class TestLogMessageTask:
-    def test(self, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture) -> None:
+    def test_task(self, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture) -> None:
         task_factory = LogMessageTask(message='hello world!')
         assert task_factory.message == 'hello world!'
         assert task_factory.__template_attributes__ == {'message'}

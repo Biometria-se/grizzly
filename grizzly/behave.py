@@ -1,31 +1,39 @@
-import logging
+"""Grizzly hooks into behave."""
+from __future__ import annotations
 
-from os import environ
-from typing import Any, Dict, Tuple, List, Optional, cast
-from time import perf_counter as time
+import logging
+from contextlib import suppress
 from datetime import datetime
-from pathlib import Path
 from json import loads as jsonloads
+from os import environ
+from pathlib import Path
+from time import perf_counter as time
+from typing import Any, List, Optional, cast
 
 import setproctitle as proc
 
 from grizzly.types import RequestType
-from grizzly.types.behave import Context, Feature, Step, Scenario, Status
+from grizzly.types.behave import Context, Feature, Scenario, Status, Step
 
 from .context import GrizzlyContext
+from .locust import on_worker
+from .locust import run as locustrun
 from .testdata.variables import destroy_variables
-from .locust import run as locustrun, on_worker
 from .utils import check_mq_client_logs, fail_direct, in_correct_section
 
 logger = logging.getLogger(__name__)
 
 try:
-    import pymqi  # pylint: disable=unused-import
+    import pymqi
 except ModuleNotFoundError:
     from grizzly_extras import dummy_pymqi as pymqi
 
 
-def before_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+ABORTED_RETURN_CODE = 15
+IN_CORRECT_SECTION_ATTRIBUTE = 'location_status'
+
+
+def before_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: Any) -> None:
     # identify as grizzly, instead of behave
     proc.setproctitle('grizzly')
 
@@ -34,10 +42,8 @@ def before_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], *
 
     destroy_variables()
 
-    try:
+    with suppress(ValueError):
         GrizzlyContext.destroy()
-    except ValueError:
-        pass
 
     grizzly = GrizzlyContext()
     grizzly.state.verbose = context.config.verbose
@@ -53,7 +59,38 @@ def before_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], *
     context.last_task_count = {}
 
 
-def after_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+
+def after_feature_master(return_code: int, status: Optional[Status], context: Context, feature: Feature) -> int:
+    """Master should validate locust request statistics to determine if feature was successful or not."""
+    if on_worker(context):
+        return return_code
+
+    grizzly = cast(GrizzlyContext, context.grizzly)
+    stats = grizzly.state.locust.environment.stats
+
+    if status is None:
+        status = Status.failed
+
+    for behave_scenario in cast(List[Scenario], feature.scenarios):
+        grizzly_scenario = grizzly.scenarios.find_by_description(behave_scenario.name)
+        if grizzly_scenario is None:
+            continue
+
+        total_errors = 0
+        for error in stats.errors.values():
+            if error.name.startswith(grizzly_scenario.identifier):
+                total_errors += 1
+
+        scenario_stat = stats.get(grizzly_scenario.locust_name, RequestType.SCENARIO())
+
+        if scenario_stat.num_failures > 0 or scenario_stat.num_requests != grizzly_scenario.iterations or total_errors > 0:
+            behave_scenario.set_status(status)
+            if return_code == 0:
+                return_code = 1
+
+    return return_code
+
+def after_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: Any) -> None:
     return_code: int
     cause: str
 
@@ -64,68 +101,45 @@ def after_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], **
         return_code = locustrun(context)
 
         if return_code != 0:
-            status = Status.failed if return_code != 15 else Status.skipped
+            status = Status.failed if return_code != ABORTED_RETURN_CODE else Status.skipped
             feature.set_status(status)
 
-        if not on_worker(context):
-            grizzly = cast(GrizzlyContext, context.grizzly)
-            stats = grizzly.state.locust.environment.stats
-
-            if status is None:
-                status = Status.failed
-
-            for behave_scenario in cast(List[Scenario], feature.scenarios):
-                grizzly_scenario = grizzly.scenarios.find_by_description(behave_scenario.name)
-                if grizzly_scenario is None:
-                    continue
-
-                total_errors = 0
-                for error in stats.errors.values():
-                    if error.name.startswith(grizzly_scenario.identifier):
-                        total_errors += 1
-
-                scenario_stat = stats.get(grizzly_scenario.locust_name, RequestType.SCENARIO())
-
-                if scenario_stat.num_failures > 0 or scenario_stat.num_requests != grizzly_scenario.iterations or total_errors > 0:
-                    behave_scenario.set_status(status)
-                    if return_code == 0:
-                        return_code = 1
+        return_code = after_feature_master(return_code, status, context, feature)
 
         if pymqi.__name__ != 'grizzly_extras.dummy_pymqi' and not on_worker(context):
             check_mq_client_logs(context)
 
         if return_code != 0:
-            cause = 'locust test failed' if return_code != 15 else 'locust test aborted'
+            cause = 'locust test failed' if return_code != ABORTED_RETURN_CODE else 'locust test aborted'
     else:
         cause = 'failed to prepare locust test'
         return_code = 1
 
-    if not on_worker(context):
-        # show start and stop date time
-        stopped = datetime.now().astimezone()
+    if on_worker(context):
+        return
 
-        end_text = 'Aborted' if return_code == 15 else 'Finished'
+    # show start and stop date time
+    stopped = datetime.now().astimezone()
 
-        print('', flush=True)
-        print(f'{"Started":<{len(end_text)}}: {context.started}')
-        print(f'{end_text}: {stopped}')
+    end_text = 'Aborted' if return_code == ABORTED_RETURN_CODE else 'Finished'
 
-        if return_code != 0:
-            print('')
+    print('', flush=True)
+    print(f'{"Started":<{len(end_text)}}: {context.started}')
+    print(f'{end_text}: {stopped}')
 
-        # the features duration is the sum of all scenarios duration, which is the sum of all steps duration
-        try:
-            duration = int(time() - context.start)
+    if return_code != 0:
+        print('')
 
-            feature.scenarios[-1].steps[-1].duration = duration
-        except Exception:
-            pass
+    # the features duration is the sum of all scenarios duration, which is the sum of all steps duration
+    with suppress(Exception):
+        duration = int(time() - context.start)
+        feature.scenarios[-1].steps[-1].duration = duration
 
-        if return_code != 0:
-            raise RuntimeError(cause)
+    if return_code != 0:
+        raise RuntimeError(cause)
 
 
-def before_scenario(context: Context, scenario: Scenario, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+def before_scenario(context: Context, scenario: Scenario, *_args: Any, **_kwargs: Any) -> None:
     grizzly = cast(GrizzlyContext, context.grizzly)
 
     if grizzly.state.background_section_done:
@@ -139,7 +153,7 @@ def before_scenario(context: Context, scenario: Scenario, *args: Tuple[Any, ...]
                 continue
 
             if not in_correct_section(matched_step.func, ['grizzly.steps.background', 'grizzly.steps']):
-                setattr(step, 'location_status', 'incorrect')
+                setattr(step, IN_CORRECT_SECTION_ATTRIBUTE, 'incorrect')
 
     # check that a @backgroundsection decorated step implementation isn't in a Scenario section
     for step in scenario.steps:
@@ -151,7 +165,7 @@ def before_scenario(context: Context, scenario: Scenario, *args: Tuple[Any, ...]
 
         if not in_correct_section(matched_step.func, ['grizzly.steps.scenario', 'grizzly.steps.scenario.tasks', 'grizzly.steps']):
             # to get a nicer error message, the step should fail before it's executed, see before_step hook
-            setattr(step, 'location_status', 'incorrect')
+            setattr(step, IN_CORRECT_SECTION_ATTRIBUTE, 'incorrect')
 
     grizzly.scenarios.create(scenario)
 
@@ -159,7 +173,7 @@ def before_scenario(context: Context, scenario: Scenario, *args: Tuple[Any, ...]
         context.last_task_count[grizzly.scenario.identifier] = 0
 
 
-def after_scenario(context: Context, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+def after_scenario(context: Context, *_args: Any, **_kwargs: Any) -> None:
     grizzly = cast(GrizzlyContext, context.grizzly)
 
     # first scenario is done, do not process background for any (possible) other scenarios
@@ -168,21 +182,23 @@ def after_scenario(context: Context, *args: Tuple[Any, ...], **kwargs: Dict[str,
 
     assert grizzly.scenario.tasks.tmp.async_group is None, f'async request group "{grizzly.scenario.tasks.tmp.async_group.name}" has not been closed'
     assert grizzly.scenario.tasks.tmp.loop is None, f'loop task "{grizzly.scenario.tasks.tmp.loop.name}" has not been closed'
+
     open_timers = {name: timer for name, timer in grizzly.scenario.tasks.tmp.timers.items() if timer is not None}
-    assert len(open_timers) < 1, f'timers {", ".join(open_timers.keys())} has not been closed'
+    assert not len(open_timers) > 0, f'timers {", ".join(open_timers.keys())} has not been closed'
+
     assert grizzly.scenario.tasks.tmp.conditional is None, f'conditional "{grizzly.scenario.tasks.tmp.conditional.name}" has not been closed'
 
 
-def before_step(context: Context, step: Step, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+def before_step(context: Context, step: Step, *_args: Any, **_kwargs: Any) -> None:
     # fail step if it's a @backgroundsection decorated step implementation, see before_scenario hook
     with fail_direct(context):
-        assert not getattr(step, 'location_status', '') == 'incorrect', 'Step is in the incorrect section'
+        assert getattr(step, 'location_status', '') != 'incorrect', 'Step is in the incorrect section'
 
     # add current step to context, used else where
     context.step = step
 
 
-def after_step(context: Context, step: Step, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+def after_step(context: Context, step: Step, *_args: Any, **_kwargs: Any) -> None:
     # grizzly does not have any functionality that should run after every step, but added for
     # clarity of what can be overloaded
     grizzly = cast(GrizzlyContext, context.grizzly)

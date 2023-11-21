@@ -1,6 +1,10 @@
+"""Custom grizzly exceptions."""
+from __future__ import annotations
+
 from typing import Optional
 
 from locust.exception import StopUser
+
 from grizzly_extras.async_message import AsyncMessageAbort
 
 __all__ = [
@@ -22,7 +26,7 @@ class TransformerLocustError(StopUser):
         self.message = message
 
 
-class RestartScenario(Exception):
+class RestartScenario(Exception):  # noqa: N818
     pass
 
 

@@ -1,5 +1,4 @@
-"""
-@anchor pydoc:grizzly.tasks.until Until
+"""@anchor pydoc:grizzly.tasks.until Until
 This task calls the `request` method of a `grizzly.users` implementation, until condition matches the
 payload returned for the request.
 
@@ -39,25 +38,25 @@ ordinary {@pylink grizzly.tasks.request} or {@pylink grizzly.tasks.clients} task
 
 * `expected_matches` _int_ (optional): number of matches that the expression should match (default `1`)
 """
+from __future__ import annotations
+
 import json
 import logging
-
-from typing import TYPE_CHECKING, Callable, Any, Type, List, Optional, cast
 from time import perf_counter
+from typing import TYPE_CHECKING, Any, Callable, List, Optional, Type, cast
 
 from gevent import sleep as gsleep
-from grizzly_extras.transformer import Transformer, TransformerContentType, TransformerError, transformer
-from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments, split_value
 
+from grizzly.exceptions import StopScenario
 from grizzly.types import RequestType
 from grizzly.types.locust import StopUser
-from grizzly.exceptions import StopScenario
 from grizzly.utils import safe_del
+from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments, split_value
+from grizzly_extras.transformer import Transformer, TransformerContentType, TransformerError, transformer
 
-from . import GrizzlyTask, GrizzlyMetaRequestTask, template, grizzlytask
+from . import GrizzlyMetaRequestTask, GrizzlyTask, grizzlytask, template
 
 if TYPE_CHECKING:  # pragma: no cover
-    from grizzly.context import GrizzlyContext
     from grizzly.scenarios import GrizzlyScenario
 
 
@@ -76,7 +75,7 @@ class UntilRequestTask(GrizzlyTask):
     wait: float
     expected_matches: int
 
-    def __init__(self, grizzly: 'GrizzlyContext', request: GrizzlyMetaRequestTask, condition: str) -> None:
+    def __init__(self, request: GrizzlyMetaRequestTask, condition: str) -> None:
         super().__init__()
 
         self.request = request
@@ -86,7 +85,8 @@ class UntilRequestTask(GrizzlyTask):
         self.expected_matches = 1
 
         if self.request.content_type == TransformerContentType.UNDEFINED:
-            raise ValueError('content type must be specified for request')
+            message = 'content type must be specified for request'
+            raise ValueError(message)
 
         self.transform = transformer.available.get(self.request.content_type, None)
 
@@ -94,39 +94,44 @@ class UntilRequestTask(GrizzlyTask):
             self.condition, until_arguments = split_value(self.condition)
 
             if '{{' in until_arguments and '}}' in until_arguments:
-                until_arguments = grizzly.state.jinja2.from_string(until_arguments).render(**grizzly.state.variables)
+                until_arguments = self.grizzly.state.jinja2.from_string(until_arguments).render(**self.grizzly.state.variables)
 
             arguments = parse_arguments(until_arguments)
 
             unsupported_arguments = get_unsupported_arguments(['retries', 'wait', 'expected_matches'], arguments)
 
             if len(unsupported_arguments) > 0:
-                raise ValueError(f'unsupported arguments {", ".join(unsupported_arguments)}')
+                message = f'unsupported arguments {", ".join(unsupported_arguments)}'
+                raise ValueError(message)
 
             self.retries = int(arguments.get('retries', self.retries))
             self.wait = float(arguments.get('wait', self.wait))
             self.expected_matches = int(arguments.get('expected_matches', '1'))
 
             if self.retries < 1:
-                raise ValueError('retries argument cannot be less than 1')
+                message = 'retries argument cannot be less than 1'
+                raise ValueError(message)
 
             if self.wait < 0.1:
-                raise ValueError('wait argument cannot be less than 0.1 seconds')
+                message = 'wait argument cannot be less than 0.1 seconds'
+                raise ValueError(message)
 
-    def __call__(self) -> grizzlytask:
+    def __call__(self) -> grizzlytask:  # noqa: C901, PLR0915
         if self.transform is None:
-            raise TypeError(f'could not find a transformer for {self.request.content_type.name}')
+            message = f'could not find a transformer for {self.request.content_type.name}'
+            raise TypeError(message)
 
         transform = cast(Transformer, self.transform)
 
         @grizzlytask
-        def task(parent: 'GrizzlyScenario') -> Any:
+        def task(parent: GrizzlyScenario) -> Any:  # noqa: C901, PLR0912, PLR0915
             task_name = f'{parent.user._scenario.identifier} {self.request.name}, w={self.wait}s, r={self.retries}, em={self.expected_matches}'
             condition_rendered = parent.render(self.condition)
             endpoint_rendered = parent.render(self.request.endpoint)
 
             if not transform.validate(condition_rendered):
-                raise RuntimeError(f'{condition_rendered} is not a valid expression for {self.request.content_type.name}')
+                message = f'{condition_rendered} is not a valid expression for {self.request.content_type.name}'
+                raise RuntimeError(message)
 
             parser = transform.parser(condition_rendered)
             number_of_matches = 0
@@ -155,26 +160,27 @@ class UntilRequestTask(GrizzlyTask):
                             transformed = transform.transform(payload)
                             response_length += len(payload)
                         else:
-                            raise TransformerError('response payload was not set')
+                            message = 'response payload was not set'
+                            raise TransformerError(message)
 
                         matches = parser(transformed)
-                        parent.logger.debug(f'{payload=}, condition={condition_rendered}, {matches=}')
+                        parent.logger.debug('payload=%r, condition=%r, matches=%r', payload, condition_rendered, matches)
                         number_of_matches = len(matches)
                     except Exception as e:
-                        parent.logger.error(f'{task_name}: retry={retry}, endpoint={endpoint_rendered}, exception={str(e)}')
+                        parent.logger.exception('%s: retry=%d, endpoint=%s', task_name, retry, endpoint_rendered)
                         if exception is None:
                             exception = e
                         number_of_matches = 0
 
                         # only way to get these exceptions here is if we've beem abprted
                         # by injecting an exception in the task greenlet
-                        if isinstance(e, (StopUser, StopScenario,)):
+                        if isinstance(e, (StopUser, StopScenario)):
                             break
                     finally:
-                        if number_of_matches == self.expected_matches:
-                            break
-                        else:
-                            retry += 1
+                        retry += 1
+
+                    if number_of_matches == self.expected_matches:
+                        break
 
                 # remove any errors produced during until loop
                 error_count_after = len(parent.user.environment.stats.errors.keys())
@@ -187,7 +193,7 @@ class UntilRequestTask(GrizzlyTask):
                     for error_key in error_keys:
                         safe_del(parent.user.environment.stats.errors, error_key)
             except Exception as e:
-                parent.logger.error(f'{task_name}: error retry={retry}', exc_info=True)
+                parent.logger.exception('%s: error retry=%d', task_name, retry)
                 if exception is None:
                     exception = e
             finally:
@@ -199,16 +205,22 @@ class UntilRequestTask(GrizzlyTask):
                 if number_of_matches == self.expected_matches:
                     exception = None
                 elif exception is None and number_of_matches != self.expected_matches:
-                    exception = RuntimeError((
-                        f'found {number_of_matches} matching values for {condition_rendered} in payload'
-                    ))
+                    message = f'found {number_of_matches} matching values for {condition_rendered} in payload'
+                    exception = RuntimeError(message)
+
                     try:
                         payload_formatted = json.dumps(json.loads(payload or ''), indent=2)
                     except Exception:  # pragma: no cover
                         payload_formatted = payload or ''
 
                     parent.logger.error(
-                        f'{task_name}: endpoint={endpoint_rendered}, {number_of_matches=}, condition={condition_rendered}, {retry=}, {response_time=} payload=\n{payload_formatted}'
+                        '%s: endpoint=%s, number_of_matches=%d, condition=%r, retry=%d, response_time=%d payload=\n%s',
+                        task_name,
+                        endpoint_rendered,
+                        number_of_matches,
+                        condition_rendered, retry,
+                        response_time,
+                        payload_formatted,
                     )
 
                 parent.user.environment.events.request.fire(
@@ -221,14 +233,14 @@ class UntilRequestTask(GrizzlyTask):
                 )
 
                 if exception is not None and parent.user._scenario.failure_exception is not None:
-                    raise parent.user._scenario.failure_exception()
+                    raise parent.user._scenario.failure_exception from exception
 
         @task.on_start
-        def on_start(parent: 'GrizzlyScenario') -> None:
+        def on_start(parent: GrizzlyScenario) -> None:
             self.request.on_start(parent)
 
         @task.on_stop
-        def on_stop(parent: 'GrizzlyScenario') -> None:
+        def on_stop(parent: GrizzlyScenario) -> None:
             self.request.on_stop(parent)
 
         return task

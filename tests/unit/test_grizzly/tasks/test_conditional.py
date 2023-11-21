@@ -1,15 +1,20 @@
-from typing import Any, cast
+"""Unit tests of grizzly.tasks.conditional."""
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
-from pytest_mock import MockerFixture
-from grizzly.tasks import ConditionalTask, grizzlytask
-from grizzly.scenarios import GrizzlyScenario
 from grizzly.context import GrizzlyContextScenario
 from grizzly.exceptions import RestartScenario, StopUser
-
-from tests.fixtures import GrizzlyFixture
+from grizzly.tasks import ConditionalTask, grizzlytask
 from tests.helpers import TestTask
+
+if TYPE_CHECKING:  # pragma: no cover
+    from pytest_mock import MockerFixture
+
+    from grizzly.scenarios import GrizzlyScenario
+    from tests.fixtures import GrizzlyFixture
 
 
 class TestConditionalTask:
@@ -31,10 +36,10 @@ class TestConditionalTask:
 
         assert task_factory._pointer is None
 
-        task_factory.switch(True)
+        task_factory.switch(pointer=True)
         assert getattr(task_factory, '_pointer', False)
 
-        task_factory.switch(False)
+        task_factory.switch(pointer=False)
         assert not getattr(task_factory, '_pointer', True)
 
         task_factory.switch(None)
@@ -52,43 +57,43 @@ class TestConditionalTask:
         assert task_factory.tasks == {}
 
         # add as True task
-        task_factory.switch(True)
-        for _ in range(0, 3):
+        task_factory.switch(pointer=True)
+        for _ in range(3):
             task_factory.add(test_task)
         assert task_factory.tasks == {True: [test_task] * 3}
 
         # add as False task
-        task_factory.switch(False)
-        for _ in range(0, 4):
+        task_factory.switch(pointer=False)
+        for _ in range(4):
             task_factory.add(test_task)
         assert task_factory.tasks == {True: [test_task] * 3, False: [test_task] * 4}
 
         # peek at tasks
-        task_factory.switch(True)
+        task_factory.switch(pointer=True)
         assert len(task_factory.peek()) == 3
 
-        task_factory.switch(False)
+        task_factory.switch(pointer=False)
         assert len(task_factory.peek()) == 4
 
         task_factory._pointer = None
         assert len(task_factory.peek()) == 0
 
         # task has name attribute, prefix it
-        task_factory.switch(False)
+        task_factory.switch(pointer=False)
         task_factory.add(TestTask(name='dummy task'))
         test_task = cast(TestTask, task_factory.tasks.get(False, [])[-1])
         assert test_task.name == 'test:dummy task'
         test_task = cast(TestTask, task_factory.tasks.get(False, [])[-2])
         assert test_task.name is None
 
-    def test___call__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+    def test___call__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:  # noqa: PLR0915
         # pre: get context
         parent = grizzly_fixture()
 
         class TestRestartScenarioTask(TestTask):
             def __call__(self) -> grizzlytask:
                 @grizzlytask
-                def task(parent: 'GrizzlyScenario') -> Any:
+                def task(parent: GrizzlyScenario) -> Any:
                     parent.user.environment.events.request.fire(
                         request_type='TSTSK',
                         name=f'TestTask: {self.name}',
@@ -97,14 +102,14 @@ class TestConditionalTask:
                         context={},
                         exception=RuntimeError('error'),
                     )
-                    raise RestartScenario()
+                    raise RestartScenario
 
                 return task
 
         class TestStopUserTask(TestTask):
             def __call__(self) -> grizzlytask:
                 @grizzlytask
-                def task(parent: 'GrizzlyScenario') -> Any:
+                def task(parent: GrizzlyScenario) -> Any:
                     parent.user.environment.events.request.fire(
                         request_type='TSTSK',
                         name=f'TestTask: {self.name}',
@@ -113,7 +118,7 @@ class TestConditionalTask:
                         context={},
                         exception=RuntimeError('error'),
                     )
-                    raise StopUser()
+                    raise StopUser
 
                 return task
 
@@ -127,12 +132,12 @@ class TestConditionalTask:
         request_spy = mocker.spy(parent.user.environment.events.request, 'fire')
 
         # pre: add tasks
-        task_factory.switch(True)
-        for i in range(0, 3):
+        task_factory.switch(pointer=True)
+        for i in range(3):
             task_factory.add(TestTask(name=f'dummy-true-{i}'))
 
-        task_factory.switch(False)
-        for i in range(0, 4):
+        task_factory.switch(pointer=False)
+        for i in range(4):
             task_factory.add(TestTask(name=f'dummy-false-{i}'))
 
         # pre: get task implementation
@@ -197,7 +202,7 @@ class TestConditionalTask:
         assert kwargs.get('response_time', None) >= 0.0
         assert kwargs.get('response_length', None) == 3
         assert kwargs.get('context', None) is parent.user._context
-        assert kwargs.get('exception', RuntimeError()) is None
+        assert kwargs.get('exception', RuntimeError) is None
 
         request_calls = request_spy.call_args_list[2:-1]
         assert len(request_calls) == 3  # DummyTask
@@ -218,7 +223,7 @@ class TestConditionalTask:
         assert kwargs.get('response_time', None) >= 0.0
         assert kwargs.get('response_length', None) == 4
         assert kwargs.get('context', None) is parent.user._context
-        assert kwargs.get('exception', RuntimeError()) is None
+        assert kwargs.get('exception', RuntimeError) is None
 
         request_calls = request_spy.call_args_list[-5:-1]
         assert len(request_calls) == 4
@@ -226,7 +231,7 @@ class TestConditionalTask:
             assert kwargs.get('request_type', None) == 'TSTSK'
 
         task_factory.add(TestRestartScenarioTask(name=f'restart-scenario-false-{i}'))
-        task_factory.switch(True)
+        task_factory.switch(pointer=True)
         task_factory.add(TestStopUserTask(name=f'stop-user-true-{i}'))
 
         parent._user.environment.stats.clear_all()
@@ -255,12 +260,12 @@ class TestConditionalTask:
         parent.user._scenario = scenario_context
         task_factory = ConditionalTask(name='test', condition='{{ value }}')
 
-        task_factory.switch(True)
-        for i in range(0, 3):
+        task_factory.switch(pointer=True)
+        for i in range(3):
             task_factory.add(TestTask(name=f'dummy-true-{i}'))
 
-        task_factory.switch(False)
-        for i in range(0, 4):
+        task_factory.switch(pointer=False)
+        for i in range(4):
             task_factory.add(TestTask(name=f'dummy-false-{i}'))
 
         mocker.patch('grizzly.tasks.conditional.gsleep', autospec=True)
@@ -272,21 +277,21 @@ class TestConditionalTask:
 
         task.on_start(parent)
 
-        on_start_mock.call_count == 7
-        on_stop_mock.call_count == 0
+        assert on_start_mock.call_count == 7
+        assert on_stop_mock.call_count == 0
 
         task.on_stop(parent)
 
-        on_start_mock.call_count == 7
-        on_stop_mock.call_count == 7
+        assert on_start_mock.call_count == 7
+        assert on_stop_mock.call_count == 7
 
         on_start_mock.reset_mock()
         on_stop_mock.reset_mock()
 
         task_factory = ConditionalTask(name='test', condition='{{ value }}')
 
-        task_factory.switch(True)
-        for i in range(0, 3):
+        task_factory.switch(pointer=True)
+        for i in range(3):
             task_factory.add(TestTask(name=f'dummy-true-{i}'))
 
         assert task_factory.tasks.get(False, None) is None
@@ -295,10 +300,10 @@ class TestConditionalTask:
 
         task.on_start(parent)
 
-        on_start_mock.call_count == 3
-        on_stop_mock.call_count == 0
+        assert on_start_mock.call_count == 3
+        assert on_stop_mock.call_count == 0
 
         task.on_stop(parent)
 
-        on_start_mock.call_count == 3
-        on_stop_mock.call_count == 3
+        assert on_start_mock.call_count == 3
+        assert on_stop_mock.call_count == 3

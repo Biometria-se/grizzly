@@ -1,23 +1,24 @@
-"""
+"""@anchor pydoc:grizzly.steps.scenario.tasks.conditional Conditional
 This module contains step implementations for the {@pylink grizzly.tasks.conditional} task.
 """
+from __future__ import annotations
+
 from typing import cast
 
-from grizzly.types.behave import Context, then, when
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import ConditionalTask
+from grizzly.types.behave import Context, then, when
 
 
-@when(u'condition "{condition}" with name "{name}" is true, execute these tasks')
+@when('condition "{condition}" with name "{name}" is true, execute these tasks')
 def step_task_conditional_if(context: Context, condition: str, name: str) -> None:
-    """
-    Creates an instance of the {@pylink grizzly.tasks.conditional} task which executes different sets of task depending on `condition`.
+    """Create an instance of the {@pylink grizzly.tasks.conditional} task which executes different sets of task depending on `condition`.
+
     Also sets the task in a state that any following tasks will be run when `condition` is true.
 
     See {@pylink grizzly.tasks.conditional} task documentation for more information.
 
     Example:
-
     ```gherkin
     When condition "{{ value | int > 0 }}" with name "value-conditional" is true, execute these tasks
     Then get request with name "get-when-true" from endpoint "/api/true"
@@ -35,19 +36,17 @@ def step_task_conditional_if(context: Context, condition: str, name: str) -> Non
         name=name,
         condition=condition,
     )
-    grizzly.scenario.tasks.tmp.conditional.switch(True)
+    grizzly.scenario.tasks.tmp.conditional.switch(pointer=True)
 
 
-@then(u'if condition is false, execute these tasks')
+@then('if condition is false, execute these tasks')
 def step_task_conditional_else(context: Context) -> None:
-    """
-    Changes the state of {@pylink grizzly.tasks.conditional} task instance created by {@pylink grizzly.steps.scenario.tasks.conditional.step_task_conditional_if}
+    """Change state of {@pylink grizzly.tasks.conditional} task instance created by {@pylink grizzly.steps.scenario.tasks.conditional.step_task_conditional_if}
     so that any following tasks will be run when `condition` is false.
 
     See {@pylink grizzly.tasks.conditional} task documentation for more information.
 
     Example:
-
     ```gherkin
     When condition "{{ value | int > 0 }}" with name "value-conditional" is true, execute these tasks
     Then get request with name "get-when-true" from endpoint "/api/true"
@@ -61,19 +60,18 @@ def step_task_conditional_else(context: Context) -> None:
 
     assert grizzly.scenario.tasks.tmp.conditional is not None, 'there are no open conditional, you need to create one first'
 
-    grizzly.scenario.tasks.tmp.conditional.switch(False)
+    grizzly.scenario.tasks.tmp.conditional.switch(pointer=False)
 
 
-@then(u'end condition')
+@then('end condition')
 def step_task_conditional_end(context: Context) -> None:
-    """
-    Closes the {@pylink grizzly.tasks.conditional} task instance created by {@pylink grizzly.steps.scenario.tasks.conditional.step_task_conditional_if}.
+    """Close the {@pylink grizzly.tasks.conditional} task instance created by {@pylink grizzly.steps.scenario.tasks.conditional.step_task_conditional_if}.
+
     This means that any following tasks specified will not be part of the conditional.
 
     See {@pylink grizzly.tasks.conditional} task documentation for more information.
 
     Example:
-
     ```gherkin
     When condition "{{ value | int > 0 }}" with name "value-conditional" is true, execute these tasks
     Then get request with name "get-when-true" from endpoint "/api/true"

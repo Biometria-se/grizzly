@@ -1,50 +1,54 @@
-import logging
+"""Unit tests of grizzly.utils."""
+from __future__ import annotations
 
-from typing import Type, cast
-from types import FunctionType
+import logging
 from datetime import datetime, timedelta, timezone
 from os import utime
+from types import FunctionType
+from typing import TYPE_CHECKING, Type, cast
 
 import pytest
-
-from _pytest.tmpdir import TempPathFactory
-from _pytest.logging import LogCaptureFixture
-from pytest_mock import MockerFixture
-
 from locust import TaskSet
 
-from grizzly.utils import ModuleLoader
+from grizzly.context import GrizzlyContext, GrizzlyContextScenario
+from grizzly.scenarios import IteratorScenario
+from grizzly.tasks import RequestTask
+from grizzly.types import RequestMethod
+from grizzly.users import RestApiUser
+from grizzly.users.base import GrizzlyUser
 from grizzly.utils import (
+    ModuleLoader,
+    async_message_request_wrapper,
+    check_mq_client_logs,
     create_scenario_class_type,
     create_user_class_type,
     fail_direct,
     in_correct_section,
+    is_template,
     parse_timespan,
-    check_mq_client_logs,
-    async_message_request_wrapper,
     safe_del,
 )
-from grizzly.types import RequestMethod
-from grizzly.types.behave import Context
-from grizzly.context import GrizzlyContext, GrizzlyContextScenario
-from grizzly.tasks import RequestTask
-from grizzly.users import RestApiUser
-from grizzly.users.base import GrizzlyUser
-from grizzly.scenarios import IteratorScenario
-from grizzly_extras.async_message import AsyncMessageRequest
 
-from tests.fixtures import BehaveFixture, GrizzlyFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from _pytest.logging import LogCaptureFixture
+    from _pytest.tmpdir import TempPathFactory
+    from pytest_mock import MockerFixture
+
+    from grizzly.types.behave import Context
+    from grizzly_extras.async_message import AsyncMessageRequest
+    from tests.fixtures import BehaveFixture, GrizzlyFixture
 
 
 class TestModuleLoader:
     def test_load_class_non_existent(self) -> None:
         class_name = 'ANonExistingModule'
+        default_module = 'grizzly.users'
 
-        with pytest.raises(ModuleNotFoundError):
-            ModuleLoader[GrizzlyUser].load('a.non.existing.package', class_name)
+        with pytest.raises(ModuleNotFoundError, match='No module named'):
+            ModuleLoader[GrizzlyUser].load(default_module, f'a.non.existing.package.{class_name}')
 
-        with pytest.raises(AttributeError):
-            ModuleLoader[GrizzlyUser].load('grizzly.users', class_name)
+        with pytest.raises(AttributeError, match=r"module 'grizzly\.users' has no attribute 'ANonExistingModule'"):
+            ModuleLoader[GrizzlyUser].load(default_module, class_name)
 
     def test_load_user_class(self, behave_fixture: BehaveFixture) -> None:
         try:
@@ -101,26 +105,23 @@ def test_fail_directly(behave_fixture: BehaveFixture) -> None:
     assert behave.config.verbose is True
 
 
-def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:
+def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa: PLR0915
     scenario = GrizzlyContextScenario(1, behave=behave_fixture.create_scenario('A scenario description'))
 
-    with pytest.raises(ValueError) as ve:
+    with pytest.raises(ValueError, match='scenario A scenario description does not have a user type set'):
         create_user_class_type(scenario)
-    assert 'scenario A scenario description does not have a user type set' in str(ve)
 
     user_orig = scenario.user
     delattr(scenario, 'user')
 
-    with pytest.raises(ValueError) as ve:
+    with pytest.raises(ValueError, match='scenario A scenario description has not set a user'):
         create_user_class_type(scenario)
-    assert 'scenario A scenario description has not set a user' in str(ve)
 
-    setattr(scenario, 'user', user_orig)
+    scenario.user = user_orig
 
     scenario.user.class_name = 'custom.users.CustomUser'
-    with pytest.raises(ModuleNotFoundError) as mnfe:
+    with pytest.raises(ModuleNotFoundError, match="No module named 'custom'"):
         create_user_class_type(scenario)
-    assert "No module named 'custom'" in str(mnfe)
 
     scenario.user.class_name = 'grizzly.users.RestApiUser'
     user_class_type_1 = create_user_class_type(scenario)
@@ -133,7 +134,9 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:
     assert user_class_type_1.__scenario__ is scenario
     assert user_class_type_1.host == 'http://localhost:8000'
     assert user_class_type_1.__module__ == 'grizzly.users.restapi'
-    assert user_class_type_1._context == {
+    assert user_class_type_1.__context__ == {
+        'log_all_requests': False,
+        'variables': {},
         'verify_certificates': True,
         'auth': {
             'refresh_time': 3000,
@@ -159,6 +162,7 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:
         'Content-Type': 'application/json',
         'x-grizzly-user': f'grizzly.users.RestApiUser_{scenario.identifier}',
     }
+
     assert user_type_1.context() == {
         'log_all_requests': False,
         'variables': {},
@@ -201,9 +205,9 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:
                 'provider': 'https://auth.example.com',
                 'user': {
                     'username': 'grizzly-user',
-                }
+                },
             },
-        }
+        },
     )
     user_class_type_2.host = 'http://localhost:8001'
 
@@ -214,8 +218,9 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:
     assert user_class_type_2.__scenario__ is scenario
     assert user_class_type_2.host == 'http://localhost:8001'
     assert user_class_type_2.__module__ == 'grizzly.users.restapi'
-    assert user_class_type_2._context == {
+    assert user_class_type_2.__context__ == {
         'log_all_requests': True,
+        'variables': {},
         'test': {
             'value': 1,
         },
@@ -291,7 +296,9 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:
     assert user_class_type_3.__scenario__ is scenario
     assert user_class_type_3.host == 'http://localhost:8002'
     assert user_class_type_3.__module__ == 'grizzly.users.restapi'
-    assert user_class_type_3._context == {
+    assert user_class_type_3.__context__ == {
+        'log_all_requests': False,
+        'variables': {},
         'test': {
             'value': 'hello world',
             'description': 'simple text',
@@ -329,7 +336,9 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:
     assert user_class_type_3.__scenario__ is scenario
     assert user_class_type_3.host == 'http://localhost:8002'
     assert user_class_type_3.__module__ == 'grizzly.users.restapi'
-    assert user_class_type_3._context == {
+    assert user_class_type_3.__context__ == {
+        'log_all_requests': False,
+        'variables': {},
         'test': {
             'value': 'hello world',
             'description': 'simple text',
@@ -354,18 +363,18 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:
         'metadata': None,
     }
 
-    with pytest.raises(AttributeError):
-        scenario = GrizzlyContextScenario(1, behave=behave_fixture.create_scenario('A scenario description'))
-        scenario.user.class_name = 'DoNotExistInGrizzlyUsersUser'
+    scenario = GrizzlyContextScenario(1, behave=behave_fixture.create_scenario('A scenario description'))
+    scenario.user.class_name = 'DoNotExistInGrizzlyUsersUser'
+
+    with pytest.raises(AttributeError, match=r"module 'grizzly\.users' has no attribute 'DoNotExistInGrizzlyUsersUser'"):
         create_user_class_type(scenario)
 
 
 def test_create_scenario_class_type(behave_fixture: BehaveFixture) -> None:
     scenario = GrizzlyContextScenario(1, behave=behave_fixture.create_scenario('A scenario description'))
 
-    with pytest.raises(ModuleNotFoundError) as mnfe:
+    with pytest.raises(ModuleNotFoundError, match="No module named 'custom'"):
         create_scenario_class_type('custom.tasks.CustomTasks', scenario)
-    assert "No module named 'custom'" in str(mnfe)
 
     task_class_type_1 = create_scenario_class_type('grizzly.scenarios.IteratorScenario', scenario)
 
@@ -394,10 +403,11 @@ def test_create_scenario_class_type(behave_fixture: BehaveFixture) -> None:
 
     assert task_class_type_1.tasks != task_class_type_2.tasks
 
-    with pytest.raises(AttributeError):
-        scenario = GrizzlyContextScenario(3, behave=behave_fixture.create_scenario('A scenario description'))
-        scenario.name = 'A scenario description'
-        create_scenario_class_type('DoesNotExistInGrizzlyScenariosModel', scenario)
+    scenario = GrizzlyContextScenario(3, behave=behave_fixture.create_scenario('A scenario description'))
+    scenario.name = 'A scenario description'
+
+    with pytest.raises(AttributeError, match=r"module 'grizzly\.scenarios' has no attribute 'DoesNotExistInGrizzlyScenariosScenario'"):
+        create_scenario_class_type('DoesNotExistInGrizzlyScenariosScenario', scenario)
 
 
 def test_in_correct_section() -> None:
@@ -405,11 +415,11 @@ def test_in_correct_section() -> None:
     assert in_correct_section(step_setup_iterations, ['grizzly.steps.scenario'])
     assert not in_correct_section(step_setup_iterations, ['grizzly.steps.background'])
 
-    def step_custom(context: Context) -> None:
+    def step_custom(_: Context) -> None:
         pass
 
     # force AttributeError, for when a step function isn't part of a module
-    setattr(step_custom, '__module__', None)
+    setattr(step_custom, '__module__', None)  # noqa: B010
 
     assert in_correct_section(cast(FunctionType, step_custom), ['grizzly.steps.scenario'])
 
@@ -418,13 +428,11 @@ def test_parse_timespan() -> None:
     assert parse_timespan('133') == {'days': 133}
     assert parse_timespan('-133') == {'days': -133}
 
-    with pytest.raises(ValueError) as ve:
+    with pytest.raises(ValueError, match='invalid time span format'):
         parse_timespan('10P44m')
-    assert 'invalid time span format' in str(ve)
 
-    with pytest.raises(ValueError) as ve:
+    with pytest.raises(ValueError, match='invalid time span format'):
         parse_timespan('{}')
-    assert 'invalid time span format' in str(ve)
 
     assert parse_timespan('1Y-2M3D-4h5m-6s') == {
         'years': 1,
@@ -436,7 +444,7 @@ def test_parse_timespan() -> None:
     }
 
 
-def test_check_mq_client_logs(behave_fixture: BehaveFixture, tmp_path_factory: TempPathFactory, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
+def test_check_mq_client_logs(behave_fixture: BehaveFixture, tmp_path_factory: TempPathFactory, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:  # noqa: PLR0915
     context = behave_fixture.context
     test_context = tmp_path_factory.mktemp('test_context')
 
@@ -463,7 +471,7 @@ def test_check_mq_client_logs(behave_fixture: BehaveFixture, tmp_path_factory: T
 
     # one AMQERR*.LOG file, previous run
     amqerr_log_file_1 = amq_error_dir / 'AMQERR01.LOG'
-    amqerr_log_file_1.write_text('''10/13/22 06:13:07 - Process(6437.52) User(mqm) Program(amqrmppa)
+    amqerr_log_file_1.write_text("""10/13/22 06:13:07 - Process(6437.52) User(mqm) Program(amqrmppa)
                     Host(mq.example.io) Installation(Installation1)
                     VRMF(9.2.1.0) QMgr(QM1)
                     Time(2022-10-13T06:13:07.215Z)
@@ -475,7 +483,7 @@ AMQ9999E: Channel 'CLIENT.CONN' to host '1.2.3.4' ended abnormally.
 
 EXPLANATION:
 ----- amqccisa.c : 10957 ------------------------------------------------------
-''')
+""")
 
     with caplog.at_level(logging.INFO):
         check_mq_client_logs(context)
@@ -486,7 +494,7 @@ EXPLANATION:
 
     # one AMQERR*.LOG file, one entry
     with amqerr_log_file_1.open('a') as fd:
-        fd.write(f'''{entry_date_1.strftime('%m/%d/%y %H:%M:%S')} - Process(6437.52) User(mqm) Program(amqrmppa)
+        fd.write(f"""{entry_date_1.strftime('%m/%d/%y %H:%M:%S')} - Process(6437.52) User(mqm) Program(amqrmppa)
                     Host(mq.example.io) Installation(Installation1)
                     VRMF(9.2.1.0) QMgr(QM1)
                     Time({entry_date_1.strftime('%Y-%m-%dT%H:%M:%S.000Z')})
@@ -498,7 +506,7 @@ AMQ9999E: Channel 'CLIENT.CONN' to host '1.2.3.4' ended abnormally.
 
 EXPLANATION:
 ----- amqccisa.c : 10957 ------------------------------------------------------
-''')
+""")
 
     with caplog.at_level(logging.INFO):
         check_mq_client_logs(context)
@@ -552,7 +560,7 @@ EXPLANATION:
 
     # two AMQERR files, both with valid data. three FDC files, one old
     entry_date_2 = entry_date_1 + timedelta(minutes=23)
-    amqerr_log_file_2.write_text(f'''{entry_date_2.strftime('%m/%d/%y %H:%M:%S')} - Process(6437.52) User(mqm) Program(amqrmppa)
+    amqerr_log_file_2.write_text(f"""{entry_date_2.strftime('%m/%d/%y %H:%M:%S')} - Process(6437.52) User(mqm) Program(amqrmppa)
                     Host(mq.example.io) Installation(Installation1)
                     VRMF(9.2.1.0) QMgr(QM1)
                     Time({entry_date_2.strftime('%Y-%m-%dT%H:%M:%S.000Z')})
@@ -564,20 +572,18 @@ AMQ1234E: dude, what did you do?!
 
 EXPLANATION:
 ----- amqccisa.c : 10957 ------------------------------------------------------
-''')
+""")
     amqerr_fdc_file_2 = amq_error_dir / 'AMQ1234.1.FDC'
     amqerr_fdc_file_2.touch()
-    utime(amqerr_fdc_file_2, (entry_date_2.timestamp(), entry_date_2.timestamp(),))
+    utime(amqerr_fdc_file_2, (entry_date_2.timestamp(), entry_date_2.timestamp()))
 
     amqerr_fdc_file_3 = amq_error_dir / 'AMQ4321.9.FDC'
     amqerr_fdc_file_3.touch()
     entry_date_3 = entry_date_2 + timedelta(minutes=73)
-    utime(amqerr_fdc_file_3, (entry_date_3.timestamp(), entry_date_3.timestamp(),))
+    utime(amqerr_fdc_file_3, (entry_date_3.timestamp(), entry_date_3.timestamp()))
 
     with caplog.at_level(logging.INFO):
         check_mq_client_logs(context)
-
-    print('\n'.join(caplog.messages))
 
     assert len(caplog.messages) == 14
 
@@ -585,7 +591,6 @@ EXPLANATION:
     assert caplog.messages.index('AMQ FDC files:') == 7
 
     amqerr_log_entries = caplog.messages[0:6]
-    print(amqerr_log_entries)
     assert len(amqerr_log_entries) == 6
 
     assert amqerr_log_entries[1].strip() == 'Timestamp (UTC)      Message'
@@ -626,8 +631,8 @@ def test_async_message_request_wrapper(grizzly_fixture: GrizzlyFixture, mocker: 
     # nothing to render
     request: AsyncMessageRequest = {
         'context': {
-            'endpoint': 'hello world'
-        }
+            'endpoint': 'hello world',
+        },
     }
 
     async_message_request_wrapper(parent, client_mock, request)
@@ -642,8 +647,8 @@ def test_async_message_request_wrapper(grizzly_fixture: GrizzlyFixture, mocker: 
     # template to render, variable not set
     request = {
         'context': {
-            'endpoint': 'hello {{ world }}!'
-        }
+            'endpoint': 'hello {{ world }}!',
+        },
     }
 
     async_message_request_wrapper(parent, client_mock, request)
@@ -673,3 +678,10 @@ def test_safe_del() -> None:
 
     safe_del(struct, 'hello')
     assert struct == {}
+
+
+def test_is_template() -> None:
+    assert is_template('{{ hello_world }}')
+    assert not is_template('{{ hello_world')
+    assert not is_template('hello_world }}')
+    assert is_template('is {{ this }} really a template?')

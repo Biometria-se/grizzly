@@ -1,5 +1,4 @@
-"""
-@anchor pydoc:grizzly.tasks Tasks
+"""@anchor pydoc:grizzly.tasks Tasks
 Tasks are functionality that is executed by `locust` at run time as they are specified in the feature file.
 
 The most essential task is {@pylink grizzly.tasks.request}, which all {@pylink grizzly.users} is using to make
@@ -50,29 +49,30 @@ def step_run_testtask(context: Context) -> None:
 There are examples of this in the {@link framework.example}.
 """
 from __future__ import annotations
+
 from abc import ABC, ABCMeta, abstractmethod
-from typing import TYPE_CHECKING, Any, Callable, List, Type, Set, Optional, Union, overload, cast
+from inspect import getmro
 from os import environ
 from pathlib import Path
-from inspect import getmro
-
-from grizzly_extras.transformer import TransformerContentType
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, List, Optional, Set, Type, Union, cast, overload
 
 from grizzly.context import GrizzlyContext
+from grizzly.utils import is_template
 
 if TYPE_CHECKING:  # pragma: no cover
-    from grizzly.types import GrizzlyResponse
     from grizzly.scenarios import GrizzlyScenario
+    from grizzly.types import GrizzlyResponse
+    from grizzly_extras.transformer import TransformerContentType
 
 GrizzlyTaskType = Callable[['GrizzlyScenario'], Any]
 GrizzlyTaskOnType = Callable[['GrizzlyScenario'], None]
 
 
 class grizzlytask:
-    __name__ = 'grizzlytask'
+    __name__ = 'grizzlytask'  # noqa: A003
 
-    _on_start: Optional['OnGrizzlyTask'] = None
-    _on_stop: Optional['OnGrizzlyTask'] = None
+    _on_start: Optional[OnGrizzlyTask] = None
+    _on_stop: Optional[OnGrizzlyTask] = None
 
     class OnGrizzlyTask:
         _on_func: GrizzlyTaskOnType
@@ -93,8 +93,7 @@ class grizzlytask:
         return self._task(parent)
 
     def _is_parent(self, arg: Any) -> bool:
-        """
-        ugly workaround since it is not possible to properly import GrizzlyScenario
+        """Ugly workaround since it is not possible to properly import GrizzlyScenario
         and use `isinstance` due to cyclic imports...
         """
         mro_list = [m.__name__ for m in getmro(arg.__class__)]
@@ -137,7 +136,7 @@ class grizzlytask:
 
 
 class GrizzlyTask(ABC):
-    __template_attributes__: Set[str] = set()
+    __template_attributes__: ClassVar[Set[str]] = set()
 
     _context_root: str
 
@@ -150,50 +149,52 @@ class GrizzlyTask(ABC):
 
     @abstractmethod
     def __call__(self) -> grizzlytask:
-        raise NotImplementedError(f'{self.__class__.__name__} has not been implemented')  # pragma: no cover
+        message = f'{self.__class__.__name__} has not been implemented'
+        raise NotImplementedError(message)  # pragma: no cover
+
+    def _get_template_value_str(self, value: str) -> str:
+        try:
+            possible_file = Path(self._context_root) / 'requests' / value
+            if possible_file.is_file():
+                value = possible_file.read_text()
+        except OSError:
+            pass
+
+        return value
+
+    def _get_value_templates(self, value: Any) -> Set[str]:
+        templates: Set[str] = set()
+
+        if isinstance(value, str):
+            value = self._get_template_value_str(value)
+
+            if is_template(value):
+                templates.add(value)
+        elif isinstance(value, list):
+            for list_value in value:
+                if isinstance(list_value, GrizzlyTask):
+                    templates.update(list_value.get_templates())
+                else:
+                    templates.update(self._get_value_templates(list_value))
+        elif isinstance(value, dict):
+            for dict_value in value.values():
+                if isinstance(dict_value, GrizzlyTask):
+                    templates.update(dict_value.get_templates())
+                else:
+                    templates.update(self._get_value_templates(dict_value))
+        elif isinstance(value, GrizzlyTask):
+            templates.update(value.get_templates())
+
+        return templates
 
     def get_templates(self) -> List[str]:
-        def is_template(value: str) -> bool:
-            return '{{' in value and '}}' in value
-
-        def _get_value_templates(value: Any) -> Set[str]:
-            templates: Set[str] = set()
-
-            if isinstance(value, str):
-                try:
-                    possible_file = Path(self._context_root) / 'requests' / value
-                    if possible_file.is_file():
-                        with open(possible_file, 'r', encoding='utf-8') as fd:
-                            value = fd.read()
-                except OSError:
-                    pass
-
-                if is_template(value):
-                    templates.add(value)
-            elif isinstance(value, list):
-                for list_value in value:
-                    if isinstance(list_value, GrizzlyTask):
-                        templates.update(list_value.get_templates())
-                    else:
-                        templates.update(_get_value_templates(list_value))
-            elif isinstance(value, dict):
-                for dict_value in value.values():
-                    if isinstance(dict_value, GrizzlyTask):
-                        templates.update(dict_value.get_templates())
-                    else:
-                        templates.update(_get_value_templates(dict_value))
-            elif isinstance(value, GrizzlyTask):
-                templates.update(value.get_templates())
-
-            return templates
-
         templates: Set[str] = set()
         for attribute in self.__template_attributes__:
             value = getattr(self, attribute, None)
             if value is None:
                 continue
 
-            templates.update(_get_value_templates(value))
+            templates.update(self._get_value_templates(value))
 
         return list(templates)
 
@@ -203,13 +204,14 @@ class GrizzlyMetaRequestTask(GrizzlyTask, metaclass=ABCMeta):
     name: Optional[str]
     endpoint: str
 
-    def execute(self, parent: 'GrizzlyScenario') -> 'GrizzlyResponse':
-        raise NotImplementedError(f'{self.__class__.name} has not implemented "execute"')  # pragma: no cover
+    def execute(self, _: GrizzlyScenario) -> GrizzlyResponse:
+        message = f'{self.__class__.name} has not implemented "execute"'
+        raise NotImplementedError(message)  # pragma: no cover
 
-    def on_start(self, parent: 'GrizzlyScenario') -> None:
+    def on_start(self, parent: GrizzlyScenario) -> None:
         pass
 
-    def on_stop(self, parent: 'GrizzlyScenario') -> None:
+    def on_stop(self, parent: GrizzlyScenario) -> None:
         pass
 
 
@@ -218,11 +220,13 @@ class GrizzlyTaskWrapper(GrizzlyTask, metaclass=ABCMeta):
 
     @abstractmethod
     def add(self, task: GrizzlyTask) -> None:
-        raise NotImplementedError(f'{self.__class__.__name__} has not implemented add')  # pragma: no cover
+        message = f'{self.__class__.__name__} has not implemented add'
+        raise NotImplementedError(message)  # pragma: no cover
 
     @abstractmethod
     def peek(self) -> List[GrizzlyTask]:
-        raise NotImplementedError(f'{self.__class__.__name__} has not implemented peek')  # pragma: no cover
+        message = f'{self.__class__.__name__} has not implemented peek'
+        raise NotImplementedError(message)  # pragma: no cover
 
 
 class template:
@@ -247,20 +251,20 @@ class template:
         return cls
 
 
-from .request import RequestTask, RequestTaskHandlers, RequestTaskResponse
-from .wait_explicit import ExplicitWaitTask
+from .conditional import ConditionalTask  # noqa: I001
+from .date import DateTask
+from .keystore import KeystoreTask
 from .log_message import LogMessageTask
+from .loop import LoopTask
+from .request import RequestTask, RequestTaskHandlers, RequestTaskResponse
+from .set_variable import SetVariableTask
+from .timer import TimerTask
 from .transformer import TransformerTask
 from .until import UntilRequestTask
-from .date import DateTask
-from .async_group import AsyncRequestGroupTask
-from .timer import TimerTask
 from .wait_between import WaitBetweenTask
-from .conditional import ConditionalTask
-from .loop import LoopTask
-from .set_variable import SetVariableTask
-from .keystore import KeystoreTask
+from .wait_explicit import ExplicitWaitTask
 
+from .async_group import AsyncRequestGroupTask
 
 __all__ = [
     'RequestTaskHandlers',

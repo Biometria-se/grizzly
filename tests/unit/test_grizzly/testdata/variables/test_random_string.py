@@ -1,27 +1,28 @@
+"""Unit tests of grizzly.testdata.variables.random_string."""
+from __future__ import annotations
+
 import re
+from typing import TYPE_CHECKING, List, Set
 
-from typing import List, Set
-
-import pytest
 import gevent
-
-from gevent.greenlet import Greenlet
+import pytest
 
 from grizzly.testdata.variables import AtomicRandomString
 
-from tests.fixtures import AtomicVariableCleanupFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from gevent.greenlet import Greenlet
+
+    from tests.fixtures import AtomicVariableCleanupFixture
 
 
 class TestAtomicRandomString:
-    def test(self, cleanup: AtomicVariableCleanupFixture) -> None:
+    def test_variable(self, cleanup: AtomicVariableCleanupFixture) -> None:  # noqa: PLR0915
         try:
-            with pytest.raises(ValueError) as ve:
+            with pytest.raises(ValueError, match='no string pattern specified'):
                 t = AtomicRandomString('test1', '')
-            assert 'no string pattern specified' in str(ve)
 
-            with pytest.raises(ValueError) as ve:
+            with pytest.raises(ValueError, match='specified string pattern does not contain any generators'):
                 t = AtomicRandomString('test1', 'AAABBB')
-            assert 'specified string pattern does not contain any generators' in str(ve)
 
             t = AtomicRandomString('test1', '%s')
 
@@ -31,13 +32,11 @@ class TestAtomicRandomString:
             assert t.__getitem__('testXX') is None
             del t['testXX']
 
-            with pytest.raises(NotImplementedError) as nie:
+            with pytest.raises(NotImplementedError, match='format "f" is not implemented'):
                 AtomicRandomString('testformat', '%s%d%fa | count=1')
-            assert 'format "f" is not implemented' in str(nie)
 
-            with pytest.raises(ValueError) as ve:
+            with pytest.raises(ValueError, match='argument length is not allowed'):
                 AtomicRandomString('testformat', '%s%da | length=1')
-            assert 'argument length is not allowed' in str(ve)
 
             v = t['test1']
             assert v is not None
@@ -46,7 +45,7 @@ class TestAtomicRandomString:
 
             t = AtomicRandomString('test2', 'a%s%d | count=5')
 
-            for _ in range(0, 5):
+            for _ in range(5):
                 v = t['test2']
                 assert v is not None, f'iteration {_}'
                 assert len(v) == 3
@@ -54,13 +53,13 @@ class TestAtomicRandomString:
                 try:
                     int(v[-1])
                 except:
-                    pytest.fail()
+                    pytest.fail(f'{v[-1]} is not an integer')
 
             assert t.__getitem__('test2') is None
 
             t = AtomicRandomString('test3', 'a%s%d | count=8, upper=True')
 
-            for _ in range(0, 8):
+            for _ in range(8):
                 v = t['test3']
                 assert v is not None, f'iteration {_}'
                 assert len(v) == 3
@@ -68,13 +67,13 @@ class TestAtomicRandomString:
                 try:
                     int(v[-1])
                 except:
-                    pytest.fail()
+                    pytest.fail(f'{v[-1]} is not an integer')
 
             assert t.__getitem__('test3') is None
 
             t = AtomicRandomString('regnr', '%sA%s1%d%d | count=10, upper=True')
 
-            for _ in range(0, 10):
+            for _ in range(10):
                 rn = t['regnr']
                 assert rn is not None, f'iteration {_}'
                 assert len(rn) == 6
@@ -83,9 +82,8 @@ class TestAtomicRandomString:
 
             assert t.__getitem__('regnr') is None
 
-            with pytest.raises(NotImplementedError) as nie:
+            with pytest.raises(NotImplementedError, match='AtomicRandomString has not implemented "__setitem__"'):
                 t['regnr'] = 'ABC123'
-            assert str(nie.value) == 'AtomicRandomString has not implemented "__setitem__"'
             assert t['regnr'] is None
 
             assert len(t._strings) == 4
@@ -101,7 +99,7 @@ class TestAtomicRandomString:
             t = AtomicRandomString('regnr', '%sA%s1%d%d | count=10000, upper=True')
 
             assert len(t._strings['regnr']) == 10000
-            assert sorted(t._strings['regnr']) == sorted(list(set(t._strings['regnr'])))
+            assert sorted(t._strings['regnr']) == sorted(set(t._strings['regnr']))
 
             t = AtomicRandomString('uuid', '%g | count=3')
 
@@ -114,9 +112,8 @@ class TestAtomicRandomString:
 
             assert t['uuid'] is None
 
-            with pytest.raises(ValueError) as ve:
+            with pytest.raises(ValueError, match='AtomicRandomString: %g cannot be combined with other formats'):
                 AtomicRandomString('uuid4', '%s%g')
-            assert str(ve.value) == 'AtomicRandomString: %g cannot be combined with other formats'
         finally:
             cleanup()
 
@@ -129,13 +126,13 @@ class TestAtomicRandomString:
             t = AtomicRandomString('greenlet_var', f'%s%s%s%d%d%d | count={count}, upper=True')
 
             def exception_handler(greenlet: gevent.Greenlet) -> None:
-                raise RuntimeError(f'func1 did not validate for {greenlet}')
+                message = f'func1 did not validate for {greenlet}'
+                raise RuntimeError(message)
 
             values: Set[str] = set()
 
             def func1() -> None:
                 for _ in range(num_iterations):
-                    # pylint: disable=pointless-statement
                     value = t['greenlet_var']
                     assert value is not None, f'iteration {_}'
                     assert value not in values

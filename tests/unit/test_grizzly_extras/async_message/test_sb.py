@@ -1,16 +1,21 @@
-from typing import cast
+"""Unit tests for grizzly_extras.async_message.sb."""
+from __future__ import annotations
+
+from contextlib import suppress
+from itertools import cycle
 from json import dumps as jsondumps
+from typing import TYPE_CHECKING, cast
 
 import pytest
-
-from pytest_mock import MockerFixture
-
-from azure.servicebus import ServiceBusMessage, TransportType, ServiceBusClient, ServiceBusSender, ServiceBusReceiver
 from azure.core.exceptions import ResourceExistsError, ResourceNotFoundError
+from azure.servicebus import ServiceBusClient, ServiceBusMessage, ServiceBusReceiver, ServiceBusSender, TransportType
 
 from grizzly_extras.arguments import parse_arguments
 from grizzly_extras.async_message import AsyncMessageError, AsyncMessageRequest
 from grizzly_extras.async_message.sb import AsyncServiceBusHandler
+
+if TYPE_CHECKING:  # pragma: no cover
+    from pytest_mock import MockerFixture
 
 
 class TestAsyncServiceBusHandler:
@@ -52,9 +57,8 @@ class TestAsyncServiceBusHandler:
             'action': 'DISCONNECT',
         }
 
-        with pytest.raises(AsyncMessageError) as ame:
+        with pytest.raises(AsyncMessageError, match='no context in request'):
             handlers[request['action']](handler, request)
-        assert 'no context in request' in str(ame)
 
         request = {
             'action': 'DISCONNECT',
@@ -66,9 +70,8 @@ class TestAsyncServiceBusHandler:
             },
         }
 
-        with pytest.raises(AsyncMessageError) as ame:
+        with pytest.raises(AsyncMessageError, match='"asdf" is not a valid value for context.connection'):
             handlers[request['action']](handler, request)
-        assert '"asdf" is not a valid value for context.connection' in str(ame)
 
         assert handler._sender_cache == {}
         assert handler._receiver_cache == {}
@@ -114,7 +117,7 @@ class TestAsyncServiceBusHandler:
         assert handler._receiver_cache == {}
         assert receiver_instance.__exit__.call_count == 1
 
-    def test_subscribe(self, mocker: MockerFixture) -> None:
+    def test_subscribe(self, mocker: MockerFixture) -> None:  # noqa: PLR0915
         from grizzly_extras.async_message.sb import handlers
 
         handler = AsyncServiceBusHandler(worker='asdf-asdf-asdf')
@@ -124,9 +127,8 @@ class TestAsyncServiceBusHandler:
             'action': 'SUBSCRIBE',
         }
 
-        with pytest.raises(AsyncMessageError) as ame:
+        with pytest.raises(AsyncMessageError, match='no context in request'):
             handlers[request['action']](handler, request)
-        assert str(ame.value) == 'no context in request'
 
         # malformed request, subscribe on queue
         request = {
@@ -138,23 +140,20 @@ class TestAsyncServiceBusHandler:
             },
         }
 
-        with pytest.raises(AsyncMessageError) as ame:
+        with pytest.raises(AsyncMessageError, match='subscriptions is only allowed on topics'):
             handlers[request['action']](handler, request)
-        assert str(ame.value) == 'subscriptions is only allowed on topics'
 
         # malformed request, no subscription specified
         request['context'].update({'endpoint': 'topic:my-topic'})
 
-        with pytest.raises(ValueError) as ve:
+        with pytest.raises(ValueError, match='endpoint needs to include subscription when receiving messages from a topic'):
             handlers[request['action']](handler, request)
-        assert str(ve.value) == 'endpoint needs to include subscription when receiving messages from a topic'
 
         # malformed request, no rule text in payload
         request['context'].update({'endpoint': 'topic:my-topic, subscription:my-subscription'})
 
-        with pytest.raises(AsyncMessageError) as ame:
+        with pytest.raises(AsyncMessageError, match='no rule text in request'):
             handlers[request['action']](handler, request)
-        assert str(ame.value) == 'no rule text in request'
 
         # pre: valid request
         mgmt_client_mock = mocker.MagicMock()
@@ -165,9 +164,8 @@ class TestAsyncServiceBusHandler:
         # specified topic does not exist
         mgmt_client_mock.get_topic.side_effect = [ResourceNotFoundError]
 
-        with pytest.raises(AsyncMessageError) as ame:
+        with pytest.raises(AsyncMessageError, match='topic "my-topic" does not exist'):
             handlers[request['action']](handler, request)
-        assert str(ame.value) == 'topic "my-topic" does not exist'
 
         create_client_mock.assert_called_once_with(conn_str='Endpoint=sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=')
         mgmt_client_mock.get_topic.assert_called_once_with(topic_name='my-topic')
@@ -222,9 +220,8 @@ class TestAsyncServiceBusHandler:
             'action': 'UNSUBSCRIBE',
         }
 
-        with pytest.raises(AsyncMessageError) as ame:
+        with pytest.raises(AsyncMessageError, match='no context in request'):
             handlers[request['action']](handler, request)
-        assert str(ame.value) == 'no context in request'
 
         # malformed request, subscribe on queue
         request = {
@@ -236,16 +233,14 @@ class TestAsyncServiceBusHandler:
             },
         }
 
-        with pytest.raises(AsyncMessageError) as ame:
+        with pytest.raises(AsyncMessageError, match='subscriptions is only allowed on topics'):
             handlers[request['action']](handler, request)
-        assert str(ame.value) == 'subscriptions is only allowed on topics'
 
         # malformed request, no subscription specified
         request['context'].update({'endpoint': 'topic:my-topic'})
 
-        with pytest.raises(ValueError) as ve:
+        with pytest.raises(ValueError, match='endpoint needs to include subscription when receiving messages from a topic'):
             handlers[request['action']](handler, request)
-        assert str(ve.value) == 'endpoint needs to include subscription when receiving messages from a topic'
 
         # pre: valid request
         mgmt_client_mock = mocker.MagicMock()
@@ -255,9 +250,8 @@ class TestAsyncServiceBusHandler:
         # topic does not exist
         mgmt_client_mock.get_topic.side_effect = [ResourceNotFoundError]
 
-        with pytest.raises(AsyncMessageError) as ame:
+        with pytest.raises(AsyncMessageError, match='topic "my-topic" does not exist'):
             handlers[request['action']](handler, request)
-        assert str(ame.value) == 'topic "my-topic" does not exist'
 
         create_client_mock.assert_called_once_with(conn_str='Endpoint=sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=')
         mgmt_client_mock.get_topic.assert_called_once_with(topic_name='my-topic')
@@ -269,9 +263,8 @@ class TestAsyncServiceBusHandler:
         mgmt_client_mock.get_topic.side_effect = None
         mgmt_client_mock.get_subscription.side_effect = [ResourceNotFoundError]
 
-        with pytest.raises(AsyncMessageError) as ame:
+        with pytest.raises(AsyncMessageError, match='subscription "my-subscription" does not exist on topic "my-topic"'):
             handlers[request['action']](handler, request)
-        assert str(ame.value) == 'subscription "my-subscription" does not exist on topic "my-topic"'
 
         mgmt_client_mock.get_topic.assert_called_once_with(topic_name='my-topic')
         mgmt_client_mock.get_subscription.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription')
@@ -289,51 +282,43 @@ class TestAsyncServiceBusHandler:
         mgmt_client_mock.delete_subscription.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription')
 
     def test_from_message(self) -> None:
-        assert AsyncServiceBusHandler.from_message(None) == (None, None,)
+        assert AsyncServiceBusHandler.from_message(None) == (None, None)
 
         message = ServiceBusMessage('a message')
         message.raw_amqp_message.properties = None
         message.raw_amqp_message.header = None
-        assert AsyncServiceBusHandler.from_message(message) == ({}, 'a message',)
+        assert AsyncServiceBusHandler.from_message(message) == ({}, 'a message')
 
-        message = ServiceBusMessage('a message'.encode('utf-8'))
+        message = ServiceBusMessage(b'a message')
         metadata, payload = AsyncServiceBusHandler.from_message(message)
         assert payload == 'a message'
         assert isinstance(metadata, dict)
         assert len(metadata) > 0
 
     def test_get_arguments(self) -> None:
-        with pytest.raises(ValueError) as ve:
+        with pytest.raises(ValueError, match='incorrect format in arguments: "test"'):
             AsyncServiceBusHandler.get_endpoint_arguments('receiver', 'test')
-        assert 'incorrect format in arguments: "test"' in str(ve)
 
-        with pytest.raises(ValueError) as ve:
+        with pytest.raises(ValueError, match='endpoint needs to be prefixed with queue: or topic:'):
             AsyncServiceBusHandler.get_endpoint_arguments('sender', 'asdf:test')
-        assert 'endpoint needs to be prefixed with queue: or topic:' in str(ve)
 
-        with pytest.raises(ValueError) as ve:
+        with pytest.raises(ValueError, match='arguments dummy is not supported'):
             AsyncServiceBusHandler.get_endpoint_arguments('sender', 'topic:test, dummy:test')
-        assert 'arguments dummy is not supported' in str(ve)
 
-        with pytest.raises(ValueError) as ve:
+        with pytest.raises(ValueError, match='arguments dummy is not supported'):
             AsyncServiceBusHandler.get_endpoint_arguments('receiver', 'topic:test, dummy:test')
-        assert 'arguments dummy is not supported' in str(ve)
 
-        with pytest.raises(ValueError) as ve:
+        with pytest.raises(ValueError, match='endpoint needs to include subscription when receiving messages from a topic'):
             AsyncServiceBusHandler.get_endpoint_arguments('receiver', 'topic:test')
-        assert 'endpoint needs to include subscription when receiving messages from a topic' in str(ve)
 
-        with pytest.raises(ValueError) as ve:
+        with pytest.raises(ValueError, match='cannot specify both topic: and queue: in endpoint'):
             AsyncServiceBusHandler.get_endpoint_arguments('receiver', 'topic:test, queue:test')
-        assert 'cannot specify both topic: and queue: in endpoint' in str(ve)
 
-        with pytest.raises(ValueError) as ve:
+        with pytest.raises(ValueError, match='argument subscription is only allowed if endpoint is a topic'):
             AsyncServiceBusHandler.get_endpoint_arguments('receiver', 'queue:test, subscription:test')
-        assert 'argument subscription is only allowed if endpoint is a topic' in str(ve)
 
-        with pytest.raises(ValueError) as ve:
+        with pytest.raises(ValueError, match='argument expression is only allowed when receiving messages'):
             AsyncServiceBusHandler.get_endpoint_arguments('sender', 'queue:test, expression:test')
-        assert 'argument expression is only allowed when receiving messages' in str(ve)
 
         assert AsyncServiceBusHandler.get_endpoint_arguments('sender', 'queue:test') == {
             'endpoint': 'test',
@@ -379,19 +364,14 @@ class TestAsyncServiceBusHandler:
 
         sender = handler.get_sender_instance(handler.get_endpoint_arguments('sender', 'queue:test-queue'))
         assert isinstance(sender, ServiceBusSender)
-        assert topic_spy.call_count == 0
-        assert queue_spy.call_count == 1
-        args, kwargs = queue_spy.call_args_list[0]
-        assert args == ()
-        assert kwargs == {'client_identifier': 'asdf-asdf-asdf', 'queue_name': 'test-queue'}
+        topic_spy.assert_not_called()
+        queue_spy.assert_called_once_with(client_identifier='asdf-asdf-asdf', queue_name='test-queue')
+        queue_spy.reset_mock()
 
         sender = handler.get_sender_instance(handler.get_endpoint_arguments('sender', 'topic:test-topic'))
         assert isinstance(sender, ServiceBusSender)
-        assert queue_spy.call_count == 1
-        assert topic_spy.call_count == 1
-        args, kwargs = topic_spy.call_args_list[0]
-        assert args == ()
-        assert kwargs == {'client_identifier': 'asdf-asdf-asdf', 'topic_name': 'test-topic'}
+        queue_spy.assert_not_called()
+        topic_spy.assert_called_once_with(client_identifier='asdf-asdf-asdf', topic_name='test-topic')
 
     def test_get_receiver_instance(self, mocker: MockerFixture) -> None:
         url = 'Endpoint=sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789='
@@ -437,7 +417,7 @@ class TestAsyncServiceBusHandler:
         assert args == ()
         assert kwargs == {'client_identifier': 'asdf-asdf-asdf', 'topic_name': 'test-topic', 'subscription_name': 'test-subscription', 'max_wait_time': 100}
 
-    def test_hello(self, mocker: MockerFixture) -> None:
+    def test_hello(self, mocker: MockerFixture) -> None:  # noqa: PLR0915
         from grizzly_extras.async_message.sb import handlers
 
         handler = AsyncServiceBusHandler(worker='asdf-asdf-asdf')
@@ -445,9 +425,8 @@ class TestAsyncServiceBusHandler:
             'action': 'HELLO',
         }
 
-        with pytest.raises(AsyncMessageError) as ame:
+        with pytest.raises(AsyncMessageError, match='no context in request'):
             handlers[request['action']](handler, request)
-        assert 'no context in request' in str(ame)
 
         assert handler._client is None
 
@@ -463,9 +442,8 @@ class TestAsyncServiceBusHandler:
             },
         }
 
-        with pytest.raises(AsyncMessageError) as ame:
+        with pytest.raises(AsyncMessageError, match='"asdf" is not a valid value for context.connection'):
             handlers[request['action']](handler, request)
-        assert '"asdf" is not a valid value for context.connection' in str(ame)
 
         assert servicebusclient_connect_spy.call_count == 1
         _, kwargs = servicebusclient_connect_spy.call_args_list[0]
@@ -539,13 +517,13 @@ class TestAsyncServiceBusHandler:
         assert handler._sender_cache.get('queue:test-queue', None) is not None
         assert handler._receiver_cache.get('topic:test-topic, subscription:test-subscription', None) is not None
 
-    def test_request(self, mocker: MockerFixture) -> None:
+    def test_request(self, mocker: MockerFixture) -> None:  # noqa: PLR0915
         from grizzly_extras.async_message.sb import handlers
 
         handler = AsyncServiceBusHandler(worker='asdf-asdf-asdf')
         sender_instance_mock = mocker.patch.object(handler, 'get_sender_instance')
         receiver_instance_mock = mocker.patch.object(handler, 'get_receiver_instance')
-        mocker.patch('grizzly_extras.async_message.sb.perf_counter', side_effect=[0, 11, 0, 11, 0, 11, 0, 11, 0, 11])
+        mocker.patch('grizzly_extras.async_message.sb.perf_counter', side_effect=cycle([0, 11]))
 
         request: AsyncMessageRequest = {
             'action': 'SEND',
@@ -556,7 +534,7 @@ class TestAsyncServiceBusHandler:
                 f'{request["context"]["connection"]}={request["context"]["endpoint"]}': handler.get_endpoint_arguments(
                     request['context']['connection'],
                     request['context']['endpoint'],
-                )
+                ),
             })
 
             endpoint = request['context']['endpoint']
@@ -566,15 +544,15 @@ class TestAsyncServiceBusHandler:
             else:
                 handler._receiver_cache[endpoint] = receiver_instance_mock.return_value
 
-        with pytest.raises(AsyncMessageError) as ame:
+        with pytest.raises(AsyncMessageError, match='no context in request'):
             handlers[request['action']](handler, request)
-        assert 'no context in request' in str(ame)
 
         assert handler._client is None
 
         # sender request
         request = {
             'action': 'SEND',
+            'client': id(handler),
             'context': {
                 'message_wait': 10,
                 'url': 'sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=',
@@ -583,29 +561,25 @@ class TestAsyncServiceBusHandler:
             },
         }
 
-        with pytest.raises(AsyncMessageError) as ame:
+        with pytest.raises(AsyncMessageError, match='"asdf" is not a valid value for context.connection'):
             handlers[request['action']](handler, request)
-        assert '"asdf" is not a valid value for context.connection'
 
         request['context']['connection'] = 'sender'
 
-        with pytest.raises(AsyncMessageError) as ame:
+        with pytest.raises(AsyncMessageError, match='no HELLO received for queue:test-queue'):
             handlers[request['action']](handler, request)
-        assert 'no HELLO received for queue:test-queue' in str(ame)
 
         setup_handler(handler, request)
 
-        with pytest.raises(AsyncMessageError) as ame:
+        with pytest.raises(AsyncMessageError, match='no payload'):
             handlers[request['action']](handler, request)
-        assert 'no payload' in str(ame)
 
         request['payload'] = 'grizzly <3 service bus'
 
         sender_instance_mock.return_value.send_messages.side_effect = [RuntimeError('unknown error')]
 
-        with pytest.raises(AsyncMessageError) as ame:
+        with pytest.raises(AsyncMessageError, match='failed to send message: unknown error'):
             handlers[request['action']](handler, request)
-        assert 'failed to send message: unknown error' in str(ame)
 
         sender_instance_mock.reset_mock(return_value=True, side_effect=True)
         setup_handler(handler, request)
@@ -633,20 +607,22 @@ class TestAsyncServiceBusHandler:
 
         setup_handler(handler, request)
 
-        with pytest.raises(AsyncMessageError) as ame:
+        with pytest.raises(AsyncMessageError, match='payload not allowed'):
             handlers[request['action']](handler, request)
-        assert 'payload not allowed' in str(ame)
 
         del request['payload']
 
         received_message = ServiceBusMessage('grizzly >3 service bus')
         receiver_instance_mock.return_value.__iter__.side_effect = [StopIteration, iter([received_message])]
 
-        with pytest.raises(AsyncMessageError) as ame:
+        handler.logger.info('-'* 10)
+        print(f'{receiver_instance_mock.return_value.__iter__.side_effect=}')
+        with pytest.raises(AsyncMessageError, match='no messages on topic:test-topic, subscription:test-subscription within 10 seconds'):
             handlers[request['action']](handler, request)
-        assert str(ame.value) == 'no messages on topic:test-topic, subscription:test-subscription within 10 seconds'
         assert receiver_instance_mock.return_value.__iter__.call_count == 1
         assert receiver_instance_mock.return_value.complete_message.call_count == 0
+        print(f'{receiver_instance_mock.return_value.__iter__.side_effect=}')
+        handler.logger.info('-'* 10)
 
         response = handlers[request['action']](handler, request)
 
@@ -668,7 +644,7 @@ class TestAsyncServiceBusHandler:
         assert actual_metadata == expected_metadata
         assert response.get('response_length', 0) == len(expected_payload)
 
-    def test_request_expression(self, mocker: MockerFixture) -> None:
+    def test_request_expression(self, mocker: MockerFixture) -> None:  # noqa: PLR0915
         from grizzly_extras.async_message.sb import handlers
 
         handler = AsyncServiceBusHandler(worker='asdf-asdf-asdf')
@@ -687,10 +663,8 @@ class TestAsyncServiceBusHandler:
 
         def setup_handler(handler: AsyncServiceBusHandler, request: AsyncMessageRequest) -> None:
             endpoint_arguments = parse_arguments(request['context']['endpoint'], ':')
-            try:
+            with suppress(Exception):
                 del endpoint_arguments['expression']
-            except:
-                pass
             cache_endpoint = ', '.join([f'{key}:{value}' for key, value in endpoint_arguments.items()])
 
             key = f'{request["context"]["connection"]}={cache_endpoint}'
@@ -698,7 +672,7 @@ class TestAsyncServiceBusHandler:
                 key: handler.get_endpoint_arguments(
                     request['context']['connection'],
                     request['context']['endpoint'],
-                )
+                ),
             })
 
             handler._arguments[key]['content_type'] = cast(str, request['context']['content_type'])
@@ -710,13 +684,13 @@ class TestAsyncServiceBusHandler:
             'document': {
                 'name': 'not-test',
                 'id': 10,
-            }
+            },
         }))
         message2 = ServiceBusMessage(jsondumps({
             'document': {
                 'name': 'test',
                 'id': 13,
-            }
+            },
         }))
         receiver_instance_mock.return_value.__iter__.side_effect = [
             iter([message1, message2]),
@@ -753,38 +727,35 @@ class TestAsyncServiceBusHandler:
             iter([message_error]),
         ] * 2
 
-        with pytest.raises(AsyncMessageError) as ame:
+        with pytest.raises(AsyncMessageError, match=r'failed to transform input as JSON: Expecting value: line 1 column 1 \(char 0\)'):
             handlers[request['action']](handler, request)
-        assert 'failed to transform input as JSON: Expecting value: line 1 column 1 (char 0)' in str(ame)
         assert receiver_instance_mock.return_value.abandon_message.call_count == 2
 
         endpoint_backup = request['context']['endpoint']
         request['context']['endpoint'] = 'queue:test-queue, expression:"//document[@name="test-document"]"'
-        with pytest.raises(AsyncMessageError) as ame:
+        with pytest.raises(AsyncMessageError, match=r'JsonTransformer: unable to parse with ".*": not a valid expression'):
             handlers[request['action']](handler, request)
-        assert 'JsonTransformer: unable to parse "//document[@name="test-document"]": JsonTransformer: not a valid expression' in str(ame)
 
         request['context']['endpoint'] = endpoint_backup
 
         from_message = handler.from_message
-        mocker.patch.object(handler, 'from_message', side_effect=[(None, None,)])
+        mocker.patch.object(handler, 'from_message', side_effect=[(None, None)])
         receiver_instance_mock.return_value.__iter__.side_effect = [
             iter([message2]),
         ]
 
-        with pytest.raises(AsyncMessageError) as ame:
+        with pytest.raises(AsyncMessageError, match='no payload in message'):
             handlers[request['action']](handler, request)
-        assert 'no payload in message' in str(ame)
 
         assert receiver_instance_mock.return_value.abandon_message.call_count == 3
 
-        setattr(handler, 'from_message', from_message)
+        setattr(handler, 'from_message', from_message)  # noqa: B010
 
         message3 = ServiceBusMessage(jsondumps({
             'document': {
                 'name': 'not-test',
                 'id': 14,
-            }
+            },
         }))
 
         receiver_instance_mock.return_value.__iter__.side_effect = [
@@ -796,9 +767,8 @@ class TestAsyncServiceBusHandler:
             side_effect=[0.0, 5.0, 0.1, 0.5, 0, 11.0],
         )
 
-        with pytest.raises(AsyncMessageError) as ame:
+        with pytest.raises(AsyncMessageError, match=r'no messages on queue:test-queue, expression:"\$.`this`\[\?\(@.name="test"\)\]"'):
             handlers[request['action']](handler, request)
-        assert 'no messages on queue:test-queue, expression:"$.`this`[?(@.name="test")]"' in str(ame)
 
         assert receiver_instance_mock.return_value.abandon_message.call_count == 5
 

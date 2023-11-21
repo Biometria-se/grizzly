@@ -1,36 +1,42 @@
-from typing import List, Optional, Union, Dict, cast
-from types import FrameType
-from uuid import uuid4
-from json import loads as jsonloads, dumps as jsondumps
+"""Daemon implementation that handles are requests.
+Based on ZMQ PUB/SUB, where each request type is handled to a worker which is for a specific client.
+"""
+from __future__ import annotations
+
+from json import dumps as jsondumps
+from json import loads as jsonloads
+from signal import SIGINT, SIGTERM, Signals, signal
 from threading import Thread
-from urllib.parse import urlparse
-from signal import signal, SIGTERM, SIGINT, Signals
 from time import sleep
+from typing import TYPE_CHECKING, Dict, List, Optional, Union, cast
+from urllib.parse import urlparse
+from uuid import uuid4
 
 import setproctitle as proc
-
 import zmq.green as zmq
-
-from . import (
-    ThreadLogger,
-    AsyncMessageRequest,
-    AsyncMessageResponse,
-    AsyncMessageHandler,
-    LRU_READY,
-    SPLITTER_FRAME,
-)
 
 from grizzly_extras.transformer import JsonBytesEncoder
 
+from . import (
+    LRU_READY,
+    SPLITTER_FRAME,
+    AsyncMessageHandler,
+    AsyncMessageRequest,
+    AsyncMessageResponse,
+    ThreadLogger,
+)
+
+if TYPE_CHECKING:  # pragma: no cover
+    from types import FrameType
 
 abort: bool = False
 
 
-def signal_handler(signum: Union[int, Signals], frame: Optional[FrameType]) -> None:
+def signal_handler(signum: Union[int, Signals], _frame: Optional[FrameType]) -> None:
     logger = ThreadLogger('signal_handler')
-    logger.debug(f'received signal {signum}')
+    logger.debug('received signal %r', signum)
 
-    global abort
+    global abort  # noqa: PLW0603
     if not abort:
         abort = True
 
@@ -39,7 +45,7 @@ signal(SIGTERM, signal_handler)
 signal(SIGINT, signal_handler)
 
 
-def router() -> None:
+def router() -> None:  # noqa: C901, PLR0912, PLR0915
     logger = ThreadLogger('router')
     proc.setproctitle('grizzly-async-messaged')  # set appl name on ibm mq
     logger.debug('starting')
@@ -59,11 +65,11 @@ def router() -> None:
     def spawn_worker() -> None:
         identity = str(uuid4())
 
-        thread = Thread(target=worker, args=(context, identity, ))
+        thread = Thread(target=worker, args=(context, identity))
         thread.daemon = True
         worker_threads.append(thread)
         thread.start()
-        logger.info(f'spawned worker {identity} ({thread.ident})')
+        logger.info('spawned worker %s (%d)', identity, thread.ident)
 
     workers_available: List[str] = []
 
@@ -97,9 +103,9 @@ def router() -> None:
 
             if reply[0] != LRU_READY.encode():
                 frontend.send_multipart(reply)
-                logger.debug(f'forwarding backend response from {worker_id}')
+                logger.debug('forwarding backend response from %s', worker_id)
             else:
-                logger.info(f'worker {worker_id} ready')
+                logger.info('worker %s ready', worker_id)
                 workers_available.append(worker_id)
 
         if socks.get(frontend) == zmq.POLLIN:
@@ -117,7 +123,7 @@ def router() -> None:
             request_client_id = payload.get('client', None)
             client_key: Optional[str] = None
 
-            logger.debug(f'{request_worker_id=} ({type(request_worker_id)}), {request_client_id=} ({type(request_client_id)})')
+            logger.debug('request_worker_id=%r (%r), request_client_id=%r (%r)', request_worker_id, type(request_worker_id), request_client_id, type(request_client_id))
 
             if request_client_id is not None:
                 integration_url = payload.get('context', {}).get('url', None)
@@ -138,13 +144,13 @@ def router() -> None:
                     client_worker_map.update({client_key: worker_id})
 
                 payload['worker'] = worker_id
-                logger.info(f'assigned worker {payload["worker"]} to {client_key}')
+                logger.info('assigned worker %s to %s', worker_id, client_key)
 
                 if len(workers_available) == 0:
                     logger.debug('spawning an additional worker, for next client')
                     spawn_worker()
             else:
-                logger.debug(f'{request_client_id} is assigned {request_worker_id}')
+                logger.debug('%s is assigned %s', request_client_id, request_worker_id)
                 worker_id = request_worker_id
 
                 if payload.get('worker', None) is None:
@@ -156,18 +162,18 @@ def router() -> None:
 
     logger.info('stopping')
     for worker_thread in worker_threads:
-        logger.debug(f'waiting for {worker_thread.ident}')
+        logger.debug('waiting for %d', worker_thread.ident)
         worker_thread.join()
 
     try:
         context.destroy()
     except:
-        logger.error('failed to destroy zmq context', exc_info=True)
+        logger.exception('failed to destroy zmq context')
 
     logger.info('stopped')
 
 
-def worker(context: zmq.Context, identity: str) -> None:
+def worker(context: zmq.Context, identity: str) -> None:  # noqa: PLR0912, PLR0915
     logger = ThreadLogger(f'worker::{identity}')
     worker = context.socket(zmq.REQ)
 
@@ -184,7 +190,7 @@ def worker(context: zmq.Context, identity: str) -> None:
             sleep(0.1)
             continue
 
-        logger.debug(f"i'm alive! {abort=}")
+        logger.debug("i'm alive! abort=%r", abort)
 
         if not request_proto:
             logger.error('empty msg')
@@ -199,12 +205,14 @@ def worker(context: zmq.Context, identity: str) -> None:
 
         try:
             if request['worker'] != identity:
-                raise RuntimeError(f'got {request["worker"]}, expected {identity}')
+                message = f'got {request["worker"]}, expected {identity}'
+                raise RuntimeError(message)
 
             if integration is None:
                 integration_url = request.get('context', {}).get('url', None)
                 if integration_url is None:
-                    raise RuntimeError('no url found in request context')
+                    message = 'no url found in request context'
+                    raise RuntimeError(message)
 
                 parsed = urlparse(integration_url)
 
@@ -215,7 +223,8 @@ def worker(context: zmq.Context, identity: str) -> None:
                     from .sb import AsyncServiceBusHandler
                     integration = AsyncServiceBusHandler(identity)
                 else:
-                    raise RuntimeError(f'integration for {str(parsed.scheme)}:// is not implemented')
+                    message = f'integration for {parsed.scheme}:// is not implemented'
+                    raise RuntimeError(message)
         except Exception as e:
             response = {
                 'worker': identity,
@@ -237,25 +246,26 @@ def worker(context: zmq.Context, identity: str) -> None:
 
         worker.send_multipart(response_proto)
 
-    logger.debug(f"i'm going to die! {abort=}")
+    logger.debug("i'm going to die! abort=%r", abort)
     logger.info('stopping')
     if integration is not None:
-        logger.debug(f'closing {integration.__class__.__name__}')
+        logger.debug('closing %s', integration.__class__.__name__)
         try:
             integration.close()
         except:  # pragma: no cover
-            logger.error('failed to close integration', exc_info=True)
+            logger.exception('failed to close integration')
 
     try:
         worker.close()
     except:  # pragma: no cover
-        logger.error('failed to close worker', exc_info=True)
+        logger.exception('failed to close worker')
     logger.debug('stopped')
 
 
 def main() -> int:
     try:
         router()
-        return 0
     except KeyboardInterrupt:
         return 1
+    else:
+        return 0

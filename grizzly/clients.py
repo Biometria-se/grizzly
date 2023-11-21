@@ -1,16 +1,19 @@
+"""Grizzly specific clients user by grizzly users."""
+from __future__ import annotations
+
 import logging
-
-from typing import TYPE_CHECKING, Dict, Any, Tuple, Optional, Generator, cast
 from contextlib import contextmanager
-from urllib3 import PoolManager
+from typing import TYPE_CHECKING, Any, Dict, Generator, Optional, cast
 
-from locust.user.users import User
-from locust.clients import ResponseContextManager, HttpSession
+from locust.clients import HttpSession, ResponseContextManager
 from locust.event import EventHook
 from paramiko import SFTPClient, Transport
-from paramiko.pkey import PKey
 
 if TYPE_CHECKING:  # pragma: no cover
+    from locust.user.users import User
+    from paramiko.pkey import PKey
+    from urllib3 import PoolManager
+
     from .tasks import RequestTask
 
 
@@ -26,24 +29,24 @@ class ResponseEventSession(HttpSession):
         request_event: EventHook,
         user: Optional[User] = None,
         pool_manager: Optional[PoolManager] = None,
-        *args: Tuple[Any, ...],
-        **kwargs: Dict[str, Any],
+        *args: Any,
+        **kwargs: Any,
     ) -> None:
         super().__init__(base_url, request_event, user, *args, pool_manager=pool_manager, **kwargs)
 
         self.event_hook = EventHook()
 
-    def request(  # type: ignore
+    def request(  # type: ignore  # noqa: PGH003
         self,
         method: str,
         url: str,
         name: Optional[str] = None,
-        catch_response: bool = False,
+        catch_response: bool = False,  # noqa: FBT001, FBT002
         context: Optional[Dict[str, Any]] = None,
-        request: Optional['RequestTask'] = None,
-        **kwargs: Dict[str, Any],
+        request: Optional[RequestTask] = None,
+        **kwargs: Any,
     ) -> ResponseContextManager:
-
+        """Override HttpSession.request to be able to fire grizzly specific event."""
         if context is None:
             context = {}
 
@@ -111,7 +114,8 @@ class SftpClientSession:
 
                 if key_file is not None or key_file != self.key_file:
                     self.key_file = key_file
-                    raise NotImplementedError(f'{self.__class__.__name__}: private key authentication is not supported')
+                    message = f'{self.__class__.__name__}: private key authentication is not supported'
+                    raise NotImplementedError(message)
 
                 self._transport = Transport((self.host, self.port))
                 self._transport.connect(
@@ -123,12 +127,13 @@ class SftpClientSession:
                 self._client = SFTPClient.from_transport(self._transport)
 
             if self._client is None:
-                raise RuntimeError(f'{self.__class__.__name__}: unknown error, there is no client')
+                message = f'{self.__class__.__name__}: unknown error, there is no client'
+                raise RuntimeError(message)
 
             yield self._client
-        except Exception as e:
+        except Exception:
             self.close()
 
-            raise e
+            raise
         else:
             self.username = username

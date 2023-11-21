@@ -1,5 +1,5 @@
-# pylint: disable=line-too-long
-"""This task performs IBM MQM get and put opertions to a specified queue or topic.
+"""@anchor pydoc:grizzly.tasks.clients.messagequeue Messagequeue
+This task performs IBM MQM get and put opertions to a specified queue or topic.
 
 This is useful if the scenario is another user type than `MessageQueueUser`, but the scenario still requires an action towards an MQ server.
 Use {@pylink grizzly.tasks.transformer} task to extract specific parts of the message.
@@ -70,35 +70,36 @@ All variables in the endpoint have support for {@link framework.usage.variables.
 
 * `MaxMessageSize` _int_ (optional) - maximum number of bytes a message can be for the client to accept it, default is `None` which implies that the client will throw `MQRC_TRUNCATED_MSG_FAILED`, adjust buffer and try again.
 """  # noqa: E501
+from __future__ import annotations
+
 from contextlib import contextmanager
-from typing import Optional, Dict, Any, Generator, List, cast
-from urllib.parse import urlparse, parse_qs, unquote
+from json import dumps as jsondumps
 from pathlib import Path
 from platform import node as hostname
-from json import dumps as jsondumps
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, Generator, List, Optional, Set, cast
+from urllib.parse import parse_qs, unquote, urlparse
 
 import zmq.green as zmq
-
 from zmq.error import ZMQError
 
-from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageResponse, AsyncMessageRequest, async_message_request
-
-from grizzly.types import GrizzlyResponse, RequestDirection, RequestType
-from grizzly.scenarios import GrizzlyScenario
 from grizzly.testdata.utils import resolve_variable
+from grizzly.types import GrizzlyResponse, RequestDirection, RequestType
+from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse, async_message_request
 
-from . import client, ClientTask, logger
-
+from . import ClientTask, client, logger
 
 try:
     import pymqi
 except:
     from grizzly_extras import dummy_pymqi as pymqi
 
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.scenarios import GrizzlyScenario
+
 
 @client('mq', 'mqs')
 class MessageQueueClientTask(ClientTask):
-    __dependencies__ = set(['async-messaged'])
+    __dependencies__: ClassVar[Set[str]] = {'async-messaged'}
 
     _zmq_url = 'tcp://127.0.0.1:5554'
     _zmq_context: zmq.Context
@@ -124,7 +125,8 @@ class MessageQueueClientTask(ClientTask):
             pymqi.raise_for_error(self.__class__)
 
         if destination is not None:
-            raise ValueError(f'{self.__class__.__name__}: destination is not allowed')
+            message = f'{self.__class__.__name__}: destination is not allowed'
+            raise ValueError(message)
 
         super().__init__(
             direction,
@@ -143,21 +145,25 @@ class MessageQueueClientTask(ClientTask):
         self._worker = {}
         self.max_message_size = None
 
-    def create_context(self) -> None:
+    def create_context(self) -> None:  # noqa: C901, PLR0915
         endpoint = cast(str, resolve_variable(self.grizzly, self.endpoint, guess_datatype=False))
         parsed = urlparse(endpoint)
 
         if (parsed.scheme or 'none') not in ['mq', 'mqs']:
-            raise ValueError(f'{self.__class__.__name__}: "{parsed.scheme}" is not a supported scheme for endpoint')
+            message = f'{self.__class__.__name__}: "{parsed.scheme}" is not a supported scheme for endpoint'
+            raise ValueError(message)
 
         if len(parsed.hostname or '') < 1:
-            raise ValueError(f'{self.__class__.__name__}: hostname not specified in "{self.endpoint}"')
+            message = f'{self.__class__.__name__}: hostname not specified in "{self.endpoint}"'
+            raise ValueError(message)
 
         if len(parsed.path or '') < 2:
-            raise ValueError(f'{self.__class__.__name__}: no valid path component found in "{self.endpoint}"')
+            message = f'{self.__class__.__name__}: no valid path component found in "{self.endpoint}"'
+            raise ValueError(message)
 
         if len(parsed.query or '') < 1:
-            raise ValueError(f'{self.__class__.__name__}: QueueManager and Channel must be specified in the query string of "{self.endpoint}"')
+            message = f'{self.__class__.__name__}: QueueManager and Channel must be specified in the query string of "{self.endpoint}"'
+            raise ValueError(message)
 
         username: Optional[str] = parsed.username
         password: Optional[str] = parsed.password
@@ -166,10 +172,12 @@ class MessageQueueClientTask(ClientTask):
         params = parse_qs(parsed.query)
 
         if 'QueueManager' not in params:
-            raise ValueError(f'{self.__class__.__name__}: QueueManager must be specified in the query string')
+            message = f'{self.__class__.__name__}: QueueManager must be specified in the query string'
+            raise ValueError(message)
 
         if 'Channel' not in params:
-            raise ValueError(f'{self.__class__.__name__}: Channel must be specified in the query string')
+            message = f'{self.__class__.__name__}: Channel must be specified in the query string'
+            raise ValueError(message)
 
         queue_manager = cast(str, resolve_variable(self.grizzly, unquote(params['QueueManager'][0])))
         channel = cast(str, resolve_variable(self.grizzly, unquote(params['Channel'][0])))
@@ -260,8 +268,6 @@ class MessageQueueClientTask(ClientTask):
 
         try:
             response = async_message_request(client, request)
-        except:
-            raise
         finally:
             meta.update({'response_length': len((response or {}).get('payload', None) or '')})
 
@@ -281,10 +287,11 @@ class MessageQueueClientTask(ClientTask):
                 with self.action(parent, suppress=True) as meta:
                     self.connect(client_id, client, meta)
                     worker = self._worker.get(client_id, None)
-                    parent.logger.debug(f'connected to worker {worker} at {hostname()}')
+                    parent.logger.debug('connected to worker %s at %s', worker, hostname())
 
             if worker is None:
-                raise RuntimeError(f'{parent.__class__.__name__}/{client_id} was unable to get an worker assigned')
+                message = f'{parent.__class__.__name__}/{client_id} was unable to get an worker assigned'
+                raise RuntimeError(message)
 
             with self.action(parent) as meta:
                 request.update({
@@ -295,9 +302,7 @@ class MessageQueueClientTask(ClientTask):
 
                 try:
                     response = async_message_request(client, request)
-                    parent.logger.debug(f'got response from {worker} at {hostname()}')
-                except:
-                    raise
+                    parent.logger.debug('got response from %s at %s', worker, hostname())
                 finally:
                     response_length_source = ((response or {}).get('payload', None) or '').encode('utf-8')
 
@@ -310,7 +315,8 @@ class MessageQueueClientTask(ClientTask):
 
                 payload = response.get('payload', None)
                 if payload is None or len(payload.encode()) < 1:
-                    raise RuntimeError('response did not contain any payload')
+                    message = 'response did not contain any payload'
+                    raise RuntimeError(message)
 
                 return response
 

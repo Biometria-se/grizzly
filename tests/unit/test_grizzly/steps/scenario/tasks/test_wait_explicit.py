@@ -1,12 +1,16 @@
-from typing import cast
+"""Unit tests of grizzly.steps.scenario.tasks.wait_explicit."""
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, cast
 
 import pytest
 
 from grizzly.context import GrizzlyContext
-from grizzly.tasks import ExplicitWaitTask
 from grizzly.steps import step_task_wait_explicit
+from grizzly.tasks import ExplicitWaitTask
 
-from tests.fixtures import BehaveFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from tests.fixtures import BehaveFixture
 
 
 def test_step_task_wait_explicit(behave_fixture: BehaveFixture) -> None:
@@ -14,13 +18,11 @@ def test_step_task_wait_explicit(behave_fixture: BehaveFixture) -> None:
     grizzly = cast(GrizzlyContext, behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
-    with pytest.raises(AssertionError) as ae:
+    with pytest.raises(AssertionError, match='wait time cannot be less than 0.0 seconds'):
         step_task_wait_explicit(behave, '-1.0')
-    assert str(ae.value) == 'wait time cannot be less than 0.0 seconds'
 
-    with pytest.raises(AssertionError) as ae:
+    with pytest.raises(AssertionError, match='"foobar" is not a template nor a float'):
         step_task_wait_explicit(behave, 'foobar')
-    assert str(ae.value) == '"foobar" is not a template nor a float'
 
     step_task_wait_explicit(behave, '1.337')
 

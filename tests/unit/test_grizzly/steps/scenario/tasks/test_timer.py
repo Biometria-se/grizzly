@@ -1,8 +1,15 @@
+"""Unit tests of grizzly.steps.scenario.tasks.timer."""
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 import pytest
 
-from grizzly.tasks import TimerTask
 from grizzly.steps import step_task_timer_start, step_task_timer_stop
-from tests.fixtures import BehaveFixture
+from grizzly.tasks import TimerTask
+
+if TYPE_CHECKING:  # pragma: no cover
+    from tests.fixtures import BehaveFixture
 
 
 def test_step_task_timer_start_and_stop(behave_fixture: BehaveFixture) -> None:
@@ -12,9 +19,8 @@ def test_step_task_timer_start_and_stop(behave_fixture: BehaveFixture) -> None:
 
     assert grizzly.scenario.tasks.tmp.timers == {}
 
-    with pytest.raises(AssertionError) as ae:
+    with pytest.raises(AssertionError, match='timer with name test-timer-1 has not been defined'):
         step_task_timer_stop(behave, 'test-timer-1')
-    assert str(ae.value) == 'timer with name test-timer-1 has not been defined'
 
     step_task_timer_start(behave, 'test-timer-1')
 
@@ -23,9 +29,8 @@ def test_step_task_timer_start_and_stop(behave_fixture: BehaveFixture) -> None:
     assert timer.name == 'test-timer-1'
     assert grizzly.scenario.tasks()[-1] is timer
 
-    with pytest.raises(AssertionError) as ae:
+    with pytest.raises(AssertionError, match='timer with name test-timer-1 has already been defined'):
         step_task_timer_start(behave, 'test-timer-1')
-    assert str(ae.value) == 'timer with name test-timer-1 has already been defined'
 
     step_task_timer_stop(behave, 'test-timer-1')
 

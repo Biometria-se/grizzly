@@ -1,17 +1,21 @@
+"""Unit test of grizzly.testdata.variables.integer_incrementer."""
+from __future__ import annotations
+
 import threading
-
-from typing import List, Set
+from contextlib import suppress
 from json import dumps as jsondumps
+from typing import TYPE_CHECKING, List, Set
 
-import pytest
 import gevent
+import pytest
 
-from gevent.greenlet import Greenlet
-
-from grizzly.testdata.variables.integer_incrementer import atomicintegerincrementer__base_type__
 from grizzly.testdata.variables import AtomicIntegerIncrementer
+from grizzly.testdata.variables.integer_incrementer import atomicintegerincrementer__base_type__
 
-from tests.fixtures import AtomicVariableCleanupFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from gevent.greenlet import Greenlet
+
+    from tests.fixtures import AtomicVariableCleanupFixture
 
 
 def test_atomicintegerincrementer__base_type__() -> None:
@@ -22,39 +26,35 @@ def test_atomicintegerincrementer__base_type__() -> None:
     assert atomicintegerincrementer__base_type__('10|step=35') == '10 | step=35'
     assert atomicintegerincrementer__base_type__('1| step=20') == '1 | step=20'
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match='incorrect format in arguments: ""'):
         atomicintegerincrementer__base_type__('10 |')
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match='incorrect format in arguments: "asdf"'):
         atomicintegerincrementer__base_type__('10 | asdf')
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match='"|" is not a valid initial value'):
         atomicintegerincrementer__base_type__('|')
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match='"asdf|" is not a valid initial value'):
         atomicintegerincrementer__base_type__('asdf|')
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match='"asdf| step=asdf" is not a valid initial value'):
         atomicintegerincrementer__base_type__('asdf| step=asdf')
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=r"invalid literal for int\(\) with base 10: 'asdf'"):
         atomicintegerincrementer__base_type__('10 | step=asdf')
 
-    with pytest.raises(ValueError) as ve:
+    with pytest.raises(ValueError, match='argument iterations is not allowed'):
         atomicintegerincrementer__base_type__('10 | step=1, iterations=10')
-    assert 'argument iterations is not allowed'
 
-    with pytest.raises(ValueError) as ve:
+    with pytest.raises(ValueError, match='step is not specified'):
         atomicintegerincrementer__base_type__('10 | iterations=10')
-    assert 'step is not specified' in str(ve)
 
-    with pytest.raises(ValueError) as ve:
+    with pytest.raises(ValueError, match='is not a valid initial value'):
         atomicintegerincrementer__base_type__('asdf')
-    assert 'is not a valid initial value' in str(ve)
 
-    with pytest.raises(ValueError) as ve:
+    with pytest.raises(ValueError, match='asdf is not a valid boolean'):
         atomicintegerincrementer__base_type__('5 | step=2, persist=asdf')
-    assert str(ve.value) == 'asdf is not a valid boolean'
 
 
 class TestAtomicIntegerIncrementer:
@@ -73,9 +73,8 @@ class TestAtomicIntegerIncrementer:
             assert t['test'] == 10
             assert t['test'] == 20
 
-            with pytest.raises(ValueError) as ve:
+            with pytest.raises(ValueError, match='AtomicIntegerIncrementer.message_id should not be persisted'):
                 t.generate_initial_value('message_id')
-            assert str(ve.value) == 'AtomicIntegerIncrementer.message_id should not be persisted'
 
             assert t.generate_initial_value('test') == '30 | step=10, persist=True'
         finally:
@@ -83,15 +82,13 @@ class TestAtomicIntegerIncrementer:
 
     def test_clear_and_destory(self, cleanup: AtomicVariableCleanupFixture) -> None:
         try:
-            try:
-                AtomicIntegerIncrementer.destroy()
-            except Exception:
-                pass
-
-            with pytest.raises(ValueError):
+            with suppress(Exception):
                 AtomicIntegerIncrementer.destroy()
 
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match='AtomicIntegerIncrementer is not instantiated'):
+                AtomicIntegerIncrementer.destroy()
+
+            with pytest.raises(ValueError, match='AtomicIntegerIncrementer is not instantiated'):
                 AtomicIntegerIncrementer.clear()
 
             instance = AtomicIntegerIncrementer('dummy', '1|step=10')
@@ -106,7 +103,7 @@ class TestAtomicIntegerIncrementer:
 
             AtomicIntegerIncrementer.destroy()
 
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match='AtomicIntegerIncrementer is not instantiated'):
                 AtomicIntegerIncrementer.destroy()
         finally:
             cleanup()
@@ -114,9 +111,8 @@ class TestAtomicIntegerIncrementer:
     def test_no_redefine_value(self, cleanup: AtomicVariableCleanupFixture) -> None:
         try:
             t = AtomicIntegerIncrementer('message_id', 3)
-            with pytest.raises(NotImplementedError) as nie:
+            with pytest.raises(NotImplementedError, match='AtomicIntegerIncrementer has not implemented "__setitem__"'):
                 t['message_id'] = 1
-            assert str(nie.value) == 'AtomicIntegerIncrementer has not implemented "__setitem__"'
 
             assert t['message_id'] == 3
 
@@ -134,25 +130,24 @@ class TestAtomicIntegerIncrementer:
             assert t['test'] == 10
             assert t['test'] == 30
 
-            with pytest.raises(ValueError) as ve:
+            with pytest.raises(ValueError, match='AtomicIntegerIncrementer.test should not be persisted'):
                 t.generate_initial_value('test')
-            assert str(ve.value) == 'AtomicIntegerIncrementer.test should not be persisted'
 
             assert t.generate_initial_value('message_id') == '24 | step=10, persist=True'
 
             del t['message_id']
             del t['test']
 
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match='is not a valid initial value'):
                 AtomicIntegerIncrementer('test', '| step=10')
 
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match='is not a valid initial value'):
                 AtomicIntegerIncrementer('test', 'asdf | step=10')
 
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match=r"invalid literal for int\(\) with base 10: 'asdf'"):
                 AtomicIntegerIncrementer('test', '10 | step=asdf')
 
-            with pytest.raises(ValueError):
+            with pytest.raises(ValueError, match='is not a valid initial value'):
                 AtomicIntegerIncrementer('test', '0xFF | step=0x01')
         finally:
             cleanup()
@@ -210,7 +205,8 @@ class TestAtomicIntegerIncrementer:
             values: Set[int] = set()
 
             def exception_handler(greenlet: gevent.Greenlet) -> None:
-                raise RuntimeError(f'func1 did not validate for {greenlet}')
+                message = f'func1 did not validate for {greenlet}'
+                raise RuntimeError(message)
 
             def func1() -> None:
                 for _ in range(num_iterations):

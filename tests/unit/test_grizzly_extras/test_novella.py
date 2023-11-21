@@ -1,17 +1,20 @@
-from typing import List, Dict, Union
+"""Unit tests of grizzly_extras.novella."""
+from __future__ import annotations
+
 from shutil import rmtree
+from typing import Dict, List, Union
 
 import pytest
 
 from grizzly_extras.novella import (
-    MarkdownAstType,
-    MarkdownAstNode,
     NO_CHILD,
+    GrizzlyMarkdown,
+    MarkdownAstNode,
+    MarkdownAstType,
     MarkdownHeading,
-    make_human_readable,
     _create_nav_node,
     _generate_dynamic_page,
-    GrizzlyMarkdown,
+    make_human_readable,
 )
 
 
@@ -21,9 +24,8 @@ class TestMarkdownAstType:
         assert MarkdownAstType.from_value('emphasis') == MarkdownAstType.EMPHASIS
         assert MarkdownAstType.from_value(None) == MarkdownAstType.NONE
 
-        with pytest.raises(ValueError) as ve:
+        with pytest.raises(ValueError, match='"foobar" is not a valid value of MarkdownAstType'):
             MarkdownAstType.from_value('foobar')
-        assert str(ve.value) == '"foobar" is not a valid value of MarkdownAstType'
 
 
 class TestMarkdownAstNode:
@@ -57,10 +59,10 @@ class TestMarkdownAstNode:
         assert child_node.raw == 'foobar'
         # -->
 
-    @pytest.mark.parametrize('type', [e for e in MarkdownAstType])
-    def test_type(self, type: MarkdownAstType) -> None:
-        node = MarkdownAstNode({'type': type.value}, 13)
-        assert node.type == type
+    @pytest.mark.parametrize('test_type', list(MarkdownAstType))
+    def test_type(self, test_type: MarkdownAstType) -> None:
+        node = MarkdownAstNode({'type': test_type.value}, 13)
+        assert node.type == test_type
 
     @pytest.mark.parametrize('raw', ['foobar', None, 'hello world'])
     def test_raw(self, raw: str) -> None:
@@ -68,7 +70,7 @@ class TestMarkdownAstNode:
         assert node.raw == raw
 
 
-def test_MarkdownHeading() -> None:
+def test_markdown_heading() -> None:
     header = MarkdownHeading('foobar', 10)
 
     assert header.text == 'foobar'
@@ -129,42 +131,42 @@ def test__generate_dynamic_page(tmp_path_factory: pytest.TempPathFactory) -> Non
         input_file = test_input / 'foobar_sftp_api.py'
         input_file.touch()
         _generate_dynamic_page(input_file, test_output / 'foobar', 'Foobar', 'foo.bar')
-        assert not len(list(test_output.rglob('**/*'))) == 0
+        assert len(list(test_output.rglob('**/*'))) != 0
         output_file = test_output / 'foobar' / 'foobar_sftp_api.md'
         assert output_file.exists()
-        assert output_file.read_text() == '''---
+        assert output_file.read_text() == """---
 title: Foobar / Foobar SFTP API
 ---
 @pydoc foo.bar.foobar_sftp_api
-'''
+"""
         # -->
 
         # <!-- init file
         input_file = test_input / '__init__.py'
         input_file.touch()
         _generate_dynamic_page(input_file, test_output / 'foobar', 'Foobar', 'foo.bar')
-        assert not len(list(test_output.rglob('**/*'))) == 0
+        assert len(list(test_output.rglob('**/*'))) != 0
         output_file = test_output / 'foobar' / 'index.md'
         assert output_file.exists()
-        assert output_file.read_text() == '''---
+        assert output_file.read_text() == """---
 title: Foobar
 ---
 @pydoc foo.bar
-'''
+"""
         # -->
 
         # <!-- normal file, do not overwrite
         input_file = test_input / 'foobar_sftp_api.py'
         input_file.touch()
         _generate_dynamic_page(input_file, test_output / 'foobar', 'Barfoo', 'bar.foo')
-        assert not len(list(test_output.rglob('**/*'))) == 0
+        assert len(list(test_output.rglob('**/*'))) != 0
         output_file = test_output / 'foobar' / 'foobar_sftp_api.md'
         assert output_file.exists()
-        assert output_file.read_text() == '''---
+        assert output_file.read_text() == """---
 title: Foobar / Foobar SFTP API
 ---
 @pydoc foo.bar.foobar_sftp_api
-'''
+"""
         # -->
     finally:
         rmtree(test_context)
@@ -188,7 +190,7 @@ class TestGrizzlyMarkdown:
                 {'raw': 'llo'},
                 {'raw': ' world'},
                 {'raw': '!'},
-            ]
+            ],
         }, 0)
         assert GrizzlyMarkdown._get_header(node) == MarkdownHeading('hello world!', 3)
 
@@ -197,20 +199,20 @@ class TestGrizzlyMarkdown:
         assert [token.string for token in tokens] == ['utf-8', '<', 'a', 'href', '=', '"', '', '']
 
     def test_get_step_expression_from_code_block(self) -> None:
-        code_block = '''
+        code_block = """
 @given(u'hello foobar world')
 def step_hello_foobar_world(context: Context) -> None:
     pass
-'''
-        assert GrizzlyMarkdown.get_step_expression_from_code_block(code_block) == ('given', 'hello foobar world',)
+"""
+        assert GrizzlyMarkdown.get_step_expression_from_code_block(code_block) == ('given', 'hello foobar world')
 
-        code_block = '''
+        code_block = """
 # @TODO: some comment
 @then(u'what in the world')
 def step_what_in_the_world(context: Context) -> None:
     pass
-'''
-        assert GrizzlyMarkdown.get_step_expression_from_code_block(code_block) == ('then', 'what in the world',)
+"""
+        assert GrizzlyMarkdown.get_step_expression_from_code_block(code_block) == ('then', 'what in the world')
 
         assert GrizzlyMarkdown.get_step_expression_from_code_block('foobar') is None
 

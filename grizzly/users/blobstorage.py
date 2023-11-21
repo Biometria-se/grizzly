@@ -29,31 +29,33 @@ Given a user of type "BlobStorage" load testing "DefaultEndpointsProtocol=https;
 Then send request "test/blob.file" to endpoint "azure-blobstorage-container-name"
 ```
 """
-import os
+from __future__ import annotations
 
-from typing import Dict, Any, Tuple
-from urllib.parse import urlparse, parse_qs
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
+from urllib.parse import parse_qs, urlparse
 
 from azure.storage.blob import BlobServiceClient
 
-from grizzly.types import RequestMethod, GrizzlyResponse, RequestDirection
-from grizzly.types.locust import Environment
-from grizzly.tasks import RequestTask
-from grizzly.utils import merge_dicts
+from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod
 
-from .base import GrizzlyUser, ResponseHandler
+from .base import GrizzlyUser, ResponseHandler, grizzlycontext
+
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.tasks import RequestTask
+    from grizzly.types.locust import Environment
 
 
+@grizzlycontext(context={})
 class BlobStorageUser(ResponseHandler, GrizzlyUser):
     blob_client: BlobServiceClient
-    _context: Dict[str, Any] = {}
 
-    def __init__(self, environment: Environment, *args: Tuple[Any], **kwargs: Dict[str, Any]) -> None:
+    def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
         super().__init__(environment, *args, **kwargs)
 
         conn_str: str = self.host
         if conn_str.startswith('DefaultEndpointsProtocol='):
-            conn_str = conn_str[25:]  # pylint: disable=unsubscriptable-object
+            conn_str = conn_str[25:]
 
         # Replace semicolon separators between parameters to ? and & and massage it to make it "urlparse-compliant"
         # for validation
@@ -62,16 +64,17 @@ class BlobStorageUser(ResponseHandler, GrizzlyUser):
         parsed = urlparse(conn_str)
 
         if parsed.scheme != 'https':
-            raise ValueError(f'"{parsed.scheme}" is not supported for {self.__class__.__name__}')
+            message = f'"{parsed.scheme}" is not supported for {self.__class__.__name__}'
+            raise ValueError(message)
 
         params = parse_qs(parsed.query)
         if 'AccountName' not in params:
-            raise ValueError(f'{self.__class__.__name__} needs AccountName in the query string')
+            message = f'{self.__class__.__name__} needs AccountName in the query string'
+            raise ValueError(message)
 
         if 'AccountKey' not in params:
-            raise ValueError(f'{self.__class__.__name__} needs AccountKey in the query string')
-
-        self._context = merge_dicts(super().context(), self.__class__._context)
+            message = f'{self.__class__.__name__} needs AccountKey in the query string'
+            raise ValueError(message)
 
     def on_start(self) -> None:
         super().on_start()
@@ -82,16 +85,17 @@ class BlobStorageUser(ResponseHandler, GrizzlyUser):
         super().on_stop()
 
     def request_impl(self, request: RequestTask) -> GrizzlyResponse:
-        blob = os.path.basename(request.endpoint)
+        blob = Path(request.endpoint).name
         container = request.endpoint
 
         if container.endswith(blob):
-            container = os.path.dirname(container)
+            container = str(Path(container).parent)
         else:
-            blob = self.normalize(request.name)
+            blob = self._normalize(request.name)
 
         if request.method not in [RequestMethod.SEND, RequestMethod.PUT, RequestMethod.RECEIVE, RequestMethod.GET]:
-            raise NotImplementedError(f'{self.__class__.__name__} has not implemented {request.method.name}')
+            message = f'{self.__class__.__name__} has not implemented {request.method.name}'
+            raise NotImplementedError(message)
 
         with self.blob_client.get_blob_client(container=container, blob=blob) as blob_client:
             if request.method.direction == RequestDirection.TO:
@@ -101,6 +105,6 @@ class BlobStorageUser(ResponseHandler, GrizzlyUser):
                 request.source = downloader.readall().decode('utf-8')
 
         properties = blob_client.get_blob_properties()
-        headers = {key: value for key, value in properties.items()}
+        headers = dict(properties.items())
 
         return headers, request.source

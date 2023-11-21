@@ -1,5 +1,4 @@
-"""
-@anchor pydoc:grizzly.tasks.conditional Conditional
+"""@anchor pydoc:grizzly.tasks.conditional Conditional
 This task executes one or more other tasks based on `condition`.
 
 This is useful when a set of tasks should be executed if `condition` is `True`, and another set of tasks if `condition` is `False`.
@@ -31,14 +30,16 @@ the set for `condition` will have its own entry in the statistics, see respectiv
 
 * `condition` _str_: {@link framework.usage.variables.templating} string that must render `True` or `False`
 """
-from typing import TYPE_CHECKING, Any, List, Optional, Dict
+from __future__ import annotations
+
 from time import perf_counter
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from gevent import sleep as gsleep
 
-from grizzly.exceptions import StopUser, RestartScenario
+from grizzly.exceptions import RestartScenario, StopUser
 
-from . import GrizzlyTask, GrizzlyTaskWrapper, template, grizzlytask
+from . import GrizzlyTask, GrizzlyTaskWrapper, grizzlytask, template
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.scenarios import GrizzlyScenario
@@ -64,6 +65,7 @@ class ConditionalTask(GrizzlyTaskWrapper):
         self._pointer = None
 
     def switch(self, pointer: Optional[bool]) -> None:
+        """Change pointer to which tasks should be executed."""
         self._pointer = pointer
 
         if pointer is not None and pointer not in self.tasks:
@@ -71,8 +73,8 @@ class ConditionalTask(GrizzlyTaskWrapper):
 
     def add(self, task: GrizzlyTask) -> None:
         task_name = getattr(task, 'name', None)
-        if task_name is not None:
-            setattr(task, 'name', f'{self.name}:{task_name}')
+        if task_name is not None and hasattr(task, 'name'):
+            task.name = f'{self.name}:{task_name}'
 
         if self._pointer is not None:
             if self._pointer not in self.tasks:
@@ -81,6 +83,7 @@ class ConditionalTask(GrizzlyTaskWrapper):
             self.tasks[self._pointer].append(task)
 
     def peek(self) -> List[GrizzlyTask]:
+        """Return all wrapped tasks, for current pointer."""
         if self._pointer is not None:
             return self.tasks[self._pointer]
 
@@ -90,10 +93,10 @@ class ConditionalTask(GrizzlyTaskWrapper):
         tasks: Dict[bool, List[grizzlytask]] = {}
 
         for pointer, pointer_tasks in self.tasks.items():
-            tasks.update({pointer: list(map(lambda t: t(), pointer_tasks))})
+            tasks.update({pointer: [t() for t in pointer_tasks]})
 
         @grizzlytask
-        def task(parent: 'GrizzlyScenario') -> Any:
+        def task(parent: GrizzlyScenario) -> Any:
             condition_rendered = parent.render(self.condition)
             exception: Optional[Exception] = None
             task_count = 0
@@ -109,7 +112,8 @@ class ConditionalTask(GrizzlyTaskWrapper):
                 else:
                     condition_rendered_failed = condition_rendered
                     condition_rendered = 'Invalid'
-                    raise RuntimeError(f'"{self.condition}" resolved to "{condition_rendered_failed}" which is invalid')
+                    message = f'"{self.condition}" resolved to "{condition_rendered_failed}" which is invalid'
+                    raise RuntimeError(message)
 
                 _tasks = tasks.get(pointer, [])
                 task_count = len(_tasks)
@@ -125,7 +129,7 @@ class ConditionalTask(GrizzlyTaskWrapper):
                 name = f'{parent.user._scenario.identifier} {self.name}: {condition_rendered} ({task_count})'
 
                 # do not log these exceptions if thrown from wrapped task, just log the error for this task
-                if not isinstance(exception, (StopUser, RestartScenario,)):
+                if not isinstance(exception, (StopUser, RestartScenario)):
                     parent.user.environment.events.request.fire(
                         request_type='COND',
                         name=name,
@@ -139,15 +143,15 @@ class ConditionalTask(GrizzlyTaskWrapper):
                     stats.log_error(None)
 
                 if exception is not None and parent.user._scenario.failure_exception is not None:
-                    raise parent.user._scenario.failure_exception()
+                    raise parent.user._scenario.failure_exception from exception
 
         @task.on_start
-        def on_start(parent: 'GrizzlyScenario') -> None:
+        def on_start(parent: GrizzlyScenario) -> None:
             for task in tasks.get(True, []) + tasks.get(False, []):
                 task.on_start(parent)
 
         @task.on_stop
-        def on_stop(parent: 'GrizzlyScenario') -> None:
+        def on_stop(parent: GrizzlyScenario) -> None:
             for task in tasks.get(True, []) + tasks.get(False, []):
                 task.on_stop(parent)
 

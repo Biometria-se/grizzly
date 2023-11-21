@@ -1,21 +1,25 @@
-import logging
+"""Unit tests for grizzly.tasks.clients.servicebus."""
+from __future__ import annotations
 
-from typing import Dict, Any
+import logging
 from json import dumps as jsondumps
+from typing import TYPE_CHECKING, Any, Dict
 
 import pytest
 import zmq.green as zmq
 
-from _pytest.logging import LogCaptureFixture
 from grizzly.tasks.clients import ServiceBusClientTask
 from grizzly.types import RequestDirection
-from grizzly_extras.async_message import AsyncMessageRequest
 
-from tests.fixtures import GrizzlyFixture, NoopZmqFixture, MockerFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from _pytest.logging import LogCaptureFixture
+
+    from grizzly_extras.async_message import AsyncMessageRequest
+    from tests.fixtures import GrizzlyFixture, MockerFixture, NoopZmqFixture
 
 
 class TestServiceBusClientTask:
-    def test___init__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+    def test___init__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:  # noqa: PLR0915
         context_mock = mocker.patch('grizzly.tasks.clients.servicebus.zmq.Context', autospec=True)
 
         ServiceBusClientTask.__scenario__ = grizzly_fixture.grizzly.scenario
@@ -39,7 +43,7 @@ class TestServiceBusClientTask:
             RequestDirection.TO,
             'sb://my-sbns.servicebus.windows.net/queue:my-queue;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=',
             'test',
-            source='hello world!'
+            source='hello world!',
         )
 
         assert task.endpoint == 'sb://my-sbns.servicebus.windows.net/;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324='
@@ -80,7 +84,7 @@ class TestServiceBusClientTask:
             'endpoint': 'topic:my-topic, subscription:"my-subscription-{{ id }}", expression:$.hello.world',
             'consume': True,
             'message_wait': 300,
-            'content_type': 'JSON'
+            'content_type': 'JSON',
         }
         assert task.text == 'foobar'
         assert task.payload_variable == 'foobar'
@@ -112,7 +116,7 @@ class TestServiceBusClientTask:
             'endpoint': 'topic:my-topic, subscription:"my-subscription-{{ id }}", expression:$.hello.world',
             'consume': True,
             'message_wait': 300,
-            'content_type': 'JSON'
+            'content_type': 'JSON',
         }
         assert task.text == 'foobar'
         assert task.payload_variable == 'foobar'
@@ -144,33 +148,30 @@ class TestServiceBusClientTask:
         context_mock.assert_called_once_with()
         context_mock.reset_mock()
 
-        with pytest.raises(ValueError) as ve:
+        with pytest.raises(ValueError, match='MessageWait parameter in endpoint fragment is not a valid integer'):
             ServiceBusClientTask(
                 RequestDirection.FROM,
                 'sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:my-subscription;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=#MessageWait=foo',
                 'test',
             )
-        assert str(ve.value) == 'MessageWait parameter in endpoint fragment is not a valid integer'
         context_mock.assert_called_once_with()
         context_mock.reset_mock()
 
-        with pytest.raises(ValueError) as ve:
+        with pytest.raises(ValueError, match='Consume parameter in endpoint fragment is not a valid boolean'):
             ServiceBusClientTask(
                 RequestDirection.FROM,
                 'sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:my-subscription;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=#Consume=foo',
                 'test',
             )
-        assert str(ve.value) == 'Consume parameter in endpoint fragment is not a valid boolean'
         context_mock.assert_called_once_with()
         context_mock.reset_mock()
 
-        with pytest.raises(ValueError) as ve:
+        with pytest.raises(ValueError, match='"foo" is an unknown response content type'):
             ServiceBusClientTask(
                 RequestDirection.FROM,
                 'sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:my-subscription;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=#ContentType=foo',
                 'test',
             )
-        assert str(ve.value) == '"foo" is an unknown response content type'
         context_mock.assert_called_once_with()
         context_mock.reset_mock()
 
@@ -184,9 +185,9 @@ class TestServiceBusClientTask:
 
         assert task.text == 'hello'
 
-        task.text = '''
+        task.text = """
                 hello
-        '''
+        """
 
         assert task.text == 'hello'
 
@@ -295,7 +296,45 @@ class TestServiceBusClientTask:
             'client': state.parent_id,
             'action': 'SUBSCRIBE',
             'context': expected_context,
-            'payload': '1=2'
+            'payload': '1=2',
+        })
+        caplog.clear()
+        async_message_request_mock.reset_mock()
+
+        task = ServiceBusClientTask(
+            RequestDirection.FROM,
+            (
+                "sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:'my-subscription-{{ id }}'/expression:'$.`this`[bar='foo' && bar='foo']';"
+                "SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324="
+            ),
+            'test',
+        )
+        task._text = '1=1'
+
+        state = task.get_state(parent)
+
+        state.worker = 'foo-bar-baz'
+        state.client = client_mock
+
+        expected_context = state.context.copy()
+        expected_context['endpoint'] = expected_context['endpoint'].replace('{{ id }}', 'baz-bar-foo')
+
+        with caplog.at_level(logging.INFO):
+            task.subscribe(parent)
+
+        assert caplog.messages == ['foobar!']
+        async_message_request_mock.assert_called_once_with(client_mock, {
+            'worker': 'foo-bar-baz',
+            'client': state.parent_id,
+            'action': 'SUBSCRIBE',
+            'context': {
+                'url': expected_context['url'],
+                'connection': 'receiver',
+                'endpoint': f"topic:my-topic, subscription:'my-subscription-baz-bar-foo_{id(parent.user)}', expression:'$.`this`[bar='foo' && bar='foo']'",
+                'message_wait': None,
+                'consume': False,
+            },
+            'payload': '1=1',
         })
 
         async_message_request_mock.reset_mock()
@@ -306,7 +345,7 @@ class TestServiceBusClientTask:
             (
                 "sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:'my-subscription-{{ id }}'/"
                 "expression:'$.`this`[?bar='foo' & bar='foo']';SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324="
-            ),  # noqa: Q003
+            ),
             'test',
         )
         task._text = '1=1'
@@ -467,7 +506,7 @@ class TestServiceBusClientTask:
             'action': state.context.get('endpoint', None),
             'request': request,
             'response_length': 0,
-            'response': {'message': 'foobar!'}
+            'response': {'message': 'foobar!'},
         }
 
         context_mock.reset_mock()
@@ -486,7 +525,7 @@ class TestServiceBusClientTask:
             'action': f'topic:my-topic, subscription:my-subscription_{state.parent_id}',
             'request': request,
             'response_length': 10,
-            'response': {'message': 'foobar!', 'payload': '1234567890'}
+            'response': {'message': 'foobar!', 'payload': '1234567890'},
         }
 
     def test_get(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
@@ -509,7 +548,7 @@ class TestServiceBusClientTask:
         # no variables
         task.payload_variable = None
 
-        assert task.get(parent) == (None, 'foobar',)
+        assert task.get(parent) == (None, 'foobar')
 
         request_mock.assert_called_once_with(state.parent, {
             'action': 'RECEIVE',
@@ -525,7 +564,7 @@ class TestServiceBusClientTask:
         # with payload variable
         task.payload_variable = 'foobaz'
 
-        assert task.get(parent) == (None, 'foobar',)
+        assert task.get(parent) == (None, 'foobar')
 
         request_mock.assert_called_once_with(state.parent, {
             'action': 'RECEIVE',
@@ -541,7 +580,7 @@ class TestServiceBusClientTask:
         task.metadata_variable = 'bazfoo'
         request_mock = mocker.patch.object(task, 'request', return_value={'metadata': {'x-foo-bar': 'hello'}, 'payload': 'foobar'})
 
-        assert task.get(parent) == ({'x-foo-bar': 'hello'}, 'foobar',)
+        assert task.get(parent) == ({'x-foo-bar': 'hello'}, 'foobar')
 
         request_mock.assert_called_once_with(state.parent, {
             'action': 'RECEIVE',
@@ -571,7 +610,7 @@ class TestServiceBusClientTask:
         request_mock = mocker.patch.object(task, 'request', return_value={'metadata': None, 'payload': 'foobar'})
 
         # inline source, no file
-        assert task.put(scenario) == (None, 'foobar',)
+        assert task.put(scenario) == (None, 'foobar')
 
         request_mock.assert_called_once_with(state.parent, {
             'action': 'SEND',
@@ -586,7 +625,7 @@ class TestServiceBusClientTask:
         task.source = '{{ foobar }}'
         scenario.user._context['variables'].update({'foobar': 'hello world'})
 
-        assert task.put(scenario) == (None, 'foobar',)
+        assert task.put(scenario) == (None, 'foobar')
 
         request_mock.assert_called_once_with(state.parent, {
             'action': 'SEND',
@@ -602,7 +641,7 @@ class TestServiceBusClientTask:
         (grizzly_fixture.test_context / 'source.json').write_text('hello world')
         task.source = 'source.json'
 
-        assert task.put(scenario) == (None, 'foobar',)
+        assert task.put(scenario) == (None, 'foobar')
 
         request_mock.assert_called_once_with(state.parent, {
             'action': 'SEND',
@@ -618,7 +657,7 @@ class TestServiceBusClientTask:
         (grizzly_fixture.test_context / 'source.j2.json').write_text('{{ foobar }}')
         task.source = '{{ filename }}'
 
-        assert task.put(scenario) == (None, 'foobar',)
+        assert task.put(scenario) == (None, 'foobar')
 
         request_mock.assert_called_once_with(state.parent, {
             'action': 'SEND',

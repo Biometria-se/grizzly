@@ -1,9 +1,13 @@
-from typing import cast
+"""End-to-end tests of grizzly.steps.setup."""
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, cast
 
 from grizzly.context import GrizzlyContext
-from grizzly.types.behave import Context
 
-from tests.fixtures import End2EndFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.types.behave import Context
+    from tests.fixtures import End2EndFixture
 
 
 def test_e2e_step_setup_variable_value_ask(e2e_fixture: End2EndFixture) -> None:
@@ -22,7 +26,7 @@ def test_e2e_step_setup_variable_value_ask(e2e_fixture: End2EndFixture) -> None:
         scenario=[
             'Then ask for value of variable "scenario_variable"',
             'Then log message "{{ background_variable }}={{ scenario_variable }}"',
-        ]
+        ],
     )
 
     assert feature_file == 'features/test_e2e_step_setup_variable_value_ask.feature'
@@ -55,7 +59,7 @@ def test_e2e_step_setup_variable_value(e2e_fixture: End2EndFixture) -> None:
             'And value for variable "AtomicCsvWriter.output" is "bar, foo"',
             'And value for variable "foobar" is "foobar"',
             'And value for variable "foobar" is "foobaz"',
-        ]
+        ],
     )
 
     assert e2e_fixture._root is not None

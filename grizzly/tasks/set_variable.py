@@ -1,5 +1,4 @@
-"""
-@anchor pydoc:grizzly.tasks.set_variable Set variable
+"""@anchor pydoc:grizzly.tasks.set_variable Set variable
 This task sets a testdata variable during runtime.
 
 ## Step implementations
@@ -17,15 +16,17 @@ This task does not have any request statistics entries.
 * `value` _value_ - value of the variable being set, must be a template
 """
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any, Optional, MutableMapping, Type, cast
+
+from typing import TYPE_CHECKING, Any, MutableMapping, Optional, Type, cast
 
 from grizzly.testdata import GrizzlyVariables
-from grizzly.testdata.variables import AtomicVariable
+from grizzly.utils import is_template
 
-from . import GrizzlyTask, template, grizzlytask
+from . import GrizzlyTask, grizzlytask, template
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.scenarios import GrizzlyScenario
+    from grizzly.testdata.variables import AtomicVariable
 
 
 @template('variable_template', 'value')
@@ -49,7 +50,8 @@ class SetVariableTask(GrizzlyTask):
             self._variable_instance_type = GrizzlyVariables.load_variable(module_name, variable_type)
 
             if not getattr(self._variable_instance_type, '__settable__', False):
-                raise AttributeError(f'{module_name}.{variable_type} is not settable')
+                message = f'{module_name}.{variable_type} is not settable'
+                raise AttributeError(message)
 
         if sub_variable is not None:
             self._variable_key = f'{variable}.{sub_variable}'
@@ -58,7 +60,8 @@ class SetVariableTask(GrizzlyTask):
 
     @property
     def variable_template(self) -> str:
-        if not ('{{' in self.variable and '}}' in self.variable):
+        """Create a dummy template for the variable, used so we will not complain that this variable isn't used anywhere."""
+        if not is_template(self.variable):
             return f'{{{{ {self.variable} }}}}'
 
         return self.variable

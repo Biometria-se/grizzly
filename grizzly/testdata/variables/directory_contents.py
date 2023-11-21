@@ -1,5 +1,4 @@
-"""
-@anchor pydoc:grizzly.testdata.variables.directory_contents Directory Contents
+"""@anchor pydoc:grizzly.testdata.variables.directory_contents Directory Contents
 This variable provides a list of files in the specified directory.
 
 ## Format
@@ -33,43 +32,48 @@ And put request "{{ AtomicDirectoryContents.files }}" with name "put-file" to en
 
 First request will provide `file1.bin`, second `file2.bin` etc.
 """
-import os
+from __future__ import annotations
 
-from typing import Dict, List, Any, Type, Optional, cast
+from contextlib import suppress
+from os import environ
 from pathlib import Path
-from random import randint
-
-from grizzly_extras.arguments import split_value, parse_arguments
+from secrets import randbelow
+from typing import Any, ClassVar, Dict, List, Optional, Type, cast
 
 from grizzly.types import bool_type
+from grizzly_extras.arguments import parse_arguments, split_value
 
 from . import AtomicVariable
 
 
 def atomicdirectorycontents__base_type__(value: str) -> str:
-    grizzly_context_requests = os.path.join(os.environ.get('GRIZZLY_CONTEXT_ROOT', ''), 'requests')
+    """Validate values that `AtomicDirectoryContents` can be initialized with."""
+    grizzly_context_requests = Path(environ.get('GRIZZLY_CONTEXT_ROOT', '')) / 'requests'
     if '|' in value:
         [directory_value, directory_arguments] = split_value(value)
 
         try:
             arguments = parse_arguments(directory_arguments)
         except ValueError as e:
-            raise ValueError(f'AtomicDirectoryContents: {str(e)}') from e
+            message = f'AtomicDirectoryContents: {e!s}'
+            raise ValueError(message) from e
 
         for argument_name, argument_value in arguments.items():
             if argument_name not in AtomicDirectoryContents.arguments:
-                raise ValueError(f'AtomicDirectoryContents: argument {argument_name} is not allowed')
-            else:
-                AtomicDirectoryContents.arguments[argument_name](argument_value)
+                message = f'AtomicDirectoryContents: argument {argument_name} is not allowed'
+                raise ValueError(message)
+
+            AtomicDirectoryContents.arguments[argument_name](argument_value)
 
         value = f'{directory_value} | {directory_arguments}'
     else:
         directory_value = value
 
-    path = os.path.join(grizzly_context_requests, directory_value)
+    path = grizzly_context_requests / directory_value
 
-    if not os.path.isdir(path):
-        raise ValueError(f'AtomicDirectoryContents: {directory_value} is not a directory in {grizzly_context_requests}')
+    if not path.is_dir():
+        message = f'AtomicDirectoryContents: {directory_value} is not a directory in {grizzly_context_requests!s}'
+        raise ValueError(message)
 
     return value
 
@@ -80,16 +84,17 @@ class AtomicDirectoryContents(AtomicVariable[str]):
 
     _files: Dict[str, List[str]]
     _settings: Dict[str, Dict[str, Any]]
-    _requests_context_root: str
-    arguments: Dict[str, Any] = {'repeat': bool_type, 'random': bool_type}
+    _requests_context_root: Path
+    arguments: ClassVar[Dict[str, Any]] = {'repeat': bool_type, 'random': bool_type}
 
     def __init__(
         self,
         variable: str,
         value: str,
-        outer_lock: bool = False
-    ):
-        with self.semaphore(outer_lock):
+        *,
+        outer_lock: bool = False,
+    ) -> None:
+        with self.semaphore(outer=outer_lock):
             safe_value = self.__class__.__base_type__(value)
 
             settings = {'repeat': False, 'random': False}
@@ -116,13 +121,13 @@ class AtomicDirectoryContents(AtomicVariable[str]):
 
                 return
 
-            self._requests_context_root = os.path.join(os.environ.get('GRIZZLY_CONTEXT_ROOT', '.'), 'requests')
+            self._requests_context_root = Path(environ.get('GRIZZLY_CONTEXT_ROOT', '.')) / 'requests'
             self._files = {variable: self._create_file_queue(directory)}
             self._settings = {variable: settings}
             self.__initialized = True
 
     @classmethod
-    def clear(cls: Type['AtomicDirectoryContents']) -> None:
+    def clear(cls: Type[AtomicDirectoryContents]) -> None:
         super().clear()
 
         instance = cast(AtomicDirectoryContents, cls.get())
@@ -133,10 +138,10 @@ class AtomicDirectoryContents(AtomicVariable[str]):
             del instance._settings[variable]
 
     def _create_file_queue(self, directory: str) -> List[str]:
-        parent_part = len(self._requests_context_root) + 1
+        parent_part = len(str(self._requests_context_root)) + 1
         queue = [
             str(path)[parent_part:]
-            for path in Path(os.path.join(self._requests_context_root, directory)).rglob('*')
+            for path in (self._requests_context_root / directory).rglob('*')
             if path.is_file()
         ]
         queue.sort()
@@ -151,8 +156,8 @@ class AtomicDirectoryContents(AtomicVariable[str]):
                 settings = self._settings[variable]
 
                 if settings['random'] is True:
-                    roof = len(self._files[variable]) - 1
-                    index = randint(0, roof)
+                    roof = len(self._files[variable])
+                    index = randbelow(roof)
                 else:
                     index = 0
 
@@ -160,21 +165,17 @@ class AtomicDirectoryContents(AtomicVariable[str]):
 
                 if settings['repeat'] is True:
                     self._files[variable].append(value)
-
-                return value
             except (IndexError, ValueError):
                 return None
+            else:
+                return value
 
     def __delitem__(self, variable: str) -> None:
         with self.semaphore():
-            try:
+            with suppress(KeyError):
                 del self._files[variable]
-            except KeyError:
-                pass
 
-            try:
+            with suppress(KeyError):
                 del self._settings[variable]
-            except KeyError:
-                pass
 
             super().__delitem__(variable)

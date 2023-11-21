@@ -1,28 +1,32 @@
-from typing import Optional, cast
-from os import environ, path, listdir
-from shutil import rmtree
+"""Unit tests of grizzly_extras.async_message."""
+from __future__ import annotations
+
+from contextlib import suppress
+from os import environ, listdir
 from platform import node as hostname
+from shutil import rmtree
+from typing import TYPE_CHECKING, Optional, cast
 
 import pytest
 import zmq.green as zmq
-
 from zmq.error import Again as ZMQAgain
-from pytest_mock import MockerFixture
-from _pytest.tmpdir import TempPathFactory
-from _pytest.capture import CaptureFixture
 
 from grizzly_extras.async_message import (
+    AsyncMessageError,
+    AsyncMessageHandler,
+    AsyncMessageRequest,
     AsyncMessageRequestHandler,
     AsyncMessageResponse,
-    AsyncMessageRequest,
-    AsyncMessageHandler,
-    AsyncMessageError,
     ThreadLogger,
-    register,
     async_message_request,
+    register,
 )
-
 from tests.helpers import onerror
+
+if TYPE_CHECKING:  # pragma: no cover
+    from _pytest.capture import CaptureFixture
+    from _pytest.tmpdir import TempPathFactory
+    from pytest_mock import MockerFixture
 
 
 class TestAsyncMessageHandler:
@@ -38,19 +42,19 @@ class TestAsyncMessageHandler:
 
         assert handler.worker == 'ID-12345'
 
-        with pytest.raises(NotImplementedError):
+        with pytest.raises(NotImplementedError, match='get_handler is not implemented'):
             handler.get_handler('TEST')
 
     def test_handle(self, mocker: MockerFixture) -> None:
         class AsyncMessageTest(AsyncMessageHandler):
-            def a_handler(self, request: AsyncMessageRequest) -> AsyncMessageResponse:
+            def a_handler(self, request: AsyncMessageRequest) -> AsyncMessageResponse:  # noqa: ARG002
                 return {}
 
             def get_handler(self, action: str) -> Optional[AsyncMessageRequestHandler]:
                 if action == 'NONE':
                     return None
-                else:
-                    return cast(AsyncMessageRequestHandler, self.a_handler)
+
+                return cast(AsyncMessageRequestHandler, self.a_handler)
 
             def close(self) -> None:
                 pass
@@ -78,7 +82,7 @@ class TestAsyncMessageHandler:
             'action': 'GET',
             'context': {
                 'endpoint': 'TEST.QUEUE',
-            }
+            },
         })
 
         response = handler.handle(request)
@@ -92,10 +96,10 @@ class TestAsyncMessageHandler:
 
 
 def test_register() -> None:
-    def handler_a(i: AsyncMessageHandler, request: AsyncMessageRequest) -> AsyncMessageResponse:
+    def handler_a(_: AsyncMessageHandler, request: AsyncMessageRequest) -> AsyncMessageResponse:  # noqa: ARG001
         return {}
 
-    def handler_b(i: AsyncMessageHandler, request: AsyncMessageRequest) -> AsyncMessageResponse:
+    def handler_b(_: AsyncMessageHandler, request: AsyncMessageRequest) -> AsyncMessageResponse:  # noqa: ARG001
         return {}
 
     try:
@@ -117,17 +121,15 @@ def test_register() -> None:
         assert handlers['TEST'] is not handler_b
         assert handlers['TEST'] is handler_a
     finally:
-        try:
+        with suppress(KeyError):
             del handlers['TEST']
-        except KeyError:
-            pass
 
 
 class TestThreadLogger:
     def test_logger(self, tmp_path_factory: TempPathFactory, capsys: CaptureFixture) -> None:
         test_context = tmp_path_factory.mktemp('test_context') / 'logs'
         test_context.mkdir()
-        test_context_root = path.dirname(str(test_context))
+        test_context_root = test_context.parent.as_posix()
 
         try:
             logger = ThreadLogger('test.logger')
@@ -160,8 +162,7 @@ class TestThreadLogger:
             log_file = log_files[0]
             assert log_file.startswith(f'async-messaged.{hostname()}')
 
-            with open(path.join(str(test_context), log_file)) as fd:
-                file = fd.read()
+            file = (test_context / log_file).read_text()
 
             for sink in [std.err, file]:
                 assert '] INFO : test.logger: info\n' in sink
@@ -171,15 +172,11 @@ class TestThreadLogger:
         finally:
             logger._logger.handlers = []  # force StreamHandler to close log file
 
-            try:
+            with suppress(KeyError):
                 del environ['GRIZZLY_CONTEXT_ROOT']
-            except:
-                pass
 
-            try:
+            with suppress(KeyError):
                 del environ['GRIZZLY_EXTRAS_LOGLEVEL']
-            except:
-                pass
 
             rmtree(test_context_root, onerror=onerror)
 
@@ -196,9 +193,8 @@ def test_async_message_request(mocker: MockerFixture) -> None:
         'action': 'HELLO',
     }
 
-    with pytest.raises(AsyncMessageError) as re:
+    with pytest.raises(AsyncMessageError, match='no response'):
         async_message_request(client_mock, request)
-    assert str(re.value) == 'no response'
 
     sleep_mock.assert_called_once_with(0.1)
     client_mock.send_json.assert_called_once_with(request)
@@ -216,9 +212,8 @@ def test_async_message_request(mocker: MockerFixture) -> None:
     client_mock.recv_json.side_effect = None
     client_mock.recv_json.return_value = {'success': False, 'message': 'error! error! error!'}
 
-    with pytest.raises(AsyncMessageError) as re:
+    with pytest.raises(AsyncMessageError, match='error! error! error!'):
         async_message_request(client_mock, request)
-    assert str(re.value) == 'error! error! error!'
 
     sleep_mock.assert_not_called()
     client_mock.send_json.assert_called_once_with(request)

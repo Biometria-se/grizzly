@@ -1,27 +1,33 @@
-from typing import cast
+"""@anchor pydoc:grizzly.steps.setup Setup
+This module contains steps that can be in both `Background:` and `Scenario:` sections.
+"""
+from __future__ import annotations
+
 from os import environ
+from typing import cast
 
-from grizzly.types.behave import Context, given, then
 from grizzly.context import GrizzlyContext
-from grizzly.testdata.utils import resolve_variable
-from grizzly.testdata import GrizzlyVariables
 from grizzly.tasks import SetVariableTask
+from grizzly.testdata import GrizzlyVariables
+from grizzly.testdata.utils import resolve_variable
+from grizzly.types.behave import Context, given, then
+from grizzly.utils import is_template
 
-from ._helpers import is_template
 
-
-@then(u'ask for value of variable "{name}"')
-@given(u'ask for value of variable "{name}"')
+@then('ask for value of variable "{name}"')
+@given('ask for value of variable "{name}"')
 def step_setup_variable_value_ask(context: Context, name: str) -> None:
-    """This step is used to indicate for `grizzly-cli` that it should ask for an initial value for the variable.
-    It will then inject the value into the locust runtime environment, and in this step read it and insert it
-    into the locust context which grizzly will use to setup locust.
+    """Tell `grizzly-cli` that it should ask for an initial value for the variable.
+
+    It will inject the value into the locust runtime environment, and in this step read it and insert it
+    into the locust context which `grizzly` will use to setup `locust`.
 
     If `grizzly-cli` is not used, one has to manually set the environment variable, which requires a prefix of
     `TESTDATA_VARIABLE_` and the suffix should match the variable name in question.
 
     Use this step for variables that should have different initial values for each run of the feature.
 
+    Example:
     ```gherkin
     And ask for value for variable "AtomicIntegerIncrementer.messageID"
     ```
@@ -38,15 +44,16 @@ def step_setup_variable_value_ask(context: Context, name: str) -> None:
     try:
         grizzly.state.variables[name] = value
     except ValueError as e:
-        assert 0, str(e)
+        raise AssertionError(e) from e
 
 
-@given(u'value for variable "{name}" is "{value}"')
+@given('value for variable "{name}" is "{value}"')
 def step_setup_variable_value(context: Context, name: str, value: str) -> None:
-    """Use this step to initialize a variable that should have the same [start] value for every run of
-    the scenario. If this step is used for a variable that has already been initialized, it is assumed that the value will change during runtime
-    so instead a {@pylink grizzly.tasks.set_variable} task will be added instead. The {@pylink grizzly.testdata.variables} must have implemented
-    support for being settable.
+    """Step to initialize a variable that should have the same [start] value for every run of the scenario.
+
+    If this step is used for a variable that has already been initialized, it is assumed that the value will change during runtime
+    so instead a {@pylink grizzly.tasks.set_variable} task will be added instead. The {@pylink grizzly.testdata.variables} must
+    have implemented support for being settable.
 
     Data type for the value of the variable is based on the type of variable. If the variable is an testdata {@pylink grizzly.testdata.variables}
     then the value needs to match the format and type that the variable has implemented. If it is not a testdata variable
@@ -64,7 +71,6 @@ def step_setup_variable_value(context: Context, name: str, value: str) -> None:
     multiple scenarios which all should have the same initial value.
 
     Example:
-
     ```gherkin title="example.feature"
     Feature:
         Background:
@@ -110,6 +116,6 @@ def step_setup_variable_value(context: Context, name: str, value: str) -> None:
 
             grizzly.state.variables[name] = resolved_value
         except Exception as e:
-            raise AssertionError(str(e))
+            raise AssertionError(e) from e
     else:
         grizzly.scenario.tasks.add(SetVariableTask(name, value))

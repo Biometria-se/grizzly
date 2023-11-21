@@ -1,22 +1,21 @@
-import shutil
+"""Unit tests for grizzly.context."""
+from __future__ import annotations
 
-from typing import Tuple, Dict, Any, Optional, cast
-from os import path, environ
+import shutil
+from contextlib import suppress
+from os import environ
+from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, cast
 from unittest.mock import ANY
 
 import pytest
-
-from _pytest.tmpdir import TempPathFactory
 from jinja2.environment import Template
 
-from grizzly.types.behave import Scenario
-from grizzly.types.locust import Environment, Message
 from grizzly.context import (
     GrizzlyContext,
-    GrizzlyContextScenarios,
-    GrizzlyContextSetup,
     GrizzlyContextScenario,
+    GrizzlyContextScenarios,
     GrizzlyContextScenarioValidation,
+    GrizzlyContextSetup,
     GrizzlyContextSetupLocust,
     GrizzlyContextSetupLocustMessages,
     GrizzlyContextState,
@@ -24,19 +23,22 @@ from grizzly.context import (
     GrizzlyContextTasksTmp,
     load_configuration_file,
 )
-
+from grizzly.tasks import AsyncRequestGroupTask, ConditionalTask, ExplicitWaitTask, LogMessageTask, LoopTask, RequestTask
 from grizzly.types import MessageDirection, RequestMethod
-from grizzly.tasks import LogMessageTask, RequestTask, ExplicitWaitTask, AsyncRequestGroupTask, LoopTask, ConditionalTask
-
-
+from grizzly.types.behave import Scenario
 from tests.helpers import TestTask, get_property_decorated_attributes
-from tests.fixtures import BehaveFixture, GrizzlyFixture, RequestTaskFixture
+
+if TYPE_CHECKING:  # pragma: no cover
+    from _pytest.tmpdir import TempPathFactory
+
+    from grizzly.types.locust import Environment, Message
+    from tests.fixtures import BehaveFixture, GrizzlyFixture, RequestTaskFixture
 
 
 def test_load_configuration_file(tmp_path_factory: TempPathFactory) -> None:
     configuration_file = tmp_path_factory.mktemp('configuration_file') / 'configuration.yaml'
     try:
-        configuration_file.write_text('''
+        configuration_file.write_text("""
             configuration:
                 sut:
                     host: 'https://backend.example.com'
@@ -48,16 +50,16 @@ def test_load_configuration_file(tmp_path_factory: TempPathFactory) -> None:
                             username: username
                             password: password
                             redirect_uri: "https://www.example.com/authenticated"
-        ''')
+        """)
 
         assert load_configuration_file() == {}
 
-        environ['GRIZZLY_CONFIGURATION_FILE'] = '/tmp/does-not-exist.yaml'
+        environ['GRIZZLY_CONFIGURATION_FILE'] = '/tmp/does-not-exist.yaml'  # noqa: S108
 
         with pytest.raises(SystemExit):
             load_configuration_file()
 
-        [name, _] = path.splitext(str(configuration_file))
+        name = configuration_file.name
 
         environ['GRIZZLY_CONFIGURATION_FILE'] = f'{name}.json'
 
@@ -75,17 +77,15 @@ def test_load_configuration_file(tmp_path_factory: TempPathFactory) -> None:
             'sut.auth.user.redirect_uri': 'https://www.example.com/authenticated',
         }
     finally:
-        shutil.rmtree(path.dirname(str(configuration_file)))
-        try:
+        shutil.rmtree(configuration_file.parent)
+        with suppress(KeyError):
             del environ['GRIZZLY_CONFIGURATION_FILE']
-        except KeyError:
-            pass
 
 
 class TestGrizzlyContextSetup:
     def test(self, behave_fixture: BehaveFixture) -> None:
         behave = behave_fixture.context
-        grizzly = getattr(behave, 'grizzly')
+        grizzly = cast(GrizzlyContext, behave.grizzly)
         grizzly_setup = grizzly.setup
 
         expected_properties: Dict[str, Optional[Tuple[Any, Any]]] = {
@@ -101,7 +101,8 @@ class TestGrizzlyContextSetup:
         expected_attributes = list(expected_properties.keys())
         expected_attributes.sort()
 
-        assert grizzly_setup is not None and isinstance(grizzly_setup, GrizzlyContextSetup)
+        assert grizzly_setup is not None
+        assert isinstance(grizzly_setup, GrizzlyContextSetup)
 
         for test_attribute_name, test_attribute_values in expected_properties.items():
             assert hasattr(grizzly_setup, test_attribute_name), f'attribute {test_attribute_name} does not exist in GrizzlyContextSetup'
@@ -129,10 +130,10 @@ class TestGrizzlyContextSetupLocustMessages:
         assert isinstance(context, dict)
         assert context == {}
 
-        def callback(environment: Environment, msg: Message, **kwargs: Dict[str, Any]) -> None:
+        def callback(environment: Environment, msg: Message, **kwargs: Any) -> None:  # noqa: ARG001
             pass
 
-        def callback_ack(environment: Environment, msg: Message, **kwargs: Dict[str, Any]) -> None:
+        def callback_ack(environment: Environment, msg: Message, **kwargs: Any) -> None:  # noqa: ARG001
             pass
 
         context.register(MessageDirection.SERVER_CLIENT, 'test_message', callback)
@@ -149,7 +150,7 @@ class TestGrizzlyContextSetupLocustMessages:
             },
             MessageDirection.CLIENT_SERVER: {
                 'test_message_ack': callback_ack,
-            }
+            },
         }
 
 
@@ -184,7 +185,7 @@ class TestGrizzlyContextState:
     def test_configuration(self, tmp_path_factory: TempPathFactory) -> None:
         configuration_file = tmp_path_factory.mktemp('configuration_file') / 'configuration.yaml'
         try:
-            configuration_file.write_text('''
+            configuration_file.write_text("""
                 configuration:
                     sut:
                         host: 'https://backend.example.com'
@@ -196,7 +197,7 @@ class TestGrizzlyContextState:
                                 username: username
                                 password: password
                                 redirect_uri: "https://www.example.com/authenticated"
-            ''')
+            """)
 
             state = GrizzlyContextState()
 
@@ -218,18 +219,15 @@ class TestGrizzlyContextState:
             }
 
         finally:
-            shutil.rmtree(path.dirname(str(configuration_file)))
-            try:
+            shutil.rmtree(configuration_file.parent)
+            with suppress(KeyError):
                 del environ['GRIZZLY_CONFIGURATION_FILE']
-            except KeyError:
-                pass
 
 
 class TestGrizzlyContext:
     def test(self, behave_fixture: BehaveFixture) -> None:
         behave = behave_fixture.context
-        grizzly = getattr(behave, 'grizzly')
-        assert grizzly is not None
+        grizzly = cast(GrizzlyContext, behave.grizzly)
         assert isinstance(grizzly, GrizzlyContext)
 
         second_grizzly = GrizzlyContext()
@@ -258,12 +256,12 @@ class TestGrizzlyContext:
 
     def test_destroy(self, behave_fixture: BehaveFixture) -> None:
         behave = behave_fixture.context
-        grizzly = getattr(behave, 'grizzly')
+        grizzly = cast(GrizzlyContext, behave.grizzly)
         assert grizzly is GrizzlyContext()
 
         GrizzlyContext.destroy()
 
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="'GrizzlyContext' is not instantiated"):
             GrizzlyContext.destroy()
 
         grizzly = GrizzlyContext()
@@ -409,9 +407,8 @@ class TestGrizzlyContextTasksTmp:
         assert len(tmp.__stack__) == 1
         assert tmp.__stack__[-1] is async_group
 
-        with pytest.raises(AssertionError) as ae:
+        with pytest.raises(AssertionError, match='async_group is already in stack'):
             tmp.async_group = AsyncRequestGroupTask(name='async-group-2')
-        assert str(ae.value) == 'async_group is already in stack'
 
         assert len(tmp.__stack__) == 1
         assert tmp.__stack__[-1] is async_group
@@ -420,9 +417,8 @@ class TestGrizzlyContextTasksTmp:
 
         assert len(tmp.__stack__) == 0
 
-        with pytest.raises(AssertionError) as ae:
+        with pytest.raises(AssertionError, match='async_group is not in stack'):
             tmp.async_group = None
-        assert str(ae.value) == 'async_group is not in stack'
 
         assert len(tmp.__stack__) == 0
 
@@ -437,9 +433,8 @@ class TestGrizzlyContextTasksTmp:
         assert len(tmp.__stack__) == 1
         assert tmp.__stack__[-1] is conditional
 
-        with pytest.raises(AssertionError) as ae:
+        with pytest.raises(AssertionError, match='conditional is already in stack'):
             tmp.conditional = ConditionalTask('cond-2', '{{ value | int > 10 }}')
-        assert str(ae.value) == 'conditional is already in stack'
 
         assert len(tmp.__stack__) == 1
         assert tmp.__stack__[-1] is conditional
@@ -448,9 +443,8 @@ class TestGrizzlyContextTasksTmp:
 
         assert len(tmp.__stack__) == 0
 
-        with pytest.raises(AssertionError) as ae:
+        with pytest.raises(AssertionError, match='conditional is not in stack'):
             tmp.conditional = None
-        assert str(ae.value) == 'conditional is not in stack'
 
         assert len(tmp.__stack__) == 0
 
@@ -462,15 +456,14 @@ class TestGrizzlyContextTasksTmp:
 
         grizzly.state.variables['loop_value'] = 'none'
 
-        loop = LoopTask(grizzly, 'loop-1', '["hello", "world"]', "loop_value")
+        loop = LoopTask('loop-1', '["hello", "world"]', "loop_value")
         tmp.loop = loop
 
         assert len(tmp.__stack__) == 1
         assert tmp.__stack__[-1] is loop
 
-        with pytest.raises(AssertionError) as ae:
-            tmp.loop = LoopTask(grizzly, 'loop-2', '["hello", "world"]', "loop_value")
-        assert str(ae.value) == 'loop is already in stack'
+        with pytest.raises(AssertionError, match='loop is already in stack'):
+            tmp.loop = LoopTask('loop-2', '["hello", "world"]', "loop_value")
 
         assert len(tmp.__stack__) == 1
         assert tmp.__stack__[-1] is loop
@@ -479,9 +472,8 @@ class TestGrizzlyContextTasksTmp:
 
         assert len(tmp.__stack__) == 0
 
-        with pytest.raises(AssertionError) as ae:
+        with pytest.raises(AssertionError, match='loop is not in stack'):
             tmp.loop = None
-        assert str(ae.value) == 'loop is not in stack'
 
         assert len(tmp.__stack__) == 0
 
@@ -499,7 +491,7 @@ class TestGrizzlyContextTasksTmp:
         assert len(tmp.__stack__) == 1
         assert tmp.__stack__[-1] is conditional
 
-        loop = LoopTask(grizzly, 'loop-1', '["hello", "world"]', "loop_value")
+        loop = LoopTask('loop-1', '["hello", "world"]', 'loop_value')
         tmp.loop = loop
 
         assert len(tmp.__stack__) == 2
@@ -521,9 +513,8 @@ class TestGrizzlyContextTasksTmp:
         assert len(tmp.__stack__) == 3
         assert tmp.__stack__[-1] is async_group
 
-        with pytest.raises(AssertionError) as ae:
+        with pytest.raises(AssertionError, match='loop is not last in stack'):
             tmp.loop = None
-        assert str(ae.value) == 'loop is not last in stack'
 
         assert len(tmp.__stack__) == 3
         assert tmp.__stack__[-1] is async_group
@@ -533,9 +524,8 @@ class TestGrizzlyContextTasksTmp:
         assert len(tmp.__stack__) == 2
         assert tmp.__stack__[-1] is loop
 
-        with pytest.raises(AssertionError) as ae:
+        with pytest.raises(AssertionError, match='conditional is not last in stack'):
             tmp.conditional = None
-        assert str(ae.value) == 'conditional is not last in stack'
 
         tmp.loop = None
 
@@ -568,7 +558,7 @@ class TestGrizzlyContextTasks:
         assert len(tasks.tmp.__stack__) == 0
 
         tasks.tmp.conditional = ConditionalTask('cond-1', '{{ value | int > 0 }}')
-        tasks.tmp.conditional.switch(True)
+        tasks.tmp.conditional.switch(pointer=True)
 
         assert len(tasks()) == 0
         assert len(tasks.tmp.__stack__) == 1
@@ -578,7 +568,7 @@ class TestGrizzlyContextTasks:
 
         assert len(tasks()) == 1
 
-        tasks.tmp.loop = LoopTask(grizzly, 'loop-1', '["hello", "world"]', "loop_value")
+        tasks.tmp.loop = LoopTask('loop-1', '["hello", "world"]', "loop_value")
 
         assert len(tasks()) == 0
         assert len(tasks.tmp.__stack__) == 2

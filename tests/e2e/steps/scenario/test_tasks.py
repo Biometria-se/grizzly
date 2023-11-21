@@ -1,21 +1,28 @@
-from json import dumps as jsondumps, loads as jsonloads
-from typing import cast, List, Dict
-from textwrap import dedent
+"""End-to-end tests of grizzly.steps.scenario.tasks."""
+from __future__ import annotations
+
+from json import dumps as jsondumps
+from json import loads as jsonloads
 from pathlib import Path
+from textwrap import dedent
+from typing import TYPE_CHECKING, Any, Dict, List, cast
 
 from grizzly.context import GrizzlyContext
-from grizzly.types.behave import Context, Feature
 
-from tests.fixtures import End2EndFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.types.behave import Context
+    from tests.fixtures import End2EndFixture
 
 
-def test_e2e_step_task_request_text_with_name_to_endpoint(e2e_fixture: End2EndFixture) -> None:
+def test_e2e_step_task_request_text_with_name_to_endpoint(e2e_fixture: End2EndFixture) -> None:  # noqa: PLR0915
     def validate_requests(context: Context) -> None:
         from json import loads as jsonloads
+
+        from jinja2 import Template
+
         from grizzly.tasks import RequestTask
         from grizzly.types import RequestMethod
         from grizzly_extras.transformer import TransformerContentType
-        from jinja2 import Template
 
         grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -110,13 +117,15 @@ def test_e2e_step_task_request_text_with_name_to_endpoint(e2e_fixture: End2EndFi
     assert expected in result
 
 
-def test_e2e_step_task_request_file_with_name_endpoint(e2e_fixture: End2EndFixture) -> None:
+def test_e2e_step_task_request_file_with_name_endpoint(e2e_fixture: End2EndFixture) -> None:  # noqa: PLR0915
     def validate_requests(context: Context) -> None:
         from json import loads as jsonloads
+
+        from jinja2 import Template
+
         from grizzly.tasks import RequestTask
         from grizzly.types import RequestMethod
         from grizzly_extras.transformer import TransformerContentType
-        from jinja2 import Template
 
         grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -199,10 +208,12 @@ def test_e2e_step_task_request_file_with_name_endpoint(e2e_fixture: End2EndFixtu
 def test_e2e_step_task_request_file_with_name(e2e_fixture: End2EndFixture) -> None:
     def validate_requests(context: Context) -> None:
         from json import loads as jsonloads
+
+        from jinja2 import Template
+
         from grizzly.tasks import RequestTask
         from grizzly.types import RequestMethod
         from grizzly_extras.transformer import TransformerContentType
-        from jinja2 import Template
 
         grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -248,10 +259,12 @@ def test_e2e_step_task_request_file_with_name(e2e_fixture: End2EndFixture) -> No
 def test_e2e_step_task_request_text_with_name(e2e_fixture: End2EndFixture) -> None:
     def validate_requests(context: Context) -> None:
         from json import loads as jsonloads
+
+        from jinja2 import Template
+
         from grizzly.tasks import RequestTask
         from grizzly.types import RequestMethod
         from grizzly_extras.transformer import TransformerContentType
-        from jinja2 import Template
 
         grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -386,7 +399,7 @@ def test_e2e_step_task_log_message(e2e_fixture: End2EndFixture) -> None:
 def test_e2e_step_task_transform(e2e_fixture: End2EndFixture) -> None:
     def validate_transform(context: Context) -> None:
         from grizzly.tasks import TransformerTask
-        from grizzly_extras.transformer import TransformerContentType, JsonTransformer
+        from grizzly_extras.transformer import JsonTransformer, TransformerContentType
 
         grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -426,7 +439,7 @@ def test_e2e_step_task_transform(e2e_fixture: End2EndFixture) -> None:
             'Then parse "{{ document }}" as "json" and save value of "$.document.title" in variable "document_title"',
             'Then log message "document_id={{ document_id }}"',
             'Then log message "document_title={{ document_title }}"',
-        ]
+        ],
     )
 
     rc, _ = e2e_fixture.execute(feature_file)
@@ -436,12 +449,12 @@ def test_e2e_step_task_transform(e2e_fixture: End2EndFixture) -> None:
 
 def test_e2e_step_task_client_get_endpoint(e2e_fixture: End2EndFixture) -> None:
     def validate_client_task(context: Context) -> None:
-        from grizzly.types import RequestDirection
         from grizzly.tasks.clients import HttpClientTask
+        from grizzly.types import RequestDirection
 
         grizzly = cast(GrizzlyContext, context.grizzly)
 
-        data = list(context.table)[0].as_dict()
+        data = next(iter(context.table)).as_dict()
         e2e_fixture_host = data['e2e_fixture.host']
 
         tasks = grizzly.scenario.tasks()
@@ -492,7 +505,7 @@ def test_e2e_step_task_client_get_endpoint(e2e_fixture: End2EndFixture) -> None:
             f'Then get "http://{e2e_fixture.host}/api/echo?foo=bar" with name "https-get" and save response payload in "example_openapi"',
             'Then get "http://{{ endpoint }}/api/echo?bar=foo" with name "http-get" and save response payload in "endpoint_payload" and metadata in "endpoint_metadata"',
             'Then log message "example_openapi={{ example_openapi }}, endpoint_payload={{ endpoint_payload }}, endpoint_metadata={{ endpoint_metadata }}"',
-        ]
+        ],
     )
 
     rc, _ = e2e_fixture.execute(feature_file)
@@ -500,8 +513,8 @@ def test_e2e_step_task_client_get_endpoint(e2e_fixture: End2EndFixture) -> None:
     assert rc == 0
 
 
-def test_e2e_step_task_client_get_endpoint_until(e2e_fixture: End2EndFixture) -> None:
-    def after_feature(context: Context, feature: Feature) -> None:
+def test_e2e_step_task_client_get_endpoint_until(e2e_fixture: End2EndFixture) -> None:  # noqa: PLR0915
+    def after_feature(context: Context, *_args: Any, **_kwargs: Any) -> None:
         from grizzly.locust import on_master
 
         if on_master(context):
@@ -511,12 +524,12 @@ def test_e2e_step_task_client_get_endpoint_until(e2e_fixture: End2EndFixture) ->
         stats = grizzly.state.locust.environment.stats
 
         expectations = [
-            ('CLTSK', '001 http-get', 2, 1,),
-            ('UNTL', '001 http-get, w=0.11s, r=3, em=1', 1, 0,),
-            ('CLTSK', '001 http-env-get', 1, 1,),
-            ('UNTL', '001 https-env-get, w=0.1s, r=1, em=1', 1, 1,),
-            ('CLTSK', '001 https-get', 2, 1,),
-            ('UNTL', '001 https-get, w=0.12s r=1, em=1', 1, 0,),
+            ('CLTSK', '001 http-get', 2, 1),
+            ('UNTL', '001 http-get, w=0.11s, r=3, em=1', 1, 0),
+            ('CLTSK', '001 http-env-get', 1, 1),
+            ('UNTL', '001 https-env-get, w=0.1s, r=1, em=1', 1, 1),
+            ('CLTSK', '001 https-get', 2, 1),
+            ('UNTL', '001 https-get, w=0.12s r=1, em=1', 1, 0),
         ]
 
         for method, name, expected_num_requests, expected_num_failures in expectations:
@@ -526,15 +539,15 @@ def test_e2e_step_task_client_get_endpoint_until(e2e_fixture: End2EndFixture) ->
 
     e2e_fixture.add_after_feature(after_feature)
 
-    def validate_client_task_until(context: Context) -> None:
+    def validate_client_task_until(context: Context) -> None:  # noqa: PLR0915
+        from grizzly.tasks import UntilRequestTask
+        from grizzly.tasks.clients import HttpClientTask
         from grizzly.types import RequestDirection
         from grizzly_extras.transformer import TransformerContentType
-        from grizzly.tasks.clients import HttpClientTask
-        from grizzly.tasks import UntilRequestTask
 
         grizzly = cast(GrizzlyContext, context.grizzly)
 
-        data = list(context.table)[0].as_dict()
+        data = next(iter(context.table)).as_dict()
         e2e_fixture_host = data['e2e_fixture.host']
 
         tasks = grizzly.scenario.tasks()
@@ -620,15 +633,15 @@ def test_e2e_step_task_client_get_endpoint_until(e2e_fixture: End2EndFixture) ->
                 'Then get "https://$conf::test.host$/api/until/hello?nth=2&wrong=foobar&right=world&as_array=True | content_type=json, verify=False" with name "https-env-get" '
                 'until "$.`this`[?hello=\"world\"] | retries=1, expected_matches=1, wait=0.1"'
             ),
-        ]
+        ],
     )
 
     env_conf: Dict[str, Dict[str, Dict[str, str]]] = {
         'configuration': {
             'test': {
                 'host': f'http://{e2e_fixture.host}',
-            }
-        }
+            },
+        },
     }
 
     rc, output = e2e_fixture.execute(feature_file, env_conf=env_conf)
@@ -639,8 +652,8 @@ def test_e2e_step_task_client_get_endpoint_until(e2e_fixture: End2EndFixture) ->
     assert 'HOOK-ERROR in after_feature: RuntimeError: locust test failed' in result
 
 
-def test_e2e_step_task_client_put_endpoint_file_destination(e2e_fixture: End2EndFixture) -> None:
-    def after_feature(context: Context, feature: Feature) -> None:
+def test_e2e_step_task_client_put_endpoint_file_destination(e2e_fixture: End2EndFixture) -> None:  # noqa: PLR0915
+    def after_feature(context: Context, *_args: Any, **_kwargs: Any) -> None:
         from grizzly.locust import on_master
 
         if on_master(context):
@@ -657,8 +670,8 @@ def test_e2e_step_task_client_put_endpoint_file_destination(e2e_fixture: End2End
     e2e_fixture.add_after_feature(after_feature)
 
     def validate_client_task(context: Context) -> None:
-        from grizzly.types import RequestDirection
         from grizzly.tasks.clients import BlobStorageClientTask
+        from grizzly.types import RequestDirection
 
         grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -707,7 +720,7 @@ def test_e2e_step_task_client_put_endpoint_file_destination(e2e_fixture: End2End
         scenario=[
             'Then put "test-file.json" to "bs://my-unsecure-storage?AccountKey=aaaabbb=&Container=my-container" with name "bs-put" as "uploaded-test-file.json"',
             'Then put "test-files.json" to "bss://my-storage?AccountKey=aaaabbb=&Container=my-container" with name "bss-put" as "uploaded-test-files.json"',
-        ]
+        ],
     )
 
     rc, output = e2e_fixture.execute(feature_file)
@@ -718,8 +731,8 @@ def test_e2e_step_task_client_put_endpoint_file_destination(e2e_fixture: End2End
     assert 'HOOK-ERROR in after_feature: RuntimeError: locust test failed' in result
 
 
-def test_e2e_step_task_client_put_endpoint_file(e2e_fixture: End2EndFixture) -> None:
-    def after_feature(context: Context, feature: Feature) -> None:
+def test_e2e_step_task_client_put_endpoint_file(e2e_fixture: End2EndFixture) -> None:  # noqa: PLR0915
+    def after_feature(context: Context, *_args: Any, **_kwargs: Any) -> None:
         from grizzly.locust import on_master
 
         if on_master(context):
@@ -736,8 +749,8 @@ def test_e2e_step_task_client_put_endpoint_file(e2e_fixture: End2EndFixture) -> 
     e2e_fixture.add_after_feature(after_feature)
 
     def validate_client_task(context: Context) -> None:
-        from grizzly.types import RequestDirection
         from grizzly.tasks.clients import BlobStorageClientTask
+        from grizzly.types import RequestDirection
 
         grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -786,7 +799,7 @@ def test_e2e_step_task_client_put_endpoint_file(e2e_fixture: End2EndFixture) -> 
         scenario=[
             'Then put "test-file.json" to "bs://my-unsecure-storage?AccountKey=aaaabbb=&Container=my-container" with name "bs-put"',
             'Then put "test-files.json" to "bss://my-storage?AccountKey=aaaabbb=&Container=my-container" with name "bss-put"',
-        ]
+        ],
     )
 
     rc, output = e2e_fixture.execute(feature_file)
@@ -826,7 +839,7 @@ def test_e2e_step_task_date(e2e_fixture: End2EndFixture) -> None:
         assert task.arguments == {
             'offset': '-1D',
         }
-        assert task.get_templates() == ['{{ AtomicDate.test }}'], f'{str(task.get_templates())}'
+        assert task.get_templates() == ['{{ AtomicDate.test }}'], f'{task.get_templates()!s}'
 
         task = tasks[2]
         assert isinstance(task, DateTask)
@@ -865,9 +878,11 @@ def test_e2e_step_task_date(e2e_fixture: End2EndFixture) -> None:
 def test_e2e_step_async_group(e2e_fixture: End2EndFixture) -> None:
     def validate_async_group(context: Context) -> None:
         from json import loads as jsonloads
-        from grizzly.types import RequestMethod
-        from grizzly.tasks import AsyncRequestGroupTask, RequestTask
+
         from jinja2 import Template
+
+        from grizzly.tasks import AsyncRequestGroupTask, RequestTask
+        from grizzly.types import RequestMethod
 
         grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -931,7 +946,7 @@ def test_e2e_step_async_group(e2e_fixture: End2EndFixture) -> None:
             'Then get request with name "test-get-1" from endpoint "/api/echo?foo=bar"',
             'And close async request group',
             'Then get request with name "test-get-2" from endpoint "/api/echo?bar=foo"',
-        ]
+        ],
     )
 
     rc, _ = e2e_fixture.execute(feature_file)
@@ -940,7 +955,7 @@ def test_e2e_step_async_group(e2e_fixture: End2EndFixture) -> None:
 
 
 def test_e2e_step_task_timer_start_and_stop(e2e_fixture: End2EndFixture) -> None:
-    def after_feature(context: Context, feature: Feature) -> None:
+    def after_feature(context: Context, *_args: Any, **_kwargs: Any) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
 
         stats = grizzly.state.locust.environment.stats
@@ -949,10 +964,10 @@ def test_e2e_step_task_timer_start_and_stop(e2e_fixture: End2EndFixture) -> None
         timer_2 = stats.get('001 timer-2', 'TIMR')
 
         assert timer_1.num_requests == 1, f'{timer_1.num_requests=} != 1'
-        assert timer_1.total_response_time > 3900 and timer_1.total_response_time < 4100, f'timer_1.total_response_time != 3900<{timer_1.total_response_time}<4100'
+        assert timer_1.total_response_time > 3900 and timer_1.total_response_time < 4100, f'timer_1.total_response_time != 3900<{timer_1.total_response_time}<4100'  # noqa: PT018
 
         assert timer_2.num_requests == 1, f'{timer_2.num_requests=} != 1'
-        assert timer_2.total_response_time > 2900 and timer_2.total_response_time < 3100, f'timer_2.total_response_time != 2900<{timer_2.total_response_time}<3100'
+        assert timer_2.total_response_time > 2900 and timer_2.total_response_time < 3100, f'timer_2.total_response_time != 2900<{timer_2.total_response_time}<3100'  # noqa: PT018
 
     e2e_fixture.add_after_feature(after_feature)
 
@@ -1035,7 +1050,7 @@ def test_e2e_step_task_conditional(e2e_fixture: End2EndFixture) -> None:
 
         assert len(grizzly.scenario.tasks()) == 2
 
-    def after_feature(context: Context, feature: Feature) -> None:
+    def after_feature(context: Context, *_args: Any, **_kwargs: Any) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
 
         stats = grizzly.state.locust.environment.stats
@@ -1089,7 +1104,7 @@ def test_e2e_step_task_loop(e2e_fixture: End2EndFixture) -> None:
 
         assert len(grizzly.scenario.tasks()) == 1
 
-    def after_feature(context: Context, feature: Feature) -> None:
+    def after_feature(context: Context, *_args: Any, **_kwargs: Any) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
         stats = grizzly.state.locust.environment.stats
         loop = stats.get('001 loop-1 (1)', 'LOOP')
@@ -1106,7 +1121,7 @@ def test_e2e_step_task_loop(e2e_fixture: End2EndFixture) -> None:
             'Then loop "{{ loop_values }}" as variable "loop_value" with name "loop-1"',
             'Then log message "loop_value={{ loop_value }}"',
             'Then end loop',
-        ]
+        ],
     )
 
     rc, output = e2e_fixture.execute(feature_file)
@@ -1138,7 +1153,7 @@ def test_e2e_step_task_keystore(e2e_fixture: End2EndFixture) -> None:
             'Then get "foobar" from keystore and save in variable "foobar"',
             'Then get "barfoo" from keystore and save in variable "barfoo", with default value "{\'hello\': \'world\'}"',
             'Then log message "foobar={{ foobar }}, barfoo={{ barfoo }}"',
-        ]
+        ],
     )
 
     rc, output = e2e_fixture.execute(feature_file)

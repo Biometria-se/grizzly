@@ -1,72 +1,62 @@
-import logging
+"""Grizzly context, the glue between behave and locust."""
+from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable, Optional, Dict, Any, Tuple, List, Type, Union, cast
-from os import environ, path
+import logging
 from dataclasses import dataclass, field
+from os import environ
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Type, Union, cast
 
 import yaml
-
 from jinja2 import Environment
 from jinja2.filters import FILTERS
 
 from grizzly.types import MessageCallback, MessageDirection
-from grizzly.types.locust import MasterRunner, WorkerRunner, LocalRunner
-from grizzly.types.behave import Scenario
+from grizzly.utils import flatten
 
 from .testdata import GrizzlyVariables
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .tasks import GrizzlyTask, GrizzlyTaskWrapper, AsyncRequestGroupTask, TimerTask, ConditionalTask, LoopTask
+    from grizzly.types.behave import Scenario
+    from grizzly.types.locust import LocalRunner, MasterRunner, WorkerRunner
+
+    from .tasks import AsyncRequestGroupTask, ConditionalTask, GrizzlyTask, GrizzlyTaskWrapper, LoopTask, TimerTask
 
 
 logger = logging.getLogger(__name__)
 
 
 def load_configuration_file() -> Dict[str, Any]:
-    def _flatten(node: Dict[str, Any], parents: Optional[List[str]] = None) -> Dict[str, Any]:
-        flat: Dict[str, Any] = {}
-        if parents is None:
-            parents = []
-
-        for key, value in node.items():
-            parents.append(key)
-            if isinstance(value, dict):
-                flat = {**flat, **_flatten(value, parents)}
-            else:
-                flat['.'.join(parents)] = value
-
-            parents.pop()
-
-        return flat
-
+    """Load a grizzly environment file and flatten the structure."""
     configuration_file = environ.get('GRIZZLY_CONFIGURATION_FILE', None)
 
     if configuration_file is None:
         return {}
 
     try:
-        if path.splitext(configuration_file)[1] not in ['.yml', '.yaml']:
+        file = Path(configuration_file)
+        if file.suffix not in ['.yml', '.yaml']:
             logger.error('configuration file must have file extension yml or yaml')
             raise SystemExit(1)
 
-        with open(configuration_file, 'r') as fd:
-            yaml_configuration = yaml.load(fd, Loader=yaml.Loader)
-            return _flatten(yaml_configuration['configuration'])
-    except FileNotFoundError:
-        logger.error(f'{configuration_file} does not exist')
-        raise SystemExit(1)
+        with file.open() as fd:
+            yaml_configuration = yaml.safe_load(fd)
+            return flatten(yaml_configuration['configuration'])
+    except FileNotFoundError as e:
+        logger.exception('%s does not exist', configuration_file)
+        raise SystemExit(1) from e
 
 
 class GrizzlyContext:
-    __instance: Optional['GrizzlyContext'] = None
+    __instance: Optional[GrizzlyContext] = None
 
     _initialized: bool
-    _state: 'GrizzlyContextState'
-    _setup: 'GrizzlyContextSetup'
-    _scenarios: 'GrizzlyContextScenarios'
+    _state: GrizzlyContextState
+    _setup: GrizzlyContextSetup
+    _scenarios: GrizzlyContextScenarios
 
-    @classmethod
-    def __new__(cls, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> 'GrizzlyContext':
+    def __new__(cls, *_args: Any, **_kwargs: Any) -> GrizzlyContext:  # noqa: PYI034
+        """Class is a singleton, there should only be once instance of it."""
         if cls.__instance is None:
             cls.__instance = super().__new__(cls)
             cls.__instance._initialized = False
@@ -76,7 +66,8 @@ class GrizzlyContext:
     @classmethod
     def destroy(cls) -> None:
         if cls.__instance is None:
-            raise ValueError(f"'{cls.__name__}' is not instantiated")
+            message = f"'{cls.__name__}' is not instantiated"
+            raise ValueError(message)
 
         cls.__instance = None
 
@@ -88,26 +79,29 @@ class GrizzlyContext:
             self._initialized = True
 
     @property
-    def setup(self) -> 'GrizzlyContextSetup':
+    def setup(self) -> GrizzlyContextSetup:
         return self._setup
 
     @property
-    def state(self) -> 'GrizzlyContextState':
+    def state(self) -> GrizzlyContextState:
         return self._state
 
     @property
-    def scenario(self) -> 'GrizzlyContextScenario':
+    def scenario(self) -> GrizzlyContextScenario:
+        """Read-only scenario child instance. Shortcut to the current (latest) scenario in the context."""
         if len(self._scenarios) < 1:
-            raise ValueError('no scenarios created!')
+            message = 'no scenarios created!'
+            raise ValueError(message)
 
         return self._scenarios[-1]
 
     @property
-    def scenarios(self) -> 'GrizzlyContextScenarios':
+    def scenarios(self) -> GrizzlyContextScenarios:
         return self._scenarios
 
 
 def jinja2_environment_factory() -> Environment:
+    """Create a Jinja2 environment, so same instance is used throughout grizzly, with custom filters."""
     return Environment(autoescape=False)
 
 
@@ -154,7 +148,8 @@ StackedFuncType = Callable[['GrizzlyContextTasksTmp'], Optional['GrizzlyTaskWrap
 
 
 def stackproperty(func: StackedFuncType) -> property:
-    def setter(self: 'GrizzlyContextTasksTmp', value: Optional['GrizzlyTaskWrapper']) -> None:
+    """Wrap any get property for temporary task pointer depending in the context tasks are added."""
+    def setter(self: GrizzlyContextTasksTmp, value: Optional[GrizzlyTaskWrapper]) -> None:
         attr_name = f'_{func.__name__}'
         instance = getattr(self, attr_name, None)
 
@@ -173,14 +168,14 @@ def stackproperty(func: StackedFuncType) -> property:
 
 
 class GrizzlyContextTasksTmp:
-    _async_group: Optional['AsyncRequestGroupTask']
-    _conditional: Optional['ConditionalTask']
-    _loop: Optional['LoopTask']
+    _async_group: Optional[AsyncRequestGroupTask]
+    _conditional: Optional[ConditionalTask]
+    _loop: Optional[LoopTask]
 
-    _timers: Dict[str, Optional['TimerTask']]
-    _custom: Dict[str, Optional['GrizzlyTaskWrapper']]
+    _timers: Dict[str, Optional[TimerTask]]
+    _custom: Dict[str, Optional[GrizzlyTaskWrapper]]
 
-    __stack__: List['GrizzlyTaskWrapper']
+    __stack__: List[GrizzlyTaskWrapper]
 
     def __init__(self) -> None:
         self.__stack__ = []
@@ -193,31 +188,31 @@ class GrizzlyContextTasksTmp:
         self._custom = {}
 
     @stackproperty
-    def async_group(self) -> Optional['AsyncRequestGroupTask']:
+    def async_group(self) -> Optional[AsyncRequestGroupTask]:
         return self._async_group
 
     @stackproperty
-    def conditional(self) -> Optional['ConditionalTask']:
+    def conditional(self) -> Optional[ConditionalTask]:
         return self._conditional
 
     @stackproperty
-    def loop(self) -> Optional['LoopTask']:
+    def loop(self) -> Optional[LoopTask]:
         return self._loop
 
     @property
-    def custom(self) -> Dict[str, Optional['GrizzlyTaskWrapper']]:
+    def custom(self) -> Dict[str, Optional[GrizzlyTaskWrapper]]:
         return self._custom
 
     @custom.setter
-    def custom(self, value: Dict[str, Optional['GrizzlyTaskWrapper']]) -> None:
+    def custom(self, value: Dict[str, Optional[GrizzlyTaskWrapper]]) -> None:
         self._custom = value
 
     @property
-    def timers(self) -> Dict[str, Optional['TimerTask']]:
+    def timers(self) -> Dict[str, Optional[TimerTask]]:
         return self._timers
 
     @timers.setter
-    def timers(self, value: Dict[str, Optional['TimerTask']]) -> None:
+    def timers(self, value: Dict[str, Optional[TimerTask]]) -> None:
         self._timers = value
 
 
@@ -225,7 +220,7 @@ class GrizzlyContextTasks(List['GrizzlyTask']):
     _tmp: GrizzlyContextTasksTmp
     behave_steps: Dict[int, str]
 
-    def __init__(self, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
 
         self._tmp = GrizzlyContextTasksTmp()
@@ -235,13 +230,13 @@ class GrizzlyContextTasks(List['GrizzlyTask']):
     def tmp(self) -> GrizzlyContextTasksTmp:
         return self._tmp
 
-    def __call__(self) -> List['GrizzlyTask']:
+    def __call__(self) -> List[GrizzlyTask]:
         if len(self.tmp.__stack__) > 0:
             return self.tmp.__stack__[-1].peek()
-        else:
-            return cast(List['GrizzlyTask'], self)
 
-    def add(self, task: 'GrizzlyTask') -> None:
+        return cast(List['GrizzlyTask'], self)
+
+    def add(self, task: GrizzlyTask) -> None:
         if len(self.tmp.__stack__) > 0:
             self.tmp.__stack__[-1].add(task)
         else:
@@ -282,8 +277,8 @@ class GrizzlyContextScenario:
     def name(self) -> str:
         if self._name.endswith(f'_{self.identifier}'):
             return self._name.replace(f'_{self.identifier}', '')
-        else:
-            return self._name
+
+        return self._name
 
     @name.setter
     def name(self, value: str) -> None:
@@ -297,8 +292,8 @@ class GrizzlyContextScenario:
     def class_name(self) -> str:
         if not self.name.endswith(f'_{self.identifier}'):
             return f'{self.name}_{self.identifier}'
-        else:
-            return self.name
+
+        return self.name
 
     def should_validate(self) -> bool:
         return (
@@ -316,7 +311,8 @@ class GrizzlyContextSetupLocustMessages(Dict[MessageDirection, Dict[str, Message
         if message_type not in self[direction]:
             self[direction][message_type] = callback
         else:
-            raise AttributeError(f'message type {message_type} was already registered in direction {direction.name}')
+            message = f'message type {message_type} was already registered in direction {direction.name}'
+            raise AttributeError(message)
 
 
 @dataclass
@@ -360,6 +356,7 @@ class GrizzlyContextScenarios(List[GrizzlyContextScenario]):
         return None
 
     def create(self, behave_scenario: Scenario) -> None:
+        """Create a new scenario based on the behave Scenario, and add it to the current list of scenarios in this context."""
         grizzly_scenario = GrizzlyContextScenario(len(self) + 1, behave=behave_scenario)
 
         self.append(grizzly_scenario)

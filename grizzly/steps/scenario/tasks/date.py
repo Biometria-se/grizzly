@@ -1,25 +1,26 @@
-"""
+"""@anchor pydoc:grizzly.steps.scenario.tasks.date Date
 This module contains step implementations for the {@pylink grizzly.tasks.date} task.
 """
+from __future__ import annotations
+
 from typing import cast
 
-from grizzly.types.behave import Context, then
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import DateTask
+from grizzly.types.behave import Context, then
 
 
-@then(u'parse date "{value}" and save in variable "{variable}"')
+@then('parse date "{value}" and save in variable "{variable}"')
 def step_task_date(context: Context, value: str, variable: str) -> None:
-    """
-    Creates an instance of the {@pylink grizzly.tasks.date} task. Parses a datetime string and transforms it according to specified
-    arguments.
+    """Create an instance of the {@pylink grizzly.tasks.date} task.
+
+    Parses a datetime string and transforms it according to specified arguments.
 
     See {@pylink grizzly.tasks.date} task documentation for more information about arguments.
 
     This step is useful when changes has to be made to a datetime representation during an iteration of a scenario.
 
     Example:
-
     ```gherkin
     ...
     And value for variable "date1" is "none"

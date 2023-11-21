@@ -1,5 +1,4 @@
-"""
-@anchor pydoc:grizzly.testdata.variables.random_string Random String
+"""@anchor pydoc:grizzly.testdata.variables.random_string Random String
 This variable generates a specified number of unique strings, based on a string format pattern.
 
 The list is pre-populated to ensure that each string is unique.
@@ -35,21 +34,25 @@ This can then be used in a template:
 
 `AtomicRandomString.registration_plate_number` will then be a string in the format `[A-Z][A-Z]Z[0-9][0-9]0` and there will be `100` unique values for disposal.
 """
-from typing import Dict, List, Any, Callable, Optional, Set, Type, cast
-from random import randint, choice
+from __future__ import annotations
+
+from contextlib import suppress
+from secrets import choice, randbelow
 from string import ascii_letters
+from typing import Any, Callable, ClassVar, Dict, List, Optional, Set, Type, cast
 from uuid import uuid4
 
-from grizzly_extras.arguments import split_value, parse_arguments
-
 from grizzly.types import bool_type, int_rounded_float_type
+from grizzly_extras.arguments import parse_arguments, split_value
 
 from . import AtomicVariable
 
 
 def atomicrandomstring__base_type__(value: str) -> str:
+    """Validate values that `AtomicRandomString` can be initialized with."""
     if len(value) < 1:
-        raise ValueError('AtomicRandomString: no string pattern specified')
+        message = 'AtomicRandomString: no string pattern specified'
+        raise ValueError(message)
 
     if '|' in value:
         string_pattern, string_arguments = split_value(value)
@@ -57,13 +60,15 @@ def atomicrandomstring__base_type__(value: str) -> str:
         try:
             arguments = parse_arguments(string_arguments)
         except ValueError as e:
-            raise ValueError(f'AtomicRandomString: {str(e)}') from e
+            message = f'AtomicRandomString: {e!s}'
+            raise ValueError(message) from e
 
         for argument, v in arguments.items():
             if argument not in AtomicRandomString.arguments:
-                raise ValueError(f'AtomicRandomString: argument {argument} is not allowed')
-            else:
-                AtomicRandomString.arguments[argument](v)
+                message = f'AtomicRandomString: argument {argument} is not allowed'
+                raise ValueError(message)
+
+            AtomicRandomString.arguments[argument](v)
 
         value = f'{string_pattern} | {string_arguments}'
     else:
@@ -72,10 +77,12 @@ def atomicrandomstring__base_type__(value: str) -> str:
     generators = AtomicRandomString.get_generators(string_pattern)
 
     if len(generators) < 1:
-        raise ValueError('AtomicRandomString: specified string pattern does not contain any generators')
+        message = 'AtomicRandomString: specified string pattern does not contain any generators'
+        raise ValueError(message)
 
     if '%g' in string_pattern and string_pattern.count('%') != 1:
-        raise ValueError('AtomicRandomString: %g cannot be combined with other formats')
+        message = 'AtomicRandomString: %g cannot be combined with other formats'
+        raise ValueError(message)
 
     return value
 
@@ -85,24 +92,26 @@ class AtomicRandomString(AtomicVariable[str]):
     __initialized: bool = False
 
     _strings: Dict[str, List[str]]
-    arguments: Dict[str, Any] = {'upper': bool_type, 'count': int_rounded_float_type}
+    arguments: ClassVar[Dict[str, Any]] = {'upper': bool_type, 'count': int_rounded_float_type}
 
     @staticmethod
-    def get_generators(format: str) -> List[Callable[['AtomicRandomString'], str]]:
+    def get_generators(format_string: str) -> List[Callable[[AtomicRandomString], str]]:
+        """Map format modifiers to generator functions."""
         formats: List[Callable[[AtomicRandomString], str]] = []
         # first item is either empty, or it's a static character
-        for f in format.split('%')[1:]:
-            f = f[0]  # could be static characters in the pattern, only supports one character formatters
-            generator = getattr(AtomicRandomString, f'_generate_{f}', None)
+        for format_modifier in format_string.split('%')[1:]:
+            generator_name = format_modifier[0]  # could be static characters in the pattern, only supports one character formatters
+            generator = getattr(AtomicRandomString, f'_generate_{generator_name}', None)
             if not callable(generator):
-                raise NotImplementedError(f'AtomicRandomString: format "{f}" is not implemented')
+                message = f'AtomicRandomString: format "{generator_name}" is not implemented'
+                raise NotImplementedError(message)
 
             formats.append(generator)
 
         return formats
 
-    def __init__(self, variable: str, value: str, outer_lock: bool = False) -> None:
-        with self.semaphore(outer_lock):
+    def __init__(self, variable: str, value: str, *, outer_lock: bool = False) -> None:
+        with self.semaphore(outer=outer_lock):
             safe_value = self.__class__.__base_type__(value)
 
             settings = {'upper': False, 'count': 1}
@@ -136,7 +145,7 @@ class AtomicRandomString(AtomicVariable[str]):
         return choice(ascii_letters)
 
     def _generate_d(self) -> int:
-        return randint(0, 9)
+        return randbelow(10)
 
     def _generate_g(self) -> str:
         return str(uuid4())
@@ -147,16 +156,12 @@ class AtomicRandomString(AtomicVariable[str]):
 
         string_pattern = string_pattern.replace('%g', '%s')
 
-        for _ in range(0, settings['count']):
+        for _ in range(settings['count']):
             generated_string: Optional[str] = None
 
             while generated_string is None or generated_string in generated_strings:
-                generated_part: List[str] = []
-
-                for generator in generators:
-                    generated_part.append(generator(self))
-
-                generated_string = string_pattern % tuple(generated_part)
+                generated_part = tuple([generator(self) for generator in generators])
+                generated_string = string_pattern % generated_part
 
                 if settings['upper']:
                     generated_string = generated_string.upper()
@@ -166,7 +171,7 @@ class AtomicRandomString(AtomicVariable[str]):
         return list(generated_strings)
 
     @classmethod
-    def clear(cls: Type['AtomicRandomString']) -> None:
+    def clear(cls: Type[AtomicRandomString]) -> None:
         super().clear()
 
         instance = cast(AtomicRandomString, cls.get())
@@ -186,9 +191,7 @@ class AtomicRandomString(AtomicVariable[str]):
 
     def __delitem__(self, variable: str) -> None:
         with self.semaphore():
-            try:
+            with suppress(KeyError):
                 del self._strings[variable]
-            except KeyError:
-                pass
 
             super().__delitem__(variable)

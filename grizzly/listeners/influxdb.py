@@ -1,21 +1,27 @@
+"""@anchor pydoc:grizzly.listeners.influxdb InfluxDB
+Write metrics to InfluxDB.
+"""
+from __future__ import annotations
+
+import json
 import logging
 import os
-import json
-
-from types import TracebackType
-from typing import Any, Dict, List, Optional, Type, Literal, TypedDict, Tuple, cast
-from datetime import datetime, timezone, timedelta
-from urllib.parse import urlparse, parse_qs, unquote
+from datetime import datetime, timedelta, timezone
 from platform import node as get_hostname
+from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Type, TypedDict, cast
+from urllib.parse import parse_qs, unquote, urlparse
 
 import gevent
-
 from influxdb import InfluxDBClient
 from influxdb.exceptions import InfluxDBClientError
 
 from grizzly.context import GrizzlyContext
-from grizzly.types.locust import Environment, CatchResponseError
+from grizzly.types.locust import CatchResponseError, Environment
 
+if TYPE_CHECKING:  # pragma: no cover
+    from types import TracebackType
+
+    from grizzly.types import Self
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +53,7 @@ class InfluxDb:
         self.username = username
         self.password = password
 
-    def connect(self) -> 'InfluxDb':
+    def connect(self) -> Self:
         self.client = InfluxDBClient(
             host=self.host,
             port=self.port,
@@ -58,7 +64,7 @@ class InfluxDb:
         )
         return self
 
-    def __enter__(self) -> 'InfluxDb':
+    def __enter__(self) -> Self:
         return self.connect()
 
     def __exit__(
@@ -74,16 +80,16 @@ class InfluxDb:
                 content = json.loads(exc.content)
                 message = f'{exc.code}: {content["error"]}'
                 raise InfluxDbError(message)
-            elif isinstance(exc, InfluxDbError):
+            elif isinstance(exc, InfluxDbError):  # noqa: RET506
                 raise exc
-            else:
-                raise InfluxDbError(exc)
+
+            raise InfluxDbError(exc)
 
         return True
 
     def read(self, table: str, columns: List[str]) -> List[Dict[str, Any]]:
-        query = f'select {",".join(columns)} from "{table}";'
-        logger.debug(f'query: {query}')
+        query = f'select {",".join(columns)} from "{table}";'  # noqa: S608
+        logger.debug('query: %s', query)
         result = self.client.query(query)
 
         return cast(List[Dict[str, Any]], result.raw['series'])
@@ -91,10 +97,7 @@ class InfluxDb:
     def write(self, values: List[InfluxDbPoint]) -> None:
         try:
             self.client.write_points(values)
-            logger.debug((
-                f'successfully wrote {len(values)} points to '
-                f'{self.database}@{self.host}:{self.port}'
-            ))
+            logger.debug('successfully wrote %d points to %s@%s:%d', len(values), self.database, self.host, self.port)
         except InfluxDBClientError as e:
             content = json.loads(e.content)
             code = e.code
@@ -124,7 +127,8 @@ class InfluxDbListener:
         path = parsed.path[1:] if parsed.path is not None else None
 
         assert parsed.hostname is not None, f'hostname not found in {url}'
-        assert path is not None and len(path) > 0, f'database was not found in {url}'
+        assert path is not None, f'{url} contains no path'
+        assert len(path) > 0, f'database was not found in {url}'
 
         self.influx_host = parsed.hostname
         self.influx_port = parsed.port or 8086
@@ -134,9 +138,8 @@ class InfluxDbListener:
 
         params = parse_qs(parsed.query)
 
-        assert 'Testplan' in params, f'Testplan not found in {parsed.query}'
+        assert 'Testplan' in params, f'Testplan was not found in {parsed.query}'
         self._testplan = unquote(params['Testplan'][0])
-        # self._env = env.parsed_options.target_env
         self._target_environment = unquote(params['TargetEnvironment'][0]) if 'TargetEnvironment' in params else None
         self.environment = environment
         self._hostname = get_hostname()
@@ -154,7 +157,7 @@ class InfluxDbListener:
         self.environment.events.request.add_listener(self.request)
         self.environment.events.quit.add_listener(self.on_quit)
 
-    def on_quit(self, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+    def on_quit(self, *_args: Any, **_kwargs: Any) -> None:
         self._finished = True
 
     def create_client(self) -> InfluxDb:
@@ -190,7 +193,7 @@ class InfluxDbListener:
                     'time': timestamp,
                     'fields': {
                         'user_count': user_count,
-                    }
+                    },
                 }
                 points.append(point)
 
@@ -209,8 +212,8 @@ class InfluxDbListener:
                     events_buffer = self._events
                     self._events = []
                     self.connection.write(events_buffer)
-                except Exception as e:
-                    self.logger.error(str(e))
+                except Exception:
+                    self.logger.exception('failed to write metrics')
 
             if not self.finished:
                 gevent.sleep(0.5)
@@ -252,7 +255,7 @@ class InfluxDbListener:
         except ValueError:
             pass
 
-        for key in os.environ.keys():
+        for key in os.environ:
             if not key.startswith('TESTDATA_VARIABLE_'):
                 continue
 
@@ -273,7 +276,7 @@ class InfluxDbListener:
             'time': timestamp.isoformat(),
             'fields': {
                 **metrics,
-            }
+            },
         }
 
         self._events.append(event)
@@ -285,7 +288,7 @@ class InfluxDbListener:
         response_time: Any,
         response_length: Any,
         exception: Optional[Any] = None,
-        **_kwargs: Dict[str, Any],
+        **_kwargs: Any,
     ) -> None:
         try:
             result = 'Success' if exception is None else 'Failure'
@@ -298,15 +301,15 @@ class InfluxDbListener:
             message_to_log = f'{result}: {request_type} {name} Response time: {response_time}'
 
             if exception is not None:
-                message_to_log = f'{message_to_log} Exception: {str(exception)}'
+                message_to_log = f'{message_to_log} Exception: {exception!r}'
                 logger_method = self.logger.error
             else:
                 logger_method = self.logger.debug
 
             logger_method(message_to_log)
             self._log_request(request_type, name, result, metrics, exception)
-        except Exception as e:
-            self.logger.error(f'failed to write metric for "{request_type} {name}": {str(e)}')
+        except Exception:
+            self.logger.exception('failed to write metric for "%s %s"', request_type, name)
 
     def _create_metrics(self, response_time: int, response_length: int) -> Dict[str, Any]:
         metrics: Dict[str, Any] = {}

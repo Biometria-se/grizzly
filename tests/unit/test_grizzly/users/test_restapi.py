@@ -1,29 +1,30 @@
+"""Unit tests for grizzly.users.restapi."""
+from __future__ import annotations
+
 import json
-
-from typing import cast, Dict, Any, Callable
 from time import time
-from unittest.mock import ANY
+from typing import TYPE_CHECKING, Any, Callable, Dict, cast
 
+import gevent
+import pytest
 from locust.clients import ResponseContextManager
 from locust.contrib.fasthttp import FastHttpSession, insecure_ssl_context_factory
-
-import pytest
-import gevent
-
-from _pytest.logging import LogCaptureFixture
 from requests.models import Response
 
-from grizzly.users.restapi import RestApiUser
-from grizzly.users.base import AsyncRequests, RequestLogger, ResponseHandler, GrizzlyUser
-from grizzly.types import GrizzlyResponse, RequestMethod
-from grizzly.types.locust import StopUser
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import RequestTask
 from grizzly.testdata.utils import transform
+from grizzly.types import GrizzlyResponse, RequestMethod
+from grizzly.types.locust import StopUser
+from grizzly.users.base import AsyncRequests, GrizzlyUser, RequestLogger, ResponseHandler
+from grizzly.users.restapi import RestApiUser
 from grizzly_extras.transformer import TransformerContentType
+from tests.helpers import ANY, RequestEvent
 
-from tests.fixtures import MockerFixture, GrizzlyFixture
-from tests.helpers import RequestEvent
+if TYPE_CHECKING:  # pragma: no cover
+    from _pytest.logging import LogCaptureFixture
+
+    from tests.fixtures import GrizzlyFixture, MockerFixture
 
 
 class TestRestApiUser:
@@ -37,6 +38,7 @@ class TestRestApiUser:
         assert issubclass(parent.user.__class__, AsyncRequests)
         assert parent.user.host == 'http://example.net'
         assert parent.user._context == {
+            'host': 'http://example.net',
             'variables': {},
             'log_all_requests': False,
             'verify_certificates': True,
@@ -63,9 +65,9 @@ class TestRestApiUser:
             'x-grizzly-user': parent.user.__class__.__name__,
         }
 
-        RestApiUser._context['metadata'] = {'foo': 'bar'}
+        parent.user.__class__.__context__['metadata'] = {'foo': 'bar'}
 
-        user = RestApiUser(parent.user.environment)
+        user = parent.user.__class__(parent.user.environment)
 
         assert user.headers.get('foo', None) == 'bar'
 
@@ -103,62 +105,64 @@ class TestRestApiUser:
                 'verify_certificates': False,
                 'metadata': {
                     'Ocp-Apim-Subscription-Key': '',
-                }
+                },
             }
             parent.user.headers.update({
                 'Ocp-Apim-Subscription-Key': '',
             })
-            parent.user.host = cast(dict, parent.user._context)['host']
+            parent.user.host = cast(dict, parent.user.__context__)['host']
             parent.user.session_started = time()
 
             fire = mocker.spy(parent.user.environment.events.request, 'fire')
 
-            # user.get_oauth_authorization()
             request = RequestTask(RequestMethod.GET, name='test', endpoint='/api/test')
             headers, body = parent.user.request(request)
             parent.logger.info(headers)
             parent.logger.info(body)
             parent.logger.info(fire.call_args_list)
-            assert 0
+            assert 0  # noqa: PT015
 
     def test_get_error_message(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         parent = grizzly_fixture(user_type=RestApiUser)
         assert isinstance(parent.user, RestApiUser)
 
         response = Response()
-        response._content = ''.encode('utf-8')
+        response._content = b''
         response_context_manager = ResponseContextManager(response, RequestEvent(), {})
 
         response.status_code = 400
-        assert parent.user.get_error_message(response_context_manager) == 'bad request'
+        assert parent.user._get_error_message(response_context_manager) == 'bad request'
 
         response.status_code = 401
-        assert parent.user.get_error_message(response_context_manager) == 'unauthorized'
+        assert parent.user._get_error_message(response_context_manager) == 'unauthorized'
 
         response.status_code = 403
-        assert parent.user.get_error_message(response_context_manager) == 'forbidden'
+        assert parent.user._get_error_message(response_context_manager) == 'forbidden'
 
         response.status_code = 404
-        assert parent.user.get_error_message(response_context_manager) == 'not found'
+        assert parent.user._get_error_message(response_context_manager) == 'not found'
 
         response.status_code = 405
-        assert parent.user.get_error_message(response_context_manager) == 'unknown'
+        assert parent.user._get_error_message(response_context_manager) == 'method not allowed'
 
-        response._content = 'just a simple string'.encode('utf-8')
-        assert parent.user.get_error_message(response_context_manager) == 'just a simple string'
+        response.status_code = 999
+        assert parent.user._get_error_message(response_context_manager) == 'unknown'
 
-        response._content = '{"Message": "message\\nproperty\\\\nthat is multiline"}'.encode('utf-8')
-        assert parent.user.get_error_message(response_context_manager) == 'message property'
+        response._content = b'just a simple string'
+        assert parent.user._get_error_message(response_context_manager) == 'just a simple string'
 
-        response._content = '{"error_description": "error description\\r\\nthat is multiline"}'.encode('utf-8')
-        assert parent.user.get_error_message(response_context_manager) == 'error description'
+        response._content = b'{"Message": "message\\nproperty\\\\nthat is multiline"}'
+        assert parent.user._get_error_message(response_context_manager) == 'message property'
 
-        response._content = '{"success": false}'.encode('utf-8')
-        assert parent.user.get_error_message(response_context_manager) == '{"success": false}'
+        response._content = b'{"error_description": "error description\\r\\nthat is multiline"}'
+        assert parent.user._get_error_message(response_context_manager) == 'error description'
+
+        response._content = b'{"success": false}'
+        assert parent.user._get_error_message(response_context_manager) == '{"success": false}'
 
         text_mock = mocker.patch('requests.models.Response.text', new_callable=mocker.PropertyMock)
         text_mock.return_value = None
-        assert parent.user.get_error_message(response_context_manager) == "unknown response <class 'locust.clients.ResponseContextManager'>"
+        assert parent.user._get_error_message(response_context_manager) == "unknown response <class 'locust.clients.ResponseContextManager'>"
 
     def test_async_request(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         parent = grizzly_fixture(user_type=RestApiUser)
@@ -184,7 +188,7 @@ class TestRestApiUser:
         assert args[1].client.max_retries == 1
         assert args[1].client.clientpool.client_args.get('connection_timeout', None) == 60.0
         assert args[1].client.clientpool.client_args.get('network_timeout', None) == 60.0
-        assert args[1].client.clientpool.client_args.get('ssl_context_factory', None) is gevent.ssl.create_default_context  # pylint: disable=no-member
+        assert args[1].client.clientpool.client_args.get('ssl_context_factory', None) is gevent.ssl.create_default_context
 
         parent.user._context['verify_certificates'] = False
 
@@ -217,7 +221,7 @@ class TestRestApiUser:
         parent.user.request(request)
 
     @pytest.mark.parametrize('request_func', [RestApiUser.request_impl, RestApiUser.async_request_impl])
-    def test__request(
+    def test__request(  # noqa: PLR0915
         self,
         grizzly_fixture: GrizzlyFixture,
         mocker: MockerFixture,
@@ -226,7 +230,7 @@ class TestRestApiUser:
         parent = grizzly_fixture(user_type=RestApiUser)
         assert isinstance(parent.user, RestApiUser)
 
-        assert parent.user.__class__.__name__ == 'RestApiUser'
+        assert parent.user.__class__.__name__ == f'RestApiUser_{parent.user._scenario.identifier}'
 
         is_async_request = request_func is RestApiUser.async_request_impl
 
@@ -265,17 +269,11 @@ class TestRestApiUser:
         request_event_spy.assert_called_once_with(
             request_type='SEND',
             name='001 TestScenario',
-            response_time=ANY,
+            response_time=ANY(int),
             response_length=0,
             context=parent.user._context,
-            exception=ANY,
+            exception=ANY(NotImplementedError, message=f'SEND is not implemented for RestApiUser_{parent.user._scenario.identifier}'),
         )
-
-        _, kwargs = request_event_spy.call_args_list[-1]
-        exception = kwargs.get('exception', None)
-        assert isinstance(exception, NotImplementedError)
-        assert str(exception) == 'SEND is not implemented for RestApiUser'
-
         request_event_spy.reset_mock()
 
         # request GET, 200
@@ -293,7 +291,7 @@ class TestRestApiUser:
 
         if not is_async_request:
             expected_parameters.update({
-                'request': ANY,
+                'request': ANY(RequestTask),
                 'verify': parent.user._context.get('verify_certificates', True),
             })
 
@@ -334,7 +332,7 @@ class TestRestApiUser:
 
         response_spy.success.assert_not_called()
         response_spy.failure.assert_called_once_with(
-            '400 not in [200]: bad request'
+            '400 not in [200]: bad request',
         )
 
         response_spy.reset_mock()
@@ -359,7 +357,7 @@ class TestRestApiUser:
 
         response_spy.success.assert_not_called()
         response_spy.failure.assert_called_once_with(
-            '404 not in [200]: borked'
+            '404 not in [200]: borked',
         )
 
         request_spy.reset_mock()
@@ -418,7 +416,7 @@ class TestRestApiUser:
         request.source = 'foobar'
         request.response.content_type = TransformerContentType.MULTIPART_FORM_DATA
         expected_parameters.update({
-            'files': {'foobar': ('foobar.txt', request.source,)}
+            'files': {'foobar': ('foobar.txt', request.source)},
         })
 
         assert parent.user.request(request) == ({'x-bar': 'foo'}, 'success')

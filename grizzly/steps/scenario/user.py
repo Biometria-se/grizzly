@@ -1,21 +1,21 @@
-"""
-@anchor pydoc:grizzly.steps.scenario.user User
+"""@anchor pydoc:grizzly.steps.scenario.user User
 This module contains step implementations that describes a {@pylink grizzly.users}.
 """
+from __future__ import annotations
+
 from typing import cast
 
-from grizzly.types.behave import Context, given
 from grizzly.context import GrizzlyContext
 from grizzly.testdata.utils import resolve_variable
+from grizzly.types.behave import Context, given
 
 
-@given(u'a user of type "{user_class_name}" with weight "{weight_value}" load testing "{host}"')
+@given('a user of type "{user_class_name}" with weight "{weight_value}" load testing "{host}"')
 def step_user_type_with_weight(context: Context, user_class_name: str, weight_value: str, host: str) -> None:
-    """Sets which type of {@pylink grizzly.users} the scenario should use and which `host` is the target,
+    """Set which type of {@pylink grizzly.users} the scenario should use and which `host` is the target,
     together with `weight` of the user (how many instances of this user should spawn relative to others).
 
     Example:
-
     ```gherkin
     Given a user of type "RestApi" with weight "2" load testing "..."
     Given a user of type "MessageQueue" with weight "1" load testing "..."
@@ -41,12 +41,11 @@ def step_user_type_with_weight(context: Context, user_class_name: str, weight_va
     grizzly.scenario.context['host'] = resolve_variable(grizzly, host)
 
 
-@given(u'a user of type "{user_class_name}" load testing "{host}"')
+@given('a user of type "{user_class_name}" load testing "{host}"')
 def step_user_type(context: Context, user_class_name: str, host: str) -> None:
-    """Sets which type of {@pylink grizzly.users} the scenario should use and which `host` is the target.
+    """Set which type of {@pylink grizzly.users} the scenario should use and which `host` is the target.
 
     Example:
-
     ```gherkin
     Given a user of type "RestApi" load testing "http://api.example.com"
     Given a user of type "MessageQueue" load testing "mq://mqm:secret@mq.example.com/?QueueManager=QMGR01&Channel=Channel01"

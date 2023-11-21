@@ -30,34 +30,31 @@ Then put request "test/blob.file" to endpoint "/pub/blobs"
 Then get request from endpoint "/pub/blobs/blob.file"
 ```
 """
-from typing import Any, Dict, Tuple, Optional
+from __future__ import annotations
+
+from os import environ
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, Dict, Optional
 from urllib.parse import urlparse
-from os import path, environ, mkdir
 
-from paramiko import SFTPClient
-
-from grizzly.types import RequestMethod, GrizzlyResponse
-from grizzly.types.locust import Environment
-from grizzly.utils import merge_dicts
 from grizzly.clients import SftpClientSession
-from grizzly.tasks import RequestTask
+from grizzly.types import GrizzlyResponse, RequestMethod
 
-from .base import GrizzlyUser, FileRequests, ResponseHandler
+from .base import FileRequests, GrizzlyUser, ResponseHandler, grizzlycontext
+
+if TYPE_CHECKING:  # pragma: no cover
+    from paramiko import SFTPClient
+
+    from grizzly.tasks import RequestTask
+    from grizzly.types.locust import Environment
 
 
+@grizzlycontext(context={'auth': {'username': None, 'password': None, 'key_file': None}})
 class SftpUser(ResponseHandler, GrizzlyUser, FileRequests):
-    _context: Dict[str, Any] = {
-        'auth': {
-            'username': None,
-            'password': None,
-            'key_file': None,
-        }
-    }
-
     _auth_context: Dict[str, Any]
 
-    _context_root: str
-    _payload_root: str
+    _context_root: Path
+    _payload_root: Path
 
     host: str
     port: int
@@ -65,31 +62,31 @@ class SftpUser(ResponseHandler, GrizzlyUser, FileRequests):
     sftp_client: SftpClientSession
     session: SFTPClient
 
-    def __init__(self, environment: Environment, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+    def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
         super().__init__(environment, *args, **kwargs)
 
-        self._context = merge_dicts(super().context(), self.__class__._context)
-
-        self._payload_root = path.join(environ.get('GRIZZLY_CONTEXT_ROOT', '.'), 'requests')
-        self._download_root = path.join(self._payload_root, 'download')
-
-        if not path.exists(self._download_root):
-            mkdir(self._download_root)
+        self._payload_root = Path(environ.get('GRIZZLY_CONTEXT_ROOT', '.')) / 'requests'
+        self._download_root = self._payload_root / 'download'
+        self._download_root.mkdir(exist_ok=True)
 
         parsed = urlparse(self.host or '')
 
         if parsed.scheme != 'sftp':
-            raise ValueError(f'{self.__class__.__name__}: "{parsed.scheme}" is not supported')
+            message = f'{self.__class__.__name__}: "{parsed.scheme}" is not supported'
+            raise ValueError(message)
 
         if parsed.username is not None or parsed.password is not None:
-            raise ValueError(f'{self.__class__.__name__}: username and password should be set via context variables "auth.username" and "auth.password"')
+            message = f'{self.__class__.__name__}: username and password should be set via context variables "auth.username" and "auth.password"'
+            raise ValueError(message)
 
         if len(parsed.path) > 0:
-            raise ValueError(f'{self.__class__.__name__}: only hostname and port should be included as host')
+            message = f'{self.__class__.__name__}: only hostname and port should be included as host'
+            raise ValueError(message)
 
         # should read key?
         if self._context['auth']['key_file'] is not None:
-            raise NotImplementedError(f'{self.__class__.__name__}: key authentication is not implemented')
+            message = f'{self.__class__.__name__}: key authentication is not implemented'
+            raise NotImplementedError(message)
 
         host = parsed.netloc
         if ':' in host:
@@ -102,10 +99,12 @@ class SftpUser(ResponseHandler, GrizzlyUser, FileRequests):
         key_file = self._context['auth']['key_file']
 
         if username is None:
-            raise ValueError(f'{self.__class__.__name__}: "auth.username" context variable is not set')
+            message = f'{self.__class__.__name__}: "auth.username" context variable is not set'
+            raise ValueError(message)
 
         if password is None and key_file is None:
-            raise ValueError(f'{self.__class__.__name__}: "auth.password" or "auth.key" context variable must be set')
+            message = f'{self.__class__.__name__}: "auth.password" or "auth.key" context variable must be set'
+            raise ValueError(message)
 
     def on_start(self) -> None:
         super().on_start()
@@ -119,27 +118,26 @@ class SftpUser(ResponseHandler, GrizzlyUser, FileRequests):
     def request_impl(self, request: RequestTask) -> GrizzlyResponse:
         payload: Optional[str] = None
 
-        try:
-            if request.method == RequestMethod.PUT:
-                if request.source is None:
-                    raise ValueError(f'{self.__class__.__name__}: request "{request.name}" does not have a payload, incorrect method specified')
+        if request.method == RequestMethod.PUT:
+            if request.source is None:
+                message = f'{self.__class__.__name__}: request "{request.name}" does not have a payload, incorrect method specified'
+                raise ValueError(message)
 
-                payload = path.realpath(path.join(self._payload_root, request.source))
-                self.session.put(payload, request.endpoint)
-            elif request.method == RequestMethod.GET:
-                file_name = path.basename(request.endpoint)
-                # @TODO: if endpoint is a directory, should we download all files in there?
-                payload = path.join(self._download_root, file_name)
-                self.session.get(request.endpoint, payload)
-            else:
-                raise NotImplementedError(f'{self.__class__.__name__} has not implemented {request.method.name}')
+            payload = str((self._payload_root / request.source).resolve())
+            self.session.put(payload, request.endpoint)
+        elif request.method == RequestMethod.GET:
+            file_name = Path(request.endpoint).name
+            # @TODO: if endpoint is a directory, should we download all files in there?
+            payload = str(self._download_root / file_name)
+            self.session.get(request.endpoint, payload)
+        else:
+            message = f'{self.__class__.__name__} has not implemented {request.method.name}'
+            raise NotImplementedError(message)
 
-            headers = {
-                'method': request.method.name.lower(),
-                'host': self.host or '',
-                'path': request.endpoint,
-            }
+        headers = {
+            'method': request.method.name.lower(),
+            'host': self.host or '',
+            'path': request.endpoint,
+        }
 
-            return (headers, payload,)
-        except:
-            raise
+        return (headers, payload)

@@ -1,23 +1,26 @@
+"""Unit tests of grizzly.tasks.request."""
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, Optional, Tuple
+
 import pytest
-
-from typing import Any, Tuple, Optional
-
-from pytest_mock import MockerFixture
-from locust.clients import ResponseContextManager
 from jinja2 import Template
 
-from grizzly.users.base.grizzly_user import GrizzlyUser
-from grizzly.users.base.response_handler import ResponseHandlerAction
-
-from grizzly_extras.transformer import TransformerContentType
 from grizzly.tasks import (
     RequestTask,
     RequestTaskHandlers,
     RequestTaskResponse,
 )
 from grizzly.types import RequestMethod
+from grizzly.users.base.response_handler import ResponseHandlerAction
+from grizzly_extras.transformer import TransformerContentType
 
-from tests.fixtures import GrizzlyFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from locust.clients import ResponseContextManager
+    from pytest_mock import MockerFixture
+
+    from grizzly.users.base.grizzly_user import GrizzlyUser
+    from tests.fixtures import GrizzlyFixture
 
 
 class TestRequestTaskHandlers:
@@ -92,10 +95,7 @@ class TestRequestTask:
 
         task(parent)
 
-        assert request_spy.call_count == 1
-        args, kwargs = request_spy.call_args_list[0]
-        assert args == (task_factory,)
-        assert kwargs == {}
+        request_spy.assert_called_once_with(task_factory)
 
         # automagically create template if not set
         task_factory.source = 'hello {{ world }}'
@@ -115,12 +115,15 @@ class TestRequestTask:
         assert task_factory.response.content_type == TransformerContentType.XML
 
         # test missing required arguments for multipart/form-data
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match=r'Content type multipart\/form-data requires endpoint arguments multipart_form_data_name and multipart_form_data_filename'):
             RequestTask(RequestMethod.POST, 'test-name', endpoint='/api/test | content_type="multipart/form-data"')
 
         # test required arguments for multipart/form-data
-        task_factory = RequestTask(RequestMethod.POST, 'test-name',
-                                   endpoint='/api/test | content_type="multipart/form-data", multipart_form_data_filename="foo", multipart_form_data_name="bar"')
+        task_factory = RequestTask(
+            RequestMethod.POST,
+            'test-name',
+            endpoint='/api/test | content_type="multipart/form-data", multipart_form_data_filename="foo", multipart_form_data_name="bar"',
+        )
         assert task_factory.endpoint == '/api/test'
         assert task_factory.arguments == {'multipart_form_data_filename': 'foo', 'multipart_form_data_name': 'bar'}
         assert task_factory.response.content_type == TransformerContentType.MULTIPART_FORM_DATA

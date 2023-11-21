@@ -1,5 +1,4 @@
-"""
-@anchor pydoc:grizzly.tasks.wait_explicit Explicit Wait
+"""@anchor pydoc:grizzly.tasks.wait_explicit Explicit Wait
 This task executes a `gevent.sleep` and is used to manually create delays between steps in a scenario.
 
 ## Step implementations
@@ -10,13 +9,15 @@ This task executes a `gevent.sleep` and is used to manually create delays betwee
 
 * `time_expression` _str_ - float as string or a fractions of seconds to excplicitly sleep in the scenario, supports {@link framework.usage.variables.templating}
 """
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Any
 
 from gevent import sleep as gsleep
 
 from grizzly.exceptions import StopUser
 
-from . import GrizzlyTask, template, grizzlytask
+from . import GrizzlyTask, grizzlytask, template
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.scenarios import GrizzlyScenario
@@ -33,16 +34,17 @@ class ExplicitWaitTask(GrizzlyTask):
 
     def __call__(self) -> grizzlytask:
         @grizzlytask
-        def task(parent: 'GrizzlyScenario') -> Any:
+        def task(parent: GrizzlyScenario) -> Any:
             try:
                 time_rendered = parent.render(self.time_expression)
                 if len(time_rendered.strip()) < 1:
-                    raise RuntimeError(f'"{self.time_expression}" rendered into "{time_rendered}" which is not valid')
+                    message = f'"{self.time_expression}" rendered into "{time_rendered}" which is not valid'
+                    raise RuntimeError(message)
 
                 time = float(time_rendered.strip())
-                parent.logger.debug(f'waiting for {time} seconds')
+                parent.logger.debug('waiting for %f seconds', time)
                 gsleep(time)
-                parent.logger.debug(f'done waiting for {time} seconds')
+                parent.logger.debug('done waiting for %f seconds', time)
             except Exception as exception:
                 parent.user.environment.events.request.fire(
                     request_type='WAIT',
@@ -53,6 +55,6 @@ class ExplicitWaitTask(GrizzlyTask):
                     exception=exception,
                 )
 
-                raise StopUser()
+                raise StopUser from exception
 
         return task

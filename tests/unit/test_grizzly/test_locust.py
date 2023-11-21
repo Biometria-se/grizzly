@@ -1,53 +1,53 @@
+"""Unit tests of grizzly.locust."""
+from __future__ import annotations
+
 import logging
-import sys
 import re
-
+import sys
+from contextlib import suppress
 from os import environ
-from typing import cast, Tuple, Any, Dict, Type, List
-from types import FunctionType
-from random import randint
+from secrets import choice
 from socket import error as socket_error
-from unittest.mock import MagicMock
+from types import FunctionType
+from typing import TYPE_CHECKING, Any, List, Type, cast
 
-import pytest
 import gevent
-
-from _pytest.logging import LogCaptureFixture
-from _pytest.capture import CaptureFixture
-from pytest_mock import MockerFixture
-from locust.stats import RequestStats
-from locust.user.users import User
+import pytest
 from jinja2 import TemplateError
+from locust.stats import RequestStats
 
+from grizzly.context import GrizzlyContext
 from grizzly.locust import (
     greenlet_exception_logger,
     grizzly_print_percentile_stats,
     grizzly_print_stats,
+    on_local,
     on_master,
     on_worker,
-    on_local,
     print_scenario_summary,
     run,
     setup_environment_listeners,
     setup_locust_scenarios,
     setup_resource_limits,
 )
-from grizzly.types import RequestDirection, RequestMethod, RequestType
-from grizzly.types.locust import Environment
-from grizzly.types.behave import Context, Scenario
-from grizzly.context import GrizzlyContext
-from grizzly.tasks import LogMessageTask, RequestTask, ExplicitWaitTask
-from grizzly.tasks.clients import MessageQueueClientTask
-from grizzly.users import RestApiUser, MessageQueueUser
 from grizzly.scenarios import IteratorScenario
+from grizzly.tasks import ExplicitWaitTask, LogMessageTask, RequestTask
+from grizzly.tasks.clients import MessageQueueClientTask
 from grizzly.testdata.variables import AtomicIntegerIncrementer
+from grizzly.types import RequestDirection, RequestMethod, RequestType, pymqi
+from grizzly.types.behave import Context, Scenario
+from grizzly.types.locust import Environment
+from grizzly.users import MessageQueueUser, RestApiUser
 
-try:
-    import pymqi
-except:
-    from grizzly_extras import dummy_pymqi as pymqi
+if TYPE_CHECKING:  # pragma: no cover
+    from unittest.mock import MagicMock
 
-from tests.fixtures import BehaveFixture, NoopZmqFixture
+    from _pytest.capture import CaptureFixture
+    from _pytest.logging import LogCaptureFixture
+    from locust.user.users import User
+    from pytest_mock import MockerFixture
+
+    from tests.fixtures import BehaveFixture, NoopZmqFixture
 
 
 def test_greenlet_exception_logger(caplog: LogCaptureFixture) -> None:
@@ -83,15 +83,11 @@ def test_on_master(behave_fixture: BehaveFixture) -> None:
         assert on_master(behave)
         assert environ.get('LOCUST_IS_MASTER', None) == 'true'
     finally:
-        try:
+        with suppress(KeyError):
             del environ['LOCUST_IS_MASTER']
-        except KeyError:
-            pass
 
-        try:
+        with suppress(KeyError):
             del behave.config.userdata['master']
-        except KeyError:
-            pass
 
 
 def test_on_worker(behave_fixture: BehaveFixture) -> None:
@@ -105,15 +101,11 @@ def test_on_worker(behave_fixture: BehaveFixture) -> None:
         assert on_worker(behave)
         assert environ.get('LOCUST_IS_WORKER', None) == 'true'
     finally:
-        try:
+        with suppress(KeyError):
             del environ['LOCUST_IS_WORKER']
-        except KeyError:
-            pass
 
-        try:
+        with suppress(KeyError):
             del behave.config.userdata['worker']
-        except KeyError:
-            pass
 
 
 def test_on_local(behave_fixture: BehaveFixture) -> None:
@@ -134,50 +126,40 @@ def test_on_local(behave_fixture: BehaveFixture) -> None:
         assert on_local(behave)
         assert environ.get('LOCUST_IS_LOCAL', None) == 'true'
     finally:
-        try:
+        with suppress(KeyError):
             del environ['LOCUST_IS_LOCAL']
-        except KeyError:
-            pass
 
-        try:
+        with suppress(KeyError):
             del behave.config.userdata['master']
-        except KeyError:
-            pass
 
-        try:
+        with suppress(KeyError):
             del behave.config.userdata['worker']
-        except KeyError:
-            pass
 
 
-def test_setup_locust_scenarios(behave_fixture: BehaveFixture, noop_zmq: NoopZmqFixture) -> None:
+def test_setup_locust_scenarios(behave_fixture: BehaveFixture, noop_zmq: NoopZmqFixture) -> None:  # noqa: PLR0915
     noop_zmq('grizzly.tasks.clients.messagequeue')
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
 
-    with pytest.raises(AssertionError) as ae:
+    with pytest.raises(AssertionError, match='no scenarios in feature'):
         setup_locust_scenarios(grizzly)
-    assert 'no scenarios in feature' in str(ae)
 
     # scenario is missing host
     grizzly.scenarios.create(behave_fixture.create_scenario('test'))
 
-    with pytest.raises(AssertionError) as ae:
+    with pytest.raises(AssertionError, match='increase the number in step'):
         setup_locust_scenarios(grizzly)
-    assert 'increase the number in step' in str(ae)
 
     grizzly.setup.user_count = 1
 
-    with pytest.raises(AssertionError) as ae:
+    with pytest.raises(AssertionError, match='variable "host" is not found in the context for'):
         setup_locust_scenarios(grizzly)
-    assert 'variable "host" is not found in the context for' in str(ae)
 
     grizzly.scenario.context['host'] = 'https://test.example.org'
 
     # no tasks in scenario
-    with pytest.raises(AssertionError) as ae:
+    with pytest.raises(AssertionError, match='no tasks has been added to'):
         setup_locust_scenarios(grizzly)
-    assert 'no tasks has been added to' in str(ae)
 
     task = RequestTask(RequestMethod.GET, 'test-1', '/api/v1/test/1')
     grizzly.scenario.tasks.add(task)
@@ -186,7 +168,7 @@ def test_setup_locust_scenarios(behave_fixture: BehaveFixture, noop_zmq: NoopZmq
 
     # incorrect user type
     grizzly.scenario.user.class_name = 'NonExistingUser'
-    with pytest.raises(AttributeError):
+    with pytest.raises(AttributeError, match=r"module 'grizzly\.users' has no attribute 'NonExistingUser'"):
         setup_locust_scenarios(grizzly)
 
     grizzly.scenario.user.class_name = 'RestApiUser'
@@ -196,7 +178,7 @@ def test_setup_locust_scenarios(behave_fixture: BehaveFixture, noop_zmq: NoopZmq
     assert len(user_classes) == 1
 
     user_class = user_classes[-1]
-    assert issubclass(user_class, (RestApiUser, ))
+    assert issubclass(user_class, RestApiUser)
     assert len(user_class.tasks) == 1
     assert user_class.host == 'https://test.example.org'
     assert grizzly.scenario.name.startswith('IteratorScenario')
@@ -217,11 +199,11 @@ def test_setup_locust_scenarios(behave_fixture: BehaveFixture, noop_zmq: NoopZmq
         grizzly.scenario.context['host'] = 'mq://test.example.org?QueueManager=QM01&Channel=TEST.CHANNEL'
         user_classes, start_messagequeue_daemon = setup_locust_scenarios(grizzly)
 
-        assert start_messagequeue_daemon == set(['async-messaged'])
+        assert start_messagequeue_daemon == {'async-messaged'}
         assert len(user_classes) == 1
 
         user_class = user_classes[-1]
-        assert issubclass(user_class, (MessageQueueUser, ))
+        assert issubclass(user_class, MessageQueueUser)
         assert len(user_class.tasks) == 1
         assert user_class.host == 'mq://test.example.org?QueueManager=QM01&Channel=TEST.CHANNEL'
         assert grizzly.scenario.name.startswith('IteratorScenario')
@@ -237,15 +219,15 @@ def test_setup_locust_scenarios(behave_fixture: BehaveFixture, noop_zmq: NoopZmq
         grizzly.scenario.tasks.add(MessageQueueClientTask(RequestDirection.FROM, 'mqs://username:password@mq.example.io/queue:INCOMING?QueueManager=QM01&Channel=TCP.IN'))
         user_classes, start_messagequeue_daemon = setup_locust_scenarios(grizzly)
 
-        assert start_messagequeue_daemon == set(['async-messaged'])
+        assert start_messagequeue_daemon == {'async-messaged'}
         assert len(user_classes) == 1
 
 
-@pytest.mark.parametrize('user_count, user_distribution', [
-    (6, [1, 1, 1, 1, 1, 1],),
-    (10, [2, 4, 1, 1, 1, 1],),
-    (60, [14, 25, 5, 8, 4, 4],),
-    (70, [17, 29, 5, 9, 5, 5],),
+@pytest.mark.parametrize(('user_count', 'user_distribution'), [
+    (6, [1, 1, 1, 1, 1, 1]),
+    (10, [2, 4, 1, 1, 1, 1]),
+    (60, [14, 25, 5, 8, 4, 4]),
+    (70, [17, 29, 5, 9, 5, 5]),
 ])
 def test_setup_locust_scenarios_user_distribution(behave_fixture: BehaveFixture, user_count: int, user_distribution: List[int]) -> None:
     distribution: List[int] = [25, 42, 8, 13, 6, 6]
@@ -254,7 +236,7 @@ def test_setup_locust_scenarios_user_distribution(behave_fixture: BehaveFixture,
     grizzly.setup.user_count = user_count
     grizzly.scenarios.clear()
 
-    for index in range(0, len(distribution)):
+    for index in range(len(distribution)):
         scenario = Scenario(filename=None, line=None, keyword='', name=f'Test-{(index + 1)}')
         grizzly.scenarios.create(scenario)
         grizzly.scenario.context['host'] = 'http://localhost:8003'
@@ -270,12 +252,12 @@ def test_setup_locust_scenarios_user_distribution(behave_fixture: BehaveFixture,
 
 
 @pytest.mark.skipif(sys.platform == 'win32', reason='resource module is posix only, this is not done in locust on windows')
-def test_setup_resource_limits(behave_fixture: BehaveFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
+def test_setup_resource_limits(behave_fixture: BehaveFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:  # noqa: PLR0915
     import resource
     behave = behave_fixture.context
 
-    def mock_on_master(is_master: bool) -> None:
-        def mocked_on_master(context: Context) -> bool:
+    def mock_on_master(*, is_master: bool) -> None:
+        def mocked_on_master(_: Context) -> bool:
             return is_master
 
         mocker.patch(
@@ -286,13 +268,13 @@ def test_setup_resource_limits(behave_fixture: BehaveFixture, mocker: MockerFixt
     def mock_sys_platform(name: str) -> None:
         mocker.patch(
             'grizzly.locust.sys.platform',
-            name
+            name,
         )
 
     def mock_getrlimit(limit: int) -> MagicMock:
         return mocker.patch(
             'resource.getrlimit',
-            return_value=(limit, limit,),
+            return_value=(limit, limit),
         )
 
     getrlimit_mock = mock_getrlimit(1024)
@@ -303,38 +285,33 @@ def test_setup_resource_limits(behave_fixture: BehaveFixture, mocker: MockerFixt
     )
 
     # win32
-    mock_on_master(False)
+    mock_on_master(is_master=False)
     mock_sys_platform('win32')
     setup_resource_limits(behave)
-    assert setrlimit_mock.call_count == 0
-    assert getrlimit_mock.call_count == 0
+    setrlimit_mock.assert_not_called()
+    getrlimit_mock.assert_not_called()
 
-    mock_on_master(True)
+    mock_on_master(is_master=True)
     mock_sys_platform('win32')
     setup_resource_limits(behave)
-    assert setrlimit_mock.call_count == 0
-    assert getrlimit_mock.call_count == 0
+    setrlimit_mock.assert_not_called()
+    getrlimit_mock.assert_not_called()
 
     # linux
-    mock_on_master(True)
+    mock_on_master(is_master=True)
     mock_sys_platform('linux')
     setup_resource_limits(behave)
-    assert setrlimit_mock.call_count == 0
-    assert getrlimit_mock.call_count == 0
+    setrlimit_mock.assert_not_called()
+    getrlimit_mock.assert_not_called()
 
     # make sure setrlimit is called
-    mock_on_master(False)
+    mock_on_master(is_master=False)
     getrlimit_mock = mock_getrlimit(1024)
     setup_resource_limits(behave)
-    assert setrlimit_mock.call_count == 1
-    assert getrlimit_mock.call_count == 1
-    args, kwargs = setrlimit_mock.call_args_list[-1]
-    assert kwargs == {}
-    assert len(args) == 2
-    assert args[0] == resource.RLIMIT_NOFILE
-    limit_min, limit_max = args[1]
-    assert limit_min == 10000
-    assert limit_max == resource.RLIM_INFINITY
+    getrlimit_mock.assert_called_once_with(resource.RLIMIT_NOFILE)
+    setrlimit_mock.assert_called_once_with(resource.RLIMIT_NOFILE, (10000, resource.RLIM_INFINITY))
+    getrlimit_mock.reset_mock()
+    setrlimit_mock.reset_mock()
 
     # failed to set resource limits
     setrlimit_mock = mocker.patch(
@@ -345,8 +322,9 @@ def test_setup_resource_limits(behave_fixture: BehaveFixture, mocker: MockerFixt
     with caplog.at_level(logging.WARNING):
         setup_resource_limits(behave)
     assert "and the OS didn't allow locust to increase it by itself" in caplog.text
-    assert setrlimit_mock.call_count == 1
-    assert getrlimit_mock.call_count == 2
+    setrlimit_mock.assert_called_once_with(resource.RLIMIT_NOFILE, (10000, resource.RLIM_INFINITY))
+    getrlimit_mock.assert_called_once_with(resource.RLIMIT_NOFILE)
+    getrlimit_mock.reset_mock()
     caplog.clear()
 
     setrlimit_mock = mocker.patch(
@@ -356,23 +334,27 @@ def test_setup_resource_limits(behave_fixture: BehaveFixture, mocker: MockerFixt
     with caplog.at_level(logging.WARNING):
         setup_resource_limits(behave)
     assert "and the OS didn't allow locust to increase it by itself" in caplog.text
-    assert setrlimit_mock.call_count == 1
-    assert getrlimit_mock.call_count == 3
+    setrlimit_mock.assert_called_once_with(resource.RLIMIT_NOFILE, (10000, resource.RLIM_INFINITY))
+    getrlimit_mock.assert_called_once_with(resource.RLIMIT_NOFILE)
+    setrlimit_mock.reset_mock()
+    getrlimit_mock.reset_mock()
     caplog.clear()
 
     getrlimit_mock = mock_getrlimit(10001)
     setup_resource_limits(behave)
-    assert setrlimit_mock.call_count == 1
-    assert getrlimit_mock.call_count == 1
+    getrlimit_mock.assert_called_once_with(resource.RLIMIT_NOFILE)
+    setrlimit_mock.assert_not_called()
+    getrlimit_mock.reset_mock()
+    setrlimit_mock.reset_mock()
 
 
-def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
+def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: MockerFixture) -> None:  # noqa: PLR0915
     from locust import events
 
     behave = behave_fixture.context
 
-    def mock_on_worker(on_worker: bool) -> None:
-        def mocked_on_worker(context: Context) -> bool:
+    def mock_on_worker(*, on_worker: bool) -> None:
+        def mocked_on_worker(_: Context) -> bool:
             return on_worker
 
         mocker.patch(
@@ -392,7 +374,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
 
     try:
         # event listeners for worker node
-        mock_on_worker(True)
+        mock_on_worker(on_worker=True)
         external_dependencies, message_handlers = setup_environment_listeners(behave)
 
         assert len(environment.events.init._handlers) == 1
@@ -422,7 +404,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
         grizzly.state.variables['AtomicIntegerIncrementer.value'] = '1 | step=10'
 
         # event listeteners for master node, not validating results
-        mock_on_worker(False)
+        mock_on_worker(on_worker=False)
 
         task = RequestTask(RequestMethod.POST, 'test-post-1', '/api/v3/test/post/1')
         task.source = '{{ AtomicIntegerIncrementer.value }}, {{ test_id }}'
@@ -430,9 +412,8 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
         grizzly.scenario.tasks.clear()
         grizzly.scenario.tasks.add(task)
 
-        with pytest.raises(AssertionError) as ae:
+        with pytest.raises(AssertionError, match='variables has been found in templates, but have not been declared: test_id'):
             setup_environment_listeners(behave)
-        assert 'variables has been found in templates, but have not been declared: test_id' in str(ae)
 
         grizzly.state.variables['test_id'] = 'test-1'
         environment.events.spawning_complete._handlers = []
@@ -479,22 +460,16 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
         environment.events.spawning_complete._handlers = []
 
         # problems initializing testdata
-        def mocked_initialize_testdata(grizzly: GrizzlyContext) -> Any:
-            raise TemplateError('failed to initialize testdata')
-
         mocker.patch(
             'grizzly.locust.initialize_testdata',
-            mocked_initialize_testdata,
+            side_effect=TemplateError('failed to initialize testdata'),
         )
 
-        with pytest.raises(AssertionError) as ae:
+        with pytest.raises(AssertionError, match='error parsing request payload: '):
             setup_environment_listeners(behave)
-        assert 'error parsing request payload: ' in str(ae)
     finally:
-        try:
+        with suppress(Exception):
             AtomicIntegerIncrementer.destroy()
-        except:
-            pass
 
 
 def test_print_scenario_summary(behave_fixture: BehaveFixture, capsys: CaptureFixture) -> None:
@@ -506,12 +481,12 @@ def test_print_scenario_summary(behave_fixture: BehaveFixture, capsys: CaptureFi
     print_scenario_summary(grizzly)
 
     summary = capsys.readouterr().out
-    assert '''Scenario
+    assert summary == """Scenario
 ident   iter  status      description
 ------|-----|-----------|-------------|
 001      0/1  undefined   test-1
 ------|-----|-----------|-------------|
-''' == summary
+"""
     capsys.readouterr()
 
     grizzly.scenarios.create(behave_fixture.create_scenario('test-2-test-2-test-2-test-2'))
@@ -527,13 +502,13 @@ ident   iter  status      description
     print_scenario_summary(grizzly)
 
     summary = capsys.readouterr().out
-    assert '''Scenario
+    assert summary == """Scenario
 ident   iter  status   description
 ------|-----|--------|-----------------------------|
 001      1/1  passed   test-1
 002      3/4  failed   test-2-test-2-test-2-test-2
 ------|-----|--------|-----------------------------|
-''' == summary
+"""
     capsys.readouterr()
 
     grizzly.scenarios.create(behave_fixture.create_scenario('#3'))
@@ -546,14 +521,14 @@ ident   iter  status   description
     print_scenario_summary(grizzly)
 
     summary = capsys.readouterr().out
-    assert '''Scenario
+    assert summary == """Scenario
 ident      iter  status   description
 ------|--------|--------|-----------------------------|
 001         1/1  passed   test-1
 002         3/4  failed   test-2-test-2-test-2-test-2
 003     998/999  failed   #3
 ------|--------|--------|-----------------------------|
-''' == summary
+"""
     capsys.readouterr()
 
     grizzly.scenarios.create(behave_fixture.create_scenario('foo bar hello world'))
@@ -563,7 +538,7 @@ ident      iter  status   description
     print_scenario_summary(grizzly)
 
     summary = capsys.readouterr().out
-    assert '''Scenario
+    assert summary == """Scenario
 ident      iter  status      description
 ------|--------|-----------|-----------------------------|
 001         1/1  passed      test-1
@@ -571,14 +546,14 @@ ident      iter  status      description
 003     998/999  failed      #3
 004     0/99999  undefined   foo bar hello world
 ------|--------|-----------|-----------------------------|
-''' == summary
+"""
     capsys.readouterr()
 
 
-def test_run_worker(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
+def test_run_worker(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocker: MockerFixture) -> None:
     behave = behave_fixture.context
 
-    def mock_on_node(master: bool, worker: bool) -> None:
+    def mock_on_node(*, master: bool, worker: bool) -> None:
         mocker.patch(
             'grizzly.locust.on_worker',
             return_value=worker,
@@ -591,7 +566,7 @@ def test_run_worker(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
 
     mocker.patch(
         'grizzly.locust.Environment.create_worker_runner',
-        side_effect=[socket_error()]
+        side_effect=[socket_error],
     )
 
     for method in [
@@ -604,8 +579,8 @@ def test_run_worker(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
             return_value=None,
         )
 
-    def mocked_popen___init__(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
-        setattr(args[0], 'returncode', -15)
+    def mocked_popen___init__(*args: Any, **_kwargs: Any) -> None:
+        setattr(args[0], 'returncode', -15)  # noqa: B010
 
     mocker.patch(
         'grizzly.locust.gevent.subprocess.Popen.__init__',
@@ -633,17 +608,17 @@ def test_run_worker(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
     assert run(behave) == 1
     capture = capsys.readouterr()
 
-    assert 'failed to connect to the locust master' in capture.err
+    assert 'failed to connect to locust master at ' in capture.err
 
     assert messagequeue_process_spy.call_count == 0
 
     # @TODO: test coverage further down in run is needed!
 
 
-def test_run_master(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
+def test_run_master(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocker: MockerFixture) -> None:
     behave = behave_fixture.context
 
-    def mock_on_node(master: bool, worker: bool) -> None:
+    def mock_on_node(*, master: bool, worker: bool) -> None:
         mocker.patch(
             'grizzly.locust.on_worker',
             return_value=worker,
@@ -672,8 +647,8 @@ def test_run_master(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
             return_value=None,
         )
 
-    def mocked_popen___init__(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
-        setattr(args[0], 'returncode', -15)
+    def mocked_popen___init__(*args: Any, **_kwargs: Any) -> None:
+        setattr(args[0], 'returncode', -15)  # noqa: B010
 
     mocker.patch(
         'grizzly.locust.gevent.subprocess.Popen.__init__',
@@ -732,38 +707,14 @@ def test_run_master(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
 
     mock_on_node(master=True, worker=False)
 
-    with pytest.raises(AssertionError) as ae:
+    with pytest.raises(AssertionError, match=r'there are more workers \(3\) than users \(2\), which is not supported'):
         run(behave)
-    assert str(ae.value) == 'there are more workers (3) than users (2), which is not supported'
 
     assert messagequeue_process_spy.call_count == 0
 
     del behave.config.userdata['expected-workers']
 
     # @TODO: this is where it gets hard(er)...
-
-    '''
-    def mock_clients_ready(count: int) -> None:
-        def mocked_get_by_state(*args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> List[Any]:
-            return [x for x in range(0, count)]
-
-        mocker.patch(
-            'locust.runners.WorkerNodes.get_by_state',
-            mocked_get_by_state,
-        )
-
-    grizzly.state.spawning_complete = True  # fake that all worker nodes has fired spawning complete
-
-    mocked_user_count = mocker.patch(
-        'locust.runners.MasterRunner.user_count',
-        new_callable=PropertyMock,
-    )
-    mocked_user_count.return_value = 0
-
-    mock_clients_ready(2)  # same as grizzly.setup.user_count
-
-    run(behave)
-    '''
 
 
 def test_grizzly_print_stats(caplog: LogCaptureFixture, mocker: MockerFixture) -> None:
@@ -786,37 +737,33 @@ def test_grizzly_print_stats(caplog: LogCaptureFixture, mocker: MockerFixture) -
             stats.log_request(
                 method,
                 name,
-                response_time=randint(200, 300),
-                content_length=(index * randint(10, 20)),
+                response_time=choice(range(200, 300)),
+                content_length=(index * choice(range(10, 20))),
             )
 
-        stats.log_request('DOC', 'TPM report OUT', response_time=randint(200, 300), content_length=999)
-        stats.log_request('DOC', 'TPM report IN', response_time=randint(200, 300), content_length=999)
+        stats.log_request('DOC', 'TPM report OUT', response_time=choice(range(200, 300)), content_length=999)
+        stats.log_request('DOC', 'TPM report IN', response_time=choice(range(200, 300)), content_length=999)
 
         for method in ['SCEN', 'TSTD', 'VAR', 'CLTSK']:
             stats.log_request(
                 method,
                 f'{ident:03} {method.lower()}-test',
-                response_time=randint(200, 300),
-                content_length=(2 * randint(10, 20)),
+                response_time=choice(range(200, 300)),
+                content_length=(2 * choice(range(10, 20))),
             )
 
     caplog.clear()
 
     # print stats, grizzly style
     with caplog.at_level(logging.INFO):
-        # start = perf_counter()
         grizzly_print_stats(stats, grizzly_style=True)
-        # grizzly_time = perf_counter() - start
 
     grizzly_stats = caplog.messages
     caplog.clear()
 
     # print stats, locust style
     with caplog.at_level(logging.INFO):
-        # start = perf_counter()
         grizzly_print_stats(stats, grizzly_style=False)
-        # locust_time = perf_counter() - start
 
     locust_stats = caplog.messages
     caplog.clear()
@@ -835,13 +782,6 @@ def test_grizzly_print_stats(caplog: LogCaptureFixture, mocker: MockerFixture) -
 
     for stat in grizzly_stats:
         assert stat in locust_stats
-
-    # total = grizzly_time + locust_time
-    # grizzly_ratio = (grizzly_time / total) * 100
-    # locust_ratio = (locust_time / total) * 100
-
-    # grizzly style must be less than 15% slower...
-    # assert grizzly_ratio - locust_ratio < 15.0
 
 
 def test_grizzly_print_percentile_stats(caplog: LogCaptureFixture, mocker: MockerFixture) -> None:
@@ -863,16 +803,16 @@ def test_grizzly_print_percentile_stats(caplog: LogCaptureFixture, mocker: Mocke
             stats.log_request(
                 method,
                 name,
-                response_time=randint(200, 300),
-                content_length=(index * randint(10, 20)),
+                response_time=choice(range(200, 300)),
+                content_length=(index * choice(range(10, 20))),
             )
 
         for method in ['SCEN', 'TSTD', 'VAR', 'CLTSK']:
             stats.log_request(
                 method,
                 f'{ident:03} {method.lower()}-test',
-                response_time=randint(200, 300),
-                content_length=(2 * randint(10, 20)),
+                response_time=choice(range(200, 300)),
+                content_length=(2 * choice(range(10, 20))),
             )
 
     caplog.clear()

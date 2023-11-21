@@ -1,19 +1,22 @@
+"""Contains methods for handling AST operations when parsing templates."""
+from __future__ import annotations
+
 import logging
+from typing import TYPE_CHECKING, Dict, Generator, List, Optional, Set
 
-from typing import TYPE_CHECKING, Set, Optional, List, Dict, Generator
-
-from jinja2 import Environment as Jinja2Environment, FileSystemLoader as Jinja2FileSystemLoader
+from jinja2 import Environment as Jinja2Environment
+from jinja2 import FileSystemLoader as Jinja2FileSystemLoader
 from jinja2 import nodes as j2
 
-
 if TYPE_CHECKING:  # pragma: no cover
-    from grizzly.context import GrizzlyContextScenario, GrizzlyContext
+    from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 
 logger = logging.getLogger(__name__)
 
 
-def get_template_variables(grizzly: 'GrizzlyContext') -> Dict[str, Set[str]]:
-    templates: Dict['GrizzlyContextScenario', Set[str]] = {}
+def get_template_variables(grizzly: GrizzlyContext) -> Dict[str, Set[str]]:
+    """Get all templates per scenario and parse them to find all variables that are used."""
+    templates: Dict[GrizzlyContextScenario, Set[str]] = {}
 
     for scenario in grizzly.scenarios:
         if scenario not in templates:
@@ -32,14 +35,22 @@ def get_template_variables(grizzly: 'GrizzlyContext') -> Dict[str, Set[str]]:
 
 
 def walk_attr(node: j2.Getattr) -> List[str]:
+    """Recursivley walk an AST node to get a complete variable name."""
+
     def _walk_attr(parent: j2.Getattr) -> List[str]:
-        attributes: List[str] = [getattr(parent, 'attr')]
-        child = getattr(parent, 'node')
+        attributes: List[str] = []
+        attr = getattr(parent, 'attr', None)
+        if attr is not None:
+            attributes.append(attr)
+
+        child = getattr(parent, 'node', None)
 
         if isinstance(child, j2.Getattr):
             attributes += _walk_attr(child)
         elif isinstance(child, j2.Name):
-            attributes.append(getattr(child, 'name'))
+            name = getattr(child, 'name', None)
+            if name is not None:
+                attributes.append(name)
 
         return attributes
 
@@ -49,61 +60,70 @@ def walk_attr(node: j2.Getattr) -> List[str]:
     return attributes
 
 
-def _parse_templates(templates: Dict['GrizzlyContextScenario', Set[str]]) -> Dict[str, Set[str]]:
+def _parse_templates(templates: Dict[GrizzlyContextScenario, Set[str]]) -> Dict[str, Set[str]]:  # noqa: C901, PLR0915
     variables: Dict[str, Set[str]] = {}
 
-    def _getattr(node: j2.Node) -> Generator[List[str], None, None]:
+    def _getattr(node: j2.Node) -> Generator[List[str], None, None]:  # noqa: C901, PLR0912, PLR0915
         attributes: Optional[List[str]] = None
 
         if isinstance(node, j2.Getattr):
             attributes = walk_attr(node)
         elif isinstance(node, j2.Getitem):
-            child_node = getattr(node, 'node')
+            child_node = getattr(node, 'node', None)
             child_node_name = getattr(child_node, 'name', None)
             if child_node_name is not None:
                 attributes = [child_node_name]
         elif isinstance(node, j2.Name):
-            attributes = [getattr(node, 'name')]
-        elif isinstance(node, (j2.Filter, j2.UnaryExpr,)):
-            child_node = getattr(node, 'node')
-            yield from _getattr(child_node)
+            name = getattr(node, 'name', None)
+            if name is not None:
+                attributes = [name]
+        elif isinstance(node, (j2.Filter, j2.UnaryExpr)):
+            child_node = getattr(node, 'node', None)
+            if child_node is not None:
+                yield from _getattr(child_node)
         elif isinstance(node, j2.BinExpr):
-            left_node = getattr(node, 'left')
-            yield from _getattr(left_node)
-            right_node = getattr(node, 'right')
-            yield from _getattr(right_node)
+            left_node = getattr(node, 'left', None)
+            if left_node is not None:
+                yield from _getattr(left_node)
+            right_node = getattr(node, 'right', None)
+            if right_node is not None:
+                yield from _getattr(right_node)
         elif isinstance(node, j2.CondExpr):
-            test_node = getattr(node, 'test')
-            yield from _getattr(test_node)
+            test_node = getattr(node, 'test', None)
+            if test_node is not None:
+                yield from _getattr(test_node)
 
-            expr_node = getattr(node, 'expr1')
-            yield from _getattr(expr_node)
+            expr_node = getattr(node, 'expr1', None)
+            if expr_node is not None:
+                yield from _getattr(expr_node)
 
-            expr_node = getattr(node, 'expr2')
+            expr_node = getattr(node, 'expr2', None)
             if expr_node is not None:
                 yield from _getattr(expr_node)
         elif isinstance(node, j2.Compare):
-            expr = getattr(node, 'expr')
-            yield from _getattr(expr)
+            expr = getattr(node, 'expr', None)
+            if expr is not None:
+                yield from _getattr(expr)
 
             ops = getattr(node, 'ops', [])
             for op in ops:
                 yield from _getattr(op)
         elif isinstance(node, j2.Operand):
-            expr = getattr(node, 'expr')
+            expr = getattr(node, 'expr', None)
 
-            yield from _getattr(expr)
+            if expr is not None:
+                yield from _getattr(expr)
         elif isinstance(node, j2.Concat):
-            nodes = getattr(node, 'nodes')
+            nodes = getattr(node, 'nodes', [])
 
             for node in nodes:
                 yield from _getattr(node)
         elif isinstance(node, j2.Test):
-            child_node = getattr(node, 'node')
-            yield from _getattr(child_node)
+            child_node = getattr(node, 'node', None)
+            if child_node is not None:
+                yield from _getattr(child_node)
 
-            args = getattr(node, 'args')
-            for arg in args:
+            for arg in getattr(node, 'args', []):
                 yield from _getattr(arg)
         elif isinstance(node, j2.List):
             for item in getattr(node, 'items', []):
@@ -126,9 +146,9 @@ def _parse_templates(templates: Dict['GrizzlyContextScenario', Set[str]]) -> Dic
             )
 
             # json.dumps escapes quote (") causing it to be \\", which inturn causes problems for jinja
-            template = template.replace('\\"', "'")
+            template_normalized = template.replace('\\"', "'")
 
-            parsed = j2env.parse(template)
+            parsed = j2env.parse(template_normalized)
 
             for body in getattr(parsed, 'body', []):
                 for node in getattr(body, 'nodes', []):

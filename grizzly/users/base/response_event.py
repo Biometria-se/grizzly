@@ -1,10 +1,13 @@
-from typing import Any, Dict, Tuple
-from locust.event import EventHook
+"""Load users that maps response_even to the correct event so that response handlers are triggered."""
+from __future__ import annotations
 
+from typing import Any
+
+from locust.event import EventHook
 from locust.user.users import User
 
-from grizzly.types.locust import Environment, LocustError
 from grizzly.clients import ResponseEventSession
+from grizzly.types.locust import Environment, LocustError
 
 from . import HttpRequests
 
@@ -15,14 +18,15 @@ class ResponseEvent(User):
     client: ResponseEventSession
     response_event: EventHook
 
-    def __init__(self, environment: Environment, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+    def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
         super().__init__(environment, *args, **kwargs)
 
         if self.host is None:
-            raise LocustError(
+            message = (
                 'You must specify the base host. Either in the host attribute in the User class, '
                 'or on the command line using the --host option.'
             )
+            raise LocustError(message)
 
         if issubclass(self.__class__, (HttpRequests, )):
             session = ResponseEventSession(
@@ -35,4 +39,4 @@ class ResponseEvent(User):
             self.response_event = self.client.event_hook
         else:
             self.response_event = EventHook()
-            setattr(self, 'client', None)
+            setattr(self, 'client', None)  # noqa: B010

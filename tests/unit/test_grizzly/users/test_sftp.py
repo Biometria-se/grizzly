@@ -1,75 +1,83 @@
-import shutil
+"""Unit tests for grizzly.users.sftp."""
+from __future__ import annotations
 
-from os import path, environ
+import shutil
+from os import environ
+from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
-from _pytest.tmpdir import TempPathFactory
-from pytest_mock import MockerFixture
-
-from grizzly.users.sftp import SftpUser
 from grizzly.clients import SftpClientSession
+from grizzly.exceptions import RestartScenario
+from grizzly.tasks import RequestTask
 from grizzly.types import RequestMethod
 from grizzly.types.locust import StopUser
-from grizzly.tasks import RequestTask
-from grizzly.exceptions import RestartScenario
+from grizzly.users.sftp import SftpUser
+from tests.helpers import ANY
 
-from tests.fixtures import ParamikoFixture, BehaveFixture, GrizzlyFixture
+if TYPE_CHECKING:  # pragma: no cover
+    from _pytest.tmpdir import TempPathFactory
+    from pytest_mock import MockerFixture
+
+    from tests.fixtures import BehaveFixture, GrizzlyFixture, ParamikoFixture
 
 
 class TestSftpUser:
     def test_create(self, behave_fixture: BehaveFixture, tmp_path_factory: TempPathFactory) -> None:
         test_context = tmp_path_factory.mktemp('test_context') / 'requests'
         test_context.mkdir()
-        test_context_root = path.dirname(str(test_context))
+        test_context_root = str(test_context.parent)
         environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
 
         behave_fixture.grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
-        SftpUser.__scenario__ = behave_fixture.grizzly.scenario
+        test_cls = type('SftpTestUser', (SftpUser, ), {'__scenario__': behave_fixture.grizzly.scenario})
+
+        assert issubclass(test_cls, SftpUser)
 
         try:
-            SftpUser.host = 'http://example.com'
+            test_cls.host = 'http://example.com'
 
-            with pytest.raises(ValueError):
-                SftpUser(behave_fixture.locust.environment)
+            with pytest.raises(ValueError, match='"http" is not supported'):
+                test_cls(behave_fixture.locust.environment)
 
-            SftpUser.host = 'sftp://username:password@example.com'
+            test_cls.host = 'sftp://username:password@example.com'
 
-            with pytest.raises(ValueError):
-                SftpUser(behave_fixture.locust.environment)
+            with pytest.raises(ValueError, match='username and password should be set via context variables "auth.username" and "auth.password"'):
+                test_cls(behave_fixture.locust.environment)
 
-            SftpUser.host = 'sftp://example.com/pub/test'
+            test_cls.host = 'sftp://example.com/pub/test'
 
-            with pytest.raises(ValueError):
-                SftpUser(behave_fixture.locust.environment)
+            with pytest.raises(ValueError, match='only hostname and port should be included as host'):
+                test_cls(behave_fixture.locust.environment)
 
-            SftpUser.host = 'sftp://example.com'
+            test_cls.host = 'sftp://example.com'
 
-            with pytest.raises(ValueError):
-                SftpUser(behave_fixture.locust.environment)
+            with pytest.raises(ValueError, match='"auth.username" context variable is not set'):
+                test_cls(behave_fixture.locust.environment)
 
-            SftpUser._context['auth']['username'] = 'syrsa'
+            test_cls.__context__['auth']['username'] = 'syrsa'
 
-            with pytest.raises(ValueError):
-                SftpUser(behave_fixture.locust.environment)
+            with pytest.raises(ValueError, match='"auth.password" or "auth.key" context variable must be set'):
+                test_cls(behave_fixture.locust.environment)
 
-            SftpUser._context['auth']['password'] = 'hemligaarne'
+            test_cls.__context__['auth']['password'] = 'hemligaarne'  # noqa: S105
 
-            user = SftpUser(behave_fixture.locust.environment)
+            user = test_cls(behave_fixture.locust.environment)
 
             assert user.port == 22
             assert user.host == 'example.com'
 
-            SftpUser.host = 'sftp://example.com:1337'
-            user = SftpUser(behave_fixture.locust.environment)
+            test_cls.host = 'sftp://example.com:1337'
+            user = test_cls(behave_fixture.locust.environment)
 
             assert user.port == 1337
             assert user.host == 'example.com'
 
-            SftpUser._context['auth']['key_file'] = '~/.ssh/id_rsa'
+            test_cls.__context__['auth']['key_file'] = '~/.ssh/id_rsa'
 
-            with pytest.raises(NotImplementedError):
-                SftpUser(behave_fixture.locust.environment)
+            with pytest.raises(NotImplementedError, match='key authentication is not implemented'):
+                test_cls(behave_fixture.locust.environment)
         finally:
             shutil.rmtree(test_context_root)
             del environ['GRIZZLY_CONTEXT_ROOT']
@@ -77,15 +85,25 @@ class TestSftpUser:
     def test_on_start(self, behave_fixture: BehaveFixture, paramiko_fixture: ParamikoFixture, mocker: MockerFixture) -> None:
         paramiko_fixture()
         behave_fixture.grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+        test_cls = type(
+            'SftpTestUser',
+            (SftpUser, ),
+            {
+                '__scenario__': behave_fixture.grizzly.scenario,
+                'host': 'sftp://example.org',
+                '__context__': {
+                    'auth': {
+                        'username': 'test',
+                        'password': 'hemligaarne',
+                        'key_file': None,
+                    },
+                },
+            },
+        )
 
-        SftpUser.__scenario__ = behave_fixture.grizzly.scenario
-        SftpUser.host = 'sftp://example.org'
-        SftpUser._context['auth'] = {
-            'username': 'test',
-            'password': 'hemligaarne',
-            'key_file': None,
-        }
-        user = SftpUser(behave_fixture.locust.environment)
+        assert issubclass(test_cls, SftpUser)
+
+        user = test_cls(behave_fixture.locust.environment)
 
         sftp_client_mock = mocker.spy(SftpClientSession, '__init__')
         session_spy = mocker.patch.object(SftpClientSession, 'session', return_value=mocker.MagicMock())
@@ -97,34 +115,39 @@ class TestSftpUser:
         assert hasattr(user, 'session')
         sftp_client_mock.assert_called_once_with(user.sftp_client, user.host, user.port)
         session_spy.assert_called_once_with(**user._context['auth'])
-        assert session_spy.return_value.__enter__.call_count == 1
+        session_spy.return_value.__enter__.assert_called_once()
 
     def test_on_stop(self, behave_fixture: BehaveFixture, paramiko_fixture: ParamikoFixture, mocker: MockerFixture) -> None:
         paramiko_fixture()
         behave_fixture.grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+        session_spy = mocker.MagicMock()
+        test_cls = type(
+            'SftpTestUser',
+            (SftpUser, ),
+            {
+                '__scenario__': behave_fixture.grizzly.scenario,
+                'host': 'sftp://example.org',
+                '__context__': {
+                    'auth': {
+                        'username': 'test',
+                        'password': 'hemligaarne',
+                        'key_file': None,
+                    },
+                },
+                'session': session_spy,
+            },
+        )
 
-        SftpUser.__scenario__ = behave_fixture.grizzly.scenario
-        SftpUser.host = 'sftp://example.org'
-        SftpUser._context['auth'] = {
-            'username': 'test',
-            'password': 'hemligaarne',
-            'key_file': None,
-        }
-        user = SftpUser(behave_fixture.locust.environment)
-        setattr(user, 'session', None)
-        session_spy = mocker.patch.object(user, 'session', return_value=mocker.MagicMock())
+        assert issubclass(test_cls, SftpUser)
+
+        user = test_cls(behave_fixture.locust.environment)
 
         user.on_stop()
 
-        assert session_spy.call_count == 0
+        session_spy.assert_not_called()
+        session_spy.__exit__.assert_called_once_with(None, None, None)
 
-        assert session_spy.__exit__.call_count == 1
-        args, kwargs = session_spy.__exit__.call_args_list[-1]
-        assert kwargs == {}
-        assert len(args) == 3
-        assert args == (None, None, None,)
-
-    def test_request(self, grizzly_fixture: GrizzlyFixture, paramiko_fixture: ParamikoFixture, tmp_path_factory: TempPathFactory, mocker: MockerFixture) -> None:
+    def test_request(self, grizzly_fixture: GrizzlyFixture, paramiko_fixture: ParamikoFixture, tmp_path_factory: TempPathFactory, mocker: MockerFixture) -> None:  # noqa: PLR0915
         paramiko_fixture()
 
         grizzly = grizzly_fixture.grizzly
@@ -132,25 +155,37 @@ class TestSftpUser:
 
         test_context = tmp_path_factory.mktemp('test_context') / 'requests'
         test_context.mkdir()
-        test_context_root = path.dirname(str(test_context))
+        test_context_root = str(test_context.parent)
         environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
 
+        test_cls = type(
+            'SftpTestUser',
+            (SftpUser, ),
+            {
+                '__scenario__': grizzly.scenario,
+                'host': 'sftp://example.org',
+                '__context__': {
+                    'auth': {
+                        'username': 'test',
+                        'password': 'hemligaarne',
+                        'key_file': None,
+                    },
+                },
+            },
+        )
+
+        assert issubclass(test_cls, SftpUser)
+
         try:
-            SftpUser.__scenario__ = grizzly.scenario
-            SftpUser.host = 'sftp://example.org'
-            SftpUser._context['auth'] = {
-                'username': 'test',
-                'password': 'hemligaarne',
-                'key_file': None,
-            }
-            user = SftpUser(grizzly_fixture.behave.locust.environment)
+            user = test_cls(grizzly_fixture.behave.locust.environment)
+            assert isinstance(user, SftpUser)
             parent._user = user
 
             user.on_start()
 
             mocker.patch('grizzly.users.base.grizzly_user.perf_counter', return_value=0.0)
 
-            request = RequestTask(RequestMethod.SEND, name='test', endpoint='/tmp')
+            request = RequestTask(RequestMethod.SEND, name='test', endpoint='/tmp')  # noqa: S108
             request.source = 'test/file.txt'
 
             fire_spy = mocker.spy(user.environment.events.request, 'fire')
@@ -160,67 +195,60 @@ class TestSftpUser:
             with pytest.raises(StopUser):
                 parent.user.request(request)
 
-            assert fire_spy.call_count == 1
-            _, kwargs = fire_spy.call_args_list[-1]
-
-            assert kwargs.get('request_type', None) == 'SEND'
-            assert kwargs.get('name', None) == f'{user._scenario.identifier} test'
-            assert kwargs.get('response_time', None) == 0
-            assert kwargs.get('response_length', None) == 0
-            assert kwargs.get('context', None) == user._context
-            exception = kwargs.get('exception', None)
-            assert isinstance(exception, NotImplementedError)
-            assert 'SftpUser has not implemented SEND' in str(exception)
+            fire_spy.assert_called_once_with(
+                request_type='SEND',
+                name=f'{user._scenario.identifier} test',
+                response_time=0,
+                response_length=0,
+                context=user._context,
+                exception=ANY(NotImplementedError, message='SftpTestUser has not implemented SEND'),
+            )
+            fire_spy.reset_mock()
 
             parent.user._scenario.failure_exception = StopUser
             with pytest.raises(StopUser):
                 parent.user.request(request)
 
-            assert fire_spy.call_count == 2
-            _, kwargs = fire_spy.call_args_list[-1]
-
-            assert kwargs.get('request_type', None) == 'SEND'
-            assert kwargs.get('name', None) == f'{user._scenario.identifier} test'
-            assert kwargs.get('response_time', None) == 0
-            assert kwargs.get('response_length', None) == 0
-            assert kwargs.get('context', None) == user._context
-            exception = kwargs.get('exception', None)
-            assert isinstance(exception, NotImplementedError)
-            assert 'SftpUser has not implemented SEND' in str(exception)
+            fire_spy.assert_called_once_with(
+                request_type='SEND',
+                name=f'{user._scenario.identifier} test',
+                response_time=0,
+                response_length=0,
+                context=user._context,
+                exception=ANY(NotImplementedError, message='SftpTestUser has not implemented SEND'),
+            )
+            fire_spy.reset_mock()
 
             parent.user._scenario.failure_exception = RestartScenario
             with pytest.raises(StopUser):
                 parent.user.request(request)
 
-            assert fire_spy.call_count == 3
-            _, kwargs = fire_spy.call_args_list[-1]
-
-            assert kwargs.get('request_type', None) == 'SEND'
-            assert kwargs.get('name', None) == f'{user._scenario.identifier} test'
-            assert kwargs.get('response_time', None) == 0
-            assert kwargs.get('response_length', None) == 0
-            assert kwargs.get('context', None) == user._context
-            exception = kwargs.get('exception', None)
-            assert isinstance(exception, NotImplementedError)
-            assert 'SftpUser has not implemented SEND' in str(exception)
-
-            parent.user.logger.error('failing test')
+            fire_spy.assert_called_once_with(
+                request_type='SEND',
+                name=f'{user._scenario.identifier} test',
+                response_time=0,
+                response_length=0,
+                context=user._context,
+                exception=ANY(NotImplementedError, message='SftpTestUser has not implemented SEND'),
+            )
+            fire_spy.reset_mock()
+            response_event_spy.reset_mock()
 
             request.method = RequestMethod.GET
 
             parent.user.request(request)
 
-            assert response_event_spy.call_count == 4
-            _, kwargs = response_event_spy.call_args_list[-1]
-            assert kwargs.get('name', None) == f'{user._scenario.identifier} test'
-            assert isinstance(kwargs.get('request', None), RequestTask)
-            assert kwargs.get('context', None) == ({
-                'host': user.host,
-                'method': 'get',
-                'path': '/tmp',
-            }, path.join(user._download_root, path.basename(request.endpoint)))
-            assert kwargs.get('user', None) is user
-            assert kwargs.get('exception', '') is None
+            response_event_spy.assert_called_once_with(
+                name=f'{user._scenario.identifier} test',
+                request=ANY(RequestTask),
+                context=(
+                    {'host': user.host, 'method': 'get', 'path': '/tmp'},  # noqa: S108
+                    str(user._download_root / Path(request.endpoint).name),
+                ),
+                user=user,
+                exception=None,
+            )
+            response_event_spy.reset_mock()
 
             request.method = RequestMethod.PUT
             request.source = None
@@ -228,34 +256,31 @@ class TestSftpUser:
             with pytest.raises(RestartScenario):
                 parent.user.request(request)
 
-            assert response_event_spy.call_count == 5
-            _, kwargs = response_event_spy.call_args_list[-1]
-
-            assert kwargs.get('name', None) == f'{user._scenario.identifier} test'
-            assert isinstance(kwargs.get('request', None), RequestTask)
-            assert kwargs.get('context', None) == (None, None,)
-            assert kwargs.get('user', None) is user
-            exception = kwargs.get('exception', None)
-
-            assert exception is not None
-            assert isinstance(exception, ValueError)
-            assert 'SftpUser: request "001 test" does not have a payload, incorrect method specified' in str(exception)
+            response_event_spy.assert_called_once_with(
+                name=f'{user._scenario.identifier} test',
+                request=ANY(RequestTask),
+                context=(None, None),
+                user=user,
+                exception=ANY(ValueError, message='SftpTestUser: request "001 test" does not have a payload, incorrect method specified'),
+            )
+            response_event_spy.reset_mock()
 
             request.source = 'foo.bar'
 
             parent.user.request(request)
 
-            assert response_event_spy.call_count == 6
-            _, kwargs = response_event_spy.call_args_list[-1]
-            assert kwargs.get('name', None) == f'{user._scenario.identifier} test'
-            assert isinstance(kwargs.get('request', None), RequestTask)
-            assert kwargs.get('context', None) == ({
-                'host': user.host,
-                'method': 'put',
-                'path': '/tmp',
-            }, path.join(test_context_root, 'requests', 'foo.bar'))
-            assert kwargs.get('user', None) is user
-            assert kwargs.get('exception', '') is None
+            response_event_spy.assert_called_once_with(
+                name=f'{user._scenario.identifier} test',
+                request=ANY(RequestTask),
+                context=(
+                    {'host': user.host, 'method': 'put', 'path': '/tmp'},  # noqa: S108
+                    str(Path(test_context_root) / 'requests' / 'foo.bar'),
+                ),
+                user=user,
+                exception=None,
+            )
+            response_event_spy.reset_mock()
+            fire_spy.reset_mock()
 
             mocker.patch.object(user.response_event, 'fire', side_effect=[RuntimeError('error error')])
 
@@ -264,48 +289,58 @@ class TestSftpUser:
             with pytest.raises(StopUser):
                 parent.user.request(request)
 
-            assert fire_spy.call_count == 7
-            _, kwargs = fire_spy.call_args_list[-1]
-
-            assert kwargs.get('request_type', None) == 'PUT'
-            assert kwargs.get('name', None) == f'{user._scenario.identifier} test'
-            assert kwargs.get('response_time', None) == 0
-            assert kwargs.get('response_length', None) > 0
-            assert kwargs.get('context', None) == user._context
-            exception = kwargs.get('exception', '')
-            assert exception is not None
-            assert isinstance(exception, RuntimeError)
-            assert str(exception) == 'error error'
+            fire_spy.assert_called_once_with(
+                request_type='PUT',
+                name=f'{user._scenario.identifier} test',
+                response_time=0,
+                response_length=ANY(int),
+                context=user._context,
+                exception=ANY(RuntimeError, message='error error'),
+            )
         finally:
             shutil.rmtree(test_context_root)
             del environ['GRIZZLY_CONTEXT_ROOT']
 
     @pytest.mark.skip(reason='needs preconditions outside of pytest, has to be executed explicitly manually')
     def test_real(self, grizzly_fixture: GrizzlyFixture, tmp_path_factory: TempPathFactory) -> None:
-        # first start sftp server:
-        #  mkdir /tmp/sftp-upload; \
-        #  docker run --rm -it -p 2222:22 -v /tmp/sftp-upload:/home/foo/upload atmoz/sftp:alpine foo:pass:1000:::upload; \
-        #  rm -rf /tmp/sftp-upload
+        """Execute real test, needs a running sftp server.
 
+        ```bash
+        mkdir /tmp/sftp-upload; \
+        docker run --rm -it -p 2222:22 -v /tmp/sftp-upload:/home/foo/upload atmoz/sftp:alpine foo:pass:1000:::upload; \
+        rm -rf /tmp/sftp-upload
+        ```
+        """
         parent = grizzly_fixture()
 
         test_context = tmp_path_factory.mktemp('test_context') / 'requests'
-        test_context_root = path.dirname(str(test_context))
+        test_context_root = str(test_context.parent)
         environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
 
         try:
-            with open(path.join(test_context, 'test.txt'), 'w') as fd:
-                fd.write('this is a file that is going to be put on the actual sftp server\n')
-                fd.flush()
+            (test_context / 'test.txt').write_text('this is a file that is going to be put on the actual sftp server\n')
 
-            SftpUser.__scenario__ = grizzly_fixture.grizzly.scenario
-            SftpUser.host = 'sftp://host.docker.internal:2222'
-            SftpUser._context['auth'] = {
-                'username': 'foo',
-                'password': 'pass',
-                'key_file': None,
-            }
-            _user = SftpUser(grizzly_fixture.behave.locust.environment)
+            test_cls = type(
+                'SftpTestUser',
+                (SftpUser, ),
+                {
+                    '__scenario__': grizzly_fixture.grizzly.scenario,
+                    'host': 'sftp://host.docker.internal:2222',
+                    '__context__': {
+                        'auth': {
+                            'username': 'foo',
+                            'password': 'pass',
+                            'key_file': None,
+                        },
+                    },
+                },
+            )
+
+            assert issubclass(test_cls, SftpUser)
+
+            _user = test_cls(grizzly_fixture.behave.locust.environment)
+
+            assert isinstance(_user, SftpUser)
             parent._user = _user
 
             request = RequestTask(RequestMethod.PUT, name='test', endpoint='/upload')
@@ -317,11 +352,9 @@ class TestSftpUser:
 
             parent.user.request(request)
 
-            localpath = path.join(test_context_root, 'requests', 'download', 'test.txt')
+            localpath = test_context / 'download' / 'test.txt'
 
-            assert path.exists(localpath)
-
-            with open(localpath, 'r') as fd:
-                assert fd.read().strip() == 'this is a file that is going to be put on the actual sftp server'
+            assert localpath.exists()
+            assert localpath.read_text().strip() == 'this is a file that is going to be put on the actual sftp server'
         finally:
             del environ['GRIZZLY_CONTEXT_ROOT']
