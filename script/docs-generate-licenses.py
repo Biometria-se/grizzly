@@ -13,7 +13,8 @@ from pytablewriter import MarkdownTableWriter
 
 URL_MAP: Dict[str, str] = {}
 
-REPO_ROOT = Path(__file__).parent.resolve()
+REPO_ROOT = Path(__file__).parent.parent.resolve()
+
 
 def generate_license_table() -> List[str]:
     args = CustomNamespace()

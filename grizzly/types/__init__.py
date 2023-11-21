@@ -15,7 +15,7 @@ from .locust import Environment
 
 try:
     from typing import Self
-except ModuleNotFoundError:
+except ImportError:
     from typing_extensions import Self
 
 try:
