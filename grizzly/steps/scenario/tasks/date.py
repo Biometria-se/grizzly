@@ -1,4 +1,6 @@
-"""Module contains step implementations for the {@pylink grizzly.tasks.date} task."""
+"""@anchor pydoc:grizzly.steps.scenario.tasks.date Date
+This module contains step implementations for the {@pylink grizzly.tasks.date} task.
+"""
 from __future__ import annotations
 
 from typing import cast

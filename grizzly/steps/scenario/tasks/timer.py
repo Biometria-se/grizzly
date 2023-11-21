@@ -1,4 +1,6 @@
-"""Module contains step implementations for the {@pylink grizzly.tasks.timer} task."""
+"""@anchor pydoc:grizzly.steps.scenario.tasks.timer Timer
+This module contains step implementations for the {@pylink grizzly.tasks.timer} task.
+"""
 from __future__ import annotations
 
 from typing import cast

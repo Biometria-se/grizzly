@@ -1,4 +1,6 @@
-"""Module contains step implementations for the {@pylink grizzly.tasks.log_message} task."""
+"""@anchor pydoc:grizzly.steps.scenario.tasks.log_message Log message
+This module contains step implementations for the {@pylink grizzly.tasks.log_message} task.
+"""
 from __future__ import annotations
 
 from typing import cast

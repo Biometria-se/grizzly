@@ -1,4 +1,6 @@
-"""Module contains step implementations that setup the load test scenario with parameters that is going to be used in the scenario they are defined in."""
+"""@anchor pydoc:grizzly.steps.scenario.setup Setup
+This module contains step implementations that setup the load test scenario with parameters that is going to be used in the scenario they are defined in.
+"""
 from __future__ import annotations
 
 from typing import Any, Optional, cast

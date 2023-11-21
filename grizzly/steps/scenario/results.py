@@ -1,5 +1,6 @@
-"""Module contains step implementations that validates the total response results for all {@pylink grizzly.tasks} in a scenario, based on
-locust statistics like response time and failures.
+"""@anchor pydoc:grizzly.steps.scenario.results Results
+This module contains step implementations that validates the total response results for all {@pylink grizzly.tasks} in a scenario, based on
+locust statistics (response time and failures).
 """
 from __future__ import annotations
 

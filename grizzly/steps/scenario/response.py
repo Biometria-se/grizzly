@@ -1,4 +1,5 @@
-"""Module contains step implementations that handles {@pylink grizzly.tasks.request} responses.
+"""@anchor pydoc:grizzly.steps.scenario.response Response
+This module contains step implementations that handles {@pylink grizzly.tasks.request} responses.
 
 ## Arguments
 

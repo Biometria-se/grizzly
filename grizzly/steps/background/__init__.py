@@ -1,4 +1,5 @@
-"""Module contains step implementations that only is allowed in the `Background` section in a `Feature`.
+"""@anchor pydoc:grizzly.steps.background Background
+This module contains step implementations that only is allowed in the `Background` section in a `Feature`.
 
 Steps in `Background` is only executed _once_. The feature will fail if they are added into any other section.
 

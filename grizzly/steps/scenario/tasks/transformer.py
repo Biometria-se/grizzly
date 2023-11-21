@@ -1,4 +1,6 @@
-"""Module contains step implementations for the {@pylink grizzly.tasks.transformer} task."""
+"""@anchor pydoc:grizzly.steps.scenario.tasks.transformer Transformer
+This module contains step implementations for the {@pylink grizzly.tasks.transformer} task.
+"""
 from __future__ import annotations
 
 from typing import cast

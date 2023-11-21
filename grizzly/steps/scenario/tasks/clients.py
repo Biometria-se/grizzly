@@ -1,4 +1,6 @@
-"""Module contains step implementations for the {@pylink grizzly.tasks.clients} tasks."""
+"""@anchor pydoc:grizzly.steps.scenario.tasks.clients Clients
+This module contains step implementations for the {@pylink grizzly.tasks.clients} tasks.
+"""
 from __future__ import annotations
 
 from typing import cast

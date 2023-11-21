@@ -1,4 +1,6 @@
-"""Module contains step implementations for the {@pylink grizzly.tasks.keystore} task."""
+"""@anchor pydoc:grizzly.steps.scenario.tasks.keystore Keystore
+This module contains step implementations for the {@pylink grizzly.tasks.keystore} task.
+"""
 from __future__ import annotations
 
 from json import JSONDecodeError

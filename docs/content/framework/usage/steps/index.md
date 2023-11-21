@@ -2,7 +2,7 @@
 title: Steps
 ---
 @anchor pydoc:grizzly.steps Steps
-This package contains all step implementations needed to write a feature file that describes a `locust` load test scenario for `grizzly`.
+This module contains all step implementations needed to write a feature file that describes a `locust` load test scenario for `grizzly`.
 
 A feature is described by using [Gherkin](https://cucumber.io/docs/gherkin/reference/). These expressions is then used by `grizzly` to configure and
 start `locust`, which takes care of generating the load.
@@ -21,7 +21,7 @@ Feature: description of the test
 
 In this package there are modules with step implementations that can be used in both `Background` and `Scenario` sections in a feature file.
 
-@anchor pydoc:grizzly.steps.custom
+@anchor pydoc:grizzly.steps.custom Custom steps
 ## Custom
 
 Custom steps are implemented in your `grizzly` project `features/steps/steps.py` file. This is also the file that imports all `grizzly`-defined step implementations.

@@ -1,4 +1,6 @@
-"""Module contains step implementations for the {@pylink grizzly.tasks.loop} task."""
+"""@anchor pydoc:grizzly.steps.scenario.tasks.loop Loop
+This module contains step implementations for the {@pylink grizzly.tasks.loop} task.
+"""
 from __future__ import annotations
 
 from typing import cast

@@ -1,4 +1,6 @@
-"""Module contains step implementations that describes a {@pylink grizzly.users}."""
+"""@anchor pydoc:grizzly.steps.scenario.user User
+This module contains step implementations that describes a {@pylink grizzly.users}.
+"""
 from __future__ import annotations
 
 from typing import cast

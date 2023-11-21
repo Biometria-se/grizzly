@@ -1,4 +1,6 @@
-"""Module contains step implementations for the {@pylink grizzly.tasks.conditional} task."""
+"""@anchor pydoc:grizzly.steps.scenario.tasks.conditional Conditional
+This module contains step implementations for the {@pylink grizzly.tasks.conditional} task.
+"""
 from __future__ import annotations
 
 from typing import cast

@@ -1,4 +1,6 @@
-"""Module contains step implementations for the {@pylink grizzly.tasks.async_group} task."""
+"""@anchor pydoc:grizzly.steps.scenario.tasks.async_group Async group
+This module contains step implementations for the {@pylink grizzly.tasks.async_group} task.
+"""
 from __future__ import annotations
 
 from typing import cast

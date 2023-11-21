@@ -1,4 +1,6 @@
-"""Module contains step implementations that describes how the load for all scenarios in a feature will look like."""
+"""@anchor pydoc:grizzly.steps.background.shapes Shapes
+This module contains step implementations that describes how the load for all scenarios in a feature will look like.
+"""
 from __future__ import annotations
 
 from typing import Any, cast

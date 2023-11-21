@@ -1,4 +1,6 @@
-"""Module contains step implementations that configures the load test scenario with parameters applicable for all scenarios."""
+"""@anchor pydoc:grizzly.steps.background.setup Setup
+This module contains step implementations that configures the load test scenario with parameters applicable for all scenarios.
+"""
 from __future__ import annotations
 
 from importlib import import_module

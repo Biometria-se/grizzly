@@ -1,4 +1,6 @@
-"""Module contains step implementations for the {@pylink grizzly.tasks.wait_between} task."""
+"""@anchor pydoc:grizzly.steps.scenario.tasks.wait_between Wait between
+This module contains step implementations for the {@pylink grizzly.tasks.wait_between} task.
+"""
 from __future__ import annotations
 
 from typing import cast

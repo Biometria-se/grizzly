@@ -1,4 +1,6 @@
-"""Module contains step implementations for the {@pylink grizzly.tasks.wait_explicit} task."""
+"""@anchor pydoc:grizzly.steps.scenario.tasks.wait_explicit Explicit wait
+This module contains step implementations for the {@pylink grizzly.tasks.wait_explicit} task.
+"""
 from __future__ import annotations
 
 from typing import cast

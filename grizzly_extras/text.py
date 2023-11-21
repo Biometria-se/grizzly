@@ -20,7 +20,7 @@ class permutation:
     from grizzly_extras.text import permutation
 
     @parse.with_pattern(r'(hello|world)')
-    @permutation(vector=(True, True,))
+    @permutation(vector=(True, True))
     def parse_hello_world(text: str) -> str:
         return text.strip()
 
@@ -97,7 +97,7 @@ class PermutationEnum(Enum, metaclass=PermutationMeta):
     Then I want to eat a "" and a ""
     ```
 
-    ##### `(False, True,)`
+    ##### `(False, True)`
 
     Variable occurs `1` time in the expression.
 
@@ -111,7 +111,7 @@ class PermutationEnum(Enum, metaclass=PermutationMeta):
     Then I want to eat a orange
     ```
 
-    ##### `(True, False,)`
+    ##### `(True, False)`
 
     Variable occurs `2..N` times in the expression.
 
@@ -123,7 +123,7 @@ class PermutationEnum(Enum, metaclass=PermutationMeta):
     Then I want to eat a banana, a apple and a orange
     ```
 
-    ##### `(True, True,)`
+    ##### `(True, True)`
 
     Variable occurs `2..N` times in the expression, and should produce more than one combination of the step expression.
 
