@@ -5,7 +5,6 @@ import logging
 from typing import TYPE_CHECKING, Dict, Generator, List, Optional, Set
 
 from jinja2 import Environment as Jinja2Environment
-from jinja2 import FileSystemLoader as Jinja2FileSystemLoader
 from jinja2 import nodes as j2
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -31,7 +30,7 @@ def get_template_variables(grizzly: GrizzlyContext) -> Dict[str, Set[str]]:
         if len(templates[scenario]) == 0:
             del templates[scenario]
 
-    return _parse_templates(templates)
+    return _parse_templates(templates, env=grizzly.state.jinja2)
 
 
 def walk_attr(node: j2.Getattr) -> List[str]:
@@ -60,7 +59,7 @@ def walk_attr(node: j2.Getattr) -> List[str]:
     return attributes
 
 
-def _parse_templates(templates: Dict[GrizzlyContextScenario, Set[str]]) -> Dict[str, Set[str]]:  # noqa: C901, PLR0915
+def _parse_templates(templates: Dict[GrizzlyContextScenario, Set[str]], *, env: Jinja2Environment) -> Dict[str, Set[str]]:  # noqa: C901, PLR0915
     variables: Dict[str, Set[str]] = {}
 
     def _getattr(node: j2.Node) -> Generator[List[str], None, None]:  # noqa: C901, PLR0912, PLR0915
@@ -140,19 +139,22 @@ def _parse_templates(templates: Dict[GrizzlyContextScenario, Set[str]]) -> Dict[
 
         # can raise TemplateError which should be handled else where
         for template in template_sources:
-            j2env = Jinja2Environment(
-                autoescape=False,
-                loader=Jinja2FileSystemLoader('.'),
-            )
-
             # json.dumps escapes quote (") causing it to be \\", which inturn causes problems for jinja
             template_normalized = template.replace('\\"', "'")
 
-            parsed = j2env.parse(template_normalized)
+            parsed = env.parse(template_normalized)
 
             for body in getattr(parsed, 'body', []):
-                for node in getattr(body, 'nodes', []):
+                if isinstance(body, j2.Assign):  #  {% .. %} expressions
+                    node = getattr(body, 'node', None)
+                    if node is None:
+                        continue
+
                     for attributes in _getattr(node):
                         variables[scenario_name].add('.'.join(attributes))
+                else:
+                    for node in getattr(body, 'nodes', []):
+                        for attributes in _getattr(node):
+                            variables[scenario_name].add('.'.join(attributes))
 
     return variables

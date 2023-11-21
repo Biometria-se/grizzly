@@ -35,7 +35,7 @@ def test__parse_template(request_task: RequestTaskFixture) -> None:
     scenario.tasks.add(request)
 
     templates = {scenario: set(request.get_templates())}
-    variables = _parse_templates(templates)
+    variables = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
 
     assert variables == {
         'TestScenario_001': {
@@ -67,7 +67,7 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture) -> None:
 
     templates = {scenario: set(request.get_templates())}
 
-    variables = _parse_templates(templates)
+    variables = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
 
     assert variables == {
         'TestScenario_001': {
@@ -83,7 +83,7 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture) -> None:
 
     templates = {scenario: set(request.get_templates())}
 
-    variables = _parse_templates(templates)
+    variables = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
 
     assert variables == {
         'TestScenario_001': {
@@ -98,7 +98,7 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture) -> None:
 
     templates = {scenario: set(request.get_templates())}
 
-    variables = _parse_templates(templates)
+    variables = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
 
     assert variables == {
         'TestScenario_001': {
@@ -131,7 +131,7 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture) -> None:
     scenario.tasks.add(request)
     templates = {scenario: set(request.get_templates())}
 
-    variables = _parse_templates(templates)
+    variables = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
 
     assert variables == {
         'TestScenario_001': {
@@ -146,6 +146,79 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture) -> None:
             'value9',
             'value110', 'value111', 'value112',
             'value120', 'value121', 'value122', 'value123', 'value124',
+        },
+    }
+
+    request.source = '{%- set hello = world -%} {{ foobar }}'
+    scenario.tasks.clear()
+    scenario.tasks.add(request)
+    templates = {scenario: set(request.get_templates())}
+
+    variables = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
+
+    assert variables == {
+        'TestScenario_001': {
+            'foobar',
+            'world',
+        },
+    }
+
+    request.source = """
+{%- set t1l = AtomicCsvReader.input.value1 -%}
+{%- set first_parts = [] -%}
+{%- for p in t1l.split(';') -%}
+	{%- set parts = p.split('|') -%}
+	{%- set _ = first_parts.append({'p': parts[0], 'c': parts[1]}) -%}
+{%- endfor -%}
+{%- set t2l = AtomicCsvReader.input.value2 -%}
+{%- set second_parts = [] -%}
+{%- for p in t2l.split(';') -%}
+	{%- set parts = p.split('|') -%}
+	{%- set _ = second_parts.append({'p': parts[0], 'c': parts[1]}) -%}
+{%- endfor -%}
+{
+    "id": ["{{ id }}"],
+    "list": [{
+            "subId": "{{ first_subid }}",
+            "isIncluded": true,
+            "concurrencyTag": {{ first_concurrencytag | tojson }},
+            "length": {{ AtomicCsvReader.input.first_length | int }},
+            "width": {{ AtomicCsvReader.input.first_width | int }},
+            "height": {{ AtomicCsvReader.input.first_height | int }},
+            "volume": {{ ((AtomicCsvReader.input.first_width | int) / 100) * ((AtomicCsvReader.input.first_height | int) / 100) * ((AtomicCsvReader.input.first_length | int) / 100) }},
+        }, {
+            "subId": "{{ second_subid }}",
+            "isIncluded": true,
+            "concurrencyTag": {{ second_concurrencytag | tojson }},
+            "length": {{ AtomicCsvReader.input.second_length | int }},
+            "width": {{ AtomicCsvReader.input.second_width | int }},
+            "height": {{ AtomicCsvReader.input.second_height | int }},
+            "volume": {{ ((AtomicCsvReader.input.second_width | int) / 100) * ((AtomicCsvReader.input.second_height | int) / 100) * ((AtomicCsvReader.input.second_length | int) / 100) }},
+        }
+    ]
+}
+"""  # noqa: E501
+    scenario.tasks.clear()
+    scenario.tasks.add(request)
+    templates = {scenario: set(request.get_templates())}
+
+    variables = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
+
+    assert variables == {
+        'TestScenario_001': {
+            'AtomicCsvReader.input.value1',
+            'AtomicCsvReader.input.value2',
+            'id',
+            'first_subid',
+            'first_concurrencytag',
+            'AtomicCsvReader.input.first_length',
+            'AtomicCsvReader.input.first_width',
+            'AtomicCsvReader.input.first_height',
+            'second_subid',
+            'second_concurrencytag',
+            'AtomicCsvReader.input.second_length',
+            'AtomicCsvReader.input.second_width',
+            'AtomicCsvReader.input.second_height',
         },
     }
 
@@ -170,7 +243,7 @@ def test_get_template_variables(behave_fixture: BehaveFixture) -> None:
         RequestTask(RequestMethod.GET, name='{{ env }} GET request', endpoint='/api/{{ env }}/get'),
     )
     task = cast(RequestTask, grizzly.scenario.tasks()[-1])
-    task.source = '{{ AtomicIntegerIncrementer.test }}'
+    task.source = '{{ AtomicIntegerIncrementer.test }} {%- set hello = world -%}'
 
     grizzly.scenario.tasks.add(
         LogMessageTask(message='{{ foo }}'),
@@ -190,5 +263,6 @@ def test_get_template_variables(behave_fixture: BehaveFixture) -> None:
             'foo',
             'env',
             'foobar',
+            'world',
         },
     }
