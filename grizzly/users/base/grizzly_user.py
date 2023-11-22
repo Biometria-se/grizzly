@@ -13,13 +13,14 @@ from time import perf_counter
 from typing import TYPE_CHECKING, Any, ClassVar, Dict, Optional, Set, Type, TypeVar, cast, final
 
 from locust.user.task import LOCUST_STATE_RUNNING
-from locust.user.users import UserMeta
+from locust.user.users import User, UserMeta
 
 from grizzly.context import GrizzlyContext
-from grizzly.exceptions import ResponseHandlerError, RestartScenario, TransformerLocustError
+from grizzly.events import GrizzlyEventHook, RequestLogger, ResponseHandler
+from grizzly.exceptions import RestartScenario
 from grizzly.types import GrizzlyResponse, RequestType, ScenarioState
 from grizzly.types.locust import Environment, StopUser
-from grizzly.users.base import AsyncRequests, RequestLogger
+from grizzly.users.base import AsyncRequests
 from grizzly.utils import merge_dicts
 
 from . import FileRequests
@@ -48,7 +49,7 @@ class grizzlycontext:
 
 
 @grizzlycontext(context={'log_all_requests': False, 'variables': {}})
-class GrizzlyUser(RequestLogger, metaclass=GrizzlyUserMeta):
+class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
     __dependencies__: ClassVar[Set[str]] = set()
     __scenario__: GrizzlyContextScenario  # reference to grizzly scenario this user is part of
     __context__: ClassVar[Dict[str, Any]] = {}
@@ -64,6 +65,7 @@ class GrizzlyUser(RequestLogger, metaclass=GrizzlyUserMeta):
     host: str
     abort: bool
     environment: Environment
+    event_hook: GrizzlyEventHook
     grizzly = GrizzlyContext()
 
     def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
@@ -78,6 +80,9 @@ class GrizzlyUser(RequestLogger, metaclass=GrizzlyUserMeta):
 
         self.logger = logging.getLogger(f'{self.__class__.__name__}/{id(self)}')
         self.abort = False
+        self.event_hook = GrizzlyEventHook()
+        self.event_hook.add_listener(ResponseHandler(self))
+        self.event_hook.add_listener(RequestLogger(self))
 
         environment.events.quitting.add_listener(self.on_quitting)
 
@@ -142,7 +147,7 @@ class GrizzlyUser(RequestLogger, metaclass=GrizzlyUserMeta):
             # execute response listeners
             if not isinstance(exception, (RestartScenario, StopUser)):
                 try:
-                    self.response_event.fire(
+                    self.event_hook.fire(
                         name=request.name,
                         request=request,
                         context=(
@@ -153,6 +158,7 @@ class GrizzlyUser(RequestLogger, metaclass=GrizzlyUserMeta):
                         exception=exception,
                     )
                 except Exception as e:
+                    # request exception is the priority one
                     if exception is None:
                         exception = e
 
@@ -167,12 +173,10 @@ class GrizzlyUser(RequestLogger, metaclass=GrizzlyUserMeta):
 
         # ...request handled
         if exception is not None:
-            if (
-                isinstance(exception, (NotImplementedError, StopUser, KeyError, IndexError, AttributeError))
-                and not isinstance(exception, (ResponseHandlerError, TransformerLocustError))  # grizzly exceptions that inherits StopUser
-            ):
+            if isinstance(exception, (NotImplementedError, KeyError, IndexError, AttributeError, TypeError, SyntaxError)):
                 raise StopUser
-            elif self._scenario.failure_exception is not None:  # noqa: RET506
+
+            if self._scenario.failure_exception is not None:
                 raise self._scenario.failure_exception
 
         return (metadata, payload)

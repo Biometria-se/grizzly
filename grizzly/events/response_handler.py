@@ -2,24 +2,19 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from contextlib import suppress
 from json import dumps as jsondumps
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, cast
-
-from locust.clients import ResponseContextManager as RequestsResponseContextManager
-from locust.contrib.fasthttp import ResponseContextManager as FastResponseContextManager
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
 from grizzly.context import GrizzlyContext
-from grizzly.exceptions import ResponseHandlerError, TransformerLocustError
-from grizzly.types import GrizzlyResponse, GrizzlyResponseContextManager, HandlerContextType
+from grizzly.events import GrizzlyEventHandler
+from grizzly.exceptions import ResponseHandlerError
 from grizzly_extras.transformer import PlainTransformer, TransformerContentType, TransformerError, transformer
-
-from .response_event import ResponseEvent
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.tasks import RequestTask
-    from grizzly.types.locust import Environment
-
-    from .grizzly_user import GrizzlyUser
+    from grizzly.types import GrizzlyResponse, HandlerContextType
+    from grizzly.users.base import GrizzlyUser
 
 class ResponseHandlerAction(ABC):
     grizzly = GrizzlyContext()
@@ -33,16 +28,15 @@ class ResponseHandlerAction(ABC):
     @abstractmethod
     def __call__(
         self,
-        input_context: Tuple[TransformerContentType, Any],
+        input_context: Tuple[TransformerContentType, HandlerContextType],
         user: GrizzlyUser,
-        response: Optional[GrizzlyResponseContextManager] = None,
     ) -> None:  # pragma: no cover
         message = f'{self.__class__.__name__} has not implemented __call__'
         raise NotImplementedError(message)
 
     def get_match(
         self,
-        input_context: Tuple[TransformerContentType, Any],
+        input_context: Tuple[TransformerContentType, HandlerContextType],
         user: GrizzlyUser,
         *,
         condition: bool = False,
@@ -62,37 +56,34 @@ class ResponseHandlerAction(ABC):
         rendered_match_with = j2env.from_string(self.match_with).render(user.context_variables)
         rendered_expected_matches = int(j2env.from_string(self.expected_matches).render(user.context_variables))
 
-        try:
-            transform = transformer.available.get(input_content_type, None)
-            if transform is None:
-                message = f'could not find a transformer for {input_content_type.name}'
-                raise TypeError(message)
+        transform = transformer.available.get(input_content_type, None)
+        if transform is None:
+            message = f'could not find a transformer for {input_content_type.name}'
+            raise TypeError(message)
 
-            if not transform.validate(rendered_expression):
-                message = f'"{rendered_expression}" is not a valid expression for {input_content_type.name}'
-                raise TypeError(message)
+        if not transform.validate(rendered_expression):
+            message = f'"{rendered_expression}" is not a valid expression for {input_content_type.name}'
+            raise TypeError(message)
 
-            input_get_values = transform.parser(rendered_expression)
-            match_get_values = PlainTransformer.parser(rendered_match_with)
+        input_get_values = transform.parser(rendered_expression)
+        match_get_values = PlainTransformer.parser(rendered_match_with)
 
-            values = input_get_values(input_payload)
+        values = input_get_values(input_payload)
 
-            # get a list of all matches in values
-            matches: List[str] = []
-            for value in values:
-                matched_values = match_get_values(value)
+        # get a list of all matches in values
+        matches: List[str] = []
+        for value in values:
+            matched_values = match_get_values(value)
 
-                if len(matched_values) < 1:
-                    continue
+            if len(matched_values) < 1:
+                continue
 
-                matched_value = matched_values[0]
+            matched_value = matched_values[0]
 
-                if matched_value is None or len(matched_value) < 1:
-                    continue
+            if matched_value is None or len(matched_value) < 1:
+                continue
 
-                matches.append(matched_value)
-        except TransformerError as e:
-            raise TransformerLocustError(e.message) from e
+            matches.append(matched_value)
 
         number_of_matches = len(matches)
 
@@ -132,20 +123,16 @@ class ValidationHandlerAction(ResponseHandlerAction):
 
     def __call__(
         self,
-        input_context: Tuple[TransformerContentType, Any],
+        input_context: Tuple[TransformerContentType, HandlerContextType],
         user: GrizzlyUser,
-        response: Optional[GrizzlyResponseContextManager] = None,
     ) -> None:
         match, expression, match_with = self.get_match(input_context, user, condition=self.condition)
 
         result = match is not None if self.condition is True else match is None
 
         if result:
-            failure = (user._scenario.failure_exception or ResponseHandlerError)(f'"{expression}": "{match_with}" was {match}')
-            if response is not None:
-                response.failure(failure)
-            else:
-                raise failure
+            message = f'"{expression}": "{match_with}" was {match}'
+            raise ResponseHandlerError(message)
 
 
 class SaveHandlerAction(ResponseHandlerAction):
@@ -161,36 +148,25 @@ class SaveHandlerAction(ResponseHandlerAction):
 
     def __call__(
         self,
-        input_context: Tuple[TransformerContentType, Any],
+        input_context: Tuple[TransformerContentType, HandlerContextType],
         user: GrizzlyUser,
-        response: Optional[GrizzlyResponseContextManager] = None,
     ) -> None:
         match, expression, _ = self.get_match(input_context, user)
 
         user.set_context_variable(self.variable, match)
 
         if match is None:
-            failure = (user._scenario.failure_exception or ResponseHandlerError)(f'"{expression}" did not match value')
-            if response is not None:
-                response.failure(failure)
-            else:
-                raise failure
+            message = f'"{expression}" did not match value'
+            raise ResponseHandlerError(message)
 
 
-class ResponseHandler(ResponseEvent):
-    abstract: bool = True
-
-    def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
-        super().__init__(environment, *args, **kwargs)
-
-        self.response_event.add_listener(self.response_handler)
-
-    def response_handler(
+class ResponseHandler(GrizzlyEventHandler):
+    def __call__(
         self,
-        name: str,  # noqa: ARG002
-        context: HandlerContextType,
+        name: str,
+        context: GrizzlyResponse,
         request: RequestTask,
-        user: GrizzlyUser,
+        exception: Optional[Exception] = None,  # noqa: ARG002
         **_kwargs: Any,
     ) -> None:
         if getattr(request, 'response', None) is None:
@@ -205,33 +181,38 @@ class ResponseHandler(ResponseEvent):
         response_metadata: Optional[Dict[str, Any]]
         response_payload: Optional[str]
 
-        if isinstance(context, (RequestsResponseContextManager, FastResponseContextManager)):
-            response_payload = context.text
-            response_metadata = dict(context.headers or {})
-            response_context = context
-        else:
-            response_metadata, response_payload = cast(GrizzlyResponse, context)
-            response_context = None
+        response_metadata, response_payload = context
 
-        if len(handlers.payload) > 0:
-            try:
-                # do not guess which transformer to use
-                impl = transformer.available.get(request.response.content_type, None)
-                if impl is not None:
-                    response_payload = impl.transform(response_payload or '')
-                else:
-                    message = f'failed to transform: {response_payload} with content type {request.response.content_type.name}'
-                    raise TransformerError(message)
-            except TransformerError as e:
-                if response_context is not None:
-                    response_context.failure(e.message)
-                    return
+        try:
+            if len(handlers.payload) > 0:
+                try:
+                    # do not guess which transformer to use
+                    impl = transformer.available.get(request.response.content_type, None)
+                    if impl is not None:
+                        response_payload = impl.transform(response_payload or '')
+                    else:
+                        message = f'failed to transform: {response_payload} with content type {request.response.content_type.name}'
+                        raise TransformerError(message)
+                except TransformerError as e:
+                    raise ResponseHandlerError(e.message) from e
 
-                raise ResponseHandlerError(e.message) from e
+                for handler in handlers.payload:
+                    handler((request.response.content_type, response_payload), self.user)
 
-            for handler in handlers.payload:
-                handler((request.response.content_type, response_payload), user, response_context)
-
-        if len(handlers.metadata) > 0:
             for handler in handlers.metadata:
-                handler((TransformerContentType.JSON, response_metadata or {}), user, response_context)
+                handler((TransformerContentType.JSON, response_metadata or {}), self.user)
+        except Exception as e:
+            self.user.logger.exception('response handler failure')
+            # do not execute response handler again
+            for _handler in self.event_hook._handlers:
+                if isinstance(_handler, self.__class__):
+                    continue
+
+                with suppress(Exception):
+                    _handler(
+                        name=name,
+                        request=request,
+                        context=context,
+                        exception=e,
+                    )
+            raise

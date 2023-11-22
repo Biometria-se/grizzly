@@ -12,6 +12,7 @@ from json import dumps as jsondumps
 from json import loads as jsonloads
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, Generator, Generic, List, Optional, Tuple, Type, Union, cast
+from unicodedata import normalize as __normalize
 
 from dateutil.parser import ParserError
 from dateutil.parser import parse as dateparser
@@ -314,3 +315,11 @@ def flatten(node: Dict[str, Any], parents: Optional[List[str]] = None) -> Dict[s
         parents.pop()
 
     return flat
+
+
+def normalize(value: str) -> str:
+    """Normalize a string to make it more non-human friendly."""
+    value = __normalize('NFKD', str(value)).encode('ascii', 'ignore').decode('ascii')
+    value = re.sub(r'[^\w\s-]', '', value)
+
+    return re.sub(r'[-\s]+', '-', value).strip('-_')

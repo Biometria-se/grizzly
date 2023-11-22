@@ -2,6 +2,7 @@
 
 <img align="right" src="https://raw.githubusercontent.com/Biometria-se/grizzly/main/docs/content/assets/logo/grizzly_grasshopper_brown_256px.png" alt="grizzly logo">
 <span>
+
 ###### Framework
 
 ![PyPI - License](https://img.shields.io/pypi/l/grizzly-loadtester?style=for-the-badge)

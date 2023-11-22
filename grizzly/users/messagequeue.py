@@ -137,7 +137,7 @@ from grizzly.utils import merge_dicts
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse, async_message_request
 
-from .base import GrizzlyUser, ResponseHandler, grizzlycontext
+from .base import GrizzlyUser, grizzlycontext
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.tasks import RequestTask
@@ -165,7 +165,7 @@ except:
         'header_type': None,
     },
 })
-class MessageQueueUser(ResponseHandler, GrizzlyUser):
+class MessageQueueUser(GrizzlyUser):
     __dependencies__: ClassVar[Set[str]] = {'async-messaged'}
 
     am_context: AsyncMessageContext

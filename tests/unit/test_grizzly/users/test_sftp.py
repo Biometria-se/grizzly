@@ -4,16 +4,17 @@ from __future__ import annotations
 import shutil
 from os import environ
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import pytest
+from paramiko.sftp_client import SFTPClient
+from paramiko.transport import Transport
 
-from grizzly.clients import SftpClientSession
 from grizzly.exceptions import RestartScenario
 from grizzly.tasks import RequestTask
 from grizzly.types import RequestMethod
 from grizzly.types.locust import StopUser
-from grizzly.users.sftp import SftpUser
+from grizzly.users.sftp import SftpClientSession, SftpUser
 from tests.helpers import ANY
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -21,6 +22,72 @@ if TYPE_CHECKING:  # pragma: no cover
     from pytest_mock import MockerFixture
 
     from tests.fixtures import BehaveFixture, GrizzlyFixture, ParamikoFixture
+
+
+class TestSftpClientSession:
+    def test(self, paramiko_fixture: ParamikoFixture, mocker: MockerFixture) -> None:
+        # ruff: noqa: B009
+        paramiko_fixture()
+
+        context = SftpClientSession('example.org', 1337)
+
+        assert context.host == 'example.org'
+        assert context.port == 1337
+        assert getattr(context, 'username') is None
+        assert getattr(context, 'key') is None
+        assert getattr(context, 'key_file') is None
+        assert getattr(context, '_client') is None
+        assert getattr(context, '_transport') is None
+
+        with pytest.raises(NotImplementedError, match='private key authentication is not supported'), context.session('username', 'password', '~/.ssh/id_rsa'):
+            pass
+
+        assert context.host == 'example.org'
+        assert context.port == 1337
+        assert getattr(context, 'username') is None
+        assert getattr(context, 'key') is None
+        assert getattr(context, 'key_file') is None
+        assert getattr(context, '_client') is None
+        assert getattr(context, '_transport') is None
+
+        username_transport: Optional[Transport] = None
+        username_client: Optional[SFTPClient] = None
+
+        # start session for user username
+        with context.session('username', 'password') as session:
+            assert isinstance(session, SFTPClient)
+            assert getattr(context, 'username') is None
+            assert isinstance(context._transport, Transport)
+            assert isinstance(context._client, SFTPClient)
+            username_transport = context._transport
+            username_client = context._client
+        assert context.username == 'username'
+
+        # change username, and hence start a new client
+        with context.session('test-user', 'password') as session:
+            assert isinstance(session, SFTPClient)
+            assert getattr(context, 'username') is None
+            assert isinstance(context._transport, Transport)
+            assert isinstance(context._client, SFTPClient)
+            assert username_client is not context._client
+            assert username_transport is not context._transport
+
+        context.close()
+
+        assert getattr(context, '_client') is None
+        assert getattr(context, '_transport') is None
+        assert getattr(context, 'username') is None
+
+        def _from_transport(transport: Transport, window_size: Optional[int] = None, max_packet_size: Optional[int] = None) -> Optional[SFTPClient]:  # noqa: ARG001
+            return None
+
+        mocker.patch(
+            'paramiko.sftp_client.SFTPClient.from_transport',
+            _from_transport,
+        )
+
+        with pytest.raises(RuntimeError, match='there is no client'), context.session('test-user', 'password') as session:
+            pass
 
 
 class TestSftpUser:
@@ -189,7 +256,7 @@ class TestSftpUser:
             request.source = 'test/file.txt'
 
             fire_spy = mocker.spy(user.environment.events.request, 'fire')
-            response_event_spy = mocker.spy(user.response_event, 'fire')
+            response_event_spy = mocker.spy(user.event_hook, 'fire')
 
             parent.user._scenario.failure_exception = None
             with pytest.raises(StopUser):
@@ -282,7 +349,7 @@ class TestSftpUser:
             response_event_spy.reset_mock()
             fire_spy.reset_mock()
 
-            mocker.patch.object(user.response_event, 'fire', side_effect=[RuntimeError('error error')])
+            mocker.patch.object(user.event_hook, 'fire', side_effect=[RuntimeError('error error')])
 
             parent.user._scenario.failure_exception = StopUser
 

@@ -25,23 +25,23 @@ from behave.step_registry import registry as step_registry
 from geventhttpclient.header import Headers
 from geventhttpclient.response import HTTPSocketPoolResponse
 from jinja2.filters import FILTERS
-from locust.clients import ResponseContextManager
 from locust.contrib.fasthttp import FastRequest, FastResponse
+from locust.contrib.fasthttp import ResponseContextManager as FastResponseContextManager
 from paramiko.channel import Channel
 from paramiko.sftp_client import SFTPClient
 from pytest_mock.plugin import MockerFixture
-from requests.models import CaseInsensitiveDict, PreparedRequest, Response
+from requests.models import CaseInsensitiveDict
 
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import RequestTask
 from grizzly.testdata.variables import destroy_variables
-from grizzly.types import GrizzlyResponseContextManager, RequestMethod
+from grizzly.types import RequestMethod
 from grizzly.types.behave import Context as BehaveContext
 from grizzly.types.behave import Feature, Scenario, Step
 from grizzly.types.locust import Environment, LocustRunner
 from grizzly.utils import create_scenario_class_type, create_user_class_type
 
-from .helpers import RequestSilentFailureEvent, TestScenario, TestUser, onerror, run_command
+from .helpers import TestScenario, TestUser, onerror, run_command
 
 if TYPE_CHECKING:  # pragma: no cover
     from types import TracebackType
@@ -436,11 +436,9 @@ class ResponseContextManagerFixture:
 
         return request
 
-    def __call__(  # noqa: C901
+    def __call__(
         self,
-        cls_rcm: Type[GrizzlyResponseContextManager],
         status_code: int,
-        environment: Optional[Environment] = None,
         response_body: Optional[Any] = None,
         response_headers: Optional[Dict[str, Any]] = None,
         request_method: Optional[str] = None,
@@ -448,85 +446,55 @@ class ResponseContextManagerFixture:
         request_headers: Optional[Dict[str, Any]] = None,
         url: Optional[str] = None,
         **kwargs: Dict[str, Any],
-    ) -> GrizzlyResponseContextManager:
+    ) -> FastResponseContextManager:
         name = kwargs['name']
-        event: Any
-        event = RequestSilentFailureEvent(custom=False) if environment is not None else None
 
-        if cls_rcm is ResponseContextManager:
-            response = Response()
-            if response_headers is not None:
-                response.headers = CaseInsensitiveDict(**response_headers)
+        _build_request = self._build_request
+        request_url = url
 
-            if response_body is not None:
-                if response.headers.get('Content-Type', None) in [None, 'application/json']:
-                    response._content = jsondumps(response_body).encode('utf-8')
+        class FakeGhcResponse(HTTPSocketPoolResponse):
+            _headers_index: Optional[Headers]
+            _sent_request: str
+            _sock: Any
+
+            def __init__(self) -> None:
+                self._headers_index = None
+
+                body: Optional[Any] = None
+                if request_headers is not None and CaseInsensitiveDict(**request_headers).get('Content-Type', None) in [None, 'application/json']:
+                    body = jsondumps(request_body or '')
                 else:
-                    response._content = response_body
-            response.status_code = status_code
+                    body = request_body
 
-            response.request = PreparedRequest()
-            if request_headers is not None:
-                response.request.headers = CaseInsensitiveDict(**request_headers)
+                self._sent_request = _build_request(
+                    request_method or '',
+                    request_url or '',
+                    body=body or '',
+                    headers=request_headers,
+                )
+                self._sock = None
 
-            if request_body is not None:
-                response.request.body = request_body.encode('utf-8')
+            def get_code(self) -> int:
+                return status_code
 
-            response.request.method = (request_method or 'GET').lower()
+        request = FastRequest(url, method=request_method, headers=Headers(), payload=request_body)
+        for key, value in (request_headers or {}).items():
+            request.headers.add(key, value)
 
-            if url is not None:
-                response.url = response.request.url = url
+        response = FastResponse(FakeGhcResponse(), request)
+        response.headers = Headers()
+        for key, value in (response_headers or {}).items():
+            response.headers.add(key, value)
+
+        if response_body is not None:
+            response._cached_content = jsondumps(response_body).encode('utf-8')
         else:
-            _build_request = self._build_request
-            request_url = url
+            response._cached_content = None
 
-            class FakeGhcResponse(HTTPSocketPoolResponse):
-                _headers_index: Optional[Headers]
-                _sent_request: str
-                _sock: Any
+        if request_body is not None:
+            response.request_body = request_body
 
-                def __init__(self) -> None:
-                    self._headers_index = None
-
-                    body: Optional[Any] = None
-                    if request_headers is not None and CaseInsensitiveDict(**request_headers).get('Content-Type', None) in [None, 'application/json']:
-                        body = jsondumps(request_body or '')
-                    else:
-                        body = request_body
-
-                    self._sent_request = _build_request(
-                        request_method or '',
-                        request_url or '',
-                        body=body or '',
-                        headers=request_headers,
-                    )
-                    self._sock = None
-
-                def get_code(self) -> int:
-                    return status_code
-
-            request = FastRequest(url, method=request_method, headers=Headers(), payload=request_body)
-            for key, value in (request_headers or {}).items():
-                request.headers.add(key, value)
-
-            response = FastResponse(FakeGhcResponse(), request)
-            response.headers = Headers()
-            for key, value in (response_headers or {}).items():
-                response.headers.add(key, value)
-
-            if response_body is not None:
-                response._cached_content = jsondumps(response_body).encode('utf-8')
-            else:
-                response._cached_content = None
-
-            if request_body is not None:
-                response.request_body = request_body
-
-            if environment is not None:
-                environment.events.request = event
-                event = environment
-
-        response_context_manager = cls_rcm(response, event, {})
+        response_context_manager = FastResponseContextManager(response, None, {})
         response_context_manager._entered = True
         response_context_manager.request_meta = {
             'method': None,

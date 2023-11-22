@@ -22,17 +22,9 @@ class AsyncRequests:
         raise NotImplementedError(message)  # pragma: no cover
 
 
-from .request_logger import RequestLogger  # noqa: I001
-
 from .grizzly_user import GrizzlyUser, GrizzlyUserMeta, grizzlycontext
-from .response_event import ResponseEvent
-from .response_handler import ResponseHandler
-
 
 __all__ = [
-    'ResponseEvent',
-    'RequestLogger',
-    'ResponseHandler',
     'GrizzlyUser',
     'GrizzlyUserMeta',
     'grizzlycontext',

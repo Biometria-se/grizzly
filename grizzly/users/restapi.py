@@ -55,26 +55,27 @@ from __future__ import annotations
 import json
 from abc import ABCMeta
 from time import time
-from typing import TYPE_CHECKING, Any, Dict, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, Optional, cast
 
 import requests
 from locust.contrib.fasthttp import FastHttpSession
+from locust.contrib.fasthttp import ResponseContextManager as FastResponseContextManager
+from locust.exception import ResponseError
 from urllib3 import disable_warnings as urllib3_disable_warnings
 
 from grizzly.auth import AAD, GrizzlyHttpAuthClient, refresh_token
-from grizzly.clients import ResponseEventSession
-from grizzly.types import GrizzlyResponse, GrizzlyResponseContextManager, RequestDirection, RequestMethod
-from grizzly.types.locust import Environment, StopUser
+from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod
 from grizzly.utils import safe_del
 from grizzly_extras.transformer import TransformerContentType
 
-from .base import AsyncRequests, GrizzlyUser, GrizzlyUserMeta, HttpRequests, ResponseHandler, grizzlycontext
+from .base import AsyncRequests, GrizzlyUser, GrizzlyUserMeta, HttpRequests, grizzlycontext
 
 urllib3_disable_warnings()
 
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.tasks import RequestTask
+    from grizzly.types.locust import Environment
 
 
 class RestApiUserMeta(GrizzlyUserMeta, ABCMeta):
@@ -101,10 +102,12 @@ class RestApiUserMeta(GrizzlyUserMeta, ABCMeta):
     },
     'metadata': None,
 })
-class RestApiUser(ResponseHandler, GrizzlyUser, HttpRequests, AsyncRequests, GrizzlyHttpAuthClient, metaclass=RestApiUserMeta):  # type: ignore[misc]
+class RestApiUser(GrizzlyUser, HttpRequests, AsyncRequests, GrizzlyHttpAuthClient, metaclass=RestApiUserMeta):  # type: ignore[misc]
     session_started: Optional[float]
     headers: Dict[str, str]
     environment: Environment
+
+    timeout: ClassVar[float] = 60.0
 
     def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
         super().__init__(environment, *args, **kwargs)
@@ -121,6 +124,16 @@ class RestApiUser(ResponseHandler, GrizzlyUser, HttpRequests, AsyncRequests, Gri
             metadata = cast(Dict[str, str], metadata)
             self.headers.update(metadata)
 
+        self.client = FastHttpSession(
+            environment=self.environment,
+            base_url=self.host,
+            user=self,
+            insecure=not self._context.get('verify_certificates', True),
+            max_retries=1,
+            connection_timeout=self.timeout,
+            network_timeout=self.timeout,
+        )
+
         self.parent = None
         self.cookies = {}
 
@@ -129,7 +142,7 @@ class RestApiUser(ResponseHandler, GrizzlyUser, HttpRequests, AsyncRequests, Gri
 
         self.session_started = time()
 
-    def _get_error_message(self, response: GrizzlyResponseContextManager) -> str:
+    def _get_error_message(self, response: FastResponseContextManager) -> str:
         if response.text is None:
             return f'unknown response {type(response)}'
 
@@ -153,15 +166,15 @@ class RestApiUser(ResponseHandler, GrizzlyUser, HttpRequests, AsyncRequests, Gri
         return message
 
     def async_request_impl(self, request: RequestTask) -> GrizzlyResponse:
-        """Use FastHttpSession for asynchronous requests."""
+        """Use FastHttpSession instance for each asynchronous requests."""
         client = FastHttpSession(
             environment=self.environment,
             base_url=self.host,
             user=self,
             insecure=not self._context.get('verify_certificates', True),
             max_retries=1,
-            connection_timeout=60.0,
-            network_timeout=60.0,
+            connection_timeout=self.timeout,
+            network_timeout=self.timeout,
         )
 
         return cast(GrizzlyResponse, self._request(request, client))
@@ -171,7 +184,7 @@ class RestApiUser(ResponseHandler, GrizzlyUser, HttpRequests, AsyncRequests, Gri
         return cast(GrizzlyResponse, self._request(request, self.client))
 
     @refresh_token(AAD)
-    def _request(self, request: RequestTask, client: Union[FastHttpSession, ResponseEventSession]) -> GrizzlyResponse:  # noqa: C901
+    def _request(self, request: RequestTask, client: FastHttpSession) -> GrizzlyResponse:
         """Perform a HTTP request using the provided client. Requests are authenticated if needed."""
         if request.method not in [RequestMethod.GET, RequestMethod.PUT, RequestMethod.POST]:
             message = f'{request.method.name} is not implemented for {self.__class__.__name__}'
@@ -191,21 +204,16 @@ class RestApiUser(ResponseHandler, GrizzlyUser, HttpRequests, AsyncRequests, Gri
 
         url = f'{self.host}{request.endpoint}'
 
-        if isinstance(client, ResponseEventSession):
-            parameters.update({
-                'request': request,
-                'verify': self._context.get('verify_certificates', True),
-            })
-
         if request.method.direction == RequestDirection.TO and request.source is not None:
             if request.response.content_type == TransformerContentType.JSON:
                 try:
                     parameters['json'] = json.loads(request.source)
                 except json.decoder.JSONDecodeError as e:
-                    self.logger.exception('%s: failed to decode: %s', url, request.source)
+                    message = f'{url}: failed to decode'
+                    self.logger.exception('%s: %s', url, request.source)
 
                     # this is a fundemental error, so we'll always stop the user
-                    raise StopUser from e
+                    raise SyntaxError(message) from e
             elif request.response.content_type == TransformerContentType.MULTIPART_FORM_DATA and request.arguments:
                 parameters['files'] = {request.arguments['multipart_form_data_name']: (request.arguments['multipart_form_data_filename'], request.source)}
             else:
@@ -225,19 +233,14 @@ class RestApiUser(ResponseHandler, GrizzlyUser, HttpRequests, AsyncRequests, Gri
             # monkey patch, so we don't get two request events
             response._report_request = lambda *_: None
 
-            if not isinstance(client, ResponseEventSession):
-                # monkey patch in request body... not available otherwise
-                response.request_body = request.source
+            if response._manual_result is None and response.status_code not in request.response.status_codes:
+                message = self._get_error_message(response)
+                message = f'{response.status_code} not in {request.response.status_codes}: {message}'
+                error = ResponseError(message)
+                if self._scenario.failure_exception is not None:
+                    raise error
 
-            if response._manual_result is None:
-                if response.status_code in request.response.status_codes:
-                    response.success()
-                else:
-                    message = self._get_error_message(response)
-                    response.failure(f'{response.status_code} not in {request.response.status_codes}: {message}')
-
-            if response._manual_result is not True and self._scenario.failure_exception is not None:
-                raise self._scenario.failure_exception
+                self.environment.stats.log_error(request.method.name, request.name, error)
 
             headers = dict(response.headers.items()) if response.headers not in [None, {}] else None
             payload = response.text

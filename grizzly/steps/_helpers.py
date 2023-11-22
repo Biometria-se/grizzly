@@ -10,11 +10,11 @@ from urllib.parse import urlparse
 import jinja2 as j2
 
 from grizzly.context import GrizzlyContext
+from grizzly.events.response_handler import ResponseHandlerAction, SaveHandlerAction, ValidationHandlerAction
 from grizzly.tasks import RequestTask
 from grizzly.tasks.clients import ClientTask, client
 from grizzly.testdata.utils import resolve_variable
 from grizzly.types import RequestMethod, ResponseAction, ResponseTarget
-from grizzly.users.base.response_handler import ResponseHandlerAction, SaveHandlerAction, ValidationHandlerAction
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments, split_value
 from grizzly_extras.transformer import TransformerContentType
 

@@ -1,24 +1,24 @@
 """Unit tests of grizzly.tasks.request."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional, Tuple
+from typing import TYPE_CHECKING, Tuple
 
 import pytest
 from jinja2 import Template
 
+from grizzly.events.response_handler import ResponseHandlerAction
 from grizzly.tasks import (
     RequestTask,
     RequestTaskHandlers,
     RequestTaskResponse,
 )
 from grizzly.types import RequestMethod
-from grizzly.users.base.response_handler import ResponseHandlerAction
 from grizzly_extras.transformer import TransformerContentType
 
 if TYPE_CHECKING:  # pragma: no cover
-    from locust.clients import ResponseContextManager
     from pytest_mock import MockerFixture
 
+    from grizzly.types import HandlerContextType
     from grizzly.users.base.grizzly_user import GrizzlyUser
     from tests.fixtures import GrizzlyFixture
 
@@ -34,8 +34,8 @@ class TestRequestTaskHandlers:
         assert len(handlers.payload) == 0
 
         class TestResponseHandlerAction(ResponseHandlerAction):
-            def __call__(self, input_context: Tuple[TransformerContentType, Any], user: GrizzlyUser, response: Optional[ResponseContextManager] = None) -> None:
-                super().__call__(input_context, user, response)
+            def __call__(self, input_context: Tuple[TransformerContentType, HandlerContextType], user: GrizzlyUser) -> None:
+                super().__call__(input_context, user)
 
         handler = TestResponseHandlerAction(expression='', match_with='')
 

@@ -32,25 +32,99 @@ Then get request from endpoint "/pub/blobs/blob.file"
 """
 from __future__ import annotations
 
+from contextlib import contextmanager
 from os import environ
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Generator, Optional
 from urllib.parse import urlparse
 
-from grizzly.clients import SftpClientSession
+from paramiko import SFTPClient, Transport
+
 from grizzly.types import GrizzlyResponse, RequestMethod
 
-from .base import FileRequests, GrizzlyUser, ResponseHandler, grizzlycontext
+from .base import FileRequests, GrizzlyUser, grizzlycontext
 
 if TYPE_CHECKING:  # pragma: no cover
-    from paramiko import SFTPClient
+    from paramiko.pkey import PKey
 
     from grizzly.tasks import RequestTask
     from grizzly.types.locust import Environment
 
 
+class SftpClientSession:
+    host: str
+    port: int
+
+    username: Optional[str]
+    key_file: Optional[str]
+    key: Optional[PKey]
+
+    _transport: Optional[Transport]
+    _client: Optional[SFTPClient]
+
+    def __init__(self, host: str, port: int) -> None:
+        self.host = host
+        self.port = port
+        self.username = None
+        self.key = None
+        self.key_file = None
+
+        self._transport = None
+        self._client = None
+
+    def close(self) -> None:
+        if self._client is not None:
+            try:
+                self._client.close()
+            finally:
+                self._client = None
+
+        if self._transport is not None:
+            try:
+                self._transport.close()
+            finally:
+                self._transport = None
+
+        self.username = None
+        self.key_file = None
+        self.key = None
+
+    @contextmanager
+    def session(self, username: str, password: str, key_file: Optional[str] = None) -> Generator[SFTPClient, None, None]:
+        try:
+            # there's no client, or username has changed -- create new client
+            if self._client is None or username != self.username:
+                self.close()
+
+                if key_file is not None or key_file != self.key_file:
+                    self.key_file = key_file
+                    message = f'{self.__class__.__name__}: private key authentication is not supported'
+                    raise NotImplementedError(message)
+
+                self._transport = Transport((self.host, self.port))
+                self._transport.connect(
+                    None,
+                    username,
+                    password,
+                    None,  # key needs to be converted to PKey
+                )
+                self._client = SFTPClient.from_transport(self._transport)
+
+            if self._client is None:
+                message = f'{self.__class__.__name__}: unknown error, there is no client'
+                raise RuntimeError(message)
+
+            yield self._client
+        except Exception:
+            self.close()
+
+            raise
+        else:
+            self.username = username
+
+
 @grizzlycontext(context={'auth': {'username': None, 'password': None, 'key_file': None}})
-class SftpUser(ResponseHandler, GrizzlyUser, FileRequests):
+class SftpUser(GrizzlyUser, FileRequests):
     _auth_context: Dict[str, Any]
 
     _context_root: Path

@@ -12,14 +12,7 @@ __all__ = [
 ]
 
 
-class ResponseHandlerError(StopUser):
-    message: Optional[str] = None
-
-    def __init__(self, message: Optional[str] = None) -> None:
-        self.message = message
-
-
-class TransformerLocustError(StopUser):
+class ResponseHandlerError(Exception):
     message: Optional[str] = None
 
     def __init__(self, message: Optional[str] = None) -> None:

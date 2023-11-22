@@ -25,6 +25,7 @@ from grizzly.utils import (
     fail_direct,
     in_correct_section,
     is_template,
+    normalize,
     parse_timespan,
     safe_del,
 )
@@ -685,3 +686,9 @@ def test_is_template() -> None:
     assert not is_template('{{ hello_world')
     assert not is_template('hello_world }}')
     assert is_template('is {{ this }} really a template?')
+
+
+def test_normalize() -> None:
+    assert normalize('test') == 'test'
+    assert normalize('Hello World!') == 'Hello-World'
+    assert normalize('[does]this-look* <strange>!') == 'doesthis-look-strange'

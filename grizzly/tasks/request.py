@@ -68,9 +68,9 @@ from . import template as task_template
 if TYPE_CHECKING:  # pragma: no cover
     from jinja2.environment import Template
 
+    from grizzly.events.response_handler import ResponseHandlerAction
     from grizzly.scenarios import GrizzlyScenario
     from grizzly.types import GrizzlyResponse, RequestMethod
-    from grizzly.users.base.response_handler import ResponseHandlerAction
 
 
 class RequestTaskHandlers:
