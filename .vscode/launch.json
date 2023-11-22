@@ -5,16 +5,21 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Locust: debug",
+            // Gets launched when clicking "Debug Test" in the Testing view
+            "name": "Debug Unit Test",
             "type": "python",
             "request": "launch",
+            "justMyCode": false,
             "program": "${file}",
-            "gevent": true,
+            // Defines that the configuration should be used when debugging tests in VS Code
+            "purpose": ["debug-test"],
+            "console": "integratedTerminal",
             "env": {
-                "GEVENT_SUPPORT": "True",
-                "PYTHONPATH": "/workspaces/grizzly"
-            },
-            "console": "integratedTerminal"
+                // Disable coverage since it won't work with debugging/breakpoints
+                "PYTEST_ADDOPTS": "--no-cov",
+                // Needed for the debugger to play well with gevent
+                "GEVENT_SUPPORT": "True"
+            }
         }
     ]
 }

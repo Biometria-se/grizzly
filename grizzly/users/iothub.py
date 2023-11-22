@@ -28,11 +28,12 @@ Then send request "test/blob.file" to endpoint "uploaded_blob_filename"
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+import gzip
+from typing import TYPE_CHECKING, Any, Dict, Optional
 from urllib.parse import parse_qs, urlparse
 
 from azure.iot.device import IoTHubDeviceClient
-from azure.storage.blob import BlobClient
+from azure.storage.blob import BlobClient, ContentSettings
 
 from grizzly.types import GrizzlyResponse, RequestMethod
 
@@ -87,7 +88,12 @@ class IotHubUser(GrizzlyUser):
             message = f'{self.__class__.__name__} has not implemented {request.method.name}'
             raise NotImplementedError(message)
 
+        storage_info: Any = None
         try:
+            if not request.source:
+                message = f'Cannot upload empty payload to endpoint {request.endpoint} in IotHubUser'
+                raise RuntimeError(message)
+
             filename = request.endpoint
 
             storage_info = self.iot_client.get_storage_info_for_blob(filename)
@@ -100,7 +106,22 @@ class IotHubUser(GrizzlyUser):
             )
 
             with BlobClient.from_blob_url(sas_url) as blob_client:
-                blob_client.upload_blob(request.source)
+                content_type: Optional[str] = None
+                content_encoding: Optional[str] = None
+                if request.metadata:
+                    content_type = request.metadata.get('content_type', None)
+                    content_encoding = request.metadata.get('content_encoding', None)
+
+                if content_encoding == 'gzip':
+                    payload: bytes = gzip.compress(request.source.encode())
+                    content_settings = ContentSettings(content_type=content_type, content_encoding=content_encoding)
+                    blob_client.upload_blob(payload, content_settings=content_settings)
+                elif content_encoding:
+                    message = f'Unhandled request content_encoding in IotHubUser: {content_encoding}'
+                    raise RuntimeError(message)
+                else:
+                    blob_client.upload_blob(request.source)
+
                 self.logger.debug('uploaded blob to IoT hub, filename: %s, correlationId: %s', filename, storage_info['correlationId'])
 
             self.iot_client.notify_blob_upload_status(
@@ -110,12 +131,13 @@ class IotHubUser(GrizzlyUser):
                 status_description=f'OK: {filename}',
             )
         except Exception:
-            self.iot_client.notify_blob_upload_status(
-                correlation_id=storage_info['correlationId'],
-                is_success=False,
-                status_code=500,
-                status_description=f'Failed: {filename}',
-            )
+            if storage_info:
+                self.iot_client.notify_blob_upload_status(
+                    correlation_id=storage_info['correlationId'],
+                    is_success=False,
+                    status_code=500,
+                    status_description=f'Failed: {filename}',
+                )
             self.logger.exception('failed to upload file "%s" to IoT hub', filename)
 
             raise
