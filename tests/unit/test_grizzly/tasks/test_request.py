@@ -130,7 +130,7 @@ class TestRequestTask:
 
     def test_add_metadata(self) -> None:
         task_factory = RequestTask(RequestMethod.GET, 'test-name', endpoint='/api/test | content_type="application/json", foo=bar')
-        assert getattr(task_factory, 'metadata', '') is None
+        assert getattr(task_factory, 'metadata', None) == {}
 
         task_factory.add_metadata('foo', 'bar')
         task_factory.add_metadata('alice', 'bob')

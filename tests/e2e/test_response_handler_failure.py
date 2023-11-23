@@ -62,7 +62,10 @@ def test_e2e_response_handler_failure(e2e_fixture: End2EndFixture) -> None:
 
     # check request
     assert """metadata:
-<empty>
+{
+  "Content-Type": "application/json",
+  "x-grizzly-user": "RestApiUser_001"
+}
 
 payload:
 {

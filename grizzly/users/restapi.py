@@ -54,6 +54,7 @@ from __future__ import annotations
 
 import json
 from abc import ABCMeta
+from copy import copy
 from time import time
 from typing import TYPE_CHECKING, Any, ClassVar, Dict, Optional, cast
 
@@ -64,7 +65,7 @@ from locust.exception import ResponseError
 
 from grizzly.auth import AAD, GrizzlyHttpAuthClient, refresh_token
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod
-from grizzly.utils import safe_del
+from grizzly.utils import merge_dicts, safe_del
 from grizzly_extras.transformer import TransformerContentType
 
 from . import AsyncRequests, GrizzlyUser, GrizzlyUserMeta, grizzlycontext
@@ -96,11 +97,9 @@ class RestApiUserMeta(GrizzlyUserMeta, ABCMeta):
             'initialize_uri': None,
         },
     },
-    'metadata': None,
 })
 class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=RestApiUserMeta):  # type: ignore[misc]
     session_started: Optional[float]
-    headers: Dict[str, str]
     environment: Environment
 
     timeout: ClassVar[float] = 60.0
@@ -108,17 +107,12 @@ class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=R
     def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
         super().__init__(environment, *args, **kwargs)
 
-        self.headers: Dict[str, str] = {
+        self.metadata = merge_dicts({
             'Content-Type': 'application/json',
             'x-grizzly-user': self.__class__.__name__,
-        }
+        }, self.metadata)
 
         self.session_started = None
-
-        metadata = self._context.get('metadata', None)
-        if metadata is not None:
-            metadata = cast(Dict[str, str], metadata)
-            self.headers.update(metadata)
 
         self.client = FastHttpSession(
             environment=self.environment,
@@ -182,21 +176,21 @@ class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=R
     @refresh_token(AAD)
     def _request(self, request: RequestTask, client: FastHttpSession) -> GrizzlyResponse:
         """Perform a HTTP request using the provided client. Requests are authenticated if needed."""
+        request_headers = copy(request.metadata or {})
+
         if request.method not in [RequestMethod.GET, RequestMethod.PUT, RequestMethod.POST]:
             message = f'{request.method.name} is not implemented for {self.__class__.__name__}'
             raise NotImplementedError(message)
 
         if request.response.content_type == TransformerContentType.UNDEFINED:
             request.response.content_type = TransformerContentType.JSON
-        elif request.response.content_type == TransformerContentType.XML:
-            self.headers.update({'Content-Type': 'application/xml'})
-        elif request.response.content_type == TransformerContentType.MULTIPART_FORM_DATA:
-            safe_del(self.headers, 'Content-Type')
 
-        if request.metadata is not None:
-            self.headers.update(request.metadata)
+        request_headers.update({'Content-Type': request.response.content_type.value})
 
-        parameters: Dict[str, Any] = {'headers': self.headers}
+        parameters: Dict[str, Any] = {}
+
+        if len(request_headers) > 0:
+            parameters.update({'headers': request_headers})
 
         url = f'{self.host}{request.endpoint}'
 
@@ -235,7 +229,6 @@ class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=R
                 else:
                     message = self._get_error_message(response)
                     message = f'{response.status_code} not in {request.response.status_codes}: {message}'
-                    self.logger.error('%% %r', response._manual_result)
                     response.failure(ResponseError(message))
 
             headers = dict(response.headers.items()) if response.headers not in [None, {}] else None
@@ -252,6 +245,6 @@ class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=R
         """If context change contains a username we should re-authenticate. This is forced by removing the Authorization header."""
         # something change in auth context, we need to re-authenticate
         if context.get('auth', {}).get('user', {}).get('username', None) is not None:
-            safe_del(self.headers, 'Authorization')
+            safe_del(self.metadata, 'Authorization')
 
         super().add_context(context)

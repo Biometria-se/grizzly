@@ -63,7 +63,11 @@ class grizzlycontext:
         return cls
 
 
-@grizzlycontext(context={'log_all_requests': False, 'variables': {}})
+@grizzlycontext(context={
+    'log_all_requests': False,
+    'variables': {},
+    'metadata': None,
+})
 class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
     __dependencies__: ClassVar[Set[str]] = set()
     __scenario__: GrizzlyContextScenario  # reference to grizzly scenario this user is part of
@@ -83,6 +87,8 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
     event_hook: GrizzlyEventHook
     grizzly = GrizzlyContext()
 
+    metadata: Dict[str, Any]
+
     def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
         super().__init__(environment, *args, **kwargs)
 
@@ -92,6 +98,8 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
         self._scenario = copy(self.__scenario__)
         # these are not copied, and we can share reference
         self._scenario._tasks = self.__scenario__._tasks
+
+        self.metadata = self._context.get('metadata', None) or {}
 
         self.logger = logging.getLogger(f'{self.__class__.__name__}/{id(self)}')
         self.abort = False
@@ -146,6 +154,9 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
         start_time = perf_counter()
 
         try:
+            if len(self.metadata or {}) > 0:
+                request.metadata = merge_dicts(self.metadata, request.metadata)
+
             request = self.render(request)
 
             request_impl = self.async_request_impl if isinstance(self, AsyncRequests) and request.async_request else self.request_impl

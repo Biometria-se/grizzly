@@ -124,7 +124,7 @@ class TestAAD:
                 },
             },
         })
-        task_factory.headers.update({'Ocp-Apim-Subscription-Key': ''})
+        task_factory.metadata.update({'Ocp-Apim-Subscription-Key': ''})
 
         task = task_factory()
 
@@ -1083,7 +1083,7 @@ class TestAAD:
                 fire_spy.reset_mock()
 
             parent.user.session_started = session_started
-            parent.user.headers.update({
+            parent.user.metadata.update({
                 'Authorization': 'foobar',
                 'Content-Type': 'plain/text',
                 'Ocp-Apim-Subscription-Key': 'secret',

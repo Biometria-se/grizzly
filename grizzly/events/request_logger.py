@@ -91,6 +91,9 @@ class RequestLogger(GrizzlyEventHandler):
         request_metadata = request.metadata
         request_payload = request.source
 
+        if request_metadata == {}:
+            request_metadata = None
+
         response_time = kwargs.get('locust_request_meta', {}).get('response_time', None)
 
         stacktrace: Optional[str] = None

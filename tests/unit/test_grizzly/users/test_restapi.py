@@ -57,7 +57,7 @@ class TestRestApiUser:
             },
             'metadata': None,
         }
-        assert parent.user.headers == {
+        assert parent.user.metadata == {
             'Content-Type': 'application/json',
             'x-grizzly-user': parent.user.__class__.__name__,
         }
@@ -66,7 +66,7 @@ class TestRestApiUser:
 
         user = parent.user.__class__(parent.user.environment)
 
-        assert user.headers.get('foo', None) == 'bar'
+        assert user.metadata.get('foo', None) == 'bar'
 
     def test_on_start(self, grizzly_fixture: GrizzlyFixture) -> None:
         parent = grizzly_fixture(user_type=RestApiUser)
@@ -104,7 +104,7 @@ class TestRestApiUser:
                     'Ocp-Apim-Subscription-Key': '',
                 },
             }
-            parent.user.headers.update({
+            parent.user.metadata.update({
                 'Ocp-Apim-Subscription-Key': '',
             })
             parent.user.host = cast(dict, parent.user.__context__)['host']
@@ -310,7 +310,7 @@ class TestRestApiUser:
         assert parent.user.request(request) == ({'x-bar': 'foo'}, '{"foo": "bar"}')
 
         expected_parameters: Dict[str, Any] = {
-            'headers': parent.user.headers,
+            'headers': request.metadata,
         }
 
         request_spy.assert_called_once_with(
@@ -355,7 +355,8 @@ class TestRestApiUser:
         response_spy.text = '{"error_description": "borked"}'
         response_spy.request_meta = {}
         parent.user._scenario.failure_exception = None
-        request.metadata = None
+        request.metadata = {}
+        del expected_parameters['headers']['x-foo']
 
         assert parent.user.request(request) == ({'x-bar': 'foo'}, '{"error_description": "borked"}')
 
@@ -421,6 +422,8 @@ class TestRestApiUser:
 
         assert parent.user.request(request) == ({'x-bar': 'foo'}, 'success')
 
+        expected_parameters['headers'].update({'Content-Type': 'multipart/form-data'})
+
         request_spy.assert_called_once_with(
             method='PUT',
             name='001 TestScenario',
@@ -438,6 +441,7 @@ class TestRestApiUser:
         request.source = '<?xml version="1.0" encoding="utf-8"?><hello><foo/></hello>'
         del expected_parameters['files']
         expected_parameters.update({'data': request.source.encode('utf-8')})
+        expected_parameters['headers'].update({'Content-Type': 'application/xml'})
 
         assert parent.user.request(request) == ({'x-bar': 'foo'}, 'success')
 
@@ -471,8 +475,8 @@ class TestRestApiUser:
         assert parent.user._context['auth']['provider'] == 'http://auth.example.org'
         assert parent.user._context['auth']['refresh_time'] == 3000
 
-        parent.user.headers['Authorization'] = 'Bearer asdfasdfasdf'
+        parent.user.metadata['Authorization'] = 'Bearer asdfasdfasdf'
 
         parent.user.add_context({'auth': {'user': {'username': 'something new'}}})
 
-        assert 'Authorization' not in parent.user.headers
+        assert 'Authorization' not in parent.user.metadata

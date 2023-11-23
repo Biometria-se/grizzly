@@ -158,7 +158,7 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
     }
     user_type_1 = user_class_type_1(behave_fixture.locust.environment)
 
-    assert user_type_1.headers == {
+    assert user_type_1.metadata == {
         'Content-Type': 'application/json',
         'x-grizzly-user': f'grizzly.users.RestApiUser_{scenario.identifier}',
     }
@@ -248,7 +248,7 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
     }
 
     user_type_2 = user_class_type_2(behave_fixture.locust.environment)
-    assert user_type_2.headers == {
+    assert user_type_2.metadata == {
         'Content-Type': 'application/xml',
         'x-grizzly-user': f'RestApiUser_{scenario.identifier}',
         'Foo-Bar': 'hello world',
