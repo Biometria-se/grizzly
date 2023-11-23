@@ -12,12 +12,12 @@ from urllib.parse import urlparse, urlunparse
 from jinja2 import Template
 
 from grizzly.events import GrizzlyEventHandler
-from grizzly.types import GrizzlyResponse, RequestDirection
 from grizzly.utils import normalize
 from grizzly_extras.transformer import JsonBytesEncoder
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.tasks import RequestTask
+    from grizzly.types import GrizzlyResponse
     from grizzly.users.base.grizzly_user import GrizzlyUser
 
 LOG_FILE_TEMPLATE = """[{{ request["time"] }}] -> {{ method }}{% if request["url"] != None %} {{ request["url"] }}{% endif %}:

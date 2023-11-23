@@ -103,13 +103,17 @@ class TestRequestLogger:
             assert log_file_contents.count('<empty>') == 3
             assert log_file_contents.count('{}') == 1
             assert '-> POST mq://mq.example.org/MSG.INCOMING?QueueManager=QMGR01&Channel=SYS.CONN:' in log_file_contents
-            assert '<- status=ERROR:' in log_file_contents
+            assert '<- mq://mq.example.org/MSG.INCOMING?QueueManager=QMGR01&Channel=SYS.CONN status=ERROR:' in log_file_contents
             assert 'Exception: error message' in log_file_contents
         finally:
             log_file.unlink()
 
         parent.user._context['log_all_requests'] = True
         request.method = RequestMethod.PUT
+        request.source = 'execute command foobar'
+        request.metadata = {
+            'application': 'helloworld',
+        }
 
         event(
             'custom-user-call',
@@ -128,15 +132,7 @@ class TestRequestLogger:
 
         try:
             # check response section
-            assert """<- status=OK:
-metadata:
-<empty>
-
-payload:
-<empty>""" in log_file_contents
-
-            # check request section
-            assert """-> PUT mq://mq.example.org/MSG.INCOMING?QueueManager=QMGR01&Channel=SYS.CONN:
+            assert """<- mq://mq.example.org/MSG.INCOMING?QueueManager=QMGR01&Channel=SYS.CONN status=OK:
 metadata:
 {
   "x-bus-message": "yes",
@@ -145,6 +141,16 @@ metadata:
 
 payload:
 <?xml encoding="UTF-8" version="1.0"?><test>value</test>""" in log_file_contents
+
+            # check request section
+            assert """-> PUT mq://mq.example.org/MSG.INCOMING?QueueManager=QMGR01&Channel=SYS.CONN:
+metadata:
+{
+  "application": "helloworld"
+}
+
+payload:
+execute command foobar""" in log_file_contents
         finally:
             log_file.unlink()
 
@@ -172,7 +178,7 @@ payload:
 
         try:
             # check response section
-            assert """<- (133.70 ms) status=ERROR:
+            assert """<- mq://mq.example.org/MSG.INCOMING?QueueManager=QMGR01&Channel=SYS.CONN (133.70 ms) status=ERROR:
 metadata:
 {
   "x-bus-message": "yes",
@@ -180,16 +186,16 @@ metadata:
 }
 
 payload:
-<?xml encoding="UTF-8" version="1.0"?><test>value</test>
-
-Exception: error message""" in log_file_contents
+<?xml encoding="UTF-8" version="1.0"?><test>value</test>""" in log_file_contents
 
             # check request section
             assert """-> GET mq://mq.example.org/MSG.INCOMING?QueueManager=QMGR01&Channel=SYS.CONN:
 metadata:
-<empty>
+{
+  "application": "helloworld"
+}
 
 payload:
-<empty>""" in log_file_contents
+execute command foobar""" in log_file_contents
         finally:
             log_file.unlink()

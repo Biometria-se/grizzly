@@ -69,7 +69,6 @@ def _create_request_task(
                         source = fd.read()
 
                 template = j2env.get_template(source)
-
         except j2.exceptions.TemplateNotFound:
             if name is None:
                 name = original_source.replace(''.join(Path(original_source).suffixes), '')

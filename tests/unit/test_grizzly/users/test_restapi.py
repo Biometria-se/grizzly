@@ -9,6 +9,7 @@ import gevent
 import pytest
 from geventhttpclient.client import HTTPClientPool
 from locust.contrib.fasthttp import FastHttpSession, LocustUserAgent, insecure_ssl_context_factory
+from locust.exception import ResponseError
 
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import RequestTask
@@ -328,6 +329,7 @@ class TestRestApiUser:
         # request GET, 400, StopUser, request.metadata populated
         response_spy._manual_result = None
         response_spy.status_code = 400
+        response_spy.request_meta = {'exception': ResponseError('400 not in [200]: bad request')}
         response_spy.text = ''
         request.metadata = {'x-foo': 'bar'}
         expected_parameters['headers'].update({'x-foo': 'bar'})
@@ -352,6 +354,7 @@ class TestRestApiUser:
         # request GET, 404, no failure exception
         response_spy.status_code = 404
         response_spy.text = '{"error_description": "borked"}'
+        response_spy.request_meta = {}
         parent.user._scenario.failure_exception = None
         request.metadata = None
 

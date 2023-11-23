@@ -233,14 +233,14 @@ class RestApiUser(GrizzlyUser, HttpRequests, AsyncRequests, GrizzlyHttpAuthClien
             # monkey patch, so we don't get two request events
             response._report_request = lambda *_: None
 
-            if response._manual_result is None and response.status_code not in request.response.status_codes:
-                message = self._get_error_message(response)
-                message = f'{response.status_code} not in {request.response.status_codes}: {message}'
-                error = ResponseError(message)
-                if self._scenario.failure_exception is not None:
-                    raise error
-
-                self.environment.stats.log_error(request.method.name, request.name, error)
+            if response._manual_result is None:
+                if response.status_code in request.response.status_codes:
+                    response.success()
+                else:
+                    message = self._get_error_message(response)
+                    message = f'{response.status_code} not in {request.response.status_codes}: {message}'
+                    self.logger.error('%% %r', response._manual_result)
+                    response.failure(ResponseError(message))
 
             headers = dict(response.headers.items()) if response.headers not in [None, {}] else None
             payload = response.text

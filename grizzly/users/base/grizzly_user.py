@@ -198,19 +198,22 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
             if request_template.template is not None:
                 source = request_template.template.render(**self.context_variables)
 
-                file = self._context_root / 'requests' / source
+                try:
+                    file = self._context_root / 'requests' / source
 
-                if file.is_file():
-                    if not isinstance(self, FileRequests):
-                        source = file.read_text()
+                    if file.is_file():
+                        if not isinstance(self, FileRequests):
+                            source = file.read_text()
 
-                        # nested template
-                        if '{{' in source and '}}' in source:
-                            source = j2env.from_string(source).render(**self.context_variables)
-                    else:
-                        file_name = file.name
-                        if not request.endpoint.endswith(file_name):
-                            request.endpoint = f'{request.endpoint}/{file_name}'
+                            # nested template
+                            if '{{' in source and '}}' in source:
+                                source = j2env.from_string(source).render(**self.context_variables)
+                        else:
+                            file_name = file.name
+                            if not request.endpoint.endswith(file_name):
+                                request.endpoint = f'{request.endpoint}/{file_name}'
+                except OSError:
+                    pass
 
                 request.source = source
 

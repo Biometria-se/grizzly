@@ -38,6 +38,10 @@ def test_e2e_response_handler_failure(e2e_fixture: End2EndFixture) -> None:
         Then log message "matches1={{{{ matches1 }}}}"
     """))
 
+    # clean up logs directory first
+    for log_file in list((e2e_fixture.root / 'features' / 'logs').glob('*.log')):
+        log_file.unlink()
+
     rc, _ = e2e_fixture.execute(feature_file)
 
     assert rc == 1
@@ -47,6 +51,25 @@ def test_e2e_response_handler_failure(e2e_fixture: End2EndFixture) -> None:
 
     log_file = log_files[0]
     assert log_file.name == regex(r'001-post-payload\.[0-9]{8}T[0-9]{12}\.log')
-    print(log_file.read_text())
 
-    assert 0
+    log_file_contents = log_file.read_text()
+
+    response_index = log_file_contents.index('/api/echo status=ERROR:')
+
+    # check response
+    assert """payload:
+{"hello":{"world":[{"value":"foo"},{"value":"bar"}]}}""" in log_file_contents[response_index:]
+
+    # check request
+    assert """metadata:
+<empty>
+
+payload:
+{
+    "hello": {
+        "world": [
+          {"value": "foo"},
+          {"value": "bar"}
+        ]
+    }
+}""" in log_file_contents[:response_index]
