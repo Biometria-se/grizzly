@@ -16,7 +16,7 @@ from grizzly.tasks import RequestTask
 from grizzly.testdata.utils import templatingfilter
 from grizzly.types import GrizzlyResponse, RequestMethod, ScenarioState
 from grizzly.types.locust import StopUser
-from grizzly.users.base import FileRequests, GrizzlyUser
+from grizzly.users import GrizzlyUser
 from tests.helpers import ANY
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -113,33 +113,6 @@ class TestGrizzlyUser:
             assert request.source == 'this is a test alice'
             assert request.arguments is None
             assert request.metadata is None
-
-            user_type = type(
-                'ContextVariablesUserFileRequest',
-                (GrizzlyUser, FileRequests),
-                {
-                    'host': 'http://example.io',
-                    '__scenario__': grizzly.scenario,
-                },
-            )
-            user = user_type(behave_fixture.locust.environment)
-            assert issubclass(user.__class__, (FileRequests,))
-
-            template.source = f'{test_file.as_posix()}'
-            template.endpoint = '/home/anon'
-            request = user.render(template)
-            assert request.endpoint == '/home/anon/blobfile.txt'
-
-            template = RequestTask(RequestMethod.POST, name='test', endpoint='/api/test | my_argument="{{ argument_variable | uppercase }}"')
-            user.set_context_variable('argument_variable', 'argument variable value')
-            user.set_context_variable('name', 'donovan')
-            template.source = 'hello {{ name }}'
-            request = user.render(template)
-            assert request.name == '001 test'
-            assert request.endpoint == '/api/test'
-            assert request.source == 'hello donovan'
-            assert request.arguments == {'my_argument': 'ARGUMENT VARIABLE VALUE'}
-            assert request.metadata is None
         finally:
             with suppress(KeyError):
                 del FILTERS['uppercase']
@@ -218,7 +191,7 @@ class TestGrizzlyUser:
             response_time=ANY(int),
             response_length=0,
             context={'host': '', 'variables': {}, 'log_all_requests': False},
-            exception=ANY(NotImplementedError, message='tests.unit.test_grizzly.users.base.test_grizzly_user.DummyGrizzlyUser_001 has not implemented request'),
+            exception=ANY(NotImplementedError, message='tests.unit.test_grizzly.users.test___init__.DummyGrizzlyUser_001 has not implemented request'),
         )
 
     def test_context(self, behave_fixture: BehaveFixture) -> None:

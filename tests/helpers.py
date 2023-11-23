@@ -24,7 +24,7 @@ from grizzly.tasks import GrizzlyTask, RequestTask, grizzlytask, template
 from grizzly.testdata.variables import AtomicVariable
 from grizzly.types import GrizzlyResponse, RequestMethod
 from grizzly.types.locust import Environment, Message
-from grizzly.users.base import GrizzlyUser
+from grizzly.users import GrizzlyUser
 
 
 class AtomicCustomVariable(AtomicVariable[str]):

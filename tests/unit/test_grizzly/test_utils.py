@@ -14,8 +14,7 @@ from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 from grizzly.scenarios import IteratorScenario
 from grizzly.tasks import RequestTask
 from grizzly.types import RequestMethod
-from grizzly.users import RestApiUser
-from grizzly.users.base import GrizzlyUser
+from grizzly.users import GrizzlyUser, RestApiUser
 from grizzly.utils import (
     ModuleLoader,
     async_message_request_wrapper,

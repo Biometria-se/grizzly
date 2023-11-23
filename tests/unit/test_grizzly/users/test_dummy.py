@@ -5,8 +5,7 @@ from typing import TYPE_CHECKING
 
 from grizzly.tasks import RequestTask
 from grizzly.types import RequestMethod
-from grizzly.users import DummyUser
-from grizzly.users.base import GrizzlyUser
+from grizzly.users import DummyUser, GrizzlyUser
 
 if TYPE_CHECKING:  # pragma: no cover
     from tests.fixtures import GrizzlyFixture

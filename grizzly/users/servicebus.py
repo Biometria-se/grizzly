@@ -83,7 +83,7 @@ from grizzly.utils import is_template
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse, async_message_request
 
-from .base import GrizzlyUser, grizzlycontext
+from . import GrizzlyUser, grizzlycontext
 
 MAX_LENGTH = 65
 

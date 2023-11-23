@@ -9,7 +9,7 @@ from locust.event import EventHook
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.tasks import RequestTask
     from grizzly.types import GrizzlyResponse
-    from grizzly.users.base import GrizzlyUser
+    from grizzly.users import GrizzlyUser
 
 class GrizzlyEventHook(EventHook):
     """Override locust.events.EventHook to get types, and not to catch any exceptions."""

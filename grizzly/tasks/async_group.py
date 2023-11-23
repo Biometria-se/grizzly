@@ -34,7 +34,7 @@ from typing import TYPE_CHECKING, Any, List, Optional, Tuple
 import gevent
 
 from grizzly.types import RequestType
-from grizzly.users.base import AsyncRequests
+from grizzly.users import AsyncRequests
 
 from . import GrizzlyTask, GrizzlyTaskWrapper, RequestTask, grizzlytask, template
 

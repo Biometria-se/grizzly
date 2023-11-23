@@ -29,7 +29,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from .context import GrizzlyContextScenario
     from .scenarios import GrizzlyScenario
     from .types.behave import Context
-    from .users.base import GrizzlyUser
+    from .users import GrizzlyUser
 
 
 logger = logging.getLogger(__name__)

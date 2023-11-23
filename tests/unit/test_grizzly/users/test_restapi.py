@@ -16,8 +16,7 @@ from grizzly.tasks import RequestTask
 from grizzly.testdata.utils import transform
 from grizzly.types import GrizzlyResponse, RequestMethod
 from grizzly.types.locust import StopUser
-from grizzly.users.base import AsyncRequests, GrizzlyUser
-from grizzly.users.restapi import RestApiUser
+from grizzly.users import AsyncRequests, GrizzlyUser, RestApiUser
 from grizzly_extras.transformer import TransformerContentType
 from tests.helpers import ANY, SOME, create_mocked_fast_response_context_manager
 

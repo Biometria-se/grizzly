@@ -61,17 +61,13 @@ import requests
 from locust.contrib.fasthttp import FastHttpSession
 from locust.contrib.fasthttp import ResponseContextManager as FastResponseContextManager
 from locust.exception import ResponseError
-from urllib3 import disable_warnings as urllib3_disable_warnings
 
 from grizzly.auth import AAD, GrizzlyHttpAuthClient, refresh_token
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod
 from grizzly.utils import safe_del
 from grizzly_extras.transformer import TransformerContentType
 
-from .base import AsyncRequests, GrizzlyUser, GrizzlyUserMeta, HttpRequests, grizzlycontext
-
-urllib3_disable_warnings()
-
+from . import AsyncRequests, GrizzlyUser, GrizzlyUserMeta, grizzlycontext
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.tasks import RequestTask
@@ -102,7 +98,7 @@ class RestApiUserMeta(GrizzlyUserMeta, ABCMeta):
     },
     'metadata': None,
 })
-class RestApiUser(GrizzlyUser, HttpRequests, AsyncRequests, GrizzlyHttpAuthClient, metaclass=RestApiUserMeta):  # type: ignore[misc]
+class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=RestApiUserMeta):  # type: ignore[misc]
     session_started: Optional[float]
     headers: Dict[str, str]
     environment: Environment

@@ -70,7 +70,6 @@ They are useful when history of test runs is needed, or when wanting to correlat
 * `RestApiUser`: send requests to REST API endpoinds, supports authentication with username+password or client secret
 * `ServiceBusUser`: send to and receive from Azure Service Bus queues and topics
 * `MessageQueueUser`: send and receive from IBM MQ queues
-* `SftpUser`: send and receive files from an SFTP-server
 * `BlobStorageUser`: send and receive files to Azure Blob Storage
 * `IotHubUser`: send/put files to Azure IoT Hub
 

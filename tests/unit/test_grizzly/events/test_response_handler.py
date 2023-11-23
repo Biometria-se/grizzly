@@ -26,7 +26,7 @@ from tests.helpers import ANY, JSON_EXAMPLE, TestUser
 if TYPE_CHECKING:  # pragma: no cover
     from pytest_mock import MockerFixture
 
-    from grizzly.users.base import GrizzlyUser
+    from grizzly.users import GrizzlyUser
     from tests.fixtures import GrizzlyFixture
 
 

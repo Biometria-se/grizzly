@@ -19,7 +19,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from pytest_mock import MockerFixture
 
     from grizzly.types import HandlerContextType
-    from grizzly.users.base.grizzly_user import GrizzlyUser
+    from grizzly.users import GrizzlyUser
     from tests.fixtures import GrizzlyFixture
 
 

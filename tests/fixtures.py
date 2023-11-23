@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import inspect
 import re
-import socket
 from contextlib import nullcontext, suppress
 from cProfile import Profile
 from getpass import getuser
@@ -14,7 +13,7 @@ from pathlib import Path
 from shutil import rmtree
 from tempfile import NamedTemporaryFile
 from textwrap import dedent, indent
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Literal, Optional, Tuple, Type, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Literal, Optional, Tuple, Type, cast
 from urllib.parse import urlparse
 
 import yaml
@@ -27,8 +26,6 @@ from geventhttpclient.response import HTTPSocketPoolResponse
 from jinja2.filters import FILTERS
 from locust.contrib.fasthttp import FastRequest, FastResponse
 from locust.contrib.fasthttp import ResponseContextManager as FastResponseContextManager
-from paramiko.channel import Channel
-from paramiko.sftp_client import SFTPClient
 from pytest_mock.plugin import MockerFixture
 from requests.models import CaseInsensitiveDict
 
@@ -48,24 +45,17 @@ if TYPE_CHECKING:  # pragma: no cover
     from unittest.mock import MagicMock
 
     from _pytest.tmpdir import TempPathFactory
-    from mypy_extensions import KwArg, VarArg
-    from paramiko.sftp import BaseSFTP
-    from paramiko.transport import Transport
 
     from grizzly.scenarios import GrizzlyScenario
-    from grizzly.users.base import GrizzlyUser
+    from grizzly.types import Self
+    from grizzly.users import GrizzlyUser
 
     from .webserver import Webserver
-    try:
-        from typing import Self
-    except ModuleNotFoundError:
-        from typing_extensions import Self
 
 
 __all__ = [
     'AtomicVariableCleanupFixture',
     'LocustFixture',
-    'ParamikoFixture',
     'BehaveFixture',
     'RequestTaskFixture',
     'GrizzlyFixture',
@@ -118,115 +108,6 @@ class LocustFixture:
         rmtree(self._test_context_root)
 
         return True
-
-
-class ParamikoFixture:
-    mocker: MockerFixture
-
-    def __init__(self, mocker: MockerFixture) -> None:
-        self.mocker = mocker
-
-    def __call__(self) -> None:
-        # unable to import socket.AddressFamily and socket.SocketKind ?!
-        def _socket_getaddrinfo(
-            hostname: Union[bytearray, bytes, str, None], port: Union[str, int, None], addrfamily: int, kind: int,  # noqa: ARG001
-        ) -> List[Tuple[int, int, Optional[int], Optional[str], Optional[Tuple[str, int]]]]:
-            return [(socket.AF_INET, socket.SOCK_STREAM, None, None, None)]
-
-        def _socket_connect(self: socket.socket, address: Any) -> None:  # noqa: ARG001
-            pass
-
-        def _start_client(transport: Transport, event: Optional[Any] = None, timeout: Optional[Any] = None) -> None:  # noqa: ARG001
-            transport.active = True
-
-        def _auth_password(transport: Transport, username: str, password: Optional[str], event: Optional[Any] = None, fallback: Optional[bool] = True) -> List[str]:  # noqa: ARG001, FBT002
-            return []
-
-        def _is_authenticated(transport: Transport) -> Literal[True]:  # noqa: ARG001
-            return True
-
-        def __send_version(base_sftp: BaseSFTP) -> str:  # noqa: ARG001
-            return '2.0-grizzly'
-
-        def _open_session(transport: Transport, window_size: Optional[int] = None, max_packet_size: Optional[int] = None, timeout: Optional[int] = None) -> Channel:  # noqa: ARG001
-            return Channel(1)
-
-        def _from_transport(transport: Transport, window_size: Optional[int] = None, max_packet_size: Optional[int] = None) -> SFTPClient:  # noqa: ARG001
-            channel = _open_session(transport)
-            channel.transport = transport
-
-            return SFTPClient(channel)
-
-        def _sftpclient_close(sftp_client: SFTPClient) -> None:  # noqa: ARG001
-            pass
-
-        def _transport_close(transport: Transport) -> None:  # noqa: ARG001
-            pass
-
-        def _get(sftp_client: SFTPClient, remotepath: str, localpath: str, callback: Optional[Callable[[VarArg(Any), KwArg(Any)], None]] = None) -> None:  # noqa: ARG001
-            if callback is not None:
-                callback(100, 1000)
-
-        def _put(
-            sftp_client: SFTPClient, localpath: str, remotepath: str, callback: Optional[Callable[[VarArg(Any), KwArg(Any)], None]] = None, confirm: Optional[bool] = True,  # noqa: ARG001, FBT002
-        ) -> None:
-            if callback is not None:
-                callback(100, 1000)
-
-        self.mocker.patch(
-            'paramiko.transport.socket.getaddrinfo',
-            _socket_getaddrinfo,
-        )
-
-        self.mocker.patch(
-            'paramiko.transport.socket.socket.connect',
-            _socket_connect,
-        )
-
-        self.mocker.patch(
-            'paramiko.transport.Transport.is_authenticated',
-            _is_authenticated,
-        )
-
-        self.mocker.patch(
-            'paramiko.transport.Transport.start_client',
-            _start_client,
-        )
-
-        self.mocker.patch(
-            'paramiko.transport.Transport.auth_password',
-            _auth_password,
-        )
-
-        self.mocker.patch(
-            'paramiko.transport.Transport.close',
-            _transport_close,
-        )
-
-        self.mocker.patch(
-            'paramiko.sftp.BaseSFTP._send_version',
-            __send_version,
-        )
-
-        self.mocker.patch(
-            'paramiko.sftp_client.SFTPClient.from_transport',
-            _from_transport,
-        )
-
-        self.mocker.patch(
-            'paramiko.sftp_client.SFTPClient.close',
-            _sftpclient_close,
-        )
-
-        self.mocker.patch(
-            'paramiko.sftp_client.SFTPClient.put',
-            _put,
-        )
-
-        self.mocker.patch(
-            'paramiko.sftp_client.SFTPClient.get',
-            _get,
-        )
 
 
 class BehaveFixture:

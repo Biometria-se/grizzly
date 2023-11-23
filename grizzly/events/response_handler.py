@@ -14,7 +14,7 @@ from grizzly_extras.transformer import PlainTransformer, TransformerContentType,
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.tasks import RequestTask
     from grizzly.types import GrizzlyResponse, HandlerContextType
-    from grizzly.users.base import GrizzlyUser
+    from grizzly.users import GrizzlyUser
 
 class ResponseHandlerAction(ABC):
     grizzly = GrizzlyContext()

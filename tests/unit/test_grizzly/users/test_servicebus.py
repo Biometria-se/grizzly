@@ -12,8 +12,7 @@ from grizzly.context import GrizzlyContextScenario
 from grizzly.tasks import ExplicitWaitTask, RequestTask
 from grizzly.types import RequestMethod
 from grizzly.types.locust import StopUser
-from grizzly.users.base import GrizzlyUser
-from grizzly.users.servicebus import ServiceBusUser
+from grizzly.users import GrizzlyUser, ServiceBusUser
 from grizzly_extras.async_message import AsyncMessageError, AsyncMessageResponse
 from grizzly_extras.transformer import TransformerContentType
 from tests.helpers import ANY

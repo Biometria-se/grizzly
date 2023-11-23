@@ -18,7 +18,7 @@ from grizzly_extras.transformer import JsonBytesEncoder
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.tasks import RequestTask
     from grizzly.types import GrizzlyResponse
-    from grizzly.users.base.grizzly_user import GrizzlyUser
+    from grizzly.users import GrizzlyUser
 
 LOG_FILE_TEMPLATE = """[{{ request["time"] }}] -> {{ method }}{% if request["url"] != None %} {{ request["url"] }}{% endif %}:
 metadata:
