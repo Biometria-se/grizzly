@@ -6,9 +6,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from grizzly.exceptions import RestartScenario, TransformerLocustError
+from grizzly.exceptions import RestartScenario
 from grizzly.tasks import TransformerTask
-from grizzly_extras.transformer import TransformerContentType, transformer
+from grizzly_extras.transformer import TransformerContentType, TransformerError, transformer
 from tests.helpers import ANY
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -18,7 +18,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 class TestTransformerTask:
-    def test(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:  # noqa: PLR0915
+    def test_task(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:  # noqa: PLR0915
         grizzly = grizzly_fixture.grizzly
 
         parent = grizzly_fixture()
@@ -34,13 +34,13 @@ class TestTransformerTask:
 
         json_transformer = transformer.available[TransformerContentType.JSON]
         del transformer.available[TransformerContentType.JSON]
-
-        with pytest.raises(ValueError, match='could not find a transformer for JSON'):
-            TransformerTask(
-                variable='test_variable', expression='$.', content_type=TransformerContentType.JSON, content='',
-            )
-
-        transformer.available.update({TransformerContentType.JSON: json_transformer})
+        try:
+            with pytest.raises(ValueError, match='could not find a transformer for JSON'):
+                TransformerTask(
+                    variable='test_variable', expression='$.', content_type=TransformerContentType.JSON, content='',
+                )
+        finally:
+            transformer.available.update({TransformerContentType.JSON: json_transformer})
 
         with pytest.raises(ValueError, match=r'\$\. is not a valid expression for JSON'):
             TransformerTask(
@@ -65,7 +65,7 @@ class TestTransformerTask:
             response_time=ANY(int),
             response_length=0,
             context=parent.user._context,
-            exception=ANY(TransformerLocustError, message='failed to transform JSON'),
+            exception=ANY(TransformerError, message='failed to transform input as JSON'),
         )
         fire_spy.reset_mock()
 

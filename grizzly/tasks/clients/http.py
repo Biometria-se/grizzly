@@ -64,7 +64,7 @@ if TYPE_CHECKING:  # pragma: no cover
 @client('http', 'https')
 class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
     arguments: Dict[str, Any]
-    headers: Dict[str, str]
+    metadata: Dict[str, Any]
     session_started: Optional[float]
     host: str
 
@@ -106,7 +106,7 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
 
         self.arguments = {}
         self.cookies = {}
-        self.headers = {
+        self.metadata = {
             'x-grizzly-user': f'{self.__class__.__name__}::{id(self)}',
         }
 
@@ -129,9 +129,8 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
         self.environment = self.grizzly.state.locust.environment
 
         self.session_started = time()
-        metadata = self._context.get('metadata', None)
-        if metadata is not None:
-            self.headers.update(metadata)
+        metadata = self._context.get('metadata', None) or {}
+        self.metadata.update(metadata)
 
     @refresh_token(AAD)
     def get(self, parent: GrizzlyScenario) -> GrizzlyResponse:
@@ -140,11 +139,11 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
 
             meta.update({'request': {
                 'url': url,
-                'metadata': self.headers,
+                'metadata': self.metadata,
                 'payload': None,
             }})
 
-            response = requests.get(url, headers=self.headers, cookies=self.cookies, timeout=30, **self.arguments)
+            response = requests.get(url, headers=self.metadata, cookies=self.cookies, timeout=60, **self.arguments)
 
             payload = response.text
             metadata = dict(response.headers)

@@ -108,18 +108,18 @@ def test_refresh_token_client(grizzly_fixture: GrizzlyFixture, mocker: MockerFix
         get_token_mock.assert_not_called()
 
         parent.user.session_started = time()
-        safe_del(parent.user.headers, 'Authorization')
+        safe_del(parent.user.metadata, 'Authorization')
 
         # session is fresh, but no token set (first call)
         parent.user.request(request_task)
         get_token_mock.assert_called_once_with(parent.user, AuthMethod.CLIENT)
         get_token_mock.reset_mock()
 
-        assert parent.user.headers['Authorization'] == 'Bearer dummy'
+        assert parent.user.metadata['Authorization'] == 'Bearer dummy'
 
         # token is fresh and set, no refresh
         parent.user.session_started = time()
-        parent.user.headers['Authorization'] = 'Bearer dummy'
+        parent.user.metadata['Authorization'] = 'Bearer dummy'
 
         parent.user.request(request_task)
         get_token_mock.assert_not_called()
@@ -188,13 +188,13 @@ def test_refresh_token_user(grizzly_fixture: GrizzlyFixture, mocker: MockerFixtu
     get_token_mock.assert_not_called()
 
     parent.user.session_started = time()
-    safe_del(parent.user.headers, 'Authorization')
+    safe_del(parent.user.metadata, 'Authorization')
 
     # session is fresh, but no token set (first call)
     parent.user.request(request_task)
     get_token_mock.assert_called_once_with(parent.user, AuthMethod.USER)
     get_token_mock.reset_mock()
-    assert parent.user.headers['Authorization'] == 'Bearer dummy'
+    assert parent.user.metadata['Authorization'] == 'Bearer dummy'
 
     # token is fresh and set, no refresh
     parent.user.session_started = time()
@@ -210,7 +210,7 @@ def test_refresh_token_user(grizzly_fixture: GrizzlyFixture, mocker: MockerFixtu
     get_token_mock.reset_mock()
 
     parent.user.add_context({'auth': {'user': {'username': 'alice@example.com'}}})
-    assert 'Authorization' not in parent.user.headers
+    assert 'Authorization' not in parent.user.metadata
     auth_context = parent.user._context.get('auth', None)
     assert auth_context is not None
     assert auth_context.get('user', None) == {
@@ -224,7 +224,7 @@ def test_refresh_token_user(grizzly_fixture: GrizzlyFixture, mocker: MockerFixtu
     # new user in context, needs to get a new token
     parent.user.request(request_task)
     get_token_mock.assert_called_once_with(parent.user, AuthMethod.USER)
-    assert parent.user.headers.get('Authorization', None) == 'Bearer dummy'
+    assert parent.user.metadata.get('Authorization', None) == 'Bearer dummy'
 
 
 @pytest.mark.parametrize('host', ['www.example.com', '{{ test_host }}'])
@@ -310,4 +310,4 @@ def test_refresh_token_user_render(grizzly_fixture: GrizzlyFixture, mocker: Mock
             'test_host': f'http://{rendered_host}',
         },
     }
-    assert client.headers == {'Authorization': 'Bearer dummy', 'x-grizzly-user': ANY}
+    assert client.metadata == {'Authorization': 'Bearer dummy', 'x-grizzly-user': ANY}

@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import re
 from abc import ABCMeta, abstractmethod
-from enum import auto
 from functools import wraps
 from json import JSONEncoder
 from json import dumps as jsondumps
@@ -29,25 +28,19 @@ class TransformerError(Exception):
 class TransformerContentType(PermutationEnum):
     __vector__ = (False, True)
 
-    UNDEFINED = 0
-    JSON = auto()
-    XML = auto()
-    PLAIN = auto()
-    MULTIPART_FORM_DATA = auto()
+    UNDEFINED = None
+    JSON = 'application/json'
+    XML = 'application/xml'
+    PLAIN = 'text/plain'
+    MULTIPART_FORM_DATA = 'multipart/form-data'
 
     @classmethod
     def from_string(cls, value: str) -> TransformerContentType:
-        if value.lower().strip() in ['application/json', 'json']:
-            return TransformerContentType.JSON
+        value = value.lower()
 
-        if value.lower().strip() in ['application/xml', 'xml']:
-            return TransformerContentType.XML
-
-        if value.lower().strip() in ['text/plain', 'plain']:
-            return TransformerContentType.PLAIN
-
-        if value.lower().strip() == 'multipart/form-data':
-            return TransformerContentType.MULTIPART_FORM_DATA
+        for enum in cls:
+            if enum.name.lower() == value or enum.value == value:
+                return enum
 
         message = f'"{value}" is an unknown response content type'
         raise ValueError(message)

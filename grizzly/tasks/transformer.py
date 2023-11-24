@@ -31,7 +31,6 @@ from __future__ import annotations
 from time import perf_counter
 from typing import TYPE_CHECKING, Any, Callable, List, Type
 
-from grizzly.exceptions import TransformerLocustError
 from grizzly_extras.transformer import Transformer, TransformerContentType, TransformerError, transformer
 
 from . import GrizzlyTask, grizzlytask, template
@@ -94,10 +93,10 @@ class TransformerTask(GrizzlyTask):
 
                 try:
                     content = self._transformer.transform(content_raw)
-                except TransformerError as e:
+                except TransformerError:
                     message = f'failed to transform {self.content_type.name}'
                     parent.logger.exception('%s: %s', message, content_raw)
-                    raise TransformerLocustError(message) from e
+                    raise
 
                 values = self._parser(content)
 

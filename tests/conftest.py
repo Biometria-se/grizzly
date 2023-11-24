@@ -13,7 +13,6 @@ from .fixtures import (
     GrizzlyFixture,
     LocustFixture,
     NoopZmqFixture,
-    ParamikoFixture,
     RequestTaskFixture,
     ResponseContextManagerFixture,
 )
@@ -54,11 +53,6 @@ def _atomicvariable_cleanup() -> Generator[AtomicVariableCleanupFixture, None, N
 def _locust_fixture(tmp_path_factory: TempPathFactory) -> Generator[LocustFixture, None, None]:
     with LocustFixture(tmp_path_factory) as fixture:
         yield fixture
-
-
-@pytest.mark.usefixtures('mocker')
-def _paramiko_fixture(mocker: MockerFixture) -> Generator[ParamikoFixture, None, None]:
-    yield ParamikoFixture(mocker)
 
 
 @pytest.mark.usefixtures('locust_fixture')
@@ -103,7 +97,6 @@ def _e2e_fixture(tmp_path_factory: TempPathFactory, webserver: Webserver, reques
 
 cleanup = pytest.fixture()(_atomicvariable_cleanup)
 locust_fixture = pytest.fixture()(_locust_fixture)
-paramiko_fixture = pytest.fixture()(_paramiko_fixture)
 behave_fixture = pytest.fixture()(_behave_fixture)
 request_task = pytest.fixture()(_request_task)
 grizzly_fixture = pytest.fixture(scope='function')(_grizzly_fixture)

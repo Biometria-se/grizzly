@@ -68,9 +68,9 @@ from . import template as task_template
 if TYPE_CHECKING:  # pragma: no cover
     from jinja2.environment import Template
 
+    from grizzly.events.response_handler import ResponseHandlerAction
     from grizzly.scenarios import GrizzlyScenario
     from grizzly.types import GrizzlyResponse, RequestMethod
-    from grizzly.users.base.response_handler import ResponseHandlerAction
 
 
 class RequestTaskHandlers:
@@ -117,7 +117,7 @@ class RequestTask(GrizzlyMetaRequestTask):
     _template: Optional[Template]
     _source: Optional[str]
     arguments: Optional[Dict[str, str]]
-    metadata: Optional[Dict[str, str]]
+    metadata: Dict[str, str]
     async_request: bool
 
     response: RequestTaskResponse
@@ -129,7 +129,7 @@ class RequestTask(GrizzlyMetaRequestTask):
         self.name = name
         self.endpoint = endpoint
         self.arguments = None
-        self.metadata = None
+        self.metadata = {}
         self.async_request = False
 
         self._template = None
@@ -186,10 +186,7 @@ class RequestTask(GrizzlyMetaRequestTask):
 
     def add_metadata(self, key: str, value: str) -> None:
         """Add new metadata key value, where default value of metadata is None, it must be initialized as a dict."""
-        if self.metadata is None:
-            self.metadata = {key: value}
-        else:
-            self.metadata[key] = value
+        self.metadata.update({key: value})
 
     def __call__(self) -> grizzlytask:
         @grizzlytask

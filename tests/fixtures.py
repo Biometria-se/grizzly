@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import inspect
 import re
-import socket
 from contextlib import nullcontext, suppress
 from cProfile import Profile
 from getpass import getuser
@@ -14,7 +13,7 @@ from pathlib import Path
 from shutil import rmtree
 from tempfile import NamedTemporaryFile
 from textwrap import dedent, indent
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Literal, Optional, Tuple, Type, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Literal, Optional, Tuple, Type, cast
 from urllib.parse import urlparse
 
 import yaml
@@ -25,47 +24,38 @@ from behave.step_registry import registry as step_registry
 from geventhttpclient.header import Headers
 from geventhttpclient.response import HTTPSocketPoolResponse
 from jinja2.filters import FILTERS
-from locust.clients import ResponseContextManager
 from locust.contrib.fasthttp import FastRequest, FastResponse
-from paramiko.channel import Channel
-from paramiko.sftp_client import SFTPClient
+from locust.contrib.fasthttp import ResponseContextManager as FastResponseContextManager
 from pytest_mock.plugin import MockerFixture
-from requests.models import CaseInsensitiveDict, PreparedRequest, Response
+from requests.models import CaseInsensitiveDict
 
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import RequestTask
 from grizzly.testdata.variables import destroy_variables
-from grizzly.types import GrizzlyResponseContextManager, RequestMethod
+from grizzly.types import RequestMethod
 from grizzly.types.behave import Context as BehaveContext
 from grizzly.types.behave import Feature, Scenario, Step
 from grizzly.types.locust import Environment, LocustRunner
 from grizzly.utils import create_scenario_class_type, create_user_class_type
 
-from .helpers import RequestSilentFailureEvent, TestScenario, TestUser, onerror, run_command
+from .helpers import TestScenario, TestUser, onerror, run_command
 
 if TYPE_CHECKING:  # pragma: no cover
     from types import TracebackType
     from unittest.mock import MagicMock
 
     from _pytest.tmpdir import TempPathFactory
-    from mypy_extensions import KwArg, VarArg
-    from paramiko.sftp import BaseSFTP
-    from paramiko.transport import Transport
 
     from grizzly.scenarios import GrizzlyScenario
-    from grizzly.users.base import GrizzlyUser
+    from grizzly.types import Self
+    from grizzly.users import GrizzlyUser
 
     from .webserver import Webserver
-    try:
-        from typing import Self
-    except ModuleNotFoundError:
-        from typing_extensions import Self
 
 
 __all__ = [
     'AtomicVariableCleanupFixture',
     'LocustFixture',
-    'ParamikoFixture',
     'BehaveFixture',
     'RequestTaskFixture',
     'GrizzlyFixture',
@@ -118,115 +108,6 @@ class LocustFixture:
         rmtree(self._test_context_root)
 
         return True
-
-
-class ParamikoFixture:
-    mocker: MockerFixture
-
-    def __init__(self, mocker: MockerFixture) -> None:
-        self.mocker = mocker
-
-    def __call__(self) -> None:
-        # unable to import socket.AddressFamily and socket.SocketKind ?!
-        def _socket_getaddrinfo(
-            hostname: Union[bytearray, bytes, str, None], port: Union[str, int, None], addrfamily: int, kind: int,  # noqa: ARG001
-        ) -> List[Tuple[int, int, Optional[int], Optional[str], Optional[Tuple[str, int]]]]:
-            return [(socket.AF_INET, socket.SOCK_STREAM, None, None, None)]
-
-        def _socket_connect(self: socket.socket, address: Any) -> None:  # noqa: ARG001
-            pass
-
-        def _start_client(transport: Transport, event: Optional[Any] = None, timeout: Optional[Any] = None) -> None:  # noqa: ARG001
-            transport.active = True
-
-        def _auth_password(transport: Transport, username: str, password: Optional[str], event: Optional[Any] = None, fallback: Optional[bool] = True) -> List[str]:  # noqa: ARG001, FBT002
-            return []
-
-        def _is_authenticated(transport: Transport) -> Literal[True]:  # noqa: ARG001
-            return True
-
-        def __send_version(base_sftp: BaseSFTP) -> str:  # noqa: ARG001
-            return '2.0-grizzly'
-
-        def _open_session(transport: Transport, window_size: Optional[int] = None, max_packet_size: Optional[int] = None, timeout: Optional[int] = None) -> Channel:  # noqa: ARG001
-            return Channel(1)
-
-        def _from_transport(transport: Transport, window_size: Optional[int] = None, max_packet_size: Optional[int] = None) -> SFTPClient:  # noqa: ARG001
-            channel = _open_session(transport)
-            channel.transport = transport
-
-            return SFTPClient(channel)
-
-        def _sftpclient_close(sftp_client: SFTPClient) -> None:  # noqa: ARG001
-            pass
-
-        def _transport_close(transport: Transport) -> None:  # noqa: ARG001
-            pass
-
-        def _get(sftp_client: SFTPClient, remotepath: str, localpath: str, callback: Optional[Callable[[VarArg(Any), KwArg(Any)], None]] = None) -> None:  # noqa: ARG001
-            if callback is not None:
-                callback(100, 1000)
-
-        def _put(
-            sftp_client: SFTPClient, localpath: str, remotepath: str, callback: Optional[Callable[[VarArg(Any), KwArg(Any)], None]] = None, confirm: Optional[bool] = True,  # noqa: ARG001, FBT002
-        ) -> None:
-            if callback is not None:
-                callback(100, 1000)
-
-        self.mocker.patch(
-            'paramiko.transport.socket.getaddrinfo',
-            _socket_getaddrinfo,
-        )
-
-        self.mocker.patch(
-            'paramiko.transport.socket.socket.connect',
-            _socket_connect,
-        )
-
-        self.mocker.patch(
-            'paramiko.transport.Transport.is_authenticated',
-            _is_authenticated,
-        )
-
-        self.mocker.patch(
-            'paramiko.transport.Transport.start_client',
-            _start_client,
-        )
-
-        self.mocker.patch(
-            'paramiko.transport.Transport.auth_password',
-            _auth_password,
-        )
-
-        self.mocker.patch(
-            'paramiko.transport.Transport.close',
-            _transport_close,
-        )
-
-        self.mocker.patch(
-            'paramiko.sftp.BaseSFTP._send_version',
-            __send_version,
-        )
-
-        self.mocker.patch(
-            'paramiko.sftp_client.SFTPClient.from_transport',
-            _from_transport,
-        )
-
-        self.mocker.patch(
-            'paramiko.sftp_client.SFTPClient.close',
-            _sftpclient_close,
-        )
-
-        self.mocker.patch(
-            'paramiko.sftp_client.SFTPClient.put',
-            _put,
-        )
-
-        self.mocker.patch(
-            'paramiko.sftp_client.SFTPClient.get',
-            _get,
-        )
 
 
 class BehaveFixture:
@@ -436,11 +317,9 @@ class ResponseContextManagerFixture:
 
         return request
 
-    def __call__(  # noqa: C901
+    def __call__(
         self,
-        cls_rcm: Type[GrizzlyResponseContextManager],
         status_code: int,
-        environment: Optional[Environment] = None,
         response_body: Optional[Any] = None,
         response_headers: Optional[Dict[str, Any]] = None,
         request_method: Optional[str] = None,
@@ -448,85 +327,55 @@ class ResponseContextManagerFixture:
         request_headers: Optional[Dict[str, Any]] = None,
         url: Optional[str] = None,
         **kwargs: Dict[str, Any],
-    ) -> GrizzlyResponseContextManager:
+    ) -> FastResponseContextManager:
         name = kwargs['name']
-        event: Any
-        event = RequestSilentFailureEvent(custom=False) if environment is not None else None
 
-        if cls_rcm is ResponseContextManager:
-            response = Response()
-            if response_headers is not None:
-                response.headers = CaseInsensitiveDict(**response_headers)
+        _build_request = self._build_request
+        request_url = url
 
-            if response_body is not None:
-                if response.headers.get('Content-Type', None) in [None, 'application/json']:
-                    response._content = jsondumps(response_body).encode('utf-8')
+        class FakeGhcResponse(HTTPSocketPoolResponse):
+            _headers_index: Optional[Headers]
+            _sent_request: str
+            _sock: Any
+
+            def __init__(self) -> None:
+                self._headers_index = None
+
+                body: Optional[Any] = None
+                if request_headers is not None and CaseInsensitiveDict(**request_headers).get('Content-Type', None) in [None, 'application/json']:
+                    body = jsondumps(request_body or '')
                 else:
-                    response._content = response_body
-            response.status_code = status_code
+                    body = request_body
 
-            response.request = PreparedRequest()
-            if request_headers is not None:
-                response.request.headers = CaseInsensitiveDict(**request_headers)
+                self._sent_request = _build_request(
+                    request_method or '',
+                    request_url or '',
+                    body=body or '',
+                    headers=request_headers,
+                )
+                self._sock = None
 
-            if request_body is not None:
-                response.request.body = request_body.encode('utf-8')
+            def get_code(self) -> int:
+                return status_code
 
-            response.request.method = (request_method or 'GET').lower()
+        request = FastRequest(url, method=request_method, headers=Headers(), payload=request_body)
+        for key, value in (request_headers or {}).items():
+            request.headers.add(key, value)
 
-            if url is not None:
-                response.url = response.request.url = url
+        response = FastResponse(FakeGhcResponse(), request)
+        response.headers = Headers()
+        for key, value in (response_headers or {}).items():
+            response.headers.add(key, value)
+
+        if response_body is not None:
+            response._cached_content = jsondumps(response_body).encode('utf-8')
         else:
-            _build_request = self._build_request
-            request_url = url
+            response._cached_content = None
 
-            class FakeGhcResponse(HTTPSocketPoolResponse):
-                _headers_index: Optional[Headers]
-                _sent_request: str
-                _sock: Any
+        if request_body is not None:
+            response.request_body = request_body
 
-                def __init__(self) -> None:
-                    self._headers_index = None
-
-                    body: Optional[Any] = None
-                    if request_headers is not None and CaseInsensitiveDict(**request_headers).get('Content-Type', None) in [None, 'application/json']:
-                        body = jsondumps(request_body or '')
-                    else:
-                        body = request_body
-
-                    self._sent_request = _build_request(
-                        request_method or '',
-                        request_url or '',
-                        body=body or '',
-                        headers=request_headers,
-                    )
-                    self._sock = None
-
-                def get_code(self) -> int:
-                    return status_code
-
-            request = FastRequest(url, method=request_method, headers=Headers(), payload=request_body)
-            for key, value in (request_headers or {}).items():
-                request.headers.add(key, value)
-
-            response = FastResponse(FakeGhcResponse(), request)
-            response.headers = Headers()
-            for key, value in (response_headers or {}).items():
-                response.headers.add(key, value)
-
-            if response_body is not None:
-                response._cached_content = jsondumps(response_body).encode('utf-8')
-            else:
-                response._cached_content = None
-
-            if request_body is not None:
-                response.request_body = request_body
-
-            if environment is not None:
-                environment.events.request = event
-                event = environment
-
-        response_context_manager = cls_rcm(response, event, {})
+        response_context_manager = FastResponseContextManager(response, None, {})
         response_context_manager._entered = True
         response_context_manager.request_meta = {
             'method': None,

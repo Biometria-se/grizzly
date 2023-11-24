@@ -20,7 +20,6 @@ from grizzly.testdata import GrizzlyVariables
 from grizzly.testdata.utils import transform
 from grizzly.types import RequestMethod, ResponseTarget, pymqi
 from grizzly.types.locust import Environment, StopUser
-from grizzly.users.base import RequestLogger, ResponseHandler
 from grizzly.users.messagequeue import MessageQueueUser
 from grizzly_extras.async_message import AsyncMessageError
 from grizzly_extras.transformer import TransformerContentType
@@ -144,7 +143,7 @@ class TestMessageQueueUser:
         request_context_spy.return_value.__enter__.return_value.update.assert_not_called()
         disconnect_mock.assert_called_once_with(parent.user.zmq_url)
 
-    def test_create(self, grizzly_fixture: GrizzlyFixture) -> None:  # noqa: PLR0915
+    def test_create(self, grizzly_fixture: GrizzlyFixture) -> None:
         parent = grizzly_fixture(host='mq://mq.example.com:1415?Channel=Kanal1&QueueManager=QMGR01', user_type=MessageQueueUser)
         environment = grizzly_fixture.behave.locust.environment
         test_cls = parent.user.__class__
@@ -209,19 +208,16 @@ class TestMessageQueueUser:
 
         user = test_cls(environment=environment)
         assert user.am_context.get('message_wait', None) == 5
-        assert issubclass(user.__class__, (RequestLogger, ResponseHandler))
 
         test_cls.__context__['message']['header_type'] = 'RFH2'
 
         user = test_cls(environment=environment)
         assert user.am_context.get('header_type', None) == 'rfh2'
-        assert issubclass(user.__class__, (RequestLogger, ResponseHandler))
 
         test_cls.__context__['message']['header_type'] = 'None'
 
         user = test_cls(environment=environment)
         assert user.am_context.get('header_type', None) is None
-        assert issubclass(user.__class__, (RequestLogger, ResponseHandler))
 
         test_cls.__context__['message']['header_type'] = 'wrong'
         with pytest.raises(ValueError, match='unsupported value for header_type: "wrong"'):
@@ -424,7 +420,7 @@ class TestMessageQueueUser:
         })
 
         request_event_spy = mocker.spy(mq_parent.user.environment.events.request, 'fire')
-        response_event_spy = mocker.spy(mq_parent.user.response_event, 'fire')
+        response_event_spy = mocker.spy(mq_parent.user.event_hook, 'fire')
 
         request = cast(RequestTask, mq_parent.user._scenario.tasks()[-1])
         request.endpoint = 'queue:test-queue'

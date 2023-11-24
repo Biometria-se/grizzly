@@ -491,3 +491,26 @@ class TestJsonBytesEncoder:
 
         with pytest.raises(TypeError, match='is not JSON serializable'):
             encoder.default(None)
+
+
+class TestTransformerContentType:
+    def test_json(self) -> None:
+        for value in ['json', 'JSON', 'application/json']:
+            assert TransformerContentType.from_string(value) == TransformerContentType.JSON
+
+    def test_xml(self) -> None:
+        for value in ['xml', 'XML', 'application/xml']:
+            assert TransformerContentType.from_string(value) == TransformerContentType.XML
+
+    def test_plain(self) -> None:
+        for value in ['PLAIN', 'plain', 'text/plain']:
+            assert TransformerContentType.from_string(value) == TransformerContentType.PLAIN
+
+    def test_undefined(self) -> None:
+        for value in ['undefined', 'UNDEFINED']:
+            assert TransformerContentType.from_string(value) == TransformerContentType.UNDEFINED
+
+    def test_unknown(self) -> None:
+        with pytest.raises(ValueError, match='"foo" is an unknown response content type'):
+            TransformerContentType.from_string('foo')
+

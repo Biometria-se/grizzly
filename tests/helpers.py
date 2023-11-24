@@ -12,16 +12,19 @@ from copy import deepcopy
 from pathlib import Path
 from types import MethodType, TracebackType
 from typing import Any, Callable, Dict, Generator, List, Optional, Pattern, Set, Tuple, Type, Union
+from unittest.mock import MagicMock
 
+from geventhttpclient.response import HTTPSocketPoolResponse
 from locust import task
-from locust.event import EventHook
+from locust.contrib.fasthttp import FastResponse
+from locust.contrib.fasthttp import ResponseContextManager as FastResponseContextManager
 
 from grizzly.scenarios import GrizzlyScenario
 from grizzly.tasks import GrizzlyTask, RequestTask, grizzlytask, template
 from grizzly.testdata.variables import AtomicVariable
 from grizzly.types import GrizzlyResponse, RequestMethod
 from grizzly.types.locust import Environment, Message
-from grizzly.users.base import GrizzlyUser
+from grizzly.users import GrizzlyUser
 
 
 class AtomicCustomVariable(AtomicVariable[str]):
@@ -185,14 +188,6 @@ class TestExceptionTask(GrizzlyTask):
         return task
 
 
-class ResultSuccess(Exception):  # noqa: N818
-    pass
-
-
-class ResultFailure(Exception):  # noqa: N818
-    pass
-
-
 def check_arguments(kwargs: Dict[str, Any]) -> Tuple[bool, List[str]]:
     expected = ['request_type', 'name', 'response_time', 'response_length', 'context', 'exception']
     actual = list(kwargs.keys())
@@ -202,35 +197,6 @@ def check_arguments(kwargs: Dict[str, Any]) -> Tuple[bool, List[str]]:
     diff = list(set(expected) - set(actual))
 
     return actual == expected, diff
-
-
-class RequestEvent(EventHook):
-    def __init__(self, *, custom: bool = True) -> None:
-        self.custom = custom
-
-    def fire(self, *_args: Any, **kwargs: Any) -> None:
-        if self.custom:
-            valid, diff = check_arguments(kwargs)
-            if not valid:
-                message = f'missing required arguments: {diff}'
-                raise AttributeError(message)
-
-        if 'exception' in kwargs and kwargs['exception'] is not None:
-            raise ResultFailure(kwargs['exception'])
-
-        raise ResultSuccess
-
-
-class RequestSilentFailureEvent(RequestEvent):
-    def fire(self, *_args: Any, **kwargs: Any) -> None:
-        if self.custom:
-            valid, diff = check_arguments(kwargs)
-            if not valid:
-                message = f'missing required arguments: {diff}'
-                raise AttributeError(message)
-
-        if 'exception' not in kwargs or kwargs['exception'] is None:
-            raise ResultSuccess
 
 
 def get_property_decorated_attributes(target: Any) -> Set[str]:
@@ -353,6 +319,19 @@ class regex:
 
     def __repr__(self) -> str:
         return self._regex.pattern
+
+
+def create_mocked_fast_response_context_manager(*, content: str, headers: Optional[Dict[str, str]] = None, status_code: int = 200) -> FastResponseContextManager:
+    ghc_response = MagicMock(spec=HTTPSocketPoolResponse)
+    ghc_response.get_code.return_value = status_code
+    ghc_response._headers_index = headers or {}
+    response = FastResponse(ghc_response)
+    response._cached_content = content.encode()
+
+    context_manager = FastResponseContextManager(response, None, {})
+    context_manager._entered = True
+
+    return context_manager
 
 
 JSON_EXAMPLE = {

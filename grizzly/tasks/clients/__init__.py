@@ -32,8 +32,7 @@ from urllib.parse import unquote, urlparse
 from grizzly.tasks import GrizzlyMetaRequestTask, grizzlytask, template
 from grizzly.testdata.utils import resolve_variable
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestType
-from grizzly.users.base import RequestLogger
-from grizzly.utils import merge_dicts
+from grizzly.utils import merge_dicts, normalize
 from grizzly_extras.arguments import parse_arguments, split_value
 from grizzly_extras.transformer import TransformerContentType
 
@@ -270,7 +269,7 @@ class ClientTask(GrizzlyMetaRequestTask):
                 )
 
             if exception is not None or parent.user._scenario.context.get('log_all_requests', False):
-                log_name = RequestLogger._normalize(name)
+                log_name = normalize(name)
                 log_date = datetime.now()
                 log_file = self.log_dir / f'{log_name}.{log_date.strftime("%Y%m%dT%H%M%S%f")}.log'
 

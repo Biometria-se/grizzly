@@ -34,21 +34,18 @@ def test_e2e_keystore(e2e_fixture: End2EndFixture) -> None:
 
     e2e_fixture.add_after_feature(after_feature)
 
-    start_webserver_step = f'Then start webserver on master port "{e2e_fixture.webserver.port}"\n' if e2e_fixture._distributed else ''
-
-    feature_file = e2e_fixture.create_feature(dedent(f"""Feature: test persistence
+    feature_file = e2e_fixture.create_feature(dedent("""Feature: test persistence
     Background: common configuration
         Given "2" users
         And spawn rate is "2" user per second
-        {start_webserver_step}
     Scenario: first
         Given a user of type "Dummy" load testing "dummy://test"
         And repeat for "1" iterations
         And value for variable "key_holder_1" is "none"
         And wait "0" seconds between tasks
         Then set "foobar::set" in keystore with value "'hello'"
-        Then get "foobar::get::default" from keystore and save in variable "key_holder_1", with default value "{{'hello': 'world'}}"
-        Then log message "key_holder_1={{{{ key_holder_1 }}}}"
+        Then get "foobar::get::default" from keystore and save in variable "key_holder_1", with default value "{'hello': 'world'}"
+        Then log message "key_holder_1={{ key_holder_1 }}"
     Scenario: second
         Given a user of type "Dummy" load testing "dummy://test"
         And repeat for "1" iterations
@@ -57,7 +54,7 @@ def test_e2e_keystore(e2e_fixture: End2EndFixture) -> None:
         And wait "0.9" seconds between tasks
         Then get "foobar::set" from keystore and save in variable "key_holder_2"
         Then get "foobar::get::default" from keystore and save in variable "key_holder_3"
-        Then log message "key_holder_2={{{{ key_holder_2 }}}}, key_holder_3={{{{ key_holder_3 }}}}"
+        Then log message "key_holder_2={{ key_holder_2 }}, key_holder_3={{ key_holder_3 }}"
     """))
 
     rc, output = e2e_fixture.execute(feature_file)
