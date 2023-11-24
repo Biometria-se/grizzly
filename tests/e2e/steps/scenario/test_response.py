@@ -16,8 +16,8 @@ def test_e2e_step_response_save_matches(e2e_fixture: End2EndFixture) -> None:
     targets = list(ResponseTarget)
 
     def validator(context: Context) -> None:
+        from grizzly.events.response_handler import SaveHandlerAction
         from grizzly.tasks import RequestTask
-        from grizzly.users.base.response_handler import SaveHandlerAction
 
         grizzly = cast(GrizzlyContext, context.grizzly)
         grizzly.scenario.tasks().pop()  # latest task is a dummy task
@@ -52,12 +52,10 @@ def test_e2e_step_response_save_matches(e2e_fixture: End2EndFixture) -> None:
 
     index = 0
     for target in targets:
-        attr_name = 'Foobar' if target == ResponseTarget.METADATA else 'foobar'
-
-        table.append({'target': target.name.lower(), 'index': str(index), 'attr_name': attr_name})
+        table.append({'target': target.name.lower(), 'index': str(index), 'attr_name': 'foobar'})
 
         scenario += [
-            f'Given value for variable "expression_{index}" is "$.`this`.{attr_name}"',
+            f'Given value for variable "expression_{index}" is "$.`this`.foobar"',
             f'Given value for variable "tmp_{index}" is "none"',
             f'Then get request with name "{target.name.lower()}-handler" from endpoint "/api/echo?foobar=foo | content_type=json"',
             'And metadata "foobar" is "foobar"',
@@ -84,8 +82,8 @@ def test_e2e_step_response_save(e2e_fixture: End2EndFixture) -> None:
     targets = list(ResponseTarget)
 
     def validator(context: Context) -> None:
+        from grizzly.events.response_handler import SaveHandlerAction
         from grizzly.tasks import RequestTask
-        from grizzly.users.base.response_handler import SaveHandlerAction
 
         grizzly = cast(GrizzlyContext, context.grizzly)
         grizzly.scenario.tasks().pop()  # latest task is a dummy task
@@ -119,7 +117,7 @@ def test_e2e_step_response_save(e2e_fixture: End2EndFixture) -> None:
 
     index = 0
     for target in targets:
-        attr_name = 'Foobar' if target == ResponseTarget.METADATA else 'foobar'
+        attr_name = 'foobar'
         table.append({'target': target.name.lower(), 'index': str(index), 'attr_name': attr_name})
 
         scenario += [
@@ -172,8 +170,8 @@ def test_e2e_step_response_validate(e2e_fixture: End2EndFixture) -> None:
     e2e_fixture.add_after_feature(after_feature)
 
     def validator(context: Context) -> None:
+        from grizzly.events.response_handler import ValidationHandlerAction
         from grizzly.tasks import RequestTask
-        from grizzly.users.base.response_handler import ValidationHandlerAction
 
         grizzly = cast(GrizzlyContext, context.grizzly)
         grizzly.scenario.tasks().pop()  # latest task is a dummy task

@@ -8,10 +8,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, List, cast
 
 import pytest
-from locust.clients import ResponseContextManager
-from requests.models import Response
 
-from grizzly.context import GrizzlyContext, GrizzlyContextScenario
+from grizzly.context import GrizzlyContext
 from grizzly.exceptions import ResponseHandlerError
 from grizzly.steps._helpers import (
     _add_response_handler,
@@ -29,12 +27,11 @@ from grizzly.testdata.utils import templatingfilter
 from grizzly.types import RequestMethod, ResponseAction, ResponseTarget
 from grizzly.types.behave import Row, Table
 from grizzly_extras.transformer import TransformerContentType
-from tests.helpers import TestUser
 
 if TYPE_CHECKING:  # pragma: no cover
     from _pytest.tmpdir import TempPathFactory
 
-    from tests.fixtures import BehaveFixture, GrizzlyFixture, LocustFixture
+    from tests.fixtures import GrizzlyFixture
 
 
 def test_add_request_task_response_status_codes() -> None:
@@ -255,35 +252,25 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
 
 
 @pytest.mark.parametrize('as_async', [False, True])
-def test_add_save_handler(behave_fixture: BehaveFixture, locust_fixture: LocustFixture, *, as_async: bool) -> None:  # noqa: PLR0915
-    behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
-    scenario = GrizzlyContextScenario(index=2, behave=behave_fixture.create_scenario('test scenario'))
-    grizzly.scenarios.append(scenario)
-
-    TestUser.__scenario__ = scenario
-    TestUser.host = 'https://example.io'
-    user = TestUser(locust_fixture.environment)
-
-    response = Response()
-    response._content = b'{}'
-    response.status_code = 200
-    response_context_manager = ResponseContextManager(response, None, None)
-    response_context_manager._entered = True
+def test_add_save_handler(grizzly_fixture: GrizzlyFixture, *, as_async: bool) -> None:  # noqa: PLR0915
+    parent = grizzly_fixture()
+    behave = grizzly_fixture.behave.context
+    grizzly = grizzly_fixture.grizzly
 
     if as_async:
         grizzly.scenario.tasks.tmp.async_group = AsyncRequestGroupTask(name='async-test-2')
 
     tasks = grizzly.scenario.tasks()
+    tasks.clear()
 
     assert len(tasks) == 0
-    assert len(user.context_variables) == 0
+    assert len(parent.user.context_variables) == 0
 
     # not preceeded by a request source
     with pytest.raises(ValueError, match='variable "test-variable" has not been declared'):
         add_save_handler(grizzly, ResponseTarget.METADATA, '$.test.value', 'test', 'test-variable')
 
-    assert len(user.context_variables) == 0
+    assert len(parent.user.context_variables) == 0
 
     # add request source
     add_request_task(behave, method=RequestMethod.GET, source='{}', name='test', endpoint='/api/v2/test')
@@ -322,24 +309,20 @@ def test_add_save_handler(behave_fixture: BehaveFixture, locust_fixture: LocustF
     metadata_handler = next(iter(task.response.handlers.metadata))
     payload_handler = next(iter(task.response.handlers.payload))
 
-    metadata_handler((TransformerContentType.JSON, {'test': {'value': 'metadata'}}), user, response_context_manager)
-    assert response_context_manager._manual_result is None
-    assert user.context_variables.get('test-variable-metadata', None) == 'metadata'
+    metadata_handler((TransformerContentType.JSON, {'test': {'value': 'metadata'}}), parent.user)
+    assert parent.user.context_variables.get('test-variable-metadata', None) == 'metadata'
 
-    payload_handler((TransformerContentType.JSON, {'test': {'value': 'payload'}}), user, response_context_manager)
-    assert response_context_manager._manual_result is None
-    assert user.context_variables.get('test-variable-metadata', None) == 'metadata'
-    assert user.context_variables.get('test-variable-payload', None) == 'payload'
+    payload_handler((TransformerContentType.JSON, {'test': {'value': 'payload'}}), parent.user)
+    assert parent.user.context_variables.get('test-variable-metadata', None) == 'metadata'
+    assert parent.user.context_variables.get('test-variable-payload', None) == 'payload'
 
-    metadata_handler((TransformerContentType.JSON, {'test': {'name': 'metadata'}}), user, response_context_manager)
-    assert isinstance(getattr(response_context_manager, '_manual_result', None), ResponseHandlerError)
-    response_context_manager._manual_result = None
-    assert user.context_variables.get('test-variable-metadata', 'metadata') is None
+    with pytest.raises(ResponseHandlerError, match='did not match value'):
+        metadata_handler((TransformerContentType.JSON, {'test': {'name': 'metadata'}}), parent.user)
+    assert parent.user.context_variables.get('test-variable-metadata', 'metadata') is None
 
-    payload_handler((TransformerContentType.JSON, {'test': {'name': 'payload'}}), user, response_context_manager)
-    assert isinstance(getattr(response_context_manager, '_manual_result', None), ResponseHandlerError)
-    response_context_manager._manual_result = None
-    assert user.context_variables.get('test-variable-payload', 'payload') is None
+    with pytest.raises(ResponseHandlerError, match='did not match value'):
+        payload_handler((TransformerContentType.JSON, {'test': {'name': 'payload'}}), parent.user)
+    assert parent.user.context_variables.get('test-variable-payload', 'payload') is None
 
     # previous non RequestTask task
     tasks.append(ExplicitWaitTask(time_expression='1.0'))
@@ -391,26 +374,16 @@ def test_add_save_handler(behave_fixture: BehaveFixture, locust_fixture: LocustF
 
 
 @pytest.mark.parametrize('as_async', [False, True])
-def test_add_validation_handler(behave_fixture: BehaveFixture, locust_fixture: LocustFixture, *, as_async: bool) -> None:
-    behave = behave_fixture.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
-    scenario = GrizzlyContextScenario(index=1, behave=behave_fixture.create_scenario('test scenario'))
-    grizzly.scenarios.append(scenario)
-
-    TestUser.__scenario__ = scenario
-    TestUser.host = 'http://example.io'
-    user = TestUser(locust_fixture.environment)
-
-    response = Response()
-    response._content = b'{}'
-    response.status_code = 200
-    response_context_manager = ResponseContextManager(response, None, None)
-    response_context_manager._entered = True
+def test_add_validation_handler(grizzly_fixture: GrizzlyFixture, *, as_async: bool) -> None:
+    parent = grizzly_fixture()
+    grizzly = grizzly_fixture.grizzly
+    behave = grizzly_fixture.behave.context
 
     if as_async:
         grizzly.scenario.tasks.tmp.async_group = AsyncRequestGroupTask(name='test-async-3')
 
     tasks = grizzly.scenario.tasks()
+    tasks.clear()
     assert len(tasks) == 0
 
     # not preceeded by a request source
@@ -442,29 +415,24 @@ def test_add_validation_handler(behave_fixture: BehaveFixture, locust_fixture: L
     payload_handler = next(iter(task.response.handlers.payload))
 
     # test that they validates
-    metadata_handler((TransformerContentType.JSON, {'test': {'value': 'test'}}), user, response_context_manager)
-    assert response_context_manager._manual_result is None
-    payload_handler((TransformerContentType.JSON, {'test': {'value': 'test'}}), user, response_context_manager)
-    assert response_context_manager._manual_result is None
+    metadata_handler((TransformerContentType.JSON, {'test': {'value': 'test'}}), parent.user)
+    payload_handler((TransformerContentType.JSON, {'test': {'value': 'test'}}), parent.user)
 
     # test that they validates, negative
-    metadata_handler((TransformerContentType.JSON, {'test': {'value': 'no-test'}}), user, response_context_manager)
-    assert isinstance(getattr(response_context_manager, '_manual_result', None), ResponseHandlerError)
-    response_context_manager._manual_result = None
+    with pytest.raises(ResponseHandlerError, match='"test" was None'):
+        metadata_handler((TransformerContentType.JSON, {'test': {'value': 'no-test'}}), parent.user)
 
-    payload_handler((TransformerContentType.JSON, {'test': {'value': 'no-test'}}), user, response_context_manager)
-    assert isinstance(getattr(response_context_manager, '_manual_result', None), ResponseHandlerError)
-    response_context_manager._manual_result = None
+    with pytest.raises(ResponseHandlerError, match='"test" was None'):
+        payload_handler((TransformerContentType.JSON, {'test': {'value': 'no-test'}}), parent.user)
 
     # add a second payload response handler
-    user.add_context({'variables': {'property': 'name', 'name': 'bob'}})
+    parent.user.add_context({'variables': {'property': 'name', 'name': 'bob'}})
     add_validation_handler(grizzly, ResponseTarget.PAYLOAD, '$.test.{{ property }}', '{{ name }}', condition=False)
     assert len(task.response.handlers.payload) == 2
 
     # test that they validates
     for handler in task.response.handlers.payload:
-        handler((TransformerContentType.JSON, {'test': {'value': 'test', 'name': 'bob'}}), user, response_context_manager)
-        assert response_context_manager._manual_result is None
+        handler((TransformerContentType.JSON, {'test': {'value': 'test', 'name': 'bob'}}), parent.user)
 
     # add_validation_handler calling _add_response_handler incorrectly
     with pytest.raises(ValueError, match='condition is not set'):

@@ -4,8 +4,6 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional, Tuple, TypeVar, Union, cast
 
-from locust.clients import ResponseContextManager as RequestsResponseContextManager
-from locust.contrib.fasthttp import ResponseContextManager as FastResponseContextManager
 from locust.rpc.protocol import Message
 from mypy_extensions import Arg, KwArg
 
@@ -225,13 +223,11 @@ class RequestType(Enum):
         raise AttributeError(message)
 
 
-GrizzlyResponseContextManager = Union[RequestsResponseContextManager, FastResponseContextManager]
-
 GrizzlyResponse = Tuple[Optional[Dict[str, Any]], Optional[str]]
 
-HandlerContextType = Union[GrizzlyResponseContextManager, GrizzlyResponse]
-
 TestdataType = Dict[str, Dict[str, Any]]
+
+HandlerContextType = Union[Dict[str, Any], Optional[Any]]
 
 GrizzlyVariableType = Union[str, float, int, bool]
 

@@ -11,6 +11,7 @@ from time import time
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, Dict, Generic, Literal, Optional, Tuple, Type, TypeVar, Union, cast
 from urllib.parse import urlparse
 
+from grizzly.tasks import RequestTask
 from grizzly.types import GrizzlyResponse
 from grizzly.utils import merge_dicts, safe_del
 
@@ -42,7 +43,7 @@ P = ParamSpec('P')
 class GrizzlyHttpAuthClient(Generic[P], metaclass=ABCMeta):
     host: str
     environment: Environment
-    headers: Dict[str, str]
+    metadata: Dict[str, Any]
     cookies: Dict[str, str]
     __context__: ClassVar[Dict[str, Any]] = {
         'verify_certificates': True,
@@ -150,21 +151,34 @@ class refresh_token(Generic[P]):
                     auth_method = AuthMethod.NONE
 
                 if auth_method is not AuthMethod.NONE and client.session_started is not None:
+                    request: Optional[RequestTask] = None
+                    # look for RequestTask in args, we need to set metadata on it
+                    for arg in args:
+                        if isinstance(arg, RequestTask):
+                            request = arg
+                            break
+
                     session_now = time()
                     session_duration = session_now - client.session_started
 
                     # refresh token if session has been alive for at least refresh_time
-                    if session_duration >= auth_context.get('refresh_time', 3000) or (client.headers.get('Authorization', None) is None and client.cookies == {}):
+                    authorization_token = client.metadata.get('Authorization', None)
+                    if session_duration >= auth_context.get('refresh_time', 3000) or (authorization_token is None and client.cookies == {}):
                         auth_type, secret = self.impl.get_token(client, auth_method)
                         client.session_started = time()
                         if auth_type == AuthType.HEADER:
-                            client.headers.update({'Authorization': f'Bearer {secret}'})
+                            header = {'Authorization': f'Bearer {secret}'}
+                            client.metadata.update(header)
+                            if request is not None:
+                                request.metadata.update(header)
                         else:
                             name, value = secret.split('=', 1)
                             client.cookies.update({name: value})
+                    elif authorization_token is not None and request is not None:  # update current request with active authorization token
+                        request.metadata.update({'Authorization': authorization_token})
                 else:
-                    safe_del(client.headers, 'Authorization')
-                    safe_del(client.headers, 'Cookie')
+                    safe_del(client.metadata, 'Authorization')
+                    safe_del(client.metadata, 'Cookie')
 
             bound = func.__get__(client, client.__class__)
 
