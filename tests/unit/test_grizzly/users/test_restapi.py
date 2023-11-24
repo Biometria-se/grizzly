@@ -55,7 +55,10 @@ class TestRestApiUser:
                     'initialize_uri': None,
                 },
             },
-            'metadata': None,
+            'metadata': {
+                'Content-Type': 'application/json',
+                'x-grizzly-user': parent.user.__class__.__name__,
+            },
         }
         assert parent.user.metadata == {
             'Content-Type': 'application/json',

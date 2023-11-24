@@ -413,7 +413,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                 transport_type=TransportType.AmqpOverWebsocket,
             )
 
-        if self.mgmt_client is None and self.logger._logger.level == logging.DEBUG:
+        if self.mgmt_client is None and self.logger.getEffectiveLevel() == logging.DEBUG:
             self.mgmt_client = ServiceBusAdministrationClient.from_connection_string(conn_str=url)
 
         endpoint = context['endpoint']
@@ -612,7 +612,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                             if retry < 3:
                                 self.logger.warning('receiver for %d::%s returned no message without trying, brute-force retry #%d', client, cache_endpoint, retry)
                                 # <!-- useful debugging information, actual message count on message entity
-                                if self.logger._logger.level == logging.DEBUG and self.mgmt_client is not None:
+                                if self.logger.getEffectiveLevel() == logging.DEBUG and self.mgmt_client is not None:
                                     if 'topic' in endpoint_arguments:
                                         topic_properties = self.mgmt_client.get_subscription_runtime_properties(
                                             topic_name=endpoint_arguments['topic'],

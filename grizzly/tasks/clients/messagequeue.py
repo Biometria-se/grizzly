@@ -84,7 +84,8 @@ from zmq.error import ZMQError
 
 from grizzly.testdata.utils import resolve_variable
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestType
-from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse, async_message_request
+from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
+from grizzly_extras.async_message.utils import async_message_request
 
 from . import ClientTask, client, logger
 

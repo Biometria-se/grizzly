@@ -5,83 +5,54 @@ import logging
 import sys
 from abc import ABC, abstractmethod
 from datetime import datetime
-from io import StringIO
 from json import dumps as jsondumps
 from os import environ
 from pathlib import Path
 from platform import node as hostname
-from threading import Lock
 from time import monotonic as time
-from time import perf_counter, sleep
-from typing import Any, Callable, Dict, List, Optional, TypedDict, cast, final
-
-import zmq.green as zmq
-from zmq.error import Again as ZMQAgain
+from typing import Any, Callable, Dict, List, Optional, TypedDict, final
 
 from grizzly_extras.transformer import JsonBytesEncoder
 
 __all__: List[str] = []
 
+def _get_log_dir() -> Path:
+    grizzly_context_root = environ.get('GRIZZLY_CONTEXT_ROOT', None)
+    log_dir_path = environ.get('GRIZZLY_LOG_DIR', None)
+    if grizzly_context_root is None:
+        message = 'GRIZZLY_CONTEXT_ROOT environment variable is not set'
+        raise ValueError(message)
 
-logger = logging.getLogger(__name__)
+    log_dir_root = Path(grizzly_context_root) / 'logs'
+    if log_dir_path is not None:
+        log_dir_root = log_dir_root / log_dir_path
+
+    log_dir_root.mkdir(parents=True, exist_ok=True)
+
+    return log_dir_root
+
+def configure_logging() -> None:
+    handlers: List[logging.Handler] = [logging.StreamHandler(sys.stderr)]
+
+    try:
+        log_file = _get_log_dir() / f'async-messaged.{hostname()}.{datetime.now().strftime("%Y%m%dT%H%M%S%f")}.log'
+        handlers.append(logging.FileHandler(log_file))
+    except ValueError:
+        pass
+
+    level = logging.getLevelName(environ.get('GRIZZLY_EXTRAS_LOGLEVEL', 'INFO'))
+
+    logging.basicConfig(
+        level=level,
+        format='[%(asctime)s] %(levelname)-5s: %(name)s: %(message)s',
+        handlers=handlers,
+    )
+
+configure_logging()
 
 
 AsyncMessageMetadata = Optional[Dict[str, Any]]
 AsyncMessagePayload = Optional[Any]
-
-
-class ThreadLogger:
-    _logger: logging.Logger
-    _lock: Lock = Lock()
-
-    _destination: Optional[str] = None
-
-    def __init__(self, name: str) -> None:
-        with self._lock:
-            logger = logging.getLogger(name)
-            log_format = '[%(asctime)s] %(levelname)-5s: %(name)s: %(message)s'
-            formatter = logging.Formatter(log_format)
-            level = logging.getLevelName(environ.get('GRIZZLY_EXTRAS_LOGLEVEL', 'INFO'))
-            logger.setLevel(level)
-            logger.handlers = []
-            stdout_handler = logging.StreamHandler(sys.stderr)
-            stdout_handler.setFormatter(formatter)
-            logger.addHandler(stdout_handler)
-
-            root_logger = logging.getLogger()
-            root_logger.setLevel(logging.NOTSET)  # root logger needs to have lower or equal log level
-            root_logger.handlers = []
-            root_logger.addHandler(logging.StreamHandler(StringIO()))  # disable messages from root logger
-
-            grizzly_context_root = environ.get('GRIZZLY_CONTEXT_ROOT', None)
-
-            if grizzly_context_root is not None:
-                if ThreadLogger._destination is None:
-                    ThreadLogger._destination = f'async-messaged.{hostname()}.{datetime.now().strftime("%Y%m%dT%H%M%S%f")}.log'
-                file_handler = logging.FileHandler(Path(grizzly_context_root) / 'logs' / ThreadLogger._destination)
-                file_handler.setFormatter(formatter)
-                logger.addHandler(file_handler)
-
-            self._logger = logger
-
-    def _log(self, level: int, message: str, *args: Any, exc_info: Optional[bool] = False, **kwargs: Any) -> None:
-        with self._lock:
-            self._logger.log(level, message, *args, exc_info=exc_info, **kwargs)
-
-    def debug(self, message: str, *args: Any) -> None:
-        self._log(logging.DEBUG, message, *args)
-
-    def info(self, message: str, *args: Any) -> None:
-        self._log(logging.INFO, message, *args)
-
-    def error(self, message: str, *, exc_info: Optional[bool] = False) -> None:
-        self._log(logging.ERROR, message, exc_info=exc_info)
-
-    def warning(self, message: str, *args: Any) -> None:
-        self._log(logging.WARNING, message, *args)
-
-    def exception(self, message: str, *args: Any, exc_info: bool = True, **kwargs: Any) -> None:
-        self._log(logging.ERROR, message, *args, exc_info=exc_info, **kwargs)
 
 
 class AsyncMessageContext(TypedDict, total=False):
@@ -132,12 +103,12 @@ class AsyncMessageAbort(Exception):  # noqa: N818
 class AsyncMessageHandler(ABC):
     worker: str
     message_wait: Optional[int]
-    logger: ThreadLogger
+    logger: logging.Logger
 
     def __init__(self, worker: str) -> None:
         self.worker = worker
         self.message_wait = None
-        self.logger = ThreadLogger(f'handler::{self.__class__.__name__}::{worker}')
+        self.logger = logging.getLogger(f'handler::{self.__class__.__name__}::{worker}')
 
         # silence uamqp loggers
         for uamqp_logger_name in ['uamqp', 'uamqp.c_uamqp']:
@@ -211,37 +182,3 @@ def register(handlers: Dict[str, AsyncMessageRequestHandler], action: str, *acti
         return func
 
     return decorator
-
-
-def async_message_request(client: zmq.Socket, request: AsyncMessageRequest) -> AsyncMessageResponse:
-    try:
-        client.send_json(request)
-
-        response: Optional[AsyncMessageResponse] = None
-
-        while True:
-            start = perf_counter()
-            try:
-                response = cast(Optional[AsyncMessageResponse], client.recv_json(flags=zmq.NOBLOCK))
-                break
-            except ZMQAgain:
-                sleep(0.1)
-            delta = perf_counter() - start
-            if delta > 1.0:
-                logger.debug('async_message_request::recv_json took %f seconds', delta)
-
-        if response is None:
-            msg = 'no response'
-            raise AsyncMessageError(msg)
-
-        message = response.get('message', None)
-
-        if not response['success']:
-            raise AsyncMessageError(message)
-
-    except Exception as e:
-        if not isinstance(e, (AsyncMessageError, AsyncMessageAbort)):
-            logger.exception('failed to send request=%r', request)
-        raise
-    else:
-        return response

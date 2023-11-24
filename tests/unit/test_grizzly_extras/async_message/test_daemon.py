@@ -8,12 +8,13 @@ from signal import SIGINT
 from typing import TYPE_CHECKING, Any, List, cast
 
 import pytest
-import zmq
+import zmq.green as zmq
 
 from grizzly_extras.async_message.daemon import main, router, signal_handler, worker
+from tests.helpers import ANY
 
 if TYPE_CHECKING:  # pragma: no cover
-    from _pytest.capture import CaptureFixture
+    from _pytest.logging import LogCaptureFixture
     from pytest_mock.plugin import MockerFixture
 
     from grizzly_extras.async_message import AsyncMessageRequest, AsyncMessageResponse
@@ -35,7 +36,7 @@ def test_signal_handler() -> None:
     ('mq', 'AsyncMessageQueueHandler'),
     ('sb', 'AsyncServiceBusHandler'),
 ])
-def test_worker(mocker: MockerFixture, capsys: CaptureFixture, scheme: str, implementation: str) -> None:
+def test_worker(mocker: MockerFixture, caplog: LogCaptureFixture, scheme: str, implementation: str) -> None:
     context_mock = mocker.MagicMock()
     worker_mock = mocker.MagicMock()
     worker_mock.send_multipart.side_effect = cycle([StopAsyncIteration])
@@ -134,7 +135,6 @@ def test_worker(mocker: MockerFixture, capsys: CaptureFixture, scheme: str, impl
     ])
     worker_mock.send_multipart.reset_mock()
 
-
     from grizzly_extras.async_message import daemon
 
     def hack(*_args: Any, **_kwargs: Any) -> None:
@@ -152,7 +152,7 @@ def test_worker(mocker: MockerFixture, capsys: CaptureFixture, scheme: str, impl
         },
         'response_time': 1337,
     })
-    capsys.readouterr()
+    caplog.clear()
 
     integration_close_spy = mocker.patch(
         f'grizzly_extras.async_message.{scheme}.{implementation}.close',
@@ -165,13 +165,10 @@ def test_worker(mocker: MockerFixture, capsys: CaptureFixture, scheme: str, impl
 
     integration_close_spy.assert_called_once_with()
 
-    capture = capsys.readouterr()
-
-    assert capture.out == ''
-    assert 'worker::F00B4R: stopping' in capture.err
+    assert caplog.messages[-1] == 'stopping'
 
 
-def test_router(mocker: MockerFixture, capsys: CaptureFixture) -> None:
+def test_router(mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
     from grizzly_extras.async_message.daemon import worker
     context_mock = mocker.MagicMock()
     create_context_mock = mocker.patch('zmq.green.Context.__new__', return_value=context_mock)
@@ -190,39 +187,25 @@ def test_router(mocker: MockerFixture, capsys: CaptureFixture) -> None:
     with pytest.raises(RuntimeError):
         router()
 
-    capture = capsys.readouterr()
+    assert 'spawned worker foobar' in caplog.messages[0]
+    caplog.clear()
 
-    assert 'router: spawned worker' in capture.err
-    assert capture.out == ''
+    create_context_mock.assert_called_once_with(
+        ANY(),
+        1,
+    )
 
-    assert create_context_mock.call_count == 1
-    args, kwargs = create_context_mock.call_args_list[0]
-    assert kwargs == {}
-    assert len(args) == 2
-    assert args[1] == 1
     assert context_mock.socket.call_count == 2
-    args, kwargs = context_mock.socket.call_args_list[0]
-    assert kwargs == {}
-    assert args == (zmq.ROUTER,)
-    args, kwargs = context_mock.socket.call_args_list[1]
-    assert kwargs == {}
-    assert args == (zmq.ROUTER,)
+    context_mock.socket.assert_called_with(zmq.ROUTER)
+    create_context_mock.reset_mock()
 
     frontend_mock.bind.assert_called_once_with('tcp://127.0.0.1:5554')
     backend_mock.bind.assert_called_once_with('inproc://workers')
 
-    assert create_poller_mock.call_count == 1
-    args, kwargs = create_poller_mock.call_args_list[0]
-    assert kwargs == {}
-    assert len(args) == 1
+    create_poller_mock.assert_called_once_with(ANY())
     poller_mock.poll.assert_called_once_with(timeout=1000)
-    assert poller_mock.register.call_count == 2
-    args, kwargs = poller_mock.register.call_args_list[0]
-    assert kwargs == {}
-    assert args == (frontend_mock, zmq.POLLIN)
-    args, kwargs = poller_mock.register.call_args_list[1]
-    assert kwargs == {}
-    assert args == (backend_mock, zmq.POLLIN)
+
+    poller_mock.register.assert_has_calls([mocker.call(frontend_mock, zmq.POLLIN), mocker.call(backend_mock, zmq.POLLIN)])
 
     thread_mock.assert_called_once_with(target=worker, args=(context_mock, 'foobar'))
 

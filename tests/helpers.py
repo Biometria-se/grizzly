@@ -38,6 +38,9 @@ def ANY(*cls: Type, message: Optional[str] = None) -> object:  # noqa: N802
     """Compare equal to everything, as long as it is of the same type."""
     class WrappedAny(metaclass=ABCMeta):  # noqa: B024
         def __eq__(self, other: object) -> bool:
+            if len(cls) < 1:
+                return True
+
             return isinstance(other, cls) and (message is None or (message is not None and message in str(other)))
 
         def __ne__(self, other: object) -> bool:
@@ -47,10 +50,13 @@ def ANY(*cls: Type, message: Optional[str] = None) -> object:  # noqa: N802
             return self.__ne__(other)
 
         def __repr__(self) -> str:
-            if message is None:
-                return f'<ANY({cls})>'
+            c = cls[0] if len(cls) == 1 else cls
+            representation: List[str] = [f'<ANY({c})', '>']
 
-            return f"<ANY({cls}, message='{message}')>"
+            if message is not None:
+                representation.insert(-1, f", message='{message}'")
+
+            return ''.join(representation)
 
     for c in cls:
         WrappedAny.register(c)

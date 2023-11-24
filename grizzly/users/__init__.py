@@ -87,8 +87,6 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
     event_hook: GrizzlyEventHook
     grizzly = GrizzlyContext()
 
-    metadata: Dict[str, Any]
-
     def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
         super().__init__(environment, *args, **kwargs)
 
@@ -98,8 +96,6 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
         self._scenario = copy(self.__scenario__)
         # these are not copied, and we can share reference
         self._scenario._tasks = self.__scenario__._tasks
-
-        self.metadata = self._context.get('metadata', None) or {}
 
         self.logger = logging.getLogger(f'{self.__class__.__name__}/{id(self)}')
         self.abort = False
@@ -113,6 +109,17 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
         # if it already has been called with True, do not change it back to False
         if not self.abort:
             self.abort = cast(bool, kwargs.get('abort', False))
+
+    @property
+    def metadata(self) -> Dict[str, Any]:
+        return self._context.get('metadata', None) or {}
+
+    @metadata.setter
+    def metadata(self, value: Dict[str, Any]) -> None:
+        if self._context.get('metadata', None) is None:
+            self._context['metadata'] = {}
+
+        self._context['metadata'].update(value)
 
     @property
     def scenario_state(self) -> Optional[ScenarioState]:
