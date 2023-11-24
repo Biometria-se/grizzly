@@ -7,19 +7,18 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, cast
 
 import gevent
 import pytest
-from locust.clients import ResponseContextManager
-from locust.contrib.fasthttp import FastHttpSession, insecure_ssl_context_factory
-from requests.models import Response
+from geventhttpclient.client import HTTPClientPool
+from locust.contrib.fasthttp import FastHttpSession, LocustUserAgent, insecure_ssl_context_factory
+from locust.exception import ResponseError
 
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import RequestTask
 from grizzly.testdata.utils import transform
 from grizzly.types import GrizzlyResponse, RequestMethod
 from grizzly.types.locust import StopUser
-from grizzly.users.base import AsyncRequests, GrizzlyUser, RequestLogger, ResponseHandler
-from grizzly.users.restapi import RestApiUser
+from grizzly.users import AsyncRequests, GrizzlyUser, RestApiUser
 from grizzly_extras.transformer import TransformerContentType
-from tests.helpers import ANY, RequestEvent
+from tests.helpers import ANY, SOME, create_mocked_fast_response_context_manager
 
 if TYPE_CHECKING:  # pragma: no cover
     from _pytest.logging import LogCaptureFixture
@@ -32,8 +31,6 @@ class TestRestApiUser:
         parent = grizzly_fixture(user_type=RestApiUser, host='http://example.net')
         assert isinstance(parent.user, RestApiUser)
 
-        assert issubclass(parent.user.__class__, RequestLogger)
-        assert issubclass(parent.user.__class__, ResponseHandler)
         assert issubclass(parent.user.__class__, GrizzlyUser)
         assert issubclass(parent.user.__class__, AsyncRequests)
         assert parent.user.host == 'http://example.net'
@@ -60,7 +57,7 @@ class TestRestApiUser:
             },
             'metadata': None,
         }
-        assert parent.user.headers == {
+        assert parent.user.metadata == {
             'Content-Type': 'application/json',
             'x-grizzly-user': parent.user.__class__.__name__,
         }
@@ -69,7 +66,7 @@ class TestRestApiUser:
 
         user = parent.user.__class__(parent.user.environment)
 
-        assert user.headers.get('foo', None) == 'bar'
+        assert user.metadata.get('foo', None) == 'bar'
 
     def test_on_start(self, grizzly_fixture: GrizzlyFixture) -> None:
         parent = grizzly_fixture(user_type=RestApiUser)
@@ -107,7 +104,7 @@ class TestRestApiUser:
                     'Ocp-Apim-Subscription-Key': '',
                 },
             }
-            parent.user.headers.update({
+            parent.user.metadata.update({
                 'Ocp-Apim-Subscription-Key': '',
             })
             parent.user.host = cast(dict, parent.user.__context__)['host']
@@ -126,43 +123,39 @@ class TestRestApiUser:
         parent = grizzly_fixture(user_type=RestApiUser)
         assert isinstance(parent.user, RestApiUser)
 
-        response = Response()
-        response._content = b''
-        response_context_manager = ResponseContextManager(response, RequestEvent(), {})
-
-        response.status_code = 400
+        response_context_manager = create_mocked_fast_response_context_manager(content='', status_code=400)
         assert parent.user._get_error_message(response_context_manager) == 'bad request'
 
-        response.status_code = 401
+        response_context_manager = create_mocked_fast_response_context_manager(content='', status_code=401)
         assert parent.user._get_error_message(response_context_manager) == 'unauthorized'
 
-        response.status_code = 403
+        response_context_manager = create_mocked_fast_response_context_manager(content='', status_code=403)
         assert parent.user._get_error_message(response_context_manager) == 'forbidden'
 
-        response.status_code = 404
+        response_context_manager = create_mocked_fast_response_context_manager(content='', status_code=404)
         assert parent.user._get_error_message(response_context_manager) == 'not found'
 
-        response.status_code = 405
+        response_context_manager = create_mocked_fast_response_context_manager(content='', status_code=405)
         assert parent.user._get_error_message(response_context_manager) == 'method not allowed'
 
-        response.status_code = 999
+        response_context_manager = create_mocked_fast_response_context_manager(content='', status_code=999)
         assert parent.user._get_error_message(response_context_manager) == 'unknown'
 
-        response._content = b'just a simple string'
+        response_context_manager = create_mocked_fast_response_context_manager(content='just a simple string', status_code=999)
         assert parent.user._get_error_message(response_context_manager) == 'just a simple string'
 
-        response._content = b'{"Message": "message\\nproperty\\\\nthat is multiline"}'
+        response_context_manager = create_mocked_fast_response_context_manager(content='{"Message": "message\\nproperty\\\\nthat is multiline"}', status_code=999)
         assert parent.user._get_error_message(response_context_manager) == 'message property'
 
-        response._content = b'{"error_description": "error description\\r\\nthat is multiline"}'
+        response_context_manager = create_mocked_fast_response_context_manager(content='{"error_description": "error description\\r\\nthat is multiline"}', status_code=999)
         assert parent.user._get_error_message(response_context_manager) == 'error description'
 
-        response._content = b'{"success": false}'
+        response_context_manager = create_mocked_fast_response_context_manager(content='{"success": false}', status_code=999)
         assert parent.user._get_error_message(response_context_manager) == '{"success": false}'
 
-        text_mock = mocker.patch('requests.models.Response.text', new_callable=mocker.PropertyMock)
+        text_mock = mocker.patch('locust.contrib.fasthttp.FastResponse.text', new_callable=mocker.PropertyMock)
         text_mock.return_value = None
-        assert parent.user._get_error_message(response_context_manager) == "unknown response <class 'locust.clients.ResponseContextManager'>"
+        assert parent.user._get_error_message(response_context_manager) == "unknown response <class 'locust.contrib.fasthttp.ResponseContextManager'>"
 
     def test_async_request(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         parent = grizzly_fixture(user_type=RestApiUser)
@@ -176,28 +169,56 @@ class TestRestApiUser:
 
         parent.user.async_request_impl(request)
 
-        assert request_spy.call_count == 1
-        args, kwargs = request_spy.call_args_list[-1]
-        assert kwargs == {}
-        assert len(args) == 2
-        assert args[0] is request
-        assert isinstance(args[1], FastHttpSession)
-        assert args[1].environment is parent.user.environment
-        assert args[1].base_url == parent.user.host
-        assert args[1].user is parent.user
-        assert args[1].client.max_retries == 1
-        assert args[1].client.clientpool.client_args.get('connection_timeout', None) == 60.0
-        assert args[1].client.clientpool.client_args.get('network_timeout', None) == 60.0
-        assert args[1].client.clientpool.client_args.get('ssl_context_factory', None) is gevent.ssl.create_default_context
+        request_spy.assert_called_once_with(
+            request,
+            SOME(
+                FastHttpSession,
+                environment=parent.user.environment,
+                base_url=parent.user.host,
+                user=parent.user,
+                client=SOME(
+                    LocustUserAgent,
+                    max_retries=1,
+                    clientpool=SOME(
+                        HTTPClientPool,
+                        client_args=SOME(
+                            dict,
+                            connection_timeout=60.0,
+                            network_timeout=60.0,
+                            ssl_context_factory=gevent.ssl.create_default_context,
+                        ),
+                    ),
+                ),
+            ),
+        )
+        request_spy.reset_mock()
 
         parent.user._context['verify_certificates'] = False
 
         parent.user.async_request_impl(request)
 
-        assert request_spy.call_count == 2
-        args, kwargs = request_spy.call_args_list[-1]
-        assert kwargs == {}
-        assert args[1].client.clientpool.client_args.get('ssl_context_factory', None) is insecure_ssl_context_factory
+        request_spy.assert_called_once_with(
+            request,
+            SOME(
+                FastHttpSession,
+                environment=parent.user.environment,
+                base_url=parent.user.host,
+                user=parent.user,
+                client=SOME(
+                    LocustUserAgent,
+                    max_retries=1,
+                    clientpool=SOME(
+                        HTTPClientPool,
+                        client_args=SOME(
+                            dict,
+                            connection_timeout=60.0,
+                            network_timeout=60.0,
+                            ssl_context_factory=insecure_ssl_context_factory,
+                        ),
+                    ),
+                ),
+            ),
+        )
 
     def test_request_impl(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         parent = grizzly_fixture(user_type=RestApiUser)
@@ -212,13 +233,19 @@ class TestRestApiUser:
 
         parent.user.request_impl(request)
 
-        assert request_spy.call_count == 1
-        args, _ = request_spy.call_args_list[-1]
-        assert len(args) == 2
-        assert args[0] is request
-        assert args[1] is parent.user.client
+        request_spy.assert_called_once_with(
+            SOME(RequestTask, name=request.name, endpoint=request.endpoint, source=request.source),
+            parent.user.client,
+        )
+        request_spy.reset_mock()
 
         parent.user.request(request)
+
+        request_spy.assert_called_once_with(
+            SOME(RequestTask, name=f'001 {request.name}', endpoint=request.endpoint, source=request.source),
+            parent.user.client,
+        )
+        request_spy.reset_mock()
 
     @pytest.mark.parametrize('request_func', [RestApiUser.request_impl, RestApiUser.async_request_impl])
     def test__request(  # noqa: PLR0915
@@ -237,10 +264,7 @@ class TestRestApiUser:
         request_event_spy = mocker.patch.object(parent.user.environment.events.request, 'fire')
         response_magic = mocker.MagicMock()
 
-        if is_async_request:
-            request_spy = mocker.patch('locust.contrib.fasthttp.FastHttpSession.request', return_value=response_magic)
-        else:
-            request_spy = mocker.patch.object(parent.user.client, 'request', return_value=response_magic)
+        request_spy = mocker.patch('locust.contrib.fasthttp.FastHttpSession.request', return_value=response_magic)
 
         response_spy = response_magic.__enter__.return_value
         response_spy.request_meta = {}
@@ -286,14 +310,8 @@ class TestRestApiUser:
         assert parent.user.request(request) == ({'x-bar': 'foo'}, '{"foo": "bar"}')
 
         expected_parameters: Dict[str, Any] = {
-            'headers': parent.user.headers,
+            'headers': request.metadata,
         }
-
-        if not is_async_request:
-            expected_parameters.update({
-                'request': ANY(RequestTask),
-                'verify': parent.user._context.get('verify_certificates', True),
-            })
 
         request_spy.assert_called_once_with(
             method='GET',
@@ -304,14 +322,13 @@ class TestRestApiUser:
             **expected_parameters,
         )
 
-        response_spy.success.assert_called_once_with()
-
         response_spy.reset_mock()
         request_spy.reset_mock()
 
         # request GET, 400, StopUser, request.metadata populated
         response_spy._manual_result = None
         response_spy.status_code = 400
+        response_spy.request_meta = {'exception': ResponseError('400 not in [200]: bad request')}
         response_spy.text = ''
         request.metadata = {'x-foo': 'bar'}
         expected_parameters['headers'].update({'x-foo': 'bar'})
@@ -330,19 +347,16 @@ class TestRestApiUser:
             **expected_parameters,
         )
 
-        response_spy.success.assert_not_called()
-        response_spy.failure.assert_called_once_with(
-            '400 not in [200]: bad request',
-        )
-
         response_spy.reset_mock()
         request_spy.reset_mock()
 
         # request GET, 404, no failure exception
         response_spy.status_code = 404
         response_spy.text = '{"error_description": "borked"}'
+        response_spy.request_meta = {}
         parent.user._scenario.failure_exception = None
-        request.metadata = None
+        request.metadata = {}
+        del expected_parameters['headers']['x-foo']
 
         assert parent.user.request(request) == ({'x-bar': 'foo'}, '{"error_description": "borked"}')
 
@@ -353,11 +367,6 @@ class TestRestApiUser:
             catch_response=True,
             cookies=parent.user.cookies,
             **expected_parameters,
-        )
-
-        response_spy.success.assert_not_called()
-        response_spy.failure.assert_called_once_with(
-            '404 not in [200]: borked',
         )
 
         request_spy.reset_mock()
@@ -374,11 +383,6 @@ class TestRestApiUser:
         assert expected_source is not None
         expected_source_json = json.loads(expected_source)
 
-        # this is done automagically for requests, but not for grequests
-        if not is_async_request:
-            response_spy.request_body = expected_source
-
-        assert json.loads(response_spy.request_body) == expected_source_json
         expected_parameters.update({'json': expected_source_json})
 
         request_spy.assert_called_once_with(
@@ -389,9 +393,6 @@ class TestRestApiUser:
             cookies=parent.user.cookies,
             **expected_parameters,
         )
-
-        response_spy.success.assert_called_once_with()
-        response_spy.failure.assert_not_called()
 
         response_spy.reset_mock()
         request_spy.reset_mock()
@@ -421,6 +422,8 @@ class TestRestApiUser:
 
         assert parent.user.request(request) == ({'x-bar': 'foo'}, 'success')
 
+        expected_parameters['headers'].update({'Content-Type': 'multipart/form-data'})
+
         request_spy.assert_called_once_with(
             method='PUT',
             name='001 TestScenario',
@@ -430,9 +433,6 @@ class TestRestApiUser:
             **expected_parameters,
         )
 
-        response_spy.success.assert_called_once_with()
-        response_spy.failure.assert_not_called()
-
         response_spy.reset_mock()
         request_spy.reset_mock()
 
@@ -441,6 +441,7 @@ class TestRestApiUser:
         request.source = '<?xml version="1.0" encoding="utf-8"?><hello><foo/></hello>'
         del expected_parameters['files']
         expected_parameters.update({'data': request.source.encode('utf-8')})
+        expected_parameters['headers'].update({'Content-Type': 'application/xml'})
 
         assert parent.user.request(request) == ({'x-bar': 'foo'}, 'success')
 
@@ -452,9 +453,6 @@ class TestRestApiUser:
             cookies=parent.user.cookies,
             **expected_parameters,
         )
-
-        response_spy.success.assert_called_once_with()
-        response_spy.failure.assert_not_called()
 
         response_spy.reset_mock()
         request_spy.reset_mock()
@@ -477,8 +475,8 @@ class TestRestApiUser:
         assert parent.user._context['auth']['provider'] == 'http://auth.example.org'
         assert parent.user._context['auth']['refresh_time'] == 3000
 
-        parent.user.headers['Authorization'] = 'Bearer asdfasdfasdf'
+        parent.user.metadata['Authorization'] = 'Bearer asdfasdfasdf'
 
         parent.user.add_context({'auth': {'user': {'username': 'something new'}}})
 
-        assert 'Authorization' not in parent.user.headers
+        assert 'Authorization' not in parent.user.metadata

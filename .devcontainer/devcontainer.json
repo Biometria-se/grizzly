@@ -35,7 +35,6 @@
                 ],
                 "python.testing.pytestEnabled": true,
                 "python.testing.pytestArgs": [
-                    "-o testpaths=tests",
                     "--cov=.",
                     "--cov-report=xml:coverage.xml",
                     "tests/"

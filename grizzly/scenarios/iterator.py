@@ -26,7 +26,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from locust.stats import StatsEntry
 
     from grizzly.tasks import GrizzlyTask
-    from grizzly.users.base import GrizzlyUser
+    from grizzly.users import GrizzlyUser
 
 
 class IteratorScenario(GrizzlyScenario):

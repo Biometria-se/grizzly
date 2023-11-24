@@ -16,7 +16,7 @@ from grizzly.tasks import RequestTask
 from grizzly.testdata.utils import templatingfilter
 from grizzly.types import GrizzlyResponse, RequestMethod, ScenarioState
 from grizzly.types.locust import StopUser
-from grizzly.users.base import FileRequests, GrizzlyUser
+from grizzly.users import GrizzlyUser
 from tests.helpers import ANY
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -64,7 +64,7 @@ class TestGrizzlyUser:
             assert request.endpoint == '/api/test'
             assert request.source == 'hello BOB'
             assert request.arguments is None
-            assert request.metadata is None
+            assert request.metadata == {}
 
             user.set_context_variable('name', 'alice')
             request = user.render(template)
@@ -72,7 +72,7 @@ class TestGrizzlyUser:
             assert request.endpoint == '/api/test'
             assert request.source == 'hello ALICE'
             assert request.arguments is None
-            assert request.metadata is None
+            assert request.metadata == {}
 
             template.endpoint = '/api/test?data={{ querystring | uppercase }}'
             user.set_context_variable('querystring', 'querystring_data')
@@ -81,7 +81,7 @@ class TestGrizzlyUser:
             assert request.endpoint == '/api/test?data=QUERYSTRING_DATA'
             assert request.source == 'hello ALICE'
             assert request.arguments is None
-            assert request.metadata is None
+            assert request.metadata == {}
 
             template.source = None
             request = user.render(template)
@@ -89,7 +89,7 @@ class TestGrizzlyUser:
             assert request.endpoint == '/api/test?data=QUERYSTRING_DATA'
             assert request.source is None
             assert request.arguments is None
-            assert request.metadata is None
+            assert request.metadata == {}
 
             template.name = '{{ name | uppercase }}'
             request = user.render(template)
@@ -97,7 +97,7 @@ class TestGrizzlyUser:
             assert request.endpoint == '/api/test?data=QUERYSTRING_DATA'
             assert request.source is None
             assert request.arguments is None
-            assert request.metadata is None
+            assert request.metadata == {}
 
             template.name = '{{ name'
             with pytest.raises(StopUser):
@@ -112,37 +112,11 @@ class TestGrizzlyUser:
             assert request.endpoint == '/api/test?data=QUERYSTRING_DATA'
             assert request.source == 'this is a test alice'
             assert request.arguments is None
-            assert request.metadata is None
-
-            user_type = type(
-                'ContextVariablesUserFileRequest',
-                (GrizzlyUser, FileRequests),
-                {
-                    'host': 'http://example.io',
-                    '__scenario__': grizzly.scenario,
-                },
-            )
-            user = user_type(behave_fixture.locust.environment)
-            assert issubclass(user.__class__, (FileRequests,))
-
-            template.source = f'{test_file.as_posix()}'
-            template.endpoint = '/home/anon'
-            request = user.render(template)
-            assert request.endpoint == '/home/anon/blobfile.txt'
-
-            template = RequestTask(RequestMethod.POST, name='test', endpoint='/api/test | my_argument="{{ argument_variable | uppercase }}"')
-            user.set_context_variable('argument_variable', 'argument variable value')
-            user.set_context_variable('name', 'donovan')
-            template.source = 'hello {{ name }}'
-            request = user.render(template)
-            assert request.name == '001 test'
-            assert request.endpoint == '/api/test'
-            assert request.source == 'hello donovan'
-            assert request.arguments == {'my_argument': 'ARGUMENT VARIABLE VALUE'}
-            assert request.metadata is None
+            assert request.metadata == {}
         finally:
             with suppress(KeyError):
                 del FILTERS['uppercase']
+
             rmtree(test_context)
 
             with suppress(KeyError):
@@ -192,7 +166,7 @@ class TestGrizzlyUser:
             assert request.endpoint == '/api/test/test-value'
             assert request.source is not None
             assert request.arguments is None
-            assert request.metadata is None
+            assert request.metadata == {}
 
             data = jsonloads(request.source)
             assert data['MeasureResult']['ID'] == user.context_variables['messageID']
@@ -217,8 +191,8 @@ class TestGrizzlyUser:
             name='001 test',
             response_time=ANY(int),
             response_length=0,
-            context={'host': '', 'variables': {}, 'log_all_requests': False},
-            exception=ANY(NotImplementedError, message='tests.unit.test_grizzly.users.base.test_grizzly_user.DummyGrizzlyUser_001 has not implemented request'),
+            context={'host': '', 'variables': {}, 'log_all_requests': False, 'metadata': None},
+            exception=ANY(NotImplementedError, message='tests.unit.test_grizzly.users.test___init__.DummyGrizzlyUser_001 has not implemented request'),
         )
 
     def test_context(self, behave_fixture: BehaveFixture) -> None:
@@ -229,7 +203,7 @@ class TestGrizzlyUser:
         context = user.context()
 
         assert isinstance(context, dict)
-        assert context == {'variables': {}, 'log_all_requests': False}
+        assert context == {'variables': {}, 'log_all_requests': False, 'metadata': None}
 
         user.set_context_variable('test', 'value')
         assert user.context_variables == {'test': 'value'}

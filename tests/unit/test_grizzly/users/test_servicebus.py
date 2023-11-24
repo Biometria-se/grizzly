@@ -12,8 +12,7 @@ from grizzly.context import GrizzlyContextScenario
 from grizzly.tasks import ExplicitWaitTask, RequestTask
 from grizzly.types import RequestMethod
 from grizzly.types.locust import StopUser
-from grizzly.users.base import GrizzlyUser, RequestLogger, ResponseHandler
-from grizzly.users.servicebus import ServiceBusUser
+from grizzly.users import GrizzlyUser, ServiceBusUser
 from grizzly_extras.async_message import AsyncMessageError, AsyncMessageResponse
 from grizzly_extras.transformer import TransformerContentType
 from tests.helpers import ANY
@@ -39,7 +38,7 @@ class TestServiceBusUser:
 
         test_cls.host = 'Endpoint=sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789='
         user = test_cls(environment=behave_fixture.locust.environment)
-        assert issubclass(user.__class__, (GrizzlyUser, ResponseHandler, RequestLogger, ServiceBusUser))
+        assert issubclass(user.__class__, (GrizzlyUser, ServiceBusUser))
 
         user.on_start()
 
@@ -80,7 +79,7 @@ class TestServiceBusUser:
 
         test_cls.host = 'Endpoint=sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789='
         user = test_cls(environment=behave_fixture.locust.environment)
-        assert issubclass(user.__class__, (GrizzlyUser, ResponseHandler, RequestLogger))
+        assert issubclass(user.__class__, GrizzlyUser)
 
         user.on_start()
 
@@ -297,7 +296,7 @@ class TestServiceBusUser:
         send_json_spy = noop_zmq.get_mock('send_json')
         say_hello_spy = mocker.patch.object(parent.user, 'say_hello', side_effect=[None] * 10)
         request_fire_spy = mocker.spy(parent.user.environment.events.request, 'fire')
-        response_event_fire_spy = mocker.spy(parent.user.response_event, 'fire')
+        response_event_fire_spy = mocker.spy(parent.user.event_hook, 'fire')
 
         def mock_recv_json(response: AsyncMessageResponse) -> None:
             mocker.patch.object(

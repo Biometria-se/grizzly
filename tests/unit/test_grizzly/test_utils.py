@@ -14,8 +14,7 @@ from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 from grizzly.scenarios import IteratorScenario
 from grizzly.tasks import RequestTask
 from grizzly.types import RequestMethod
-from grizzly.users import RestApiUser
-from grizzly.users.base import GrizzlyUser
+from grizzly.users import GrizzlyUser, RestApiUser
 from grizzly.utils import (
     ModuleLoader,
     async_message_request_wrapper,
@@ -25,6 +24,7 @@ from grizzly.utils import (
     fail_direct,
     in_correct_section,
     is_template,
+    normalize,
     parse_timespan,
     safe_del,
 )
@@ -158,7 +158,7 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
     }
     user_type_1 = user_class_type_1(behave_fixture.locust.environment)
 
-    assert user_type_1.headers == {
+    assert user_type_1.metadata == {
         'Content-Type': 'application/json',
         'x-grizzly-user': f'grizzly.users.RestApiUser_{scenario.identifier}',
     }
@@ -248,7 +248,7 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
     }
 
     user_type_2 = user_class_type_2(behave_fixture.locust.environment)
-    assert user_type_2.headers == {
+    assert user_type_2.metadata == {
         'Content-Type': 'application/xml',
         'x-grizzly-user': f'RestApiUser_{scenario.identifier}',
         'Foo-Bar': 'hello world',
@@ -685,3 +685,9 @@ def test_is_template() -> None:
     assert not is_template('{{ hello_world')
     assert not is_template('hello_world }}')
     assert is_template('is {{ this }} really a template?')
+
+
+def test_normalize() -> None:
+    assert normalize('test') == 'test'
+    assert normalize('Hello World!') == 'Hello-World'
+    assert normalize('[does]this-look* <strange>!') == 'doesthis-look-strange'

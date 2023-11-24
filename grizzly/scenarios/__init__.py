@@ -16,7 +16,7 @@ from grizzly.types import ScenarioState
 from grizzly.types.locust import StopUser
 
 if TYPE_CHECKING:  # pragma: no cover
-    from grizzly.users.base import GrizzlyUser
+    from grizzly.users import GrizzlyUser
 
 
 class GrizzlyScenario(SequentialTaskSet):

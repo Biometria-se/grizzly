@@ -14,8 +14,7 @@ from grizzly.tasks import RequestTask
 from grizzly.testdata.utils import transform
 from grizzly.types import RequestMethod
 from grizzly.types.locust import StopUser
-from grizzly.users.base.grizzly_user import GrizzlyUser
-from grizzly.users.blobstorage import BlobStorageUser
+from grizzly.users import BlobStorageUser, GrizzlyUser
 
 if TYPE_CHECKING:  # pragma: no cover
     from pytest_mock import MockerFixture

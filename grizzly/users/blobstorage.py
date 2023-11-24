@@ -38,8 +38,9 @@ from urllib.parse import parse_qs, urlparse
 from azure.storage.blob import BlobServiceClient
 
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod
+from grizzly.utils import normalize
 
-from .base import GrizzlyUser, ResponseHandler, grizzlycontext
+from . import GrizzlyUser, grizzlycontext
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.tasks import RequestTask
@@ -47,7 +48,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 @grizzlycontext(context={})
-class BlobStorageUser(ResponseHandler, GrizzlyUser):
+class BlobStorageUser(GrizzlyUser):
     blob_client: BlobServiceClient
 
     def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
@@ -91,7 +92,7 @@ class BlobStorageUser(ResponseHandler, GrizzlyUser):
         if container.endswith(blob):
             container = str(Path(container).parent)
         else:
-            blob = self._normalize(request.name)
+            blob = normalize(request.name)
 
         if request.method not in [RequestMethod.SEND, RequestMethod.PUT, RequestMethod.RECEIVE, RequestMethod.GET]:
             message = f'{self.__class__.__name__} has not implemented {request.method.name}'

@@ -37,7 +37,7 @@ from azure.storage.blob import BlobClient, ContentSettings
 
 from grizzly.types import GrizzlyResponse, RequestMethod
 
-from .base import GrizzlyUser, grizzlycontext
+from . import GrizzlyUser, grizzlycontext
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.tasks import RequestTask

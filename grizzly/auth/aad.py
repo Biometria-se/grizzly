@@ -794,7 +794,7 @@ class AAD(RefreshToken):
 
         # build generic header values, but remove stuff that shouldn't be part
         # of authentication flow
-        headers = {**client.headers}
+        headers = {**client.metadata}
         safe_del(headers, 'Authorization')
         safe_del(headers, 'Content-Type')
         safe_del(headers, 'Ocp-Apim-Subscription-Key')
