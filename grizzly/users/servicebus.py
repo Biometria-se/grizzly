@@ -81,7 +81,8 @@ from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod, Requ
 from grizzly.types.locust import Environment, StopUser
 from grizzly.utils import is_template
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
-from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse, async_message_request
+from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
+from grizzly_extras.async_message.utils import async_message_request
 
 from . import GrizzlyUser, grizzlycontext
 

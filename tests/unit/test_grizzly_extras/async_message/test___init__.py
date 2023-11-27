@@ -2,30 +2,19 @@
 from __future__ import annotations
 
 from contextlib import suppress
-from os import environ, listdir
-from platform import node as hostname
-from shutil import rmtree
 from typing import TYPE_CHECKING, Optional, cast
 
 import pytest
-import zmq.green as zmq
-from zmq.error import Again as ZMQAgain
 
 from grizzly_extras.async_message import (
-    AsyncMessageError,
     AsyncMessageHandler,
     AsyncMessageRequest,
     AsyncMessageRequestHandler,
     AsyncMessageResponse,
-    ThreadLogger,
-    async_message_request,
     register,
 )
-from tests.helpers import onerror
 
 if TYPE_CHECKING:  # pragma: no cover
-    from _pytest.capture import CaptureFixture
-    from _pytest.tmpdir import TempPathFactory
     from pytest_mock import MockerFixture
 
 
@@ -123,103 +112,3 @@ def test_register() -> None:
     finally:
         with suppress(KeyError):
             del handlers['TEST']
-
-
-class TestThreadLogger:
-    def test_logger(self, tmp_path_factory: TempPathFactory, capsys: CaptureFixture) -> None:
-        test_context = tmp_path_factory.mktemp('test_context') / 'logs'
-        test_context.mkdir()
-        test_context_root = test_context.parent.as_posix()
-
-        try:
-            logger = ThreadLogger('test.logger')
-            logger.info('info')
-            logger.warning('warning')
-            logger.error('error')
-            logger.debug('debug')
-
-            std = capsys.readouterr()
-            assert '] INFO : test.logger: info\n' in std.err
-            assert '] ERROR: test.logger: error\n' in std.err
-            assert '] WARNING: test.logger: warning\n' in std.err
-            assert '] DEBUG: test.logger: debug\n' not in std.err
-
-            log_files = listdir(str(test_context))
-            assert len(log_files) == 0
-
-            environ['GRIZZLY_CONTEXT_ROOT'] = test_context_root
-            environ['GRIZZLY_EXTRAS_LOGLEVEL'] = 'DEBUG'
-
-            logger = ThreadLogger('test.logger')
-            logger.info('info')
-            logger.error('error')
-            logger.debug('debug')
-            logger.warning('warning')
-
-            std = capsys.readouterr()
-            log_files = listdir(str(test_context))
-            assert len(log_files) == 1
-            log_file = log_files[0]
-            assert log_file.startswith(f'async-messaged.{hostname()}')
-
-            file = (test_context / log_file).read_text()
-
-            for sink in [std.err, file]:
-                assert '] INFO : test.logger: info\n' in sink
-                assert '] ERROR: test.logger: error\n' in sink
-                assert '] WARNING: test.logger: warning\n' in sink
-                assert '] DEBUG: test.logger: debug\n' in sink
-        finally:
-            logger._logger.handlers = []  # force StreamHandler to close log file
-
-            with suppress(KeyError):
-                del environ['GRIZZLY_CONTEXT_ROOT']
-
-            with suppress(KeyError):
-                del environ['GRIZZLY_EXTRAS_LOGLEVEL']
-
-            rmtree(test_context_root, onerror=onerror)
-
-
-def test_async_message_request(mocker: MockerFixture) -> None:
-    client_mock = mocker.MagicMock()
-    sleep_mock = mocker.patch('grizzly_extras.async_message.sleep', return_value=None)
-
-    # no valid response
-    client_mock.recv_json.side_effect = [ZMQAgain, None]
-
-    request: AsyncMessageRequest = {
-        'worker': None,
-        'action': 'HELLO',
-    }
-
-    with pytest.raises(AsyncMessageError, match='no response'):
-        async_message_request(client_mock, request)
-
-    sleep_mock.assert_called_once_with(0.1)
-    client_mock.send_json.assert_called_once_with(request)
-
-    assert client_mock.recv_json.call_count == 2
-    for i in range(2):
-        args, kwargs = client_mock.recv_json.call_args_list[i]
-        assert args == ()
-        assert kwargs == {'flags': zmq.NOBLOCK}
-
-    sleep_mock.reset_mock()
-    client_mock.reset_mock()
-
-    # unsuccessful response
-    client_mock.recv_json.side_effect = None
-    client_mock.recv_json.return_value = {'success': False, 'message': 'error! error! error!'}
-
-    with pytest.raises(AsyncMessageError, match='error! error! error!'):
-        async_message_request(client_mock, request)
-
-    sleep_mock.assert_not_called()
-    client_mock.send_json.assert_called_once_with(request)
-    client_mock.recv_json.assert_called_once_with(flags=zmq.NOBLOCK)
-
-    # valid response
-    client_mock.recv_json.return_value = {'success': True, 'worker': 'foo-bar-baz-foo', 'payload': 'yes'}
-
-    assert async_message_request(client_mock, request) == {'success': True, 'worker': 'foo-bar-baz-foo', 'payload': 'yes'}
