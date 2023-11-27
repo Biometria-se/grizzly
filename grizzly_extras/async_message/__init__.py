@@ -48,6 +48,11 @@ def configure_logging() -> None:
         handlers=handlers,
     )
 
+    # silence library loggers
+    for logger_name in ['azure']:
+        logger = logging.getLogger(logger_name)
+        logger.setLevel(logging.ERROR)
+
 configure_logging()
 
 
