@@ -29,7 +29,7 @@ Then send request "test/blob.file" to endpoint "uploaded_blob_filename"
 from __future__ import annotations
 
 import gzip
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Optional
 from urllib.parse import parse_qs, urlparse
 
 from azure.iot.device import IoTHubDeviceClient
