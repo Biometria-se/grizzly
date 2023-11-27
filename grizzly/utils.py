@@ -19,12 +19,14 @@ from dateutil.parser import parse as dateparser
 from locust.stats import STATS_NAME_WIDTH
 
 from grizzly.types import T
-from grizzly_extras.async_message import AsyncMessageRequest, AsyncMessageResponse, async_message_request
+from grizzly_extras.async_message.utils import async_message_request
 
 if TYPE_CHECKING:  # pragma: no cover
     from types import FunctionType
 
     import zmq.green as zmq
+
+    from grizzly_extras.async_message import AsyncMessageRequest, AsyncMessageResponse
 
     from .context import GrizzlyContextScenario
     from .scenarios import GrizzlyScenario

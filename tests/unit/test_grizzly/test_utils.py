@@ -183,7 +183,10 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
                 'initialize_uri': None,
             },
         },
-        'metadata': None,
+        'metadata': {
+            'Content-Type': 'application/json',
+            'x-grizzly-user': 'grizzly.users.RestApiUser_001',
+        },
     }
     assert user_type_1.__scenario__ is scenario
 
@@ -279,6 +282,7 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
         'metadata': {
             'Content-Type': 'application/xml',
             'Foo-Bar': 'hello world',
+            'x-grizzly-user': 'RestApiUser_001',
         },
     }
     assert user_type_2.__scenario__ is scenario

@@ -135,7 +135,8 @@ from grizzly.exceptions import StopScenario
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestType
 from grizzly.utils import merge_dicts
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
-from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse, async_message_request
+from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
+from grizzly_extras.async_message.utils import async_message_request
 
 from . import GrizzlyUser, grizzlycontext
 

@@ -3,6 +3,7 @@ Based on ZMQ PUB/SUB, where each request type is handled to a worker which is fo
 """
 from __future__ import annotations
 
+import logging
 from json import dumps as jsondumps
 from json import loads as jsonloads
 from signal import SIGINT, SIGTERM, Signals, signal
@@ -23,7 +24,6 @@ from . import (
     AsyncMessageHandler,
     AsyncMessageRequest,
     AsyncMessageResponse,
-    ThreadLogger,
 )
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -33,11 +33,12 @@ abort: bool = False
 
 
 def signal_handler(signum: Union[int, Signals], _frame: Optional[FrameType]) -> None:
-    logger = ThreadLogger('signal_handler')
+    logger = logging.getLogger('signal_handler')
     logger.debug('received signal %r', signum)
 
     global abort  # noqa: PLW0603
     if not abort:
+        logger.info('aborting due to %r', signum)
         abort = True
 
 
@@ -46,7 +47,7 @@ signal(SIGINT, signal_handler)
 
 
 def router() -> None:  # noqa: C901, PLR0912, PLR0915
-    logger = ThreadLogger('router')
+    logger = logging.getLogger('router')
     proc.setproctitle('grizzly-async-messaged')  # set appl name on ibm mq
     logger.debug('starting')
 
@@ -174,7 +175,7 @@ def router() -> None:  # noqa: C901, PLR0912, PLR0915
 
 
 def worker(context: zmq.Context, identity: str) -> None:  # noqa: PLR0912, PLR0915
-    logger = ThreadLogger(f'worker::{identity}')
+    logger = logging.getLogger(f'worker::{identity}')
     worker = context.socket(zmq.REQ)
 
     worker.setsockopt_string(zmq.IDENTITY, identity)
