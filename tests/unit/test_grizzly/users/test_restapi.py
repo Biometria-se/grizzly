@@ -104,12 +104,9 @@ class TestRestApiUser:
                 },
                 'verify_certificates': False,
                 'metadata': {
-                    'Ocp-Apim-Subscription-Key': '',
+                    'User-Agent': '',
                 },
             }
-            parent.user.metadata.update({
-                'Ocp-Apim-Subscription-Key': '',
-            })
             parent.user.host = cast(dict, parent.user.__context__)['host']
             parent.user.session_started = time()
 
@@ -155,6 +152,16 @@ class TestRestApiUser:
 
         response_context_manager = create_mocked_fast_response_context_manager(content='{"success": false}', status_code=999)
         assert parent.user._get_error_message(response_context_manager) == '{"success": false}'
+
+        response_context_manager = create_mocked_fast_response_context_manager(content="""<html>
+    <head>
+        <title>  what a bummer </title>
+    </head>
+    <body>
+        <h1>meep</h1>
+    </body>
+</html>""", status_code=999)
+        assert parent.user._get_error_message(response_context_manager) == 'what a bummer'
 
         text_mock = mocker.patch('locust.contrib.fasthttp.FastResponse.text', new_callable=mocker.PropertyMock)
         text_mock.return_value = None
@@ -321,7 +328,6 @@ class TestRestApiUser:
             name='001 TestScenario',
             url='http://test/api/test',
             catch_response=True,
-            cookies=parent.user.cookies,
             **expected_parameters,
         )
 
@@ -346,7 +352,6 @@ class TestRestApiUser:
             name='001 TestScenario',
             url='http://test/api/test',
             catch_response=True,
-            cookies=parent.user.cookies,
             **expected_parameters,
         )
 
@@ -368,7 +373,6 @@ class TestRestApiUser:
             name='001 TestScenario',
             url='http://test/api/test',
             catch_response=True,
-            cookies=parent.user.cookies,
             **expected_parameters,
         )
 
@@ -393,7 +397,6 @@ class TestRestApiUser:
             name='001 TestScenario',
             url='http://test/api/test',
             catch_response=True,
-            cookies=parent.user.cookies,
             **expected_parameters,
         )
 
@@ -432,7 +435,6 @@ class TestRestApiUser:
             name='001 TestScenario',
             url='http://test/api/test',
             catch_response=True,
-            cookies=parent.user.cookies,
             **expected_parameters,
         )
 
@@ -453,7 +455,6 @@ class TestRestApiUser:
             name='001 TestScenario',
             url='http://test/api/test',
             catch_response=True,
-            cookies=parent.user.cookies,
             **expected_parameters,
         )
 

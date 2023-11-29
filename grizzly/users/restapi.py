@@ -55,8 +55,10 @@ from __future__ import annotations
 import json
 from abc import ABCMeta
 from copy import copy
+from html.parser import HTMLParser
+from http.cookiejar import Cookie
 from time import time
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, Optional, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Optional, Tuple, cast
 
 import requests
 from locust.contrib.fasthttp import FastHttpSession
@@ -77,6 +79,32 @@ if TYPE_CHECKING:  # pragma: no cover
 
 class RestApiUserMeta(GrizzlyUserMeta, ABCMeta):
     pass
+
+class HtmlTitleParser(HTMLParser):
+    title: Optional[str]
+
+    _look: bool
+
+    def __init__(self) -> None:
+        super().__init__()
+
+        self.title = None
+        self._look = False
+
+    @property
+    def should_look(self) -> bool:
+        return self._look and self.title is None
+
+    def handle_starttag(self, tag: str, _attrs: List[Tuple[str, Optional[str]]]) -> None:
+        self._look = tag == 'title' and self.title is None
+
+    def handle_data(self, data: str) -> None:
+        if self.should_look:
+            self.title = data
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == 'title' and self.should_look:
+            self._look = False
 
 
 @grizzlycontext(context={
@@ -153,6 +181,12 @@ class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=R
             except json.decoder.JSONDecodeError:
                 message = response.text
 
+                parser = HtmlTitleParser()
+                parser.feed(message)
+
+                if parser.title is not None:
+                    message = parser.title.strip()
+
         return message
 
     def async_request_impl(self, request: RequestTask) -> GrizzlyResponse:
@@ -209,15 +243,37 @@ class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=R
             else:
                 parameters['data'] = request.source.encode('utf-8')
 
+        # from response...
         headers: Optional[Dict[str, str]] = None
         payload: Optional[str] = None
+
+        client.cookiejar.clear()
+
+        for name, value in self.cookies.items():
+            client.cookiejar.set_cookie(Cookie(
+                version=0,
+                name=name,
+                value=value,
+                port=None,
+                port_specified=False,
+                domain=self.host,
+                domain_specified=True,
+                domain_initial_dot=False,
+                path='/',
+                path_specified=True,
+                secure=self.host.startswith('https'),
+                expires=None,
+                discard=False,
+                comment=None,
+                comment_url=None,
+                rest={},
+            ))
 
         with client.request(
             method=request.method.name,
             name=request.name,
             url=url,
             catch_response=True,
-            cookies=self.cookies,
             **parameters,
         ) as response:
             # monkey patch, so we don't get two request events

@@ -170,7 +170,7 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
 
             metadata, payload = request_impl(request)
         except Exception as e:
-            message = f'request failed: {str(e) or e.__class__}'
+            message = f'request "{request.name}" failed: {str(e) or e.__class__}'
             self.logger.exception(message)
             exception = e
         finally:

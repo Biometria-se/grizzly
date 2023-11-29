@@ -38,6 +38,10 @@ if '/srv/grizzly' not in str(root_dir):
 @app.route('/api/v1/resources/dogs')
 def app_get_dog_fact() -> FlaskResponse:
     logger.debug('route /api/v1/resources/dogs called')
+
+    if len(request.get_data(cache=False, as_text=True)) > 0:
+        return FlaskResponse(status=403)
+
     _ = int(request.args.get('number', ''))
 
     return jsonify(['woof woof wooof'])
@@ -46,6 +50,10 @@ def app_get_dog_fact() -> FlaskResponse:
 @app.route('/facts')
 def app_get_cat_fact() -> FlaskResponse:
     logger.debug('route /facts called')
+
+    if len(request.get_data(cache=False, as_text=True)) > 0:
+        return FlaskResponse(status=403)
+
     _ = int(request.args.get('limit', ''))
 
     return jsonify(['meow meow meow'])
@@ -54,6 +62,10 @@ def app_get_cat_fact() -> FlaskResponse:
 @app.route('/books/<book>.json')
 def app_get_book(book: str) -> FlaskResponse:
     logger.debug('/books/%s.json called, root_dir=%s', book, root_dir)
+
+    if len(request.get_data(cache=False, as_text=True)) > 0:
+        return FlaskResponse(status=403)
+
     with (root_dir / 'requests' / 'books' / 'books.csv').open() as fd:
         reader = csv.DictReader(fd)
         for row in reader:
@@ -76,6 +88,10 @@ def app_get_book(book: str) -> FlaskResponse:
 def app_get_author(author_key: str) -> FlaskResponse:
     logger.debug('route /author/%s.json called', author_key)
     name, _ = author_key.rsplit('|', 1)
+
+    if len(request.get_data(cache=False, as_text=True)) > 0:
+        return FlaskResponse(status=403)
+
 
     return jsonify({
         'name': name.replace('_', ' '),
