@@ -9,25 +9,25 @@
       
       
       
-        <link rel="prev" href="../async_group/">
+        <link rel="prev" href="../conditional/">
       
       
-        <link rel="next" href="../until/">
+        <link rel="next" href="../wait_explicit/">
       
       
-      <link rel="icon" href="../../../../assets/favicon.ico">
-      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.4.6">
+      <link rel="icon" href="../../../../../../assets/favicon.ico">
+      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.4.14">
     
     
       
-        <title>Task Wait - Grizzly</title>
+        <title>Steps / Scenario / Tasks / Date - Grizzly</title>
       
     
     
-      <link rel="stylesheet" href="../../../../assets/stylesheets/main.35e1ed30.min.css">
+      <link rel="stylesheet" href="../../../../../../assets/stylesheets/main.fad675c6.min.css">
       
         
-        <link rel="stylesheet" href="../../../../assets/stylesheets/palette.356b1318.min.css">
+        <link rel="stylesheet" href="../../../../../../assets/stylesheets/palette.356b1318.min.css">
       
       
 
@@ -46,7 +46,7 @@
       
     
     
-    <script>__md_scope=new URL("../../../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../../../../../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -71,7 +71,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#step-implementations" class="md-skip">
+        <a href="#then-date" class="md-skip">
           Skip to content
         </a>
       
@@ -87,9 +87,9 @@
 
 <header class="md-header md-header--shadow" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../../.." title="Grizzly" class="md-header__button md-logo" aria-label="Grizzly" data-md-component="logo">
+    <a href="../../../../../.." title="Grizzly" class="md-header__button md-logo" aria-label="Grizzly" data-md-component="logo">
       
-  <img src="../../../../assets/logo/grizzly_grasshopper_orange_64px.png" alt="logo">
+  <img src="../../../../../../assets/logo/grizzly_grasshopper_orange_64px.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -106,7 +106,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Task Wait
+              Steps / Scenario / Tasks / Date
             
           </span>
         </div>
@@ -192,9 +192,9 @@
 
 <nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../../.." title="Grizzly" class="md-nav__button md-logo" aria-label="Grizzly" data-md-component="logo">
+    <a href="../../../../../.." title="Grizzly" class="md-nav__button md-logo" aria-label="Grizzly" data-md-component="logo">
       
-  <img src="../../../../assets/logo/grizzly_grasshopper_orange_64px.png" alt="logo">
+  <img src="../../../../../../assets/logo/grizzly_grasshopper_orange_64px.png" alt="logo">
 
     </a>
     Grizzly
@@ -219,8 +219,9 @@
   
   
   
+  
     <li class="md-nav__item">
-      <a href="../../../.." class="md-nav__link">
+      <a href="../../../../../.." class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -238,8 +239,9 @@
   
   
   
+  
     <li class="md-nav__item">
-      <a href="../../../../example/" class="md-nav__link">
+      <a href="../../../../../../example/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -257,8 +259,9 @@
   
   
   
+  
     <li class="md-nav__item">
-      <a href="../../../../code_of_conduct/" class="md-nav__link">
+      <a href="../../../../../../code_of_conduct/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -276,6 +279,7 @@
   
   
     
+  
   
   
     
@@ -327,6 +331,7 @@
     
   
   
+  
     
     
       
@@ -372,7 +377,6 @@
                 
   
   
-    
   
   
     
@@ -414,17 +418,17 @@
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1_1" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1_1" >
         
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../" class="md-nav__link ">
+            <a href="../../../../tasks/" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -441,7 +445,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_1_1_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_1_1_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4_1_1">
             <span class="md-nav__icon md-icon"></span>
             Tasks
@@ -455,265 +459,9 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../conditional/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Conditional
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
   
     <li class="md-nav__item">
-      <a href="../wait/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Wait
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../log_message/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Log Message
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../async_group/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Async Group
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-    
-  
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Task Wait
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
-        
-  
-  <span class="md-ellipsis">
-    Task Wait
-  </span>
-  
-
-      </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#step-implementations" class="md-nav__link">
-    Step implementations
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#statistics" class="md-nav__link">
-    Statistics
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#arguments" class="md-nav__link">
-    Arguments
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../until/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Until
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../keystore/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Keystore
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../set_variable/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Set Variable
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../date/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Date
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../timer/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Timer
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../request/" class="md-nav__link">
+      <a href="../../../../tasks/request/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -732,8 +480,156 @@
   
   
   
+  
     <li class="md-nav__item">
-      <a href="../loop/" class="md-nav__link">
+      <a href="../../../../tasks/async_group/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Async Group
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../tasks/timer/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Timer
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../tasks/wait_between/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Wait Between
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../tasks/log_message/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Log Message
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../tasks/conditional/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Conditional
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../tasks/date/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Date
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../tasks/wait_explicit/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Wait Explicit
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../tasks/loop/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -752,8 +648,51 @@
   
   
   
+  
     <li class="md-nav__item">
-      <a href="../transformer/" class="md-nav__link">
+      <a href="../../../../tasks/set_variable/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Set Variable
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../tasks/until/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Until
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../tasks/transformer/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -769,6 +708,28 @@
             
               
                 
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../tasks/keystore/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Keystore
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
   
   
   
@@ -801,7 +762,7 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../clients/" class="md-nav__link ">
+            <a href="../../../../tasks/clients/" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -832,48 +793,9 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../clients/messagequeue/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Messagequeue
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
   
     <li class="md-nav__item">
-      <a href="../clients/servicebus/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Servicebus
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../clients/http/" class="md-nav__link">
+      <a href="../../../../tasks/clients/http/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -892,12 +814,55 @@
   
   
   
+  
     <li class="md-nav__item">
-      <a href="../clients/blobstorage/" class="md-nav__link">
+      <a href="../../../../tasks/clients/blobstorage/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
     Blobstorage
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../tasks/clients/servicebus/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Servicebus
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../tasks/clients/messagequeue/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Messagequeue
   </span>
   
 
@@ -925,6 +890,7 @@
             
               
                 
+  
   
   
   
@@ -972,8 +938,9 @@
   
   
   
+  
     <li class="md-nav__item">
-      <a href="../../variables/environment-configuration/" class="md-nav__link">
+      <a href="../../../../variables/environment-configuration/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -989,6 +956,7 @@
             
               
                 
+  
   
   
   
@@ -1027,7 +995,7 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../variables/testdata/" class="md-nav__link ">
+            <a href="../../../../variables/testdata/" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -1058,88 +1026,9 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../../variables/testdata/csv_writer/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    CSV Writer
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
   
     <li class="md-nav__item">
-      <a href="../../variables/testdata/random_string/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Random String
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../variables/testdata/csv_reader/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    CSV Reader
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../variables/testdata/integer_incrementer/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Integer Incrementer
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../variables/testdata/directory_contents/" class="md-nav__link">
+      <a href="../../../../variables/testdata/directory_contents/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1158,8 +1047,72 @@
   
   
   
+  
     <li class="md-nav__item">
-      <a href="../../variables/testdata/date/" class="md-nav__link">
+      <a href="../../../../variables/testdata/random_string/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Random String
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../variables/testdata/integer_incrementer/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Integer Incrementer
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../variables/testdata/csv_writer/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    CSV Writer
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../variables/testdata/date/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1178,8 +1131,30 @@
   
   
   
+  
     <li class="md-nav__item">
-      <a href="../../variables/testdata/random_integer/" class="md-nav__link">
+      <a href="../../../../variables/testdata/csv_reader/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    CSV Reader
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../variables/testdata/random_integer/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1206,8 +1181,9 @@
   
   
   
+  
     <li class="md-nav__item">
-      <a href="../../variables/templating/" class="md-nav__link">
+      <a href="../../../../variables/templating/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1234,13 +1210,12 @@
   
   
   
+  
     
     
       
         
           
-        
-      
         
       
         
@@ -1269,7 +1244,7 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../load-users/" class="md-nav__link ">
+            <a href="../../../../load-users/" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -1300,12 +1275,13 @@
   
   
   
+  
     <li class="md-nav__item">
-      <a href="../../load-users/dummy/" class="md-nav__link">
+      <a href="../../../../load-users/restapi/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Dummy
+    RestAPI
   </span>
   
 
@@ -1320,68 +1296,9 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../../load-users/sftp/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    SFTP
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
   
     <li class="md-nav__item">
-      <a href="../../load-users/messagequeue/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Messagequeue
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../load-users/servicebus/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Servicebus
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../load-users/blobstorage/" class="md-nav__link">
+      <a href="../../../../load-users/blobstorage/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1400,8 +1317,51 @@
   
   
   
+  
     <li class="md-nav__item">
-      <a href="../../load-users/iothub/" class="md-nav__link">
+      <a href="../../../../load-users/servicebus/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Servicebus
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../load-users/messagequeue/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Messagequeue
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../load-users/iothub/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1420,12 +1380,13 @@
   
   
   
+  
     <li class="md-nav__item">
-      <a href="../../load-users/restapi/" class="md-nav__link">
+      <a href="../../../../load-users/dummy/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    RestAPI
+    Dummy
   </span>
   
 
@@ -1447,6 +1408,9 @@
                 
   
   
+    
+  
+  
   
     
     
@@ -1467,17 +1431,17 @@
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1_4" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1_4" checked>
         
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../steps/" class="md-nav__link ">
+            <a href="../../../" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -1494,7 +1458,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_1_4_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_1_4_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4_1_4">
             <span class="md-nav__icon md-icon"></span>
             Steps
@@ -1505,6 +1469,7 @@
             
               
                 
+  
   
   
   
@@ -1533,7 +1498,7 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../steps/background/" class="md-nav__link ">
+            <a href="../../../background/" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -1564,12 +1529,13 @@
   
   
   
+  
     <li class="md-nav__item">
-      <a href="../../steps/background/setup/" class="md-nav__link">
+      <a href="../../../background/shapes/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Setup
+    Shapes
   </span>
   
 
@@ -1584,12 +1550,13 @@
   
   
   
+  
     <li class="md-nav__item">
-      <a href="../../steps/background/shapes/" class="md-nav__link">
+      <a href="../../../background/setup/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Shapes
+    Setup
   </span>
   
 
@@ -1611,6 +1578,9 @@
                 
   
   
+    
+  
+  
   
     
     
@@ -1633,17 +1603,17 @@
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1_4_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1_4_3" checked>
         
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../steps/scenario/" class="md-nav__link ">
+            <a href="../../" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -1660,7 +1630,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_1_4_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_4_1_4_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_4_1_4_3">
             <span class="md-nav__icon md-icon"></span>
             Scenario
@@ -1674,68 +1644,9 @@
   
   
   
-    <li class="md-nav__item">
-      <a href="../../steps/scenario/tasks/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Tasks
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
   
     <li class="md-nav__item">
-      <a href="../../steps/scenario/setup/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Setup
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../steps/scenario/results/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Results
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../steps/scenario/user/" class="md-nav__link">
+      <a href="../../user/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1754,40 +1665,13 @@
   
   
   
+  
     <li class="md-nav__item">
-      <a href="../../steps/scenario/response/" class="md-nav__link">
+      <a href="../../results/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
-    Response
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-          </ul>
-        </nav>
-      
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../steps/utils/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    Utils
+    Results
   </span>
   
 
@@ -1802,8 +1686,9 @@
   
   
   
+  
     <li class="md-nav__item">
-      <a href="../../steps/setup/" class="md-nav__link">
+      <a href="../../setup/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1817,6 +1702,412 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../response/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Response
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_1_4_3_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4_1_4_3_6" id="__nav_4_1_4_3_6_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Tasks
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="5" aria-labelledby="__nav_4_1_4_3_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4_1_4_3_6">
+            <span class="md-nav__icon md-icon"></span>
+            Tasks
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../request/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Request
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../async_group/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Async Group
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../timer/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Timer
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wait_between/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Wait Between
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../log_message/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Log Message
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../conditional/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Conditional
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Date
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Date
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#then-date" class="md-nav__link">
+    <span class="md-ellipsis">
+      Then date
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../wait_explicit/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Wait Explicit
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../loop/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Loop
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../until/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Until
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../clients/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Clients
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../transformer/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Transformer
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../keystore/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Keystore
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -1838,8 +2129,67 @@
   
   
   
+  
     <li class="md-nav__item">
-      <a href="../../../changelog/" class="md-nav__link">
+      <a href="../../../setup/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Setup
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../utils/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Utils
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../../../changelog/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1858,8 +2208,9 @@
   
   
   
+  
     <li class="md-nav__item">
-      <a href="../../../licenses/" class="md-nav__link">
+      <a href="../../../../../licenses/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1882,6 +2233,7 @@
     
       
       
+  
   
   
   
@@ -1932,6 +2284,7 @@
   
   
   
+  
     
     
       
@@ -1955,7 +2308,7 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../command-line-interface/usage/" class="md-nav__link ">
+            <a href="../../../../../../command-line-interface/usage/" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -1986,8 +2339,9 @@
   
   
   
+  
     <li class="md-nav__item">
-      <a href="../../../../command-line-interface/usage/metadata/" class="md-nav__link">
+      <a href="../../../../../../command-line-interface/usage/metadata/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2014,8 +2368,9 @@
   
   
   
+  
     <li class="md-nav__item">
-      <a href="../../../../command-line-interface/changelog/" class="md-nav__link">
+      <a href="../../../../../../command-line-interface/changelog/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2034,8 +2389,9 @@
   
   
   
+  
     <li class="md-nav__item">
-      <a href="../../../../command-line-interface/licenses/" class="md-nav__link">
+      <a href="../../../../../../command-line-interface/licenses/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2058,6 +2414,7 @@
     
       
       
+  
   
   
   
@@ -2093,7 +2450,7 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../editor-support/" class="md-nav__link ">
+            <a href="../../../../../../editor-support/" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -2124,8 +2481,9 @@
   
   
   
+  
     <li class="md-nav__item">
-      <a href="../../../../editor-support/language-server/" class="md-nav__link">
+      <a href="../../../../../../editor-support/language-server/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2141,6 +2499,7 @@
             
               
                 
+  
   
   
   
@@ -2167,7 +2526,7 @@
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../editor-support/editors/" class="md-nav__link ">
+            <a href="../../../../../../editor-support/editors/" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -2198,8 +2557,9 @@
   
   
   
+  
     <li class="md-nav__item">
-      <a href="../../../../editor-support/editors/vscode/" class="md-nav__link">
+      <a href="../../../../../../editor-support/editors/vscode/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2226,8 +2586,9 @@
   
   
   
+  
     <li class="md-nav__item">
-      <a href="../../../../editor-support/changelog/" class="md-nav__link">
+      <a href="../../../../../../editor-support/changelog/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2246,8 +2607,9 @@
   
   
   
+  
     <li class="md-nav__item">
-      <a href="../../../../editor-support/licenses/" class="md-nav__link">
+      <a href="../../../../../../editor-support/licenses/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2293,22 +2655,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#step-implementations" class="md-nav__link">
-    Step implementations
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#statistics" class="md-nav__link">
-    Statistics
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#arguments" class="md-nav__link">
-    Arguments
+  <a href="#then-date" class="md-nav__link">
+    <span class="md-ellipsis">
+      Then date
+    </span>
   </a>
   
 </li>
@@ -2331,34 +2681,35 @@
   
 
 
-  <h1>Task Wait</h1>
+  <h1>Date</h1>
 
-<p><a id="pydoc:grizzly.tasks.task_wait"></a>
-This task sets the wait time between tasks in a scenario.</p>
-<p>The default is to wait <code>0</code> seconds between each task.</p>
-<p>This is useful in a scenario with many tasks that should have some wait time between them, but there are a group
-of tasks (e.g. Transform, Date or Log Messages) that should execute as fast as possible.</p>
-<p>If <code>max_time</code> is not provided, the wait between tasks is constant <code>min_time</code>. If both are provided there will be a
-random wait between (and including) <code>min_time</code> and <code>max_time</code> between tasks.</p>
-<h2 id="step-implementations">Step implementations</h2>
+<p><a id="pydoc:grizzly.steps.scenario.tasks.date"></a>
+This module contains step implementations for the <a href="/grizzly/framework/usage/tasks/date#pydoc:grizzly.tasks.date">Date</a> task.</p>
+<p><a id="grizzly.steps.scenario.tasks.date.step_task_date"></a></p>
+<p><a id="pydoc:grizzly.steps.scenario.tasks.date.step_task_date"></a></p>
+<h2 id="then-date">Then date</h2>
+<div class="highlight"><pre><span></span><code><span class="k">Then </span><span class="nf">parse date &quot;</span><span class="s">{value}</span><span class="nf">&quot; and save in variable &quot;</span><span class="s">{variable}</span><span class="nf">&quot;</span>
+</code></pre></div>
+<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.8.0/docs/../grizzly/steps/scenario/tasks/date.py#L14">[view_source]</a></p>
+<p>Create an instance of the <a href="/grizzly/framework/usage/tasks/date#pydoc:grizzly.tasks.date">Date</a> task.</p>
+<p>Parses a datetime string and transforms it according to specified arguments.</p>
+<p>See <a href="/grizzly/framework/usage/tasks/date#pydoc:grizzly.tasks.date">Date</a> task documentation for more information about arguments.</p>
+<p>This step is useful when changes has to be made to a datetime representation during an iteration of a scenario.</p>
+<p><strong>Example</strong>:</p>
+<div class="highlight"><pre><span></span><code><span class="nf">...</span>
+<span class="k">And </span><span class="nf">value for variable &quot;</span><span class="s">date1</span><span class="nf">&quot; is &quot;</span><span class="s">none</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">value for variable &quot;</span><span class="s">date2</span><span class="nf">&quot; is &quot;</span><span class="s">none</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">value for variable &quot;</span><span class="s">date3</span><span class="nf">&quot; is &quot;</span><span class="s">none</span><span class="nf">&quot;</span>
+<span class="k">And </span><span class="nf">value for variable &quot;</span><span class="s">AtomicDate.test</span><span class="nf">&quot; is &quot;</span><span class="s">now</span><span class="nf">&quot;</span>
+
+<span class="k">Then </span><span class="nf">parse date &quot;</span><span class="s">2022-01-17 12:21:37 | timezone=UTC, format=</span><span class="nf">&quot;%Y-%m-%dT%H:%M:%S.%f&quot;</span><span class="s">, offset=1D</span><span class="nf">&quot; and save in variable &quot;</span><span class="s">date1</span><span class="nf">&quot;</span>
+<span class="k">Then </span><span class="nf">parse date &quot;</span><span class="s">{{ AtomicDate.test }} | offset=-1D</span><span class="nf">&quot; and save in variable &quot;</span><span class="s">date2</span><span class="nf">&quot;</span>
+<span class="k">Then </span><span class="nf">parse date &quot;</span><span class="s">{{ datetime.now() }} | offset=1Y</span><span class="nf">&quot; and save in variable &quot;</span><span class="s">date3</span><span class="nf">&quot;</span>
+</code></pre></div>
+<p><strong>Arguments</strong>:</p>
 <ul>
-<li>
-<p><a href="/grizzly/framework/usage/steps/scenario/tasks#pydoc:grizzly.steps.scenario.tasks.step_task_wait_constant">step_task_wait_constant</a></p>
-</li>
-<li>
-<p><a href="/grizzly/framework/usage/steps/scenario/tasks#pydoc:grizzly.steps.scenario.tasks.step_task_wait_between">step_task_wait_between</a></p>
-</li>
-</ul>
-<h2 id="statistics">Statistics</h2>
-<p>This task does not have any request statistics entries.</p>
-<h2 id="arguments">Arguments</h2>
-<ul>
-<li>
-<p><code>min_time</code> <em>float</em> - minimum time to wait</p>
-</li>
-<li>
-<p><code>max_time</code> <em>float</em> (optional) - maximum time to wait</p>
-</li>
+<li><code>value</code> <em>str</em> - datetime string and arguments</li>
+<li><code>variable</code> <em>str</em> - name of, initialized, variable where response will be saved in</li>
 </ul>
 
 
@@ -2404,10 +2755,10 @@ random wait between (and including) <code>min_time</code> and <code>max_time</co
     </div>
     
     
-    <script id="__config" type="application/json">{"base": "../../../..", "features": ["navigation.indexes", "navigation.instant", "navigation.sections", "navigation.tracking", "navigation.top", "toc.follow"], "search": "../../../../assets/javascripts/workers/search.f886a092.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    <script id="__config" type="application/json">{"base": "../../../../../..", "features": ["navigation.indexes", "navigation.instant", "navigation.sections", "navigation.tracking", "navigation.top", "toc.follow"], "search": "../../../../../../assets/javascripts/workers/search.f886a092.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
     
     
-      <script src="../../../../assets/javascripts/bundle.aecac24b.min.js"></script>
+      <script src="../../../../../../assets/javascripts/bundle.cd18aaf1.min.js"></script>
       
     
   </body>
