@@ -38,7 +38,7 @@ def test_e2e_step_response_save_matches(e2e_fixture: End2EndFixture) -> None:
             handlers = getattr(request.response.handlers, handler_type)
 
             assert f'{{{{ expression_{index} }}}}' in grizzly.scenario.orphan_templates, f'{{{{ expression_{index} }}}} not in {grizzly.scenario.orphan_templates}'
-            assert grizzly.state.variables.get(f'expression_{index}', None) == f'$.`this`.{attr_name}', f'variable expression_{index} is not $.`this`.{attr_name}'
+            assert grizzly.state.variables.get(f'expression_{index}', None) == f'$.{attr_name}', f'variable expression_{index} is not $.{attr_name}'
             assert len(handlers) == 1, f'unexpected number of {target} handlers'
             handler = handlers[0]
             assert isinstance(handler, SaveHandlerAction), f'{handler.__class__.__name__} != SaveHandlerAction'
@@ -55,7 +55,7 @@ def test_e2e_step_response_save_matches(e2e_fixture: End2EndFixture) -> None:
         table.append({'target': target.name.lower(), 'index': str(index), 'attr_name': 'foobar'})
 
         scenario += [
-            f'Given value for variable "expression_{index}" is "$.`this`.foobar"',
+            f'Given value for variable "expression_{index}" is "$.foobar"',
             f'Given value for variable "tmp_{index}" is "none"',
             f'Then get request with name "{target.name.lower()}-handler" from endpoint "/api/echo?foobar=foo | content_type=json"',
             'And metadata "foobar" is "foobar"',
@@ -108,7 +108,7 @@ def test_e2e_step_response_save(e2e_fixture: End2EndFixture) -> None:
             handler = handlers[0]
             assert isinstance(handler, SaveHandlerAction), f'{handler.__class__.__name__} != SaveHandlerAction'
             assert handler.variable == f'tmp_{index}', f'{handler.variable} != tmp_{index}'
-            assert handler.expression == f'$.`this`.{attr_name}', f'{handler.expression} != $.`this`.{attr_name}'
+            assert handler.expression == f'$.{attr_name}', f'{handler.expression} != $.{attr_name}'
             assert handler.match_with == '.*', f'{handler.match_with} != .*'
             assert handler.expected_matches == f'{{{{ expected_matches_{index} }}}}', f'{handler.expected_matches} != 1'
 
@@ -125,7 +125,7 @@ def test_e2e_step_response_save(e2e_fixture: End2EndFixture) -> None:
             f'And value for variable "expected_matches_{index}" is "1"',
             f'Then get request with name "{target.name.lower()}-handler" from endpoint "/api/echo?foobar=foo | content_type=json"',
             'And metadata "foobar" is "foobar"',
-            f'Then save response {target.name.lower()} "$.`this`.{attr_name} | expected_matches=\'{{{{ expected_matches_{index} }}}}\'" in variable "tmp_{index}"',
+            f'Then save response {target.name.lower()} "$.{attr_name} | expected_matches=\'{{{{ expected_matches_{index} }}}}\'" in variable "tmp_{index}"',
             f'Then log message "expected_matches_{index}={{{{ expected_matches_{index} }}}}, tmp_{index}={{{{ tmp_{index} }}}}"',
         ]
 

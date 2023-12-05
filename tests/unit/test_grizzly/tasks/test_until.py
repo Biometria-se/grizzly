@@ -82,9 +82,7 @@ class TestUntilRequestTask:
 
         def create_response(status: str) -> str:
             return jsondumps({
-                'response': {
-                    'status': status,
-                },
+                'status': status,
             })
 
         request_spy = mocker.patch.object(
@@ -157,7 +155,7 @@ class TestUntilRequestTask:
             request_type='UNTL',
             name=f'{parent.user._scenario.identifier} test-request, w=100.0s, r=10, em=1',
             response_time=153500,
-            response_length=103,
+            response_length=61,
             context=parent.user._context,
             exception=None,
         )
@@ -186,7 +184,7 @@ class TestUntilRequestTask:
             request_type='UNTL',
             name=f'{parent.user._scenario.identifier} test-request, w=100.0s, r=10, em=1',
             response_time=12250,
-            response_length=33,
+            response_length=19,
             context=parent.user._context,
             exception=None,
         )
@@ -213,7 +211,7 @@ class TestUntilRequestTask:
             request_type='UNTL',
             name=f'{parent.user._scenario.identifier} test-request, w=10.0s, r=2, em=1',
             response_time=12250,
-            response_length=70,
+            response_length=42,
             context=parent.user._context,
             exception=ANY(RuntimeError, message='found 0 matching values for $.`this`[?status="ready"] in payload'),
         )
@@ -222,7 +220,7 @@ class TestUntilRequestTask:
         assert len(caplog.messages) == 1
         assert caplog.messages[-1] == (
             f'{parent.user._scenario.identifier} test-request, w=10.0s, r=2, em=1: endpoint={meta_request_task.endpoint}, number_of_matches=0, '
-            f'condition=\'$.`this`[?status="ready"]\', retry=2, response_time=12250 payload=\n{jsondumps({"response": {"status": "working"}}, indent=2)}'
+            f'condition=\'$.`this`[?status="ready"]\', retry=2, response_time=12250 payload=\n{jsondumps({"status": "working"}, indent=2)}'
         )
 
         caplog.clear()
@@ -245,7 +243,7 @@ class TestUntilRequestTask:
             request_type='UNTL',
             name=f'{parent.user._scenario.identifier} test-request, w=10.0s, r=2, em=1',
             response_time=1500,
-            response_length=35,
+            response_length=21,
             context=parent.user._context,
             exception=ANY(RuntimeError, message='foo bar'),
         )
@@ -286,7 +284,7 @@ class TestUntilRequestTask:
             request_type='UNTL',
             name=f'{parent.user._scenario.identifier} test-request, w=4.0s, r=4, em=1',
             response_time=800,
-            response_length=103,
+            response_length=61,
             context=parent.user._context,
             exception=None,
         )
