@@ -318,6 +318,21 @@ def flatten(node: Dict[str, Any], parents: Optional[List[str]] = None) -> Dict[s
 
     return flat
 
+def unflatten(key: str, value: Any) -> Dict[str, Any]:
+    paths: List[str] = key.split('.')
+
+    # last node should have the value
+    path = paths.pop()
+    struct = {path: value}
+
+    # build the struct from the inside out
+    paths.reverse()
+
+    for path in paths:
+        struct = {path: {**struct}}
+
+    return struct
+
 
 def normalize(value: str) -> str:
     """Normalize a string to make it more non-human friendly."""

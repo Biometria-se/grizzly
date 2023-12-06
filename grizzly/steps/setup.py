@@ -10,6 +10,7 @@ from grizzly.context import GrizzlyContext
 from grizzly.tasks import SetVariableTask
 from grizzly.testdata import GrizzlyVariables
 from grizzly.testdata.utils import resolve_variable
+from grizzly.types import VariableType
 from grizzly.types.behave import Context, given, then
 from grizzly.utils import is_template
 
@@ -118,4 +119,4 @@ def step_setup_variable_value(context: Context, name: str, value: str) -> None:
         except Exception as e:
             raise AssertionError(e) from e
     else:
-        grizzly.scenario.tasks.add(SetVariableTask(name, value))
+        grizzly.scenario.tasks.add(SetVariableTask(name, value, VariableType.VARIABLES))

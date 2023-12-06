@@ -13,11 +13,12 @@ from grizzly.steps import *
 from grizzly.tasks.clients import HttpClientTask
 from grizzly.testdata import GrizzlyVariables, GrizzlyVariableType
 from grizzly.types import RequestDirection, RequestMethod
+from grizzly.users import RestApiUser
 
 if TYPE_CHECKING:  # pragma: no cover
     from pytest_mock import MockerFixture
 
-    from tests.fixtures import BehaveFixture
+    from tests.fixtures import BehaveFixture, GrizzlyFixture
 
 
 def test_parse_iteration_gramatical_number() -> None:
@@ -35,7 +36,55 @@ def test_parse_iteration_gramatical_number() -> None:
     assert parse_iteration_gramatical_number(' asdf ') == 'asdf'
 
 
-def test_step_setup_set_context_variable(behave_fixture: BehaveFixture) -> None:
+def test_step_setup_set_context_variable_runtime(grizzly_fixture: GrizzlyFixture) -> None:
+    parent = grizzly_fixture(user_type=RestApiUser)
+
+    assert isinstance(parent.user, RestApiUser)
+
+    grizzly = grizzly_fixture.grizzly
+    behave = grizzly_fixture.behave.context
+
+    task = grizzly.scenario.tasks.pop()
+
+    assert len(grizzly.scenario.tasks) == 0
+
+    step_setup_set_context_variable(behave, 'auth.user.username', 'bob')
+
+    assert grizzly.scenario.context == {
+        'host': '',
+        'auth': {'user': {'username': 'bob'},
+    }}
+
+    assert len(grizzly.scenario.tasks()) == 0
+
+    grizzly.scenario.tasks.add(task)
+
+    step_setup_set_context_variable(behave, 'auth.user.username', 'alice')
+
+    assert len(grizzly.scenario.tasks()) == 2
+
+    task_factory = grizzly.scenario.tasks().pop()
+
+    assert isinstance(task_factory, SetVariableTask)
+    assert task_factory.variable_type == VariableType.CONTEXT
+
+    parent.user._context['metadata'].update({'Authorization': 'Bearer f00bar=='})
+    assert parent.user.metadata == {
+        'Content-Type': 'application/json',
+        'x-grizzly-user': 'RestApiUser_001',
+        'Authorization': 'Bearer f00bar==',
+    }
+    assert parent.user._context.get('auth', {}).get('user', {}).get('username', '') is None
+
+    task_factory()(parent)
+
+    assert parent.user._context.get('auth', {}).get('user', {}).get('username', None) == 'alice'
+    assert parent.user.metadata == {
+        'Content-Type': 'application/json',
+        'x-grizzly-user': 'RestApiUser_001',
+    }
+
+def test_step_setup_set_context_variable_init(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))

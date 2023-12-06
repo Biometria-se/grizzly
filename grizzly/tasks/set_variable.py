@@ -20,6 +20,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, MutableMapping, Optional, Type, cast
 
 from grizzly.testdata import GrizzlyVariables
+from grizzly.testdata.utils import create_context_variable
+from grizzly.types import VariableType
 from grizzly.utils import is_template
 
 from . import GrizzlyTask, grizzlytask, template
@@ -33,25 +35,30 @@ if TYPE_CHECKING:  # pragma: no cover
 class SetVariableTask(GrizzlyTask):
     variable: str
     value: str
+    variable_type: VariableType
 
     _variable_instance: Optional[MutableMapping[str, Any]] = None
     _variable_instance_type: Optional[Type[AtomicVariable]] = None
     _variable_key: str
 
-    def __init__(self, variable: str, value: str) -> None:
+    def __init__(self, variable: str, value: str, variable_type: VariableType) -> None:
         super().__init__()
 
         self.variable = variable
         self.value = value
+        self.variable_type = variable_type
 
-        module_name, variable_type, variable, sub_variable = GrizzlyVariables.get_variable_spec(self.variable)
+        if variable_type == VariableType.VARIABLES:
+            module_name, variable_type_name, variable, sub_variable = GrizzlyVariables.get_variable_spec(self.variable)
 
-        if not (module_name is None or variable_type is None):
-            self._variable_instance_type = GrizzlyVariables.load_variable(module_name, variable_type)
+            if not (module_name is None or variable_type_name is None):
+                self._variable_instance_type = GrizzlyVariables.load_variable(module_name, variable_type_name)
 
-            if not getattr(self._variable_instance_type, '__settable__', False):
-                message = f'{module_name}.{variable_type} is not settable'
-                raise AttributeError(message)
+                if not getattr(self._variable_instance_type, '__settable__', False):
+                    message = f'{module_name}.{variable_type_name} is not settable'
+                    raise AttributeError(message)
+        else:
+            sub_variable = None
 
         if sub_variable is not None:
             self._variable_key = f'{variable}.{sub_variable}'
@@ -69,15 +76,19 @@ class SetVariableTask(GrizzlyTask):
     def __call__(self) -> grizzlytask:
         @grizzlytask
         def task(parent: GrizzlyScenario) -> Any:
-            if self._variable_instance is None and self._variable_instance_type is not None:
-                self._variable_instance = cast(MutableMapping[str, Any], self._variable_instance_type.get())
-
             value = parent.render(self.value)
 
-            if self._variable_instance is not None:
-                self._variable_instance[self._variable_key] = value
+            if self.variable_type == VariableType.VARIABLES:
+                if self._variable_instance is None and self._variable_instance_type is not None:
+                    self._variable_instance = cast(MutableMapping[str, Any], self._variable_instance_type.get())
 
-            # always update user context with new value
-            parent.user._context['variables'][self.variable] = value
+
+                if self._variable_instance is not None:
+                    self._variable_instance[self._variable_key] = value
+
+                # always update user context with new value
+                parent.user._context['variables'][self.variable] = value
+            else:
+                parent.user.add_context(create_context_variable(self.grizzly, self.variable, value))
 
         return task

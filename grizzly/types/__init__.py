@@ -1,7 +1,7 @@
 """Grizzly types."""
 from __future__ import annotations
 
-from enum import Enum
+from enum import Enum, auto
 from typing import Any, Callable, Dict, List, Optional, Tuple, TypeVar, Union, cast
 
 from locust.rpc.protocol import Message
@@ -33,6 +33,11 @@ __all__ = [
     'ZoneInfoNotFoundError',
     'pymqi',
 ]
+
+
+class VariableType(Enum):
+    VARIABLES = auto()
+    CONTEXT = auto()
 
 
 class MessageDirection(PermutationEnum):
