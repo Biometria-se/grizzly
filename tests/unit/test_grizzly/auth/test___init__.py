@@ -209,13 +209,13 @@ def test_refresh_token_user(grizzly_fixture: GrizzlyFixture, mocker: MockerFixtu
     get_token_mock.assert_called_once_with(parent.user, AuthMethod.USER)
     get_token_mock.reset_mock()
 
-    parent.user.add_context({'auth': {'user': {'username': 'alice@example.com'}}})
+    parent.user.add_context({'auth': {'user': {'username': 'alice@example.com', 'password': 'foobar'}}})
     assert 'Authorization' not in parent.user.metadata
     auth_context = parent.user._context.get('auth', None)
     assert auth_context is not None
     assert auth_context.get('user', None) == {
         'username': 'alice@example.com',
-        'password': 'HemligaArne',
+        'password': 'foobar',
         'otp_secret': None,
         'redirect_uri': '/authenticated',
         'initialize_uri': None,

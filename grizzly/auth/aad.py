@@ -752,7 +752,7 @@ class AAD(RefreshToken):
             request_meta = {
                 'request_type': 'AUTH',
                 'response_time': int((time_perf_counter() - start_time) * 1000),
-                'name': f'{scenario_index} {cls.__name__} OAuth2 user token {version}',
+                'name': f'{scenario_index} {cls.__name__} OAuth2 user token {version}: {username_lowercase}',
                 'context': client._context,
                 'response': None,
                 'exception': exception,
@@ -872,7 +872,7 @@ class AAD(RefreshToken):
             request_meta = {
                 'request_type': 'AUTH',
                 'response_time': int((time_perf_counter() - start_time) * 1000),
-                'name': f'{scenario_index} {cls.__name__} OAuth2 user token {version}',
+                'name': f'{scenario_index} {cls.__name__} OAuth2 client token {version}: {auth_client_context["id"]}',
                 'context': client._context,
                 'response': None,
                 'exception': exception,

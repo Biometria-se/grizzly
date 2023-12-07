@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from hashlib import sha256
 from time import time
 from typing import TYPE_CHECKING, Any, Callable, Dict, cast
 
@@ -59,6 +60,8 @@ class TestRestApiUser:
                 'Content-Type': 'application/json',
                 'x-grizzly-user': parent.user.__class__.__name__,
             },
+            '__cached_auth__': {},
+            '__context_change_history__': set(),
         }
         assert parent.user.metadata == {
             'Content-Type': 'application/json',
@@ -466,6 +469,8 @@ class TestRestApiUser:
 
         assert isinstance(parent.user, RestApiUser)
 
+        parent.user._context['auth']['user'].update({'username': 'bob', 'password': 'foobar'})
+
         assert 'test_context_variable' not in parent.user._context
         assert parent.user._context['auth']['provider'] is None
         assert parent.user._context['auth']['refresh_time'] == 3000
@@ -481,6 +486,15 @@ class TestRestApiUser:
 
         parent.user.metadata['Authorization'] = 'Bearer asdfasdfasdf'
 
+        parent.user.add_context({'auth': {'user': {'password': 'other'}}})
+
+        assert parent.user.__context_change_history__ == {'auth.user.password'}
+
         parent.user.add_context({'auth': {'user': {'username': 'something new'}}})
+
+        assert parent.user.__context_change_history__ == set()
+        expected_cache_key = sha256(b'bob:foobar').hexdigest()
+
+        assert parent.user.__cached_auth__ == {expected_cache_key: 'Bearer asdfasdfasdf'}
 
         assert 'Authorization' not in parent.user.metadata

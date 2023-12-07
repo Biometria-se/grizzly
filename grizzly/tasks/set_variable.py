@@ -68,7 +68,7 @@ class SetVariableTask(GrizzlyTask):
     @property
     def variable_template(self) -> str:
         """Create a dummy template for the variable, used so we will not complain that this variable isn't used anywhere."""
-        if not is_template(self.variable):
+        if not is_template(self.variable) and self.variable_type == VariableType.VARIABLES:
             return f'{{{{ {self.variable} }}}}'
 
         return self.variable
