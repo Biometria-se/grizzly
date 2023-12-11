@@ -514,7 +514,7 @@ class TestAAD:
             fire_spy.assert_called_once_with(
                 request_type='AUTH',
                 response_time=0,
-                name=f'001 AAD OAuth2 user token {version}',
+                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
                 context=parent.user._context,
                 response_length=0,
                 response=None,
@@ -530,7 +530,7 @@ class TestAAD:
             fire_spy.assert_called_once_with(
                 request_type='AUTH',
                 response_time=0,
-                name=f'001 AAD OAuth2 user token {version}',
+                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
                 context=parent.user._context,
                 response_length=0,
                 response=None,
@@ -546,7 +546,7 @@ class TestAAD:
             fire_spy.assert_called_once_with(
                 request_type='AUTH',
                 response_time=0,
-                name=f'001 AAD OAuth2 user token {version}',
+                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
                 context=parent.user._context,
                 response_length=0,
                 response=None,
@@ -562,7 +562,7 @@ class TestAAD:
             fire_spy.assert_called_once_with(
                 request_type='AUTH',
                 response_time=0,
-                name=f'001 AAD OAuth2 user token {version}',
+                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
                 context=parent.user._context,
                 response_length=0,
                 response=None,
@@ -583,7 +583,7 @@ class TestAAD:
             fire_spy.assert_called_once_with(
                 request_type='AUTH',
                 response_time=0,
-                name=f'001 AAD OAuth2 user token {version}',
+                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
                 context=parent.user._context,
                 response_length=0,
                 response=None,
@@ -604,7 +604,7 @@ class TestAAD:
             fire_spy.assert_called_once_with(
                 request_type='AUTH',
                 response_time=0,
-                name=f'001 AAD OAuth2 user token {version}',
+                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
                 context=parent.user._context,
                 response_length=0,
                 response=None,
@@ -628,7 +628,7 @@ class TestAAD:
             fire_spy.assert_called_once_with(
                 request_type='AUTH',
                 response_time=0,
-                name=f'001 AAD OAuth2 user token {version}',
+                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
                 context=parent.user._context,
                 response_length=0,
                 response=None,
@@ -646,7 +646,7 @@ class TestAAD:
             fire_spy.assert_called_once_with(
                 request_type='AUTH',
                 response_time=0,
-                name=f'001 AAD OAuth2 user token {version}',
+                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
                 context=parent.user._context,
                 response_length=0,
                 response=None,
@@ -662,7 +662,7 @@ class TestAAD:
             fire_spy.assert_called_once_with(
                 request_type='AUTH',
                 response_time=0,
-                name=f'001 AAD OAuth2 user token {version}',
+                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
                 context=parent.user._context,
                 response_length=0,
                 response=None,
@@ -677,7 +677,7 @@ class TestAAD:
             fire_spy.assert_called_once_with(
                 request_type='AUTH',
                 response_time=0,
-                name=f'001 AAD OAuth2 user token {version}',
+                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
                 context=parent.user._context,
                 response_length=0,
                 response=None,
@@ -692,7 +692,7 @@ class TestAAD:
             fire_spy.assert_called_once_with(
                 request_type='AUTH',
                 response_time=0,
-                name=f'001 AAD OAuth2 user token {version}',
+                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
                 context=parent.user._context,
                 response_length=0,
                 response=None,
@@ -707,7 +707,7 @@ class TestAAD:
             fire_spy.assert_called_once_with(
                 request_type='AUTH',
                 response_time=0,
-                name=f'001 AAD OAuth2 user token {version}',
+                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
                 context=parent.user._context,
                 response_length=0,
                 response=None,
@@ -734,7 +734,7 @@ class TestAAD:
             fire_spy.assert_called_once_with(
                 request_type='AUTH',
                 response_time=0,
-                name=f'001 AAD OAuth2 user token {version}',
+                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
                 context=parent.user._context,
                 response_length=0,
                 response=None,
@@ -752,7 +752,7 @@ class TestAAD:
             fire_spy.assert_called_once_with(
                 request_type='AUTH',
                 response_time=0,
-                name=f'001 AAD OAuth2 user token {version}',
+                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
                 context=parent.user._context,
                 response_length=0,
                 response=None,
@@ -768,7 +768,7 @@ class TestAAD:
                 fire_spy.assert_called_once_with(
                     request_type='AUTH',
                     response_time=0,
-                    name=f'001 AAD OAuth2 user token {version}',
+                    name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
                     context=parent.user._context,
                     response_length=0,
                     response=None,
@@ -783,7 +783,7 @@ class TestAAD:
                 fire_spy.assert_called_once_with(
                     request_type='AUTH',
                     response_time=0,
-                    name=f'001 AAD OAuth2 user token {version}',
+                    name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
                     context=parent.user._context,
                     response_length=0,
                     response=None,
@@ -809,7 +809,7 @@ class TestAAD:
             fire_spy.assert_called_once_with(
                 request_type='AUTH',
                 response_time=0,
-                name=f'001 AAD OAuth2 user token {version}',
+                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
                 context=parent.user._context,
                 response_length=0,
                 response=None,
@@ -829,7 +829,7 @@ class TestAAD:
             fire_spy.assert_called_once_with(
                 request_type='AUTH',
                 response_time=0,
-                name=f'001 AAD OAuth2 user token {version}',
+                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
                 context=parent.user._context,
                 response_length=0,
                 response=None,
@@ -848,7 +848,7 @@ class TestAAD:
             fire_spy.assert_called_once_with(
                 request_type='AUTH',
                 response_time=0,
-                name=f'001 AAD OAuth2 user token {version}',
+                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
                 context=parent.user._context,
                 response_length=0,
                 response=None,
@@ -868,7 +868,7 @@ class TestAAD:
             fire_spy.assert_called_once_with(
                 request_type='AUTH',
                 response_time=0,
-                name=f'001 AAD OAuth2 user token {version}',
+                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
                 context=parent.user._context,
                 response_length=0,
                 response=None,
@@ -887,7 +887,7 @@ class TestAAD:
             fire_spy.assert_called_once_with(
                 request_type='AUTH',
                 response_time=0,
-                name=f'001 AAD OAuth2 user token {version}',
+                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
                 context=parent.user._context,
                 response_length=0,
                 response=None,
@@ -907,7 +907,7 @@ class TestAAD:
             fire_spy.assert_called_once_with(
                 request_type='AUTH',
                 response_time=0,
-                name=f'001 AAD OAuth2 user token {version}',
+                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
                 context=parent.user._context,
                 response_length=0,
                 response=None,
@@ -926,7 +926,7 @@ class TestAAD:
             fire_spy.assert_called_once_with(
                 request_type='AUTH',
                 response_time=0,
-                name=f'001 AAD OAuth2 user token {version}',
+                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
                 context=parent.user._context,
                 response_length=0,
                 response=None,
@@ -951,7 +951,7 @@ class TestAAD:
             fire_spy.assert_called_once_with(
                 request_type='AUTH',
                 response_time=0,
-                name=f'001 AAD OAuth2 user token {version}',
+                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
                 context=parent.user._context,
                 response_length=0,
                 response=None,
@@ -1074,7 +1074,7 @@ class TestAAD:
                 fire_spy.assert_called_once_with(
                     request_type='AUTH',
                     response_time=ANY(int),
-                    name=f'001 AAD OAuth2 user token {version}.0',
+                    name=f'001 AAD OAuth2 client token {version}.0: asdf',
                     context=parent.user._context,
                     response=None,
                     exception=ANY(RuntimeError, message='fake error message'),

@@ -9,6 +9,7 @@ import pytest
 from grizzly.context import GrizzlyContext
 from grizzly.steps import *
 from grizzly.tasks import SetVariableTask
+from grizzly.types import VariableType
 
 if TYPE_CHECKING:  # pragma: no cover
     from tests.fixtures import BehaveFixture, MockerFixture
@@ -121,4 +122,4 @@ def test_step_setup_variable_value(behave_fixture: BehaveFixture, mocker: Mocker
 
     step_setup_variable_value(behave, 'custom.variable.AtomicFooBar.value.foo', 'hello')
 
-    set_variable_task_mock.assert_called_once_with('custom.variable.AtomicFooBar.value.foo', 'hello')
+    set_variable_task_mock.assert_called_once_with('custom.variable.AtomicFooBar.value.foo', 'hello', VariableType.VARIABLES)

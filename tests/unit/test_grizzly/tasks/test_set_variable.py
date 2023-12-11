@@ -8,6 +8,7 @@ import pytest
 from grizzly.tasks import SetVariableTask
 from grizzly.testdata import GrizzlyVariables
 from grizzly.testdata.variables import AtomicCsvWriter
+from grizzly.types import VariableType
 
 if TYPE_CHECKING:  # pragma: no cover
     from tests.fixtures import AtomicVariableCleanupFixture, GrizzlyFixture, MockerFixture
@@ -17,7 +18,7 @@ class TestSetVariableTask:
     def test___init__(self, grizzly_fixture: GrizzlyFixture, cleanup: AtomicVariableCleanupFixture) -> None:
         try:
             # non-Atomic variable
-            task_factory = SetVariableTask('foobar', '{{ hello }}')
+            task_factory = SetVariableTask('foobar', '{{ hello }}', VariableType.VARIABLES)
 
             assert task_factory.variable == 'foobar'
             assert task_factory.variable_template == '{{ foobar }}'
@@ -29,19 +30,19 @@ class TestSetVariableTask:
 
             # Atomic variable, not settable
             with pytest.raises(AttributeError, match=r'grizzly\.testdata\.variables\.AtomicIntegerIncrementer is not settable'):
-                SetVariableTask('AtomicIntegerIncrementer.id', '{{ value }}')
+                SetVariableTask('AtomicIntegerIncrementer.id', '{{ value }}', VariableType.VARIABLES)
 
             grizzly_fixture.grizzly.state.variables.update({'AtomicIntegerIncrementer.id': 1})
             GrizzlyVariables.initialize_variable(grizzly_fixture.grizzly, 'AtomicIntegerIncrementer.id')
 
             with pytest.raises(AttributeError, match=r'grizzly\.testdata\.variables\.AtomicIntegerIncrementer is not settable'):
-                SetVariableTask('AtomicIntegerIncrementer.id', '{{ value }}')
+                SetVariableTask('AtomicIntegerIncrementer.id', '{{ value }}', VariableType.VARIABLES)
 
             # Atomic variable, settable
             grizzly_fixture.grizzly.state.variables.update({'AtomicCsvWriter.output': 'output.csv | headers="foo,bar"'})
             GrizzlyVariables.initialize_variable(grizzly_fixture.grizzly, 'AtomicCsvWriter.output')
 
-            task_factory = SetVariableTask('AtomicCsvWriter.output.foo', '{{ value }}')
+            task_factory = SetVariableTask('AtomicCsvWriter.output.foo', '{{ value }}', VariableType.VARIABLES)
 
             assert task_factory.variable == 'AtomicCsvWriter.output.foo'
             assert task_factory.variable_template == '{{ AtomicCsvWriter.output.foo }}'
@@ -53,10 +54,10 @@ class TestSetVariableTask:
             cleanup()
 
     def test_variable_template(self) -> None:
-        task_factory = SetVariableTask('foobar', '{{ world }}')
+        task_factory = SetVariableTask('foobar', '{{ world }}', VariableType.VARIABLES)
         assert task_factory.variable_template == '{{ foobar }}'
 
-        task_factory = SetVariableTask('{{ foobar }}', '{{ world }}')
+        task_factory = SetVariableTask('{{ foobar }}', '{{ world }}', VariableType.VARIABLES)
         assert task_factory.variable_template == '{{ foobar }}'
 
     def test___call__(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, cleanup: AtomicVariableCleanupFixture) -> None:
@@ -64,7 +65,7 @@ class TestSetVariableTask:
 
         try:
             # non-Atomic variable
-            task_factory = SetVariableTask('foobar', '{{ value }}')
+            task_factory = SetVariableTask('foobar', '{{ value }}', VariableType.VARIABLES)
 
             task = task_factory()
 
@@ -83,7 +84,7 @@ class TestSetVariableTask:
 
             grizzly_fixture.grizzly.state.variables.update({'AtomicCsvWriter.output': 'output.csv | headers="foo,bar"'})
             GrizzlyVariables.initialize_variable(grizzly_fixture.grizzly, 'AtomicCsvWriter.output')
-            task_factory_foo = SetVariableTask('AtomicCsvWriter.output', '{{ value }}')
+            task_factory_foo = SetVariableTask('AtomicCsvWriter.output', '{{ value }}', VariableType.VARIABLES)
             parent.user._context['variables'].update({'value': 'hello, world!'})
 
             task = task_factory_foo()

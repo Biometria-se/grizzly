@@ -22,11 +22,13 @@ from grizzly.utils import (
     create_scenario_class_type,
     create_user_class_type,
     fail_direct,
+    flatten,
     in_correct_section,
     is_template,
     normalize,
     parse_timespan,
     safe_del,
+    unflatten,
 )
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -155,6 +157,8 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
             },
         },
         'metadata': None,
+        '__cached_auth__': {},
+        '__context_change_history__': set(),
     }
     user_type_1 = user_class_type_1(behave_fixture.locust.environment)
 
@@ -187,6 +191,8 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
             'Content-Type': 'application/json',
             'x-grizzly-user': 'grizzly.users.RestApiUser_001',
         },
+        '__cached_auth__': {},
+        '__context_change_history__': set(),
     }
     assert user_type_1.__scenario__ is scenario
 
@@ -248,6 +254,8 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
             'Content-Type': 'application/xml',
             'Foo-Bar': 'hello world',
         },
+        '__cached_auth__': {},
+        '__context_change_history__': set(),
     }
 
     user_type_2 = user_class_type_2(behave_fixture.locust.environment)
@@ -284,6 +292,8 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
             'Foo-Bar': 'hello world',
             'x-grizzly-user': 'RestApiUser_001',
         },
+        '__cached_auth__': {},
+        '__context_change_history__': set(),
     }
     assert user_type_2.__scenario__ is scenario
 
@@ -325,6 +335,8 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
             },
         },
         'metadata': None,
+        '__cached_auth__': {},
+        '__context_change_history__': set(),
     }
 
     assert user_class_type_1.host is not user_class_type_2.host
@@ -365,6 +377,8 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
             },
         },
         'metadata': None,
+        '__cached_auth__': {},
+        '__context_change_history__': set(),
     }
 
     scenario = GrizzlyContextScenario(1, behave=behave_fixture.create_scenario('A scenario description'))
@@ -695,3 +709,21 @@ def test_normalize() -> None:
     assert normalize('test') == 'test'
     assert normalize('Hello World!') == 'Hello-World'
     assert normalize('[does]this-look* <strange>!') == 'doesthis-look-strange'
+
+
+def test_flatten() -> None:
+    assert flatten({
+        'hello': {'world': {'foo': {'bar': 'foobar'}}},
+        'foo': {'bar': 'hello world!'},
+    }) == {
+        'hello.world.foo.bar': 'foobar',
+        'foo.bar': 'hello world!',
+    }
+
+
+def test_unflatten() -> None:
+    assert unflatten('hello.world.foo.bar', 'foobar') == {
+        'hello': {'world': {'foo': {'bar': 'foobar'}}},
+    }
+
+    assert unflatten('foo.bar', 'hello world!') == {'foo': {'bar': 'hello world!'}}

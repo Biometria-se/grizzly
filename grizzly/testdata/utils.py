@@ -15,7 +15,7 @@ from jinja2.meta import find_undeclared_variables
 from grizzly.testdata.ast import get_template_variables
 from grizzly.types import GrizzlyVariableType, RequestType, TestdataType
 from grizzly.types.locust import MessageHandler, StopUser
-from grizzly.utils import is_template, merge_dicts
+from grizzly.utils import is_template, merge_dicts, unflatten
 
 from . import GrizzlyVariables
 
@@ -118,12 +118,7 @@ def transform(grizzly: GrizzlyContext, data: Dict[str, Any], scenario: Optional[
 
             paths: List[str] = key.split('.')
             variable = paths.pop(0)
-            path = paths.pop()
-            struct = {path: value}
-            paths.reverse()
-
-            for path in paths:
-                struct = {path: {**struct}}
+            struct = unflatten('.'.join(paths), value)
 
             if variable in testdata:
                 testdata[variable] = merge_dicts(testdata[variable], struct)
