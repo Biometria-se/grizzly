@@ -296,9 +296,15 @@ def safe_del(struct: Dict[str, Any], key: str) -> None:
         del struct[key]
 
 
-def is_template(text: str) -> bool:
+def has_template(text: str) -> bool:
     """Check if given text contains any jinja2 templates."""
     return '{{' in text and '}}' in text
+
+
+def has_parameter(text: str) -> bool:
+    sep_count = text.count('::')
+    boundary_count = text.count('$')
+    return sep_count > 0 and boundary_count / 2 == sep_count
 
 
 def flatten(node: Dict[str, Any], parents: Optional[List[str]] = None) -> Dict[str, Any]:

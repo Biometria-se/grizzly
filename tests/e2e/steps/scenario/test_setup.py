@@ -122,7 +122,7 @@ def test_e2e_step_setup_iterations(e2e_fixture: End2EndFixture, iterations: str)
 @pytest.mark.parametrize('pace', ['2000', '{{ pace }}'])
 def test_e2e_step_setup_pace(e2e_fixture: End2EndFixture, pace: str) -> None:
     def validate_iterations(context: Context) -> None:
-        from grizzly.utils import is_template
+        from grizzly.utils import has_template
 
         grizzly = cast(GrizzlyContext, context.grizzly)
         data = next(iter(context.table)).as_dict()
@@ -130,7 +130,7 @@ def test_e2e_step_setup_pace(e2e_fixture: End2EndFixture, pace: str) -> None:
 
         assert grizzly.scenario.pace == pace, f'{grizzly.scenario.pace} != {pace}'
 
-        if is_template(pace):
+        if has_template(pace):
             assert grizzly.scenario.orphan_templates == [pace], f'{pace} not in {grizzly.scenario.orphan_templates}'
 
     table: List[Dict[str, str]] = [{

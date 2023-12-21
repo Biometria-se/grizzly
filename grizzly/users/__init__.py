@@ -32,7 +32,7 @@ from grizzly.events import GrizzlyEventHook, RequestLogger, ResponseHandler
 from grizzly.exceptions import RestartScenario
 from grizzly.types import GrizzlyResponse, RequestType, ScenarioState
 from grizzly.types.locust import Environment, StopUser
-from grizzly.utils import is_template, merge_dicts
+from grizzly.utils import has_template, merge_dicts
 
 T = TypeVar('T', bound=UserMeta)
 
@@ -238,7 +238,7 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
                         source = file.read_text()
 
                         # nested template
-                        if is_template(source):
+                        if has_template(source):
                             source = j2env.from_string(source).render(**self.context_variables)
                 except OSError as e:  # source was definitly not a file...
                     if e.errno != ENAMETOOLONG:

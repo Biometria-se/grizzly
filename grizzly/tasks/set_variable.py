@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING, Any, MutableMapping, Optional, Type, cast
 from grizzly.testdata import GrizzlyVariables
 from grizzly.testdata.utils import create_context_variable
 from grizzly.types import VariableType
-from grizzly.utils import is_template
+from grizzly.utils import has_template
 
 from . import GrizzlyTask, grizzlytask, template
 
@@ -68,7 +68,7 @@ class SetVariableTask(GrizzlyTask):
     @property
     def variable_template(self) -> str:
         """Create a dummy template for the variable, used so we will not complain that this variable isn't used anywhere."""
-        if not is_template(self.variable) and self.variable_type == VariableType.VARIABLES:
+        if not has_template(self.variable) and self.variable_type == VariableType.VARIABLES:
             return f'{{{{ {self.variable} }}}}'
 
         return self.variable

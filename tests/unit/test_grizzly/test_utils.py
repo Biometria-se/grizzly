@@ -23,8 +23,9 @@ from grizzly.utils import (
     create_user_class_type,
     fail_direct,
     flatten,
+    has_parameter,
+    has_template,
     in_correct_section,
-    is_template,
     normalize,
     parse_timespan,
     safe_del,
@@ -698,11 +699,20 @@ def test_safe_del() -> None:
     assert struct == {}
 
 
-def test_is_template() -> None:
-    assert is_template('{{ hello_world }}')
-    assert not is_template('{{ hello_world')
-    assert not is_template('hello_world }}')
-    assert is_template('is {{ this }} really a template?')
+def test_has_template() -> None:
+    assert has_template('{{ hello_world }}')
+    assert not has_template('{{ hello_world')
+    assert not has_template('hello_world }}')
+    assert has_template('is {{ this }} really a template?')
+
+
+def test_has_parameter() -> None:
+    assert has_parameter('hello $conf::world$!')
+    assert not has_parameter('hello $conf::world!')
+    assert has_parameter('$conf::foo$ and then $conf::bar$ and even $env::HELLO_WORLD$!')
+    assert not has_parameter('queue:test-queue')
+    assert not has_parameter('hello world')
+    assert not has_parameter('$hello::')
 
 
 def test_normalize() -> None:

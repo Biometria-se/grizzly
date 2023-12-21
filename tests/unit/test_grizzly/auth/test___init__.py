@@ -12,7 +12,7 @@ from grizzly.tasks import RequestTask
 from grizzly.tasks.clients import HttpClientTask
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod
 from grizzly.users import RestApiUser
-from grizzly.utils import is_template, safe_del
+from grizzly.utils import has_template, safe_del
 
 if TYPE_CHECKING:  # pragma: no cover
     from pytest_mock import MockerFixture
@@ -243,7 +243,7 @@ def test_refresh_token_user_render(grizzly_fixture: GrizzlyFixture, mocker: Mock
         decorator(get),
     )
 
-    rendered_host = 'www.example.net' if is_template(host) else host
+    rendered_host = 'www.example.net' if has_template(host) else host
 
     grizzly = grizzly_fixture.grizzly
     grizzly.state.variables.update({'foobar': 'none', 'test_host': f'http://{rendered_host}'})
