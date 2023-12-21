@@ -79,7 +79,7 @@ import zmq.green as zmq
 from grizzly.tasks import RequestTask
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod, RequestType
 from grizzly.types.locust import Environment, StopUser
-from grizzly.utils import is_template
+from grizzly.utils import has_parameter, has_template
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
 from grizzly_extras.async_message.utils import async_message_request
@@ -174,7 +174,7 @@ class ServiceBusUser(GrizzlyUser):
         super().on_stop()
 
     def get_description(self, task: RequestTask) -> str:
-        if is_template(task.endpoint) or '$conf' in task.endpoint or '$env' in task.endpoint:
+        if has_template(task.endpoint) or has_parameter(task.endpoint):
             self.logger.error('cannot say hello for %s when endpoint is a template', task.name)
             raise StopUser
 

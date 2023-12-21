@@ -10,7 +10,7 @@ import parse
 from grizzly.context import GrizzlyContext
 from grizzly.testdata.utils import resolve_variable
 from grizzly.types.behave import Context, given, register_type
-from grizzly.utils import is_template
+from grizzly.utils import has_template
 from grizzly_extras.text import permutation
 
 
@@ -44,7 +44,7 @@ def step_shapes_user_count(context: Context, value: str, **_kwargs: Any) -> None
     assert value[0] != '$', 'this expression does not support $conf or $env variables'
     user_count = max(int(round(float(resolve_variable(grizzly, value)), 0)), 1)
 
-    if is_template(value):
+    if has_template(value):
         grizzly.scenario.orphan_templates.append(value)
 
     assert user_count >= 0, f'{value} resolved to {user_count} users, which is not valid'
@@ -75,7 +75,7 @@ def step_shapes_spawn_rate(context: Context, value: str, **_kwargs: Any) -> None
     grizzly = cast(GrizzlyContext, context.grizzly)
     spawn_rate = max(float(resolve_variable(grizzly, value)), 0.01)
 
-    if is_template(value):
+    if has_template(value):
         grizzly.scenario.orphan_templates.append(value)
 
     assert spawn_rate > 0.0, f'{value} resolved to {spawn_rate} users, which is not valid'

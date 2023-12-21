@@ -48,7 +48,7 @@ class ExplicitWaitTask(GrizzlyTask):
             except Exception as exception:
                 parent.user.environment.events.request.fire(
                     request_type='WAIT',
-                    name=f'{parent.user._scenario.identifier} WaitTask=>{self.time_expression}',
+                    name=f'{parent.user._scenario.identifier} ExplicitWaitTask=>{self.time_expression}',
                     response_time=0,
                     response_length=0,
                     context=parent.user._context,

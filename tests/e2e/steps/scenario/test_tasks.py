@@ -1000,30 +1000,42 @@ def test_e2e_step_task_request_wait(e2e_fixture: End2EndFixture) -> None:
 
         grizzly.scenario.tasks().pop()  # remove dummy
 
-        assert len(grizzly.scenario.tasks()) == 4
+        assert len(grizzly.scenario.tasks()) == 6
 
         task = grizzly.scenario.tasks()[0]
 
         assert isinstance(task, WaitBetweenTask), f'{type(task)} is not expected TaskWaitTask'
-        assert task.min_time == 15
-        assert task.max_time == 18
+        assert task.min_time == '15'
+        assert task.max_time == '18'
 
         task = grizzly.scenario.tasks()[1]
 
         assert isinstance(task, WaitBetweenTask), f'{type(task)} is not expected TaskWaitTask'
-        assert task.min_time == 1.4
-        assert task.max_time == 1.7
+        assert task.min_time == '1.4'
+        assert task.max_time == '1.7'
 
         task = grizzly.scenario.tasks()[2]
 
         assert isinstance(task, WaitBetweenTask), f'{type(task)} is not expected TaskWaitTask'
-        assert task.min_time == 15
+        assert task.min_time == '15'
         assert task.max_time is None
 
         task = grizzly.scenario.tasks()[3]
 
         assert isinstance(task, WaitBetweenTask), f'{type(task)} is not expected TaskWaitTask'
-        assert task.min_time == 1.4
+        assert task.min_time == '1.4'
+        assert task.max_time is None
+
+        task = grizzly.scenario.tasks()[4]
+
+        assert isinstance(task, WaitBetweenTask), f'{type(task)} is not expected TaskWaitTask'
+        assert task.min_time == '{{ wait_time }}'
+        assert task.max_time is None
+
+        task = grizzly.scenario.tasks()[5]
+
+        assert isinstance(task, WaitBetweenTask), f'{type(task)} is not expected TaskWaitTask'
+        assert task.min_time == '37.13'
         assert task.max_time is None
 
     e2e_fixture.add_validator(validate_request_wait)
@@ -1031,13 +1043,16 @@ def test_e2e_step_task_request_wait(e2e_fixture: End2EndFixture) -> None:
     feature_file = e2e_fixture.test_steps(
         scenario=[
             'Given wait "15..18" seconds between tasks',
+            'And value for variable "wait_time" is "13.37"',
             'And wait "1.4..1.7" seconds between tasks',
             'Given wait "15" seconds between tasks',
             'And wait "1.4" seconds between tasks',
+            'And wait "{{ wait_time }}" seconds between tasks',
+            'And wait "$conf::wait.time$" seconds between tasks',
         ],
     )
 
-    rc, _ = e2e_fixture.execute(feature_file)
+    rc, _ = e2e_fixture.execute(feature_file, env_conf={'configuration': {'wait': {'time': 37.13}}})
 
     assert rc == 0
 

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Dict, List, Optional, cast
 import pytest
 
 from grizzly.context import GrizzlyContext
-from grizzly.utils import is_template
+from grizzly.utils import has_template
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.types.behave import Context
@@ -42,7 +42,7 @@ def test_e2e_step_shapes_user_count(e2e_fixture: End2EndFixture, count: str) -> 
     background: List[str] = []
     testdata: Optional[Dict[str, str]] = None
 
-    if is_template(count):
+    if has_template(count):
         background.append('Then ask for value of variable "user_count"')
         testdata = {'user_count': '10'}
 
@@ -85,7 +85,7 @@ def test_e2e_step_shapes_spawn_rate(e2e_fixture: End2EndFixture, rate: str) -> N
     background: List[str] = []
     testdata: Optional[Dict[str, str]] = None
 
-    if '{{' in rate and '}}' in rate:
+    if has_template(rate):
         background.append('Then ask for value of variable "spawn_rate"')
         testdata = {'spawn_rate': '0.001'}
 

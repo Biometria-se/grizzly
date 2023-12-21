@@ -15,7 +15,7 @@ from grizzly.testdata.utils import create_context_variable, resolve_variable
 from grizzly.types import VariableType
 from grizzly.types.behave import Context, given, register_type, then
 from grizzly.types.locust import StopUser
-from grizzly.utils import is_template, merge_dicts
+from grizzly.utils import has_template, merge_dicts
 from grizzly_extras.text import permutation
 
 
@@ -88,10 +88,10 @@ def step_setup_iterations(context: Context, value: str, *_args: Any, **_kwargs: 
         value (str): number of iterations of the scenario, can be a templatning string or a environment configuration variable
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
-    should_resolve = is_template(value) or value[0] == '$'
+    should_resolve = has_template(value) or value[0] == '$'
     iterations = max(int(round(float(resolve_variable(grizzly, value)), 0)), 0)
 
-    if is_template(value):
+    if has_template(value):
         grizzly.scenario.orphan_templates.append(value)
 
     if should_resolve and iterations < 1:
@@ -117,7 +117,7 @@ def step_setup_pace(context: Context, pace_time: str) -> None:
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
 
-    if not is_template(pace_time):
+    if not has_template(pace_time):
         try:
             float(pace_time)
         except ValueError as e:

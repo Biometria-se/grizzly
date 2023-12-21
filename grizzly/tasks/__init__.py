@@ -57,7 +57,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, List, Optional, Set, Type, Union, cast, overload
 
 from grizzly.context import GrizzlyContext
-from grizzly.utils import is_template
+from grizzly.utils import has_template
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.scenarios import GrizzlyScenario
@@ -168,7 +168,7 @@ class GrizzlyTask(ABC):
         if isinstance(value, str):
             value = self._get_template_value_str(value)
 
-            if is_template(value):
+            if has_template(value):
                 templates.add(value)
         elif isinstance(value, list):
             for list_value in value:
