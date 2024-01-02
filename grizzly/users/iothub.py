@@ -17,6 +17,9 @@ HostName=<hostname>;DeviceId=<device key>;SharedAccessKey=<access key>
 
 `endpoint` in the request is the desired filename for the uploaded file.
 
+The metadata values `content_encoding` and `content_encoding` can be set to
+gzip compress the payload before upload (see example below).
+
 ## Examples
 
 Example of how to use it in a scenario:
@@ -25,6 +28,16 @@ Example of how to use it in a scenario:
 Given a user of type "IotHub" load testing "HostName=my_iot_host_name;DeviceId=my_device;SharedAccessKey=xxxyyyyzzz=="
 Then send request "test/blob.file" to endpoint "uploaded_blob_filename"
 ```
+
+The same example with gzip compression enabled:
+
+```gherkin
+Given a user of type "IotHub" load testing "HostName=my_iot_host_name;DeviceId=my_device;SharedAccessKey=xxxyyyyzzz=="
+And metadata "content_type" is "application/octet-stream; charset=utf-8"
+And metadata "content_encoding" is "gzip"
+Then send request "test/blob.file" to endpoint "uploaded_blob_filename"
+```
+
 """
 from __future__ import annotations
 
