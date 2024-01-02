@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+from errno import ENAMETOOLONG
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict, List, Optional, Tuple, Type, cast
 from urllib.parse import urlparse
@@ -69,7 +70,11 @@ def _create_request_task(
                         source = fd.read()
 
                 template = j2env.get_template(source)
-        except j2.exceptions.TemplateNotFound:
+        except (j2.exceptions.TemplateNotFound, OSError) as e:
+            # `TemplateNotFound` inherits `OSError`...
+            if not isinstance(e, j2.exceptions.TemplateNotFound) and e.errno != ENAMETOOLONG:
+                raise
+
             if name is None:
                 name = original_source.replace(''.join(Path(original_source).suffixes), '')
 

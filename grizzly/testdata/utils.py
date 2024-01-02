@@ -15,7 +15,7 @@ from jinja2.meta import find_undeclared_variables
 from grizzly.testdata.ast import get_template_variables
 from grizzly.types import GrizzlyVariableType, RequestType, TestdataType
 from grizzly.types.locust import MessageHandler, StopUser
-from grizzly.utils import is_template, merge_dicts
+from grizzly.utils import has_template, merge_dicts, unflatten
 
 from . import GrizzlyVariables
 
@@ -118,12 +118,7 @@ def transform(grizzly: GrizzlyContext, data: Dict[str, Any], scenario: Optional[
 
             paths: List[str] = key.split('.')
             variable = paths.pop(0)
-            path = paths.pop()
-            struct = {path: value}
-            paths.reverse()
-
-            for path in paths:
-                struct = {path: {**struct}}
+            struct = unflatten('.'.join(paths), value)
 
             if variable in testdata:
                 testdata[variable] = merge_dicts(testdata[variable], struct)
@@ -151,7 +146,7 @@ def _objectify(testdata: Dict[str, Any]) -> Dict[str, Any]:
 
 def create_context_variable(grizzly: GrizzlyContext, variable: str, value: str) -> Dict[str, Any]:
     """Create a variable as a context variable. Handles other separators than `.`."""
-    if is_template(value):
+    if has_template(value):
         grizzly.scenario.orphan_templates.append(value)
 
     casted_value = resolve_variable(grizzly, value)
@@ -172,7 +167,7 @@ def create_context_variable(grizzly: GrizzlyContext, variable: str, value: str) 
     return transformed
 
 
-def _resolve_template(grizzly: GrizzlyContext, value: str) -> str:
+def resolve_template(grizzly: GrizzlyContext, value: str) -> str:
     template = grizzly.state.jinja2.from_string(value)
     template_parsed = template.environment.parse(value)
     template_variables = find_undeclared_variables(template_parsed)
@@ -182,7 +177,7 @@ def _resolve_template(grizzly: GrizzlyContext, value: str) -> str:
 
     return template.render(**grizzly.state.variables)
 
-def _resolve_dollar_path(grizzly: GrizzlyContext, value: str) -> str:
+def resolve_parameters(grizzly: GrizzlyContext, value: str) -> str:
     regex = r"\$(conf|env)::([^\$]+)\$"
 
     matches = re.finditer(regex, value, re.MULTILINE)
@@ -221,10 +216,10 @@ def resolve_variable(grizzly: GrizzlyContext, value: str, *, guess_datatype: Opt
         value = value[1:-1]
 
     resolved_variable: GrizzlyVariableType
-    if is_template(value) and not only_grizzly:
-        resolved_variable = _resolve_template(grizzly, value)
+    if has_template(value) and not only_grizzly:
+        resolved_variable = resolve_template(grizzly, value)
     elif '$conf' in value or '$env' in value:
-        resolved_variable = _resolve_dollar_path(grizzly, value)
+        resolved_variable = resolve_parameters(grizzly, value)
     else:
         resolved_variable = value
 

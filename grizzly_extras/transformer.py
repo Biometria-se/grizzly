@@ -10,7 +10,7 @@ from functools import wraps
 from json import JSONEncoder
 from json import dumps as jsondumps
 from json import loads as jsonloads
-from typing import Any, Callable, ClassVar, Dict, List, Optional, Type
+from typing import Any, Callable, ClassVar, Dict, List, Optional, Type, Union
 
 from jsonpath_ng.ext import parse as jsonpath_parse
 from lxml import etree as XML  # noqa: N812
@@ -135,7 +135,13 @@ class JsonTransformer(Transformer):
 
             jsonpath = jsonpath_parse(expression)
 
-            def _parser(input_payload: Any) -> List[str]:
+            def _parser(input_payload: Union[list, dict]) -> List[str]:
+                # we need to fool jsonpath-ng to allow "validation" queries on objects on multiple properties
+                # this shouldn't be done if the input is a nested object, and the query looks for any properties
+                # recursively under the root (`@.`)
+                if isinstance(input_payload, dict) and '`this`' in expression and '@.' not in expression:
+                    input_payload = [input_payload]
+
                 values: List[str] = []
                 for m in jsonpath.find(input_payload):
                     if m is None or m.value is None:

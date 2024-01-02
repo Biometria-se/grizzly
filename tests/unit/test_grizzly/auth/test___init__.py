@@ -12,7 +12,7 @@ from grizzly.tasks import RequestTask
 from grizzly.tasks.clients import HttpClientTask
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod
 from grizzly.users import RestApiUser
-from grizzly.utils import is_template, safe_del
+from grizzly.utils import has_template, safe_del
 
 if TYPE_CHECKING:  # pragma: no cover
     from pytest_mock import MockerFixture
@@ -209,13 +209,13 @@ def test_refresh_token_user(grizzly_fixture: GrizzlyFixture, mocker: MockerFixtu
     get_token_mock.assert_called_once_with(parent.user, AuthMethod.USER)
     get_token_mock.reset_mock()
 
-    parent.user.add_context({'auth': {'user': {'username': 'alice@example.com'}}})
+    parent.user.add_context({'auth': {'user': {'username': 'alice@example.com', 'password': 'foobar'}}})
     assert 'Authorization' not in parent.user.metadata
     auth_context = parent.user._context.get('auth', None)
     assert auth_context is not None
     assert auth_context.get('user', None) == {
         'username': 'alice@example.com',
-        'password': 'HemligaArne',
+        'password': 'foobar',
         'otp_secret': None,
         'redirect_uri': '/authenticated',
         'initialize_uri': None,
@@ -243,7 +243,7 @@ def test_refresh_token_user_render(grizzly_fixture: GrizzlyFixture, mocker: Mock
         decorator(get),
     )
 
-    rendered_host = 'www.example.net' if is_template(host) else host
+    rendered_host = 'www.example.net' if has_template(host) else host
 
     grizzly = grizzly_fixture.grizzly
     grizzly.state.variables.update({'foobar': 'none', 'test_host': f'http://{rendered_host}'})

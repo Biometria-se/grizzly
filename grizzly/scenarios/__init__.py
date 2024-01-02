@@ -14,6 +14,7 @@ from grizzly.tasks import GrizzlyTask, grizzlytask
 from grizzly.testdata.communication import TestdataConsumer
 from grizzly.types import ScenarioState
 from grizzly.types.locust import StopUser
+from grizzly.utils import has_template
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.users import GrizzlyUser
@@ -48,10 +49,13 @@ class GrizzlyScenario(SequentialTaskSet):
         cls.tasks.append(task_factory())
 
     def render(self, template: str, variables: Optional[Dict[str, Any]] = None) -> str:
-        if variables is None:
-            variables = {}
+        if has_template(template):
+            if variables is None:
+                variables = {}
 
-        return self.grizzly.state.jinja2.from_string(template).render(**self.user._context['variables'], **variables)
+            return self.grizzly.state.jinja2.from_string(template).render(**self.user._context['variables'], **variables)
+
+        return template
 
     def prefetch(self) -> None:
         """Do not prefetch anything by default."""

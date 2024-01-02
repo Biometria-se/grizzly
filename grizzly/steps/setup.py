@@ -10,8 +10,9 @@ from grizzly.context import GrizzlyContext
 from grizzly.tasks import SetVariableTask
 from grizzly.testdata import GrizzlyVariables
 from grizzly.testdata.utils import resolve_variable
+from grizzly.types import VariableType
 from grizzly.types.behave import Context, given, then
-from grizzly.utils import is_template
+from grizzly.utils import has_template
 
 
 @then('ask for value of variable "{name}"')
@@ -109,7 +110,7 @@ def step_setup_variable_value(context: Context, name: str, value: str) -> None:
             # data type will be guessed when setting the variable
             if name not in grizzly.state.persistent:
                 resolved_value = resolve_variable(grizzly, value, guess_datatype=False)
-                if is_template(value):
+                if has_template(value):
                     grizzly.scenario.orphan_templates.append(value)
             else:
                 resolved_value = grizzly.state.persistent[name]
@@ -118,4 +119,4 @@ def step_setup_variable_value(context: Context, name: str, value: str) -> None:
         except Exception as e:
             raise AssertionError(e) from e
     else:
-        grizzly.scenario.tasks.add(SetVariableTask(name, value))
+        grizzly.scenario.tasks.add(SetVariableTask(name, value, VariableType.VARIABLES))

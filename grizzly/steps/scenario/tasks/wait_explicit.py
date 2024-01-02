@@ -7,8 +7,9 @@ from typing import cast
 
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import ExplicitWaitTask
+from grizzly.testdata.utils import resolve_parameters
 from grizzly.types.behave import Context, then
-from grizzly.utils import is_template
+from grizzly.utils import has_parameter, has_template
 
 
 @then('wait for "{wait_time_expression}" seconds')
@@ -38,11 +39,14 @@ def step_task_wait_explicit(context: Context, wait_time_expression: str) -> None
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
 
-    if not is_template(wait_time_expression):
+    if not has_template(wait_time_expression):
         try:
             assert float(wait_time_expression) > 0.0, 'wait time cannot be less than 0.0 seconds'
         except ValueError as e:
             message = f'"{wait_time_expression}" is not a template nor a float'
             raise AssertionError(message) from e
+
+    if has_parameter(wait_time_expression):
+        wait_time_expression = resolve_parameters(grizzly, wait_time_expression)
 
     grizzly.scenario.tasks.add(ExplicitWaitTask(time_expression=wait_time_expression))

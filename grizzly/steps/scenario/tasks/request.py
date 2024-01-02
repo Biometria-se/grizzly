@@ -7,7 +7,7 @@ from __future__ import annotations
 from grizzly.steps._helpers import add_request_task
 from grizzly.types import RequestDirection, RequestMethod
 from grizzly.types.behave import Context, register_type, then
-from grizzly.utils import is_template
+from grizzly.utils import has_template
 
 register_type(
     Direction=RequestDirection.from_string,
@@ -89,7 +89,7 @@ def step_task_request_file_with_name_endpoint(context: Context, method: RequestM
     """
     assert method.direction == RequestDirection.TO, f'{method.name} is not allowed'
     assert context.text is None, f'step text is not allowed for {method.name}'
-    assert not is_template(source), 'source file cannot be a template'
+    assert not has_template(source), 'source file cannot be a template'
     add_request_task(context, method=method, source=source, name=name, endpoint=endpoint)
 
 
@@ -117,7 +117,7 @@ def step_task_request_file_with_name(context: Context, method: RequestMethod, so
     """
     assert method.direction == RequestDirection.TO, f'{method.name} is not allowed'
     assert context.text is None, f'step text is not allowed for {method.name}'
-    assert not is_template(source), 'source file cannot be a template'
+    assert not has_template(source), 'source file cannot be a template'
     add_request_task(context, method=method, source=source, name=name)
 
 

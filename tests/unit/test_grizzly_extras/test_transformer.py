@@ -198,6 +198,17 @@ class TestJsonTransformer:
 
         assert len(actual) > 0
 
+        document = {
+            'name': 'foobar',
+            'id': 1,
+            'description': 'foo bar',
+        }
+
+        get_values = JsonTransformer.parser('$.`this`[?name="foobar" & id=1]')
+        actual = get_values(document)
+
+        assert actual != []
+
 
 class TestXmlTransformer:
     def test_transform(self) -> None:

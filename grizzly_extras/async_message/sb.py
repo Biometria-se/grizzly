@@ -533,7 +533,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                         try:
                             content_type = TransformerContentType.from_string(cast(str, request.get('context', {})['content_type']))
                             transform = transformer.available[content_type]
-                            get_values = transform.parser(request_arguments['expression'])
+                            get_values = transform.parser(expression)
                         except Exception as e:
                             raise AsyncMessageError(str(e)) from e
 

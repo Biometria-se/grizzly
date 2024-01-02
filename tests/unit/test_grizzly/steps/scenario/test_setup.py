@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from contextlib import suppress
+from hashlib import sha256
 from os import environ
 from typing import TYPE_CHECKING, cast
 
@@ -13,11 +14,13 @@ from grizzly.steps import *
 from grizzly.tasks.clients import HttpClientTask
 from grizzly.testdata import GrizzlyVariables, GrizzlyVariableType
 from grizzly.types import RequestDirection, RequestMethod
+from grizzly.users import RestApiUser
+from tests.helpers import SOME
 
 if TYPE_CHECKING:  # pragma: no cover
     from pytest_mock import MockerFixture
 
-    from tests.fixtures import BehaveFixture
+    from tests.fixtures import BehaveFixture, GrizzlyFixture
 
 
 def test_parse_iteration_gramatical_number() -> None:
@@ -35,7 +38,104 @@ def test_parse_iteration_gramatical_number() -> None:
     assert parse_iteration_gramatical_number(' asdf ') == 'asdf'
 
 
-def test_step_setup_set_context_variable(behave_fixture: BehaveFixture) -> None:
+def test_step_setup_set_context_variable_runtime(grizzly_fixture: GrizzlyFixture) -> None:
+    parent = grizzly_fixture(user_type=RestApiUser)
+
+    assert isinstance(parent.user, RestApiUser)
+
+    grizzly = grizzly_fixture.grizzly
+    behave = grizzly_fixture.behave.context
+
+    task = grizzly.scenario.tasks.pop()
+
+    assert len(grizzly.scenario.tasks) == 0
+    assert parent.user.__cached_auth__ == {}
+
+    step_setup_set_context_variable(behave, 'auth.user.username', 'bob')
+    step_setup_set_context_variable(behave, 'auth.user.password', 'foobar')
+
+    assert grizzly.scenario.context == {
+        'host': '',
+        'auth': {'user': {'username': 'bob', 'password': 'foobar'},
+    }}
+    assert parent.user.__cached_auth__ == {}
+    assert parent.user.__context_change_history__ == set()
+
+    parent.user._context = merge_dicts(parent.user._context, grizzly.scenario.context)
+
+    assert len(grizzly.scenario.tasks()) == 0
+
+    grizzly.scenario.tasks.add(task)
+
+    step_setup_set_context_variable(behave, 'auth.user.username', 'alice')
+
+    assert len(grizzly.scenario.tasks()) == 2
+    assert parent.user.__context_change_history__ == set()
+
+    task_factory = grizzly.scenario.tasks().pop()
+
+    assert isinstance(task_factory, SetVariableTask)
+    assert task_factory.variable_type == VariableType.CONTEXT
+
+    parent.user.metadata.update({'Authorization': 'Bearer f00bar=='})
+    assert parent.user.metadata == {
+        'Content-Type': 'application/json',
+        'x-grizzly-user': 'RestApiUser_001',
+        'Authorization': 'Bearer f00bar==',
+    }
+    assert parent.user._context.get('auth', {}).get('user', {}) == SOME(dict, username='bob', password='foobar')  # noqa: S106
+
+    task_factory()(parent)
+
+    assert parent.user._context.get('auth', {}).get('user', {}) == SOME(dict, username='alice', password='foobar')  # noqa: S106
+    assert parent.user.metadata == {
+        'Content-Type': 'application/json',
+        'x-grizzly-user': 'RestApiUser_001',
+        'Authorization': 'Bearer f00bar==',
+    }
+
+    expected_cache_key = sha256(b'bob:foobar').hexdigest()
+
+    assert parent.user.__context_change_history__ == {'auth.user.username'}
+    assert parent.user.__cached_auth__ == {expected_cache_key: 'Bearer f00bar=='}
+
+    step_setup_set_context_variable(behave, 'auth.user.password', 'hello world')
+
+    assert len(grizzly.scenario.tasks()) == 2
+
+    task_factory = grizzly.scenario.tasks().pop()
+
+    assert isinstance(task_factory, SetVariableTask)
+    assert task_factory.variable_type == VariableType.CONTEXT
+
+    task_factory()(parent)
+
+    assert parent.user._context.get('auth', {}).get('user', {}) == SOME(dict, username='alice', password='hello world')  # noqa: S106
+    assert parent.user.metadata == {
+        'Content-Type': 'application/json',
+        'x-grizzly-user': 'RestApiUser_001',
+    }
+
+    assert parent.user.__context_change_history__ == set()
+    assert parent.user.__cached_auth__ == {expected_cache_key: 'Bearer f00bar=='}
+
+    step_setup_set_context_variable(behave, 'auth.user.username', 'bob')
+    task_factory = grizzly.scenario.tasks().pop()
+    task_factory()(parent)
+
+    step_setup_set_context_variable(behave, 'auth.user.password', 'foobar')
+    task_factory = grizzly.scenario.tasks().pop()
+    task_factory()(parent)
+
+    assert parent.user._context.get('auth', {}).get('user', {}) == SOME(dict, username='bob', password='foobar')  # noqa: S106
+    assert parent.user.metadata == {
+        'Content-Type': 'application/json',
+        'x-grizzly-user': 'RestApiUser_001',
+        'Authorization': 'Bearer f00bar==',
+    }
+    assert parent.user.__context_change_history__ == set()
+
+def test_step_setup_set_context_variable_init(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))

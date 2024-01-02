@@ -36,6 +36,32 @@ And set context variable "auth.refresh_time" to "3500"
 
 See {@pylink grizzly.auth.aad}.
 
+It is possible to change authenticated user during runtime by using {@pylink grizzly.steps.scenario.setup.step_setup_set_context_variable} step expressions inbetween other tasks.
+To change user both `auth.user.username` and `auth.user.password` has to be changed (even though maybe only one of them changes value).
+
+This will then cache the `Authorization` token for the current user, and if changed back to that user there is no need to re-authenticate again, unless `refresh_time` for the first login
+expires.
+
+```gherkin
+Given a user of type "RestApi" load testing "https://api.example.com"
+And repeat for "2" iterations
+And set context variable "user.auth.username" to "bob"
+And set context variable "user.auth.password" to "foobar"
+
+Then get request from endpoint "/api/test"
+
+Given set context variable "user.auth.username" to "alice"
+And set context variable "user.auth.password" to "hello world"
+
+Then get request from endpoint "/api/test"
+
+Given set context variable "user.auth.username" to "bob"
+And set context variable "user.auth.password" to "foobar"
+```
+
+In the above, hypotetical scenario, there will 2 "AAD OAuth2 user token" requests, once for user "bob" and one for user "alice", both done in the first iteration. The second iteration
+the cached authentication tokens will be re-used.
+
 ### Multipart/form-data
 
 RestApi supports posting of multipart/form-data content-type, and in that case additional arguments needs to be passed with the request:
@@ -55,6 +81,7 @@ from __future__ import annotations
 import json
 from abc import ABCMeta
 from copy import copy
+from hashlib import sha256
 from html.parser import HTMLParser
 from http.cookiejar import Cookie
 from time import time
@@ -125,6 +152,8 @@ class HtmlTitleParser(HTMLParser):
             'initialize_uri': None,
         },
     },
+    '__cached_auth__': {},
+    '__context_change_history__': set(),
 })
 class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=RestApiUserMeta):  # type: ignore[misc]
     session_started: Optional[float]
@@ -298,9 +327,69 @@ class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=R
         return (headers, payload)
 
     def add_context(self, context: Dict[str, Any]) -> None:
-        """If context change contains a username we should re-authenticate. This is forced by removing the Authorization header."""
-        # something change in auth context, we need to re-authenticate
-        if context.get('auth', {}).get('user', {}).get('username', None) is not None:
-            safe_del(self.metadata, 'Authorization')
+        """If added context contains changes in `auth`, we should cache current `Authorization` token and force re-auth for a new, if the auth
+        doesn't exist in the cache.
+
+        To force a re-authentication, both auth.user.username and auth.user.password needs be set, even though the actual value is only changed
+        for one of them.
+        """
+        current_username = self._context.get('auth', {}).get('user', {}).get('username', None)
+        current_password = self._context.get('auth', {}).get('user', {}).get('password', None)
+        current_authorization = self.metadata.get('Authorization', None)
+
+        changed_username = context.get('auth', {}).get('user', {}).get('username', None)
+        changed_password = context.get('auth', {}).get('user', {}).get('password', None)
+
+        # check if we're currently have Authorization header connected to a username and password,
+        # and if we're changing either username or password.
+        # if so, we need to cache current username+password token
+        if (
+            current_username is not None
+            and current_password is not None
+            and self.__context_change_history__ == set()
+            and current_authorization is not None
+            and (changed_username is not None or changed_password is not None)
+        ):
+            cache_key_plain = f'{current_username}:{current_password}'
+            cache_key = sha256(cache_key_plain.encode()).hexdigest()
+
+            if cache_key not in self.__cached_auth__:
+                self.__cached_auth__.update({cache_key: current_authorization})
 
         super().add_context(context)
+
+        changed_username_path = 'auth.user.username'
+        changed_password_path = 'auth.user.password'  # noqa: S105
+
+        # update change history if needed
+        context_change_history = self.__context_change_history__
+        if context_change_history != {changed_username_path, changed_password_path}:
+            if changed_username is not None and changed_username_path not in context_change_history:
+                self.__context_change_history__.add(changed_username_path)
+
+            if changed_password is not None and changed_password_path not in context_change_history:
+                self.__context_change_history__.add(changed_password_path)
+
+        # everything needed to force re-auth is not in place
+        if self.__context_change_history__ != {changed_username_path, changed_password_path}:
+            return
+
+        # every context change needed to force re-auth is in place, clear change history
+        self.__context_change_history__.clear()
+
+        username = self._context.get('auth', {}).get('user', {}).get('username', None)
+        password = self._context.get('auth', {}).get('user', {}).get('password', None)
+
+        if username is None or password is None:
+            return
+
+        # check if current username+password has a cached Authorization token
+        cache_key_plain = f'{username}:{password}'
+        cache_key = sha256(cache_key_plain.encode()).hexdigest()
+
+        cached_authorization = self.__cached_auth__.get(cache_key, None)
+
+        if cached_authorization is not None:   # restore from cache
+            self.metadata.update({'Authorization': cached_authorization})
+        else:  # remove from metadata, to force a re-authentication
+            safe_del(self.metadata, 'Authorization')

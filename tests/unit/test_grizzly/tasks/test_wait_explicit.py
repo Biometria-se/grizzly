@@ -54,7 +54,7 @@ class TestExplicitWaitTask:
         gsleep_spy.assert_not_called()
         request_fire_spy.assert_called_once_with(
             request_type='WAIT',
-            name=f'{parent.user._scenario.identifier} WaitTask=>foobar',
+            name=f'{parent.user._scenario.identifier} ExplicitWaitTask=>foobar',
             response_time=0,
             response_length=0,
             context=parent.user._context,
@@ -74,7 +74,7 @@ class TestExplicitWaitTask:
         gsleep_spy.assert_not_called()
         request_fire_spy.assert_called_once_with(
             request_type='WAIT',
-            name=f'{parent.user._scenario.identifier} WaitTask=>{{{{ foobar }}}}',
+            name=f'{parent.user._scenario.identifier} ExplicitWaitTask=>{{{{ foobar }}}}',
             response_time=0,
             response_length=0,
             context=parent.user._context,
@@ -92,7 +92,7 @@ class TestExplicitWaitTask:
         gsleep_spy.assert_not_called()
         request_fire_spy.assert_called_once_with(
             request_type='WAIT',
-            name=f'{parent.user._scenario.identifier} WaitTask=>{{{{ undefined_variable }}}}',
+            name=f'{parent.user._scenario.identifier} ExplicitWaitTask=>{{{{ undefined_variable }}}}',
             response_time=0,
             response_length=0,
             context=parent.user._context,

@@ -13,7 +13,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from tests.fixtures import End2EndFixture
 
 
-def test_e2e_auth(e2e_fixture: End2EndFixture) -> None:
+def test_e2e_auth_user_token(e2e_fixture: End2EndFixture) -> None:
     if e2e_fixture._distributed:
         pytest.skip('telling the webserver what to expected auth-wise is not as simple when running dist, compare to running local')
 
@@ -27,14 +27,14 @@ def test_e2e_auth(e2e_fixture: End2EndFixture) -> None:
         stats = grizzly.state.locust.environment.stats
 
         expectations = [
-            ('001 AAD OAuth2 user token v1.0', 'AUTH', 0, 1),
-            ('001 RestApi auth', 'SCEN', 0, 1),
-            ('001 RestApi auth', 'TSTD', 0, 1),
-            ('001 restapi-echo', 'GET', 0, 1),
-            ('002 AAD OAuth2 user token v1.0', 'AUTH', 0, 1),
-            ('002 HttpClientTask auth', 'SCEN', 0, 1),
-            ('002 HttpClientTask auth', 'TSTD', 0, 1),
-            ('002 httpclient-echo', 'CLTSK', 0, 1),
+            ('001 AAD OAuth2 client token v1.0: dummy-client-id', 'AUTH', 0, 1),
+            ('001 RestApi auth', 'SCEN', 0, 2),
+            ('001 RestApi auth', 'TSTD', 0, 2),
+            ('001 restapi-echo', 'GET', 0, 2),
+            ('002 AAD OAuth2 client token v1.0: dummy-client-id', 'AUTH', 0, 1),
+            ('002 HttpClientTask auth', 'SCEN', 0, 2),
+            ('002 HttpClientTask auth', 'TSTD', 0, 2),
+            ('002 httpclient-echo', 'CLTSK', 0, 2),
         ]
 
         for name, method, expected_num_failures, expected_num_requests in expectations:
@@ -77,7 +77,7 @@ def test_e2e_auth(e2e_fixture: End2EndFixture) -> None:
             And set context variable "auth.client.id" to "{e2e_fixture.webserver.auth['client']['id']}"
             And set context variable "auth.client.secret" to "{e2e_fixture.webserver.auth['client']['secret']}"
             {add_metadata()}
-            And repeat for "1" iterations
+            And repeat for "2" iterations
             Then get request with name "restapi-echo" from endpoint "/api/echo"
 
         Scenario: HttpClientTask auth
@@ -86,7 +86,7 @@ def test_e2e_auth(e2e_fixture: End2EndFixture) -> None:
             And set context variable "{e2e_fixture.host}/auth.provider" to "http://{e2e_fixture.host}{e2e_fixture.webserver.auth_provider_uri}"
             And set context variable "{e2e_fixture.host}/auth.client.id" to "{e2e_fixture.webserver.auth['client']['id']}"
             And set context variable "{e2e_fixture.host}/auth.client.secret" to "{e2e_fixture.webserver.auth['client']['secret']}"
-            And repeat for "1" iterations
+            And repeat for "2" iterations
             Then get "http://{e2e_fixture.host}/api/echo" with name "httpclient-echo" and save response payload in "foobar"
             {add_metadata()}
         """))

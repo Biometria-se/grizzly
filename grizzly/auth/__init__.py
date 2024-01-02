@@ -8,7 +8,7 @@ from enum import Enum
 from functools import wraps
 from importlib import import_module
 from time import time
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Dict, Generic, Literal, Optional, Tuple, Type, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Dict, Generic, Literal, Optional, Set, Tuple, Type, TypeVar, Union, cast
 from urllib.parse import urlparse
 
 from grizzly.tasks import RequestTask
@@ -64,6 +64,8 @@ class GrizzlyHttpAuthClient(Generic[P], metaclass=ABCMeta):
             },
         },
         'metadata': None,
+        '__cached_auth__': {},
+        '__context_change_history__': set(),
     }
     session_started: Optional[float]
     grizzly: GrizzlyContext
@@ -75,6 +77,14 @@ class GrizzlyHttpAuthClient(Generic[P], metaclass=ABCMeta):
             self._context['metadata'] = {}
 
         cast(dict, self._context['metadata']).update({key: value})
+
+    @property
+    def __context_change_history__(self) -> Set[str]:
+        return cast(Set[str], self._context['__context_change_history__'])
+
+    @property
+    def __cached_auth__(self) -> Dict[str, str]:
+        return cast(Dict[str, str], self._context['__cached_auth__'])
 
 
 AuthenticatableFunc = TypeVar('AuthenticatableFunc', bound=Callable[..., GrizzlyResponse])

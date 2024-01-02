@@ -9,7 +9,7 @@ from grizzly.context import GrizzlyContext
 from grizzly.steps._helpers import get_task_client
 from grizzly.types import RequestDirection
 from grizzly.types.behave import Context, then
-from grizzly.utils import is_template
+from grizzly.utils import has_template
 
 
 @then('get "{endpoint}" with name "{name}" and save response payload in "{payload_variable}" and metadata in "{metadata_variable}"')
@@ -99,7 +99,7 @@ def step_task_client_put_endpoint_file_destination(context: Context, source: str
         destination (str): name of source on the destination
     """
     assert context.text is None, 'step text is not allowed for this step expression'
-    assert not is_template(source), 'source file cannot be a template'
+    assert not has_template(source), 'source file cannot be a template'
 
     grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -133,7 +133,7 @@ def step_task_client_put_endpoint_file(context: Context, source: str, endpoint: 
         name (str): name of the request, used in request statistics
     """
     assert context.text is None, 'step text is not allowed for this step expression'
-    assert not is_template(source), 'source file cannot be a template'
+    assert not has_template(source), 'source file cannot be a template'
 
     grizzly = cast(GrizzlyContext, context.grizzly)
 
