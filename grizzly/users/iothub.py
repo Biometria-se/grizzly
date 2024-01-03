@@ -17,7 +17,7 @@ HostName=<hostname>;DeviceId=<device key>;SharedAccessKey=<access key>
 
 `endpoint` in the request is the desired filename for the uploaded file.
 
-The metadata values `content_encoding` and `content_encoding` can be set to
+The metadata values `content_type` and `content_encoding` can be set to
 gzip compress the payload before upload (see example below).
 
 ## Examples
@@ -42,7 +42,7 @@ Then send request "test/blob.file" to endpoint "uploaded_blob_filename"
 from __future__ import annotations
 
 import gzip
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional, cast
 from urllib.parse import parse_qs, urlparse
 
 from azure.iot.device import IoTHubDeviceClient
@@ -101,7 +101,7 @@ class IotHubUser(GrizzlyUser):
             message = f'{self.__class__.__name__} has not implemented {request.method.name}'
             raise NotImplementedError(message)
 
-        storage_info: Any = None
+        storage_info: Optional[Dict[str, Any]] = None
         try:
             if not request.source:
                 message = f'Cannot upload empty payload to endpoint {request.endpoint} in IotHubUser'
@@ -109,7 +109,7 @@ class IotHubUser(GrizzlyUser):
 
             filename = request.endpoint
 
-            storage_info = self.iot_client.get_storage_info_for_blob(filename)
+            storage_info = cast(Dict[str, Any], self.iot_client.get_storage_info_for_blob(filename))
 
             sas_url = 'https://{}/{}/{}{}'.format(
                 storage_info['hostName'],

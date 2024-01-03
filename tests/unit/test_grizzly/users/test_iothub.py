@@ -236,7 +236,7 @@ class TestIotHubUser:
         request = cast(RequestTask, iot_hub_parent.user._scenario.tasks()[-1])
         request.endpoint = 'not_relevant'
 
-        upload_blob = mocker.patch('azure.storage.blob._blob_client.BlobClient.upload_blob', autospec=True)
+        upload_blob = mocker.patch('azure.storage.blob._blob_client.BlobClient.upload_blob')
         notify_blob_upload_status = mocker.patch('azure.iot.device.IoTHubDeviceClient.notify_blob_upload_status', autospec=True)
 
         request = cast(RequestTask, iot_hub_parent.user._scenario.tasks()[-1])
@@ -249,7 +249,6 @@ class TestIotHubUser:
 
         gzip_compress.assert_called_once()
         upload_blob.assert_called_once_with(
-            SOME(BlobClient),
             'this_is_compressed',
             content_settings=SOME(ContentSettings, content_type='application/octet-stream; charset=utf-8',
                                   content_encoding='gzip'),
