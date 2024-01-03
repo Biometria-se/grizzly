@@ -87,7 +87,7 @@ def test_e2e_step_setup_iterations(e2e_fixture: End2EndFixture, iterations: str)
         grizzly = cast(GrizzlyContext, context.grizzly)
         data = next(iter(context.table)).as_dict()
 
-        iterations = int(data['iterations'].replace('{{ leveranser * 0.25 }}', '25'))
+        iterations = int(data['iterations'].replace(' ', '').replace('{{leveranser*0.25}}', '25'))
 
         assert grizzly.scenario.iterations == iterations, f'{grizzly.scenario.iterations} != {iterations}'
 
