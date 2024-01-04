@@ -6,6 +6,7 @@ from __future__ import annotations
 from typing import Any, cast
 
 import parse
+from locust.dispatch import WeightedUsersDispatcher
 
 from grizzly.context import GrizzlyContext
 from grizzly.testdata.utils import resolve_variable
@@ -41,6 +42,11 @@ def step_shapes_user_count(context: Context, value: str, **_kwargs: Any) -> None
         grammar (UserGramaticalNumber): one of `user`, `users`
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
+
+    if grizzly.setup.dispatcher_class is not None and grizzly.setup.dispatcher_class != WeightedUsersDispatcher:
+        message = 'this step cannot be used in combination with ...'
+        raise AssertionError(message)
+
     assert value[0] != '$', 'this expression does not support $conf or $env variables'
     user_count = max(int(round(float(resolve_variable(grizzly, value)), 0)), 1)
 
@@ -53,6 +59,7 @@ def step_shapes_user_count(context: Context, value: str, **_kwargs: Any) -> None
         assert user_count >= grizzly.setup.spawn_rate, f'spawn rate ({grizzly.setup.spawn_rate}) can not be greater than user count ({user_count})'
 
     grizzly.setup.user_count = user_count
+    grizzly.setup.dispatcher_class = WeightedUsersDispatcher
 
 
 @given('spawn rate is "{value}" {grammar:UserGramaticalNumber} per second')

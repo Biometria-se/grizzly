@@ -15,6 +15,7 @@ import gevent
 from jinja2.exceptions import TemplateError
 from locust import events
 from locust import stats as lstats
+from locust.dispatch import WeightedUsersDispatcher
 from locust.log import setup_logging
 from locust.util.timespan import parse_timespan
 
@@ -359,11 +360,15 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
     try:
         setup_resource_limits(context)
 
+        if grizzly.setup.dispatcher_class is None:
+            grizzly.setup.dispatcher_class = WeightedUsersDispatcher
+
         environment = Environment(
             user_classes=user_classes,
             shape_class=None,
             events=events,
             stop_timeout=300,  # only wait at most?
+            dispatcher_class=grizzly.setup.dispatcher_class,
         )
 
         runner: LocustRunner
@@ -500,7 +505,10 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
 
         if not isinstance(runner, WorkerRunner):
             logger.info('starting locust-%s via grizzly-%s', __locust_version__, __version__)
-            runner.start(grizzly.setup.user_count, grizzly.setup.spawn_rate)
+            # user_count == {} means that the dispatcher will use use class properties `fixed_count`
+            user_count: int | Dict[str, int] = grizzly.setup.user_count if runner.environment.dispatcher_class == WeightedUsersDispatcher else {}
+
+            runner.start(user_count, grizzly.setup.spawn_rate)
 
             stats_printer_greenlet = gevent.spawn(grizzly_stats_printer(environment.stats))
             stats_printer_greenlet.link_exception(greenlet_exception_handler)

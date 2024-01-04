@@ -1,4 +1,5 @@
-"""Get and put messages on with IBM MQ queues.
+"""@anchor pydoc:grizzly.users.messagequeue Message Queue
+Get and put messages on with IBM MQ queues.
 
 User is based on `pymqi` for communicating with IBM MQ. However `pymqi` uses native libraries which `gevent` (used by `locust`) cannot patch,
 which causes any calls in `pymqi` to block the rest of `locust`. To get around this, the user implementation communicates with a stand-alone

@@ -17,6 +17,8 @@ from grizzly.utils import flatten
 from .testdata import GrizzlyVariables
 
 if TYPE_CHECKING:  # pragma: no cover
+    from locust.dispatch import UsersDispatcher
+
     from grizzly.types.behave import Scenario
     from grizzly.types.locust import LocalRunner, MasterRunner, WorkerRunner
 
@@ -142,6 +144,8 @@ class GrizzlyContextScenarioValidation:
 class GrizzlyContextScenarioUser:
     class_name: str = field(init=False, hash=True)
     weight: int = field(init=False, hash=True, default=1)
+    fixed_count: Optional[int] = field(init=False, repr=False, hash=False, compare=False, default=None)
+    sticky_tag: Optional[str] = field(init=False, repr=False, hash=False, compare=False, default=None)
 
 
 StackedFuncType = Callable[['GrizzlyContextTasksTmp'], Optional['GrizzlyTaskWrapper']]
@@ -329,6 +333,7 @@ class GrizzlyContextSetup:
     user_count: int = field(init=False, default=0)
     spawn_rate: Optional[float] = field(init=False, default=None)
     timespan: Optional[str] = field(init=False, default=None)
+    dispatcher_class: Optional[Type[UsersDispatcher]] = field(init=False, default=None)
 
     statistics_url: Optional[str] = field(init=False, default=None)
 

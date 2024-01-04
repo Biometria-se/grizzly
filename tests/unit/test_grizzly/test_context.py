@@ -9,6 +9,7 @@ from unittest.mock import ANY
 
 import pytest
 from jinja2.environment import Template
+from locust.dispatch import FixedUsersDispatcher
 
 from grizzly.context import (
     GrizzlyContext,
@@ -96,6 +97,7 @@ class TestGrizzlyContextSetup:
             'statistics_url': (None, 'influxdb://influx.example.org/grizzly'),
             'global_context': ({}, {'test': 'hello world'}),
             'locust': None,
+            'dispatcher_class': (None, FixedUsersDispatcher),
         }
 
         expected_attributes = list(expected_properties.keys())

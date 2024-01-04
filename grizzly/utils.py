@@ -98,11 +98,15 @@ def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Opt
         scenario.context,
     ]
 
+    if fixed_count is None:
+        fixed_count = scenario.user.fixed_count
+
     for merge_context in contexts:
         context = merge_dicts(context, merge_context)
 
-    distribution: Dict[str, Union[int, float]] = {
+    distribution: Dict[str, Union[int, float, str | None]] = {
         'weight': scenario.user.weight,
+        'sticky_tag': scenario.user.sticky_tag,
     }
 
     if fixed_count is not None:

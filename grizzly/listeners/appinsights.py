@@ -21,12 +21,13 @@ endpoint = tostring(customDimensions["endpoint"])
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 from urllib.parse import parse_qs, urlparse
 
 from opencensus.ext.azure.log_exporter import AzureLogHandler
 
-from grizzly.types.locust import Environment, MasterRunner
+if TYPE_CHECKING:  # pragma: no cover
+    from grizzly.types.locust import Environment
 
 stdlogger = logging.getLogger(__name__)
 
@@ -89,52 +90,12 @@ class ApplicationInsightsListener:
     def _create_custom_dimensions_dict(
         self, method: str, result: str, response_time: int, response_length: int, endpoint: str, exception: Optional[Any] = None,
     ) -> Dict[str, Any]:
-        custom_dimensions = self._safe_return_runner_values()
-
-        custom_dimensions['method'] = str(method)
-        custom_dimensions['result'] = result
-        custom_dimensions['response_time'] = response_time
-        custom_dimensions['response_length'] = response_length
-        custom_dimensions['endpoint'] = str(endpoint)
-        custom_dimensions['testplan'] = str(self.testplan)
-        custom_dimensions['exception'] = str(exception)
-
-        return custom_dimensions
-
-    def _safe_return_runner_values(self) -> Dict[str, Any]:
-        runner_values = {
-            'thread_count': '',
-            'target_user_count': '',
-            'spawn_rate': '',
+        return {
+            'method': method,
+            'result': result,
+            'response_time': response_time,
+            'response_length': response_length if response_length >= 0 else None,
+            'endpoint': endpoint,
+            'exception': str(exception) if exception is not None else None,
+            'testplan': self.testplan,
         }
-
-        try:
-            runner = self.environment.runner
-
-            if runner is None:
-                raise ValueError
-
-            try:
-                thread_count = str(runner.user_count)
-            except Exception:  # pragma: no cover
-                thread_count = ''
-
-            runner_values['thread_count'] = thread_count
-
-            try:
-                target_user_count = str(runner.target_user_count)
-            except Exception:  # pragma: no cover
-                target_user_count = ''
-
-            runner_values['target_user_count'] = target_user_count
-
-            try:
-                spawn_rate = str(runner.spawn_rate) if isinstance(runner, MasterRunner) else ''
-            except Exception:  # pragma: no cover
-                spawn_rate = ''
-
-            runner_values['spawn_rate'] = spawn_rate
-        except:  # noqa: S110
-            pass
-
-        return runner_values

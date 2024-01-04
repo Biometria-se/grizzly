@@ -121,7 +121,7 @@ class TestAppInsightsListener:
             listener = ApplicationInsightsListener(locust_fixture.environment, 'https://insights.test.com?InstrumentationKey=asdfasdfasdfasdf')
 
             expected_keys = [
-                'thread_count', 'target_user_count', 'spawn_rate', 'method', 'result', 'response_time', 'response_length', 'endpoint', 'testplan', 'exception',
+                'method', 'result', 'response_time', 'response_length', 'endpoint', 'testplan', 'exception',
             ]
 
             custom_dimensions = listener._create_custom_dimensions_dict('GET', 'Success', 133, 200, '/api/v1/test')
@@ -134,44 +134,7 @@ class TestAppInsightsListener:
                 'response_length': 200,
                 'endpoint': '/api/v1/test',
                 'testplan': 'appinsightstestplan',
-                'exception': 'None',
-                'spawn_rate': '',
-                'target_user_count': '0',
-                'thread_count': '0',
-            }
-        finally:
-            locust_fixture.environment.events.request._handlers.pop()
-
-    @pytest.mark.usefixtures('patch_azureloghandler')
-    def test__safe_return_runner_values(self, locust_fixture: LocustFixture, patch_azureloghandler: Callable[[], None]) -> None:
-        patch_azureloghandler()
-        try:
-            listener = ApplicationInsightsListener(locust_fixture.environment, 'https://insights.test.com?InstrumentationKey=asdfasdfasdfasdf')
-
-            expected_keys = ['thread_count', 'target_user_count', 'spawn_rate']
-
-            runner_values = listener._safe_return_runner_values()
-
-            assert sorted(runner_values.keys()) == sorted(expected_keys)
-
-            assert runner_values.get('thread_count', None) == '0'
-            assert runner_values.get('target_user_count', None) == '0'
-            assert runner_values.get('spawn_rate', None) == ''
-
-            locust_fixture.environment.runner = None
-            locust_fixture.environment.runner = locust_fixture.environment.create_local_runner()
-
-            runner_values = listener._safe_return_runner_values()
-            assert runner_values.get('thread_count', None) == '0'
-            assert runner_values.get('target_user_count', None) == '0'
-            assert runner_values.get('spawn_rate', None) == ''
-
-            listener.environment.runner = locust_fixture.environment.runner = None
-
-            assert listener._safe_return_runner_values() == {
-                'thread_count': '',
-                'target_user_count': '',
-                'spawn_rate': '',
+                'exception': None,
             }
         finally:
             locust_fixture.environment.events.request._handlers.pop()

@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, cast
 
 import pytest
+from locust.dispatch import FixedUsersDispatcher, WeightedUsersDispatcher
 from parse import compile
 
 from grizzly.context import GrizzlyContext
@@ -45,7 +46,14 @@ def test_step_shapes_user_count(behave_fixture: BehaveFixture) -> None:
 
     step_impl(behave, '1', grammar='users')
     assert grizzly.setup.user_count == 1
+    assert grizzly.setup.dispatcher_class == WeightedUsersDispatcher
 
+    grizzly.setup.dispatcher_class = FixedUsersDispatcher
+
+    with pytest.raises(AssertionError, match='this step cannot be used in combination with'):
+        step_impl(behave, '1', grammar='users')
+
+    grizzly.setup.dispatcher_class = None
     grizzly.setup.spawn_rate = 10
 
     with pytest.raises(AssertionError, match=r'spawn rate \(10\) can not be greater than user count \(1\)'):
@@ -64,6 +72,7 @@ def test_step_shapes_user_count(behave_fixture: BehaveFixture) -> None:
 
     step_impl(behave, '{{ user_count * 0.1 }}', grammar='user')
     assert grizzly.setup.user_count == 1
+    assert grizzly.setup.dispatcher_class == WeightedUsersDispatcher
 
     with pytest.raises(AssertionError, match=r'this expression does not support \$conf or \$env variables'):
         step_impl(behave, '$conf::user.count', grammar='users')
