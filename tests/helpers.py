@@ -81,7 +81,8 @@ def SOME(cls: Type, **values: Any) -> object:  # noqa: N802
             info = ', '.join([f"{key}={value}" for key, value in values.items()])
             return f'<SOME({cls}, {info})>'
 
-
+    if len(values) < 1:
+        raise AttributeError(name='values', obj=str(Type))
     return WrappedSome()
 
 

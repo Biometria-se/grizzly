@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, Tuple, cast
 import pytest
 from azure.iot.device import IoTHubDeviceClient
 from azure.storage.blob._blob_client import BlobClient
+from azure.storage.blob._models import ContentSettings
 
 from grizzly.context import GrizzlyContextScenario
 from grizzly.exceptions import RestartScenario
@@ -15,7 +16,7 @@ from grizzly.testdata.utils import transform
 from grizzly.types import RequestMethod
 from grizzly.types.locust import Environment, StopUser
 from grizzly.users.iothub import IotHubUser
-from tests.helpers import ANY
+from tests.helpers import ANY, SOME
 
 if TYPE_CHECKING:  # pragma: no cover
     from pytest_mock import MockerFixture
@@ -217,3 +218,118 @@ class TestIotHubUser:
             status_code=500,
             status_description='Failed: not_relevant',
         )
+
+    @pytest.mark.usefixtures('iot_hub_parent')
+    def test_send_gzip(self, iot_hub_parent: GrizzlyScenario, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
+        assert isinstance(iot_hub_parent.user, IotHubUser)
+        iot_hub_parent.user.on_start()
+        grizzly = grizzly_fixture.grizzly
+
+        remote_variables = {
+            'variables': transform(grizzly, {
+                'AtomicIntegerIncrementer.messageID': 31337,
+                'AtomicDate.now': '',
+                'messageID': 137,
+            }),
+        }
+        iot_hub_parent.user.add_context(remote_variables)
+        request = cast(RequestTask, iot_hub_parent.user._scenario.tasks()[-1])
+        request.endpoint = 'not_relevant'
+
+        upload_blob = mocker.patch('azure.storage.blob._blob_client.BlobClient.upload_blob')
+        notify_blob_upload_status = mocker.patch('azure.iot.device.IoTHubDeviceClient.notify_blob_upload_status', autospec=True)
+
+        request = cast(RequestTask, iot_hub_parent.user._scenario.tasks()[-1])
+
+        gzip_compress = mocker.patch('gzip.compress', autospec=True, return_value = 'this_is_compressed')
+        request.metadata = {}
+        request.metadata['content_type'] = 'application/octet-stream; charset=utf-8'
+        request.metadata['content_encoding'] = 'gzip'
+        iot_hub_parent.user.request(request)
+
+        gzip_compress.assert_called_once()
+        upload_blob.assert_called_once_with(
+            'this_is_compressed',
+            content_settings=SOME(ContentSettings, content_type='application/octet-stream; charset=utf-8',
+                                  content_encoding='gzip'),
+        )
+
+        notify_blob_upload_status.assert_called_once_with(
+            iot_hub_parent.user.iot_client,
+            correlation_id='correlation_id',
+            is_success=True,
+            status_code=200,
+            status_description='OK: not_relevant',
+        )
+
+    @pytest.mark.usefixtures('iot_hub_parent')
+    def test_send_unhandled_encoding(self, iot_hub_parent: GrizzlyScenario, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
+        assert isinstance(iot_hub_parent.user, IotHubUser)
+        iot_hub_parent.user.on_start()
+        grizzly = grizzly_fixture.grizzly
+
+        remote_variables = {
+            'variables': transform(grizzly, {
+                'AtomicIntegerIncrementer.messageID': 31337,
+                'AtomicDate.now': '',
+                'messageID': 137,
+            }),
+        }
+        iot_hub_parent.user.add_context(remote_variables)
+        request = cast(RequestTask, iot_hub_parent.user._scenario.tasks()[-1])
+        request.endpoint = 'not_relevant'
+        upload_blob = mocker.patch('azure.storage.blob._blob_client.BlobClient.upload_blob', autospec=True)
+        notify_blob_upload_status = mocker.patch('azure.iot.device.IoTHubDeviceClient.notify_blob_upload_status', autospec=True)
+
+        request = cast(RequestTask, iot_hub_parent.user._scenario.tasks()[-1])
+
+        gzip_compress = mocker.patch('gzip.compress', autospec=True, return_value = 'this_is_compressed')
+        request.metadata = {}
+        request.metadata['content_type'] = 'application/octet-stream; charset=utf-8'
+        request.metadata['content_encoding'] = 'vulcan'
+
+        iot_hub_parent.user._scenario.failure_exception = RestartScenario
+        with pytest.raises(RestartScenario):
+            iot_hub_parent.user.request(request)
+
+        gzip_compress.assert_not_called()
+        upload_blob.assert_not_called()
+        notify_blob_upload_status.assert_called_once_with(
+            iot_hub_parent.user.iot_client,
+            correlation_id='correlation_id',
+            is_success=False,
+            status_code=500,
+            status_description='Failed: not_relevant',
+        )
+
+    @pytest.mark.usefixtures('iot_hub_parent')
+    def test_send_empty_payload(self, iot_hub_parent: GrizzlyScenario, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
+        assert isinstance(iot_hub_parent.user, IotHubUser)
+        iot_hub_parent.user.on_start()
+        grizzly = grizzly_fixture.grizzly
+
+        remote_variables = {
+            'variables': transform(grizzly, {
+                'AtomicIntegerIncrementer.messageID': 31337,
+                'AtomicDate.now': '',
+                'messageID': 137,
+            }),
+        }
+        iot_hub_parent.user.add_context(remote_variables)
+        request = cast(RequestTask, iot_hub_parent.user._scenario.tasks()[-1])
+        request.endpoint = 'not_relevant'
+        upload_blob = mocker.patch('azure.storage.blob._blob_client.BlobClient.upload_blob', autospec=True)
+        notify_blob_upload_status = mocker.patch('azure.iot.device.IoTHubDeviceClient.notify_blob_upload_status', autospec=True)
+
+        request = cast(RequestTask, iot_hub_parent.user._scenario.tasks()[-1])
+
+        gzip_compress = mocker.patch('gzip.compress', autospec=True, return_value = 'this_is_compressed')
+        request.source = None
+
+        iot_hub_parent.user._scenario.failure_exception = RestartScenario
+        with pytest.raises(RestartScenario):
+            iot_hub_parent.user.request(request)
+
+        gzip_compress.assert_not_called()
+        upload_blob.assert_not_called()
+        notify_blob_upload_status.assert_not_called()
