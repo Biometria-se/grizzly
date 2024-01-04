@@ -29,7 +29,7 @@ def _shape_fixed_user_count(context: Context, value: str, sticky_tag: Optional[s
     grizzly = cast(GrizzlyContext, context.grizzly)
 
     if (grizzly.setup.dispatcher_class is not None and grizzly.setup.dispatcher_class != FixedUsersDispatcher) or grizzly.setup.user_count is not None:
-        message = 'this step cannot be used in combination with ...'
+        message = 'this step cannot be used in combination with step `step_shapes_user_count`'
         raise AssertionError(message)
 
 
@@ -48,7 +48,7 @@ def _shape_fixed_user_count(context: Context, value: str, sticky_tag: Optional[s
     grizzly.scenario.user.fixed_count = user_count
     grizzly.scenario.user.sticky_tag = sticky_tag
 
-@given('scenario "{value}" {grammar:UserGramaticalNumber} with tag "{sticky_tag}"')
+@given('scenario is assigned "{value}" {grammar:UserGramaticalNumber} with tag "{sticky_tag}"')
 def step_shapes_fixed_user_count_sticky_tag(context: Context, value: str, sticky_tag: str, **_kwargs: Any) -> None:
     """Set number of users that will execute the scenario, with a tag.
 
@@ -81,7 +81,7 @@ def step_shapes_fixed_user_count_sticky_tag(context: Context, value: str, sticky
     _shape_fixed_user_count(context, value, sticky_tag)
 
 
-@given('scenario "{value}" {grammar:UserGramaticalNumber}')
+@given('scenario is assigned "{value}" {grammar:UserGramaticalNumber}')
 def step_shapes_fixed_user_count(context: Context, value: str, **_kwargs: Any) -> None:
     """Set number of users that will execute the scenario.
 

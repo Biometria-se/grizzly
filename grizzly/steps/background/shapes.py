@@ -44,7 +44,7 @@ def step_shapes_user_count(context: Context, value: str, **_kwargs: Any) -> None
     grizzly = cast(GrizzlyContext, context.grizzly)
 
     if grizzly.setup.dispatcher_class is not None and grizzly.setup.dispatcher_class != WeightedUsersDispatcher:
-        message = 'this step cannot be used in combination with ...'
+        message = 'this step cannot be used in combination with step(s) `step_shapes_fixed_user_count*`'
         raise AssertionError(message)
 
     assert value[0] != '$', 'this expression does not support $conf or $env variables'

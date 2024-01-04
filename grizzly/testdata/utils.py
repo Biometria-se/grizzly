@@ -173,6 +173,9 @@ def resolve_template(grizzly: GrizzlyContext, value: str) -> str:
     template_variables = find_undeclared_variables(template_parsed)
 
     for template_variable in template_variables:
+        if f'{template_variable} is defined' in value or f'{template_variable} is not defined' in value:
+            continue
+
         assert template_variable in grizzly.state.variables, f'value contained variable "{template_variable}" which has not been declared'
 
     return template.render(**grizzly.state.variables)

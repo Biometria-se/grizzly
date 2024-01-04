@@ -25,9 +25,12 @@ def test__parse_template(request_task: RequestTaskFixture) -> None:
         'CsvRowValue2': '{{ AtomicCsvReader.test.header2 }}',
         'File': '{{ AtomicDirectoryContents.test }}',
         'TestSubString': '{{ a_sub_string[:3] }}',
-        'TestString': '{{ a_string }}',
+        'TestString': '{{ a_string if undeclared_variable is not defined else "foo" }}',
         'FooBar': '{{ (AtomicIntegerIncrementer.file_number | int) }}',
-        'Expression': '{{ expression == "True" }}',
+        'Expression': '{{ expression == "True" if undeclared_variable is defined else "True" }}',
+        'Undefined': '{{ undeclared_variable if undeclared_variable is defined else "unknown" }}',
+        'UndefinedAdvanced': '{{ AtomicIntegerIncrementer.undefined if AtomicIntegerIncrementer.undefined is defined else "hello" }}',
+        'Content': '{{ some_weird_variable if some_weird_variable is defined else content }}',
     })
 
     request.source = jsondumps(source)
@@ -49,6 +52,7 @@ def test__parse_template(request_task: RequestTaskFixture) -> None:
             'a_string',
             'AtomicIntegerIncrementer.file_number',
             'expression',
+            'content',
         },
     }
 
