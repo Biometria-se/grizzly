@@ -90,29 +90,34 @@ def setup_locust_scenarios(grizzly: GrizzlyContext) -> Tuple[List[Type[User]], S
     external_dependencies: Set[str] = set()
     distribution: Dict[str, int] = {}
 
-    total_weight = sum([scenario.user.weight for scenario in scenarios])
-    for scenario in scenarios:
-        user_count = ceil(grizzly.setup.user_count * (scenario.user.weight / total_weight))
-        distribution[scenario.name] = user_count
+    if grizzly.setup.dispatcher_class in [WeightedUsersDispatcher, None]:
+        user_count = grizzly.setup.user_count or 0
+        total_weight = sum([scenario.user.weight for scenario in scenarios])
+        for scenario in scenarios:
+            scenario_user_count = ceil(user_count * (scenario.user.weight / total_weight))
+            distribution[scenario.name] = scenario_user_count
 
-    total_user_count = sum(distribution.values())
-    user_overflow = total_user_count - grizzly.setup.user_count
+        total_user_count = sum(distribution.values())
+        user_overflow = total_user_count - user_count
 
-    assert len(distribution.keys()) <= grizzly.setup.user_count, f"increase the number in step 'Given \"{grizzly.setup.user_count}\" users' to at least {len(distribution.keys())}"
+        assert len(distribution.keys()) <= user_count, (
+            f"increase the number in step 'Given \"{user_count}\" users' "
+            f"to at least {len(distribution.keys())}"
+        )
 
-    if user_overflow < 0:
-        logger.warning('there should be %d users, but there will only be %d users spawned', grizzly.setup.user_count, total_user_count)
+        if user_overflow < 0:
+            logger.warning('there should be %d users, but there will only be %d users spawned', user_count, total_user_count)
 
-    while user_overflow > 0:
-        for scenario_name in dict(sorted(distribution.items(), key=lambda d: d[1], reverse=True)):
-            if distribution[scenario_name] <= 1:
-                continue
+        while user_overflow > 0:
+            for scenario_name in dict(sorted(distribution.items(), key=lambda d: d[1], reverse=True)):
+                if distribution[scenario_name] <= 1:
+                    continue
 
-            distribution[scenario_name] -= 1
-            user_overflow -= 1
+                distribution[scenario_name] -= 1
+                user_overflow -= 1
 
-            if user_overflow < 1:
-                break
+                if user_overflow < 1:
+                    break
 
     for scenario in scenarios:
         # Given a user of type "" load testing ""
@@ -136,12 +141,13 @@ def setup_locust_scenarios(grizzly: GrizzlyContext) -> Tuple[List[Type[User]], S
                 external_dependencies.update(dependencies)
 
         logger.debug(
-            '%s/%s: tasks=%d, weight=%d, fixed_count=%d',
+            '%s/%s: tasks=%d, weight=%d, fixed_count=%d, sticky_tag=%s',
             user_class_type.__name__,
             scenario_type.__name__,
             len(scenario.tasks),
             user_class_type.weight,
             user_class_type.fixed_count,
+            user_class_type.sticky_tag,
         )
 
         user_class_type.tasks = [scenario_type]
@@ -343,7 +349,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
         logger.error('spawn rate is not set')
         return 254
 
-    if grizzly.setup.user_count < 1:
+    if grizzly.setup.dispatcher_class in [WeightedUsersDispatcher, None] and (grizzly.setup.user_count is None or grizzly.setup.user_count < 1):
         logger.error("step 'Given \"user_count\" users' is not in the feature file")
         return 254
 
@@ -481,7 +487,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
 
         environment.parsed_options = LocustOption(
             headless=True,
-            num_users=grizzly.setup.user_count,
+            num_users=grizzly.setup.user_count or 0,
             spawn_rate=grizzly.setup.spawn_rate,
             tags=[],
             exclude_tags=[],
@@ -506,7 +512,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
         if not isinstance(runner, WorkerRunner):
             logger.info('starting locust-%s via grizzly-%s', __locust_version__, __version__)
             # user_count == {} means that the dispatcher will use use class properties `fixed_count`
-            user_count: int | Dict[str, int] = grizzly.setup.user_count if runner.environment.dispatcher_class == WeightedUsersDispatcher else {}
+            user_count: int | Dict[str, int] = grizzly.setup.user_count or 0 if runner.environment.dispatcher_class == WeightedUsersDispatcher else {}
 
             runner.start(user_count, grizzly.setup.spawn_rate)
 

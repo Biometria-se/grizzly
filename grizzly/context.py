@@ -330,7 +330,7 @@ class GrizzlyContextSetup:
 
     global_context: Dict[str, Any] = field(init=False, repr=False, hash=False, compare=False, default_factory=dict)
 
-    user_count: int = field(init=False, default=0)
+    user_count: Optional[int] = field(init=False, default=None)
     spawn_rate: Optional[float] = field(init=False, default=None)
     timespan: Optional[str] = field(init=False, default=None)
     dispatcher_class: Optional[Type[UsersDispatcher]] = field(init=False, default=None)

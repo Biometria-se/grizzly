@@ -91,7 +91,7 @@ class TestGrizzlyContextSetup:
 
         expected_properties: Dict[str, Optional[Tuple[Any, Any]]] = {
             'log_level': ('INFO', 'DEBUG'),
-            'user_count': (0, 10),
+            'user_count': (None, 10),
             'spawn_rate': (None, 2),
             'timespan': (None, '10s'),
             'statistics_url': (None, 'influxdb://influx.example.org/grizzly'),

@@ -28,7 +28,7 @@ register_type(
 def _shape_fixed_user_count(context: Context, value: str, sticky_tag: Optional[str]) -> None:
     grizzly = cast(GrizzlyContext, context.grizzly)
 
-    if (grizzly.setup.dispatcher_class is not None and grizzly.setup.dispatcher_class != FixedUsersDispatcher) or grizzly.setup.user_count != 0:
+    if (grizzly.setup.dispatcher_class is not None and grizzly.setup.dispatcher_class != FixedUsersDispatcher) or grizzly.setup.user_count is not None:
         message = 'this step cannot be used in combination with ...'
         raise AssertionError(message)
 
@@ -48,7 +48,7 @@ def _shape_fixed_user_count(context: Context, value: str, sticky_tag: Optional[s
     grizzly.scenario.user.fixed_count = user_count
     grizzly.scenario.user.sticky_tag = sticky_tag
 
-@given('"{value}" {grammar:UserGramaticalNumber} with tag "{sticky_tag}"')
+@given('scenario "{value}" {grammar:UserGramaticalNumber} with tag "{sticky_tag}"')
 def step_shapes_fixed_user_count_sticky_tag(context: Context, value: str, sticky_tag: str, **_kwargs: Any) -> None:
     """Set number of users that will execute the scenario, with a tag.
 
@@ -61,13 +61,13 @@ def step_shapes_fixed_user_count_sticky_tag(context: Context, value: str, sticky
     Example:
     ```gherkin
     Scenario: first
-        Given "5" users with tag "foobar"
+        Given scenario "5" users with tag "foobar"
 
     Scenario: second
-        Given "1" user with tag "foobar"
+        Given scenario "1" user with tag "foobar"
 
     Scenario: third
-        Given "{{ user_count }}"
+        Given scenario "{{ user_count }}" users
     ```
 
     This example would require at minimum 2 workers. Scenario `first` and `second` will run, exclusively, on the same set of workers while scenario
@@ -81,7 +81,7 @@ def step_shapes_fixed_user_count_sticky_tag(context: Context, value: str, sticky
     _shape_fixed_user_count(context, value, sticky_tag)
 
 
-@given('"{value}" {grammar:UserGramaticalNumber}')
+@given('scenario "{value}" {grammar:UserGramaticalNumber}')
 def step_shapes_fixed_user_count(context: Context, value: str, **_kwargs: Any) -> None:
     """Set number of users that will execute the scenario.
 
@@ -89,9 +89,9 @@ def step_shapes_fixed_user_count(context: Context, value: str, **_kwargs: Any) -
 
     Example:
     ```gherkin
-    Given "5" users
-    Given "1" user
-    Given "{{ user_count }}"
+    Given scenario "5" users
+    Given scenario "1" user
+    Given scenario "{{ user_count }}" users
     ```
 
     Args:

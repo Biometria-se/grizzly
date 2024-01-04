@@ -250,6 +250,7 @@ def test_setup_locust_scenarios_user_distribution(behave_fixture: BehaveFixture,
     for index, user_class in enumerate(user_classes):
         assert user_class.fixed_count == user_distribution[index]
         assert user_class.weight == distribution[index]
+        assert user_class.sticky_tag is None
 
 
 @pytest.mark.skipif(sys.platform == 'win32', reason='resource module is posix only, this is not done in locust on windows')

@@ -33,7 +33,7 @@ def test_step_shapes_user_count(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
-    assert grizzly.setup.user_count == 0
+    assert grizzly.setup.user_count is None
 
     step_impl(behave, '10', grammar='user')
     assert grizzly.setup.user_count == 10
@@ -86,9 +86,11 @@ def test_step_shapes_spawn_rate(behave_fixture: BehaveFixture) -> None:
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     assert grizzly.setup.spawn_rate is None
 
+    grizzly.setup.user_count = 5
+
     # spawn_rate must be <= user_count
     with pytest.raises(AssertionError, match='spawn rate can not be greater than user count'):
-        step_impl(behave, '1', grammar='user')
+        step_impl(behave, '10', grammar='users')
 
     grizzly.setup.user_count = 10
     step_impl(behave, '0.1', grammar='users')

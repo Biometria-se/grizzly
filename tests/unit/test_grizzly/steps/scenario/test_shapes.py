@@ -31,7 +31,7 @@ def test__shape_fixed_user_count(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
 
-    assert grizzly.setup.user_count == 0
+    assert grizzly.setup.user_count is None
     assert grizzly.setup.dispatcher_class is None
 
     grizzly.scenarios.create(behave_fixture.create_scenario('first'))
