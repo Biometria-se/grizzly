@@ -31,7 +31,7 @@ MAGIC_4 = 4
 def initialize_testdata(grizzly: GrizzlyContext) -> Tuple[TestdataType, Set[str], Dict[str, MessageHandler]]:
     """Create a structure of testdata per scenario."""
     testdata: TestdataType = {}
-    template_variables = get_template_variables(grizzly)
+    template_variables, allowed_unused = get_template_variables(grizzly)
 
     found_variables = set()
     for variable in itertools.chain(*template_variables.values()):
@@ -46,7 +46,7 @@ def initialize_testdata(grizzly: GrizzlyContext) -> Tuple[TestdataType, Set[str]
     declared_variables = set(grizzly.state.variables.keys())
 
     # check except between declared variables and variables found in templates
-    missing_in_templates = [variable for variable in declared_variables if variable not in found_variables]
+    missing_in_templates = {variable for variable in declared_variables if variable not in found_variables} - allowed_unused
     assert len(missing_in_templates) == 0, f'variables has been declared, but cannot be found in templates: {",".join(missing_in_templates)}'
 
     missing_declarations = [variable for variable in found_variables if variable not in declared_variables]

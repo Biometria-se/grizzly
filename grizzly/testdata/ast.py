@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Dict, Generator, List, Optional, Set
+from typing import TYPE_CHECKING, Dict, Generator, List, Optional, Set, Tuple
 
 from jinja2 import Environment as Jinja2Environment
 from jinja2 import nodes as j2
@@ -13,7 +13,7 @@ if TYPE_CHECKING:  # pragma: no cover
 logger = logging.getLogger(__name__)
 
 
-def get_template_variables(grizzly: GrizzlyContext) -> Dict[str, Set[str]]:
+def get_template_variables(grizzly: GrizzlyContext) -> Tuple[Dict[str, Set[str]], Set[str]]:
     """Get all templates per scenario and parse them to find all variables that are used."""
     templates: Dict[GrizzlyContextScenario, Set[str]] = {}
 
@@ -58,7 +58,7 @@ def walk_attr(node: j2.Getattr) -> List[str]:
     return attributes
 
 
-def _parse_templates(templates: Dict[GrizzlyContextScenario, Set[str]], *, env: Jinja2Environment) -> Dict[str, Set[str]]:  # noqa: C901, PLR0915
+def _parse_templates(templates: Dict[GrizzlyContextScenario, Set[str]], *, env: Jinja2Environment) -> Tuple[Dict[str, Set[str]], Set[str]]:  # noqa: C901, PLR0915
     variables: Dict[str, Set[str]] = {}
     allowed_undefined: Set[str] = set()
 
@@ -169,4 +169,4 @@ def _parse_templates(templates: Dict[GrizzlyContextScenario, Set[str]], *, env: 
 
                             variables[scenario_name].add(variable)
 
-    return variables
+    return variables, allowed_undefined

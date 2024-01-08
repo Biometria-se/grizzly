@@ -62,6 +62,7 @@ def test_initialize_testdata_with_tasks(
             'endpoint_part': '/api',
             'message': 'hello world!',
             'orphan': 'most likely',
+            'unused_variable': 'some value',
         })
         grizzly.state.variables['AtomicIntegerIncrementer.messageID'] = 1337
         grizzly.state.variables['AtomicDate.now'] = 'now'
@@ -80,6 +81,7 @@ def test_initialize_testdata_with_tasks(
             content_type=TransformerContentType.JSON,
         ))
         request.content_type = TransformerContentType.JSON
+        grizzly.scenario.tasks.add(LogMessageTask('{{ unused_variable if unused_variable is defined else "hello" }}'))
         grizzly.scenario.tasks.add(UntilRequestTask(request=request, condition='{{ condition }}'))
         grizzly.scenario.tasks.add(ConditionalTask(name='conditional-1', condition='{{ value | int > 5 }}'))
         grizzly.scenario.tasks.add(ConditionalTask(name='conditional-1', condition='{{ AtomicIntegerIncrementer.value | int > 5 }}'))
