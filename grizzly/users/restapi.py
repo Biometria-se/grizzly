@@ -314,6 +314,9 @@ class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=R
                 else:
                     message = self._get_error_message(response)
                     message = f'{response.status_code} not in {request.response.status_codes}: {message}'
+                    if response.status_code == 401:
+                        message = f'{message} (session time {self.session_started})'
+
                     response.failure(ResponseError(message))
 
             headers = dict(response.headers.items()) if response.headers not in [None, {}] else None
