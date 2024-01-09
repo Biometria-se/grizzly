@@ -3,6 +3,7 @@ Core logic for handling different implementations for authorization.
 """
 from __future__ import annotations
 
+import logging
 from abc import ABCMeta, abstractmethod
 from enum import Enum
 from functools import wraps
@@ -38,6 +39,9 @@ class AuthType(Enum):
 
 
 P = ParamSpec('P')
+
+
+logger = logging.getLogger(__name__)
 
 
 class GrizzlyHttpAuthClient(Generic[P], metaclass=ABCMeta):
@@ -184,6 +188,8 @@ class refresh_token(Generic[P]):
                         else:
                             name, value = secret.split('=', 1)
                             client.cookies.update({name: value})
+
+                        logger.info('%s/%d updated token at %f', client.__class__.__name__, id(client), session_now)
                     elif authorization_token is not None and request is not None:  # update current request with active authorization token
                         request.metadata.update({'Authorization': authorization_token})
                 else:
