@@ -175,11 +175,19 @@ class refresh_token(Generic[P]):
                     session_now = time()
                     session_duration = session_now - client.session_started
 
+                    time_for_refresh = session_duration >= auth_context.get('refresh_time', 3000)
+
                     # refresh token if session has been alive for at least refresh_time
                     authorization_token = client.metadata.get('Authorization', None)
-                    if session_duration >= auth_context.get('refresh_time', 3000) or (authorization_token is None and client.cookies == {}):
+                    if time_for_refresh or (authorization_token is None and client.cookies == {}):
+                        if time_for_refresh:
+                            # if credentials are switched after one of the cached has timeout,
+                            # it will be None, and hence it will be refreshed next time it is used
+                            client.session_started = time()
+                            client.__cached_auth__.clear()
+
                         auth_type, secret = self.impl.get_token(client, auth_method)
-                        client.session_started = time()
+
                         if auth_type == AuthType.HEADER:
                             header = {'Authorization': f'Bearer {secret}'}
                             client.metadata.update(header)
@@ -189,7 +197,9 @@ class refresh_token(Generic[P]):
                             name, value = secret.split('=', 1)
                             client.cookies.update({name: value})
 
-                        logger.info('%s/%d updated token at %f', client.__class__.__name__, id(client), session_now)
+                        refreshed_for = auth_user.get('username', '<unknown username>') if auth_method == AuthMethod.USER else auth_client.get('id', '<unknown client id>')
+
+                        logger.info('%s/%d updated token at %f for %s', client.__class__.__name__, id(client), session_now, refreshed_for)
                     elif authorization_token is not None and request is not None:  # update current request with active authorization token
                         request.metadata.update({'Authorization': authorization_token})
                 else:
