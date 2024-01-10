@@ -514,7 +514,12 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
             # user_count == {} means that the dispatcher will use use class properties `fixed_count`
             user_count: int | Dict[str, int] = grizzly.setup.user_count or 0 if runner.environment.dispatcher_class == WeightedUsersDispatcher else {}
 
-            runner.start(user_count, grizzly.setup.spawn_rate)
+            try:
+                runner.start(user_count, grizzly.setup.spawn_rate)
+            except:
+                if isinstance(runner, MasterRunner):
+                    runner.send_message('grizzly_worker_quit', None)
+                raise
 
             stats_printer_greenlet = gevent.spawn(grizzly_stats_printer(environment.stats))
             stats_printer_greenlet.link_exception(greenlet_exception_handler)
