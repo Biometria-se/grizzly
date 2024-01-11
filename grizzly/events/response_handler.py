@@ -189,7 +189,8 @@ class ResponseHandler(GrizzlyEventHandler):
                     # do not guess which transformer to use
                     impl = transformer.available.get(request.response.content_type, None)
                     if impl is not None:
-                        response_payload = impl.transform(response_payload or '')
+                        # if payload is None, treat it as json 'null', to get correct behaviour
+                        response_payload = impl.transform(response_payload or impl.EMPTY)
                     else:
                         message = f'failed to transform: {response_payload} with content type {request.response.content_type.name}'
                         raise TransformerError(message)
