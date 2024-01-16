@@ -125,7 +125,7 @@ grizzly_extras = ["py.typed"]
 
 [tool.ruff]
 exclude = [
-   ".env", ".venv", ".pytest_tmp", "build", "dist"
+   ".env", ".venv", ".pytest_tmp", "build", "dist", "grizzly/__version__.py"
 ]
 line-length = 180
 indent-width = 4
