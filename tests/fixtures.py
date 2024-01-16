@@ -525,6 +525,7 @@ def step_start_webserver(context: Context, port: int) -> None:
 
     def __init__(self, tmp_path_factory: TempPathFactory, webserver: Webserver, *, distributed: bool) -> None:
         self.test_tmp_dir = (Path(__file__) / '..' / '..' / '.pytest_tmp').resolve()
+        self.test_tmp_dir.mkdir(exist_ok=True)
         self._tmp_path_factory_basetemp = tmp_path_factory._basetemp
         self.webserver = webserver
         tmp_path_factory._basetemp = self.test_tmp_dir
@@ -604,8 +605,9 @@ def step_start_webserver(context: Context, port: int) -> None:
                 self._env.update({env_key: env_value})
 
         # install grizzly-cli
+        # @TODO: must change!!!!
         rc, output = run_command(
-            ['python3', '-m', 'pip', 'install', 'git+https://github.com/biometria-se/grizzly-cli.git@main'],
+            ['python3', '-m', 'pip', 'install', 'git+https://github.com/mgor/grizzly-cli.git@feature/locust_new_dispatcher'],
             cwd=str(test_context),
             env=self._env,
         )
@@ -773,7 +775,7 @@ def step_start_webserver(context: Context, port: int) -> None:
             if re.match(r'Given "[^"]*" user[s]?', step) is not None:
                 add_user_count_step = False
 
-            if re.match(r'Given a user of type "[^"]*"', step) is not None:
+            if re.match(r'Given.*user[s]? of type "[^"]*"', step) is not None:
                 add_user_type_step = False
 
             if re.match(r'(And|Given) spawn rate is "[^"]*" user[s]? per second', step) is not None:
@@ -788,7 +790,7 @@ def step_start_webserver(context: Context, port: int) -> None:
             scenario.insert(0, f'Given a user of type "RestApi" load testing "http://{self.host}"')
 
         if add_spawn_rate_step and not add_user_count_step:
-            background.append('And spawn rate is "1" user per second')
+            background.append('Given spawn rate is "1" user per second')
 
         if self._distributed and not any(step.strip().startswith('Then start webserver on master port') for step in background):
             background.append(f'Then start webserver on master port "{self.webserver.port}"')

@@ -15,6 +15,5 @@ The steps in the `Scenario` section modifies the context only for the scenario t
 from .response import *
 from .results import *
 from .setup import *
-from .shapes import *
 from .tasks import *
 from .user import *

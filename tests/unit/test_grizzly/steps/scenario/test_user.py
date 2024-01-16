@@ -6,12 +6,73 @@ from os import environ
 from typing import TYPE_CHECKING, cast
 
 import pytest
+from locust.dispatch import FixedUsersDispatcher
 
 from grizzly.context import GrizzlyContext
 from grizzly.steps import *
+from grizzly.steps.scenario.user import _setup_user
 
 if TYPE_CHECKING:  # pragma: no cover
     from tests.fixtures import BehaveFixture
+
+
+def test__setup_user_validation(behave_fixture: BehaveFixture) -> None:
+    behave = behave_fixture.context
+    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+
+    with pytest.raises(AssertionError, match='cannot combine fixed user count with user weights'):
+        _setup_user(behave, 'Dummy', 'dummy://foobar', weight='200', user_count='200')
+
+    grizzly.setup.user_count = 200
+
+    with pytest.raises(AssertionError, match='this step cannot be used in combination with step'):
+        _setup_user(behave, 'Dummy', 'dummy://foobar', user_count='200')
+
+    grizzly.setup.user_count = None
+    grizzly.setup.spawn_rate = 300
+
+    with pytest.raises(AssertionError, match=r'spawn rate \(300\) cannot be greater than user count \(200\)'):
+        _setup_user(behave, 'Dummy', 'dummy://foobar', user_count='200')
+
+
+def test_step_user_type_count_tag(behave_fixture: BehaveFixture) -> None:
+    behave = behave_fixture.context
+    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+
+    assert hasattr(grizzly.scenario, 'user')
+    assert not hasattr(grizzly.scenario.user, 'class_name')
+    assert 'host' not in grizzly.scenario.context
+
+    step_user_type_count_tag(behave, '100', 'users', 'RestApi', 'foobar', 'http://localhost:8000')
+
+    assert grizzly.setup.dispatcher_class == FixedUsersDispatcher
+    assert grizzly.scenario.user.class_name == 'RestApiUser'
+    assert grizzly.scenario.context['host'] == 'http://localhost:8000'
+    assert grizzly.scenario.user.fixed_count == 100
+    assert grizzly.scenario.user.sticky_tag == 'foobar'
+    assert grizzly.scenario.user.weight == 1
+
+
+def test_setup_user_type_count(behave_fixture: BehaveFixture) -> None:
+    behave = behave_fixture.context
+    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+
+    assert hasattr(grizzly.scenario, 'user')
+    assert not hasattr(grizzly.scenario.user, 'class_name')
+    assert 'host' not in grizzly.scenario.context
+    grizzly.state.variables['max_users'] = '10'
+
+    step_user_type_count(behave, '{{ max_users * 0.1 }}', 'user', 'ServiceBus', 'sb://localhost:8000')
+
+    assert grizzly.setup.dispatcher_class == FixedUsersDispatcher
+    assert grizzly.scenario.user.class_name == 'ServiceBusUser'
+    assert grizzly.scenario.context['host'] == 'sb://localhost:8000'
+    assert grizzly.scenario.user.fixed_count == 1
+    assert grizzly.scenario.user.sticky_tag is None
+    assert grizzly.scenario.user.weight == 1
 
 
 def test_step_user_type(behave_fixture: BehaveFixture) -> None:
@@ -32,6 +93,9 @@ def test_step_user_type(behave_fixture: BehaveFixture) -> None:
 
     assert grizzly.scenario.user.class_name == 'ServiceBusUser'
     assert grizzly.scenario.context['host'] == 'http://localhost:8000'
+    assert grizzly.scenario.user.fixed_count is None
+    assert grizzly.scenario.user.sticky_tag is None
+    assert grizzly.setup.dispatcher_class is None
 
     with pytest.raises(AssertionError, match='value contained variable "host" which has not been declared'):
         step_user_type(behave, 'RestApi', '{{ host }}')
