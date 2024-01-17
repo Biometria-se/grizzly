@@ -102,7 +102,10 @@ def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Opt
         fixed_count = scenario.user.fixed_count
 
     for merge_context in contexts:
+        logger.debug('%s context: %r', user_class_name, merge_context)
         context = merge_dicts(context, merge_context)
+
+    logger.debug('%s context: %r', user_class_name, context)
 
     distribution: Dict[str, Union[int, float, str | None]] = {
         'weight': scenario.user.weight,

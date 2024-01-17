@@ -125,6 +125,7 @@ And metadata "filename" is "my_filename"
 """
 from __future__ import annotations
 
+import inspect
 import logging
 from contextlib import contextmanager, suppress
 from typing import TYPE_CHECKING, Any, ClassVar, Dict, Generator, Optional, Set, cast
@@ -223,6 +224,8 @@ class MessageQueueUser(GrizzlyUser):
             'channel': unquote(params['Channel'][0]),
         })
 
+        self.logger.debug('auth context: %r', self._context.get('auth', {}))
+
         auth_context = self._context.get('auth', {})
         username = auth_context.get('username', None)
         message_context = self._context.get('message', {})
@@ -290,6 +293,8 @@ class MessageQueueUser(GrizzlyUser):
 
     @contextmanager
     def _request_context(self, am_request: AsyncMessageRequest) -> Generator[Dict[str, Any], None, None]:
+        self.logger.debug('%s request context: %r', inspect.stack()[1][3], am_request)
+
         response: Optional[AsyncMessageResponse] = None
         context: Dict[str, Any] = {
             'metadata': None,
