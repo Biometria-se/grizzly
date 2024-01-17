@@ -49,14 +49,15 @@ def test_e2e_step_setup_variable_value(e2e_fixture: End2EndFixture) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
 
         assert grizzly.state.variables['AtomicCsvWriter.output'] == "output.csv | headers='foo, bar'"
-        assert len(grizzly.scenario.tasks()) == 2 + 1
+        assert len(grizzly.scenario.tasks()) == 3 + 1
 
     e2e_fixture.add_validator(validate_variables)
 
     feature_file = e2e_fixture.test_steps(
         scenario=[
             'And value for variable "AtomicCsvWriter.output" is "output.csv | headers=\'foo, bar\'"',
-            'And value for variable "AtomicCsvWriter.output" is "bar, foo"',
+            'Then log message "dummy"',
+            'Given value for variable "AtomicCsvWriter.output" is "bar, foo"',
             'And value for variable "foobar" is "foobar"',
             'And value for variable "foobar" is "foobaz"',
         ],

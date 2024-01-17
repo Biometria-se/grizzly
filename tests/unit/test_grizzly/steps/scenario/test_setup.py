@@ -371,6 +371,7 @@ def test_step_setup_pace(behave_fixture: BehaveFixture) -> None:
 def test_step_setup_set_variable_alias(behave_fixture: BehaveFixture, mocker: MockerFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
     assert grizzly.state.alias == {}
 

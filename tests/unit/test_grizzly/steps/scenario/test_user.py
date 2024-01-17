@@ -45,7 +45,7 @@ def test_step_user_type_count_tag(behave_fixture: BehaveFixture) -> None:
     assert not hasattr(grizzly.scenario.user, 'class_name')
     assert 'host' not in grizzly.scenario.context
 
-    step_user_type_count_tag(behave, '100', 'users', 'RestApi', 'foobar', 'http://localhost:8000')
+    step_user_type_count_tag(behave, '100', 'RestApi', 'foobar', 'http://localhost:8000', _grammar='users')
 
     assert grizzly.setup.dispatcher_class == FixedUsersDispatcher
     assert grizzly.scenario.user.class_name == 'RestApiUser'
@@ -65,7 +65,7 @@ def test_setup_user_type_count(behave_fixture: BehaveFixture) -> None:
     assert 'host' not in grizzly.scenario.context
     grizzly.state.variables['max_users'] = '10'
 
-    step_user_type_count(behave, '{{ max_users * 0.1 }}', 'user', 'ServiceBus', 'sb://localhost:8000')
+    step_user_type_count(behave, '{{ max_users * 0.1 }}', 'ServiceBus', 'sb://localhost:8000', _grammar='user')
 
     assert grizzly.setup.dispatcher_class == FixedUsersDispatcher
     assert grizzly.scenario.user.class_name == 'ServiceBusUser'

@@ -96,9 +96,11 @@ def test_step_setup_variable_value(behave_fixture: BehaveFixture, mocker: Mocker
 
     grizzly.state.variables.update({'foo_value': 'foobar'})
 
+    grizzly.scenario.tasks.add(LogMessageTask('dummy'))
+
     step_setup_variable_value(behave, 'AtomicCsvWriter.output.foo', '{{ foo_value }}')
-    assert len(grizzly.scenario.tasks()) == 1
-    task = grizzly.scenario.tasks()[0]
+    assert len(grizzly.scenario.tasks()) == 2
+    task = grizzly.scenario.tasks()[-1]
     assert isinstance(task, SetVariableTask)
     assert task.variable == 'AtomicCsvWriter.output.foo'
     assert task.value == '{{ foo_value }}'
@@ -106,20 +108,42 @@ def test_step_setup_variable_value(behave_fixture: BehaveFixture, mocker: Mocker
     grizzly.state.variables.update({'bar_value': 'foobaz'})
 
     step_setup_variable_value(behave, 'AtomicCsvWriter.output.bar', '{{ bar_value }}')
-    assert len(grizzly.scenario.tasks()) == 2
-    task = grizzly.scenario.tasks()[1]
+    assert len(grizzly.scenario.tasks()) == 3
+    task = grizzly.scenario.tasks()[-1]
     assert isinstance(task, SetVariableTask)
     assert task.variable == 'AtomicCsvWriter.output.bar'
     assert task.value == '{{ bar_value }}'
 
+    grizzly.scenario.tasks.clear()
+
     with pytest.raises(AssertionError, match="No module named 'custom'"):
         step_setup_variable_value(behave, 'custom.variable.AtomicFooBar.value.foo', 'hello')
 
-    assert len(grizzly.scenario.tasks()) == 2
+    assert len(grizzly.scenario.tasks()) == 0
 
     set_variable_task_mock = mocker.patch('grizzly.tasks.set_variable.SetVariableTask.__init__', return_value=None)
     grizzly.state.variables.update({'custom.variable.AtomicFooBar.value': 'hello'})
 
+    grizzly.scenario.tasks.add(LogMessageTask('dummy'))
+
     step_setup_variable_value(behave, 'custom.variable.AtomicFooBar.value.foo', 'hello')
 
     set_variable_task_mock.assert_called_once_with('custom.variable.AtomicFooBar.value.foo', 'hello', VariableType.VARIABLES)
+
+    grizzly.scenarios.create(behave_fixture.create_scenario('test zcenario'))
+
+    with pytest.raises(AssertionError, match='variable AtomicIntegerIncrementer.persistent has already been initialized'):
+        step_setup_variable_value(behave, 'AtomicIntegerIncrementer.persistent', '1 | step=10, persist=True')
+
+    with pytest.raises(AssertionError, match='variable dynamic_variable_value has already been initialized'):
+        step_setup_variable_value(behave, 'dynamic_variable_value', '{{ value }}')
+
+    grizzly.scenario.tasks.add(LogMessageTask('dummy'))
+
+    step_setup_variable_value(behave, 'new_variable', 'foobar')
+    assert grizzly.state.variables['new_variable'] == 'foobar'
+
+    grizzly.scenario.tasks.clear()
+
+    with pytest.raises(AssertionError, match='variable new_variable has already been initialized'):
+        step_setup_variable_value(behave, 'new_variable', 'foobar')
