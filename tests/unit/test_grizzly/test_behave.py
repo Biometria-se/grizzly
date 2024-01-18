@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any, Optional, cast
 import pytest
 from behave.configuration import Configuration
 from behave.runner import Runner
+from pytest_mock import MockerFixture
 
 from grizzly.behave import after_feature, after_scenario, after_step, before_feature, before_scenario, before_step
 from grizzly.context import GrizzlyContext
@@ -230,7 +231,7 @@ def test_before_scenario(behave_fixture: BehaveFixture, mocker: MockerFixture) -
             else:
                 self.func = step_scenario
 
-        def step_local(self) -> None:
+        def step_local(self, context: Context, *args: Any, **kwargs: Any) -> None:
             pass
 
     def find_match(step: Step, *_args: Any, **_kwargs: Any) -> Optional[MatchedStep]:
@@ -333,6 +334,8 @@ def test_after_scenario(behave_fixture: BehaveFixture) -> None:
 
     after_scenario(behave)
 
+    assert behave.exceptions == {}
+
     assert getattr(grizzly.state, 'background_section_done', False)
 
     after_scenario(behave)
@@ -362,6 +365,7 @@ def test_after_step(grizzly_fixture: GrizzlyFixture) -> None:
     grizzly = grizzly_fixture.grizzly
 
     behave.last_task_count = {}
+    behave.exceptions = {}
     step = Step(filename=None, line=None, keyword='And', step_type='step', name='this is a grizzly step')
 
     after_step(behave, step)

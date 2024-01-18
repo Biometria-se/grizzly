@@ -1,11 +1,14 @@
 """Contains methods for handling AST operations when parsing templates."""
 from __future__ import annotations
 
+import itertools
 import logging
 from typing import TYPE_CHECKING, Dict, Generator, List, Optional, Set, Tuple
 
 from jinja2 import Environment as Jinja2Environment
 from jinja2 import nodes as j2
+
+from . import GrizzlyVariables
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContext, GrizzlyContextScenario
@@ -13,23 +16,44 @@ if TYPE_CHECKING:  # pragma: no cover
 logger = logging.getLogger(__name__)
 
 
-def get_template_variables(grizzly: GrizzlyContext) -> Tuple[Dict[str, Set[str]], Set[str]]:
+def get_template_variables(grizzly: GrizzlyContext) -> dict[str, set[str]]:
     """Get all templates per scenario and parse them to find all variables that are used."""
-    templates: Dict[GrizzlyContextScenario, Set[str]] = {}
+    templates: dict[GrizzlyContextScenario, set[str]] = {}
 
-    for scenario in grizzly.scenarios:
-        if scenario not in templates:
-            templates[scenario] = set()
+    for _scenario in grizzly.scenarios:
+        if _scenario not in templates:
+            templates[_scenario] = set()
 
-        for task in scenario.tasks():
-            templates[scenario].update(task.get_templates())
+        for task in _scenario.tasks():
+            templates[_scenario].update(task.get_templates())
 
-        templates[scenario].update(scenario.orphan_templates)
+        templates[_scenario].update(_scenario.orphan_templates)
 
-        if len(templates[scenario]) == 0:
-            del templates[scenario]
+        if len(templates[_scenario]) == 0:
+            del templates[_scenario]
 
-    return _parse_templates(templates, env=grizzly.state.jinja2)
+    template_variables, allowed_unused = _parse_templates(templates, env=grizzly.state.jinja2)
+
+    found_variables = set()
+    for variable in itertools.chain(*template_variables.values()):
+        module_name, variable_type, variable_name, _ = GrizzlyVariables.get_variable_spec(variable)
+
+        if module_name is None and variable_type is None:
+            found_variables.add(variable_name)
+        else:
+            prefix = f'{module_name}.' if module_name != 'grizzly.testdata.variables' else ''
+            found_variables.add(f'{prefix}{variable_type}.{variable_name}')
+
+    declared_variables = set(grizzly.state.variables.keys())
+
+    # check except between declared variables and variables found in templates
+    missing_in_templates = {variable for variable in declared_variables if variable not in found_variables} - allowed_unused
+    assert len(missing_in_templates) == 0, f'variables has been declared, but cannot be found in templates: {",".join(missing_in_templates)}'
+
+    missing_declarations = [variable for variable in found_variables if variable not in declared_variables]
+    assert len(missing_declarations) == 0, f'variables has been found in templates, but have not been declared: {",".join(missing_declarations)}'
+
+    return template_variables
 
 
 def walk_attr(node: j2.Getattr) -> List[str]:

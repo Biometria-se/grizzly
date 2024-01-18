@@ -14,6 +14,7 @@ from grizzly.steps import (
     step_task_request_text_with_name_endpoint,
 )
 from grizzly.types import RequestDirection, RequestMethod
+from tests.helpers import ANY
 
 if TYPE_CHECKING:  # pragma: no cover
     from tests.fixtures import BehaveFixture
@@ -23,11 +24,12 @@ def test_step_task_loop(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = behave_fixture.grizzly
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+    behave.scenario = grizzly.scenario.behave
 
     assert getattr(grizzly.scenario.tasks.tmp, 'loop', '') is None
 
-    with pytest.raises(ValueError, match='LoopTask: foobar has not been initialized'):
-        step_task_loop_start(behave, '["hello", "world"]', 'foobar', 'test-loop')
+    step_task_loop_start(behave, '["hello", "world"]', 'foobar', 'test-loop')
+    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='LoopTask: foobar has not been initialized')]}
 
     step_setup_variable_value(behave, 'foobar', 'none')
 
@@ -58,5 +60,8 @@ def test_step_task_loop(behave_fixture: BehaveFixture) -> None:
     assert len(grizzly.scenario.tasks()) == 1
     assert getattr(grizzly.scenario.tasks.tmp, 'loop', '') is None
 
-    with pytest.raises(AssertionError, match='there are no open loop, you need to create one before closing it'):
-        step_task_loop_end(behave)
+    step_task_loop_end(behave)
+    assert behave.exceptions == {behave.scenario.name: [
+        ANY(AssertionError, message='LoopTask: foobar has not been initialized'),
+        ANY(AssertionError, message='there are no open loop, you need to create one before closing it'),
+    ]}

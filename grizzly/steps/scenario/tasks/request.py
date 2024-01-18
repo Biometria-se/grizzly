@@ -174,8 +174,8 @@ def step_task_request_text_with_name(context: Context, method: RequestMethod, na
         name (str): name of the requests in logs, can contain variables
     """
     if method.direction == RequestDirection.FROM:
-        assert context.text is None, f'Step text is not allowed for {method.name}'
+        assert context.text is None, f'step text is not allowed for {method.name}'
     elif method.direction == RequestDirection.TO:
-        assert context.text is not None, f'Step text is mandatory for {method.name}'
+        assert context.text is not None, f'step text is mandatory for {method.name}'
 
     add_request_task(context, method=method, source=context.text, name=name)

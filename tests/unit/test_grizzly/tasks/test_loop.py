@@ -38,7 +38,7 @@ class TestLoopTask:
     def test___init__(self, grizzly_fixture: GrizzlyFixture) -> None:
         grizzly = grizzly_fixture.grizzly
 
-        with pytest.raises(ValueError, match='LoopTask: asdf has not been initialized'):
+        with pytest.raises(AssertionError, match='LoopTask: asdf has not been initialized'):
             LoopTask(name='test', values='["hello", "world"]', variable='asdf')
 
         grizzly.state.variables['asdf'] = 'none'

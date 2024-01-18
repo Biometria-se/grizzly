@@ -63,16 +63,16 @@ class TestHttpClientTask:
             grizzly = cast(GrizzlyContext, behave.grizzly)
             test_cls = type('HttpClientTestTask', (HttpClientTask, ), {'__scenario__': grizzly.scenario})
 
-            with pytest.raises(AttributeError, match='HttpClientTestTask: variable argument is not applicable for direction TO'):
+            with pytest.raises(AssertionError, match='HttpClientTestTask: variable argument is not applicable for direction TO'):
                 test_cls(RequestDirection.TO, 'http://example.org', payload_variable='test')
 
-            with pytest.raises(AttributeError, match='HttpClientTestTask: source argument is not applicable for direction FROM'):
+            with pytest.raises(AssertionError, match='HttpClientTestTask: source argument is not applicable for direction FROM'):
                 test_cls(RequestDirection.FROM, 'http://example.org', source='test')
 
-            with pytest.raises(ValueError, match='HttpClientTestTask: variable test has not been initialized'):
+            with pytest.raises(AssertionError, match='HttpClientTestTask: variable test has not been initialized'):
                 test_cls(RequestDirection.FROM, 'http://example.org', payload_variable='test')
 
-            with pytest.raises(ValueError, match='HttpClientTestTask: variable test has not been initialized'):
+            with pytest.raises(AssertionError, match='HttpClientTestTask: variable test has not been initialized'):
                 test_cls(RequestDirection.FROM, 'http://example.org', payload_variable=None, metadata_variable='test')
 
             response = Response()
@@ -87,7 +87,7 @@ class TestHttpClientTask:
 
             grizzly.state.variables.update({'test': 'none'})
 
-            with pytest.raises(ValueError, match='HttpClientTestTask: payload variable is not set, but metadata variable is set'):
+            with pytest.raises(AssertionError, match='HttpClientTestTask: payload variable is not set, but metadata variable is set'):
                 test_cls(RequestDirection.FROM, 'http://example.org', payload_variable=None, metadata_variable='test')
 
             parent = grizzly_fixture()

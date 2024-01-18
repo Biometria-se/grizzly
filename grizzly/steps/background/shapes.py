@@ -56,7 +56,7 @@ def step_shapes_user_count(context: Context, value: str, **_kwargs: Any) -> None
     assert user_count >= 0, f'{value} resolved to {user_count} users, which is not valid'
 
     if grizzly.setup.spawn_rate is not None:
-        assert user_count >= grizzly.setup.spawn_rate, f'spawn rate ({grizzly.setup.spawn_rate}) can not be greater than user count ({user_count})'
+        assert user_count >= grizzly.setup.spawn_rate, f'spawn rate ({grizzly.setup.spawn_rate}) cannot be greater than user count ({user_count})'
 
     grizzly.setup.user_count = user_count
     grizzly.setup.dispatcher_class = WeightedUsersDispatcher
@@ -88,6 +88,6 @@ def step_shapes_spawn_rate(context: Context, value: str, **_kwargs: Any) -> None
     assert spawn_rate > 0.0, f'{value} resolved to {spawn_rate} users, which is not valid'
 
     if grizzly.setup.user_count is not None:
-        assert int(spawn_rate) <= grizzly.setup.user_count, 'spawn rate can not be greater than user count'
+        assert int(spawn_rate) <= grizzly.setup.user_count, 'spawn rate cannot be greater than user count'
 
     grizzly.setup.spawn_rate = spawn_rate

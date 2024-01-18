@@ -17,6 +17,7 @@ from grizzly.steps import (
 )
 from grizzly.tasks import ConditionalTask
 from grizzly.types import RequestDirection, RequestMethod
+from tests.helpers import ANY
 
 if TYPE_CHECKING:  # pragma: no cover
     from tests.fixtures import BehaveFixture
@@ -26,6 +27,7 @@ def test_step_task_conditional_if(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = behave_fixture.grizzly
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+    behave.scenario = grizzly.scenario.behave
 
     assert getattr(grizzly.scenario.tasks.tmp, 'conditional', '') is None
 
@@ -47,20 +49,23 @@ def test_step_task_conditional_if(behave_fixture: BehaveFixture) -> None:
     assert list(grizzly.scenario.tasks.tmp.conditional.tasks.keys()) == [True]
     assert len(grizzly.scenario.tasks.tmp.conditional.tasks[True]) == 4
 
-    with pytest.raises(AssertionError, match='cannot create a new conditional while "conditional-1" is still open'):
-        step_task_conditional_if(behave, '{{ value | int == 20 }}', 'conditional-2')
+    step_task_conditional_if(behave, '{{ value | int == 20 }}', 'conditional-2')
+    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='cannot create a new conditional while "conditional-1" is still open')]}
 
 
 def test_step_task_conditional_else(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = behave_fixture.grizzly
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+    behave.scenario = grizzly.scenario.behave
 
     assert getattr(grizzly.scenario.tasks.tmp, 'conditional', '') is None
 
-    with pytest.raises(AssertionError, match='there are no open conditional, you need to create one first'):
-        step_task_conditional_else(behave)
+    step_task_conditional_else(behave)
+    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='there are no open conditional, you need to create one first')]}
+    delattr(behave, 'exceptions')
 
+    # run test to create prerequisites
     test_step_task_conditional_if(behave_fixture)
 
     assert grizzly.scenario.tasks.tmp.conditional is not None
@@ -85,8 +90,9 @@ def test_step_task_conditional_end(behave_fixture: BehaveFixture) -> None:
 
     assert getattr(grizzly.scenario.tasks.tmp, 'conditional', '') is None
 
-    with pytest.raises(AssertionError, match='there are no open conditional, you need to create one before closing it'):
-        step_task_conditional_end(behave)
+    step_task_conditional_end(behave)
+    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='there are no open conditional, you need to create one before closing it')]}
+    delattr(behave, 'exceptions')
 
     test_step_task_conditional_else(behave_fixture)
 

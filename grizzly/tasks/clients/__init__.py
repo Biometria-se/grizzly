@@ -128,27 +128,27 @@ class ClientTask(GrizzlyMetaRequestTask):
 
         if self.payload_variable is not None and self.direction != RequestDirection.FROM:
             message = f'{self.__class__.__name__}: variable argument is not applicable for direction {self.direction.name}'
-            raise AttributeError(message)
+            raise AssertionError(message)
 
         if self.source is not None and self.direction != RequestDirection.TO:
             message = f'{self.__class__.__name__}: source argument is not applicable for direction {self.direction.name}'
-            raise AttributeError(message)
+            raise AssertionError(message)
 
         if self.payload_variable is not None and self.payload_variable not in self.grizzly.state.variables:
             message = f'{self.__class__.__name__}: variable {self.payload_variable} has not been initialized'
-            raise ValueError(message)
+            raise AssertionError(message)
 
         if self.metadata_variable is not None and self.metadata_variable not in self.grizzly.state.variables:
             message = f'{self.__class__.__name__}: variable {self.metadata_variable} has not been initialized'
-            raise ValueError(message)
+            raise AssertionError(message)
 
         if self.payload_variable is None and self.metadata_variable is not None:
             message = f'{self.__class__.__name__}: payload variable is not set, but metadata variable is set'
-            raise ValueError(message)
+            raise AssertionError(message)
 
         if self.source is None and self.direction == RequestDirection.TO:
             message = f'{self.__class__.__name__}: source must be set for direction {self.direction.name}'
-            raise ValueError(message)
+            raise AssertionError(message)
 
         self._short_name = self.__class__.__name__.replace('ClientTask', '')
 

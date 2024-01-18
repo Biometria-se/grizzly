@@ -156,7 +156,7 @@ class RequestTask(GrizzlyMetaRequestTask):
                     )
                 ):
                     message = f'Content type multipart/form-data requires endpoint arguments multipart_form_data_name and multipart_form_data_filename: {self.endpoint}'
-                    raise ValueError(message)
+                    raise AssertionError(message)
 
             self.endpoint = value
 

@@ -53,7 +53,7 @@ class MessageDirection(PermutationEnum):
             return cls[value.strip().upper()]
         except KeyError as e:
             message = f'"{value.upper()}" is not a valid value of {cls.__name__}'
-            raise ValueError(message) from e
+            raise AssertionError(message) from e
 
 
 class ResponseTarget(PermutationEnum):
@@ -69,7 +69,7 @@ class ResponseTarget(PermutationEnum):
             return cls[value.strip().upper()]
         except KeyError as e:
             message = f'"{value.upper()}" is not a valid value of {cls.__name__}'
-            raise ValueError(message) from e
+            raise AssertionError(message) from e
 
 
 class ResponseAction(Enum):
@@ -96,7 +96,7 @@ class RequestDirection(PermutationEnum):
             return cls[value.strip().upper()]
         except KeyError as e:
             message = f'"{value.upper()}" is not a valid value of {cls.__name__}'
-            raise ValueError(message) from e
+            raise AssertionError(message) from e
 
     @property
     def methods(self) -> List[RequestMethod]:
@@ -127,7 +127,7 @@ class RequestMethod(PermutationEnum):
             return cls[value.strip().upper()]
         except KeyError as e:
             message = f'"{value.upper()}" is not a valid value of {cls.__name__}'
-            raise ValueError(message) from e
+            raise AssertionError(message) from e
 
     @property
     def direction(self) -> RequestDirection:
@@ -186,7 +186,7 @@ class RequestType(Enum):
         try:
             request_type = cls.from_alias(method)
             weight = request_type.weight
-        except AttributeError:
+        except AssertionError:
             weight = 10
 
         return weight
@@ -208,7 +208,7 @@ class RequestType(Enum):
                 return request_type
 
         message = f'no request type with alias {alias}'
-        raise AttributeError(message)
+        raise AssertionError(message)
 
     @classmethod
     def from_string(cls, key: str) -> str:
@@ -225,7 +225,7 @@ class RequestType(Enum):
             return rm_attribute.name
 
         message = f'{key} does not exist'
-        raise AttributeError(message)
+        raise AssertionError(message)
 
 
 GrizzlyResponse = Tuple[Optional[Dict[str, Any]], Optional[str]]

@@ -146,27 +146,27 @@ class TestMessageQueueClientTask:
             }
 
             task_factory.endpoint = 'https://mq.example.com'
-            with pytest.raises(ValueError, match='MessageQueueClientTask: "https" is not a supported scheme for endpoint'):
+            with pytest.raises(AssertionError, match='MessageQueueClientTask: "https" is not a supported scheme for endpoint'):
                 task_factory.create_context()
 
             task_factory.endpoint = 'mqs:///'
-            with pytest.raises(ValueError, match='MessageQueueClientTask: hostname not specified in "mqs:///"'):
+            with pytest.raises(AssertionError, match='MessageQueueClientTask: hostname not specified in "mqs:///"'):
                 task_factory.create_context()
 
             task_factory.endpoint = 'mq://mq.example.io'
-            with pytest.raises(ValueError, match='MessageQueueClientTask: no valid path component found in "mq://mq.example.io"'):
+            with pytest.raises(AssertionError, match='MessageQueueClientTask: no valid path component found in "mq://mq.example.io"'):
                 task_factory.create_context()
 
             task_factory.endpoint = 'mqs://mq.example.io/topic:INCOMING.MSG'
-            with pytest.raises(ValueError, match='MessageQueueClientTask: QueueManager and Channel must be specified in the query string of "mqs://mq.example.io/topic:INCOMING.MSG"'):
+            with pytest.raises(AssertionError, match='MessageQueueClientTask: QueueManager and Channel must be specified in the query string of "mqs://mq.example.io/topic:INCOMING.MSG"'):
                 task_factory.create_context()
 
             task_factory.endpoint = 'mqs://mq.example.io/topic:INCOMING.MSG?Channel=TCP.IN'
-            with pytest.raises(ValueError, match='MessageQueueClientTask: QueueManager must be specified in the query string'):
+            with pytest.raises(AssertionError, match='MessageQueueClientTask: QueueManager must be specified in the query string'):
                 task_factory.create_context()
 
             task_factory.endpoint = 'mqs://mq.example.io/topic:INCOMING.MSG?QueueManager=QM01'
-            with pytest.raises(ValueError, match='MessageQueueClientTask: Channel must be specified in the query string'):
+            with pytest.raises(AssertionError, match='MessageQueueClientTask: Channel must be specified in the query string'):
                 task_factory.create_context()
 
             task_factory.endpoint = 'mq://mq.example.io/topic:INCOMING.MSG?QueueManager=QM01&Channel=TCP.IN'
@@ -611,7 +611,7 @@ class TestMessageQueueClientTask:
         try:
             MessageQueueClientTask.__scenario__ = grizzly_fixture.grizzly.scenario
 
-            with pytest.raises(ValueError, match='MessageQueueClientTask: source must be set for direction TO'):
+            with pytest.raises(AssertionError, match='MessageQueueClientTask: source must be set for direction TO'):
                 task_factory = MessageQueueClientTask(
                     RequestDirection.TO,
                     'mqs://mq_username:mq_password@mq.example.io/topic:INCOMING.MSG?QueueManager=QM01&Channel=TCP.IN',
@@ -621,7 +621,7 @@ class TestMessageQueueClientTask:
 
             source = 'tests/source.json'
 
-            with pytest.raises(ValueError, match='MessageQueueClientTask: destination is not allowed'):
+            with pytest.raises(AssertionError, match='MessageQueueClientTask: destination is not allowed'):
                 task_factory = MessageQueueClientTask(
                     RequestDirection.TO,
                     'mqs://mq_username:mq_password@mq.example.io/topic:INCOMING.MSG?QueueManager=QM01&Channel=TCP.IN',

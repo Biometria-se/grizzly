@@ -234,11 +234,13 @@ class GrizzlyContextTasks(List['GrizzlyTask']):
     def tmp(self) -> GrizzlyContextTasksTmp:
         return self._tmp
 
-    def __call__(self) -> List[GrizzlyTask]:
-        if len(self.tmp.__stack__) > 0:
-            return self.tmp.__stack__[-1].peek()
+    def __call__(self, *filtered_type: type[GrizzlyTask]) -> List[GrizzlyTask]:
+        tasks = self.tmp.__stack__[-1].peek() if len(self.tmp.__stack__) > 0 else cast(List['GrizzlyTask'], self)
 
-        return cast(List['GrizzlyTask'], self)
+        if len(filtered_type) > 0:
+            tasks = [task for task in tasks if isinstance(task, filtered_type)]
+
+        return tasks
 
     def add(self, task: GrizzlyTask) -> None:
         if len(self.tmp.__stack__) > 0:

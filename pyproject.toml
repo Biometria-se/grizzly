@@ -106,7 +106,7 @@ docs = [
     "mkdocs >=1.3.0",
     "mkdocs-material >=8.3.2",
     "packaging >=21.3",
-    "grizzly-loadtester-cli",
+    "grizzly-loadtester-cli @ git+https://github.com/mgor/grizzly-cli.git@feature/locust_new_dispatcher",
     "python-frontmatter",
     "mistune >=3.0.2"
 ]

@@ -89,6 +89,6 @@ class SetVariableTask(GrizzlyTask):
                 # always update user context with new value
                 parent.user._context['variables'][self.variable] = value
             else:
-                parent.user.add_context(create_context_variable(self.grizzly, self.variable, value))
+                parent.user.add_context(create_context_variable(self.grizzly, self.variable, value, scenario=parent.user._scenario))
 
         return task

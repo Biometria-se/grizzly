@@ -1,7 +1,6 @@
 """Utilities related testdata."""
 from __future__ import annotations
 
-import itertools
 import logging
 import re
 from collections import namedtuple
@@ -31,26 +30,7 @@ MAGIC_4 = 4
 def initialize_testdata(grizzly: GrizzlyContext) -> Tuple[TestdataType, Set[str], Dict[str, MessageHandler]]:
     """Create a structure of testdata per scenario."""
     testdata: TestdataType = {}
-    template_variables, allowed_unused = get_template_variables(grizzly)
-
-    found_variables = set()
-    for variable in itertools.chain(*template_variables.values()):
-        module_name, variable_type, variable_name, _ = GrizzlyVariables.get_variable_spec(variable)
-
-        if module_name is None and variable_type is None:
-            found_variables.add(variable_name)
-        else:
-            prefix = f'{module_name}.' if module_name != 'grizzly.testdata.variables' else ''
-            found_variables.add(f'{prefix}{variable_type}.{variable_name}')
-
-    declared_variables = set(grizzly.state.variables.keys())
-
-    # check except between declared variables and variables found in templates
-    missing_in_templates = {variable for variable in declared_variables if variable not in found_variables} - allowed_unused
-    assert len(missing_in_templates) == 0, f'variables has been declared, but cannot be found in templates: {",".join(missing_in_templates)}'
-
-    missing_declarations = [variable for variable in found_variables if variable not in declared_variables]
-    assert len(missing_declarations) == 0, f'variables has been found in templates, but have not been declared: {",".join(missing_declarations)}'
+    template_variables = get_template_variables(grizzly)
 
     initialized_datatypes: Dict[str, Any] = {}
     external_dependencies: Set[str] = set()
@@ -144,7 +124,7 @@ def _objectify(testdata: Dict[str, Any]) -> Dict[str, Any]:
     return testdata
 
 
-def create_context_variable(grizzly: GrizzlyContext, variable: str, value: str) -> Dict[str, Any]:
+def create_context_variable(grizzly: GrizzlyContext, variable: str, value: str, *, scenario: Optional[GrizzlyContextScenario] = None) -> Dict[str, Any]:
     """Create a variable as a context variable. Handles other separators than `.`."""
     if has_template(value):
         grizzly.scenario.orphan_templates.append(value)
@@ -159,7 +139,7 @@ def create_context_variable(grizzly: GrizzlyContext, variable: str, value: str) 
 
     casted_variable = casted_variable.lower().replace(' ', '_').replace('/', '.')
 
-    transformed = transform(grizzly, {casted_variable: casted_value}, objectify=False)
+    transformed = transform(grizzly, {casted_variable: casted_value}, scenario=scenario, objectify=False)
 
     if prefix is not None:
         transformed = {prefix: transformed}

@@ -11,7 +11,7 @@ class TestRequestDirection:
         for direction in RequestDirection:
             assert RequestDirection.from_string(direction.name.lower()) == direction
 
-        with pytest.raises(ValueError, match='"ASDF" is not a valid value of RequestDirection'):
+        with pytest.raises(AssertionError, match='"ASDF" is not a valid value of RequestDirection'):
             RequestDirection.from_string('asdf')
 
     def test_methods(self) -> None:
@@ -49,7 +49,7 @@ class TestRequestType:
     def test_from_string(self, value: str, expected: str) -> None:
         assert RequestType.from_string(value) == expected
 
-        with pytest.raises(AttributeError, match='foobar does not exist'):
+        with pytest.raises(AssertionError, match='foobar does not exist'):
             RequestType.from_string('foobar')
 
     @pytest.mark.parametrize('value', list(RequestType))
@@ -90,7 +90,7 @@ class TestRequestType:
         assert RequestType.from_alias(alias) == request_type
 
     def test_from_alias_non_existing(self) -> None:
-        with pytest.raises(AttributeError, match='no request type with alias ASDF'):
+        with pytest.raises(AssertionError, match='no request type with alias ASDF'):
             RequestType.from_alias('ASDF')
 
 
@@ -99,7 +99,7 @@ class TestRequestMethod:
         for method in RequestMethod:
             assert RequestMethod.from_string(method.name.lower()) == method
 
-        with pytest.raises(ValueError, match='"ASDF" is not a valid value of RequestMethod'):
+        with pytest.raises(AssertionError, match='"ASDF" is not a valid value of RequestMethod'):
             RequestMethod.from_string('asdf')
 
     def test_direction(self) -> None:

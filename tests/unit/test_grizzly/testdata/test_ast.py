@@ -5,6 +5,8 @@ from json import dumps as jsondumps
 from json import loads as jsonloads
 from typing import TYPE_CHECKING, cast
 
+import pytest
+
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
 from grizzly.tasks import LogMessageTask, RequestTask
 from grizzly.testdata.ast import _parse_templates, get_template_variables
@@ -242,9 +244,8 @@ def test_get_template_variables(behave_fixture: BehaveFixture) -> None:
     grizzly = cast(GrizzlyContext, behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     grizzly.scenario.tasks.clear()
-    variables, allow_unused = get_template_variables(grizzly)
+    variables = get_template_variables(grizzly)
     assert variables == {}
-    assert allow_unused == set()
 
     grizzly.scenario.context['host'] = 'http://test.nu'
     grizzly.scenario.user.class_name = 'TestUser'
@@ -265,8 +266,16 @@ def test_get_template_variables(behave_fixture: BehaveFixture) -> None:
     )
 
     grizzly.scenario.orphan_templates.append('{{ foobar }}')
+    grizzly.state.variables.update({
+        'AtomicRandomString.test': 'none',
+        'AtomicIntegerIncrementer.test': 2,
+        'foo': 'bar',
+        'env': 'none',
+        'foobar': 'barfoo',
+        'world': 'hello',
+    })
 
-    variables, allow_unused = get_template_variables(grizzly)
+    variables = get_template_variables(grizzly)
 
     expected_scenario_name = f'{grizzly.scenario.name}_{grizzly.scenario.identifier}'
 
@@ -281,4 +290,13 @@ def test_get_template_variables(behave_fixture: BehaveFixture) -> None:
             'world',
         },
     }
-    assert allow_unused == set()
+
+    del grizzly.state.variables['foo']
+
+    with pytest.raises(AssertionError, match='variables has been found in templates, but have not been declared: foo'):
+        get_template_variables(grizzly)
+
+    grizzly.state.variables.update({'foo': 'bar', 'bar': 'foo'})
+
+    with pytest.raises(AssertionError, match='variables has been declared, but cannot be found in templates: bar'):
+        get_template_variables(grizzly)

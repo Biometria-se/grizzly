@@ -187,7 +187,6 @@ def step_setup_stop_user_on_failure(context: Context) -> None:
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
     grizzly.scenario.failure_exception = StopUser
-    context.config.stop = True
 
 
 @given('restart scenario on failure')
@@ -203,7 +202,6 @@ def step_setup_restart_scenario_on_failure(context: Context) -> None:
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
     grizzly.scenario.failure_exception = RestartScenario
-    context.config.stop = False
 
 
 @then('metadata "{key}" is "{value}"')

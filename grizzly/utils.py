@@ -22,15 +22,13 @@ from grizzly.types import T
 from grizzly_extras.async_message.utils import async_message_request
 
 if TYPE_CHECKING:  # pragma: no cover
-    from types import FunctionType
-
     import zmq.green as zmq
 
     from grizzly_extras.async_message import AsyncMessageRequest, AsyncMessageResponse
 
     from .context import GrizzlyContextScenario
     from .scenarios import GrizzlyScenario
-    from .types.behave import Context
+    from .types.behave import Context, StepFunctionType
     from .users import GrizzlyUser
 
 
@@ -162,7 +160,7 @@ def merge_dicts(merged: Dict[str, Any], source: Dict[str, Any]) -> Dict[str, Any
     return merged
 
 
-def in_correct_section(func: FunctionType, expected: List[str]) -> bool:
+def in_correct_section(func: StepFunctionType, expected: List[str]) -> bool:
     """Check if a step function is used in the correct section of the feature file, as specified in `expected` (list of namespaces)."""
     try:
         actual = '.'.join(func.__module__.rsplit('.', 1)[:-1])

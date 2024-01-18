@@ -172,12 +172,12 @@ class ServiceBusClientTask(ClientTask):
                 message_wait = None
         except ValueError as e:
             message = 'MessageWait parameter in endpoint fragment is not a valid integer'
-            raise ValueError(message) from e
+            raise AssertionError(message) from e
 
         consume_fragment = parameters.get('Consume', ['False'])[0]
         if consume_fragment not in ['True', 'False']:
             message = 'Consume parameter in endpoint fragment is not a valid boolean'
-            raise ValueError(message)
+            raise AssertionError(message)
 
         consume = consume_fragment == 'True'
 
@@ -195,7 +195,7 @@ class ServiceBusClientTask(ClientTask):
                 context_endpoint = ', '.join([f'{key}:{value}' for key, value in endpoint_arguments.items()])
         except ValueError as e:
             if 'incorrect format in arguments: ""' not in str(e):
-                raise
+                raise AssertionError(e) from e
 
         connection = 'receiver' if direction == RequestDirection.FROM else 'sender'
 

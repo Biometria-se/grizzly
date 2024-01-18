@@ -134,14 +134,16 @@ class BehaveFixture:
         context = BehaveContext(runner)
         context._runner = runner
         context.config.base_dir = '.'
-        context.scenario = Scenario(filename=None, line=None, keyword='', name='')
-        context.step = Step(filename=None, line=None, keyword='', step_type='step', name='')
+        context.feature = Feature(filename=None, line=None, keyword='Feature', name='BehaveFixtureFeature')
+        context.scenario = Scenario(filename=None, line=None, keyword='Scenario', name='BehaveFixtureScenario')
+        context.step = Step(filename=None, line=None, keyword='Step', step_type='step', name='')
         context.scenario.steps = [context.step]
         context.scenario.background = Background(filename=None, line=None, keyword='', steps=[context.step], name='')
         context._runner.step_registry = step_registry
         grizzly = GrizzlyContext()
         grizzly.state.locust = self.locust.runner
         context.grizzly = grizzly
+        context.exceptions = {}
 
         self.context = context
 

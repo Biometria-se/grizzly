@@ -651,12 +651,12 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
         shutdown_external_processes(external_processes, watch_running_external_processes_greenlet)
 
 
-def _grizzly_sort_stats(stats: lstats.RequestStats) -> List[Tuple[str, str, int]]:
-    locust_keys: List[Tuple[str, str]] = sorted(stats.entries.keys())
+def _grizzly_sort_stats(stats: lstats.RequestStats) -> List[Tuple[str, str | None, int]]:
+    locust_keys: list[tuple[str, str | None]] = sorted(stats.entries.keys())
 
-    previous_ident: Optional[str] = None
-    scenario_keys: List[Tuple[str, str]] = []
-    scenario_sorted_keys: List[Tuple[str, str, int]] = []
+    previous_ident: str | None = None
+    scenario_keys: list[tuple[str, str | None]] = []
+    scenario_sorted_keys: list[tuple[str, str | None, int]] = []
     for index, key in enumerate(locust_keys):
         try:
             ident, _ = key[0].split(' ', 1)
@@ -669,7 +669,7 @@ def _grizzly_sort_stats(stats: lstats.RequestStats) -> List[Tuple[str, str, int]
                 scenario_keys.append(key[:2])
 
             scenario_sorted_keys += sorted([
-                (name, method, RequestType.get_method_weight(method)) for name, method in scenario_keys
+                (name, method, RequestType.get_method_weight(method or 'empty')) for name, method in scenario_keys
             ], key=itemgetter(2, 0))
             scenario_keys.clear()
 

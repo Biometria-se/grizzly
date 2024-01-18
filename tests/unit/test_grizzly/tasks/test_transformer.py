@@ -25,7 +25,7 @@ class TestTransformerTask:
 
         fire_spy = mocker.spy(parent.user.environment.events.request, 'fire')
 
-        with pytest.raises(ValueError, match='test_variable has not been initialized'):
+        with pytest.raises(AssertionError, match='test_variable has not been initialized'):
             TransformerTask(
                 variable='test_variable', expression='$.', content_type=TransformerContentType.JSON, content='',
             )
@@ -35,14 +35,14 @@ class TestTransformerTask:
         json_transformer = transformer.available[TransformerContentType.JSON]
         del transformer.available[TransformerContentType.JSON]
         try:
-            with pytest.raises(ValueError, match='could not find a transformer for JSON'):
+            with pytest.raises(AssertionError, match='could not find a transformer for JSON'):
                 TransformerTask(
                     variable='test_variable', expression='$.', content_type=TransformerContentType.JSON, content='',
                 )
         finally:
             transformer.available.update({TransformerContentType.JSON: json_transformer})
 
-        with pytest.raises(ValueError, match=r'\$\. is not a valid expression for JSON'):
+        with pytest.raises(AssertionError, match=r'\$\. is not a valid expression for JSON'):
             TransformerTask(
                 variable='test_variable', expression='$.', content_type=TransformerContentType.JSON, content='',
             )

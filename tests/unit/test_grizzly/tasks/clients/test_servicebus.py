@@ -148,7 +148,7 @@ class TestServiceBusClientTask:
         context_mock.assert_called_once_with()
         context_mock.reset_mock()
 
-        with pytest.raises(ValueError, match='MessageWait parameter in endpoint fragment is not a valid integer'):
+        with pytest.raises(AssertionError, match='MessageWait parameter in endpoint fragment is not a valid integer'):
             ServiceBusClientTask(
                 RequestDirection.FROM,
                 'sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:my-subscription;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=#MessageWait=foo',
@@ -157,7 +157,7 @@ class TestServiceBusClientTask:
         context_mock.assert_called_once_with()
         context_mock.reset_mock()
 
-        with pytest.raises(ValueError, match='Consume parameter in endpoint fragment is not a valid boolean'):
+        with pytest.raises(AssertionError, match='Consume parameter in endpoint fragment is not a valid boolean'):
             ServiceBusClientTask(
                 RequestDirection.FROM,
                 'sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:my-subscription;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=#Consume=foo',

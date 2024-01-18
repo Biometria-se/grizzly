@@ -69,15 +69,15 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
 
     assert len(tasks) == 0
 
-    with pytest.raises(ValueError, match='no endpoint specified'):
+    with pytest.raises(AssertionError, match='no endpoint specified'):
         add_request_task(behave, method=RequestMethod.POST, source='{}')
 
     assert len(tasks) == 0
 
-    with pytest.raises(ValueError, match='endpoints should only contain path relative to'):
+    with pytest.raises(AssertionError, match='endpoints should only contain path relative to'):
         add_request_task(behave, method=RequestMethod.POST, source='{}', endpoint='http://test/api/v1/test')
 
-    with pytest.raises(ValueError, match='"TEST" is not a valid value of RequestMethod'):
+    with pytest.raises(AssertionError, match='"TEST" is not a valid value of RequestMethod'):
         add_request_task(behave, method=RequestMethod.from_string('TEST'), source='{}', endpoint='/api/v1/test')
 
     assert add_request_task(behave, method=RequestMethod.POST, source='{}', endpoint='/api/v1/test') == []
@@ -86,7 +86,7 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
     assert isinstance(tasks[0], RequestTask)
     assert tasks[0].name == f'{name_prefix}<unknown>'
 
-    with pytest.raises(ValueError, match='"TEST" is not a valid value of RequestMethod'):
+    with pytest.raises(AssertionError, match='"TEST" is not a valid value of RequestMethod'):
         add_request_task(behave, method=RequestMethod.from_string('TEST'), source='{}', name='test')
 
     assert add_request_task(behave, method=RequestMethod.from_string('POST'), source='{}', name='test') == []
@@ -96,7 +96,7 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
     assert tasks[0].endpoint == tasks[1].endpoint
     assert tasks[1].name == f'{name_prefix}test'
 
-    with pytest.raises(ValueError, match='"TEST" is not a valid value of RequestMethod'):
+    with pytest.raises(AssertionError, match='"TEST" is not a valid value of RequestMethod'):
         add_request_task(behave, method=RequestMethod.from_string('TEST'), source='{}', name='test', endpoint='/api/v2/test')
 
     assert add_request_task(behave, method=RequestMethod.POST, source='{}', name='test', endpoint='/api/v2/test') == []
@@ -122,7 +122,7 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
     assert task.name == f'{name_prefix}my_blob'
     assert task.response.content_type == TransformerContentType.UNDEFINED
 
-    with pytest.raises(ValueError, match='cannot use endpoint from previous request, it has a different request method'):
+    with pytest.raises(AssertionError, match='cannot use endpoint from previous request, it has a different request method'):
         add_request_task(behave, method=RequestMethod.POST, source='{}', name='test')
 
     assert add_request_task(behave, method=RequestMethod.SEND, source=str(template_full_path), name='my_blob2') == []
@@ -151,7 +151,7 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
             tasks.clear()
             tasks.append(ExplicitWaitTask(time_expression='1.0'))
 
-            with pytest.raises(ValueError, match='previous task was not a request'):
+            with pytest.raises(AssertionError, match='previous task was not a request'):
                 add_request_task(behave, method=RequestMethod.PUT, source='template.j2.json')
 
             assert add_request_task(behave, method=RequestMethod.PUT, source='template.j2.json', name='test', endpoint='/api/test') == []
@@ -267,7 +267,7 @@ def test_add_save_handler(grizzly_fixture: GrizzlyFixture, *, as_async: bool) ->
     assert len(parent.user.context_variables) == 0
 
     # not preceeded by a request source
-    with pytest.raises(ValueError, match='variable "test-variable" has not been declared'):
+    with pytest.raises(AssertionError, match='variable "test-variable" has not been declared'):
         add_save_handler(grizzly, ResponseTarget.METADATA, '$.test.value', 'test', 'test-variable')
 
     assert len(parent.user.context_variables) == 0
@@ -279,10 +279,10 @@ def test_add_save_handler(grizzly_fixture: GrizzlyFixture, *, as_async: bool) ->
 
     task = cast(RequestTask, tasks[0])
 
-    with pytest.raises(ValueError, match='variable "test-variable" has not been declared'):
+    with pytest.raises(AssertionError, match='variable "test-variable" has not been declared'):
         add_save_handler(grizzly, ResponseTarget.METADATA, '', 'test', 'test-variable')
 
-    with pytest.raises(ValueError, match='variable "test-variable-metadata" has not been declared'):
+    with pytest.raises(AssertionError, match='variable "test-variable-metadata" has not been declared'):
         add_save_handler(grizzly, ResponseTarget.METADATA, '$.test.value', '.*', 'test-variable-metadata')
 
     try:
@@ -294,7 +294,7 @@ def test_add_save_handler(grizzly_fixture: GrizzlyFixture, *, as_async: bool) ->
     finally:
         del grizzly.state.variables['test-variable-metadata']
 
-    with pytest.raises(ValueError, match='variable "test-variable-payload" has not been declared'):
+    with pytest.raises(AssertionError, match='variable "test-variable-payload" has not been declared'):
         add_save_handler(grizzly, ResponseTarget.PAYLOAD, '$.test.value', '.*', 'test-variable-payload')
 
     try:
@@ -328,14 +328,14 @@ def test_add_save_handler(grizzly_fixture: GrizzlyFixture, *, as_async: bool) ->
     tasks.append(ExplicitWaitTask(time_expression='1.0'))
 
     grizzly.state.variables['test'] = 'none'
-    with pytest.raises(TypeError, match='latest task was not a request'):
+    with pytest.raises(AssertionError, match='latest task was not a request'):
         add_save_handler(grizzly, ResponseTarget.PAYLOAD, '$.test.value', '.*', 'test')
 
     # remove non RequestTask task
     tasks.pop()
 
     # add_save_handler calling _add_response_handler incorrectly
-    with pytest.raises(ValueError, match='variable is not set'):
+    with pytest.raises(AssertionError, match='variable is not set'):
         _add_response_handler(grizzly, ResponseTarget.PAYLOAD, ResponseAction.SAVE, '$test.value', '.*', variable=None)
 
     try:
@@ -361,12 +361,12 @@ def test_add_save_handler(grizzly_fixture: GrizzlyFixture, *, as_async: bool) ->
         assert handler.expected_matches == '-1'
         assert handler.as_json
 
-        with pytest.raises(ValueError, match='unsupported arguments foobar, hello'):
+        with pytest.raises(AssertionError, match='unsupported arguments foobar, hello'):
             add_save_handler(grizzly, ResponseTarget.PAYLOAD, '$.test.value | expected_matches=100, foobar=False, hello=world', '.*', 'test')
 
         cast(RequestTask, tasks[-1]).response.content_type = TransformerContentType.UNDEFINED
 
-        with pytest.raises(ValueError, match='content type is not set for latest request'):
+        with pytest.raises(AssertionError, match='content type is not set for latest request'):
             add_save_handler(grizzly, ResponseTarget.PAYLOAD, '$.test.value | expected_matches=100', '.*', 'test')
 
     finally:
@@ -387,7 +387,7 @@ def test_add_validation_handler(grizzly_fixture: GrizzlyFixture, *, as_async: bo
     assert len(tasks) == 0
 
     # not preceeded by a request source
-    with pytest.raises(ValueError, match='no request source has been added!'):
+    with pytest.raises(AssertionError, match='no request source has been added'):
         add_validation_handler(grizzly, ResponseTarget.METADATA, '$.test.value', 'test', condition=False)
 
     # add request source
@@ -396,7 +396,7 @@ def test_add_validation_handler(grizzly_fixture: GrizzlyFixture, *, as_async: bo
     assert len(tasks) == 1
 
     # empty expression, fail
-    with pytest.raises(ValueError, match='expression is empty'):
+    with pytest.raises(AssertionError, match='expression is empty'):
         add_validation_handler(grizzly, ResponseTarget.METADATA, '', 'test', condition=False)
 
     # add metadata response handler
@@ -435,7 +435,7 @@ def test_add_validation_handler(grizzly_fixture: GrizzlyFixture, *, as_async: bo
         handler((TransformerContentType.JSON, {'test': {'value': 'test', 'name': 'bob'}}), parent.user)
 
     # add_validation_handler calling _add_response_handler incorrectly
-    with pytest.raises(ValueError, match='condition is not set'):
+    with pytest.raises(AssertionError, match='condition is not set'):
         _add_response_handler(grizzly, ResponseTarget.PAYLOAD, ResponseAction.VALIDATE, '$.test', 'value', condition=None)
 
 
