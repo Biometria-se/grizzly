@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from json import dumps as jsondumps
-from json import loads as jsonloads
 from pathlib import Path
 from textwrap import dedent
 from typing import TYPE_CHECKING, Any, Dict, List, cast
@@ -1180,10 +1179,4 @@ def test_e2e_step_task_keystore(e2e_fixture: End2EndFixture) -> None:
     assert "foobar=['hello', 'world'], barfoo={'hello': 'world'}" in result
 
     persistent_file = e2e_fixture.root / 'features' / 'persistent' / f'{Path(feature_file).stem}.json'
-    assert persistent_file.exists()
-    assert jsonloads(persistent_file.read_text()) == {
-        'grizzly::keystore': {
-            'foobar': ['hello', 'world'],
-            'barfoo': {'hello': 'world'},
-        },
-    }
+    assert not persistent_file.exists()

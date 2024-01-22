@@ -4,7 +4,6 @@ This tasks sets and gets values from a distributed keystore. This makes is possi
 Retreived (get) values are rendered before setting the variable.
 Stored (set) values are not rendered, so it is possible to store templates.
 
-The whole keystore is persistent, so anything stored will be loaded the next time the scenario runs.
 
 ## Step implementations
 

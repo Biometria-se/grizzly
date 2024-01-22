@@ -5,7 +5,6 @@ import logging
 from contextlib import suppress
 from itertools import chain
 from json import dumps as jsondumps
-from json import loads as jsonloads
 from os import environ
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, Optional, Union, cast
@@ -187,11 +186,7 @@ class TestdataProducer:
         persist_root = Path(context_root) / 'persistent'
         self._persist_file = persist_root / f'{Path(feature_file).stem}.json'
 
-        if self._persist_file.exists():
-            persist_content = jsonloads(self._persist_file.read_text())
-            self.keystore = persist_content.get('grizzly::keystore', {})
-        else:
-            self.keystore = {}
+        self.keystore = {}
 
     def on_test_stop(self) -> None:
         self.logger.debug('test stopping')
@@ -219,9 +214,6 @@ class TestdataProducer:
                             continue
 
                         variable_state.update({key: variable.generate_initial_value(variable_name)})
-
-            if len(self.keystore) > 0:
-                variable_state.update({'grizzly::keystore': self.keystore})
 
             # only write file if we actually have something to write
             if len(variable_state.keys()) > 0 and len(list(chain(*variable_state.values()))) > 0:

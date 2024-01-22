@@ -11,7 +11,6 @@ if TYPE_CHECKING:  # pragma: no cover
 
 def test_e2e_keystore(e2e_fixture: End2EndFixture) -> None:
     def after_feature(context: Context, feature: Feature) -> None:
-        from json import loads as jsonloads
         from pathlib import Path
 
         from grizzly.locust import on_worker
@@ -21,16 +20,8 @@ def test_e2e_keystore(e2e_fixture: End2EndFixture) -> None:
 
         persist_file = Path(context.config.base_dir) / 'persistent' / f'{Path(feature.filename).stem}.json'
 
-        assert persist_file.exists()
+        assert not persist_file.exists()
 
-        persistance = jsonloads(persist_file.read_text())
-
-        assert persistance == {
-            'grizzly::keystore': {
-                'foobar::set': 'hello',
-                'foobar::get::default': {'hello': 'world'},
-            },
-        }
 
     e2e_fixture.add_after_feature(after_feature)
 
