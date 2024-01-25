@@ -145,7 +145,7 @@ def after_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: An
 
     if has_exceptions:
         buffer: list[str] = []
-        for scenario_name, exceptions in cast(dict[str | None, list[AssertionError]], context.exceptions).items():
+        for scenario_name, exceptions in cast(dict[Optional[str], list[AssertionError]], context.exceptions).items():
             if scenario_name is not None:
                 buffer.append(f'Scenario: {scenario_name}')
             else:
