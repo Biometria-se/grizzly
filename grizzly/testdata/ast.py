@@ -94,7 +94,9 @@ def _parse_templates(templates: Dict[GrizzlyContextScenario, Set[str]], *, env: 
         elif isinstance(node, j2.Getitem):
             child_node = getattr(node, 'node', None)
             child_node_name = getattr(child_node, 'name', None)
-            if child_node_name is not None:
+            if child_node_name is None and child_node is not None:
+                yield from _getattr(child_node)
+            elif child_node_name is not None:
                 attributes = [child_node_name]
         elif isinstance(node, j2.Name):
             name = getattr(node, 'name', None)

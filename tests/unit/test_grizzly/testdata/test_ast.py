@@ -253,7 +253,7 @@ def test_get_template_variables(behave_fixture: BehaveFixture) -> None:
         RequestTask(RequestMethod.POST, name='Test POST request', endpoint='/api/test/post'),
     )
     task = cast(RequestTask, grizzly.scenario.tasks()[-1])
-    task.source = '{{ AtomicRandomString.test }}'
+    task.source = '{{ AtomicRandomString.test[:2] }}'
 
     grizzly.scenario.tasks.add(
         RequestTask(RequestMethod.GET, name='{{ env }} GET request', endpoint='/api/{{ env }}/get'),
