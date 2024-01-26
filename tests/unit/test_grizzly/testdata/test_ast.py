@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, cast
 import pytest
 
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
-from grizzly.tasks import LogMessageTask, RequestTask
+from grizzly.tasks import DateTask, LogMessageTask, RequestTask
 from grizzly.testdata.ast import _parse_templates, get_template_variables
 from grizzly.types import RequestMethod
 
@@ -265,9 +265,20 @@ def test_get_template_variables(behave_fixture: BehaveFixture) -> None:
         LogMessageTask(message='{{ foo }}'),
     )
 
+    grizzly.scenario.tasks.add(
+        RequestTask(RequestMethod.GET, name='Test GET request', endpoint='/api/test/post'),
+    )
+    task = cast(RequestTask, grizzly.scenario.tasks()[-1])
+    task.source = '{{ AtomicRandomString.id.replace("-", "")[:2] }}'
+
+    grizzly.scenario.tasks.add(
+        DateTask('timestamp', '{{ datetime.now() }} | format="%Y%m%d"'),
+    )
+
     grizzly.scenario.orphan_templates.append('{{ foobar }}')
     grizzly.state.variables.update({
         'AtomicRandomString.test': 'none',
+        'AtomicRandomString.id': 'none',
         'AtomicIntegerIncrementer.test': 2,
         'foo': 'bar',
         'env': 'none',
@@ -283,6 +294,7 @@ def test_get_template_variables(behave_fixture: BehaveFixture) -> None:
     assert variables == {
         expected_scenario_name: {
             'AtomicRandomString.test',
+            'AtomicRandomString.id',
             'AtomicIntegerIncrementer.test',
             'foo',
             'env',
