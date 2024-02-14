@@ -49,31 +49,26 @@ def _atomicvariable_cleanup() -> Generator[AtomicVariableCleanupFixture, None, N
     yield AtomicVariableCleanupFixture()
 
 
-@pytest.mark.usefixtures('tmp_path_factory')
 def _locust_fixture(tmp_path_factory: TempPathFactory) -> Generator[LocustFixture, None, None]:
     with LocustFixture(tmp_path_factory) as fixture:
         yield fixture
 
 
-@pytest.mark.usefixtures('locust_fixture')
 def _behave_fixture(locust_fixture: LocustFixture) -> Generator[BehaveFixture, None, None]:
     with BehaveFixture(locust_fixture) as fixture:
         yield fixture
 
 
-@pytest.mark.usefixtures('tmp_path_factory', 'behave_fixture')
 def _request_task(tmp_path_factory: TempPathFactory, behave_fixture: BehaveFixture) -> Generator[RequestTaskFixture, None, None]:
     with RequestTaskFixture(tmp_path_factory, behave_fixture) as fixture:
         yield fixture
 
 
-@pytest.mark.usefixtures('request_task', 'behave_fixture')
 def _grizzly_fixture(request_task: RequestTaskFixture, behave_fixture: BehaveFixture) -> Generator[GrizzlyFixture, None, None]:
     with GrizzlyFixture(request_task, behave_fixture) as fixture:
         yield fixture
 
 
-@pytest.mark.usefixtures('mocker')
 def _noop_zmq(mocker: MockerFixture) -> Generator[NoopZmqFixture, None, None]:
     yield NoopZmqFixture(mocker)
 
@@ -87,7 +82,6 @@ def _webserver() -> Generator[Webserver, None, None]:
         yield fixture
 
 
-@pytest.mark.usefixtures('tmp_path_factory', 'webserver')
 def _e2e_fixture(tmp_path_factory: TempPathFactory, webserver: Webserver, request: SubRequest) -> Generator[End2EndFixture, None, None]:
     distributed = request.param if hasattr(request, 'param') else E2E_RUN_MODE == 'dist'
 

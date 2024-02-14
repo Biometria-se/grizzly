@@ -86,6 +86,7 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
     environment: Environment
     event_hook: GrizzlyEventHook
     grizzly = GrizzlyContext()
+    sticky_tag: Optional[str] = None
 
     def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
         super().__init__(environment, *args, **kwargs)

@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any, List, Type, cast
 import gevent
 import pytest
 from jinja2 import TemplateError
-from locust.dispatch import WeightedUsersDispatcher
+from locust.dispatch import UsersDispatcher as WeightedUsersDispatcher
 from locust.stats import RequestStats
 
 from grizzly.context import GrizzlyContext

@@ -5,9 +5,8 @@ from __future__ import annotations
 
 from typing import Any, cast
 
-from locust.dispatch import FixedUsersDispatcher
-
 from grizzly.context import GrizzlyContext
+from grizzly.locust import FixedUsersDispatcher
 from grizzly.testdata.utils import resolve_variable
 from grizzly.types.behave import Context, given
 from grizzly.utils import has_template
@@ -76,6 +75,7 @@ def step_user_type_count_tag(context: Context, user_count: str, user_class_name:
         user_class_name (str): name of an implementation of {@pylink grizzly.users}, with or without `User`-suffix
         tag (str): unique string to "stick" user types to a set of exclusive workers
         host (str): an URL for the target host, format depends on which {@pylink grizzly.users} is specified
+
     """
     _setup_user(context, user_class_name, host, user_count=user_count, tag=tag)
 
@@ -96,6 +96,7 @@ def step_user_type_count(context: Context, user_count: str, user_class_name: str
         user_count (int): Number of users locust should create
         user_class_name (str): name of an implementation of {@pylink grizzly.users}, with or without `User`-suffix
         host (str): an URL for the target host, format depends on which {@pylink grizzly.users} is specified
+
     """
     _setup_user(context, user_class_name, host, user_count=user_count)
 
@@ -117,6 +118,7 @@ def step_user_type_with_weight(context: Context, user_class_name: str, weight_va
         user_class_name (str): name of an implementation of {@pylink grizzly.users}, with or without `User`-suffix
         weight_value (str): weight value for the user, default is `1` (see [writing a locustfile](http://docs.locust.io/en/stable/writing-a-locustfile.html#weight-attribute))
         host (str): an URL for the target host, format depends on which {@pylink grizzly.users} is specified
+
     """
     _setup_user(context, user_class_name, host, weight=weight_value)
 
@@ -136,6 +138,7 @@ def step_user_type(context: Context, user_class_name: str, host: str) -> None:
     Args:
         user_class_name (str): name of an implementation of {@pylink grizzly.users}, with or without `User`-suffix
         host (str): an URL for the target host, format depends on which {@pylink grizzly.users} is specified
+
     """
     _setup_user(context, user_class_name, host)
     if not user_class_name.endswith('User'):

@@ -92,10 +92,8 @@ def _parse_templates(templates: Dict[GrizzlyContextScenario, Set[str]], *, env: 
         if isinstance(node, j2.Getattr):
             child_node = getattr(node, 'node', None)
             if child_node is not None:
-                if isinstance(child_node, j2.Name):
-                    if getattr(child_node, 'name', None) not in ['datetime']:  # use native module, so ignore
-                        attributes = walk_attr(node)
-                    # else, pass
+                if isinstance(child_node, (j2.Getattr, j2.Name)):
+                    attributes = walk_attr(node)
                 else:
                     yield from _getattr(child_node)
         elif isinstance(node, j2.Getitem):
@@ -200,7 +198,17 @@ def _parse_templates(templates: Dict[GrizzlyContextScenario, Set[str]], *, env: 
                 else:
                     for node in getattr(body, 'nodes', []):
                         for attributes in _getattr(node):
-                            variable = '.'.join(attributes)
+                            branches = attributes
+
+                            # ignore builtin modules
+                            if branches[0] in ['datetime']:
+                                continue
+
+                            # ignore builtin methods calls
+                            if branches[-1] in ['replace']:
+                                branches = branches[:-1]
+
+                            variable = '.'.join(branches)
                             if variable in allowed_undefined:
                                 continue
 

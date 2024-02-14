@@ -44,17 +44,17 @@ def test__parse_template(request_task: RequestTaskFixture) -> None:
 
     assert variables == {
         'TestScenario_001': {
-            'messageID',
             'AtomicIntegerIncrementer.messageID',
+            'AtomicIntegerIncrementer.file_number',
+            'AtomicDirectoryContents.test',
+            'messageID',
+            'content',
             'AtomicDate.now',
             'AtomicCsvReader.test.header1',
             'AtomicCsvReader.test.header2',
-            'AtomicDirectoryContents.test',
             'a_sub_string',
             'a_string',
-            'AtomicIntegerIncrementer.file_number',
             'expression',
-            'content',
         },
     }
 
@@ -210,7 +210,8 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture) -> None:
             "height": {{ AtomicCsvReader.input.second_height | int }},
             "volume": {{ ((AtomicCsvReader.input.second_width | int) / 100) * ((AtomicCsvReader.input.second_height | int) / 100) * ((AtomicCsvReader.input.second_length | int) / 100) }},
         }
-    ]
+    ],
+    "timestamp": "{{ datetime.now() }}"
 }
 """  # noqa: E501
     scenario.tasks.clear()

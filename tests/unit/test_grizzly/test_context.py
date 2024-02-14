@@ -9,7 +9,6 @@ from unittest.mock import ANY
 
 import pytest
 from jinja2.environment import Template
-from locust.dispatch import FixedUsersDispatcher
 
 from grizzly.context import (
     GrizzlyContext,
@@ -24,6 +23,7 @@ from grizzly.context import (
     GrizzlyContextTasksTmp,
     load_configuration_file,
 )
+from grizzly.locust import FixedUsersDispatcher
 from grizzly.tasks import AsyncRequestGroupTask, ConditionalTask, ExplicitWaitTask, LogMessageTask, LoopTask, RequestTask
 from grizzly.types import MessageDirection, RequestMethod
 from grizzly.types.behave import Scenario

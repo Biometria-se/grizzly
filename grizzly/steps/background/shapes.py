@@ -6,7 +6,7 @@ from __future__ import annotations
 from typing import Any, cast
 
 import parse
-from locust.dispatch import WeightedUsersDispatcher
+from locust.dispatch import UsersDispatcher as WeightedUsersDispatcher
 
 from grizzly.context import GrizzlyContext
 from grizzly.testdata.utils import resolve_variable
@@ -40,6 +40,7 @@ def step_shapes_user_count(context: Context, value: str, **_kwargs: Any) -> None
     Args:
         user_count (int): Number of users locust should create
         grammar (UserGramaticalNumber): one of `user`, `users`
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -76,6 +77,7 @@ def step_shapes_spawn_rate(context: Context, value: str, **_kwargs: Any) -> None
     Args:
         spawn_rate (float): number of users per second
         grammar (UserGramaticalNumber): one of `user`, `users`
+
     """
     assert isinstance(value, str), f'{value} is not a string'
     assert value[0] != '$', 'this expression does not support $conf or $env variables'

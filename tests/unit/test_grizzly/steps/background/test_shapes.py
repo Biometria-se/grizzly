@@ -3,11 +3,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
 
-import pytest
-from locust.dispatch import FixedUsersDispatcher, WeightedUsersDispatcher
 from parse import compile
 
 from grizzly.context import GrizzlyContext
+from grizzly.locust import FixedUsersDispatcher, WeightedUsersDispatcher
 from grizzly.steps import *
 from tests.helpers import ANY
 

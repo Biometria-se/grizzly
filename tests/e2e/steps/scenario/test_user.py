@@ -22,7 +22,7 @@ if TYPE_CHECKING:  # pragma: no cover
 ])
 def test_e2e_step_user_type_count_tag(e2e_fixture: End2EndFixture, user_type: str, host: str, expected_rc: int) -> None:
     def validate_user_type(context: Context) -> None:
-        from locust.dispatch import FixedUsersDispatcher
+        from grizzly.locust import FixedUsersDispatcher
         grizzly = cast(GrizzlyContext, context.grizzly)
         data = next(iter(context.table)).as_dict()
 

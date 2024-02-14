@@ -6,9 +6,9 @@ from os import environ
 from typing import TYPE_CHECKING, cast
 
 import pytest
-from locust.dispatch import FixedUsersDispatcher
 
 from grizzly.context import GrizzlyContext
+from grizzly.locust import FixedUsersDispatcher
 from grizzly.steps import *
 from grizzly.steps.scenario.user import _setup_user
 from tests.helpers import ANY
