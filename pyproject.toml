@@ -186,6 +186,14 @@ warn_unreachable = true
 strict_equality = true
 
 [[tool.mypy.overrides]]
+module = "grizzly.locust"
+warn_unused_ignores = false
+
+[[tool.mypy.overrides]]
+module = "tests.unit.test_grizzly.test_locust_dispatch"
+disable_error_code = ["type-abstract", "unused-ignore"]
+
+[[tool.mypy.overrides]]
 module = "grizzly.steps.*"
 no_implicit_reexport = false
 

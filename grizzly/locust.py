@@ -261,7 +261,7 @@ class FixedUsersDispatcher(UsersDispatcherType):
             for worker_node in self._worker_nodes
         }
 
-        users_on_workers, user_gen, active_users = self._distribute_users()
+        users_on_workers, user_gen, active_users = self._distribute_users(self._current_user_count)
 
         self._users_on_workers = users_on_workers
         self._active_users = active_users
@@ -322,6 +322,7 @@ class FixedUsersDispatcher(UsersDispatcherType):
 
         self._dispatcher_generator = self.dispatcher()
 
+        print('clearing durations')
         self.dispatch_iteration_durations.clear()
 
         self._user_generator = self._create_user_generator()
@@ -578,10 +579,13 @@ class FixedUsersDispatcher(UsersDispatcherType):
         self._dispatch_in_progress = False
 
     def _distribute_users(
-        self,
+        self, target_user_count: dict[str, int],
     ) -> tuple[dict[str, dict[str, int]], Generator[str | None, None, None], LengthOptimizedList[tuple[WorkerNode, str]]]:
         """Distribute users on available workers, and continue user cycle from there."""
         # used target as setup based on user class values, without changing the original value
+
+        if target_user_count == {}:
+            target_user_count = {**self.target_user_count}
 
         self._spread_sticky_tags_on_workers()
 
@@ -594,7 +598,7 @@ class FixedUsersDispatcher(UsersDispatcherType):
 
         active_users: LengthOptimizedList[tuple[WorkerNode, str]] = LengthOptimizedList()
 
-        user_count_target = sum(self._target_user_count.values())
+        user_count_target = sum(target_user_count.values())
         current_user_count: dict[str, int] = {}
         for user_counts in users_on_workers.values():
             for user_class_name, count in user_counts.items():
@@ -606,7 +610,7 @@ class FixedUsersDispatcher(UsersDispatcherType):
             if not next_user_class_name:
                 break
 
-            if current_user_count[next_user_class_name] + 1 > self._target_user_count[next_user_class_name]:
+            if current_user_count[next_user_class_name] + 1 > target_user_count[next_user_class_name]:
                 continue
 
             sticky_tag = self._users_to_sticky_tag[next_user_class_name]

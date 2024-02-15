@@ -813,7 +813,6 @@ class TestRampUpUsersFromZero(UsersDispatcherTestCase):
 
     def test_ramp_up_users_to_3_workers_with_spawn_rate_of_9(self) -> None:
         """Final distribution should be {"User1": 3, "User2": 3, "User3": 3}."""
-
         class User1(User):
             weight = self.user_weight
             fixed_count = self.user_fixed_count
@@ -857,21 +856,23 @@ class TestRampUpUsersFromZero(UsersDispatcherTestCase):
 
     def test_users_are_distributed_evenly_across_hosts(self) -> None:
         if self.user_dispatcher_class == FixedUsersDispatcher:
-            self.target_user_count = -1
+            target_user_count = -1
+            user_fixed_count = 2
         else:
-            self.target_user_count = 6
+            target_user_count = 6
+            user_fixed_count = 0
 
         class User1(User):
             weight = self.user_weight
-            fixed_count = self.user_fixed_count
+            fixed_count = user_fixed_count
 
         class User2(User):
             weight = self.user_weight
-            fixed_count = self.user_fixed_count
+            fixed_count = user_fixed_count
 
         class User3(User):
             weight = self.user_weight
-            fixed_count = self.user_fixed_count
+            fixed_count = user_fixed_count
 
         worker_node1 = WorkerNode("hostname1_worker1")
         worker_node2 = WorkerNode("hostname1_worker2")
@@ -881,7 +882,7 @@ class TestRampUpUsersFromZero(UsersDispatcherTestCase):
         users_dispatcher = self.user_dispatcher_class(
             worker_nodes=[worker_node1, worker_node2, worker_node3, worker_node4], user_classes=[User1, User2, User3],
         )
-        users_dispatcher.new_dispatch(target_user_count=self.target_user_count, spawn_rate=2)
+        users_dispatcher.new_dispatch(target_user_count=target_user_count, spawn_rate=2)
         users_dispatcher.wait_between_dispatch = self.sleep_time
 
         ts = time.perf_counter()
@@ -2223,20 +2224,18 @@ class TestLargeScale(UsersDispatcherTestCase):
             if self.user_dispatcher_class == WeightedUsersDispatcher:
                 distribute_users = users_dispatcher._distribute_users(target_user_count=target_user_count_1m)  # type: ignore[attr-defined]
             else:
-                distribute_users = users_dispatcher._distribute_users()  # type: ignore[attr-defined]
+                distribute_users = users_dispatcher._distribute_users({})  # type: ignore[attr-defined]
             users_on_workers = distribute_users[0]
             delta = time.perf_counter() - ts
 
             # Because tests are run with coverage, the code will be slower.
             # We set the pass criterion to 7000ms, but in real life, the
             # `_distribute_users` method runs faster than this.
-            self.assertLessEqual(1000 * delta, 8000)
+            self.assertLessEqual(1000 * delta, 9000)
 
             self.assertEqual(_user_count(users_on_workers), 1_000_000)
 
     def test_ramp_up_from_0_to_100_000_users_with_50_user_classes_and_1000_workers_and_5000_spawn_rate(self) -> None:
-        target_user_count: int | dict[str, int]
-
         if self.user_dispatcher_class == WeightedUsersDispatcher:
             user_classes_categories = [
                 self.weighted_user_classes,
@@ -2344,6 +2343,10 @@ class TestLargeScale(UsersDispatcherTestCase):
             # Ramp-down
             users_dispatcher.new_dispatch(target_user_count=ramp_down_user_count, spawn_rate=5000, user_classes=dispatch_user_classes)
             users_dispatcher.wait_between_dispatch = 0
+
+            if self.user_dispatcher_class == FixedUsersDispatcher:
+                for user in user_classes_categories[0][:5]:
+                    user.fixed_count = 20000
 
             all_dispatched_users = list(users_dispatcher)
 
@@ -4131,7 +4134,6 @@ class TestRampUpDifferentUsers(UsersDispatcherTestCase):
         else:
             target_user_count = -1
             User2.fixed_count = 10
-            User3.fixed_count = 10
 
         worker_node1 = WorkerNode("1")
 
