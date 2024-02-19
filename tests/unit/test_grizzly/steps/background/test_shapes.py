@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, cast
 from parse import compile
 
 from grizzly.context import GrizzlyContext
-from grizzly.locust import FixedUsersDispatcher, WeightedUsersDispatcher
+from grizzly.locust import FixedUsersDispatcher, UsersDispatcher
 from grizzly.steps import *
 from tests.helpers import ANY
 
@@ -47,7 +47,7 @@ def test_step_shapes_user_count(behave_fixture: BehaveFixture) -> None:
 
     step_impl(behave, '1', grammar='users')
     assert grizzly.setup.user_count == 1
-    assert grizzly.setup.dispatcher_class == WeightedUsersDispatcher
+    assert grizzly.setup.dispatcher_class == UsersDispatcher
 
     grizzly.setup.dispatcher_class = FixedUsersDispatcher
 
@@ -76,7 +76,7 @@ def test_step_shapes_user_count(behave_fixture: BehaveFixture) -> None:
 
     step_impl(behave, '{{ user_count * 0.1 }}', grammar='user')
     assert grizzly.setup.user_count == 1
-    assert grizzly.setup.dispatcher_class == WeightedUsersDispatcher
+    assert grizzly.setup.dispatcher_class == UsersDispatcher
 
     step_impl(behave, '$conf::user.count', grammar='users')
     assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='this expression does not support $conf or $env variables')]}

@@ -19,8 +19,7 @@ import gevent
 from jinja2.exceptions import TemplateError
 from locust import events
 from locust import stats as lstats
-from locust.dispatch import UsersDispatcher as WeightedUsersDispatcher
-from locust.dispatch import UsersDispatcherType
+from locust.dispatch import UsersDispatcher
 from locust.log import setup_logging
 from locust.user.users import User
 from locust.util.timespan import parse_timespan
@@ -38,13 +37,12 @@ from .utils import create_scenario_class_type, create_user_class_type
 
 __all__ = [
     'stats_logger',
-    'WeightedUsersDispatcher',
+    'UsersDispatcher',
 ]
 
 
 if TYPE_CHECKING:
     from locust.runners import WorkerNode
-
 
 
 unhandled_greenlet_exception: bool = False
@@ -86,7 +84,7 @@ class LengthOptimizedList(List[T]):
         return self.__optimized_length__
 
 
-class FixedUsersDispatcher(UsersDispatcherType):
+class FixedUsersDispatcher(UsersDispatcher):
     """Fixed count (only) based iterator that dispatches users to the workers.
 
     Distribution is based on fixed count (`User.fixed_count`), it is also possible to group certain user types to the same
@@ -154,7 +152,7 @@ class FixedUsersDispatcher(UsersDispatcherType):
         self.__target_user_count_length__: int | None = None
         self.target_user_count = {user_class.__name__: user_class.fixed_count for user_class in self._user_classes}
 
-        self._current_user_count: dict[str, int] = {user_class.__name__: 0 for user_class in self._user_classes}
+        self._grizzly_current_user_count: dict[str, int] = {user_class.__name__: 0 for user_class in self._user_classes}
 
     def _sort_workers(self) -> None:
         # Sorting workers ensures repeatable behaviour
@@ -186,26 +184,18 @@ class FixedUsersDispatcher(UsersDispatcherType):
 
     def get_target_user_count(self) -> int:
         if self.__target_user_count_length__ is None:
-            self.__target_user_count_length__ = sum(self.target_user_count.values())
+            self.__target_user_count_length__ = sum(self._grizzly_target_user_count.values())
 
         return self.__target_user_count_length__
 
     @property
     def target_user_count(self) -> dict[str, int]:
-        return self._target_user_count
+        return self._grizzly_target_user_count
 
     @target_user_count.setter
     def target_user_count(self, value: dict[str, int]) -> None:
         self.__target_user_count_length__ = None
-        self._target_user_count = dict(sorted(value.items(), key=itemgetter(1), reverse=True))
-
-    @property
-    def wait_between_dispatch(self) -> float:
-        return self._wait_between_dispatch
-
-    @wait_between_dispatch.setter
-    def wait_between_dispatch(self, value: float) -> None:
-        self._wait_between_dispatch = value
+        self._grizzly_target_user_count = dict(sorted(value.items(), key=itemgetter(1), reverse=True))
 
     @property
     def dispatch_in_progress(self) -> bool:
@@ -215,11 +205,7 @@ class FixedUsersDispatcher(UsersDispatcherType):
     def dispatch_iteration_durations(self) -> list[float]:
         return self._dispatch_iteration_durations
 
-    @property
-    def should_rebalance(self) -> bool:
-        return self._rebalance
-
-    def get_user_current_count(self, user: str) -> int:
+    def _get_user_current_count(self, user: str) -> int:
         return sum([users_on_node.get(user, 0) for users_on_node in self._users_on_workers.values()])
 
     def add_worker(self, worker_node: WorkerNode) -> None:
@@ -261,7 +247,7 @@ class FixedUsersDispatcher(UsersDispatcherType):
             for worker_node in self._worker_nodes
         }
 
-        users_on_workers, user_gen, active_users = self._distribute_users(self._current_user_count)
+        users_on_workers, user_gen, active_users = self._grizzly_distribute_users(self._grizzly_current_user_count)
 
         self._users_on_workers = users_on_workers
         self._active_users = active_users
@@ -295,16 +281,16 @@ class FixedUsersDispatcher(UsersDispatcherType):
             # map original user classes (supplied when users dispatcher was created), with additional new ones (might be duplicates)
             self._users_to_sticky_tag = {
                 user_class.__name__: user_class.sticky_tag or '__orphan__'
-                for user_class in self._original_user_classes + grizzly_user_classes
+                for user_class in cast(list[type[GrizzlyUser]], self._original_user_classes + grizzly_user_classes)
             }
 
             self._user_class_name_to_type = {
-                user_class.__name__: user_class for user_class in self._original_user_classes + grizzly_user_classes
+                user_class.__name__: user_class for user_class in cast(list[type[GrizzlyUser]], self._original_user_classes + grizzly_user_classes)
             }
 
             # only merge target user count for classes that has been specified in user classes
             grizzly_target_user_count = {user_class.__name__: user_class.fixed_count for user_class in grizzly_user_classes}
-            self.target_user_count = {**self.target_user_count, **grizzly_target_user_count}
+            self.target_user_count = {**self._grizzly_target_user_count, **grizzly_target_user_count}
         else:
             self.target_user_count = {user_class.__name__: user_class.fixed_count for user_class in self._user_classes}
 
@@ -312,7 +298,7 @@ class FixedUsersDispatcher(UsersDispatcherType):
 
         self._user_count_per_dispatch_iteration = max(1, floor(self._spawn_rate))
 
-        self.wait_between_dispatch = self._user_count_per_dispatch_iteration / self._spawn_rate
+        self._wait_between_dispatch = self._user_count_per_dispatch_iteration / self._spawn_rate
 
         self._spread_sticky_tags_on_workers()
 
@@ -322,7 +308,6 @@ class FixedUsersDispatcher(UsersDispatcherType):
 
         self._dispatcher_generator = self.dispatcher()
 
-        print('clearing durations')
         self.dispatch_iteration_durations.clear()
 
         self._user_generator = self._create_user_generator()
@@ -330,8 +315,8 @@ class FixedUsersDispatcher(UsersDispatcherType):
     def get_current_user_count_total(self) -> int:
         return self._active_users.__optimized_length__
 
-    def get_current_user_count(self, user_class_name: str) -> int:
-        return sum([users_on_worker.get(user_class_name, 0) for users_on_worker in self._users_on_workers.values()])
+    def _get_current_user_count(self, user: str) -> int:
+        return sum([users_on_worker.get(user, 0) for users_on_worker in self._users_on_workers.values()])
 
     def has_reached_target_user_count(self) -> bool:
         return self.get_current_user_count_total() == self.get_target_user_count()
@@ -362,7 +347,7 @@ class FixedUsersDispatcher(UsersDispatcherType):
                 self._no_user_to_spawn = True
                 break
 
-            if current_user_count[next_user_class_name] + 1 > self.target_user_count[next_user_class_name]:
+            if current_user_count[next_user_class_name] + 1 > self._grizzly_target_user_count[next_user_class_name]:
                 continue
 
             sticky_tag = self._users_to_sticky_tag[next_user_class_name]
@@ -373,7 +358,7 @@ class FixedUsersDispatcher(UsersDispatcherType):
             self._active_users.append((worker_node, next_user_class_name))
 
             if current_user_count_actual >= current_user_count_target:
-                self._current_user_count = current_user_count
+                self._grizzly_current_user_count = current_user_count
                 break
 
         return self._users_on_workers
@@ -397,11 +382,11 @@ class FixedUsersDispatcher(UsersDispatcherType):
             self._users_on_workers[worker_node.id][user] -= 1
             current_user_count_actual -= 1
             if current_user_count_actual == 0 or current_user_count_actual <= current_user_count_target:
-                self._current_user_count.clear()
+                self._grizzly_current_user_count.clear()
                 for user_counts in self._users_on_workers.values():
                     for user_class_name, count in user_counts.items():
-                        self._current_user_count.update(
-                            {user_class_name: self._current_user_count.get(user_class_name, 0) + count},
+                        self._grizzly_current_user_count.update(
+                            {user_class_name: self._grizzly_current_user_count.get(user_class_name, 0) + count},
                         )
                 return self._users_on_workers
 
@@ -415,13 +400,13 @@ class FixedUsersDispatcher(UsersDispatcherType):
 
         delta = perf_counter() - t0_rel
 
-        self.dispatch_iteration_durations.append(delta)
+        self._dispatch_iteration_durations.append(delta)
 
         if self.has_reached_target_user_count():
             # No sleep when this is the last dispatch iteration
             return
 
-        sleep_duration = max(0.0, self.wait_between_dispatch - delta)
+        sleep_duration = max(0.0, self._wait_between_dispatch - delta)
         gevent.sleep(sleep_duration)
 
     @staticmethod
@@ -465,7 +450,7 @@ class FixedUsersDispatcher(UsersDispatcherType):
 
         # summarize target user count per sticky tag
         for user_class_name, sticky_tag in self._users_to_sticky_tag.items():
-            user_count = self.target_user_count.get(user_class_name, None)
+            user_count = self._grizzly_target_user_count.get(user_class_name, None)
             if user_count is None:
                 continue
 
@@ -502,7 +487,7 @@ class FixedUsersDispatcher(UsersDispatcherType):
         self.__sticky_tag_to_workers.clear()
         for worker, sticky_tag in self._workers_to_sticky_tag.items():
             self.__sticky_tag_to_workers.update(
-                {sticky_tag: [*self.__sticky_tag_to_workers.get(sticky_tag, []), worker]},
+                {sticky_tag: self.__sticky_tag_to_workers.get(sticky_tag, []) + [worker]},  # noqa: RUF005
             )
 
         logger.debug(
@@ -535,7 +520,7 @@ class FixedUsersDispatcher(UsersDispatcherType):
     def _create_user_generator(self) -> Generator[str | None, None, None]:
         user_cycle: list[tuple[type[GrizzlyUser] | str, int]] = [
             (self._user_class_name_to_type[user_class_name], fixed_count)
-            for user_class_name, fixed_count in self.target_user_count.items()
+            for user_class_name, fixed_count in self._grizzly_target_user_count.items()
         ]
         user_generator: itertools.cycle[str | None] = self._infinite_cycle_gen(user_cycle)
 
@@ -578,14 +563,14 @@ class FixedUsersDispatcher(UsersDispatcherType):
 
         self._dispatch_in_progress = False
 
-    def _distribute_users(
+    def _grizzly_distribute_users(
         self, target_user_count: dict[str, int],
     ) -> tuple[dict[str, dict[str, int]], Generator[str | None, None, None], LengthOptimizedList[tuple[WorkerNode, str]]]:
         """Distribute users on available workers, and continue user cycle from there."""
         # used target as setup based on user class values, without changing the original value
 
         if target_user_count == {}:
-            target_user_count = {**self.target_user_count}
+            target_user_count = {**self._grizzly_target_user_count}
 
         self._spread_sticky_tags_on_workers()
 
@@ -621,7 +606,7 @@ class FixedUsersDispatcher(UsersDispatcherType):
             active_users.append((worker_node, next_user_class_name))
 
             if user_count_total >= user_count_target:
-                self._current_user_count = current_user_count
+                self._grizzly_current_user_count = current_user_count
                 break
 
         return users_on_workers, user_gen, active_users
@@ -671,7 +656,7 @@ def setup_locust_scenarios(grizzly: GrizzlyContext) -> Tuple[List[Type[GrizzlyUs
     external_dependencies: Set[str] = set()
     distribution: Dict[str, int] = {}
 
-    if grizzly.setup.dispatcher_class in [WeightedUsersDispatcher, None]:
+    if grizzly.setup.dispatcher_class in [UsersDispatcher, None]:
         user_count = grizzly.setup.user_count or 0
         total_weight = sum([scenario.user.weight for scenario in scenarios])
         for scenario in scenarios:
@@ -930,7 +915,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
         logger.error('spawn rate is not set')
         return 254
 
-    if grizzly.setup.dispatcher_class in [WeightedUsersDispatcher, None] and (grizzly.setup.user_count is None or grizzly.setup.user_count < 1):
+    if grizzly.setup.dispatcher_class in [UsersDispatcher, None] and (grizzly.setup.user_count is None or grizzly.setup.user_count < 1):
         logger.error("step 'Given \"user_count\" users' is not in the feature file")
         return 254
 
@@ -948,7 +933,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
         setup_resource_limits(context)
 
         if grizzly.setup.dispatcher_class is None:
-            grizzly.setup.dispatcher_class = WeightedUsersDispatcher
+            grizzly.setup.dispatcher_class = UsersDispatcher
 
         environment = Environment(
             user_classes=cast(list[type[User]], user_classes),
@@ -1093,7 +1078,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
         if not isinstance(runner, WorkerRunner):
             logger.info('starting locust-%s via grizzly-%s', __locust_version__, __version__)
             # user_count == -1 means that the dispatcher will use use class properties `fixed_count`
-            user_count = grizzly.setup.user_count or 0 if runner.environment.dispatcher_class == WeightedUsersDispatcher else -1
+            user_count = grizzly.setup.user_count or 0 if runner.environment.dispatcher_class == UsersDispatcher else -1
 
             try:
                 runner.start(user_count, grizzly.setup.spawn_rate)

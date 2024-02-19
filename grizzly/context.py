@@ -17,7 +17,7 @@ from grizzly.utils import flatten
 from .testdata import GrizzlyVariables
 
 if TYPE_CHECKING:  # pragma: no cover
-    from locust.dispatch import UsersDispatcherType
+    from locust.dispatch import UsersDispatcher
 
     from grizzly.types.behave import Scenario
     from grizzly.types.locust import LocalRunner, MasterRunner, WorkerRunner
@@ -335,7 +335,7 @@ class GrizzlyContextSetup:
     user_count: Optional[int] = field(init=False, default=None)
     spawn_rate: Optional[float] = field(init=False, default=None)
     timespan: Optional[str] = field(init=False, default=None)
-    dispatcher_class: Optional[Type[UsersDispatcherType]] = field(init=False, default=None)
+    dispatcher_class: Optional[Type[UsersDispatcher]] = field(init=False, default=None)
 
     statistics_url: Optional[str] = field(init=False, default=None)
 
