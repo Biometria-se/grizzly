@@ -37,6 +37,7 @@ def step_task_wait_between_random(context: Context, min_time: str, max_time: str
     # wait 1.3 seconds
     ...
     ```
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
     if has_parameter(min_time):
@@ -73,6 +74,7 @@ def step_task_wait_between_constant(context: Context, time: str) -> None:
     # wait 1.3 seconds
     ...
     ```
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
     if has_parameter(time):

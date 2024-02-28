@@ -253,10 +253,10 @@ class ClientTask(GrizzlyMetaRequestTask):
                 name = f'{parent.user._scenario.identifier} {rendered_name}'
 
             response_time = int((time() - start_time) * 1000)
-            response_length = meta.get('response_length', None) or 0
+            response_length = meta.get('response_length') or 0
 
             if exception is None:
-                exception = meta.get('exception', None)
+                exception = meta.get('exception')
 
             if not suppress or exception is not None:
                 parent.user.environment.events.request.fire(
@@ -277,8 +277,8 @@ class ClientTask(GrizzlyMetaRequestTask):
 
                 request_log: Dict[str, Any] = {
                     'stacktrace': None,
-                    'response': meta.get('response', None),
-                    'request': meta.get('request', None),
+                    'response': meta.get('response'),
+                    'request': meta.get('request'),
                 }
 
                 if exception is not None:

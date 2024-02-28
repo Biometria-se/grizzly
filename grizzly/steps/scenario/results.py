@@ -29,6 +29,7 @@ def step_results_fail_ratio(context: Context, fail_ratio: int) -> None:
 
     Args:
         fail_ratio (int): percentage of requests that are allowed to fail
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
     assert grizzly.scenario.failure_exception is None, f"cannot use step 'fail ratio is greater than \"{fail_ratio}\" fail scenario' togheter with 'on failure' steps"
@@ -49,6 +50,7 @@ def step_results_avg_response_time(context: Context, avg_response_time: int) -> 
 
     Args:
         avg_response_time (int): allowed average response time in milliseconds
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
     grizzly.scenario.validation.avg_response_time = avg_response_time
@@ -68,6 +70,7 @@ def step_results_response_time_percentile(context: Context, percentile: float, r
     Args:
         percentile (int): percentile to validate (1-100)
         response_time (int): response time in milliseconds
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
     grizzly.scenario.validation.response_time_percentile = GrizzlyContextScenarioResponseTimePercentile(

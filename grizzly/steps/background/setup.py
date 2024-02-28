@@ -60,6 +60,7 @@ def step_setup_save_statistics(context: Context, url: str) -> None:
 
     Args:
         url (str): URL for statistics endpoint
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
     url = cast(str, resolve_variable(grizzly, url))
@@ -83,6 +84,7 @@ def step_setup_log_level(context: Context, log_level: str) -> None:
 
     Args:
         log_level (str): one of `INFO`, `DEBUG`, `WARNING`, `ERROR`
+
     """
     assert log_level in ['INFO', 'DEBUG', 'WARNING', 'ERROR'], f'log level {log_level} is not supported'
     grizzly = cast(GrizzlyContext, context.grizzly)
@@ -102,6 +104,7 @@ def step_setup_run_time(context: Context, timespan: str) -> None:
 
     Args:
         timespan (str): description of how long the test should run for, e.g. 10s, 1h, 40m etc.
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
     grizzly.setup.timespan = timespan
@@ -157,6 +160,7 @@ def step_setup_set_global_context_variable(context: Context, variable: str, valu
     Args:
         variable (str): variable name, as used in templates
         value (str): variable value
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
     context_variable = create_context_variable(grizzly, variable, value)
@@ -182,6 +186,7 @@ def step_setup_message_type_callback(context: Context, callback_name: str, messa
         message_type (str): unique name of the message
         from_node (MessageDirection): server or client, exclusive
         to_node (MessageDirection): client or server, exclusive
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
 

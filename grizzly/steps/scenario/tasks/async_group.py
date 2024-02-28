@@ -33,6 +33,7 @@ def step_task_async_group_start(context: Context, name: str) -> None:
     ```
 
     In this example, the `put` and `get` requests will run asynchronously, and both requests will block following requests until both are finished.
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -62,6 +63,7 @@ def step_task_async_group_close(context: Context) -> None:
     Then get request with name "test-get-1" from endpoint "/api/test"
     And close async request group
     ```
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
 

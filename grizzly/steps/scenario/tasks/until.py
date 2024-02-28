@@ -32,6 +32,7 @@ def step_task_request_with_name_endpoint_until(context: Context, method: Request
         direction (RequestDirection): one of `to` or `from` depending on the value of `method`
         endpoint (str): URI relative to `host` in the scenario, can contain variables and in certain cases `user_class_name` specific parameters
         condition (str): JSON or XPath expression for specific value in response payload
+
     """
     assert method.direction == RequestDirection.FROM, 'this step is only valid for request methods with direction FROM'
     assert context.text is None, 'this step does not have support for step text'
@@ -73,6 +74,7 @@ def step_task_client_get_endpoint_until(context: Context, endpoint: str, name: s
         endpoint (str): information about where to get information, see the specific getter task implementations for more information
         name (str): name of the request, used in request statistics
         condition (str): JSON or XPath expression for specific value in response payload
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
 

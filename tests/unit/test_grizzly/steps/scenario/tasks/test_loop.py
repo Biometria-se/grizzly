@@ -3,8 +3,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from grizzly.steps import (
     step_setup_variable_value,
     step_task_conditional_end,

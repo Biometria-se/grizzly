@@ -3,8 +3,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from grizzly.steps import step_task_async_group_close, step_task_async_group_start, step_task_request_text_with_name_endpoint
 from grizzly.types import RequestDirection, RequestMethod
 from tests.helpers import ANY

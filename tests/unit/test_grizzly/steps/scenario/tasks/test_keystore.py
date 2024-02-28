@@ -3,8 +3,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from grizzly.steps import step_task_keystore_get, step_task_keystore_get_default, step_task_keystore_set
 from grizzly.tasks import KeystoreTask
 from tests.helpers import ANY

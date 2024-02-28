@@ -6,7 +6,6 @@ from os import environ
 from typing import TYPE_CHECKING, cast
 from urllib.parse import urlparse
 
-import pytest
 from parse import compile
 
 from grizzly.context import GrizzlyContext

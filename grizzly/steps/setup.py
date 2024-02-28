@@ -35,6 +35,7 @@ def step_setup_variable_value_ask(context: Context, name: str) -> None:
 
     Args:
         name (str): variable name used in templates
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -92,6 +93,7 @@ def step_setup_variable_value(context: Context, name: str, value: str) -> None:
     Args:
         name (str): variable name
         value (Any): initial value
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
 

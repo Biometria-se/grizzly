@@ -3,8 +3,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
 
-import pytest
-
 from grizzly.steps import (
     step_task_async_group_close,
     step_task_async_group_start,

@@ -4,8 +4,6 @@ from __future__ import annotations
 from json import dumps as jsondumps
 from typing import TYPE_CHECKING, cast
 
-import pytest
-
 from grizzly.context import GrizzlyContext
 from grizzly.steps import step_task_transform
 from grizzly.tasks import TransformerTask

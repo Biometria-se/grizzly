@@ -69,7 +69,7 @@ GrizzlyTaskOnType = Callable[['GrizzlyScenario'], None]
 
 
 class grizzlytask:
-    __name__ = 'grizzlytask'  # noqa: A003
+    __name__ = 'grizzlytask'
 
     _on_start: Optional[OnGrizzlyTask] = None
     _on_stop: Optional[OnGrizzlyTask] = None

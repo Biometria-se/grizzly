@@ -80,7 +80,7 @@ class TestAppInsightsListener:
             def logger_info(_: logging.Handler, msg: str, extra: Dict[str, Any]) -> None:
                 assert msg == expected_message
                 assert extra is not None
-                custom_dimensions = extra.get('custom_dimensions', None)
+                custom_dimensions = extra.get('custom_dimensions')
                 assert custom_dimensions is not None
                 assert custom_dimensions.get('thread_count', None) == ''
                 assert custom_dimensions.get('spawn_rate', None) == ''

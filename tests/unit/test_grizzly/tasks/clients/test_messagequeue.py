@@ -320,9 +320,9 @@ class TestMessageQueueClientTask:
                 meta: Dict[str, Any] = {}
                 with pytest.raises(AsyncMessageError, match='no response'):
                     task_factory.connect(111111, client, meta)
-                assert meta.get('response_length', None) == 0
-                assert meta.get('action', None) == 'topic:INCOMING.MSG'
-                assert meta.get('direction', None) == '<->'
+                assert meta.get('response_length') == 0
+                assert meta.get('action') == 'topic:INCOMING.MSG'
+                assert meta.get('direction') == '<->'
 
                 send_json_mock.assert_called_once_with({
                     'action': 'CONN',

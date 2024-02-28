@@ -27,6 +27,7 @@ def step_task_conditional_if(context: Context, condition: str, name: str) -> Non
     Then get request with name "get-when-false" from endpoint "/api/false"
     Then end condition
     ```
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -55,6 +56,7 @@ def step_task_conditional_else(context: Context) -> None:
     Then get request with name "get-when-false" from endpoint "/api/false"
     Then end condition
     ```
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -80,6 +82,7 @@ def step_task_conditional_end(context: Context) -> None:
     Then get request with name "get-when-false" from endpoint "/api/false"
     Then end condition
     ```
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
 

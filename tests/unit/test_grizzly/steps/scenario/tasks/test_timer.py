@@ -3,8 +3,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from grizzly.steps import step_task_timer_start, step_task_timer_stop
 from grizzly.tasks import TimerTask
 from tests.helpers import ANY

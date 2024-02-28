@@ -135,7 +135,7 @@ class MarkdownAstNode:
         return MarkdownAstNode(child_node, self.index)
 
     @property
-    def type(self) -> MarkdownAstType:  # noqa: A003
+    def type(self) -> MarkdownAstType:
         return MarkdownAstType.from_value(self.ast.get('type', None))
 
     @property
@@ -441,7 +441,7 @@ class GrizzlyMarkdown:
     def to_ast(self, content: str) -> List[Dict[str, Any]]:
         return cast(List[Dict[str, Any]], self._markdown(content))
 
-    def next(self) -> Generator[MarkdownAstNode, None, None]:  # noqa: A003
+    def next(self) -> Generator[MarkdownAstNode, None, None]:
         for index, node_ast in enumerate(self._ast_tree_original):
             node = MarkdownAstNode(node_ast, index + self.offset)
 

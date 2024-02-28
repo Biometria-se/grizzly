@@ -136,7 +136,7 @@ def router() -> None:  # noqa: C901, PLR0912, PLR0915
                 client_key = f'{request_client_id}::{scheme}'
 
             if request_worker_id is None and client_key is not None:
-                request_worker_id = client_worker_map.get(client_key, None)
+                request_worker_id = client_worker_map.get(client_key)
 
             if request_worker_id is None:
                 worker_id = workers_available.pop()

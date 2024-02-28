@@ -24,6 +24,7 @@ def step_task_timer_start(context: Context, name: str) -> None:
     ...
     And stop timer with name "parsing-xml"
     ```
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
     assert name not in grizzly.scenario.tasks.tmp.timers, f'timer with name {name} has already been defined'
@@ -49,6 +50,7 @@ def step_task_timer_stop(context: Context, name: str) -> None:
     ...
     And stop timer with name "parsing-xml"
     ```
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
 
