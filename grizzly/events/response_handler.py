@@ -49,6 +49,7 @@ class ResponseHandlerAction(ABC):
             match_with (str): regular expression that the extracted value must match
             user (ContextVariablesUser): user that executed task (request)
             condition (bool): used by validation handler for negative matching
+
         """
         input_content_type, input_payload = input_context
         j2env = self.grizzly.state.jinja2
@@ -100,7 +101,10 @@ class ResponseHandlerAction(ABC):
         elif number_of_matches == 1:
             match = matches[0]
 
-            if self.as_json:
+            if match is None or (isinstance(match, str) and match.lower() == 'none'):
+                match = None
+
+            if match is not None and self.as_json:
                 match = jsondumps([match])
         elif self.as_json:
             match = jsondumps(matches)
@@ -136,7 +140,7 @@ class ValidationHandlerAction(ResponseHandlerAction):
 
 
 class SaveHandlerAction(ResponseHandlerAction):
-    def __init__(self, variable: str, /, expression: str, match_with: str, expected_matches: str = '1', *, as_json: bool = False) -> None:
+    def __init__(self, variable: str, /, expression: str, match_with: str, expected_matches: str = '1', *, as_json: bool = False, default_value: Optional[str] = None) -> None:
         super().__init__(
             expression=expression,
             match_with=match_with,
@@ -145,6 +149,7 @@ class SaveHandlerAction(ResponseHandlerAction):
         )
 
         self.variable = variable
+        self.default_value = default_value
 
     def __call__(
         self,
@@ -153,9 +158,11 @@ class SaveHandlerAction(ResponseHandlerAction):
     ) -> None:
         match, expression, _ = self.get_match(input_context, user)
 
-        user.set_context_variable(self.variable, match)
+        value = match or self.default_value
 
-        if match is None:
+        user.set_context_variable(self.variable, value)
+
+        if match is None and self.default_value is None:
             message = f'"{expression}" did not match value'
             raise ResponseHandlerError(message)
 

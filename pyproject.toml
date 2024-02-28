@@ -132,9 +132,6 @@ exclude = [
 line-length = 180
 indent-width = 4
 
-[tool.ruff.per-file-ignores]
-"script/**" = ["INP001", "D100"]
-
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
@@ -155,15 +152,16 @@ ignore = [
     "TRY301"
 ]
 
-[tool.ruff.mccabe]
+[tool.ruff.lint.per-file-ignores]
+"script/**" = ["INP001", "D100"]
+"tests/unit/test_grizzly/test_locust_dispatch.py" = ["PT009", "PT027", "UP032", "D106"]
+
+[tool.ruff.lint.mccabe]
 max-complexity = 15
 
-[tool.ruff.pylint]
+[tool.ruff.lint.pylint]
 max-branches = 15
 max-args = 10
-
-[tool.ruff.lint.per-file-ignores]
-"tests/unit/test_grizzly/test_locust_dispatch.py" = ["PT009", "PT027", "UP032", "D106"]
 
 [tool.mypy]
 # https://github.com/python/mypy/issues/5870

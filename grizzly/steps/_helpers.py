@@ -176,6 +176,7 @@ def _add_response_handler(
     match_with: str,
     variable: Optional[str] = None,
     condition: Optional[bool] = None,
+    default_value: Optional[str] = None,
 ) -> None:
     if variable is not None and variable not in grizzly.state.variables:
         message = f'variable "{variable}" has not been declared'
@@ -221,6 +222,7 @@ def _add_response_handler(
             match_with=match_with,
             expected_matches=expected_matches,
             as_json=as_json,
+            default_value=default_value,
         )
     elif action == ResponseAction.VALIDATE:
         assert condition is not None, 'condition is not set'
@@ -241,8 +243,8 @@ def _add_response_handler(
     add_listener(handler)
 
 
-def add_save_handler(grizzly: GrizzlyContext, target: ResponseTarget, expression: str, match_with: str, variable: str) -> None:
-    _add_response_handler(grizzly, target, ResponseAction.SAVE, expression=expression, match_with=match_with, variable=variable)
+def add_save_handler(grizzly: GrizzlyContext, target: ResponseTarget, expression: str, match_with: str, variable: str, default_value: Optional[str]) -> None:
+    _add_response_handler(grizzly, target, ResponseAction.SAVE, expression=expression, match_with=match_with, variable=variable, default_value=default_value)
 
 
 def add_validation_handler(grizzly: GrizzlyContext, target: ResponseTarget, expression: str, match_with: str, *, condition: bool) -> None:

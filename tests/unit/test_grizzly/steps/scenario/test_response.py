@@ -1,7 +1,8 @@
 """Unit tests of grizzly.steps.scenario.response."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, cast
+from itertools import product
+from typing import TYPE_CHECKING, Callable, Dict, List, cast
 
 import pytest
 from parse import compile
@@ -75,21 +76,36 @@ def test_parse_response_content_type() -> None:
         p.parse('content type is "image/png"')
 
 
-def test_step_response_save_matches_metadata(grizzly_fixture: GrizzlyFixture) -> None:
+@pytest.mark.parametrize(('response_target', 'step_impl'), product(ResponseTarget, [step_response_save_matches, step_response_save_matches_optional, step_response_save, step_response_save_optional]))
+def test_step_response_save(grizzly_fixture: GrizzlyFixture, response_target: ResponseTarget, step_impl: Callable[..., None]) -> None:
     behave = grizzly_fixture.behave.context
     grizzly = grizzly_fixture.grizzly
     request = cast(RequestTask, grizzly.scenario.tasks()[0])
+    kwargs: Dict[str, Any] = {
+        'context': behave,
+        'target': response_target,
+        'expression': '$.test.value',
+        'variable': '',
+    }
+
+    if step_impl.__name__.replace('_optional', '') == 'step_response_save_matches':
+        kwargs.update({'match_with': '.*ary$'})
+
+    if step_impl.__name__.endswith('_optional'):
+        kwargs.update({'default_value': 'foobar'})
 
     assert behave.exceptions == {}
 
-    step_response_save_matches(behave, ResponseTarget.METADATA, '', '', '')
+    step_impl(**kwargs)
 
     assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='variable "" has not been declared')]}
 
     assert len(request.response.handlers.metadata) == 0
     assert len(request.response.handlers.payload) == 0
 
-    step_response_save_matches(behave, ResponseTarget.METADATA, '$.test.value', '.*ary$', 'test')
+    kwargs.update({'variable': 'test'})
+
+    step_impl(**kwargs)
 
     assert behave.exceptions == {behave.scenario.name: [
         ANY(AssertionError, message='variable "" has not been declared'),
@@ -99,7 +115,7 @@ def test_step_response_save_matches_metadata(grizzly_fixture: GrizzlyFixture) ->
     try:
         grizzly.state.variables['test'] = 'none'
 
-        step_response_save_matches(behave, ResponseTarget.METADATA, '$.test.value', '.*ary$', 'test')
+        step_impl(**kwargs)
 
         assert behave.exceptions == {behave.scenario.name: [
             ANY(AssertionError, message='variable "" has not been declared'),
@@ -108,153 +124,34 @@ def test_step_response_save_matches_metadata(grizzly_fixture: GrizzlyFixture) ->
         ]}
 
         request.response.content_type = TransformerContentType.JSON
-        step_response_save_matches(behave, ResponseTarget.METADATA, '$.test.value', '.*ary$', 'test')
+        step_impl(**kwargs)
 
-        assert len(request.response.handlers.metadata) == 1
-        assert len(request.response.handlers.payload) == 0
+        handlers_metadata_count = 1 if response_target == ResponseTarget.METADATA else 0
+        handlers_payload_count = 0 if response_target == ResponseTarget.METADATA else 1
+
+        assert len(request.response.handlers.metadata) == handlers_metadata_count
+        assert len(request.response.handlers.payload) == handlers_payload_count
     finally:
         request.response.content_type = TransformerContentType.UNDEFINED
         del grizzly.state.variables['test']
 
 
-def test_step_response_save_matches_payload(grizzly_fixture: GrizzlyFixture) -> None:
+@pytest.mark.parametrize('response_target', ResponseTarget)
+def test_step_response_validate(grizzly_fixture: GrizzlyFixture, response_target: ResponseTarget) -> None:
     behave = grizzly_fixture.behave.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
     request = cast(RequestTask, grizzly.scenario.tasks()[0])
 
     assert behave.exceptions == {}
 
-    step_response_save_matches(behave, ResponseTarget.PAYLOAD, '', '', '')
-
-    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='variable "" has not been declared')]}
-
-    assert len(request.response.handlers.metadata) == 0
-    assert len(request.response.handlers.payload) == 0
-
-    step_response_save_matches(behave, ResponseTarget.PAYLOAD, '$.test.value', '.*ary$', 'test')
-
-    assert behave.exceptions == {behave.scenario.name: [
-        ANY(AssertionError, message='variable "" has not been declared'),
-        ANY(AssertionError, message='variable "test" has not been declared'),
-    ]}
-
-    try:
-        grizzly.state.variables['test'] = 'none'
-        step_response_save_matches(behave, ResponseTarget.PAYLOAD, '$.test.value', '.*ary$', 'test')
-
-        assert behave.exceptions == {behave.scenario.name: [
-            ANY(AssertionError, message='variable "" has not been declared'),
-            ANY(AssertionError, message='variable "test" has not been declared'),
-            ANY(AssertionError, message='content type is not set for latest request'),
-        ]}
-
-        request.response.content_type = TransformerContentType.JSON
-
-        step_response_save_matches(behave, ResponseTarget.PAYLOAD, '$.test.value', '.*ary$', 'test')
-        assert len(request.response.handlers.metadata) == 0
-        assert len(request.response.handlers.payload) == 1
-    finally:
-        request.response.content_type = TransformerContentType.UNDEFINED
-        del grizzly.state.variables['test']
-
-
-def test_step_response_save_metadata(grizzly_fixture: GrizzlyFixture) -> None:
-    behave = grizzly_fixture.behave.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
-    request = cast(RequestTask, grizzly.scenario.tasks()[0])
-
-    assert behave.exceptions == {}
-
-    step_response_save(behave, ResponseTarget.METADATA, '', '')
-
-    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='variable "" has not been declared')]}
-
-    assert len(request.response.handlers.metadata) == 0
-    assert len(request.response.handlers.payload) == 0
-
-    step_response_save(behave, ResponseTarget.METADATA, '$.test.value', 'test')
-
-    assert behave.exceptions == {behave.scenario.name: [
-        ANY(AssertionError, message='variable "" has not been declared'),
-        ANY(AssertionError, message='variable "test" has not been declared'),
-    ]}
-
-    try:
-        grizzly.state.variables['test'] = 'none'
-        step_response_save(behave, ResponseTarget.METADATA, '$.test.value', 'test')
-
-        assert behave.exceptions == {behave.scenario.name: [
-            ANY(AssertionError, message='variable "" has not been declared'),
-            ANY(AssertionError, message='variable "test" has not been declared'),
-            ANY(AssertionError, message='content type is not set for latest request'),
-        ]}
-
-        request.response.content_type = TransformerContentType.JSON
-
-        step_response_save(behave, ResponseTarget.METADATA, '$.test.value', 'test')
-        assert len(request.response.handlers.metadata) == 1
-        assert len(request.response.handlers.payload) == 0
-    finally:
-        request.response.content_type = TransformerContentType.UNDEFINED
-        del grizzly.state.variables['test']
-
-
-def test_step_response_save_payload(grizzly_fixture: GrizzlyFixture) -> None:
-    behave = grizzly_fixture.behave.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
-    request = cast(RequestTask, grizzly.scenario.tasks()[0])
-
-    assert behave.exceptions == {}
-
-    step_response_save(behave, ResponseTarget.PAYLOAD, '', '')
-
-    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='variable "" has not been declared')]}
-
-    assert len(request.response.handlers.metadata) == 0
-    assert len(request.response.handlers.payload) == 0
-
-    step_response_save(behave, ResponseTarget.PAYLOAD, '$.test.value', 'test')
-
-    assert behave.exceptions == {behave.scenario.name: [
-        ANY(AssertionError, message='variable "" has not been declared'),
-        ANY(AssertionError, message='variable "test" has not been declared'),
-    ]}
-
-    try:
-        grizzly.state.variables['test'] = 'none'
-        step_response_save(behave, ResponseTarget.PAYLOAD, '$.test.value', 'test')
-
-        assert behave.exceptions == {behave.scenario.name: [
-            ANY(AssertionError, message='variable "" has not been declared'),
-            ANY(AssertionError, message='variable "test" has not been declared'),
-            ANY(AssertionError, message='content type is not set for latest request'),
-        ]}
-
-        request.response.content_type = TransformerContentType.JSON
-
-        step_response_save(behave, ResponseTarget.PAYLOAD, '$.test.value', 'test')
-        assert len(request.response.handlers.metadata) == 0
-        assert len(request.response.handlers.payload) == 1
-    finally:
-        request.response.content_type = TransformerContentType.UNDEFINED
-        del grizzly.state.variables['test']
-
-
-def test_step_response_validate_metadata(grizzly_fixture: GrizzlyFixture) -> None:
-    behave = grizzly_fixture.behave.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
-    request = cast(RequestTask, grizzly.scenario.tasks()[0])
-
-    assert behave.exceptions == {}
-
-    step_response_validate(behave, ResponseTarget.METADATA, '', True, '')  # noqa: FBT003
+    step_response_validate(behave, response_target, '', True, '')  # noqa: FBT003
 
     assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='expression is empty')]}
 
     assert len(request.response.handlers.metadata) == 0
     assert len(request.response.handlers.payload) == 0
 
-    step_response_validate(behave, ResponseTarget.METADATA, '$.test.value', True, '.*test')  # noqa: FBT003
+    step_response_validate(behave, response_target, '$.test.value', True, '.*test')  # noqa: FBT003
 
     assert behave.exceptions == {behave.scenario.name: [
         ANY(AssertionError, message='expression is empty'),
@@ -262,32 +159,13 @@ def test_step_response_validate_metadata(grizzly_fixture: GrizzlyFixture) -> Non
     ]}
 
     request.response.content_type = TransformerContentType.JSON
-    step_response_validate(behave, ResponseTarget.METADATA, '$.test.value', True, '.*test')  # noqa: FBT003
+    step_response_validate(behave, response_target, '$.test.value', True, '.*test')  # noqa: FBT003
 
-    assert len(request.response.handlers.metadata) == 1
-    assert len(request.response.handlers.payload) == 0
+    handlers_metadata_count = 1 if response_target == ResponseTarget.METADATA else 0
+    handlers_payload_count = 0 if response_target == ResponseTarget.METADATA else 1
 
-
-def test_step_response_validate_payload(grizzly_fixture: GrizzlyFixture) -> None:
-    behave = grizzly_fixture.behave.context
-    grizzly = cast(GrizzlyContext, behave.grizzly)
-    request = cast(RequestTask, grizzly.scenario.tasks()[0])
-
-    assert behave.exceptions == {}
-
-    step_response_validate(behave, ResponseTarget.PAYLOAD, '', True, '')  # noqa: FBT003
-
-    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='expression is empty')]}
-
-    assert len(request.response.handlers.metadata) == 0
-    assert len(request.response.handlers.payload) == 0
-
-    request.response.content_type = TransformerContentType.JSON
-
-    step_response_validate(behave, ResponseTarget.PAYLOAD, '$.test.value', True, '.*test')  # noqa: FBT003
-
-    assert len(request.response.handlers.metadata) == 0
-    assert len(request.response.handlers.payload) == 1
+    assert len(request.response.handlers.metadata) == handlers_metadata_count
+    assert len(request.response.handlers.payload) == handlers_payload_count
 
 
 def test_step_response_allow_status_codes(grizzly_fixture: GrizzlyFixture) -> None:

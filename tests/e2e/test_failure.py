@@ -82,6 +82,11 @@ def test_e2e_scenario_failure_handling(e2e_fixture: End2EndFixture) -> None:
         Then get request with name "default-get3" from endpoint "/api/echo"
     """))
 
+    log_files = list((e2e_fixture.root / 'features' / 'logs').glob('*.log'))
+
+    for log_file in log_files:
+        log_file.unlink()
+
     rc, output = e2e_fixture.execute(feature_file)
 
     assert rc == 1
