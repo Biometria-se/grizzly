@@ -10,7 +10,6 @@ from azure.core.exceptions import ResourceExistsError, ResourceNotFoundError
 from azure.servicebus import ServiceBusClient, ServiceBusMessage, ServiceBusReceivedMessage, ServiceBusReceiver, ServiceBusSender, TransportType
 from azure.servicebus.amqp import AmqpMessageBodyType
 from azure.servicebus.management import ServiceBusAdministrationClient, SqlRuleFilter, TopicProperties
-from mypy_extensions import KwArg, VarArg
 
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
 from grizzly_extras.transformer import TransformerContentType, TransformerError, transformer
@@ -36,7 +35,7 @@ handlers: Dict[str, AsyncMessageRequestHandler] = {}
 
 GenericCacheValue = Union[ServiceBusSender, ServiceBusReceiver]
 GenericCache = Dict[str, GenericCacheValue]
-GenericInstance = Callable[[VarArg(Any)], GenericCacheValue]
+GenericInstance = Callable[..., GenericCacheValue]
 
 
 class AsyncServiceBusHandler(AsyncMessageHandler):
@@ -97,18 +96,18 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
         sender_arguments: Dict[str, str] = {'client_identifier': self.worker}
 
-        sender_type: Callable[[KwArg(Any)], ServiceBusSender]  # type: ignore [reportInvalidTypeForm]
+        sender_type: Callable[..., ServiceBusSender]
 
         if endpoint_type == 'queue':
             sender_arguments.update({'queue_name': endpoint_name})
             sender_type = cast(
-                Callable[[KwArg(Any)], ServiceBusSender],  # type: ignore [reportInvalidTypeForm]
+                Callable[..., ServiceBusSender],
                 self.client.get_queue_sender,
             )
         else:
             sender_arguments.update({'topic_name': endpoint_name})
             sender_type = cast(
-                Callable[[KwArg(Any)], ServiceBusSender],  # type: ignore [reportInvalidTypeForm]
+                Callable[..., ServiceBusSender],
                 self.client.get_topic_sender,
             )
 
@@ -123,16 +122,16 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         receiver_arguments: Dict[str, Any] = {
             'client_identifier': self.worker,
         }
-        receiver_type: Callable[[KwArg(Any)], ServiceBusReceiver]  # type: ignore [reportInvalidTypeForm]
+        receiver_type: Callable[..., ServiceBusReceiver]
 
         if message_wait is not None:
             receiver_arguments.update({'max_wait_time': int(message_wait)})
 
         if endpoint_type == 'queue':
-            receiver_type = cast(Callable[[KwArg(Any)], ServiceBusReceiver], self.client.get_queue_receiver)  # type: ignore [reportInvalidTypeForm]
+            receiver_type = cast(Callable[..., ServiceBusReceiver], self.client.get_queue_receiver)
             receiver_arguments.update({'queue_name': endpoint_name})
         else:
-            receiver_type = cast(Callable[[KwArg(Any)], ServiceBusReceiver], self.client.get_subscription_receiver)  # type: ignore [reportInvalidTypeForm]
+            receiver_type = cast(Callable[..., ServiceBusReceiver], self.client.get_subscription_receiver)
             receiver_arguments.update({
                 'topic_name': endpoint_name,
                 'subscription_name': subscription_name,
