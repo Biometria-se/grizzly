@@ -98,7 +98,12 @@ def test_e2e_scenario_failure_handling(e2e_fixture: End2EndFixture) -> None:
 
 
 def test_e2e_behave_failure(e2e_fixture: End2EndFixture) -> None:
-    start_webserver_step = f'Then start webserver on master port "{e2e_fixture.webserver.port}"\n' if e2e_fixture._distributed else ''
+    if e2e_fixture._distributed:
+        start_webserver_step = f'Then start webserver on master port "{e2e_fixture.webserver.port}"\n'
+        offset = 1
+    else:
+        start_webserver_step = ''
+        offset = 0
 
     feature_file = e2e_fixture.create_feature(dedent(f"""Feature: test behave failure
     Background: common configuration
@@ -143,15 +148,15 @@ def test_e2e_behave_failure(e2e_fixture: End2EndFixture) -> None:
     result = ''.join(output)
 
     assert "HOOK-ERROR in after_feature: RuntimeError:" in result
-    assert """Failure summary:
+    assert f"""Failure summary:
     Scenario: fails 1
-        Then save response payload "$.hello.world" in variable "var1" # features/test_e2e_behave_failure.feature:13
+        Then save response payload "$.hello.world" in variable "var1" # features/test_e2e_behave_failure.feature:{(13 + offset)}
             ! variable "var1" has not been declared
-        Then save response metadata "$.foobar" in variable "var" # features/test_e2e_behave_failure.feature:15
+        Then save response metadata "$.foobar" in variable "var" # features/test_e2e_behave_failure.feature:{(15 + offset)}
             ! content type is not set for latest request
 
     Scenario: fails 2
-        Then save response metadata "$.Content-Type" in variable "var2" # features/test_e2e_behave_failure.feature:23
+        Then save response metadata "$.Content-Type" in variable "var2" # features/test_e2e_behave_failure.feature:{(23 + offset)}
             ! variable "var2" has not been declared
 
 Started : """ in result

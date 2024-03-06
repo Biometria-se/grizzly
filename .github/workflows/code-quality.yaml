@@ -15,11 +15,11 @@ jobs:
     steps:
     - name: checkout
       id: checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: setup python
       id: setup-python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.11'
         cache: 'pip'
@@ -61,18 +61,18 @@ jobs:
     steps:
     - name: timezone
       id: timezone
-      uses: szenius/set-timezone@v1.1
+      uses: MathRobin/timezone-action@v1.1
       with:
         timezoneLinux: 'Europe/Stockholm'
         timezoneWindows: 'W. Europe Standard Time'
 
     - name: checkout
       id: checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: setup python
       id: setup-python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
         cache: 'pip'
@@ -110,13 +110,13 @@ jobs:
     steps:
     - name: checkout
       id: checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         fetch-depth: 0
 
     - name: setup python
       id: setup-python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.11'
         cache: 'pip'
@@ -156,7 +156,7 @@ jobs:
     steps:
     - name: checkout
       id: checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: create script matrix
       id: create-script-matrix
@@ -183,11 +183,11 @@ jobs:
     steps:
     - name: checkout
       id: checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: setup python
       id: setup-python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.11'
         cache: 'pip'
@@ -213,18 +213,18 @@ jobs:
     steps:
     - name: checkout
       id: checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: setup python
       id: setup-python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.11'
         cache: 'pip'
 
     - name: setup node
       id: setup-node
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
 
     - name: install python dependencies
       id: pip
