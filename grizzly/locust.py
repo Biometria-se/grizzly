@@ -273,7 +273,7 @@ class FixedUsersDispatcher(UsersDispatcher):
         # this dispatcher does not care about target_user_count
         assert target_user_count == -1
 
-        grizzly_user_classes = cast(list[type[GrizzlyUser]] | None, user_classes)
+        grizzly_user_classes = cast(Optional[List[Type[GrizzlyUser]]], user_classes)
 
         if grizzly_user_classes is not None and self._user_classes != sorted(grizzly_user_classes, key=attrgetter('__name__')):
             self._user_classes = sorted(grizzly_user_classes, key=attrgetter('__name__'))
@@ -281,11 +281,11 @@ class FixedUsersDispatcher(UsersDispatcher):
             # map original user classes (supplied when users dispatcher was created), with additional new ones (might be duplicates)
             self._users_to_sticky_tag = {
                 user_class.__name__: user_class.sticky_tag or '__orphan__'
-                for user_class in cast(list[type[GrizzlyUser]], self._original_user_classes + grizzly_user_classes)
+                for user_class in cast(List[Type[GrizzlyUser]], self._original_user_classes + grizzly_user_classes)
             }
 
             self._user_class_name_to_type = {
-                user_class.__name__: user_class for user_class in cast(list[type[GrizzlyUser]], self._original_user_classes + grizzly_user_classes)
+                user_class.__name__: user_class for user_class in cast(List[Type[GrizzlyUser]], self._original_user_classes + grizzly_user_classes)
             }
 
             # only merge target user count for classes that has been specified in user classes
@@ -936,7 +936,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
             grizzly.setup.dispatcher_class = UsersDispatcher
 
         environment = Environment(
-            user_classes=cast(list[type[User]], user_classes),
+            user_classes=cast(List[Type[User]], user_classes),
             shape_class=None,
             events=events,
             stop_timeout=300,  # only wait at most?

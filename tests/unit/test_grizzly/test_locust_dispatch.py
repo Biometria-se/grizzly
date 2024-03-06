@@ -8,7 +8,7 @@ import time
 import unittest
 import warnings
 from operator import attrgetter
-from typing import Any, Iterator, cast
+from typing import Any, Dict, Iterator, cast
 
 from locust import User
 from locust.runners import WorkerNode
@@ -2224,7 +2224,7 @@ class TestLargeScale(UsersDispatcherTestCase):
             else:
                 distribute_users = users_dispatcher._distribute_users(target_user_count=target_user_count_1m)
 
-            users_on_workers = cast(dict[str, dict[str, int]], distribute_users[0])
+            users_on_workers = cast(Dict[str, Dict[str, int]], distribute_users[0])
             delta = time.perf_counter() - ts
 
             # Because tests are run with coverage, the code will be slower.

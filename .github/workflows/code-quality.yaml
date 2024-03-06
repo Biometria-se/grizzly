@@ -30,7 +30,7 @@ jobs:
 
     - name: run ruff
       id: ruff
-      run: python -m ruff grizzly/ grizzly_extras/ tests/ example/
+      run: python -m ruff check grizzly/ grizzly_extras/ tests/ example/
 
     - name: run mypy
       id: mypy

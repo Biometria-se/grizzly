@@ -9,7 +9,7 @@ from os import environ
 from pathlib import Path
 from textwrap import indent
 from time import perf_counter as time
-from typing import Any, List, Optional, cast
+from typing import Any, Dict, List, Optional, cast
 
 import setproctitle as proc
 from behave.reporter.summary import SummaryReporter
@@ -145,7 +145,7 @@ def after_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: An
 
     if has_exceptions:
         buffer: list[str] = []
-        for scenario_name, exceptions in cast(dict[Optional[str], list[AssertionError]], context.exceptions).items():
+        for scenario_name, exceptions in cast(Dict[Optional[str], List[AssertionError]], context.exceptions).items():
             if scenario_name is not None:
                 buffer.append(f'Scenario: {scenario_name}')
             else:
@@ -218,7 +218,7 @@ def after_scenario(context: Context, *_args: Any, **_kwargs: Any) -> None:
 
     assert grizzly.scenario.tasks.tmp.conditional is None, f'conditional "{grizzly.scenario.tasks.tmp.conditional.name}" has not been closed'
 
-    for scenario_name, exceptions in cast(dict[str | None, list[StepError]], context.exceptions).items():
+    for scenario_name, exceptions in cast(Dict[Optional[str], List[StepError]], context.exceptions).items():
         if scenario_name != context.scenario.name:
             continue
 
