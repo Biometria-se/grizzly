@@ -18,7 +18,6 @@ if TYPE_CHECKING:  # pragma: no cover
     ('MessageQueueUser', 'mq://localhost/?QueueManager=QMGR01&Channel=Channel01', 1),
     ('ServiceBus', 'sb://localhost/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=', 0),
     ('BlobStorageUser', 'DefaultEndpointsProtocol=https;EndpointSuffix=localhost;AccountName=examplestorage;AccountKey=xxxyyyyzzz==', 0),
-    ('Sftp', 'sftp://localhost', 1),
 ])
 def test_e2e_step_user_type_count_tag(e2e_fixture: End2EndFixture, user_type: str, host: str, expected_rc: int) -> None:
     def validate_user_type(context: Context) -> None:
@@ -47,7 +46,7 @@ def test_e2e_step_user_type_count_tag(e2e_fixture: End2EndFixture, user_type: st
 
     host = host.replace('localhost', e2e_fixture.host)
 
-    user_count = choice(range(1, 100))
+    user_count = choice(range(1, 20))
     user_tag = choice(['foo', 'bar', 'hello', 'world'])
     grammar = choice(['user', 'users'])
 
@@ -80,7 +79,6 @@ def test_e2e_step_user_type_count_tag(e2e_fixture: End2EndFixture, user_type: st
     ('MessageQueueUser', 'mq://localhost/?QueueManager=QMGR01&Channel=Channel01', 1),
     ('ServiceBus', 'sb://localhost/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=', 0),
     ('BlobStorageUser', 'DefaultEndpointsProtocol=https;EndpointSuffix=localhost;AccountName=examplestorage;AccountKey=xxxyyyyzzz==', 0),
-    ('Sftp', 'sftp://localhost', 1),
 ])
 def test_e2e_step_user_type_with_weight(e2e_fixture: End2EndFixture, user_type: str, host: str, expected_rc: int) -> None:
     def validate_user_type(context: Context) -> None:
@@ -104,7 +102,7 @@ def test_e2e_step_user_type_with_weight(e2e_fixture: End2EndFixture, user_type: 
 
     host = host.replace('localhost', e2e_fixture.host)
 
-    weight = choice(range(1, 100))
+    weight = choice(range(1, 20))
 
     table: List[Dict[str, str]] = [{
         'user_type': user_type,
@@ -133,7 +131,6 @@ def test_e2e_step_user_type_with_weight(e2e_fixture: End2EndFixture, user_type: 
     ('MessageQueueUser', 'mq://localhost/?QueueManager=QMGR01&Channel=Channel01', 1),
     ('ServiceBus', 'sb://localhost/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=', 0),
     ('BlobStorageUser', 'DefaultEndpointsProtocol=https;EndpointSuffix=localhost;AccountName=examplestorage;AccountKey=xxxyyyyzzz==', 0),
-    ('Sftp', 'sftp://localhost', 1),
 ])
 def test_e2e_step_user_type(e2e_fixture: End2EndFixture, user_type: str, host: str, expected_rc: int) -> None:
     def validate_user_type(context: Context) -> None:

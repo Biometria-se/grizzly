@@ -607,9 +607,8 @@ def step_start_webserver(context: Context, port: int) -> None:
                 self._env.update({env_key: env_value})
 
         # install grizzly-cli
-        # @TODO: must change!!!!
         rc, output = run_command(
-            ['python3', '-m', 'pip', 'install', 'git+https://github.com/mgor/grizzly-cli.git@feature/locust_new_dispatcher'],
+            ['python3', '-m', 'pip', 'install', 'git+https://github.com/biometria-se/grizzly-cli.git@main'],
             cwd=str(test_context),
             env=self._env,
         )
@@ -947,6 +946,7 @@ def step_start_webserver(context: Context, port: int) -> None:
                 'run',
                 '--yes',
                 '--verbose',
+                '-l', '/tmp/grizzly.log',  # noqa: S108
                 feature_file,
             ]
 

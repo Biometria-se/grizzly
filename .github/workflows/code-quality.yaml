@@ -149,6 +149,12 @@ jobs:
         SSH_AUTH_SOCK: /tmp/ssh_auth_sock
       run: python -m pytest tests/e2e
 
+    - name: 'grizzly logs'
+      id: grizzly-logs
+      if: failure()
+      continue-on-error: true
+      run: cat /tmp/grizzly.log
+
   pre-documentation-scripts:
     name: 'documentation / script inventory'
     runs-on: 'ubuntu-latest'
