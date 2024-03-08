@@ -25,7 +25,7 @@ def test_e2e_step_utils_fail(e2e_fixture: End2EndFixture) -> None:
     assert rc == 1
     assert """Failure summary:
     Scenario: test_e2e_step_utils_fail
-        Then fail # features/test_e2e_step_utils_fail.feature:8
+        Then fail # features/test_e2e_step_utils_fail.lock.feature:8
             ! manually failed""" in result
     assert """0 features passed, 1 failed, 0 skipped
 0 scenarios passed, 1 failed, 0 skipped

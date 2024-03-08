@@ -150,13 +150,13 @@ def test_e2e_behave_failure(e2e_fixture: End2EndFixture) -> None:
     assert "HOOK-ERROR in after_feature: RuntimeError:" in result
     assert f"""Failure summary:
     Scenario: fails 1
-        Then save response payload "$.hello.world" in variable "var1" # features/test_e2e_behave_failure.feature:{(13 + offset)}
+        Then save response payload "$.hello.world" in variable "var1" # features/test_e2e_behave_failure.lock.feature:{(13 + offset)}
             ! variable "var1" has not been declared
-        Then save response metadata "$.foobar" in variable "var" # features/test_e2e_behave_failure.feature:{(15 + offset)}
+        Then save response metadata "$.foobar" in variable "var" # features/test_e2e_behave_failure.lock.feature:{(15 + offset)}
             ! content type is not set for latest request
 
     Scenario: fails 2
-        Then save response metadata "$.Content-Type" in variable "var2" # features/test_e2e_behave_failure.feature:{(23 + offset)}
+        Then save response metadata "$.Content-Type" in variable "var2" # features/test_e2e_behave_failure.lock.feature:{(23 + offset)}
             ! variable "var2" has not been declared
 
 Started : """ in result
