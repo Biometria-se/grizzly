@@ -3,10 +3,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from grizzly.steps import step_task_keystore_get, step_task_keystore_get_default, step_task_keystore_set
 from grizzly.tasks import KeystoreTask
+from tests.helpers import ANY
 
 if TYPE_CHECKING:  # pragma: no cover
     from tests.fixtures import BehaveFixture
@@ -36,6 +35,7 @@ def test_step_task_keystore_get_default(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = behave_fixture.grizzly
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+    behave.scenario = grizzly.scenario.behave
 
     grizzly.scenario.tasks.clear()
 
@@ -71,19 +71,19 @@ def test_step_task_keystore_get_default(behave_fixture: BehaveFixture) -> None:
     assert task.action_context == 'foobar'
     assert task.default_value == 'hello'
 
-    with pytest.raises(AssertionError, match='"hello" is not valid JSON'):
-        step_task_keystore_get_default(behave, 'barfoo', 'foobar', 'hello')
-
+    step_task_keystore_get_default(behave, 'barfoo', 'foobar', 'hello')
+    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='"hello" is not valid JSON')]}
 
 def test_step_task_keystore_set(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = behave_fixture.grizzly
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+    behave.scenario = grizzly.scenario.behave
 
     grizzly.scenario.tasks.clear()
 
-    with pytest.raises(AssertionError, match='"hello" is not valid JSON'):
-        step_task_keystore_set(behave, 'foobar', 'hello')
+    step_task_keystore_set(behave, 'foobar', 'hello')
+    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='"hello" is not valid JSON')]}
 
     step_task_keystore_set(behave, 'foobar', "'hello'")
 

@@ -6,7 +6,6 @@ from os import environ
 from typing import TYPE_CHECKING, cast
 from urllib.parse import urlparse
 
-import pytest
 from parse import compile
 
 from grizzly.context import GrizzlyContext
@@ -14,6 +13,7 @@ from grizzly.exceptions import RestartScenario
 from grizzly.steps import *
 from grizzly.types import MessageDirection
 from grizzly.types.locust import StopUser
+from tests.helpers import ANY
 
 if TYPE_CHECKING:  # pragma: no cover
     from tests.fixtures import BehaveFixture
@@ -42,17 +42,21 @@ def test_parse_message_direction() -> None:
 def test_step_setup_save_statistics(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave_fixture.context.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+    behave.scenario = grizzly.scenario.behave
     step_impl = step_setup_save_statistics
 
-    with pytest.raises(AssertionError, match='"https" is not a supported scheme'):
-        step_impl(behave, 'https://test:8000')
+    step_impl(behave, 'https://test:8000')
+    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='"https" is not a supported scheme')]}
+    delattr(behave, 'exceptions')
 
     step_impl(behave, 'influxdb://test:8000/test_db')
     assert grizzly.setup.statistics_url == 'influxdb://test:8000/test_db'
 
     try:
-        with pytest.raises(AssertionError, match='environment variable "DATABASE" is not set'):
-            step_impl(behave, 'influxdb://test:8000/$env::DATABASE$')
+        step_impl(behave, 'influxdb://test:8000/$env::DATABASE$')
+        assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='environment variable "DATABASE" is not set')]}
+        delattr(behave, 'exceptions')
 
         environ['DATABASE'] = 'test_db'
         step_impl(behave, 'influxdb://test:8000/$env::DATABASE$')
@@ -65,8 +69,10 @@ def test_step_setup_save_statistics(behave_fixture: BehaveFixture) -> None:
     assert grizzly.setup.statistics_url == 'insights://?IngestionEndpoint=insights.example.com&Testplan=test&InstrumentationKey=aaaabbbb='
 
     try:
-        with pytest.raises(AssertionError, match='environment variable "TEST_VARIABLE" is not set'):
-            step_impl(behave, 'insights://?IngestionEndpoint=$env::TEST_VARIABLE$&Testplan=test&InstrumentationKey=aaaabbbb=')
+        step_impl(behave, 'insights://?IngestionEndpoint=$env::TEST_VARIABLE$&Testplan=test&InstrumentationKey=aaaabbbb=')
+        assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='environment variable "TEST_VARIABLE" is not set')]}
+        delattr(behave, 'exceptions')
+
         environ['TEST_VARIABLE'] = 'HelloWorld'
 
         step_impl(behave, 'insights://username:password@?IngestionEndpoint=$env::TEST_VARIABLE$&Testplan=test&InstrumentationKey=aaaabbbb=')
@@ -78,14 +84,15 @@ def test_step_setup_save_statistics(behave_fixture: BehaveFixture) -> None:
         with suppress(KeyError):
             del environ['TEST_VARIABLE']
 
-    with pytest.raises(AssertionError, match='configuration variable "statistics.username" is not set'):
-        step_impl(
-            behave,
-            (
-                'insights://$conf::statistics.username$:$conf::statistics.password$@?IngestionEndpoint=$conf::statistics.url$&'
-                'Testplan=$conf::statistics.testplan$&InstrumentationKey=$conf::statistics.instrumentationkey$'
-            ),
-        )
+    step_impl(
+        behave,
+        (
+            'insights://$conf::statistics.username$:$conf::statistics.password$@?IngestionEndpoint=$conf::statistics.url$&'
+            'Testplan=$conf::statistics.testplan$&InstrumentationKey=$conf::statistics.instrumentationkey$'
+        ),
+    )
+    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='configuration variable "statistics.username" is not set')]}
+    delattr(behave, 'exceptions')
 
     grizzly.state.configuration['statistics.url'] = 'insights.example.com'
     grizzly.state.configuration['statistics.testplan'] = 'test'
@@ -113,12 +120,10 @@ def test_step_setup_stop_user_on_failure(behave_fixture: BehaveFixture) -> None:
     grizzly = cast(GrizzlyContext, behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
 
-    assert not behave.config.stop
     assert grizzly.scenario.failure_exception is None
 
     step_setup_stop_user_on_failure(behave)
 
-    assert behave.config.stop
     assert grizzly.scenario.failure_exception == StopUser
 
 
@@ -139,12 +144,14 @@ def test_step_setup_restart_scenario_on_failure(behave_fixture: BehaveFixture) -
 def test_step_setup_log_level(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+    behave.scenario = grizzly.scenario.behave
     step_impl = step_setup_log_level
 
     assert grizzly.setup.log_level == 'INFO'
 
-    with pytest.raises(AssertionError, match='log level WARN is not supported'):
-        step_impl(behave, 'WARN')
+    step_impl(behave, 'WARN')
+    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='log level WARN is not supported')]}
 
     for log_level in ['DEBUG', 'WARNING', 'ERROR', 'INFO']:
         step_impl(behave, log_level)
@@ -311,29 +318,40 @@ def test_step_setup_set_global_context_variable(behave_fixture: BehaveFixture) -
 
 
 def test_step_setup_message_type_callback(behave_fixture: BehaveFixture) -> None:
-    grizzly = behave_fixture.grizzly
+    behave = behave_fixture.context
+    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+    behave.scenario = grizzly.scenario.behave
 
     assert grizzly.setup.locust.messages == {}
 
-    with pytest.raises(AssertionError, match='cannot register message handler that sends from server and is received at server'):
-        step_setup_message_type_callback(behave_fixture.context, 'foobar.method', 'foo_message', 'server', 'server')
+    step_setup_message_type_callback(behave, 'foobar.method', 'foo_message', 'server', 'server')
+    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='cannot register message handler that sends from server and is received at server')]}
+    delattr(behave, 'exceptions')
 
-    with pytest.raises(AssertionError, match='cannot register message handler that sends from client and is received at client'):
-        step_setup_message_type_callback(behave_fixture.context, 'foobar.method', 'foo_message', 'client', 'client')
+    step_setup_message_type_callback(behave, 'foobar.method', 'foo_message', 'client', 'client')
+    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='cannot register message handler that sends from client and is received at client')]}
+    delattr(behave, 'exceptions')
 
-    with pytest.raises(AssertionError, match='no module named foobar'):
-        step_setup_message_type_callback(behave_fixture.context, 'foobar.method', 'foo_message', 'server', 'client')
+    step_setup_message_type_callback(behave, 'foobar.method', 'foo_message', 'server', 'client')
+    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='no module named foobar')]}
+    delattr(behave, 'exceptions')
 
-    with pytest.raises(AssertionError, match='module tests.helpers has no method message_callback_does_not_exist'):
-        step_setup_message_type_callback(behave_fixture.context, 'tests.helpers.message_callback_does_not_exist', 'foo_message', 'server', 'client')
+    step_setup_message_type_callback(behave, 'tests.helpers.message_callback_does_not_exist', 'foo_message', 'server', 'client')
+    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='module tests.helpers has no method message_callback_does_not_exist')]}
+    delattr(behave, 'exceptions')
 
-    with pytest.raises(AssertionError, match='tests.helpers.message_callback_not_a_method is not a method'):
-        step_setup_message_type_callback(behave_fixture.context, 'tests.helpers.message_callback_not_a_method', 'foo_message', 'server', 'client')
+    step_setup_message_type_callback(behave, 'tests.helpers.message_callback_not_a_method', 'foo_message', 'server', 'client')
+    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='tests.helpers.message_callback_not_a_method is not a method')]}
+    delattr(behave, 'exceptions')
 
-    with pytest.raises(AssertionError, match='tests.helpers.message_callback_incorrect_sig does not have grizzly.types.MessageCallback method signature: '):
-        step_setup_message_type_callback(behave_fixture.context, 'tests.helpers.message_callback_incorrect_sig', 'foo_message', 'server', 'client')
+    step_setup_message_type_callback(behave, 'tests.helpers.message_callback_incorrect_sig', 'foo_message', 'server', 'client')
+    assert behave.exceptions == {behave.scenario.name: [
+        ANY(AssertionError, message='tests.helpers.message_callback_incorrect_sig does not have grizzly.types.MessageCallback method signature: '),
+    ]}
+    delattr(behave, 'exceptions')
 
-    step_setup_message_type_callback(behave_fixture.context, 'tests.helpers.message_callback', 'foo_message', 'server', 'client')
+    step_setup_message_type_callback(behave, 'tests.helpers.message_callback', 'foo_message', 'server', 'client')
 
     from tests.helpers import message_callback
 

@@ -63,21 +63,15 @@ class TransformerTask(GrizzlyTask):
         self.content = content
         self.content_type = content_type
 
-        if self.variable not in self.grizzly.state.variables:
-            message = f'{self.__class__.__name__}: {self.variable} has not been initialized'
-            raise ValueError(message)
+        assert self.variable in self.grizzly.state.variables, f'{self.__class__.__name__}: {self.variable} has not been initialized'
 
         _transformer = transformer.available.get(self.content_type, None)
 
-        if _transformer is None:
-            message = f'{self.__class__.__name__}: could not find a transformer for {self.content_type.name}'
-            raise ValueError(message)
+        assert _transformer is not None, f'{self.__class__.__name__}: could not find a transformer for {self.content_type.name}'
 
         self._transformer = _transformer
 
-        if not self._transformer.validate(self.expression):
-            message = f'{self.__class__.__name__}: {self.expression} is not a valid expression for {self.content_type.name}'
-            raise ValueError(message)
+        assert self._transformer.validate(self.expression), f'{self.__class__.__name__}: {self.expression} is not a valid expression for {self.content_type.name}'
 
         self._parser = self._transformer.parser(self.expression)
 

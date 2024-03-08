@@ -22,15 +22,13 @@ from grizzly.types import T
 from grizzly_extras.async_message.utils import async_message_request
 
 if TYPE_CHECKING:  # pragma: no cover
-    from types import FunctionType
-
     import zmq.green as zmq
 
     from grizzly_extras.async_message import AsyncMessageRequest, AsyncMessageResponse
 
     from .context import GrizzlyContextScenario
     from .scenarios import GrizzlyScenario
-    from .types.behave import Context
+    from .types.behave import Context, StepFunctionType
     from .users import GrizzlyUser
 
 
@@ -98,11 +96,18 @@ def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Opt
         scenario.context,
     ]
 
+    if fixed_count is None:
+        fixed_count = scenario.user.fixed_count
+
     for merge_context in contexts:
+        logger.debug('%s context: %r', user_class_name, merge_context)
         context = merge_dicts(context, merge_context)
 
-    distribution: Dict[str, Union[int, float]] = {
+    logger.debug('%s context: %r', user_class_name, context)
+
+    distribution: Dict[str, Union[int, float, str | None]] = {
         'weight': scenario.user.weight,
+        'sticky_tag': scenario.user.sticky_tag,
     }
 
     if fixed_count is not None:
@@ -155,7 +160,7 @@ def merge_dicts(merged: Dict[str, Any], source: Dict[str, Any]) -> Dict[str, Any
     return merged
 
 
-def in_correct_section(func: FunctionType, expected: List[str]) -> bool:
+def in_correct_section(func: StepFunctionType, expected: List[str]) -> bool:
     """Check if a step function is used in the correct section of the feature file, as specified in `expected` (list of namespaces)."""
     try:
         actual = '.'.join(func.__module__.rsplit('.', 1)[:-1])

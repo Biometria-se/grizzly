@@ -36,6 +36,7 @@ def step_task_wait_explicit(context: Context, wait_time_expression: str) -> None
 
     Args:
         wait_time (float): wait time in seconds
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
 

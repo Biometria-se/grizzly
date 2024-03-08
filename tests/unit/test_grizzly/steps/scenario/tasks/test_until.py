@@ -12,6 +12,7 @@ from grizzly.tasks.clients import HttpClientTask
 from grizzly.types import RequestMethod
 from grizzly.types.behave import Row, Table
 from grizzly_extras.transformer import TransformerContentType
+from tests.helpers import ANY
 
 if TYPE_CHECKING:  # pragma: no cover
     from tests.fixtures import BehaveFixture
@@ -21,20 +22,28 @@ def test_step_task_request_with_name_endpoint_until(behave_fixture: BehaveFixtur
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+    behave.scenario = grizzly.scenario.behave
 
     assert len(grizzly.scenario.tasks()) == 0
 
-    with pytest.raises(AssertionError, match='this step is only valid for request methods with direction FROM'):
-        step_task_request_with_name_endpoint_until(behave, RequestMethod.POST, 'test', '/api/test', '$.`this`[?status="ready"]')
+    step_task_request_with_name_endpoint_until(behave, RequestMethod.POST, 'test', '/api/test', '$.`this`[?status="ready"]')
+    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='this step is only valid for request methods with direction FROM')]}
 
     behave.text = 'foo bar'
-    with pytest.raises(AssertionError, match='this step does not have support for step text'):
-        step_task_request_with_name_endpoint_until(behave, RequestMethod.GET, 'test', '/api/test', '$.`this`[?status="ready"]')
+    step_task_request_with_name_endpoint_until(behave, RequestMethod.GET, 'test', '/api/test', '$.`this`[?status="ready"]')
+    assert behave.exceptions == {behave.scenario.name: [
+        ANY(AssertionError, message='this step is only valid for request methods with direction FROM'),
+        ANY(AssertionError, message='this step does not have support for step text'),
+    ]}
 
     behave.text = None
 
-    with pytest.raises(ValueError, match='content type must be specified for request'):
-        step_task_request_with_name_endpoint_until(behave, RequestMethod.GET, 'test', '/api/test', '$.`this`[?status="ready"]')
+    step_task_request_with_name_endpoint_until(behave, RequestMethod.GET, 'test', '/api/test', '$.`this`[?status="ready"]')
+    assert behave.exceptions == {behave.scenario.name: [
+        ANY(AssertionError, message='this step is only valid for request methods with direction FROM'),
+        ANY(AssertionError, message='this step does not have support for step text'),
+        ANY(AssertionError, message='content type must be specified for request'),
+    ]}
 
     step_task_request_with_name_endpoint_until(behave, RequestMethod.GET, 'test', '/api/test | content_type=json', '$.`this`[?status="ready"]')
 
@@ -74,18 +83,23 @@ def test_step_task_client_get_endpoint_until(behave_fixture: BehaveFixture) -> N
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+    behave.scenario = grizzly.scenario.behave
 
-    with pytest.raises(AssertionError, match='could not find scheme in "api.example.io/api/test"'):
-        step_task_client_get_endpoint_until(behave, 'api.example.io/api/test', 'step-name', '$.`this`[?status=true]')
+    step_task_client_get_endpoint_until(behave, 'api.example.io/api/test', 'step-name', '$.`this`[?status=true]')
+    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='could not find scheme in "api.example.io/api/test"')]}
+    delattr(behave, 'exceptions')
 
-    with pytest.raises(AssertionError, match='no client task registered for foo'):
-        step_task_client_get_endpoint_until(behave, 'foo://api.example.io/api/test', 'step-name', '$.`this`[?status=true]')
+    step_task_client_get_endpoint_until(behave, 'foo://api.example.io/api/test', 'step-name', '$.`this`[?status=true]')
+    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='no client task registered for foo')]}
+    delattr(behave, 'exceptions')
 
-    with pytest.raises(ValueError, match='content type must be specified for request'):
-        step_task_client_get_endpoint_until(behave, 'https://api.example.io/api/test', 'step-name', '$.`this`[?status=true]')
+    step_task_client_get_endpoint_until(behave, 'https://api.example.io/api/test', 'step-name', '$.`this`[?status=true]')
+    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='content type must be specified for request')]}
+    delattr(behave, 'exceptions')
 
-    with pytest.raises(ValueError, match='unsupported arguments foo, bar'):
-        step_task_client_get_endpoint_until(behave, 'https://api.example.io/api/test | content_type=json', 'step-name', '$.`this`[?success=true] | foo=bar, bar=foo')
+    step_task_client_get_endpoint_until(behave, 'https://api.example.io/api/test | content_type=json', 'step-name', '$.`this`[?success=true] | foo=bar, bar=foo')
+    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='unsupported arguments foo, bar')]}
+    delattr(behave, 'exceptions')
 
     step_task_client_get_endpoint_until(behave, 'https://api.example.io/api/test | content_type=json', 'step-name', '$.`this`[?success=true]')
 
@@ -110,3 +124,4 @@ def test_step_task_client_get_endpoint_until(behave_fixture: BehaveFixture) -> N
     behave.text = '1=1'
     with pytest.raises(NotImplementedError, match='HttpClientTask has not implemented support for step text'):
         step_task_client_get_endpoint_until(behave, 'https://$conf::test.host$/api/test | content_type=json', 'step-name', '$.`this`[success=false]')
+    assert behave.exceptions == {behave.scenario.name: [ANY(NotImplementedError, message='HttpClientTask has not implemented support for step text')]}

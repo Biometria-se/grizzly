@@ -17,6 +17,8 @@ from grizzly.utils import flatten
 from .testdata import GrizzlyVariables
 
 if TYPE_CHECKING:  # pragma: no cover
+    from locust.dispatch import UsersDispatcher
+
     from grizzly.types.behave import Scenario
     from grizzly.types.locust import LocalRunner, MasterRunner, WorkerRunner
 
@@ -142,6 +144,8 @@ class GrizzlyContextScenarioValidation:
 class GrizzlyContextScenarioUser:
     class_name: str = field(init=False, hash=True)
     weight: int = field(init=False, hash=True, default=1)
+    fixed_count: Optional[int] = field(init=False, repr=False, hash=False, compare=False, default=None)
+    sticky_tag: Optional[str] = field(init=False, repr=False, hash=False, compare=False, default=None)
 
 
 StackedFuncType = Callable[['GrizzlyContextTasksTmp'], Optional['GrizzlyTaskWrapper']]
@@ -230,11 +234,13 @@ class GrizzlyContextTasks(List['GrizzlyTask']):
     def tmp(self) -> GrizzlyContextTasksTmp:
         return self._tmp
 
-    def __call__(self) -> List[GrizzlyTask]:
-        if len(self.tmp.__stack__) > 0:
-            return self.tmp.__stack__[-1].peek()
+    def __call__(self, *filtered_type: type[GrizzlyTask]) -> List[GrizzlyTask]:
+        tasks = self.tmp.__stack__[-1].peek() if len(self.tmp.__stack__) > 0 else cast(List['GrizzlyTask'], self)
 
-        return cast(List['GrizzlyTask'], self)
+        if len(filtered_type) > 0:
+            tasks = [task for task in tasks if isinstance(task, filtered_type)]
+
+        return tasks
 
     def add(self, task: GrizzlyTask) -> None:
         if len(self.tmp.__stack__) > 0:
@@ -326,9 +332,10 @@ class GrizzlyContextSetup:
 
     global_context: Dict[str, Any] = field(init=False, repr=False, hash=False, compare=False, default_factory=dict)
 
-    user_count: int = field(init=False, default=0)
+    user_count: Optional[int] = field(init=False, default=None)
     spawn_rate: Optional[float] = field(init=False, default=None)
     timespan: Optional[str] = field(init=False, default=None)
+    dispatcher_class: Optional[Type[UsersDispatcher]] = field(init=False, default=None)
 
     statistics_url: Optional[str] = field(init=False, default=None)
 

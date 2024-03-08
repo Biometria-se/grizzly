@@ -13,7 +13,7 @@ readme = "README.md"
 license = {text = 'MIT'}
 requires-python = ">=3.8"
 dependencies = [
-    "locust >=2.16.0,<2.17.0",
+    "locust >=2.24.0,<2.25.0",
     "azure-core >=1.24.0,<2.0.0",
     "azure-servicebus >=7.6.0,<7.10.0",
     "azure-storage-blob >=12.9.0,<13.0.0",
@@ -89,7 +89,9 @@ dev = [
     "types-Jinja2 >=2.0.0",
     "types-backports >=0.1.3",
     "snakeviz",
-    "ruff <1.0.0"
+    "ruff <1.0.0",
+    "parameterized >=0.9.0,<1.0.0",
+    "line-profiler ==4.1.2"
 ]
 ci = [
     "build >=0.7.0",
@@ -130,9 +132,6 @@ exclude = [
 line-length = 180
 indent-width = 4
 
-[tool.ruff.per-file-ignores]
-"script/**" = ["INP001", "D100"]
-
 [tool.ruff.lint]
 select = ["ALL"]
 ignore = [
@@ -153,10 +152,14 @@ ignore = [
     "TRY301"
 ]
 
-[tool.ruff.mccabe]
+[tool.ruff.lint.per-file-ignores]
+"script/**" = ["INP001", "D100"]
+"tests/unit/test_grizzly/test_locust_dispatch.py" = ["PT009", "PT027", "UP032", "D106"]
+
+[tool.ruff.lint.mccabe]
 max-complexity = 15
 
-[tool.ruff.pylint]
+[tool.ruff.lint.pylint]
 max-branches = 15
 max-args = 10
 
@@ -182,26 +185,16 @@ warn_unreachable = true
 strict_equality = true
 
 [[tool.mypy.overrides]]
+module = "grizzly.locust"
+warn_unused_ignores = false
+
+[[tool.mypy.overrides]]
+module = "tests.unit.test_grizzly.test_locust_dispatch"
+disable_error_code = ["type-abstract", "unused-ignore"]
+
+[[tool.mypy.overrides]]
 module = "grizzly.steps.*"
 no_implicit_reexport = false
-
-#[[tool.mypy.overrides]]
-#module = "grizzly.scenario.iterator"
-#warn_unused_ignores = false
-
-#[[tool.mypy.overrides]]
-#module = "grizzly.tasks.date"
-#ignore_missing_imports = true
-#warn_unused_ignores = false
-
-#[[tool.mypy.overrides]]
-#module = "grizzly.testdata.variables.date"
-#ignore_missing_imports = true
-#warn_unused_ignores = false
-
-#[[tool.mypy.overrides]]
-#module = "zoneinfo.*"
-#ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = "behave.*"
@@ -210,14 +203,6 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = "pymqi.*"
 ignore_missing_imports = true
-
-#[[tool.mypy.overrides]]
-#module = "setproctitle.*"
-#ignore_missing_imports = true
-
-#[[tool.mypy.overrides]]
-#module = "urllib3.*"
-#ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = "gevent.*"
@@ -243,14 +228,6 @@ ignore_missing_imports = true
 module = "opencensus.ext.azure.*"
 ignore_missing_imports = true
 
-#[[tool.mypy.overrides]]
-#module = "zmq.*"
-#ignore_missing_imports = true
-
-#[[tool.mypy.overrides]]
-#module = "azure.*"
-#ignore_missing_imports = true
-
 [[tool.mypy.overrides]]
 module = "azure.iot.*"
 ignore_missing_imports = true
@@ -265,6 +242,14 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = "frontmatter.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "roundrobin.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "parameterized.*"
 ignore_missing_imports = true
 
 [tool.coverage.run]

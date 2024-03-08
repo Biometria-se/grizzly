@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any, List, Type, cast
 import gevent
 import pytest
 from jinja2 import TemplateError
+from locust.dispatch import UsersDispatcher as WeightedUsersDispatcher
 from locust.stats import RequestStats
 
 from grizzly.context import GrizzlyContext
@@ -249,6 +250,7 @@ def test_setup_locust_scenarios_user_distribution(behave_fixture: BehaveFixture,
     for index, user_class in enumerate(user_classes):
         assert user_class.fixed_count == user_distribution[index]
         assert user_class.weight == distribution[index]
+        assert user_class.sticky_tag is None
 
 
 @pytest.mark.skipif(sys.platform == 'win32', reason='resource module is posix only, this is not done in locust on windows')
@@ -611,6 +613,7 @@ def test_run_worker(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
     assert 'failed to connect to locust master at ' in capture.err
 
     assert messagequeue_process_spy.call_count == 0
+    assert grizzly.setup.dispatcher_class == WeightedUsersDispatcher
 
     # @TODO: test coverage further down in run is needed!
 
@@ -698,6 +701,7 @@ def test_run_master(behave_fixture: BehaveFixture, capsys: CaptureFixture, mocke
     grizzly.setup.timespan = 'adsf'
     assert run(behave) == 1
     assert 'invalid timespan' in capsys.readouterr().err
+    assert grizzly.setup.dispatcher_class == WeightedUsersDispatcher
 
     grizzly.setup.timespan = None
 

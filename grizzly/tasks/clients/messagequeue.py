@@ -125,9 +125,7 @@ class MessageQueueClientTask(ClientTask):
         if pymqi.__name__ == 'grizzly_extras.dummy_pymqi':
             pymqi.raise_for_error(self.__class__)
 
-        if destination is not None:
-            message = f'{self.__class__.__name__}: destination is not allowed'
-            raise ValueError(message)
+        assert destination is None, f'{self.__class__.__name__}: destination is not allowed'
 
         super().__init__(
             direction,
@@ -146,25 +144,25 @@ class MessageQueueClientTask(ClientTask):
         self._worker = {}
         self.max_message_size = None
 
-    def create_context(self) -> None:  # noqa: C901, PLR0915
+    def create_context(self) -> None:  # noqa: PLR0915
         endpoint = cast(str, resolve_variable(self.grizzly, self.endpoint, guess_datatype=False))
         parsed = urlparse(endpoint)
 
         if (parsed.scheme or 'none') not in ['mq', 'mqs']:
             message = f'{self.__class__.__name__}: "{parsed.scheme}" is not a supported scheme for endpoint'
-            raise ValueError(message)
+            raise AssertionError(message)
 
         if len(parsed.hostname or '') < 1:
             message = f'{self.__class__.__name__}: hostname not specified in "{self.endpoint}"'
-            raise ValueError(message)
+            raise AssertionError(message)
 
         if len(parsed.path or '') < 2:
             message = f'{self.__class__.__name__}: no valid path component found in "{self.endpoint}"'
-            raise ValueError(message)
+            raise AssertionError(message)
 
         if len(parsed.query or '') < 1:
             message = f'{self.__class__.__name__}: QueueManager and Channel must be specified in the query string of "{self.endpoint}"'
-            raise ValueError(message)
+            raise AssertionError(message)
 
         username: Optional[str] = parsed.username
         password: Optional[str] = parsed.password
@@ -172,13 +170,8 @@ class MessageQueueClientTask(ClientTask):
 
         params = parse_qs(parsed.query)
 
-        if 'QueueManager' not in params:
-            message = f'{self.__class__.__name__}: QueueManager must be specified in the query string'
-            raise ValueError(message)
-
-        if 'Channel' not in params:
-            message = f'{self.__class__.__name__}: Channel must be specified in the query string'
-            raise ValueError(message)
+        assert 'QueueManager' in params, f'{self.__class__.__name__}: QueueManager must be specified in the query string'
+        assert 'Channel' in params, f'{self.__class__.__name__}: Channel must be specified in the query string'
 
         queue_manager = cast(str, resolve_variable(self.grizzly, unquote(params['QueueManager'][0])))
         channel = cast(str, resolve_variable(self.grizzly, unquote(params['Channel'][0])))

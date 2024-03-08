@@ -7,15 +7,18 @@ from datetime import datetime
 from json import loads as jsonloads
 from os import environ
 from pathlib import Path
+from textwrap import indent
 from time import perf_counter as time
-from typing import Any, List, Optional, cast
+from typing import Any, Dict, List, Optional, cast
 
 import setproctitle as proc
+from behave.reporter.summary import SummaryReporter
 
 from grizzly.types import RequestType
 from grizzly.types.behave import Context, Feature, Scenario, Status, Step
 
 from .context import GrizzlyContext
+from .exceptions import FeatureError, StepError
 from .locust import on_worker
 from .locust import run as locustrun
 from .testdata.variables import destroy_variables
@@ -57,7 +60,7 @@ def before_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: A
     context.start = time()
     context.started = datetime.now().astimezone()
     context.last_task_count = {}
-
+    context.exceptions = {}
 
 
 def after_feature_master(return_code: int, status: Optional[Status], context: Context, feature: Feature) -> int:
@@ -90,15 +93,32 @@ def after_feature_master(return_code: int, status: Optional[Status], context: Co
 
     return return_code
 
-def after_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: Any) -> None:
+
+def after_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: Any) -> None:  # noqa: PLR0912
     return_code: int
     cause: str
+    has_exceptions = hasattr(context, 'exceptions') and len(context.exceptions) > 0
+
+    reporter: SummaryReporter
+
+    for possible_reporter in context.config.reporters:
+        if isinstance(possible_reporter, SummaryReporter):
+            reporter = possible_reporter
+            break
 
     # all scenarios has been processed, let's run locust
-    if feature.status == Status.passed:
+    if feature.status == Status.passed and not has_exceptions:
         status: Optional[Status] = None
 
-        return_code = locustrun(context)
+        try:
+            return_code = locustrun(context)
+        except Exception as e:
+            if not isinstance(e, AssertionError):
+                raise
+
+            has_exceptions = True
+            context.exceptions.update({None: [*context.exceptions.get(None, []), FeatureError(e)]})
+            return_code = 1
 
         if return_code != 0:
             status = Status.failed if return_code != ABORTED_RETURN_CODE else Status.skipped
@@ -121,14 +141,24 @@ def after_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: An
     # show start and stop date time
     stopped = datetime.now().astimezone()
 
+    reporter.stream.flush()
+
+    if has_exceptions:
+        buffer: list[str] = []
+        for scenario_name, exceptions in cast(Dict[Optional[str], List[AssertionError]], context.exceptions).items():
+            if scenario_name is not None:
+                buffer.append(f'Scenario: {scenario_name}')
+            else:
+                buffer.append('')
+            buffer.extend([indent(str(exception), '    ') for exception in exceptions])
+            buffer.append('')
+
+        failure_summary = indent('\n'.join(buffer), '    ')
+        reporter.stream.write(f'\nFailure summary:\n{failure_summary}')
+
     end_text = 'Aborted' if return_code == ABORTED_RETURN_CODE else 'Finished'
 
-    print('', flush=True)
-    print(f'{"Started":<{len(end_text)}}: {context.started}')
-    print(f'{end_text}: {stopped}')
-
-    if return_code != 0:
-        print('')
+    reporter.stream.write(f'\n{"Started":<{len(end_text)}}: {context.started}\n{end_text}: {stopped}\n\n')
 
     # the features duration is the sum of all scenarios duration, which is the sum of all steps duration
     with suppress(Exception):
@@ -187,6 +217,13 @@ def after_scenario(context: Context, *_args: Any, **_kwargs: Any) -> None:
     assert not len(open_timers) > 0, f'timers {", ".join(open_timers.keys())} has not been closed'
 
     assert grizzly.scenario.tasks.tmp.conditional is None, f'conditional "{grizzly.scenario.tasks.tmp.conditional.name}" has not been closed'
+
+    for scenario_name, exceptions in cast(Dict[Optional[str], List[StepError]], context.exceptions).items():
+        if scenario_name != context.scenario.name:
+            continue
+
+        for exception in exceptions:
+            exception.step.status = Status.failed
 
 
 def before_step(context: Context, step: Step, *_args: Any, **_kwargs: Any) -> None:

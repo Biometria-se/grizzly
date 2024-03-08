@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from json import dumps as jsondumps
-from json import loads as jsonloads
 from pathlib import Path
 from textwrap import dedent
 from typing import TYPE_CHECKING, Any, Dict, List, cast
@@ -313,7 +312,7 @@ def test_e2e_step_task_request_text_with_name(e2e_fixture: End2EndFixture) -> No
                 }
                 """
             '''),
-            'Then get request with name "test-get-1" from endpoint "/api/echo | content_type=\"application/xml\""',
+            'Then get request with name "test-get-1" from endpoint "/api/echo | content_type="application/xml""',
             'Then get request with name "test-get-2"',
         ],
     )
@@ -434,7 +433,7 @@ def test_e2e_step_task_transform(e2e_fixture: End2EndFixture) -> None:
         scenario=[
             'And value for variable "document_id" is "None"',
             'And value for variable "document_title" is "None"',
-            'And value for variable "document" is "{\"document\": {\"id\": \"DOCUMENT_8843-1\", \"title\": \"TPM Report 2021\"}}"',
+            'And value for variable "document" is "{"document": {"id": "DOCUMENT_8843-1", "title": "TPM Report 2021"}}"',
             'Then parse "{{ document }}" as "json" and save value of "$.document.id" in variable "document_id"',
             'Then parse "{{ document }}" as "json" and save value of "$.document.title" in variable "document_title"',
             'Then log message "document_id={{ document_id }}"',
@@ -631,7 +630,7 @@ def test_e2e_step_task_client_get_endpoint_until(e2e_fixture: End2EndFixture) ->
             ),
             (
                 'Then get "https://$conf::test.host$/api/until/hello?nth=2&wrong=foobar&right=world&as_array=True | content_type=json, verify=False" with name "https-env-get" '
-                'until "$.`this`[?hello=\"world\"] | retries=1, expected_matches=1, wait=0.1"'
+                'until "$.`this`[?hello="world"] | retries=1, expected_matches=1, wait=0.1"'
             ),
         ],
     )
@@ -1132,7 +1131,7 @@ def test_e2e_step_task_loop(e2e_fixture: End2EndFixture) -> None:
     feature_file = e2e_fixture.test_steps(
         scenario=[
             'And value for variable "loop_value" is "none"',
-            'And value for variable "loop_values" is "[\"foo\", \"bar\", \"hello\", \"world\"]"',
+            'And value for variable "loop_values" is "["foo", "bar", "hello", "world"]"',
             'Then loop "{{ loop_values }}" as variable "loop_value" with name "loop-1"',
             'Then log message "loop_value={{ loop_value }}"',
             'Then end loop',
@@ -1180,10 +1179,4 @@ def test_e2e_step_task_keystore(e2e_fixture: End2EndFixture) -> None:
     assert "foobar=['hello', 'world'], barfoo={'hello': 'world'}" in result
 
     persistent_file = e2e_fixture.root / 'features' / 'persistent' / f'{Path(feature_file).stem}.json'
-    assert persistent_file.exists()
-    assert jsonloads(persistent_file.read_text()) == {
-        'grizzly::keystore': {
-            'foobar': ['hello', 'world'],
-            'barfoo': {'hello': 'world'},
-        },
-    }
+    assert not persistent_file.exists()

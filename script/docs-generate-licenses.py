@@ -66,9 +66,7 @@ def generate_license_table() -> List[str]:
                             'project_url',
                             info.get(
                                 'package_url',
-                                URL_MAP.get(
-                                    name, None,
-                                ),
+                                URL_MAP.get(name),
                             ),
                         ),
                     ),

@@ -54,9 +54,7 @@ class LoopTask(GrizzlyTaskWrapper):
 
         self.tasks = []
 
-        if self.variable not in self.grizzly.state.variables:
-            message = f'{self.__class__.__name__}: {self.variable} has not been initialized'
-            raise ValueError(message)
+        assert self.variable in self.grizzly.state.variables, f'{self.__class__.__name__}: {self.variable} has not been initialized'
 
     def add(self, task: GrizzlyTask) -> None:
         task_name = getattr(task, 'name', None)

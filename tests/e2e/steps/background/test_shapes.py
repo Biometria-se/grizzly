@@ -19,12 +19,14 @@ if TYPE_CHECKING:  # pragma: no cover
 ])
 def test_e2e_step_shapes_user_count(e2e_fixture: End2EndFixture, count: str) -> None:
     def validator(context: Context) -> None:
+        from locust.dispatch import UsersDispatcher as WeightedUsersDispatcher
         grizzly = cast(GrizzlyContext, context.grizzly)
         data = next(iter(context.table)).as_dict()
 
         user_count = int(data['user_count'].replace('{{ user_count }}', '10'))
 
         assert grizzly.setup.user_count == user_count, f'{grizzly.setup.user_count} != {user_count}'
+        assert grizzly.setup.dispatcher_class == WeightedUsersDispatcher
 
     table: List[Dict[str, str]] = [
         {

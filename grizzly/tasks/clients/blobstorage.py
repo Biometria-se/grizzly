@@ -102,7 +102,7 @@ class BlobStorageClientTask(ClientTask):
 
         if parsed.netloc is None or len(parsed.netloc) < 1:
             message = f'{self.__class__.__name__}: could not find account name in {self.endpoint}'
-            raise ValueError(message)
+            raise AssertionError(message)
 
         # See urllib/parse.py:771-774, explicit + characters are replaced with white space,
         # AccountKey could contain explicit + characters, so we must quote them first.
@@ -114,22 +114,13 @@ class BlobStorageClientTask(ClientTask):
 
         parameters = parse_qs('&'.join(parsed_query))
 
-        if 'AccountKey' not in parameters:
-            message = f'{self.__class__.__name__}: could not find AccountKey in {self.endpoint}'
-            raise ValueError(message)
-
-        if 'Container' not in parameters:
-            message = f'{self.__class__.__name__}: could not find Container in {self.endpoint}'
-            raise ValueError(message)
+        assert 'AccountKey' in parameters, f'{self.__class__.__name__}: could not find AccountKey in {self.endpoint}'
+        assert 'Container' in parameters, f'{self.__class__.__name__}: could not find Container in {self.endpoint}'
 
         self.account_name = parsed.netloc
         self.account_key = parameters['AccountKey'][0]
         self.container = parameters['Container'][0]
-        if 'Overwrite' in parameters:
-            self.overwrite = bool_type(parameters['Overwrite'][0])
-        else:
-            self.overwrite = False
-
+        self.overwrite = bool_type(parameters.get('Overwrite', ['False'])[0])
         self.service_client = BlobServiceClient.from_connection_string(conn_str=self.connection_string)
 
     @property

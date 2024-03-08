@@ -23,6 +23,7 @@ from grizzly.context import (
     GrizzlyContextTasksTmp,
     load_configuration_file,
 )
+from grizzly.locust import FixedUsersDispatcher
 from grizzly.tasks import AsyncRequestGroupTask, ConditionalTask, ExplicitWaitTask, LogMessageTask, LoopTask, RequestTask
 from grizzly.types import MessageDirection, RequestMethod
 from grizzly.types.behave import Scenario
@@ -90,12 +91,13 @@ class TestGrizzlyContextSetup:
 
         expected_properties: Dict[str, Optional[Tuple[Any, Any]]] = {
             'log_level': ('INFO', 'DEBUG'),
-            'user_count': (0, 10),
+            'user_count': (None, 10),
             'spawn_rate': (None, 2),
             'timespan': (None, '10s'),
             'statistics_url': (None, 'influxdb://influx.example.org/grizzly'),
             'global_context': ({}, {'test': 'hello world'}),
             'locust': None,
+            'dispatcher_class': (None, FixedUsersDispatcher),
         }
 
         expected_attributes = list(expected_properties.keys())

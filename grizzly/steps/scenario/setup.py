@@ -58,6 +58,7 @@ def step_setup_set_context_variable(context: Context, variable: str, value: str)
     Args:
         variable (str): name, can contain `.` and `/`
         value (str): value, data type will be guessed and casted
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -86,6 +87,7 @@ def step_setup_iterations(context: Context, value: str, *_args: Any, **_kwargs: 
 
     Args:
         value (str): number of iterations of the scenario, can be a templatning string or a environment configuration variable
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
     should_resolve = has_template(value) or value[0] == '$'
@@ -114,6 +116,7 @@ def step_setup_pace(context: Context, pace_time: str) -> None:
     Then set iteration time to "2000" milliseconds
     Then set iteration time to "{{ pace }}" milliseconds
     ```
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -148,6 +151,7 @@ def step_setup_set_variable_alias(context: Context, alias: str, variable: str) -
     Args:
         alias (str): which node in the context that should get the value of `variable`
         variable (str): an already initialized variable that should be renamed
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -169,6 +173,7 @@ def step_setup_log_all_requests(context: Context) -> None:
     ```gherkin
     And log all requests
     ```
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
     grizzly.scenario.context['log_all_requests'] = True
@@ -184,10 +189,10 @@ def step_setup_stop_user_on_failure(context: Context) -> None:
     ```gherkin
     And stop user on failure
     ```
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
     grizzly.scenario.failure_exception = StopUser
-    context.config.stop = True
 
 
 @given('restart scenario on failure')
@@ -200,10 +205,10 @@ def step_setup_restart_scenario_on_failure(context: Context) -> None:
     ```gherkin
     And restart scenario on failure
     ```
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
     grizzly.scenario.failure_exception = RestartScenario
-    context.config.stop = False
 
 
 @then('metadata "{key}" is "{value}"')
@@ -234,6 +239,7 @@ def step_setup_metadata(context: Context, key: str, value: str) -> None:
     Then get "https://{{ client_url }}" with name "client-http" and save response payload in "payload"
     And metadata "Ocp-Apim-Subscription-Key" is "deadbeefb00f"
     ```
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
     casted_value = resolve_variable(grizzly, value)

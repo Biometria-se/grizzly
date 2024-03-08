@@ -69,7 +69,7 @@ GrizzlyTaskOnType = Callable[['GrizzlyScenario'], None]
 
 
 class grizzlytask:
-    __name__ = 'grizzlytask'  # noqa: A003
+    __name__ = 'grizzlytask'
 
     _on_start: Optional[OnGrizzlyTask] = None
     _on_stop: Optional[OnGrizzlyTask] = None
@@ -263,6 +263,7 @@ from .transformer import TransformerTask
 from .until import UntilRequestTask
 from .wait_between import WaitBetweenTask
 from .wait_explicit import ExplicitWaitTask
+from .write_file import WriteFileTask
 
 from .async_group import AsyncRequestGroupTask
 
@@ -282,4 +283,5 @@ __all__ = [
     'LoopTask',
     'SetVariableTask',
     'KeystoreTask',
+    'WriteFileTask',
 ]

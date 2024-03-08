@@ -6,7 +6,6 @@ from hashlib import sha256
 from os import environ
 from typing import TYPE_CHECKING, cast
 
-import pytest
 from parse import compile
 
 from grizzly.context import GrizzlyContext
@@ -15,7 +14,7 @@ from grizzly.tasks.clients import HttpClientTask
 from grizzly.testdata import GrizzlyVariables, GrizzlyVariableType
 from grizzly.types import RequestDirection, RequestMethod
 from grizzly.users import RestApiUser
-from tests.helpers import SOME
+from tests.helpers import ANY, SOME
 
 if TYPE_CHECKING:  # pragma: no cover
     from pytest_mock import MockerFixture
@@ -303,8 +302,10 @@ def test_step_setup_iterations(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+    behave.scenario = grizzly.scenario.behave
 
     assert grizzly.scenario.iterations == 1
+    assert behave.exceptions == {}
 
     step_setup_iterations(behave, '10', 'iterations')
     assert grizzly.scenario.iterations == 10
@@ -312,8 +313,9 @@ def test_step_setup_iterations(behave_fixture: BehaveFixture) -> None:
     step_setup_iterations(behave, '1', 'iteration')
     assert grizzly.scenario.iterations == 1
 
-    with pytest.raises(AssertionError, match='value contained variable "iterations" which has not been declared'):
-        step_setup_iterations(behave, '{{ iterations }}', 'iteration')
+    step_setup_iterations(behave, '{{ iterations }}', 'iteration')
+
+    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='value contained variable "iterations" which has not been declared')]}
 
     grizzly.state.variables['iterations'] = 100
     step_setup_iterations(behave, '{{ iterations }}', 'iteration')
@@ -351,16 +353,19 @@ def test_step_setup_pace(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+    behave.scenario = grizzly.scenario.behave
 
     assert getattr(grizzly.scenario, 'pace', '') is None
+    assert behave.exceptions == {}
 
     step_setup_pace(behave, '2000')
 
     assert len(grizzly.scenario.orphan_templates) == 0
     assert grizzly.scenario.pace == '2000'
 
-    with pytest.raises(AssertionError, match='"asdf" is neither a template or a number'):
-        step_setup_pace(behave, 'asdf')
+    step_setup_pace(behave, 'asdf')
+
+    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='"asdf" is neither a template or a number')]}
 
     step_setup_pace(behave, '{{ pace }}')
 
@@ -371,19 +376,27 @@ def test_step_setup_pace(behave_fixture: BehaveFixture) -> None:
 def test_step_setup_set_variable_alias(behave_fixture: BehaveFixture, mocker: MockerFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+    behave.scenario = grizzly.scenario.behave
 
     assert grizzly.state.alias == {}
+    assert behave.exceptions == {}
 
-    with pytest.raises(AssertionError, match='variable AtomicIntegerIncrementer.test has not been declared'):
-        step_setup_set_variable_alias(behave, 'auth.refresh_time', 'AtomicIntegerIncrementer.test')
+    step_setup_set_variable_alias(behave, 'auth.refresh_time', 'AtomicIntegerIncrementer.test')
+
+    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='variable AtomicIntegerIncrementer.test has not been declared')]}
 
     step_setup_variable_value(behave, 'AtomicIntegerIncrementer.test', '1337')
     step_setup_set_variable_alias(behave, 'auth.refresh_time', 'AtomicIntegerIncrementer.test')
 
     assert grizzly.state.alias.get('AtomicIntegerIncrementer.test', None) == 'auth.refresh_time'
 
-    with pytest.raises(AssertionError, match='alias for variable AtomicIntegerIncrementer.test already exists: auth.refresh_time'):
-        step_setup_set_variable_alias(behave, 'auth.refresh_time', 'AtomicIntegerIncrementer.test')
+    step_setup_set_variable_alias(behave, 'auth.refresh_time', 'AtomicIntegerIncrementer.test')
+
+    assert behave.exceptions == {behave.scenario.name: [
+        ANY(AssertionError, message='variable AtomicIntegerIncrementer.test has not been declared'),
+        ANY(AssertionError, message='alias for variable AtomicIntegerIncrementer.test already exists: auth.refresh_time'),
+    ]}
 
     def setitem(self: GrizzlyVariables, key: str, value: GrizzlyVariableType) -> None:
         super(GrizzlyVariables, self).__setitem__(key, value)
@@ -393,14 +406,24 @@ def test_step_setup_set_variable_alias(behave_fixture: BehaveFixture, mocker: Mo
         setitem,
     )
 
-    with pytest.raises(AssertionError, match='variable AtomicCsvReader.users has not been declared'):
-        step_setup_set_variable_alias(behave, 'auth.user.username', 'AtomicCsvReader.users.username')
+    step_setup_set_variable_alias(behave, 'auth.user.username', 'AtomicCsvReader.users.username')
+
+    assert behave.exceptions == {behave.scenario.name: [
+        ANY(AssertionError, message='variable AtomicIntegerIncrementer.test has not been declared'),
+        ANY(AssertionError, message='alias for variable AtomicIntegerIncrementer.test already exists: auth.refresh_time'),
+        ANY(AssertionError, message='variable AtomicCsvReader.users has not been declared'),
+    ]}
 
     step_setup_variable_value(behave, 'AtomicCsvReader.users', 'users.csv')
     step_setup_set_variable_alias(behave, 'auth.user.username', 'AtomicCsvReader.users.username')
+    step_setup_set_variable_alias(behave, 'auth.user.username', 'AtomicCsvReader.users.username')
 
-    with pytest.raises(AssertionError, match='alias for variable AtomicCsvReader.users.username already exists: auth.user.username'):
-        step_setup_set_variable_alias(behave, 'auth.user.username', 'AtomicCsvReader.users.username')
+    assert behave.exceptions == {behave.scenario.name: [
+        ANY(AssertionError, message='variable AtomicIntegerIncrementer.test has not been declared'),
+        ANY(AssertionError, message='alias for variable AtomicIntegerIncrementer.test already exists: auth.refresh_time'),
+        ANY(AssertionError, message='variable AtomicCsvReader.users has not been declared'),
+        ANY(AssertionError, message='alias for variable AtomicCsvReader.users.username already exists: auth.user.username'),
+    ]}
 
 
 def test_step_setup_log_all_requests(behave_fixture: BehaveFixture) -> None:

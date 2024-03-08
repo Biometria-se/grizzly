@@ -49,6 +49,8 @@ class TransformerContentType(PermutationEnum):
 class Transformer(metaclass=ABCMeta):
     __wrapped_transform__: ClassVar[Callable[[str], Any]]
 
+    EMPTY: str = ''
+
     @classmethod
     @abstractmethod
     def transform(cls, raw: str) -> Any:  # pragma: no cover
@@ -102,6 +104,8 @@ class transformer:
 
 @transformer(TransformerContentType.JSON)
 class JsonTransformer(Transformer):
+    EMPTY = 'null'
+
     @classmethod
     def transform(cls, raw: str) -> Any:
         return jsonloads(raw)
@@ -162,6 +166,8 @@ class JsonTransformer(Transformer):
 
 @transformer(TransformerContentType.XML)
 class XmlTransformer(Transformer):
+    EMPTY = '<?xml version="1.0" encoding="UTF-8"?><thisIsAnEmptyDocument/>'
+
     _parser = XML.XMLParser(remove_blank_text=True)
 
     @classmethod

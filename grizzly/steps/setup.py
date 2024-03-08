@@ -35,6 +35,7 @@ def step_setup_variable_value_ask(context: Context, name: str) -> None:
 
     Args:
         name (str): variable name used in templates
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -52,8 +53,8 @@ def step_setup_variable_value_ask(context: Context, name: str) -> None:
 def step_setup_variable_value(context: Context, name: str, value: str) -> None:
     """Step to initialize a variable that should have the same [start] value for every run of the scenario.
 
-    If this step is used for a variable that has already been initialized, it is assumed that the value will change during runtime
-    so instead a {@pylink grizzly.tasks.set_variable} task will be added instead. The {@pylink grizzly.testdata.variables} must
+    If this step is used after a step that adds a task or for a variable that already has been initialized, it is assumed that the value will change during runtime
+    so a {@pylink grizzly.tasks.set_variable} task will be added instead. The {@pylink grizzly.testdata.variables} must
     have implemented support for being settable.
 
     Data type for the value of the variable is based on the type of variable. If the variable is an testdata {@pylink grizzly.testdata.variables}
@@ -92,6 +93,7 @@ def step_setup_variable_value(context: Context, name: str, value: str) -> None:
     Args:
         name (str): variable name
         value (Any): initial value
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -105,8 +107,13 @@ def step_setup_variable_value(context: Context, name: str, value: str) -> None:
     else:
         partial_name = name
 
-    if partial_name not in grizzly.state.variables:
-        try:
+    try:
+        # if the scenario doesn't have any tasks, we'll assume that the scenario is trying to initialize a new variable
+        # but, we want to allow initializing new variables after tasks in an scenario as well
+        if len(grizzly.scenario.tasks) < 1 or partial_name not in grizzly.state.variables:
+            # so make sure it hasn't already been initialized
+            assert partial_name not in grizzly.state.variables, f'variable {partial_name} has already been initialized'
+
             # data type will be guessed when setting the variable
             if name not in grizzly.state.persistent:
                 resolved_value = resolve_variable(grizzly, value, guess_datatype=False)
@@ -116,7 +123,11 @@ def step_setup_variable_value(context: Context, name: str, value: str) -> None:
                 resolved_value = grizzly.state.persistent[name]
 
             grizzly.state.variables[name] = resolved_value
-        except Exception as e:
-            raise AssertionError(e) from e
-    else:
-        grizzly.scenario.tasks.add(SetVariableTask(name, value, VariableType.VARIABLES))
+        else:
+            assert partial_name in grizzly.state.variables, f'variable {partial_name} has not been initialized'
+            grizzly.scenario.tasks.add(SetVariableTask(name, value, VariableType.VARIABLES))
+    except Exception as e:
+        if not isinstance(e, AssertionError):
+            raise AssertionError(e) from e  # noqa: TRY004
+
+        raise

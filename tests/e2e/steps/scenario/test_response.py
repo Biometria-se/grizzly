@@ -78,6 +78,77 @@ def test_e2e_step_response_save_matches(e2e_fixture: End2EndFixture) -> None:
     assert rc == 0
 
 
+def test_e2e_step_response_save_optional(e2e_fixture: End2EndFixture) -> None:
+    targets = list(ResponseTarget)
+
+    def validator(context: Context) -> None:
+        from grizzly.events.response_handler import SaveHandlerAction
+        from grizzly.tasks import RequestTask
+
+        grizzly = cast(GrizzlyContext, context.grizzly)
+        grizzly.scenario.tasks().pop()  # latest task is a dummy task
+
+        rows = list(context.table)
+
+        for row in rows:
+            data = row.as_dict()
+            handler_type = data['target']
+            index = int(data['index'])
+            attr_name = data['attr_name']
+
+            assert len(grizzly.scenario.orphan_templates) == 0, 'unexpected number of orphan templates'
+
+            request = grizzly.scenario.tasks()[index]
+
+            assert isinstance(request, RequestTask), f'{request.__class__.__name__} != RequestTask'
+
+            handlers = getattr(request.response.handlers, handler_type)
+
+            assert len(handlers) == 1, f'unexpected number of {target} handlers'
+            handler = handlers[0]
+            assert isinstance(handler, SaveHandlerAction), f'{handler.__class__.__name__} != SaveHandlerAction'
+            assert handler.variable == f'tmp_{index}', f'{handler.variable} != tmp_{index}'
+            assert handler.expression == f'$.{attr_name}', f'{handler.expression} != $.{attr_name}'
+            assert handler.match_with == '.*', f'{handler.match_with} != .*'
+            assert handler.expected_matches == f'{{{{ expected_matches_{index} }}}}', f'{handler.expected_matches} != 1'
+            assert handler.default_value == f'foo_{index}'
+
+    table: List[Dict[str, str]] = []
+    scenario: List[str] = []
+
+    index = 0
+    for target in targets:
+        attr_name = 'foobar'
+        table.append({'target': target.name.lower(), 'index': str(index), 'attr_name': attr_name})
+
+        scenario += [
+            f'Given value for variable "tmp_{index}" is "none"',
+            f'And value for variable "expected_matches_{index}" is "1"',
+            f'Then get request with name "{target.name.lower()}-handler" from endpoint "/api/echo?barfoo=foo | content_type=json"',
+            'And metadata "foobar" is "foobar"',
+            (
+                f'Then save optional response {target.name.lower()} "$.{attr_name} | expected_matches=\'{{{{ expected_matches_{index} }}}}\'" '
+                f'in variable "tmp_{index}" with default value "foo_{index}"'
+            ),
+            f'Then log message "expected_matches_{index}={{{{ expected_matches_{index} }}}}, tmp_{index}={{{{ tmp_{index} }}}}"',
+        ]
+
+        index += 2
+
+    e2e_fixture.add_validator(
+        validator,
+        table=table,
+    )
+
+    feature_file = e2e_fixture.test_steps(
+        scenario=scenario,
+    )
+
+    rc, _ = e2e_fixture.execute(feature_file)
+
+    assert rc == 0
+
+
 def test_e2e_step_response_save(e2e_fixture: End2EndFixture) -> None:
     targets = list(ResponseTarget)
 
@@ -111,6 +182,7 @@ def test_e2e_step_response_save(e2e_fixture: End2EndFixture) -> None:
             assert handler.expression == f'$.{attr_name}', f'{handler.expression} != $.{attr_name}'
             assert handler.match_with == '.*', f'{handler.match_with} != .*'
             assert handler.expected_matches == f'{{{{ expected_matches_{index} }}}}', f'{handler.expected_matches} != 1'
+            assert handler.default_value is None
 
     table: List[Dict[str, str]] = []
     scenario: List[str] = []

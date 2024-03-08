@@ -11,7 +11,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from tests.fixtures import End2EndFixture
 
 
-def test_e2e_failure(e2e_fixture: End2EndFixture) -> None:
+def test_e2e_scenario_failure_handling(e2e_fixture: End2EndFixture) -> None:
     def after_feature(context: Context, *_args: Any, **_kwargs: Any) -> None:
         from grizzly.locust import on_master
         if on_master(context):
@@ -50,7 +50,7 @@ def test_e2e_failure(e2e_fixture: End2EndFixture) -> None:
 
     start_webserver_step = f'Then start webserver on master port "{e2e_fixture.webserver.port}"\n' if e2e_fixture._distributed else ''
 
-    feature_file = e2e_fixture.create_feature(dedent(f"""Feature: test failure
+    feature_file = e2e_fixture.create_feature(dedent(f"""Feature: test scenario failure handling
     Background: common configuration
         Given "3" users
         And spawn rate is "3" user per second
@@ -82,6 +82,11 @@ def test_e2e_failure(e2e_fixture: End2EndFixture) -> None:
         Then get request with name "default-get3" from endpoint "/api/echo"
     """))
 
+    log_files = list((e2e_fixture.root / 'features' / 'logs').glob('*.log'))
+
+    for log_file in log_files:
+        log_file.unlink()
+
     rc, output = e2e_fixture.execute(feature_file)
 
     assert rc == 1
@@ -90,3 +95,68 @@ def test_e2e_failure(e2e_fixture: End2EndFixture) -> None:
     log_files = list((e2e_fixture.root / 'features' / 'logs').glob('*.log'))
 
     assert len(log_files) == 3
+
+
+def test_e2e_behave_failure(e2e_fixture: End2EndFixture) -> None:
+    if e2e_fixture._distributed:
+        start_webserver_step = f'Then start webserver on master port "{e2e_fixture.webserver.port}"\n'
+        offset = 1
+    else:
+        start_webserver_step = ''
+        offset = 0
+
+    feature_file = e2e_fixture.create_feature(dedent(f"""Feature: test behave failure
+    Background: common configuration
+        Given "3" users
+        And spawn rate is "3" user per second
+        {start_webserver_step}
+    Scenario: fails 1
+        Given a user of type "RestApi" load testing "http://{e2e_fixture.host}"
+        And repeat for "2" iterations
+        And stop user on failure
+        And value for variable "var" is "foobar"
+        Then get request with name "{{{{ get1 }}}}" from endpoint "/api/echo"
+        Then get request with name "get2" from endpoint "/api/until/hello?nth=2&wrong=foobar&right=world | content_type=json"
+        Then save response payload "$.hello.world" in variable "var1"
+        Then get request with name "get3" from endpoint "/api/echo"
+        Then save response metadata "$.foobar" in variable "var"
+        Then log message "var={{{{ var }}}}"
+
+    Scenario: fails 2
+        Given a user of type "RestApi" load testing "http://{e2e_fixture.host}"
+        And repeat for "2" iterations
+        And restart scenario on failure
+        Then get request with name "get1" from endpoint "/api/echo"
+        Then save response metadata "$.Content-Type" in variable "var2"
+        Then get request with name "{{{{ get2 }}}}" from endpoint "/api/until/hello?nth=2&wrong=foobar&right=world | content_type=json"
+        Then get request with name "get3" from endpoint "/api/echo | content_type=json"
+        Then save response payload "$.bar" in variable "var"
+
+    Scenario: fails 3
+        Given a user of type "RestApi" load testing "http://{e2e_fixture.host}"
+        And repeat for "2" iterations
+        Then get request with name "get1" from endpoint "/api/echo"
+        Then get request with name "get2" from endpoint "/api/until/hello?nth=2&wrong=foobar&right=world | content_type=json"
+        When response payload "$.hello" is not "world" fail request
+        Then get request with name "{{{{ get3 }}}}" from endpoint "/api/echo"
+    """))
+
+    rc, output = e2e_fixture.execute(feature_file)
+
+    assert rc == 1
+
+    result = ''.join(output)
+
+    assert "HOOK-ERROR in after_feature: RuntimeError:" in result
+    assert f"""Failure summary:
+    Scenario: fails 1
+        Then save response payload "$.hello.world" in variable "var1" # features/test_e2e_behave_failure.feature:{(13 + offset)}
+            ! variable "var1" has not been declared
+        Then save response metadata "$.foobar" in variable "var" # features/test_e2e_behave_failure.feature:{(15 + offset)}
+            ! content type is not set for latest request
+
+    Scenario: fails 2
+        Then save response metadata "$.Content-Type" in variable "var2" # features/test_e2e_behave_failure.feature:{(23 + offset)}
+            ! variable "var2" has not been declared
+
+Started : """ in result

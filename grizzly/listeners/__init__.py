@@ -45,7 +45,7 @@ def _init_testdata_producer(grizzly: GrizzlyContext, port: str, testdata: Testda
     return gtestdata_producer
 
 
-def init(grizzly: GrizzlyContext, testdata: Optional[TestdataType] = None) -> Callable[[LocustRunner, KwArg(Any)], None]:
+def init(grizzly: GrizzlyContext, testdata: Optional[TestdataType] = None) -> Callable[[LocustRunner, KwArg(Any)], None]:  # pyright: ignore [reportInvalidTypeForm]
     def ginit(runner: LocustRunner, **_kwargs: Any) -> None:
         producer_port = environ.get('TESTDATA_PRODUCER_PORT', '5555')
         if not isinstance(runner, MasterRunner):
@@ -79,10 +79,10 @@ def init(grizzly: GrizzlyContext, testdata: Optional[TestdataType] = None) -> Ca
             for message_type, callback in grizzly.setup.locust.messages.get(MessageDirection.CLIENT_SERVER, {}).items():
                 runner.register_message(message_type, callback)
 
-    return cast(Callable[[LocustRunner, KwArg(Any)], None], ginit)
+    return cast(Callable[[LocustRunner, KwArg(Any)], None], ginit)  # pyright: ignore [reportInvalidTypeForm]
 
 
-def init_statistics_listener(url: str) -> Callable[[Environment, VarArg(Any), KwArg(Any)], None]:
+def init_statistics_listener(url: str) -> Callable[[Environment, VarArg(Any), KwArg(Any)], None]:  # pyright: ignore [reportInvalidTypeForm]
     def gstatistics_listener(environment: Environment, *_args: Any, **_kwargs: Any) -> None:
         parsed = urlparse(url)
 
@@ -99,10 +99,10 @@ def init_statistics_listener(url: str) -> Callable[[Environment, VarArg(Any), Kw
                 url=url,
             )
 
-    return cast(Callable[[Environment, VarArg(Any), KwArg(Any)], None], gstatistics_listener)
+    return cast(Callable[[Environment, VarArg(Any), KwArg(Any)], None], gstatistics_listener)  # pyright: ignore [reportInvalidTypeForm]
 
 
-def locust_test_start(grizzly: GrizzlyContext) -> Callable[[Environment, KwArg(Any)], None]:
+def locust_test_start(grizzly: GrizzlyContext) -> Callable[[Environment, KwArg(Any)], None]:  # pyright: ignore [reportInvalidTypeForm]
     def gtest_start(environment: Environment, **_kwargs: Any) -> None:
         if isinstance(environment.runner, MasterRunner):
             num_connected_workers = (
@@ -117,7 +117,7 @@ def locust_test_start(grizzly: GrizzlyContext) -> Callable[[Environment, KwArg(A
             if total_iterations < num_connected_workers:
                 logger.error('number of iterations is lower than number of workers, %d < %d', total_iterations, num_connected_workers)
 
-    return cast(Callable[[Environment, KwArg(Any)], None], gtest_start)
+    return cast(Callable[[Environment, KwArg(Any)], None], gtest_start)  # pyright: ignore [reportInvalidTypeForm]
 
 
 def locust_test_stop(**_kwargs: Any) -> None:
@@ -125,7 +125,7 @@ def locust_test_stop(**_kwargs: Any) -> None:
         producer.on_test_stop()
 
 
-def spawning_complete(grizzly: GrizzlyContext) -> Callable[[KwArg(Any)], None]:
+def spawning_complete(grizzly: GrizzlyContext) -> Callable[[KwArg(Any)], None]:  # pyright: ignore [reportInvalidTypeForm]
     def gspawning_complete(**_kwargs: Any) -> None:
         logger.debug('spawning complete!')
         grizzly.state.spawning_complete = True
@@ -173,7 +173,7 @@ def grizzly_worker_quit(environment: Environment, msg: Message, **_kwargs: Any) 
     raise SystemExit(code)
 
 
-def validate_result(grizzly: GrizzlyContext) -> Callable[[Environment, KwArg(Any)], None]:
+def validate_result(grizzly: GrizzlyContext) -> Callable[[Environment, KwArg(Any)], None]:  # pyright: ignore [reportInvalidTypeForm]
     def gvalidate_result(environment: Environment, **_kwargs: Any) -> None:
         # first, aggregate statistics per scenario
         scenario_stats: Dict[str, RequestStats] = {}
@@ -243,4 +243,4 @@ def validate_result(grizzly: GrizzlyContext) -> Callable[[Environment, KwArg(Any
             if environment.process_exit_code == 1 and hasattr(scenario, 'behave') and scenario.behave is not None:
                 scenario.behave.set_status(Status.failed)
 
-    return cast(Callable[[Environment, KwArg(Any)], None], gvalidate_result)
+    return cast(Callable[[Environment, KwArg(Any)], None], gvalidate_result)  # pyright: ignore [reportInvalidTypeForm]

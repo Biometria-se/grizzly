@@ -84,9 +84,7 @@ class UntilRequestTask(GrizzlyTask):
         self.wait = 1.0
         self.expected_matches = 1
 
-        if self.request.content_type == TransformerContentType.UNDEFINED:
-            message = 'content type must be specified for request'
-            raise ValueError(message)
+        assert self.request.content_type != TransformerContentType.UNDEFINED, 'content type must be specified for request'
 
         self.transform = transformer.available.get(self.request.content_type, None)
 
@@ -100,21 +98,14 @@ class UntilRequestTask(GrizzlyTask):
 
             unsupported_arguments = get_unsupported_arguments(['retries', 'wait', 'expected_matches'], arguments)
 
-            if len(unsupported_arguments) > 0:
-                message = f'unsupported arguments {", ".join(unsupported_arguments)}'
-                raise ValueError(message)
+            assert len(unsupported_arguments) == 0, f'unsupported arguments {", ".join(unsupported_arguments)}'
 
             self.retries = int(arguments.get('retries', self.retries))
             self.wait = float(arguments.get('wait', self.wait))
             self.expected_matches = int(arguments.get('expected_matches', '1'))
 
-            if self.retries < 1:
-                message = 'retries argument cannot be less than 1'
-                raise ValueError(message)
-
-            if self.wait < 0.1:
-                message = 'wait argument cannot be less than 0.1 seconds'
-                raise ValueError(message)
+            assert self.retries > 0, 'retries argument cannot be less than 1'
+            assert self.wait >= 0.1, 'wait argument cannot be less than 0.1 seconds'
 
     def __call__(self) -> grizzlytask:  # noqa: C901, PLR0915
         if self.transform is None:

@@ -32,6 +32,7 @@ def step_task_client_get_endpoint_payload_metadata(context: Context, endpoint: s
         name (str): name of the request, used in request statistics
         payload_variable (str): name of, initialized, variable where response payload will be saved in
         metadata_variable (str): name of, initialized, variable where response metadata will be saved in
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -64,6 +65,7 @@ def step_task_client_get_endpoint_payload(context: Context, endpoint: str, name:
         endpoint (str): information about where to get information, see the specific getter task implementations for more information
         name (str): name of the request, used in request statistics
         variable (str): name of, initialized, variable where response payload will be saved in
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -97,6 +99,7 @@ def step_task_client_put_endpoint_file_destination(context: Context, source: str
         endpoint (str): information about where to get information, see the specific getter task implementations for more information
         name (str): name of the request, used in request statistics
         destination (str): name of source on the destination
+
     """
     assert context.text is None, 'step text is not allowed for this step expression'
     assert not has_template(source), 'source file cannot be a template'
@@ -131,6 +134,7 @@ def step_task_client_put_endpoint_file(context: Context, source: str, endpoint: 
         source (str): relative path to file in `feature/requests`, supports {@link framework.usage.variables.templating}
         endpoint (str): information about where to get information, see the specific getter task implementations for more information
         name (str): name of the request, used in request statistics
+
     """
     assert context.text is None, 'step text is not allowed for this step expression'
     assert not has_template(source), 'source file cannot be a template'

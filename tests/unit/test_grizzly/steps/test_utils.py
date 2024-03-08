@@ -3,14 +3,17 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from grizzly.steps.utils import step_utils_fail
+from tests.helpers import ANY
 
 if TYPE_CHECKING:  # pragma: no cover
     from tests.fixtures import BehaveFixture
 
 
 def test_step_utils_fail(behave_fixture: BehaveFixture) -> None:
-    with pytest.raises(AssertionError, match=''):
-        step_utils_fail(behave_fixture.context)
+    behave = behave_fixture.context
+    assert behave.exceptions == {}
+
+    step_utils_fail(behave)
+
+    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='manually failed')]}

@@ -55,6 +55,7 @@ def step_task_request_text_with_name_endpoint(context: Context, method: RequestM
         name (str): name of the requests in logs, can contain variables
         direction (RequestDirection): one of `to` or `from` depending on the value of `method`
         endpoint (str): URI relative to `host` in the scenario, can contain variables and in certain cases `user_class_name` specific parameters
+
     """
     assert isinstance(direction, RequestDirection), 'invalid direction specified in expression'
 
@@ -86,6 +87,7 @@ def step_task_request_file_with_name_endpoint(context: Context, method: RequestM
         source (str): path to a template file relative to the directory `requests/`, which **must** exist in the directory the feature file is located
         name (str): name of the requests in logs, can contain variables
         endpoint (str): URI relative to `host` in the scenario, can contain variables and in certain cases `user_class_name` specific parameters
+
     """
     assert method.direction == RequestDirection.TO, f'{method.name} is not allowed'
     assert context.text is None, f'step text is not allowed for {method.name}'
@@ -114,6 +116,7 @@ def step_task_request_file_with_name(context: Context, method: RequestMethod, so
         method (Method): type of "to" request
         source (str): path to a template file relative to the directory `requests/`, which **must** exist in the directory the feature file is located
         name (str): name of the requests in logs, can contain variables
+
     """
     assert method.direction == RequestDirection.TO, f'{method.name} is not allowed'
     assert context.text is None, f'step text is not allowed for {method.name}'
@@ -172,10 +175,11 @@ def step_task_request_text_with_name(context: Context, method: RequestMethod, na
     Args:
         method (Method): type of request, either "from" or "to"
         name (str): name of the requests in logs, can contain variables
+
     """
     if method.direction == RequestDirection.FROM:
-        assert context.text is None, f'Step text is not allowed for {method.name}'
+        assert context.text is None, f'step text is not allowed for {method.name}'
     elif method.direction == RequestDirection.TO:
-        assert context.text is not None, f'Step text is mandatory for {method.name}'
+        assert context.text is not None, f'step text is mandatory for {method.name}'
 
     add_request_task(context, method=method, source=context.text, name=name)

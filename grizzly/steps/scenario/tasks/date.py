@@ -36,6 +36,7 @@ def step_task_date(context: Context, value: str, variable: str) -> None:
     Args:
         value (str): datetime string and arguments
         variable (str): name of, initialized, variable where response will be saved in
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
     assert variable in grizzly.state.variables, f'variable {variable} has not been initialized'

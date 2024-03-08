@@ -1,7 +1,7 @@
 """IBM MQ handler implementation for async-messaged."""
 from __future__ import annotations
 
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from time import perf_counter as time
 from time import sleep
 from typing import Any, Dict, Generator, Optional, cast
@@ -61,7 +61,9 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
         try:
             yield queue
         finally:
-            queue.close()
+            with suppress(Exception):
+                queue.close()
+
 
     @register(handlers, 'DISC')
     def disconnect(self, _request: AsyncMessageRequest) -> AsyncMessageResponse:
@@ -314,7 +316,10 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
                                 raise AsyncMessageError(msg)
 
                         response_length = len(request_payload) if request_payload is not None else 0
-                        queue.put(request_payload, md)
+                        try:
+                            queue.put(request_payload, md)
+                        except pymqi.MQMIError as e:
+                            raise AsyncMessageError(str(e)) from e
 
                     elif action == 'GET':
                         payload = None
@@ -409,4 +414,4 @@ class AsyncMessageQueueHandler(AsyncMessageHandler):
         return self._request(request)
 
     def get_handler(self, action: str) -> Optional[AsyncMessageRequestHandler]:
-        return handlers.get(action, None)
+        return handlers.get(action)

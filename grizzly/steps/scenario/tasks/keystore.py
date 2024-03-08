@@ -26,6 +26,7 @@ def step_task_keystore_get_default(context: Context, key: str, variable: str, de
     And value for variable "foobar" is "none"
     Then get "foobar" from keystore and save in variable "foobar", with default value "{'hello': 'world'}"
     ```
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
     if "'" in default_value:
@@ -49,6 +50,7 @@ def step_task_keystore_get(context: Context, key: str, variable: str) -> None:
     And value for variable "foobar" is "none"
     Then get "foobar" from keystore and save in variable "foobar"
     ```
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
     grizzly.scenario.tasks.add(KeystoreTask(key, 'get', variable))
@@ -67,6 +69,7 @@ def step_task_keystore_set(context: Context, key: str, value: str) -> None:
     And value for variable "foobar" is "{'hello': 'world'}"
     Then set "foobar" in keystore with value "{{ foobar }}"
     ```
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
     if "'" in value:

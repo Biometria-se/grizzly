@@ -134,6 +134,8 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
     user_class_type_1 = cast(Type[RestApiUser], user_class_type_1)
     assert user_class_type_1.__name__ == f'grizzly.users.RestApiUser_{scenario.identifier}'
     assert user_class_type_1.weight == 1
+    assert user_class_type_1.fixed_count == 0
+    assert user_class_type_1.sticky_tag is None
     assert user_class_type_1.__scenario__ is scenario
     assert user_class_type_1.host == 'http://localhost:8000'
     assert user_class_type_1.__module__ == 'grizzly.users.restapi'
@@ -199,6 +201,8 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
 
     scenario = GrizzlyContextScenario(1, behave=behave_fixture.create_scenario('TestTestTest'))
     scenario.user.class_name = 'RestApiUser'
+    scenario.user.sticky_tag = 'foobar'
+    scenario.user.fixed_count = 100
     scenario.context['metadata'] = {
         'Content-Type': 'application/xml',
         'Foo-Bar': 'hello world',
@@ -225,6 +229,8 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
     user_class_type_2 = cast(Type[RestApiUser], user_class_type_2)
     assert user_class_type_2.__name__ == f'RestApiUser_{scenario.identifier}'
     assert user_class_type_2.weight == 1
+    assert user_class_type_2.fixed_count == 100
+    assert user_class_type_2.sticky_tag == 'foobar'
     assert user_class_type_2.__scenario__ is scenario
     assert user_class_type_2.host == 'http://localhost:8001'
     assert user_class_type_2.__module__ == 'grizzly.users.restapi'

@@ -115,7 +115,7 @@ class TestRequestTask:
         assert task_factory.response.content_type == TransformerContentType.XML
 
         # test missing required arguments for multipart/form-data
-        with pytest.raises(ValueError, match=r'Content type multipart\/form-data requires endpoint arguments multipart_form_data_name and multipart_form_data_filename'):
+        with pytest.raises(AssertionError, match=r'Content type multipart\/form-data requires endpoint arguments multipart_form_data_name and multipart_form_data_filename'):
             RequestTask(RequestMethod.POST, 'test-name', endpoint='/api/test | content_type="multipart/form-data"')
 
         # test required arguments for multipart/form-data

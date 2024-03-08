@@ -16,6 +16,7 @@ from grizzly.tasks import RequestTask
 from grizzly.tasks.clients import ClientTask, client
 from grizzly.testdata.utils import resolve_variable
 from grizzly.types import RequestMethod, ResponseAction, ResponseTarget
+from grizzly.utils import has_template
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments, split_value
 from grizzly_extras.transformer import TransformerContentType
 
@@ -123,27 +124,18 @@ def add_request_task(
 
     for row in table:
         if endpoint is None:
-            if scenario_tasks_count == 0:
-                message = 'no endpoint specified'
-                raise ValueError(message)
+            assert scenario_tasks_count > 0, 'no endpoint specified'
 
             last_request = grizzly.scenario.tasks()[-1]
 
-            if not isinstance(last_request, RequestTask):
-                message = 'previous task was not a request'
-                raise ValueError(message)
-
-            if last_request.method != method:
-                message = 'cannot use endpoint from previous request, it has a different request method'
-                raise ValueError(message)
+            assert isinstance(last_request, RequestTask), 'previous task was not a request'
+            assert last_request.method == method, 'cannot use endpoint from previous request, it has a different request method'
 
             endpoint = last_request.endpoint
             content_type = last_request.response.content_type
         else:
             parsed = urlparse(endpoint)
-            if len(parsed.netloc) > 0:
-                message = f'endpoints should only contain path relative to {grizzly.scenario.context["host"]}'
-                raise ValueError(message)
+            assert len(parsed.netloc) < 1, f'endpoints should only contain path relative to {grizzly.scenario.context["host"]}'
 
         orig_endpoint = endpoint
         orig_name = name
@@ -176,7 +168,7 @@ def add_request_task(
     return request_tasks
 
 
-def _add_response_handler(  # noqa: C901, PLR0912
+def _add_response_handler(
     grizzly: GrizzlyContext,
     target: ResponseTarget,
     action: ResponseAction,
@@ -184,27 +176,22 @@ def _add_response_handler(  # noqa: C901, PLR0912
     match_with: str,
     variable: Optional[str] = None,
     condition: Optional[bool] = None,
+    default_value: Optional[str] = None,
 ) -> None:
     if variable is not None and variable not in grizzly.state.variables:
         message = f'variable "{variable}" has not been declared'
-        raise ValueError(message)
+        raise AssertionError(message)
 
-    if not len(grizzly.scenario.tasks()) > 0:
-        message = 'no request source has been added!'
-        raise ValueError(message)
+    assert len(grizzly.scenario.tasks()) > 0, 'no request source has been added'
 
-    if len(expression) < 1:
-        message = 'expression is empty'
-        raise ValueError(message)
+    assert len(expression) > 0, 'expression is empty'
 
     if '|' in expression:
         expression, expression_arguments = split_value(expression)
         arguments = parse_arguments(expression_arguments)
         unsupported_arguments = get_unsupported_arguments(['expected_matches', 'as_json'], arguments)
 
-        if len(unsupported_arguments) > 0:
-            message = f'unsupported arguments {", ".join(unsupported_arguments)}'
-            raise ValueError(message)
+        assert len(unsupported_arguments) < 1, f'unsupported arguments {", ".join(unsupported_arguments)}'
 
         expected_matches = arguments.get('expected_matches', '1')
         as_json = arguments.get('as_json', 'False') == 'True'
@@ -215,26 +202,19 @@ def _add_response_handler(  # noqa: C901, PLR0912
     # latest request
     request = grizzly.scenario.tasks()[-1]
 
-    if not isinstance(request, RequestTask):
-        message = 'latest task was not a request'
-        raise TypeError(message)
+    assert isinstance(request, RequestTask), 'latest task was not a request'
+    assert request.response.content_type != TransformerContentType.UNDEFINED, 'content type is not set for latest request'
 
-    if request.response.content_type == TransformerContentType.UNDEFINED:
-        message = 'content type is not set for latest request'
-        raise ValueError(message)
-
-    if '{{' in match_with and '}}' in match_with:
+    if has_template(match_with):
         grizzly.scenario.orphan_templates.append(match_with)
 
-    if '{{' in expression and '}}' in expression:
+    if has_template(expression):
         grizzly.scenario.orphan_templates.append(expression)
 
     handler: ResponseHandlerAction
 
     if action == ResponseAction.SAVE:
-        if variable is None:
-            message = 'variable is not set'
-            raise ValueError(message)
+        assert variable is not None, 'variable is not set'
 
         handler = SaveHandlerAction(
             variable,
@@ -242,11 +222,10 @@ def _add_response_handler(  # noqa: C901, PLR0912
             match_with=match_with,
             expected_matches=expected_matches,
             as_json=as_json,
+            default_value=default_value,
         )
     elif action == ResponseAction.VALIDATE:
-        if condition is None:
-            message = 'condition is not set'
-            raise ValueError(message)
+        assert condition is not None, 'condition is not set'
 
         handler = ValidationHandlerAction(
             condition=condition,
@@ -264,8 +243,8 @@ def _add_response_handler(  # noqa: C901, PLR0912
     add_listener(handler)
 
 
-def add_save_handler(grizzly: GrizzlyContext, target: ResponseTarget, expression: str, match_with: str, variable: str) -> None:
-    _add_response_handler(grizzly, target, ResponseAction.SAVE, expression=expression, match_with=match_with, variable=variable)
+def add_save_handler(grizzly: GrizzlyContext, target: ResponseTarget, expression: str, match_with: str, variable: str, default_value: Optional[str]) -> None:
+    _add_response_handler(grizzly, target, ResponseAction.SAVE, expression=expression, match_with=match_with, variable=variable, default_value=default_value)
 
 
 def add_validation_handler(grizzly: GrizzlyContext, target: ResponseTarget, expression: str, match_with: str, *, condition: bool) -> None:

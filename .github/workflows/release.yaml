@@ -34,20 +34,20 @@ jobs:
         echo $HOME/.local/bin >> $GITHUB_PATH
 
     - name: checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         fetch-depth: 0
 
     - name: setup python
       id: setup-python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.11'
         cache: 'pip'
 
     - name: setup node
       id: setup-node
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
 
     - name: get latest tag
       uses: mgor/action-get-latest-tag@v1.1.0

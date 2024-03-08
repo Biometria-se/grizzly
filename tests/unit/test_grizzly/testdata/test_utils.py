@@ -62,6 +62,7 @@ def test_initialize_testdata_with_tasks(
             'endpoint_part': '/api',
             'message': 'hello world!',
             'orphan': 'most likely',
+            'unused_variable': 'some value',
         })
         grizzly.state.variables['AtomicIntegerIncrementer.messageID'] = 1337
         grizzly.state.variables['AtomicDate.now'] = 'now'
@@ -76,15 +77,17 @@ def test_initialize_testdata_with_tasks(
         grizzly.scenario.tasks.add(TransformerTask(
             expression='$.expression',
             variable='transformer_task',
-            content='hello this is the {{ content }}!',
+            content='hello this is the {{ undeclared_variable if undeclared_variable is defined else content }}!',
             content_type=TransformerContentType.JSON,
         ))
         request.content_type = TransformerContentType.JSON
+        grizzly.scenario.tasks.add(LogMessageTask('{{ unused_variable if unused_variable is defined else "hello" }}'))
         grizzly.scenario.tasks.add(UntilRequestTask(request=request, condition='{{ condition }}'))
         grizzly.scenario.tasks.add(ConditionalTask(name='conditional-1', condition='{{ value | int > 5 }}'))
         grizzly.scenario.tasks.add(ConditionalTask(name='conditional-1', condition='{{ AtomicIntegerIncrementer.value | int > 5 }}'))
         grizzly.scenario.tasks.add(LogMessageTask(message='transformer_task={{ transformer_task }}'))
         grizzly.scenario.orphan_templates.append('hello {{ orphan }} template')
+        grizzly.scenario.orphan_templates.append('{{ (((max_days * 0.33) + 0.5) | int) if max_days is defined else days }}')
         testdata, external_dependencies, message_handlers = initialize_testdata(grizzly)
 
         scenario_name = grizzly.scenario.class_name
@@ -360,6 +363,13 @@ def test_resolve_variable(grizzly_fixture: GrizzlyFixture) -> None:  # noqa: PLR
         grizzly.state.variables['lowercase_value'] = 'foobar'
 
         assert resolve_variable(grizzly, 'hello {{ lowercase_value | testuppercase }}!') == 'hello FOOBAR!'
+
+        # do not fail on undeclared variable if there is a check that the variable is defined or not in the template
+        assert resolve_variable(grizzly, 'hello {{ world if world is defined else "world" }}') == 'hello world'
+        assert resolve_variable(grizzly, 'hello {{ "world" if world is not defined else world }}') == 'hello world'
+        grizzly.state.variables['world'] = 'foobar'
+        assert resolve_variable(grizzly, 'hello {{ world if world is defined else "world" }}') == 'hello foobar'
+        assert resolve_variable(grizzly, 'hello {{ "world" if world is not defined else world }}') == 'hello foobar'
     finally:
         with suppress(KeyError):
             del environ['HELLO_WORLD']

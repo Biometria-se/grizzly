@@ -128,27 +128,27 @@ class ClientTask(GrizzlyMetaRequestTask):
 
         if self.payload_variable is not None and self.direction != RequestDirection.FROM:
             message = f'{self.__class__.__name__}: variable argument is not applicable for direction {self.direction.name}'
-            raise AttributeError(message)
+            raise AssertionError(message)
 
         if self.source is not None and self.direction != RequestDirection.TO:
             message = f'{self.__class__.__name__}: source argument is not applicable for direction {self.direction.name}'
-            raise AttributeError(message)
+            raise AssertionError(message)
 
         if self.payload_variable is not None and self.payload_variable not in self.grizzly.state.variables:
             message = f'{self.__class__.__name__}: variable {self.payload_variable} has not been initialized'
-            raise ValueError(message)
+            raise AssertionError(message)
 
         if self.metadata_variable is not None and self.metadata_variable not in self.grizzly.state.variables:
             message = f'{self.__class__.__name__}: variable {self.metadata_variable} has not been initialized'
-            raise ValueError(message)
+            raise AssertionError(message)
 
         if self.payload_variable is None and self.metadata_variable is not None:
             message = f'{self.__class__.__name__}: payload variable is not set, but metadata variable is set'
-            raise ValueError(message)
+            raise AssertionError(message)
 
         if self.source is None and self.direction == RequestDirection.TO:
             message = f'{self.__class__.__name__}: source must be set for direction {self.direction.name}'
-            raise ValueError(message)
+            raise AssertionError(message)
 
         self._short_name = self.__class__.__name__.replace('ClientTask', '')
 
@@ -253,10 +253,10 @@ class ClientTask(GrizzlyMetaRequestTask):
                 name = f'{parent.user._scenario.identifier} {rendered_name}'
 
             response_time = int((time() - start_time) * 1000)
-            response_length = meta.get('response_length', None) or 0
+            response_length = meta.get('response_length') or 0
 
             if exception is None:
-                exception = meta.get('exception', None)
+                exception = meta.get('exception')
 
             if not suppress or exception is not None:
                 parent.user.environment.events.request.fire(
@@ -277,8 +277,8 @@ class ClientTask(GrizzlyMetaRequestTask):
 
                 request_log: Dict[str, Any] = {
                     'stacktrace': None,
-                    'response': meta.get('response', None),
-                    'request': meta.get('request', None),
+                    'response': meta.get('response'),
+                    'request': meta.get('request'),
                 }
 
                 if exception is not None:

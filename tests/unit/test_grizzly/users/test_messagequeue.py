@@ -471,7 +471,7 @@ class TestMessageQueueUser:
 
         request.response.content_type = TransformerContentType.JSON
 
-        add_save_handler(grizzly, ResponseTarget.PAYLOAD, '$.test', '.*', 'payload_variable')
+        add_save_handler(grizzly, ResponseTarget.PAYLOAD, '$.test', '.*', 'payload_variable', default_value=None)
         mq_parent.user.request(request)
 
         assert mq_parent.user.context_variables['payload_variable'] == ''

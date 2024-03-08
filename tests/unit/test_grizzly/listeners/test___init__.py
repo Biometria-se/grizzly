@@ -159,6 +159,8 @@ def test_init_worker(grizzly_fixture: GrizzlyFixture) -> None:
         def callback_ack(environment: Environment, msg: Message, **_kwargs: Any) -> None:  # noqa: ARG001
             pass
 
+        grizzly.state.locust.custom_messages.clear()
+
         grizzly.setup.locust.messages.register(MessageDirection.CLIENT_SERVER, 'test_message', callback)
         grizzly.setup.locust.messages.register(MessageDirection.SERVER_CLIENT, 'test_message_ack', callback_ack)
 

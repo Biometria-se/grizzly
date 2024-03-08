@@ -5,8 +5,10 @@ from json import dumps as jsondumps
 from json import loads as jsonloads
 from typing import TYPE_CHECKING, cast
 
+import pytest
+
 from grizzly.context import GrizzlyContext, GrizzlyContextScenario
-from grizzly.tasks import LogMessageTask, RequestTask
+from grizzly.tasks import DateTask, LogMessageTask, RequestTask
 from grizzly.testdata.ast import _parse_templates, get_template_variables
 from grizzly.types import RequestMethod
 
@@ -25,9 +27,12 @@ def test__parse_template(request_task: RequestTaskFixture) -> None:
         'CsvRowValue2': '{{ AtomicCsvReader.test.header2 }}',
         'File': '{{ AtomicDirectoryContents.test }}',
         'TestSubString': '{{ a_sub_string[:3] }}',
-        'TestString': '{{ a_string }}',
+        'TestString': '{{ a_string if undeclared_variable is not defined else "foo" }}',
         'FooBar': '{{ (AtomicIntegerIncrementer.file_number | int) }}',
-        'Expression': '{{ expression == "True" }}',
+        'Expression': '{{ expression == "True" if undeclared_variable is defined else "True" }}',
+        'Undefined': '{{ undeclared_variable if undeclared_variable is defined else "unknown" }}',
+        'UndefinedAdvanced': '{{ AtomicIntegerIncrementer.undefined if AtomicIntegerIncrementer.undefined is defined else "hello" }}',
+        'Content': '{{ some_weird_variable if some_weird_variable is defined else content }}',
     })
 
     request.source = jsondumps(source)
@@ -35,22 +40,25 @@ def test__parse_template(request_task: RequestTaskFixture) -> None:
     scenario.tasks.add(request)
 
     templates = {scenario: set(request.get_templates())}
-    variables = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
+    variables, allowed_unused = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
 
     assert variables == {
         'TestScenario_001': {
-            'messageID',
             'AtomicIntegerIncrementer.messageID',
+            'AtomicIntegerIncrementer.file_number',
+            'AtomicDirectoryContents.test',
+            'messageID',
+            'content',
             'AtomicDate.now',
             'AtomicCsvReader.test.header1',
             'AtomicCsvReader.test.header2',
-            'AtomicDirectoryContents.test',
             'a_sub_string',
             'a_string',
-            'AtomicIntegerIncrementer.file_number',
             'expression',
         },
     }
+
+    assert allowed_unused == {'some_weird_variable', 'AtomicIntegerIncrementer.undefined', 'undeclared_variable'}
 
 
 def test__parse_template_nested_pipe(request_task: RequestTaskFixture) -> None:
@@ -67,13 +75,15 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture) -> None:
 
     templates = {scenario: set(request.get_templates())}
 
-    variables = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
+    variables, allow_unused = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
 
     assert variables == {
         'TestScenario_001': {
             'AtomicIntegerIncrementer.file_number',
         },
     }
+
+    assert allow_unused == set()
 
     source['result'] = {'FooBar': '{{ (AtomicIntegerIncrementer.file_number | int) }}'}
 
@@ -83,13 +93,14 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture) -> None:
 
     templates = {scenario: set(request.get_templates())}
 
-    variables = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
+    variables, allow_unused = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
 
     assert variables == {
         'TestScenario_001': {
             'AtomicIntegerIncrementer.file_number',
         },
     }
+    assert allow_unused == set()
 
     request.source = "{{ '%08d' % key[:6] | int }}_{{ guid }}_{{ AtomicDate.date }}_{{ '%012d' % AtomicIntegerIncrementer.file_number }}"
 
@@ -98,7 +109,7 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture) -> None:
 
     templates = {scenario: set(request.get_templates())}
 
-    variables = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
+    variables, allow_unused = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
 
     assert variables == {
         'TestScenario_001': {
@@ -108,6 +119,8 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture) -> None:
             'AtomicIntegerIncrementer.file_number',
         },
     }
+
+    assert allow_unused == set()
 
     source = {
         'result': {
@@ -131,7 +144,7 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture) -> None:
     scenario.tasks.add(request)
     templates = {scenario: set(request.get_templates())}
 
-    variables = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
+    variables, allow_unused = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
 
     assert variables == {
         'TestScenario_001': {
@@ -148,13 +161,14 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture) -> None:
             'value120', 'value121', 'value122', 'value123', 'value124',
         },
     }
+    assert allow_unused == set()
 
     request.source = '{%- set hello = world -%} {{ foobar }}'
     scenario.tasks.clear()
     scenario.tasks.add(request)
     templates = {scenario: set(request.get_templates())}
 
-    variables = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
+    variables, allow_unused = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
 
     assert variables == {
         'TestScenario_001': {
@@ -162,6 +176,7 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture) -> None:
             'world',
         },
     }
+    assert allow_unused == set()
 
     request.source = """
 {%- set t1l = AtomicCsvReader.input.value1 -%}
@@ -195,14 +210,15 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture) -> None:
             "height": {{ AtomicCsvReader.input.second_height | int }},
             "volume": {{ ((AtomicCsvReader.input.second_width | int) / 100) * ((AtomicCsvReader.input.second_height | int) / 100) * ((AtomicCsvReader.input.second_length | int) / 100) }},
         }
-    ]
+    ],
+    "timestamp": "{{ datetime.now() }}"
 }
 """  # noqa: E501
     scenario.tasks.clear()
     scenario.tasks.add(request)
     templates = {scenario: set(request.get_templates())}
 
-    variables = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
+    variables, allow_unused = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
 
     assert variables == {
         'TestScenario_001': {
@@ -221,6 +237,7 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture) -> None:
             'AtomicCsvReader.input.second_height',
         },
     }
+    assert allow_unused == set()
 
 
 def test_get_template_variables(behave_fixture: BehaveFixture) -> None:
@@ -237,7 +254,7 @@ def test_get_template_variables(behave_fixture: BehaveFixture) -> None:
         RequestTask(RequestMethod.POST, name='Test POST request', endpoint='/api/test/post'),
     )
     task = cast(RequestTask, grizzly.scenario.tasks()[-1])
-    task.source = '{{ AtomicRandomString.test }}'
+    task.source = '{{ AtomicRandomString.test[:2] }}'
 
     grizzly.scenario.tasks.add(
         RequestTask(RequestMethod.GET, name='{{ env }} GET request', endpoint='/api/{{ env }}/get'),
@@ -249,7 +266,26 @@ def test_get_template_variables(behave_fixture: BehaveFixture) -> None:
         LogMessageTask(message='{{ foo }}'),
     )
 
+    grizzly.scenario.tasks.add(
+        RequestTask(RequestMethod.GET, name='Test GET request', endpoint='/api/test/post'),
+    )
+    task = cast(RequestTask, grizzly.scenario.tasks()[-1])
+    task.source = '{{ AtomicRandomString.id.replace("-", "")[:2] }}'
+
+    grizzly.scenario.tasks.add(
+        DateTask('timestamp', '{{ datetime.now() }} | format="%Y%m%d"'),
+    )
+
     grizzly.scenario.orphan_templates.append('{{ foobar }}')
+    grizzly.state.variables.update({
+        'AtomicRandomString.test': 'none',
+        'AtomicRandomString.id': 'none',
+        'AtomicIntegerIncrementer.test': 2,
+        'foo': 'bar',
+        'env': 'none',
+        'foobar': 'barfoo',
+        'world': 'hello',
+    })
 
     variables = get_template_variables(grizzly)
 
@@ -259,6 +295,7 @@ def test_get_template_variables(behave_fixture: BehaveFixture) -> None:
     assert variables == {
         expected_scenario_name: {
             'AtomicRandomString.test',
+            'AtomicRandomString.id',
             'AtomicIntegerIncrementer.test',
             'foo',
             'env',
@@ -266,3 +303,13 @@ def test_get_template_variables(behave_fixture: BehaveFixture) -> None:
             'world',
         },
     }
+
+    del grizzly.state.variables['foo']
+
+    with pytest.raises(AssertionError, match='variables has been found in templates, but have not been declared: foo'):
+        get_template_variables(grizzly)
+
+    grizzly.state.variables.update({'foo': 'bar', 'bar': 'foo'})
+
+    with pytest.raises(AssertionError, match='variables has been declared, but cannot be found in templates: bar'):
+        get_template_variables(grizzly)

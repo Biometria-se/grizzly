@@ -30,27 +30,27 @@ class TestBlobStorageClientTask:
                 '',
             )
 
-        with pytest.raises(ValueError, match='BlobStorageClientTask: source must be set for direction TO'):
+        with pytest.raises(AssertionError, match='BlobStorageClientTask: source must be set for direction TO'):
             BlobStorageClientTask(
                 RequestDirection.TO,
                 'bs://?AccountKey=aaaabbb=&Container=my-container',
             )
 
-        with pytest.raises(ValueError, match=r'BlobStorageClientTask: could not find account name in bs://\?AccountKey=aaaabbb=&Container=my-container'):
+        with pytest.raises(AssertionError, match=r'BlobStorageClientTask: could not find account name in bs://\?AccountKey=aaaabbb=&Container=my-container'):
             BlobStorageClientTask(
                 RequestDirection.TO,
                 'bs://?AccountKey=aaaabbb=&Container=my-container',
                 source='',
             )
 
-        with pytest.raises(ValueError, match='BlobStorageClientTask: could not find AccountKey in bs://my-storage'):
+        with pytest.raises(AssertionError, match='BlobStorageClientTask: could not find AccountKey in bs://my-storage'):
             BlobStorageClientTask(
                 RequestDirection.TO,
                 'bs://my-storage',
                 source='',
             )
 
-        with pytest.raises(ValueError, match=r'BlobStorageClientTask: could not find Container in bs://my-storage\?AccountKey=aaaabbb='):
+        with pytest.raises(AssertionError, match=r'BlobStorageClientTask: could not find Container in bs://my-storage\?AccountKey=aaaabbb='):
             BlobStorageClientTask(
                 RequestDirection.TO,
                 'bs://my-storage?AccountKey=aaaabbb=',
@@ -160,7 +160,7 @@ class TestBlobStorageClientTask:
 
             BlobStorageClientTask.__scenario__ = grizzly.scenario
 
-            with pytest.raises(ValueError, match='BlobStorageClientTask: source must be set for direction TO'):
+            with pytest.raises(AssertionError, match='BlobStorageClientTask: source must be set for direction TO'):
                 BlobStorageClientTask(
                     RequestDirection.TO,
                     'bss://$conf::storage.account$?AccountKey=$conf::storage.account_key$&Container=$conf::storage.container$',

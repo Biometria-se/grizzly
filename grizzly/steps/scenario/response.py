@@ -40,6 +40,49 @@ register_type(
 )
 
 
+@then('save optional response {target:ResponseTarget} "{expression}" that matches "{match_with}" in variable "{variable}" with default value "{default_value}"')
+def step_response_save_matches_optional(context: Context, target: ResponseTarget, expression: str, match_with: str, variable: str, default_value: str) -> None:
+    """Save specified parts of a response, either from meta data (header) or payload (body), in a variable.
+
+    With this step it is possible to change variable values and as such use values from a response later on in the load test.
+
+    The {@pylink grizzly.tasks.request} task preceded by this step will **not** fail if the specified `expression` has no or more than one match,
+    the value of `variable` will be set to `default_value`.
+
+    Example:
+    ```gherkin
+    # only token is matched and saved in TOKEN, by using regexp match groups
+    And value for variable "TOKEN" is "none"
+    Then save response metadata "$.Authentication" that matches "Bearer (.*)$" in variabel "TOKEN"
+
+    # the whole value is saved, as long as Authentication starts with "Bearer"
+    And value for variable "HEADER_AUTHENTICATION" is "none"
+    Then save response metadata "$.Authentication" that matches "^Bearer .*$" in variable "HEADER_AUTHENTICATION"
+
+    # only the numerical suffix is saved in the variable
+    And value for variable "AtomicIntegerIncrementer.measurermentId" is "1"
+    Then save response payload "$.measurement.id" that matches "^cpu([\\d]+)$" in "measurementId"
+
+    # the whole value is saved, as long as the value starts with "cpu"
+    And value for variable "measurementId" is "0"
+    Then save response payload "$.measurement.id" that matches "^cpu[\\d]+$" in "measurementId"
+
+    # xpath example
+    And value for variable "xmlMeasurementId" is "none"
+    Then save response payload "//measurement[0]/id/text() | content_type=xml" that matches "^cpu[\\d]+$" in "xmlMeasurementId"
+    ```
+
+    Args:
+        target (ResponseTarget): `metadata` or `payload`, depending on which part of the response should be used
+        expression (str): JSON path or XPath expression for finding the property
+        match_with (str): static value or a regular expression
+        variable (str): name of the already initialized variable to save the value in
+        default_value (str): value to set if there is no match
+
+    """
+    add_save_handler(cast(GrizzlyContext, context.grizzly), target, expression, match_with, variable, default_value=default_value)
+
+
 @then('save response {target:ResponseTarget} "{expression}" that matches "{match_with}" in variable "{variable}"')
 def step_response_save_matches(context: Context, target: ResponseTarget, expression: str, match_with: str, variable: str) -> None:
     """Save specified parts of a response, either from meta data (header) or payload (body), in a variable.
@@ -76,8 +119,40 @@ def step_response_save_matches(context: Context, target: ResponseTarget, express
         expression (str): JSON path or XPath expression for finding the property
         match_with (str): static value or a regular expression
         variable (str): name of the already initialized variable to save the value in
+
     """
-    add_save_handler(cast(GrizzlyContext, context.grizzly), target, expression, match_with, variable)
+    add_save_handler(cast(GrizzlyContext, context.grizzly), target, expression, match_with, variable, default_value=None)
+
+
+@then('save optional response {target:ResponseTarget} "{expression}" in variable "{variable}" with default value "{default_value}"')
+def step_response_save_optional(context: Context, target: ResponseTarget, expression: str, variable: str, default_value: str) -> None:
+    """Save metadata (header) or payload (body) value from a response in a variable.
+
+    This step expression is the same as {@pylink grizzly.steps.scenario.response.step_response_save_matches_optional} if `match_with` is set to `.*`.
+
+    With this step it is possible to change variable values and as such use values from a response later on in the load test.
+
+    The {@pylink grizzly.tasks.request} task preceded by this step will **not** fail if the specified `expression` has no or more than one match,
+    the value of `variable` will be set to `default_value`.
+
+    Example:
+    ```gherkin
+    Then save optional response metadata "$.Authentication" in variable "HEADER_AUTHENTICATION" with default value "none"
+
+    Then save optional response payload "$.Result.ShipmentId" in variable "ShipmentId" with default value "SH1395865"
+
+    Then save optional response payload "//measurement[0]/id/text()" in "xmlMeasurementId" with default value "foobar"
+    ```
+
+    Args:
+        target (ResponseTarget): `metadata` or `payload`, depending on which part of the response should be used
+        expression (str): JSON path or XPath expression for finding the property
+        variable (str): name of the already initialized variable to save the value in
+        default_value (str): value to set if there is no match
+
+    """
+    add_save_handler(cast(GrizzlyContext, context.grizzly), target, expression, '.*', variable, default_value=default_value)
+
 
 
 @then('save response {target:ResponseTarget} "{expression}" in variable "{variable}"')
@@ -103,8 +178,9 @@ def step_response_save(context: Context, target: ResponseTarget, expression: str
         target (ResponseTarget): `metadata` or `payload`, depending on which part of the response should be used
         expression (str): JSON path or XPath expression for finding the property
         variable (str): name of the already initialized variable to save the value in
+
     """
-    add_save_handler(cast(GrizzlyContext, context.grizzly), target, expression, '.*', variable)
+    add_save_handler(cast(GrizzlyContext, context.grizzly), target, expression, '.*', variable, default_value=None)
 
 
 @when('response {target:ResponseTarget} "{expression}" {condition:Condition} "{match_with}" fail request')
@@ -129,6 +205,7 @@ def step_response_validate(context: Context, target: ResponseTarget, expression:
         expression (str): JSON path or XPath expression for finding the property
         condition (enum): "is" or "is not" depending on negative or postive matching
         match_with (str): static value or a regular expression
+
     """
     add_validation_handler(cast(GrizzlyContext, context.grizzly), target, expression, match_with, condition=condition)
 
@@ -151,6 +228,7 @@ def step_response_allow_status_codes(context: Context, status_list: str) -> None
 
     Args:
         status_list (str): comma separated list of integers
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
     assert len(grizzly.scenario.tasks()) > 0, 'there are no requests in the scenario'
@@ -188,16 +266,17 @@ def step_response_allow_status_codes_table(context: Context) -> None:
 
     Allowed response status codes for `test-get-1` is now `200` and `302`, and for `test-get-2` is
     now `200` and `404`.
+
     """
-    assert context.table is not None, 'step data table is mandatory'
+    assert context.table is not None, 'step table is missing'
 
     grizzly = cast(GrizzlyContext, context.grizzly)
 
     tasks = grizzly.scenario.tasks()
-    number_of_requests = len(tasks)
+    number_of_requests = len(grizzly.scenario.tasks(RequestTask))
 
-    assert number_of_requests > 0, 'there are no requests in the scenario'
-    assert len(list(context.table)) <= number_of_requests, 'data table has more rows than there are requests'
+    assert number_of_requests > 0, 'there are no request tasks in the scenario'
+    assert len(list(context.table)) <= number_of_requests, 'step table has more rows than there are request tasks'
 
     # last row = latest added request
     index = -1
@@ -205,12 +284,12 @@ def step_response_allow_status_codes_table(context: Context) -> None:
 
     try:
         for row in rows:
-            request = tasks[index]
-            assert isinstance(request, RequestTask), f'task at index {index} is not a request'
+            task = tasks[index]
+            assert isinstance(task, RequestTask), f'task at index {index} is not a request'
             index -= 1
-            add_request_task_response_status_codes(request, row['status'])
+            add_request_task_response_status_codes(task, row['status'])
     except KeyError as e:
-        message = 'data table does not have column "status"'
+        message = 'step table does not have column "status"'
         raise AssertionError(message) from e
 
 
@@ -233,13 +312,14 @@ def step_response_content_type(context: Context, content_type: TransformerConten
 
     Args:
         content_type (ContentType): expected content type of response
+
     """
-    assert content_type != TransformerContentType.UNDEFINED, 'It is not allowed to set UNDEFINED with this step'
+    assert content_type != TransformerContentType.UNDEFINED, 'it is not allowed to set UNDEFINED with this step'
 
     grizzly = cast(GrizzlyContext, context.grizzly)
-    assert len(grizzly.scenario.tasks()) > 0, 'There are no requests in the scenario'
+    assert len(grizzly.scenario.tasks()) > 0, 'there are no tasks in the scenario'
 
     request = grizzly.scenario.tasks()[-1]
 
-    assert isinstance(request, RequestTask), 'Latest task in scenario is not a request'
+    assert isinstance(request, RequestTask), 'latest task in scenario is not a request task'
     request.response.content_type = content_type

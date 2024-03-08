@@ -24,6 +24,7 @@ def step_task_loop_start(context: Context, values: str, variable: str, name: str
     Then log message "loop_value={{ loop_value }}"
     Then end loop
     ```
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
 
@@ -50,6 +51,7 @@ def step_task_loop_end(context: Context) -> None:
     Then log message "loop_value={{ loop_value }}"
     Then end loop
     ```
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
 

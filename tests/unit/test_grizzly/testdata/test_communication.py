@@ -223,7 +223,6 @@ value3,value4
                     actual_initial_values = json.loads(persist_file.read_text())
                     assert actual_initial_values == {
                         'AtomicIntegerIncrementer.value': '11 | step=5, persist=True',
-                        'grizzly::keystore': {'foobar': {'hello': 'world'}},
                     }
 
             if context is not None:
@@ -375,15 +374,12 @@ value3,value4
             actual_persist_values = json.loads(persistent_file.read_text())
             assert actual_persist_values == {
                 'AtomicIntegerIncrementer.foobar': '3 | step=1, persist=True',
-                'grizzly::keystore': actual_keystore,
-
             }
 
             i['foobar']
 
             with caplog.at_level(logging.DEBUG):
                 producer = TestdataProducer(grizzly_fixture.grizzly, {'HelloWorld': {'AtomicIntegerIncrementer.foobar': i}})
-                del producer.keystore['bar']
                 producer.stop()
 
             assert caplog.messages[-1] == f'feature file data persisted in {persistent_file}'
@@ -391,12 +387,9 @@ value3,value4
 
             assert persistent_file.exists()
 
-            del actual_keystore['bar']
-
             actual_persist_values = json.loads(persistent_file.read_text())
             assert actual_persist_values == {
                 'AtomicIntegerIncrementer.foobar': '5 | step=1, persist=True',
-                'grizzly::keystore': actual_keystore,
             }
         finally:
             with suppress(KeyError):
@@ -535,7 +528,9 @@ value3,value4
                 del environ['GRIZZLY_FEATURE_FILE']
             cleanup()
 
-    def test_persist_data_edge_cases(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture, noop_zmq: NoopZmqFixture, caplog: LogCaptureFixture) -> None:
+    def test_persist_data_edge_cases(
+        self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture, noop_zmq: NoopZmqFixture, caplog: LogCaptureFixture, cleanup: AtomicVariableCleanupFixture,
+    ) -> None:
         noop_zmq('grizzly.testdata.communication')
 
         context_root = Path(grizzly_fixture.request_task.context_root).parent
@@ -547,8 +542,9 @@ value3,value4
 
         try:
             assert not persistent_file.exists()
+            i = AtomicIntegerIncrementer('foobar', '1 | step=1, persist=True')
 
-            producer = TestdataProducer(grizzly_fixture.grizzly, {'test': {'test': 'none'}})
+            producer = TestdataProducer(grizzly_fixture.grizzly, {'test': {'AtomicIntegerIncrementer.foobar': i}})
             producer.has_persisted = True
 
             with caplog.at_level(logging.DEBUG):
@@ -570,6 +566,7 @@ value3,value4
 
             caplog.clear()
         finally:
+            cleanup()
             with suppress(KeyError):
                 del environ['GRIZZLY_FEATURE_FILE']
 

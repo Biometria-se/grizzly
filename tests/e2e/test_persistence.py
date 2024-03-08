@@ -35,7 +35,6 @@ def test_e2e_persistence(e2e_fixture: End2EndFixture) -> None:
 
         assert persistance == {
             'AtomicIntegerIncrementer.persistent': f'{expected_value} | step=1, persist=True',
-            'grizzly::keystore': {'foobar': ['hello', '{{ AtomicIntegerIncrementer.persistent }}']},
         }
 
     e2e_fixture.add_after_feature(after_feature)

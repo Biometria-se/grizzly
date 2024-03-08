@@ -26,6 +26,7 @@ def step_task_log_message(context: Context, message: str) -> None:
 
     Args:
         message (str): message to print
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
     grizzly.scenario.tasks.add(LogMessageTask(message=message))

@@ -3,6 +3,7 @@ Core logic for handling different implementations for authorization.
 """
 from __future__ import annotations
 
+import logging
 from abc import ABCMeta, abstractmethod
 from enum import Enum
 from functools import wraps
@@ -38,6 +39,9 @@ class AuthType(Enum):
 
 
 P = ParamSpec('P')
+
+
+logger = logging.getLogger(__name__)
 
 
 class GrizzlyHttpAuthClient(Generic[P], metaclass=ABCMeta):
@@ -84,6 +88,10 @@ class GrizzlyHttpAuthClient(Generic[P], metaclass=ABCMeta):
 
     @property
     def __cached_auth__(self) -> Dict[str, str]:
+        # clients might not cache auth tokens, let's set it to an empty dict
+        # which could be refered to later, without updating client implementation
+        if '__cached_auth__' not in self._context:
+            self._context['__cached_auth__'] = {}
         return cast(Dict[str, str], self._context['__cached_auth__'])
 
 
@@ -108,7 +116,7 @@ class refresh_token(Generic[P]):
 
         self.impl = cast(Type[RefreshToken], impl)
 
-    def __call__(self, func: AuthenticatableFunc) -> AuthenticatableFunc:
+    def __call__(self, func: AuthenticatableFunc) -> AuthenticatableFunc:  # noqa: PLR0915
         def render(client: GrizzlyHttpAuthClient) -> None:
             variables = cast(Dict[str, Any], client._context.get('variables', {}))
             host = client.grizzly.state.jinja2.from_string(client.host).render(**variables)
@@ -171,11 +179,25 @@ class refresh_token(Generic[P]):
                     session_now = time()
                     session_duration = session_now - client.session_started
 
+                    time_for_refresh = session_duration >= auth_context.get('refresh_time', 3000)
+
                     # refresh token if session has been alive for at least refresh_time
                     authorization_token = client.metadata.get('Authorization', None)
-                    if session_duration >= auth_context.get('refresh_time', 3000) or (authorization_token is None and client.cookies == {}):
+                    if time_for_refresh or (authorization_token is None and client.cookies == {}):
+                        refreshed_for = auth_user.get('username', '<unknown username>') if auth_method == AuthMethod.USER else auth_client.get('id', '<unknown client id>')
+
+                        if time_for_refresh:
+                            # if credentials are switched after one of the cached has timeout,
+                            # it will be None, and hence it will be refreshed next time it is used
+                            client.session_started = time()
+                            client.__cached_auth__.clear()
+                            logger.info(
+                                '%s/%d %s needs refresh (%f >= %s), reset session started and clear cache',
+                                client.__class__.__name__, id(client), refreshed_for, session_duration, auth_context.get('refresh_time', '3000'),
+                            )
+
                         auth_type, secret = self.impl.get_token(client, auth_method)
-                        client.session_started = time()
+
                         if auth_type == AuthType.HEADER:
                             header = {'Authorization': f'Bearer {secret}'}
                             client.metadata.update(header)
@@ -184,6 +206,8 @@ class refresh_token(Generic[P]):
                         else:
                             name, value = secret.split('=', 1)
                             client.cookies.update({name: value})
+
+                        logger.info('%s/%d updated token at %f for %s', client.__class__.__name__, id(client), session_now, refreshed_for)
                     elif authorization_token is not None and request is not None:  # update current request with active authorization token
                         request.metadata.update({'Authorization': authorization_token})
                 else:

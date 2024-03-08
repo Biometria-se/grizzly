@@ -39,6 +39,7 @@ def step_task_transform(context: Context, content: str, content_type: Transforme
         content_type (TransformerContentType): MIME type of `contents`
         expression (str): JSON or XPath expression for specific value in `contents`
         variable (str): name of variable to save value to, must have been initialized
+
     """
     grizzly = cast(GrizzlyContext, context.grizzly)
     grizzly.scenario.tasks.add(TransformerTask(

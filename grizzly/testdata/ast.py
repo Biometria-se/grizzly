@@ -1,11 +1,14 @@
 """Contains methods for handling AST operations when parsing templates."""
 from __future__ import annotations
 
+import itertools
 import logging
-from typing import TYPE_CHECKING, Dict, Generator, List, Optional, Set
+from typing import TYPE_CHECKING, Dict, Generator, List, Optional, Set, Tuple
 
 from jinja2 import Environment as Jinja2Environment
 from jinja2 import nodes as j2
+
+from . import GrizzlyVariables
 
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContext, GrizzlyContextScenario
@@ -13,24 +16,44 @@ if TYPE_CHECKING:  # pragma: no cover
 logger = logging.getLogger(__name__)
 
 
-def get_template_variables(grizzly: GrizzlyContext) -> Dict[str, Set[str]]:
+def get_template_variables(grizzly: GrizzlyContext) -> dict[str, set[str]]:
     """Get all templates per scenario and parse them to find all variables that are used."""
-    templates: Dict[GrizzlyContextScenario, Set[str]] = {}
+    templates: dict[GrizzlyContextScenario, set[str]] = {}
 
-    for scenario in grizzly.scenarios:
-        if scenario not in templates:
-            templates[scenario] = set()
+    for _scenario in grizzly.scenarios:
+        if _scenario not in templates:
+            templates[_scenario] = set()
 
-        for task in scenario.tasks():
-            for template in task.get_templates():
-                templates[scenario].add(template)
+        for task in _scenario.tasks():
+            templates[_scenario].update(task.get_templates())
 
-        templates[scenario].update(scenario.orphan_templates)
+        templates[_scenario].update(_scenario.orphan_templates)
 
-        if len(templates[scenario]) == 0:
-            del templates[scenario]
+        if len(templates[_scenario]) == 0:
+            del templates[_scenario]
 
-    return _parse_templates(templates, env=grizzly.state.jinja2)
+    template_variables, allowed_unused = _parse_templates(templates, env=grizzly.state.jinja2)
+
+    found_variables = set()
+    for variable in itertools.chain(*template_variables.values()):
+        module_name, variable_type, variable_name, _ = GrizzlyVariables.get_variable_spec(variable)
+
+        if module_name is None and variable_type is None:
+            found_variables.add(variable_name)
+        else:
+            prefix = f'{module_name}.' if module_name != 'grizzly.testdata.variables' else ''
+            found_variables.add(f'{prefix}{variable_type}.{variable_name}')
+
+    declared_variables = set(grizzly.state.variables.keys())
+
+    # check except between declared variables and variables found in templates
+    missing_in_templates = {variable for variable in declared_variables if variable not in found_variables} - allowed_unused
+    assert len(missing_in_templates) == 0, f'variables has been declared, but cannot be found in templates: {",".join(missing_in_templates)}'
+
+    missing_declarations = [variable for variable in found_variables if variable not in declared_variables]
+    assert len(missing_declarations) == 0, f'variables has been found in templates, but have not been declared: {",".join(missing_declarations)}'
+
+    return template_variables
 
 
 def walk_attr(node: j2.Getattr) -> List[str]:
@@ -59,18 +82,26 @@ def walk_attr(node: j2.Getattr) -> List[str]:
     return attributes
 
 
-def _parse_templates(templates: Dict[GrizzlyContextScenario, Set[str]], *, env: Jinja2Environment) -> Dict[str, Set[str]]:  # noqa: C901, PLR0915
+def _parse_templates(templates: Dict[GrizzlyContextScenario, Set[str]], *, env: Jinja2Environment) -> Tuple[Dict[str, Set[str]], Set[str]]:  # noqa: C901, PLR0915
     variables: Dict[str, Set[str]] = {}
+    allowed_undefined: Set[str] = set()
 
     def _getattr(node: j2.Node) -> Generator[List[str], None, None]:  # noqa: C901, PLR0912, PLR0915
         attributes: Optional[List[str]] = None
 
         if isinstance(node, j2.Getattr):
-            attributes = walk_attr(node)
+            child_node = getattr(node, 'node', None)
+            if child_node is not None:
+                if isinstance(child_node, (j2.Getattr, j2.Name)):
+                    attributes = walk_attr(node)
+                else:
+                    yield from _getattr(child_node)
         elif isinstance(node, j2.Getitem):
             child_node = getattr(node, 'node', None)
             child_node_name = getattr(child_node, 'name', None)
-            if child_node_name is not None:
+            if child_node_name is None and child_node is not None:
+                yield from _getattr(child_node)
+            elif child_node_name is not None:
                 attributes = [child_node_name]
         elif isinstance(node, j2.Name):
             name = getattr(node, 'name', None)
@@ -118,15 +149,27 @@ def _parse_templates(templates: Dict[GrizzlyContextScenario, Set[str]], *, env: 
             for node in nodes:
                 yield from _getattr(node)
         elif isinstance(node, j2.Test):
+            name = getattr(node, 'name', None)
             child_node = getattr(node, 'node', None)
             if child_node is not None:
-                yield from _getattr(child_node)
+                child_attributes = list(_getattr(child_node))
+                # attributes of a variable was part of a "is defined"-test
+                # keep track so we can ignore it later, which will allow
+                # as long as there is a test for it undefined variables
+                if name == 'defined':
+                    allowed_undefined.add('.'.join(child_attributes[0]))
+
+                yield from child_attributes
 
             for arg in getattr(node, 'args', []):
                 yield from _getattr(arg)
         elif isinstance(node, j2.List):
             for item in getattr(node, 'items', []):
                 yield from _getattr(item)
+        elif isinstance(node, j2.Call):
+            child_node = getattr(node, 'node', None)
+            if child_node is not None:
+                yield from _getattr(child_node)
 
         if attributes is not None:
             yield attributes
@@ -155,6 +198,20 @@ def _parse_templates(templates: Dict[GrizzlyContextScenario, Set[str]], *, env: 
                 else:
                     for node in getattr(body, 'nodes', []):
                         for attributes in _getattr(node):
-                            variables[scenario_name].add('.'.join(attributes))
+                            branches = attributes
 
-    return variables
+                            # ignore builtin modules
+                            if branches[0] in ['datetime']:
+                                continue
+
+                            # ignore builtin methods calls
+                            if branches[-1] in ['replace']:
+                                branches = branches[:-1]
+
+                            variable = '.'.join(branches)
+                            if variable in allowed_undefined:
+                                continue
+
+                            variables[scenario_name].add(variable)
+
+    return variables, allowed_undefined

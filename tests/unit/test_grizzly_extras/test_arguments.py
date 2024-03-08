@@ -117,7 +117,7 @@ def test_parse_arguments(separator: str) -> None:
     ), separator)
     assert arguments == {
         'queue': 'INCOMING.MESSAGES',
-        'expression': '//tag1/tag2/tag3[starts-with(text(), \"Prefix{{ tag3_value }}\") and //tag1/tag2/tag4[text() < 13]]',
+        'expression': '//tag1/tag2/tag3[starts-with(text(), "Prefix{{ tag3_value }}") and //tag1/tag2/tag4[text() < 13]]',
     }
 
     arguments = parse_arguments((
@@ -126,7 +126,7 @@ def test_parse_arguments(separator: str) -> None:
     ), separator)
     assert arguments == {
         'queue': 'INCOMING.MESSAGES',
-        'expression': '//tag1/tag2/tag3[starts-with(text(), \"Prefix{{ tag3_value }}\") and //tag1/tag2/tag4[starts-with(text(), \"{{ tag4_value }}\"]]',
+        'expression': '//tag1/tag2/tag3[starts-with(text(), "Prefix{{ tag3_value }}") and //tag1/tag2/tag4[starts-with(text(), "{{ tag4_value }}"]]',
     }
 
     arguments = parse_arguments(f'value1{separator}:, value2{separator}=, value3{separator}%', separator)

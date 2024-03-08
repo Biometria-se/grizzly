@@ -3,11 +3,12 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
 
-import pytest
 from parse import compile
 
 from grizzly.context import GrizzlyContext
+from grizzly.locust import FixedUsersDispatcher, UsersDispatcher
 from grizzly.steps import *
+from tests.helpers import ANY
 
 if TYPE_CHECKING:  # pragma: no cover
     from tests.fixtures import BehaveFixture
@@ -32,7 +33,8 @@ def test_step_shapes_user_count(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
-    assert grizzly.setup.user_count == 0
+    behave.scenario = grizzly.scenario.behave
+    assert grizzly.setup.user_count is None
 
     step_impl(behave, '10', grammar='user')
     assert grizzly.setup.user_count == 10
@@ -45,16 +47,26 @@ def test_step_shapes_user_count(behave_fixture: BehaveFixture) -> None:
 
     step_impl(behave, '1', grammar='users')
     assert grizzly.setup.user_count == 1
+    assert grizzly.setup.dispatcher_class == UsersDispatcher
 
+    grizzly.setup.dispatcher_class = FixedUsersDispatcher
+
+    step_impl(behave, '1', grammar='users')
+    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='this step cannot be used in combination with')]}
+    delattr(behave, 'exceptions')
+
+    grizzly.setup.dispatcher_class = None
     grizzly.setup.spawn_rate = 10
 
-    with pytest.raises(AssertionError, match=r'spawn rate \(10\) can not be greater than user count \(1\)'):
-        step_impl(behave, '1', grammar='user')
+    step_impl(behave, '1', grammar='user')
+    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='spawn rate (10) cannot be greater than user count (1)')]}
+    delattr(behave, 'exceptions')
 
     grizzly.setup.spawn_rate = 4
 
-    with pytest.raises(AssertionError, match='value contained variable "user_count" which has not been declared'):
-        step_impl(behave, '{{ user_count }}', grammar='user')
+    step_impl(behave, '{{ user_count }}', grammar='user')
+    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='value contained variable "user_count" which has not been declared')]}
+    delattr(behave, 'exceptions')
 
     grizzly.state.variables['user_count'] = 5
     step_impl(behave, '{{ user_count }}', grammar='user')
@@ -64,9 +76,11 @@ def test_step_shapes_user_count(behave_fixture: BehaveFixture) -> None:
 
     step_impl(behave, '{{ user_count * 0.1 }}', grammar='user')
     assert grizzly.setup.user_count == 1
+    assert grizzly.setup.dispatcher_class == UsersDispatcher
 
-    with pytest.raises(AssertionError, match=r'this expression does not support \$conf or \$env variables'):
-        step_impl(behave, '$conf::user.count', grammar='users')
+    step_impl(behave, '$conf::user.count', grammar='users')
+    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='this expression does not support $conf or $env variables')]}
+    delattr(behave, 'exceptions')
 
 
 def test_step_shapes_spawn_rate(behave_fixture: BehaveFixture) -> None:
@@ -75,11 +89,15 @@ def test_step_shapes_spawn_rate(behave_fixture: BehaveFixture) -> None:
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+    behave.scenario = grizzly.scenario.behave
     assert grizzly.setup.spawn_rate is None
 
+    grizzly.setup.user_count = 5
+
     # spawn_rate must be <= user_count
-    with pytest.raises(AssertionError, match='spawn rate can not be greater than user count'):
-        step_impl(behave, '1', grammar='user')
+    step_impl(behave, '10', grammar='users')
+    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='spawn rate cannot be greater than user count')]}
+    delattr(behave, 'exceptions')
 
     grizzly.setup.user_count = 10
     step_impl(behave, '0.1', grammar='users')
@@ -90,11 +108,13 @@ def test_step_shapes_spawn_rate(behave_fixture: BehaveFixture) -> None:
 
     grizzly.setup.user_count = 1
 
-    with pytest.raises(AssertionError, match='spawn rate can not be greater than user count'):
-        step_impl(behave, '10', grammar='users')
+    step_impl(behave, '10', grammar='users')
+    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='spawn rate cannot be greater than user count')]}
+    delattr(behave, 'exceptions')
 
-    with pytest.raises(AssertionError, match='value contained variable "spawn_rate" which has not been declared'):
-        step_impl(behave, '{{ spawn_rate }}', grammar='users')
+    step_impl(behave, '{{ spawn_rate }}', grammar='users')
+    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='value contained variable "spawn_rate" which has not been declared')]}
+    delattr(behave, 'exceptions')
 
     grizzly.setup.spawn_rate = None
     grizzly.state.variables['spawn_rate'] = 1
@@ -104,5 +124,6 @@ def test_step_shapes_spawn_rate(behave_fixture: BehaveFixture) -> None:
     step_impl(behave, '{{ spawn_rate / 1000 }}', grammar='users')
     assert grizzly.setup.spawn_rate == 0.01
 
-    with pytest.raises(AssertionError, match=r'this expression does not support \$conf or \$env variables'):
-        step_impl(behave, '$conf::user.rate', grammar='users')
+    step_impl(behave, '$conf::user.rate', grammar='users')
+    assert behave.exceptions == {behave.scenario.name: [ANY(AssertionError, message='this expression does not support $conf or $env variables')]}
+    delattr(behave, 'exceptions')
