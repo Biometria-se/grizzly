@@ -263,6 +263,7 @@ from .transformer import TransformerTask
 from .until import UntilRequestTask
 from .wait_between import WaitBetweenTask
 from .wait_explicit import ExplicitWaitTask
+from .write_file import WriteFileTask
 
 from .async_group import AsyncRequestGroupTask
 
@@ -282,4 +283,5 @@ __all__ = [
     'LoopTask',
     'SetVariableTask',
     'KeystoreTask',
+    'WriteFileTask',
 ]

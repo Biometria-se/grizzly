@@ -11,5 +11,6 @@ from .transformer import *
 from .until import *  # needs to be fore .request
 from .wait_between import *
 from .wait_explicit import *
+from .write_file import *
 
 from .request import *

@@ -49,13 +49,13 @@ class GrizzlyScenario(SequentialTaskSet):
         cls.tasks.append(task_factory())
 
     def render(self, template: str, variables: Optional[Dict[str, Any]] = None) -> str:
-        if has_template(template):
-            if variables is None:
-                variables = {}
+        if not has_template(template):
+            return template
 
-            return self.grizzly.state.jinja2.from_string(template).render(**self.user._context['variables'], **variables)
+        if variables is None:
+            variables = {}
 
-        return template
+        return self.grizzly.state.jinja2.from_string(template).render(**self.user._context['variables'], **variables)
 
     def prefetch(self) -> None:
         """Do not prefetch anything by default."""
