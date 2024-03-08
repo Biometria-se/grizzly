@@ -9,10 +9,10 @@
       
       
       
-        <link rel="prev" href="../request/">
+        <link rel="prev" href="../timer/">
       
       
-        <link rel="next" href="../date/">
+        <link rel="next" href="../clients/">
       
       
       <link rel="icon" href="../../../../assets/favicon.ico">
@@ -20,7 +20,7 @@
     
     
       
-        <title>Tasks / Conditional - Grizzly</title>
+        <title>Tasks / Write File - Grizzly</title>
       
     
     
@@ -105,7 +105,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Tasks / Conditional
+              Tasks / Write File
             
           </span>
         </div>
@@ -672,28 +672,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  <span class="md-ellipsis">
-    Conditional
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../conditional/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -702,51 +684,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#step-implementations" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step implementations
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#statistics" class="md-nav__link">
-    <span class="md-ellipsis">
-      Statistics
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#arguments" class="md-nav__link">
-    <span class="md-ellipsis">
-      Arguments
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -798,10 +735,28 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../write_file/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Write File
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -810,6 +765,42 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#step-implementations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step implementations
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#arguments" class="md-nav__link">
+    <span class="md-ellipsis">
+      Arguments
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -2724,15 +2715,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#statistics" class="md-nav__link">
-    <span class="md-ellipsis">
-      Statistics
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#arguments" class="md-nav__link">
     <span class="md-ellipsis">
       Arguments
@@ -2759,40 +2741,18 @@
   
 
 
-  <h1>Conditional</h1>
+  <h1>Write File</h1>
 
-<p><a id="pydoc:grizzly.tasks.conditional"></a>
-This task executes one or more other tasks based on <code>condition</code>.</p>
-<p>This is useful when a set of tasks should be executed if <code>condition</code> is <code>True</code>, and another set of tasks if <code>condition</code> is <code>False</code>.</p>
-<p>All tasks created between <a href="/grizzly/framework/usage/steps/scenario/tasks/conditional#pydoc:grizzly.steps.scenario.tasks.conditional.step_task_conditional_if">step_task_conditional_if</a> and
-<a href="/grizzly/framework/usage/steps/scenario/tasks/conditional#pydoc:grizzly.steps.scenario.tasks.conditional.step_task_conditional_end">step_task_conditional_end</a> will be wrapped in this instance and executed conditionally.
-If the task has its own <code>name</code> attribute, it will be prefixed with this tasks <code>name</code>.</p>
-<p>The <a href="/grizzly/framework/usage/steps/scenario/tasks/conditional#pydoc:grizzly.steps.scenario.tasks.conditional.step_task_conditional_else">step_task_conditional_else</a> step expression is optional, if not used no additional tasks will be executed if
-<code>condition</code> is false.</p>
+<p><a id="pydoc:grizzly.tasks.write_file"></a>
+This task writes contents to a file on disk.</p>
+<p>If the specified file already exist, new content will be appended to the existing file.</p>
 <h2 id="step-implementations">Step implementations</h2>
 <ul>
-<li>
-<p><a href="/grizzly/framework/usage/steps/scenario/tasks/conditional#pydoc:grizzly.steps.scenario.tasks.conditional.step_task_conditional_if">step_task_conditional_if</a></p>
-</li>
-<li>
-<p><a href="/grizzly/framework/usage/steps/scenario/tasks/conditional#pydoc:grizzly.steps.scenario.tasks.conditional.step_task_conditional_else">step_task_conditional_else</a> (optional)</p>
-</li>
-<li>
-<p><a href="/grizzly/framework/usage/steps/scenario/tasks/conditional#pydoc:grizzly.steps.scenario.tasks.conditional.step_task_conditional_end">step_task_conditional_end</a></p>
-</li>
+<li><a href="/grizzly/framework/usage/steps/scenario/tasks/write_file#pydoc:grizzly.steps.scenario.tasks.write_file.step_task_write_file">step_task_write_file</a></li>
 </ul>
-<h2 id="statistics">Statistics</h2>
-<p>Executions of this task will be visible in <code>locust</code> request statistics with request type <code>COND</code>. <code>name</code> is suffixed with <code>&lt;condition&gt; (&lt;n&gt;)</code>,
-where <code>&lt;condition&gt;</code> is the runtime resolved condition and <code>&lt;n&gt;</code> is the number of tasks that is executed for the resolved condition. Each task in
-the set for <code>condition</code> will have its own entry in the statistics, see respective <a href="/grizzly/framework/usage/tasks#pydoc:grizzly.tasks">Tasks</a> documentation.</p>
 <h2 id="arguments">Arguments</h2>
 <ul>
-<li>
-<p><code>name</code> <em>str</em>: name of the conditional, used in <code>locust</code> statistics</p>
-</li>
-<li>
-<p><code>condition</code> <em>str</em>: <a href="/grizzly/framework/usage/variables/templating#framework.usage.variables.templating">Templating</a> string that must render <code>True</code> or <code>False</code></p>
-</li>
+<li><code>file_name</code> <em>str</em> - file name relative to <code>&lt;context root&gt;/requests</code>, can contain directory levels</li>
 </ul>
 
 
