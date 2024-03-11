@@ -224,7 +224,7 @@ class GrizzlyFixture:
 
     @property
     def test_context(self) -> Path:
-        return self.request_task.test_context
+        return self.request_task.test_context.parent
 
     def __enter__(self) -> Self:
         environ['GRIZZLY_CONTEXT_ROOT'] = Path(self.request_task.context_root).parent.as_posix()

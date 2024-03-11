@@ -61,7 +61,7 @@ class TestModuleLoader:
             user_class_name = 'RestApiUser'
             for user_package in ['', 'grizzly.users.', 'grizzly.users.restapi.']:
                 user_class_name_value = f'{user_package}{user_class_name}'
-                user_class = cast(Type[GrizzlyUser], ModuleLoader[GrizzlyUser].load('grizzly.users', user_class_name_value))
+                user_class = cast(Type[GrizzlyUser], ModuleLoader[GrizzlyUser].load('grizzly.users', user_class_name_value))  # type: ignore[redundant-cast]
                 user_class.__scenario__ = test_context.scenario
                 user_class.host = test_context.scenario.context['host']
                 assert user_class.__module__ == 'grizzly.users.restapi'

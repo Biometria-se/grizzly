@@ -69,6 +69,10 @@ def after_feature_master(return_code: int, status: Optional[Status], context: Co
         return return_code
 
     grizzly = cast(GrizzlyContext, context.grizzly)
+
+    if not hasattr(grizzly.state, 'locust'):
+        return 0
+
     stats = grizzly.state.locust.environment.stats
 
     if status is None:
@@ -175,7 +179,8 @@ def before_scenario(context: Context, scenario: Scenario, *_args: Any, **_kwargs
     if grizzly.state.background_section_done:
         scenario.background = None
     else:
-        for step in scenario.background.steps:
+        steps = scenario.background.steps if scenario.background is not None else []
+        for step in steps:
             matched_step = context._runner.step_registry.find_match(step)
 
             # unimplemented step, let behave handle it later on

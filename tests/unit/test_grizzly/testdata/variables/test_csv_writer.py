@@ -28,7 +28,7 @@ def test_atomiccsvwriter__base_type__(grizzly_fixture: GrizzlyFixture) -> None:
     with pytest.raises(ValueError, match='AtomicCsvWriter: foobar must be a CSV file with file extension .csv'):
         atomiccsvwriter__base_type__('foobar | headers="foo,bar"')
 
-    (grizzly_fixture.test_context / 'foobar.csv').touch()
+    (grizzly_fixture.test_context / 'requests' / 'foobar.csv').touch()
 
     with pytest.raises(ValueError, match='AtomicCsvWriter: foobar.csv already exists, remove existing file or add argument overwrite=True'):
         atomiccsvwriter__base_type__('foobar.csv | headers="foo,bar"')
@@ -41,7 +41,7 @@ def test_atomiccsvwriter__base_type__(grizzly_fixture: GrizzlyFixture) -> None:
 def test_atomiccsvwriter_message_handler(grizzly_fixture: GrizzlyFixture) -> None:
     parent = grizzly_fixture()
 
-    destination_file = grizzly_fixture.test_context / 'foobar.csv'
+    destination_file = grizzly_fixture.test_context / 'requests' / 'foobar.csv'
 
     assert not destination_file.exists()
 
