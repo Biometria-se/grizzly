@@ -2750,7 +2750,7 @@ This module contains steps that can be in both <code>Background:</code> and <cod
 <h2 id="then-variable-value-ask">Then variable value ask</h2>
 <div class="highlight"><pre><span></span><code><span class="k">Then </span><span class="nf">ask for value of variable &quot;</span><span class="s">{name}</span><span class="nf">&quot;</span>
 </code></pre></div>
-<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.9.0/docs/../grizzly/steps/setup.py#L20">[view_source]</a></p>
+<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.9.1/docs/../grizzly/steps/setup.py#L20">[view_source]</a></p>
 <p>Tell <code>grizzly-cli</code> that it should ask for an initial value for the variable.</p>
 <p>It will inject the value into the locust runtime environment, and in this step read it and insert it
 into the locust context which <code>grizzly</code> will use to setup <code>locust</code>.</p>
@@ -2769,7 +2769,7 @@ into the locust context which <code>grizzly</code> will use to setup <code>locus
 <h2 id="given-variable-value">Given variable value</h2>
 <div class="highlight"><pre><span></span><code><span class="k">Given </span><span class="nf">value for variable &quot;</span><span class="s">{name}</span><span class="nf">&quot; is &quot;</span><span class="s">{value}</span><span class="nf">&quot;</span>
 </code></pre></div>
-<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.9.0/docs/../grizzly/steps/setup.py#L53">[view_source]</a></p>
+<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.9.1/docs/../grizzly/steps/setup.py#L53">[view_source]</a></p>
 <p>Step to initialize a variable that should have the same [start] value for every run of the scenario.</p>
 <p>If this step is used after a step that adds a task or for a variable that already has been initialized, it is assumed that the value will change during runtime
 so a <a href="/grizzly/framework/usage/tasks/set_variable#pydoc:grizzly.tasks.set_variable">Set variable</a> task will be added instead. The <a href="/grizzly/framework/usage/variables/testdata#pydoc:grizzly.testdata.variables">Variables</a> must
