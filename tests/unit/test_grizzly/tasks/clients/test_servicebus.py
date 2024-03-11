@@ -594,10 +594,12 @@ class TestServiceBusClientTask:
     def test_put(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         scenario = grizzly_fixture()
 
+        service_bus_client_task = type('ServiceBusClientTask_001', (ServiceBusClientTask,), {'_context': {'variables': {}}, '__scenario__': scenario.user._scenario})
+
         client_mock = mocker.MagicMock()
         scenario.user._context = {'variables': {}}
 
-        task = ServiceBusClientTask(
+        task = service_bus_client_task(
             RequestDirection.TO,
             'sb://my-sbns.servicebus.windows.net/topic:my-topic;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=',
             'test',
@@ -638,7 +640,7 @@ class TestServiceBusClientTask:
         del scenario.user._context['variables']['foobar']
 
         # source file
-        (grizzly_fixture.test_context / 'source.json').write_text('hello world')
+        (grizzly_fixture.test_context / 'requests' / 'source.json').write_text('hello world')
         task.source = 'source.json'
 
         assert task.put(scenario) == (None, 'foobar')
@@ -654,7 +656,7 @@ class TestServiceBusClientTask:
 
         # source file, with template
         scenario.user._context['variables'].update({'foobar': 'hello world', 'filename': 'source.j2.json'})
-        (grizzly_fixture.test_context / 'source.j2.json').write_text('{{ foobar }}')
+        (grizzly_fixture.test_context / 'requests' / 'source.j2.json').write_text('{{ foobar }}')
         task.source = '{{ filename }}'
 
         assert task.put(scenario) == (None, 'foobar')
