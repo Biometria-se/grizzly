@@ -356,6 +356,9 @@ def test_resolve_variable(grizzly_fixture: GrizzlyFixture) -> None:  # noqa: PLR
 
         assert resolve_variable(grizzly, '$conf::sut.host$ blah $env::HELLO_WORLD$ blah') == 'http://host.docker.internal:8003 blah first "environment" variable! blah'
 
+        grizzly.state.variables['hello'] = 'world'
+        assert resolve_variable(grizzly, '{{ hello }} $conf::sut.host$ right?') == 'world http://host.docker.internal:8003 right?'
+
         @templatingfilter
         def testuppercase(value: str) -> str:
             return value.upper()

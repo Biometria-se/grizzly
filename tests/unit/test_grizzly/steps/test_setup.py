@@ -70,8 +70,6 @@ def test_step_setup_variable_value(behave_fixture: BehaveFixture, mocker: Mocker
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
     behave.scenario = grizzly.scenario.behave
 
-    assert 'test' not in grizzly.state.variables
-
     step_setup_variable_value(behave, 'test_string', 'test')
     assert grizzly.state.variables['test_string'] == 'test'
 
@@ -84,6 +82,23 @@ def test_step_setup_variable_value(behave_fixture: BehaveFixture, mocker: Mocker
     grizzly.state.variables['step'] = 13
     step_setup_variable_value(behave, 'AtomicIntegerIncrementer.test2', '1 | step={{ step }}')
     assert grizzly.state.variables['AtomicIntegerIncrementer.test2'] == '1 | step=13'
+
+    grizzly.state.configuration['csv.file.path'] = 'test/input.csv'
+    grizzly.state.variables['csv_repeat'] = 'False'
+    csv_file_path = behave_fixture.locust._test_context_root / 'requests' / 'test' / 'input.csv'
+    csv_file_path.parent.mkdir(parents=True, exist_ok=True)
+    csv_file_path.touch()
+    step_setup_variable_value(behave, 'AtomicCsvReader.input', '$conf::csv.file.path$ | repeat="{{ csv_repeat }}"')
+    assert len(behave.exceptions) == 0
+    assert grizzly.state.variables['AtomicCsvReader.input'] == 'test/input.csv | repeat="False"'
+
+    grizzly.state.configuration['env'] = 'test'
+    csv_file_path = behave_fixture.locust._test_context_root / 'requests' / 'test' / 'input.test.csv'
+    csv_file_path.parent.mkdir(parents=True, exist_ok=True)
+    csv_file_path.touch()
+    step_setup_variable_value(behave, 'AtomicCsvReader.csv_input', 'test/input.$conf::env$.csv | repeat="{{ csv_repeat }}"')
+    assert len(behave.exceptions) == 0
+    assert grizzly.state.variables['AtomicCsvReader.csv_input'] == 'test/input.test.csv | repeat="False"'
 
     grizzly.state.variables['leveranser'] = 100
     step_setup_variable_value(behave, 'AtomicRandomString.regnr', '%sA%s1%d%d | count={{ (leveranser * 0.25 + 1) | int }}, upper=True')

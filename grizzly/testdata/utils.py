@@ -198,18 +198,18 @@ def resolve_variable(grizzly: GrizzlyContext, value: str, *, guess_datatype: Opt
         quote_char = value[0]
         value = value[1:-1]
 
-    resolved_variable: GrizzlyVariableType
     if has_template(value) and not only_grizzly:
-        resolved_variable = resolve_template(grizzly, value)
-    elif '$conf' in value or '$env' in value:
-        resolved_variable = resolve_parameters(grizzly, value)
-    else:
-        resolved_variable = value
+        value = resolve_template(grizzly, value)
+
+    if '$conf' in value or '$env' in value:
+        value = resolve_parameters(grizzly, value)
 
     if guess_datatype:
-        resolved_variable = GrizzlyVariables.guess_datatype(resolved_variable)
-    elif quote_char is not None and isinstance(resolved_variable, str) and resolved_variable.count(' ') > 0:
-        resolved_variable = f'{quote_char}{resolved_variable}{quote_char}'
+        resolved_variable = GrizzlyVariables.guess_datatype(value)
+    elif quote_char is not None and value.count(' ') > 0:
+        resolved_variable = f'{quote_char}{value}{quote_char}'
+    else:
+        resolved_variable = value
 
     return resolved_variable
 

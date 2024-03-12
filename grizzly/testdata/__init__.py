@@ -126,6 +126,7 @@ class GrizzlyVariables(dict):
         caster: Optional[Callable] = None
 
         module_name, variable_type, _, _ = self.get_variable_spec(key)
+
         if module_name is not None and variable_type is not None:
             try:
                 variable = self.load_variable(module_name, variable_type)
