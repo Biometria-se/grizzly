@@ -263,9 +263,12 @@ class TestInfluxDbListener:
             for j in range(2):
                 assert args[0][j].get('measurement', None) == 'user_count'
                 assert args[0][j].get('tags', None) == {
+                    'environment': 'local',
                     'testplan': 'unittest-plan',
                     'hostname': get_hostname(),
                     'user_class': f'User{j+1}',
+                    'description': 'unittesting',
+                    'profile': 'unittest-profile',
                 }
                 assert args[0][j].get('fields', None) == {
                     'user_count': 2 + j,
@@ -361,6 +364,9 @@ class TestInfluxDbListener:
             'result': 'Success',
             'testplan': 'unittest-plan',
             'hostname': get_hostname(),
+            'profile': 'unittest-profile',
+            'environment': 'local',
+            'description': 'unittesting',
         }
         assert event.get('fields', None) == {
             'exception': None,
@@ -403,6 +409,9 @@ class TestInfluxDbListener:
                     'testplan': 'unittest-plan',
                     'hostname': get_hostname(),
                     'scenario': '001 test scenario',
+                    'description': 'unittesting',
+                    'environment': 'local',
+                    'profile': 'unittest-profile',
                     'TEST1': 'unittest-1',
                     'TEST2': 'unittest-2',
                 }

@@ -186,7 +186,10 @@ class InfluxDbListener:
                 point: InfluxDbPoint = {
                     'measurement': 'user_count',
                     'tags': {
+                        'environment': self._target_environment,
                         'testplan': self._testplan,
+                        'profile': self._profile_name,
+                        'description': self._description,
                         'hostname': self._hostname,
                         'user_class': user_class_name,
                     },
@@ -245,6 +248,9 @@ class InfluxDbListener:
             'result': result,
             'testplan': self._testplan,
             'hostname': self._hostname,
+            'environment': self._target_environment,
+            'profile': self._profile_name,
+            'description': self._description,
         }
 
         try:
