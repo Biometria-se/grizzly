@@ -133,7 +133,7 @@ class BehaveFixture:
         )
         context = BehaveContext(runner)
         context._runner = runner
-        context.config.base_dir = '.'
+        context.config.base_dir = self.locust._test_context_root
         context.feature = Feature(filename=None, line=None, keyword='Feature', name='BehaveFixtureFeature')
         context.scenario = Scenario(filename=None, line=None, keyword='Scenario', name='BehaveFixtureScenario')
         context.step = Step(filename=None, line=None, keyword='Step', step_type='step', name='')
