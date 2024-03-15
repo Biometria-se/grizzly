@@ -5,6 +5,7 @@ import logging
 import re
 from collections import namedtuple
 from os import environ
+from pathlib import Path
 from time import perf_counter as time
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set, Tuple, cast
 
@@ -14,7 +15,7 @@ from jinja2.meta import find_undeclared_variables
 from grizzly.testdata.ast import get_template_variables
 from grizzly.types import GrizzlyVariableType, RequestType, TestdataType
 from grizzly.types.locust import MessageHandler, StopUser
-from grizzly.utils import has_template, merge_dicts, unflatten
+from grizzly.utils import has_template, is_file, merge_dicts, unflatten
 
 from . import GrizzlyVariables
 
@@ -160,6 +161,7 @@ def resolve_template(grizzly: GrizzlyContext, value: str) -> str:
 
     return template.render(**grizzly.state.variables)
 
+
 def resolve_parameters(grizzly: GrizzlyContext, value: str) -> str:
     regex = r"\$(conf|env)::([^\$]+)\$"
 
@@ -187,6 +189,18 @@ def resolve_parameters(grizzly: GrizzlyContext, value: str) -> str:
 
     return value
 
+def read_file(value: str) -> str:
+    base_dir = environ.get('GRIZZLY_CONTEXT_ROOT', None)
+
+    if base_dir is None or len(value.strip()) < 1:
+        return value
+
+    try:
+        file = Path(base_dir) / 'requests' / value
+        return file.read_text()
+    except (OSError, FileNotFoundError):
+        return value
+
 
 def resolve_variable(grizzly: GrizzlyContext, value: str, *, guess_datatype: Optional[bool] = True, only_grizzly: bool = False) -> GrizzlyVariableType:
     """Resolve a value to its actual value, since it can be a jinja2 template or any dollar reference. Return type can be actual type of the value."""
@@ -197,6 +211,9 @@ def resolve_variable(grizzly: GrizzlyContext, value: str, *, guess_datatype: Opt
     if value[0] in ['"', "'"] and value[0] == value[-1]:
         quote_char = value[0]
         value = value[1:-1]
+
+    if is_file(value):
+        value = read_file(value)
 
     if has_template(value) and not only_grizzly:
         value = resolve_template(grizzly, value)

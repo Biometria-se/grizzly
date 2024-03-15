@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 from importlib import import_module
 from json import dumps as jsondumps
 from json import loads as jsonloads
+from os import environ
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Dict, Generator, Generic, List, Optional, Tuple, Type, Union, cast
 from unicodedata import normalize as __normalize
@@ -310,6 +311,19 @@ def has_parameter(text: str) -> bool:
     sep_count = text.count('::')
     boundary_count = text.count('$')
     return sep_count > 0 and boundary_count / 2 == sep_count
+
+
+def is_file(text: str) -> bool:
+    base_dir = environ.get('GRIZZLY_CONTEXT_ROOT', None)
+
+    if base_dir is None or len(text.strip()) < 1:
+        return False
+
+    try:
+        file = Path(base_dir) / 'requests' / text
+        return file.exists()
+    except (OSError, FileNotFoundError):
+        return False
 
 
 def flatten(node: Dict[str, Any], parents: Optional[List[str]] = None) -> Dict[str, Any]:
