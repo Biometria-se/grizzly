@@ -291,7 +291,7 @@ def step_setup_execute_python_script(context: Context, script_path: str) -> None
 
     _execute_python_script(context, script_file.read_text())
 
-@then('execute script')
+@then('execute python script')
 def step_setup_execute_python_script_inline(context: Context) -> None:
     """Execute inline python script specified in the step text.
 
