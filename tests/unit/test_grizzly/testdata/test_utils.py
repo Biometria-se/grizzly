@@ -373,6 +373,23 @@ def test_resolve_variable(grizzly_fixture: GrizzlyFixture) -> None:  # noqa: PLR
         grizzly.state.variables['world'] = 'foobar'
         assert resolve_variable(grizzly, 'hello {{ world if world is defined else "world" }}') == 'hello foobar'
         assert resolve_variable(grizzly, 'hello {{ "world" if world is not defined else world }}') == 'hello foobar'
+
+        base_dir = environ.get('GRIZZLY_CONTEXT_ROOT', None)
+
+        assert base_dir is not None
+
+        test_file = Path(base_dir) / 'requests' / 'test' / 'foobar.txt'
+        test_file.parent.mkdir(parents=True, exist_ok=True)
+        test_file.write_text("""
+hello {{ hello }}
+write this "$conf::sut.greeting$"
+""")
+
+        assert resolve_variable(grizzly, 'test/foobar.txt') == """
+hello world
+write this "hello "{{ test }}"!"
+""".rstrip()
+
     finally:
         with suppress(KeyError):
             del environ['HELLO_WORLD']

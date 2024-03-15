@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timedelta, timezone
-from os import utime
+from os import environ, utime
 from types import FunctionType
 from typing import TYPE_CHECKING, Type, cast
 
@@ -26,6 +26,7 @@ from grizzly.utils import (
     has_parameter,
     has_template,
     in_correct_section,
+    is_file,
     normalize,
     parse_timespan,
     safe_del,
@@ -719,6 +720,59 @@ def test_has_parameter() -> None:
     assert not has_parameter('queue:test-queue')
     assert not has_parameter('hello world')
     assert not has_parameter('$hello::')
+
+
+def test_is_file(behave_fixture: BehaveFixture) -> None:
+    original = environ.get('GRIZZLY_CONTEXT_ROOT', None)
+
+    try:
+        assert not is_file('')
+        assert not is_file('test/input.csv')
+
+        test_file = behave_fixture.locust._test_context_root / 'requests' / 'test' / 'input.csv'
+        test_file.parent.mkdir(parents=True, exist_ok=True)
+        test_file.touch()
+
+        assert is_file('test/input.csv')
+
+        del environ['GRIZZLY_CONTEXT_ROOT']
+
+        assert not is_file('test/input.csv')
+
+        if original is not None:
+            environ['GRIZZLY_CONTEXT_ROOT'] = original
+
+        text = """Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec orci urna, pulvinar ut diam ac, egestas ultricies urna. Quisque blandit fermentum rutrum.
+In vulputate nibh non nibh tempor, scelerisque feugiat libero accumsan. Pellentesque semper vestibulum diam a dictum. Integer ac nunc quis lorem tristique scelerisque
+id vitae mi. Integer mollis nisi dolor, a pulvinar erat sollicitudin viverra. Ut mattis metus arcu, ut finibus ligula sollicitudin vitae. Nulla ornare sem eget libero
+tincidunt consectetur. Pellentesque nec fermentum tortor, et scelerisque tortor.
+
+Sed id risus convallis, ornare diam quis, convallis urna. Suspendisse vel pharetra ipsum, consectetur fringilla enim. Pellentesque non libero sit amet quam suscipit sagittis
+ac vitae lorem. Nullam venenatis sit amet lacus nec viverra. Sed venenatis ullamcorper diam at rhoncus. Ut imperdiet nec ipsum eget vehicula. Etiam pellentesque tempor commodo.
+Nullam elementum lorem ac sem finibus, in maximus nibh molestie. Quisque iaculis ipsum placerat magna aliquam, nec tempor nisl consequat. Curabitur aliquam elit libero, et
+posuere ante ultricies vitae. Aliquam erat volutpat.
+
+Nullam sagittis quam ut tellus fermentum, nec eleifend arcu facilisis. Donec sit amet ante et nulla pellentesque suscipit. Pellentesque quam metus, luctus non lorem rutrum,
+faucibus tempus ex. Vestibulum maximus, sem eu facilisis elementum, elit leo suscipit urna, at auctor ipsum ex ut mi. Nulla imperdiet ligula eu finibus ornare. Aenean tincidunt
+eu magna maximus varius. Nam eu libero justo. In rhoncus nulla nisl, non mollis sem luctus ut. Pellentesque tempor rutrum nulla, at imperdiet lorem maximus sit amet.
+
+Nunc metus massa, laoreet sit amet aliquam eu, ultrices in justo. Maecenas congue lectus felis, eu pellentesque nisl finibus et. Nulla suscipit, lacus ut tincidunt cursus,
+leo eros tristique lacus, aliquet sollicitudin ante ipsum ut mauris. Duis porttitor dapibus pulvinar. Suspendisse viverra, felis nec suscipit convallis, augue purus accumsan dui,
+eget varius nulla mi sed orci. Vestibulum sit amet risus egestas, rhoncus nibh id, bibendum tortor. Proin auctor magna odio.
+
+Quisque in ultricies quam, et mattis arcu. Class aptent taciti sociosqu ad litora torquent per conubia nostra, per inceptos himenaeos. Vestibulum fringilla velit non sollicitudin
+vestibulum. Curabitur luctus nisi eget nulla fringilla, sit amet feugiat ipsum imperdiet. Nunc tristique scelerisque ligula quis hendrerit. Fusce ac interdum nisi. Phasellus
+interdum, justo sit amet convallis dictum, enim urna viverra tortor, vel viverra odio arcu vitae massa. Sed mattis vehicula dui quis mattis. Vestibulum vehicula tincidunt lobortis.
+Mauris bibendum nulla orci, nec viverra tellus semper nec. Nulla vel nisl luctus, venenatis purus eget, iaculis neque. Maecenas venenatis dui quis varius interdum. Nullam finibus
+consequat augue et pretium. Aliquam eget finibus eros.
+"""
+        assert not is_file(text)
+
+        assert not is_file('foobar')
+
+    finally:
+        if original is not None:
+            environ['GRIZZLY_CONTEXT_ROOT'] = original
 
 
 def test_normalize() -> None:
