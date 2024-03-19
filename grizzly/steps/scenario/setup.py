@@ -264,7 +264,7 @@ def _execute_python_script(context: Context, source: str) -> None:
     if on_worker(context):
         return
 
-    exec(source)  # noqa: S102
+    exec(source, globals(), globals())  # noqa: S102
 
 @then('execute python script "{script_path}"')
 def step_setup_execute_python_script(context: Context, script_path: str) -> None:
