@@ -278,5 +278,5 @@ def test__execute_python_script(behave_fixture: BehaveFixture, mocker: MockerFix
     _execute_python_script(context, "print('foobar')")
 
     on_worker_mock.assert_called_once_with(context)
-    exec_mock.assert_called_once_with("print('foobar')")
+    exec_mock.assert_called_once_with("print('foobar')", ANY(dict), ANY(dict))
 
