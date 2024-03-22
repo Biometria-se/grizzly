@@ -295,4 +295,3 @@ def test__execute_python_script(behave_fixture: BehaveFixture, mocker: MockerFix
     assert context.__foobar__ == 'foobar'
     assert hasattr(context, '__foobar__')
     assert globals().get('context', None) is None
-
