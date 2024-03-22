@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, cast
 
 from grizzly.context import GrizzlyContext
 from grizzly.steps import *
-from grizzly.steps.scenario.setup import _execute_python_script
+from grizzly.steps.setup import _execute_python_script
 from grizzly.tasks import SetVariableTask
 from grizzly.types import VariableType
 from tests.helpers import ANY
@@ -205,7 +205,7 @@ def test_step_setup_variable_value(behave_fixture: BehaveFixture, mocker: Mocker
 
 
 def test_step_setup_execute_python_script(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
-    execute_script_mock = mocker.patch('grizzly.steps.scenario.setup._execute_python_script', return_value=None)
+    execute_script_mock = mocker.patch('grizzly.steps.setup._execute_python_script', return_value=None)
     context = grizzly_fixture.behave.context
 
     original_cwd = Path.cwd()
@@ -240,7 +240,7 @@ def test_step_setup_execute_python_script(grizzly_fixture: GrizzlyFixture, mocke
 
 
 def test_step_setup_execute_python_script_inline(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
-    execute_script_mock = mocker.patch('grizzly.steps.scenario.setup._execute_python_script', return_value=None)
+    execute_script_mock = mocker.patch('grizzly.steps.setup._execute_python_script', return_value=None)
     context = grizzly_fixture.behave.context
     context.text = "print('foobar')"
 
@@ -260,7 +260,7 @@ def test_step_setup_execute_python_script_inline(grizzly_fixture: GrizzlyFixture
 
 def test__execute_python_script(behave_fixture: BehaveFixture, mocker: MockerFixture) -> None:
     context = behave_fixture.context
-    on_worker_mock = mocker.patch('grizzly.steps.scenario.setup.on_worker', return_value=True)
+    on_worker_mock = mocker.patch('grizzly.steps.setup.on_worker', return_value=True)
     exec_mock = mocker.patch('builtins.exec')
 
     # do not execute, since we're on a worker
@@ -278,5 +278,5 @@ def test__execute_python_script(behave_fixture: BehaveFixture, mocker: MockerFix
     _execute_python_script(context, "print('foobar')")
 
     on_worker_mock.assert_called_once_with(context)
-    exec_mock.assert_called_once_with("print('foobar')")
+    exec_mock.assert_called_once_with("print('foobar')", ANY(dict), ANY(dict))
 
