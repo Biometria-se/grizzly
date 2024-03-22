@@ -6,12 +6,14 @@ from os import chdir, environ
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
+import pytest
+
 from grizzly.context import GrizzlyContext
 from grizzly.steps import *
 from grizzly.steps.setup import _execute_python_script
 from grizzly.tasks import SetVariableTask
 from grizzly.types import VariableType
-from tests.helpers import ANY
+from tests.helpers import ANY, SOME
 
 if TYPE_CHECKING:  # pragma: no cover
     from tests.fixtures import BehaveFixture, GrizzlyFixture, MockerFixture
@@ -258,7 +260,7 @@ def test_step_setup_execute_python_script_inline(grizzly_fixture: GrizzlyFixture
             chdir(original_cwd)
 
 
-def test__execute_python_script(behave_fixture: BehaveFixture, mocker: MockerFixture) -> None:
+def test__execute_python_script_mock(behave_fixture: BehaveFixture, mocker: MockerFixture) -> None:
     context = behave_fixture.context
     on_worker_mock = mocker.patch('grizzly.steps.setup.on_worker', return_value=True)
     exec_mock = mocker.patch('builtins.exec')
@@ -278,5 +280,19 @@ def test__execute_python_script(behave_fixture: BehaveFixture, mocker: MockerFix
     _execute_python_script(context, "print('foobar')")
 
     on_worker_mock.assert_called_once_with(context)
-    exec_mock.assert_called_once_with("print('foobar')", ANY(dict), ANY(dict))
+    exec_mock.assert_called_once_with("print('foobar')", SOME(dict, context=context), SOME(dict, context=context))
+
+def test__execute_python_script(behave_fixture: BehaveFixture, mocker: MockerFixture) -> None:
+    context = behave_fixture.context
+
+    mocker.patch('grizzly.steps.setup.on_worker', return_value=False)
+
+    with pytest.raises(KeyError):
+        hasattr(context, '__foobar__')
+
+    _execute_python_script(context, "from pathlib import Path\nfrom os import path\nsetattr(context, '__foobar__', 'foobar')")
+
+    assert context.__foobar__ == 'foobar'
+    assert hasattr(context, '__foobar__')
+    assert globals().get('context', None) is None
 

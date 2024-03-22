@@ -139,14 +139,17 @@ def _execute_python_script(context: Context, source: str) -> None:
     if on_worker(context):
         return
 
-    exec(source, globals(), globals())  # noqa: S102
+    scope = globals()
+    scope.update({'context': context})
+
+    exec(source, scope, scope)  # noqa: S102
 
 @then('execute python script "{script_path}"')
 def step_setup_execute_python_script(context: Context, script_path: str) -> None:
     """Execute python script located in specified path.
 
     The script will not execute on workers, only on master (distributed mode) or local (local mode), and
-    it will only execute once before the test starts.
+    it will only execute once before the test starts. Available in the scope is the current `context` object.
 
     This can be useful for generating test data files.
 
@@ -171,7 +174,7 @@ def step_setup_execute_python_script_inline(context: Context) -> None:
     """Execute inline python script specified in the step text.
 
     The script will not execute on workers, only on master (distributed mode) or local (local mode), and
-    it will only execute once before the test starts.
+    it will only execute once before the test starts. Available in the scope is the current `context` object.
 
     This can be useful for generating test data files.
 
