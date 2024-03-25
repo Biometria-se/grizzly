@@ -92,7 +92,7 @@ def test_init_master(caplog: LogCaptureFixture, grizzly_fixture: GrizzlyFixture)
         runner = MasterRunner(grizzly_fixture.behave.locust.environment, '0.0.0.0', 5555)
         grizzly.state.locust = runner
 
-        init_function = init(grizzly, {})
+        init_function: Callable[..., None] = init(grizzly, {})
         assert callable(init_function)
 
         init_function(runner)
@@ -110,10 +110,10 @@ def test_init_master(caplog: LogCaptureFixture, grizzly_fixture: GrizzlyFixture)
             init_function(runner)
         assert 'there is no test data' in caplog.text
 
-        def callback(environment: Environment, msg: Message, **_kwargs: Any) -> None:  # noqa: ARG001
+        def callback(environment: Environment, msg: Message, *_args: Any, **_kwargs: Any) -> None:  # noqa: ARG001
             pass
 
-        def callback_ack(environment: Environment, msg: Message, **_kwargs: Any) -> None:  # noqa: ARG001
+        def callback_ack(environment: Environment, msg: Message, *_args: Any, **_kwargs: Any) -> None:  # noqa: ARG001
             pass
 
         grizzly.setup.locust.messages.register(MessageDirection.CLIENT_SERVER, 'test_message', callback)
@@ -139,7 +139,7 @@ def test_init_worker(grizzly_fixture: GrizzlyFixture) -> None:
     try:
         grizzly = grizzly_fixture.grizzly
 
-        init_function = init(grizzly)
+        init_function: Callable[..., None] = init(grizzly)
         assert callable(init_function)
 
         runner = WorkerRunner(grizzly_fixture.behave.locust.environment, 'localhost', 5555)
@@ -153,10 +153,10 @@ def test_init_worker(grizzly_fixture: GrizzlyFixture) -> None:
             'grizzly_worker_quit': grizzly_worker_quit,
         })
 
-        def callback(environment: Environment, msg: Message, **_kwargs: Any) -> None:  # noqa: ARG001
+        def callback(environment: Environment, msg: Message, *_args: Any, **_kwargs: Any) -> None:  # noqa: ARG001
             pass
 
-        def callback_ack(environment: Environment, msg: Message, **_kwargs: Any) -> None:  # noqa: ARG001
+        def callback_ack(environment: Environment, msg: Message, *_args: Any, **_kwargs: Any) -> None:  # noqa: ARG001
             pass
 
         grizzly.state.locust.custom_messages.clear()
@@ -188,7 +188,7 @@ def test_init_local(grizzly_fixture: GrizzlyFixture) -> None:
         runner = LocalRunner(grizzly_fixture.behave.locust.environment)
         grizzly.state.locust = runner
 
-        init_function = init(grizzly, {})
+        init_function: Callable[..., None] = init(grizzly, {})
         assert callable(init_function)
 
         init_function(runner)
@@ -201,10 +201,10 @@ def test_init_local(grizzly_fixture: GrizzlyFixture) -> None:
 
         assert environ.get('TESTDATA_PRODUCER_ADDRESS', None) == 'tcp://127.0.0.1:5555'
 
-        def callback(environment: Environment, msg: Message, **_kwargs: Any) -> None:  # noqa: ARG001
+        def callback(environment: Environment, msg: Message, *_args: Any, **_kwargs: Any) -> None:  # noqa: ARG001
             pass
 
-        def callback_ack(environment: Environment, msg: Message, **_kwargs: Any) -> None:  # noqa: ARG001
+        def callback_ack(environment: Environment, msg: Message, *_args: Any, **_kwargs: Any) -> None:  # noqa: ARG001
             pass
 
         grizzly.setup.locust.messages.register(MessageDirection.CLIENT_SERVER, 'test_message', callback)
@@ -353,7 +353,7 @@ def test_quitting(mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> Non
         with pytest.raises(Running):
             init_testdata()
 
-        init_function = init(grizzly, {})
+        init_function: Callable[..., None] = init(grizzly, {})
         assert callable(init_function)
 
         init_function(runner)
@@ -411,7 +411,7 @@ def test_validate_result(mocker: MockerFixture, caplog: LogCaptureFixture, grizz
 
     environment.stats.total.total_response_time = 2000
 
-    validate_result_wrapper = validate_result(grizzly)
+    validate_result_wrapper: Callable[..., None] = validate_result(grizzly)
     assert callable(validate_result_wrapper)
 
     # environment has statistics, but can't find a matching scenario
