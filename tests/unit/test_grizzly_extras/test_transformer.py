@@ -86,6 +86,12 @@ class Testtransformer:
                 return super().parser(expression)
 
         transform_spy = mocker.spy(DummyTransformer, 'transform')
+
+        # restore some method metadata
+        DummyTransformer.transform.__name__ = 'transform'
+        DummyTransformer.transform.__qualname__ = 'DummyTransformer.transform'
+        DummyTransformer.transform.__annotations__ = {'_raw': str, 'return': Any}
+
         transform_spy.side_effect = [None, None, None, (TransformerContentType.JSON, {'test': 'value'}), (TransformerContentType.UNDEFINED, {'test': 'value'})]
 
         original_transformers = transformer.available.copy()

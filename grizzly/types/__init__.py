@@ -5,7 +5,9 @@ from enum import Enum, auto
 from typing import Any, Callable, Dict, List, Optional, Tuple, TypeVar, Union, cast
 
 from locust.rpc.protocol import Message
-from mypy_extensions import Arg, KwArg
+from typing_extensions import Concatenate, ParamSpec
+
+P = ParamSpec('P')
 
 from grizzly_extras.text import PermutationEnum
 
@@ -236,7 +238,7 @@ HandlerContextType = Union[Dict[str, Any], Optional[Any]]
 
 GrizzlyVariableType = Union[str, float, int, bool]
 
-MessageCallback = Callable[[Arg(Environment, 'environment'), Arg(Message, 'msg'), KwArg(Any)], None]
+MessageCallback = Callable[Concatenate[Environment, Message, P], None]
 
 WrappedFunc = TypeVar('WrappedFunc', bound=Callable[..., Any])
 

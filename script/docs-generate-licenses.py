@@ -34,6 +34,9 @@ def generate_license_table() -> List[str]:
     args.allow_only = None
     args.with_system = False
     args.filter_strings = False
+    args.with_maintainers = False
+    args.no_version = False
+    args.python = sys.executable
 
     licenses = jsonloads(create_output_string(args))
     headers = ['Name', 'Version', 'License']

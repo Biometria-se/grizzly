@@ -51,7 +51,7 @@ class TestTransformerTask:
             variable='test_variable', expression='$.result.value', content_type=TransformerContentType.JSON, content='',
         )
 
-        assert task_factory.__template_attributes__ == {'content'}
+        assert task_factory.__template_attributes__ == {'content', 'expression'}
 
         task = task_factory()
 

@@ -4,14 +4,16 @@ This module contains steps that can be in both `Background:` and `Scenario:` sec
 from __future__ import annotations
 
 from os import environ
+from pathlib import Path
 from typing import cast
 
 from grizzly.context import GrizzlyContext
+from grizzly.locust import on_worker
 from grizzly.tasks import SetVariableTask
 from grizzly.testdata import GrizzlyVariables
 from grizzly.testdata.utils import resolve_variable
 from grizzly.types import VariableType
-from grizzly.types.behave import Context, given, then
+from grizzly.types.behave import Context, Feature, given, then
 from grizzly.utils import has_template
 
 
@@ -131,3 +133,58 @@ def step_setup_variable_value(context: Context, name: str, value: str) -> None:
             raise AssertionError(e) from e  # noqa: TRY004
 
         raise
+
+
+def _execute_python_script(context: Context, source: str) -> None:
+    if on_worker(context):
+        return
+
+    scope = globals()
+    scope.update({'context': context})
+
+    exec(source, scope, scope)  # noqa: S102
+
+@then('execute python script "{script_path}"')
+def step_setup_execute_python_script(context: Context, script_path: str) -> None:
+    """Execute python script located in specified path.
+
+    The script will not execute on workers, only on master (distributed mode) or local (local mode), and
+    it will only execute once before the test starts. Available in the scope is the current `context` object.
+
+    This can be useful for generating test data files.
+
+    Example:
+    ```gherkin
+    Then execute python script "../bin/generate-testdata.py"
+    ```
+
+    """
+    script_file = Path(script_path)
+    if not script_file.exists():
+        feature = cast(Feature, context.feature)
+        base_path = Path(feature.filename).parent if feature.filename not in [None, '<string>'] else Path.cwd()
+        script_file = (base_path / script_path).resolve()
+
+    assert script_file.exists(), f'script {script_path} does not exist'
+
+    _execute_python_script(context, script_file.read_text())
+
+@then('execute python script')
+def step_setup_execute_python_script_inline(context: Context) -> None:
+    """Execute inline python script specified in the step text.
+
+    The script will not execute on workers, only on master (distributed mode) or local (local mode), and
+    it will only execute once before the test starts. Available in the scope is the current `context` object.
+
+    This can be useful for generating test data files.
+
+    Example:
+    ```gherkin
+    Then execute python script
+      \"\"\"
+      print('foobar script')
+      \"\"\"
+    ```
+
+    """
+    _execute_python_script(context, context.text)

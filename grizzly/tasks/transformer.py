@@ -39,7 +39,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from grizzly.scenarios import GrizzlyScenario
 
 
-@template('content')
+@template('content', 'expression')
 class TransformerTask(GrizzlyTask):
     expression: str
     variable: str
