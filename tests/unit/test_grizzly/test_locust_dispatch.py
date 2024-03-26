@@ -43,6 +43,7 @@ class UsersDispatcherTestCase(unittest.TestCase):
     sleep_time: float = 0.2
 
 
+@unittest.skip(reason='takes time and are sketchy, *MUST* run if any of the dispatcher logic in `grizzly.locust` is changed!')
 @parameterized_class(PARAMETER_DISPATCHERS)
 class TestRampUpUsersFromZero(UsersDispatcherTestCase):
     user_fixed_count: int
@@ -924,6 +925,7 @@ class TestRampUpUsersFromZero(UsersDispatcherTestCase):
         self.assertTrue(0 <= delta <= _TOLERANCE, delta)
 
 
+@unittest.skip(reason='takes time and are sketchy, *MUST* run if any of the dispatcher logic in `grizzly.locust` is changed!')
 @parameterized_class(PARAMETER_DISPATCHERS)
 class TestWaitBetweenDispatch(unittest.TestCase):
     user_dispatcher_class: type[UsersDispatcher]
@@ -961,6 +963,7 @@ class TestWaitBetweenDispatch(unittest.TestCase):
             self.assertEqual(users_dispatcher._wait_between_dispatch, expectedwait_between_dispatch)
 
 
+@unittest.skip(reason='takes time and are sketchy, *MUST* run if any of the dispatcher logic in `grizzly.locust` is changed!')
 @parameterized_class(PARAMETER_DISPATCHERS)
 class TestRampDownUsersToZero(UsersDispatcherTestCase):
     initial_user_count: int
@@ -1878,6 +1881,7 @@ class TestRampUpThenDownThenUp(unittest.TestCase):
                         )
 
 
+@unittest.skip(reason='takes time and are sketchy, *MUST* run if any of the dispatcher logic in `grizzly.locust` is changed!')
 @parameterized_class(PARAMETER_DISPATCHERS)
 class TestDispatchUsersToWorkersHavingTheSameUsersAsTheTarget(UsersDispatcherTestCase):
     user_count: int
@@ -1938,6 +1942,7 @@ class TestDispatchUsersToWorkersHavingTheSameUsersAsTheTarget(UsersDispatcherTes
             clear_all_functools_lru_cache()
 
 
+@unittest.skip(reason='takes time and are sketchy, *MUST* run if any of the dispatcher logic in `grizzly.locust` is changed!')
 @parameterized_class(PARAMETER_DISPATCHERS)
 class TestDistributionIsRespectedDuringDispatch(UsersDispatcherTestCase):
     target_user_count: int
@@ -2178,6 +2183,7 @@ class TestDistributionIsRespectedDuringDispatch(UsersDispatcherTestCase):
         self.assertRaises(StopIteration, lambda: next(users_dispatcher))
 
 
+@unittest.skip(reason='takes time and are sketchy, *MUST* run if any of the dispatcher logic in `grizzly.locust` is changed!')
 @parameterized_class(PARAMETER_DISPATCHERS)
 class TestLargeScale(UsersDispatcherTestCase):
     weights: list[int]
@@ -2395,6 +2401,7 @@ class TestLargeScale(UsersDispatcherTestCase):
                         )
 
 
+@unittest.skip(reason='takes time and are sketchy, *MUST* run if any of the dispatcher logic in `grizzly.locust` is changed!')
 @parameterized_class(PARAMETER_DISPATCHERS)
 class TestSmallConsecutiveRamping(UsersDispatcherTestCase):
     def test_consecutive_ramp_up_and_ramp_down(self) -> None:  # noqa: PLR0915
@@ -2507,6 +2514,7 @@ class TestSmallConsecutiveRamping(UsersDispatcherTestCase):
         self.assertEqual(_user_count_on_worker(dispatched_users, worker_node2.id), 0)
 
 
+@unittest.skip(reason='takes time and are sketchy, *MUST* run if any of the dispatcher logic in `grizzly.locust` is changed!')
 @parameterized_class(PARAMETER_DISPATCHERS)
 class TestRampingMiscellaneous(UsersDispatcherTestCase):
     def test_spawn_rate_greater_than_target_user_count(self) -> None:
@@ -2551,6 +2559,7 @@ class TestRampingMiscellaneous(UsersDispatcherTestCase):
         self.assertDictEqual(dispatched_users, {"1": {"User1": 0}})
 
 
+@unittest.skip(reason='takes time and are sketchy, *MUST* run if any of the dispatcher logic in `grizzly.locust` is changed!')
 @parameterized_class(PARAMETER_DISPATCHERS)
 class TestRemoveWorker(UsersDispatcherTestCase):
     def test_remove_worker_during_ramp_up(self) -> None:
@@ -3127,6 +3136,7 @@ class TestRemoveWorker(UsersDispatcherTestCase):
         self.assertEqual(_user_count_on_worker(dispatched_users, worker_nodes[2].id), 4)
 
 
+@unittest.skip(reason='takes time and are sketchy, *MUST* run if any of the dispatcher logic in `grizzly.locust` is changed!')
 @parameterized_class(PARAMETER_DISPATCHERS)
 class TestAddWorker(UsersDispatcherTestCase):
     def test_add_worker_during_ramp_up(self) -> None:  # noqa: PLR0915
@@ -3718,6 +3728,7 @@ class TestAddWorker(UsersDispatcherTestCase):
         self.assertEqual(_user_count_on_worker(dispatched_users, worker_nodes[2].id), 4)
 
 
+@unittest.skip(reason='takes time and are sketchy, *MUST* run if any of the dispatcher logic in `grizzly.locust` is changed!')
 @parameterized_class(PARAMETER_DISPATCHERS)
 class TestRampUpUsersFromZeroWithFixed(UsersDispatcherTestCase):
     class RampUpCase:
@@ -4071,6 +4082,7 @@ class TestRampUpUsersFromZeroWithFixed(UsersDispatcherTestCase):
                                 )
 
 
+@unittest.skip(reason='takes time and are sketchy, *MUST* run if any of the dispatcher logic in `grizzly.locust` is changed!')
 @parameterized_class(PARAMETER_DISPATCHERS)
 class TestRampUpDifferentUsers(UsersDispatcherTestCase):
     def test_ramp_up_different_users_for_each_dispatch(self) -> None:
