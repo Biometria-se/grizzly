@@ -92,5 +92,19 @@ class TestSetVariableTask:
 
             set_value_mock.assert_called_once_with('output', 'hello, world!')
             assert 'AtomicCsvWriter.output.foo' not in parent.user._context['variables']
+
+            # set value from file runtime, and render file contents
+            test_file = grizzly_fixture.test_context / 'requests' / 'test' / 'hello.foo.txt'
+            test_file.parent.mkdir(exist_ok=True, parents=True)
+            test_file.write_text('{{ value }}')
+
+            grizzly_fixture.grizzly.state.variables.update({'bar': 'foo'})
+            parent.user._context['variables'].update({'bar': 'foo'})
+            task_factory = SetVariableTask('foobar', 'test/hello.{{ bar }}.txt', VariableType.VARIABLES)
+            task = task_factory()
+
+            task(parent)
+
+            assert parent.user._context['variables']['foobar'] == 'hello, world!'
         finally:
             cleanup()
