@@ -20,9 +20,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, MutableMapping, Optional, Type, cast
 
 from grizzly.testdata import GrizzlyVariables
-from grizzly.testdata.utils import create_context_variable
+from grizzly.testdata.utils import create_context_variable, read_file
 from grizzly.types import VariableType
-from grizzly.utils import has_template
+from grizzly.utils import has_template, is_file
 
 from . import GrizzlyTask, grizzlytask, template
 
@@ -77,6 +77,9 @@ class SetVariableTask(GrizzlyTask):
         @grizzlytask
         def task(parent: GrizzlyScenario) -> Any:
             value = parent.render(self.value)
+
+            if is_file(value):
+                value = parent.render(read_file(value))
 
             if self.variable_type == VariableType.VARIABLES:
                 if self._variable_instance is None and self._variable_instance_type is not None:
