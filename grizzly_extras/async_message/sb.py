@@ -7,7 +7,7 @@ from time import perf_counter, sleep
 from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, Optional, Tuple, Union, cast
 
 from azure.core.exceptions import ResourceExistsError, ResourceNotFoundError
-from azure.servicebus import ServiceBusClient, ServiceBusMessage, ServiceBusReceivedMessage, ServiceBusReceiver, ServiceBusSender, TransportType
+from azure.servicebus import ServiceBusClient, ServiceBusMessage, ServiceBusReceiver, ServiceBusSender, TransportType
 from azure.servicebus.amqp import AmqpMessageBodyType
 from azure.servicebus.management import ServiceBusAdministrationClient, SqlRuleFilter, TopicProperties
 
@@ -537,7 +537,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                             raise AsyncMessageError(str(e)) from e
 
                     for received_message in receiver:
-                        message = cast(ServiceBusReceivedMessage, received_message)
+                        message = received_message
 
                         self.logger.debug('%d::%s: got message id %s', client, cache_endpoint, message.message_id)
 
