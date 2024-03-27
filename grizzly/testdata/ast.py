@@ -50,7 +50,7 @@ def get_template_variables(grizzly: GrizzlyContext) -> dict[str, set[str]]:
     missing_in_templates = {variable for variable in declared_variables if variable not in found_variables} - allowed_unused
     assert len(missing_in_templates) == 0, f'variables has been declared, but cannot be found in templates: {",".join(missing_in_templates)}'
 
-    missing_declarations = [variable for variable in found_variables if variable not in declared_variables]
+    missing_declarations = {variable for variable in found_variables if variable not in declared_variables}
     assert len(missing_declarations) == 0, f'variables has been found in templates, but have not been declared: {",".join(missing_declarations)}'
 
     return template_variables
@@ -103,6 +103,10 @@ def _parse_templates(templates: Dict[GrizzlyContextScenario, Set[str]], *, env: 
                 yield from _getattr(child_node)
             elif child_node_name is not None:
                 attributes = [child_node_name]
+        elif isinstance(node, j2.Assign):  #  {% set variable = value %} expressions
+            child_node = getattr(node, 'node', None)
+            if child_node is not None:
+                yield from _getattr(child_node)
         elif isinstance(node, j2.Name):
             name = getattr(node, 'name', None)
             if name is not None:
@@ -170,9 +174,37 @@ def _parse_templates(templates: Dict[GrizzlyContextScenario, Set[str]], *, env: 
             child_node = getattr(node, 'node', None)
             if child_node is not None:
                 yield from _getattr(child_node)
+        elif isinstance(node, j2.If):
+            child_node = getattr(node, 'test', None)
+            if child_node is not None:
+                yield from _getattr(child_node)
+        elif isinstance(node, j2.Output):
+            for child_node in getattr(node, 'nodes', []):
+                yield from _getattr(child_node)
+        elif not isinstance(node, (j2.Const, j2.TemplateData, j2.For)):  # all unhandled AST nodes
+            logger.warning('unhandled AST node: %r', node)
 
         if attributes is not None:
             yield attributes
+
+    def _build_variable(attributes: List[str], allow_undefined: Set[str]) -> Optional[str]:
+        if len(attributes) == 0:
+            return None
+
+        # ignore builtin modules
+        if attributes[0] in ['datetime']:
+            return None
+
+        # ignore builtin methods calls
+        if attributes[-1] in ['replace']:
+            attributes = attributes[:-1]
+
+        variable = '.'.join(attributes)
+
+        if variable in allow_undefined:
+            return None
+
+        return variable
 
     for scenario, template_sources in templates.items():
         scenario_name = scenario.class_name
@@ -188,30 +220,11 @@ def _parse_templates(templates: Dict[GrizzlyContextScenario, Set[str]], *, env: 
             parsed = env.parse(template_normalized)
 
             for body in getattr(parsed, 'body', []):
-                if isinstance(body, j2.Assign):  #  {% .. %} expressions
-                    node = getattr(body, 'node', None)
-                    if node is None:
+                for attributes in _getattr(body):
+                    variable = _build_variable(attributes, allowed_undefined)
+                    if variable is None:
                         continue
 
-                    for attributes in _getattr(node):
-                        variables[scenario_name].add('.'.join(attributes))
-                else:
-                    for node in getattr(body, 'nodes', []):
-                        for attributes in _getattr(node):
-                            branches = attributes
-
-                            # ignore builtin modules
-                            if branches[0] in ['datetime']:
-                                continue
-
-                            # ignore builtin methods calls
-                            if branches[-1] in ['replace']:
-                                branches = branches[:-1]
-
-                            variable = '.'.join(branches)
-                            if variable in allowed_undefined:
-                                continue
-
-                            variables[scenario_name].add(variable)
+                    variables[scenario_name].add(variable)
 
     return variables, allowed_undefined
