@@ -76,8 +76,8 @@ class ScenarioError(AssertionError):
         return f'    ! {self.error!s}'
 
 
-class FeatureError(AssertionError):
-    def __init__(self, error: AssertionError) -> None:
+class FeatureError(Exception):
+    def __init__(self, error: Exception) -> None:
         self.error = error
 
     def __str__(self) -> str:

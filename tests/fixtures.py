@@ -928,6 +928,8 @@ def step_start_webserver(context: Context, port: int) -> None:
         env_conf: Optional[Dict[str, Any]] = None,
         testdata: Optional[Dict[str, str]] = None,
         project_name: Optional[str] = None,
+        *,
+        dry_run: bool = False,
     ) -> Tuple[int, List[str]]:
         env_conf_fd: Any
         if env_conf is not None:
@@ -949,6 +951,9 @@ def step_start_webserver(context: Context, port: int) -> None:
                 '-l', '/tmp/grizzly.log',  # noqa: S108
                 feature_file,
             ]
+
+            if dry_run:
+                command.append('--dry-run')
 
             if self._distributed:
                 command = command[:2] + ['--project-name', project_name] + command[2:]

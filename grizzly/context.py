@@ -252,6 +252,7 @@ class GrizzlyContextTasks(List['GrizzlyTask']):
 @dataclass(unsafe_hash=True)
 class GrizzlyContextScenario:
     _name: str = field(init=False, hash=True)
+    class_type: str = field(init=False, hash=True, default='IteratorScenario')
     description: str = field(init=False, hash=False)
     user: GrizzlyContextScenarioUser = field(init=False, hash=False, compare=False, default_factory=GrizzlyContextScenarioUser)
     index: int = field(init=True)
@@ -281,9 +282,6 @@ class GrizzlyContextScenario:
 
     @property
     def name(self) -> str:
-        if self._name.endswith(f'_{self.identifier}'):
-            return self._name.replace(f'_{self.identifier}', '')
-
         return self._name
 
     @name.setter
@@ -296,10 +294,7 @@ class GrizzlyContextScenario:
 
     @property
     def class_name(self) -> str:
-        if not self.name.endswith(f'_{self.identifier}'):
-            return f'{self.name}_{self.identifier}'
-
-        return self.name
+        return f'{self.class_type}_{self.identifier}'
 
     def should_validate(self) -> bool:
         return (

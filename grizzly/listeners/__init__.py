@@ -206,7 +206,7 @@ def validate_result(grizzly: GrizzlyContext) -> Callable[Concatenate[Environment
                 actual = stats.total.fail_ratio
                 if actual > expected:
                     error_message = f'failure ration {int(actual*100)}% > {int(expected*100)}%'
-                    logger.error('scenario %s (%s) failed due to %s', scenario.name, prefix, error_message)
+                    logger.error('scenario "%s" (%s) failed due to %s', scenario.name, prefix, error_message)
                     environment.stats.log_error(
                         RequestType.SCENARIO(),
                         scenario.locust_name,

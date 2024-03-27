@@ -132,10 +132,10 @@ class TestGrizzlyContextSetupLocustMessages:
         assert isinstance(context, dict)
         assert context == {}
 
-        def callback(environment: Environment, msg: Message, **kwargs: Any) -> None:  # noqa: ARG001
+        def callback(environment: Environment, msg: Message, *args: Any, **kwargs: Any) -> None:  # noqa: ARG001
             pass
 
-        def callback_ack(environment: Environment, msg: Message, **kwargs: Any) -> None:  # noqa: ARG001
+        def callback_ack(environment: Environment, msg: Message, *args: Any, **kwargs: Any) -> None:  # noqa: ARG001
             pass
 
         context.register(MessageDirection.SERVER_CLIENT, 'test_message', callback)
@@ -283,7 +283,7 @@ class TestGrizzlyContextScenarios:
         assert len(scenarios) == 1
         assert scenarios[-1].name == 'test-1'
         assert scenarios[-1].description == 'test-1'
-        assert scenarios[-1].class_name == 'test-1_001'
+        assert scenarios[-1].class_name == 'IteratorScenario_001'
         assert scenarios[-1].behave is behave_scenario
 
         behave_scenario = Scenario(filename=None, line=None, keyword='', name='test-2')
@@ -291,13 +291,14 @@ class TestGrizzlyContextScenarios:
         assert len(scenarios) == 2
         assert scenarios[-1].name == 'test-2'
         assert scenarios[-1].description == 'test-2'
-        assert scenarios[-1].class_name == 'test-2_002'
+        assert scenarios[-1].class_name == 'IteratorScenario_002'
         assert scenarios[-1].behave is behave_scenario
 
         assert len(scenarios()) == 2
 
-        assert scenarios.find_by_class_name('test-2_002') is scenarios[-1]
+        assert scenarios.find_by_class_name('IteratorScenario_002') is scenarios[-1]
         assert scenarios.find_by_name('test-1') is scenarios[-2]
+        assert scenarios.find_by_class_name('IteratorScenario_001') is scenarios[-2]
 
 
 class TestGrizzlyContextScenario:
@@ -324,11 +325,9 @@ class TestGrizzlyContextScenario:
         assert getattr(scenario, 'pace', '') is None
         assert isinstance(scenario.validation, GrizzlyContextScenarioValidation)
         assert not scenario.failure_exception
+        assert scenario.class_type == 'IteratorScenario'
 
-        assert scenario.class_name == f'Test_{identifier}'
-
-        scenario.name = f'Test_{identifier}'
-        assert scenario.class_name == f'Test_{identifier}'
+        assert scenario.class_name == f'IteratorScenario_{identifier}'
 
         assert not scenario.should_validate()
 
