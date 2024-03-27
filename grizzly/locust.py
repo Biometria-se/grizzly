@@ -967,8 +967,12 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
         setup_environment_listeners(context, testdata=testdata)
 
         if environ.get('GRIZZLY_DRY_RUN', 'false').lower() == 'true':
-            runner.quit()
-            return 0
+            if isinstance(runner, MasterRunner):
+                runner.send_message('grizzly_worker_quit', None)
+
+            if not isinstance(runner, WorkerRunner):
+                runner.quit()
+                return 0
 
         environment.events.init.fire(environment=environment, runner=runner, web_ui=None)
 
@@ -1090,7 +1094,11 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
         def spawn_run_time_limit_greenlet() -> None:
             def timelimit_stop() -> None:
                 logger.info('time limit reached. stopping locust.')
-                runner.quit()
+                if isinstance(runner, MasterRunner):
+                    runner.send_message('grizzly_worker_quit', None)
+
+                if not isinstance(runner, WorkerRunner):
+                    runner.quit()
 
             gevent.spawn_later(run_time, timelimit_stop).link_exception(greenlet_exception_handler)
 
