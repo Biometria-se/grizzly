@@ -79,7 +79,7 @@ If the user is required to have a MFA method, support for software based TOTP to
         grizzly-cli auth
         ```
 
-11. Copy the code generate from above command and click `Next`
+11. Copy the code generate from above command, go back to the browser and paste it into the text field and click `Next`
 
 12. Finish the wizard
 
@@ -96,7 +96,7 @@ And set context variable "auth.client.id" to "<client id>"
 And set context variable "auth.user.username" to "alice@example.onmicrosoft.com"
 And set context variable "auth.user.password" to "HemL1gaArn3!"
 And set context variable "auth.user.redirect_uri" to "/app-registrered-redirect-uri"
-And set context variable "auth.user.otp_secret" to "asdfasdf"  # <-- !!
+And set context variable "auth.user.otp_secret" to "asdfasdf"  # <-- `Secret key` from Step 8 in "Configure TOTP"
 ```
 """
 from __future__ import annotations
