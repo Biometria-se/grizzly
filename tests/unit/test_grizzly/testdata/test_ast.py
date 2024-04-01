@@ -45,7 +45,7 @@ def test__parse_template(request_task: RequestTaskFixture, caplog: LogCaptureFix
     templates = {scenario: set(request.get_templates())}
 
     with caplog.at_level(logging.WARNING):
-        actual_variables, allowed_unused = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
+        actual_variables = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
 
         expected_variables = {
             'IteratorScenario_001': {
@@ -60,12 +60,50 @@ def test__parse_template(request_task: RequestTaskFixture, caplog: LogCaptureFix
                 'a_sub_string',
                 'a_string',
                 'expression',
+                'some_weird_variable',
+                'AtomicIntegerIncrementer.undefined',
+                'undeclared_variable',
             },
         }
 
         assert actual_variables == expected_variables
 
-        assert allowed_unused == {'some_weird_variable', 'AtomicIntegerIncrementer.undefined', 'undeclared_variable'}
+        assert actual_variables.__conditional__ == {'some_weird_variable', 'AtomicIntegerIncrementer.undefined', 'undeclared_variable', 'a_string', 'content', 'expression'}
+        assert actual_variables.__local__ == set()
+        assert actual_variables.__map__ == {
+            'AtomicIntegerIncrementer.messageID': 'AtomicIntegerIncrementer.messageID',
+            'AtomicIntegerIncrementer.file_number': 'AtomicIntegerIncrementer.file_number',
+            'AtomicDirectoryContents.test': 'AtomicDirectoryContents.test',
+            'messageID': 'messageID',
+            'content': 'content',
+            'AtomicDate.now': 'AtomicDate.now',
+            'AtomicCsvReader.test.header1': 'AtomicCsvReader.test',
+            'AtomicCsvReader.test.header2': 'AtomicCsvReader.test',
+            'a_sub_string': 'a_sub_string',
+            'a_string': 'a_string',
+            'expression': 'expression',
+            'some_weird_variable': 'some_weird_variable',
+            'AtomicIntegerIncrementer.undefined': 'AtomicIntegerIncrementer.undefined',
+            'undeclared_variable': 'undeclared_variable',
+        }
+    assert actual_variables.__init_map__ == {
+        'AtomicIntegerIncrementer.messageID': {'AtomicIntegerIncrementer.messageID'},
+        'AtomicIntegerIncrementer.file_number': {'AtomicIntegerIncrementer.file_number'},
+        'AtomicDirectoryContents.test': {'AtomicDirectoryContents.test'},
+        'messageID': {'messageID'},
+        'content': {'content'},
+        'AtomicDate.now': {'AtomicDate.now'},
+        'AtomicCsvReader.test': {
+            'AtomicCsvReader.test.header1',
+            'AtomicCsvReader.test.header2',
+        },
+        'a_sub_string': {'a_sub_string'},
+        'a_string': {'a_string'},
+        'expression': {'expression'},
+        'some_weird_variable': {'some_weird_variable'},
+        'AtomicIntegerIncrementer.undefined': {'AtomicIntegerIncrementer.undefined'},
+        'undeclared_variable': {'undeclared_variable'},
+    }
 
     assert caplog.messages == []
 
@@ -85,7 +123,7 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture, caplog: L
     templates = {scenario: set(request.get_templates())}
 
     with caplog.at_level(logging.WARNING):
-        actual_variables, allow_unused = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
+        actual_variables = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
 
         assert actual_variables == {
             'IteratorScenario_001': {
@@ -93,7 +131,10 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture, caplog: L
             },
         }
 
-        assert allow_unused == set()
+        assert actual_variables.__conditional__ == set()
+        assert actual_variables.__local__ == set()
+        assert actual_variables.__map__ == {'AtomicIntegerIncrementer.file_number': 'AtomicIntegerIncrementer.file_number'}
+        assert actual_variables.__init_map__ == {'AtomicIntegerIncrementer.file_number': {'AtomicIntegerIncrementer.file_number'}}
 
         source['result'] = {'FooBar': '{{ (AtomicIntegerIncrementer.file_number | int) }}'}
 
@@ -103,14 +144,17 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture, caplog: L
 
         templates = {scenario: set(request.get_templates())}
 
-        actual_variables, allow_unused = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
+        actual_variables = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
 
         assert actual_variables == {
             'IteratorScenario_001': {
                 'AtomicIntegerIncrementer.file_number',
             },
         }
-        assert allow_unused == set()
+        assert actual_variables.__conditional__ == set()
+        assert actual_variables.__local__ == set()
+        assert actual_variables.__map__ == {'AtomicIntegerIncrementer.file_number': 'AtomicIntegerIncrementer.file_number'}
+        assert actual_variables.__init_map__ == {'AtomicIntegerIncrementer.file_number': {'AtomicIntegerIncrementer.file_number'}}
 
         request.source = "{{ '%08d' % key[:6] | int }}_{{ guid }}_{{ AtomicDate.date }}_{{ '%012d' % AtomicIntegerIncrementer.file_number }}"
 
@@ -119,7 +163,7 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture, caplog: L
 
         templates = {scenario: set(request.get_templates())}
 
-        actual_variables, allow_unused = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
+        actual_variables = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
 
         assert actual_variables == {
             'IteratorScenario_001': {
@@ -130,7 +174,20 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture, caplog: L
             },
         }
 
-        assert allow_unused == set()
+        assert actual_variables.__conditional__ == set()
+        assert actual_variables.__local__ == set()
+        assert actual_variables.__map__ == {
+            'key': 'key',
+            'guid': 'guid',
+            'AtomicDate.date': 'AtomicDate.date',
+            'AtomicIntegerIncrementer.file_number': 'AtomicIntegerIncrementer.file_number',
+        }
+        assert actual_variables.__init_map__ == {
+            'key': {'key'},
+            'guid': {'guid'},
+            'AtomicDate.date': {'AtomicDate.date'},
+            'AtomicIntegerIncrementer.file_number': {'AtomicIntegerIncrementer.file_number'},
+        }
 
         source = {
             'result': {
@@ -154,9 +211,9 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture, caplog: L
         scenario.tasks.add(request)
         templates = {scenario: set(request.get_templates())}
 
-        actual_variables, allow_unused = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
+        actual_variables = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
 
-        assert actual_variables == {
+        expected_variables = {
             'IteratorScenario_001': {
                 'value1',
                 'value2',
@@ -171,14 +228,17 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture, caplog: L
                 'value120', 'value121', 'value122', 'value123', 'value124',
             },
         }
-        assert allow_unused == set()
+
+        assert actual_variables == expected_variables
+        assert actual_variables.__conditional__ == set()
+        assert actual_variables.__local__ == set()
 
         request.source = '{%- set hello = world -%} {{ foobar }}'
         scenario.tasks.clear()
         scenario.tasks.add(request)
         templates = {scenario: set(request.get_templates())}
 
-        actual_variables, allow_unused = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
+        actual_variables = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
 
         assert actual_variables == {
             'IteratorScenario_001': {
@@ -186,7 +246,8 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture, caplog: L
                 'world',
             },
         }
-        assert allow_unused == set()
+        assert actual_variables.__conditional__ == set()
+        assert actual_variables.__local__ == {'hello'}
 
         request.source = """
     {%- set t1l = AtomicCsvReader.input.value1 -%}
@@ -228,7 +289,7 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture, caplog: L
         scenario.tasks.add(request)
         templates = {scenario: set(request.get_templates())}
 
-        actual_variables, allow_unused = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
+        actual_variables = _parse_templates(templates, env=request_task.behave_fixture.grizzly.state.jinja2)
 
         expected_variables = {
             'IteratorScenario_001': {
@@ -249,7 +310,8 @@ def test__parse_template_nested_pipe(request_task: RequestTaskFixture, caplog: L
         }
 
         assert expected_variables == actual_variables
-        assert allow_unused == set()
+        assert actual_variables.__conditional__ == set()
+        assert actual_variables.__local__ == {'t1l', 'first_parts', 't2l', 'second_parts'}
 
     assert caplog.messages == []
 
@@ -340,12 +402,52 @@ def test_get_template_variables_expressions(behave_fixture: BehaveFixture, caplo
     grizzly.scenario.tasks().clear()
     grizzly.state.variables.clear()
 
-    grizzly.state.variables.update({'foo': 'bar', 'bar': 'none'})
+    grizzly.state.variables.update({
+        'foo': 'bar',
+        'bar': 'none',
+        'quirk': 'none',
+        'AtomicCsvReader.bob': 'bob.csv',
+    })
     grizzly.scenario.orphan_templates.append('{% set bar = foo %}')
     grizzly.scenario.orphan_templates.append('{% if bar == "bar" %}foo{% endif %}')
+    grizzly.scenario.orphan_templates.append('{% set quirk = AtomicCsvReader.bob.quirk if AtomicCsvReader.bob is defined else AtomicCsvReader.alice.quirk %}')
+    grizzly.scenario.orphan_templates.append('quirk: {{ quirk }}')
+    grizzly.scenario.orphan_templates.append('{% if quirk == "always late" %}wake up early{% endif %}')
 
     with caplog.at_level(logging.WARNING):
         actual_variables = get_template_variables(grizzly)
-        assert actual_variables == {'IteratorScenario_001': {'bar', 'foo'}}
+        assert actual_variables == {'IteratorScenario_001': {'AtomicCsvReader.bob.quirk', 'bar', 'foo', 'quirk'}}
+
+    assert caplog.messages == []
+
+
+def test_get_template_variables___doc___example(behave_fixture: BehaveFixture, caplog: LogCaptureFixture) -> None:
+    behave = behave_fixture.context
+    grizzly = cast(GrizzlyContext, behave.grizzly)
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+    grizzly.scenario.tasks.clear()
+    grizzly.scenario.orphan_templates.clear()
+    grizzly.scenario.tasks().clear()
+    grizzly.state.variables.clear()
+
+    grizzly.state.variables.update({
+        'AtomicCsvReader.input': 'input.csv',
+        'AtomicIntegerIncrementer.id': '1',
+        'foobar': 'True',
+    })
+
+    grizzly.scenario.orphan_templates.append('{% set quirk = AtomicCsvReader.input.quirk if AtomicCsvReader.input is defined else "none" %}')
+    grizzly.scenario.orphan_templates.append('{% set name = AtomicCsvReader.input.name if AtomicCsvReader.input is defined else "none" %}')
+    grizzly.scenario.orphan_templates.append("""
+    {
+        "id": {{ AtomicIntegerIncrementer.id }},
+        "name": "{{ name }}",
+        "quirk": "{{ quirk }}",
+        "foobar": {{ foobar }}
+    }""")
+
+    with caplog.at_level(logging.WARNING):
+        actual_variables = get_template_variables(grizzly)
+        assert actual_variables == {'IteratorScenario_001': {'AtomicCsvReader.input.quirk', 'AtomicCsvReader.input.name', 'AtomicIntegerIncrementer.id', 'foobar'}}
 
     assert caplog.messages == []

@@ -96,7 +96,6 @@ def test_initialize_testdata_with_tasks(
         assert message_handlers == {}
         assert scenario_name in testdata
         variables = testdata[scenario_name]
-        assert len(variables) == 15
         assert sorted(variables.keys()) == sorted([
             'AtomicDate.now',
             'AtomicIntegerIncrementer.messageID',
@@ -113,6 +112,7 @@ def test_initialize_testdata_with_tasks(
             'transformer_task',
             'timezone',
             'value',
+            'unused_variable',
         ])
     finally:
         cleanup()

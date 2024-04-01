@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import itertools
 import logging
-from typing import TYPE_CHECKING, Dict, Generator, List, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Generator, List, Optional, Set
 
 from jinja2 import Environment as Jinja2Environment
 from jinja2 import nodes as j2
@@ -16,8 +16,103 @@ if TYPE_CHECKING:  # pragma: no cover
 logger = logging.getLogger(__name__)
 
 
+class AstVariableNameSet(Set[str]):
+    def add(self, variable: str) -> None:
+        if '.' in variable:
+            variable = GrizzlyVariables.get_initialization_value(variable)
+
+            super().add(variable)
+        else:
+            super().add(variable)
+
+
+class AstVariableSet(Dict[str, Set[str]]):
+    __conditional__: AstVariableNameSet
+    __map__: Dict[str, str]
+    __init_map__: Dict[str, Set[str]]
+    __local__: Set[str]
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+
+        self.__conditional__ = AstVariableNameSet()
+        self.__local__ = AstVariableNameSet()
+        self.__map__ = {}
+        self.__init_map__ = {}
+
+
+    def register(self, scenario_name: str, variable: str) -> None:
+        initialization_value =  GrizzlyVariables.get_initialization_value(variable)
+
+        # map variable name with the value it was initialized with
+        self.__map__.update({variable: initialization_value})
+        if initialization_value not in self.__init_map__:
+            self.__init_map__.update({initialization_value: set()})
+
+        # initialized value to variable name -- initialization values for objects
+        self.__init_map__[initialization_value].add(variable)
+
+        if scenario_name not in self:
+            self.update({scenario_name: set()})
+
+        self[scenario_name].add(variable)
+
+
 def get_template_variables(grizzly: GrizzlyContext) -> dict[str, set[str]]:
-    """Get all templates per scenario and parse them to find all variables that are used."""
+    """Get all templates per scenario and parse them to find all variables that are used.
+
+    Variables can be found in templates, but be used in context which allows then to not necessary not
+    being defined. Also, the testdata producer only serves testdata for variables that has been
+    declared/initialized.
+
+    Example:
+    ```csv title="input.csv"
+    name,quirk
+    alice,late
+    bob,tired
+    charlie,bossy
+    ```
+
+    ```gherkin
+    Given value of variable "AtomicCsvReader.input" is "input.csv"
+    And value of variable "foobar" is "True"
+    And value for variable "AtomicIntegerIncrementer.id" is "1"
+    ```
+
+    The declared variables are:
+    - `AtomicIntegerIncrementer.id`
+    - `AtomicCsvReader.input`
+    - `foobar`
+
+    ```plain
+    {% set quirk = AtomicCsvReader.input.quirk if AtomicCsvReader.input is defined else "none" %}
+    {% set name = AtomicCsvReader.input.name if AtomicCsvReader.input is defined else "none" %}
+    {
+        "id": {{ AtomicIntegerIncrementer.id }},
+        "name": "{{ name }}",
+        "quirk": "{{ quirk }}",
+        "foobar": {{ foobar }}
+    }
+    ```
+
+    The variables used in the template are:
+    - `AtomicCsvReader.input`
+    - `AtomicCsvReader.input.quirk`
+    - `AtomicCsvReader.input.name`
+    - `AtomicIntegerIncrementer.id`
+    - `name`
+    - `quirk`
+    - `foobar`
+
+    Variables served by the `TestdataProducer` should be:
+    - `AtomicCsvReader.input.quirk`
+    - `AtomicCsvReader.input.name`
+    - `AtomicIntegerIncrementer.id`
+    - `foobar`
+
+    We must then align the declared and found variables, so that `TestdataProducer` only gets variables that actually has been declared.
+
+    """
     templates: dict[GrizzlyContextScenario, set[str]] = {}
 
     for _scenario in grizzly.scenarios:
@@ -32,28 +127,47 @@ def get_template_variables(grizzly: GrizzlyContext) -> dict[str, set[str]]:
         if len(templates[_scenario]) == 0:
             del templates[_scenario]
 
-    template_variables, allowed_unused = _parse_templates(templates, env=grizzly.state.jinja2)
+    # first find all variables in all templates grouped by scenario
+    template_variables = _parse_templates(templates, env=grizzly.state.jinja2)
 
-    found_variables = set()
+    found_variables = AstVariableNameSet()
     for variable in itertools.chain(*template_variables.values()):
-        module_name, variable_type, variable_name, _ = GrizzlyVariables.get_variable_spec(variable)
+        found_variables.add(variable)
 
-        if module_name is None and variable_type is None:
-            found_variables.add(variable_name)
-        else:
-            prefix = f'{module_name}.' if module_name != 'grizzly.testdata.variables' else ''
-            found_variables.add(f'{prefix}{variable_type}.{variable_name}')
-
-    declared_variables = set(grizzly.state.variables.keys())
+    declared_variables = AstVariableNameSet()
+    for variable in grizzly.state.variables:
+        declared_variables.add(variable)
 
     # check except between declared variables and variables found in templates
-    missing_in_templates = {variable for variable in declared_variables if variable not in found_variables} - allowed_unused
+    missing_in_templates = {variable for variable in declared_variables if variable not in found_variables} - template_variables.__conditional__
     assert len(missing_in_templates) == 0, f'variables has been declared, but cannot be found in templates: {",".join(missing_in_templates)}'
 
-    missing_declarations = {variable for variable in found_variables if variable not in declared_variables}
+    # check if any variable hasn't first been declared
+    missing_declarations = {variable for variable in found_variables if variable not in declared_variables} - template_variables.__conditional__ - template_variables.__local__
     assert len(missing_declarations) == 0, f'variables has been found in templates, but have not been declared: {",".join(missing_declarations)}'
 
-    return template_variables
+    # only include variables that has been declared, filtering out conditional ones
+    filtered_template_variables: dict[str, set[str]] = {}
+
+    for scenario_type_name, scenario_variables in template_variables.items():
+        filtered_template_variables.update({scenario_type_name: set()})
+
+        for scenario_variable in scenario_variables:
+            variable_check = template_variables.__map__.get(scenario_variable, '__None__')
+
+            # variable must have been declared
+            if variable_check not in grizzly.state.variables:
+                continue
+
+            initilization_values = template_variables.__init_map__.get(scenario_variable, set())
+
+            # if this variable is an object, has has sub-variables
+            if len(initilization_values) > 1 or (len(initilization_values) == 1 and {variable_check} != initilization_values):
+                continue
+
+            filtered_template_variables[scenario_type_name].add(scenario_variable)
+
+    return filtered_template_variables
 
 
 def walk_attr(node: j2.Getattr) -> List[str]:
@@ -82,9 +196,8 @@ def walk_attr(node: j2.Getattr) -> List[str]:
     return attributes
 
 
-def _parse_templates(templates: Dict[GrizzlyContextScenario, Set[str]], *, env: Jinja2Environment) -> Tuple[Dict[str, Set[str]], Set[str]]:  # noqa: C901, PLR0915
-    variables: Dict[str, Set[str]] = {}
-    allowed_undefined: Set[str] = set()
+def _parse_templates(templates: Dict[GrizzlyContextScenario, Set[str]], *, env: Jinja2Environment) -> AstVariableSet:  # noqa: C901, PLR0915
+    variables = AstVariableSet()
 
     def _getattr(node: j2.Node) -> Generator[List[str], None, None]:  # noqa: C901, PLR0912, PLR0915
         attributes: Optional[List[str]] = None
@@ -104,6 +217,14 @@ def _parse_templates(templates: Dict[GrizzlyContextScenario, Set[str]], *, env: 
             elif child_node_name is not None:
                 attributes = [child_node_name]
         elif isinstance(node, j2.Assign):  #  {% set variable = value %} expressions
+            target_node = getattr(node, 'target', None)
+            if target_node is not None:
+                attrs_generator = list(_getattr(target_node))
+                for attrs in attrs_generator:
+                    internal_variable = _build_variable(attrs)
+                    if internal_variable is not None:
+                        variables.__local__.add(internal_variable)
+
             child_node = getattr(node, 'node', None)
             if child_node is not None:
                 yield from _getattr(child_node)
@@ -124,16 +245,34 @@ def _parse_templates(templates: Dict[GrizzlyContextScenario, Set[str]], *, env: 
                 yield from _getattr(right_node)
         elif isinstance(node, j2.CondExpr):
             test_node = getattr(node, 'test', None)
+
+            if isinstance(test_node, j2.Not):
+                test_node = getattr(test_node, 'node', test_node)
+
             if test_node is not None:
                 yield from _getattr(test_node)
 
+            could_be_undefined = getattr(test_node, 'name', '') == 'defined'
+
             expr_node = getattr(node, 'expr1', None)
             if expr_node is not None:
-                yield from _getattr(expr_node)
+                attrs_generator = list(_getattr(expr_node))
+                for attrs in attrs_generator if could_be_undefined else []:
+                    undefined_variable = _build_variable(attrs)
+                    if undefined_variable is not None:
+                        variables.__conditional__.add(undefined_variable)
+
+                yield from attrs_generator
 
             expr_node = getattr(node, 'expr2', None)
             if expr_node is not None:
-                yield from _getattr(expr_node)
+                attrs_generator = list(_getattr(expr_node))
+                for attrs in attrs_generator if could_be_undefined else []:
+                    undefined_variable = _build_variable(attrs)
+                    if undefined_variable is not None:
+                        variables.__conditional__.add(undefined_variable)
+
+                yield from attrs_generator
         elif isinstance(node, j2.Compare):
             expr = getattr(node, 'expr', None)
             if expr is not None:
@@ -156,14 +295,7 @@ def _parse_templates(templates: Dict[GrizzlyContextScenario, Set[str]], *, env: 
             name = getattr(node, 'name', None)
             child_node = getattr(node, 'node', None)
             if child_node is not None:
-                child_attributes = list(_getattr(child_node))
-                # attributes of a variable was part of a "is defined"-test
-                # keep track so we can ignore it later, which will allow
-                # as long as there is a test for it undefined variables
-                if name == 'defined':
-                    allowed_undefined.add('.'.join(child_attributes[0]))
-
-                yield from child_attributes
+                yield from _getattr(child_node)
 
             for arg in getattr(node, 'args', []):
                 yield from _getattr(arg)
@@ -187,7 +319,7 @@ def _parse_templates(templates: Dict[GrizzlyContextScenario, Set[str]], *, env: 
         if attributes is not None:
             yield attributes
 
-    def _build_variable(attributes: List[str], allow_undefined: Set[str]) -> Optional[str]:
+    def _build_variable(attributes: List[str]) -> Optional[str]:
         if len(attributes) == 0:
             return None
 
@@ -199,12 +331,8 @@ def _parse_templates(templates: Dict[GrizzlyContextScenario, Set[str]], *, env: 
         if attributes[-1] in ['replace']:
             attributes = attributes[:-1]
 
-        variable = '.'.join(attributes)
+        return '.'.join(attributes)
 
-        if variable in allow_undefined:
-            return None
-
-        return variable
 
     for scenario, template_sources in templates.items():
         scenario_name = scenario.class_name
@@ -221,10 +349,10 @@ def _parse_templates(templates: Dict[GrizzlyContextScenario, Set[str]], *, env: 
 
             for body in getattr(parsed, 'body', []):
                 for attributes in _getattr(body):
-                    variable = _build_variable(attributes, allowed_undefined)
+                    variable = _build_variable(attributes)
                     if variable is None:
                         continue
 
-                    variables[scenario_name].add(variable)
+                    variables.register(scenario_name, variable)
 
-    return variables, allowed_undefined
+    return variables

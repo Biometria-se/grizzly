@@ -63,6 +63,14 @@ class GrizzlyVariables(dict):
         return module_name, variable_type, cast(str, variable_name), sub_variable_name
 
     @classmethod
+    def get_initialization_value(cls, name: str) -> str:
+        if name.count('.') > 1:
+            variable_spec = GrizzlyVariables.get_variable_spec(name)
+            name = '.'.join([part for part in variable_spec[:-1] if part is not None and part != 'grizzly.testdata.variables'])
+
+        return name
+
+    @classmethod
     def initialize_variable(cls, grizzly: GrizzlyContext, name: str) -> Tuple[Any, Set[str], Dict[str, MessageHandler]]:
         external_dependencies: Set[str] = set()
         message_handler: Dict[str, MessageHandler] = {}
