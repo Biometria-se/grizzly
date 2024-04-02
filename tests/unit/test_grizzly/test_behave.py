@@ -135,6 +135,7 @@ def test_after_feature(grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, c
     feature = Feature(None, None, '', '', scenarios=[behave.scenario])
     behave.scenario.steps = [Step(None, None, '', '', ''), Step(None, None, '', '', '')]
     behave.started = datetime.now().astimezone()
+    grizzly.scenario.tasks().clear()
 
     locustrun_mock = mocker.patch(
         'grizzly.behave.locustrun',

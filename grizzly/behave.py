@@ -14,14 +14,13 @@ from typing import Any, Dict, List, Optional, cast
 import setproctitle as proc
 from behave.reporter.summary import SummaryReporter
 
-from grizzly.types import RequestType
-from grizzly.types.behave import Context, Feature, Scenario, Status, Step
-
 from .context import GrizzlyContext
 from .exceptions import FeatureError, StepError
 from .locust import on_worker
 from .locust import run as locustrun
 from .testdata.variables import destroy_variables
+from .types import RequestType
+from .types.behave import Context, Feature, Scenario, Status, Step
 from .utils import check_mq_client_logs, fail_direct, in_correct_section
 
 logger = logging.getLogger(__name__)
@@ -117,9 +116,6 @@ def after_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: An
         try:
             return_code = locustrun(context)
         except Exception as e:
-            if not isinstance(e, AssertionError):
-                raise
-
             has_exceptions = True
             context.exceptions.update({None: [*context.exceptions.get(None, []), FeatureError(e)]})
             return_code = 1
@@ -128,16 +124,18 @@ def after_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: An
             status = Status.failed if return_code != ABORTED_RETURN_CODE else Status.skipped
             feature.set_status(status)
 
-        return_code = after_feature_master(return_code, status, context, feature)
+        # optional checks, that should not be executed when it's a dry run
+        if environ.get('GRIZZLY_DRY_RUN', 'false').lower() != 'true':
+            return_code = after_feature_master(return_code, status, context, feature)
 
-        if pymqi.__name__ != 'grizzly_extras.dummy_pymqi' and not on_worker(context):
-            check_mq_client_logs(context)
+            if pymqi.__name__ != 'grizzly_extras.dummy_pymqi' and not on_worker(context):
+                check_mq_client_logs(context)
 
         if return_code != 0:
             cause = 'locust test failed' if return_code != ABORTED_RETURN_CODE else 'locust test aborted'
     else:
-        cause = 'failed to prepare locust test'
         return_code = 1
+        cause = 'failed to prepare locust test'
 
     if on_worker(context):
         return
@@ -149,6 +147,7 @@ def after_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: An
 
     if has_exceptions:
         buffer: list[str] = []
+
         for scenario_name, exceptions in cast(Dict[Optional[str], List[AssertionError]], context.exceptions).items():
             if scenario_name is not None:
                 buffer.append(f'Scenario: {scenario_name}')

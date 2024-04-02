@@ -33,6 +33,8 @@ def initialize_testdata(grizzly: GrizzlyContext) -> Tuple[TestdataType, Set[str]
     testdata: TestdataType = {}
     template_variables = get_template_variables(grizzly)
 
+    logger.debug('testdata: %r', template_variables)
+
     initialized_datatypes: Dict[str, Any] = {}
     external_dependencies: Set[str] = set()
     message_handlers: Dict[str, MessageHandler] = {}

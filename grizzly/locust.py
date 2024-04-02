@@ -16,7 +16,6 @@ from time import perf_counter
 from typing import TYPE_CHECKING, Any, Callable, Dict, Generator, Iterator, List, NoReturn, Optional, Set, SupportsIndex, Tuple, Type, TypeVar, cast
 
 import gevent
-from jinja2.exceptions import TemplateError
 from locust import events
 from locust import stats as lstats
 from locust.dispatch import UsersDispatcher
@@ -31,7 +30,7 @@ from .listeners import init, init_statistics_listener, locust_test_start, locust
 from .testdata.utils import initialize_testdata
 from .types import RequestType, TestdataType
 from .types.behave import Context, Status
-from .types.locust import Environment, LocustRunner, MasterRunner, Message, MessageHandler, WorkerRunner
+from .types.locust import Environment, LocustRunner, MasterRunner, Message, WorkerRunner
 from .users import GrizzlyUser
 from .utils import create_scenario_class_type, create_user_class_type
 
@@ -661,7 +660,7 @@ def setup_locust_scenarios(grizzly: GrizzlyContext) -> Tuple[List[Type[GrizzlyUs
         total_weight = sum([scenario.user.weight for scenario in scenarios])
         for scenario in scenarios:
             scenario_user_count = ceil(user_count * (scenario.user.weight / total_weight))
-            distribution[scenario.name] = scenario_user_count
+            distribution[scenario.class_name] = scenario_user_count
 
         total_user_count = sum(distribution.values())
         user_overflow = total_user_count - user_count
@@ -675,11 +674,11 @@ def setup_locust_scenarios(grizzly: GrizzlyContext) -> Tuple[List[Type[GrizzlyUs
             logger.warning('there should be %d users, but there will only be %d users spawned', user_count, total_user_count)
 
         while user_overflow > 0:
-            for scenario_name in dict(sorted(distribution.items(), key=lambda d: d[1], reverse=True)):
-                if distribution[scenario_name] <= 1:
+            for scenario_class_name in dict(sorted(distribution.items(), key=lambda d: d[1], reverse=True)):
+                if distribution[scenario_class_name] <= 1:
                     continue
 
-                distribution[scenario_name] -= 1
+                distribution[scenario_class_name] -= 1
                 user_overflow -= 1
 
                 if user_overflow < 1:
@@ -687,10 +686,10 @@ def setup_locust_scenarios(grizzly: GrizzlyContext) -> Tuple[List[Type[GrizzlyUs
 
     for scenario in scenarios:
         # Given a user of type "" load testing ""
-        assert 'host' in scenario.context, f'variable "host" is not found in the context for {scenario.name}'
-        assert len(scenario.tasks) > 0, f'no tasks has been added to {scenario.name}'
+        assert 'host' in scenario.context, f'variable "host" is not found in the context for scenario "{scenario.name}"'
+        assert len(scenario.tasks) > 0, f'no tasks has been added to scenario "{scenario.name}"'
 
-        fixed_count = distribution.get(scenario.name, None)
+        fixed_count = distribution.get(scenario.class_name, None)
         user_class_type = create_user_class_type(scenario, grizzly.setup.global_context, fixed_count=fixed_count)
         user_class_type.host = scenario.context['host']
 
@@ -698,7 +697,7 @@ def setup_locust_scenarios(grizzly: GrizzlyContext) -> Tuple[List[Type[GrizzlyUs
 
         # @TODO: how do we specify other type of grizzly.scenarios?
         scenario_type = create_scenario_class_type('IteratorScenario', scenario)
-        scenario.name = scenario_type.__name__
+
         for task in scenario.tasks:
             scenario_type.populate(task)
 
@@ -741,7 +740,7 @@ def setup_resource_limits(context: Context) -> None:
             )
 
 
-def setup_environment_listeners(context: Context) -> Tuple[Set[str], Dict[str, MessageHandler]]:
+def setup_environment_listeners(context: Context, *, testdata: Optional[TestdataType]) -> None:
     grizzly = cast(GrizzlyContext, context.grizzly)
 
     environment = grizzly.state.locust.environment
@@ -753,18 +752,6 @@ def setup_environment_listeners(context: Context) -> Tuple[Set[str], Dict[str, M
     environment.events.quitting._handlers = []
 
     # add standard listeners
-    testdata: Optional[TestdataType] = None
-    external_dependencies: Set[str] = set()
-    message_handlers: Dict[str, MessageHandler] = {}
-
-    # initialize testdata
-    try:
-        testdata, external_dependencies, message_handlers = initialize_testdata(grizzly)
-    except TemplateError as e:
-        message = f'error parsing request payload: {e}'
-        logger.exception(message)
-        raise AssertionError(message) from e
-
     if not on_worker(context):
         validate_results = False
 
@@ -791,8 +778,6 @@ def setup_environment_listeners(context: Context) -> Tuple[Set[str], Dict[str, M
     # And save statistics to "..."
     if grizzly.setup.statistics_url is not None:
         environment.events.init.add_listener(init_statistics_listener(grizzly.setup.statistics_url))
-
-    return external_dependencies, message_handlers
 
 
 def print_scenario_summary(grizzly: GrizzlyContext) -> None:
@@ -907,17 +892,24 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
     setup_logging(log_level, None)
 
     # make sure the user hasn't screwed up
-    if on_master(context) and on_worker(context):
-        logger.error('seems to be a problem with "behave" arguments, cannot be both master and worker')
+    is_both_master_and_worker = on_master(context) and on_worker(context)
+    is_spawn_rate_not_set = grizzly.setup.spawn_rate is None
+    is_user_count_not_set = grizzly.setup.dispatcher_class in [UsersDispatcher, None] and (grizzly.setup.user_count is None or grizzly.setup.user_count < 1)
+
+    if is_both_master_and_worker or is_spawn_rate_not_set or is_user_count_not_set:
+        if is_both_master_and_worker:
+            logger.error('seems to be a problem with "behave" arguments, cannot be both master and worker')
+
+        if is_spawn_rate_not_set:
+            logger.error('spawn rate is not set')
+
+        if is_user_count_not_set:
+            logger.error("step 'Given \"user_count\" users' is not in the feature file")
+
         return 254
 
-    if grizzly.setup.spawn_rate is None:
-        logger.error('spawn rate is not set')
-        return 254
-
-    if grizzly.setup.dispatcher_class in [UsersDispatcher, None] and (grizzly.setup.user_count is None or grizzly.setup.user_count < 1):
-        logger.error("step 'Given \"user_count\" users' is not in the feature file")
-        return 254
+    # initialize testdata
+    testdata, external_dependencies, message_handlers = initialize_testdata(grizzly)
 
     greenlet_exception_handler = greenlet_exception_logger(logger)
 
@@ -925,7 +917,8 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
 
     external_processes: Dict[str, subprocess.Popen] = {}
 
-    user_classes, external_dependencies = setup_locust_scenarios(grizzly)
+    user_classes, variable_dependencies = setup_locust_scenarios(grizzly)
+    external_dependencies.update(variable_dependencies)
 
     assert len(user_classes) > 0, 'no users specified in feature'
 
@@ -971,8 +964,15 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
 
         grizzly.state.locust = runner
 
-        variable_dependencies, message_handlers = setup_environment_listeners(context)
-        external_dependencies.update(variable_dependencies)
+        setup_environment_listeners(context, testdata=testdata)
+
+        if environ.get('GRIZZLY_DRY_RUN', 'false').lower() == 'true':
+            if isinstance(runner, MasterRunner):
+                runner.send_message('grizzly_worker_quit', None)
+
+            if not isinstance(runner, WorkerRunner):
+                runner.quit()
+                return 0
 
         environment.events.init.fire(environment=environment, runner=runner, web_ui=None)
 
@@ -1041,6 +1041,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
                 return 1
 
         stats_printer_greenlet: Optional[gevent.Greenlet] = None
+        spawn_rate = cast(float, grizzly.setup.spawn_rate)
 
         @dataclass
         class LocustOption:
@@ -1054,7 +1055,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
         environment.parsed_options = LocustOption(
             headless=True,
             num_users=grizzly.setup.user_count or 0,
-            spawn_rate=grizzly.setup.spawn_rate,
+            spawn_rate=spawn_rate,
             tags=[],
             exclude_tags=[],
             enable_rebalancing=False,
@@ -1081,7 +1082,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
             user_count = grizzly.setup.user_count or 0 if runner.environment.dispatcher_class == UsersDispatcher else -1
 
             try:
-                runner.start(user_count, grizzly.setup.spawn_rate)
+                runner.start(user_count, spawn_rate)
             except:
                 if isinstance(runner, MasterRunner):
                     runner.send_message('grizzly_worker_quit', None)
@@ -1093,7 +1094,11 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
         def spawn_run_time_limit_greenlet() -> None:
             def timelimit_stop() -> None:
                 logger.info('time limit reached. stopping locust.')
-                runner.quit()
+                if isinstance(runner, MasterRunner):
+                    runner.send_message('grizzly_worker_quit', None)
+
+                if not isinstance(runner, WorkerRunner):
+                    runner.quit()
 
             gevent.spawn_later(run_time, timelimit_stop).link_exception(greenlet_exception_handler)
 

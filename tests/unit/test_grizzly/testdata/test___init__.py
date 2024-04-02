@@ -273,16 +273,17 @@ value1,value2
         finally:
             cleanup()
 
-    @pytest.mark.parametrize(('value', 'expected'), [
-        ('variable', (None, None, 'variable', None)),
-        ('AtomicIntegerIncrementer.foo', ('grizzly.testdata.variables', 'AtomicIntegerIncrementer', 'foo', None)),
-        ('AtomicCsvReader.users.username', ('grizzly.testdata.variables', 'AtomicCsvReader', 'users', 'username')),
-        ('tests.helpers.AtomicCustomVariable.hello', ('tests.helpers', 'AtomicCustomVariable', 'hello', None)),
-        ('tests.helpers.AtomicCustomVariable.foo.bar', ('tests.helpers', 'AtomicCustomVariable', 'foo', 'bar')),
-        ('a.custom.struct', (None, None, 'a.custom.struct', None)),
+    @pytest.mark.parametrize(('value', 'expected_spec', 'expected_init_value'), [
+        ('variable', (None, None, 'variable', None), 'variable'),
+        ('AtomicIntegerIncrementer.foo', ('grizzly.testdata.variables', 'AtomicIntegerIncrementer', 'foo', None), 'AtomicIntegerIncrementer.foo'),
+        ('AtomicCsvReader.users.username', ('grizzly.testdata.variables', 'AtomicCsvReader', 'users', 'username'), 'AtomicCsvReader.users'),
+        ('tests.helpers.AtomicCustomVariable.hello', ('tests.helpers', 'AtomicCustomVariable', 'hello', None), 'tests.helpers.AtomicCustomVariable.hello'),
+        ('tests.helpers.AtomicCustomVariable.foo.bar', ('tests.helpers', 'AtomicCustomVariable', 'foo', 'bar'), 'tests.helpers.AtomicCustomVariable.foo'),
+        ('a.custom.struct', (None, None, 'a.custom.struct', None), 'a.custom.struct'),
     ])
-    def test_get_variable_spec(self, value: str, expected: Tuple[Optional[str], Optional[str], str, Optional[str]]) -> None:
-        assert GrizzlyVariables.get_variable_spec(value) == expected
+    def test_get_variable_spec_and_initialization_value(self, value: str, expected_spec: Tuple[Optional[str], Optional[str], str, Optional[str]], expected_init_value: str) -> None:
+        assert GrizzlyVariables.get_variable_spec(value) == expected_spec
+        assert GrizzlyVariables.get_initialization_value(value) == expected_init_value
 
     class Test_initialize_variable:
         """Unit tests of grizzly.testdata.initialize_variable."""

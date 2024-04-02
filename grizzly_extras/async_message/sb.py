@@ -3,11 +3,12 @@ from __future__ import annotations
 
 import logging
 from contextlib import suppress
-from time import perf_counter, sleep
+from time import perf_counter, sleep, time
 from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, Optional, Tuple, Union, cast
 
 from azure.core.exceptions import ResourceExistsError, ResourceNotFoundError
 from azure.servicebus import ServiceBusClient, ServiceBusMessage, ServiceBusReceiver, ServiceBusSender, TransportType
+from azure.servicebus._pyamqp import ReceiveClient
 from azure.servicebus.amqp import AmqpMessageBodyType
 from azure.servicebus.management import ServiceBusAdministrationClient, SqlRuleFilter, TopicProperties
 
@@ -524,7 +525,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             # than message_wait ago, which will cause a "timeout" when trying to read it now
             # which means we'll not get any messages, even though the endpoint isn't empty
             if message_wait > 0:
-                receiver._handler._last_activity_timestamp = None
+                receiver._handler._last_activity_timestamp = time() if isinstance(receiver._handler, ReceiveClient) else None
 
             for retry in range(1, 4):
                 try:
