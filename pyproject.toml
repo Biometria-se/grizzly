@@ -100,7 +100,7 @@ ci = [
 docs = [
     "novella ==0.2.6",
     "pydoc-markdown ==4.8.2",
-    "databind ==4.4.2",
+    "databind ==4.5.1",
     "pytablewriter ==1.2.0",
     "pip-licenses ==4.3.4",
     "requests ==2.31.0",
