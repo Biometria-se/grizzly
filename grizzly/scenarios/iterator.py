@@ -72,6 +72,7 @@ class IteratorScenario(GrizzlyScenario):
             raise StopUser from e
 
         while True:
+            execute_task_logged = False
             try:
                 self.current_task_index = (self._task_index % self.task_count)
 
@@ -92,7 +93,8 @@ class IteratorScenario(GrizzlyScenario):
                         self.execute_next_task()
                     except Exception as e:
                         if not isinstance(e, StopScenario):
-                            self.logger.error('task %d of %d: %s, failed: %s', self.current_task_index+1, self.task_count, step, e.__class__.__name__)  # noqa: TRY400
+                            self.logger.exception('task %d of %d: %s, failed: %s', self.current_task_index+1, self.task_count, step, e.__class__.__name__)
+                            execute_task_logged = True
                         raise
                 except RescheduleTaskImmediately:
                     pass
@@ -115,7 +117,7 @@ class IteratorScenario(GrizzlyScenario):
                     self.wait()
                 else:
                     self.wait()
-            except InterruptTaskSet as e:  # noqa: PERF203
+            except InterruptTaskSet as e:
                 if self.user._scenario_state != ScenarioState.STOPPING:
                     try:
                         self.on_stop()
@@ -172,7 +174,8 @@ class IteratorScenario(GrizzlyScenario):
                 self.iteration_stop(has_error=True)
                 self.user.environment.events.user_error.fire(user_instance=self.user, exception=e, tb=e.__traceback__)
                 if self.user.environment.catch_exceptions:
-                    self.logger.exception('unhandled exception')
+                    if not execute_task_logged:
+                        self.logger.exception('unhandled exception: %s', e.__class__.__qualname__)
                     self.wait()
                 else:
                     raise
