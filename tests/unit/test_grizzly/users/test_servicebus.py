@@ -364,6 +364,7 @@ class TestServiceBusUser:
                 'content_type': 'undefined',
                 'url': 'sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=',
                 'message_wait': None,
+                'consume': False,
             },
         })
 
@@ -436,14 +437,13 @@ class TestServiceBusUser:
                 'content_type': 'undefined',
                 'url': 'sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=',
                 'message_wait': None,
+                'consume': False,
             },
         })
         send_json_spy.reset_mock()
 
-        task.method = RequestMethod.RECEIVE
-        task.source = None
-        task.response.content_type = TransformerContentType.JSON
-        task.endpoint = f'{task.endpoint}, expression:"$.document[?(@.name=="TPM Report")]'
+        consume_task = RequestTask(RequestMethod.RECEIVE, name=task.name, endpoint=f'{task.endpoint}, expression:"$.document[?(@.name=="TPM Report")] | consume=True', source=None)
+        consume_task.response.content_type = TransformerContentType.JSON
 
         mock_recv_json({
             'worker': 'asdf-asdf-asdf',
@@ -453,7 +453,7 @@ class TestServiceBusUser:
             'response_length': 133,
         })
 
-        metadata, payload = parent.user.request(task)
+        metadata, payload = parent.user.request(consume_task)
         assert metadata == {'meta': True}
         assert payload == 'hello'
 
@@ -461,7 +461,7 @@ class TestServiceBusUser:
         say_hello_spy.reset_mock()
 
         response_event_fire_spy.assert_called_once_with(
-            name=f'{parent.user._scenario.identifier} {task.name}',
+            name=f'{parent.user._scenario.identifier} {consume_task.name}',
             request=ANY(RequestTask),
             context=({'meta': True}, 'hello'),
             user=parent.user,
@@ -471,7 +471,7 @@ class TestServiceBusUser:
 
         request_fire_spy.assert_called_once_with(
             request_type='RECV',
-            name=f'{parent.user._scenario.identifier} {task.name}',
+            name=f'{parent.user._scenario.identifier} {consume_task.name}',
             response_time=ANY(int),
             response_length=5,
             context=parent.user._context,
@@ -490,6 +490,7 @@ class TestServiceBusUser:
                 'url': 'sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=',
                 'message_wait': None,
                 'content_type': 'json',
+                'consume': True,
             },
         })
         send_json_spy.reset_mock()
