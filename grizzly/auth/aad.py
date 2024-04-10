@@ -116,6 +116,7 @@ from uuid import uuid4
 
 import requests
 from pyotp import TOTP
+from requests.adapters import HTTPAdapter, Retry
 
 from grizzly.types import ZoneInfo
 from grizzly.types.locust import StopUser
@@ -250,6 +251,9 @@ class AAD(RefreshToken):
             total_response_length = 0
 
             with requests.Session() as session:
+                retries = Retry(total=3, connect=3, read=3, status=0, backoff_factor=0.1)
+                session.mount('https://', HTTPAdapter(max_retries=retries))
+
                 headers: Dict[str, str]
                 payload: Dict[str, Any]
                 data: Dict[str, Any]
