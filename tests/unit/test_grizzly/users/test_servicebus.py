@@ -379,13 +379,7 @@ class TestServiceBusUser:
         )
         request_fire_spy.reset_mock()
 
-        response_event_fire_spy.assert_called_once_with(
-            name=f'{parent.user._scenario.identifier} {task.name}',
-            request=ANY(RequestTask),
-            context=(None, None),
-            user=parent.user,
-            exception=ANY(AsyncMessageError, message='unknown error'),
-        )
+        response_event_fire_spy.assert_not_called()
         response_event_fire_spy.reset_mock()
 
         # successful request

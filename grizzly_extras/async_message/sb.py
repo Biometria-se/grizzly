@@ -536,6 +536,11 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
 
             wait_start = perf_counter()
 
+            # make sure receiver or it's handler hasn't gone stale
+            if receiver is None or receiver._handler is None:
+                self._hello(request, force=True)
+                receiver = self._receiver_cache[cache_endpoint]
+
             # reset last activity timestamp, might be set from previous usage that was more
             # than message_wait ago, which will cause a "timeout" when trying to read it now
             # which means we'll not get any messages, even though the endpoint isn't empty
