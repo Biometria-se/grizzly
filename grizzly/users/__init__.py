@@ -33,6 +33,7 @@ from grizzly.exceptions import RestartScenario
 from grizzly.types import GrizzlyResponse, RequestType, ScenarioState
 from grizzly.types.locust import Environment, StopUser
 from grizzly.utils import has_template, merge_dicts
+from grizzly_extras.async_message import AsyncMessageError
 
 T = TypeVar('T', bound=UserMeta)
 
@@ -179,7 +180,7 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
             response_length = len((payload or '').encode())
 
             # execute response listeners
-            if not isinstance(exception, (RestartScenario, StopUser)):
+            if not isinstance(exception, (RestartScenario, StopUser, AsyncMessageError)):
                 try:
                     self.event_hook.fire(
                         name=request.name,

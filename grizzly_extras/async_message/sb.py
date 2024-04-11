@@ -388,13 +388,28 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             message = f'subscription "{subscription_name}" does not exist on topic "{topic_name}"'
             raise AsyncMessageError(message) from e
 
+        try:
+            topic_properties = self.mgmt_client.get_subscription_runtime_properties(
+                topic_name=topic_name,
+                subscription_name=subscription_name,
+            )
+
+            topic_statistics = (
+                f'active_message_count={topic_properties.active_message_count}, '
+                f'total_message_count={topic_properties.total_message_count}, transfer_dead_letter_message_count={topic_properties.transfer_dead_letter_message_count}, '
+                f'transfer_message_count={topic_properties.transfer_message_count}'
+            )
+        except Exception:
+            self.logger.exception('failed to get topic statistics for %s@%s', subscription_name, topic_name)
+            topic_statistics = 'unknown'
+
         self.mgmt_client.delete_subscription(
             topic_name=topic_name,
             subscription_name=subscription_name,
         )
 
         return {
-            'message': f'removed subscription {subscription_name} on topic {topic_name}',
+            'message': f'removed subscription {subscription_name} on topic {topic_name} (stats: {topic_statistics})',
         }
 
     def _hello(self, request: AsyncMessageRequest, *, force: bool) -> AsyncMessageResponse:
@@ -520,6 +535,11 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             consume = context.get('consume', False)
 
             wait_start = perf_counter()
+
+            # make sure receiver or it's handler hasn't gone stale
+            if receiver is None or receiver._handler is None:
+                self._hello(request, force=True)
+                receiver = self._receiver_cache[cache_endpoint]
 
             # reset last activity timestamp, might be set from previous usage that was more
             # than message_wait ago, which will cause a "timeout" when trying to read it now

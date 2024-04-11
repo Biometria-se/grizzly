@@ -81,7 +81,11 @@ class GrizzlyScenario(SequentialTaskSet):
 
         for task in self.tasks:
             if isinstance(task, grizzlytask):
-                task.on_start(self)  # type: ignore[unreachable]
+                try:  # type: ignore[unreachable]
+                    task.on_start(self)
+                except:
+                    self.logger.exception('on_start failed for task %r', task)
+                    raise StopUser from None
 
     def on_stop(self) -> None:
         """When locust test is stopping, all tasks on_stop methods must be called, even though

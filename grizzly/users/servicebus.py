@@ -323,7 +323,8 @@ class ServiceBusUser(GrizzlyUser):
         self.say_hello(request)
 
         request_context = cast(AsyncMessageContext, dict(self.am_context))
-        request_context['endpoint'] = request.endpoint
+        consume = (request.arguments or {}).get('consume', 'False').lower() == 'true'
+        request_context.update({'endpoint': request.endpoint, 'consume': consume})
 
         am_request: AsyncMessageRequest = {
             'action': request.method.name,

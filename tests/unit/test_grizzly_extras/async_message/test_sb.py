@@ -275,11 +275,14 @@ class TestAsyncServiceBusHandler:
         # all good
         mgmt_client_mock.get_subscription.side_effect = None
 
-        assert handlers[request['action']](handler, request) == {'message': 'removed subscription my-subscription on topic my-topic'}
+        actual_response = handlers[request['action']](handler, request)
+        assert list(actual_response.keys()) == ['message']
+        assert (actual_response.get('message', None) or '').startswith('removed subscription my-subscription on topic my-topic (stats: active_message_count=')
 
         mgmt_client_mock.get_topic.assert_called_once_with(topic_name='my-topic')
         mgmt_client_mock.get_subscription.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription')
         mgmt_client_mock.delete_subscription.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription')
+        mgmt_client_mock.get_subscription_runtime_properties.assert_called_once_with(topic_name='my-topic', subscription_name='my-subscription')
 
     def test_from_message(self) -> None:
         assert AsyncServiceBusHandler.from_message(None) == (None, None)
