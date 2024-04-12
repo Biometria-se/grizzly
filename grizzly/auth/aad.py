@@ -20,7 +20,7 @@ Using client secret for an app registration.
 
 ```gherkin
 Given a user of type "RestApi" load testing "https://api.example.com"
-And set context variable "auth.provider" to "<provider>"
+And set context variable "auth.tenant" to "<provider>"
 And set context variable "auth.client.id" to "<client id>"
 And set context variable "auth.client.secret" to "<client secret>"
 And set context variable "auth.client.resource" to "<resource url/guid>"
@@ -83,7 +83,7 @@ If the user is required to have a MFA method, support for software based TOTP to
 
 12. Finish the wizard
 
-The user now have software based TOTP tokens as MFA method.
+The user now have software based TOTP tokens as MFA method, where `grizzly` will act as the authenticator app.
 
 #### Example
 
@@ -91,7 +91,7 @@ In addition to the "Username and password" example, the context variable `auth.u
 
 ```gherkin
 Given a user of type "RestApi" load testing "https://api.example.com"
-And set context variable "auth.provider" to "<provider>"
+And set context variable "auth.tenant" to "<provider>"
 And set context variable "auth.client.id" to "<client id>"
 And set context variable "auth.user.username" to "alice@example.onmicrosoft.com"
 And set context variable "auth.user.password" to "HemL1gaArn3!"
@@ -105,26 +105,38 @@ import json
 import logging
 import re
 from base64 import urlsafe_b64encode
-from datetime import datetime
+from datetime import datetime, timezone
 from hashlib import sha256
 from html.parser import HTMLParser
+from http.server import HTTPServer, SimpleHTTPRequestHandler
 from secrets import token_urlsafe
-from time import perf_counter as time_perf_counter
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type, cast
 from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
 
 import requests
+from azure.core.credentials import AccessToken
+from gevent import Greenlet
 from pyotp import TOTP
 from requests.adapters import HTTPAdapter, Retry
+from typing_extensions import Self
 
-from grizzly.types import ZoneInfo
-from grizzly.types.locust import StopUser
 from grizzly.utils import safe_del
 
-from . import AuthType, GrizzlyHttpAuthClient, RefreshToken
+from . import AuthMethod, AuthType, GrizzlyTokenCredential, RefreshToken
+
+if TYPE_CHECKING:
+    from types import TracebackType
 
 logger = logging.getLogger(__name__)
+
+
+class AzureAadError(Exception):
+    pass
+
+
+class AzureAadFlowError(AzureAadError):
+    pass
 
 
 class FormPostParser(HTMLParser):
@@ -175,20 +187,186 @@ class FormPostParser(HTMLParser):
             if prop_name is not None and prop_value is not None:
                 setattr(self, prop_name, prop_value)
 
+class AzureAadWebserver:
+    enable: bool
+    credential: AzureAadCredential
 
-class AAD(RefreshToken):
-    @classmethod
-    def get_oauth_authorization(cls, client: GrizzlyHttpAuthClient) -> Tuple[AuthType, str]:  # noqa: C901, PLR0915
-        def _parse_response_config(response: requests.Response) -> Dict[str, Any]:
+    _http_server: HTTPServer
+    _greenlet: Greenlet
+    _redirect: Optional[str]
+
+    def __init__(self, credential: AzureAadCredential) -> None:
+        self.credential = credential
+        self.enable = (self.credential.redirect is None)
+
+    def _start(self) -> None:
+        if not self.enable:
+            return
+
+        # start http server and do stuff here
+        self._http_server = HTTPServer(
+            ('127.0.0.1', 0), SimpleHTTPRequestHandler, bind_and_activate=False,
+        )
+        self._http_server.timeout = 0.5
+        self._http_server.allow_reuse_address = True
+        self._http_server.server_bind()
+        self._http_server.server_activate()
+
+        def serve_forever(httpd: HTTPServer) -> None:
+            with httpd:
+                try:
+                    httpd.serve_forever()
+                except OSError as e:
+                    # will be thrown when closing the socket in disconnect, on windows only.
+                    if 'WinError 10038' not in str(e):
+                        raise
+
+        self._greenlet = Greenlet.spawn(serve_forever, self._http_server)
+
+    def _stop(self) -> None:
+        if not self.enable:
+            return
+
+        self._http_server.server_close()
+        self._greenlet.kill(block=False)
+
+    def __enter__(self) -> Self:
+        self._redirect = self.credential.redirect
+
+        if self.credential.redirect is None:
+            self.credential.redirect = f'http://localhost:{self._http_server.server_port}'
+
+        self._start()
+
+        return self
+
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> bool:
+        self._stop()
+
+        self.credential.redirect = self._redirect
+
+        return exc is None
+
+
+class AzureAadCredential(GrizzlyTokenCredential):
+    username: str
+    password: str
+    scope: str | None
+    client_id: str
+    tenant: str
+    otp_secret: str | None
+    refresh_time: int = 3000
+
+    redirect: str | None
+    initialize: str | None
+
+    auth_type: AuthType
+
+    _access_token: AccessToken | None
+    _webserver: AzureAadWebserver
+
+    def __init__(  # noqa: PLR0913
+        self,
+        username: str,
+        password: str,
+        tenant: str,
+        auth_method: AuthMethod,
+        /,
+        host: str,
+        redirect: str | None,
+        initialize: str | None,
+        otp_secret: str | None = None,
+        scope: str | None = None,
+        client_id: str = '04b07795-8ddb-461a-bbee-02f9e1bf7b46',
+    ) -> None:
+        self.username = username
+        self.password = password
+        self.tenant = tenant
+        self.auth_method = auth_method
+
+        self.host = host
+        self.client_id = client_id
+        """
+        If `client_id` is not specified, the client id for `Azure Command Line Tool` will be used.
+        """
+
+        self.scope = scope
+        self.redirect = redirect
+        self.initialize = initialize
+        self.otp_secret = otp_secret
+
+        self._access_token = None
+
+        self.auth_type = AuthType.HEADER if self.initialize is None else AuthType.COOKIE
+        self._webserver = AzureAadWebserver(self)
+
+    @property
+    def access_token(self) -> AccessToken:
+        scopes: tuple[str, ...] = ()
+        if self.scope is not None:
+            scopes += (self.scope,)
+
+        return self.get_token(*scopes)
+
+    @property
+    def webserver(self) -> AzureAadWebserver:
+        return self._webserver
+
+    def get_token(
+        self,
+        *scopes: str,
+        claims: str | None = None,
+        tenant_id: str | None = None,
+        **_kwargs: Any,
+    ) -> AccessToken:
+        now = datetime.now(tz=timezone.utc).timestamp()
+
+        if self._access_token is None or self._access_token.expires_on >= now:
+            action_name = 'refreshed' if self._access_token is not None else 'claimed'
+
+            if self.auth_method == AuthMethod.USER:
+                with self.webserver:
+                    self._access_token = self.get_oauth_authorization(
+                        *scopes, claims=claims, tenant_id=tenant_id,
+                    )
+            else:
+                self._access_token = self.get_oauth_token(tenant_id=tenant_id)
+
+            refreshed_for = (self.username or '<unknown username>') if self.auth_method == AuthMethod.USER else self.client_id
+            logger.info('%s token for %s', action_name, refreshed_for)
+            self._refreshed = True
+
+        assert self._access_token is not None
+
+        return self._access_token
+
+    def get_oauth_authorization(  # noqa: C901, PLR0915
+        self, *scopes: str, claims: str | None = None, tenant_id: str | None = None,  # noqa: ARG002
+    ) -> AccessToken:
+        tenant = tenant_id if tenant_id is not None else self.tenant
+
+        parsed_tenant = urlparse(tenant)
+        if len(parsed_tenant.netloc) > 0:
+            path = parsed_tenant.path.lstrip('/')
+            tenant, _ = path.split('/', 1)
+
+        def _parse_response_config(response: requests.Response) -> dict[str, Any]:
             match = re.search(r'Config={(.*?)};', response.text, re.MULTILINE)
 
             if not match:
                 message = f'no config found in response from {response.url}'
                 raise ValueError(message)
 
-            return cast(Dict[str, Any], json.loads(f'{{{match.group(1)}}}'))
+            return cast(dict[str, Any], json.loads(f'{{{match.group(1)}}}'))
 
-        def update_state(state: Dict[str, str], response: requests.Response) -> Dict[str, Any]:
+        def update_state(
+            state: dict[str, str], response: requests.Response,
+        ) -> dict[str, Any]:
             config = _parse_response_config(response)
 
             for key in state:
@@ -207,221 +385,382 @@ class AAD(RefreshToken):
 
             return f'{uuid[0:8]}-{uuid[8:12]}-{uuid[12:16]}-{uuid[16:20]}-{uuid[20:]}'
 
-        def generate_pkcs() -> Tuple[str, str]:
-            code_verifier: bytes = urlsafe_b64encode(token_urlsafe(96)[:128].encode('ascii'))
+        def generate_pkcs() -> tuple[str, str]:
+            code_verifier: bytes = urlsafe_b64encode(
+                token_urlsafe(96)[:128].encode('ascii'),
+            )
 
-            code_challenge = urlsafe_b64encode(
-                sha256(code_verifier).digest(),
-            ).decode('ascii')[:-1]
+            code_challenge = urlsafe_b64encode(sha256(code_verifier).digest()).decode(
+                'ascii',
+            )[:-1]
 
             return code_verifier.decode('ascii'), code_challenge
+
+        if self.initialize is None and self.redirect is None:
+            message = 'neither initialize or redirect URIs has been set'
+            raise AzureAadError(message)
 
         headers_ua: Dict[str, str] = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:88.0) Gecko/20100101 Firefox/88.0',
         }
 
-        auth_context = client._context.get('auth', None)
-        assert auth_context is not None, 'context variable auth is not set'
-        auth_user_context = auth_context.get('user', None)
-        assert auth_user_context is not None, 'context variable auth.user is not set'
-
-        initialize_uri = auth_user_context.get('initialize_uri', None)
-        redirect_uri = auth_user_context.get('redirect_uri', None)
+        initialize_uri = self.initialize
+        redirect_uri = self.redirect
         provider_url: Optional[str] = None
-
-        assert initialize_uri is None or redirect_uri is None, 'both auth.user.initialize_uri and auth.user.redirect_uri is set'
 
         is_token_v2_0: Optional[bool] = None
         if initialize_uri is None:
-            redirect_uri = cast(str, redirect_uri)
-            auth_client_context = auth_context.get('client', None)
-            assert auth_client_context is not None, 'context variable auth.client is not set'
-            provider_url = auth_context.get('provider', None)
-            assert provider_url is not None, 'context variable auth.provider is not set'
-            auth_provider_parsed = urlparse(provider_url)
+            provider_url = f'https://login.microsoftonline.com/{tenant}/oauth2/v2.0'
+            provider_parsed = urlparse(provider_url)
+            redirect_uri = cast(str, self.redirect)
             is_token_v2_0 = 'v2.0' in provider_url
 
-        start_time = time_perf_counter()
-        total_response_length = 0
-        exception: Optional[Exception] = None
-        verify = client._context.get('verify_certificates', True)
-        username_lowercase = cast(str, auth_user_context['username']).lower()
+        verify = True
+        username_lowercase = self.username.lower()
 
-        try:
-            total_response_length = 0
+        with requests.Session() as session:
+            retries = Retry(total=3, connect=3, read=3, status=0, backoff_factor=0.1)
+            session.mount('https://', HTTPAdapter(max_retries=retries))
 
-            with requests.Session() as session:
-                retries = Retry(total=3, connect=3, read=3, status=0, backoff_factor=0.1)
-                session.mount('https://', HTTPAdapter(max_retries=retries))
+            headers: Dict[str, str]
+            payload: Dict[str, Any]
+            data: Dict[str, Any]
+            state: Dict[str, str] = {
+                'hpgact': '',
+                'hpgid': '',
+                'sFT': '',
+                'sCtx': '',
+                'apiCanary': '',
+                'canary': '',
+                'correlationId': '',
+                'sessionId': '',
+                'x-ms-request-id': '',
+                'country': '',
+            }
 
-                headers: Dict[str, str]
-                payload: Dict[str, Any]
-                data: Dict[str, Any]
-                state: Dict[str, str] = {
-                    'hpgact': '',
-                    'hpgid': '',
-                    'sFT': '',
-                    'sCtx': '',
-                    'apiCanary': '',
-                    'canary': '',
-                    'correlationId': '',
-                    'sessionId': '',
-                    'x-ms-request-id': '',
-                    'country': '',
+            # <!-- request 1
+            if initialize_uri is None and redirect_uri is not None:
+                # and redirect_uri is not None:
+                client_id = self.client_id
+                client_request_id = generate_uuid()
+
+                redirect_uri_parsed = urlparse(redirect_uri)
+
+                if len(redirect_uri_parsed.netloc) == 0:
+                    redirect_uri = f"{self.host}{redirect_uri}"
+
+                url = f'{provider_url}/authorize'
+
+                params: Dict[str, List[str]] = {
+                    'response_type': ['id_token'],
+                    'client_id': [client_id],
+                    'redirect_uri': [redirect_uri],
+                    'state': [generate_uuid()],
+                    'client-request-id': [client_request_id],
+                    'x-client-SKU': ['Js'],
+                    'x-client-Ver': ['1.0.18'],
+                    'nonce': [generate_uuid()],
                 }
 
-                # <!-- request 1
-                if initialize_uri is None:
-                    # <!-- dummy stuff, done earlier
-                    assert auth_client_context is not None
-                    assert redirect_uri is not None
-                    # // -->
-                    client_id = cast(str, auth_client_context['id'])
-                    client_request_id = generate_uuid()
+                code_verifier: Optional[str] = None
+                code_challenge: Optional[str] = None
 
-                    redirect_uri_parsed = urlparse(redirect_uri)
+                if is_token_v2_0:
+                    params.update({
+                        'response_mode': ['fragment'],
+                    })
 
-                    if len(redirect_uri_parsed.netloc) == 0:
-                        redirect_uri = f"{client.host}{redirect_uri}"
-
-                    url = f'{provider_url}/authorize'
-
-                    params: Dict[str, List[str]] = {
-                        'response_type': ['id_token'],
-                        'client_id': [client_id],
-                        'redirect_uri': [redirect_uri],
-                        'state': [generate_uuid()],
-                        'client-request-id': [client_request_id],
-                        'x-client-SKU': ['Js'],
-                        'x-client-Ver': ['1.0.18'],
-                        'nonce': [generate_uuid()],
-                    }
-
-                    code_verifier: Optional[str] = None
-                    code_challenge: Optional[str] = None
-
-                    if is_token_v2_0:
-                        params.update({
-                            'response_mode': ['fragment'],
-                        })
-
-                        code_verifier, code_challenge = generate_pkcs()
-                        params.update({
-                            'response_type': ['code'],
-                            'code_challenge_method': ['S256'],
-                            'code_challenge': [code_challenge],
-                            'scope': ['openid profile offline_access'],
-                        })
-
-                    headers = {
-                        'Host': auth_provider_parsed.netloc,
-                        **headers_ua,
-                    }
-
-                    response = session.get(url, headers=headers, params=params, allow_redirects=False)
-                else:
-                    initialize_uri_parsed = urlparse(initialize_uri)
-                    if len(initialize_uri_parsed.netloc) < 1:
-                        initialize_uri = f'{client.host}{initialize_uri}'
-
-                    initialize_uri_parsed = urlparse(initialize_uri)
-
-                    response = session.get(initialize_uri, verify=verify)
-
-                    is_token_v2_0 = 'v2.0' in response.url
-
-                logger.debug(
-                    'user auth request 1: %s (%d), is_token_v2_0=%r, provider_url=%s, initialize_uri=%s, redirect_uri=%s',
-                    response.url,
-                    response.status_code,
-                    is_token_v2_0,
-                    provider_url,
-                    initialize_uri,
-                    redirect_uri,
-                )
-                total_response_length += int(response.headers.get('content-length', '0'))
-
-                if response.status_code != 200:
-                    message = f'user auth request 1: {response.url} had unexpected status code {response.status_code}'
-                    raise RuntimeError(message)
-
-                referer = response.url
-
-                config = _parse_response_config(response)
-
-                exception_message = config.get('strServiceExceptionMessage', None)
-
-                if exception_message is not None and len(exception_message.strip()) > 0:
-                    raise RuntimeError(exception_message)
-
-                config = update_state(state, response)
-                # // request 1 -->
-
-                # <!-- request 2
-                url_parsed = urlparse(config['urlGetCredentialType'])
-                params = parse_qs(url_parsed.query)
-
-                url = f'{url_parsed.scheme}://{url_parsed.netloc}{url_parsed.path}'
-                host = url_parsed.netloc
-                params['mkt'] = ['sv-SE']
+                    code_verifier, code_challenge = generate_pkcs()
+                    params.update({
+                        'response_type': ['code'],
+                        'code_challenge_method': ['S256'],
+                        'code_challenge': [code_challenge],
+                        'scope': ['openid profile offline_access'],
+                    })
 
                 headers = {
-                    'Accept': 'application/json',
-                    'Host': host,
-                    'ContentType': 'application/json; charset=UTF-8',
-                    'canary': state['apiCanary'],
-                    'client-request-id': state['correlationId'],
-                    'hpgact': state['hpgact'],
-                    'hpgid': state['hpgid'],
-                    'hpgrequestid': state['sessionId'],
+                    'Host': provider_parsed.netloc,
                     **headers_ua,
                 }
 
-                payload = {
-                    'username': username_lowercase,
-                    'isOtherIdpSupported': True,
-                    'checkPhones': False,
-                    'isRemoteNGCSupported': True,
-                    'isCookieBannerShown': False,
-                    'isFidoSupported': True,
-                    'originalRequest': state['sCtx'],
-                    'country': state['country'],
-                    'forceotclogin': False,
-                    'isExternalFederationDisallowed': False,
-                    'isRemoteConnectSupported': False,
-                    'federationFlags': 0,
-                    'isSignup': False,
-                    'flowToken': state['sFT'],
-                    'isAccessPassSupported': True,
+                response = session.get(url, headers=headers, params=params, allow_redirects=False)
+            elif initialize_uri is not None and redirect_uri is None:
+                initialize_uri_parsed = urlparse(initialize_uri)
+                if len(initialize_uri_parsed.netloc) < 1:
+                    initialize_uri = f'{self.host}{initialize_uri}'
+
+                initialize_uri_parsed = urlparse(initialize_uri)
+
+                response = session.get(initialize_uri, verify=verify)
+
+                is_token_v2_0 = 'v2.0' in response.url
+            else:
+                message = 'both initialize and redirect URIs cannot be set'
+                raise AzureAadError(message)
+
+            logger.debug(
+                'user auth request 1: %s (%d), is_token_v2_0=%r, provider_url=%s, initialize_uri=%s, redirect_uri=%s',
+                response.url,
+                response.status_code,
+                is_token_v2_0,
+                provider_url,
+                initialize_uri,
+                redirect_uri,
+            )
+
+            if response.status_code != 200:
+                message = f'user auth request 1: {response.url} had unexpected status code {response.status_code}'
+                raise AzureAadFlowError(message)
+
+            referer = response.url
+
+            config = _parse_response_config(response)
+
+            exception_message = config.get('strServiceExceptionMessage', None)
+
+            if exception_message is not None and len(exception_message.strip()) > 0:
+                raise AzureAadFlowError(exception_message)
+
+            config = update_state(state, response)
+            # // request 1 -->
+
+            # <!-- request 2
+            url_parsed = urlparse(config['urlGetCredentialType'])
+            params = parse_qs(url_parsed.query)
+
+            url = f'{url_parsed.scheme}://{url_parsed.netloc}{url_parsed.path}'
+            host = url_parsed.netloc
+            params['mkt'] = ['sv-SE']
+
+            headers = {
+                'Accept': 'application/json',
+                'Host': host,
+                'ContentType': 'application/json; charset=UTF-8',
+                'canary': state['apiCanary'],
+                'client-request-id': state['correlationId'],
+                'hpgact': state['hpgact'],
+                'hpgid': state['hpgid'],
+                'hpgrequestid': state['sessionId'],
+                **headers_ua,
+            }
+
+            payload = {
+                'username': username_lowercase,
+                'isOtherIdpSupported': True,
+                'checkPhones': False,
+                'isRemoteNGCSupported': True,
+                'isCookieBannerShown': False,
+                'isFidoSupported': True,
+                'originalRequest': state['sCtx'],
+                'country': state['country'],
+                'forceotclogin': False,
+                'isExternalFederationDisallowed': False,
+                'isRemoteConnectSupported': False,
+                'federationFlags': 0,
+                'isSignup': False,
+                'flowToken': state['sFT'],
+                'isAccessPassSupported': True,
+            }
+
+            response = session.post(url, headers=headers, params=params, json=payload, allow_redirects=False)
+
+            logger.debug('user auth request 2: %s (%d)', response.url, response.status_code)
+
+            if response.status_code != 200:
+                message = f'user auth request 2: {response.url} had unexpected status code {response.status_code}'
+                raise AzureAadFlowError(message)
+
+            data = cast(Dict[str, Any], json.loads(response.text))
+            if 'error' in data:
+                error = data['error']
+                message = f'error response from {url}: code={error["code"]}, message={error["message"]}'
+                raise AzureAadFlowError(message)
+
+            # update state with changed values
+            state['apiCanary'] = data['apiCanary']
+            state['sFT'] = data['FlowToken']
+            # // request 2 -->
+
+            # <!-- request 3
+            if initialize_uri is None:
+                if not config['urlPost'].startswith('https://'):
+                    message = f"response from {response.url} contained unexpected value '{config['urlPost']}'"
+                    raise AzureAadFlowError(message)
+
+                url = config['urlPost']
+            else:
+                if config['urlPost'].startswith('https://'):
+                    message = f"response from {response.url} contained unexpected value '{config['urlPost']}'"
+                    raise AzureAadFlowError(message)
+
+                url = f'{url_parsed.scheme}://{host}{config["urlPost"]}'
+
+            headers = {
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Host': host,
+                'Referer': referer,
+                **headers_ua,
+            }
+
+            payload = {
+                'i13': '0',
+                'login': username_lowercase,
+                'loginfmt': username_lowercase,
+                'type': '11',
+                'LoginOptions': '3',
+                'lrt': '',
+                'lrtPartition': '',
+                'hisRegion': '',
+                'hisScaleUnit': '',
+                'passwd': self.password,
+                'ps': '2',  # postedLoginStateViewId
+                'psRNGCDefaultType': '',
+                'psRNGCEntropy': '',
+                'psRNGCSLK': '',
+                'canary': state['canary'],
+                'ctx': state['sCtx'],
+                'hpgrequestid': state['sessionId'],
+                'flowToken': state['sFT'],
+                'PPSX': '',
+                'NewUser': '1',
+                'FoundMSAs': '',
+                'fspost': '0',
+                'i21': '0',  # wasLearnMoreShown
+                'CookieDisclosure': '0',
+                'IsFidoSupported': '1',
+                'isSignupPost': '0',
+                'i19': '16369',  # time on page
+            }
+
+            response = session.post(url, headers=headers, data=payload)
+
+            logger.debug('user auth request 3: %s (%d)', response.url, response.status_code)
+
+            if response.status_code != 200:
+                message = f'user auth request 3: {response.url} had unexpected status code {response.status_code}'
+                raise AzureAadFlowError(message)
+
+            config = _parse_response_config(response)
+
+            exception_message = config.get('strServiceExceptionMessage', None)
+
+            if exception_message is not None and len(exception_message.strip()) > 0:
+                raise AzureAadFlowError(exception_message)
+
+            config = update_state(state, response)
+
+            user_proofs = config.get('arrUserProofs', [])
+
+            if len(user_proofs) > 0:
+                otp_secret = self.otp_secret
+                otp_user_proofs = [
+                    user_proof
+                    for user_proof in user_proofs
+                    if user_proof.get('authMethodId', None) == 'PhoneAppOTP' and 'SoftwareTokenBasedTOTP' in user_proof.get('phoneAppOtpTypes', [])
+                ]
+
+                if len(otp_user_proofs) != 1:
+                    user_proof = user_proofs[0]
+
+                    if otp_secret is None:
+                        error_message = f'{username_lowercase} requires MFA for login: {user_proof["authMethodId"]} = {user_proof["display"]}'
+                    else:
+                        error_message = f'{username_lowercase} is assumed to use TOTP for MFA, but does not have that authentication method configured'
+
+                    logger.error(error_message)
+
+                    raise AzureAadFlowError(error_message)
+
+                if otp_secret is None:
+                    message = f'{username_lowercase} requires TOTP for MFA, but auth.user.otp_secret is not set'
+                    raise AzureAadFlowError(message)
+
+                # <!-- begin auth
+                poll_start = int(datetime.now(tz=timezone.utc).timestamp() * 1000)
+                url = config['urlBeginAuth']
+
+                headers = {
+                    'Canary': state['apiCanary'],
+                    'Client-Request-Id': state['correlationId'],
+                    'Hpgrequestid': state['x-ms-request-id'],
+                    'Hpgact': state['hpgact'],
+                    'Hpgid': state['hpgid'],
+                    'Origin': host,
+                    'Referer': referer,
                 }
 
-                response = session.post(url, headers=headers, params=params, json=payload, allow_redirects=False)
-                total_response_length += int(response.headers.get('content-length', '0'))
+                payload = {
+                    'AuthMethodId': 'PhoneAppOTP',
+                    'Method': 'BeginAuth',
+                    'ctx': state['sCtx'],
+                    'flowToken': state['sFT'],
+                }
 
-                logger.debug('user auth request 2: %s (%d)', response.url, response.status_code)
+                response = session.post(url, headers=headers, json=payload)
+
+                logger.debug('user auth request BeginAuth: %s (%d)', response.url, response.status_code)
 
                 if response.status_code != 200:
-                    message = f'user auth request 2: {response.url} had unexpected status code {response.status_code}'
-                    raise RuntimeError(message)
+                    message = f'user auth request BeginAuth: {response.url} had unexpected status code {response.status_code}'
+                    raise AzureAadFlowError(message)
 
-                data = cast(Dict[str, Any], json.loads(response.text))
-                if 'error' in data:
-                    error = data['error']
-                    message = f'error response from {url}: code={error["code"]}, message={error["message"]}'
-                    raise RuntimeError(message)
+                payload = response.json()
 
-                # update state with changed values
-                state['apiCanary'] = data['apiCanary']
-                state['sFT'] = data['FlowToken']
-                # // request 2 -->
+                if not payload['Success']:
+                    error_message = f'user auth request BeginAuth: {payload.get("ErrCode", -1)} - {payload.get("Message", "unknown")}'
+                    logger.error(error_message)
+                    raise AzureAadFlowError(error_message)
 
-                # <!-- request 3
-                if initialize_uri is None:
-                    assert config['urlPost'].startswith('https://'), f"response from {response.url} contained unexpected value '{config['urlPost']}'"
-                    url = config['urlPost']
-                else:
-                    assert not config['urlPost'].startswith('https://'), f"response from {response.url} contained unexpected value '{config['urlPost']}'"
-                    url = f'{url_parsed.scheme}://{host}{config["urlPost"]}'
+                state.update({
+                    'sCtx': payload['Ctx'],
+                    'sFT': payload['FlowToken'],
+                    'correlationId': payload['CorrelationId'],
+                    'sessionId': payload['SessionId'],
+                    'x-ms-request-id': response.headers.get('X-Ms-Request-Id', state['x-ms-request-id']),
+                })
+                poll_end = int(datetime.now(tz=timezone.utc).timestamp() * 1000)
+                # // begin auth -->
+
+                # <!-- end auth
+                totp = TOTP(otp_secret)
+                totp_code = totp.now()
+                url = config['urlEndAuth']
+                payload = {
+                    'AdditionalAuthData': totp_code,
+                    'AuthMethodId': 'PhoneAppOTP',
+                    'Ctx': state['sCtx'],
+                    'FlowToken': state['sFT'],
+                    'Method': 'EndAuth',
+                    'PollCount': 1,
+                    'SessionId': state['sessionId'],
+                }
+
+                response = session.post(url, headers=headers, json=payload)
+                logger.debug('user auth request EndAuth: %s (%d)', response.url, response.status_code)
+
+                if response.status_code != 200:
+                    message = f'user auth request EndAuth: {response.url} had unexpected status code {response.status_code}'
+                    raise AzureAadFlowError(message)
+
+                payload = response.json()
+
+                if not payload['Success']:
+                    error_message = f'user auth request EndAuth: {payload.get("ErrCode", -1)} - {payload.get("Message", "unknown")}'
+                    logger.error(error_message)
+                    raise AzureAadFlowError(error_message)
+
+                state.update({
+                    'sCtx': payload['Ctx'],
+                    'sFT': payload['FlowToken'],
+                    'correlationId': payload['CorrelationId'],
+                    'sessionId': payload['SessionId'],
+                    'x-ms-request-id': response.headers.get('X-Ms-Request-Id', state['x-ms-request-id']),
+                })
+                # // end auth -->
+
+                # <!-- process auth
+                url = config['urlPost']
 
                 headers = {
                     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
@@ -432,459 +771,248 @@ class AAD(RefreshToken):
                 }
 
                 payload = {
-                    'i13': '0',
+                    'type': 19,
+                    'GeneralVerify': False,
+                    'request': state['sCtx'],
+                    'mfaLastPollStart': poll_start,
+                    'mfaLastPollEnd': poll_end,
+                    'mfaAuthMethod': 'PhoneAppOTP',
+                    'otc': int(totp_code),
                     'login': username_lowercase,
-                    'loginfmt': username_lowercase,
-                    'type': '11',
-                    'LoginOptions': '3',
-                    'lrt': '',
-                    'lrtPartition': '',
-                    'hisRegion': '',
-                    'hisScaleUnit': '',
-                    'passwd': auth_user_context['password'],
-                    'ps': '2',  # postedLoginStateViewId
-                    'psRNGCDefaultType': '',
-                    'psRNGCEntropy': '',
-                    'psRNGCSLK': '',
-                    'canary': state['canary'],
-                    'ctx': state['sCtx'],
-                    'hpgrequestid': state['sessionId'],
                     'flowToken': state['sFT'],
-                    'PPSX': '',
-                    'NewUser': '1',
-                    'FoundMSAs': '',
-                    'fspost': '0',
-                    'i21': '0',  # wasLearnMoreShown
-                    'CookieDisclosure': '0',
-                    'IsFidoSupported': '1',
-                    'isSignupPost': '0',
-                    'i19': '16369',  # time on page
+                    'hpgrequestid': state['x-ms-request-id'],
+                    'sacxt': '',
+                    'hideSmsInMfaProofs': False,
+                    'canary': state['canary'],
+                    'i19': 14798,
                 }
 
                 response = session.post(url, headers=headers, data=payload)
-                total_response_length += int(response.headers.get('content-length', '0'))
-
-                logger.debug('user auth request 3: %s (%d)', response.url, response.status_code)
+                logger.debug('user auth request EndAuth: %s (%d)', response.url, response.status_code)
 
                 if response.status_code != 200:
-                    message = f'user auth request 3: {response.url} had unexpected status code {response.status_code}'
-                    raise RuntimeError(message)
+                    message = f'user auth request ProcessAuth: {response.url} had unexpected status code {response.status_code}'
+                    raise AzureAadFlowError(message)
 
-                config = _parse_response_config(response)
+                try:
+                    config = _parse_response_config(response)
+                    exception_message = config.get('strServiceExceptionMessage', None)
 
-                exception_message = config.get('strServiceExceptionMessage', None)
-
-                if exception_message is not None and len(exception_message.strip()) > 0:
-                    raise RuntimeError(exception_message)
+                    if exception_message is not None and len(exception_message.strip()) > 0:
+                        raise AzureAadFlowError(exception_message)
+                except ValueError:  # pragma: no cover
+                    pass
 
                 config = update_state(state, response)
+                # // process auth -->
+            # // request 3 -->
 
-                user_proofs = config.get('arrUserProofs', [])
+            #  <!-- request 4
+            if config['urlPost'].startswith('https://'):
+                message = f"unexpected response from {response.url}, incorrect username and/or password?"
+                raise AzureAadFlowError(message)
 
-                if len(user_proofs) > 0:
-                    otp_secret = auth_user_context.get('otp_secret', None)
-                    otp_user_proofs = [
-                        user_proof
-                        for user_proof in user_proofs
-                        if user_proof.get('authMethodId', None) == 'PhoneAppOTP' and 'SoftwareTokenBasedTOTP' in user_proof.get('phoneAppOtpTypes', [])
-                    ]
+            url = f'https://{host}{config["urlPost"]}'
 
-                    if len(otp_user_proofs) != 1:
-                        user_proof = user_proofs[0]
+            headers = {
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Host': host,
+                'Referer': referer,
+                **headers_ua,
+            }
 
-                        if otp_secret is None:
-                            error_message = f'{username_lowercase} requires MFA for login: {user_proof["authMethodId"]} = {user_proof["display"]}'
-                        else:
-                            error_message = f'{username_lowercase} is assumed to use TOTP for MFA, but does not have that authentication method configured'
+            payload = {
+                'LoginOptions': '3',
+                'type': '28',
+                'ctx': state['sCtx'],
+                'hprequestid': state['sessionId'],
+                'flowToken': state['sFT'],
+                'canary': state['canary'],
+                'i19': '1337',
+            }
 
-                        logger.error(error_message)
+            # does not seem to be needed for token v2.0, so only add them for v1.0
+            if not is_token_v2_0:
+                payload.update({
+                    'i2': '',
+                    'i17': '',
+                    'i18': '',
+                })
 
-                        raise RuntimeError(error_message)
+            response = session.post(url, headers=headers, data=payload, allow_redirects=False)
+            logger.debug('user auth request 4: %s (%d)', response.url, response.status_code)
 
-                    assert otp_secret is not None, f'{username_lowercase} requires TOTP for MFA, but auth.user.otp_secret is not set'
-
-                    # <!-- begin auth
-                    poll_start = int(datetime.now(tz=ZoneInfo('UTC')).timestamp() * 1000)
-                    url = config['urlBeginAuth']
-
-                    headers = {
-                        'Canary': state['apiCanary'],
-                        'Client-Request-Id': state['correlationId'],
-                        'Hpgrequestid': state['x-ms-request-id'],
-                        'Hpgact': state['hpgact'],
-                        'Hpgid': state['hpgid'],
-                        'Origin': host,
-                        'Referer': referer,
-                    }
-
-                    payload = {
-                        'AuthMethodId': 'PhoneAppOTP',
-                        'Method': 'BeginAuth',
-                        'ctx': state['sCtx'],
-                        'flowToken': state['sFT'],
-                    }
-
-                    response = session.post(url, headers=headers, json=payload)
-                    total_response_length += int(response.headers.get('content-length', '0'))
-                    logger.debug('user auth request BeginAuth: %s (%d)', response.url, response.status_code)
-
-                    if response.status_code != 200:
-                        message = f'user auth request BeginAuth: {response.url} had unexpected status code {response.status_code}'
-                        raise RuntimeError(message)
-
-                    payload = response.json()
-
-                    if not payload['Success']:
-                        error_message = f'user auth request BeginAuth: {payload.get("ErrCode", -1)} - {payload.get("Message", "unknown")}'
-                        logger.error(error_message)
-                        raise RuntimeError(error_message)
-
-                    state.update({
-                        'sCtx': payload['Ctx'],
-                        'sFT': payload['FlowToken'],
-                        'correlationId': payload['CorrelationId'],
-                        'sessionId': payload['SessionId'],
-                        'x-ms-request-id': response.headers.get('X-Ms-Request-Id', state['x-ms-request-id']),
-                    })
-                    poll_end = int(datetime.now(tz=ZoneInfo('UTC')).timestamp() * 1000)
-                    # // begin auth -->
-
-                    # <!-- end auth
-                    totp = TOTP(otp_secret)
-                    totp_code = totp.now()
-                    url = config['urlEndAuth']
-                    payload = {
-                        'AdditionalAuthData': totp_code,
-                        'AuthMethodId': 'PhoneAppOTP',
-                        'Ctx': state['sCtx'],
-                        'FlowToken': state['sFT'],
-                        'Method': 'EndAuth',
-                        'PollCount': 1,
-                        'SessionId': state['sessionId'],
-                    }
-
-                    response = session.post(url, headers=headers, json=payload)
-                    total_response_length += int(response.headers.get('content-length', '0'))
-                    logger.debug('user auth request EndAuth: %s (%d)', response.url, response.status_code)
-
-                    if response.status_code != 200:
-                        message = f'user auth request EndAuth: {response.url} had unexpected status code {response.status_code}'
-                        raise RuntimeError(message)
-
-                    payload = response.json()
-
-                    if not payload['Success']:
-                        error_message = f'user auth request EndAuth: {payload.get("ErrCode", -1)} - {payload.get("Message", "unknown")}'
-                        logger.error(error_message)
-                        raise RuntimeError(error_message)
-
-                    state.update({
-                        'sCtx': payload['Ctx'],
-                        'sFT': payload['FlowToken'],
-                        'correlationId': payload['CorrelationId'],
-                        'sessionId': payload['SessionId'],
-                        'x-ms-request-id': response.headers.get('X-Ms-Request-Id', state['x-ms-request-id']),
-                    })
-                    # // end auth -->
-
-                    # <!-- process auth
-                    url = config['urlPost']
-
-                    headers = {
-                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                        'Host': host,
-                        'Referer': referer,
-                        **headers_ua,
-                    }
-
-                    payload = {
-                        'type': 19,
-                        'GeneralVerify': False,
-                        'request': state['sCtx'],
-                        'mfaLastPollStart': poll_start,
-                        'mfaLastPollEnd': poll_end,
-                        'mfaAuthMethod': 'PhoneAppOTP',
-                        'otc': int(totp_code),
-                        'login': username_lowercase,
-                        'flowToken': state['sFT'],
-                        'hpgrequestid': state['x-ms-request-id'],
-                        'sacxt': '',
-                        'hideSmsInMfaProofs': False,
-                        'canary': state['canary'],
-                        'i19': 14798,
-                    }
-
-                    response = session.post(url, headers=headers, data=payload)
-                    total_response_length += int(response.headers.get('content-length', '0'))
-                    logger.debug('user auth request EndAuth: %s (%d)', response.url, response.status_code)
-
-                    if response.status_code != 200:
-                        message = f'user auth request ProcessAuth: {response.url} had unexpected status code {response.status_code}'
-                        raise RuntimeError(message)
-
+            if initialize_uri is None:
+                if response.status_code != 302:
                     try:
                         config = _parse_response_config(response)
                         exception_message = config.get('strServiceExceptionMessage', None)
 
                         if exception_message is not None and len(exception_message.strip()) > 0:
-                            raise RuntimeError(exception_message)
-                    except ValueError:  # pragma: no cover
-                        pass
-
-                    config = update_state(state, response)
-                    # // process auth -->
-                # // request 3 -->
-
-                #  <!-- request 4
-                assert not config['urlPost'].startswith('https://'), f"unexpected response from {response.url}, incorrect username and/or password?"
-                url = f'https://{host}{config["urlPost"]}'
-
-                headers = {
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'Host': host,
-                    'Referer': referer,
-                    **headers_ua,
-                }
-
-                payload = {
-                    'LoginOptions': '3',
-                    'type': '28',
-                    'ctx': state['sCtx'],
-                    'hprequestid': state['sessionId'],
-                    'flowToken': state['sFT'],
-                    'canary': state['canary'],
-                    'i19': '1337',
-                }
-
-                # does not seem to be needed for token v2.0, so only add them for v1.0
-                if not is_token_v2_0:
-                    payload.update({
-                        'i2': '',
-                        'i17': '',
-                        'i18': '',
-                    })
-
-                response = session.post(url, headers=headers, data=payload, allow_redirects=False)
-                total_response_length += int(response.headers.get('content-length', '0'))
-
-                logger.debug('user auth request 4: %s (%d)', response.url, response.status_code)
-
-                if initialize_uri is None:
-                    if response.status_code != 302:
-                        try:
-                            config = _parse_response_config(response)
-                            exception_message = config.get('strServiceExceptionMessage', None)
-
-                            if exception_message is not None and len(exception_message.strip()) > 0:
-                                raise RuntimeError(exception_message)
-                        except ValueError:
-                            pass
-
-                        message = f'user auth request 4: {response.url} had unexpected status code {response.status_code}'
-                        raise RuntimeError(message)
-
-                    assert 'Location' in response.headers, f'Location header was not found in response from {response.url}'
-
-                    token_url = response.headers['Location']
-                    assert token_url.startswith(f'{redirect_uri}'), f'unexpected redirect URI, got {token_url} but expected {redirect_uri}'
-                    # // request 4 -->
-
-                    token_url_parsed = urlparse(token_url)
-                    fragments = parse_qs(token_url_parsed.fragment)
-
-                    # exchange received with with a token
-                    if is_token_v2_0:
-                        assert code_verifier is not None, 'no code verifier has been generated!'
-                        assert 'code' in fragments, f'could not find code in {token_url}'
-                        code = fragments['code'][0]
-                        return cls.get_oauth_token(client, (code, code_verifier))
-
-                    assert 'id_token' in fragments, f'could not find id_token in {token_url}'
-                    token = fragments['id_token'][0]
-                    return (AuthType.HEADER, token)
-
-                parser = FormPostParser()
-                parser.feed(response.text)
-
-                if response.status_code != 200 or parser.action is None:
-                    try:
-                        config = _parse_response_config(response)
-                        exception_message = config.get('strServiceExceptionMessage', None)
-
-                        if exception_message is not None and len(exception_message.strip()) > 0:
-                            raise RuntimeError(exception_message)
+                            raise AzureAadFlowError(exception_message)
                     except ValueError:
                         pass
 
                     message = f'user auth request 4: {response.url} had unexpected status code {response.status_code}'
-                    raise RuntimeError(message)
+                    raise AzureAadFlowError(message)
 
-                origin = f'https://{host}'
+                if 'Location' not in response.headers:
+                    message = f'Location header was not found in response from {response.url}'
+                    raise AzureAadFlowError(message)
 
-                headers.update({
-                    'Origin': origin,
-                    'Referer': origin,
-                })
+                token_url = response.headers['Location']
+                if not token_url.startswith(f'{redirect_uri}'):
+                    message = f'unexpected redirect URI, got {token_url} but expected {redirect_uri}'
+                    raise AzureAadFlowError(message)
+                # // request 4 -->
 
-                safe_del(headers, 'Host')
+                token_url_parsed = urlparse(token_url)
+                fragments = parse_qs(token_url_parsed.fragment)
 
-                response = session.post(parser.action, headers=headers, data=parser.payload, allow_redirects=True, verify=verify)
+                # exchange received with with a token
+                if is_token_v2_0:
+                    assert code_verifier is not None, 'no code verifier has been generated!'
+                    assert 'code' in fragments, f'could not find code in {token_url}'
+                    code = fragments['code'][0]
+                    return self.get_oauth_token(code=code, verifier=code_verifier, tenant_id=tenant)
 
-                if response.status_code != 200:
-                    message = f'user auth request 5: {response.url} had unexpected status code {response.status_code}'
-                    raise RuntimeError(message)
+                if 'id_token' not in fragments:
+                    message = f'could not find id_token in {token_url}'
+                    raise AzureAadFlowError(message)
 
-                for cookie in session.cookies:
-                    domain = cookie.domain[1:] if cookie.domain_initial_dot else cookie.domain
+                token = fragments['id_token'][0]
+                expires_on = int(datetime.now(tz=timezone.utc).timestamp()) + int(fragments.get('expires_in', ['3500'])[0])
 
-                    if domain in initialize_uri:
-                        return AuthType.COOKIE, f'{cookie.name}={cookie.value}'
+                return AccessToken(token, expires_on)
 
-                message = 'did not find AAD cookie in authorization flow response session'
-                raise RuntimeError(message)
-        except Exception as e:
-            exception = e
-            message = str(e)
-            logger.exception(message)
-        finally:
-            scenario_index = client._scenario.identifier
+            parser = FormPostParser()
+            parser.feed(response.text)
 
-            version = '' if is_token_v2_0 is None else 'v1.0' if not is_token_v2_0 else 'v2.0'
+            if response.status_code != 200 or parser.action is None:
+                try:
+                    config = _parse_response_config(response)
+                    exception_message = config.get('strServiceExceptionMessage', None)
 
-            request_meta = {
-                'request_type': 'AUTH',
-                'response_time': int((time_perf_counter() - start_time) * 1000),
-                'name': f'{scenario_index} {cls.__name__} OAuth2 user token {version}: {username_lowercase}',
-                'context': client._context,
-                'response': None,
-                'exception': exception,
-                'response_length': total_response_length,
-            }
+                    if exception_message is not None and len(exception_message.strip()) > 0:
+                        raise AzureAadFlowError(exception_message)
+                except ValueError:
+                    pass
 
-            client.environment.events.request.fire(**request_meta)
+                message = f'user auth request 4: {response.url} had unexpected status code {response.status_code}'
+                raise AzureAadFlowError(message)
 
-            if exception is not None:
-                raise StopUser
-
-    @classmethod
-    def get_oauth_token(cls, client: GrizzlyHttpAuthClient, pkcs: Optional[Tuple[str, str]] = None) -> Tuple[AuthType, str]:  # noqa: PLR0915
-        auth_context = client._context.get('auth', None)
-        assert auth_context is not None, 'context variable auth is not set'
-        provider_url = auth_context.get('provider', None)
-        assert provider_url is not None, 'context variable auth.provider is not set'
-
-        auth_client_context = auth_context.get('client', None)
-        assert auth_client_context is not None, 'context variable auth.client is not set'
-        resource = auth_client_context.get('resource', client.host)
-
-        auth_user_context = auth_context.get('user', None)
-
-        is_token_v2_0 = 'v2.0' in provider_url
-
-        url = f'{provider_url}/token'
-
-        version = 'v2.0' if is_token_v2_0 else 'v1.0'
-
-        # parameters valid for both versions
-        parameters: Dict[str, Any] = {
-            'data': {
-                'grant_type': None,
-                'client_id': auth_client_context['id'],
-            },
-            'verify': True,
-        }
-
-        # build generic header values, but remove stuff that shouldn't be part
-        # of authentication flow
-        headers = {**client.metadata}
-        safe_del(headers, 'Authorization')
-        safe_del(headers, 'Content-Type')
-        safe_del(headers, 'Ocp-Apim-Subscription-Key')
-
-        start_time = time_perf_counter()
-
-        if pkcs is not None:  # token v2.0, authorization_code
-            assert auth_user_context is not None, 'context variable auth.user is not set'
-            code, code_verifier = pkcs
-
-            redirect_uri = auth_user_context['redirect_uri']
-            assert redirect_uri is not None, 'context variable auth.user.redirect_uri is not set'
-            redirect_uri_parsed = urlparse(redirect_uri)
-
-            if len(redirect_uri_parsed.netloc) == 0:
-                redirect_uri = f'{client.host}{redirect_uri}'
-                redirect_uri_parsed = urlparse(redirect_uri)
-
-            origin = f'{redirect_uri_parsed.scheme}://{redirect_uri_parsed.netloc}'
+            origin = f'https://{host}'
 
             headers.update({
                 'Origin': origin,
                 'Referer': origin,
             })
 
-            parameters['data'].update({
-                'grant_type': 'authorization_code',
-                'redirect_uri': redirect_uri,
-                'code': code,
-                'code_verifier': code_verifier,
-            })
-        elif not is_token_v2_0:  # token v1.0
-            parameters['data'].update({
-                'grant_type': 'client_credentials',
-                'client_secret': auth_client_context['secret'],
-                'resource': resource,
-            })
-        elif is_token_v2_0:  # token v2.0
-            tenant = auth_context.get('tenant', None)
-            if tenant is None:
-                provider_url_parsed = urlparse(provider_url)
-                tenant, _ = provider_url_parsed.path[1:].split('/', 1)
+            safe_del(headers, 'Host')
 
-            parameters['data'].update({
-                'grant_type': 'client_credentials',
-                'client_secret': auth_client_context['secret'],
-                'scope': resource,
-                'tenant': tenant,
-            })
+            response = session.post(parser.action, headers=headers, data=parser.payload, allow_redirects=True, verify=verify)
 
-        parameters.update({'headers': headers, 'allow_redirects': (pkcs is None)})
+            if response.status_code != 200:
+                message = f'user auth request 5: {response.url} had unexpected status code {response.status_code}'
+                raise AzureAadFlowError(message)
 
-        exception: Optional[Exception] = None
+            for cookie in session.cookies:
+                domain = cookie.domain[1:] if cookie.domain_initial_dot else cookie.domain
 
-        response_length: int = 0
+                if domain in initialize_uri:
+                    expires_on = cookie.expires or int(datetime.now(tz=timezone.utc).timestamp() + 3500)
+                    if cookie.value is None:
+                        message = 'token cookie did not contain a value'
+                        raise AzureAadFlowError(message)
 
-        try:
-            with requests.Session() as session:
-                response = session.post(url, **parameters)
-                response_length = len(response.text.encode())
-                payload = json.loads(response.text)
+                    return AccessToken(cookie.value, expires_on)
 
-                if response.status_code != 200:
-                    raise RuntimeError(payload['error_description'])
+            message = 'did not find AAD cookie in authorization flow response session'
+            raise AzureAadFlowError(message)
 
-                token = str(payload['access_token']) if pkcs is None else str(payload['id_token'])
 
-                return (AuthType.HEADER, token)
-        except Exception as e:
-            exception = e
-            logger.exception('failed to get token via token')
-        finally:
-            scenario_index = client._scenario.identifier
+    def get_oauth_token(
+        self, *, code: Optional[str] = None, verifier: Optional[str] = None, resource: Optional[str] = None, tenant_id: Optional[str] = None,
+    ) -> AccessToken:
+        tenant = tenant_id if tenant_id is not None else self.tenant
 
-            request_meta = {
-                'request_type': 'AUTH',
-                'response_time': int((time_perf_counter() - start_time) * 1000),
-                'name': f'{scenario_index} {cls.__name__} OAuth2 client token {version}: {auth_client_context["id"]}',
-                'context': client._context,
-                'response': None,
-                'exception': exception,
-                'response_length': response_length,
-            }
+        parsed_tenant = urlparse(tenant)
+        if len(parsed_tenant.netloc) > 0:
+            path = parsed_tenant.path.lstrip('/')
+            tenant, _ = path.split('/', 1)
 
-            if pkcs is None:
-                client.environment.events.request.fire(**request_meta)
+        provider_url = f'https://login.microsoftonline.com/{tenant}/oauth2/v2.0'
 
-            if exception is not None:
-                raise StopUser
+        url = f'{provider_url}/token'
+
+        # parameters valid for both versions
+        parameters: dict[str, Any] = {
+            'data': {'grant_type': None, 'client_id': self.client_id},
+            'verify': True,
+        }
+
+        # build generic header values, but remove stuff that shouldn't be part
+        # of authentication flow
+        headers = {}
+
+        if self.auth_type == AuthType.HEADER:
+            redirect_uri = cast(str, self.redirect)
+            redirect_uri_parsed = urlparse(redirect_uri)
+        else:
+            redirect_uri_parsed = urlparse(self.host)
+            if len(redirect_uri_parsed.scheme) < 1:
+                redirect_uri_parsed = redirect_uri_parsed._replace(scheme='https')
+
+            if len(redirect_uri_parsed.netloc) < 1:
+                redirect_uri_parsed = redirect_uri_parsed._replace(netloc=redirect_uri_parsed.path, path='')
+
+        origin = f'{redirect_uri_parsed.scheme}://{redirect_uri_parsed.netloc}'
+
+        headers.update({'Origin': origin, 'Referer': origin})
+
+        if verifier is not None:
+            parameters['data'].update(
+                {
+                    'grant_type': 'authorization_code',
+                    'redirect_uri': redirect_uri,
+                    'code': code,
+                    'code_verifier': verifier,
+                },
+            )
+        else:
+            parameters['data'].update(
+                {
+                    'grant_type': 'client_credentials',
+                    'redirect_uri': self.password,
+                    'scope': resource,
+                    'tenant': tenant,
+                },
+            )
+
+        parameters.update({'headers': headers, 'allow_redirects': True})
+
+        with requests.Session() as session:
+            retries = Retry(total=3, connect=3, read=3, status=0, backoff_factor=0.1)
+            session.mount('https://', HTTPAdapter(max_retries=retries))
+
+            response = session.post(url, **parameters)
+            payload = json.loads(response.text)
+
+            if response.status_code != 200:
+                raise RuntimeError(payload['error_description'])
+
+            token = payload.get('id_token', payload.get('access_token', None))
+            if token is None:
+                message = 'neither `id_token` or `access_token` was found in payload'
+                raise AzureAadFlowError(message)
+            expires_on = int(
+                datetime.now(tz=timezone.utc).timestamp()
+                + payload.get('expires_in', self.refresh_time),
+            )
+
+            return AccessToken(token, expires_on)
+
+
+class AAD(RefreshToken):
+    __TOKEN_CREDENTIAL_TYPE__ = AzureAadCredential

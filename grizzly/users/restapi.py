@@ -94,7 +94,7 @@ from locust.exception import ResponseError
 
 from grizzly.auth import AAD, GrizzlyHttpAuthClient, refresh_token
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod
-from grizzly.utils import merge_dicts, safe_del
+from grizzly.utils import merge_dicts
 from grizzly_extras.transformer import TransformerContentType
 
 from . import AsyncRequests, GrizzlyUser, GrizzlyUserMeta, grizzlycontext
@@ -338,7 +338,7 @@ class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=R
         """
         current_username = self._context.get('auth', {}).get('user', {}).get('username', None)
         current_password = self._context.get('auth', {}).get('user', {}).get('password', None)
-        current_authorization = self.metadata.get('Authorization', None)
+        current_credential = self.credential
 
         changed_username = context.get('auth', {}).get('user', {}).get('username', None)
         changed_password = context.get('auth', {}).get('user', {}).get('password', None)
@@ -350,14 +350,14 @@ class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=R
             current_username is not None
             and current_password is not None
             and self.__context_change_history__ == set()
-            and current_authorization is not None
+            and current_credential is not None
             and (changed_username is not None or changed_password is not None)
         ):
             cache_key_plain = f'{current_username}:{current_password}'
             cache_key = sha256(cache_key_plain.encode()).hexdigest()
 
             if cache_key not in self.__cached_auth__:
-                self.__cached_auth__.update({cache_key: current_authorization})
+                self.__cached_auth__.update({cache_key: current_credential})
 
         super().add_context(context)
 
@@ -390,9 +390,9 @@ class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=R
         cache_key_plain = f'{username}:{password}'
         cache_key = sha256(cache_key_plain.encode()).hexdigest()
 
-        cached_authorization = self.__cached_auth__.get(cache_key, None)
+        cached_credential = self.__cached_auth__.get(cache_key, None)
 
-        if cached_authorization is not None:   # restore from cache
-            self.metadata.update({'Authorization': cached_authorization})
+        if cached_credential is not None:   # restore from cache
+            self.credential = cached_credential
         else:  # remove from metadata, to force a re-authentication
-            safe_del(self.metadata, 'Authorization')
+            self.credential = None
