@@ -52,12 +52,12 @@ def test_e2e_step_response_save_matches(e2e_fixture: End2EndFixture) -> None:
 
     index = 0
     for target in targets:
-        table.append({'target': target.name.lower(), 'index': str(index), 'attr_name': 'foobar'})
+        table.append({'target': target.name.lower(), 'index': str(index), 'attr_name': 'Foobar'})
 
         scenario += [
-            f'Given value for variable "expression_{index}" is "$.foobar"',
+            f'Given value for variable "expression_{index}" is "$.Foobar"',
             f'Given value for variable "tmp_{index}" is "none"',
-            f'Then get request with name "{target.name.lower()}-handler" from endpoint "/api/echo?foobar=foo | content_type=json"',
+            f'Then get request with name "{target.name.lower()}-handler" from endpoint "/api/echo?Foobar=foo | content_type=json"',
             'And metadata "foobar" is "foobar"',
             f'Then save response {target.name.lower()} "{{{{ expression_{index} }}}} | expected_matches=1" that matches "foo.*$" in variable "tmp_{index}"',
             f'Then log message "tmp_{index}={{{{ tmp_{index} }}}}"',
@@ -189,13 +189,13 @@ def test_e2e_step_response_save(e2e_fixture: End2EndFixture) -> None:
 
     index = 0
     for target in targets:
-        attr_name = 'foobar'
+        attr_name = 'Foobar'
         table.append({'target': target.name.lower(), 'index': str(index), 'attr_name': attr_name})
 
         scenario += [
             f'Given value for variable "tmp_{index}" is "none"',
             f'And value for variable "expected_matches_{index}" is "1"',
-            f'Then get request with name "{target.name.lower()}-handler" from endpoint "/api/echo?foobar=foo | content_type=json"',
+            f'Then get request with name "{target.name.lower()}-handler" from endpoint "/api/echo?Foobar=foo | content_type=json"',
             'And metadata "foobar" is "foobar"',
             f'Then save response {target.name.lower()} "$.{attr_name} | expected_matches=\'{{{{ expected_matches_{index} }}}}\'" in variable "tmp_{index}"',
             f'Then log message "expected_matches_{index}={{{{ expected_matches_{index} }}}}, tmp_{index}={{{{ tmp_{index} }}}}"',

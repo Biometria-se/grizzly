@@ -901,6 +901,9 @@ def step_start_webserver(context: Context, port: int) -> None:
                 source_lines[0] = re.sub(r'^def .*?\(', f'def {key}_before_feature(', source_lines[0])
                 source = '\n'.join(source_lines)
 
+                # "render" references to myself
+                source = source.replace('{e2e_fixture.host}', self.host).replace('{e2e_fixture.webserver.auth_provider_uri}', self.webserver.auth_provider_uri)
+
                 fd.write(source + '\n\n')
 
             fd.write('def after_feature(context: Context, feature: Feature, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:\n')

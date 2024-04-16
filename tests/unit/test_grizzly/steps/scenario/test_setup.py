@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING, cast
 
 from parse import compile
 
+from grizzly.auth import AAD
+from grizzly.auth.aad import AzureAadCredential
 from grizzly.context import GrizzlyContext
 from grizzly.steps import *
 from grizzly.tasks.clients import HttpClientTask
@@ -37,7 +39,7 @@ def test_parse_iteration_gramatical_number() -> None:
     assert parse_iteration_gramatical_number(' asdf ') == 'asdf'
 
 
-def test_step_setup_set_context_variable_runtime(grizzly_fixture: GrizzlyFixture) -> None:
+def test_step_setup_set_context_variable_runtime(grizzly_fixture: GrizzlyFixture) -> None:  # noqa: PLR0915
     parent = grizzly_fixture(user_type=RestApiUser)
 
     assert isinstance(parent.user, RestApiUser)
@@ -76,13 +78,18 @@ def test_step_setup_set_context_variable_runtime(grizzly_fixture: GrizzlyFixture
     assert isinstance(task_factory, SetVariableTask)
     assert task_factory.variable_type == VariableType.CONTEXT
 
-    parent.user.metadata.update({'Authorization': 'Bearer f00bar=='})
+    AAD.initialize(parent.user)
+
+    assert isinstance(parent.user.credential, AzureAadCredential)
+    credential_bob = parent.user.credential
+
     assert parent.user.metadata == {
         'Content-Type': 'application/json',
         'x-grizzly-user': 'RestApiUser_001',
-        'Authorization': 'Bearer f00bar==',
     }
     assert parent.user._context.get('auth', {}).get('user', {}) == SOME(dict, username='bob', password='foobar')  # noqa: S106
+    assert parent.user.credential.username == 'bob'
+    assert parent.user.credential.password == 'foobar'  # noqa: S105
 
     task_factory()(parent)
 
@@ -90,13 +97,13 @@ def test_step_setup_set_context_variable_runtime(grizzly_fixture: GrizzlyFixture
     assert parent.user.metadata == {
         'Content-Type': 'application/json',
         'x-grizzly-user': 'RestApiUser_001',
-        'Authorization': 'Bearer f00bar==',
     }
+    assert parent.user.credential is credential_bob
 
     expected_cache_key = sha256(b'bob:foobar').hexdigest()
 
     assert parent.user.__context_change_history__ == {'auth.user.username'}
-    assert parent.user.__cached_auth__ == {expected_cache_key: 'Bearer f00bar=='}
+    assert parent.user.__cached_auth__ == {expected_cache_key: SOME(AzureAadCredential, username=credential_bob.username, password=credential_bob.password)}
 
     step_setup_set_context_variable(behave, 'auth.user.password', 'hello world')
 
@@ -114,9 +121,10 @@ def test_step_setup_set_context_variable_runtime(grizzly_fixture: GrizzlyFixture
         'Content-Type': 'application/json',
         'x-grizzly-user': 'RestApiUser_001',
     }
+    assert getattr(parent.user, 'credential', 'asdf') is None
 
     assert parent.user.__context_change_history__ == set()
-    assert parent.user.__cached_auth__ == {expected_cache_key: 'Bearer f00bar=='}
+    assert parent.user.__cached_auth__ == {expected_cache_key: SOME(AzureAadCredential, username=credential_bob.username, password=credential_bob.password)}
 
     step_setup_set_context_variable(behave, 'auth.user.username', 'bob')
     task_factory = grizzly.scenario.tasks().pop()
@@ -127,10 +135,10 @@ def test_step_setup_set_context_variable_runtime(grizzly_fixture: GrizzlyFixture
     task_factory()(parent)
 
     assert parent.user._context.get('auth', {}).get('user', {}) == SOME(dict, username='bob', password='foobar')  # noqa: S106
+    assert parent.user.credential == SOME(AzureAadCredential, username=credential_bob.username, password=credential_bob.password)
     assert parent.user.metadata == {
         'Content-Type': 'application/json',
         'x-grizzly-user': 'RestApiUser_001',
-        'Authorization': 'Bearer f00bar==',
     }
     assert parent.user.__context_change_history__ == set()
 

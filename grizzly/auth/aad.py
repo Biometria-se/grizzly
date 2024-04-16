@@ -110,7 +110,7 @@ from hashlib import sha256
 from html.parser import HTMLParser
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from secrets import token_urlsafe
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Optional, Tuple, Type, cast
 from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
 
@@ -197,7 +197,7 @@ class AzureAadWebserver:
 
     def __init__(self, credential: AzureAadCredential) -> None:
         self.credential = credential
-        self.enable = (self.credential.redirect is None)
+        self.enable = (self.credential.redirect is None and self.credential.initialize is None)
 
     def _start(self) -> None:
         if not self.enable:
@@ -233,7 +233,7 @@ class AzureAadWebserver:
     def __enter__(self) -> Self:
         self._redirect = self.credential.redirect
 
-        if self.credential.redirect is None:
+        if self.enable:
             self.credential.redirect = f'http://localhost:{self._http_server.server_port}'
 
         self._start()
@@ -254,7 +254,9 @@ class AzureAadWebserver:
 
 
 class AzureAadCredential(GrizzlyTokenCredential):
-    username: str
+    provider_url_template: ClassVar[str] = 'https://login.microsoftonline.com/{tenant}/oauth2/v2.0'
+
+    username: Optional[str]
     password: str
     scope: str | None
     client_id: str
@@ -272,14 +274,14 @@ class AzureAadCredential(GrizzlyTokenCredential):
 
     def __init__(  # noqa: PLR0913
         self,
-        username: str,
+        username: Optional[str],
         password: str,
         tenant: str,
         auth_method: AuthMethod,
         /,
         host: str,
-        redirect: str | None,
-        initialize: str | None,
+        redirect: str | None = None,
+        initialize: str | None = None,
         otp_secret: str | None = None,
         scope: str | None = None,
         client_id: str = '04b07795-8ddb-461a-bbee-02f9e1bf7b46',
@@ -326,8 +328,8 @@ class AzureAadCredential(GrizzlyTokenCredential):
     ) -> AccessToken:
         now = datetime.now(tz=timezone.utc).timestamp()
 
-        if self._access_token is None or self._access_token.expires_on >= now:
-            action_name = 'refreshed' if self._access_token is not None else 'claimed'
+        if self._access_token is None or self._access_token.expires_on <= now:
+            self._refreshed = self._access_token is not None and self._access_token.expires_on <= now
 
             if self.auth_method == AuthMethod.USER:
                 with self.webserver:
@@ -337,13 +339,7 @@ class AzureAadCredential(GrizzlyTokenCredential):
             else:
                 self._access_token = self.get_oauth_token(tenant_id=tenant_id)
 
-            refreshed_for = (self.username or '<unknown username>') if self.auth_method == AuthMethod.USER else self.client_id
-            logger.info('%s token for %s', action_name, refreshed_for)
-            self._refreshed = True
-
-        assert self._access_token is not None
-
-        return self._access_token
+        return cast(AccessToken, self._access_token)
 
     def get_oauth_authorization(  # noqa: C901, PLR0915
         self, *scopes: str, claims: str | None = None, tenant_id: str | None = None,  # noqa: ARG002
@@ -362,7 +358,7 @@ class AzureAadCredential(GrizzlyTokenCredential):
                 message = f'no config found in response from {response.url}'
                 raise ValueError(message)
 
-            return cast(dict[str, Any], json.loads(f'{{{match.group(1)}}}'))
+            return cast(Dict[str, Any], json.loads(f'{{{match.group(1)}}}'))
 
         def update_state(
             state: dict[str, str], response: requests.Response,
@@ -406,17 +402,15 @@ class AzureAadCredential(GrizzlyTokenCredential):
 
         initialize_uri = self.initialize
         redirect_uri = self.redirect
-        provider_url: Optional[str] = None
+        provider_url = self.provider_url_template.format(tenant=tenant)
+        provider_parsed = urlparse(provider_url)
 
-        is_token_v2_0: Optional[bool] = None
+        is_token_v2_0: bool = True
         if initialize_uri is None:
-            provider_url = f'https://login.microsoftonline.com/{tenant}/oauth2/v2.0'
-            provider_parsed = urlparse(provider_url)
             redirect_uri = cast(str, self.redirect)
-            is_token_v2_0 = 'v2.0' in provider_url
 
         verify = True
-        username_lowercase = self.username.lower()
+        username_lowercase = cast(str, self.username).lower()
 
         with requests.Session() as session:
             retries = Retry(total=3, connect=3, read=3, status=0, backoff_factor=0.1)
@@ -514,14 +508,17 @@ class AzureAadCredential(GrizzlyTokenCredential):
 
             referer = response.url
 
-            config = _parse_response_config(response)
+            try:
+                config = _parse_response_config(response)
 
-            exception_message = config.get('strServiceExceptionMessage', None)
+                exception_message = config.get('strServiceExceptionMessage', None)
 
-            if exception_message is not None and len(exception_message.strip()) > 0:
-                raise AzureAadFlowError(exception_message)
+                if exception_message is not None and len(exception_message.strip()) > 0:
+                    raise AzureAadFlowError(exception_message)
 
-            config = update_state(state, response)
+                config = update_state(state, response)
+            except ValueError as e:
+                raise AzureAadFlowError(str(e)) from None
             # // request 1 -->
 
             # <!-- request 2
@@ -646,6 +643,7 @@ class AzureAadCredential(GrizzlyTokenCredential):
             exception_message = config.get('strServiceExceptionMessage', None)
 
             if exception_message is not None and len(exception_message.strip()) > 0:
+                logger.error(exception_message)
                 raise AzureAadFlowError(exception_message)
 
             config = update_state(state, response)
@@ -799,6 +797,7 @@ class AzureAadCredential(GrizzlyTokenCredential):
                     exception_message = config.get('strServiceExceptionMessage', None)
 
                     if exception_message is not None and len(exception_message.strip()) > 0:
+                        logger.error(exception_message)
                         raise AzureAadFlowError(exception_message)
                 except ValueError:  # pragma: no cover
                     pass
@@ -942,7 +941,7 @@ class AzureAadCredential(GrizzlyTokenCredential):
             path = parsed_tenant.path.lstrip('/')
             tenant, _ = path.split('/', 1)
 
-        provider_url = f'https://login.microsoftonline.com/{tenant}/oauth2/v2.0'
+        provider_url = self.provider_url_template.format(tenant=tenant)
 
         url = f'{provider_url}/token'
 
@@ -984,13 +983,13 @@ class AzureAadCredential(GrizzlyTokenCredential):
             parameters['data'].update(
                 {
                     'grant_type': 'client_credentials',
-                    'redirect_uri': self.password,
+                    'client_secret': self.password,
                     'scope': resource,
                     'tenant': tenant,
                 },
             )
 
-        parameters.update({'headers': headers, 'allow_redirects': True})
+        parameters.update({'headers': headers, 'allow_redirects': (code is None and verifier is None)})
 
         with requests.Session() as session:
             retries = Retry(total=3, connect=3, read=3, status=0, backoff_factor=0.1)
@@ -1000,7 +999,7 @@ class AzureAadCredential(GrizzlyTokenCredential):
             payload = json.loads(response.text)
 
             if response.status_code != 200:
-                raise RuntimeError(payload['error_description'])
+                raise AzureAadFlowError(payload['error_description'])
 
             token = payload.get('id_token', payload.get('access_token', None))
             if token is None:

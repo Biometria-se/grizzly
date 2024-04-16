@@ -2,23 +2,22 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+import re
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from itertools import product
 from json import dumps as jsondumps
-from time import time
-from typing import TYPE_CHECKING, Any, Dict, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Any, Dict, Optional, cast
 from urllib.parse import urlparse
 
 import pytest
 from requests.cookies import create_cookie
 from requests.models import Response
 
-from grizzly.auth import AAD, AuthMethod, AuthType
+from grizzly.auth import AAD, AccessToken, AuthMethod, RefreshToken
+from grizzly.auth.aad import AzureAadCredential, AzureAadError, AzureAadFlowError
 from grizzly.types import ZoneInfo
-from grizzly.types.locust import StopUser
 from grizzly.users import RestApiUser
-from grizzly.utils import safe_del
 from tests.helpers import ANY, SOME
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -30,31 +29,56 @@ if TYPE_CHECKING:  # pragma: no cover
     from tests.fixtures import GrizzlyFixture, MockerFixture
 
 
-class TestAAD:
+def test_aad() -> None:
+    assert issubclass(AAD, RefreshToken)
+    assert AAD.__TOKEN_CREDENTIAL_TYPE__ is AzureAadCredential
+
+
+class TestAzureAadCredential:
     def test_get_token(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         parent = grizzly_fixture(user_type=RestApiUser)
 
         assert isinstance(parent.user, RestApiUser)
 
         get_oauth_token_mock = mocker.patch(
-            'grizzly.auth.aad.AAD.get_oauth_token',
-            return_value=None,
+            'grizzly.auth.aad.AzureAadCredential.get_oauth_token',
+            return_value=AccessToken('asdf', expires_on=int(datetime.now(tz=timezone.utc).timestamp())),
         )
 
         get_oauth_authorization_mock = mocker.patch(
-            'grizzly.auth.aad.AAD.get_oauth_authorization',
-            return_value=None,
+            'grizzly.auth.aad.AzureAadCredential.get_oauth_authorization',
+            side_effect=[
+                AccessToken('asdf', expires_on=int(datetime.now(tz=timezone.utc).timestamp()) + 3600),
+                AccessToken('foobar', expires_on=int(datetime.now(tz=timezone.utc).timestamp()) + 4000),
+            ],
         )
 
-        AAD.get_token(parent.user, AuthMethod.CLIENT)
+        credential = AzureAadCredential(
+            'bob', 'secret', 'example.com', AuthMethod.CLIENT, host='https://example.com', redirect='https://example.com/login-callback', initialize=None,
+        )
+
+        credential.get_token('profile', 'offline', claims='profile', tenant_id='foobar')
         get_oauth_authorization_mock.assert_not_called()
-        get_oauth_token_mock.assert_called_once_with(parent.user)
+        get_oauth_token_mock.assert_called_once_with(tenant_id='foobar')
         get_oauth_token_mock.reset_mock()
 
-        AAD.get_token(parent.user, AuthMethod.USER)
+        credential = AzureAadCredential(
+            'bob', 'secret', 'example.com', AuthMethod.USER, host='https://example.com', redirect='https://example.com/login-callback', initialize=None,
+        )
+
+        access_token = credential.get_token('profile', 'offline', claims='profile', tenant_id='foobar')
         get_oauth_token_mock.assert_not_called()
-        get_oauth_authorization_mock.assert_called_once_with(parent.user)
+        get_oauth_authorization_mock.assert_called_once_with('profile', 'offline', claims='profile', tenant_id='foobar')
         get_oauth_authorization_mock.reset_mock()
+
+        assert access_token is credential.get_token()
+
+        # token is refreshed
+        datetime_mock = mocker.patch('grizzly.auth.aad.datetime')
+        datetime_mock.now.return_value = datetime(1970, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+        datetime_mock.now.return_value = datetime.now(tz=timezone.utc) + timedelta(seconds=5000)
+
+        assert access_token is not credential.get_token()
 
     @pytest.mark.skip(reason='needs real secrets')
     def test_get_oauth_authorization_real_initialize_uri(self, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture) -> None:
@@ -65,19 +89,21 @@ class TestAAD:
         grizzly = grizzly_fixture.grizzly
         grizzly.state.variables['test_payload'] = 'none'
 
-        task_factory = HttpClientTask(
+        http_client_task = type('TestHttpClientTask', (HttpClientTask,), {'__scenario__': grizzly.scenario})
+
+        task_factory = http_client_task(
             RequestDirection.FROM,
-            '',
+            '<url to request>',
             payload_variable='test_payload',
         )
 
         parent.user._context.update({
-            'host': {
+            '<host of url to request>': {
                 'auth': {
                     'user': {
-                        'username': '',
-                        'password': '',
-                        'initialize_uri': '',
+                        'username': '<username>',
+                        'password': '<password>',
+                        'initialize_uri': '<url that initializes the login by redirecting to microsoftonline.com>',
                     },
                 },
                 'verify_certificates': False,
@@ -103,28 +129,32 @@ class TestAAD:
         grizzly = grizzly_fixture.grizzly
         grizzly.state.variables['test_payload'] = 'none'
 
-        task_factory = HttpClientTask(
+        http_client_task = type('TestHttpClientTask', (HttpClientTask,), {'__scenario__': grizzly.scenario})
+
+        task_factory = http_client_task(
             RequestDirection.FROM,
-            '',
+            '<request url>',
             payload_variable='test_payload',
         )
 
         parent.user._context.update({
-            'host': {
+            '<host of request url>': {
                 'auth': {
-                    'provider': '',
+                    'tenant': '<tenant to authenticate with>',
                     'client': {
-                        'id': '',
+                        'id': '<client id of application @ tenant>',
                     },
                     'user': {
-                        'username': '',
-                        'password': '',
-                        'redirect_uri': '',
+                        'username': '<username>',
+                        'password': '<password>',
+                        'redirect_uri': '<url that tenant will redirect to with token in url fragment',
                     },
                 },
             },
         })
-        task_factory.metadata.update({'Ocp-Apim-Subscription-Key': ''})
+        task_factory.metadata.update({
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36 Edg/119.0.0.0',
+        })
 
         task = task_factory()
 
@@ -133,23 +163,27 @@ class TestAAD:
         with caplog.at_level(logging.DEBUG):
             task(parent)
 
-    @pytest.mark.parametrize(('version', 'login_start'), product(['v1.0', 'v2.0'], ['initialize_uri', 'redirect_uri']))
+        payload = parent.user._context['variables'].get('test_payload', None)
+        assert payload is not None
+
+    @pytest.mark.parametrize(('version', 'login_start'), product(['v2.0'], ['initialize_uri', 'redirect_uri']))
     def test_get_oauth_authorization(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, caplog: LogCaptureFixture, version: str, login_start: str) -> None:  # noqa: PLR0915, C901
         parent = grizzly_fixture(user_type=RestApiUser)
 
         assert isinstance(parent.user, RestApiUser)
         original_class_name = parent.user.__class__.__name__
         try:
-            fake_token = 'asdf'  # noqa: S105
+            access_token = AccessToken('asdf', expires_on=1)
 
             is_token_v2_0 = version == 'v2.0'
 
-            fire_spy = mocker.spy(parent.user.environment.events.request, 'fire')
-            mocker.patch('grizzly.auth.aad.time_perf_counter', return_value=0.0)
-            get_oauth_token_mock = mocker.patch.object(AAD, 'get_oauth_token', return_value=None)
+            credential = AzureAadCredential(
+                'test-user@example.com', 'secret', 'example.com', AuthMethod.USER, host='https://example.com', redirect='https://www.example.com/login-callback', initialize=None,
+            )
+            get_oauth_token_mock = mocker.patch.object(credential, 'get_oauth_token', return_value=None)
 
             if is_token_v2_0:
-                get_oauth_token_mock.return_value = (AuthType.HEADER, fake_token)
+                get_oauth_token_mock.return_value = access_token
 
             class Error(Enum):
                 REQUEST_1_NO_DOLLAR_CONFIG = 100
@@ -182,8 +216,7 @@ class TestAAD:
 
                     if method == 'GET' and (url.endswith(('/authorize', '/app/login'))):
                         if url.endswith('/app/login'):
-                            affix = '/v2.0' if version == 'v2.0' else ''
-                            response.url = f'https://login.example.com/oauth2{affix}/authorize'
+                            response.url = 'https://login.example.com/oauth2/v2.0/authorize'
 
                         if inject_error == Error.REQUEST_1_NO_DOLLAR_CONFIG:
                             response._content = b''
@@ -231,7 +264,7 @@ class TestAAD:
                             }
 
                         payload = jsondumps(data)
-                        response._content = payload.encode('utf-8')
+                        response._content = payload.encode()
                         response.headers['x-ms-request-id'] = 'aaaa-bbbb-cccc-dddd'
 
                         if inject_error == Error.REQUEST_2_HTTP_STATUS:
@@ -422,21 +455,16 @@ class TestAAD:
                         else:
                             response.status_code = 200
 
-                        auth_user_context = parent.user._context['auth']['user']
-
                         if login_start == 'redirect_uri':
-                            redirect_uri_parsed = urlparse(auth_user_context['redirect_uri'])
-                            if len(redirect_uri_parsed.netloc) == 0:
-                                redirect_uri = f"{parent.user._context['host']}{auth_user_context['redirect_uri']}"
-                            else:
-                                redirect_uri = auth_user_context['redirect_uri']
+                            redirect_uri_parsed = urlparse(credential.redirect)
+                            redirect_uri = f'{credential.host}{credential.redirect}' if len(redirect_uri_parsed.netloc) == 0 else credential.redirect
 
                             token_name = 'code' if is_token_v2_0 else 'id_token'
 
-                            response.headers['Location'] = f'{redirect_uri}#{token_name}={fake_token}'
+                            response.headers['Location'] = f'{redirect_uri}#{token_name}={access_token.token}'
                         elif inject_error != Error.REQUEST_4_HTTP_STATUS_CONFIG:
                             response._content = f"""<form action="https://www.example.com/app/login/signin-oidc" method="post">
-                                <input type="hidden" name="id_token" value="{fake_token}"/>
+                                <input type="hidden" name="id_token" value="{access_token.token}"/>
                                 <input type="hidden" name="client_info" value="0000aaaa1111bbbb"/>
                                 <input type="hidden" name="state" value="1111bbbb2222cccc"/>
                                 <input type="hidden" name="session_state" value="2222cccc3333dddd"/>
@@ -446,7 +474,7 @@ class TestAAD:
                         if inject_error == Error.REQUEST_5_HTTP_STATUS:
                             response.status_code = 500
                         elif inject_error != Error.REQUEST_5_NO_COOKIE:
-                            self.cookies.set_cookie(create_cookie('auth', fake_token, domain='www.example.com'))
+                            self.cookies.set_cookie(create_cookie('auth', access_token.token, domain='example.com'))
                     else:
                         response._content = jsondumps({'error_description': 'error'}).encode('utf-8')
 
@@ -457,13 +485,7 @@ class TestAAD:
                     request,
                 )
 
-            session_started = time()
-
             auth_user_uri = 'http://www.example.com/app/authenticated' if login_start == 'redirect_uri' else 'http://www.example.com/app/login'
-
-            provider_url = 'https://login.example.com/oauth2'
-            if version != 'v1.0':
-                provider_url = f'{provider_url}/{version}'
 
             parent.user._context = {
                 'host': 'https://www.example.com',
@@ -485,311 +507,117 @@ class TestAAD:
             mock_request_session()
 
             # both initialize and provider uri set
-            cast(dict, parent.user._context['auth'])['user'].update({'initialize_uri': auth_user_uri, 'redirect_uri': auth_user_uri})
+            credential.redirect = credential.initialize = auth_user_uri
 
-            with pytest.raises(AssertionError, match='both auth.user.initialize_uri and auth.user.redirect_uri is set'):
-                AAD.get_oauth_authorization(parent.user)
+            with pytest.raises(AzureAadError, match='both initialize and redirect URIs cannot be set'):
+                credential.get_oauth_authorization()
 
-            fire_spy.assert_not_called()
+            credential.redirect = credential.initialize = None
 
-            cast(dict, parent.user._context['auth'])['user'].update({'initialize_uri': None, 'redirect_uri': None})
-
-            cast(dict, parent.user._context['auth'])['user'].update({login_start: auth_user_uri})
-
-            if login_start == 'redirect_uri':
-                # test when auth.provider is not set
-                with pytest.raises(AssertionError, match='context variable auth.provider is not set'):
-                    AAD.get_oauth_authorization(parent.user)
-
-                fire_spy.assert_not_called()
-
-                parent.user._context['auth']['provider'] = provider_url
+            attr_name, _ = login_start.split('_', 1)
+            setattr(credential, attr_name, auth_user_uri)
 
             # test when login sequence returns bad request
             mock_request_session(Error.REQUEST_1_HTTP_STATUS)
 
-            with pytest.raises(StopUser):
-                AAD.get_oauth_authorization(parent.user)
+            authorize_url = 'https://login.microsoftonline.com/example.com' if login_start == 'redirect_uri' else 'https://login.example.com'
 
-            fire_spy.assert_called_once_with(
-                request_type='AUTH',
-                response_time=0,
-                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
-                context=parent.user._context,
-                response_length=0,
-                response=None,
-                exception=ANY(RuntimeError, message=f'user auth request 1: {provider_url}/authorize had unexpected status code 400'),
-            )
-            fire_spy.reset_mock()
+            with pytest.raises(AzureAadFlowError, match=f'user auth request 1: {authorize_url}/oauth2/v2.0/authorize had unexpected status code 400'):
+                credential.get_oauth_authorization()
 
             mock_request_session(Error.REQUEST_2_HTTP_STATUS)
 
-            with pytest.raises(StopUser):
-                AAD.get_oauth_authorization(parent.user)
-
-            fire_spy.assert_called_once_with(
-                request_type='AUTH',
-                response_time=0,
-                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
-                context=parent.user._context,
-                response_length=0,
-                response=None,
-                exception=ANY(RuntimeError, message='user auth request 2: https://login.example.com/GetCredentialType had unexpected status code 400'),
-            )
-            fire_spy.reset_mock()
+            with pytest.raises(AzureAadFlowError, match='user auth request 2: https://login.example.com/GetCredentialType had unexpected status code 400'):
+                credential.get_oauth_authorization()
 
             mock_request_session(Error.REQUEST_3_HTTP_STATUS)
 
-            with pytest.raises(StopUser):
-                AAD.get_oauth_authorization(parent.user)
-
-            fire_spy.assert_called_once_with(
-                request_type='AUTH',
-                response_time=0,
-                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
-                context=parent.user._context,
-                response_length=0,
-                response=None,
-                exception=ANY(RuntimeError, message='user auth request 3: https://login.example.com/login had unexpected status code 400'),
-            )
-            fire_spy.reset_mock()
+            with pytest.raises(AzureAadFlowError, match='user auth request 3: https://login.example.com/login had unexpected status code 400'):
+                credential.get_oauth_authorization()
 
             mock_request_session(Error.REQUEST_3_ERROR_MESSAGE)
 
-            with caplog.at_level(logging.ERROR), pytest.raises(StopUser):
-                AAD.get_oauth_authorization(parent.user)
-
-            fire_spy.assert_called_once_with(
-                request_type='AUTH',
-                response_time=0,
-                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
-                context=parent.user._context,
-                response_length=0,
-                response=None,
-                exception=ANY(RuntimeError, message='failed big time'),
-            )
-            fire_spy.reset_mock()
+            with caplog.at_level(logging.ERROR), pytest.raises(AzureAadFlowError, match='failed big time'):
+                credential.get_oauth_authorization()
 
             assert caplog.messages[-1] == 'failed big time'
             caplog.clear()
 
             mock_request_session(Error.REQUEST_3_MFA_REQUIRED)
 
-            with caplog.at_level(logging.ERROR), pytest.raises(StopUser):
-                AAD.get_oauth_authorization(parent.user)
-
             expected_error_message = 'test-user@example.com requires MFA for login: fax = +46 1234'
 
-            fire_spy.assert_called_once_with(
-                request_type='AUTH',
-                response_time=0,
-                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
-                context=parent.user._context,
-                response_length=0,
-                response=None,
-                exception=ANY(RuntimeError, message=expected_error_message),
-            )
-            fire_spy.reset_mock()
+            with caplog.at_level(logging.ERROR), pytest.raises(AzureAadFlowError, match=re.escape(expected_error_message)):
+                credential.get_oauth_authorization()
 
             assert caplog.messages[-1] == expected_error_message
             caplog.clear()
 
-            parent.user._context['auth']['user']['otp_secret'] = 'abcdefghij'  # noqa: S105
-
-            with caplog.at_level(logging.ERROR), pytest.raises(StopUser):
-                AAD.get_oauth_authorization(parent.user)
+            credential.otp_secret = 'abcdefghij'  # noqa: S105
 
             expected_error_message = 'test-user@example.com is assumed to use TOTP for MFA, but does not have that authentication method configured'
 
-            fire_spy.assert_called_once_with(
-                request_type='AUTH',
-                response_time=0,
-                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
-                context=parent.user._context,
-                response_length=0,
-                response=None,
-                exception=ANY(RuntimeError, message=expected_error_message),
-            )
-            fire_spy.reset_mock()
+            with caplog.at_level(logging.ERROR), pytest.raises(AzureAadFlowError, match=re.escape(expected_error_message)):
+                credential.get_oauth_authorization()
 
             assert caplog.messages[-1] == expected_error_message
             caplog.clear()
 
-            parent.user._context['auth']['user']['otp_secret'] = None
-
-            mock_request_session(Error.REQUEST_4_HTTP_STATUS)
-
-            with pytest.raises(StopUser):
-                AAD.get_oauth_authorization(parent.user)
-
-            assert parent.user.session_started is None
+            credential.otp_secret = None
             expected_status_code = 200 if login_start == 'redirect_uri' else 302
 
-            fire_spy.assert_called_once_with(
-                request_type='AUTH',
-                response_time=0,
-                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
-                context=parent.user._context,
-                response_length=0,
-                response=None,
-                exception=ANY(RuntimeError, message=f'user auth request 4: https://login.example.com/kmsi had unexpected status code {expected_status_code}'),
-            )
-            fire_spy.reset_mock()
+            mock_request_session(Error.REQUEST_4_HTTP_STATUS)
+            with pytest.raises(AzureAadFlowError, match=f'user auth request 4: https://login.example.com/kmsi had unexpected status code {expected_status_code}'):
+                credential.get_oauth_authorization()
 
             mock_request_session(Error.REQUEST_4_HTTP_STATUS_CONFIG)
-
-            with pytest.raises(StopUser):
-                AAD.get_oauth_authorization(parent.user)
-
-            assert parent.user.session_started is None
-
-            fire_spy.assert_called_once_with(
-                request_type='AUTH',
-                response_time=0,
-                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
-                context=parent.user._context,
-                response_length=0,
-                response=None,
-                exception=ANY(RuntimeError, message='error! error! error!'),
-            )
-            fire_spy.reset_mock()
+            with pytest.raises(AzureAadFlowError, match='error! error! error!'):
+                credential.get_oauth_authorization()
 
             # test error handling when login sequence response doesn't contain expected payload
             mock_request_session(Error.REQUEST_1_NO_DOLLAR_CONFIG)
-            with pytest.raises(StopUser):
-                AAD.get_oauth_authorization(parent.user)
-
-            fire_spy.assert_called_once_with(
-                request_type='AUTH',
-                response_time=0,
-                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
-                context=parent.user._context,
-                response_length=0,
-                response=None,
-                exception=ANY(ValueError, message=f'no config found in response from {provider_url}/authorize'),
-            )
-            fire_spy.reset_mock()
+            with pytest.raises(AzureAadFlowError, match=f'no config found in response from {authorize_url}/oauth2/v2.0/authorize'):
+                credential.get_oauth_authorization()
 
             mock_request_session(Error.REQUEST_1_MISSING_STATE)
-            with pytest.raises(StopUser):
-                AAD.get_oauth_authorization(parent.user)
-
-            fire_spy.assert_called_once_with(
-                request_type='AUTH',
-                response_time=0,
-                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
-                context=parent.user._context,
-                response_length=0,
-                response=None,
-                exception=ANY(ValueError, message=f'unexpected response body from {provider_url}/authorize: missing "hpgact" in config'),
-            )
-            fire_spy.reset_mock()
+            with pytest.raises(AzureAadFlowError, match=f'unexpected response body from {authorize_url}/oauth2/v2.0/authorize: missing "hpgact" in config'):
+                credential.get_oauth_authorization()
 
             mock_request_session(Error.REQUEST_1_DOLLAR_CONFIG_ERROR)
-            with pytest.raises(StopUser):
-                AAD.get_oauth_authorization(parent.user)
-
-            fire_spy.assert_called_once_with(
-                request_type='AUTH',
-                response_time=0,
-                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
-                context=parent.user._context,
-                response_length=0,
-                response=None,
-                exception=ANY(RuntimeError, message='oh no!'),
-            )
-            fire_spy.reset_mock()
+            with pytest.raises(AzureAadFlowError, match='oh no!'):
+                credential.get_oauth_authorization()
 
             mock_request_session(Error.REQUEST_2_ERROR_MESSAGE)
-            with pytest.raises(StopUser):
-                AAD.get_oauth_authorization(parent.user)
-
-            fire_spy.assert_called_once_with(
-                request_type='AUTH',
-                response_time=0,
-                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
-                context=parent.user._context,
-                response_length=0,
-                response=None,
-                exception=ANY(RuntimeError, message='error response from https://login.example.com/GetCredentialType: code=12345678, message=error! error!'),
-            )
-            fire_spy.reset_mock()
+            with pytest.raises(AzureAadFlowError, match='error response from https://login.example.com/GetCredentialType: code=12345678, message=error! error!'):
+                credential.get_oauth_authorization()
 
             # successful login sequence
             mock_request_session()
 
-            parent.user.session_started = session_started
-
-            expected_auth: Tuple[AuthType, str]
-            expected_auth = (AuthType.HEADER, fake_token) if login_start == 'redirect_uri' else (AuthType.COOKIE, f'auth={fake_token}')
-
-            assert AAD.get_oauth_authorization(parent.user) == expected_auth
+            assert credential.get_oauth_authorization() == SOME(AccessToken, token=access_token.token)
 
             if not is_token_v2_0 or login_start == 'initialize_uri':
                 get_oauth_token_mock.assert_not_called()
             else:
-                get_oauth_token_mock.assert_called_once_with(parent.user, ('asdf', ANY(str)))
+                get_oauth_token_mock.assert_called_once_with(code='asdf', verifier=ANY(str), tenant_id='example.com')
                 get_oauth_token_mock.reset_mock()
-
-            fire_spy.assert_called_once_with(
-                request_type='AUTH',
-                response_time=0,
-                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
-                context=parent.user._context,
-                response_length=0,
-                response=None,
-                exception=None,
-            )
-            fire_spy.reset_mock()
 
             # test no host in redirect/initialize uri
             auth_user_uri = '/app/authenticated' if login_start == 'redirect_uri' else '/app/login'
 
-            parent.user._context['auth']['user'][login_start] = auth_user_uri
+            attr_name, _ = login_start.split('_', 1)
+            setattr(credential, attr_name, auth_user_uri)
 
-            assert AAD.get_oauth_authorization(parent.user) == expected_auth
-
-            fire_spy.assert_called_once_with(
-                request_type='AUTH',
-                response_time=0,
-                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
-                context=parent.user._context,
-                response_length=0,
-                response=None,
-                exception=None,
-            )
-            fire_spy.reset_mock()
+            assert credential.get_oauth_authorization() == SOME(AccessToken, token=access_token.token)
 
             if login_start == 'initialize_uri':
                 mock_request_session(Error.REQUEST_5_HTTP_STATUS)
-                with pytest.raises(StopUser):
-                    AAD.get_oauth_authorization(parent.user)
-
-                fire_spy.assert_called_once_with(
-                    request_type='AUTH',
-                    response_time=0,
-                    name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
-                    context=parent.user._context,
-                    response_length=0,
-                    response=None,
-                    exception=ANY(RuntimeError, message='user auth request 5: https://www.example.com/app/login/signin-oidc had unexpected status code 500'),
-                )
-                fire_spy.reset_mock()
+                with pytest.raises(AzureAadFlowError, match='user auth request 5: https://www.example.com/app/login/signin-oidc had unexpected status code 500'):
+                    credential.get_oauth_authorization()
 
                 mock_request_session(Error.REQUEST_5_NO_COOKIE)
-                with pytest.raises(StopUser):
-                    AAD.get_oauth_authorization(parent.user)
-
-                fire_spy.assert_called_once_with(
-                    request_type='AUTH',
-                    response_time=0,
-                    name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
-                    context=parent.user._context,
-                    response_length=0,
-                    response=None,
-                    exception=ANY(RuntimeError, message='did not find AAD cookie in authorization flow response session'),
-                )
-                fire_spy.reset_mock()
+                with pytest.raises(AzureAadFlowError, match='did not find AAD cookie in authorization flow response session'):
+                    credential.get_oauth_authorization()
 
             get_oauth_token_mock.reset_mock()
 
@@ -797,64 +625,28 @@ class TestAAD:
             # auth.user.otp_secret not set
             mock_request_session(Error.REQUEST_3_MFA_TOPT)
 
-            parent.user._context['auth']['user']['otp_secret'] = None
+            credential.otp_secret = None
 
-            parent.user.session_started = session_started
-
-            expected_auth = (AuthType.HEADER, fake_token) if login_start == 'redirect_uri' else (AuthType.COOKIE, f'auth={fake_token}')
-
-            with caplog.at_level(logging.ERROR), pytest.raises(StopUser):
-                AAD.get_oauth_authorization(parent.user)
-
-            fire_spy.assert_called_once_with(
-                request_type='AUTH',
-                response_time=0,
-                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
-                context=parent.user._context,
-                response_length=0,
-                response=None,
-                exception=ANY(AssertionError, message='test-user@example.com requires TOTP for MFA, but auth.user.otp_secret is not set'),
-            )
-            fire_spy.reset_mock()
+            with caplog.at_level(logging.ERROR), pytest.raises(AzureAadFlowError, match='test-user@example.com requires TOTP for MFA, but auth.user.otp_secret is not set'):
+                credential.get_oauth_authorization()
 
             # LC_ALL=C tr -dc 'A-Z2-7' </dev/urandom | head -c 16; echo
-            parent.user._context['auth']['user']['otp_secret'] = '466FCZN2PQZTGOEJ'  # noqa: S105
+            credential.otp_secret = '466FCZN2PQZTGOEJ'  # noqa: S105
 
             # BeginAuth, response status
             mock_request_session(Error.REQUEST_3_MFA_BEGIN_AUTH_STATUS)
-
-            with caplog.at_level(logging.ERROR), pytest.raises(StopUser):
-                AAD.get_oauth_authorization(parent.user)
-
-            fire_spy.assert_called_once_with(
-                request_type='AUTH',
-                response_time=0,
-                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
-                context=parent.user._context,
-                response_length=0,
-                response=None,
-                exception=ANY(RuntimeError, message='user auth request BeginAuth: https://test.nu/common/SAS/BeginAuth had unexpected status code 400'),
-            )
-            fire_spy.reset_mock()
+            with caplog.at_level(logging.ERROR), pytest.raises(
+                AzureAadFlowError, match='user auth request BeginAuth: https://test.nu/common/SAS/BeginAuth had unexpected status code 400',
+            ):
+                credential.get_oauth_authorization()
 
             # BeginAuth, payload failure
             mock_request_session(Error.REQUEST_3_MFA_BEGIN_AUTH_FAILURE)
 
             expected_error_message = 'user auth request BeginAuth: 1337 - some error, probably'
 
-            with caplog.at_level(logging.ERROR), pytest.raises(StopUser):
-                AAD.get_oauth_authorization(parent.user)
-
-            fire_spy.assert_called_once_with(
-                request_type='AUTH',
-                response_time=0,
-                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
-                context=parent.user._context,
-                response_length=0,
-                response=None,
-                exception=ANY(RuntimeError, message=expected_error_message),
-            )
-            fire_spy.reset_mock()
+            with caplog.at_level(logging.ERROR), pytest.raises(AzureAadFlowError, match=expected_error_message):
+                credential.get_oauth_authorization()
 
             assert caplog.messages[-1] == expected_error_message
             caplog.clear()
@@ -862,38 +654,18 @@ class TestAAD:
             # EndAuth, response status
             mock_request_session(Error.REQUEST_3_MFA_END_AUTH_STATUS)
 
-            with caplog.at_level(logging.ERROR), pytest.raises(StopUser):
-                AAD.get_oauth_authorization(parent.user)
-
-            fire_spy.assert_called_once_with(
-                request_type='AUTH',
-                response_time=0,
-                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
-                context=parent.user._context,
-                response_length=0,
-                response=None,
-                exception=ANY(RuntimeError, message='user auth request EndAuth: https://test.nu/common/SAS/EndAuth had unexpected status code 400'),
-            )
-            fire_spy.reset_mock()
+            with caplog.at_level(logging.ERROR), pytest.raises(
+                AzureAadFlowError, match='user auth request EndAuth: https://test.nu/common/SAS/EndAuth had unexpected status code 400',
+            ):
+                credential.get_oauth_authorization()
 
             # EndAuth, payload failure
             mock_request_session(Error.REQUEST_3_MFA_END_AUTH_FAILURE)
 
             expected_error_message = 'user auth request EndAuth: 7331 - some error, for sure'
 
-            with caplog.at_level(logging.ERROR), pytest.raises(StopUser):
-                AAD.get_oauth_authorization(parent.user)
-
-            fire_spy.assert_called_once_with(
-                request_type='AUTH',
-                response_time=0,
-                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
-                context=parent.user._context,
-                response_length=0,
-                response=None,
-                exception=ANY(RuntimeError, message=expected_error_message),
-            )
-            fire_spy.reset_mock()
+            with caplog.at_level(logging.ERROR), pytest.raises(AzureAadFlowError, match=expected_error_message):
+                credential.get_oauth_authorization()
 
             assert caplog.messages[-1] == expected_error_message
             caplog.clear()
@@ -901,38 +673,18 @@ class TestAAD:
             # ProcessAuth, response status
             mock_request_session(Error.REQUEST_3_MFA_PROCESS_AUTH_STATUS)
 
-            with caplog.at_level(logging.ERROR), pytest.raises(StopUser):
-                AAD.get_oauth_authorization(parent.user)
-
-            fire_spy.assert_called_once_with(
-                request_type='AUTH',
-                response_time=0,
-                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
-                context=parent.user._context,
-                response_length=0,
-                response=None,
-                exception=ANY(RuntimeError, message='user auth request ProcessAuth: https://test.nu/common/SAS/ProcessAuth had unexpected status code 500'),
-            )
-            fire_spy.reset_mock()
+            with caplog.at_level(logging.ERROR), pytest.raises(
+                AzureAadFlowError, match='user auth request ProcessAuth: https://test.nu/common/SAS/ProcessAuth had unexpected status code 500',
+            ):
+                credential.get_oauth_authorization()
 
             # ProcessAuth, payload failure
             mock_request_session(Error.REQUEST_3_MFA_PROCESS_AUTH_FAILURE)
 
             expected_error_message = 'service failure'
 
-            with caplog.at_level(logging.ERROR), pytest.raises(StopUser):
-                AAD.get_oauth_authorization(parent.user)
-
-            fire_spy.assert_called_once_with(
-                request_type='AUTH',
-                response_time=0,
-                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
-                context=parent.user._context,
-                response_length=0,
-                response=None,
-                exception=ANY(RuntimeError, message=expected_error_message),
-            )
-            fire_spy.reset_mock()
+            with caplog.at_level(logging.ERROR), pytest.raises(AzureAadFlowError, match=expected_error_message):
+                credential.get_oauth_authorization()
 
             assert caplog.messages[-1] == expected_error_message
             caplog.clear()
@@ -940,37 +692,25 @@ class TestAAD:
             # Successful MFA flow
             mock_request_session(Error.REQUEST_3_MFA_TOPT)
 
-            assert AAD.get_oauth_authorization(parent.user) == expected_auth
+            assert credential.get_oauth_authorization() == SOME(AccessToken, token=access_token.token)
 
             if not is_token_v2_0 or login_start == 'initialize_uri':
                 get_oauth_token_mock.assert_not_called()
             else:
-                get_oauth_token_mock.assert_called_once_with(parent.user, ('asdf', ANY(str)))
+                get_oauth_token_mock.assert_called_once_with(code='asdf', verifier=ANY(str), tenant_id='example.com')
                 get_oauth_token_mock.reset_mock()
-
-            fire_spy.assert_called_once_with(
-                request_type='AUTH',
-                response_time=0,
-                name=f'001 AAD OAuth2 user token {version}: test-user@example.com',
-                context=parent.user._context,
-                response_length=0,
-                response=None,
-                exception=None,
-            )
-            fire_spy.reset_mock()
             # // OTP -->
         finally:
             parent.user.__class__.__name__ = original_class_name
 
     @pytest.mark.parametrize('grant_type', [
-        'client_credentials::v1',
         'client_credentials::v2',
         'authorization_code::v2',
     ])
-    def test_get_oauth_token(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, grant_type: str) -> None:  # noqa: PLR0912, PLR0915
+    def test_get_oauth_token(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, grant_type: str) -> None:  # noqa: PLR0915
         parent = grizzly_fixture(user_type=RestApiUser)
 
-        grant_type, version = grant_type.split('::', 1)
+        grant_type, _ = grant_type.split('::', 1)  # always v2.0 now
 
         original_class_name = parent.user.__class__.__name__
         try:
@@ -985,104 +725,59 @@ class TestAAD:
 
             assert isinstance(parent.user, RestApiUser)
 
-            provider_url = 'https://login.example.com/foobarinc/oauth2'
+
+            access_token = AccessToken('asdf', expires_on=1)
+            credential = AzureAadCredential(
+                'test-user@example.com',
+                'secret',
+                'example.com',
+                AuthMethod.CLIENT,
+                host='https://example.com',
+                client_id='asdf',
+                redirect='https://example.com/auth',
+            )
 
             if grant_type == 'authorization_code':
-                pkcs = ('code', 'code_verifier')
+                pkcs = {
+                    'code': 'code',
+                    'verifier': 'code_verifier',
+                }
                 token_name = 'id_token'  # noqa: S105
             else:
-                pkcs = None
+                pkcs = {}
                 token_name = 'access_token'  # noqa: S105
-                if version == 'v2':
-                    provider_url = f'{provider_url}/v2.0'
-
-            fire_spy = mocker.spy(parent.user.environment.events.request, 'fire')
-
-            safe_del(parent.user._context, 'auth')
-
-            with pytest.raises(AssertionError, match='context variable auth is not set'):
-                AAD.get_oauth_token(parent.user, pkcs)
-
-            parent.user._context['auth'] = {}
-
-            with pytest.raises(AssertionError, match='context variable auth.provider is not set'):
-                AAD.get_oauth_token(parent.user, pkcs)
-
-            parent.user._context['auth'].update({'provider': provider_url})
-
-            with pytest.raises(AssertionError, match='context variable auth.client is not set'):
-                AAD.get_oauth_token(parent.user, pkcs)
-
-            parent.user._context['auth'].update({'client': {'id': None, 'secret': None, 'resource': None}})
-
-            if grant_type == 'authorization_code':
-                with pytest.raises(AssertionError, match='context variable auth.user is not set'):
-                    AAD.get_oauth_token(parent.user, pkcs)
-
-                parent.user._context['auth'].update({'user': {'username': None, 'password': None, 'redirect_uri': '/auth', 'initialize_uri': None}})
 
             parent.user._context['host'] = parent.user.host = 'https://example.com'
-            parent.user._context['auth'].update({
-                'provider': provider_url,
-                'client': {
-                    'id': 'asdf',
-                    'secret': 'asdf',
-                    'resource': 'asdf',
-                },
-            })
+            credential.host = 'https://example.com'
 
             payload = jsondumps({'error_description': 'fake error message'})
             requests_mock = mock_requests_post(payload, 400)
 
-            session_started = time()
-
-            assert parent.user.session_started is None
-
-            with pytest.raises(StopUser):
-                AAD.get_oauth_token(parent.user, pkcs)
+            with pytest.raises(AzureAadFlowError, match='fake error message'):
+                credential.get_oauth_token(resource='asdf', **pkcs)
 
             data: Dict[str, str] = {}
-            if pkcs is None:
-                if version == 'v1':
-                    data.update({'resource': 'asdf'})
-                else:
-                    data.update({
-                        'scope': 'asdf',
-                        'tenant': 'foobarinc',
-                    })
+            if pkcs == {}:
+                data.update({
+                    'scope': 'asdf',
+                    'tenant': 'example.com',
+                })
             else:
                 data.update({
-                    'redirect_uri': f'{parent.user.host}/auth',
-                    'code': pkcs[0],
-                    'code_verifier': pkcs[1],
+                    'redirect_uri': 'https://example.com/auth',
+                    'code': pkcs['code'],
+                    'code_verifier': pkcs['verifier'],
                 })
 
             requests_mock.assert_called_once_with(
-                f'{provider_url}/token',
+                'https://login.microsoftonline.com/example.com/oauth2/v2.0/token',
                 verify=True,
                 data=SOME(dict, grant_type=grant_type, client_id='asdf', **data),
                 headers=ANY(dict),
-                allow_redirects=(pkcs is None),
+                allow_redirects=(pkcs == {}),
             )
             requests_mock.reset_mock()
 
-            assert parent.user.session_started is None
-
-            if pkcs is not None:
-                fire_spy.assert_not_called()
-            else:
-                fire_spy.assert_called_once_with(
-                    request_type='AUTH',
-                    response_time=ANY(int),
-                    name=f'001 AAD OAuth2 client token {version}.0: asdf',
-                    context=parent.user._context,
-                    response=None,
-                    exception=ANY(RuntimeError, message='fake error message'),
-                    response_length=len(payload.encode()),
-                )
-                fire_spy.reset_mock()
-
-            parent.user.session_started = session_started
             parent.user.metadata.update({
                 'Authorization': 'foobar',
                 'Content-Type': 'plain/text',
@@ -1092,30 +787,26 @@ class TestAAD:
 
             requests_mock = mock_requests_post(jsondumps({token_name: 'asdf'}), 200)
 
-            assert AAD.get_oauth_token(parent.user, pkcs) == (AuthType.HEADER, 'asdf')
+            assert credential.get_oauth_token(resource='asdf', **pkcs) == SOME(AccessToken, token=access_token.token)
 
-            assert parent.user.session_started >= session_started
             data = {}
             headers: Dict[str, str] = {}
-            if pkcs is None:
-                if version == 'v1':
-                    data.update({'resource': 'asdf'})
-                else:
-                    data.update({'scope': 'asdf', 'tenant': 'foobarinc'})
+            if pkcs == {}:
+                data.update({'scope': 'asdf', 'tenant': 'example.com'})
             else:
                 data.update({
                     'redirect_uri': f'{parent.user.host}/auth',
-                    'code': pkcs[0],
-                    'code_verifier': pkcs[1],
+                    'code': pkcs['code'],
+                    'code_verifier': pkcs['verifier'],
                 })
                 headers.update({'Origin': 'https://example.com', 'Referer': 'https://example.com'})
 
             requests_mock.assert_called_once_with(
-                f'{provider_url}/token',
+                'https://login.microsoftonline.com/example.com/oauth2/v2.0/token',
                 verify=True,
                 data=SOME(dict, grant_type=grant_type, client_id='asdf', **data),
                 headers=ANY(dict),
-                allow_redirects=(pkcs is None),
+                allow_redirects=(pkcs == {}),
             )
             _, kwargs = requests_mock.call_args_list[-1]
             headers = kwargs.get('headers', None)
@@ -1123,10 +814,5 @@ class TestAAD:
             assert 'Authorization' not in headers
             assert 'Content-Type' not in headers
             assert 'Ocp-Apim-Subscription-Key' not in headers
-
-            parent.user._context['auth'].update({'provider': None})
-
-            with pytest.raises(AssertionError, match='context variable auth.provider is not set'):
-                AAD.get_oauth_token(parent.user, pkcs)
         finally:
             parent.user.__class__.__name__ = original_class_name

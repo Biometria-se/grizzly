@@ -52,16 +52,17 @@ class GrizzlyTokenCredential(TokenCredential, metaclass=ABCMeta):
     auth_method: AuthMethod
     auth_type: AuthType
 
-    username: str
+    username: Optional[str]
     password: str
     client_id: str
 
     _refreshed: bool
+    _access_token: Optional[AccessToken]
 
     @abstractmethod
     def __init__(  # noqa: PLR0913
         self,
-        username: str,
+        username: Optional[str],
         password: str,
         tenant: str,
         auth_method: AuthMethod,
@@ -182,7 +183,7 @@ class refresh_token(Generic[P]):
 
     def __call__(self, func: AuthenticatableFunc) -> AuthenticatableFunc:
         @wraps(func)
-        def refresh_token(client: GrizzlyHttpAuthClient, *args: P.args, **kwargs: P.kwargs) -> GrizzlyResponse:
+        def refresh_token(client: GrizzlyHttpAuthClient, *args: P.args, **kwargs: P.kwargs) -> GrizzlyResponse:  # noqa: PLR0912
             # make sure the client has a credential instance, if it is needed
             self.impl.initialize(client)
 
@@ -200,23 +201,28 @@ class refresh_token(Generic[P]):
                 start_time = perf_counter()
                 refreshed = False
 
+                action_for = (client.credential.username or '<unknown username>') if client.credential.auth_method == AuthMethod.USER else client.credential.client_id
+
                 try:
                     access_token = client.credential.get_token()
                     refreshed = client.credential.refreshed
+                    action_triggered = refreshed or (authorization_token is None and client.cookies == {})
 
-                    if refreshed or (authorization_token is None and client.cookies == {}):
+                    if action_triggered:
                         if refreshed:
                             # if credentials are switched after one of the cached has timeout,
                             # it will be None, and hence it will be refreshed next time it is used
                             client.__cached_auth__.clear()
+                            action_name = 'refreshed'
+                        else:
+                            action_name = 'claimed'
 
-                            refreshed_for = (client.credential.username or '<unknown username>') if client.credential.auth_method == AuthMethod.USER else client.credential.client_id
-                            next_refresh = datetime.fromtimestamp(access_token.expires_on, tz=timezone.utc).astimezone(tz=None)
+                        next_refresh = datetime.fromtimestamp(access_token.expires_on, tz=timezone.utc).astimezone(tz=None)
 
-                            logger.info(
-                                '%s/%d %s refreshed token until %s, reset session started and clear cache',
-                                client.__class__.__name__, id(client), refreshed_for, next_refresh,
-                            )
+                        logger.info(
+                            '%s/%d %s %s %s token until %s',
+                            client.__class__.__name__, id(client), action_for, action_name, client.credential.auth_method.name.lower(), next_refresh,
+                        )
 
                         if client.credential.auth_type == AuthType.HEADER:  # add token bearer to headers
                             header = {'Authorization': f'Bearer {access_token.token}'}
@@ -231,12 +237,12 @@ class refresh_token(Generic[P]):
                     exception = e
                     client.logger.exception('failed to get token')
                 finally:
-                    if refreshed or exception is not None:
+                    if action_triggered or exception is not None:
                         scenario_index = client._scenario.identifier
                         request_meta = {
                             'request_type': 'AUTH',
                             'response_time': int((perf_counter() - start_time) * 1000),
-                            'name': f'{scenario_index} {self.impl.__class__.__name__} OAuth2 {client.credential.auth_method.name.lower()} token: {client.credential.username}',
+                            'name': f'{scenario_index} {self.impl.__name__} OAuth2 {client.credential.auth_method.name.lower()} token: {action_for}',
                             'context': client._context,
                             'response': None,
                             'exception': exception,
@@ -286,14 +292,18 @@ class RefreshToken(metaclass=ABCMeta):
             auth_user = auth_context.get('user', {})
 
             username = auth_user.get('username', None)
-            password = auth_user.get('password', None)
+            password = auth_user.get('password', None) or auth_client.get('secret', None)
             client_id = auth_client.get('id', None)
 
             # nothing has changed, use existing crendential
-            if client.credential is not None and (client.credential.username == username and client.credential.password == password):
+            if client.credential is not None and (
+                client.credential.username == username
+                and client.credential.password == password
+                and client.credential.auth_method != AuthMethod.NONE
+            ):
                 return
 
-            tenant = auth_context.get('tenant', auth_context.get('provider', None))
+            tenant = auth_context.get('tenant', None) or auth_context.get('provider', None)
             initialize_uri = auth_user.get('initialize_uri', None)
             redirect_uri = auth_user.get('redirect_uri', None)
 
@@ -324,11 +334,21 @@ class RefreshToken(metaclass=ABCMeta):
             else:
                 auth_method = AuthMethod.NONE
 
-            client.credential = cls.__TOKEN_CREDENTIAL_TYPE__(username, password, tenant, auth_method, host=client.host, client_id=client_id, redirect=redirect_uri, initialize=initialize_uri)
+            client.credential = cls.__TOKEN_CREDENTIAL_TYPE__(
+                username,
+                password,
+                tenant,
+                auth_method,
+                host=client.host,
+                client_id=client_id,
+                redirect=redirect_uri,
+                initialize=initialize_uri,
+            )
 
 
 from .aad import AAD
 
 __all__ = [
     'AAD',
+    'AccessToken',
 ]

@@ -81,11 +81,12 @@ from __future__ import annotations
 import json
 from abc import ABCMeta
 from copy import copy
+from datetime import datetime, timezone
 from hashlib import sha256
 from html.parser import HTMLParser
 from http.cookiejar import Cookie
-from time import time
 from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Optional, Tuple, cast
+from urllib.parse import urlparse
 
 import requests
 from locust.contrib.fasthttp import FastHttpSession
@@ -94,7 +95,7 @@ from locust.exception import ResponseError
 
 from grizzly.auth import AAD, GrizzlyHttpAuthClient, refresh_token
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod
-from grizzly.utils import merge_dicts
+from grizzly.utils import merge_dicts, safe_del
 from grizzly_extras.transformer import TransformerContentType
 
 from . import AsyncRequests, GrizzlyUser, GrizzlyUserMeta, grizzlycontext
@@ -139,6 +140,7 @@ class HtmlTitleParser(HTMLParser):
     'auth': {
         'refresh_time': 3000,
         'provider': None,
+        'tenant': None,
         'client': {
             'id': None,
             'secret': None,
@@ -156,8 +158,8 @@ class HtmlTitleParser(HTMLParser):
     '__context_change_history__': set(),
 })
 class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=RestApiUserMeta):  # type: ignore[misc]
-    session_started: Optional[float]
     environment: Environment
+    domain: str
 
     timeout: ClassVar[float] = 60.0
 
@@ -169,8 +171,6 @@ class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=R
             'x-grizzly-user': self.__class__.__name__,
         }, self.metadata)
 
-        self.session_started = None
-
         self.client = FastHttpSession(
             environment=self.environment,
             base_url=self.host,
@@ -181,13 +181,11 @@ class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=R
             network_timeout=self.timeout,
         )
 
+        host_parsed = urlparse(self.host)
+        self.domain = host_parsed.netloc
+
         self.parent = None
         self.cookies = {}
-
-    def on_start(self) -> None:
-        super().on_start()
-
-        self.session_started = time()
 
     def _get_error_message(self, response: FastResponseContextManager) -> str:
         if response.text is None:
@@ -285,7 +283,7 @@ class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=R
                 value=value,
                 port=None,
                 port_specified=False,
-                domain=self.host,
+                domain=self.domain,
                 domain_specified=True,
                 domain_initial_dot=False,
                 path='/',
@@ -314,8 +312,9 @@ class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=R
                 else:
                     message = self._get_error_message(response)
                     message = f'{response.status_code} not in {request.response.status_codes}: {message}'
-                    if response.status_code == 401:
-                        message = f'{message} (session time {self.session_started})'
+                    if response.status_code == 401 and self.credential is not None and self.credential._access_token is not None:
+                        token_expires = datetime.fromtimestamp(self.credential._access_token.expires_on, tz=timezone.utc).astimezone(tz=None)
+                        message = f'{message} (token expires {token_expires})'
 
                     response.failure(ResponseError(message))
 
@@ -391,6 +390,9 @@ class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=R
         cache_key = sha256(cache_key_plain.encode()).hexdigest()
 
         cached_credential = self.__cached_auth__.get(cache_key, None)
+
+        safe_del(self.metadata, 'Authorization')
+        safe_del(self.cookies, '.AspNetCore.Cookies')
 
         if cached_credential is not None:   # restore from cache
             self.credential = cached_credential
