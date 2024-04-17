@@ -1,6 +1,7 @@
 """Unit tests of grizzly.tasks.clients.http."""
 from __future__ import annotations
 
+import logging
 from contextlib import suppress
 from itertools import cycle
 from json import dumps as jsondumps
@@ -21,6 +22,7 @@ from grizzly_extras.transformer import TransformerContentType
 from tests.helpers import ANY
 
 if TYPE_CHECKING:  # pragma: no cover
+    from _pytest.logging import LogCaptureFixture
     from pytest_mock import MockerFixture
 
     from tests.fixtures import GrizzlyFixture
@@ -330,6 +332,49 @@ class TestHttpClientTask:
         finally:
             with suppress(KeyError):
                 del environ['GRIZZLY_LOG_DIR']
+
+    @pytest.mark.skip(reason='needs real credentials, so only used during development')
+    def test_get_real(self, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
+        parent = grizzly_fixture()
+
+        target_host = ''
+        endpoint = ''
+
+        test_cls = type('HttpClientTestTask', (HttpClientTask,), {
+            '__scenario__': grizzly.scenario,
+        })
+
+        with caplog.at_level(logging.DEBUG):
+            task_factory = test_cls(RequestDirection.FROM, f'https://{target_host}/{endpoint}')
+            task_factory.host = f'https://{target_host}'
+            task_factory.environment = parent.user.environment
+            task_factory.metadata.update({
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36 Edg/119.0.0.0',
+            })
+            task_factory._context = {
+                target_host: {
+                    'auth': {
+                        'client': {
+                            'id': '',
+                        },
+                        'user': {
+                            'username': '',
+                            'password': '',
+                            'redirect_uri': '',
+                        },
+                        'tenant': '',
+                    },
+                },
+            }
+            task = task_factory()
+
+            headers, payload = task(parent)
+
+        parent.logger.info(headers)
+        parent.logger.info(payload)
+
+        assert 0  # noqa: PT015
 
     def test_put(self, grizzly_fixture: GrizzlyFixture) -> None:
         test_cls = type('HttpClientTestTask', (HttpClientTask, ), {'__scenario__': grizzly_fixture.grizzly.scenario})

@@ -12,6 +12,7 @@ from geventhttpclient.client import HTTPClientPool
 from locust.contrib.fasthttp import FastHttpSession, LocustUserAgent, insecure_ssl_context_factory
 from locust.exception import ResponseError
 
+from grizzly.auth.aad import AAD, AzureAadCredential
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import RequestTask
 from grizzly.testdata.utils import transform
@@ -43,6 +44,7 @@ class TestRestApiUser:
             'auth': {
                 'refresh_time': 3000,
                 'provider': None,
+                'tenant': None,
                 'client': {
                     'id': None,
                     'secret': None,
@@ -73,15 +75,6 @@ class TestRestApiUser:
         user = parent.user.__class__(parent.user.environment)
 
         assert user.metadata.get('foo', None) == 'bar'
-
-    def test_on_start(self, grizzly_fixture: GrizzlyFixture) -> None:
-        parent = grizzly_fixture(user_type=RestApiUser)
-        assert isinstance(parent.user, RestApiUser)
-        assert parent.user.session_started is None
-
-        parent.user.on_start()
-
-        assert parent.user.session_started is not None
 
     @pytest.mark.skip(reason='needs credentials, should run explicitly manually')
     def test_get_oauth_authorization_real(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
@@ -484,7 +477,7 @@ class TestRestApiUser:
         assert parent.user._context['auth']['provider'] == 'http://auth.example.org'
         assert parent.user._context['auth']['refresh_time'] == 3000
 
-        parent.user.metadata['Authorization'] = 'Bearer asdfasdfasdf'
+        AAD.initialize(parent.user)
 
         parent.user.add_context({'auth': {'user': {'password': 'other'}}})
 
@@ -495,6 +488,6 @@ class TestRestApiUser:
         assert parent.user.__context_change_history__ == set()
         expected_cache_key = sha256(b'bob:foobar').hexdigest()
 
-        assert parent.user.__cached_auth__ == {expected_cache_key: 'Bearer asdfasdfasdf'}
+        assert parent.user.__cached_auth__ == {expected_cache_key: SOME(AzureAadCredential, username='bob', password='foobar')}  # noqa: S106
 
         assert 'Authorization' not in parent.user.metadata

@@ -147,6 +147,7 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
         'auth': {
             'refresh_time': 3000,
             'provider': None,
+            'tenant': None,
             'client': {
                 'id': None,
                 'secret': None,
@@ -178,6 +179,7 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
         'auth': {
             'refresh_time': 3000,
             'provider': None,
+            'tenant': None,
             'client': {
                 'id': None,
                 'secret': None,
@@ -245,6 +247,7 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
         'auth': {
             'refresh_time': 1337,
             'provider': 'https://auth.example.com',
+            'tenant': None,
             'client': {
                 'id': None,
                 'secret': None,
@@ -282,6 +285,7 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
         'auth': {
             'refresh_time': 1337,
             'provider': 'https://auth.example.com',
+            'tenant': None,
             'client': {
                 'id': None,
                 'secret': None,
@@ -329,6 +333,7 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
         'auth': {
             'refresh_time': 3000,
             'provider': None,
+            'tenant': None,
             'client': {
                 'id': None,
                 'secret': None,
@@ -371,6 +376,7 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
         'auth': {
             'refresh_time': 3000,
             'provider': None,
+            'tenant': None,
             'client': {
                 'id': None,
                 'secret': None,

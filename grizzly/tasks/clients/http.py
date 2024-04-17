@@ -43,6 +43,7 @@ For more details, see {@pylink grizzly.auth.aad}.
 """
 from __future__ import annotations
 
+import logging
 from json import dumps as jsondumps
 from time import time
 from typing import TYPE_CHECKING, Any, Dict, Optional
@@ -122,6 +123,9 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
 
         self.__class__._context.update({'host': self.host})
         self.__class__._context = merge_dicts(self.__class__._context, self._scenario.context)
+
+        if not hasattr(self, 'logger'):
+            self.logger = logging.getLogger(f'{self.__class__.__name__}/{id(self)}')
 
     def on_start(self, parent: GrizzlyScenario) -> None:
         super().on_start(parent)

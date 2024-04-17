@@ -209,16 +209,14 @@ def app_until_attribute(attribute: str) -> FlaskResponse:
     return response
 
 
-@app.route('/oauth2/authorize')
-def app_oauth2_authorize() -> FlaskResponse:
-    return jsonify({'message': 'not implemented'}, status=400)
+@app.route('/<tenant>/oauth2/v2.0/authorize')
+def app_oauth2_authorize(tenant: str) -> FlaskResponse:
+    return jsonify({'message': f'not implemented for {tenant}'}, status=400)
 
 
-@app.route('/oauth2/token', methods=['POST'])
-def app_oauth2_token() -> FlaskResponse:
+@app.route('/<tenant>/oauth2/v2.0/token', methods=['POST'])
+def app_oauth2_token(tenant: str) -> FlaskResponse:
     form = request.form
-
-    logger.debug('/oauth2/token called with form=%r', form)
 
     if auth_expected is None:
         response = jsonify({'error_description': 'not setup for authentication'})
@@ -226,6 +224,7 @@ def app_oauth2_token() -> FlaskResponse:
         return response
 
     try:
+        assert tenant == auth_expected['tenant'], f'{tenant} != {auth_expected["tenant"]}'
         assert form['grant_type'] == 'client_credentials', f'grant_type {form["grant_type"]} != client_credentials'
         assert form['client_secret'] == auth_expected['client']['secret'], f'client_secret {form["client_secret"]} != {auth_expected["client"]["secret"]}'
         assert form['client_id'] == auth_expected['client']['id'], f'client_id {form["client_id"]} != {auth_expected["client"]["id"]}'
@@ -269,7 +268,7 @@ class Webserver:
 
     @property
     def auth_provider_uri(self) -> str:
-        return '/oauth2'
+        return '/oauth2/v2.0'
 
     def start(self) -> None:
         self._greenlet = gevent.spawn(lambda: self._web_server.serve_forever())
