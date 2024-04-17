@@ -68,7 +68,8 @@ class IteratorScenario(GrizzlyScenario):
                 raise RescheduleTaskImmediately(e.reschedule).with_traceback(e.__traceback__) from e
 
             raise RescheduleTask(e.reschedule).with_traceback(e.__traceback__) from e
-        except StopScenario as e:
+        except Exception as e:
+            self.user.environment.events.user_error.fire(user_instance=self.user, exception=e, tb=e.__traceback__)
             raise StopUser from e
 
         while True:
