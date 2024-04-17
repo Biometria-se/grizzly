@@ -9,15 +9,14 @@ from unittest.mock import ANY
 import pytest
 from azure.storage.blob._blob_client import BlobClient
 
-from grizzly.auth import AuthMethod
-from grizzly.auth.aad import AzureAadCredential
 from grizzly.context import GrizzlyContextScenario
 from grizzly.exceptions import RestartScenario
 from grizzly.tasks import RequestTask
 from grizzly.testdata.utils import transform
 from grizzly.types import RequestMethod
 from grizzly.types.locust import StopUser
-from grizzly.users import BlobStorageUser, GrizzlyUser
+from grizzly.users import BlobStorageUser
+from grizzly_extras.azure.aad import AuthMethod, AzureAadCredential
 from tests.helpers import SOME
 
 if TYPE_CHECKING:  # pragma: no cover

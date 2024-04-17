@@ -4,21 +4,21 @@ Core logic for handling different implementations for authorization.
 from __future__ import annotations
 
 import logging
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta
 from datetime import datetime, timezone
-from enum import Enum
 from functools import wraps
 from importlib import import_module
 from time import perf_counter
 from typing import TYPE_CHECKING, Any, Callable, ClassVar, Dict, Generic, Optional, Set, Type, TypeVar, Union, cast
 from urllib.parse import urlparse
 
-from azure.core.credentials import AccessToken, TokenCredential
+from azure.core.credentials import AccessToken
 
 from grizzly.tasks import RequestTask
 from grizzly.types import GrizzlyResponse
 from grizzly.types.locust import StopUser
 from grizzly.utils import merge_dicts, safe_del
+from grizzly_extras.azure.aad import AuthMethod, AuthType, AzureAadCredential
 
 try:
     from typing import ParamSpec
@@ -30,87 +30,16 @@ if TYPE_CHECKING:  # pragma: no cover
     from grizzly.context import GrizzlyContext, GrizzlyContextScenario
     from grizzly.types.locust import Environment
 
-
-class AuthMethod(Enum):
-    NONE = 1
-    CLIENT = 2
-    USER = 3
-
-
-class AuthType(Enum):
-    HEADER = 1
-    COOKIE = 2
-
-
 P = ParamSpec('P')
 
-
 logger = logging.getLogger(__name__)
-
-
-class GrizzlyTokenCredential(TokenCredential, metaclass=ABCMeta):
-    auth_method: AuthMethod
-    auth_type: AuthType
-
-    username: Optional[str]
-    password: str
-    client_id: str
-
-    _refreshed: bool
-    _access_token: Optional[AccessToken]
-
-    @abstractmethod
-    def __init__(  # noqa: PLR0913
-        self,
-        username: Optional[str],
-        password: str,
-        tenant: str,
-        auth_method: AuthMethod,
-        /,
-        host: str,
-        redirect: str | None,
-        initialize: str | None,
-        otp_secret: str | None = None,
-        scope: str | None = None,
-        client_id: str = '04b07795-8ddb-461a-bbee-02f9e1bf7b46',
-    ) -> None: ...
-
-    @property
-    def cookie_name(self) -> str:
-        return '.AspNetCore.Cookies'
-
-    @property
-    def refreshed(self) -> bool:
-        refreshed = self._refreshed
-        self._refreshed = False
-
-        return refreshed
-
-    @abstractmethod
-    def get_token(
-        self,
-        *scopes: str,
-        claims: str | None = None,
-        tenant_id: str | None = None,
-        **_kwargs: Any,
-    ) -> AccessToken: ...
-
-    @abstractmethod
-    def get_oauth_authorization(
-        self, *scopes: str, claims: str | None = None, tenant_id: str | None = None,
-    ) -> AccessToken: ...
-
-    @abstractmethod
-    def get_oauth_token(
-        self, *, code: Optional[str] = None, verifier: Optional[str] = None, resource: Optional[str] = None, tenant_id: str | None = None,
-    ) -> AccessToken: ...
 
 
 class GrizzlyHttpAuthClient(Generic[P], metaclass=ABCMeta):
     logger: logging.Logger
     host: str
     environment: Environment
-    credential: Optional[GrizzlyTokenCredential] = None
+    credential: Optional[AzureAadCredential] = None
     metadata: Dict[str, Any]
     cookies: Dict[str, str]
     __context__: ClassVar[Dict[str, Any]] = {
@@ -152,12 +81,12 @@ class GrizzlyHttpAuthClient(Generic[P], metaclass=ABCMeta):
         return cast(Set[str], self._context['__context_change_history__'])
 
     @property
-    def __cached_auth__(self) -> Dict[str, GrizzlyTokenCredential]:
+    def __cached_auth__(self) -> Dict[str, AzureAadCredential]:
         # clients might not cache auth tokens, let's set it to an empty dict
         # which could be refered to later, without updating client implementation
         if '__cached_auth__' not in self._context:
             self._context['__cached_auth__'] = {}
-        return cast(Dict[str, GrizzlyTokenCredential], self._context['__cached_auth__'])
+        return cast(Dict[str, AzureAadCredential], self._context['__cached_auth__'])
 
 
 AuthenticatableFunc = TypeVar('AuthenticatableFunc', bound=Callable[..., GrizzlyResponse])
@@ -230,7 +159,7 @@ class refresh_token(Generic[P]):
                             if request is not None:
                                 request.metadata.update(header)
                         else:  # add token to cookies
-                            client.cookies.update({client.credential.cookie_name: access_token.token})
+                            client.cookies.update({client.credential.COOKIE_NAME: access_token.token})
                     elif authorization_token is not None and request is not None:  # update current request with active authorization token
                         request.metadata.update({'Authorization': authorization_token})
                 except Exception as e:
@@ -279,7 +208,7 @@ def render(client: GrizzlyHttpAuthClient) -> None:
 
 
 class RefreshToken(metaclass=ABCMeta):
-    __TOKEN_CREDENTIAL_TYPE__: ClassVar[Type[GrizzlyTokenCredential]]
+    __TOKEN_CREDENTIAL_TYPE__: ClassVar[Type[AzureAadCredential]]
 
     @classmethod
     def initialize(cls, client: GrizzlyHttpAuthClient) -> None:

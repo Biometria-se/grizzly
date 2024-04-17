@@ -18,7 +18,7 @@ def test_e2e_auth_user_token(e2e_fixture: End2EndFixture) -> None:
         pytest.skip('telling the webserver what to expected auth-wise is not as simple when running dist, compare to running local')
 
     def before_feature(context: Context, *_args: Any, **_kwargs: Any) -> None:  # noqa: ARG001
-        from grizzly.auth.aad import AzureAadCredential
+        from grizzly_extras.azure.aad import AzureAadCredential
         AzureAadCredential.provider_url_template = f'http://{e2e_fixture.host}/{{tenant}}{e2e_fixture.webserver.auth_provider_uri}'
 
     e2e_fixture.add_before_feature(before_feature)

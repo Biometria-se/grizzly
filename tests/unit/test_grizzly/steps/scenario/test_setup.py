@@ -9,13 +9,13 @@ from typing import TYPE_CHECKING, cast
 from parse import compile
 
 from grizzly.auth import AAD
-from grizzly.auth.aad import AzureAadCredential
 from grizzly.context import GrizzlyContext
 from grizzly.steps import *
 from grizzly.tasks.clients import HttpClientTask
 from grizzly.testdata import GrizzlyVariables, GrizzlyVariableType
 from grizzly.types import RequestDirection, RequestMethod
 from grizzly.users import RestApiUser
+from grizzly_extras.azure.aad import AzureAadCredential
 from tests.helpers import ANY, SOME
 
 if TYPE_CHECKING:  # pragma: no cover

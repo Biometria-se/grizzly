@@ -12,13 +12,14 @@ from geventhttpclient.client import HTTPClientPool
 from locust.contrib.fasthttp import FastHttpSession, LocustUserAgent, insecure_ssl_context_factory
 from locust.exception import ResponseError
 
-from grizzly.auth.aad import AAD, AzureAadCredential
+from grizzly.auth.aad import AAD
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import RequestTask
 from grizzly.testdata.utils import transform
 from grizzly.types import GrizzlyResponse, RequestMethod
 from grizzly.types.locust import StopUser
 from grizzly.users import AsyncRequests, GrizzlyUser, RestApiUser
+from grizzly_extras.azure.aad import AzureAadCredential
 from grizzly_extras.transformer import TransformerContentType
 from tests.helpers import ANY, SOME, create_mocked_fast_response_context_manager
 

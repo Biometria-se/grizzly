@@ -37,10 +37,9 @@ from urllib.parse import parse_qs, urlparse
 
 from azure.storage.blob import BlobServiceClient
 
-from grizzly.auth import AuthMethod
-from grizzly.auth.aad import AzureAadCredential
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod
 from grizzly.utils import normalize
+from grizzly_extras.azure.aad import AuthMethod, AzureAadCredential
 
 from . import GrizzlyUser, grizzlycontext
 
