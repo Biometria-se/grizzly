@@ -32,11 +32,13 @@ Then send request "test/blob.file" to endpoint "azure-blobstorage-container-name
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Optional
 from urllib.parse import parse_qs, urlparse
 
 from azure.storage.blob import BlobServiceClient
 
+from grizzly.auth import AuthMethod
+from grizzly.auth.aad import AzureAadCredential
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod
 from grizzly.utils import normalize
 
@@ -47,39 +49,75 @@ if TYPE_CHECKING:  # pragma: no cover
     from grizzly.types.locust import Environment
 
 
-@grizzlycontext(context={})
+@grizzlycontext(context={
+    'auth': {
+        'tenant': None,
+        'user': {
+            'username': None,
+            'password': None,
+        },
+    },
+})
 class BlobStorageUser(GrizzlyUser):
     blob_client: BlobServiceClient
+
+    credential: Optional[AzureAadCredential] = None
+    url: str
 
     def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
         super().__init__(environment, *args, **kwargs)
 
-        conn_str: str = self.host
-        if conn_str.startswith('DefaultEndpointsProtocol='):
-            conn_str = conn_str[25:]
+        self.url = self.host
 
-        # Replace semicolon separators between parameters to ? and & and massage it to make it "urlparse-compliant"
-        # for validation
-        conn_str = conn_str.replace(';', '://?', 1).replace(';', '&')
+        context_auth_user = self._context.get('auth', {}).get('user', {})
+        username = context_auth_user.get('username', None)
+        password = context_auth_user.get('password', None)
 
-        parsed = urlparse(conn_str)
+        if username is None and password is None:
+            if self.url.startswith('DefaultEndpointsProtocol='):
+                self.url = self.url[25:]
 
-        if parsed.scheme != 'https':
-            message = f'"{parsed.scheme}" is not supported for {self.__class__.__name__}'
-            raise ValueError(message)
+            # Replace semicolon separators between parameters to ? and & and massage it to make it "urlparse-compliant"
+            # for validation
+            self.url = self.url.replace(';', '://?', 1).replace(';', '&')
 
-        params = parse_qs(parsed.query)
-        if 'AccountName' not in params:
-            message = f'{self.__class__.__name__} needs AccountName in the query string'
-            raise ValueError(message)
+            parsed = urlparse(self.url)
 
-        if 'AccountKey' not in params:
-            message = f'{self.__class__.__name__} needs AccountKey in the query string'
-            raise ValueError(message)
+            if parsed.scheme != 'https':
+                message = f'"{parsed.scheme}" is not supported for {self.__class__.__name__}'
+                raise ValueError(message)
+
+            params = parse_qs(parsed.query)
+            if 'AccountName' not in params:
+                message = f'{self.__class__.__name__} needs AccountName in the query string'
+                raise ValueError(message)
+
+            if 'AccountKey' not in params:
+                message = f'{self.__class__.__name__} needs AccountKey in the query string'
+                raise ValueError(message)
+        else:
+            host_parsed = urlparse(self.host)
+            tenant = self._context.get('auth', {}).get('tenant', None)
+
+            if tenant is None:
+                message = f'{self.__class__.__name__} does not have context variable auth.tenant set while auth.user is'
+                raise ValueError(message)
+
+            self.url = f'https://{host_parsed.hostname}'
+
+            if not self.url.endswith('.blob.core.windows.net'):
+                self.url = f'{self.url}.blob.core.windows.net'
+
+            self.credential = AzureAadCredential(username, password, tenant, AuthMethod.USER, host=self.url)
+
 
     def on_start(self) -> None:
         super().on_start()
-        self.blob_client = BlobServiceClient.from_connection_string(conn_str=self.host)
+
+        if self.credential is None:
+            self.blob_client = BlobServiceClient.from_connection_string(conn_str=self.host)
+        else:
+            self.blob_client = BlobServiceClient(account_url=self.url, credential=self.credential)
 
     def on_stop(self) -> None:
         self.blob_client.close()
