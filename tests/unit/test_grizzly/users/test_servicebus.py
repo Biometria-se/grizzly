@@ -152,16 +152,21 @@ class TestServiceBusUser:
         with pytest.raises(ValueError, match='ServiceBusTestUser: "mq" is not a supported scheme'):
             test_cls(environment=behave_fixture.locust.environment)
 
-        test_cls.host = 'sb://my-sbns'
-        test_cls.__context__.update({
-            'auth': {
-                'tenant': None,
-                'user': {
-                    'username': 'bob@example.com',
-                    'password': 'secret',
+        test_cls = type('ServiceBusTestUser', (ServiceBusUser, ), {
+            '__scenario__': behave_fixture.grizzly.scenario,
+            'host': 'sb://my-sbns',
+            '__context__': {
+                'auth': {
+                    'tenant': None,
+                    'user': {
+                        'username': 'bob@example.com',
+                        'password': 'secret',
+                    },
                 },
             },
         })
+
+        assert issubclass(test_cls, ServiceBusUser)
 
         with pytest.raises(ValueError, match='ServiceBusTestUser: does not have context variable auth.tenant set while auth.user is'):
             test_cls(environment=behave_fixture.locust.environment)
@@ -211,6 +216,9 @@ class TestServiceBusUser:
                     'endpoint': 'queue:test-queue',
                     'url': user.am_context['url'],
                     'message_wait': None,
+                    'username': None,
+                    'password': None,
+                    'tenant': None,
                 },
             },
         )
@@ -268,6 +276,9 @@ class TestServiceBusUser:
                     'endpoint': 'topic:test-topic',
                     'url': user.am_context['url'],
                     'message_wait': None,
+                    'username': None,
+                    'password': None,
+                    'tenant': None,
                 },
             },
         )
@@ -289,6 +300,9 @@ class TestServiceBusUser:
                     'endpoint': 'topic:test-topic, subscription:test-subscription',
                     'url': user.am_context['url'],
                     'message_wait': None,
+                    'username': None,
+                    'password': None,
+                    'tenant': None,
                 },
             },
         )
@@ -329,10 +343,14 @@ class TestServiceBusUser:
         grizzly_fixture.grizzly.scenarios.create(grizzly_fixture.behave.create_scenario('test scenario'))
         grizzly = grizzly_fixture.grizzly
 
-        parent = grizzly_fixture(
-            user_type=ServiceBusUser,
-            host='sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=',
-        )
+        parent = grizzly_fixture()
+
+        cls_service_bus_user = type('ServiceBusUser_002', (ServiceBusUser,), {
+            '__scenario__': grizzly.scenario,
+            'host': 'sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=',
+        })
+
+        parent._user = cls_service_bus_user(grizzly.state.locust.environment)
 
         assert isinstance(parent.user, ServiceBusUser)
 
@@ -413,6 +431,9 @@ class TestServiceBusUser:
                 'url': 'sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=',
                 'message_wait': None,
                 'consume': False,
+                'username': None,
+                'password': None,
+                'tenant': None,
             },
         })
 
@@ -480,6 +501,9 @@ class TestServiceBusUser:
                 'url': 'sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=',
                 'message_wait': None,
                 'consume': False,
+                'username': None,
+                'password': None,
+                'tenant': None,
             },
         })
         send_json_spy.reset_mock()
@@ -533,6 +557,9 @@ class TestServiceBusUser:
                 'message_wait': None,
                 'content_type': 'json',
                 'consume': True,
+                'username': None,
+                'password': None,
+                'tenant': None,
             },
         })
         send_json_spy.reset_mock()

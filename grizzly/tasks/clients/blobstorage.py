@@ -25,13 +25,30 @@ Only supports `RequestDirection.TO`.
 
 ### `endpoint`
 
+Using connection strings:
 ```plain
-bs[s]://<AccountName>?AccountKey=<AccountKey>&Container=<Container>[&Overwrite=<bool>]
+bs[s]://<AccountName>/<Container>?AccountKey=<AccountKey>[&Overwrite=<bool>]
 ```
-
 * `AccountName` _str_ - name of storage account
 
 * `AccountKey` _str_ - secret key to be able to "connect" to the storage account
+
+* `Container` _str_ - name of the container to perform the request on
+
+* `Overwrite` _bool_ - if files should be overwritten if they already exists in `Container` (default: `False`)
+
+Using credentials:
+```plain
+bs[s]://<username>:<password>@<AccountName>/<Container>?Tenant=<tenant>[&Overwrite=<bool>]
+```
+
+* `username` _str_ - username to connect as
+
+* `password` _str_  - password for said user
+
+* `AccountName` _str_ - name of storage account
+
+* `Tenant` _str_  - name of tenant to authenticate with
 
 * `Container` _str_ - name of the container to perform the request on
 
@@ -52,6 +69,7 @@ from urllib.parse import parse_qs, quote, urlparse
 from azure.storage.blob import BlobServiceClient, ContentSettings
 
 from grizzly.types import GrizzlyResponse, RequestDirection, bool_type
+from grizzly_extras.azure.aad import AuthMethod, AzureAadCredential
 
 from . import ClientTask, client
 
@@ -65,11 +83,9 @@ azure_logger.setLevel(logging.ERROR)
 
 @client('bs', 'bss')
 class BlobStorageClientTask(ClientTask):
-    account_name: str
-    account_key: str
-    container: str
     service_client: BlobServiceClient
     overwrite: bool
+    container: str
 
     _endpoints_protocol: str
 
@@ -100,8 +116,12 @@ class BlobStorageClientTask(ClientTask):
 
         self._endpoints_protocol = 'http' if self._scheme == 'bs' else 'https'
 
-        if parsed.netloc is None or len(parsed.netloc) < 1:
-            message = f'{self.__class__.__name__}: could not find account name in {self.endpoint}'
+        username = parsed.username
+        password = parsed.password
+        use_credential = username is not None and password is not None
+
+        if parsed.hostname is None or len(parsed.hostname) < 1:
+            message = f'{self.__class__.__name__}: could not find storage account name in {self.endpoint}'
             raise AssertionError(message)
 
         # See urllib/parse.py:771-774, explicit + characters are replaced with white space,
@@ -114,19 +134,33 @@ class BlobStorageClientTask(ClientTask):
 
         parameters = parse_qs('&'.join(parsed_query))
 
-        assert 'AccountKey' in parameters, f'{self.__class__.__name__}: could not find AccountKey in {self.endpoint}'
-        assert 'Container' in parameters, f'{self.__class__.__name__}: could not find Container in {self.endpoint}'
+        assert 'Container' not in parameters, f'{self.__class__.__name__}: container should be the path in the URL, not in the querystring'
 
-        self.account_name = parsed.netloc
-        self.account_key = parameters['AccountKey'][0]
-        self.container = parameters['Container'][0]
+        self.container = parsed.path.lstrip('/')
+
+        assert len(self.container) > 0, f'{self.__class__.__name__}: no container name found in URL {self.endpoint}'
+        assert self.container.count('/') == 0, f'{self.__class__.__name__}: "{self.container}" is not a valid container name, should be one branch'
+
+        if not use_credential:
+            assert 'AccountKey' in parameters, f'{self.__class__.__name__}: could not find AccountKey in {self.endpoint}'
+            account_name = parsed.hostname
+            account_key = parameters['AccountKey'][0]
+
+            conn_str = f'DefaultEndpointsProtocol={self._endpoints_protocol};AccountName={account_name};AccountKey={account_key};EndpointSuffix=core.windows.net'
+            self.service_client = BlobServiceClient.from_connection_string(conn_str=conn_str)
+        else:
+            assert 'Tenant' in parameters, f'{self.__class__.__name__}: could not find Tenant in {self.endpoint}'
+
+            tenant = parameters.get('Tenant', [''])[0]
+            account_url = f'{self._endpoints_protocol}://{parsed.hostname}'
+
+            if not account_url.endswith('.blob.core.windows.net'):
+                account_url = f'{account_url}.blob.core.windows.net'
+
+            credential = AzureAadCredential(username, cast(str, password), tenant, AuthMethod.USER, host=account_url)
+            self.service_client = BlobServiceClient(account_url=account_url, credential=credential)
+
         self.overwrite = bool_type(parameters.get('Overwrite', ['False'])[0])
-        self.service_client = BlobServiceClient.from_connection_string(conn_str=self.connection_string)
-
-    @property
-    def connection_string(self) -> str:
-        """Construct azure-style connection string."""
-        return f'DefaultEndpointsProtocol={self._endpoints_protocol};AccountName={self.account_name};AccountKey={self.account_key};EndpointSuffix=core.windows.net'
 
     def get(self, _: GrizzlyScenario) -> GrizzlyResponse:  # pragma: no cover
         message = f'{self.__class__.__name__} has not implemented GET'

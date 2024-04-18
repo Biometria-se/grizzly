@@ -23,10 +23,15 @@ Supports the following request methods:
 
 ## Format
 
-Format of `host` is the following:
+Format of `host` is the following, when using connection strings:
 
 ```plain
 [Endpoint=]sb://<hostname>/;SharedAccessKeyName=<shared key name>;SharedAccessKey=<shared key>
+```
+
+When using credentials context variables `auth.tenant`, `auth.user.username` and `auth.user.password` has to be set, and the format of `host` should be:
+```plain
+sb://<qualified namespace>[.servicebus.windows.net]
 ```
 
 `endpoint` in the request must have the prefix `queue:` or `topic:` followed by the name of the targeted
@@ -59,8 +64,11 @@ endpoint. If no matching messages was found when peeking, it is repeated again a
 elapsed. To use expressions, a content type must be specified for the request, e.g. `application/xml`.
 
 ```gherkin
-Given a user of type "ServiceBus" load testing "sb://sb.example.com/;SharedAccessKeyName=authorization-key;SharedAccessKey=c2VjcmV0LXN0dWZm"
+Given a user of type "ServiceBus" load testing "sb://my-sbns"
 And set context variable "message.wait" to "5"
+And set context variable "auth.tenant" to "example.com"
+And set context variable "auth.user.username" to "bob@example.com"
+And set context variable "auth.user.password" to "secret"
 Then receive request "queue-recv" from endpoint "queue:shared-queue, expression:$.document[?(@.name=='TPM report')].id"
 And set response content type to "application/json"
 Then receive request "topic-recv" from endpoint "topic:shared-topic, subscription:my-subscription, expression:/documents/document[@name='TPM Report']/id/text()"

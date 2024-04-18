@@ -11,10 +11,15 @@ Supports the following request methods:
 
 ## Format
 
-Format of `host` is the following:
+Format of `host` is the following, when using connection strings:
 
 ```plain
 [DefaultEndpointsProtocol=]https;EndpointSuffix=<hostname>;AccountName=<account name>;AccountKey=<account key>
+```
+
+When using credentials context variables `auth.tenant`, `auth.user.username` and `auth.user.passwords` has to be set, and the format `host` should be:
+```plain
+bs://<storage account name>[.blob.core.windows.net]
 ```
 
 `endpoint` in the request is the name of the blob storage container. Name of the targeted file in the container
@@ -22,12 +27,23 @@ is either `name` or based on the file name of `source`.
 
 ## Examples
 
-Example of how to use it in a scenario:
+Example of how to use it in a scenario, with connection string:
 
 ```gherkin
 Given a user of type "BlobStorage" load testing "DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=examplestorage;AccountKey=xxxyyyyzzz=="
 Then send request "test/blob.file" to endpoint "azure-blobstorage-container-name"
 ```
+
+Example of how to use it, with credentials:
+
+```gherkin
+Given a user of type "BlobStorage" load testing "bs://examplestorage"
+And set context variable "auth.tenant" to "example.com"
+And set context variable "auth.user.username" to "bob@example.com"
+And set context variable "auth.user.password" to "secret"
+Then send request "test/blob.file" to endpoint "azure-blobstorage-container-name"
+```
+
 """
 from __future__ import annotations
 
@@ -108,7 +124,6 @@ class BlobStorageUser(GrizzlyUser):
                 self.url = f'{self.url}.blob.core.windows.net'
 
             self.credential = AzureAadCredential(username, password, tenant, AuthMethod.USER, host=self.url)
-
 
     def on_start(self) -> None:
         super().on_start()

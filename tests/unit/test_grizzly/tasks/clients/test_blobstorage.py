@@ -7,12 +7,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 import pytest
-from azure.storage.blob import BlobClient, BlobServiceClient, ContentSettings
+from azure.storage.blob import BlobClient, ContentSettings
 
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import GrizzlyTask
 from grizzly.tasks.clients import BlobStorageClientTask
 from grizzly.types import RequestDirection
+from grizzly_extras.azure.aad import AuthMethod, AzureAadCredential
 from tests.helpers import ANY, SOME
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -22,93 +23,123 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 class TestBlobStorageClientTask:
-    def test___init__(self, grizzly_fixture: GrizzlyFixture) -> None:
+    def test___init___conn_str(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         BlobStorageClientTask.__scenario__ = grizzly_fixture.grizzly.scenario
+
+        blob_service_client_mock = mocker.patch('grizzly.tasks.clients.blobstorage.BlobServiceClient')
+
         with pytest.raises(AttributeError, match='BlobStorageClientTask: "" is not supported, must be one of bs, bss'):
             BlobStorageClientTask(
                 RequestDirection.TO,
                 '',
             )
+        blob_service_client_mock.assert_not_called()
+        blob_service_client_mock.from_connection_string.assert_not_called()
 
         with pytest.raises(AssertionError, match='BlobStorageClientTask: source must be set for direction TO'):
             BlobStorageClientTask(
                 RequestDirection.TO,
                 'bs://?AccountKey=aaaabbb=&Container=my-container',
             )
+        blob_service_client_mock.assert_not_called()
+        blob_service_client_mock.from_connection_string.assert_not_called()
 
-        with pytest.raises(AssertionError, match=r'BlobStorageClientTask: could not find account name in bs://\?AccountKey=aaaabbb=&Container=my-container'):
+        with pytest.raises(AssertionError, match=r'BlobStorageClientTask: could not find storage account name in bs://\?AccountKey=aaaabbb=&Container=my-container'):
             BlobStorageClientTask(
                 RequestDirection.TO,
                 'bs://?AccountKey=aaaabbb=&Container=my-container',
                 source='',
             )
+        blob_service_client_mock.assert_not_called()
+        blob_service_client_mock.from_connection_string.assert_not_called()
 
-        with pytest.raises(AssertionError, match='BlobStorageClientTask: could not find AccountKey in bs://my-storage'):
+        with pytest.raises(AssertionError, match=r'BlobStorageClientTask: container should be the path in the URL, not in the querystring'):
             BlobStorageClientTask(
                 RequestDirection.TO,
-                'bs://my-storage',
+                'bs://my-storage?AccountKey=aaaabbb=&Container=my-container',
                 source='',
             )
+        blob_service_client_mock.assert_not_called()
+        blob_service_client_mock.from_connection_string.assert_not_called()
 
-        with pytest.raises(AssertionError, match=r'BlobStorageClientTask: could not find Container in bs://my-storage\?AccountKey=aaaabbb='):
+        with pytest.raises(AssertionError, match=r'BlobStorageClientTask: no container name found in URL bs://my-storage/\?AccountKey=aaaabbb='):
             BlobStorageClientTask(
                 RequestDirection.TO,
-                'bs://my-storage?AccountKey=aaaabbb=',
+                'bs://my-storage/?AccountKey=aaaabbb=',
                 source='',
             )
+        blob_service_client_mock.assert_not_called()
+        blob_service_client_mock.from_connection_string.assert_not_called()
+
+        with pytest.raises(AssertionError, match='BlobStorageClientTask: "my/container" is not a valid container name, should be one branch'):
+            BlobStorageClientTask(
+                RequestDirection.TO,
+                'bs://my-storage/my/container?AccountKey=aaaabbb=',
+                source='',
+            )
+        blob_service_client_mock.assert_not_called()
+        blob_service_client_mock.from_connection_string.assert_not_called()
+
+        with pytest.raises(AssertionError, match='BlobStorageClientTask: could not find AccountKey in bs://my-storage/my-container'):
+            BlobStorageClientTask(
+                RequestDirection.TO,
+                'bs://my-storage/my-container',
+                source='',
+            )
+        blob_service_client_mock.assert_not_called()
+        blob_service_client_mock.from_connection_string.assert_not_called()
 
         task = BlobStorageClientTask(
             RequestDirection.TO,
-            'bs://my-storage?AccountKey=aaaabbb=&Container=my-container',
+            'bs://my-storage/my-container?AccountKey=aaaabbb=',
             source='',
         )
 
-        assert isinstance(task.service_client, BlobServiceClient)
         for attr, value in [
-            ('endpoint', 'bs://my-storage?AccountKey=aaaabbb=&Container=my-container'),
+            ('endpoint', 'bs://my-storage/my-container?AccountKey=aaaabbb='),
             ('name', None),
             ('source', ''),
             ('payload_variable', None),
             ('metadata_variable', None),
             ('destination', None),
             ('_endpoints_protocol', 'http'),
-            ('account_name', 'my-storage'),
-            ('account_key', 'aaaabbb='),
             ('container', 'my-container'),
-            ('connection_string', 'DefaultEndpointsProtocol=http;AccountName=my-storage;AccountKey=aaaabbb=;EndpointSuffix=core.windows.net'),
             ('overwrite', False),
             ('__template_attributes__', {'endpoint', 'destination', 'source', 'name', 'variable_template'}),
         ]:
             assert getattr(task, attr) == value
+        blob_service_client_mock.assert_not_called()
+        blob_service_client_mock.from_connection_string.assert_called_once_with(conn_str='DefaultEndpointsProtocol=http;AccountName=my-storage;AccountKey=aaaabbb=;EndpointSuffix=core.windows.net')
+        blob_service_client_mock.reset_mock()
 
         task = BlobStorageClientTask(
             RequestDirection.TO,
-            'bss://my-storage?AccountKey=aaaabbb=&Container=my-container&Overwrite=True',
+            'bss://my-storage/my-container?AccountKey=aaaabbb=&Overwrite=True',
             'upload-empty-file',
             source='',
         )
 
-        assert isinstance(task.service_client, BlobServiceClient)
         for attr, value in [
-            ('endpoint', 'bss://my-storage?AccountKey=aaaabbb=&Container=my-container&Overwrite=True'),
+            ('endpoint', 'bss://my-storage/my-container?AccountKey=aaaabbb=&Overwrite=True'),
             ('name', 'upload-empty-file'),
             ('source', ''),
             ('payload_variable', None),
             ('metadata_variable', None),
             ('destination', None),
             ('_endpoints_protocol', 'https'),
-            ('account_name', 'my-storage'),
-            ('account_key', 'aaaabbb='),
             ('container', 'my-container'),
-            ('connection_string', 'DefaultEndpointsProtocol=https;AccountName=my-storage;AccountKey=aaaabbb=;EndpointSuffix=core.windows.net'),
             ('overwrite', True),
         ]:
             assert getattr(task, attr) == value
 
+        blob_service_client_mock.assert_not_called()
+        blob_service_client_mock.from_connection_string.assert_called_once_with(conn_str='DefaultEndpointsProtocol=https;AccountName=my-storage;AccountKey=aaaabbb=;EndpointSuffix=core.windows.net')
+        blob_service_client_mock.reset_mock()
+
         with pytest.raises(ValueError, match='asdf is not a valid boolean'):
             BlobStorageClientTask(
                 RequestDirection.TO,
-                'bss://my-storage?AccountKey=aaaabbb=&Container=my-container&Overwrite=asdf',
+                'bss://my-storage/my-container?AccountKey=aaaabbb=&Overwrite=asdf',
                 'upload-empty-file',
                 source='',
             )
@@ -116,7 +147,167 @@ class TestBlobStorageClientTask:
         with pytest.raises(NotImplementedError, match='BlobStorageClientTask has not implemented support for step text'):
             BlobStorageClientTask(
                 RequestDirection.TO,
-                'bss://my-storage?AccountKey=aaaabbb=&Container=my-container&Overwrite=True',
+                'bss://my-storage/my-container?AccountKey=aaaabbb=&Overwrite=True',
+                'upload-empty-file',
+                source='',
+                text='foobar',
+            )
+
+    def test___init___credential(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+        BlobStorageClientTask.__scenario__ = grizzly_fixture.grizzly.scenario
+
+        blob_service_client_mock = mocker.patch('grizzly.tasks.clients.blobstorage.BlobServiceClient')
+
+        with pytest.raises(AttributeError, match='BlobStorageClientTask: "" is not supported, must be one of bs, bss'):
+            BlobStorageClientTask(
+                RequestDirection.TO,
+                '',
+            )
+        blob_service_client_mock.assert_not_called()
+        blob_service_client_mock.from_connection_string.assert_not_called()
+
+        with pytest.raises(AssertionError, match='BlobStorageClientTask: source must be set for direction TO'):
+            BlobStorageClientTask(
+                RequestDirection.TO,
+                'bs://username:password@my-storage/my-container',
+            )
+        blob_service_client_mock.assert_not_called()
+        blob_service_client_mock.from_connection_string.assert_not_called()
+
+        with pytest.raises(AssertionError, match=r'BlobStorageClientTask: could not find storage account name in bs://username:password@/my-container\?Tenant=example.com'):
+            BlobStorageClientTask(
+                RequestDirection.TO,
+                'bs://username:password@/my-container?Tenant=example.com',
+                source='',
+            )
+        blob_service_client_mock.assert_not_called()
+        blob_service_client_mock.from_connection_string.assert_not_called()
+
+        with pytest.raises(AssertionError, match=r'BlobStorageClientTask: container should be the path in the URL, not in the querystring'):
+            BlobStorageClientTask(
+                RequestDirection.TO,
+                'bs://username:password@my-storage?Container=my-container',
+                source='',
+            )
+        blob_service_client_mock.assert_not_called()
+        blob_service_client_mock.from_connection_string.assert_not_called()
+
+        with pytest.raises(AssertionError, match=r'BlobStorageClientTask: no container name found in URL bs://my-storage/'):
+            BlobStorageClientTask(
+                RequestDirection.TO,
+                'bs://my-storage/',
+                source='',
+            )
+        blob_service_client_mock.assert_not_called()
+        blob_service_client_mock.from_connection_string.assert_not_called()
+
+        with pytest.raises(AssertionError, match='BlobStorageClientTask: "my/container" is not a valid container name, should be one branch'):
+            BlobStorageClientTask(
+                RequestDirection.TO,
+                'bs://my-storage/my/container',
+                source='',
+            )
+        blob_service_client_mock.assert_not_called()
+        blob_service_client_mock.from_connection_string.assert_not_called()
+
+        with pytest.raises(AssertionError, match=r'BlobStorageClientTask: no container name found in URL bs://username:password@my-storage\?Tenant=example.com'):
+            BlobStorageClientTask(
+                RequestDirection.TO,
+                'bs://username:password@my-storage?Tenant=example.com',
+                source='',
+            )
+        blob_service_client_mock.assert_not_called()
+        blob_service_client_mock.from_connection_string.assert_not_called()
+
+        with pytest.raises(AssertionError, match=r'BlobStorageClientTask: could not find Tenant in bs://username:password@my-storage/my-container'):
+            BlobStorageClientTask(
+                RequestDirection.TO,
+                'bs://username:password@my-storage/my-container',
+                source='',
+            )
+        blob_service_client_mock.assert_not_called()
+        blob_service_client_mock.from_connection_string.assert_not_called()
+
+        task = BlobStorageClientTask(
+            RequestDirection.TO,
+            'bs://username:password@my-storage/my-container?Tenant=example.com',
+            source='',
+        )
+
+        for attr, value in [
+            ('endpoint', 'bs://username:password@my-storage/my-container?Tenant=example.com'),
+            ('name', None),
+            ('source', ''),
+            ('payload_variable', None),
+            ('metadata_variable', None),
+            ('destination', None),
+            ('_endpoints_protocol', 'http'),
+            ('container', 'my-container'),
+            ('overwrite', False),
+            ('__template_attributes__', {'endpoint', 'destination', 'source', 'name', 'variable_template'}),
+        ]:
+            assert getattr(task, attr) == value
+
+        blob_service_client_mock.from_connection_string.assert_not_called()
+        blob_service_client_mock.assert_called_once_with(
+            account_url='http://my-storage.blob.core.windows.net',
+            credential=SOME(
+                AzureAadCredential,
+                username='username',
+                password='password',  # noqa: S106
+                tenant='example.com',
+                auth_method=AuthMethod.USER,
+                host='http://my-storage.blob.core.windows.net',
+            ),
+        )
+        blob_service_client_mock.reset_mock()
+
+        task = BlobStorageClientTask(
+            RequestDirection.TO,
+            'bss://username:password@my-storage/my-container?Tenant=example.com&Overwrite=True',
+            'upload-empty-file',
+            source='',
+        )
+
+        for attr, value in [
+            ('endpoint', 'bss://username:password@my-storage/my-container?Tenant=example.com&Overwrite=True'),
+            ('name', 'upload-empty-file'),
+            ('source', ''),
+            ('payload_variable', None),
+            ('metadata_variable', None),
+            ('destination', None),
+            ('_endpoints_protocol', 'https'),
+            ('container', 'my-container'),
+            ('overwrite', True),
+        ]:
+            assert getattr(task, attr) == value
+
+        blob_service_client_mock.from_connection_string.assert_not_called()
+        blob_service_client_mock.assert_called_once_with(
+            account_url='https://my-storage.blob.core.windows.net',
+            credential=SOME(
+                AzureAadCredential,
+                username='username',
+                password='password',  # noqa: S106
+                tenant='example.com',
+                auth_method=AuthMethod.USER,
+                host='https://my-storage.blob.core.windows.net',
+            ),
+        )
+        blob_service_client_mock.reset_mock()
+
+        with pytest.raises(ValueError, match='asdf is not a valid boolean'):
+            BlobStorageClientTask(
+                RequestDirection.TO,
+                'bss://username:password@my-storage/my-container?Tenant=example.com&Overwrite=asdf',
+                'upload-empty-file',
+                source='',
+            )
+
+        with pytest.raises(NotImplementedError, match='BlobStorageClientTask has not implemented support for step text'):
+            BlobStorageClientTask(
+                RequestDirection.TO,
+                'bss://username:password@my-storage/my-container?Tenant=example.com&Overwrite=True',
                 'upload-empty-file',
                 source='',
                 text='foobar',
@@ -131,7 +322,7 @@ class TestBlobStorageClientTask:
 
         task_factory = BlobStorageClientTask(
             RequestDirection.FROM,
-            'bs://my-storage?AccountKey=aaaabbb=&Container=my-container',
+            'bs://my-storage/my-container?AccountKey=aaaabbb=',
             payload_variable='test',
         )
         task = task_factory()
@@ -163,22 +354,19 @@ class TestBlobStorageClientTask:
             with pytest.raises(AssertionError, match='BlobStorageClientTask: source must be set for direction TO'):
                 BlobStorageClientTask(
                     RequestDirection.TO,
-                    'bss://$conf::storage.account$?AccountKey=$conf::storage.account_key$&Container=$conf::storage.container$',
+                    'bss://$conf::storage.account$/$conf::storage.container$?AccountKey=$conf::storage.account_key$',
                     source=None,
                     destination='destination.txt',
                 )
 
             task_factory = BlobStorageClientTask(
                 RequestDirection.TO,
-                'bss://$conf::storage.account$?AccountKey=$conf::storage.account_key$&Container=$conf::storage.container$',
+                'bss://$conf::storage.account$/$conf::storage.container$?AccountKey=$conf::storage.account_key$',
                 source='source.json',
                 destination='destination.txt',
             )
             for attr, value in [
-                ('account_name', 'my-storage'),
-                ('account_key', 'aaaa+bbb/64='),
                 ('container', 'my-container'),
-                ('connection_string', 'DefaultEndpointsProtocol=https;AccountName=my-storage;AccountKey=aaaa+bbb/64=;EndpointSuffix=core.windows.net'),
             ]:
                 assert getattr(task_factory, attr) == value
 
@@ -213,7 +401,7 @@ class TestBlobStorageClientTask:
 
             task_factory = BlobStorageClientTask(
                 RequestDirection.TO,
-                'bss://$conf::storage.account$?AccountKey=$conf::storage.account_key$&Container=$conf::storage.container$',
+                'bss://$conf::storage.account$/$conf::storage.container$?AccountKey=$conf::storage.account_key$',
                 'test-bss-request',
                 source='{{ source }}',
                 destination='{{ destination }}',
