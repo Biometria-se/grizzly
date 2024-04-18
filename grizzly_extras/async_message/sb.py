@@ -5,6 +5,7 @@ import logging
 from contextlib import suppress
 from time import perf_counter, sleep, time
 from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, Optional, Tuple, Union, cast
+from urllib.parse import urlparse
 
 from azure.core.exceptions import ResourceExistsError, ResourceNotFoundError
 from azure.servicebus import ServiceBusClient, ServiceBusMessage, ServiceBusReceiver, ServiceBusSender, TransportType
@@ -13,9 +14,11 @@ from azure.servicebus.amqp import AmqpMessageBodyType
 from azure.servicebus.management import ServiceBusAdministrationClient, SqlRuleFilter, TopicProperties
 
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
+from grizzly_extras.azure.aad import AuthMethod, AzureAadCredential
 from grizzly_extras.transformer import TransformerContentType, TransformerError, transformer
 
 from . import (
+    AsyncMessageContext,
     AsyncMessageError,
     AsyncMessageHandler,
     AsyncMessageRequest,
@@ -290,12 +293,11 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             message = 'no rule text in request'
             raise AsyncMessageError(message)
 
-        if self.mgmt_client is None:
-            url = context['url']
-            if not url.startswith('Endpoint='):
-                url = f'Endpoint={url}'
+        self._prepare_clients(context, only_mgmt=True)
 
-            self.mgmt_client = ServiceBusAdministrationClient.from_connection_string(conn_str=url)
+        if self.mgmt_client is None:
+            message = 'no mgmt client found'
+            raise AsyncMessageError(message)
 
         topic: Optional[TopicProperties] = None
 
@@ -364,12 +366,12 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
         topic_name = arguments['endpoint']
         subscription_name = arguments['subscription']
 
-        if self.mgmt_client is None:
-            url = context['url']
-            if not url.startswith('Endpoint='):
-                url = f'Endpoint={url}'
+        self._prepare_clients(context, only_mgmt=True)
 
-            self.mgmt_client = ServiceBusAdministrationClient.from_connection_string(conn_str=url)
+        if self.mgmt_client is None:
+            message = 'no mgmt client found'
+            raise AsyncMessageError(message)
+
 
         topic: Optional[TopicProperties] = None
 
@@ -412,24 +414,54 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
             'message': f'removed subscription {subscription_name} on topic {topic_name} (stats: {topic_statistics})',
         }
 
+    def _prepare_clients(self, context: AsyncMessageContext, *, only_mgmt: bool = False) -> None:
+        username = context.get('username')
+        password = context.get('password')
+        url = context['url']
+
+        effective_level = self.logger.getEffectiveLevel()
+
+        if username is None and password is None:
+            if not url.startswith('Endpoint='):
+                url = f'Endpoint={url}'
+
+            if not only_mgmt:
+                self.client = self._client or ServiceBusClient.from_connection_string(
+                    conn_str=url,
+                    transport_type=TransportType.AmqpOverWebsocket,
+                )
+
+            if self.mgmt_client is None and (effective_level == logging.DEBUG or only_mgmt):
+                self.mgmt_client = ServiceBusAdministrationClient.from_connection_string(conn_str=url)
+        else:
+            tenant = context.get('tenant')
+            if tenant is None:
+                message = 'no tenant in context'
+                raise AsyncMessageError(message)
+
+            password = cast(str, password)
+
+            url_parsed = urlparse(url)
+            fully_qualified_namespace = f'{url_parsed.hostname}'
+
+            if not fully_qualified_namespace.endswith('.servicebus.windows.net'):
+                fully_qualified_namespace = f'{fully_qualified_namespace}.servicebus.windows.net'
+
+            credential = AzureAadCredential(username, password, tenant, AuthMethod.USER, host=url)
+            if not only_mgmt:
+                self.client = self._client or ServiceBusClient(fully_qualified_namespace, credential=credential, transport_type=TransportType.AmqpOverWebsocket)
+
+            if self.mgmt_client is None and (effective_level == logging.DEBUG or only_mgmt):
+                credential = AzureAadCredential(username, password, tenant, AuthMethod.USER, host=url)
+                self.mgmt_client = ServiceBusAdministrationClient(fully_qualified_namespace, credential=credential)
+
     def _hello(self, request: AsyncMessageRequest, *, force: bool) -> AsyncMessageResponse:
         context = request.get('context', None)
         if context is None:
             message = 'no context in request'
             raise AsyncMessageError(message)
 
-        url = context['url']
-        if not url.startswith('Endpoint='):
-            url = f'Endpoint={url}'
-
-        if self._client is None:
-            self.client = ServiceBusClient.from_connection_string(
-                conn_str=url,
-                transport_type=TransportType.AmqpOverWebsocket,
-            )
-
-        if self.mgmt_client is None and self.logger.getEffectiveLevel() == logging.DEBUG:
-            self.mgmt_client = ServiceBusAdministrationClient.from_connection_string(conn_str=url)
+        self._prepare_clients(context)
 
         endpoint = context['endpoint']
         instance_type = context['connection']
@@ -606,6 +638,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                                         receiver.complete_message(message)  # remove message from endpoint, but ignore contents
                                         message = payload = metadata = None
 
+                                # do not wait any longer, give up due to message_wait
                                 if message_wait > 0 and (perf_counter() - wait_start) >= message_wait:
                                     raise StopIteration
 
@@ -632,7 +665,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                             if retry < 3:
                                 self.logger.warning('receiver for %d::%s returned no message without trying, brute-force retry #%d', client, cache_endpoint, retry)
                                 # <!-- useful debugging information, actual message count on message entity
-                                if self.logger.getEffectiveLevel() == logging.DEBUG and self.mgmt_client is not None:
+                                if self.logger.getEffectiveLevel() == logging.DEBUG and self.mgmt_client is not None:  # pragma: no cover
                                     if 'topic' in endpoint_arguments:
                                         topic_properties = self.mgmt_client.get_subscription_runtime_properties(
                                             topic_name=endpoint_arguments['topic'],
