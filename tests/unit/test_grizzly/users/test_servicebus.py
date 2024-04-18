@@ -108,7 +108,7 @@ class TestServiceBusUser:
             assert len(args) == 1
             assert args[0] is scenario.tasks()[index + 1]
 
-    def test_create(self, behave_fixture: BehaveFixture, noop_zmq: NoopZmqFixture) -> None:
+    def test___init__(self, behave_fixture: BehaveFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.users.servicebus')
 
         behave_fixture.grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
@@ -116,6 +116,7 @@ class TestServiceBusUser:
 
         assert issubclass(test_cls, ServiceBusUser)
 
+        # <!-- connection string
         test_cls.host = 'Endpoint=mq://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=secret='
         with pytest.raises(ValueError, match='ServiceBusTestUser: "mq" is not a supported scheme'):
             test_cls(environment=behave_fixture.locust.environment)
@@ -131,6 +132,53 @@ class TestServiceBusUser:
         test_cls.host = 'Endpoint=sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey'
         with pytest.raises(ValueError, match='ServiceBusTestUser: SharedAccessKey must be in the query string'):
             test_cls(environment=behave_fixture.locust.environment)
+
+        test_cls.host = 'Endpoint=sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=secret='
+        user = test_cls(environment=behave_fixture.locust.environment)
+
+        assert user.hellos == set()
+        assert user.worker_id is None
+        assert user.am_context == {
+            'url': 'sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=secret=',
+            'message_wait': None,
+            'tenant': None,
+            'username': None,
+            'password': None,
+        }
+        # // -->
+
+        # <!-- credential
+        test_cls.host = 'mq://my-sbns'
+        with pytest.raises(ValueError, match='ServiceBusTestUser: "mq" is not a supported scheme'):
+            test_cls(environment=behave_fixture.locust.environment)
+
+        test_cls.host = 'sb://my-sbns'
+        test_cls.__context__.update({
+            'auth': {
+                'tenant': None,
+                'user': {
+                    'username': 'bob@example.com',
+                    'password': 'secret',
+                },
+            },
+        })
+
+        with pytest.raises(ValueError, match='ServiceBusTestUser: does not have context variable auth.tenant set while auth.user is'):
+            test_cls(environment=behave_fixture.locust.environment)
+
+        test_cls.__context__['auth']['tenant'] = 'example.com'
+        user = test_cls(environment=behave_fixture.locust.environment)
+
+        assert user.hellos == set()
+        assert user.worker_id is None
+        assert user.am_context == {
+            'url': 'sb://my-sbns',
+            'message_wait': None,
+            'tenant': 'example.com',
+            'username': 'bob@example.com',
+            'password': 'secret',
+        }
+        # // -->
 
     def test_disconnect(self, behave_fixture: BehaveFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.users.servicebus')
