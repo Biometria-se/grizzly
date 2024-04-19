@@ -14,13 +14,13 @@ from hashlib import sha256
 from html.parser import HTMLParser
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from secrets import token_urlsafe
+from threading import Thread
 from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Optional, Tuple, Type, cast
 from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
 
 import requests
 from azure.core.credentials import AccessToken, TokenCredential
-from gevent import Greenlet
 from pyotp import TOTP
 from requests.adapters import HTTPAdapter, Retry
 from typing_extensions import Self
@@ -103,7 +103,7 @@ class AzureAadWebserver:
     credential: AzureAadCredential
 
     _http_server: HTTPServer
-    _greenlet: Greenlet
+    _thread: Thread
     _redirect: Optional[str]
 
     def __init__(self, credential: AzureAadCredential) -> None:
@@ -132,14 +132,17 @@ class AzureAadWebserver:
                     if 'WinError 10038' not in str(e):
                         raise
 
-        self._greenlet = Greenlet.spawn(serve_forever, self._http_server)
+        self._thread = Thread(target=serve_forever, args=(self._http_server,))
+        self._thread.daemon = True
+        self._thread.start()
 
     def _stop(self) -> None:
         if not self.enable:
             return
 
         self._http_server.server_close()
-        self._greenlet.kill(block=False)
+        with suppress(Exception):
+            self._thread.join(timeout=1)
 
     def __enter__(self) -> Self:
         self._redirect = self.credential.redirect

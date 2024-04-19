@@ -150,7 +150,7 @@ class ServiceBusClientTask(ClientTask):
     _state: Dict[GrizzlyScenario, State]
     context: AsyncMessageContext
 
-    def __init__(
+    def __init__(  # noqa: PLR0915
         self,
         direction: RequestDirection,
         endpoint: str,
