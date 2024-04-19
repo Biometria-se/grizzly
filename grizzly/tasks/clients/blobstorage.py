@@ -27,7 +27,7 @@ Only supports `RequestDirection.TO`.
 
 Using connection strings:
 ```plain
-bs[s]://<AccountName>/<Container>?AccountKey=<AccountKey>[&Overwrite=<bool>]
+bs[s]://<AccountName>/<Container>?AccountKey=<AccountKey>[#Overwrite=<bool>]
 ```
 * `AccountName` _str_ - name of storage account
 
@@ -39,7 +39,7 @@ bs[s]://<AccountName>/<Container>?AccountKey=<AccountKey>[&Overwrite=<bool>]
 
 Using credentials:
 ```plain
-bs[s]://<username>:<password>@<AccountName>/<Container>?Tenant=<tenant>[&Overwrite=<bool>]
+bs[s]://<username>:<password>@<AccountName>/<Container>#Tenant=<tenant>[&Overwrite=<bool>]
 ```
 
 * `username` _str_ - username to connect as
@@ -133,6 +133,7 @@ class BlobStorageClientTask(ClientTask):
                 parsed_query.append(f'{quote(key)}={quote(value)}')
 
         parameters = parse_qs('&'.join(parsed_query))
+        fragments = parse_qs(parsed.fragment)
 
         assert 'Container' not in parameters, f'{self.__class__.__name__}: container should be the path in the URL, not in the querystring'
 
@@ -149,9 +150,9 @@ class BlobStorageClientTask(ClientTask):
             conn_str = f'DefaultEndpointsProtocol={self._endpoints_protocol};AccountName={account_name};AccountKey={account_key};EndpointSuffix=core.windows.net'
             self.service_client = BlobServiceClient.from_connection_string(conn_str=conn_str)
         else:
-            assert 'Tenant' in parameters, f'{self.__class__.__name__}: could not find Tenant in {self.endpoint}'
+            assert 'Tenant' in fragments, f'{self.__class__.__name__}: could not find Tenant in fragments of {self.endpoint}'
 
-            tenant = parameters.get('Tenant', [''])[0]
+            tenant = fragments.get('Tenant', [''])[0]
             account_url = f'{self._endpoints_protocol}://{parsed.hostname}'
 
             if not account_url.endswith('.blob.core.windows.net'):
@@ -160,7 +161,7 @@ class BlobStorageClientTask(ClientTask):
             credential = AzureAadCredential(username, cast(str, password), tenant, AuthMethod.USER, host=account_url)
             self.service_client = BlobServiceClient(account_url=account_url, credential=credential)
 
-        self.overwrite = bool_type(parameters.get('Overwrite', ['False'])[0])
+        self.overwrite = bool_type(fragments.get('Overwrite', ['False'])[0])
 
     def get(self, _: GrizzlyScenario) -> GrizzlyResponse:  # pragma: no cover
         message = f'{self.__class__.__name__} has not implemented GET'

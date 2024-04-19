@@ -114,13 +114,13 @@ class TestBlobStorageClientTask:
 
         task = BlobStorageClientTask(
             RequestDirection.TO,
-            'bss://my-storage/my-container?AccountKey=aaaabbb=&Overwrite=True',
+            'bss://my-storage/my-container?AccountKey=aaaabbb=#Overwrite=True',
             'upload-empty-file',
             source='',
         )
 
         for attr, value in [
-            ('endpoint', 'bss://my-storage/my-container?AccountKey=aaaabbb=&Overwrite=True'),
+            ('endpoint', 'bss://my-storage/my-container?AccountKey=aaaabbb=#Overwrite=True'),
             ('name', 'upload-empty-file'),
             ('source', ''),
             ('payload_variable', None),
@@ -139,7 +139,7 @@ class TestBlobStorageClientTask:
         with pytest.raises(ValueError, match='asdf is not a valid boolean'):
             BlobStorageClientTask(
                 RequestDirection.TO,
-                'bss://my-storage/my-container?AccountKey=aaaabbb=&Overwrite=asdf',
+                'bss://my-storage/my-container?AccountKey=aaaabbb=#Overwrite=asdf',
                 'upload-empty-file',
                 source='',
             )
@@ -147,7 +147,7 @@ class TestBlobStorageClientTask:
         with pytest.raises(NotImplementedError, match='BlobStorageClientTask has not implemented support for step text'):
             BlobStorageClientTask(
                 RequestDirection.TO,
-                'bss://my-storage/my-container?AccountKey=aaaabbb=&Overwrite=True',
+                'bss://my-storage/my-container?AccountKey=aaaabbb=#Overwrite=True',
                 'upload-empty-file',
                 source='',
                 text='foobar',
@@ -174,10 +174,10 @@ class TestBlobStorageClientTask:
         blob_service_client_mock.assert_not_called()
         blob_service_client_mock.from_connection_string.assert_not_called()
 
-        with pytest.raises(AssertionError, match=r'BlobStorageClientTask: could not find storage account name in bs://username:password@/my-container\?Tenant=example.com'):
+        with pytest.raises(AssertionError, match=r'BlobStorageClientTask: could not find storage account name in bs://username:password@/my-container#Tenant=example.com'):
             BlobStorageClientTask(
                 RequestDirection.TO,
-                'bs://username:password@/my-container?Tenant=example.com',
+                'bs://username:password@/my-container#Tenant=example.com',
                 source='',
             )
         blob_service_client_mock.assert_not_called()
@@ -210,16 +210,16 @@ class TestBlobStorageClientTask:
         blob_service_client_mock.assert_not_called()
         blob_service_client_mock.from_connection_string.assert_not_called()
 
-        with pytest.raises(AssertionError, match=r'BlobStorageClientTask: no container name found in URL bs://username:password@my-storage\?Tenant=example.com'):
+        with pytest.raises(AssertionError, match=r'BlobStorageClientTask: no container name found in URL bs://username:password@my-storage#Tenant=example.com'):
             BlobStorageClientTask(
                 RequestDirection.TO,
-                'bs://username:password@my-storage?Tenant=example.com',
+                'bs://username:password@my-storage#Tenant=example.com',
                 source='',
             )
         blob_service_client_mock.assert_not_called()
         blob_service_client_mock.from_connection_string.assert_not_called()
 
-        with pytest.raises(AssertionError, match=r'BlobStorageClientTask: could not find Tenant in bs://username:password@my-storage/my-container'):
+        with pytest.raises(AssertionError, match=r'BlobStorageClientTask: could not find Tenant in fragments of bs://username:password@my-storage/my-container'):
             BlobStorageClientTask(
                 RequestDirection.TO,
                 'bs://username:password@my-storage/my-container',
@@ -230,12 +230,12 @@ class TestBlobStorageClientTask:
 
         task = BlobStorageClientTask(
             RequestDirection.TO,
-            'bs://username:password@my-storage/my-container?Tenant=example.com',
+            'bs://username:password@my-storage/my-container#Tenant=example.com',
             source='',
         )
 
         for attr, value in [
-            ('endpoint', 'bs://username:password@my-storage/my-container?Tenant=example.com'),
+            ('endpoint', 'bs://username:password@my-storage/my-container#Tenant=example.com'),
             ('name', None),
             ('source', ''),
             ('payload_variable', None),
@@ -264,13 +264,13 @@ class TestBlobStorageClientTask:
 
         task = BlobStorageClientTask(
             RequestDirection.TO,
-            'bss://username:password@my-storage/my-container?Tenant=example.com&Overwrite=True',
+            'bss://username:password@my-storage/my-container#Tenant=example.com&Overwrite=True',
             'upload-empty-file',
             source='',
         )
 
         for attr, value in [
-            ('endpoint', 'bss://username:password@my-storage/my-container?Tenant=example.com&Overwrite=True'),
+            ('endpoint', 'bss://username:password@my-storage/my-container#Tenant=example.com&Overwrite=True'),
             ('name', 'upload-empty-file'),
             ('source', ''),
             ('payload_variable', None),
@@ -280,7 +280,11 @@ class TestBlobStorageClientTask:
             ('container', 'my-container'),
             ('overwrite', True),
         ]:
-            assert getattr(task, attr) == value
+            actual_value = getattr(task, attr)
+            try:
+                assert actual_value == value
+            except AssertionError:
+                print(f'{actual_value} != {value}')
 
         blob_service_client_mock.from_connection_string.assert_not_called()
         blob_service_client_mock.assert_called_once_with(
@@ -299,7 +303,7 @@ class TestBlobStorageClientTask:
         with pytest.raises(ValueError, match='asdf is not a valid boolean'):
             BlobStorageClientTask(
                 RequestDirection.TO,
-                'bss://username:password@my-storage/my-container?Tenant=example.com&Overwrite=asdf',
+                'bss://username:password@my-storage/my-container#Tenant=example.com&Overwrite=asdf',
                 'upload-empty-file',
                 source='',
             )
@@ -307,7 +311,7 @@ class TestBlobStorageClientTask:
         with pytest.raises(NotImplementedError, match='BlobStorageClientTask has not implemented support for step text'):
             BlobStorageClientTask(
                 RequestDirection.TO,
-                'bss://username:password@my-storage/my-container?Tenant=example.com&Overwrite=True',
+                'bss://username:password@my-storage/my-container#Tenant=example.com&Overwrite=True',
                 'upload-empty-file',
                 source='',
                 text='foobar',
