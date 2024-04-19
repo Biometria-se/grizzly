@@ -25,17 +25,19 @@ This task performs Azure SerciceBus operations to a specified endpoint.
 
 ### `endpoint`
 
-Value of this is basically the "Connection String" from Azure (without `Endpoint=` prefix), with some additional information.
-
 ```plain
-sb://<sbns resource name>.servicebus.windows.net/[queue:<queue name>|topic:<topic name>[/subscription:<subscription name>]][/expression:<expression>];SharedAccessKeyName=<policy name>;SharedAccessKey=<access key>[#[Consume=<consume>][&][MessageWait=<wait>][&][ContentType<content type>]]
+sb://[<username>:<password>@]<sbns resource name>[.servicebus.windows.net]/[queue:<queue name>|topic:<topic name>[/subscription:<subscription name>]][/expression:<expression>][;SharedAccessKeyName=<policy name>;SharedAccessKey=<access key>][#[Consume=<consume>][&MessageWait=<wait>][&ContentType<content type>][&Tenant=<tenant>]]
 ```
 
 All variables in the endpoint have support for {@link framework.usage.variables.templating}.
 
 Network location:
 
-* `<sbns resource name>` _str_ - must be specfied, Azure Service Bus Namespace name
+* `<username>` _str_ - when using credentials, authenticate with this username
+
+* `<password>` _str_  - password for said user
+
+* `<sbns resource name>` _str_ - must be specfied, Azure Service Bus Namespace name, with or without domain name
 
 Path:
 
@@ -62,6 +64,29 @@ Fragment:
 * `<wait>` _int_ - how many seconds to wait for a message to arrive on the endpoint (default: `∞`)
 
 * `<content type>` _str_ - content type of response payload, should be used in combination with `<expression>`
+
+* `<tenant>` _str_ - when using credentials, tenant to authenticate with
+
+Parts listed below are mutally exclusive, e.g. either ones should be used, but no combinations between the two.
+
+#### Connection strings
+
+If connection strings is to be used for authenticating, the following `endpoint` parts must be present:
+
+* `<policy name>`
+
+* `<access key>`
+
+#### Credential
+
+If credential is to be used for authenticating, the following `endpoint` parts must be present:
+
+* `<username>`
+
+* `<password>`
+
+* `<tenant>`
+
 """  # noqa: E501
 from __future__ import annotations
 
@@ -161,8 +186,8 @@ class ServiceBusClientTask(ClientTask):
 
         parsed = urlparse(url)
 
-        self.endpoint = f'{parsed.scheme}://{parsed.netloc}/;{parsed.query.replace("&", ";")}'
-        self._zmq_context = zmq.Context()
+        username = parsed.username
+        password = parsed.password
 
         parameters = parse_qs(parsed.fragment)
 
@@ -180,6 +205,8 @@ class ServiceBusClientTask(ClientTask):
             raise AssertionError(message)
 
         consume = consume_fragment == 'True'
+
+        tenant = parameters.get('Tenant', [None])[0]
 
         content_type_fragment = parameters.get('ContentType', None)
         content_type = TransformerContentType.from_string(content_type_fragment[0]).name if content_type_fragment is not None else None
@@ -199,18 +226,43 @@ class ServiceBusClientTask(ClientTask):
 
         connection = 'receiver' if direction == RequestDirection.FROM else 'sender'
 
+        hostname = parsed.hostname
+
+        assert hostname is not None, 'hostname was not found in endpoint'
+
+        if not hostname.endswith('.servicebus.windows.net') and hostname.count('.') == 0:
+            hostname = f'{hostname}.servicebus.windows.net'
+
+        self.endpoint = f'{parsed.scheme}://{hostname}'
+
+        parameters = parse_qs(parsed.query)
+
+        if username is None and password is None:
+            assert parsed.query != '', 'no query string found in endpoint'
+            assert 'SharedAccessKeyName' in parameters, 'SharedAccessKeyName not found in query string of endpoint'
+            assert 'SharedAccessKey' in parameters, 'SharedAccessKey not found in query string of endpoint'
+            assert tenant is None, 'Tenant fragment in endpoint is not allowed when using connection string'
+            self.endpoint = f'{self.endpoint}/;{parsed.query.replace("&", ";")}'
+        else:
+            assert tenant is not None, 'Tenant not found in fragment of endpoint'
+            assert parsed.query == '', 'query string found in endpoint, which is not allowed when using credential authentication'
+
         self.context = {
             'url': self.endpoint,
             'connection': connection,
             'endpoint': context_endpoint,
             'message_wait': message_wait,
             'consume': consume,
+            'username': username,
+            'password': password,
+            'tenant': tenant,
         }
 
         if content_type is not None:
             self.context.update({'content_type': content_type})
 
         self._state = {}
+        self._zmq_context = zmq.Context()
 
     def get_state(self, parent: GrizzlyScenario) -> State:
         state = self._state.get(parent, None)
