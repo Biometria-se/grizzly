@@ -175,12 +175,12 @@ class ServiceBusClientTask(ClientTask):
 
         # expression can contain characters which are not URL safe, e.g. ?
         # so we need to quote it first to make sure it does not mess up the URL parsing
-        match = re.search(r'expression:(.*?)(\/|;)', self.endpoint)
+        match = re.search(r'expression:(.*?)(\/|;|#)', self.endpoint)
 
         if match:
             expression = quote_plus(match.group(1))
             eoe = match.group(2)
-            self.endpoint = re.sub(r'expression:(.*?)(\/|;)', f'expression:{expression}{eoe}', self.endpoint)
+            self.endpoint = re.sub(r'expression:(.*?)(\/|;|#)', f'expression:{expression}{eoe}', self.endpoint)
 
         url = self.endpoint.replace(';', '?', 1).replace(';', '&')
 
