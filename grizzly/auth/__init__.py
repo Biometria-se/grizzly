@@ -129,6 +129,7 @@ class refresh_token(Generic[P]):
                 exception: Optional[Exception] = None
                 start_time = perf_counter()
                 refreshed = False
+                action_triggered = False
 
                 action_for = (client.credential.username or '<unknown username>') if client.credential.auth_method == AuthMethod.USER else client.credential.client_id
 

@@ -153,7 +153,7 @@ class TestBlobStorageClientTask:
                 text='foobar',
             )
 
-    def test___init___credential(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+    def test___init___credential(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:  # noqa: PLR0915
         BlobStorageClientTask.__scenario__ = grizzly_fixture.grizzly.scenario
 
         blob_service_client_mock = mocker.patch('grizzly.tasks.clients.blobstorage.BlobServiceClient')

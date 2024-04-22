@@ -707,9 +707,6 @@ def test_e2e_step_task_client_put_endpoint_file_destination(e2e_fixture: End2End
         assert task._endpoints_protocol == 'https'
         assert task.container == 'my-container'
 
-        # we do not want to try to put files
-        assert 0  # noqa: PT015
-
     e2e_fixture.add_validator(validate_client_task)
 
     feature_file = e2e_fixture.test_steps(
@@ -724,7 +721,7 @@ def test_e2e_step_task_client_put_endpoint_file_destination(e2e_fixture: End2End
     result = ''.join(output)
 
     assert rc == 1
-    assert 'HOOK-ERROR in after_feature: RuntimeError: failed to prepare locust test' in result
+    assert 'HOOK-ERROR in after_feature: RuntimeError: locust test failed' in result
 
 
 def test_e2e_step_task_client_put_endpoint_file(e2e_fixture: End2EndFixture) -> None:
@@ -783,9 +780,6 @@ def test_e2e_step_task_client_put_endpoint_file(e2e_fixture: End2EndFixture) -> 
         assert task._endpoints_protocol == 'https'
         assert task.container == 'my-container'
 
-        # we do not want to try to put files
-        assert 0  # noqa: PT015
-
     e2e_fixture.add_validator(validate_client_task)
 
     feature_file = e2e_fixture.test_steps(
@@ -800,7 +794,7 @@ def test_e2e_step_task_client_put_endpoint_file(e2e_fixture: End2EndFixture) -> 
     result = ''.join(output)
 
     assert rc == 1
-    assert 'HOOK-ERROR in after_feature: RuntimeError: failed to prepare locust test' in result
+    assert 'HOOK-ERROR in after_feature: RuntimeError: locust test failed' in result
 
 
 def test_e2e_step_task_date(e2e_fixture: End2EndFixture) -> None:

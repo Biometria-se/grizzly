@@ -27,7 +27,7 @@ Only supports `RequestDirection.TO`.
 
 Using connection strings:
 ```plain
-bs[s]://<AccountName>/<Container>?AccountKey=<AccountKey>[#Overwrite=<bool>]
+bs[s]://<AccountName>/<Container>?AccountKey=<AccountKey>[# Overwrite=<bool>]
 ```
 * `AccountName` _str_ - name of storage account
 
@@ -39,7 +39,7 @@ bs[s]://<AccountName>/<Container>?AccountKey=<AccountKey>[#Overwrite=<bool>]
 
 Using credentials:
 ```plain
-bs[s]://<username>:<password>@<AccountName>/<Container>#Tenant=<tenant>[&Overwrite=<bool>]
+bs[s]://<username>:<password>@<AccountName>/<Container># Tenant=<tenant>[&Overwrite=<bool>]
 ```
 
 * `username` _str_ - username to connect as
