@@ -92,6 +92,8 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from datetime import datetime
+from hashlib import sha256
 from json import dumps as jsondumps
 from pathlib import Path
 from platform import node as hostname
@@ -216,6 +218,12 @@ class ServiceBusClientTask(ClientTask):
         # unquote expression, if specified, now that we have constructed everything everything basaed on the URL
         try:
             endpoint_arguments = parse_arguments(context_endpoint, separator=':', unquote=False)
+            subscription = endpoint_arguments.get('subscription', None)
+            if subscription is not None:
+                # If text is not None, it means we should create an unique subscription, that needs an unique suffix that consists of 8 characters
+                max_length = 50 if self._text is None else 50 - 8
+                assert len(subscription) <= max_length, f'subscription name is too long, max length is {max_length} characters'
+
             expression = endpoint_arguments.get('expression', None)
             if expression is not None:
                 endpoint_arguments.update({'expression': unquote_plus(expression)})
@@ -272,13 +280,17 @@ class ServiceBusClientTask(ClientTask):
             # add id of user as suffix to subscription name, to make it unique
             endpoint_arguments = parse_arguments(context['endpoint'], separator=':', unquote=False)
 
-            if 'subscription' in endpoint_arguments:
+            # if text is not None, we should create an temporary unique subscription for this
+            # specific task instance, this means we should change the subscription name
+            if 'subscription' in endpoint_arguments and self._text is not None:
                 subscription = endpoint_arguments['subscription']
                 quote = ''
                 if subscription[0] in ['"', "'"] and subscription[-1] == subscription[0]:
                     quote = subscription[0]
                     subscription = subscription[1:-1]
-                endpoint_arguments['subscription'] = f'{quote}{subscription}_{id(parent.user)}{quote}'
+                identifier_raw = f'{id(parent.user)}{hostname()}{datetime.now(tz=None).timestamp()}'
+                identifier = sha256(identifier_raw.encode()).hexdigest()[:8]
+                endpoint_arguments['subscription'] = f'{quote}{subscription}{identifier}{quote}'
                 context['endpoint'] = ', '.join([f'{key}:{value}' for key, value in endpoint_arguments.items()])
 
             state = State(
@@ -333,6 +345,9 @@ class ServiceBusClientTask(ClientTask):
         del self._state[parent]
 
     def subscribe(self, parent: GrizzlyScenario) -> None:
+        if self.text is None:
+            return
+
         state = self.get_state(parent)
 
         request: AsyncMessageRequest = {
@@ -348,6 +363,9 @@ class ServiceBusClientTask(ClientTask):
         state.first_response = response
 
     def unsubscribe(self, parent: GrizzlyScenario) -> None:
+        if self.text is None:
+            return
+
         state = self.get_state(parent)
 
         request: AsyncMessageRequest = {

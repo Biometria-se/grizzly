@@ -75,7 +75,6 @@ class TestAzureAadCredential:
 
         # token is refreshed
         datetime_mock = mocker.patch('grizzly_extras.azure.aad.datetime')
-        datetime_mock.now.return_value = datetime(1970, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
         datetime_mock.now.return_value = datetime.now(tz=timezone.utc) + timedelta(seconds=5000)
 
         assert access_token is not credential.get_token()

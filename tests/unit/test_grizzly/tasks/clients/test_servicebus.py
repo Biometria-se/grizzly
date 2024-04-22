@@ -251,6 +251,25 @@ class TestServiceBusClientTask:
             cls_task(RequestDirection.FROM, 'sb://bob@example.com:secret@my-sbns/;SharedAccessKeyName=key;SharedAccessKey=asdf#Tenant=example.com', 'test')
         context_mock.assert_not_called()
 
+        with pytest.raises(AssertionError, match='subscription name is too long, max length is 50 characters'):
+            cls_task(
+                RequestDirection.FROM, (
+                    'sb://my-sbns/topic:my-topic/subscription:my-subscriptionaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+                    ';SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=#MessageWait=120&ContentType=json'
+                ),
+                'test',
+            )
+
+        with pytest.raises(AssertionError, match='subscription name is too long, max length is 42 characters'):
+            cls_task(
+                RequestDirection.FROM, (
+                    'sb://my-sbns/topic:my-topic/subscription:my-subscriptionaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+                    ';SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=#MessageWait=120&ContentType=json'
+                ),
+                'test',
+                text='rule text',
+            )
+
     def test_text(self, grizzly_fixture: GrizzlyFixture) -> None:
         ServiceBusClientTask.__scenario__ = grizzly_fixture.grizzly.scenario
         task = ServiceBusClientTask(RequestDirection.FROM, 'sb://my-sbns.servicebus.windows.net/;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=', 'test')
@@ -340,6 +359,9 @@ class TestServiceBusClientTask:
         assert task._state == {}
 
     def test_subscribe(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
+        sha256_mock = mocker.patch('grizzly.tasks.clients.servicebus.sha256')
+        sha256_mock.return_value.hexdigest.return_value = 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef'
+
         parent = grizzly_fixture()
 
         client_mock = mocker.MagicMock()
@@ -406,7 +428,7 @@ class TestServiceBusClientTask:
             'context': {
                 'url': expected_context['url'],
                 'connection': 'receiver',
-                'endpoint': f"topic:my-topic, subscription:'my-subscription-baz-bar-foo_{id(parent.user)}', expression:'$.`this`[bar='foo' && bar='foo']'",
+                'endpoint': "topic:my-topic, subscription:'my-subscription-baz-bar-foodeadbeef', expression:'$.`this`[bar='foo' && bar='foo']'",
                 'message_wait': None,
                 'consume': False,
                 'username': None,
@@ -448,7 +470,7 @@ class TestServiceBusClientTask:
             'context': {
                 'url': expected_context['url'],
                 'connection': 'receiver',
-                'endpoint': f"topic:my-topic, subscription:'my-subscription-baz-bar-foo_{id(parent.user)}', expression:'$.`this`[?bar='foo' & bar='foo']'",
+                'endpoint': "topic:my-topic, subscription:'my-subscription-baz-bar-foodeadbeef', expression:'$.`this`[?bar='foo' & bar='foo']'",
                 'message_wait': None,
                 'consume': False,
                 'username': None,
@@ -465,10 +487,13 @@ class TestServiceBusClientTask:
 
         async_message_request_mock = mocker.patch('grizzly.utils.async_message_request', return_value={'message': 'hello world!'})
 
-        task = ServiceBusClientTask(
+        cls_task = type('ServiceBusClientTaskTest', (ServiceBusClientTask,), {'__scenario__': grizzly_fixture.grizzly.scenario})
+
+        task = cls_task(
             RequestDirection.FROM,
             'sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:my-subscription;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=',
             'test',
+            text='1=1',
         )
 
         state = task.get_state(parent)
@@ -490,7 +515,13 @@ class TestServiceBusClientTask:
     def test_on_start(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         parent = grizzly_fixture()
 
-        task = ServiceBusClientTask(
+        sha256_mock = mocker.patch('grizzly.tasks.clients.servicebus.sha256')
+        sha256_mock.return_value.hexdigest.return_value = 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef'
+
+        cls_task = type('ServiceBusClientTaskTest', (ServiceBusClientTask,), {'__scenario__': grizzly_fixture.grizzly.scenario})
+
+        # no text
+        task = cls_task(
             RequestDirection.FROM,
             'sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:my-subscription;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=',
             'test',
@@ -501,7 +532,6 @@ class TestServiceBusClientTask:
 
         state = task.get_state(parent)
 
-        # no text
         assert task._text is None
 
         task.on_start(parent)
@@ -514,18 +544,30 @@ class TestServiceBusClientTask:
         subscribe_mock.reset_mock()
 
         # text
-        task._text = '1=1'
+        task = cls_task(
+            RequestDirection.FROM,
+            'sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:my-subscription;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=',
+            'test',
+            text='1=1',
+        )
+
+        connect_mock = mocker.patch.object(task, 'connect', return_value=None)
+        subscribe_mock = mocker.patch.object(task, 'subscribe', return_value=None)
+
+        state = task.get_state(parent)
 
         task.on_start(parent)
 
         connect_mock.assert_called_once_with(parent)
         subscribe_mock.assert_called_once_with(parent)
-        assert state.context.get('endpoint', None) == f'topic:my-topic, subscription:my-subscription_{id(parent.user)}'
+        assert state.context.get('endpoint', None) == 'topic:my-topic, subscription:my-subscriptiondeadbeef'
 
     def test_on_stop(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
         parent = grizzly_fixture()
 
-        task = ServiceBusClientTask(
+        cls_task = type('ServiceBusClientTaskTest', (ServiceBusClientTask,), {'__scenario__': grizzly_fixture.grizzly.scenario})
+
+        task = cls_task(
             RequestDirection.FROM,
             'sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:my-subscription;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=',
             'test',
@@ -554,13 +596,18 @@ class TestServiceBusClientTask:
         unsubscribe_mock.assert_called_once_with(parent)
 
     def test_request(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+        sha256_mock = mocker.patch('grizzly.tasks.clients.servicebus.sha256')
+        sha256_mock.return_value.hexdigest.return_value = 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef'
+
         parent = grizzly_fixture()
 
         client_mock = mocker.MagicMock()
 
         async_message_request_mock = mocker.patch('grizzly.utils.async_message_request', return_value={'message': 'foobar!'})
 
-        task = ServiceBusClientTask(
+        cls_task = type('ServiceBusClientTaskTest', (ServiceBusClientTask,), {'__scenario__': grizzly_fixture.grizzly.scenario})
+
+        task = cls_task(
             RequestDirection.FROM,
             'sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:my-subscription;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=',
             'test',
@@ -594,17 +641,31 @@ class TestServiceBusClientTask:
         context_mock.reset_mock()
         async_message_request_mock.reset_mock()
         meta_mock.clear()
+        action_mock.reset_mock()
 
         # got response, some payload
         del request['context']['url']
         async_message_request_mock = mocker.patch('grizzly.tasks.clients.servicebus.async_message_request_wrapper', return_value={'message': 'foobar!', 'payload': '1234567890'})
+
+        task = cls_task(
+            RequestDirection.FROM,
+            'sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:my-subscription;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=',
+            'test',
+            text='1=1',
+        )
+        state = task.get_state(parent)
+        state.client = client_mock
+        action_mock = mocker.MagicMock()
+        meta_mock = {}
+        action_mock.__enter__.return_value = meta_mock
+        context_mock = mocker.patch.object(task, 'action', return_value=action_mock)
 
         assert task.request(parent, request) == {'message': 'foobar!', 'payload': '1234567890'}
 
         context_mock.assert_called_once_with(state.parent)
         async_message_request_mock.assert_called_once_with(state.parent, state.client, request)
         assert meta_mock == {
-            'action': f'topic:my-topic, subscription:my-subscription_{state.parent_id}',
+            'action': 'topic:my-topic, subscription:my-subscriptiondeadbeef',
             'request': request,
             'response_length': 10,
             'response': {'message': 'foobar!', 'payload': '1234567890'},
@@ -616,7 +677,9 @@ class TestServiceBusClientTask:
         client_mock = mocker.MagicMock()
         parent.user._context = {'variables': {}}
 
-        task = ServiceBusClientTask(
+        cls_task = type('ServiceBusClientTaskTest', (ServiceBusClientTask,), {'__scenario__': grizzly_fixture.grizzly.scenario})
+
+        task = cls_task(
             RequestDirection.FROM,
             'sb://my-sbns.servicebus.windows.net/topic:my-topic/subscription:my-subscription;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=',
             'test',
