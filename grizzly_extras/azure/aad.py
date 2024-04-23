@@ -13,9 +13,11 @@ from enum import Enum
 from hashlib import sha256
 from html.parser import HTMLParser
 from http.server import HTTPServer, SimpleHTTPRequestHandler
+from os import environ
+from pathlib import Path
 from secrets import token_urlsafe
 from threading import Thread
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Optional, Tuple, Type, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Optional, Tuple, Type, TypedDict, cast
 from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
 
@@ -50,35 +52,29 @@ class AzureAadFlowError(AzureAadError):
     pass
 
 
+class CookieTokenPayload(TypedDict):
+    id_token: str | None
+    client_info: str | None
+    state: str | None
+    session_state: str | None
+
 class FormPostParser(HTMLParser):
-    action: Optional[str]
-    id_token: Optional[str]
-    client_info: Optional[str]
-    state: Optional[str]
-    session_state: Optional[str]
+    action: str | None
+    _payload: CookieTokenPayload
 
     def __init__(self) -> None:
         super().__init__()
 
         self.action = None
-        self.id_token = None
-        self.client_info = None
-        self.state = None
-        self.session_state = None
+        self._payload = {'id_token': None, 'client_info': None, 'state': None, 'session_state': None}
 
     @property
-    def payload(self) -> Dict[str, str]:
-        assert self.id_token is not None, 'could not find id_token in response'
-        assert self.client_info is not None, 'could not find client_info in response'
-        assert self.state is not None, 'could not find state in response'
-        assert self.session_state is not None, 'could not find session_state in response'
+    def payload(self) -> CookieTokenPayload:
+        assert self.action is not None, 'could not find form action attribute in response'
+        missing_properties = ', '.join([key for key, value in self._payload.items() if value is None])
+        assert len(missing_properties) == 0, f'not all properties was found: {missing_properties}'
 
-        return {
-            'id_token': self.id_token,
-            'client_info': self.client_info,
-            'state': self.state,
-            'session_state': self.session_state,
-        }
+        return self._payload
 
     def handle_starttag(self, tag: str, attrs: List[Tuple[str, Optional[str]]]) -> None:
         if tag == 'form':
@@ -86,8 +82,8 @@ class FormPostParser(HTMLParser):
                 if attr == 'action':
                     self.action = value
         elif tag == 'input':
-            prop_name: Optional[str] = None
-            prop_value: Optional[str] = None
+            prop_name: str | None = None
+            prop_value: str | None = None
 
             for attr, value in attrs:
                 if attr == 'name':
@@ -95,8 +91,8 @@ class FormPostParser(HTMLParser):
                 elif attr == 'value':
                     prop_value = value
 
-            if prop_name is not None and prop_value is not None:
-                setattr(self, prop_name, prop_value)
+            if prop_name is not None and prop_name in self._payload and prop_value is not None:
+                self._payload.update({prop_name: prop_value})  # type: ignore[misc]
 
 class AzureAadWebserver:
     enable: bool
@@ -176,7 +172,7 @@ class AzureAadCredential(TokenCredential):
     password: str
     scope: str | None
     client_id: str
-    tenant: str
+    tenant: str | None
     otp_secret: str | None
     refresh_time: int = 3000
 
@@ -244,8 +240,11 @@ class AzureAadCredential(TokenCredential):
     def webserver(self) -> AzureAadWebserver:
         return self._webserver
 
-    def get_tenant(self, tenant_id: Optional[str]) -> str:
+    def get_tenant(self, tenant_id: Optional[str]) -> Optional[str]:
         tenant = tenant_id if tenant_id is not None else self.tenant
+
+        if tenant is None:
+            return None
 
         parsed_tenant = urlparse(tenant)
         if len(parsed_tenant.netloc) > 0:
@@ -253,6 +252,47 @@ class AzureAadCredential(TokenCredential):
             tenant, _ = path.split('/', 1)
 
         return tenant
+
+    def generate_log(self, file_name: str, name: str, response: requests.Response) -> None:
+        if logger.getEffectiveLevel() > logging.DEBUG or environ.get('GRIZZLY_CONTEXT_ROOT', None) is None:
+            return
+
+        with Path(file_name).open('a+') as fd:
+            fd.write(f"""# {name} - `{response.request.method}: {response.status_code}`
+## Request
+
+### URL
+```plain
+{response.request.url}
+```
+### Headers
+```plain
+{json.dumps(dict(response.request.headers), indent=2)}
+```
+
+### Payload
+```plain
+{response.request.body!r}
+```
+
+## Response
+
+### URL
+```plain
+{response.url}
+```
+
+### Headers
+```plain
+{json.dumps(dict(response.headers), indent=2)}
+```
+
+### Payload
+```plain
+{response.text}
+```
+
+""")
 
     def get_token(
         self,
@@ -280,6 +320,9 @@ class AzureAadCredential(TokenCredential):
         self, *scopes: str, claims: str | None = None, tenant_id: str | None = None,  # noqa: ARG002
     ) -> AccessToken:
         tenant = self.get_tenant(tenant_id)
+
+        # disable logger for urllib3
+        logging.getLogger('urllib3.connectionpool').setLevel(logging.CRITICAL)
 
         def _parse_response_config(response: requests.Response) -> dict[str, Any]:
             match = re.search(r'Config={(.*?)};', response.text, re.MULTILINE)
@@ -327,7 +370,7 @@ class AzureAadCredential(TokenCredential):
             raise AzureAadError(message)
 
         headers_ua: Dict[str, str] = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:88.0) Gecko/20100101 Firefox/88.0',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0',
         }
 
         initialize_uri = self.initialize
@@ -414,9 +457,20 @@ class AzureAadCredential(TokenCredential):
 
                 initialize_uri_parsed = urlparse(initialize_uri)
 
-                response = session.get(initialize_uri, verify=verify)
+                headers = {
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+                    'Accept-Encoding': 'gzip, deflate, br, zstd',
+                    'Referer': 'https://login.microsoftonline.com/',
+                    **headers_ua,
+                }
+
+                response = session.get(initialize_uri, headers=headers, verify=verify, allow_redirects=True)
 
                 is_token_v2_0 = 'v2.0' in response.url
+                if tenant is None:
+                    response_parsed = urlparse(response.url)
+                    tenant, _ = response_parsed.path.lstrip('/').split('/', 1)
+                    provider_url = self.provider_url_template.format(tenant=tenant)
             else:
                 message = 'both initialize and redirect URIs cannot be set'
                 raise AzureAadError(message)
@@ -430,6 +484,8 @@ class AzureAadCredential(TokenCredential):
                 initialize_uri,
                 redirect_uri,
             )
+
+            self.generate_log('flow.md', 'user auth request 1', response)
 
             if response.status_code != 200:
                 message = f'user auth request 1: {response.url} had unexpected status code {response.status_code}'
@@ -460,8 +516,10 @@ class AzureAadCredential(TokenCredential):
 
             headers = {
                 'Accept': 'application/json',
+                'Accept-Encoding': 'gzip, deflate, br, zstd',
                 'Host': host,
-                'ContentType': 'application/json; charset=UTF-8',
+                'Origin': f'https://{host}',
+                'Content-Type': 'application/json; charset=UTF-8',
                 'canary': state['apiCanary'],
                 'client-request-id': state['correlationId'],
                 'hpgact': state['hpgact'],
@@ -491,6 +549,7 @@ class AzureAadCredential(TokenCredential):
             response = session.post(url, headers=headers, params=params, json=payload, allow_redirects=False)
 
             logger.debug('user auth request 2: %s (%d)', response.url, response.status_code)
+            self.generate_log('flow.md', 'user auth request 2', response)
 
             if response.status_code != 200:
                 message = f'user auth request 2: {response.url} had unexpected status code {response.status_code}'
@@ -508,21 +567,12 @@ class AzureAadCredential(TokenCredential):
             # // request 2 -->
 
             # <!-- request 3
-            if initialize_uri is None:
-                if not config['urlPost'].startswith('https://'):
-                    message = f"response from {response.url} contained unexpected value '{config['urlPost']}'"
-                    raise AzureAadFlowError(message)
-
-                url = config['urlPost']
-            else:
-                if config['urlPost'].startswith('https://'):
-                    message = f"response from {response.url} contained unexpected value '{config['urlPost']}'"
-                    raise AzureAadFlowError(message)
-
-                url = f'{url_parsed.scheme}://{host}{config["urlPost"]}'
+            url = config['urlPost'] if config['urlPost'].startswith('https://') else f'{url_parsed.scheme}://{host}{config["urlPost"]}'
 
             headers = {
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+                'Accept-Encoding': 'gzip, deflate, br, zstd',
+                'Cache-Control': 'max-age=0',
                 'Content-Type': 'application/x-www-form-urlencoded',
                 'Host': host,
                 'Referer': referer,
@@ -562,6 +612,7 @@ class AzureAadCredential(TokenCredential):
             response = session.post(url, headers=headers, data=payload)
 
             logger.debug('user auth request 3: %s (%d)', response.url, response.status_code)
+            self.generate_log('flow.md', 'user auth request 3', response)
 
             if response.status_code != 200:
                 message = f'user auth request 3: {response.url} had unexpected status code {response.status_code}'
@@ -577,6 +628,8 @@ class AzureAadCredential(TokenCredential):
                     raise AzureAadFlowError(exception_message)
 
                 config = update_state(state, response)
+
+                referer = response.url
 
                 user_proofs = config.get('arrUserProofs', [])
 
@@ -744,9 +797,11 @@ class AzureAadCredential(TokenCredential):
                 url = f'https://{host}{config["urlPost"]}'
 
                 headers = {
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+                    'Accept-Encoding': 'gzip, deflate, br, zstd',
+                    'Cache-Control': 'max-age=0',
                     'Content-Type': 'application/x-www-form-urlencoded',
-                    'Host': host,
+                    'Origin': 'https://login.microsoftonline.com',
                     'Referer': referer,
                     **headers_ua,
                 }
@@ -771,6 +826,7 @@ class AzureAadCredential(TokenCredential):
 
                 response = session.post(url, headers=headers, data=payload, allow_redirects=False)
                 logger.debug('user auth request 4: %s (%d)', response.url, response.status_code)
+                self.generate_log('flow.md', 'user auth request 4', response)
 
                 if initialize_uri is None:
                     if response.status_code != 302:
@@ -834,15 +890,21 @@ class AzureAadCredential(TokenCredential):
 
                 origin = f'https://{host}'
 
-                headers.update({
+                headers = {
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+                    'Accept-Encoding': 'gzip, deflate, br, zstd',
+                    'Cache-Control': 'max-age=0',
                     'Origin': origin,
                     'Referer': origin,
-                })
+                    **headers_ua,
+                }
 
                 with suppress(KeyError):
                     del headers['host']
 
                 response = session.post(parser.action, headers=headers, data=parser.payload, allow_redirects=True, verify=verify)
+
+                self.generate_log('flow.md', 'user auth request 5', response)
 
                 if response.status_code != 200:
                     message = f'user auth request 5: {response.url} had unexpected status code {response.status_code}'

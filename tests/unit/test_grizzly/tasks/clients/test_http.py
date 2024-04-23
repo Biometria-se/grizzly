@@ -362,6 +362,7 @@ class TestHttpClientTask:
                             'username': '',
                             'password': '',
                             'redirect_uri': '',
+                            'initialize_uri': None,
                         },
                         'tenant': '',
                     },

@@ -81,7 +81,7 @@ class TestRestApiUser:
     def test_get_oauth_authorization_real(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
         import logging
         with caplog.at_level(logging.DEBUG):
-            parent = grizzly_fixture(user_type=RestApiUser)
+            parent = grizzly_fixture(user_type=RestApiUser, host='')
             assert isinstance(parent.user, RestApiUser)
 
             parent.user._context = {
@@ -95,13 +95,14 @@ class TestRestApiUser:
                         'password': '',
                         'otp_secret': None,
                         'redirect_uri': '',
-                        'response_mode': '',
+                        'initialize_uri': None,
+                        'response_mode': None,
                     },
-                    'provider': '',
+                    'tenant': '',
                 },
-                'verify_certificates': False,
+                'verify_certificates': True,
                 'metadata': {
-                    'User-Agent': '',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0 OS/10.0.19045',
                 },
             }
             parent.user.host = cast(dict, parent.user.__context__)['host']
@@ -109,7 +110,7 @@ class TestRestApiUser:
 
             fire = mocker.spy(parent.user.environment.events.request, 'fire')
 
-            request = RequestTask(RequestMethod.GET, name='test', endpoint='/api/test')
+            request = RequestTask(RequestMethod.GET, name='test', endpoint='')
             headers, body = parent.user.request(request)
             parent.logger.info(headers)
             parent.logger.info(body)
