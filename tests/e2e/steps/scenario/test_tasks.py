@@ -651,7 +651,7 @@ def test_e2e_step_task_client_get_endpoint_until(e2e_fixture: End2EndFixture) ->
     assert 'HOOK-ERROR in after_feature: RuntimeError: locust test failed' in result
 
 
-def test_e2e_step_task_client_put_endpoint_file_destination(e2e_fixture: End2EndFixture) -> None:  # noqa: PLR0915
+def test_e2e_step_task_client_put_endpoint_file_destination(e2e_fixture: End2EndFixture) -> None:
     def after_feature(context: Context, *_args: Any, **_kwargs: Any) -> None:
         from grizzly.locust import on_master
 
@@ -682,7 +682,7 @@ def test_e2e_step_task_client_put_endpoint_file_destination(e2e_fixture: End2End
         task = tasks[0]
         assert isinstance(task, BlobStorageClientTask)
         assert task.direction == RequestDirection.TO
-        assert task.endpoint == 'bs://my-unsecure-storage?AccountKey=aaaabbb=&Container=my-container'
+        assert task.endpoint == 'bs://my-unsecure-storage/my-container?AccountKey=aaaabbb='
         assert task.name == 'bs-put'
         assert task.payload_variable is None
         assert task.metadata_variable is None
@@ -691,15 +691,12 @@ def test_e2e_step_task_client_put_endpoint_file_destination(e2e_fixture: End2End
         assert task._short_name == 'BlobStorage'
         assert task.get_templates() == []
         assert task._endpoints_protocol == 'http'
-        assert task.account_name == 'my-unsecure-storage'
-        assert task.account_key == 'aaaabbb='
         assert task.container == 'my-container'
-        assert task.connection_string == 'DefaultEndpointsProtocol=http;AccountName=my-unsecure-storage;AccountKey=aaaabbb=;EndpointSuffix=core.windows.net'
 
         task = tasks[1]
         assert isinstance(task, BlobStorageClientTask)
         assert task.direction == RequestDirection.TO
-        assert task.endpoint == 'bss://my-storage?AccountKey=aaaabbb=&Container=my-container'
+        assert task.endpoint == 'bss://my-storage/my-container?AccountKey=aaaabbb='
         assert task.name == 'bss-put'
         assert task.payload_variable is None
         assert task.metadata_variable is None
@@ -708,17 +705,14 @@ def test_e2e_step_task_client_put_endpoint_file_destination(e2e_fixture: End2End
         assert task._short_name == 'BlobStorage'
         assert task.get_templates() == []
         assert task._endpoints_protocol == 'https'
-        assert task.account_name == 'my-storage'
-        assert task.account_key == 'aaaabbb='
         assert task.container == 'my-container'
-        assert task.connection_string == 'DefaultEndpointsProtocol=https;AccountName=my-storage;AccountKey=aaaabbb=;EndpointSuffix=core.windows.net'
 
     e2e_fixture.add_validator(validate_client_task)
 
     feature_file = e2e_fixture.test_steps(
         scenario=[
-            'Then put "test-file.json" to "bs://my-unsecure-storage?AccountKey=aaaabbb=&Container=my-container" with name "bs-put" as "uploaded-test-file.json"',
-            'Then put "test-files.json" to "bss://my-storage?AccountKey=aaaabbb=&Container=my-container" with name "bss-put" as "uploaded-test-files.json"',
+            'Then put "test-file.json" to "bs://my-unsecure-storage/my-container?AccountKey=aaaabbb=" with name "bs-put" as "uploaded-test-file.json"',
+            'Then put "test-files.json" to "bss://my-storage/my-container?AccountKey=aaaabbb=" with name "bss-put" as "uploaded-test-files.json"',
         ],
     )
 
@@ -730,7 +724,7 @@ def test_e2e_step_task_client_put_endpoint_file_destination(e2e_fixture: End2End
     assert 'HOOK-ERROR in after_feature: RuntimeError: locust test failed' in result
 
 
-def test_e2e_step_task_client_put_endpoint_file(e2e_fixture: End2EndFixture) -> None:  # noqa: PLR0915
+def test_e2e_step_task_client_put_endpoint_file(e2e_fixture: End2EndFixture) -> None:
     def after_feature(context: Context, *_args: Any, **_kwargs: Any) -> None:
         from grizzly.locust import on_master
 
@@ -761,7 +755,7 @@ def test_e2e_step_task_client_put_endpoint_file(e2e_fixture: End2EndFixture) -> 
         task = tasks[0]
         assert isinstance(task, BlobStorageClientTask)
         assert task.direction == RequestDirection.TO
-        assert task.endpoint == 'bs://my-unsecure-storage?AccountKey=aaaabbb=&Container=my-container'
+        assert task.endpoint == 'bs://my-unsecure-storage/my-container?AccountKey=aaaabbb='
         assert task.name == 'bs-put'
         assert task.payload_variable is None
         assert task.metadata_variable is None
@@ -770,15 +764,12 @@ def test_e2e_step_task_client_put_endpoint_file(e2e_fixture: End2EndFixture) -> 
         assert task._short_name == 'BlobStorage'
         assert task.get_templates() == []
         assert task._endpoints_protocol == 'http'
-        assert task.account_name == 'my-unsecure-storage'
-        assert task.account_key == 'aaaabbb='
         assert task.container == 'my-container'
-        assert task.connection_string == 'DefaultEndpointsProtocol=http;AccountName=my-unsecure-storage;AccountKey=aaaabbb=;EndpointSuffix=core.windows.net'
 
         task = tasks[1]
         assert isinstance(task, BlobStorageClientTask)
         assert task.direction == RequestDirection.TO
-        assert task.endpoint == 'bss://my-storage?AccountKey=aaaabbb=&Container=my-container'
+        assert task.endpoint == 'bss://my-storage/my-container?AccountKey=aaaabbb='
         assert task.name == 'bss-put'
         assert task.payload_variable is None
         assert task.metadata_variable is None
@@ -787,17 +778,14 @@ def test_e2e_step_task_client_put_endpoint_file(e2e_fixture: End2EndFixture) -> 
         assert task._short_name == 'BlobStorage'
         assert task.get_templates() == []
         assert task._endpoints_protocol == 'https'
-        assert task.account_name == 'my-storage'
-        assert task.account_key == 'aaaabbb='
         assert task.container == 'my-container'
-        assert task.connection_string == 'DefaultEndpointsProtocol=https;AccountName=my-storage;AccountKey=aaaabbb=;EndpointSuffix=core.windows.net'
 
     e2e_fixture.add_validator(validate_client_task)
 
     feature_file = e2e_fixture.test_steps(
         scenario=[
-            'Then put "test-file.json" to "bs://my-unsecure-storage?AccountKey=aaaabbb=&Container=my-container" with name "bs-put"',
-            'Then put "test-files.json" to "bss://my-storage?AccountKey=aaaabbb=&Container=my-container" with name "bss-put"',
+            'Then put "test-file.json" to "bs://my-unsecure-storage/my-container?AccountKey=aaaabbb=" with name "bs-put"',
+            'Then put "test-files.json" to "bss://my-storage/my-container?AccountKey=aaaabbb=" with name "bss-put"',
         ],
     )
 

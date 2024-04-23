@@ -91,7 +91,7 @@ def step_task_client_put_endpoint_file_destination(context: Context, source: str
 
     Example:
     ```gherkin
-    Then put "test-file.json" to "bs://my-storage?AccountKey=aaaabbb=&Container=my-container" with name "upload-file" as "uploaded-test-file.json"
+    Then put "test-file.json" to "bs://my-storage/my-container?AccountKey=aaaabbb=" with name "upload-file" as "uploaded-test-file.json"
     ```
 
     Args:

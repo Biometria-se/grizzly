@@ -1,6 +1,7 @@
 """Unit tests for grizzly_extras.async_message.sb."""
 from __future__ import annotations
 
+import logging
 from contextlib import suppress
 from itertools import cycle
 from json import dumps as jsondumps
@@ -11,10 +12,13 @@ from azure.core.exceptions import ResourceExistsError, ResourceNotFoundError
 from azure.servicebus import ServiceBusClient, ServiceBusMessage, ServiceBusReceiver, ServiceBusSender, TransportType
 
 from grizzly_extras.arguments import parse_arguments
-from grizzly_extras.async_message import AsyncMessageError, AsyncMessageRequest
+from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageError, AsyncMessageRequest
 from grizzly_extras.async_message.sb import AsyncServiceBusHandler
+from grizzly_extras.azure.aad import AuthMethod, AzureAadCredential
+from tests.helpers import SOME
 
 if TYPE_CHECKING:  # pragma: no cover
+    from _pytest.logging import LogCaptureFixture
     from pytest_mock import MockerFixture
 
 
@@ -25,6 +29,165 @@ class TestAsyncServiceBusHandler:
         assert handler.message_wait is None
         assert handler._sender_cache == {}
         assert handler._receiver_cache == {}
+
+    def test__prepare_clients_conn_str(self, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
+        handler = AsyncServiceBusHandler('asdf-asdf-asdf')
+        service_bus_client_mock = mocker.patch('grizzly_extras.async_message.sb.ServiceBusClient')
+        service_bus_mgmt_client_mock = mocker.patch('grizzly_extras.async_message.sb.ServiceBusAdministrationClient')
+
+        # <!-- connection string
+        context: AsyncMessageContext = {
+            'url': 'sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=',
+            'username': None,
+            'password': None,
+            'tenant': None,
+        }
+
+        # only_mgmt = False, logging level = DEBUG
+        with caplog.at_level(logging.DEBUG):
+            handler._prepare_clients(context, only_mgmt=False)
+
+        service_bus_client_mock.assert_not_called()
+        service_bus_client_mock.from_connection_string.assert_called_once_with(
+            conn_str='Endpoint=sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=',
+            transport_type=TransportType.AmqpOverWebsocket,
+        )
+        service_bus_client_mock.reset_mock()
+
+        service_bus_mgmt_client_mock.assert_not_called()
+        service_bus_mgmt_client_mock.from_connection_string.assert_called_once_with(
+            conn_str='Endpoint=sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=',
+        )
+        service_bus_mgmt_client_mock.reset_mock()
+
+        handler._client = None
+        handler.mgmt_client = None
+
+        # only_mgmt = False, logging level = INFO
+        with caplog.at_level(logging.INFO):
+            handler._prepare_clients(context, only_mgmt=False)
+
+        service_bus_client_mock.assert_not_called()
+        service_bus_client_mock.from_connection_string.assert_called_once_with(
+            conn_str='Endpoint=sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=',
+            transport_type=TransportType.AmqpOverWebsocket,
+        )
+        service_bus_client_mock.reset_mock()
+
+        service_bus_mgmt_client_mock.assert_not_called()
+        service_bus_mgmt_client_mock.from_connection_string.assert_not_called()
+        service_bus_mgmt_client_mock.reset_mock()
+
+        handler._client = None
+        handler.mgmt_client = None
+
+        # only_mgmt = True, logging level does not matter
+        with caplog.at_level(logging.INFO):
+            handler._prepare_clients(context, only_mgmt=True)
+
+        service_bus_client_mock.assert_not_called()
+        service_bus_client_mock.from_connection_string.assert_not_called()
+        service_bus_client_mock.reset_mock()
+
+        service_bus_mgmt_client_mock.assert_not_called()
+        service_bus_mgmt_client_mock.from_connection_string.assert_called_once_with(
+            conn_str='Endpoint=sb://sb.example.org/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=abc123def456ghi789=',
+        )
+        service_bus_mgmt_client_mock.reset_mock()
+
+        handler._client = None
+        handler.mgmt_client = None
+        # // -->
+
+    def test__prepare_clients_credential(self, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
+        handler = AsyncServiceBusHandler('asdf-asdf-asdf')
+        service_bus_client_mock = mocker.patch('grizzly_extras.async_message.sb.ServiceBusClient')
+        service_bus_mgmt_client_mock = mocker.patch('grizzly_extras.async_message.sb.ServiceBusAdministrationClient')
+
+        # <!-- credential
+        context: AsyncMessageContext = {
+            'url': 'sb://my-sbns',
+            'username': 'bob@example.com',
+            'password': 'secret',
+            'tenant': None,
+        }
+
+        with pytest.raises(AsyncMessageError, match='no tenant in context'):
+            handler._prepare_clients(context)
+
+        context.update({'tenant': 'example.com'})
+
+        # only_mgmt = False, logging level = DEBUG
+        with caplog.at_level(logging.DEBUG):
+            handler._prepare_clients(context, only_mgmt=False)
+
+        service_bus_client_mock.assert_called_once_with(
+            'my-sbns.servicebus.windows.net',
+            credential=SOME(
+                AzureAadCredential,
+                username='bob@example.com', password='secret', tenant='example.com', auth_method=AuthMethod.USER, host='sb://my-sbns',  # noqa: S106
+            ),
+            transport_type=TransportType.AmqpOverWebsocket,
+        )
+        service_bus_client_mock.from_connection_string.assert_not_called()
+        service_bus_client_mock.reset_mock()
+
+        service_bus_mgmt_client_mock.from_connection_string.assert_not_called()
+        service_bus_mgmt_client_mock.assert_called_once_with(
+            'my-sbns.servicebus.windows.net',
+            credential=SOME(
+                AzureAadCredential,
+                username='bob@example.com', password='secret', tenant='example.com', auth_method=AuthMethod.USER, host='sb://my-sbns',  # noqa: S106
+            ),
+        )
+        service_bus_mgmt_client_mock.reset_mock()
+
+        handler._client = None
+        handler.mgmt_client = None
+
+        # only_mgmt = False, logging level = INFO
+        with caplog.at_level(logging.INFO):
+            handler._prepare_clients(context, only_mgmt=False)
+
+        service_bus_client_mock.from_connection_string.assert_not_called()
+        service_bus_client_mock.assert_called_once_with(
+            'my-sbns.servicebus.windows.net',
+            credential=SOME(
+                AzureAadCredential,
+                username='bob@example.com', password='secret', tenant='example.com', auth_method=AuthMethod.USER, host='sb://my-sbns',  # noqa: S106
+            ),
+            transport_type=TransportType.AmqpOverWebsocket,
+        )
+        service_bus_client_mock.reset_mock()
+
+        service_bus_mgmt_client_mock.assert_not_called()
+        service_bus_mgmt_client_mock.from_connection_string.assert_not_called()
+        service_bus_mgmt_client_mock.reset_mock()
+
+        handler._client = None
+        handler.mgmt_client = None
+
+        # only_mgmt = True, logging level does not matter
+        with caplog.at_level(logging.INFO):
+            handler._prepare_clients(context, only_mgmt=True)
+
+        service_bus_client_mock.assert_not_called()
+        service_bus_client_mock.from_connection_string.assert_not_called()
+        service_bus_client_mock.reset_mock()
+
+        service_bus_mgmt_client_mock.from_connection_string.assert_not_called()
+        service_bus_mgmt_client_mock.assert_called_once_with(
+            'my-sbns.servicebus.windows.net',
+            credential=SOME(
+                AzureAadCredential,
+                username='bob@example.com', password='secret', tenant='example.com', auth_method=AuthMethod.USER, host='sb://my-sbns',  # noqa: S106
+            ),
+        )
+        service_bus_mgmt_client_mock.reset_mock()
+
+        handler._client = None
+        handler.mgmt_client = None
+        # // -->
 
     def test_close(self, mocker: MockerFixture) -> None:
         handler = AsyncServiceBusHandler('asdf-asdf-asdf')
@@ -43,10 +206,10 @@ class TestAsyncServiceBusHandler:
 
         handler.close()
 
-        assert client.close.call_count == 1
-        assert mgmt_client.close.call_count == 1
-        assert sender.close.call_count == 1
-        assert receiver.close.call_count == 1
+        client.close.assert_called_once_with()
+        mgmt_client.close.assert_called_once_with()
+        sender.close.assert_called_once_with()
+        receiver.close.assert_called_once_with()
 
     def test_disconnect(self, mocker: MockerFixture) -> None:
         from grizzly_extras.async_message.sb import handlers
@@ -88,7 +251,7 @@ class TestAsyncServiceBusHandler:
         }
 
         assert handler._sender_cache == {}
-        assert sender_instance.__exit__.call_count == 1
+        sender_instance.__exit__.assert_called_once_with()
 
         # successful disconnect, receiver
         receiver_instance = mocker.MagicMock()
@@ -101,7 +264,7 @@ class TestAsyncServiceBusHandler:
         }
 
         assert handler._receiver_cache == {}
-        assert receiver_instance.__exit__.call_count == 1
+        receiver_instance.__exit__.assert_called_once_with()
 
         # error disconnecting
         receiver_instance = mocker.MagicMock()
@@ -115,7 +278,7 @@ class TestAsyncServiceBusHandler:
         }
 
         assert handler._receiver_cache == {}
-        assert receiver_instance.__exit__.call_count == 1
+        receiver_instance.__exit__.assert_called_once_with()
 
     def test_subscribe(self, mocker: MockerFixture) -> None:  # noqa: PLR0915
         from grizzly_extras.async_message.sb import handlers
@@ -391,36 +554,28 @@ class TestAsyncServiceBusHandler:
 
         receiver = handler.get_receiver_instance(handler.get_endpoint_arguments('receiver', 'queue:test-queue'))
         assert isinstance(receiver, ServiceBusReceiver)
-        assert topic_spy.call_count == 0
-        assert queue_spy.call_count == 1
-        args, kwargs = queue_spy.call_args_list[-1]
-        assert args == ()
-        assert kwargs == {'client_identifier': 'asdf-asdf-asdf', 'queue_name': 'test-queue'}
+        topic_spy.assert_not_called()
+        queue_spy.assert_called_once_with(client_identifier='asdf-asdf-asdf', queue_name='test-queue')
+        queue_spy.reset_mock()
 
         handler.get_receiver_instance(dict({'wait': '100'}, **handler.get_endpoint_arguments('receiver', 'queue:test-queue')))
-        assert topic_spy.call_count == 0
-        assert queue_spy.call_count == 2
-        args, kwargs = queue_spy.call_args_list[-1]
-        assert args == ()
-        assert kwargs == {'client_identifier': 'asdf-asdf-asdf', 'queue_name': 'test-queue', 'max_wait_time': 100}
+        topic_spy.assert_not_called()
+        queue_spy.assert_called_once_with(client_identifier='asdf-asdf-asdf', queue_name='test-queue', max_wait_time=100)
+        queue_spy.reset_mock()
 
         receiver = handler.get_receiver_instance(handler.get_endpoint_arguments('receiver', 'topic:test-topic, subscription: test-subscription'))
-        assert topic_spy.call_count == 1
-        assert queue_spy.call_count == 2
-        args, kwargs = topic_spy.call_args_list[-1]
-        assert args == ()
-        assert kwargs == {'client_identifier': 'asdf-asdf-asdf', 'topic_name': 'test-topic', 'subscription_name': 'test-subscription'}
+        queue_spy.assert_not_called()
+        topic_spy.assert_called_once_with(client_identifier='asdf-asdf-asdf', topic_name='test-topic', subscription_name='test-subscription')
+        topic_spy.reset_mock()
 
         receiver = handler.get_receiver_instance(dict({'wait': '100'}, **handler.get_endpoint_arguments(
             'receiver', 'topic:test-topic, subscription:test-subscription, expression:$.foo.bar',
         )))
-        assert topic_spy.call_count == 2
-        assert queue_spy.call_count == 2
-        args, kwargs = topic_spy.call_args_list[-1]
-        assert args == ()
-        assert kwargs == {'client_identifier': 'asdf-asdf-asdf', 'topic_name': 'test-topic', 'subscription_name': 'test-subscription', 'max_wait_time': 100}
 
-    def test_hello(self, mocker: MockerFixture) -> None:  # noqa: PLR0915
+        queue_spy.assert_not_called()
+        topic_spy.assert_called_once_with(client_identifier='asdf-asdf-asdf', topic_name='test-topic', subscription_name='test-subscription', max_wait_time=100)
+
+    def test_hello(self, mocker: MockerFixture) -> None:
         from grizzly_extras.async_message.sb import handlers
 
         handler = AsyncServiceBusHandler(worker='asdf-asdf-asdf')
@@ -448,10 +603,7 @@ class TestAsyncServiceBusHandler:
         with pytest.raises(AsyncMessageError, match='"asdf" is not a valid value for context.connection'):
             handlers[request['action']](handler, request)
 
-        assert servicebusclient_connect_spy.call_count == 1
-        _, kwargs = servicebusclient_connect_spy.call_args_list[0]
-        assert kwargs.get('conn_str', None) == f'Endpoint={request["context"]["url"]}'
-        assert kwargs.get('transport_type', None) == TransportType.AmqpOverWebsocket
+        servicebusclient_connect_spy.assert_called_once_with(conn_str=f'Endpoint={request["context"]["url"]}', transport_type=TransportType.AmqpOverWebsocket)
         assert isinstance(getattr(handler, 'client', None), ServiceBusClient)
 
         assert handler._sender_cache == {}
@@ -466,13 +618,10 @@ class TestAsyncServiceBusHandler:
             'message': 'there general kenobi',
         }
 
-        assert sender_instance_spy.call_count == 1
-        assert sender_instance_spy.return_value.__enter__.call_count == 1
-        assert receiver_instance_spy.call_count == 0
-
-        args, kwargs = sender_instance_spy.call_args_list[0]
-        assert args == ({'endpoint_type': 'queue', 'endpoint': 'test-queue'},)
-        assert kwargs == {}
+        receiver_instance_spy.assert_not_called()
+        sender_instance_spy.assert_called_once_with({'endpoint_type': 'queue', 'endpoint': 'test-queue'})
+        sender_instance_spy.return_value.__enter__.assert_called_once_with()
+        sender_instance_spy.reset_mock()
 
         assert handler._sender_cache.get('queue:test-queue', None) is not None
         assert handler._receiver_cache == {}
@@ -482,9 +631,9 @@ class TestAsyncServiceBusHandler:
             'message': 'there general kenobi',
         }
 
-        assert sender_instance_spy.call_count == 1
-        assert sender_instance_spy.return_value.__enter__.call_count == 1
-        assert receiver_instance_spy.call_count == 0
+        sender_instance_spy.assert_not_called()
+        sender_instance_spy.return_value.__enter__.assert_not_called()
+        receiver_instance_spy.assert_not_called()
 
         request['context'].update({
             'connection': 'receiver',
@@ -495,14 +644,10 @@ class TestAsyncServiceBusHandler:
             'message': 'there general kenobi',
         }
 
-        assert sender_instance_spy.call_count == 1
-        assert sender_instance_spy.return_value.__enter__.call_count == 1
-        assert receiver_instance_spy.call_count == 1
-        assert receiver_instance_spy.return_value.__enter__.call_count == 1
-
-        args, kwargs = receiver_instance_spy.call_args_list[0]
-        assert kwargs == {}
-        assert args == ({'endpoint_type': 'topic', 'endpoint': 'test-topic', 'subscription': 'test-subscription', 'wait': '10'},)
+        sender_instance_spy.assert_not_called()
+        sender_instance_spy.return_value.__enter__.assert_not_called()
+        receiver_instance_spy.assert_called_once_with({'endpoint_type': 'topic', 'endpoint': 'test-topic', 'subscription': 'test-subscription', 'wait': '10'})
+        receiver_instance_spy.reset_mock()
 
         assert handler._sender_cache.get('queue:test-queue', None) is not None
         assert handler._receiver_cache.get('topic:test-topic, subscription:test-subscription', None) is not None
@@ -512,10 +657,10 @@ class TestAsyncServiceBusHandler:
             'message': 'there general kenobi',
         }
 
-        assert sender_instance_spy.call_count == 1
-        assert sender_instance_spy.return_value.__enter__.call_count == 1
-        assert receiver_instance_spy.call_count == 1
-        assert receiver_instance_spy.return_value.__enter__.call_count == 1
+        sender_instance_spy.assert_not_called()
+        sender_instance_spy.return_value.__enter__.assert_not_called()
+        receiver_instance_spy.assert_not_called()
+        receiver_instance_spy.return_value.__enter__.assert_not_called()
 
         assert handler._sender_cache.get('queue:test-queue', None) is not None
         assert handler._receiver_cache.get('topic:test-topic, subscription:test-subscription', None) is not None
@@ -618,21 +763,17 @@ class TestAsyncServiceBusHandler:
         received_message = ServiceBusMessage('grizzly >3 service bus')
         receiver_instance_mock.return_value.__iter__.side_effect = [StopIteration, iter([received_message])]
 
-        handler.logger.info('-'* 10)
-        print(f'{receiver_instance_mock.return_value.__iter__.side_effect=}')
         with pytest.raises(AsyncMessageError, match='no messages on topic:test-topic, subscription:test-subscription within 10 seconds'):
             handlers[request['action']](handler, request)
-        assert receiver_instance_mock.return_value.__iter__.call_count == 1
-        assert receiver_instance_mock.return_value.complete_message.call_count == 0
-        print(f'{receiver_instance_mock.return_value.__iter__.side_effect=}')
-        handler.logger.info('-'* 10)
+        receiver_instance_mock.return_value.__iter__.assert_called_once_with()
+        receiver_instance_mock.return_value.complete_message.assert_not_called()
+        receiver_instance_mock.reset_mock()
 
         response = handlers[request['action']](handler, request)
 
-        assert receiver_instance_mock.return_value.__iter__.call_count == 2
-        assert receiver_instance_mock.return_value.complete_message.call_count == 1
-        args, _ = receiver_instance_mock.return_value.complete_message.call_args_list[0]
-        assert args[0] is received_message
+        receiver_instance_mock.return_value.__iter__.assert_called_once_with()
+        receiver_instance_mock.return_value.complete_message.assert_called_once_with(received_message)
+        receiver_instance_mock.reset_mock()
 
         assert len(response) == 3
         expected_metadata, expected_payload = handler.from_message(received_message)
@@ -701,15 +842,10 @@ class TestAsyncServiceBusHandler:
 
         response = handlers[request['action']](handler, request)
 
-        assert receiver_instance_mock.return_value.__iter__.call_count == 1
-        assert receiver_instance_mock.return_value.complete_message.call_count == 1
-        assert receiver_instance_mock.return_value.abandon_message.call_count == 1
-
-        args, _ = receiver_instance_mock.return_value.complete_message.call_args_list[-1]
-        assert args[0] is message2
-
-        args, _ = receiver_instance_mock.return_value.abandon_message.call_args_list[-1]
-        assert args[0] is message1
+        receiver_instance_mock.return_value.__iter__.assert_called_once_with()
+        receiver_instance_mock.return_value.complete_message.assert_called_once_with(message2)
+        receiver_instance_mock.return_value.abandon_message.assert_called_once_with(message1)
+        receiver_instance_mock.reset_mock()
 
         assert len(response) == 3
         expected_metadata, expected_payload = handler.from_message(message2)
@@ -732,7 +868,8 @@ class TestAsyncServiceBusHandler:
 
         with pytest.raises(AsyncMessageError, match=r'failed to transform input as JSON: Expecting value: line 1 column 1 \(char 0\)'):
             handlers[request['action']](handler, request)
-        assert receiver_instance_mock.return_value.abandon_message.call_count == 2
+        receiver_instance_mock.return_value.abandon_message.assert_called_once_with(message_error)
+        receiver_instance_mock.reset_mock()
 
         endpoint_backup = request['context']['endpoint']
         request['context']['endpoint'] = 'queue:test-queue, expression:"//document[@name="test-document"]"'
@@ -750,7 +887,8 @@ class TestAsyncServiceBusHandler:
         with pytest.raises(AsyncMessageError, match='no payload in message'):
             handlers[request['action']](handler, request)
 
-        assert receiver_instance_mock.return_value.abandon_message.call_count == 3
+        receiver_instance_mock.return_value.abandon_message.assert_called_once_with(message2)
+        receiver_instance_mock.reset_mock()
 
         setattr(handler, 'from_message', from_message)  # noqa: B010
 
@@ -773,7 +911,8 @@ class TestAsyncServiceBusHandler:
         with pytest.raises(AsyncMessageError, match=r'no messages on queue:test-queue, expression:"\$.`this`\[\?\(@.name="test"\)\]"'):
             handlers[request['action']](handler, request)
 
-        assert receiver_instance_mock.return_value.abandon_message.call_count == 5
+        assert receiver_instance_mock.return_value.abandon_message.call_count == 2
+        receiver_instance_mock.reset_mock()
 
         mocker.patch(
             'grizzly_extras.async_message.sb.perf_counter',
@@ -783,7 +922,6 @@ class TestAsyncServiceBusHandler:
         request['context'].update({'consume': True})
 
         setup_handler(handler, request)
-        receiver_instance_mock.reset_mock()
 
         receiver_instance_mock.return_value.__iter__.side_effect = [
             iter([message1, message2]),
@@ -791,9 +929,10 @@ class TestAsyncServiceBusHandler:
 
         response = handlers[request['action']](handler, request)
 
-        assert receiver_instance_mock.return_value.__iter__.call_count == 1
+        receiver_instance_mock.return_value.__iter__.assert_called_once_with()
         assert receiver_instance_mock.return_value.complete_message.call_count == 2
-        assert receiver_instance_mock.return_value.abandon_message.call_count == 0
+        receiver_instance_mock.return_value.abandon_message.assert_not_called()
+        receiver_instance_mock.reset_mock()
 
         assert response.get('payload', None) == jsondumps({'document': {'name': 'test', 'id': 13}})
 
@@ -812,7 +951,6 @@ class TestAsyncServiceBusHandler:
         receiver_instance_mock.return_value.__iter__.side_effect = [
             iter([message1, message2, message3]),
         ]
-        receiver_instance_mock.reset_mock()
 
         request['context'].update({'endpoint': 'queue:test-queue, expression:$.name=="mallory"'})
 
@@ -822,9 +960,10 @@ class TestAsyncServiceBusHandler:
 
         assert response.get('payload', None) == jsondumps({'name': 'mallory'})
 
-        assert receiver_instance_mock.return_value.__iter__.call_count == 1
+        receiver_instance_mock.return_value.__iter__.assert_called_once_with()
         assert receiver_instance_mock.return_value.complete_message.call_count == 3
-        assert receiver_instance_mock.return_value.abandon_message.call_count == 0
+        receiver_instance_mock.return_value.abandon_message.assert_not_called()
+        receiver_instance_mock.reset_mock()
 
     def test_get_handler(self) -> None:
         handler = AsyncServiceBusHandler(worker='asdf-asdf-asdf')

@@ -14,10 +14,10 @@ import pytest
 from requests.cookies import create_cookie
 from requests.models import Response
 
-from grizzly.auth import AAD, AccessToken, AuthMethod, RefreshToken
-from grizzly.auth.aad import AzureAadCredential, AzureAadError, AzureAadFlowError
+from grizzly.auth import AAD, AccessToken, RefreshToken
 from grizzly.types import ZoneInfo
 from grizzly.users import RestApiUser
+from grizzly_extras.azure.aad import AuthMethod, AzureAadCredential, AzureAadError, AzureAadFlowError
 from tests.helpers import ANY, SOME
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -74,8 +74,7 @@ class TestAzureAadCredential:
         assert access_token is credential.get_token()
 
         # token is refreshed
-        datetime_mock = mocker.patch('grizzly.auth.aad.datetime')
-        datetime_mock.now.return_value = datetime(1970, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+        datetime_mock = mocker.patch('grizzly_extras.azure.aad.datetime')
         datetime_mock.now.return_value = datetime.now(tz=timezone.utc) + timedelta(seconds=5000)
 
         assert access_token is not credential.get_token()
@@ -721,7 +720,7 @@ class TestAzureAadCredential:
                 response.status_code = status_code
                 response._content = payload.encode()
 
-                return mocker.patch('grizzly.auth.aad.requests.Session.post', return_value=response)
+                return mocker.patch('grizzly_extras.azure.aad.requests.Session.post', return_value=response)
 
             assert isinstance(parent.user, RestApiUser)
 

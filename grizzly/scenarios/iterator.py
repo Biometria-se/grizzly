@@ -68,7 +68,18 @@ class IteratorScenario(GrizzlyScenario):
                 raise RescheduleTaskImmediately(e.reschedule).with_traceback(e.__traceback__) from e
 
             raise RescheduleTask(e.reschedule).with_traceback(e.__traceback__) from e
-        except StopScenario as e:
+        except Exception as e:
+            if not isinstance(e, StopScenario):
+                self.logger.exception('on_start failed')
+                response_time = int((perf_counter() - (self.start or 0)) * 1000)
+                self.user.environment.events.request.fire(
+                    request_type=RequestType.SCENARIO(),
+                    name=self.user._scenario.locust_name,
+                    response_time=response_time,
+                    response_length=self.task_count,
+                    context=self.user._context,
+                    exception=e,
+                )
             raise StopUser from e
 
         while True:

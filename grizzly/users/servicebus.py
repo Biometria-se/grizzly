@@ -23,10 +23,15 @@ Supports the following request methods:
 
 ## Format
 
-Format of `host` is the following:
+Format of `host` is the following, when using connection strings:
 
 ```plain
 [Endpoint=]sb://<hostname>/;SharedAccessKeyName=<shared key name>;SharedAccessKey=<shared key>
+```
+
+When using credentials context variables `auth.tenant`, `auth.user.username` and `auth.user.password` has to be set, and the format of `host` should be:
+```plain
+sb://<qualified namespace>[.servicebus.windows.net]
 ```
 
 `endpoint` in the request must have the prefix `queue:` or `topic:` followed by the name of the targeted
@@ -59,8 +64,11 @@ endpoint. If no matching messages was found when peeking, it is repeated again a
 elapsed. To use expressions, a content type must be specified for the request, e.g. `application/xml`.
 
 ```gherkin
-Given a user of type "ServiceBus" load testing "sb://sb.example.com/;SharedAccessKeyName=authorization-key;SharedAccessKey=c2VjcmV0LXN0dWZm"
+Given a user of type "ServiceBus" load testing "sb://my-sbns"
 And set context variable "message.wait" to "5"
+And set context variable "auth.tenant" to "example.com"
+And set context variable "auth.user.username" to "bob@example.com"
+And set context variable "auth.user.password" to "secret"
 Then receive request "queue-recv" from endpoint "queue:shared-queue, expression:$.document[?(@.name=='TPM report')].id"
 And set response content type to "application/json"
 Then receive request "topic-recv" from endpoint "topic:shared-topic, subscription:my-subscription, expression:/documents/document[@name='TPM Report']/id/text()"
@@ -93,6 +101,13 @@ MAX_LENGTH = 65
     'message': {
         'wait': None,
     },
+    'auth': {
+        'tenant': None,
+        'user': {
+            'username': None,
+            'password': None,
+        },
+    },
 })
 class ServiceBusUser(GrizzlyUser):
     __dependencies__: ClassVar[Set[str]] = {'async-messaged'}
@@ -107,39 +122,59 @@ class ServiceBusUser(GrizzlyUser):
     def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
         super().__init__(environment, *args, **kwargs)
 
-        if not self.host.startswith('Endpoint='):
-            conn_str = self.host
-            self.host = f'Endpoint={self.host}'
+        context_auth_user = self._context.get('auth', {}).get('user', {})
+        username = context_auth_user.get('username', None)
+        password = context_auth_user.get('password', None)
+        tenant = self._context.get('auth', {}).get('tenant', None)
+
+        if username is None and password is None:
+            if not self.host.startswith('Endpoint='):
+                user_host = self.host
+                self.host = f'Endpoint={self.host}'
+            else:
+                user_host = self.host[9:]
         else:
-            conn_str = self.host[9:]
+            user_host = self.host
 
         # Replace semicolon separators between parameters to ? and & to make it "urlparse-compliant"
         # for validation
-        conn_str = conn_str.replace(';', '?', 1).replace(';', '&')
+        user_host = user_host.replace(';', '?', 1).replace(';', '&')
 
-        parsed = urlparse(conn_str)
+        parsed = urlparse(user_host)
 
         if parsed.scheme != 'sb':
             message = f'{self.__class__.__name__}: "{parsed.scheme}" is not a supported scheme'
             raise ValueError(message)
 
-        if parsed.query == '':
-            message = f'{self.__class__.__name__}: SharedAccessKeyName and SharedAccessKey must be in the query string'
-            raise ValueError(message)
+        if username is None and password is None:
+            if parsed.query == '':
+                message = f'{self.__class__.__name__}: SharedAccessKeyName and SharedAccessKey must be in the query string'
+                raise ValueError(message)
 
-        params = parse_qs(parsed.query)
+            params = parse_qs(parsed.query)
 
-        if 'SharedAccessKeyName' not in params:
-            message = f'{self.__class__.__name__}: SharedAccessKeyName must be in the query string'
-            raise ValueError(message)
+            if 'SharedAccessKeyName' not in params:
+                message = f'{self.__class__.__name__}: SharedAccessKeyName must be in the query string'
+                raise ValueError(message)
 
-        if 'SharedAccessKey' not in params:
-            message = f'{self.__class__.__name__}: SharedAccessKey must be in the query string'
-            raise ValueError(message)
+            if 'SharedAccessKey' not in params:
+                message = f'{self.__class__.__name__}: SharedAccessKey must be in the query string'
+                raise ValueError(message)
+
+            context_url = self.host[9:]
+        else:
+            if tenant is None:
+                message = f'{self.__class__.__name__}: does not have context variable auth.tenant set while auth.user is'
+                raise ValueError(message)
+
+            context_url = user_host
 
         self.am_context = {
-            'url': self.host[9:],
+            'url': context_url,
             'message_wait': self._context.get('message', {}).get('wait', None),
+            'username': username,
+            'password': password,
+            'tenant': tenant,
         }
 
         # silence uamqp loggers

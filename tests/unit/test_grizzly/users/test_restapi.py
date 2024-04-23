@@ -12,13 +12,14 @@ from geventhttpclient.client import HTTPClientPool
 from locust.contrib.fasthttp import FastHttpSession, LocustUserAgent, insecure_ssl_context_factory
 from locust.exception import ResponseError
 
-from grizzly.auth.aad import AAD, AzureAadCredential
+from grizzly.auth.aad import AAD
 from grizzly.context import GrizzlyContext
 from grizzly.tasks import RequestTask
 from grizzly.testdata.utils import transform
 from grizzly.types import GrizzlyResponse, RequestMethod
 from grizzly.types.locust import StopUser
 from grizzly.users import AsyncRequests, GrizzlyUser, RestApiUser
+from grizzly_extras.azure.aad import AzureAadCredential
 from grizzly_extras.transformer import TransformerContentType
 from tests.helpers import ANY, SOME, create_mocked_fast_response_context_manager
 
@@ -80,7 +81,7 @@ class TestRestApiUser:
     def test_get_oauth_authorization_real(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
         import logging
         with caplog.at_level(logging.DEBUG):
-            parent = grizzly_fixture(user_type=RestApiUser)
+            parent = grizzly_fixture(user_type=RestApiUser, host='')
             assert isinstance(parent.user, RestApiUser)
 
             parent.user._context = {
@@ -94,13 +95,14 @@ class TestRestApiUser:
                         'password': '',
                         'otp_secret': None,
                         'redirect_uri': '',
-                        'response_mode': '',
+                        'initialize_uri': None,
+                        'response_mode': None,
                     },
-                    'provider': '',
+                    'tenant': '',
                 },
-                'verify_certificates': False,
+                'verify_certificates': True,
                 'metadata': {
-                    'User-Agent': '',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0 OS/10.0.19045',
                 },
             }
             parent.user.host = cast(dict, parent.user.__context__)['host']
@@ -108,7 +110,7 @@ class TestRestApiUser:
 
             fire = mocker.spy(parent.user.environment.events.request, 'fire')
 
-            request = RequestTask(RequestMethod.GET, name='test', endpoint='/api/test')
+            request = RequestTask(RequestMethod.GET, name='test', endpoint='')
             headers, body = parent.user.request(request)
             parent.logger.info(headers)
             parent.logger.info(body)

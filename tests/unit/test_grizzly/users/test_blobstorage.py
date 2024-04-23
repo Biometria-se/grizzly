@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import TYPE_CHECKING, cast
 from unittest.mock import ANY
 
@@ -14,9 +15,12 @@ from grizzly.tasks import RequestTask
 from grizzly.testdata.utils import transform
 from grizzly.types import RequestMethod
 from grizzly.types.locust import StopUser
-from grizzly.users import BlobStorageUser, GrizzlyUser
+from grizzly.users import BlobStorageUser
+from grizzly_extras.azure.aad import AuthMethod, AzureAadCredential
+from tests.helpers import SOME
 
 if TYPE_CHECKING:  # pragma: no cover
+    from _pytest.logging import LogCaptureFixture
     from pytest_mock import MockerFixture
 
     from grizzly.scenarios import GrizzlyScenario
@@ -48,14 +52,57 @@ def blob_storage_parent(grizzly_fixture: GrizzlyFixture) -> GrizzlyScenario:
 
 
 class TestBlobStorageUser:
-    @pytest.mark.usefixtures('blob_storage_parent')
-    def test_on_start(self, blob_storage_parent: GrizzlyScenario) -> None:
-        assert not hasattr(blob_storage_parent.user, 'blob_client')
+    def test_on_start(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
 
-        blob_storage_parent.user.on_start()
+        blob_service_client_mock = mocker.patch('grizzly.users.blobstorage.BlobServiceClient')
 
-        assert hasattr(blob_storage_parent.user, 'blob_client')
-        assert blob_storage_parent.user.blob_client.account_name == 'my-storage'
+        # connection string
+        cls_blob_storage_user = type('BlobStorageUserTest', (BlobStorageUser,), {
+            '__scenario__': grizzly.scenario,
+            'host': CONNECTION_STRING,
+        })
+
+        user = cls_blob_storage_user(grizzly.state.locust.environment)
+
+        user.on_start()
+
+        blob_service_client_mock.from_connection_string.assert_called_once_with(conn_str=CONNECTION_STRING)
+        blob_service_client_mock.assert_not_called()
+        blob_service_client_mock.reset_mock()
+
+        # token credentials
+        cls_blob_storage_user = type('BlobStorageUserTest', (BlobStorageUser,), {
+            '__scenario__': grizzly.scenario,
+            'host': 'bs://my-storage-account',
+            '__context__': {
+                'auth': {
+                    'tenant': 'example.com',
+                    'user': {
+                        'username': 'bob@example.com',
+                        'password': 'secret',
+                    },
+                },
+            },
+        })
+
+        user = cls_blob_storage_user(grizzly.state.locust.environment)
+
+        user.on_start()
+
+        blob_service_client_mock.from_connection_string.assert_not_called()
+        blob_service_client_mock.assert_called_once_with(
+            account_url='https://my-storage-account.blob.core.windows.net',
+            credential=SOME(
+                AzureAadCredential,
+                username='bob@example.com',
+                password='secret',  # noqa: S106
+                tenant='example.com',
+                auth_method=AuthMethod.USER,
+                host='https://my-storage-account.blob.core.windows.net',
+            ),
+        )
+
 
     @pytest.mark.usefixtures('blob_storage_parent')
     def test_on_stop(self, mocker: MockerFixture, blob_storage_parent: GrizzlyScenario) -> None:
@@ -66,29 +113,38 @@ class TestBlobStorageUser:
 
         blob_storage_parent.user.on_stop()
 
-        assert on_stop_spy.call_count == 1
+        on_stop_spy.assert_called_once_with()
 
-    @pytest.mark.usefixtures('blob_storage_parent')
-    def test_create(self, blob_storage_parent: GrizzlyScenario) -> None:
-        assert isinstance(blob_storage_parent.user, BlobStorageUser)
-        assert issubclass(blob_storage_parent.user.__class__, GrizzlyUser)
-        blob_storage_parent.user.on_start()
+    def test___init__(self, grizzly_fixture: GrizzlyFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
 
-        blob_storage_parent.user.__class__.host = 'DefaultEndpointsProtocol=http;EndpointSuffix=core.windows.net;AccountName=my-storage;AccountKey=xxxyyyyzzz=='
+        # connection string
+        cls_user = type('BlobStorageUserTest', (BlobStorageUser,), {
+            '__scenario__': grizzly.scenario,
+            'host': CONNECTION_STRING,
+        })
+
+        assert issubclass(cls_user, BlobStorageUser)
+
+        cls_user.host = 'DefaultEndpointsProtocol=http;EndpointSuffix=core.windows.net;AccountName=my-storage;AccountKey=xxxyyyyzzz=='
         with pytest.raises(ValueError, match='is not supported for BlobStorageUser'):
-            blob_storage_parent.user.__class__(blob_storage_parent.user.environment)
+            cls_user(grizzly.state.locust.environment)
 
-        blob_storage_parent.user.__class__.host = 'DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net'
+        cls_user.host = 'DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net'
         with pytest.raises(ValueError, match='needs AccountName in the query string'):
-            blob_storage_parent.user.__class__(blob_storage_parent.user.environment)
+            cls_user(grizzly.state.locust.environment)
 
-        blob_storage_parent.user.__class__.host = 'DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountKey=xxxyyyyzzz=='
+        cls_user.host = 'DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountKey=xxxyyyyzzz=='
         with pytest.raises(ValueError, match='needs AccountName in the query string'):
-            blob_storage_parent.user.__class__(blob_storage_parent.user.environment)
+            cls_user(grizzly.state.locust.environment)
 
-        blob_storage_parent.user.__class__.host = 'DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=my-storage'
+        cls_user.host = 'DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=my-storage'
         with pytest.raises(ValueError, match='needs AccountKey in the query string'):
-            blob_storage_parent.user.__class__(blob_storage_parent.user.environment)
+            cls_user(grizzly.state.locust.environment)
+
+        cls_user.host = CONNECTION_STRING
+        user = cls_user(grizzly.state.locust.environment)
+        assert user.credential is None
 
     @pytest.mark.usefixtures('blob_storage_parent')
     def test_send(self, blob_storage_parent: GrizzlyScenario, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture) -> None:
@@ -265,3 +321,35 @@ class TestBlobStorageUser:
 
         download_blob.assert_not_called()
         upload_blob.assert_not_called()
+
+    @pytest.mark.skip(reason='requires credentials, should only execute explicitly during development')
+    def test_receive_real(self, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture) -> None:
+        grizzly = grizzly_fixture.grizzly
+        parent = grizzly_fixture()
+
+        cls_blob_storage_user = type('BlobStorageUserTest', (BlobStorageUser,), {
+            '__scenario__': grizzly.scenario,
+            '__context__': {
+                'auth': {
+                    'tenant': '<tenant>',
+                    'user': {
+                        'username': '<username>',
+                        'password': '<password>',
+                    },
+                },
+            },
+            'host': 'bs://<storage account>',
+        })
+
+        user = cls_blob_storage_user(grizzly.state.locust.environment)
+        parent._user = user
+
+        request = RequestTask(RequestMethod.RECEIVE, name='test', endpoint='<container>/<file>/<path>')
+
+        with caplog.at_level(logging.DEBUG):
+            user.on_start()
+
+            parent.user.request(request)
+
+        assert 0  # noqa: PT015
+

@@ -8,12 +8,13 @@ from unittest.mock import ANY
 
 import pytest
 
-from grizzly.auth import AccessToken, AuthMethod, AuthType, GrizzlyHttpAuthClient, GrizzlyTokenCredential, RefreshToken, refresh_token
+from grizzly.auth import AccessToken, GrizzlyHttpAuthClient, RefreshToken, refresh_token
 from grizzly.tasks import RequestTask
 from grizzly.tasks.clients import HttpClientTask
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod
 from grizzly.users import RestApiUser
 from grizzly.utils import has_template, safe_del
+from grizzly_extras.azure.aad import AuthMethod, AuthType, AzureAadCredential
 from tests.helpers import SOME
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -24,7 +25,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from tests.fixtures import GrizzlyFixture
 
 
-class DummyAuthCredential(GrizzlyTokenCredential):
+class DummyAuthCredential(AzureAadCredential):
     def __init__(  # noqa: PLR0913
             self,
             username: Optional[str],
@@ -151,7 +152,7 @@ def test_refresh_token_client(grizzly_fixture: GrizzlyFixture, mocker: MockerFix
     with caplog.at_level(logging.INFO):
         parent.user.request(request_task)
 
-    assert parent.user.credential == SOME(GrizzlyTokenCredential, auth_method=AuthMethod.CLIENT)
+    assert parent.user.credential == SOME(AzureAadCredential, auth_method=AuthMethod.CLIENT)
     assert parent.user.credential._access_token is not None
     get_token_mock.assert_called_once_with(parent.user.credential)
     get_token_mock.reset_mock()
@@ -254,7 +255,7 @@ def test_refresh_token_user(grizzly_fixture: GrizzlyFixture, mocker: MockerFixtu
     get_token_mock.reset_mock()
 
     assert parent.user.metadata['Authorization'] == 'Bearer dummy'
-    assert parent.user.credential == SOME(GrizzlyTokenCredential, auth_method=AuthMethod.USER)
+    assert parent.user.credential == SOME(AzureAadCredential, auth_method=AuthMethod.USER)
     assert parent.user.credential._access_token is not None
     assert len(caplog.messages) == 1
     assert 'bob@example.com claimed user token until' in caplog.messages[-1]

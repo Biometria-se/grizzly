@@ -46,7 +46,7 @@ class TestdataConsumer:
         self.socket.connect(address)
         self.stopped = False
 
-        self.logger.debug('conntected to producer at %s', address)
+        self.logger.debug('connected to producer at %s', address)
 
     def stop(self) -> None:
         if self.stopped:

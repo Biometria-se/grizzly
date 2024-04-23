@@ -104,8 +104,6 @@ def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Opt
         logger.debug('%s context: %r', user_class_name, merge_context)
         context = merge_dicts(context, merge_context)
 
-    logger.debug('%s context: %r', user_class_name, context)
-
     distribution: Dict[str, Union[int, float, str | None]] = {
         'weight': scenario.user.weight,
         'sticky_tag': scenario.user.sticky_tag,

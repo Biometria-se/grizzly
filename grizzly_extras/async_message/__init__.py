@@ -67,6 +67,7 @@ class AsyncMessageContext(TypedDict, total=False):
     channel: str
     username: Optional[str]
     password: Optional[str]
+    tenant: Optional[str]
     key_file: Optional[str]
     cert_label: Optional[str]
     ssl_cipher: Optional[str]
