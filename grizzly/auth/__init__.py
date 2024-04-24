@@ -112,7 +112,7 @@ class refresh_token(Generic[P]):
 
     def __call__(self, func: AuthenticatableFunc) -> AuthenticatableFunc:
         @wraps(func)
-        def refresh_token(client: GrizzlyHttpAuthClient, *args: P.args, **kwargs: P.kwargs) -> GrizzlyResponse:  # noqa: PLR0912
+        def refresh_token(client: GrizzlyHttpAuthClient, *args: P.args, **kwargs: P.kwargs) -> GrizzlyResponse:
             # make sure the client has a credential instance, if it is needed
             self.impl.initialize(client)
 
@@ -153,15 +153,15 @@ class refresh_token(Generic[P]):
                             client.__class__.__name__, id(client), action_for, action_name, client.credential.auth_method.name.lower(), next_refresh,
                         )
 
-                        if client.credential.auth_type == AuthType.HEADER:  # add token bearer to headers
-                            header = {'Authorization': f'Bearer {access_token.token}'}
-                            client.metadata.update(header)
-                            if request is not None:
-                                request.metadata.update(header)
-                        else:  # add token to cookies
-                            client.cookies.update({client.credential.COOKIE_NAME: access_token.token})
-                    elif authorization_token is not None and request is not None:  # update current request with active authorization token
-                        request.metadata.update({'Authorization': authorization_token})
+                    # always make sure client and request has the right token
+                    if client.credential.auth_type == AuthType.HEADER:  # add token bearer to headers
+                        header = {'Authorization': f'Bearer {access_token.token}'}
+                        client.metadata.update(header)
+                        if request is not None:
+                            request.metadata.update(header)
+                    else:  # add token to cookies
+                        client.cookies.update({client.credential.COOKIE_NAME: access_token.token})
+
                 except Exception as e:
                     exception = e
                     client.logger.exception('failed to get token')
