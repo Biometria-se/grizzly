@@ -174,7 +174,7 @@ class AzureAadCredential(TokenCredential):
     client_id: str
     tenant: str | None
     otp_secret: str | None
-    refresh_time: int = 3000
+    refresh_time: int = 3600
 
     redirect: str | None
     initialize: str | None
@@ -867,7 +867,8 @@ class AzureAadCredential(TokenCredential):
                         raise AzureAadFlowError(message)
 
                     token = fragments['id_token'][0]
-                    expires_on = int(datetime.now(tz=timezone.utc).timestamp()) + int(fragments.get('expires_in', ['3500'])[0])
+                    # be a little proactive and re-new set expire time to 10 minutes before actual time
+                    expires_on = int(datetime.now(tz=timezone.utc).timestamp()) + (int(fragments.get('expires_in', ['3600'])[0]) - 600)
 
                     return AccessToken(token, expires_on)
 
@@ -914,7 +915,7 @@ class AzureAadCredential(TokenCredential):
                     domain = cookie.domain[1:] if cookie.domain_initial_dot else cookie.domain
 
                     if domain in initialize_uri:
-                        expires_on = cookie.expires or int(datetime.now(tz=timezone.utc).timestamp() + 3500)
+                        expires_on = (cookie.expires or int(datetime.now(tz=timezone.utc).timestamp() + 3600)) - 600
                         if cookie.value is None:
                             message = 'token cookie did not contain a value'
                             raise AzureAadFlowError(message)
@@ -1009,9 +1010,10 @@ class AzureAadCredential(TokenCredential):
             if token is None:
                 message = 'neither `id_token` or `access_token` was found in payload'
                 raise AzureAadFlowError(message)
+
             expires_on = int(
                 datetime.now(tz=timezone.utc).timestamp()
-                + payload.get('expires_in', self.refresh_time),
+                + (int(payload.get('expires_in', self.refresh_time)) - 600),
             )
 
             return AccessToken(token, expires_on)
