@@ -391,10 +391,9 @@ class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=R
 
         cached_credential = self.__cached_auth__.get(cache_key, None)
 
-        safe_del(self.metadata, 'Authorization')
-        safe_del(self.cookies, '.AspNetCore.Cookies')
+        self.credential = cached_credential
 
-        if cached_credential is not None:   # restore from cache
-            self.credential = cached_credential
-        else:  # remove from metadata, to force a re-authentication
-            self.credential = None
+        # force re-auth
+        if cached_credential is None:
+            safe_del(self.metadata, 'Authorization')
+            safe_del(self.cookies, '.AspNetCore.Cookies')
