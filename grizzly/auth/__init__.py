@@ -17,7 +17,7 @@ from azure.core.credentials import AccessToken
 from grizzly.tasks import RequestTask
 from grizzly.types import GrizzlyResponse
 from grizzly.types.locust import StopUser
-from grizzly.utils import merge_dicts, safe_del
+from grizzly.utils import merge_dicts
 from grizzly_extras.azure.aad import AuthMethod, AuthType, AzureAadCredential
 
 try:
@@ -182,9 +182,6 @@ class refresh_token(Generic[P]):
 
                     if exception is not None:
                         raise StopUser from exception
-            else:
-                safe_del(client.metadata, 'Authorization')
-                safe_del(client.metadata, 'Cookie')
 
             bound = func.__get__(client, client.__class__)
 
