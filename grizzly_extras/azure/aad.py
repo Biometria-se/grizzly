@@ -184,6 +184,7 @@ class AzureAadCredential(TokenCredential):
     _access_token: AccessToken | None
     _webserver: AzureAadWebserver
     _refreshed: bool
+    _token_payload: Optional[Dict[str, Any]]
 
     def __init__(  # noqa: PLR0913
         self,
@@ -220,6 +221,7 @@ class AzureAadCredential(TokenCredential):
         self.auth_type = AuthType.HEADER if self.initialize is None else AuthType.COOKIE
         self._webserver = AzureAadWebserver(self)
         self._refreshed = False
+        self._token_payload = None
 
     @property
     def access_token(self) -> AccessToken:
@@ -920,6 +922,8 @@ class AzureAadCredential(TokenCredential):
                             message = 'token cookie did not contain a value'
                             raise AzureAadFlowError(message)
 
+                        self._token_payload = {key: getattr(cookie, key, None) for key in cookie.__dict__ if not key.startswith('_')}
+
                         return AccessToken(cookie.value, expires_on)
 
                 message = 'did not find AAD cookie in authorization flow response session'
@@ -1015,5 +1019,7 @@ class AzureAadCredential(TokenCredential):
                 datetime.now(tz=timezone.utc).timestamp()
                 + (int(payload.get('expires_in', self.refresh_time)) - 600),
             )
+
+            self._token_payload = payload
 
             return AccessToken(token, expires_on)

@@ -6,6 +6,8 @@ from contextlib import suppress
 from json import dumps as jsondumps
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
+from locust.exception import ResponseError
+
 from grizzly.context import GrizzlyContext
 from grizzly.events import GrizzlyEventHandler
 from grizzly.exceptions import ResponseHandlerError
@@ -173,10 +175,14 @@ class ResponseHandler(GrizzlyEventHandler):
         name: str,
         context: GrizzlyResponse,
         request: RequestTask,
-        exception: Optional[Exception] = None,  # noqa: ARG002
+        exception: Optional[Exception] = None,
         **_kwargs: Any,
     ) -> None:
         if getattr(request, 'response', None) is None:
+            return
+
+        # do not run response handlers if there was an `ResponseError`
+        if isinstance(exception, ResponseError):
             return
 
         handlers = request.response.handlers

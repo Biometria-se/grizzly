@@ -315,6 +315,8 @@ class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=R
                     if response.status_code == 401 and self.credential is not None and self.credential._access_token is not None:
                         token_expires = datetime.fromtimestamp(self.credential._access_token.expires_on, tz=timezone.utc).astimezone(tz=None)
                         message = f'{message} (token expires {token_expires})'
+                        # @TODO: should probably be removed when concluding troubleshooting
+                        self.logger.error('%s:\n%r\n%s', message, self.credential._token_payload, dict(response.request.headers))
 
                     response.failure(ResponseError(message))
 

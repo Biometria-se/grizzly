@@ -149,8 +149,14 @@ class refresh_token(Generic[P]):
                         next_refresh = datetime.fromtimestamp(access_token.expires_on, tz=timezone.utc).astimezone(tz=None)
 
                         logger.info(
-                            '%s/%d %s %s %s token until %s',
-                            client.__class__.__name__, id(client), action_for, action_name, client.credential.auth_method.name.lower(), next_refresh,
+                            '%s/%d %s %s %s token until %s, token=%r',
+                            client.__class__.__name__,
+                            id(client),
+                            action_for,
+                            action_name,
+                            client.credential.auth_method.name.lower(),
+                            next_refresh,
+                            client.credential._token_payload,
                         )
 
                     # always make sure client and request has the right token
