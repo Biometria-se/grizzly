@@ -6,7 +6,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from base64 import urlsafe_b64encode
+from base64 import b64decode, urlsafe_b64encode
 from contextlib import suppress
 from datetime import datetime, timezone
 from enum import Enum
@@ -317,6 +317,26 @@ class AzureAadCredential(TokenCredential):
                 self._access_token = self.get_oauth_token(tenant_id=tenant_id)
 
         return cast(AccessToken, self._access_token)
+
+    def get_expires_on(self, token: str) -> int:
+        # default to 3000 seconds
+        default_exp = int(datetime.now(tz=timezone.utc).timestamp()) + 3000
+
+        try:
+            # header, payload, signature
+            _, payload, _ = token.split('.', 2)
+
+            # add padding, if there's more padding than needed b64decode will truncate it
+            # minimal padding needed is ==
+            payload = f'{payload}=='
+
+            decoded = b64decode(payload)
+            json_payload = json.loads(decoded)
+
+            return cast(int, json_payload.get('exp', default_exp))
+        except:
+            logger.exception('failed to get expire timestamp from token')
+            return default_exp
 
     def get_oauth_authorization(  # noqa: C901, PLR0915
         self, *scopes: str, claims: str | None = None, tenant_id: str | None = None,  # noqa: ARG002
@@ -1015,10 +1035,7 @@ class AzureAadCredential(TokenCredential):
                 message = 'neither `id_token` or `access_token` was found in payload'
                 raise AzureAadFlowError(message)
 
-            expires_on = int(
-                datetime.now(tz=timezone.utc).timestamp()
-                + (int(payload.get('expires_in', self.refresh_time)) - 600),
-            )
+            expires_on = self.get_expires_on(token)
 
             self._token_payload = payload
 
