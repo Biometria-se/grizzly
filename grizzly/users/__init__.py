@@ -179,7 +179,7 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
             total_time = int((perf_counter() - start_time) * 1000)
             response_length = len((payload or '').encode())
 
-            # execute response listeners
+            # execute response listeners, but not on these exceptions
             if not isinstance(exception, (RestartScenario, StopUser, AsyncMessageError)):
                 try:
                     self.event_hook.fire(

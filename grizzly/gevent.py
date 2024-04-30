@@ -41,6 +41,15 @@ class GreenletWithExceptionCatching(Greenlet):
             **kwargs,
         )
 
+    def spawn_blocking(self, func: Callable, *args: Any, **kwargs: Any) -> None:
+        """Spawn a greenlet executing the function and wait for the function to finish.
+        Get the result of the executed function, if there was an exception raised, it will be
+        re-raised by `get`.
+        """
+        greenlet = self.spawn(func, *args, **kwargs)
+        greenlet.join()
+        greenlet.get()
+
     def spawn_later(self, seconds: int, func: Callable, *args: Any, **kwargs: Any) -> Greenlet:
         """Spawn a greenlet `seconds` in the future, in a way that any exceptions can be handled where it was spawned."""
         return super().spawn_later(

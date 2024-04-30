@@ -42,6 +42,21 @@ class TestGreenletWithExceptionCatching:
 
         wrap_exceptions_spy.assert_called_once_with(g.handle_exception)
 
+    def test_spawn_blocking(self) -> None:
+        def fail() -> None:
+            msg = 'foobar'
+            raise RuntimeError(msg)
+
+        def ok() -> None:
+            pass
+
+        factory = GreenletWithExceptionCatching()
+
+        with pytest.raises(RuntimeError, match='foobar'):
+            factory.spawn_blocking(fail)
+
+        factory.spawn_blocking(ok)
+
     def test_spawn_later(self, mocker: MockerFixture) -> None:
         g = GreenletWithExceptionCatching()
         wrap_exceptions_spy = mocker.spy(g, 'wrap_exceptions')

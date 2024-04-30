@@ -54,6 +54,7 @@ class DummyAuthCredential(AzureAadCredential):
 
         self._refreshed = False
         self._access_token = None
+        self._token_payload = None
 
     def get_token(self, *scopes: str, claims: str | None = None, tenant_id: str | None = None, **_kwargs: Any) -> AccessToken:  # noqa: ARG002
         now = datetime.now(tz=timezone.utc).timestamp()

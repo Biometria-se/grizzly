@@ -150,7 +150,12 @@ class refresh_token(Generic[P]):
 
                         logger.info(
                             '%s/%d %s %s %s token until %s',
-                            client.__class__.__name__, id(client), action_for, action_name, client.credential.auth_method.name.lower(), next_refresh,
+                            client.__class__.__name__,
+                            id(client),
+                            action_for,
+                            action_name,
+                            client.credential.auth_method.name.lower(),
+                            next_refresh,
                         )
 
                     # always make sure client and request has the right token

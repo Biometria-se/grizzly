@@ -114,9 +114,7 @@ class GrizzlyScenario(SequentialTaskSet):
         raised in the greenlet should be caught else where.
         """
         try:
-            self.task_greenlet = self.task_greenlet_factory.spawn(super().execute_next_task)
-            if self.task_greenlet is not None:  # stupid mypy?!
-                self.task_greenlet.join()
+            self.task_greenlet_factory.spawn_blocking(super().execute_next_task)
         finally:
             self.task_greenlet = None
 

@@ -6,7 +6,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from base64 import urlsafe_b64encode
+from base64 import b64decode, urlsafe_b64encode
 from contextlib import suppress
 from datetime import datetime, timezone
 from enum import Enum
@@ -184,6 +184,7 @@ class AzureAadCredential(TokenCredential):
     _access_token: AccessToken | None
     _webserver: AzureAadWebserver
     _refreshed: bool
+    _token_payload: Optional[Dict[str, Any]]
 
     def __init__(  # noqa: PLR0913
         self,
@@ -220,6 +221,7 @@ class AzureAadCredential(TokenCredential):
         self.auth_type = AuthType.HEADER if self.initialize is None else AuthType.COOKIE
         self._webserver = AzureAadWebserver(self)
         self._refreshed = False
+        self._token_payload = None
 
     @property
     def access_token(self) -> AccessToken:
@@ -315,6 +317,26 @@ class AzureAadCredential(TokenCredential):
                 self._access_token = self.get_oauth_token(tenant_id=tenant_id)
 
         return cast(AccessToken, self._access_token)
+
+    def get_expires_on(self, token: str) -> int:
+        # default to 3000 seconds
+        default_exp = int(datetime.now(tz=timezone.utc).timestamp()) + 3000
+
+        try:
+            # header, payload, signature
+            _, payload, _ = token.split('.', 2)
+
+            # add padding, if there's more padding than needed b64decode will truncate it
+            # minimal padding needed is ==
+            payload = f'{payload}=='
+
+            decoded = b64decode(payload)
+            json_payload = json.loads(decoded)
+
+            return cast(int, json_payload.get('exp', default_exp))
+        except:
+            logger.exception('failed to get expire timestamp from token')
+            return default_exp
 
     def get_oauth_authorization(  # noqa: C901, PLR0915
         self, *scopes: str, claims: str | None = None, tenant_id: str | None = None,  # noqa: ARG002
@@ -920,6 +942,8 @@ class AzureAadCredential(TokenCredential):
                             message = 'token cookie did not contain a value'
                             raise AzureAadFlowError(message)
 
+                        self._token_payload = {key: getattr(cookie, key, None) for key in cookie.__dict__ if not key.startswith('_')}
+
                         return AccessToken(cookie.value, expires_on)
 
                 message = 'did not find AAD cookie in authorization flow response session'
@@ -1011,9 +1035,8 @@ class AzureAadCredential(TokenCredential):
                 message = 'neither `id_token` or `access_token` was found in payload'
                 raise AzureAadFlowError(message)
 
-            expires_on = int(
-                datetime.now(tz=timezone.utc).timestamp()
-                + (int(payload.get('expires_in', self.refresh_time)) - 600),
-            )
+            expires_on = self.get_expires_on(token)
+
+            self._token_payload = payload
 
             return AccessToken(token, expires_on)
