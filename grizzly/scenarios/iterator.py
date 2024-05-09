@@ -78,7 +78,7 @@ class IteratorScenario(GrizzlyScenario):
                     response_time=response_time,
                     response_length=self.task_count,
                     context=self.user._context,
-                    exception=e,
+                    exception=StopUser('on_start failed for {self.user.__class__.__name__}'),
                 )
             raise StopUser from e
 

@@ -77,8 +77,6 @@ class GrizzlyScenario(SequentialTaskSet):
             self.logger.error('no address to testdata producer specified')
             raise StopUser
 
-        self.prefetch()
-
         for task in self.tasks:
             if isinstance(task, grizzlytask):
                 try:  # type: ignore[unreachable]
@@ -86,6 +84,9 @@ class GrizzlyScenario(SequentialTaskSet):
                 except:
                     self.logger.exception('on_start failed for task %r', task)
                     raise StopUser from None
+
+        # only prefetch iterator testdata if everything was started OK
+        self.prefetch()
 
     def on_stop(self) -> None:
         """When locust test is stopping, all tasks on_stop methods must be called, even though
