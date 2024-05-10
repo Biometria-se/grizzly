@@ -2786,7 +2786,7 @@ This module contains steps that can be in both <code>Background:</code> and <cod
 <h2 id="then-variable-value-ask">Then variable value ask</h2>
 <div class="highlight"><pre><span></span><code><span class="k">Then </span><span class="nf">ask for value of variable &quot;</span><span class="s">{name}</span><span class="nf">&quot;</span>
 </code></pre></div>
-<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.10.1/docs/../grizzly/steps/setup.py#L22">[view_source]</a></p>
+<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.10.2/docs/../grizzly/steps/setup.py#L22">[view_source]</a></p>
 <p>Tell <code>grizzly-cli</code> that it should ask for an initial value for the variable.</p>
 <p>It will inject the value into the locust runtime environment, and in this step read it and insert it
 into the locust context which <code>grizzly</code> will use to setup <code>locust</code>.</p>
@@ -2805,7 +2805,7 @@ into the locust context which <code>grizzly</code> will use to setup <code>locus
 <h2 id="given-variable-value">Given variable value</h2>
 <div class="highlight"><pre><span></span><code><span class="k">Given </span><span class="nf">value for variable &quot;</span><span class="s">{name}</span><span class="nf">&quot; is &quot;</span><span class="s">{value}</span><span class="nf">&quot;</span>
 </code></pre></div>
-<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.10.1/docs/../grizzly/steps/setup.py#L55">[view_source]</a></p>
+<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.10.2/docs/../grizzly/steps/setup.py#L55">[view_source]</a></p>
 <p>Step to initialize a variable that should have the same [start] value for every run of the scenario.</p>
 <p>If this step is used after a step that adds a task or for a variable that already has been initialized, it is assumed that the value will change during runtime
 so a <a href="/grizzly/framework/usage/tasks/set_variable#pydoc:grizzly.tasks.set_variable">Set variable</a> task will be added instead. The <a href="/grizzly/framework/usage/variables/testdata#pydoc:grizzly.testdata.variables">Variables</a> must
@@ -2854,7 +2854,7 @@ the variable, the initial value will be read from the file and override the valu
 <h2 id="then-execute-python-script">Then execute python script</h2>
 <div class="highlight"><pre><span></span><code><span class="k">Then </span><span class="nf">execute python script &quot;</span><span class="s">{script_path}</span><span class="nf">&quot;</span>
 </code></pre></div>
-<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.10.1/docs/../grizzly/steps/setup.py#L148">[view_source]</a></p>
+<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.10.2/docs/../grizzly/steps/setup.py#L148">[view_source]</a></p>
 <p>Execute python script located in specified path.</p>
 <p>The script will not execute on workers, only on master (distributed mode) or local (local mode), and
 it will only execute once before the test starts. Available in the scope is the current <code>context</code> object.</p>
@@ -2867,7 +2867,7 @@ it will only execute once before the test starts. Available in the scope is the 
 <h2 id="then-execute-python-script-inline">Then execute python script inline</h2>
 <div class="highlight"><pre><span></span><code><span class="k">Then </span><span class="nf">execute python script</span>
 </code></pre></div>
-<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.10.1/docs/../grizzly/steps/setup.py#L173">[view_source]</a></p>
+<p><a href="https://github.com/Biometria-se/grizzly/blob/v2.10.2/docs/../grizzly/steps/setup.py#L173">[view_source]</a></p>
 <p>Execute inline python script specified in the step text.</p>
 <p>The script will not execute on workers, only on master (distributed mode) or local (local mode), and
 it will only execute once before the test starts. Available in the scope is the current <code>context</code> object.</p>
