@@ -455,7 +455,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                 credential = AzureAadCredential(username, password, tenant, AuthMethod.USER, host=url)
                 self.mgmt_client = ServiceBusAdministrationClient(fully_qualified_namespace, credential=credential)
 
-    def _hello(self, request: AsyncMessageRequest, *, force: bool) -> AsyncMessageResponse:
+    def _hello(self, request: AsyncMessageRequest, *, force: bool) -> AsyncMessageResponse:  # noqa: PLR0915
         context = request.get('context', None)
         if context is None:
             message = 'no context in request'
@@ -500,9 +500,35 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                     self.logger.info('cleaning up stale %s instance for %s', instance_type, cache_endpoint)
                     instance.__exit__()
 
-            cache.update({cache_endpoint: get_instance(arguments).__enter__()})
+            """
+            Timeout when creating an instance in `azure.servicebus` is not handled very well...
+            We'll workaround it by re-trying with a backoff delay.
+            """
+            retries = _retries = 3
+            delay = 0.5
+            backoff = 1.7
 
-            self.logger.debug('cached %s instance for %s', instance_type, cache_endpoint)
+            while retries > 0:
+                try:
+                    cache.update({cache_endpoint: get_instance(arguments).__enter__()})
+
+                    # all good, exit while-loop
+                    retries = 0
+                except TypeError as e:
+                    if "'NoneType' is not subscriptable" not in str(e):
+                        raise
+
+                    self.logger.warning('hello failed: service bus connection timed out, retry %d in %0.2f seconds', (_retries - retries) + 1, delay)
+                    sleep(delay)
+                    retries -= 1
+                    delay *= backoff
+
+                    # bail out
+                    if retries == 0:
+                        message = f'hello failed, creating service bus connection timed out {_retries} times'
+                        raise AsyncMessageError(message) from e
+
+                self.logger.debug('cached %s instance for %s', instance_type, cache_endpoint)
 
         return {
             'message': 'there general kenobi',

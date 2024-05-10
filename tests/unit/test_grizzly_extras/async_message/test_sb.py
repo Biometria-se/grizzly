@@ -575,7 +575,7 @@ class TestAsyncServiceBusHandler:
         queue_spy.assert_not_called()
         topic_spy.assert_called_once_with(client_identifier='asdf-asdf-asdf', topic_name='test-topic', subscription_name='test-subscription', max_wait_time=100)
 
-    def test_hello(self, mocker: MockerFixture) -> None:
+    def test_hello(self, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:  # noqa: PLR0915
         from grizzly_extras.async_message.sb import handlers
 
         handler = AsyncServiceBusHandler(worker='asdf-asdf-asdf')
@@ -611,13 +611,16 @@ class TestAsyncServiceBusHandler:
 
         sender_instance_spy = mocker.patch.object(handler, 'get_sender_instance', autospec=True)
         receiver_instance_spy = mocker.patch.object(handler, 'get_receiver_instance', autospec=True)
+        mocker.patch('grizzly_extras.async_message.sb.sleep', return_value=None)
 
         request['context']['connection'] = 'sender'
 
-        assert handlers[request['action']](handler, request) == {
-            'message': 'there general kenobi',
-        }
+        with caplog.at_level(logging.WARNING):
+            assert handlers[request['action']](handler, request) == {
+                'message': 'there general kenobi',
+            }
 
+        assert caplog.messages == []
         receiver_instance_spy.assert_not_called()
         sender_instance_spy.assert_called_once_with({'endpoint_type': 'queue', 'endpoint': 'test-queue'})
         sender_instance_spy.return_value.__enter__.assert_called_once_with()
@@ -627,10 +630,12 @@ class TestAsyncServiceBusHandler:
         assert handler._receiver_cache == {}
 
         # read from cache
-        assert handlers[request['action']](handler, request) == {
-            'message': 'there general kenobi',
-        }
+        with caplog.at_level(logging.WARNING):
+            assert handlers[request['action']](handler, request) == {
+                'message': 'there general kenobi',
+            }
 
+        assert caplog.messages == []
         sender_instance_spy.assert_not_called()
         sender_instance_spy.return_value.__enter__.assert_not_called()
         receiver_instance_spy.assert_not_called()
@@ -640,10 +645,12 @@ class TestAsyncServiceBusHandler:
             'endpoint': 'topic:test-topic, subscription:test-subscription',
         })
 
-        assert handlers[request['action']](handler, request) == {
-            'message': 'there general kenobi',
-        }
+        with caplog.at_level(logging.WARNING):
+            assert handlers[request['action']](handler, request) == {
+                'message': 'there general kenobi',
+            }
 
+        assert caplog.messages == []
         sender_instance_spy.assert_not_called()
         sender_instance_spy.return_value.__enter__.assert_not_called()
         receiver_instance_spy.assert_called_once_with({'endpoint_type': 'topic', 'endpoint': 'test-topic', 'subscription': 'test-subscription', 'wait': '10'})
@@ -653,10 +660,12 @@ class TestAsyncServiceBusHandler:
         assert handler._receiver_cache.get('topic:test-topic, subscription:test-subscription', None) is not None
 
         # read from cache, not new instance needed
-        assert handlers[request['action']](handler, request) == {
-            'message': 'there general kenobi',
-        }
+        with caplog.at_level(logging.WARNING):
+            assert handlers[request['action']](handler, request) == {
+                'message': 'there general kenobi',
+            }
 
+        assert caplog.messages == []
         sender_instance_spy.assert_not_called()
         sender_instance_spy.return_value.__enter__.assert_not_called()
         receiver_instance_spy.assert_not_called()
@@ -664,6 +673,59 @@ class TestAsyncServiceBusHandler:
 
         assert handler._sender_cache.get('queue:test-queue', None) is not None
         assert handler._receiver_cache.get('topic:test-topic, subscription:test-subscription', None) is not None
+
+        # unexpected exception raised when trying to get instance
+        handler._sender_cache.clear()
+        handler._receiver_cache.clear()
+
+        receiver_instance_spy.side_effect = [RuntimeError('foo')]
+        with caplog.at_level(logging.WARNING), pytest.raises(RuntimeError, match='foo'):
+            handlers[request['action']](handler, request)
+
+        assert caplog.messages == []
+        receiver_instance_spy.assert_called_once_with({'endpoint_type': 'topic', 'endpoint': 'test-topic', 'subscription': 'test-subscription', 'wait': '10'})
+        receiver_instance_spy.reset_mock()
+
+        # expected exception raised, different error message
+        receiver_instance_spy.side_effect = [TypeError('foo')]
+        with caplog.at_level(logging.WARNING), pytest.raises(TypeError, match='foo'):
+            handlers[request['action']](handler, request)
+
+        assert caplog.messages == []
+        receiver_instance_spy.assert_called_once_with({'endpoint_type': 'topic', 'endpoint': 'test-topic', 'subscription': 'test-subscription', 'wait': '10'})
+        receiver_instance_spy.reset_mock()
+
+        # expected exception raised, expected error message, should retry, but will fail
+        receiver_instance_spy.side_effect = cycle([TypeError("'NoneType' is not subscriptable")])
+        with caplog.at_level(logging.WARNING), pytest.raises(AsyncMessageError, match='hello failed, creating service bus connection timed out 3 times'):
+            handlers[request['action']](handler, request)
+
+        assert caplog.messages == [
+            'hello failed: service bus connection timed out, retry 1 in 0.50 seconds',
+            'hello failed: service bus connection timed out, retry 2 in 0.85 seconds',
+            'hello failed: service bus connection timed out, retry 3 in 1.44 seconds',
+        ]
+        caplog.clear()
+        assert receiver_instance_spy.call_count == 3
+        receiver_instance_spy.assert_called_with({'endpoint_type': 'topic', 'endpoint': 'test-topic', 'subscription': 'test-subscription', 'wait': '10'})
+        receiver_instance_spy.reset_mock()
+
+        # expected exception raised, expected error message, last re-try succeeds
+        receiver_instance_spy.side_effect = [TypeError("'NoneType' is not subscriptable"), TypeError("'NoneType' is not subscriptable"), mocker.MagicMock()]
+        with caplog.at_level(logging.WARNING):
+            assert handlers[request['action']](handler, request) == {
+                'message': 'there general kenobi',
+            }
+
+        assert caplog.messages == [
+            'hello failed: service bus connection timed out, retry 1 in 0.50 seconds',
+            'hello failed: service bus connection timed out, retry 2 in 0.85 seconds',
+        ]
+        sender_instance_spy.assert_not_called()
+        sender_instance_spy.return_value.__enter__.assert_not_called()
+        assert receiver_instance_spy.call_count == 3
+        receiver_instance_spy.assert_called_with({'endpoint_type': 'topic', 'endpoint': 'test-topic', 'subscription': 'test-subscription', 'wait': '10'})
+        receiver_instance_spy.reset_mock()
 
     def test_request(self, mocker: MockerFixture) -> None:  # noqa: PLR0915
         from grizzly_extras.async_message.sb import handlers
