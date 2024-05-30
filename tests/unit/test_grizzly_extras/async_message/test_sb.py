@@ -1014,7 +1014,7 @@ class TestAsyncServiceBusHandler:
             iter([message1, message2, message3]),
         ]
 
-        request['context'].update({'endpoint': 'queue:test-queue, expression:$.name=="mallory"'})
+        request['context'].update({'endpoint': 'topic:events, subscription:my-subscription, expression:$.name=="mallory"'})
 
         setup_handler(handler, request)
 
@@ -1024,6 +1024,36 @@ class TestAsyncServiceBusHandler:
 
         receiver_instance_mock.return_value.__iter__.assert_called_once_with()
         assert receiver_instance_mock.return_value.complete_message.call_count == 3
+        receiver_instance_mock.return_value.abandon_message.assert_not_called()
+        receiver_instance_mock.reset_mock()
+
+        request['context'].update({'endpoint': 'topic:events, subscription:my-subscription, expression:$.name|=\'["mallory", "alice"]\''})
+
+        receiver_instance_mock.return_value.__iter__.side_effect = [
+            iter([message1, message2, message3]),
+        ]
+
+        setup_handler(handler, request)
+
+        response = handlers[request['action']](handler, request)
+
+        assert response.get('payload', None) == jsondumps({'name': 'alice'})
+
+        receiver_instance_mock.return_value.__iter__.assert_called_once_with()
+        assert receiver_instance_mock.return_value.complete_message.call_count == 2
+        receiver_instance_mock.return_value.abandon_message.assert_not_called()
+        receiver_instance_mock.reset_mock()
+
+        receiver_instance_mock.return_value.__iter__.side_effect = [
+            iter([message3]),
+        ]
+
+        response = handlers[request['action']](handler, request)
+
+        assert response.get('payload', None) == jsondumps({'name': 'mallory'})
+
+        receiver_instance_mock.return_value.__iter__.assert_called_once_with()
+        assert receiver_instance_mock.return_value.complete_message.call_count == 1
         receiver_instance_mock.return_value.abandon_message.assert_not_called()
         receiver_instance_mock.reset_mock()
 
