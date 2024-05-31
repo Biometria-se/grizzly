@@ -165,7 +165,7 @@ class TestServiceBusClientTask:
 
         task = cls_task(
             RequestDirection.FROM, (
-                'sb://my-sbns/topic:my-topic/subscription:my-subscription'
+                'sb://my-sbns/topic:my-topic/subscription:my-subscription/expression:$.name|=\'["hello", "world"]\''
                 ';SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=#MessageWait=120&ContentType=json'
             ),
             'test',
@@ -175,7 +175,7 @@ class TestServiceBusClientTask:
         assert task.context == {
             'url': 'sb://my-sbns.servicebus.windows.net/;SharedAccessKeyName=AccessKey;SharedAccessKey=37aabb777f454324=',
             'connection': 'receiver',
-            'endpoint': 'topic:my-topic, subscription:my-subscription',
+            'endpoint': 'topic:my-topic, subscription:my-subscription, expression:$.name|=\'["hello", "world"]\'',
             'message_wait': 120,
             'consume': False,
             'content_type': 'JSON',

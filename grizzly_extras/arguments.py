@@ -11,7 +11,25 @@ from .text import has_sequence
 
 
 def split_value(value: str, separator: str = '|') -> Tuple[str, str]:
-    return cast(Tuple[str, str], tuple([v.strip() for v in value.split(separator, 1)]))
+    operators = ["=", "|"]
+
+    try:
+        if value.count(separator) > 1:
+            left_index = value.index(separator)
+            right_index = value.rindex(separator)
+
+            if value[left_index + 1] not in operators:
+                values = value.split(separator, 1)
+            elif value[right_index + 1] not in operators:
+                values = value.rsplit(separator, 1)
+            else:
+                raise ValueError  # default
+        else:
+            raise ValueError  # default
+    except ValueError:
+        values = value.split(separator, 1)
+
+    return cast(Tuple[str, str], tuple([v.strip() for v in values]))
 
 
 def get_unsupported_arguments(valid_arguments: List[str], arguments: Dict[str, Any]) -> List[str]:

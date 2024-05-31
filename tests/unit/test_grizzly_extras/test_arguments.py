@@ -15,6 +15,9 @@ def test_split_value(separator: str) -> None:
         'hello', f'world {separator} foo {separator} bar',
     )
 
+    assert split_value('hello|=test | yo') == ('hello|=test', 'yo')
+    assert split_value('hello | test|yo') == ('hello', 'test|yo')
+
 
 def test_get_unsupported_arguments() -> None:
     assert get_unsupported_arguments(['hello', 'world'], {

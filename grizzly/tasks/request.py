@@ -60,6 +60,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from grizzly_extras.arguments import parse_arguments, split_value, unquote
+from grizzly_extras.text import has_separator
 from grizzly_extras.transformer import TransformerContentType
 
 from . import GrizzlyMetaRequestTask, grizzlytask
@@ -140,7 +141,7 @@ class RequestTask(GrizzlyMetaRequestTask):
 
         content_type: TransformerContentType = TransformerContentType.UNDEFINED
 
-        if '|' in self.endpoint:
+        if has_separator('|', self.endpoint):
             value, value_arguments = split_value(self.endpoint)
             self.arguments = parse_arguments(value_arguments, unquote=True)
 

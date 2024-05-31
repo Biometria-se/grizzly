@@ -150,3 +150,17 @@ class PermutationEnum(Enum, metaclass=PermutationMeta):
 def has_sequence(sequence: str, value: str) -> bool:
     """Test string for a sequence of characters, and that it only occurs once in the string."""
     return sequence in value and value.index(sequence) == value.rindex(sequence)
+
+def has_separator(separator: str, value: str) -> bool:
+    """Test string for separator, which is not connected to any other operators."""
+    operators = ["=", "|"]
+
+    try:
+        left_index = value.index(separator)
+    except ValueError:
+        return False
+
+    try:
+        return value[left_index + 1] not in operators
+    except IndexError:
+        return separator in value

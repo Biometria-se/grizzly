@@ -63,6 +63,7 @@ from typing import Any, ClassVar, Dict, List, Optional, Type, cast
 
 from grizzly.types import bool_type
 from grizzly_extras.arguments import parse_arguments, split_value
+from grizzly_extras.text import has_separator
 
 from . import AtomicVariable
 
@@ -71,7 +72,7 @@ def atomiccsvreader__base_type__(value: str) -> str:
     """Validate values that `AtomicCsvReader` can be initialized with."""
     grizzly_context_requests = Path(environ.get('GRIZZLY_CONTEXT_ROOT', '')) / 'requests'
 
-    if '|' in value:
+    if has_separator('|', value):
         csv_file, csv_arguments = split_value(value)
 
         try:
@@ -123,7 +124,7 @@ class AtomicCsvReader(AtomicVariable[Dict[str, Any]]):
 
             settings = {'repeat': False, 'random': False}
 
-            if '|' in safe_value:
+            if has_separator('|', safe_value):
                 csv_file, csv_arguments = split_value(safe_value)
                 arguments = parse_arguments(csv_arguments)
 

@@ -34,6 +34,7 @@ from grizzly.testdata.utils import resolve_variable
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestType
 from grizzly.utils import merge_dicts, normalize
 from grizzly_extras.arguments import parse_arguments, split_value
+from grizzly_extras.text import has_separator
 from grizzly_extras.transformer import TransformerContentType
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -106,7 +107,7 @@ class ClientTask(GrizzlyMetaRequestTask):
 
         content_type: TransformerContentType = TransformerContentType.UNDEFINED
 
-        if '|' in endpoint:
+        if has_separator('|', endpoint):
             value, value_arguments = split_value(endpoint)
             arguments = parse_arguments(value_arguments, unquote=True)
 

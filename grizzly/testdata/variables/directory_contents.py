@@ -42,6 +42,7 @@ from typing import Any, ClassVar, Dict, List, Optional, Type, cast
 
 from grizzly.types import bool_type
 from grizzly_extras.arguments import parse_arguments, split_value
+from grizzly_extras.text import has_separator
 
 from . import AtomicVariable
 
@@ -49,7 +50,7 @@ from . import AtomicVariable
 def atomicdirectorycontents__base_type__(value: str) -> str:
     """Validate values that `AtomicDirectoryContents` can be initialized with."""
     grizzly_context_requests = Path(environ.get('GRIZZLY_CONTEXT_ROOT', '')) / 'requests'
-    if '|' in value:
+    if has_separator('|', value):
         [directory_value, directory_arguments] = split_value(value)
 
         try:
@@ -99,7 +100,7 @@ class AtomicDirectoryContents(AtomicVariable[str]):
 
             settings = {'repeat': False, 'random': False}
 
-            if '|' in safe_value:
+            if has_separator('|', safe_value):
                 directory, directory_arguments = split_value(safe_value)
 
                 arguments = parse_arguments(directory_arguments)

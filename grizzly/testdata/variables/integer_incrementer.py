@@ -80,6 +80,7 @@ from typing import Any, ClassVar, Dict, Optional, Type, Union, cast
 
 from grizzly.types import bool_type
 from grizzly_extras.arguments import parse_arguments, split_value
+from grizzly_extras.text import has_separator
 
 from . import AtomicVariable, AtomicVariablePersist
 
@@ -89,7 +90,7 @@ def atomicintegerincrementer__base_type__(value: Union[str, int]) -> str:
     if isinstance(value, int):
         return str(value)
 
-    if '|' in value:
+    if has_separator('|', value):
         try:
             initial_value, incrementer_arguments = split_value(value)
             initial_value = str(int(float(initial_value)))
@@ -136,7 +137,7 @@ class AtomicIntegerIncrementer(AtomicVariable[int], AtomicVariablePersist):
         with self.semaphore(outer=outer_lock):
             safe_value = self.__class__.__base_type__(value)
 
-            if '|' in safe_value:
+            if has_separator('|', safe_value):
                 incrementer_value, incrementer_arguments = split_value(safe_value)
                 initial_value = incrementer_value
                 arguments = parse_arguments(incrementer_arguments)
