@@ -40,6 +40,7 @@ from dateutil.relativedelta import relativedelta
 from grizzly.types import ZoneInfo, ZoneInfoNotFoundError
 from grizzly.utils import parse_timespan
 from grizzly_extras.arguments import parse_arguments, split_value
+from grizzly_extras.text import has_separator
 
 from . import AtomicVariable
 
@@ -50,7 +51,7 @@ def atomicdate__base_type__(value: str) -> str:  # noqa: PLR0912
         message = f'AtomicDate: {value} ({type(value)}) is not a string'  # type: ignore[unreachable]
         raise TypeError(message)
 
-    if '|' in value:
+    if has_separator('|', value):
         date_value, date_arguments = split_value(value)
 
         try:

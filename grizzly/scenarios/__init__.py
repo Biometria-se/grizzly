@@ -48,14 +48,29 @@ class GrizzlyScenario(SequentialTaskSet):
     def populate(cls, task_factory: GrizzlyTask) -> None:
         cls.tasks.append(task_factory())
 
-    def render(self, template: str, variables: Optional[Dict[str, Any]] = None) -> str:
+    @classmethod
+    def _escape_values(cls, values: Dict[str, Any]) -> Dict[str, Any]:
+        _values: Dict[str, Any] = {}
+
+        for key, value in values.items():
+            _value = value.replace('"', '\\"') if isinstance(value, str) else value
+            _values.update({key: _value})
+
+        return _values
+
+    def render(self, template: str, variables: Optional[Dict[str, Any]] = None, *, escape_values: bool = False) -> str:
         if not has_template(template):
             return template
 
         if variables is None:
             variables = {}
 
-        return self.grizzly.state.jinja2.from_string(template).render(**self.user._context['variables'], **variables)
+        if escape_values:
+            render_variables = {**self._escape_values(self.user._context['variables']), **self._escape_values(variables)}
+        else:
+            render_variables = {**self.user._context['variables'], **variables}
+
+        return self.grizzly.state.jinja2.from_string(template).render(**render_variables)
 
     def prefetch(self) -> None:
         """Do not prefetch anything by default."""

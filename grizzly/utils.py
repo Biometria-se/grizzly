@@ -285,8 +285,16 @@ def check_mq_client_logs(context: Context) -> None:
 
 def async_message_request_wrapper(parent: GrizzlyScenario, client: zmq.Socket, request: AsyncMessageRequest) -> AsyncMessageResponse:
     """Wrap `grizzly_extras.async_message.async_message_request` to make it easier to communicating with `async-messaged` from within `grizzly`."""
-    request_json = jsondumps(request)
-    request = jsonloads(parent.render(request_json))
+    request_string: Optional[str] = None
+    request_rendered: Optional[str] = None
+
+    try:
+        request_string = jsondumps(request)
+        request_rendered = parent.render(request_string, escape_values=True)
+        request = jsonloads(request_rendered)
+    except:
+        parent.user.logger.error('failed to render request:\ntemplate=%r\nrendered=%r', request, request_rendered)  # noqa: TRY400
+        raise
 
     if request.get('client', None) is None:
         request.update({'client': id(parent.user)})

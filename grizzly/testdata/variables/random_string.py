@@ -44,6 +44,7 @@ from uuid import uuid4
 
 from grizzly.types import bool_type, int_rounded_float_type
 from grizzly_extras.arguments import parse_arguments, split_value
+from grizzly_extras.text import has_separator
 
 from . import AtomicVariable
 
@@ -54,7 +55,7 @@ def atomicrandomstring__base_type__(value: str) -> str:
         message = 'AtomicRandomString: no string pattern specified'
         raise ValueError(message)
 
-    if '|' in value:
+    if has_separator('|', value):
         string_pattern, string_arguments = split_value(value)
 
         try:
@@ -116,7 +117,7 @@ class AtomicRandomString(AtomicVariable[str]):
 
             settings = {'upper': False, 'count': 1}
 
-            if '|' in safe_value:
+            if has_separator('|', safe_value):
                 string_pattern, string_arguments = split_value(safe_value)
 
                 arguments = parse_arguments(string_arguments)

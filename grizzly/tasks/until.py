@@ -52,6 +52,7 @@ from grizzly.types import RequestType
 from grizzly.types.locust import StopUser
 from grizzly.utils import safe_del
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments, split_value
+from grizzly_extras.text import has_separator
 from grizzly_extras.transformer import Transformer, TransformerContentType, TransformerError, transformer
 
 from . import GrizzlyMetaRequestTask, GrizzlyTask, grizzlytask, template
@@ -88,7 +89,7 @@ class UntilRequestTask(GrizzlyTask):
 
         self.transform = transformer.available.get(self.request.content_type, None)
 
-        if '|' in self.condition:
+        if has_separator('|', self.condition):
             self.condition, until_arguments = split_value(self.condition)
 
             if '{{' in until_arguments and '}}' in until_arguments:

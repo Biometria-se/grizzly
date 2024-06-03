@@ -55,6 +55,7 @@ from grizzly.auth import AAD, GrizzlyHttpAuthClient, refresh_token
 from grizzly.types import GrizzlyResponse, RequestDirection, bool_type
 from grizzly.utils import merge_dicts
 from grizzly_extras.arguments import parse_arguments, split_value
+from grizzly_extras.text import has_separator
 
 from . import ClientTask, client
 
@@ -83,7 +84,7 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
     ) -> None:
         verify = True
 
-        if '|' in endpoint:
+        if has_separator('|', endpoint):
             endpoint, endpoint_arguments = split_value(endpoint)
             arguments = parse_arguments(endpoint_arguments, unquote=False)
 

@@ -18,6 +18,7 @@ from grizzly.testdata.utils import resolve_variable
 from grizzly.types import RequestMethod, ResponseAction, ResponseTarget
 from grizzly.utils import has_template
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments, split_value
+from grizzly_extras.text import has_separator
 from grizzly_extras.transformer import TransformerContentType
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -186,7 +187,7 @@ def _add_response_handler(
 
     assert len(expression) > 0, 'expression is empty'
 
-    if '|' in expression:
+    if has_separator('|', expression):
         expression, expression_arguments = split_value(expression)
         arguments = parse_arguments(expression_arguments)
         unsupported_arguments = get_unsupported_arguments(['expected_matches', 'as_json'], arguments)

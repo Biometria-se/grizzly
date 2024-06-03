@@ -15,6 +15,9 @@ def test_split_value(separator: str) -> None:
         'hello', f'world {separator} foo {separator} bar',
     )
 
+    assert split_value('hello|=test | yo') == ('hello|=test', 'yo')
+    assert split_value('hello | test|yo') == ('hello', 'test|yo')
+
 
 def test_get_unsupported_arguments() -> None:
     assert get_unsupported_arguments(['hello', 'world'], {
@@ -39,7 +42,7 @@ def test_unquote() -> None:
 
 
 @pytest.mark.parametrize('separator', ['=', ':', '%'])
-def test_parse_arguments(separator: str) -> None:
+def test_parse_arguments(separator: str) -> None:  # noqa: PLR0915
     with pytest.raises(ValueError, match='incorrect format in arguments:'):
         parse_arguments('argument', separator)
 
@@ -87,6 +90,24 @@ def test_parse_arguments(separator: str) -> None:
 
     assert arguments == {
         'arg1': '$.expression=="{{ value }}"',
+    }
+
+    arguments = parse_arguments(f'arg1{separator}$.expression|="[\'a\', \'b\', \'c\']"', separator)
+
+    assert arguments == {
+        'arg1': '$.expression|="[\'a\', \'b\', \'c\']"',
+    }
+
+    arguments = parse_arguments(f'arg1{separator}$.expression|=\'["a", "b", "c"]\'', separator)
+
+    assert arguments == {
+        'arg1': '$.expression|=\'["a", "b", "c"]\'',
+    }
+
+    arguments = parse_arguments(f'arg1{separator}$.expression|="[1, 2, 3]"', separator)
+
+    assert arguments == {
+        'arg1': '$.expression|="[1, 2, 3]"',
     }
 
     with pytest.raises(ValueError, match='incorrect format in arguments: '):

@@ -10,12 +10,12 @@ from functools import wraps
 from json import JSONEncoder
 from json import dumps as jsondumps
 from json import loads as jsonloads
-from typing import Any, Callable, ClassVar, Dict, List, Optional, Type, Union
+from typing import Any, Callable, ClassVar, Dict, List, Optional, Type, Union, cast
 
 from jsonpath_ng.ext import parse as jsonpath_parse
 from lxml import etree as XML  # noqa: N812
 
-from .text import PermutationEnum
+from .text import PermutationEnum, has_sequence
 
 
 class TransformerError(Exception):
@@ -126,12 +126,27 @@ class JsonTransformer(Transformer):
     @classmethod
     def parser(cls, expression: str) -> Callable[[Any], List[str]]:
         try:
-            expected: Optional[str] = None
+            expected: Optional[Union[str, List[str]]] = None
+            sequence: Optional[str] = None
 
             # we only have one instance of equals
-            if '==' in expression and expression.index('==') == expression.rindex('==') and not ('?' in expression and '@' in expression):
-                expression, expected = expression.split('==', 1)
-                expected = expected.strip('"\'')
+            has_equals = has_sequence('==', expression)
+            has_or = has_sequence('|=', expression)
+
+            if (has_equals or has_or) and not ('?' in expression and '@' in expression):
+                sequence = '==' if has_equals else '|='
+                expression, expected_value = expression.split(sequence, 1)
+                expected_value = expected_value.strip('"\'')
+
+                if has_or:
+                    # make string that is json compatible
+                    if expected_value[0] in ['"', "'"] and expected_value[0] == expected_value[-1]:
+                        expected_value = expected_value[1:-1]
+
+                    expected_value = expected_value.replace("'", '"')
+                    expected = [str(ev) for ev in cast(List[str], jsonloads(expected_value))]
+                else:
+                    expected = expected_value
 
             if not cls.validate(expression):
                 message = 'not a valid expression'
@@ -153,7 +168,7 @@ class JsonTransformer(Transformer):
 
                     value = jsondumps(m.value) if isinstance(m.value, (dict, list)) else str(m.value)
 
-                    if expected is None or expected == value:
+                    if expected is None or ((has_equals and expected == value) or (has_or and value in expected)):
                         values.append(value)
 
                 return values

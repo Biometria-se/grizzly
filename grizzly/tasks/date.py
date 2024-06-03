@@ -48,6 +48,7 @@ from dateutil.relativedelta import relativedelta
 from grizzly.types import ZoneInfo, ZoneInfoNotFoundError
 from grizzly.utils import parse_timespan
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments, split_value
+from grizzly_extras.text import has_separator
 
 from . import GrizzlyTask, grizzlytask, template
 
@@ -67,7 +68,7 @@ class DateTask(GrizzlyTask):
         self.variable = variable
         self.value = value
 
-        if '|' in self.value:
+        if has_separator('|', self.value):
             self.value, date_arguments = split_value(self.value)
             self.arguments = parse_arguments(date_arguments)
 

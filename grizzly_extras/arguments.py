@@ -7,9 +7,29 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Tuple, cast
 
+from .text import has_sequence
+
 
 def split_value(value: str, separator: str = '|') -> Tuple[str, str]:
-    return cast(Tuple[str, str], tuple([v.strip() for v in value.split(separator, 1)]))
+    operators = ["=", "|"]
+
+    try:
+        if value.count(separator) > 1:
+            left_index = value.index(separator)
+            right_index = value.rindex(separator)
+
+            if value[left_index + 1] not in operators:
+                values = value.split(separator, 1)
+            elif value[right_index + 1] not in operators:
+                values = value.rsplit(separator, 1)
+            else:
+                raise ValueError  # default
+        else:
+            raise ValueError  # default
+    except ValueError:
+        values = value.split(separator, 1)
+
+    return cast(Tuple[str, str], tuple([v.strip() for v in values]))
 
 
 def get_unsupported_arguments(valid_arguments: List[str], arguments: Dict[str, Any]) -> List[str]:
@@ -23,7 +43,7 @@ def unquote(argument: str) -> str:
     return argument
 
 
-def parse_arguments(arguments: str, separator: str = '=', *, unquote: bool = True) -> Dict[str, Any]:  # noqa: C901, PLR0912
+def parse_arguments(arguments: str, separator: str = '=', *, unquote: bool = True) -> Dict[str, Any]:  # noqa: C901, PLR0912, PLR0915
     if separator not in arguments or (arguments.count(separator) > 1 and (arguments.count('"') < 2 and arguments.count("'") < 2) and ', ' not in arguments):
         message = f'incorrect format in arguments: "{arguments}"'
         raise ValueError(message)
@@ -47,7 +67,7 @@ def parse_arguments(arguments: str, separator: str = '=', *, unquote: bool = Tru
             message = f'incorrect format for argument: "{argument.strip()}"'
             raise ValueError(message)
 
-        [key, value] = argument.strip().split(separator, 1)
+        key, value = argument.strip().split(separator, 1)
 
         key = key.strip()
         if '"' in key or "'" in key or ' ' in key:
@@ -62,10 +82,13 @@ def parse_arguments(arguments: str, separator: str = '=', *, unquote: bool = Tru
 
         start_quote: Optional[str] = None
 
-        inline_quotes = '==' in value and value.index('==') == value.rindex('==') and '?' not in value and '@' not in value
+        has_equals = has_sequence('==', value)
+        has_or = has_sequence('|=', value)
+        inline_quotes = (has_equals or has_or) and '?' not in value and '@' not in value
+        sequence = '==' if has_equals else '|='
 
         # == = 2 characters ------------------------------------------v
-        start_index = 0 if not inline_quotes else value.index('==') + 2
+        start_index = 0 if not inline_quotes else value.index(sequence) + 2
 
         if value[start_index] in ['"', "'"]:
             if value[-1] != value[start_index]:

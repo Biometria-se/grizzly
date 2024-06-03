@@ -215,6 +215,47 @@ class TestJsonTransformer:
 
         assert actual != []
 
+        # <!-- test equal
+        get_values = JsonTransformer.parser('$.id==2')
+        actual = get_values(document)
+        assert actual == []
+
+        get_values = JsonTransformer.parser('$.id==1')
+        actual = get_values(document)
+        assert actual == ['1']
+        # // -->
+
+        # <!-- test or
+        get_values = JsonTransformer.parser('$.id|=[2, 3]')
+        actual = get_values(document)
+        assert actual == []
+
+        get_values = JsonTransformer.parser('$.id|=\'[1, 2, 3]\'')
+        actual = get_values(document)
+        assert actual == ['1']
+
+        document.update({'id': 3})
+        actual = get_values(document)
+        assert actual == ['3']
+
+        document.update({'id': 2})
+        actual = get_values(document)
+        assert actual == ['2']
+
+        get_values = JsonTransformer.parser('$.id|="[1, 2, 3]"')
+        document.update({'id': 1})
+        actual = get_values(document)
+        assert actual == ['1']
+
+        document.update({'id': 3})
+        actual = get_values(document)
+        assert actual == ['3']
+
+        document.update({'id': 2})
+        actual = get_values(document)
+        assert actual == ['2']
+        # // -->
+
 
 class TestXmlTransformer:
     def test_transform(self) -> None:
