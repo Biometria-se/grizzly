@@ -12,11 +12,13 @@ from json import dumps as jsondumps
 from json import loads as jsonloads
 from os import environ
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Generator, Generic, List, Optional, Tuple, Type, Union, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Dict, Generator, Generic, Iterable, List, Optional, Set, Tuple, Type, Union, cast
 from unicodedata import normalize as __normalize
 
 from dateutil.parser import ParserError
 from dateutil.parser import parse as dateparser
+from jinja2.lexer import Token, TokenStream
+from jinja2_simple_tags import StandaloneTag
 from locust.stats import STATS_NAME_WIDTH
 
 from grizzly.types import T
@@ -53,6 +55,96 @@ class ModuleLoader(Generic[T]):
         class_type_instance = globals()[class_name]
 
         return cast(Type[T], class_type_instance)
+
+class MergeYamlTag(StandaloneTag):
+    tags: ClassVar[Set[str]] = {'merge'}
+
+    def preprocess(
+        self, source: str, name: Optional[str], filename: Optional[str] = None,
+    ) -> str:
+        self._source = source
+        return cast(str, super().preprocess(source, name, filename))
+
+    def render(self, filename: str, *filenames: str) -> str:
+        buffer: List[str] = []
+
+        files = [filename, *filenames]
+
+        for file in files:
+            merge_file = Path(file)
+
+            # check if relative to parent feature file
+            if not merge_file.exists():
+                merge_file = (self.environment.source_file.parent / merge_file).resolve()
+
+            if not merge_file.exists():
+                raise FileNotFoundError(merge_file)
+
+            merge_content = merge_file.read_text()
+
+            if merge_content[0:3] != '---':
+                buffer.append('---')
+
+            buffer.append(merge_content)
+
+        if self._source[0:3] != '---':
+            buffer.append('---')
+
+        return '\n'.join(buffer)
+
+    def filter_stream(self, stream: TokenStream) -> Union[TokenStream, Iterable[Token]]:
+        """Everything outside of `{% merge ... %}` should be treated as "data", e.g. plain text."""
+        in_merge = False
+        in_variable = False
+        in_block_comment = False
+
+        variable_begin_pos = -1
+        variable_end_pos = 0
+        block_begin_pos = -1
+        block_end_pos = 0
+        source_lines = self._source.splitlines()
+
+        for token in stream:
+            if token.type == 'block_begin' and stream.current.value in self.tags:
+                in_merge = True
+                current_line = source_lines[token.lineno - 1].lstrip()
+                in_block_comment = current_line.startswith('#')
+                block_begin_pos = self._source.index(token.value, block_begin_pos + 1)
+
+            if not in_merge:
+                if token.type == 'variable_end':
+                    # Find variable end in the source
+                    variable_end_pos = self._source.index(token.value, variable_begin_pos)
+                    # Extract the variable definition substring and use as token value
+                    token_value = self._source[variable_begin_pos:variable_end_pos + len(token.value)]
+                    in_variable = False
+                elif token.type == 'variable_begin':
+                    # Find variable start in the source
+                    variable_begin_pos = self._source.index(token.value, variable_begin_pos + 1)
+                    in_variable = True
+                else:
+                    token_value = token.value
+
+                if in_variable:
+                    # While handling in-variable tokens, withhold values until
+                    # the end of the variable is reached
+                    continue
+
+                filtered_token = Token(token.lineno, 'data', token_value)
+            elif token.type == 'block_end' and in_block_comment:
+                in_block_comment = False
+                block_end_pos = self._source.index(token.value, block_begin_pos)
+                token_value = self._source[block_begin_pos:block_end_pos + len(token.value)]
+                filtered_token = Token(token.lineno, 'data', token_value)
+            elif in_block_comment:
+                continue
+            else:
+                filtered_token = token
+
+            yield filtered_token
+
+            if in_merge and token.type == 'block_end':
+                in_merge = False
 
 
 @contextmanager
