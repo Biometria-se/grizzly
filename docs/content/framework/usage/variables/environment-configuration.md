@@ -56,7 +56,7 @@ The only rule for any nodes under `configuration` is that it **must** be a dicti
 If you plan to run in multiple environments there could be cases that some environment variables are the same in all of the environments. If this is the case, it is possible
 to merge multiple environment configuration files (`{% merge "<file1>" ["file2", ... ["fileN"]]}`), so that common values are only stored in one place.
 
-The merging will take place from the bottom up, so conents in the source file where the `{% merge ... %}` statement is found, any duplicate keys in `fileN` will override the source values, `file2` will override those, and lastly `file1` will override those. So the first specified file to the `{% merge ... %}` statement will have highest precedence.
+The merging will take place from the bottom up, so contents in the source file where the `{% merge ... %}` statement is found, any duplicate keys in `fileN` will override the source values, `file2` will override those, and lastly `file1` will override those. So the first specified file to the `{% merge ... %}` statement will have highest precedence.
 
 ```
 source < fileN < ... < file2 < file1
