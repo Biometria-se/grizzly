@@ -1143,18 +1143,21 @@ def test_e2e_step_task_keystore(e2e_fixture: End2EndFixture) -> None:
         grizzly = cast(GrizzlyContext, context.grizzly)
         grizzly.scenario.tasks().pop()  # remove dummy task
 
-        assert len(grizzly.scenario.tasks()) == 4
+        assert len(grizzly.scenario.tasks()) == 5
 
     e2e_fixture.add_validator(validate_keystore_task)
 
     feature_file = e2e_fixture.test_steps(
         scenario=[
+            'And repeat for "2" iterations',
             'And value for variable "foobar" is "none"',
             'And value for variable "barfoo" is "none"',
+            'And value for variable "counter" is "none"',
             'Then set "foobar" in keystore with value "[\'hello\', \'world\']"',
             'Then get "foobar" from keystore and save in variable "foobar"',
             'Then get "barfoo" from keystore and save in variable "barfoo", with default value "{\'hello\': \'world\'}"',
-            'Then log message "foobar={{ foobar }}, barfoo={{ barfoo }}"',
+            'Then increment "counter" in keystore and save in variable "counter"',
+            'Then log message "foobar={{ foobar }}, barfoo={{ barfoo }}, counter={{ counter }}"',
         ],
     )
 
@@ -1164,7 +1167,8 @@ def test_e2e_step_task_keystore(e2e_fixture: End2EndFixture) -> None:
 
     result = ''.join(output)
 
-    assert "foobar=['hello', 'world'], barfoo={'hello': 'world'}" in result
+    assert "foobar=['hello', 'world'], barfoo={'hello': 'world'}, counter=1" in result
+    assert "foobar=['hello', 'world'], barfoo={'hello': 'world'}, counter=2" in result
 
     persistent_file = e2e_fixture.root / 'features' / 'persistent' / f'{Path(feature_file).stem}.json'
     assert not persistent_file.exists()

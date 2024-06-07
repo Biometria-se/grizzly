@@ -3,7 +3,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from grizzly.steps import step_task_keystore_get, step_task_keystore_get_default, step_task_keystore_set
+import pytest
+
+from grizzly.steps import step_task_keystore_get, step_task_keystore_get_default, step_task_keystore_inc_default_step, step_task_keystore_set
 from grizzly.tasks import KeystoreTask
 from tests.helpers import ANY
 
@@ -102,3 +104,29 @@ def test_step_task_keystore_set(behave_fixture: BehaveFixture) -> None:
     assert task.key == 'foobar'
     assert task.action == 'set'
     assert task.action_context == ['hello', 'world']
+
+
+def test_step_task_keystore_inc_default_step(behave_fixture: BehaveFixture) -> None:
+    behave = behave_fixture.context
+    grizzly = behave_fixture.grizzly
+    grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
+    behave.scenario = grizzly.scenario.behave
+
+    grizzly.scenario.tasks.clear()
+
+    with pytest.raises(RuntimeError, match='action context for inc must be a string'):
+        step_task_keystore_inc_default_step(behave, 'foobar', 1)
+
+    with pytest.raises(RuntimeError, match='variable "foobar" has not been initialized'):
+        step_task_keystore_inc_default_step(behave, 'foobar', 'foobar')
+
+    grizzly.state.variables.update({'foobar': 'none'})
+    step_task_keystore_inc_default_step(behave, 'foobar', 'foobar')
+
+    task = grizzly.scenario.tasks()[-1]
+
+    assert isinstance(task, KeystoreTask)
+    assert task.key == 'foobar'
+    assert task.action == 'inc'
+    assert task.action_context == 'foobar'
+    assert task.default_value is None

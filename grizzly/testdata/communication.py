@@ -270,15 +270,11 @@ class TestdataProducer:
         elif request['action'] == 'inc':
             key = response.get('key', None)
             step = response.get('data', 1)
-            value = self.keystore.get(key, None)
+            value = self.keystore.get(key, 0)
             response.update({'data': None})
 
             if key is None:  # pragma: no cover
                 self.logger.error('key %s does not exist', key)
-                return response
-
-            if value is None:
-                self.logger.error('cannot increment a non existing value for key "%s"', key)
                 return response
 
             if isinstance(value, int):

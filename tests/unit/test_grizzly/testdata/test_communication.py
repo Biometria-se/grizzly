@@ -214,10 +214,10 @@ value3,value4
                         'message': 'keystore',
                         'action': 'inc',
                         'key': 'counter',
-                        'data': None,
+                        'data': 1,
                     }
 
-                assert caplog.messages == ['cannot increment a non existing value for key "counter"']
+                assert caplog.messages == []
 
                 caplog.clear()
                 producer.keystore.update({'counter': 'asdf'})
