@@ -77,6 +77,54 @@ def test_load_configuration_file(tmp_path_factory: TempPathFactory) -> None:
             'sut.auth.user.password': 'password',
             'sut.auth.user.redirect_uri': 'https://www.example.com/authenticated',
         }
+
+        base_file = configuration_file.parent / 'base.yaml'
+        base_file.write_text("""configuration:
+    sut:
+        auth:
+            user:
+                    username: bob
+                    password: random
+""")
+
+        test_file = configuration_file.parent / 'test' / 'test.yaml'
+        test_file.parent.mkdir(parents=True, exist_ok=True)
+
+        test_file.write_text("""---
+configuration:
+    sut:
+        auth:
+            user:
+                username: alice
+    additional:
+        conf: foobar
+""")
+
+        configuration_file.write_text("""{% merge "base.yaml", "./test/test.yaml" %}
+configuration:
+    sut:
+        host: 'https://backend.example.com'
+        auth:
+            refresh_time: 1337
+            client:
+                id: "client id"
+            user:
+                username: username
+                password: password
+                redirect_uri: "https://www.example.com/authenticated"
+""")
+
+        environ['GRIZZLY_CONFIGURATION_FILE'] = configuration_file.as_posix()
+
+        assert load_configuration_file() == {
+            'sut.host': 'https://backend.example.com',
+            'sut.auth.refresh_time': 1337,
+            'sut.auth.client.id': 'client id',
+            'sut.auth.user.username': 'bob',
+            'sut.auth.user.password': 'random',
+            'sut.auth.user.redirect_uri': 'https://www.example.com/authenticated',
+            'additional.conf': 'foobar',
+        }
     finally:
         shutil.rmtree(configuration_file.parent)
         with suppress(KeyError):

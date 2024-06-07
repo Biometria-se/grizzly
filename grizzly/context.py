@@ -12,7 +12,7 @@ from jinja2 import Environment
 from jinja2.filters import FILTERS
 
 from grizzly.types import MessageCallback, MessageDirection
-from grizzly.utils import flatten
+from grizzly.utils import MergeYamlTag, flatten, merge_dicts
 
 from .testdata import GrizzlyVariables
 
@@ -27,13 +27,13 @@ if TYPE_CHECKING:  # pragma: no cover
 
 logger = logging.getLogger(__name__)
 
-
 def load_configuration_file() -> Dict[str, Any]:
     """Load a grizzly environment file and flatten the structure."""
     configuration_file = environ.get('GRIZZLY_CONFIGURATION_FILE', None)
+    configuration: Dict[str, Any] = {}
 
     if configuration_file is None:
-        return {}
+        return configuration
 
     try:
         file = Path(configuration_file)
@@ -41,12 +41,23 @@ def load_configuration_file() -> Dict[str, Any]:
             logger.error('configuration file must have file extension yml or yaml')
             raise SystemExit(1)
 
-        with file.open() as fd:
-            yaml_configuration = yaml.safe_load(fd)
-            return flatten(yaml_configuration['configuration'])
+        environment = Environment(autoescape=False, extensions=[MergeYamlTag])
+        environment.extend(source_file=file)
+        loader = yaml.SafeLoader
+
+        yaml_template = environment.from_string(file.read_text())
+        yaml_content = yaml_template.render()
+
+        yaml_configurations = list(yaml.load_all(yaml_content, Loader=loader))
+        yaml_configurations.reverse()
+        for yaml_configuration in yaml_configurations:
+            layer = flatten(yaml_configuration['configuration'])
+            configuration = merge_dicts(configuration, layer)
     except FileNotFoundError as e:
         logger.exception('%s does not exist', configuration_file)
         raise SystemExit(1) from e
+    else:
+        return configuration
 
 
 class GrizzlyContext:
