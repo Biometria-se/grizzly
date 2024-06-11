@@ -14,6 +14,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 import gevent
 from influxdb import InfluxDBClient
 from influxdb.exceptions import InfluxDBClientError
+from locust.runners import WorkerRunner
 
 from grizzly.context import GrizzlyContext
 from grizzly.types.locust import CatchResponseError, Environment
@@ -154,8 +155,10 @@ class InfluxDbListener:
         self.grizzly = GrizzlyContext()
         self.logger = logging.getLogger(__name__)
         self.environment.events.request.add_listener(self.request)
-        self.environment.events.report_to_master.add_listener(self.report_to_master)
+        if isinstance(self.environment.runner, WorkerRunner):
+            self.environment.events.report_to_master.add_listener(self.report_to_master)
         self.environment.events.heartbeat.add_listener(self.heartbeat)
+        self.environment.events.usage_monitor.add_listener(self.usage_monitor)
         self.environment.events.quit.add_listener(self.on_quit)
 
     def on_quit(self, *_args: Any, **_kwargs: Any) -> None:
@@ -183,7 +186,7 @@ class InfluxDbListener:
                     events_buffer = self._events
                     self._events = []
                     self.connection.write(events_buffer)
-                except Exception:
+                except:
                     self.logger.exception('failed to write metrics')
 
             if not self.finished:
