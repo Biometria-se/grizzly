@@ -135,6 +135,10 @@ def spawning_complete(grizzly: GrizzlyContext) -> Callable[..., None]:
     return gspawning_complete
 
 
+def worker_report(client_id: str, data: Dict[str, Any]) -> None:  # noqa: ARG001
+    logger.info('receved worker_report from %s', client_id)
+
+
 def quitting(**_kwargs: Any) -> None:
     logger.debug('locust quitting')
     global producer_greenlet, producer  # noqa: PLW0603
