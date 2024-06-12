@@ -236,6 +236,11 @@ def test_init_statistics_listener(mocker: MockerFixture, locust_fixture: LocustF
         return_value=None,
     )
 
+    mocker.patch(
+        'grizzly.listeners.influxdb.InfluxDbListener.run_user_count',
+        return_value=None,
+    )
+
     # ApplicationInsight -- short circuit
     mocker.patch(
         'grizzly.listeners.appinsights.AzureLogHandler',

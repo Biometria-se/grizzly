@@ -151,12 +151,11 @@ class InfluxDbListener:
         self._description = params['Description'][0] if 'Description' in params else ''
 
         self.run_events_greenlet = gevent.spawn(self.run_events)
+        self.run_user_count_greenlet = gevent.spawn(self.run_user_count)
         self.connection = self.create_client().connect()
         self.grizzly = GrizzlyContext()
         self.logger = logging.getLogger(__name__)
         self.environment.events.request.add_listener(self.request)
-        if isinstance(self.environment.runner, WorkerRunner):
-            self.environment.events.report_to_master.add_listener(self.report_to_master)
         self.environment.events.heartbeat.add_listener(self.heartbeat)
         self.environment.events.usage_monitor.add_listener(self.usage_monitor)
         self.environment.events.quit.add_listener(self.on_quit)
@@ -176,6 +175,39 @@ class InfluxDbListener:
     @property
     def finished(self) -> bool:
         return self._finished
+
+    def run_user_count(self) -> None:
+        runner = self.environment.runner
+
+        assert runner is not None, 'no runner is set'
+
+        while not self.finished:
+            points: List[Any] = []
+            timestamp = datetime.now(timezone.utc).isoformat()
+
+            for user_class_name, user_count in runner.user_classes_count.items():
+                point: InfluxDbPoint = {
+                    'measurement': 'user_count',
+                    'tags': {
+                        'environment': self._target_environment,
+                        'testplan': self._testplan,
+                        'profile': self._profile_name,
+                        'description': self._description,
+                        'hostname': self._hostname,
+                        'user_class': user_class_name,
+                    },
+                    'time': timestamp,
+                    'fields': {
+                        'user_count': user_count,
+                    },
+                }
+                points.append(point)
+
+            if len(points) > 0:
+                self.connection.write(points)
+
+            if not self.finished:
+                gevent.sleep(5.0)
 
     def run_events(self) -> None:
         while not self.finished:
@@ -319,28 +351,6 @@ class InfluxDbListener:
         }
 
         self._events.append(event)
-
-    def report_to_master(self, client_id: str, data: Dict[str, Any]) -> None:  # noqa: ARG002
-        timestamp = datetime.now(timezone.utc).isoformat()
-
-        for user_class_name, user_count in data.get('user_classes_count', {}).items():
-            event: InfluxDbPoint = {
-                'measurement': 'user_count',
-                'tags': {
-                    'environment': self._target_environment,
-                    'testplan': self._testplan,
-                    'profile': self._profile_name,
-                    'description': self._description,
-                    'hostname': self._hostname,
-                    'user_class': user_class_name,
-                },
-                'time': timestamp,
-                'fields': {
-                    'user_count': user_count,
-                },
-            }
-
-            self._events.append(event)
 
     def usage_monitor(self, environment: Environment, cpu_usage: float, memory_usage: float) -> None:  # noqa: ARG002
         tags = {

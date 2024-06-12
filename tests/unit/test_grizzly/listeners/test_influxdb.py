@@ -223,6 +223,58 @@ class TestInfluxDbListener:
         assert listener._description == 'unittesting'
 
     @pytest.mark.usefixtures('patch_influxdblistener')
+    def test_run_user_count(self, locust_fixture: LocustFixture, patch_influxdblistener: Callable[[], None], mocker: MockerFixture) -> None:
+        patch_influxdblistener()
+
+        gsleep_spy = mocker.patch('gevent.sleep', return_value=None)
+        mocker.patch(
+            'locust.runners.Runner.user_classes_count',
+            new_callable=mocker.PropertyMock,
+            side_effect=[{}, {'User1': 2, 'User2': 3}, {'User1': 2, 'User2': 3}],
+        )
+        mocker.patch(
+            'grizzly.listeners.influxdb.InfluxDbListener.finished',
+            new_callable=mocker.PropertyMock,
+            side_effect=[False, True, True, False, False, False, True, True],
+        )
+
+        listener = InfluxDbListener(
+            locust_fixture.environment,
+            'https://influx.test.com:1337/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
+        )
+
+        write_spy = mocker.patch.object(listener.connection, 'write', return_value=None)
+
+        listener.run_user_count()
+
+        write_spy.assert_not_called()
+        gsleep_spy.assert_not_called()
+
+        listener.run_user_count()
+
+        gsleep_spy.assert_called_once_with(5.0)
+        gsleep_spy.reset_mock()
+
+        assert write_spy.call_count == 2
+        for i in range(2):
+            args, _ = write_spy.call_args_list[i]
+            assert len(args) == 1
+            assert len(args[0]) == 2
+            for j in range(2):
+                assert args[0][j].get('measurement', None) == 'user_count'
+                assert args[0][j].get('tags', None) == {
+                    'environment': 'local',
+                    'testplan': 'unittest-plan',
+                    'hostname': get_hostname(),
+                    'user_class': f'User{j+1}',
+                    'description': 'unittesting',
+                    'profile': 'unittest-profile',
+                }
+                assert args[0][j].get('fields', None) == {
+                    'user_count': 2 + j,
+                }
+
+    @pytest.mark.usefixtures('patch_influxdblistener')
     def test_run_events(self, locust_fixture: LocustFixture, patch_influxdblistener: Callable[[], None], mocker: MockerFixture) -> None:
         patch_influxdblistener()
 
