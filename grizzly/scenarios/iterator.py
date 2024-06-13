@@ -80,6 +80,7 @@ class IteratorScenario(GrizzlyScenario):
                     context=self.user._context,
                     exception=StopUser('on_start failed for {self.user.__class__.__name__}'),
                 )
+            self.on_stop()
             raise StopUser from e
 
         while True:
@@ -92,6 +93,7 @@ class IteratorScenario(GrizzlyScenario):
 
                 try:
                     if self.user._state == LOCUST_STATE_STOPPING:
+                        self.on_stop()
                         raise StopUser
 
                     try:
@@ -115,6 +117,7 @@ class IteratorScenario(GrizzlyScenario):
                     # tasks will wrap the grizzly.exceptions.StopScenario thrown when aborting to what ever
                     # the scenario has specified todo when failing, we must force it to stop scenario
                     if self.abort:
+                        self.on_stop()
                         raise StopUser from e
 
                     self.logger.info('restarting scenario at task %d of %d', self.current_task_index+1, self.task_count)
@@ -130,10 +133,6 @@ class IteratorScenario(GrizzlyScenario):
                     self.wait()
             except InterruptTaskSet as e:
                 if self.user._scenario_state != ScenarioState.STOPPING:
-                    try:
-                        self.on_stop()
-                    except:
-                        self.logger.exception('on_stop failed')
                     self.start = None
 
                     if e.reschedule:
@@ -159,11 +158,7 @@ class IteratorScenario(GrizzlyScenario):
                         exception = StopUser
 
                     self.iteration_stop(has_error=has_error)
-
-                    try:
-                        self.on_stop()
-                    except:
-                        self.logger.exception('on_stop failed')
+                    self.on_stop()
 
                     # to avoid spawning of a new user, we should wait until spawning is complete
                     # if we abort too soon, locust will see that there are too few users, and spawn
@@ -189,6 +184,7 @@ class IteratorScenario(GrizzlyScenario):
                         self.logger.exception('unhandled exception: %s', e.__class__.__qualname__)
                     self.wait()
                 else:
+                    self.on_stop()
                     raise
 
     def iteration_stop(self, *, has_error: bool = False) -> None:

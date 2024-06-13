@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, cast
 import pytest
 from azure.core.exceptions import ResourceExistsError, ResourceNotFoundError
 from azure.servicebus import ServiceBusClient, ServiceBusMessage, ServiceBusReceiver, ServiceBusSender, TransportType
+from websocket._exceptions import WebSocketConnectionClosedException
 
 from grizzly_extras.arguments import parse_arguments
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageError, AsyncMessageRequest
@@ -727,7 +728,7 @@ class TestAsyncServiceBusHandler:
         receiver_instance_spy.assert_called_with({'endpoint_type': 'topic', 'endpoint': 'test-topic', 'subscription': 'test-subscription', 'wait': '10'})
         receiver_instance_spy.reset_mock()
 
-    def test_request(self, mocker: MockerFixture) -> None:  # noqa: PLR0915
+    def test_request(self, mocker: MockerFixture, caplog: LogCaptureFixture) -> None:  # noqa: PLR0915
         from grizzly_extras.async_message.sb import handlers
 
         handler = AsyncServiceBusHandler(worker='asdf-asdf-asdf')
@@ -849,6 +850,18 @@ class TestAsyncServiceBusHandler:
         assert response.get('payload', None) == expected_payload
         assert actual_metadata == expected_metadata
         assert response.get('response_length', 0) == len(expected_payload)
+
+        handler.logger.error('-'* 100)
+
+        _hello_mock = mocker.patch.object(handler, '_hello', return_value=None)
+        receiver_instance_mock.return_value.__iter__.side_effect = [WebSocketConnectionClosedException, iter([received_message])]
+
+        with caplog.at_level(logging.ERROR):
+            response = handlers[request['action']](handler, request)
+        assert receiver_instance_mock.return_value.__iter__.call_count == 2
+        _hello_mock.assert_called_once_with(request, force=True)
+        assert caplog.messages[-1] == 'connection closed'
+
 
     def test_request_expression(self, mocker: MockerFixture) -> None:  # noqa: PLR0915
         from grizzly_extras.async_message.sb import handlers

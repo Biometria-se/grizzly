@@ -114,8 +114,11 @@ class GrizzlyScenario(SequentialTaskSet):
                 except Exception:
                     self.logger.exception('on_stop failed')
 
-        self.consumer.stop()
-        self.user.scenario_state = ScenarioState.STOPPED
+        try:
+            self.consumer.stop()
+            self.user.scenario_state = ScenarioState.STOPPED
+        except:
+            self.logger.exception('on_stop failed')
 
     def on_quitting(self, *_args: Any, **kwargs: Any) -> None:
         """When locust is quitting, with abort=True (signal received) we should force the

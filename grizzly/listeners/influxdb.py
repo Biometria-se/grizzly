@@ -14,7 +14,6 @@ from urllib.parse import parse_qs, unquote, urlparse
 import gevent
 from influxdb import InfluxDBClient
 from influxdb.exceptions import InfluxDBClientError
-from locust.runners import WorkerRunner
 
 from grizzly.context import GrizzlyContext
 from grizzly.types.locust import CatchResponseError, Environment

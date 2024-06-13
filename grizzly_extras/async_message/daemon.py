@@ -260,7 +260,7 @@ def worker(context: zmq.Context, identity: str) -> None:  # noqa: PLR0912, PLR09
         worker.close()
     except:  # pragma: no cover
         logger.exception('failed to close worker')
-    logger.debug('stopped')
+    logger.info('stopped')
 
 
 def main() -> int:

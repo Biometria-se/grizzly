@@ -165,7 +165,7 @@ def test_worker(mocker: MockerFixture, caplog: LogCaptureFixture, scheme: str, i
 
     integration_close_spy.assert_called_once_with()
 
-    assert caplog.messages[-1] == 'stopping'
+    assert caplog.messages[1:] == ['stopping', 'stopped']
 
 
 def test_router(mocker: MockerFixture, caplog: LogCaptureFixture) -> None:

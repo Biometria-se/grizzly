@@ -12,6 +12,7 @@ from azure.servicebus import ServiceBusClient, ServiceBusMessage, ServiceBusRece
 from azure.servicebus._pyamqp import ReceiveClient
 from azure.servicebus.amqp import AmqpMessageBodyType
 from azure.servicebus.management import ServiceBusAdministrationClient, SqlRuleFilter, TopicProperties
+from websocket._exceptions import WebSocketConnectionClosedException
 
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
 from grizzly_extras.azure.aad import AuthMethod, AzureAadCredential
@@ -674,6 +675,16 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                         raise StopIteration
 
                     break
+                except WebSocketConnectionClosedException as e:
+                    if retry < 3:
+                        self.logger.exception('connection closed')
+                        self._hello(request, force=True)
+                        receiver = self._receiver_cache[cache_endpoint]
+                        message = None
+                        continue
+
+                    error_message = 'could not reconnect on last retry'
+                    raise AsyncMessageError(error_message) from e
                 except StopIteration:
                     delta = perf_counter() - wait_start
 
