@@ -13,6 +13,8 @@ Stored (set) values are not rendered, so it is possible to store templates.
 
 * {@pylink grizzly.steps.scenario.tasks.keystore.step_task_keystore_set}
 
+* {@pylink grizzly.steps.scenario.tasks.keystore.step_task_keystore_inc_default_step}
+
 ## Statistics
 
 This task only has request statistics entry, of type `KEYS`, if a key (without `default_value`) that does not have a value set is retrieved.
@@ -38,7 +40,7 @@ from . import GrizzlyTask, grizzlytask, template
 if TYPE_CHECKING:  # pragma: no cover
     from grizzly.scenarios import GrizzlyScenario
 
-Action = Literal['get', 'set']
+Action = Literal['get', 'set', 'inc']
 
 
 @template('action_context')
@@ -56,13 +58,16 @@ class KeystoreTask(GrizzlyTask):
         self.action_context = action_context
         self.default_value = default_value
 
-        assert self.action in get_args(Action), f'{self.action} is not a valid action'
+        try:
+            assert self.action in get_args(Action), f'{self.action} is not a valid action'
 
-        if self.action == 'get':
-            assert isinstance(self.action_context, str), 'action context for get must be a string'
-            assert action_context in self.grizzly.state.variables, f'{action_context} has not been initialized'
-        else:  # == 'set'
-            assert self.action_context is not None, 'action context for set cannot be None'
+            if self.action in ['get', 'inc']:
+                assert isinstance(self.action_context, str), f'action context for {self.action} must be a string'
+                assert action_context in self.grizzly.state.variables, f'variable "{action_context}" has not been initialized'
+            else:  # == 'set'
+                assert self.action_context is not None, 'action context for set cannot be None'
+        except AssertionError as e:
+            raise RuntimeError(str(e)) from e
 
     def __call__(self) -> grizzlytask:
         @grizzlytask
@@ -74,6 +79,14 @@ class KeystoreTask(GrizzlyTask):
                     if value is None and self.default_value is not None:
                         parent.consumer.keystore_set(self.key, self.default_value)
                         value = cast(Any, self.default_value)
+
+                    if value is not None:
+                        parent.user._context['variables'][self.action_context] = jsonloads(parent.render(jsondumps(value)))
+                    else:
+                        message = f'key {self.key} does not exist in keystore'
+                        raise RuntimeError(message)
+                elif self.action == 'inc':
+                    value = parent.consumer.keystore_inc(self.key, step=1)
 
                     if value is not None:
                         parent.user._context['variables'][self.action_context] = jsonloads(parent.render(jsondumps(value)))
