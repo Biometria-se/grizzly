@@ -36,6 +36,7 @@ class TestTestdataProducer:
         behave_fixture: BehaveFixture,
         grizzly_fixture: GrizzlyFixture,
         cleanup: AtomicVariableCleanupFixture,
+        caplog: LogCaptureFixture,
     ) -> None:
         producer: Optional[TestdataProducer] = None
         context: Optional[zmq.Context] = None
@@ -204,6 +205,58 @@ value3,value4
                     'key': 'foobar',
                     'data': {'hello': 'world'},
                 }
+
+                caplog.clear()
+
+                with caplog.at_level(logging.ERROR):
+                    message = request_keystore('inc', 'counter', 1)
+                    assert message == {
+                        'message': 'keystore',
+                        'action': 'inc',
+                        'key': 'counter',
+                        'data': 1,
+                    }
+
+                assert caplog.messages == []
+
+                caplog.clear()
+                producer.keystore.update({'counter': 'asdf'})
+
+                with caplog.at_level(logging.ERROR):
+                    message = request_keystore('inc', 'counter', 1)
+                    assert message == {
+                        'message': 'keystore',
+                        'action': 'inc',
+                        'key': 'counter',
+                        'data': None,
+                    }
+
+                assert caplog.messages == ['value \'asdf\' for key "counter" cannot be incremented']
+
+                caplog.clear()
+                producer.keystore.update({'counter': 1})
+
+                with caplog.at_level(logging.ERROR):
+                    message = request_keystore('inc', 'counter', 1)
+                    assert message == {
+                        'message': 'keystore',
+                        'action': 'inc',
+                        'key': 'counter',
+                        'data': 2,
+                    }
+
+                assert caplog.messages == []
+
+                with caplog.at_level(logging.ERROR):
+                    message = request_keystore('inc', 'counter', 10)
+                    assert message == {
+                        'message': 'keystore',
+                        'action': 'inc',
+                        'key': 'counter',
+                        'data': 12,
+                    }
+
+                assert caplog.messages == []
 
                 message = request_testdata()
                 assert message['action'] == 'stop'
@@ -729,7 +782,7 @@ class TestTestdataConsumer:
 
         assert caplog.messages == ['no testdata received']
 
-    def test_keystore_get_set(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture) -> None:
+    def test_keystore(self, mocker: MockerFixture, noop_zmq: NoopZmqFixture, grizzly_fixture: GrizzlyFixture) -> None:
         noop_zmq('grizzly.testdata.communication')
         parent = grizzly_fixture()
 
@@ -778,3 +831,27 @@ class TestTestdataConsumer:
             'identifier': consumer.identifier,
             'data': {'hello': 'world'},
         })
+
+        request_spy = mocker.patch.object(consumer, '_request', side_effect=echo)
+
+        assert consumer.keystore_inc('counter') == 1
+
+        request_spy.assert_called_once_with({
+            'action': 'inc',
+            'key': 'counter',
+            'message': 'keystore',
+            'identifier': consumer.identifier,
+            'data': 1,
+        })
+        request_spy.reset_mock()
+
+        assert consumer.keystore_inc('counter', step=10) == 10
+
+        request_spy.assert_called_once_with({
+            'action': 'inc',
+            'key': 'counter',
+            'message': 'keystore',
+            'identifier': consumer.identifier,
+            'data': 10,
+        })
+

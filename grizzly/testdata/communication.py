@@ -118,6 +118,22 @@ class TestdataConsumer:
 
         self._keystore_request(request)
 
+    def keystore_inc(self, key: str, step: int = 1) -> Optional[int]:
+        request = {
+            'action': 'inc',
+            'key': key,
+            'data': step,
+        }
+
+        response = self._keystore_request(request)
+
+        value = (response or {}).get('data', None)
+
+        if value is not None:
+            return int(value)
+
+        return value
+
     def _keystore_request(self, request: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         request.update({
             'message': 'keystore',
@@ -246,8 +262,31 @@ class TestdataProducer:
             key = response.get('key', None)
             value = response.get('data', None)
 
-            if key is not None:
-                self.keystore.update({key: value})
+            if key is None:
+                self.logger.error('key %s does not exist', key)
+                return response
+
+            self.keystore.update({key: value})
+        elif request['action'] == 'inc':
+            key = response.get('key', None)
+            step = response.get('data', 1)
+            value = self.keystore.get(key, 0)
+            response.update({'data': None})
+
+            if key is None:  # pragma: no cover
+                self.logger.error('key %s does not exist', key)
+                return response
+
+            if isinstance(value, int):
+                new_value = value + step
+            elif isinstance(value, str) and value.isnumeric():
+                new_value = int(value) + step
+            else:
+                self.logger.error('value %r for key "%s" cannot be incremented', value, key)
+                return response
+
+            self.keystore.update({key: new_value})
+            response.update({'data': new_value})
         else:
             self.logger.error('received unknown keystore action "%s"', request['action'])
             response['data'] = None

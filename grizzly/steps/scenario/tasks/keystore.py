@@ -80,3 +80,22 @@ def step_task_keystore_set(context: Context, key: str, value: str) -> None:
     except JSONDecodeError as e:
         message = f'"{value}" is not valid JSON'
         raise AssertionError(message) from e
+
+
+@then('increment "{key}" in keystore and save in variable "{variable}"')
+def step_task_keystore_inc_default_step(context: Context, key: str, variable: str) -> None:
+    """Increment the integer value for `key` (with step `1`) using the {@pylink grizzly.tasks.keystore} task.
+
+    If there is no value for `key` incrementing will start from 0. The new value is saved in `variable`.
+
+    See {@pylink grizzly.tasks.keystore} task documentation for more information.
+
+    Example:
+    ```gherkin
+    Given value for variable "counter" is "none"
+    Then increment "counter" in keystore and save in variable "counter"
+    ```
+
+    """
+    grizzly = cast(GrizzlyContext, context.grizzly)
+    grizzly.scenario.tasks.add(KeystoreTask(key, 'inc', variable))

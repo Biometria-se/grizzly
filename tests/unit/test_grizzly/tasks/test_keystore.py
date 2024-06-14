@@ -16,10 +16,10 @@ if TYPE_CHECKING:  # pragma: no cover
 
 class TestKeystoreTask:
     def test___init__(self, grizzly_fixture: GrizzlyFixture) -> None:
-        with pytest.raises(AssertionError, match='action context for get must be a string'):
+        with pytest.raises(RuntimeError, match='action context for get must be a string'):
             KeystoreTask('foobar', 'get', None)
 
-        with pytest.raises(AssertionError, match='foobar has not been initialized'):
+        with pytest.raises(RuntimeError, match='variable "foobar" has not been initialized'):
             KeystoreTask('foobar', 'get', 'foobar')
 
         grizzly_fixture.grizzly.state.variables.update({'foobar': 'none'})
@@ -38,7 +38,7 @@ class TestKeystoreTask:
         assert task.action_context == 'foobar'
         assert task.default_value == ['hello', 'world']
 
-        with pytest.raises(AssertionError, match='action context for set cannot be None'):
+        with pytest.raises(RuntimeError, match='action context for set cannot be None'):
             KeystoreTask('foobar', 'set', None)
 
         task = KeystoreTask('foobar', 'set', {'hello': 'world'})
@@ -48,7 +48,7 @@ class TestKeystoreTask:
         assert task.action_context == {'hello': 'world'}
         assert task.default_value is None
 
-        with pytest.raises(AssertionError, match='unknown is not a valid action'):
+        with pytest.raises(RuntimeError, match='unknown is not a valid action'):
             KeystoreTask('foobar', 'unknown', None)  # type: ignore[arg-type]
 
     def test___call___get(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture) -> None:
