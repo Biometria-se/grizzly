@@ -973,6 +973,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
 
         if environ.get('GRIZZLY_DRY_RUN', 'false').lower() == 'true':
             if isinstance(runner, MasterRunner):
+                logger.info('dry-run starting locust-%s via grizzly-%s', __locust_version__, __version__)
                 runner.send_message('grizzly_worker_quit', None)
 
             if not isinstance(runner, WorkerRunner):
