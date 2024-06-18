@@ -16,6 +16,7 @@ from zmq.error import Again as ZMQAgain
 from zmq.error import ZMQError
 
 from grizzly.types.locust import Environment, StopUser
+from grizzly.utils import zmq_disconnect
 
 from . import GrizzlyVariables
 from .utils import transform
@@ -43,6 +44,7 @@ class TestdataConsumer:
 
         self.context = zmq.Context()
         self.socket = self.context.socket(zmq.REQ)
+        self.socket.setsockopt(zmq.LINGER, 0)
         self.socket.connect(address)
         self.stopped = False
 
@@ -54,13 +56,11 @@ class TestdataConsumer:
 
         self.logger.debug('stopping consumer')
         try:
-            self.context.destroy(linger=0)
+            zmq_disconnect(self.socket, destroy_context=True)
         except:
             self.logger.exception('failed to stop')
         finally:
-            self.context.term()
             self.stopped = True
-            gsleep(0.1)
 
     def testdata(self, scenario: str) -> Optional[Dict[str, Any]]:
         request = {
@@ -186,6 +186,7 @@ class TestdataProducer:
 
         self.context = zmq.Context()
         self.socket = self.context.socket(zmq.REP)
+        self.socket.setsockopt(zmq.LINGER, 0)
         self.socket.bind(address)
         self.scenarios_iteration = {}
 
@@ -244,14 +245,12 @@ class TestdataProducer:
         self._stopping = True
         self.logger.debug('stopping producer')
         try:
-            self.context.destroy(linger=0)
+            zmq_disconnect(self.socket, destroy_context=True)
         except:
             self.logger.exception('failed to stop')
         finally:
             # make sure that socket is properly released
             gsleep(0.1)
-            self.context.term()
-
             self.persist_data()
 
     def _handle_request_keystore(self, request: Dict[str, Any]) -> Dict[str, Any]:

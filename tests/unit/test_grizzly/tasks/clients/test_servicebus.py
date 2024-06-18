@@ -327,6 +327,7 @@ class TestServiceBusClientTask:
         client_mock = mocker.MagicMock()
 
         async_message_request_mock = mocker.patch('grizzly.utils.async_message_request')
+        zmq_disconnect_mock = mocker.patch('grizzly.tasks.clients.servicebus.zmq_disconnect')
 
         ServiceBusClientTask.__scenario__ = grizzly_fixture.grizzly.scenario
         task = ServiceBusClientTask(
@@ -353,8 +354,7 @@ class TestServiceBusClientTask:
             'action': 'DISCONNECT',
             'context': state.context,
         })
-        client_mock.setsockopt.assert_called_once_with(zmq.LINGER, 0)
-        client_mock.close.assert_called_once_with()
+        zmq_disconnect_mock.assert_called_once_with(client_mock, destroy_context=False)
 
         assert task._state == {}
 

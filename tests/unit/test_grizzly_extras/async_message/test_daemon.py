@@ -192,7 +192,6 @@ def test_router(mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
 
     create_context_mock.assert_called_once_with(
         ANY(),
-        1,
     )
 
     assert context_mock.socket.call_count == 2

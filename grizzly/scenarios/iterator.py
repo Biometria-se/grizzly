@@ -6,6 +6,7 @@ See {@pylink grizzly.steps.scenario.setup.step_setup_iterations}.
 """
 from __future__ import annotations
 
+from contextlib import suppress
 from json import dumps as jsondumps
 from time import perf_counter
 from typing import TYPE_CHECKING, ClassVar, Dict, Optional
@@ -57,11 +58,13 @@ class IteratorScenario(GrizzlyScenario):
         cls.tasks.insert(-1, task_factory())
 
     def run(self) -> None:  # type: ignore[misc]  # noqa: C901, PLR0912, PLR0915
-        """Override `locust.user.sequential_taskset.SequentialTaskSet.run` so we can have some control over how a scenario is executed.
-        Includes handling of `StopScenario` (we want all tasks to complete before user is allowed to stop) and
-        `RestartScenario` (if there's an error in a scenario, we might want to start over from task 0) exceptions.
+        """Override `locust.user.sequential_taskset.SequentialTaskSet.run` so we can have some control over how a
+        scenario is executed. Includes handling of `StopScenario` (we want all tasks to complete before user is
+        allowed to stop) and `RestartScenario` (if there's an error in a scenario, we might want to start over from
+        task 0) exceptions.
         """
         try:
+            start = perf_counter()
             self.on_start()
         except InterruptTaskSet as e:
             if e.reschedule:
@@ -71,16 +74,17 @@ class IteratorScenario(GrizzlyScenario):
         except Exception as e:
             if not isinstance(e, StopScenario):
                 self.logger.exception('on_start failed')
-                response_time = int((perf_counter() - (self.start or 0)) * 1000)
+                response_time = int((perf_counter() - start) * 1000)
                 self.user.environment.events.request.fire(
                     request_type=RequestType.SCENARIO(),
                     name=self.user._scenario.locust_name,
                     response_time=response_time,
                     response_length=self.task_count,
                     context=self.user._context,
-                    exception=StopUser('on_start failed for {self.user.__class__.__name__}'),
+                    exception=StopUser(f'on_start failed for {self.user._scenario.locust_name}: {e}'),
                 )
-            self.on_stop()
+            with suppress(Exception):
+                self.on_stop()
             raise StopUser from e
 
         while True:
@@ -93,8 +97,13 @@ class IteratorScenario(GrizzlyScenario):
 
                 try:
                     if self.user._state == LOCUST_STATE_STOPPING:
-                        self.on_stop()
-                        raise StopUser
+                        on_stop_exception: Optional[Exception] = None
+
+                        try:
+                            self.on_stop()
+                        except Exception as e:
+                            on_stop_exception = e
+                        raise StopUser from on_stop_exception
 
                     try:
                         step = self.behave_steps.get(self.current_task_index + 1, self._task_queue[0].__name__)

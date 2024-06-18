@@ -118,7 +118,7 @@ class TestMessageQueueUser:
 
     def test_on_stop(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.users.messagequeue')
-        disconnect_mock = noop_zmq.get_mock('zmq.Socket.disconnect')
+        zmq_disconnect_mock = mocker.patch('grizzly.users.messagequeue.zmq_disconnect')
 
         parent = grizzly_fixture(host='mq://mq.example.com:1337/?QueueManager=QMGR01&Channel=Kanal1', user_type=MessageQueueUser)
 
@@ -141,7 +141,7 @@ class TestMessageQueueUser:
         request_context_spy.assert_called_once_with({'action': 'DISC', 'worker': 'foobar', 'client': id(parent.user), 'context': parent.user.am_context})
         request_context_spy.return_value.__enter__.assert_called_once_with()
         request_context_spy.return_value.__enter__.return_value.update.assert_not_called()
-        disconnect_mock.assert_called_once_with(parent.user.zmq_url)
+        zmq_disconnect_mock.assert_called_once_with(parent.user.zmq_client, destroy_context=False)
 
     def test_create(self, grizzly_fixture: GrizzlyFixture) -> None:
         parent = grizzly_fixture(host='mq://mq.example.com:1415?Channel=Kanal1&QueueManager=QMGR01', user_type=MessageQueueUser)

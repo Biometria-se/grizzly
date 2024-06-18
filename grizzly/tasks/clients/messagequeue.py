@@ -84,6 +84,7 @@ from zmq.error import ZMQError
 
 from grizzly.testdata.utils import resolve_variable
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestType
+from grizzly.utils import zmq_disconnect
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
 from grizzly_extras.async_message.utils import async_message_request
 
@@ -143,6 +144,9 @@ class MessageQueueClientTask(ClientTask):
         self._zmq_context = zmq.Context()
         self._worker = {}
         self.max_message_size = None
+
+    def on_stop(self, parent: GrizzlyScenario) -> None:  # noqa: ARG002
+        self._zmq_context.destroy(linger=0)
 
     def create_context(self) -> None:  # noqa: PLR0915
         endpoint = cast(str, resolve_variable(self.grizzly, self.endpoint, guess_datatype=False))
@@ -239,6 +243,7 @@ class MessageQueueClientTask(ClientTask):
                 zmq.Socket,
                 self._zmq_context.socket(zmq.REQ),
             )
+            client.setsockopt(zmq.LINGER, 0)
             client.connect(self._zmq_url)
 
             yield client
@@ -247,8 +252,7 @@ class MessageQueueClientTask(ClientTask):
             raise
         finally:
             if client is not None:
-                client.setsockopt(zmq.LINGER, 0)
-                client.close()
+                zmq_disconnect(client, destroy_context=False)
 
     def connect(self, client_id: int, client: zmq.Socket, meta: Dict[str, Any]) -> None:
         request: AsyncMessageRequest = {

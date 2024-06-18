@@ -87,7 +87,7 @@ import zmq.green as zmq
 from grizzly.tasks import RequestTask
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod, RequestType
 from grizzly.types.locust import Environment, StopUser
-from grizzly.utils import has_parameter, has_template
+from grizzly.utils import has_parameter, has_template, zmq_disconnect
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
 from grizzly_extras.async_message.utils import async_message_request
@@ -188,6 +188,7 @@ class ServiceBusUser(GrizzlyUser):
         super().on_start()
 
         self.zmq_client = self.zmq_context.socket(zmq.REQ)
+        self.zmq_client.setsockopt(zmq.LINGER, 0)
         self.zmq_client.connect(self.zmq_url)
 
         for task in self._scenario.tasks:
@@ -204,7 +205,7 @@ class ServiceBusUser(GrizzlyUser):
 
                 self.disconnect(task)
 
-        self.zmq_client.disconnect(self.zmq_url)
+        zmq_disconnect(self.zmq_client, destroy_context=False)
 
         super().on_stop()
 

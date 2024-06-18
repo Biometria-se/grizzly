@@ -697,7 +697,7 @@ class TestIterationScenario:
         with caplog.at_level(logging.ERROR), pytest.raises(StopUser):
             parent.run()
 
-        on_stop.assert_called_once_with()
+        on_stop.assert_not_called()
 
     def test_run_tasks(self, grizzly_fixture: GrizzlyFixture, caplog: LogCaptureFixture, mocker: MockerFixture) -> None:
         class TestErrorTask(TestTask):

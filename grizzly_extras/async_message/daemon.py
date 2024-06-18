@@ -46,14 +46,23 @@ signal(SIGTERM, signal_handler)
 signal(SIGINT, signal_handler)
 
 
+def create_router_socket(context: zmq.Context) -> zmq.Socket:
+    socket = cast(zmq.Socket, context.socket(zmq.ROUTER))
+    socket.setsockopt(zmq.LINGER, 0)
+    socket.setsockopt(zmq.ROUTER_HANDOVER, 1)
+
+    return socket
+
+
 def router() -> None:  # noqa: C901, PLR0912, PLR0915
     logger = logging.getLogger('router')
     proc.setproctitle('grizzly-async-messaged')  # set appl name on ibm mq
     logger.debug('starting')
 
-    context = zmq.Context(1)
-    frontend = context.socket(zmq.ROUTER)
-    backend = context.socket(zmq.ROUTER)
+    context = zmq.Context()
+    frontend = create_router_socket(context)
+    backend = create_router_socket(context)
+
     frontend.bind('tcp://127.0.0.1:5554')
     backend.bind('inproc://workers')
 
@@ -167,7 +176,7 @@ def router() -> None:  # noqa: C901, PLR0912, PLR0915
         worker_thread.join()
 
     try:
-        context.destroy()
+        context.destroy(linger=0)
     except:
         logger.exception('failed to destroy zmq context')
 

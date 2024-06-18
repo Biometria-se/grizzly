@@ -394,6 +394,12 @@ def async_message_request_wrapper(parent: GrizzlyScenario, client: zmq.Socket, r
     return async_message_request(client, request)
 
 
+def zmq_disconnect(socket: zmq.Socket, *, destroy_context: bool) -> None:
+    socket.close(linger=0)
+    if destroy_context:
+        socket.context.destroy(linger=0)
+
+
 def safe_del(struct: Dict[str, Any], key: str) -> None:
     """Remove a key from a dictionary, but do not fail if it does not exist."""
     with suppress(KeyError):

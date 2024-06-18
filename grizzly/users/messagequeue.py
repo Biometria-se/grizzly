@@ -135,7 +135,7 @@ import zmq.green as zmq
 
 from grizzly.exceptions import StopScenario
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestType
-from grizzly.utils import merge_dicts
+from grizzly.utils import merge_dicts, zmq_disconnect
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
 from grizzly_extras.async_message.utils import async_message_request
@@ -266,6 +266,7 @@ class MessageQueueUser(GrizzlyUser):
                 'context': self.am_context,
             }):
                 self.zmq_client = self.zmq_context.socket(zmq.REQ)
+                self.zmq_client.setsockopt(zmq.LINGER, 0)
                 self.zmq_client.connect(self.zmq_url)
         except Exception as e:
             self.logger.exception('on_start failed')
@@ -285,7 +286,7 @@ class MessageQueueUser(GrizzlyUser):
             pass
 
         with suppress(Exception):
-            self.zmq_client.disconnect(self.zmq_url)
+            zmq_disconnect(self.zmq_client, destroy_context=False)
 
         self.worker_id = None
 
