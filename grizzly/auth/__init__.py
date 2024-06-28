@@ -224,6 +224,7 @@ class RefreshToken(metaclass=ABCMeta):
 
             username = auth_user.get('username', None)
             password = auth_user.get('password', None) or auth_client.get('secret', None)
+            otp_secret = auth_user.get('otp_secret', None)
             client_id = auth_client.get('id', None)
 
             # nothing has changed, use existing crendential
@@ -274,6 +275,7 @@ class RefreshToken(metaclass=ABCMeta):
                 client_id=client_id,
                 redirect=redirect_uri,
                 initialize=initialize_uri,
+                otp_secret=otp_secret,
             )
 
 
