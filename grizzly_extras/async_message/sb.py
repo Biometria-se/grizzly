@@ -678,7 +678,7 @@ class AsyncServiceBusHandler(AsyncMessageHandler):
                 except ServiceBusError as e:
                     if any(msg in str(e) for msg in ['Connection to remote host was lost', 'socket is already closed']):
                         if retry < 3:
-                            self.logger.exception('connection unexpectedly closed')
+                            self.logger.warning('connection unexpectedly closed, reconnecting', exc_info=True)
                             self._hello(request, force=True)
                             receiver = self._receiver_cache[cache_endpoint]
                             message = None

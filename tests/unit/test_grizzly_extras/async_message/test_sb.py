@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, cast
 import pytest
 from azure.core.exceptions import ResourceExistsError, ResourceNotFoundError
 from azure.servicebus import ServiceBusClient, ServiceBusMessage, ServiceBusReceiver, ServiceBusSender, TransportType
-from websocket._exceptions import WebSocketConnectionClosedException
+from azure.servicebus.exceptions import ServiceBusError
 
 from grizzly_extras.arguments import parse_arguments
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageError, AsyncMessageRequest
@@ -854,13 +854,13 @@ class TestAsyncServiceBusHandler:
         handler.logger.error('-'* 100)
 
         _hello_mock = mocker.patch.object(handler, '_hello', return_value=None)
-        receiver_instance_mock.return_value.__iter__.side_effect = [WebSocketConnectionClosedException, iter([received_message])]
+        receiver_instance_mock.return_value.__iter__.side_effect = [ServiceBusError('Connection to remote host was lost'), iter([received_message])]
 
-        with caplog.at_level(logging.ERROR):
+        with caplog.at_level(logging.WARNING):
             response = handlers[request['action']](handler, request)
         assert receiver_instance_mock.return_value.__iter__.call_count == 2
         _hello_mock.assert_called_once_with(request, force=True)
-        assert caplog.messages[-1] == 'connection closed'
+        assert caplog.messages[-1] == 'connection unexpectedly closed, reconnecting'
 
 
     def test_request_expression(self, mocker: MockerFixture) -> None:  # noqa: PLR0915
