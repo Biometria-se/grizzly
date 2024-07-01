@@ -9,7 +9,9 @@ import pytest
 from .fixtures import (
     AtomicVariableCleanupFixture,
     BehaveFixture,
+    CwdFixture,
     End2EndFixture,
+    EnvFixture,
     GrizzlyFixture,
     LocustFixture,
     NoopZmqFixture,
@@ -89,6 +91,14 @@ def _e2e_fixture(tmp_path_factory: TempPathFactory, webserver: Webserver, reques
         yield fixture
 
 
+def _env_fixture() -> Generator[EnvFixture, None, None]:
+    yield EnvFixture()
+
+
+def _cwd_fixture() -> Generator[CwdFixture, None, None]:
+    yield CwdFixture()
+
+
 cleanup = pytest.fixture()(_atomicvariable_cleanup)
 locust_fixture = pytest.fixture()(_locust_fixture)
 behave_fixture = pytest.fixture()(_behave_fixture)
@@ -98,3 +108,5 @@ noop_zmq = pytest.fixture()(_noop_zmq)
 response_context_manager_fixture = pytest.fixture()(_response_context_manager)
 webserver = pytest.fixture(scope='session')(_webserver)
 e2e_fixture = pytest.fixture(scope='session', params=[False, True] if E2E_RUN_DIST else None)(_e2e_fixture)
+env_fixture = pytest.fixture()(_env_fixture)
+cwd_fixture = pytest.fixture()(_cwd_fixture)

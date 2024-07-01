@@ -193,14 +193,16 @@ class TestMessageQueueUser:
         with pytest.raises(ValueError, match='MessageQueueUser_001 key file /my/key does not exist'):
             user = test_cls(environment=environment)
 
-        (grizzly_fixture.test_context / 'key.kdb').touch()
-        test_cls.__context__['auth'].update({'key_file': 'key'})
+        kdb_file = (grizzly_fixture.test_context / 'requests' / 'key.kdb')
+        kdb_file.parent.mkdir(exist_ok=True)
+        kdb_file.touch()
+        test_cls.__context__['auth'].update({'key_file': 'requests/key'})
         user = test_cls(environment=environment)
 
         assert user.am_context.get('connection', None) == 'mq.example.com(1415)'
         assert user.am_context.get('queue_manager', None) == 'QMGR01'
         assert user.am_context.get('channel', None) == 'Kanal1'
-        assert user.am_context.get('key_file', None) == (grizzly_fixture.test_context / 'key').as_posix()
+        assert user.am_context.get('key_file', None) == kdb_file.with_suffix('').as_posix()
         assert user.am_context.get('ssl_cipher', None) == 'rot13'
         assert user.am_context.get('cert_label', None) == 'some_label'
 

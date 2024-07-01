@@ -8,7 +8,7 @@ from cProfile import Profile
 from getpass import getuser
 from hashlib import sha1
 from json import dumps as jsondumps
-from os import environ
+from os import chdir, environ
 from pathlib import Path
 from shutil import rmtree
 from tempfile import NamedTemporaryFile
@@ -108,6 +108,62 @@ class LocustFixture:
         rmtree(self._test_context_root)
 
         return True
+
+
+class EnvFixture:
+    key: str
+    value: str
+
+    def __call__(self, key: str, value: str) -> Self:
+        self.key = key
+        self.value = value
+
+        return self
+
+    def __enter__(self) -> Self:
+        environ[self.key] = self.value
+
+        return self
+
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> Literal[True]:
+        with suppress(KeyError):
+            del environ[self.key]
+
+        return True
+
+
+class CwdFixture:
+    cwd: Path
+    old_cwd: Path
+
+    def __call__(self, cwd: Path) -> Self:
+        self.cwd = cwd
+
+        return self
+
+    def __enter__(self) -> Self:
+        self.old_cwd = Path.cwd()
+
+        chdir(self.cwd)
+
+        return self
+
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc: Optional[BaseException],
+        traceback: Optional[TracebackType],
+    ) -> Literal[True]:
+
+        chdir(self.old_cwd)
+
+        return True
+
 
 
 class BehaveFixture:
