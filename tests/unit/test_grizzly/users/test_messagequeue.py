@@ -143,7 +143,7 @@ class TestMessageQueueUser:
         request_context_spy.return_value.__enter__.return_value.update.assert_not_called()
         zmq_disconnect_mock.assert_called_once_with(parent.user.zmq_client, destroy_context=False)
 
-    def test_create(self, grizzly_fixture: GrizzlyFixture) -> None:
+    def test___init__(self, grizzly_fixture: GrizzlyFixture) -> None:  # noqa: PLR0915
         parent = grizzly_fixture(host='mq://mq.example.com:1415?Channel=Kanal1&QueueManager=QMGR01', user_type=MessageQueueUser)
         environment = grizzly_fixture.behave.locust.environment
         test_cls = parent.user.__class__
@@ -189,12 +189,18 @@ class TestMessageQueueUser:
         }
 
         test_cls.host = 'mq://mq.example.com:1415?Channel=Kanal1&QueueManager=QMGR01'
+
+        with pytest.raises(ValueError, match='MessageQueueUser_001 key file /my/key does not exist'):
+            user = test_cls(environment=environment)
+
+        (grizzly_fixture.test_context / 'key.kdb').touch()
+        test_cls.__context__['auth'].update({'key_file': 'key'})
         user = test_cls(environment=environment)
 
         assert user.am_context.get('connection', None) == 'mq.example.com(1415)'
         assert user.am_context.get('queue_manager', None) == 'QMGR01'
         assert user.am_context.get('channel', None) == 'Kanal1'
-        assert user.am_context.get('key_file', None) == '/my/key'
+        assert user.am_context.get('key_file', None) == (grizzly_fixture.test_context / 'key').as_posix()
         assert user.am_context.get('ssl_cipher', None) == 'rot13'
         assert user.am_context.get('cert_label', None) == 'some_label'
 

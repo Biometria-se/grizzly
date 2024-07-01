@@ -238,10 +238,21 @@ class MessageQueueUser(GrizzlyUser):
         if header_type == 'none':
             header_type = None
 
+        key_file = auth_context.get('key_file', None)
+
+        if key_file is not None:
+            key_file_path = self._context_root / f'{key_file}.kdb'
+
+            if not key_file_path.exists():
+                message = f'{self.__class__.__name__} key file {key_file} does not exist'
+                raise ValueError(message)
+
+            key_file = key_file_path.resolve().with_suffix('').as_posix()
+
         self.am_context.update({
             'username': username,
             'password': auth_context.get('password', None),
-            'key_file': auth_context.get('key_file', None),
+            'key_file': key_file,
             'cert_label': auth_context.get('cert_label', None) or username,
             'ssl_cipher': auth_context.get('ssl_cipher', None) or 'ECDHE_RSA_AES_256_GCM_SHA384',
             'message_wait': message_context.get('wait', None),
