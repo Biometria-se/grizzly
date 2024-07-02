@@ -16,7 +16,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 @pytest.mark.parametrize('url', [
     'influxdb://grizzly:password@localhost/grizzly-statistics?Testplan=grizzly-statistics',
-    'insights://localhost/?Testplan=grizzly-statistics&InstrumentationKey=asdfasdf=',
+    'insights://localhost/?Testplan=grizzly-statistics&InstrumentationKey=asdfasdf',
     'influxdb://$conf::statistics.username$:$conf::statistics.password$@localhost/$conf::statistics.database$?Testplan=grizzly-statistics',
 ])
 def test_e2e_step_setup_save_statistics(e2e_fixture: End2EndFixture, url: str) -> None:

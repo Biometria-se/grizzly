@@ -135,7 +135,8 @@ import zmq.green as zmq
 
 from grizzly.exceptions import StopScenario
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestType
-from grizzly.utils import merge_dicts, zmq_disconnect
+from grizzly.utils import merge_dicts
+from grizzly.utils.protocols import zmq_disconnect
 from grizzly_extras.arguments import get_unsupported_arguments, parse_arguments
 from grizzly_extras.async_message import AsyncMessageContext, AsyncMessageRequest, AsyncMessageResponse
 from grizzly_extras.async_message.utils import async_message_request

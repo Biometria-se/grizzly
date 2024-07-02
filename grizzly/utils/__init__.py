@@ -6,33 +6,25 @@ import re
 from collections.abc import Mapping
 from contextlib import contextmanager, suppress
 from copy import deepcopy
-from datetime import datetime, timezone
 from importlib import import_module
-from json import dumps as jsondumps
-from json import loads as jsonloads
 from os import environ
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, Dict, Generator, Generic, Iterable, List, Optional, Set, Tuple, Type, Union, cast
 from unicodedata import normalize as __normalize
 
-from dateutil.parser import ParserError
-from dateutil.parser import parse as dateparser
 from jinja2.lexer import Token, TokenStream
 from jinja2_simple_tags import StandaloneTag
 from locust.stats import STATS_NAME_WIDTH
 
 from grizzly.types import T
-from grizzly_extras.async_message.utils import async_message_request
 
 if TYPE_CHECKING:  # pragma: no cover
-    import zmq.green as zmq
+    from datetime import datetime
 
-    from grizzly_extras.async_message import AsyncMessageRequest, AsyncMessageResponse
-
-    from .context import GrizzlyContextScenario
-    from .scenarios import GrizzlyScenario
-    from .types.behave import Context, StepFunctionType
-    from .users import GrizzlyUser
+    from grizzly.context import GrizzlyContextScenario
+    from grizzly.scenarios import GrizzlyScenario
+    from grizzly.types.behave import Context, StepFunctionType
+    from grizzly.users import GrizzlyUser
 
 
 logger = logging.getLogger(__name__)
@@ -287,7 +279,7 @@ def _print_table(subject: str, header: str, data: List[Tuple[datetime, str]]) ->
     if len(data) < 1:
         return
 
-    from .locust import stats_logger
+    from grizzly.locust import stats_logger
 
     data = sorted(data, key=lambda k: k[0])
 
@@ -303,101 +295,6 @@ def _print_table(subject: str, header: str, data: List[Tuple[datetime, str]]) ->
 
     for handler in stats_logger.handlers:
         handler.flush()
-
-
-def check_mq_client_logs(context: Context) -> None:
-    """Check MQ logs (if available) for any errors that occured during a test, and present them in nice ASCII tables.
-
-    ```bash
-    $ pwd && ls -1
-    /home/vscode/IBM/MQ/data/errors
-    AMQ6150.0.FDC
-    AMQERR01.LOG
-    ```
-    """
-    if not hasattr(context, 'started'):
-        return
-
-    started = cast(datetime, context.started).astimezone(tz=timezone.utc)
-
-    amqerr_log_entries: List[Tuple[datetime, str]] = []
-    amqerr_fdc_files: List[Tuple[datetime, str]] = []
-
-    log_directory = Path('~/IBM/MQ/data/errors').expanduser()
-
-    # check errors files
-    if not log_directory.exists():
-        return
-
-    for amqerr_log_file in log_directory.glob('AMQERR*.LOG'):
-        with amqerr_log_file.open() as fd:
-            line: Optional[str] = None
-
-            for line in fd:
-                while line and not re.match(r'^\s+Time\(', line):
-                    try:
-                        line = next(fd)  # noqa: PLW2901
-                    except StopIteration:  # noqa: PERF203
-                        break
-
-                if not line:
-                    break
-
-                try:
-                    time_start = line.index('Time(') + 5
-                    time_end = line.index(')')
-                    time_str = line[time_start:time_end]
-                    time_date = dateparser(time_str)
-
-                    if time_date < started:
-                        continue
-                except ParserError:
-                    logger.exception('"%s" is not a valid date', time_str)
-                    continue
-                except ValueError:
-                    continue
-
-                while not line.startswith('AMQ'):
-                    line = next(fd)  # noqa: PLW2901
-
-                amqerr_log_entries.append((time_date, line.strip()))
-
-    for amqerr_fdc_file in log_directory.glob('AMQ*.FDC'):
-        modification_date = datetime.fromtimestamp(amqerr_fdc_file.stat().st_mtime).astimezone(tz=timezone.utc)
-
-        if modification_date < started:
-            continue
-
-        amqerr_fdc_files.append((modification_date, str(amqerr_fdc_file)))
-
-    # present entries created during run
-    _print_table('AMQ error log entries', 'Message', amqerr_log_entries)
-    _print_table('AMQ FDC files', 'File', amqerr_fdc_files)
-
-
-def async_message_request_wrapper(parent: GrizzlyScenario, client: zmq.Socket, request: AsyncMessageRequest) -> AsyncMessageResponse:
-    """Wrap `grizzly_extras.async_message.async_message_request` to make it easier to communicating with `async-messaged` from within `grizzly`."""
-    request_string: Optional[str] = None
-    request_rendered: Optional[str] = None
-
-    try:
-        request_string = jsondumps(request)
-        request_rendered = parent.render(request_string, escape_values=True)
-        request = jsonloads(request_rendered)
-    except:
-        parent.user.logger.error('failed to render request:\ntemplate=%r\nrendered=%r', request, request_rendered)  # noqa: TRY400
-        raise
-
-    if request.get('client', None) is None:
-        request.update({'client': id(parent.user)})
-
-    return async_message_request(client, request)
-
-
-def zmq_disconnect(socket: zmq.Socket, *, destroy_context: bool) -> None:
-    socket.close(linger=0)
-    if destroy_context:
-        socket.context.destroy(linger=0)
 
 
 def safe_del(struct: Dict[str, Any], key: str) -> None:

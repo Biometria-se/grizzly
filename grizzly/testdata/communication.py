@@ -16,7 +16,7 @@ from zmq.error import Again as ZMQAgain
 from zmq.error import ZMQError
 
 from grizzly.types.locust import Environment, StopUser
-from grizzly.utils import zmq_disconnect
+from grizzly.utils.protocols import zmq_disconnect
 
 from . import GrizzlyVariables
 from .utils import transform

@@ -21,7 +21,8 @@ from .locust import run as locustrun
 from .testdata.variables import destroy_variables
 from .types import RequestType
 from .types.behave import Context, Feature, Scenario, Status, Step
-from .utils import check_mq_client_logs, fail_direct, in_correct_section
+from .utils import fail_direct, in_correct_section
+from .utils.protocols import mq_client_logs
 
 logger = logging.getLogger(__name__)
 
@@ -129,7 +130,7 @@ def after_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: An
             return_code = after_feature_master(return_code, status, context, feature)
 
             if pymqi.__name__ != 'grizzly_extras.dummy_pymqi' and not on_worker(context):
-                check_mq_client_logs(context)
+                mq_client_logs(context)
 
         if return_code != 0:
             cause = 'locust test failed' if return_code != ABORTED_RETURN_CODE else 'locust test aborted'

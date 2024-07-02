@@ -6,7 +6,6 @@ from json import dumps as jsondumps
 from typing import TYPE_CHECKING, Any, Dict
 
 import pytest
-import zmq.green as zmq
 
 from grizzly.tasks.clients import ServiceBusClientTask
 from grizzly.types import RequestDirection
@@ -291,7 +290,7 @@ class TestServiceBusClientTask:
 
         noop_zmq('grizzly.tasks.clients.servicebus')
 
-        async_message_request_mock = mocker.patch('grizzly.utils.async_message_request')
+        async_message_request_mock = mocker.patch('grizzly.utils.protocols.async_message_request')
 
         grizzly_fixture.grizzly.state.configuration.update({'sbns.key.secret': 'fooBARfoo'})
 
@@ -326,7 +325,7 @@ class TestServiceBusClientTask:
 
         client_mock = mocker.MagicMock()
 
-        async_message_request_mock = mocker.patch('grizzly.utils.async_message_request')
+        async_message_request_mock = mocker.patch('grizzly.utils.protocols.async_message_request')
         zmq_disconnect_mock = mocker.patch('grizzly.tasks.clients.servicebus.zmq_disconnect')
 
         ServiceBusClientTask.__scenario__ = grizzly_fixture.grizzly.scenario
@@ -366,7 +365,7 @@ class TestServiceBusClientTask:
 
         client_mock = mocker.MagicMock()
 
-        async_message_request_mock = mocker.patch('grizzly.utils.async_message_request', return_value={'message': 'foobar!'})
+        async_message_request_mock = mocker.patch('grizzly.utils.protocols.async_message_request', return_value={'message': 'foobar!'})
 
         ServiceBusClientTask.__scenario__ = grizzly_fixture.grizzly.scenario
         task = ServiceBusClientTask(
@@ -485,7 +484,7 @@ class TestServiceBusClientTask:
 
         client_mock = mocker.MagicMock()
 
-        async_message_request_mock = mocker.patch('grizzly.utils.async_message_request', return_value={'message': 'hello world!'})
+        async_message_request_mock = mocker.patch('grizzly.utils.protocols.async_message_request', return_value={'message': 'hello world!'})
 
         cls_task = type('ServiceBusClientTaskTest', (ServiceBusClientTask,), {'__scenario__': grizzly_fixture.grizzly.scenario})
 
@@ -603,7 +602,7 @@ class TestServiceBusClientTask:
 
         client_mock = mocker.MagicMock()
 
-        async_message_request_mock = mocker.patch('grizzly.utils.async_message_request', return_value={'message': 'foobar!'})
+        async_message_request_mock = mocker.patch('grizzly.utils.protocols.async_message_request', return_value={'message': 'foobar!'})
 
         cls_task = type('ServiceBusClientTaskTest', (ServiceBusClientTask,), {'__scenario__': grizzly_fixture.grizzly.scenario})
 

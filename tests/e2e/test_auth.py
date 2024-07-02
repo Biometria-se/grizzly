@@ -57,7 +57,7 @@ def test_e2e_auth_user_token(e2e_fixture: End2EndFixture) -> None:
             'id': 'dummy-client-id',
             'secret': 'dummy-client-secret',
         },
-        'token': 'foobar',
+        'token': 'header.foobar.signature',
         'headers': {
             'x-subscription': 'foobar',
         },

@@ -155,7 +155,8 @@ class InfluxDbListener:
         self.grizzly = GrizzlyContext()
         self.logger = logging.getLogger(__name__)
         self.environment.events.request.add_listener(self.request)
-        self.environment.events.heartbeat.add_listener(self.heartbeat)
+        self.environment.events.heartbeat_sent.add_listener(self.heartbeat_sent)
+        self.environment.events.heartbeat_received.add_listener(self.heartbeat_received)
         self.environment.events.usage_monitor.add_listener(self.usage_monitor)
         self.environment.events.quit.add_listener(self.on_quit)
 
@@ -327,8 +328,14 @@ class InfluxDbListener:
 
         return metrics
 
-    def heartbeat(self, client_id: str, direction: str, time: float) -> None:
-        timestamp = datetime.fromtimestamp(time, tz=timezone.utc)
+    def heartbeat_sent(self, client_id: str, timestamp: float) -> None:
+        return self._heartbeat(client_id=client_id, direction='sent', timestamp=timestamp)
+
+    def heartbeat_received(self, client_id: str, timestamp: float) -> None:
+        return self._heartbeat(client_id=client_id, direction='received', timestamp=timestamp)
+
+    def _heartbeat(self, client_id: str, direction: Literal['sent', 'received'], timestamp: float) -> None:
+        _timestamp = datetime.fromtimestamp(timestamp, tz=timezone.utc)
 
         tags = {
             'client_id': client_id,
@@ -343,7 +350,7 @@ class InfluxDbListener:
         event: InfluxDbPoint = {
             'measurement': 'heartbeat',
             'tags': tags,
-            'time': timestamp.isoformat(),
+            'time': _timestamp.isoformat(),
             'fields': {
                 'value': 1,
             },

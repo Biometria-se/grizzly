@@ -4,6 +4,7 @@ from __future__ import annotations
 import inspect
 import os
 import re
+import signal
 import stat
 import subprocess
 from abc import ABCMeta
@@ -256,7 +257,10 @@ def run_command(command: List[str], env: Optional[Dict[str, str]] = None, cwd: O
         with suppress(Exception):
             process.kill()
 
-    process.wait()
+        process.wait()
+
+        with suppress(Exception):
+            os.killpg(os.getpgid(process.pid), signal.SIGKILL)
 
     return process.returncode, output
 

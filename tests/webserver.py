@@ -236,6 +236,14 @@ def app_oauth2_token(tenant: str) -> FlaskResponse:
     return jsonify({'access_token': auth_expected['token']})
 
 
+@app.route('/write', methods=['POST'])
+def app_write() -> FlaskResponse:
+    response = jsonify({'success': True})
+    response.status_code = 204
+
+    return response
+
+
 @app.errorhandler(404)
 def catch_all(_: Any) -> FlaskResponse:
     return jsonify({}, status=200)

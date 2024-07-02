@@ -84,9 +84,7 @@ from copy import copy
 from datetime import datetime, timezone
 from hashlib import sha256
 from html.parser import HTMLParser
-from http.cookiejar import Cookie
 from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Optional, Tuple, cast
-from urllib.parse import urlparse
 
 import requests
 from locust.contrib.fasthttp import FastHttpSession
@@ -96,6 +94,7 @@ from locust.exception import ResponseError
 from grizzly.auth import AAD, GrizzlyHttpAuthClient, refresh_token
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestMethod
 from grizzly.utils import merge_dicts, safe_del
+from grizzly.utils.protocols import http_populate_cookiejar
 from grizzly_extras.transformer import TransformerContentType
 
 from . import AsyncRequests, GrizzlyUser, GrizzlyUserMeta, grizzlycontext
@@ -159,8 +158,6 @@ class HtmlTitleParser(HTMLParser):
 })
 class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=RestApiUserMeta):  # type: ignore[misc]
     environment: Environment
-    domain: str
-
     timeout: ClassVar[float] = 60.0
 
     def __init__(self, environment: Environment, *args: Any, **kwargs: Any) -> None:
@@ -180,9 +177,6 @@ class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=R
             connection_timeout=self.timeout,
             network_timeout=self.timeout,
         )
-
-        host_parsed = urlparse(self.host)
-        self.domain = host_parsed.netloc
 
         self.parent = None
         self.cookies = {}
@@ -274,27 +268,7 @@ class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=R
         headers: Optional[Dict[str, str]] = None
         payload: Optional[str] = None
 
-        client.cookiejar.clear()
-
-        for name, value in self.cookies.items():
-            client.cookiejar.set_cookie(Cookie(
-                version=0,
-                name=name,
-                value=value,
-                port=None,
-                port_specified=False,
-                domain=self.domain,
-                domain_specified=True,
-                domain_initial_dot=False,
-                path='/',
-                path_specified=True,
-                secure=self.host.startswith('https'),
-                expires=None,
-                discard=False,
-                comment=None,
-                comment_url=None,
-                rest={},
-            ))
+        http_populate_cookiejar(client, self.cookies, url=url)
 
         with client.request(
             method=request.method.name,
@@ -319,7 +293,8 @@ class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=R
                     response.failure(ResponseError(message))
 
             headers = dict(response.headers.items()) if response.headers not in [None, {}] else None
-            payload = response.text
+            text = response.text
+            payload = text.decode() if isinstance(text, (bytearray, bytes)) else text
 
         exception = response.request_meta.get('exception', None)
 

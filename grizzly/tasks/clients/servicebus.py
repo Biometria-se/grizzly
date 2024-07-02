@@ -105,7 +105,7 @@ import zmq.green as zmq
 
 from grizzly.tasks import template
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestType
-from grizzly.utils import async_message_request_wrapper, zmq_disconnect
+from grizzly.utils.protocols import async_message_request_wrapper, zmq_disconnect
 from grizzly_extras.arguments import parse_arguments
 from grizzly_extras.transformer import TransformerContentType
 
