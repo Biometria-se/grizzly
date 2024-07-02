@@ -84,7 +84,7 @@ from copy import copy
 from datetime import datetime, timezone
 from hashlib import sha256
 from html.parser import HTMLParser
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, List, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
 
 import requests
 from locust.contrib.fasthttp import FastHttpSession
@@ -122,7 +122,7 @@ class HtmlTitleParser(HTMLParser):
     def should_look(self) -> bool:
         return self._look and self.title is None
 
-    def handle_starttag(self, tag: str, _attrs: List[Tuple[str, Optional[str]]]) -> None:
+    def handle_starttag(self, tag: str, _attrs: list[tuple[str, Optional[str]]]) -> None:
         self._look = tag == 'title' and self.title is None
 
     def handle_data(self, data: str) -> None:
@@ -242,7 +242,7 @@ class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=R
 
         request_headers.update({'Content-Type': request.response.content_type.value})
 
-        parameters: Dict[str, Any] = {}
+        parameters: dict[str, Any] = {}
 
         if len(request_headers) > 0:
             parameters.update({'headers': request_headers})
@@ -265,7 +265,7 @@ class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=R
                 parameters['data'] = request.source.encode('utf-8')
 
         # from response...
-        headers: Optional[Dict[str, str]] = None
+        headers: Optional[dict[str, str]] = None
         payload: Optional[str] = None
 
         http_populate_cookiejar(client, self.cookies, url=url)
@@ -303,7 +303,7 @@ class RestApiUser(GrizzlyUser, AsyncRequests, GrizzlyHttpAuthClient, metaclass=R
 
         return (headers, payload)
 
-    def add_context(self, context: Dict[str, Any]) -> None:
+    def add_context(self, context: dict[str, Any]) -> None:
         """If added context contains changes in `auth`, we should cache current `Authorization` token and force re-auth for a new, if the auth
         doesn't exist in the cache.
 

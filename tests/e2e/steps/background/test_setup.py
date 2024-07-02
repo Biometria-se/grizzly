@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import inspect
-from typing import TYPE_CHECKING, Any, Dict, List, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
@@ -20,7 +20,7 @@ if TYPE_CHECKING:  # pragma: no cover
     'influxdb://$conf::statistics.username$:$conf::statistics.password$@localhost/$conf::statistics.database$?Testplan=grizzly-statistics',
 ])
 def test_e2e_step_setup_save_statistics(e2e_fixture: End2EndFixture, url: str) -> None:
-    env_conf: Dict[str, Any] = {
+    env_conf: dict[str, Any] = {
         'configuration': {
             'statistics': {
                 'username': 'grizzly',
@@ -43,7 +43,7 @@ def test_e2e_step_setup_save_statistics(e2e_fixture: End2EndFixture, url: str) -
 
         assert grizzly.setup.statistics_url == test_url, f'{grizzly.setup.statistics_url} != {test_url}'
 
-    table: List[Dict[str, str]] = [
+    table: list[dict[str, str]] = [
         {
             'url': url,
             'statistics.username': env_conf['configuration']['statistics']['username'],
@@ -81,7 +81,7 @@ def test_e2e_step_setup_log_level(e2e_fixture: End2EndFixture, level: str) -> No
 
         assert grizzly.setup.log_level == test_level, f'{grizzly.setup.log_level} != {test_level}'
 
-    table: List[Dict[str, str]] = [{
+    table: list[dict[str, str]] = [{
         'level': level,
     }]
 
@@ -113,7 +113,7 @@ def test_e2e_step_setup_run_time(e2e_fixture: End2EndFixture, timespan: str) -> 
 
         assert grizzly.setup.timespan == timespan, f'{grizzly.setup.timespan} != {timespan}'
 
-    table: List[Dict[str, str]] = [{
+    table: list[dict[str, str]] = [{
         'timespan': timespan,
     }]
 
@@ -154,7 +154,7 @@ def test_e2e_step_setup_global_context_variable(e2e_fixture: End2EndFixture, nam
 
     value = value.replace('localhost', e2e_fixture.host)
 
-    table: List[Dict[str, str]] = [{
+    table: list[dict[str, str]] = [{
         'expected': expected.replace('localhost', e2e_fixture.host),
     }]
 
@@ -208,7 +208,7 @@ def test_e2e_step_setup_message_type_callback(
 {source}
 """)
 
-    table: List[Dict[str, str]] = [{
+    table: list[dict[str, str]] = [{
         'direction': f'{from_node}_{to_node}',
         'message_type': message_type,
     }]

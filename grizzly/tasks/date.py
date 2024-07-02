@@ -39,7 +39,7 @@ In addition to this it is also possible to append milliseconds with `:ms` and re
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TYPE_CHECKING, Any, Dict, Optional, cast
+from typing import TYPE_CHECKING, Any, Optional, cast
 
 from dateutil.parser import ParserError
 from dateutil.parser import parse as dateparser
@@ -60,7 +60,7 @@ if TYPE_CHECKING:  # pragma: no cover
 class DateTask(GrizzlyTask):
     variable: str
     value: str
-    arguments: Dict[str, Optional[str]]
+    arguments: dict[str, Optional[str]]
 
     def __init__(self, variable: str, value: str) -> None:
         super().__init__()
@@ -86,7 +86,7 @@ class DateTask(GrizzlyTask):
         def task(parent: GrizzlyScenario) -> Any:
             value_rendered = parent.render(self.value, {'datetime': datetime})
 
-            arguments_rendered: Dict[str, str] = {}
+            arguments_rendered: dict[str, str] = {}
 
             for argument_name, argument_value in self.arguments.items():
                 if argument_value is None:

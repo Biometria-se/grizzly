@@ -1,7 +1,7 @@
 """Unit tests of grizzly.steps.scenario.tasks.until."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, cast
+from typing import TYPE_CHECKING, cast
 
 import pytest
 
@@ -49,7 +49,7 @@ def test_step_task_request_with_name_endpoint_until(behave_fixture: BehaveFixtur
 
     assert len(grizzly.scenario.tasks()) == 1
 
-    rows: List[Row] = []
+    rows: list[Row] = []
     rows.append(Row(['endpoint'], ['{{ variable }}']))
     rows.append(Row(['endpoint'], ['foo']))
     rows.append(Row(['endpoint'], ['bar']))
@@ -58,9 +58,9 @@ def test_step_task_request_with_name_endpoint_until(behave_fixture: BehaveFixtur
     step_task_request_with_name_endpoint_until(behave, RequestMethod.GET, 'test', '/api/{{ endpoint }} | content_type=json', '$.`this`[?status="{{ endpoint }}"]')
 
     assert len(grizzly.scenario.tasks()) == 4
-    tasks = cast(List[UntilRequestTask], grizzly.scenario.tasks())
+    tasks = cast(list[UntilRequestTask], grizzly.scenario.tasks())
 
-    templates: List[str] = []
+    templates: list[str] = []
 
     assert tasks[-1].request.endpoint == '/api/bar'
     assert tasks[-1].condition == '$.`this`[?status="bar"]'

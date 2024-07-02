@@ -5,7 +5,7 @@ import subprocess
 import sys
 from contextlib import suppress
 from os import environ
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
 
 import pytest
 from zmq.error import Again as ZMQAgain
@@ -31,7 +31,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from grizzly_extras.async_message import AsyncMessageResponse
     from tests.fixtures import GrizzlyFixture, NoopZmqFixture
 
-MqScenarioFixture = Tuple[MessageQueueUser, GrizzlyContextScenario, Environment]
+MqScenarioFixture = tuple[MessageQueueUser, GrizzlyContextScenario, Environment]
 
 
 @pytest.fixture()
@@ -81,12 +81,12 @@ class TestMessageQueueUserNoPymqi:
 
         assert process.returncode == 1
         assert "mq.pymqi.__name__='grizzly_extras.dummy_pymqi'" in output
-        assert 'NotImplementedError: MessageQueueUser could not import pymqi, have you installed IBM MQ dependencies?' in output
+        assert 'NotImplementedError: MessageQueueUser could not import pymqi, have you installed IBM MQ dependencies and set environment variable LD_LIBRARY_PATH?' in output
 
 
 @pytest.mark.skipif(pymqi.__name__ == 'grizzly_extras.dummy_pymqi', reason='needs native IBM MQ libraries')
 class TestMessageQueueUser:
-    real_stuff: ClassVar[Dict[str, str]] = {
+    real_stuff: ClassVar[dict[str, str]] = {
         'username': '',
         'password': '',
         'key_file': '',
@@ -646,7 +646,7 @@ class TestMessageQueueUser:
         args, kwargs = send_json_spy.call_args_list[0]
         assert len(args) == 1
         assert kwargs == {}
-        ctx: Dict[str, str] = args[0]['context']
+        ctx: dict[str, str] = args[0]['context']
         assert ctx['endpoint'] == request.endpoint
 
         # Test with specifying queue: prefix as endpoint

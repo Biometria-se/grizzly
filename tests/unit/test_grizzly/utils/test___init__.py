@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from os import environ
 from types import FunctionType
-from typing import TYPE_CHECKING, Type, cast
+from typing import TYPE_CHECKING, cast
 
 import pytest
 from locust import TaskSet
@@ -53,7 +53,7 @@ class TestModuleLoader:
             user_class_name = 'RestApiUser'
             for user_package in ['', 'grizzly.users.', 'grizzly.users.restapi.']:
                 user_class_name_value = f'{user_package}{user_class_name}'
-                user_class = cast(Type[GrizzlyUser], ModuleLoader[GrizzlyUser].load('grizzly.users', user_class_name_value))  # type: ignore[redundant-cast]
+                user_class = cast(type[GrizzlyUser], ModuleLoader[GrizzlyUser].load('grizzly.users', user_class_name_value))  # type: ignore[redundant-cast]
                 user_class.__scenario__ = test_context.scenario
                 user_class.host = test_context.scenario.context['host']
                 assert user_class.__module__ == 'grizzly.users.restapi'
@@ -123,7 +123,7 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
     user_class_type_1.host = 'http://localhost:8000'
 
     assert issubclass(user_class_type_1, (RestApiUser, GrizzlyUser))
-    user_class_type_1 = cast(Type[RestApiUser], user_class_type_1)
+    user_class_type_1 = cast(type[RestApiUser], user_class_type_1)
     assert user_class_type_1.__name__ == f'grizzly.users.RestApiUser_{scenario.identifier}'
     assert user_class_type_1.weight == 1
     assert user_class_type_1.fixed_count == 0
@@ -220,7 +220,7 @@ def test_create_user_class_type(behave_fixture: BehaveFixture) -> None:  # noqa:
     user_class_type_2.host = 'http://localhost:8001'
 
     assert issubclass(user_class_type_2, (RestApiUser, GrizzlyUser))
-    user_class_type_2 = cast(Type[RestApiUser], user_class_type_2)
+    user_class_type_2 = cast(type[RestApiUser], user_class_type_2)
     assert user_class_type_2.__name__ == f'RestApiUser_{scenario.identifier}'
     assert user_class_type_2.weight == 1
     assert user_class_type_2.fixed_count == 100

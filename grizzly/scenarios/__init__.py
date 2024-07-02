@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 from os import environ
-from typing import TYPE_CHECKING, Any, Dict, Optional, cast
+from typing import TYPE_CHECKING, Any, Optional, cast
 
 from locust.user.sequential_taskset import SequentialTaskSet
 
@@ -49,8 +49,8 @@ class GrizzlyScenario(SequentialTaskSet):
         cls.tasks.append(task_factory())
 
     @classmethod
-    def _escape_values(cls, values: Dict[str, Any]) -> Dict[str, Any]:
-        _values: Dict[str, Any] = {}
+    def _escape_values(cls, values: dict[str, Any]) -> dict[str, Any]:
+        _values: dict[str, Any] = {}
 
         for key, value in values.items():
             _value = value.replace('"', '\\"') if isinstance(value, str) else value
@@ -58,7 +58,7 @@ class GrizzlyScenario(SequentialTaskSet):
 
         return _values
 
-    def render(self, template: str, variables: Optional[Dict[str, Any]] = None, *, escape_values: bool = False) -> str:
+    def render(self, template: str, variables: Optional[dict[str, Any]] = None, *, escape_values: bool = False) -> str:
         if not has_template(template):
             return template
 

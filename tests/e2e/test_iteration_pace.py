@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from textwrap import dedent
-from typing import TYPE_CHECKING, Any, Dict, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from grizzly.context import GrizzlyContext
 
@@ -41,7 +41,7 @@ def test_e2e_iteration_pace(e2e_fixture: End2EndFixture) -> None:
 
     start_webserver_step = f'Then start webserver on master port "{e2e_fixture.webserver.port}"\n\n' if e2e_fixture._distributed else ''
 
-    env_conf: Dict[str, Dict[str, Dict[str, str]]] = {
+    env_conf: dict[str, dict[str, dict[str, str]]] = {
         'configuration': {
             'test': {
                 'host': f'http://{e2e_fixture.host}',

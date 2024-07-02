@@ -9,7 +9,7 @@ from json import loads as jsonloads
 from signal import SIGINT, SIGTERM, Signals, signal
 from threading import Thread
 from time import sleep
-from typing import TYPE_CHECKING, Dict, List, Optional, Union, cast
+from typing import TYPE_CHECKING, Optional, Union, cast
 from urllib.parse import urlparse
 from uuid import uuid4
 
@@ -70,7 +70,7 @@ def router() -> None:  # noqa: C901, PLR0912, PLR0915
     poller.register(frontend, zmq.POLLIN)
     poller.register(backend, zmq.POLLIN)
 
-    worker_threads: List[Thread] = []
+    worker_threads: list[Thread] = []
 
     def spawn_worker() -> None:
         identity = str(uuid4())
@@ -81,9 +81,9 @@ def router() -> None:  # noqa: C901, PLR0912, PLR0915
         thread.start()
         logger.info('spawned worker %s (%d)', identity, thread.ident)
 
-    workers_available: List[str] = []
+    workers_available: list[str] = []
 
-    client_worker_map: Dict[str, str] = {}
+    client_worker_map: dict[str, str] = {}
 
     spawn_worker()
 

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from os import environ
-from typing import TYPE_CHECKING, Generator, List
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -21,6 +21,8 @@ from .fixtures import (
 from .webserver import Webserver
 
 if TYPE_CHECKING:  # pragma: no cover
+    from collections.abc import Generator
+
     from _pytest.config import Config
     from _pytest.fixtures import SubRequest
     from _pytest.tmpdir import TempPathFactory
@@ -41,7 +43,7 @@ def pytest_configure(config: Config) -> None:
 
 
 # also, add markers for each test function that starts with test_e2e_, if we're running everything
-def pytest_collection_modifyitems(items: List[pytest.Function]) -> None:
+def pytest_collection_modifyitems(items: list[pytest.Function]) -> None:
     for item in items:
         if item.originalname.startswith('test_e2e_') and item.get_closest_marker('timeout') is None:
             item.add_marker(pytest.mark.timeout(PYTEST_TIMEOUT))

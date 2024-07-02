@@ -5,7 +5,7 @@ import logging
 from contextlib import suppress
 from os import environ
 from secrets import choice
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Any, Callable, Optional, cast
 
 import pytest
 from locust.stats import RequestStats, StatsError
@@ -123,7 +123,7 @@ def test_init_master(caplog: LogCaptureFixture, grizzly_fixture: GrizzlyFixture)
 
         init_function(runner)
 
-        assert grizzly.state.locust.custom_messages == cast(Dict[str, Tuple[Callable, bool]], {
+        assert grizzly.state.locust.custom_messages == cast(dict[str, tuple[Callable, bool]], {
             'test_message': (callback, False),
         })
     finally:
@@ -149,7 +149,7 @@ def test_init_worker(grizzly_fixture: GrizzlyFixture) -> None:
         init_function(runner)
 
         assert environ.get('TESTDATA_PRODUCER_ADDRESS', None) == 'tcp://localhost:5555'
-        assert runner.custom_messages == cast(Dict[str, Tuple[Callable, bool]], {
+        assert runner.custom_messages == cast(dict[str, tuple[Callable, bool]], {
             'grizzly_worker_quit': (grizzly_worker_quit, False),
         })
 
@@ -166,7 +166,7 @@ def test_init_worker(grizzly_fixture: GrizzlyFixture) -> None:
 
         init_function(runner)
 
-        assert grizzly.state.locust.custom_messages == cast(Dict[str, Tuple[Callable, bool]], {
+        assert grizzly.state.locust.custom_messages == cast(dict[str, tuple[Callable, bool]], {
             'grizzly_worker_quit': (grizzly_worker_quit, False),
             'test_message_ack': (callback_ack, False),
         })
@@ -212,7 +212,7 @@ def test_init_local(grizzly_fixture: GrizzlyFixture) -> None:
 
         init_function(runner)
 
-        assert grizzly.state.locust.custom_messages == cast(Dict[str, Tuple[Callable, bool]], {
+        assert grizzly.state.locust.custom_messages == cast(dict[str, tuple[Callable, bool]], {
             'test_message': (callback, False),
             'test_message_ack': (callback_ack, False),
         })

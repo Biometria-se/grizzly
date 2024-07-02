@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from contextlib import suppress
-from typing import TYPE_CHECKING, Dict, List, Optional, cast
+from typing import TYPE_CHECKING, Optional, cast
 
 import pytest
 
@@ -28,7 +28,7 @@ def test_e2e_step_shapes_user_count(e2e_fixture: End2EndFixture, count: str) -> 
         assert grizzly.setup.user_count == user_count, f'{grizzly.setup.user_count} != {user_count}'
         assert grizzly.setup.dispatcher_class == WeightedUsersDispatcher
 
-    table: List[Dict[str, str]] = [
+    table: list[dict[str, str]] = [
         {
             'user_count': str(count),
         },
@@ -41,8 +41,8 @@ def test_e2e_step_shapes_user_count(e2e_fixture: End2EndFixture, count: str) -> 
 
     e2e_fixture.add_validator(validator, table=table)
 
-    background: List[str] = []
-    testdata: Optional[Dict[str, str]] = None
+    background: list[str] = []
+    testdata: Optional[dict[str, str]] = None
 
     if has_template(count):
         background.append('Then ask for value of variable "user_count"')
@@ -76,7 +76,7 @@ def test_e2e_step_shapes_spawn_rate(e2e_fixture: End2EndFixture, rate: str) -> N
 
         assert grizzly.setup.spawn_rate == spawn_rate, f'{grizzly.setup.spawn_rate} != {spawn_rate}'
 
-    table: List[Dict[str, str]] = [
+    table: list[dict[str, str]] = [
         {
             'spawn_rate': str(rate),
         },
@@ -84,8 +84,8 @@ def test_e2e_step_shapes_spawn_rate(e2e_fixture: End2EndFixture, rate: str) -> N
 
     e2e_fixture.add_validator(validator, table=table)
 
-    background: List[str] = []
-    testdata: Optional[Dict[str, str]] = None
+    background: list[str] = []
+    testdata: Optional[dict[str, str]] = None
 
     if has_template(rate):
         background.append('Then ask for value of variable "spawn_rate"')

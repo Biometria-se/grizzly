@@ -28,7 +28,7 @@ from __future__ import annotations
 
 from contextlib import suppress
 from secrets import choice
-from typing import Dict, Type, cast
+from typing import cast
 
 from . import AtomicVariable
 
@@ -60,7 +60,7 @@ def atomicrandominteger__base_type__(value: str) -> str:
 class AtomicRandomInteger(AtomicVariable[int]):
     __base_type__ = atomicrandominteger__base_type__
     __initialized: bool = False
-    _max: Dict[str, int]
+    _max: dict[str, int]
 
     def __init__(self, variable: str, value: str, *, outer_lock: bool = False) -> None:
         with self.semaphore(outer=outer_lock):
@@ -79,7 +79,7 @@ class AtomicRandomInteger(AtomicVariable[int]):
             self.__initialized = True
 
     @classmethod
-    def clear(cls: Type[AtomicRandomInteger]) -> None:
+    def clear(cls: type[AtomicRandomInteger]) -> None:
         super().clear()
 
         instance = cast(AtomicRandomInteger, cls.get())

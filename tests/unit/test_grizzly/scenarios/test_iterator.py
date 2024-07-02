@@ -5,7 +5,7 @@ import logging
 from contextlib import suppress
 from os import environ
 from types import FunctionType
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Optional
 from unittest.mock import ANY
 
 import pytest
@@ -43,7 +43,7 @@ class TestIterationScenario:
 
         @templatingfilter
         def sarcasm(value: str) -> str:
-            sarcastic_value: List[str] = []
+            sarcastic_value: list[str] = []
             for index, c in enumerate(value):
                 if index % 2 == 0:
                     sarcastic_value.append(c.upper())
@@ -186,8 +186,8 @@ class TestIterationScenario:
 
         parent.consumer = TestdataConsumer(parent, identifier='test')
 
-        def mock_request(data: Optional[Dict[str, Any]]) -> None:
-            def testdata_request(self: TestdataConsumer, scenario: str) -> Optional[Dict[str, Any]]:  # noqa: ARG001
+        def mock_request(data: Optional[dict[str, Any]]) -> None:
+            def testdata_request(self: TestdataConsumer, scenario: str) -> Optional[dict[str, Any]]:  # noqa: ARG001
                 if data is None or data == {}:
                     return None
 
@@ -517,7 +517,7 @@ class TestIterationScenario:
         # always assume that spawning is complete in unit test
         parent.grizzly.state.spawning_complete = True
 
-        side_effects: List[Optional[InterruptTaskSet]] = [
+        side_effects: list[Optional[InterruptTaskSet]] = [
             InterruptTaskSet(reschedule=False),
             InterruptTaskSet(reschedule=True),
         ]

@@ -46,7 +46,7 @@ from __future__ import annotations
 import logging
 from json import dumps as jsondumps
 from time import time
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from geventhttpclient import Session
 from locust.exception import CatchResponseError
@@ -66,8 +66,8 @@ if TYPE_CHECKING:  # pragma: no cover
 
 @client('http', 'https')
 class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
-    arguments: Dict[str, Any]
-    metadata: Dict[str, Any]
+    arguments: dict[str, Any]
+    metadata: dict[str, Any]
     session_started: Optional[float]
     host: str
 

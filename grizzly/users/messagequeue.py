@@ -128,7 +128,7 @@ from __future__ import annotations
 import inspect
 import logging
 from contextlib import contextmanager, suppress
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, Generator, Optional, Set, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
 from urllib.parse import parse_qs, unquote, urlparse
 
 import zmq.green as zmq
@@ -144,6 +144,8 @@ from grizzly_extras.async_message.utils import async_message_request
 from . import GrizzlyUser, grizzlycontext
 
 if TYPE_CHECKING:  # pragma: no cover
+    from collections.abc import Generator
+
     from grizzly.tasks import RequestTask
     from grizzly.types.locust import Environment
 
@@ -170,7 +172,7 @@ except:
     },
 })
 class MessageQueueUser(GrizzlyUser):
-    __dependencies__: ClassVar[Set[str]] = {'async-messaged'}
+    __dependencies__: ClassVar[set[str]] = {'async-messaged'}
 
     am_context: AsyncMessageContext
     worker_id: Optional[str]
@@ -305,11 +307,11 @@ class MessageQueueUser(GrizzlyUser):
         super().on_stop()
 
     @contextmanager
-    def _request_context(self, am_request: AsyncMessageRequest) -> Generator[Dict[str, Any], None, None]:
+    def _request_context(self, am_request: AsyncMessageRequest) -> Generator[dict[str, Any], None, None]:
         self.logger.debug('%s request context: %r', inspect.stack()[1][3], am_request)
 
         response: Optional[AsyncMessageResponse] = None
-        context: Dict[str, Any] = {
+        context: dict[str, Any] = {
             'metadata': None,
             'payload': None,
         }
@@ -324,7 +326,7 @@ class MessageQueueUser(GrizzlyUser):
 
     def request_impl(self, request: RequestTask) -> GrizzlyResponse:
         am_context = cast(AsyncMessageContext, merge_dicts(
-            cast(Dict[str, Any], self.am_context),
+            cast(dict[str, Any], self.am_context),
             {
                 'endpoint': request.endpoint,
                 'metadata': request.metadata,

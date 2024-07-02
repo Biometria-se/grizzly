@@ -9,7 +9,7 @@ from __future__ import annotations
 from contextlib import suppress
 from json import dumps as jsondumps
 from time import perf_counter
-from typing import TYPE_CHECKING, ClassVar, Dict, Optional
+from typing import TYPE_CHECKING, ClassVar, Optional
 
 from gevent import sleep as gsleep
 from gevent.exceptions import GreenletExit
@@ -36,7 +36,7 @@ class IteratorScenario(GrizzlyScenario):
     start: Optional[float]
     task_count: ClassVar[int] = 0
     stats: StatsEntry
-    behave_steps: ClassVar[Dict[int, str]]
+    behave_steps: ClassVar[dict[int, str]]
     pace_time: ClassVar[Optional[str]] = None  # class variable injected by `grizzly.utils.create_scenario_class_type`
 
     _prefetch: bool

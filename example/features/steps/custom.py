@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 from json import loads as jsonloads
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any
 
 from grizzly.tasks import GrizzlyTask, RequestTask, grizzlytask
 from grizzly.testdata.variables import AtomicVariable
@@ -23,7 +23,7 @@ class User(RestApiUser):
 
 
 class Task(GrizzlyTask):
-    data: Dict[str, str]
+    data: dict[str, str]
     logger = logging.getLogger(__name__)
 
     def __init__(self, data: str) -> None:

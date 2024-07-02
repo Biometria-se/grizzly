@@ -3,13 +3,13 @@ from __future__ import annotations
 
 import logging
 import re
-from collections.abc import Mapping
+from collections.abc import Generator, Iterable, Mapping
 from contextlib import contextmanager, suppress
 from copy import deepcopy
 from importlib import import_module
 from os import environ
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, Generator, Generic, Iterable, List, Optional, Set, Tuple, Type, Union, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, Optional, Union, cast
 from unicodedata import normalize as __normalize
 
 from jinja2.lexer import Token, TokenStream
@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 class ModuleLoader(Generic[T]):
     @staticmethod
-    def load(default_module: str, value: str) -> Type[T]:
+    def load(default_module: str, value: str) -> type[T]:
         """Dynamically load a module based on namespace (value)."""
         try:
             [module_name, class_name] = value.rsplit('.', 1)
@@ -46,10 +46,10 @@ class ModuleLoader(Generic[T]):
 
         class_type_instance = globals()[class_name]
 
-        return cast(Type[T], class_type_instance)
+        return cast(type[T], class_type_instance)
 
 class MergeYamlTag(StandaloneTag):
-    tags: ClassVar[Set[str]] = {'merge'}
+    tags: ClassVar[set[str]] = {'merge'}
 
     def preprocess(
         self, source: str, name: Optional[str], filename: Optional[str] = None,
@@ -58,7 +58,7 @@ class MergeYamlTag(StandaloneTag):
         return cast(str, super().preprocess(source, name, filename))
 
     def render(self, filename: str, *filenames: str) -> str:
-        buffer: List[str] = []
+        buffer: list[str] = []
 
         files = [filename, *filenames]
 
@@ -161,7 +161,7 @@ def fail_direct(context: Context) -> Generator[None, None, None]:
     context.config.verbose = orig_verbose_value
 
 
-def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Optional[Dict[str, Any]] = None, fixed_count: Optional[int] = None) -> Type[GrizzlyUser]:
+def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Optional[dict[str, Any]] = None, fixed_count: Optional[int] = None) -> type[GrizzlyUser]:
     """Create a unique (name wise) class, that locust will use to create user instances."""
     if not hasattr(scenario, 'user') or scenario.user is None:
         message = f'scenario {scenario.description} has not set a user'
@@ -171,11 +171,11 @@ def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Opt
         message = f'scenario {scenario.description} does not have a user type set'
         raise ValueError(message)
 
-    base_user_class_type = cast(Type['GrizzlyUser'], ModuleLoader['GrizzlyUser'].load('grizzly.users', scenario.user.class_name))  # type: ignore[redundant-cast]
+    base_user_class_type = cast(type['GrizzlyUser'], ModuleLoader['GrizzlyUser'].load('grizzly.users', scenario.user.class_name))  # type: ignore[redundant-cast]
     user_class_name = f'{scenario.user.class_name}_{scenario.identifier}'
 
-    context: Dict[str, Any] = {}
-    contexts: List[Dict[str, Any]] = [
+    context: dict[str, Any] = {}
+    contexts: list[dict[str, Any]] = [
         base_user_class_type.__context__,
         global_context or {},
         scenario.context,
@@ -188,7 +188,7 @@ def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Opt
         logger.debug('%s context: %r', user_class_name, merge_context)
         context = merge_dicts(context, merge_context)
 
-    distribution: Dict[str, Union[int, float, str | None]] = {
+    distribution: dict[str, Union[int, float, str | None]] = {
         'weight': scenario.user.weight,
         'sticky_tag': scenario.user.sticky_tag,
     }
@@ -205,7 +205,7 @@ def create_user_class_type(scenario: GrizzlyContextScenario, global_context: Opt
     })
 
 
-def create_scenario_class_type(base_type: str, scenario: GrizzlyContextScenario) -> Type[GrizzlyScenario]:
+def create_scenario_class_type(base_type: str, scenario: GrizzlyContextScenario) -> type[GrizzlyScenario]:
     """Create a unique (name wise) class, that the created user type will use as a scenario."""
     if base_type.count('.') > 0:
         module, base_type = base_type.rsplit('.', 1)
@@ -222,7 +222,7 @@ def create_scenario_class_type(base_type: str, scenario: GrizzlyContextScenario)
     })
 
 
-def merge_dicts(merged: Dict[str, Any], source: Dict[str, Any]) -> Dict[str, Any]:
+def merge_dicts(merged: dict[str, Any], source: dict[str, Any]) -> dict[str, Any]:
     """Merge two dicts recursively, where `source` values takes precedance over `merged` values."""
     merged = deepcopy(merged)
     source = deepcopy(source)
@@ -243,7 +243,7 @@ def merge_dicts(merged: Dict[str, Any], source: Dict[str, Any]) -> Dict[str, Any
     return merged
 
 
-def in_correct_section(func: StepFunctionType, expected: List[str]) -> bool:
+def in_correct_section(func: StepFunctionType, expected: list[str]) -> bool:
     """Check if a step function is used in the correct section of the feature file, as specified in `expected` (list of namespaces)."""
     try:
         actual = '.'.join(func.__module__.rsplit('.', 1)[:-1])
@@ -255,7 +255,7 @@ def in_correct_section(func: StepFunctionType, expected: List[str]) -> bool:
     ) or not actual.startswith('grizzly.')
 
 
-def parse_timespan(timespan: str) -> Dict[str, int]:
+def parse_timespan(timespan: str) -> dict[str, int]:
     """Parse a timespan string (e.g. 1Y2M) to a dictionary representing each time part."""
     if re.match(r'^-?\d+$', timespan):
         # if an int is specified we assume they want days
@@ -275,7 +275,7 @@ def parse_timespan(timespan: str) -> Dict[str, int]:
     return parameters
 
 
-def _print_table(subject: str, header: str, data: List[Tuple[datetime, str]]) -> None:
+def _print_table(subject: str, header: str, data: list[tuple[datetime, str]]) -> None:
     if len(data) < 1:
         return
 
@@ -297,7 +297,7 @@ def _print_table(subject: str, header: str, data: List[Tuple[datetime, str]]) ->
         handler.flush()
 
 
-def safe_del(struct: Dict[str, Any], key: str) -> None:
+def safe_del(struct: dict[str, Any], key: str) -> None:
     """Remove a key from a dictionary, but do not fail if it does not exist."""
     with suppress(KeyError):
         del struct[key]
@@ -327,9 +327,9 @@ def is_file(text: str) -> bool:
         return False
 
 
-def flatten(node: Dict[str, Any], parents: Optional[List[str]] = None) -> Dict[str, Any]:
+def flatten(node: dict[str, Any], parents: Optional[list[str]] = None) -> dict[str, Any]:
     """Flatten a dictionary so each value key is the path down the nested dictionary structure."""
-    flat: Dict[str, Any] = {}
+    flat: dict[str, Any] = {}
     if parents is None:
         parents = []
 
@@ -344,8 +344,8 @@ def flatten(node: Dict[str, Any], parents: Optional[List[str]] = None) -> Dict[s
 
     return flat
 
-def unflatten(key: str, value: Any) -> Dict[str, Any]:
-    paths: List[str] = key.split('.')
+def unflatten(key: str, value: Any) -> dict[str, Any]:
+    paths: list[str] = key.split('.')
 
     # last node should have the value
     path = paths.pop()

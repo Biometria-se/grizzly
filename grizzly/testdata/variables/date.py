@@ -31,7 +31,7 @@ from __future__ import annotations
 
 from contextlib import suppress
 from datetime import datetime
-from typing import Any, ClassVar, Dict, Optional, Set, Type, Union, cast
+from typing import Any, ClassVar, Optional, Union, cast
 
 from dateutil.parser import ParserError
 from dateutil.parser import parse as dateparse
@@ -98,10 +98,10 @@ def atomicdate__base_type__(value: str) -> str:  # noqa: PLR0912
 class AtomicDate(AtomicVariable[Union[str, datetime]]):
     __base_type__ = atomicdate__base_type__
     __initialized: bool = False
-    _settings: Dict[str, Dict[str, Any]]
-    arguments: ClassVar[Dict[str, Any]] = {'format': str, 'timezone': str, 'offset': int}
+    _settings: dict[str, dict[str, Any]]
+    arguments: ClassVar[dict[str, Any]] = {'format': str, 'timezone': str, 'offset': int}
 
-    _special_variables: ClassVar[Set[str]] = {'now'}
+    _special_variables: ClassVar[set[str]] = {'now'}
 
     def __init__(
         self,
@@ -114,7 +114,7 @@ class AtomicDate(AtomicVariable[Union[str, datetime]]):
             initial_value: str
             timezone: Optional[ZoneInfo] = None
             date_format = '%Y-%m-%d %H:%M:%S'
-            offset: Optional[Dict[str, int]] = None
+            offset: Optional[dict[str, int]] = None
 
             safe_value = self.__class__.__base_type__(value)
 
@@ -154,7 +154,7 @@ class AtomicDate(AtomicVariable[Union[str, datetime]]):
             self.__initialized = True
 
     @classmethod
-    def clear(cls: Type[AtomicDate]) -> None:
+    def clear(cls: type[AtomicDate]) -> None:
         super().clear()
 
         instance = cast(AtomicDate, cls.get())

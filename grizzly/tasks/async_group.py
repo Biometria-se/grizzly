@@ -29,7 +29,7 @@ import inspect
 import logging
 from os import environ
 from time import perf_counter as time_perf_counter
-from typing import TYPE_CHECKING, Any, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Optional
 
 import gevent
 
@@ -44,7 +44,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 @template('name', 'tasks')
 class AsyncRequestGroupTask(GrizzlyTaskWrapper):
-    tasks: List[GrizzlyTask]
+    tasks: list[GrizzlyTask]
 
     def __init__(self, name: str) -> None:
         super().__init__()
@@ -61,7 +61,7 @@ class AsyncRequestGroupTask(GrizzlyTaskWrapper):
         task.async_request = True
         self.tasks.append(task)
 
-    def peek(self) -> List[GrizzlyTask]:
+    def peek(self) -> list[GrizzlyTask]:
         return self.tasks
 
     def __call__(self) -> grizzlytask:  # noqa: C901
@@ -74,7 +74,7 @@ class AsyncRequestGroupTask(GrizzlyTaskWrapper):
             exception: Optional[Exception] = None
             response_length = 0
 
-            def trace_green(event: str, args: Tuple[gevent.Greenlet, gevent.Greenlet]) -> None:  # pragma: no cover
+            def trace_green(event: str, args: tuple[gevent.Greenlet, gevent.Greenlet]) -> None:  # pragma: no cover
                 src, target = args
 
                 if src is gevent.hub.get_hub():
@@ -95,7 +95,7 @@ class AsyncRequestGroupTask(GrizzlyTaskWrapper):
 
                     parent.user.logger.debug(''.join(buff))
 
-            greenlets: List[gevent.Greenlet] = []
+            greenlets: list[gevent.Greenlet] = []
             start = time_perf_counter()
 
             try:

@@ -4,7 +4,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from contextlib import suppress
 from json import dumps as jsondumps
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Optional
 
 from locust.exception import ResponseError
 
@@ -30,7 +30,7 @@ class ResponseHandlerAction(ABC):
     @abstractmethod
     def __call__(
         self,
-        input_context: Tuple[TransformerContentType, HandlerContextType],
+        input_context: tuple[TransformerContentType, HandlerContextType],
         user: GrizzlyUser,
     ) -> None:  # pragma: no cover
         message = f'{self.__class__.__name__} has not implemented __call__'
@@ -38,15 +38,15 @@ class ResponseHandlerAction(ABC):
 
     def get_match(
         self,
-        input_context: Tuple[TransformerContentType, HandlerContextType],
+        input_context: tuple[TransformerContentType, HandlerContextType],
         user: GrizzlyUser,
         *,
         condition: bool = False,
-    ) -> Tuple[Optional[str], str, str]:
+    ) -> tuple[Optional[str], str, str]:
         """Contains common logic for both save and validation handlers.
 
         Args:
-            input_context (Tuple[TransformerContentType, Any]): content type and transformed payload
+            input_context (tuple[TransformerContentType, Any]): content type and transformed payload
             expression (str): expression to extract value from `input_context`
             match_with (str): regular expression that the extracted value must match
             user (ContextVariablesUser): user that executed task (request)
@@ -74,7 +74,7 @@ class ResponseHandlerAction(ABC):
         values = input_get_values(input_payload)
 
         # get a list of all matches in values
-        matches: List[str] = []
+        matches: list[str] = []
         for value in values:
             matched_values = match_get_values(value)
 
@@ -129,7 +129,7 @@ class ValidationHandlerAction(ResponseHandlerAction):
 
     def __call__(
         self,
-        input_context: Tuple[TransformerContentType, HandlerContextType],
+        input_context: tuple[TransformerContentType, HandlerContextType],
         user: GrizzlyUser,
     ) -> None:
         match, expression, match_with = self.get_match(input_context, user, condition=self.condition)
@@ -155,7 +155,7 @@ class SaveHandlerAction(ResponseHandlerAction):
 
     def __call__(
         self,
-        input_context: Tuple[TransformerContentType, HandlerContextType],
+        input_context: tuple[TransformerContentType, HandlerContextType],
         user: GrizzlyUser,
     ) -> None:
         match, expression, _ = self.get_match(input_context, user)
@@ -191,7 +191,7 @@ class ResponseHandler(GrizzlyEventHandler):
         if len(handlers.payload) < 1 and len(handlers.metadata) < 1:
             return
 
-        response_metadata: Optional[Dict[str, Any]]
+        response_metadata: Optional[dict[str, Any]]
         response_payload: Optional[str]
 
         response_metadata, response_payload = context

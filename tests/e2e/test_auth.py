@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from textwrap import dedent
-from typing import TYPE_CHECKING, Any, List, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
@@ -67,7 +67,7 @@ def test_e2e_auth_user_token(e2e_fixture: End2EndFixture) -> None:
         if e2e_fixture.webserver.auth is None:
             return ''
 
-        steps: List[str] = []
+        steps: list[str] = []
         for key, value in e2e_fixture.webserver.auth.get('headers', {}).items():
             steps.append(f'And metadata "{key}" is "{value}"')
 

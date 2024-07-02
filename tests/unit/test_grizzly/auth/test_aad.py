@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from enum import Enum
 from itertools import product
 from json import dumps as jsondumps
-from typing import TYPE_CHECKING, Any, Dict, Optional, cast
+from typing import TYPE_CHECKING, Any, Optional, cast
 from urllib.parse import urlparse
 
 import pytest
@@ -207,7 +207,7 @@ class TestAzureAadCredential:
                 REQUEST_5_NO_COOKIE = 501
 
             def mock_request_session(inject_error: Optional[Error] = None) -> None:  # noqa: PLR0915, C901
-                def request(self: requests.Session, method: str, url: str, name: Optional[str] = None, **kwargs: Dict[str, Any]) -> requests.Response:  # noqa: ARG001, PLR0915, C901, PLR0912
+                def request(self: requests.Session, method: str, url: str, name: Optional[str] = None, **kwargs: dict[str, Any]) -> requests.Response:  # noqa: ARG001, PLR0915, C901, PLR0912
                     response = Response()
                     response.status_code = 200
                     response.url = url
@@ -249,7 +249,7 @@ class TestAzureAadCredential:
 
                         response.headers['x-ms-request-id'] = 'aaaa-bbbb-cccc-dddd'
                     elif method == 'POST' and url.endswith('/GetCredentialType'):
-                        data: Dict[str, Any] = {
+                        data: dict[str, Any] = {
                             'FlowToken': 'xxxxxxxxxxxxxxxxxxx',
                             'apiCanary': 'zzzzzzzzzzzz',
                         }
@@ -755,7 +755,7 @@ class TestAzureAadCredential:
             with pytest.raises(AzureAadFlowError, match='fake error message'):
                 credential.get_oauth_token(resource='asdf', **pkcs)
 
-            data: Dict[str, str] = {}
+            data: dict[str, str] = {}
             if pkcs == {}:
                 data.update({
                     'scope': 'asdf',
@@ -789,7 +789,7 @@ class TestAzureAadCredential:
             assert credential.get_oauth_token(resource='asdf', **pkcs) == SOME(AccessToken, token=access_token.token)
 
             data = {}
-            headers: Dict[str, str] = {}
+            headers: dict[str, str] = {}
             if pkcs == {}:
                 data.update({'scope': 'asdf', 'tenant': 'example.com'})
             else:

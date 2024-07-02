@@ -4,7 +4,7 @@ from __future__ import annotations
 from json import dumps as jsondumps
 from pathlib import Path
 from textwrap import dedent
-from typing import TYPE_CHECKING, Any, Dict, List, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from grizzly.context import GrizzlyContext
 
@@ -489,7 +489,7 @@ def test_e2e_step_task_client_get_endpoint(e2e_fixture: End2EndFixture) -> None:
             sorted(actual_templates) == sorted(['{{ endpoint }}/api/echo?bar=foo', '{{ endpoint_payload }} {{ endpoint_metadata }}'])
         ), f"{actual_templates} != ['{{{{ endpoint }}}}', '{{{{ endpoint_payload }}}} {{{{ endpoint_metadata}}}}']"
 
-    table: List[Dict[str, str]] = [{
+    table: list[dict[str, str]] = [{
         'e2e_fixture.host': e2e_fixture.host,
     }]
 
@@ -611,7 +611,7 @@ def test_e2e_step_task_client_get_endpoint_until(e2e_fixture: End2EndFixture) ->
         assert task._short_name == 'Http'
         assert task.get_templates() == []
 
-    table: List[Dict[str, str]] = [{
+    table: list[dict[str, str]] = [{
         'e2e_fixture.host': e2e_fixture.host,
     }]
 
@@ -635,7 +635,7 @@ def test_e2e_step_task_client_get_endpoint_until(e2e_fixture: End2EndFixture) ->
         ],
     )
 
-    env_conf: Dict[str, Dict[str, Dict[str, str]]] = {
+    env_conf: dict[str, dict[str, dict[str, str]]] = {
         'configuration': {
             'test': {
                 'host': f'http://{e2e_fixture.host}',

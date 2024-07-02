@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from itertools import product
-from typing import TYPE_CHECKING, Any, Dict, List, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from grizzly.context import GrizzlyContext
 from grizzly.types import ResponseTarget
@@ -47,8 +47,8 @@ def test_e2e_step_response_save_matches(e2e_fixture: End2EndFixture) -> None:
             assert handler.match_with == 'foo.*$', f'{handler.match_with} != foo.*$'
             assert handler.expected_matches == '1', f'{handler.expected_matches} != 1'
 
-    table: List[Dict[str, str]] = []
-    scenario: List[str] = []
+    table: list[dict[str, str]] = []
+    scenario: list[str] = []
 
     index = 0
     for target in targets:
@@ -113,8 +113,8 @@ def test_e2e_step_response_save_optional(e2e_fixture: End2EndFixture) -> None:
             assert handler.expected_matches == f'{{{{ expected_matches_{index} }}}}', f'{handler.expected_matches} != 1'
             assert handler.default_value == f'foo_{index}'
 
-    table: List[Dict[str, str]] = []
-    scenario: List[str] = []
+    table: list[dict[str, str]] = []
+    scenario: list[str] = []
 
     index = 0
     for target in targets:
@@ -184,8 +184,8 @@ def test_e2e_step_response_save(e2e_fixture: End2EndFixture) -> None:
             assert handler.expected_matches == f'{{{{ expected_matches_{index} }}}}', f'{handler.expected_matches} != 1'
             assert handler.default_value is None
 
-    table: List[Dict[str, str]] = []
-    scenario: List[str] = []
+    table: list[dict[str, str]] = []
+    scenario: list[str] = []
 
     index = 0
     for target in targets:
@@ -277,8 +277,8 @@ def test_e2e_step_response_validate(e2e_fixture: End2EndFixture) -> None:
             assert handler.match_with == 'foo[bar]?', f'{handler.match_with} != foo[bar]?'
             assert handler.expected_matches == '1', f'{handler.expected_matches} != 1'
 
-    table: List[Dict[str, str]] = []
-    scenario: List[str] = []
+    table: list[dict[str, str]] = []
+    scenario: list[str] = []
 
     for target, condition in parameterize:
         table.append({
@@ -327,8 +327,8 @@ def test_e2e_step_allow_status_codes(e2e_fixture: End2EndFixture) -> None:
 
         assert len(grizzly.scenario.orphan_templates) == 0, 'unexpected number of orphan templates'
 
-    table: List[Dict[str, str]] = []
-    scenario: List[str] = []
+    table: list[dict[str, str]] = []
+    scenario: list[str] = []
 
     for status_code in status_codes:
         table.append({'status_codes': status_code})
@@ -413,8 +413,8 @@ def test_e2e_step_response_content_type(e2e_fixture: End2EndFixture) -> None:
             assert request.name == f'test-get-{index}', f'{request.name} != test-get-{index}'
             assert request.response.content_type == TransformerContentType.from_string(data['content_type'])
 
-    table: List[Dict[str, str]] = []
-    scenario: List[str] = []
+    table: list[dict[str, str]] = []
+    scenario: list[str] = []
 
     for index, content_type in enumerate(content_types):
         table.append({'content_type': content_type})

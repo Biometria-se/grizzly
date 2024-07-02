@@ -8,7 +8,7 @@ import logging
 import os
 from datetime import datetime, timedelta, timezone
 from platform import node as get_hostname
-from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Type, TypedDict, cast
+from typing import TYPE_CHECKING, Any, Literal, Optional, TypedDict, cast
 from urllib.parse import parse_qs, unquote, urlparse
 
 import gevent
@@ -32,9 +32,9 @@ class InfluxDbError(Exception):
 
 class InfluxDbPoint(TypedDict):
     measurement: str
-    tags: Dict[str, Any]
+    tags: dict[str, Any]
     time: str
-    fields: Dict[str, Any]
+    fields: dict[str, Any]
 
 
 class InfluxDb:
@@ -69,7 +69,7 @@ class InfluxDb:
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
+        exc_type: Optional[type[BaseException]],
         exc: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> Literal[True]:
@@ -87,14 +87,14 @@ class InfluxDb:
 
         return True
 
-    def read(self, table: str, columns: List[str]) -> List[Dict[str, Any]]:
+    def read(self, table: str, columns: list[str]) -> list[dict[str, Any]]:
         query = f'select {",".join(columns)} from "{table}";'  # noqa: S608
         logger.debug('query: %s', query)
         result = self.client.query(query)
 
-        return cast(List[Dict[str, Any]], result.raw['series'])
+        return cast(list[dict[str, Any]], result.raw['series'])
 
-    def write(self, values: List[InfluxDbPoint]) -> None:
+    def write(self, values: list[InfluxDbPoint]) -> None:
         try:
             self.client.write_points(values)
             logger.debug('successfully wrote %d points to %s@%s:%d', len(values), self.database, self.host, self.port)
@@ -144,7 +144,7 @@ class InfluxDbListener:
         self.environment = environment
         self._hostname = get_hostname()
         self._username = os.getenv('USER', 'unknown')
-        self._events: List[InfluxDbPoint] = []
+        self._events: list[InfluxDbPoint] = []
         self._finished = False
         self._profile_name = params['ProfileName'][0] if 'ProfileName' in params else ''
         self._description = params['Description'][0] if 'Description' in params else ''
@@ -182,7 +182,7 @@ class InfluxDbListener:
         assert runner is not None, 'no runner is set'
 
         while not self.finished:
-            points: List[Any] = []
+            points: list[Any] = []
             timestamp = datetime.now(timezone.utc).isoformat()
 
             for user_class_name, user_count in runner.user_classes_count.items():
@@ -229,7 +229,7 @@ class InfluxDbListener:
         request_type: str,
         name: str,
         result: str,
-        metrics: Dict[str, Any],
+        metrics: dict[str, Any],
         exception: Optional[Any] = None,
     ) -> None:
         if exception is not None:
@@ -320,8 +320,8 @@ class InfluxDbListener:
         except Exception:
             self.logger.exception('failed to write metric for "%s %s"', request_type, name)
 
-    def _create_metrics(self, response_time: int, response_length: int) -> Dict[str, Any]:
-        metrics: Dict[str, Any] = {}
+    def _create_metrics(self, response_time: int, response_length: int) -> dict[str, Any]:
+        metrics: dict[str, Any] = {}
 
         metrics['response_time'] = response_time
         metrics['response_length'] = response_length if response_length >= 0 else None
@@ -369,7 +369,7 @@ class InfluxDbListener:
 
         timestamp = datetime.now(timezone.utc)
 
-        metrics: Dict[str, float] = {
+        metrics: dict[str, float] = {
             'cpu': cpu_usage,
             'memory': memory_usage,
         }

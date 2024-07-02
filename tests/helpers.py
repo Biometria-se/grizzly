@@ -11,8 +11,9 @@ from abc import ABCMeta
 from contextlib import suppress
 from copy import deepcopy
 from pathlib import Path
+from re import Pattern
 from types import MethodType, TracebackType
-from typing import Any, Callable, Dict, Generator, List, Optional, Pattern, Set, Tuple, Type, Union
+from typing import TYPE_CHECKING, Any, Callable, Optional, Union
 from unittest.mock import MagicMock
 
 from geventhttpclient.response import HTTPSocketPoolResponse
@@ -27,6 +28,9 @@ from grizzly.types import GrizzlyResponse, RequestMethod
 from grizzly.types.locust import Environment, Message
 from grizzly.users import GrizzlyUser
 
+if TYPE_CHECKING:
+    from collections.abc import Generator
+
 
 class AtomicCustomVariable(AtomicVariable[str]):
     pass
@@ -35,7 +39,7 @@ class AtomicCustomVariable(AtomicVariable[str]):
 message_callback_not_a_method = True
 
 
-def ANY(*cls: Type, message: Optional[str] = None) -> object:  # noqa: N802
+def ANY(*cls: type, message: Optional[str] = None) -> object:  # noqa: N802
     """Compare equal to everything, as long as it is of the same type."""
     class WrappedAny(metaclass=ABCMeta):  # noqa: B024
         def __eq__(self, other: object) -> bool:
@@ -52,7 +56,7 @@ def ANY(*cls: Type, message: Optional[str] = None) -> object:  # noqa: N802
 
         def __repr__(self) -> str:
             c = cls[0] if len(cls) == 1 else cls
-            representation: List[str] = [f'<ANY({c})', '>']
+            representation: list[str] = [f'<ANY({c})', '>']
 
             if message is not None:
                 representation.insert(-1, f", message='{message}'")
@@ -64,7 +68,7 @@ def ANY(*cls: Type, message: Optional[str] = None) -> object:  # noqa: N802
 
     return WrappedAny()
 
-def SOME(cls: Type, **values: Any) -> object:  # noqa: N802
+def SOME(cls: type, **values: Any) -> object:  # noqa: N802
     class WrappedSome:
         def __eq__(self, other: object) -> bool:
             if issubclass(cls, dict):
@@ -83,7 +87,7 @@ def SOME(cls: Type, **values: Any) -> object:  # noqa: N802
             return f'<SOME({cls}, {info})>'
 
     if len(values) < 1:
-        raise AttributeError(name='values', obj=str(Type))
+        raise AttributeError(name='values', obj=str(type))
     return WrappedSome()
 
 
@@ -183,9 +187,9 @@ class TestTask(GrizzlyTask):
 class TestExceptionTask(GrizzlyTask):
     __test__ = False
 
-    error_type: Type[Exception]
+    error_type: type[Exception]
 
-    def __init__(self, error_type: Type[Exception]) -> None:
+    def __init__(self, error_type: type[Exception]) -> None:
         self.error_type = error_type
 
     def __call__(self) -> grizzlytask:
@@ -196,7 +200,7 @@ class TestExceptionTask(GrizzlyTask):
         return task
 
 
-def check_arguments(kwargs: Dict[str, Any]) -> Tuple[bool, List[str]]:
+def check_arguments(kwargs: dict[str, Any]) -> tuple[bool, list[str]]:
     expected = ['request_type', 'name', 'response_time', 'response_length', 'context', 'exception']
     actual = list(kwargs.keys())
     expected.sort()
@@ -207,7 +211,7 @@ def check_arguments(kwargs: Dict[str, Any]) -> Tuple[bool, List[str]]:
     return actual == expected, diff
 
 
-def get_property_decorated_attributes(target: Any) -> Set[str]:
+def get_property_decorated_attributes(target: Any) -> set[str]:
     return {
         name
             for name, _ in inspect.getmembers(
@@ -222,8 +226,8 @@ def get_property_decorated_attributes(target: Any) -> Set[str]:
     }
 
 
-def run_command(command: List[str], env: Optional[Dict[str, str]] = None, cwd: Optional[str] = None) -> Tuple[int, List[str]]:
-    output: List[str] = []
+def run_command(command: list[str], env: Optional[dict[str, str]] = None, cwd: Optional[str] = None) -> tuple[int, list[str]]:
+    output: list[str] = []
     if env is None:
         env = os.environ.copy()
 
@@ -290,7 +294,7 @@ tee = '├── '
 last = '└── '
 
 
-def tree(dir_path: Path, prefix: str = '', ignore: Optional[List[str]] = None) -> Generator[str, None, None]:
+def tree(dir_path: Path, prefix: str = '', ignore: Optional[list[str]] = None) -> Generator[str, None, None]:
     """Recursive generator.
 
     Given a directory Path object will yield a visual tree structure line by line
@@ -332,7 +336,7 @@ class regex:
         return self._regex.pattern
 
 
-def create_mocked_fast_response_context_manager(*, content: str, headers: Optional[Dict[str, str]] = None, status_code: int = 200) -> FastResponseContextManager:
+def create_mocked_fast_response_context_manager(*, content: str, headers: Optional[dict[str, str]] = None, status_code: int = 200) -> FastResponseContextManager:
     ghc_response = MagicMock(spec=HTTPSocketPoolResponse)
     ghc_response.get_code.return_value = status_code
     ghc_response._headers_index = headers or {}

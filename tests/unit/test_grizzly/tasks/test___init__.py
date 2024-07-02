@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from contextlib import suppress
 from os import environ
-from typing import TYPE_CHECKING, Any, Dict, List, Tuple
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -29,10 +29,10 @@ if TYPE_CHECKING:  # pragma: no cover
 @template('string_template', 'list_template', 'dict_template')
 class DummyTask(GrizzlyTask):
     string_template: str
-    list_template: List[str]
-    dict_template: Dict[str, str]
+    list_template: list[str]
+    dict_template: dict[str, str]
 
-    def __init__(self, *args: Tuple[Any, ...], **kwargs: Dict[str, Any]) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.string_template = '{{ string_template }}'
         self.list_template = ['{{ list_template_1 }}', '{{ list_template_2 }}', '{{ list_template_3 }}']

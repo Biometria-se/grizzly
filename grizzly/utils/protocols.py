@@ -8,7 +8,7 @@ import re
 from datetime import datetime, timezone
 from http.cookiejar import Cookie
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, List, Optional, Protocol, Tuple, cast
+from typing import TYPE_CHECKING, Optional, Protocol, cast
 from urllib.parse import urlparse
 
 from dateutil.parser import ParserError
@@ -31,7 +31,7 @@ class HttpCookieHolder(Protocol):
     cookiejar: CookieJar
 
 
-def http_populate_cookiejar(holder: HttpCookieHolder, cookies: Dict[str, str], *, url: str) -> None:
+def http_populate_cookiejar(holder: HttpCookieHolder, cookies: dict[str, str], *, url: str) -> None:
     parsed = urlparse(url)
     secure = parsed.scheme == 'https'
     domain = parsed.netloc
@@ -99,8 +99,8 @@ def mq_client_logs(context: Context) -> None:
 
     started = cast(datetime, context.started).astimezone(tz=timezone.utc)
 
-    amqerr_log_entries: List[Tuple[datetime, str]] = []
-    amqerr_fdc_files: List[Tuple[datetime, str]] = []
+    amqerr_log_entries: list[tuple[datetime, str]] = []
+    amqerr_fdc_files: list[tuple[datetime, str]] = []
 
     log_directory = Path('~/IBM/MQ/data/errors').expanduser()
 

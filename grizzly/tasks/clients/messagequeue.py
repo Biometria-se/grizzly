@@ -76,7 +76,7 @@ from contextlib import contextmanager
 from json import dumps as jsondumps
 from pathlib import Path
 from platform import node as hostname
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, Generator, List, Optional, Set, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
 from urllib.parse import parse_qs, unquote, urlparse
 
 import zmq.green as zmq
@@ -96,16 +96,18 @@ except:
     from grizzly_extras import dummy_pymqi as pymqi
 
 if TYPE_CHECKING:  # pragma: no cover
+    from collections.abc import Generator
+
     from grizzly.scenarios import GrizzlyScenario
 
 
 @client('mq', 'mqs')
 class MessageQueueClientTask(ClientTask):
-    __dependencies__: ClassVar[Set[str]] = {'async-messaged'}
+    __dependencies__: ClassVar[set[str]] = {'async-messaged'}
 
     _zmq_url = 'tcp://127.0.0.1:5554'
     _zmq_context: zmq.Context
-    _worker: Dict[int, str]
+    _worker: dict[int, str]
 
     endpoint_path: str
     context: AsyncMessageContext
@@ -254,7 +256,7 @@ class MessageQueueClientTask(ClientTask):
             if client is not None:
                 zmq_disconnect(client, destroy_context=False)
 
-    def connect(self, client_id: int, client: zmq.Socket, meta: Dict[str, Any]) -> None:
+    def connect(self, client_id: int, client: zmq.Socket, meta: dict[str, Any]) -> None:
         request: AsyncMessageRequest = {
             'action': RequestType.CONNECT(),
             'client': client_id,
@@ -319,7 +321,7 @@ class MessageQueueClientTask(ClientTask):
                 return response
 
     def get(self, parent: GrizzlyScenario) -> GrizzlyResponse:
-        endpoint: List[str] = [self.endpoint_path]
+        endpoint: list[str] = [self.endpoint_path]
         if self.max_message_size is not None:
             endpoint.append(f'max_message_size:{self.max_message_size}')
 

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, Any, Tuple, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 from azure.iot.device import IoTHubDeviceClient
@@ -26,7 +26,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 CONNECTION_STRING = 'HostName=some.hostname.nu;DeviceId=my_device;SharedAccessKey=xxxyyyzzz='
 
-IoTHubScenarioFixture = Tuple[IotHubUser, GrizzlyContextScenario, Environment]
+IoTHubScenarioFixture = tuple[IotHubUser, GrizzlyContextScenario, Environment]
 
 
 class MockedIotHubDeviceClient(IoTHubDeviceClient):

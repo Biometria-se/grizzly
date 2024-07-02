@@ -98,7 +98,7 @@ from json import dumps as jsondumps
 from pathlib import Path
 from platform import node as hostname
 from textwrap import dedent
-from typing import TYPE_CHECKING, ClassVar, Dict, Optional, Set, cast
+from typing import TYPE_CHECKING, ClassVar, Optional, cast
 from urllib.parse import parse_qs, quote_plus, unquote_plus, urlparse
 
 import zmq.green as zmq
@@ -144,12 +144,12 @@ class State:
 @template('context')
 @client('sb')
 class ServiceBusClientTask(ClientTask):
-    __dependencies__: ClassVar[Set[str]] = {'async-messaged'}
+    __dependencies__: ClassVar[set[str]] = {'async-messaged'}
 
     _zmq_url = 'tcp://127.0.0.1:5554'
     _zmq_context: zmq.Context
 
-    _state: Dict[GrizzlyScenario, State]
+    _state: dict[GrizzlyScenario, State]
     context: AsyncMessageContext
 
     def __init__(  # noqa: PLR0915

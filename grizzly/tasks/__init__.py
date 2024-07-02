@@ -54,7 +54,7 @@ from abc import ABC, ABCMeta, abstractmethod
 from inspect import getmro
 from os import environ
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, List, Optional, Set, Type, Union, cast, overload
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Optional, Union, cast, overload
 
 from grizzly.context import GrizzlyContext
 from grizzly.utils import has_template
@@ -136,7 +136,7 @@ class grizzlytask:
 
 
 class GrizzlyTask(ABC):
-    __template_attributes__: ClassVar[Set[str]] = set()
+    __template_attributes__: ClassVar[set[str]] = set()
 
     _context_root: str
 
@@ -162,8 +162,8 @@ class GrizzlyTask(ABC):
 
         return value
 
-    def _get_value_templates(self, value: Any) -> Set[str]:
-        templates: Set[str] = set()
+    def _get_value_templates(self, value: Any) -> set[str]:
+        templates: set[str] = set()
 
         if isinstance(value, str):
             value = self._get_template_value_str(value)
@@ -187,8 +187,8 @@ class GrizzlyTask(ABC):
 
         return templates
 
-    def get_templates(self) -> List[str]:
-        templates: Set[str] = set()
+    def get_templates(self) -> list[str]:
+        templates: set[str] = set()
         for attribute in self.__template_attributes__:
             value = getattr(self, attribute, None)
             if value is None:
@@ -224,20 +224,20 @@ class GrizzlyTaskWrapper(GrizzlyTask, metaclass=ABCMeta):
         raise NotImplementedError(message)  # pragma: no cover
 
     @abstractmethod
-    def peek(self) -> List[GrizzlyTask]:
+    def peek(self) -> list[GrizzlyTask]:
         message = f'{self.__class__.__name__} has not implemented peek'
         raise NotImplementedError(message)  # pragma: no cover
 
 
 class template:
-    attributes: List[str]
+    attributes: list[str]
 
     def __init__(self, attribute: str, *additional_attributes: str) -> None:
         self.attributes = [attribute]
         if len(additional_attributes) > 0:
             self.attributes += list(additional_attributes)
 
-    def __call__(self, cls: Type[GrizzlyTask]) -> Type[GrizzlyTask]:
+    def __call__(self, cls: type[GrizzlyTask]) -> type[GrizzlyTask]:
         # this class should have it's own instance of this set, not shared with all
         # other tasks that inherits GrizzlyTask
         if len(cls.__template_attributes__) < 1:

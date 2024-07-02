@@ -9,7 +9,7 @@ from os import environ
 from pathlib import Path
 from textwrap import indent
 from time import perf_counter as time
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Optional, cast
 
 import setproctitle as proc
 from behave.reporter.summary import SummaryReporter
@@ -78,7 +78,7 @@ def after_feature_master(return_code: int, status: Optional[Status], context: Co
     if status is None:
         status = Status.failed
 
-    for behave_scenario in cast(List[Scenario], feature.scenarios):
+    for behave_scenario in cast(list[Scenario], feature.scenarios):
         grizzly_scenario = grizzly.scenarios.find_by_description(behave_scenario.name)
         if grizzly_scenario is None:
             continue
@@ -149,7 +149,7 @@ def after_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: An
     if has_exceptions:
         buffer: list[str] = []
 
-        for scenario_name, exceptions in cast(Dict[Optional[str], List[AssertionError]], context.exceptions).items():
+        for scenario_name, exceptions in cast(dict[Optional[str], list[AssertionError]], context.exceptions).items():
             if scenario_name is not None:
                 buffer.append(f'Scenario: {scenario_name}')
             else:
@@ -223,7 +223,7 @@ def after_scenario(context: Context, *_args: Any, **_kwargs: Any) -> None:
 
     assert grizzly.scenario.tasks.tmp.conditional is None, f'conditional "{grizzly.scenario.tasks.tmp.conditional.name}" has not been closed'
 
-    for scenario_name, exceptions in cast(Dict[Optional[str], List[StepError]], context.exceptions).items():
+    for scenario_name, exceptions in cast(dict[Optional[str], list[StepError]], context.exceptions).items():
         if scenario_name != context.scenario.name:
             continue
 

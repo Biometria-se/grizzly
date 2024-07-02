@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 from hashlib import sha256
 from time import time
-from typing import TYPE_CHECKING, Any, Callable, Dict, cast
+from typing import TYPE_CHECKING, Any, Callable, cast
 
 import gevent
 import pytest
@@ -317,7 +317,7 @@ class TestRestApiUser:
 
         assert parent.user.request(request) == ({'x-bar': 'foo'}, '{"foo": "bar"}')
 
-        expected_parameters: Dict[str, Any] = {
+        expected_parameters: dict[str, Any] = {
             'headers': request.metadata,
         }
 

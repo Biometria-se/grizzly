@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 from json import dumps as jsondumps
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -614,7 +614,7 @@ class TestServiceBusClientTask:
         state = task.get_state(parent)
         state.client = client_mock
         action_mock = mocker.MagicMock()
-        meta_mock: Dict[str, Any] = {}
+        meta_mock: dict[str, Any] = {}
         action_mock.__enter__.return_value = meta_mock
         context_mock = mocker.patch.object(task, 'action', return_value=action_mock)
 

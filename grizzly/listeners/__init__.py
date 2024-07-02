@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 from os import environ
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, cast
+from typing import TYPE_CHECKING, Any, Callable, Optional, cast
 from urllib.parse import urlparse
 
 import gevent
@@ -135,7 +135,7 @@ def spawning_complete(grizzly: GrizzlyContext) -> Callable[..., None]:
     return gspawning_complete
 
 
-def worker_report(client_id: str, data: Dict[str, Any]) -> None:  # noqa: ARG001
+def worker_report(client_id: str, data: dict[str, Any]) -> None:  # noqa: ARG001
     logger.info('received worker_report from %s', client_id)
 
 
@@ -182,7 +182,7 @@ def grizzly_worker_quit(environment: Environment, msg: Message, **_kwargs: Any) 
 def validate_result(grizzly: GrizzlyContext) -> Callable[Concatenate[Environment, P], None]:
     def gvalidate_result(environment: Environment, **_kwargs: P.kwargs) -> None:
         # first, aggregate statistics per scenario
-        scenario_stats: Dict[str, RequestStats] = {}
+        scenario_stats: dict[str, RequestStats] = {}
 
         for scenario in grizzly.scenarios():
             request_stats = RequestStats()
