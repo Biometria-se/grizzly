@@ -5,12 +5,12 @@ Logic to support grizzly arguments, which are passed in text strings.
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Any, Optional, cast
 
 from .text import has_sequence
 
 
-def split_value(value: str, separator: str = '|') -> Tuple[str, str]:
+def split_value(value: str, separator: str = '|') -> tuple[str, str]:
     operators = ["=", "|"]
 
     try:
@@ -29,10 +29,10 @@ def split_value(value: str, separator: str = '|') -> Tuple[str, str]:
     except ValueError:
         values = value.split(separator, 1)
 
-    return cast(Tuple[str, str], tuple([v.strip() for v in values]))
+    return cast(tuple[str, str], tuple([v.strip() for v in values]))
 
 
-def get_unsupported_arguments(valid_arguments: List[str], arguments: Dict[str, Any]) -> List[str]:
+def get_unsupported_arguments(valid_arguments: list[str], arguments: dict[str, Any]) -> list[str]:
     return [argument for argument in arguments if argument not in valid_arguments]
 
 
@@ -43,12 +43,12 @@ def unquote(argument: str) -> str:
     return argument
 
 
-def parse_arguments(arguments: str, separator: str = '=', *, unquote: bool = True) -> Dict[str, Any]:  # noqa: C901, PLR0912, PLR0915
+def parse_arguments(arguments: str, separator: str = '=', *, unquote: bool = True) -> dict[str, Any]:  # noqa: C901, PLR0912, PLR0915
     if separator not in arguments or (arguments.count(separator) > 1 and (arguments.count('"') < 2 and arguments.count("'") < 2) and ', ' not in arguments):
         message = f'incorrect format in arguments: "{arguments}"'
         raise ValueError(message)
 
-    parsed: Dict[str, Any] = {}
+    parsed: dict[str, Any] = {}
     previous_part: Optional[str] = None
     argument_parts = arguments.split(',')
 

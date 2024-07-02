@@ -73,7 +73,7 @@ class TestServiceBusUser:
 
         assert issubclass(test_cls, ServiceBusUser)
 
-        zmq_client_disconnect_spy = mocker.patch('grizzly.users.servicebus.zmq.Socket.disconnect', return_value=None)
+        zmq_client_disconnect_spy = mocker.patch('grizzly.users.servicebus.zmq_disconnect', return_value=None)
         disconnect_spy = mocker.patch('grizzly.users.servicebus.ServiceBusUser.disconnect', return_value=None)
         mocker.patch('grizzly.users.servicebus.ServiceBusUser.say_hello', return_value=None)
 
@@ -85,7 +85,7 @@ class TestServiceBusUser:
 
         user.on_stop()
 
-        zmq_client_disconnect_spy.assert_called_once_with(ServiceBusUser.zmq_url)
+        zmq_client_disconnect_spy.assert_called_once_with(user.zmq_client, destroy_context=False)
         assert user.zmq_client.type == zmq.REQ
         assert disconnect_spy.call_count == 0
 

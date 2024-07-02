@@ -38,7 +38,7 @@ from contextlib import suppress
 from os import environ
 from pathlib import Path
 from secrets import randbelow
-from typing import Any, ClassVar, Dict, List, Optional, Type, cast
+from typing import Any, ClassVar, Optional, cast
 
 from grizzly.types import bool_type
 from grizzly_extras.arguments import parse_arguments, split_value
@@ -83,10 +83,10 @@ class AtomicDirectoryContents(AtomicVariable[str]):
     __base_type__ = atomicdirectorycontents__base_type__
     __initialized: bool = False
 
-    _files: Dict[str, List[str]]
-    _settings: Dict[str, Dict[str, Any]]
+    _files: dict[str, list[str]]
+    _settings: dict[str, dict[str, Any]]
     _requests_context_root: Path
-    arguments: ClassVar[Dict[str, Any]] = {'repeat': bool_type, 'random': bool_type}
+    arguments: ClassVar[dict[str, Any]] = {'repeat': bool_type, 'random': bool_type}
 
     def __init__(
         self,
@@ -128,7 +128,7 @@ class AtomicDirectoryContents(AtomicVariable[str]):
             self.__initialized = True
 
     @classmethod
-    def clear(cls: Type[AtomicDirectoryContents]) -> None:
+    def clear(cls: type[AtomicDirectoryContents]) -> None:
         super().clear()
 
         instance = cast(AtomicDirectoryContents, cls.get())
@@ -138,7 +138,7 @@ class AtomicDirectoryContents(AtomicVariable[str]):
             del instance._files[variable]
             del instance._settings[variable]
 
-    def _create_file_queue(self, directory: str) -> List[str]:
+    def _create_file_queue(self, directory: str) -> list[str]:
         parent_part = len(str(self._requests_context_root)) + 1
         queue = [
             str(path)[parent_part:]

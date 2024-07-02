@@ -29,7 +29,7 @@ then have the request type `TRNSF`.
 from __future__ import annotations
 
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, Callable, List, Type
+from typing import TYPE_CHECKING, Any, Callable
 
 from grizzly_extras.transformer import Transformer, TransformerContentType, TransformerError, transformer
 
@@ -46,8 +46,8 @@ class TransformerTask(GrizzlyTask):
     content: str
     content_type: TransformerContentType
 
-    _transformer: Type[Transformer]
-    _parser: Callable[[Any], List[str]]
+    _transformer: type[Transformer]
+    _parser: Callable[[Any], list[str]]
 
     def __init__(
         self,

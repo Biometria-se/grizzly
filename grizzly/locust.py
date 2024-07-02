@@ -13,7 +13,7 @@ from operator import attrgetter, itemgetter
 from os import environ
 from signal import SIGINT, SIGTERM, Signals
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, Callable, Dict, Generator, Iterator, List, NoReturn, Optional, Set, SupportsIndex, Tuple, Type, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Callable, NoReturn, Optional, SupportsIndex, TypeVar, cast
 
 import gevent
 from locust import events
@@ -26,7 +26,7 @@ from roundrobin import smooth
 
 from . import __locust_version__, __version__
 from .context import GrizzlyContext
-from .listeners import init, init_statistics_listener, locust_test_start, locust_test_stop, quitting, spawning_complete, validate_result
+from .listeners import init, init_statistics_listener, locust_test_start, locust_test_stop, quitting, spawning_complete, validate_result, worker_report
 from .testdata.utils import initialize_testdata
 from .types import RequestType, TestdataType
 from .types.behave import Context, Status
@@ -41,6 +41,8 @@ __all__ = [
 
 
 if TYPE_CHECKING:
+    from collections.abc import Generator, Iterator
+
     from locust.runners import WorkerNode
 
 
@@ -55,7 +57,7 @@ stats_logger = logging.getLogger('locust.stats_logger')
 T = TypeVar('T')
 
 
-class LengthOptimizedList(List[T]):
+class LengthOptimizedlist(list[T]):
     """Simple implementation of a list that keeps track of its length for speed optimizations."""
 
     __optimized_length__: int
@@ -120,7 +122,7 @@ class FixedUsersDispatcher(UsersDispatcher):
 
         self._user_count_per_dispatch_iteration: int
 
-        self._active_users: LengthOptimizedList[tuple[WorkerNode, str]] = LengthOptimizedList()
+        self._active_users: LengthOptimizedlist[tuple[WorkerNode, str]] = LengthOptimizedlist()
 
         self._spawn_rate: float
 
@@ -272,7 +274,7 @@ class FixedUsersDispatcher(UsersDispatcher):
         # this dispatcher does not care about target_user_count
         assert target_user_count == -1
 
-        grizzly_user_classes = cast(Optional[List[Type[GrizzlyUser]]], user_classes)
+        grizzly_user_classes = cast(Optional[list[type[GrizzlyUser]]], user_classes)
 
         if grizzly_user_classes is not None and self._user_classes != sorted(grizzly_user_classes, key=attrgetter('__name__')):
             self._user_classes = sorted(grizzly_user_classes, key=attrgetter('__name__'))
@@ -280,11 +282,11 @@ class FixedUsersDispatcher(UsersDispatcher):
             # map original user classes (supplied when users dispatcher was created), with additional new ones (might be duplicates)
             self._users_to_sticky_tag = {
                 user_class.__name__: user_class.sticky_tag or '__orphan__'
-                for user_class in cast(List[Type[GrizzlyUser]], self._original_user_classes + grizzly_user_classes)
+                for user_class in cast(list[type[GrizzlyUser]], self._original_user_classes + grizzly_user_classes)
             }
 
             self._user_class_name_to_type = {
-                user_class.__name__: user_class for user_class in cast(List[Type[GrizzlyUser]], self._original_user_classes + grizzly_user_classes)
+                user_class.__name__: user_class for user_class in cast(list[type[GrizzlyUser]], self._original_user_classes + grizzly_user_classes)
             }
 
             # only merge target user count for classes that has been specified in user classes
@@ -564,7 +566,7 @@ class FixedUsersDispatcher(UsersDispatcher):
 
     def _grizzly_distribute_users(
         self, target_user_count: dict[str, int],
-    ) -> tuple[dict[str, dict[str, int]], Generator[str | None, None, None], LengthOptimizedList[tuple[WorkerNode, str]]]:
+    ) -> tuple[dict[str, dict[str, int]], Generator[str | None, None, None], LengthOptimizedlist[tuple[WorkerNode, str]]]:
         """Distribute users on available workers, and continue user cycle from there."""
         # used target as setup based on user class values, without changing the original value
 
@@ -580,7 +582,7 @@ class FixedUsersDispatcher(UsersDispatcher):
             for worker_node in self._worker_nodes
         }
 
-        active_users: LengthOptimizedList[tuple[WorkerNode, str]] = LengthOptimizedList()
+        active_users: LengthOptimizedlist[tuple[WorkerNode, str]] = LengthOptimizedlist()
 
         user_count_target = sum(target_user_count.values())
         current_user_count: dict[str, int] = {}
@@ -645,15 +647,15 @@ def on_local(context: Context) -> bool:
     return value
 
 
-def setup_locust_scenarios(grizzly: GrizzlyContext) -> Tuple[List[Type[GrizzlyUser]], Set[str]]:
-    user_classes: List[Type[GrizzlyUser]] = []
+def setup_locust_scenarios(grizzly: GrizzlyContext) -> tuple[list[type[GrizzlyUser]], set[str]]:
+    user_classes: list[type[GrizzlyUser]] = []
 
     scenarios = grizzly.scenarios()
 
     assert len(scenarios) > 0, 'no scenarios in feature'
 
-    external_dependencies: Set[str] = set()
-    distribution: Dict[str, int] = {}
+    external_dependencies: set[str] = set()
+    distribution: dict[str, int] = {}
 
     if grizzly.setup.dispatcher_class in [UsersDispatcher, None]:
         user_count = grizzly.setup.user_count or 0
@@ -767,6 +769,7 @@ def setup_environment_listeners(context: Context, *, testdata: Optional[Testdata
             environment.events.quitting.add_listener(validate_result(grizzly))
 
         environment.events.quitting.add_listener(quitting)
+        environment.events.worker_report.add_listener(worker_report)
 
     environment.events.init.add_listener(init(grizzly, testdata))
     environment.events.test_start.add_listener(locust_test_start(grizzly))
@@ -782,7 +785,7 @@ def setup_environment_listeners(context: Context, *, testdata: Optional[Testdata
 
 def print_scenario_summary(grizzly: GrizzlyContext) -> None:
     def create_separator(max_length_iterations: int, max_length_status: int, max_length_description: int) -> str:
-        separator: List[str] = []
+        separator: list[str] = []
         separator.append('-' * 5)
         separator.append('-|-')
         separator.append('-' * max_length_iterations)
@@ -794,7 +797,7 @@ def print_scenario_summary(grizzly: GrizzlyContext) -> None:
 
         return ''.join(separator)
 
-    rows: List[str] = []
+    rows: list[str] = []
     max_length_description = len('description')
     max_length_iterations = len('iter')
     max_length_status = len('status')
@@ -851,7 +854,7 @@ def grizzly_test_abort(*_args: Any, **_kwargs: Any) -> None:
     if not abort_test:
         abort_test = True
 
-def shutdown_external_processes(processes: Dict[str, subprocess.Popen], greenlet: Optional[gevent.Greenlet]) -> None:
+def shutdown_external_processes(processes: dict[str, subprocess.Popen], greenlet: Optional[gevent.Greenlet]) -> None:
     if len(processes) < 1:
         return
 
@@ -915,7 +918,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
 
     watch_running_external_processes_greenlet: Optional[gevent.Greenlet] = None
 
-    external_processes: Dict[str, subprocess.Popen] = {}
+    external_processes: dict[str, subprocess.Popen] = {}
 
     user_classes, variable_dependencies = setup_locust_scenarios(grizzly)
     external_dependencies.update(variable_dependencies)
@@ -929,7 +932,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
             grizzly.setup.dispatcher_class = UsersDispatcher
 
         environment = Environment(
-            user_classes=cast(List[Type[User]], user_classes),
+            user_classes=cast(list[type[User]], user_classes),
             shape_class=None,
             events=events,
             stop_timeout=300,  # only wait at most?
@@ -960,6 +963,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
                 # increase heartbeat timeout towards master
                 from locust import runners
                 runners.MASTER_HEARTBEAT_TIMEOUT = runners.MASTER_HEARTBEAT_TIMEOUT * 3
+                runners.WORKER_LOG_REPORT_INTERVAL = -1
             except OSError:
                 logger.exception('failed to connect to locust master at %s:%d', host, port)
                 return 1
@@ -972,6 +976,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
 
         if environ.get('GRIZZLY_DRY_RUN', 'false').lower() == 'true':
             if isinstance(runner, MasterRunner):
+                logger.info('dry-run starting locust-%s via grizzly-%s', __locust_version__, __version__)
                 runner.send_message('grizzly_worker_quit', None)
 
             if not isinstance(runner, WorkerRunner):
@@ -985,7 +990,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
             if grizzly.state.verbose:
                 env['GRIZZLY_EXTRAS_LOGLEVEL'] = 'DEBUG'
 
-            parameters: Dict[str, Any] = {}
+            parameters: dict[str, Any] = {}
             if sys.platform == 'win32':
                 parameters.update({'creationflags': subprocess.CREATE_NEW_PROCESS_GROUP})
             else:
@@ -1006,7 +1011,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
                     **parameters,
                 )})
 
-            def start_watching_external_processes(processes: Dict[str, subprocess.Popen]) -> Callable[[], None]:
+            def start_watching_external_processes(processes: dict[str, subprocess.Popen]) -> Callable[[], None]:
                 logger.info('making sure external processes are alive every 10 seconds')
 
                 def watch_running_external_processes() -> None:
@@ -1052,8 +1057,8 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
             headless: bool
             num_users: int
             spawn_rate: float
-            tags: List[str]
-            exclude_tags: List[str]
+            tags: list[str]
+            exclude_tags: list[str]
             enable_rebalancing: bool
 
         environment.parsed_options = LocustOption(
@@ -1226,7 +1231,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
         shutdown_external_processes(external_processes, watch_running_external_processes_greenlet)
 
 
-def _grizzly_sort_stats(stats: lstats.RequestStats) -> List[Tuple[str, str, int]]:
+def _grizzly_sort_stats(stats: lstats.RequestStats) -> list[tuple[str, str, int]]:
     locust_keys: list[tuple[str, str | None]] = sorted(stats.entries.keys())
 
     previous_ident: str | None = None

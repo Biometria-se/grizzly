@@ -98,14 +98,14 @@ from json import dumps as jsondumps
 from pathlib import Path
 from platform import node as hostname
 from textwrap import dedent
-from typing import TYPE_CHECKING, ClassVar, Dict, Optional, Set, cast
+from typing import TYPE_CHECKING, ClassVar, Optional, cast
 from urllib.parse import parse_qs, quote_plus, unquote_plus, urlparse
 
 import zmq.green as zmq
 
 from grizzly.tasks import template
 from grizzly.types import GrizzlyResponse, RequestDirection, RequestType
-from grizzly.utils import async_message_request_wrapper
+from grizzly.utils.protocols import async_message_request_wrapper, zmq_disconnect
 from grizzly_extras.arguments import parse_arguments
 from grizzly_extras.transformer import TransformerContentType
 
@@ -144,12 +144,12 @@ class State:
 @template('context')
 @client('sb')
 class ServiceBusClientTask(ClientTask):
-    __dependencies__: ClassVar[Set[str]] = {'async-messaged'}
+    __dependencies__: ClassVar[set[str]] = {'async-messaged'}
 
     _zmq_url = 'tcp://127.0.0.1:5554'
     _zmq_context: zmq.Context
 
-    _state: Dict[GrizzlyScenario, State]
+    _state: dict[GrizzlyScenario, State]
     context: AsyncMessageContext
 
     def __init__(  # noqa: PLR0915
@@ -293,11 +293,16 @@ class ServiceBusClientTask(ClientTask):
                 endpoint_arguments['subscription'] = f'{quote}{subscription}{identifier}{quote}'
                 context['endpoint'] = ', '.join([f'{key}:{value}' for key, value in endpoint_arguments.items()])
 
+            # context might have been destroyed as all existing sockets has been closed
+            if self._zmq_context.closed:
+                self._zmq_context = zmq.Context()
+
             state = State(
                 parent=parent,
                 client=cast(zmq.Socket, self._zmq_context.socket(zmq.REQ)),
                 context=context,
             )
+            state.client.setsockopt(zmq.LINGER, 0)
             state.client.connect(self._zmq_url)
             self._state.update({parent: state})
 
@@ -339,8 +344,7 @@ class ServiceBusClientTask(ClientTask):
 
         async_message_request_wrapper(parent, state.client, request)
 
-        state.client.setsockopt(zmq.LINGER, 0)
-        state.client.close()
+        zmq_disconnect(state.client, destroy_context=False)
 
         del self._state[parent]
 

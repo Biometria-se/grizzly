@@ -10,11 +10,11 @@ from os import environ
 from pathlib import Path
 from platform import node as hostname
 from time import monotonic as time
-from typing import Any, Callable, Dict, List, Optional, TypedDict, final
+from typing import Any, Callable, Optional, TypedDict, final
 
 from grizzly_extras.transformer import JsonBytesEncoder
 
-__all__: List[str] = []
+__all__: list[str] = []
 
 def _get_log_dir() -> Path:
     grizzly_context_root = environ.get('GRIZZLY_CONTEXT_ROOT', None)
@@ -32,7 +32,7 @@ def _get_log_dir() -> Path:
     return log_dir_root
 
 def configure_logging() -> None:
-    handlers: List[logging.Handler] = [logging.StreamHandler(sys.stderr)]
+    handlers: list[logging.Handler] = [logging.StreamHandler(sys.stderr)]
 
     try:
         log_file = _get_log_dir() / f'async-messaged.{hostname()}.{datetime.now().strftime("%Y%m%dT%H%M%S%f")}.log'
@@ -56,7 +56,7 @@ def configure_logging() -> None:
 configure_logging()
 
 
-AsyncMessageMetadata = Optional[Dict[str, Any]]
+AsyncMessageMetadata = Optional[dict[str, Any]]
 AsyncMessagePayload = Optional[Any]
 
 
@@ -76,7 +76,7 @@ class AsyncMessageContext(TypedDict, total=False):
     content_type: Optional[str]
     heartbeat_interval: Optional[int]
     header_type: Optional[str]
-    metadata: Optional[Dict[str, str]]
+    metadata: Optional[dict[str, str]]
     consume: bool
 
 
@@ -177,7 +177,7 @@ LRU_READY = '\x01'
 SPLITTER_FRAME = b''
 
 
-def register(handlers: Dict[str, AsyncMessageRequestHandler], action: str, *actions: str) -> Callable[[InferredAsyncMessageRequestHandler], InferredAsyncMessageRequestHandler]:
+def register(handlers: dict[str, AsyncMessageRequestHandler], action: str, *actions: str) -> Callable[[InferredAsyncMessageRequestHandler], InferredAsyncMessageRequestHandler]:
     def decorator(func: InferredAsyncMessageRequestHandler) -> InferredAsyncMessageRequestHandler:
         for a in (action, *actions):
             if a in handlers:

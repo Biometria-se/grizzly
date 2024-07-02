@@ -33,7 +33,7 @@ the set for `condition` will have its own entry in the statistics, see respectiv
 from __future__ import annotations
 
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from gevent import sleep as gsleep
 
@@ -47,7 +47,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 @template('condition', 'tasks', 'name')
 class ConditionalTask(GrizzlyTaskWrapper):
-    tasks: Dict[bool, List[GrizzlyTask]]
+    tasks: dict[bool, list[GrizzlyTask]]
 
     name: str
     condition: str
@@ -82,7 +82,7 @@ class ConditionalTask(GrizzlyTaskWrapper):
 
             self.tasks[self._pointer].append(task)
 
-    def peek(self) -> List[GrizzlyTask]:
+    def peek(self) -> list[GrizzlyTask]:
         """Return all wrapped tasks, for current pointer."""
         if self._pointer is not None:
             return self.tasks[self._pointer]
@@ -90,7 +90,7 @@ class ConditionalTask(GrizzlyTaskWrapper):
         return []
 
     def __call__(self) -> grizzlytask:
-        tasks: Dict[bool, List[grizzlytask]] = {}
+        tasks: dict[bool, list[grizzlytask]] = {}
 
         for pointer, pointer_tasks in self.tasks.items():
             tasks.update({pointer: [t() for t in pointer_tasks]})

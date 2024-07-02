@@ -7,7 +7,7 @@ from itertools import chain
 from json import dumps as jsondumps
 from os import environ
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, Optional, Union, cast
 
 import zmq.green as zmq
 from gevent import sleep as gsleep
@@ -16,6 +16,7 @@ from zmq.error import Again as ZMQAgain
 from zmq.error import ZMQError
 
 from grizzly.types.locust import Environment, StopUser
+from grizzly.utils.protocols import zmq_disconnect
 
 from . import GrizzlyVariables
 from .utils import transform
@@ -43,6 +44,7 @@ class TestdataConsumer:
 
         self.context = zmq.Context()
         self.socket = self.context.socket(zmq.REQ)
+        self.socket.setsockopt(zmq.LINGER, 0)
         self.socket.connect(address)
         self.stopped = False
 
@@ -54,15 +56,13 @@ class TestdataConsumer:
 
         self.logger.debug('stopping consumer')
         try:
-            self.context.destroy(linger=0)
+            zmq_disconnect(self.socket, destroy_context=True)
         except:
             self.logger.exception('failed to stop')
         finally:
-            self.context.term()
             self.stopped = True
-            gsleep(0.1)
 
-    def testdata(self, scenario: str) -> Optional[Dict[str, Any]]:
+    def testdata(self, scenario: str) -> Optional[dict[str, Any]]:
         request = {
             'message': 'testdata',
             'identifier': self.identifier,
@@ -87,7 +87,7 @@ class TestdataConsumer:
 
         self.logger.debug('received: %r', data)
 
-        variables: Optional[Dict[str, Any]] = None
+        variables: Optional[dict[str, Any]] = None
         if 'variables' in data:
             variables = transform(self.scenario.grizzly, data['variables'], objectify=True, scenario=self.scenario.user._scenario)
             del data['variables']
@@ -97,7 +97,7 @@ class TestdataConsumer:
         if variables is not None:
             data['variables'] = variables
 
-        return cast(Dict[str, Any], data)
+        return cast(dict[str, Any], data)
 
     def keystore_get(self, key: str) -> Optional[Any]:
         request = {
@@ -134,7 +134,7 @@ class TestdataConsumer:
 
         return value
 
-    def _keystore_request(self, request: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def _keystore_request(self, request: dict[str, Any]) -> Optional[dict[str, Any]]:
         request.update({
             'message': 'keystore',
             'identifier': self.identifier,
@@ -142,16 +142,16 @@ class TestdataConsumer:
 
         return self._request(request)
 
-    def _request(self, request: Dict[str, str]) -> Optional[Dict[str, Any]]:
+    def _request(self, request: dict[str, str]) -> Optional[dict[str, Any]]:
         self.socket.send_json(request)
 
         self.logger.debug('waiting for response from producer')
-        message: Dict[str, Any]
+        message: dict[str, Any]
 
         # loop and NOBLOCK needed when running in local mode, to let other gevent threads get time
         while True:
             try:
-                message = cast(Dict[str, Any], self.socket.recv_json(flags=zmq.NOBLOCK))
+                message = cast(dict[str, Any], self.socket.recv_json(flags=zmq.NOBLOCK))
                 break
             except ZMQAgain:
                 gsleep(0.1)  # let other greenlets execute
@@ -169,11 +169,11 @@ class TestdataProducer:
     logger: logging.Logger
     semaphore = Semaphore()
     grizzly: GrizzlyContext
-    scenarios_iteration: Dict[str, int]
+    scenarios_iteration: dict[str, int]
     testdata: TestdataType
     environment: Environment
     has_persisted: bool
-    keystore: Dict[str, Any]
+    keystore: dict[str, Any]
 
     def __init__(self, grizzly: GrizzlyContext, testdata: TestdataType, address: str = 'tcp://127.0.0.1:5555') -> None:
         self.grizzly = grizzly
@@ -186,6 +186,7 @@ class TestdataProducer:
 
         self.context = zmq.Context()
         self.socket = self.context.socket(zmq.REP)
+        self.socket.setsockopt(zmq.LINGER, 0)
         self.socket.bind(address)
         self.scenarios_iteration = {}
 
@@ -216,7 +217,7 @@ class TestdataProducer:
             return
 
         try:
-            variable_state: Dict[str, Union[str, Dict[str, Any]]] = {}
+            variable_state: dict[str, Union[str, dict[str, Any]]] = {}
 
             for testdata in self.testdata.values():
                 for key, variable in testdata.items():
@@ -244,17 +245,15 @@ class TestdataProducer:
         self._stopping = True
         self.logger.debug('stopping producer')
         try:
-            self.context.destroy(linger=0)
+            zmq_disconnect(self.socket, destroy_context=True)
         except:
             self.logger.exception('failed to stop')
         finally:
             # make sure that socket is properly released
             gsleep(0.1)
-            self.context.term()
-
             self.persist_data()
 
-    def _handle_request_keystore(self, request: Dict[str, Any]) -> Dict[str, Any]:
+    def _handle_request_keystore(self, request: dict[str, Any]) -> dict[str, Any]:
         response = request
         if request['action'] == 'get':
             response['data'] = self.keystore.get(request['key'], None)
@@ -293,9 +292,9 @@ class TestdataProducer:
 
         return response
 
-    def _handle_request_testdata(self, request: Dict[str, Any]) -> Dict[str, Any]:  # noqa: PLR0912
+    def _handle_request_testdata(self, request: dict[str, Any]) -> dict[str, Any]:  # noqa: PLR0912
         consumer_identifier = request.get('identifier', '')
-        response: Dict[str, Any] = {
+        response: dict[str, Any] = {
             'action': 'stop',
         }
 
@@ -315,8 +314,8 @@ class TestdataProducer:
 
                 testdata = self.testdata.get(scenario_name, {})
                 response['action'] = 'consume'
-                data: Dict[str, Any] = {'variables': {}}
-                loaded_variable_datatypes: Dict[str, Any] = {}
+                data: dict[str, Any] = {'variables': {}}
+                loaded_variable_datatypes: dict[str, Any] = {}
 
                 for key, variable in testdata.items():
                     if '.' in key and variable != '__on_consumer__':
@@ -373,10 +372,10 @@ class TestdataProducer:
         try:
             while True:
                 try:
-                    recv = cast(Dict[str, Any], self.socket.recv_json(flags=zmq.NOBLOCK))
+                    recv = cast(dict[str, Any], self.socket.recv_json(flags=zmq.NOBLOCK))
                     consumer_identifier = recv.get('identifier', '')
                     self.logger.debug('got request from consumer %s', consumer_identifier)
-                    response: Dict[str, Any]
+                    response: dict[str, Any]
 
                     with self.semaphore:
                         if recv['message'] == 'keystore':

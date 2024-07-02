@@ -7,7 +7,7 @@ from collections import namedtuple
 from os import environ
 from pathlib import Path
 from time import perf_counter as time
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set, Tuple, cast
+from typing import TYPE_CHECKING, Any, Callable, Optional, cast
 
 from jinja2.filters import FILTERS
 from jinja2.meta import find_undeclared_variables
@@ -28,16 +28,16 @@ logger = logging.getLogger(__name__)
 MAGIC_4 = 4
 
 
-def initialize_testdata(grizzly: GrizzlyContext) -> Tuple[TestdataType, Set[str], Dict[str, MessageHandler]]:
+def initialize_testdata(grizzly: GrizzlyContext) -> tuple[TestdataType, set[str], dict[str, MessageHandler]]:
     """Create a structure of testdata per scenario."""
     testdata: TestdataType = {}
     template_variables = get_template_variables(grizzly)
 
     logger.debug('testdata: %r', template_variables)
 
-    initialized_datatypes: Dict[str, Any] = {}
-    external_dependencies: Set[str] = set()
-    message_handlers: Dict[str, MessageHandler] = {}
+    initialized_datatypes: dict[str, Any] = {}
+    external_dependencies: set[str] = set()
+    message_handlers: dict[str, MessageHandler] = {}
 
     for scenario, variables in template_variables.items():
         testdata[scenario] = {}
@@ -61,9 +61,9 @@ def initialize_testdata(grizzly: GrizzlyContext) -> Tuple[TestdataType, Set[str]
     return testdata, external_dependencies, message_handlers
 
 
-def transform(grizzly: GrizzlyContext, data: Dict[str, Any], scenario: Optional[GrizzlyContextScenario] = None, *, objectify: Optional[bool] = True) -> Dict[str, Any]:
+def transform(grizzly: GrizzlyContext, data: dict[str, Any], scenario: Optional[GrizzlyContextScenario] = None, *, objectify: Optional[bool] = True) -> dict[str, Any]:
     """Transform a dictionary with static values to something that can have values which are object."""
-    testdata: Dict[str, Any] = {}
+    testdata: dict[str, Any] = {}
 
     for key, value in data.items():
         module_name, variable_type, variable_name, _ = GrizzlyVariables.get_variable_spec(key)
@@ -99,7 +99,7 @@ def transform(grizzly: GrizzlyContext, data: Dict[str, Any], scenario: Optional[
                     elif scenario.failure_exception is not None:  # noqa: RET506
                         raise scenario.failure_exception
 
-            paths: List[str] = key.split('.')
+            paths: list[str] = key.split('.')
             variable = paths.pop(0)
             struct = unflatten('.'.join(paths), value)
 
@@ -116,7 +116,7 @@ def transform(grizzly: GrizzlyContext, data: Dict[str, Any], scenario: Optional[
     return testdata
 
 
-def _objectify(testdata: Dict[str, Any]) -> Dict[str, Any]:
+def _objectify(testdata: dict[str, Any]) -> dict[str, Any]:
     for variable, attributes in testdata.items():
         if not isinstance(attributes, dict):
             continue
@@ -127,7 +127,7 @@ def _objectify(testdata: Dict[str, Any]) -> Dict[str, Any]:
     return testdata
 
 
-def create_context_variable(grizzly: GrizzlyContext, variable: str, value: str, *, scenario: Optional[GrizzlyContextScenario] = None) -> Dict[str, Any]:
+def create_context_variable(grizzly: GrizzlyContext, variable: str, value: str, *, scenario: Optional[GrizzlyContextScenario] = None) -> dict[str, Any]:
     """Create a variable as a context variable. Handles other separators than `.`."""
     if has_template(value):
         grizzly.scenario.orphan_templates.append(value)

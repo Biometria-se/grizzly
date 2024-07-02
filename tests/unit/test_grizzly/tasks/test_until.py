@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from json import dumps as jsondumps
 from logging import ERROR
-from typing import TYPE_CHECKING, Any, Dict, List, Tuple, Type
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -67,9 +67,9 @@ class TestUntilRequestTask:
         grizzly_fixture: GrizzlyFixture,
         mocker: MockerFixture,
         caplog: LogCaptureFixture,
-        meta_request_task_type: Type[GrizzlyMetaRequestTask],
-        meta_args: Tuple[Any, ...],
-        meta_kwargs: Dict[str, Any],
+        meta_request_task_type: type[GrizzlyMetaRequestTask],
+        meta_args: tuple[Any, ...],
+        meta_kwargs: dict[str, Any],
     ) -> None:
         parent = grizzly_fixture()
 
@@ -145,7 +145,7 @@ class TestUntilRequestTask:
         assert time_spy.call_count == 2
         assert request_spy.call_count == 3
         assert gsleep_spy.call_count == 3
-        call_args_list: List[Tuple[float]] = []
+        call_args_list: list[tuple[float]] = []
         for args_list in gsleep_spy.call_args_list:
             args, _ = args_list
             call_args_list.append(args)
@@ -422,9 +422,9 @@ class TestUntilRequestTask:
         self,
         grizzly_fixture: GrizzlyFixture,
         mocker: MockerFixture,
-        meta_request_task_type: Type[GrizzlyMetaRequestTask],
-        meta_args: Tuple[Any, ...],
-        meta_kwargs: Dict[str, Any],
+        meta_request_task_type: type[GrizzlyMetaRequestTask],
+        meta_args: tuple[Any, ...],
+        meta_kwargs: dict[str, Any],
     ) -> None:
         parent = grizzly_fixture()
 
@@ -449,9 +449,9 @@ class TestUntilRequestTask:
         self,
         grizzly_fixture: GrizzlyFixture,
         mocker: MockerFixture,
-        meta_request_task_type: Type[GrizzlyMetaRequestTask],
-        meta_args: Tuple[Any, ...],
-        meta_kwargs: Dict[str, Any],
+        meta_request_task_type: type[GrizzlyMetaRequestTask],
+        meta_args: tuple[Any, ...],
+        meta_kwargs: dict[str, Any],
     ) -> None:
         parent = grizzly_fixture()
 

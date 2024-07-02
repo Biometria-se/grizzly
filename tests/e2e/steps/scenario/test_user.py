@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from secrets import choice
-from typing import TYPE_CHECKING, Dict, List, cast
+from typing import TYPE_CHECKING, cast
 
 import pytest
 
@@ -50,7 +50,7 @@ def test_e2e_step_user_type_count_tag(e2e_fixture: End2EndFixture, user_type: st
     user_tag = choice(['foo', 'bar', 'hello', 'world'])
     grammar = choice(['user', 'users'])
 
-    table: List[Dict[str, str]] = [{
+    table: list[dict[str, str]] = [{
         'user_type': user_type,
         'user_count': str(user_count),
         'tag': user_tag,
@@ -104,7 +104,7 @@ def test_e2e_step_user_type_with_weight(e2e_fixture: End2EndFixture, user_type: 
 
     weight = choice(range(1, 20))
 
-    table: List[Dict[str, str]] = [{
+    table: list[dict[str, str]] = [{
         'user_type': user_type,
         'weight': str(weight),
         'host': host,
@@ -152,7 +152,7 @@ def test_e2e_step_user_type(e2e_fixture: End2EndFixture, user_type: str, host: s
 
     host = host.replace('localhost', e2e_fixture.host)
 
-    table: List[Dict[str, str]] = [{
+    table: list[dict[str, str]] = [{
         'user_type': user_type,
         'host': host,
     }]

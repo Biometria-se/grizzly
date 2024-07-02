@@ -22,7 +22,7 @@ from logging import Logger
 from os import environ
 from pathlib import Path
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, Optional, Set, Type, TypeVar, cast, final
+from typing import TYPE_CHECKING, Any, ClassVar, Optional, TypeVar, cast, final
 
 from locust.user.task import LOCUST_STATE_RUNNING
 from locust.user.users import User, UserMeta
@@ -53,12 +53,12 @@ class GrizzlyUserMeta(UserMeta):
 
 
 class grizzlycontext:
-    context: Dict[str, Any]
+    context: dict[str, Any]
 
-    def __init__(self, *, context: Dict[str, Any]) -> None:
+    def __init__(self, *, context: dict[str, Any]) -> None:
         self.context = context
 
-    def __call__(self, cls: Type[GrizzlyUser]) -> Type[GrizzlyUser]:
+    def __call__(self, cls: type[GrizzlyUser]) -> type[GrizzlyUser]:
         cls.__context__ = merge_dicts(cls.__context__, self.context)
 
         return cls
@@ -70,11 +70,11 @@ class grizzlycontext:
     'metadata': None,
 })
 class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
-    __dependencies__: ClassVar[Set[str]] = set()
+    __dependencies__: ClassVar[set[str]] = set()
     __scenario__: GrizzlyContextScenario  # reference to grizzly scenario this user is part of
-    __context__: ClassVar[Dict[str, Any]] = {}
+    __context__: ClassVar[dict[str, Any]] = {}
 
-    _context: Dict[str, Any]
+    _context: dict[str, Any]
     _context_root: Path
     _scenario: GrizzlyContextScenario  # copy of scenario for this user instance
     _scenario_state: Optional[ScenarioState]
@@ -113,11 +113,11 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
             self.abort = cast(bool, kwargs.get('abort', False))
 
     @property
-    def metadata(self) -> Dict[str, Any]:
+    def metadata(self) -> dict[str, Any]:
         return self._context.get('metadata', None) or {}
 
     @metadata.setter
-    def metadata(self, value: Dict[str, Any]) -> None:
+    def metadata(self, value: dict[str, Any]) -> None:
         if self._context.get('metadata', None) is None:
             self._context['metadata'] = {}
 
@@ -155,7 +155,7 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
     @final
     def request(self, request: RequestTask) -> GrizzlyResponse:
         """Perform a request and handle all the common logic that should execute before and after a user request."""
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[dict[str, Any]] = None
         payload: Optional[Any] = None
         exception: Optional[Exception] = None
         response_length = 0
@@ -266,10 +266,10 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
         else:
             return request
 
-    def context(self) -> Dict[str, Any]:
+    def context(self) -> dict[str, Any]:
         return self._context
 
-    def add_context(self, context: Dict[str, Any]) -> None:
+    def add_context(self, context: dict[str, Any]) -> None:
         self._context = merge_dicts(self._context, context)
 
     def set_context_variable(self, variable: str, value: Any) -> None:
@@ -279,8 +279,8 @@ class GrizzlyUser(User, metaclass=GrizzlyUserMeta):
         self.logger.debug(message)
 
     @property
-    def context_variables(self) -> Dict[str, Any]:
-        return cast(Dict[str, Any], self._context.get('variables', {}))
+    def context_variables(self) -> dict[str, Any]:
+        return cast(dict[str, Any], self._context.get('variables', {}))
 
 
 from .blobstorage import BlobStorageUser

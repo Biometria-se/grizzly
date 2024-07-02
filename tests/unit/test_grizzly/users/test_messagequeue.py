@@ -5,7 +5,7 @@ import subprocess
 import sys
 from contextlib import suppress
 from os import environ
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
 
 import pytest
 from zmq.error import Again as ZMQAgain
@@ -31,7 +31,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from grizzly_extras.async_message import AsyncMessageResponse
     from tests.fixtures import GrizzlyFixture, NoopZmqFixture
 
-MqScenarioFixture = Tuple[MessageQueueUser, GrizzlyContextScenario, Environment]
+MqScenarioFixture = tuple[MessageQueueUser, GrizzlyContextScenario, Environment]
 
 
 @pytest.fixture()
@@ -81,12 +81,12 @@ class TestMessageQueueUserNoPymqi:
 
         assert process.returncode == 1
         assert "mq.pymqi.__name__='grizzly_extras.dummy_pymqi'" in output
-        assert 'NotImplementedError: MessageQueueUser could not import pymqi, have you installed IBM MQ dependencies?' in output
+        assert 'NotImplementedError: MessageQueueUser could not import pymqi, have you installed IBM MQ dependencies and set environment variable LD_LIBRARY_PATH?' in output
 
 
 @pytest.mark.skipif(pymqi.__name__ == 'grizzly_extras.dummy_pymqi', reason='needs native IBM MQ libraries')
 class TestMessageQueueUser:
-    real_stuff: ClassVar[Dict[str, str]] = {
+    real_stuff: ClassVar[dict[str, str]] = {
         'username': '',
         'password': '',
         'key_file': '',
@@ -118,7 +118,7 @@ class TestMessageQueueUser:
 
     def test_on_stop(self, grizzly_fixture: GrizzlyFixture, mocker: MockerFixture, noop_zmq: NoopZmqFixture) -> None:
         noop_zmq('grizzly.users.messagequeue')
-        disconnect_mock = noop_zmq.get_mock('zmq.Socket.disconnect')
+        zmq_disconnect_mock = mocker.patch('grizzly.users.messagequeue.zmq_disconnect')
 
         parent = grizzly_fixture(host='mq://mq.example.com:1337/?QueueManager=QMGR01&Channel=Kanal1', user_type=MessageQueueUser)
 
@@ -141,9 +141,9 @@ class TestMessageQueueUser:
         request_context_spy.assert_called_once_with({'action': 'DISC', 'worker': 'foobar', 'client': id(parent.user), 'context': parent.user.am_context})
         request_context_spy.return_value.__enter__.assert_called_once_with()
         request_context_spy.return_value.__enter__.return_value.update.assert_not_called()
-        disconnect_mock.assert_called_once_with(parent.user.zmq_url)
+        zmq_disconnect_mock.assert_called_once_with(parent.user.zmq_client, destroy_context=False)
 
-    def test_create(self, grizzly_fixture: GrizzlyFixture) -> None:
+    def test___init__(self, grizzly_fixture: GrizzlyFixture) -> None:  # noqa: PLR0915
         parent = grizzly_fixture(host='mq://mq.example.com:1415?Channel=Kanal1&QueueManager=QMGR01', user_type=MessageQueueUser)
         environment = grizzly_fixture.behave.locust.environment
         test_cls = parent.user.__class__
@@ -189,12 +189,20 @@ class TestMessageQueueUser:
         }
 
         test_cls.host = 'mq://mq.example.com:1415?Channel=Kanal1&QueueManager=QMGR01'
+
+        with pytest.raises(ValueError, match='MessageQueueUser_001 key file /my/key does not exist'):
+            user = test_cls(environment=environment)
+
+        kdb_file = (grizzly_fixture.test_context / 'requests' / 'key.kdb')
+        kdb_file.parent.mkdir(exist_ok=True)
+        kdb_file.touch()
+        test_cls.__context__['auth'].update({'key_file': 'requests/key'})
         user = test_cls(environment=environment)
 
         assert user.am_context.get('connection', None) == 'mq.example.com(1415)'
         assert user.am_context.get('queue_manager', None) == 'QMGR01'
         assert user.am_context.get('channel', None) == 'Kanal1'
-        assert user.am_context.get('key_file', None) == '/my/key'
+        assert user.am_context.get('key_file', None) == kdb_file.with_suffix('').as_posix()
         assert user.am_context.get('ssl_cipher', None) == 'rot13'
         assert user.am_context.get('cert_label', None) == 'some_label'
 
@@ -638,7 +646,7 @@ class TestMessageQueueUser:
         args, kwargs = send_json_spy.call_args_list[0]
         assert len(args) == 1
         assert kwargs == {}
-        ctx: Dict[str, str] = args[0]['context']
+        ctx: dict[str, str] = args[0]['context']
         assert ctx['endpoint'] == request.endpoint
 
         # Test with specifying queue: prefix as endpoint

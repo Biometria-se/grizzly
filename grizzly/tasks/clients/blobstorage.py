@@ -63,7 +63,7 @@ from __future__ import annotations
 import logging
 from mimetypes import guess_type as mimetype_guess
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional, cast
+from typing import TYPE_CHECKING, Optional, cast
 from urllib.parse import parse_qs, quote, urlparse
 
 from azure.storage.blob import BlobServiceClient, ContentSettings
@@ -126,7 +126,7 @@ class BlobStorageClientTask(ClientTask):
 
         # See urllib/parse.py:771-774, explicit + characters are replaced with white space,
         # AccountKey could contain explicit + characters, so we must quote them first.
-        parsed_query: List[str] = []
+        parsed_query: list[str] = []
         if len(parsed.query) > 0:
             for parameter in parsed.query.split('&'):
                 key, value = parameter.split('=', 1)

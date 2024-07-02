@@ -10,7 +10,7 @@ from functools import wraps
 from json import JSONEncoder
 from json import dumps as jsondumps
 from json import loads as jsonloads
-from typing import Any, Callable, ClassVar, Dict, List, Optional, Type, Union, cast
+from typing import Any, Callable, ClassVar, Optional, Union, cast
 
 from jsonpath_ng.ext import parse as jsonpath_parse
 from lxml import etree as XML  # noqa: N812
@@ -65,14 +65,14 @@ class Transformer(metaclass=ABCMeta):
 
     @classmethod
     @abstractmethod
-    def parser(cls, expression: str) -> Callable[[Any], List[str]]:  # pragma: no cover
+    def parser(cls, expression: str) -> Callable[[Any], list[str]]:  # pragma: no cover
         message = f'{cls.__name__} has not implemented parse'
         raise NotImplementedError(message)
 
 
 class transformer:
     content_type: TransformerContentType
-    available: ClassVar[Dict[TransformerContentType, Type[Transformer]]] = {}
+    available: ClassVar[dict[TransformerContentType, type[Transformer]]] = {}
 
     def __init__(self, content_type: TransformerContentType) -> None:
         if content_type == TransformerContentType.UNDEFINED:
@@ -81,7 +81,7 @@ class transformer:
 
         self.content_type = content_type
 
-    def __call__(self, impl: Type[Transformer]) -> Type[Transformer]:
+    def __call__(self, impl: type[Transformer]) -> type[Transformer]:
         impl_transform = impl.transform
         content_type_name = self.content_type.name
 
@@ -124,9 +124,9 @@ class JsonTransformer(Transformer):
         return valid
 
     @classmethod
-    def parser(cls, expression: str) -> Callable[[Any], List[str]]:
+    def parser(cls, expression: str) -> Callable[[Any], list[str]]:
         try:
-            expected: Optional[Union[str, List[str]]] = None
+            expected: Optional[Union[str, list[str]]] = None
             sequence: Optional[str] = None
 
             # we only have one instance of equals
@@ -144,7 +144,7 @@ class JsonTransformer(Transformer):
                         expected_value = expected_value[1:-1]
 
                     expected_value = expected_value.replace("'", '"')
-                    expected = [str(ev) for ev in cast(List[str], jsonloads(expected_value))]
+                    expected = [str(ev) for ev in cast(list[str], jsonloads(expected_value))]
                 else:
                     expected = expected_value
 
@@ -154,14 +154,14 @@ class JsonTransformer(Transformer):
 
             jsonpath = jsonpath_parse(expression)
 
-            def _parser(input_payload: Union[list, dict]) -> List[str]:
+            def _parser(input_payload: Union[list, dict]) -> list[str]:
                 # we need to fool jsonpath-ng to allow "validation" queries on objects on multiple properties
                 # this shouldn't be done if the input is a nested object, and the query looks for any properties
                 # recursively under the root (`@.`)
                 if isinstance(input_payload, dict) and '`this`' in expression and '@.' not in expression:
                     input_payload = [input_payload]
 
-                values: List[str] = []
+                values: list[str] = []
                 for m in jsonpath.find(input_payload):
                     if m is None or m.value is None:
                         continue
@@ -210,13 +210,13 @@ class XmlTransformer(Transformer):
         return valid
 
     @classmethod
-    def parser(cls, expression: str) -> Callable[[Any], List[str]]:
+    def parser(cls, expression: str) -> Callable[[Any], list[str]]:
         try:
             try:
                 xmlpath = XML.XPath(expression, smart_strings=False)
 
-                def get_values(input_payload: Any) -> List[str]:
-                    values: List[str] = []
+                def get_values(input_payload: Any) -> list[str]:
+                    values: list[str] = []
                     for match in xmlpath(input_payload):
                         if match is not None:
                             value: str
@@ -248,8 +248,8 @@ class PlainTransformer(Transformer):
         return True
 
     @classmethod
-    def parser(cls, expression: str) -> Callable[[Any], List[str]]:
-        get_values_impl: Callable[[Any], List[str]]
+    def parser(cls, expression: str) -> Callable[[Any], list[str]]:
+        get_values_impl: Callable[[Any], list[str]]
 
         try:
             strict_expression = expression
@@ -265,13 +265,13 @@ class PlainTransformer(Transformer):
                 message = f'{cls.__name__}: only expressions that has zero or one match group is allowed'
                 raise ValueError(message)
 
-            def get_values(input_payload: Any) -> List[str]:
+            def get_values(input_payload: Any) -> list[str]:
                 return re.findall(pattern, input_payload)
 
             get_values_impl = get_values
         except re.error:
-            def get_values(input_payload: Any) -> List[str]:
-                matches: List[str] = []
+            def get_values(input_payload: Any) -> list[str]:
+                matches: list[str] = []
                 if str(input_payload) == expression:
                     matches.append(str(input_payload))
 

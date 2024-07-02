@@ -5,7 +5,7 @@ from contextlib import suppress
 from os import environ
 from pathlib import Path
 from shutil import rmtree
-from typing import TYPE_CHECKING, Callable, List
+from typing import TYPE_CHECKING, Callable
 
 import pytest
 
@@ -18,8 +18,8 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 @pytest.fixture()
-def get_log_files() -> Callable[[], List[Path]]:
-    def wrapped() -> List[Path]:
+def get_log_files() -> Callable[[], list[Path]]:
+    def wrapped() -> list[Path]:
         logs_root = Path(environ['GRIZZLY_CONTEXT_ROOT']) / 'logs'
         log_dir = environ.get('GRIZZLY_LOG_DIR', None)
         if log_dir is not None:
@@ -72,7 +72,7 @@ class TestRequestLogger:
         assert RequestLogger._remove_secrets_attribute('hello world') == 'hello world'
 
     @pytest.mark.usefixtures('get_log_files')
-    def test___call__(self, grizzly_fixture: GrizzlyFixture, get_log_files: Callable[[], List[Path]]) -> None:
+    def test___call__(self, grizzly_fixture: GrizzlyFixture, get_log_files: Callable[[], list[Path]]) -> None:
         parent = grizzly_fixture()
         parent.user.host = 'mq://mq.example.org?QueueManager=QMGR01&Channel=SYS.CONN'
 

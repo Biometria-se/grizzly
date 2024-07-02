@@ -17,7 +17,8 @@ This task does not have any request statistics entries.
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, MutableMapping, Optional, Type, cast
+from collections.abc import MutableMapping
+from typing import TYPE_CHECKING, Any, Optional, cast
 
 from grizzly.testdata import GrizzlyVariables
 from grizzly.testdata.utils import create_context_variable, read_file
@@ -38,7 +39,7 @@ class SetVariableTask(GrizzlyTask):
     variable_type: VariableType
 
     _variable_instance: Optional[MutableMapping[str, Any]] = None
-    _variable_instance_type: Optional[Type[AtomicVariable]] = None
+    _variable_instance_type: Optional[type[AtomicVariable]] = None
     _variable_key: str
 
     def __init__(self, variable: str, value: str, variable_type: VariableType) -> None:

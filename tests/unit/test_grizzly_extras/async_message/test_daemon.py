@@ -5,7 +5,7 @@ from importlib import reload
 from itertools import cycle
 from json import dumps as jsondumps
 from signal import SIGINT
-from typing import TYPE_CHECKING, Any, List, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 import zmq.green as zmq
@@ -44,7 +44,7 @@ def test_worker(mocker: MockerFixture, caplog: LogCaptureFixture, scheme: str, i
     context_mock.socket.return_value = worker_mock
 
     def mock_recv_multipart(message: AsyncMessageRequest) -> None:
-        def build_zmq_message(_message: AsyncMessageRequest) -> List[bytes]:
+        def build_zmq_message(_message: AsyncMessageRequest) -> list[bytes]:
             worker = cast(str, _message.get('worker', ''))
             return [
                 worker.encode(),
@@ -165,7 +165,7 @@ def test_worker(mocker: MockerFixture, caplog: LogCaptureFixture, scheme: str, i
 
     integration_close_spy.assert_called_once_with()
 
-    assert caplog.messages[-1] == 'stopping'
+    assert caplog.messages[1:] == ['stopping', 'stopped']
 
 
 def test_router(mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
@@ -192,7 +192,6 @@ def test_router(mocker: MockerFixture, caplog: LogCaptureFixture) -> None:
 
     create_context_mock.assert_called_once_with(
         ANY(),
-        1,
     )
 
     assert context_mock.socket.call_count == 2

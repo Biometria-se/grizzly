@@ -6,7 +6,7 @@ import json
 import logging
 from pathlib import Path
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, Dict, Literal, Optional, Type, cast
+from typing import TYPE_CHECKING, Any, Literal, Optional, cast
 
 import gevent
 from flask import Flask, jsonify, request
@@ -23,7 +23,7 @@ if TYPE_CHECKING:  # pragma: no cover
 logger = logging.getLogger('webserver')
 
 
-auth_expected: Optional[Dict[str, Any]] = None
+auth_expected: Optional[dict[str, Any]] = None
 
 
 app = Flask('webserver')
@@ -161,7 +161,7 @@ def app_sleep(seconds: str) -> FlaskResponse:
     return response
 
 
-app_request_count: Dict[str, int] = {}
+app_request_count: dict[str, int] = {}
 
 
 @app.route('/api/until/reset')
@@ -236,6 +236,14 @@ def app_oauth2_token(tenant: str) -> FlaskResponse:
     return jsonify({'access_token': auth_expected['token']})
 
 
+@app.route('/write', methods=['POST'])
+def app_write() -> FlaskResponse:
+    response = jsonify({'success': True})
+    response.status_code = 204
+
+    return response
+
+
 @app.errorhandler(404)
 def catch_all(_: Any) -> FlaskResponse:
     return jsonify({}, status=200)
@@ -258,11 +266,11 @@ class Webserver:
         return cast(int, self._web_server.server_port)
 
     @property
-    def auth(self) -> Optional[Dict[str, Any]]:
+    def auth(self) -> Optional[dict[str, Any]]:
         return auth_expected
 
     @auth.setter
-    def auth(self, value: Optional[Dict[str, Any]]) -> None:
+    def auth(self, value: Optional[dict[str, Any]]) -> None:
         global auth_expected  # noqa: PLW0603
         auth_expected = value
 
@@ -282,7 +290,7 @@ class Webserver:
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
+        exc_type: Optional[type[BaseException]],
         exc: Optional[BaseException],
         traceback: Optional[TracebackType],
     ) -> Literal[True]:

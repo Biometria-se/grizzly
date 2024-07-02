@@ -9,7 +9,7 @@ from os import environ
 from secrets import choice
 from socket import error as socket_error
 from types import FunctionType
-from typing import TYPE_CHECKING, Any, List, Type, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import gevent
 import pytest
@@ -232,8 +232,8 @@ def test_setup_locust_scenarios(behave_fixture: BehaveFixture, noop_zmq: NoopZmq
     (60, [14, 25, 5, 8, 4, 4]),
     (70, [17, 29, 5, 9, 5, 5]),
 ])
-def test_setup_locust_scenarios_user_distribution(behave_fixture: BehaveFixture, user_count: int, user_distribution: List[int]) -> None:
-    distribution: List[int] = [25, 42, 8, 13, 6, 6]
+def test_setup_locust_scenarios_user_distribution(behave_fixture: BehaveFixture, user_count: int, user_distribution: list[int]) -> None:
+    distribution: list[int] = [25, 42, 8, 13, 6, 6]
     behave = behave_fixture.context
     grizzly = cast(GrizzlyContext, behave.grizzly)
     grizzly.setup.user_count = user_count
@@ -368,7 +368,7 @@ def test_setup_environment_listeners(behave_fixture: BehaveFixture, mocker: Mock
 
     grizzly = cast(GrizzlyContext, behave.grizzly)
     grizzly.scenarios.create(behave_fixture.create_scenario('test scenario'))
-    user_classes: List[Type[User]] = []
+    user_classes: list[type[User]] = []
     environment = Environment(
         user_classes=user_classes,
         shape_class=None,

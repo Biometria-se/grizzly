@@ -21,7 +21,7 @@ endpoint = tostring(customDimensions["endpoint"])
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Optional
 from urllib.parse import parse_qs, urlparse
 
 from opencensus.ext.azure.log_exporter import AzureLogHandler
@@ -89,7 +89,7 @@ class ApplicationInsightsListener:
 
     def _create_custom_dimensions_dict(
         self, method: str, result: str, response_time: int, response_length: int, endpoint: str, exception: Optional[Any] = None,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             'method': method,
             'result': result,

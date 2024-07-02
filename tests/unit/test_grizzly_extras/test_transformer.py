@@ -4,7 +4,7 @@ from __future__ import annotations
 from json import dumps as jsondumps
 from json import loads as jsonloads
 from json.decoder import JSONDecodeError
-from typing import TYPE_CHECKING, Any, Callable, List
+from typing import TYPE_CHECKING, Any, Callable
 
 import pytest
 from lxml import etree as XML  # noqa: N812
@@ -36,7 +36,7 @@ class TestTransformer:
                 return super().validate(expression)
 
             @classmethod
-            def parser(cls, expression: str) -> Callable[[Any], List[str]]:
+            def parser(cls, expression: str) -> Callable[[Any], list[str]]:
                 return super().parser(expression)
 
 
@@ -52,7 +52,7 @@ class TestTransformer:
 
 class Testtransformer:
     def test___init__(self) -> None:
-        transformers: List[transformer] = []
+        transformers: list[transformer] = []
 
         assert TransformerContentType.get_vector() == (False, True)
 
@@ -82,7 +82,7 @@ class Testtransformer:
                 return True
 
             @classmethod
-            def parser(cls, expression: str) -> Callable[[Any], List[str]]:
+            def parser(cls, expression: str) -> Callable[[Any], list[str]]:
                 return super().parser(expression)
 
         transform_spy = mocker.spy(DummyTransformer, 'transform')

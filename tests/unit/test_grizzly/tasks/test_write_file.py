@@ -1,6 +1,7 @@
 """Unit tests of grizzly.tasks.write_file."""
 from __future__ import annotations
 
+from base64 import b64encode
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -22,6 +23,7 @@ class TestWriteFile:
         assert task_factory.file_name == 'test/output.log'
         assert task_factory.content == '{{ hello }}'
         assert task_factory.__template_attributes__ == {'file_name', 'content'}
+        assert not task_factory.temp_file
 
         task = task_factory()
         assert callable(task)
@@ -56,6 +58,7 @@ class TestWriteFile:
         request_fire_spy = mocker.spy(parent.user.environment.events.request, 'fire')
 
         task(parent)
+        task.on_stop(parent)
 
         assert expected_file.read_text() == f'foobar{linesep}foobar{linesep}foobar{linesep}'
         request_fire_spy.assert_called_once_with(
@@ -66,4 +69,26 @@ class TestWriteFile:
             context=parent.user._context,
             exception=ANY(RuntimeError, message='no no'),
         )
+
+    def test_task_temp_file(self, grizzly_fixture: GrizzlyFixture) -> None:
+        parent = grizzly_fixture()
+
+        task_factory = WriteFileTask(file_name='output.txt', content=b64encode(b'foobar').decode(), temp_file=True)
+
+        assert task_factory.file_name == 'output.txt'
+        assert task_factory.content == 'foobar'
+        assert task_factory.__template_attributes__ == {'file_name', 'content'}
+        assert task_factory.temp_file
+
+        task = task_factory()
+
+        task(parent)
+
+        expected_file = Path(task_factory._context_root) / 'requests' / 'output.txt'
+
+        assert expected_file.read_text() == 'foobar'
+
+        task.on_stop(parent)
+
+        assert not expected_file.exists()
 

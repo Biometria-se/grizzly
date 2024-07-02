@@ -83,7 +83,7 @@ class TestHttpClientTask:
             response.status_code = 200
 
             requests_get_spy = mocker.patch(
-                'grizzly.tasks.clients.http.requests.get',
+                'grizzly.tasks.clients.http.Session.get',
                 side_effect=[response, RuntimeError, RuntimeError, RuntimeError, RuntimeError, response, response, response, response],
             )
 
@@ -121,8 +121,6 @@ class TestHttpClientTask:
             requests_get_spy.assert_called_once_with(
                 'http://example.org',
                 headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}'},
-                cookies={},
-                timeout=60,
             )
             requests_get_spy.reset_mock()
 
@@ -169,8 +167,6 @@ class TestHttpClientTask:
             requests_get_spy.assert_called_once_with(
                 'http://example.org',
                 headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}'},
-                cookies={},
-                timeout=60,
             )
             requests_get_spy.reset_mock()
 
@@ -205,8 +201,6 @@ class TestHttpClientTask:
             requests_get_spy.assert_called_once_with(
                 'http://example.org',
                 headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}'},
-                cookies={},
-                timeout=60,
             )
             requests_get_spy.reset_mock()
 
@@ -234,8 +228,6 @@ class TestHttpClientTask:
             requests_get_spy.assert_called_once_with(
                 'http://example.org',
                 headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}'},
-                cookies={},
-                timeout=60,
             )
             requests_get_spy.reset_mock()
 
@@ -265,8 +257,6 @@ class TestHttpClientTask:
                 'https://example.org/api/test',
                 verify=True,
                 headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}'},
-                cookies={},
-                timeout=60,
             )
             requests_get_spy.reset_mock()
             request_fire_spy.assert_called_once()
@@ -286,8 +276,6 @@ class TestHttpClientTask:
                 'https://example.org/api/test',
                 verify=False,
                 headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}'},
-                cookies={},
-                timeout=60,
             )
             requests_get_spy.reset_mock()
             request_fire_spy.assert_called_once()
@@ -313,8 +301,6 @@ class TestHttpClientTask:
                 'https://example.org/api/test',
                 verify=True,
                 headers={'x-grizzly-user': f'HttpClientTestTask::{id(task_factory)}', 'x-test-header': 'foobar'},
-                cookies={},
-                timeout=60,
             )
             requests_get_spy.reset_mock()
             request_fire_spy.assert_called_once()

@@ -7,7 +7,7 @@ import sys
 from contextlib import suppress
 from os import environ
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 import pytest
 import zmq.green as zmq
@@ -54,7 +54,7 @@ class TestMessageQueueClientTaskNoPymqi:
 
         assert process.returncode == 1
         assert "mq.pymqi.__name__='grizzly_extras.dummy_pymqi'" in output
-        assert 'NotImplementedError: MessageQueueClientTask could not import pymqi, have you installed IBM MQ dependencies?' in output
+        assert 'NotImplementedError: MessageQueueClientTask could not import pymqi, have you installed IBM MQ dependencies and set environment variable LD_LIBRARY_PATH?' in output
 
 
 @pytest.mark.skipif(pymqi.__name__ == 'grizzly_extras.dummy_pymqi', reason='needs native IBM MQ libraries')
@@ -317,7 +317,7 @@ class TestMessageQueueClientTask:
                 send_json_mock = mocker.patch.object(client, 'send_json')
                 recv_json_mock.side_effect = [ZMQAgain, None]
 
-                meta: Dict[str, Any] = {}
+                meta: dict[str, Any] = {}
                 with pytest.raises(AsyncMessageError, match='no response'):
                     task_factory.connect(111111, client, meta)
                 assert meta.get('response_length') == 0
@@ -438,7 +438,7 @@ class TestMessageQueueClientTask:
 
             task = task_factory()
 
-            messages: List[Any] = [{'success': True, 'message': 'hello there', 'worker': 'dddd-eeee-ffff-9999'}, ZMQAgain, None]
+            messages: list[Any] = [{'success': True, 'message': 'hello there', 'worker': 'dddd-eeee-ffff-9999'}, ZMQAgain, None]
             recv_json_mock.side_effect = messages
 
             task(parent)
@@ -636,7 +636,7 @@ class TestMessageQueueClientTask:
                 destination=None,
             )
             zmq_context = task_factory._zmq_context
-            messages: List[Any] = [{'success': True, 'message': 'hello there', 'worker': 'dddd-eeee-ffff-9999'}, {'success': True, 'payload': source}]
+            messages: list[Any] = [{'success': True, 'message': 'hello there', 'worker': 'dddd-eeee-ffff-9999'}, {'success': True, 'payload': source}]
             recv_json_mock.side_effect = messages
 
             task = task_factory()

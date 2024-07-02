@@ -76,7 +76,7 @@ value `35 | step=5, persist=True` will be read from the file and override what i
 from __future__ import annotations
 
 from contextlib import suppress
-from typing import Any, ClassVar, Dict, Optional, Type, Union, cast
+from typing import Any, ClassVar, Optional, Union, cast
 
 from grizzly.types import bool_type
 from grizzly_extras.arguments import parse_arguments, split_value
@@ -130,8 +130,8 @@ class AtomicIntegerIncrementer(AtomicVariable[int], AtomicVariablePersist):
     __base_type__ = atomicintegerincrementer__base_type__
 
     __initialized: bool = False
-    _steps: Dict[str, Any]
-    arguments: ClassVar[Dict[str, Any]] = {'step': int, 'persist': bool_type}
+    _steps: dict[str, Any]
+    arguments: ClassVar[dict[str, Any]] = {'step': int, 'persist': bool_type}
 
     def __init__(self, variable: str, value: Union[str, int], *, outer_lock: bool = False) -> None:
         with self.semaphore(outer=outer_lock):
@@ -173,7 +173,7 @@ class AtomicIntegerIncrementer(AtomicVariable[int], AtomicVariablePersist):
         return f'{value} | {arguments}'
 
     @classmethod
-    def clear(cls: Type[AtomicIntegerIncrementer]) -> None:
+    def clear(cls: type[AtomicIntegerIncrementer]) -> None:
         super().clear()
 
         instance = cast(AtomicIntegerIncrementer, cls.get())

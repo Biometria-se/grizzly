@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from importlib import import_module
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set, Tuple, Type, cast
+from typing import TYPE_CHECKING, Any, Callable, Optional, cast
 
 from grizzly.types import GrizzlyVariableType
 
@@ -20,26 +20,26 @@ __all__ = [
 
 class GrizzlyVariables(dict):
     @classmethod
-    def load_variable(cls, module_name: str, class_name: str) -> Type[AtomicVariable]:
+    def load_variable(cls, module_name: str, class_name: str) -> type[AtomicVariable]:
         if module_name not in globals():
             module = import_module(module_name)
             globals()[class_name] = getattr(module, class_name)
 
         variable = globals()[class_name]
-        return cast(Type['AtomicVariable'], variable)
+        return cast(type['AtomicVariable'], variable)
 
     @classmethod
-    def get_variable_spec(cls, name: str) -> Tuple[Optional[str], Optional[str], str, Optional[str]]:
+    def get_variable_spec(cls, name: str) -> tuple[Optional[str], Optional[str], str, Optional[str]]:
         dot_count = name.count('.')
 
         if dot_count == 0 or 'Atomic' not in name:
             return None, None, name, None
 
-        namespace: List[str] = []
+        namespace: list[str] = []
         module_name: Optional[str] = None
         variable_type: Optional[str] = None
         variable_name: Optional[str] = None
-        sub_variable_names: List[str] = []
+        sub_variable_names: list[str] = []
 
         for part in name.split('.'):
             if part.startswith('Atomic'):
@@ -71,9 +71,9 @@ class GrizzlyVariables(dict):
         return name
 
     @classmethod
-    def initialize_variable(cls, grizzly: GrizzlyContext, name: str) -> Tuple[Any, Set[str], Dict[str, MessageHandler]]:
-        external_dependencies: Set[str] = set()
-        message_handler: Dict[str, MessageHandler] = {}
+    def initialize_variable(cls, grizzly: GrizzlyContext, name: str) -> tuple[Any, set[str], dict[str, MessageHandler]]:
+        external_dependencies: set[str] = set()
+        message_handler: dict[str, MessageHandler] = {}
 
         default_value = grizzly.state.variables.get(name, None)
         if default_value is None:

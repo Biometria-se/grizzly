@@ -46,14 +46,15 @@ from __future__ import annotations
 import logging
 from json import dumps as jsondumps
 from time import time
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
-import requests
+from geventhttpclient import Session
 from locust.exception import CatchResponseError
 
 from grizzly.auth import AAD, GrizzlyHttpAuthClient, refresh_token
 from grizzly.types import GrizzlyResponse, RequestDirection, bool_type
 from grizzly.utils import merge_dicts
+from grizzly.utils.protocols import http_populate_cookiejar
 from grizzly_extras.arguments import parse_arguments, split_value
 from grizzly_extras.text import has_separator
 
@@ -65,8 +66,8 @@ if TYPE_CHECKING:  # pragma: no cover
 
 @client('http', 'https')
 class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
-    arguments: Dict[str, Any]
-    metadata: Dict[str, Any]
+    arguments: dict[str, Any]
+    metadata: dict[str, Any]
     session_started: Optional[float]
     host: str
 
@@ -148,9 +149,14 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
                 'payload': None,
             }})
 
-            response = requests.get(url, headers=self.metadata, cookies=self.cookies, timeout=60, **self.arguments)
 
-            payload = response.text
+            with Session() as client:
+                http_populate_cookiejar(client, self.cookies, url=url)
+                response = client.get(url, headers=self.metadata, **self.arguments)
+
+            text = response.text
+            payload = text.decode() if isinstance(text, (bytearray, bytes)) else text
+
             metadata = dict(response.headers)
 
             exception: Optional[Exception] = None
@@ -166,9 +172,8 @@ class HttpClientTask(ClientTask, GrizzlyHttpAuthClient):
                 if self.metadata_variable is not None:
                     parent.user._context['variables'][self.metadata_variable] = jsondumps(metadata)
 
-            meta['response_length'] = len(payload.encode())
-
             meta.update({
+                'response_length': len(payload.encode()),
                 'response': {
                     'url': response.url,
                     'metadata': metadata,

@@ -6,7 +6,7 @@ import os
 import shutil
 from itertools import product
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Optional, cast
+from typing import TYPE_CHECKING, Optional, cast
 
 import pytest
 
@@ -143,7 +143,7 @@ def test_add_request_task(grizzly_fixture: GrizzlyFixture, tmp_path_factory: Tem
         test_template = test_context / 'template.j2.json'
         test_template.write_text('{{ hello_world }}')
 
-        rows: List[Row] = []
+        rows: list[Row] = []
         rows.append(Row(['test'], ['-200,400']))
         rows.append(Row(['test'], ['302']))
         behave.table = Table(['test'], rows=rows)

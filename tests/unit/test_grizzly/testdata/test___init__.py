@@ -4,7 +4,7 @@ from __future__ import annotations
 from contextlib import suppress
 from os import environ
 from shutil import rmtree
-from typing import TYPE_CHECKING, Optional, Tuple
+from typing import TYPE_CHECKING, Optional
 
 import pytest
 
@@ -281,7 +281,7 @@ value1,value2
         ('tests.helpers.AtomicCustomVariable.foo.bar', ('tests.helpers', 'AtomicCustomVariable', 'foo', 'bar'), 'tests.helpers.AtomicCustomVariable.foo'),
         ('a.custom.struct', (None, None, 'a.custom.struct', None), 'a.custom.struct'),
     ])
-    def test_get_variable_spec_and_initialization_value(self, value: str, expected_spec: Tuple[Optional[str], Optional[str], str, Optional[str]], expected_init_value: str) -> None:
+    def test_get_variable_spec_and_initialization_value(self, value: str, expected_spec: tuple[Optional[str], Optional[str], str, Optional[str]], expected_init_value: str) -> None:
         assert GrizzlyVariables.get_variable_spec(value) == expected_spec
         assert GrizzlyVariables.get_initialization_value(value) == expected_init_value
 

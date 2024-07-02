@@ -1,7 +1,7 @@
 """Unit tests of grizzly.tasks.request."""
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING
 
 import pytest
 from jinja2 import Template
@@ -34,7 +34,7 @@ class TestRequestTaskHandlers:
         assert len(handlers.payload) == 0
 
         class TestResponseHandlerAction(ResponseHandlerAction):
-            def __call__(self, input_context: Tuple[TransformerContentType, HandlerContextType], user: GrizzlyUser) -> None:
+            def __call__(self, input_context: tuple[TransformerContentType, HandlerContextType], user: GrizzlyUser) -> None:
                 super().__call__(input_context, user)
 
         handler = TestResponseHandlerAction(expression='', match_with='')

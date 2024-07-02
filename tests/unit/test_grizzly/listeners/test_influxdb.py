@@ -7,7 +7,7 @@ import socket
 from datetime import datetime, timezone
 from json import dumps as jsondumps
 from platform import node as get_hostname
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 import pytest
 from influxdb.exceptions import InfluxDBClientError
@@ -94,11 +94,11 @@ class TestInfluxDb:
 
     def test_read(self, mocker: MockerFixture) -> None:
         class ResultContainer:
-            raw: Dict[str, Any]
+            raw: dict[str, Any]
 
         influx = InfluxDb('https://influx.example.com', 1337, 'testdb').connect()
 
-        def test_query(table: str, columns: List[str]) -> None:
+        def test_query(table: str, columns: list[str]) -> None:
             def query(_instance: InfluxDBClient, _query: str) -> ResultContainer:
                 results = ResultContainer()
                 results.raw = {
@@ -150,10 +150,10 @@ class TestInfluxDb:
 
         influx.write([])
 
-        def generate_write_error(content: Dict[str, Any], code: Optional[int] = 500) -> None:
+        def generate_write_error(content: dict[str, Any], code: Optional[int] = 500) -> None:
             raw_content = jsondumps(content)
 
-            def write_error(_instance: InfluxDBClient, _values: List[Dict[str, Any]]) -> None:
+            def write_error(_instance: InfluxDBClient, _values: list[dict[str, Any]]) -> None:
                 raise InfluxDBClientError(raw_content, code)
 
             mocker.patch(
@@ -174,7 +174,7 @@ class TestInfluxDb:
             influx.write([])
 
 
-class TestInfluxDbListener:
+class TestInfluxDblistener:
     @pytest.mark.usefixtures('patch_influxdblistener')
     def test___init__(self, locust_fixture: LocustFixture, patch_influxdblistener: Callable[[], None]) -> None:
         with pytest.raises(AssertionError, match='hostname not found in'):
@@ -296,7 +296,7 @@ class TestInfluxDbListener:
         finally:
             listener._finished = False
 
-        def write(_: InfluxDb, events: List[Dict[str, Any]]) -> None:
+        def write(_: InfluxDb, events: list[dict[str, Any]]) -> None:
             assert len(events) == 1
             event = events[-1]
             assert event.get('measurement', None) == 'request'

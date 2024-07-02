@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 import pytest
 
@@ -70,14 +70,14 @@ class TestAppInsightsListener:
 
         def generate_logger_info(
             request_type: str, name: str, response_time: float, response_length: int, exception: Optional[Any] = None,
-        ) -> Callable[[logging.Handler, str, Dict[str, Any]], None]:
+        ) -> Callable[[logging.Handler, str, dict[str, Any]], None]:
             result = 'Success' if exception is None else 'Failure'
             expected_message = f'{result}: {request_type} {name} Response time: {int(round(response_time, 0))} Number of Threads: {""}'
 
             if exception is not None:
                 expected_message = f'{expected_message} Exception: {exception!s}'
 
-            def logger_info(_: logging.Handler, msg: str, extra: Dict[str, Any]) -> None:
+            def logger_info(_: logging.Handler, msg: str, extra: dict[str, Any]) -> None:
                 assert msg == expected_message
                 assert extra is not None
                 custom_dimensions = extra.get('custom_dimensions')

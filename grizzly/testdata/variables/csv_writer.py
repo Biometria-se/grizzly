@@ -27,7 +27,7 @@ from __future__ import annotations
 from csv import DictWriter
 from os import environ
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar, Dict, Optional, Type, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Optional, cast
 
 from grizzly.types import bool_type, list_type
 from grizzly.types.locust import Environment, MasterRunner, Message
@@ -106,10 +106,10 @@ def atomiccsvwriter_message_handler(environment: Environment, msg: Message, **_k
 class AtomicCsvWriter(AtomicVariable[str], AtomicVariableSettable):
     __base_type__ = atomiccsvwriter__base_type__
     __initialized: bool = False
-    __message_handlers__: ClassVar[Dict[str, MessageHandler]] = {'atomiccsvwriter': atomiccsvwriter_message_handler}
+    __message_handlers__: ClassVar[dict[str, MessageHandler]] = {'atomiccsvwriter': atomiccsvwriter_message_handler}
 
-    _settings: Dict[str, Dict[str, Any]]
-    arguments: ClassVar[Dict[str, Any]] = {'headers': list_type, 'overwrite': bool_type}
+    _settings: dict[str, dict[str, Any]]
+    arguments: ClassVar[dict[str, Any]] = {'headers': list_type, 'overwrite': bool_type}
 
     def __init__(self, variable: str, value: str, *, outer_lock: bool = False) -> None:
         with self.semaphore(outer=outer_lock):
@@ -140,7 +140,7 @@ class AtomicCsvWriter(AtomicVariable[str], AtomicVariableSettable):
             self.__initialized = True
 
     @classmethod
-    def clear(cls: Type[AtomicCsvWriter]) -> None:
+    def clear(cls: type[AtomicCsvWriter]) -> None:
         super().clear()
 
         instance = cast(AtomicCsvWriter, cls.get())

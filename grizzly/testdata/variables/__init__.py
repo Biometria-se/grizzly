@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
 from contextlib import suppress
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Dict, Generic, Optional, Set, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Generic, Optional, TypeVar
 
 from gevent.lock import DummySemaphore, Semaphore
 
@@ -31,7 +31,7 @@ class AbstractAtomicClass:
 
 
 class AtomicVariablePersist(metaclass=ABCMeta):
-    arguments: ClassVar[Dict[str, Any]] = {'persist': bool_type}
+    arguments: ClassVar[dict[str, Any]] = {'persist': bool_type}
 
     @abstractmethod
     def generate_initial_value(self, variable: str) -> str:
@@ -48,17 +48,17 @@ class AtomicVariableSettable(metaclass=ABCMeta):
 
 class AtomicVariable(Generic[T], AbstractAtomicClass):
     __base_type__: Optional[Callable] = None
-    __dependencies__: ClassVar[Set[str]] = set()
-    __message_handlers__: ClassVar[Dict[str, MessageHandler]] = {}
+    __dependencies__: ClassVar[set[str]] = set()
+    __message_handlers__: ClassVar[dict[str, MessageHandler]] = {}
     __on_consumer__ = False
 
     __instance: ClassVar[Optional[AtomicVariable]] = None
 
     _initialized: bool
-    _values: Dict[str, Optional[T]]
+    _values: dict[str, Optional[T]]
     _semaphore: Semaphore = Semaphore()
 
-    arguments: ClassVar[Dict[str, Any]] = {}
+    arguments: ClassVar[dict[str, Any]] = {}
     grizzly: GrizzlyContext
 
     def __new__(cls, *_args: Any, **_kwargs: Any) -> AtomicVariable[T]:

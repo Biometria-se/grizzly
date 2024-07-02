@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from abc import ABCMeta, abstractmethod
-from typing import TYPE_CHECKING, Any, List, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from locust.event import EventHook
 
@@ -14,7 +14,7 @@ if TYPE_CHECKING:  # pragma: no cover
 class GrizzlyEventHook(EventHook):
     """Override locust.events.EventHook to get types, and not to catch any exceptions."""
 
-    _handlers: List[GrizzlyEventHandler]
+    _handlers: list[GrizzlyEventHandler]
 
     def __init__(self) -> None:
         self._handlers = []

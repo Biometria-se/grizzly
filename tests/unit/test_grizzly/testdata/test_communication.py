@@ -6,7 +6,7 @@ import logging
 from contextlib import suppress
 from os import environ, sep
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, cast
+from typing import TYPE_CHECKING, Any, Callable, Optional, cast
 
 import gevent
 import pytest
@@ -123,7 +123,7 @@ value3,value4
             with context.socket(zmq.REQ) as socket:
                 socket.connect(address)
 
-                def request_testdata() -> Dict[str, Any]:
+                def request_testdata() -> dict[str, Any]:
                     socket.send_json({
                         'message': 'testdata',
                         'scenario': grizzly.scenario.class_name,
@@ -131,9 +131,9 @@ value3,value4
 
                     gevent.sleep(0.1)
 
-                    return cast(Dict[str, Any], socket.recv_json())
+                    return cast(dict[str, Any], socket.recv_json())
 
-                def request_keystore(action: str, key: str, value: Optional[Any] = None) -> Dict[str, Any]:
+                def request_keystore(action: str, key: str, value: Optional[Any] = None) -> dict[str, Any]:
                     request = {
                         'message': 'keystore',
                         'action': action,
@@ -147,9 +147,9 @@ value3,value4
 
                     gevent.sleep(0.1)
 
-                    return cast(Dict[str, Any], socket.recv_json())
+                    return cast(dict[str, Any], socket.recv_json())
 
-                message: Dict[str, Any] = request_testdata()
+                message: dict[str, Any] = request_testdata()
                 assert message['action'] == 'consume'
                 data = message['data']
                 assert 'variables' in data
@@ -341,7 +341,7 @@ value3,value4
             with context.socket(zmq.REQ) as socket:
                 socket.connect(address)
 
-                def get_message_from_producer() -> Dict[str, Any]:
+                def get_message_from_producer() -> dict[str, Any]:
                     socket.send_json({
                         'message': 'testdata',
                         'scenario': grizzly.scenario.class_name,
@@ -349,9 +349,9 @@ value3,value4
 
                     gevent.sleep(0.1)
 
-                    return cast(Dict[str, Any], socket.recv_json())
+                    return cast(dict[str, Any], socket.recv_json())
 
-                message: Dict[str, Any] = get_message_from_producer()
+                message: dict[str, Any] = get_message_from_producer()
                 assert message['action'] == 'stop'
 
                 producer_thread.join(timeout=1)
@@ -631,7 +631,7 @@ class TestTestdataConsumer:
     def test_testdata(self, mocker: MockerFixture, grizzly_fixture: GrizzlyFixture, noop_zmq: NoopZmqFixture, caplog: LogCaptureFixture) -> None:
         noop_zmq('grizzly.testdata.communication')
 
-        def mock_recv_json(data: Dict[str, Any], action: Optional[str] = 'consume') -> None:
+        def mock_recv_json(data: dict[str, Any], action: Optional[str] = 'consume') -> None:
             mocker.patch(
                 'grizzly.testdata.communication.zmq.Socket.recv_json',
                 side_effect=[
@@ -788,11 +788,11 @@ class TestTestdataConsumer:
 
         consumer = TestdataConsumer(parent, identifier='test')
 
-        def echo(value: Dict[str, Any]) -> Dict[str, Any]:
+        def echo(value: dict[str, Any]) -> dict[str, Any]:
             return value
 
-        def echo_add_data(data: Any) -> Callable[[Dict[str, Any]], Dict[str, Any]]:
-            def wrapped(request: Dict[str, Any]) -> Dict[str, Any]:
+        def echo_add_data(data: Any) -> Callable[[dict[str, Any]], dict[str, Any]]:
+            def wrapped(request: dict[str, Any]) -> dict[str, Any]:
                 response = request.copy()
                 response.update({'data': data})
                 return response

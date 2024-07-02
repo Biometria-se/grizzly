@@ -2,14 +2,16 @@
 from __future__ import annotations
 
 from os import environ
-from typing import TYPE_CHECKING, Generator, List
+from typing import TYPE_CHECKING
 
 import pytest
 
 from .fixtures import (
     AtomicVariableCleanupFixture,
     BehaveFixture,
+    CwdFixture,
     End2EndFixture,
+    EnvFixture,
     GrizzlyFixture,
     LocustFixture,
     NoopZmqFixture,
@@ -19,6 +21,8 @@ from .fixtures import (
 from .webserver import Webserver
 
 if TYPE_CHECKING:  # pragma: no cover
+    from collections.abc import Generator
+
     from _pytest.config import Config
     from _pytest.fixtures import SubRequest
     from _pytest.tmpdir import TempPathFactory
@@ -39,7 +43,7 @@ def pytest_configure(config: Config) -> None:
 
 
 # also, add markers for each test function that starts with test_e2e_, if we're running everything
-def pytest_collection_modifyitems(items: List[pytest.Function]) -> None:
+def pytest_collection_modifyitems(items: list[pytest.Function]) -> None:
     for item in items:
         if item.originalname.startswith('test_e2e_') and item.get_closest_marker('timeout') is None:
             item.add_marker(pytest.mark.timeout(PYTEST_TIMEOUT))
@@ -89,6 +93,14 @@ def _e2e_fixture(tmp_path_factory: TempPathFactory, webserver: Webserver, reques
         yield fixture
 
 
+def _env_fixture() -> Generator[EnvFixture, None, None]:
+    yield EnvFixture()
+
+
+def _cwd_fixture() -> Generator[CwdFixture, None, None]:
+    yield CwdFixture()
+
+
 cleanup = pytest.fixture()(_atomicvariable_cleanup)
 locust_fixture = pytest.fixture()(_locust_fixture)
 behave_fixture = pytest.fixture()(_behave_fixture)
@@ -98,3 +110,5 @@ noop_zmq = pytest.fixture()(_noop_zmq)
 response_context_manager_fixture = pytest.fixture()(_response_context_manager)
 webserver = pytest.fixture(scope='session')(_webserver)
 e2e_fixture = pytest.fixture(scope='session', params=[False, True] if E2E_RUN_DIST else None)(_e2e_fixture)
+env_fixture = pytest.fixture()(_env_fixture)
+cwd_fixture = pytest.fixture()(_cwd_fixture)

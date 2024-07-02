@@ -7,7 +7,7 @@ from json import dumps as jsondumps
 from json import loads as jsonloads
 from os import environ
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable, List, Tuple
+from typing import TYPE_CHECKING, Callable
 
 import pytest
 from jinja2.filters import FILTERS
@@ -31,8 +31,8 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 @pytest.fixture()
-def get_log_files() -> Callable[[], List[Path]]:
-    def wrapped() -> List[Path]:
+def get_log_files() -> Callable[[], list[Path]]:
+    def wrapped() -> list[Path]:
         logs_root = Path(environ['GRIZZLY_CONTEXT_ROOT']) / 'logs'
         log_dir = environ.get('GRIZZLY_LOG_DIR', None)
         if log_dir is not None:
@@ -51,7 +51,7 @@ class TestResponseHandlerAction:
 
         def __call__(
             self,
-            input_context: Tuple[TransformerContentType, HandlerContextType],
+            input_context: tuple[TransformerContentType, HandlerContextType],
             user: GrizzlyUser,
         ) -> None:
             """Use super-class implementation."""
@@ -690,7 +690,7 @@ class TestResponseHandler:
         )
         request_logger_mock.reset_mock()
 
-    def test_response_handler_failure(self, grizzly_fixture: GrizzlyFixture, get_log_files: Callable[[], List[Path]]) -> None:
+    def test_response_handler_failure(self, grizzly_fixture: GrizzlyFixture, get_log_files: Callable[[], list[Path]]) -> None:
         parent = grizzly_fixture(user_type=RestApiUser)
 
         assert isinstance(parent.user, RestApiUser)

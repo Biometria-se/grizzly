@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import textwrap
 from contextlib import suppress
-from typing import TYPE_CHECKING, Any, Dict, List, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import pytest
 
@@ -30,7 +30,7 @@ def test_e2e_step_setup_set_context_variable(e2e_fixture: End2EndFixture) -> Non
         from grizzly.utils import merge_dicts
 
         grizzly = cast(GrizzlyContext, context.grizzly)
-        expected_total: Dict[str, Any] = {}
+        expected_total: dict[str, Any] = {}
         first_row = next(iter(context.table)).as_dict()
         expected_host = first_row['expected']
 
@@ -55,8 +55,8 @@ def test_e2e_step_setup_set_context_variable(e2e_fixture: End2EndFixture) -> Non
         assert actual == expected_total, f'{actual!s} != {expected!s}'
         assert grizzly.scenario.context.get('host', None) == f'http://{expected_host}'  # added by fixture
 
-    table: List[Dict[str, str]] = [{'expected': e2e_fixture.host}]
-    scenario: List[str] = []
+    table: list[dict[str, str]] = [{'expected': e2e_fixture.host}]
+    scenario: list[str] = []
 
     for name, value, expected in testdata:
         table.append({'expected': expected})
@@ -91,7 +91,7 @@ def test_e2e_step_setup_iterations(e2e_fixture: End2EndFixture, iterations: str)
 
         assert grizzly.scenario.iterations == iterations, f'{grizzly.scenario.iterations} != {iterations}'
 
-    table: List[Dict[str, str]] = [{
+    table: list[dict[str, str]] = [{
         'iterations': iterations,
     }]
 
@@ -133,7 +133,7 @@ def test_e2e_step_setup_pace(e2e_fixture: End2EndFixture, pace: str) -> None:
         if has_template(pace):
             assert grizzly.scenario.orphan_templates == [pace], f'{pace} not in {grizzly.scenario.orphan_templates}'
 
-    table: List[Dict[str, str]] = [{
+    table: list[dict[str, str]] = [{
         'pace': pace,
     }]
 

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from enum import Enum, auto
-from typing import Any, Callable, Dict, List, Optional, Tuple, TypeVar, Union, cast
+from typing import Any, Callable, Optional, TypeVar, Union, cast
 
 from locust.rpc.protocol import Message
 from typing_extensions import Concatenate, ParamSpec
@@ -101,7 +101,7 @@ class RequestDirection(PermutationEnum):
             raise AssertionError(message) from e
 
     @property
-    def methods(self) -> List[RequestMethod]:
+    def methods(self) -> list[RequestMethod]:
         """All RequestMethods that has this request direction."""
         return [method for method in RequestMethod if method.direction == self]
 
@@ -230,11 +230,11 @@ class RequestType(Enum):
         raise AssertionError(message)
 
 
-GrizzlyResponse = Tuple[Optional[Dict[str, Any]], Optional[str]]
+GrizzlyResponse = tuple[Optional[dict[str, Any]], Optional[str]]
 
-TestdataType = Dict[str, Dict[str, Any]]
+TestdataType = dict[str, dict[str, Any]]
 
-HandlerContextType = Union[Dict[str, Any], Optional[Any]]
+HandlerContextType = Union[dict[str, Any], Optional[Any]]
 
 GrizzlyVariableType = Union[str, float, int, bool]
 
@@ -256,7 +256,7 @@ def bool_type(value: str) -> bool:
     raise ValueError(message)
 
 
-def list_type(value: str) -> List[str]:
+def list_type(value: str) -> list[str]:
     """Convert a string representation of a list to an actual list."""
     return [v.strip() for v in value.split(',')]
 

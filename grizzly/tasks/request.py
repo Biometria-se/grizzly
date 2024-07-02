@@ -57,7 +57,7 @@ And set response content type to "application/json"
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from grizzly_extras.arguments import parse_arguments, split_value, unquote
 from grizzly_extras.text import has_separator
@@ -75,8 +75,8 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 class RequestTaskHandlers:
-    metadata: List[ResponseHandlerAction]
-    payload: List[ResponseHandlerAction]
+    metadata: list[ResponseHandlerAction]
+    payload: list[ResponseHandlerAction]
 
     def __init__(self) -> None:
         self.metadata = []
@@ -90,7 +90,7 @@ class RequestTaskHandlers:
 
 
 class RequestTaskResponse:
-    status_codes: List[int]
+    status_codes: list[int]
     content_type: TransformerContentType
     handlers: RequestTaskHandlers
 
@@ -117,8 +117,8 @@ class RequestTask(GrizzlyMetaRequestTask):
     endpoint: str
     _template: Optional[Template]
     _source: Optional[str]
-    arguments: Optional[Dict[str, str]]
-    metadata: Dict[str, str]
+    arguments: Optional[dict[str, str]]
+    metadata: dict[str, str]
     async_request: bool
 
     response: RequestTaskResponse

@@ -8,7 +8,7 @@ import time
 import unittest
 import warnings
 from operator import attrgetter
-from typing import Any, Dict, Iterator, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from locust import User
 from locust.runners import WorkerNode
@@ -17,6 +17,9 @@ from parameterized import parameterized_class
 from grizzly.locust import FixedUsersDispatcher, UsersDispatcher
 from grizzly.users import GrizzlyUser
 from tests.helpers import ANY
+
+if TYPE_CHECKING:  # pragma: no cover
+    from collections.abc import Iterator
 
 _TOLERANCE = 0.025
 
@@ -2230,7 +2233,7 @@ class TestLargeScale(UsersDispatcherTestCase):
             else:
                 distribute_users = users_dispatcher._distribute_users(target_user_count=target_user_count_1m)
 
-            users_on_workers = cast(Dict[str, Dict[str, int]], distribute_users[0])
+            users_on_workers = cast(dict[str, dict[str, int]], distribute_users[0])
             delta = time.perf_counter() - ts
 
             # Because tests are run with coverage, the code will be slower.

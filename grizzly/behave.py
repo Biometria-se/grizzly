@@ -9,7 +9,7 @@ from os import environ
 from pathlib import Path
 from textwrap import indent
 from time import perf_counter as time
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Optional, cast
 
 import setproctitle as proc
 from behave.reporter.summary import SummaryReporter
@@ -21,7 +21,8 @@ from .locust import run as locustrun
 from .testdata.variables import destroy_variables
 from .types import RequestType
 from .types.behave import Context, Feature, Scenario, Status, Step
-from .utils import check_mq_client_logs, fail_direct, in_correct_section
+from .utils import fail_direct, in_correct_section
+from .utils.protocols import mq_client_logs
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +78,7 @@ def after_feature_master(return_code: int, status: Optional[Status], context: Co
     if status is None:
         status = Status.failed
 
-    for behave_scenario in cast(List[Scenario], feature.scenarios):
+    for behave_scenario in cast(list[Scenario], feature.scenarios):
         grizzly_scenario = grizzly.scenarios.find_by_description(behave_scenario.name)
         if grizzly_scenario is None:
             continue
@@ -129,7 +130,7 @@ def after_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: An
             return_code = after_feature_master(return_code, status, context, feature)
 
             if pymqi.__name__ != 'grizzly_extras.dummy_pymqi' and not on_worker(context):
-                check_mq_client_logs(context)
+                mq_client_logs(context)
 
         if return_code != 0:
             cause = 'locust test failed' if return_code != ABORTED_RETURN_CODE else 'locust test aborted'
@@ -148,7 +149,7 @@ def after_feature(context: Context, feature: Feature, *_args: Any, **_kwargs: An
     if has_exceptions:
         buffer: list[str] = []
 
-        for scenario_name, exceptions in cast(Dict[Optional[str], List[AssertionError]], context.exceptions).items():
+        for scenario_name, exceptions in cast(dict[Optional[str], list[AssertionError]], context.exceptions).items():
             if scenario_name is not None:
                 buffer.append(f'Scenario: {scenario_name}')
             else:
@@ -222,7 +223,7 @@ def after_scenario(context: Context, *_args: Any, **_kwargs: Any) -> None:
 
     assert grizzly.scenario.tasks.tmp.conditional is None, f'conditional "{grizzly.scenario.tasks.tmp.conditional.name}" has not been closed'
 
-    for scenario_name, exceptions in cast(Dict[Optional[str], List[StepError]], context.exceptions).items():
+    for scenario_name, exceptions in cast(dict[Optional[str], list[StepError]], context.exceptions).items():
         if scenario_name != context.scenario.name:
             continue
 

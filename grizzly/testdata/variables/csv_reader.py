@@ -59,7 +59,7 @@ from csv import DictReader
 from os import environ
 from pathlib import Path
 from secrets import randbelow
-from typing import Any, ClassVar, Dict, List, Optional, Type, cast
+from typing import Any, ClassVar, Optional, cast
 
 from grizzly.types import bool_type
 from grizzly_extras.arguments import parse_arguments, split_value
@@ -105,14 +105,14 @@ def atomiccsvreader__base_type__(value: str) -> str:
     return value
 
 
-class AtomicCsvReader(AtomicVariable[Dict[str, Any]]):
+class AtomicCsvReader(AtomicVariable[dict[str, Any]]):
     __base_type__ = atomiccsvreader__base_type__
     __initialized: bool = False
 
-    _rows: Dict[str, List[Dict[str, Any]]]
-    _settings: Dict[str, Dict[str, Any]]
+    _rows: dict[str, list[dict[str, Any]]]
+    _settings: dict[str, dict[str, Any]]
     context_root: Path
-    arguments: ClassVar[Dict[str, Any]] = {'repeat': bool_type, 'random': bool_type}
+    arguments: ClassVar[dict[str, Any]] = {'repeat': bool_type, 'random': bool_type}
 
     def __init__(self, variable: str, value: str, *, outer_lock: bool = False) -> None:
         with self.semaphore(outer=outer_lock):
@@ -150,15 +150,15 @@ class AtomicCsvReader(AtomicVariable[Dict[str, Any]]):
             self._settings = {variable: settings}
             self.__initialized = True
 
-    def _create_row_queue(self, value: str) -> List[Dict[str, Any]]:
+    def _create_row_queue(self, value: str) -> list[dict[str, Any]]:
         input_file = self.context_root / value
 
         with input_file.open() as fd:
             reader = DictReader(fd)
-            return [cast(Dict[str, Any], row) for row in reader]
+            return [cast(dict[str, Any], row) for row in reader]
 
     @classmethod
-    def clear(cls: Type[AtomicCsvReader]) -> None:
+    def clear(cls: type[AtomicCsvReader]) -> None:
         super().clear()
 
         instance = cast(AtomicCsvReader, cls.get())
@@ -168,7 +168,7 @@ class AtomicCsvReader(AtomicVariable[Dict[str, Any]]):
             del instance._rows[variable]
             del instance._settings[variable]
 
-    def __getitem__(self, variable: str) -> Optional[Dict[str, Any]]:
+    def __getitem__(self, variable: str) -> Optional[dict[str, Any]]:
         with self.semaphore():
             column: Optional[str] = None
 
