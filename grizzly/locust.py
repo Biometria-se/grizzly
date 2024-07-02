@@ -963,6 +963,7 @@ def run(context: Context) -> int:  # noqa: C901, PLR0915, PLR0912
                 # increase heartbeat timeout towards master
                 from locust import runners
                 runners.MASTER_HEARTBEAT_TIMEOUT = runners.MASTER_HEARTBEAT_TIMEOUT * 3
+                runners.WORKER_LOG_REPORT_INTERVAL = -1
             except OSError:
                 logger.exception('failed to connect to locust master at %s:%d', host, port)
                 return 1
