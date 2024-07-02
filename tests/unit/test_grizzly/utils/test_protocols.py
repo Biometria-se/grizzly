@@ -7,6 +7,7 @@ from http.cookiejar import Cookie, CookieJar
 from os import utime
 from typing import TYPE_CHECKING
 
+import pytest
 import zmq.green as zmq
 
 from grizzly.utils.protocols import (
@@ -283,12 +284,10 @@ def test_http_populate_cookiejar() -> None:
 
     assert len(monster.cookiejar) == len(cookies)
 
-    for cookie, (name, value) in zip(monster.cookiejar, cookies.items()):
+    for cookie in monster.cookiejar:
         assert cookie == SOME(
             Cookie,
             version=0,
-            name=name,
-            value=value,
             port=None,
             port_specified=False,
             domain='example.net',
@@ -303,6 +302,18 @@ def test_http_populate_cookiejar() -> None:
             comment_url=None,
             _rest={},
         )
+
+    # order cannot be guaranteed
+    for name, value in cookies.items():
+        found = False
+
+        for cookie in monster.cookiejar:
+            if cookie.name == name and cookie.value == value:
+                found = True
+                break
+
+        if not found:
+            pytest.fail(f'cookie {name}={value} not found')
 
 
 def test_zmq_disconnect(mocker: MockerFixture) -> None:
