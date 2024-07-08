@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Any, Callable, Optional
 import pytest
 from influxdb.exceptions import InfluxDBClientError
 
-from grizzly.listeners.influxdb import InfluxDb, InfluxDbError, InfluxDbListener
+from grizzly.listeners.influxdb import InfluxDb, InfluxDbError, InfluxDbListener, InfluxDbPoint
 from grizzly.types.locust import CatchResponseError
 from tests.helpers import ANY
 
@@ -320,13 +320,52 @@ class TestInfluxDblistener:
             write,
         )
 
-        listener._log_request('GET', '/api/v1/test', 'Success', {'response_time': 133.7}, None)
+        listener._log_request('GET', '/api/v1/test', 'Success', {'response_time': 133.7}, {}, None)
         assert len(listener._events) == 1
 
         with pytest.raises(RuntimeError):
             listener.run_events()
 
         assert len(listener._events) == 0
+
+    def test__override_event(self, grizzly_fixture: GrizzlyFixture) -> None:
+        event: InfluxDbPoint = {
+            'measurement': 'request',
+            'tags': {
+                'foo': 'bar',
+                'hostname': 'localhost',
+            },
+            'time': '1970-01-01T00:00:00Z',
+            'fields': {
+                'request_started': '1970-01-01T00:00:00Z',
+                'request_finished': '1970-01-01T00:00:00Z',
+            },
+        }
+
+        listener = InfluxDbListener(
+            grizzly_fixture.behave.locust.environment,
+            'https://influx.test.com:1337/testdb?Testplan=unittest-plan&TargetEnvironment=local&ProfileName=unittest-profile&Description=unittesting',
+        )
+
+        listener._override_event(event, {
+            '__tags_foo__': 'foo',
+            '__time__': '2024-07-08T10:52:01Z',
+            '__fields_request_started__': '2024-07-08T10:52:01Z',
+            '__fields_request_finished__': '2024-07-08T10:54:00Z',
+        })
+
+        assert event == {
+            'measurement': 'request',
+            'tags': {
+                'foo': 'foo',
+                'hostname': 'localhost',
+            },
+            'time': '2024-07-08T10:52:01Z',
+            'fields': {
+                'request_started': '2024-07-08T10:52:01Z',
+                'request_finished': '2024-07-08T10:54:00Z',
+            },
+        }
 
     @pytest.mark.usefixtures('patch_influxdblistener')
     def test__log_request(self, grizzly_fixture: GrizzlyFixture, patch_influxdblistener: Callable[[], None], mocker: MockerFixture) -> None:
@@ -348,7 +387,7 @@ class TestInfluxDblistener:
 
         assert len(listener._events) == 0
 
-        listener._log_request('GET', 'Request: /api/v1/test', 'Success', {'response_time': 133.7}, None)
+        listener._log_request('GET', 'Request: /api/v1/test', 'Success', {'response_time': 133.7}, {}, None)
 
         assert len(listener._events) == 1
 
@@ -399,7 +438,7 @@ class TestInfluxDblistener:
             ]
 
             for exception, expected in exceptions:
-                listener._log_request('POST', '001 Request: /api/v2/test', 'Failure', {'response_time': 111.1}, exception)
+                listener._log_request('POST', '001 Request: /api/v2/test', 'Failure', {'response_time': 111.1}, {}, exception)
                 event = listener._events[-1]
 
                 assert event.get('tags', None) == {
@@ -454,7 +493,7 @@ class TestInfluxDblistener:
             generate_logger_call('GET', '/api/v1/test', 133.7, 200, None),
         )
 
-        listener.request('GET', '/api/v1/test', 133.7, 200, None)
+        listener.request('GET', '/api/v1/test', 133.7, 200, {}, None)
         assert len(listener._events) == 1
 
         mocker.patch(
@@ -462,7 +501,7 @@ class TestInfluxDblistener:
             generate_logger_call('POST', '/api/v2/test', 555.37, 137, CatchResponseError('request failed')),
         )
 
-        listener.request('POST', '/api/v2/test', 555.37, 137, CatchResponseError('request failed'))
+        listener.request('POST', '/api/v2/test', 555.37, 137, {}, CatchResponseError('request failed'))
         assert len(listener._events) == 2
 
     def test_request_exception(
@@ -475,7 +514,7 @@ class TestInfluxDblistener:
         mocker.patch.object(listener, '_create_metrics', side_effect=[Exception])
 
         with caplog.at_level(logging.ERROR):
-            listener.request('GET', '/api/v2/test', 555.37, 137, None)
+            listener.request('GET', '/api/v2/test', 555.37, 137, {}, None)
         assert 'failed to write metric for "GET /api/v2/test' in caplog.text
         caplog.clear()
 
